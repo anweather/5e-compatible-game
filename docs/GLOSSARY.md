@@ -76,7 +76,8 @@ touch them.
 **Game folders**
 : Where the game finds its files (`Chem.GameFolders`): `rules/`, `world/`
   beside it, the shipped mods in `rules/mods`, the **player's data folder**
-  (what an update leaves alone) and the player's mods in it. A build reads
+  (what an update leaves alone) and the player's mods in it; `Repo` is the
+  checkout's root above `rules/`, for docs and tools. A build reads
   the copies packed into its StreamingAssets; the Editor, the MCP server
   and the tests walk up to the repo's. The view reaches them as
   `ChemGrid.Folders`. With no player (the MCP server), a saved mod goes to

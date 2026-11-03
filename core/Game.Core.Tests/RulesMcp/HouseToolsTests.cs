@@ -13,17 +13,20 @@ namespace Chem.Tests
     /// </summary>
     public class HouseToolsTests
     {
-        string dir;
+        string data, dir;
+        GameFolders folders;
 
+        // A player's data folder; dir is their mods in it, where a save goes.
         [SetUp]
         public void MakeFolder()
         {
-            dir = Path.Combine(Path.GetTempPath(), "house-tools-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(dir);
+            data = Path.Combine(Path.GetTempPath(), "house-tools-" + Guid.NewGuid().ToString("N"));
+            folders = new GameFolders(ChemistryTests.RulesDir(), data);
+            dir = Directory.CreateDirectory(folders.Mods).FullName;
         }
 
         [TearDown]
-        public void RemoveFolder() => Directory.Delete(dir, true);
+        public void RemoveFolder() => Directory.Delete(data, true);
 
         // A headless client: JSON-RPC to the tools, as a player's Claude talks to the game.
         internal sealed class Client
@@ -100,7 +103,7 @@ namespace Chem.Tests
         [Test]
         public void BothAsksEndAsOneModThatSurvivesSaveAndReload()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var client = new Client(bench);
             var (mod, kept) = BothAsks(bench);
 
@@ -112,7 +115,7 @@ namespace Chem.Tests
             // Switched on from the kept file, it builds both; nothing but the row names anything.
             var world = bench.LiveWorld;
             string before = world.CellHash();
-            var plain = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
+            var plain = new Workbench(folders).LiveWorld;
             string on = client.Call("apply", new { mod });
             plain.Step();
             Assert.That(on, Does.Contain("switched on"), on);
@@ -139,7 +142,7 @@ namespace Chem.Tests
             Assert.That(built.All(c => loaded.At(c.X, c.Y).T == plain.At(c.X, c.Y).T), "reverting puts back what stood there");
 
             // A new session reads the kept mod and gets the same world.
-            var again = new Workbench(ChemistryTests.RulesDir(), dir);
+            var again = new Workbench(folders);
             Assert.That(new Client(again).Call("apply", new { mod }), Does.Contain("switched on"));
             Assert.That(again.LiveWorld.CellHash(), Is.EqualTo(world.CellHash()));
         }
@@ -147,12 +150,12 @@ namespace Chem.Tests
         [Test]
         public void TwoRunsAreIdentical()
         {
-            var first = BothAsks(new Workbench(ChemistryTests.RulesDir(), dir));
+            var first = BothAsks(new Workbench(folders));
             File.Delete(Path.Combine(dir, first.mod + ".json"));
-            var second = BothAsks(new Workbench(ChemistryTests.RulesDir(), dir));
+            var second = BothAsks(new Workbench(folders));
             Assert.That(second.text, Is.EqualTo(first.text), "the same asks make the same mod");
-            var a = new Workbench(ChemistryTests.RulesDir(), dir);
-            var b = new Workbench(ChemistryTests.RulesDir(), dir);
+            var a = new Workbench(folders);
+            var b = new Workbench(folders);
             a.Apply(first.mod);
             b.Apply(first.mod);
             Assert.That(b.LiveWorld.CellHash(), Is.EqualTo(a.LiveWorld.CellHash()));
@@ -162,7 +165,7 @@ namespace Chem.Tests
         [Test]
         public void FindNamesBuildingsAndThings()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var client = new Client(bench);
             Assert.That(client.Call("find", new { kind = "building", near = "hollowmere", within = 20 }), Does.Contain("Hollowmere#1"));
             var thing = bench.Budgets.Things.All[0];
@@ -178,7 +181,7 @@ namespace Chem.Tests
         [Test]
         public void FindSiteUsesAShoreAndASide()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var client = new Client(bench);
             var lake = bench.Places.Find("lake");
             string north = client.Call("find_site", new { width = 6, depth = 6, near = "lake", side = "north" });
@@ -201,7 +204,7 @@ namespace Chem.Tests
         [Test]
         public void ABadSiteIsRefusedAtOnceAndAtTheTick()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var client = new Client(bench);
             var lake = bench.Places.Find("lake");
             string shown = client.Call("add_building", new { at = $"[{lake.Middle.x}, {lake.Middle.y}]", width = 4, depth = 4 });
@@ -215,7 +218,7 @@ namespace Chem.Tests
         [Test]
         public void AWingOnAHollowHouseGoesThroughItsWall()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var client = new Client(bench);
             string sites = client.Call("find_site", new { width = 8, depth = 6, near = "hollowmere", within = 60 });
             string at = FirstSite(sites);
@@ -232,7 +235,7 @@ namespace Chem.Tests
         [Test]
         public void AVillageBuildingEditedByIdChangesOnlyItsCellsAndComesBack()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var world = bench.LiveWorld;
             var row = world.BuildingRowOf("Hollowmere#1");
             var was = world.BuildingCellsOf(row).Select(c => (c.X, c.Y, c.Terrain)).ToList();
@@ -252,7 +255,7 @@ namespace Chem.Tests
         [Test]
         public void AModsBuiltCellsStayABuildingsSize()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var problems = bench.Validate("{ \"world\": { \"buildings\": { \"t#1\": { \"at\": [10, 10], \"style\": \"cabin\", \"built\": { \"logwall\": [[0, 0, 2000000]] } } } } }");
             Assert.That(problems.Select(p => p.Message), Has.Some.Contains("built cells"));
         }
@@ -260,7 +263,7 @@ namespace Chem.Tests
         [Test]
         public void SetBuildingAndRemoveTakeARowWhole()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var client = new Client(bench);
             string shown = client.Call("set_building", new { id = "cabin#2", field = "wall.finish", value = "{\"pattern\": \"worn\", \"color\": \"#8a6a4a\"}" });
             string d = DraftId(shown);

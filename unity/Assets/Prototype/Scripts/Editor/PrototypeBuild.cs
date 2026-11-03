@@ -161,7 +161,7 @@ public static class PrototypeBuild
     /// <summary>The repo's LICENSE.md and NOTICE.md, beside the exe, so they ship with the game.</summary>
     public static void CopyLicences(string folder)
     {
-        string repo = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
+        string repo = ChemGrid.Folders.Repo;
         foreach (var file in new[] { "LICENSE.md", "NOTICE.md" }) File.Copy(Path.Combine(repo, file), Path.Combine(folder, file), true);
     }
 
@@ -270,7 +270,7 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
 
     static void Pack(string folder)
     {
-        var source = Path.GetFullPath(Path.Combine(Application.dataPath, "../..", folder));
+        var source = Path.Combine(ChemGrid.Folders.Repo, folder);
         var target = Path.Combine(Application.dataPath, "StreamingAssets", folder);
         Directory.CreateDirectory(target);
         foreach (var old in Directory.GetFiles(target, "*.json")) File.Delete(old);

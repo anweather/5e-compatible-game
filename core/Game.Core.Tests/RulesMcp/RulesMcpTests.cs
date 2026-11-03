@@ -12,7 +12,7 @@ namespace Chem.Tests
     public class RulesMcpTests
     {
         static Workbench bench;
-        static Workbench Bench => bench ??= new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench => bench ??= new Workbench(ChemistryTests.Folders);
 
         static IEnumerable<string> Mods() =>
             Directory.GetFiles(Path.Combine(ChemistryTests.RulesDir(), "mods"), "*.json").Select(Path.GetFileNameWithoutExtension).OrderBy(n => n, StringComparer.Ordinal);
@@ -141,7 +141,7 @@ namespace Chem.Tests
             var dir = Path.Combine(Path.GetTempPath(), "rules-mcp-" + Guid.NewGuid().ToString("N"));
             try
             {
-                var b = new Workbench(ChemistryTests.RulesDir(), dir);
+                var b = new Workbench(new GameFolders(ChemistryTests.RulesDir(), dir));
                 var d = b.AddReaction(null, "steam-damps-fire", "fire", "[{ \"extinguish\": true }]", "{ \"gas\": \"steam\" }", "The steam keeps everything too damp to burn", stop: true);
                 b.SetSpell(d.Id, "fireball", "radius", "3");
                 b.SetMaterial(d.Id, "grass", "burn.catch", "0.3");

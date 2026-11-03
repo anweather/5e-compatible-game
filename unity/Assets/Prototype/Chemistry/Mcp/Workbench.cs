@@ -24,15 +24,16 @@ namespace Chem.Mcp
         readonly Dictionary<string, Draft> drafts = new Dictionary<string, Draft>(StringComparer.Ordinal);
         int nextDraft = 1;
 
-        public Workbench(string rulesDir, string modsDir = null)
+        /// <summary>The rules in the folders' rules/, saving to their <see cref="GameFolders.Mods"/> as it is now.</summary>
+        public Workbench(GameFolders folders)
         {
-            RulesDir = rulesDir;
-            ShippedModsDir = Path.Combine(rulesDir, "mods");
-            ModsDir = modsDir ?? ShippedModsDir;
-            Base = Rules.Load(rulesDir);
-            Budgets = ModBudgets.Load(rulesDir);
+            RulesDir = folders.Rules;
+            ShippedModsDir = folders.ShippedMods;
+            ModsDir = folders.Mods;
+            Base = Rules.Load(RulesDir);
+            Budgets = ModBudgets.Load(RulesDir);
             baseRaw = new Dictionary<string, JToken>(StringComparer.Ordinal);
-            foreach (var path in Directory.GetFiles(rulesDir, "*.json").OrderBy(p => p, StringComparer.Ordinal))
+            foreach (var path in Directory.GetFiles(RulesDir, "*.json").OrderBy(p => p, StringComparer.Ordinal))
                 baseRaw[Path.GetFileNameWithoutExtension(path)] = JToken.Parse(File.ReadAllText(path));
             PutLayers(Array.Empty<RoomMod>());
         }

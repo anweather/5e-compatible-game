@@ -45,7 +45,7 @@ namespace Chem.Tests
             Assert.That((string)next["content"][0]["text"], Is.EqualTo("the game's room"));
         }
 
-        static Workbench Bench() => new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench() => new Workbench(ChemistryTests.Folders);
 
         static McpRpc Rpc(Workbench bench) => new McpRpc(new RulesTools(bench), "test", "1");
 

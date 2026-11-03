@@ -87,10 +87,23 @@ public class PlayLog : MonoBehaviour
     }
 
     // Beside the player log, so one folder holds everything about a session.
-    public static string Folder()
+    public static string Folder() => Folder(Application.consoleLogPath, () => ChemGrid.Folders);
+
+    /// <summary>
+    /// Beside the log, else the player's data folder; Unity's own when no rules can be found, as the play
+    /// log is what tells of a broken start.
+    /// </summary>
+    public static string Folder(string log, Func<GameFolders> folders)
     {
-        string log = Application.consoleLogPath;
-        return string.IsNullOrEmpty(log) ? Application.persistentDataPath : Path.GetDirectoryName(log);
+        if (!string.IsNullOrEmpty(log)) return Path.GetDirectoryName(log);
+        try
+        {
+            return folders().PlayerData;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return Application.persistentDataPath;
+        }
     }
 
     void DrawEntry()

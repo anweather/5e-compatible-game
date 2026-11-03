@@ -33,13 +33,15 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 ### 2. Chem core (`Chemistry/`)
 - `RuleTables.cs` reads the JSON into typed tables.
 - **Where the game's folders are** is `GameFolders.cs`, and nowhere else:
-  `Rules`, `World` (beside it), `ShippedMods`, `PlayerData` and `Mods`,
+  `Rules`, `Repo` (the folder it's in: a checkout's root, for docs/ and
+  tools/), `World` (beside it), `ShippedMods`, `PlayerData` and `Mods`,
   with the chat's folder as a `ClaudeFolder`. The view hands in Unity's
   roots once (`ChemGrid.Folders`: a build's StreamingAssets, the project,
   the player's data folder); the MCP server, chatbench and the tests use
   `GameFolders.InRepo(start)`, which walks up to the repo's `rules/`.
   Code that loads from a rules folder it was given (`ModBudgets.Load`,
-  `StandInValley.Load`) finds `world/` through it too.
+  `StandInValley.Load`) finds `world/` through it too, and the rules
+  tools' `Workbench` takes a `GameFolders` (its save goes to `Mods`).
 - `World.cs` holds the cells (`Cell.cs`), the seeded random number
   generator, the log and the tick counter.
 - **Chunks** (`Chunk.cs`, `World.Chunks.cs`; `docs/WORLD_STREAMING.md`).
