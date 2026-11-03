@@ -159,7 +159,9 @@ namespace Chem.Tests
             StringAssert.Contains("terrain plant: takes color, height, baked; forms bush, tree, sapling, stump.", list);
             StringAssert.Contains("A tree or sapling is the valley's own tree model, so it takes no colour there.", list);
             var none = list.Split('\n').Single(l => l.StartsWith("Takes no colour:", StringComparison.Ordinal));
-            foreach (var f in new[] { "fire plain", "fire oil", "gases bank", "covers slick" }) StringAssert.Contains(f, none);
+            foreach (var f in new[] { "fire plain", "fire oil", "gases bank", "covers ember" }) StringAssert.Contains(f, none);
+            StringAssert.DoesNotContain("covers slick", none, "drawn from data now (products-view)");
+            StringAssert.Contains("covers slick: takes color.", list);
             StringAssert.DoesNotContain("spells blast", none);
             StringAssert.Contains("colour [0.95,0.42,0.12]", Bench.List("elements"));
         }

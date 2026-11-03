@@ -114,6 +114,12 @@ public static class ProbeScenarios
             "With --shots, a film from behind the host's wizard.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
+        new Entry("productsview", typeof(ProductsViewProbe), 300f,
+            "What a material leaves, and a mod's own covers, drawn from the rules (primitives P3 and step 2) on two peers: this Editor hosts an Open room, the virtual player joins. " +
+            "Base covers wear films as before and the base ash colour is today's; a Fire Bolt on a grass lot leaves base ash, charred with no film. A mod through the real MCP (add_material blue-soot, set_material grass burn.ash) " +
+            "and a Fire Bolt on a second lot: the soot is charred and its film is the soot's look, the base ash unchanged, both peers alike, checksums equal; reverted, the soot is swept. " +
+            "Then black ice cast in a slick (lapse after 120 ticks): drawn as a film in its colour on both, the host's wizard skids across it, the panel shows time left; at the lapse every slick goes in every chunk on both, " +
+            "and the view's rules and the mods list follow. With --shots: products-view-before.jpg, products-view-after.jpg and black-ice/ frames at 720p, off screen.", players: 2),
         new Entry("modthing", typeof(ModThingProbe), 90f,
             "A mod's new kinds of thing, solo (docs/RULES_MCP.md \"Things\"): an item and a prop spawn on their cells dressed as animals, resting on the ground; the first pick-up logs a find and the second doesn't; a revert takes the item out of the hand and the world, and the same mod brings them back. With --shots, a picture standing and one in hand."),
         new Entry("roomthing", typeof(RoomThingProbe), 150f,

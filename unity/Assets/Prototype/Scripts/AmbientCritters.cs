@@ -202,7 +202,7 @@ public class AmbientCritters : MonoBehaviour
         var cell = grid.CellAt(p);
         var c = world.At(cell.x, cell.y);
         y = grid.GroundAt(p);
-        if (c == null || c.Fire > 0 || CellPaint.IsSnowy(c)) return 0f;
+        if (c == null || c.Fire > 0 || CellPaint.IsSnowy(c, world.Rules)) return 0f;
         bool wet = c.Water > 0;
         if (wet) y = Mathf.Max(y, grid.WaterSurfaceY(cell.x, cell.y));
         bool green = c.T == TerrainIds.Grass || c.T == TerrainIds.Brush || c.T == TerrainIds.Tree;

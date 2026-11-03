@@ -319,8 +319,11 @@ mod can say it with `set_material` and a sim patch, with no code naming it:
 - `sim.weather.snow.cover` / `.bank` (covers) and `sim.weather.meteors.spell` (a spell).
 
 `validate` refuses a name that isn't a material (or spell) of the right kind. They are names, so no budget
-bounds them. The view still draws snow by the base ids (`World.SnowCover`, `BankCover`), so a mod's own snow
-cover falls and drifts in the sim but is drawn as a plain cover until the view reads the rules' names.
+bounds them. The view reads the same names (`products-view`): snow paint, banks, footprints and the scoped snow
+look follow `sim.weather.snow.cover` / `.bank` (`CellPaint.IsSnowy`, `IsBank`); what `sim.fire.ash` or any material's
+`burn.ash` names (or a cover whose look family is `scorch`) paints charred ground (`CellPaint.IsAsh`), and a mod's own
+ash wears its look's colour as a film over it (`CellSlickMesh`), so peat's `cinders` show as cinders. Probe
+`productsview`.
 
 ## Temporary materials: what a mod adds lasts while it's on
 
@@ -358,15 +361,16 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
   21 600. A lapse on a material the rules already have is refused.
 - **Tools.** `add_material` and `set_material` take `lapse` (`lapse.after`, `lapse.into`) on a terrain, cover or gas.
 
-**In the view (`temp-materials-view`).** What drawing a temporary cover needs:
-1. A cover by id the view has never seen: `ChemGrid.RenderCover` and `CellSlickMesh` must draw any cover from its
-   `look` (colour, and slick or not from its tags: `slippery`), not by id, the P3 slick `needs` gap. Until then black
-   ice is drawn as a plain cover.
-2. After a sweep, every cell that held it changes at once, inactive chunks included: redraw the covers (and terrain)
-   of every chunk on `RoomDecided` (a revert, lapse or not), not only the active ones, as for a rule switch.
-3. `RuleSwitcher` and the mods panel take a lapse as a revert: on `RoomDecided` with a revert, read `World.Room.Mods`
-   and `World.RoomRules` again (a `TickBatch.RunOn` hands back the old `RuleSet` across a lapse, as no room command came).
-4. Optional: a mod with a lapse shows its time left (`World.LapsesAt(mod)` minus `World.Tick`) in the mods panel.
+**In the view (`products-view`).** How a temporary cover is drawn:
+1. `CellSlickMesh.IsFilm`: a slippery cover (oil, grease, frost, black ice), one whose look family is `slick`, and any
+   cover the base rules don't have wears the glossy film, in its look's colour (`ChemGrid.CoverColorAt`); snow covers
+   stay the land's paint. `IsSheen` (slippery and burns: oil, grease) is the rainbow on water. No cover is skipped.
+2. On `RoomDecided` with a revert (a lapse is one), every inactive chunk is looked over again, six a frame
+   (`ChemGrid.RedrawEveryChunk`), so a sweep clears everywhere; the active ones are walked anyway.
+3. Before the next tick (`ChemGrid.FollowLapse`, solo and online), a revert the view didn't ask for puts
+   `World.RoomRules` in force as `CurrentRules`, with the redraw, recolour and `RulesChanged` of any switch: the mods
+   panel, lights and looks go back as on a revert.
+4. The mods panel shows "lapses in 4:59" on a mod whose materials lapse (`RuleSwitcher.LapseNote`).
 
 ## Buildings: rows a mod can edit or add
 

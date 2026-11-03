@@ -82,12 +82,24 @@ namespace Chem
                 "an object of triggers by id, such as {\"meteor-steps\": {\"on\": \"step\", \"who\": \"Ann\", \"do\": [{\"cast\": \"meteor\", \"at\": \"ahead\", \"by\": 2}]}}; null takes one out");
             Expect(BuildingTables.Key, p[BuildingTables.Key] is JObject b && BuildingTables.Tables.Where(t => b[t] != null).All(t => b[t] is JObject rows && rows.PropertyValues().All(v => v is JObject)),
                 "an object of tables (openings, floors, roofs, details, styles), each of rows by id");
+            UnknownBuildingTables(p[BuildingTables.Key] as JObject, errors);
             Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings" || x.Name == "add" || x.Name == "lay")
                     && (w["buildings"] == null || (w["buildings"] is JObject bs && bs.PropertyValues().All(v => v is JObject)))
                     && (w["add"] == null || ListOf(w["add"], JTokenType.Object))
                     && (w["lay"] == null || ListOf(w["lay"], JTokenType.Object)),
                 "{\"buildings\": {\"<id>\": {a whole building row}}, \"add\": [{a thing: kind, cell}], \"lay\": [{terrain or cover, cells}]}: an id the world has edits that building, a new one adds one, add puts things in the world and lay sets cells");
             return errors;
+        }
+
+        // A table a mod's "buildings" can't add rows to, named, rather than dropped without a word (#85).
+        static void UnknownBuildingTables(JObject given, List<string> errors)
+        {
+            if (given == null) return;
+            string tables = string.Join(", ", BuildingTables.Tables);
+            foreach (var name in given.Properties().Select(x => x.Name).Where(n => !BuildingTables.Tables.Contains(n)))
+                errors.Add(name == "ground"
+                    ? $"\"buildings\" can't change ground, the terrain the world's buildings stand on; a mod adds rows to {tables}"
+                    : $"\"buildings\" has no table {name}; a mod adds rows to {tables}");
         }
 
         // An object of rows by id, a null taking one out (the triggers).
