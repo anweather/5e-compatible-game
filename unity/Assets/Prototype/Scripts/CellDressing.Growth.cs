@@ -5,16 +5,17 @@ using UnityEngine;
 // Both are the valley's own tree models (ValleyChemistry.TreeModel: the tree
 // that stood there before it burnt, else one of its chunk's kinds), a sapling
 // at a quarter of its size, springing up and then filling out (GrowIn). The
-// valley's baked trees are the terrain's own and aren't dressed; only a tree
-// that grew in this world is (ValleyChemistry.Grown). Without a valley, a
-// stem and a crown stand in.
+// valley's baked trees are the terrain's own and aren't dressed; a tree that
+// grew in this world is, and so is one a spell or a mod laid where the land
+// drew none (ValleyChemistry.NeedsTreeDrawn). Without a valley, a stem and a
+// crown stand in.
 public sealed partial class CellDressing
 {
     const float SaplingScale = 0.25f, SpringSeconds = 1.2f, FillOutSeconds = 3f;
 
-    // A tree that grew from a sapling here; the terrain's own trees aren't dressed.
-    bool IsGrownTree(LookDef look, int x, int y) =>
-        look is { Baked: true } && grid.valley != null && grid.valley.Grown(x, y);
+    // A tree the terrain doesn't draw: grown from a sapling here, or laid where the land had none.
+    bool IsDrawnTree(LookDef look, int x, int y) =>
+        look is { Baked: true } && grid.valley != null && grid.valley.NeedsTreeDrawn(x, y);
 
     // A sapling (small) or a grown tree, at its trunk's spot when the valley drew a tree in this cell.
     void DressTree(Transform root, Vector3 surface, System.Random rng, int x, int y, bool sapling)

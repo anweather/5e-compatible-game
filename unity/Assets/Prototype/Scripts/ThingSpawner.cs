@@ -31,6 +31,10 @@ using UnityEngine;
 //   as one of the two generic ones, dressed by ThingBodies from its look. Online
 //   those say nothing of what they are, so a client finds the kind by the thing's
 //   id, and one that arrives before this peer's rules have it waits for them.
+// - Spells place things too, and they lapse (World.Placed, docs/design/events-and-placing.md
+//   2a): the core makes a new ThingsNow table whenever its list changes, so each frame this
+//   compares that table with the one it showed (a reference, nothing more on a quiet tick) and,
+//   after a tick that changed it, spawns and despawns the difference as at a switch.
 public class ThingSpawner : MonoBehaviour
 {
     /// <summary>The prefab for one kind (an id in rules/entities.json or rules/items.json).</summary>
@@ -56,8 +60,10 @@ public class ThingSpawner : MonoBehaviour
     readonly HashSet<string> missingKinds = new();
     // A client: dressed things that arrived before this peer's rules had them.
     readonly List<NetProp> waiting = new();
-    // The things as they stood at the last switch, to tell what changed.
+    // The things as they stood at the last switch or change, to tell what changed.
     WorldThings shown;
+    // The rules the dressed things last read their looks from.
+    Rules lookRules;
     ThingBodies bodies;
     NetworkManager network;
 
@@ -103,6 +109,7 @@ public class ThingSpawner : MonoBehaviour
     {
         var world = grid.World;
         shown = Things;
+        lookRules = world.Rules;
         foreach (var (cx, cy) in shown.ChunkCoords)
             if (world.HasChunk(cx, cy) && world.IsActive(cx, cy)) SpawnChunk(cx, cy);
     }
@@ -232,11 +239,39 @@ public class ThingSpawner : MonoBehaviour
 
     // --- a switch of rules ---------------------------------------------------------------
 
+    static readonly Unity.Profiling.ProfilerMarker PlacedMarker = new("ThingSpawner.Placed");
+
+    /// <summary>Milliseconds the last change of things between switches took to show (a spell placed, or a placed thing lapsed), for the probe.</summary>
+    public double PlacedMs { get; private set; }
+
+    void Update() => ShowPlaced();
+
+    /// <summary>
+    /// After a tick that placed things or let them lapse (the core's table is a new one), shows the difference; a switch
+    /// not heard yet reads the rules too. A quiet frame compares one reference. True if anything changed (for the probe).
+    /// </summary>
+    public bool ShowPlaced()
+    {
+        if (grid == null || grid.World == null || ReferenceEquals(Things, shown)) return false;
+        using var marked = PlacedMarker.Auto();
+        long began = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (ReferenceEquals(lookRules, grid.World.Rules)) ShowChanges();
+        else ThingsChanged();
+        PlacedMs = (System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        return true;
+    }
+
     // The rules changed, or the world did: what a mod added comes in, what it took with it goes, and
     // the dressed things read their looks again. On a client the host's spawns and despawns do the rest.
     void ThingsChanged()
     {
-        bodies.ReadRules(grid.World.Rules);
+        lookRules = grid.World.Rules;
+        bodies.ReadRules(lookRules);
+        ShowChanges();
+    }
+
+    void ShowChanges()
+    {
         var (added, removed) = Things.ChangesFrom(shown);
         shown = Things;
         if (Client)

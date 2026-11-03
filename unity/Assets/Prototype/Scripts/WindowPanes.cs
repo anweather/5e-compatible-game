@@ -15,7 +15,10 @@ using UnityEngine;
 // which never pass a collision up to this component. The first hit only cracks
 // the glass (Cell.Cracked, a web drawn on the pane: CrackWeb.hlsl); the next
 // shatters it. A wizard's punch hits the same way (ItemHolder.Punch.cs). ValleyChemistry binds it to the cells for each new world. Only
-// the show: the cells are the truth.
+// the show: the cells are the truth. A pane with a lamp (a row house's window) glows in its colour as the
+// village windows do (the shader reads _LampGlow, which Village sets from the rules' daylight): nothing
+// by day, lit at dusk, in the same one mesh, with no light of its own. It goes dark when it shatters, or
+// when its house says it's out (Darken: its stretch of wall burnt or fell).
 [ExecuteAlways]
 public class WindowPanes : MonoBehaviour
 {
@@ -28,6 +31,8 @@ public class WindowPanes : MonoBehaviour
         public Vector3 along, up;
         /// <summary>The way it faces.</summary>
         public Vector3 facing;
+        /// <summary>The light behind it from dusk to dawn (a row's opening, rules/buildings.json "lamp"); clear for none.</summary>
+        public Color lamp;
     }
 
     // The tint and clearness of glass (alpha: how much it hides), and of the gap a shattered pane leaves.
@@ -52,6 +57,8 @@ public class WindowPanes : MonoBehaviour
     bool[] open = System.Array.Empty<bool>();
     bool[] cracked = System.Array.Empty<bool>();
     Vector3[] uvs;
+    Vector4[] lamps;
+    bool[] dark = System.Array.Empty<bool>();
 
     void OnEnable() => Show();
 
@@ -96,6 +103,7 @@ public class WindowPanes : MonoBehaviour
         var triangles = new int[n * 6];
         colors = new Color32[n * 4];
         uvs = new Vector3[n * 4];
+        lamps = new Vector4[n * 4];
         for (int i = 0; i < n; i++)
         {
             var p = panes[i];
@@ -109,13 +117,53 @@ public class WindowPanes : MonoBehaviour
                 normals[v + k] = p.facing;
                 colors[v + k] = i < open.Length && open[i] ? Gap : Glass;
                 uvs[v + k] = Uv(i, k);
+                lamps[v + k] = Lamp(i);
             }
             int[] corners = { v, v + 1, v + 2, v, v + 2, v + 3 };
             System.Array.Copy(corners, 0, triangles, t, 6);
         }
         var m = new Mesh { name = "Window panes", hideFlags = HideFlags.DontSave, vertices = vertices, normals = normals, triangles = triangles, colors32 = colors };
         m.SetUVs(0, uvs);
+        if (Lit) m.SetUVs(1, lamps);
         return m;
+    }
+
+    bool Lit => System.Array.Exists(panes, p => p.lamp.maxColorComponent > 0f);
+
+    // A pane's lamp in uv1, linear: what the glass glows at full night; nothing once it's open or out.
+    Vector4 Lamp(int pane)
+    {
+        bool off = (pane < open.Length && open[pane]) || (pane < dark.Length && dark[pane]);
+        var c = panes[pane].lamp;
+        if (off || c.maxColorComponent <= 0f) return Vector4.zero;
+        var linear = QualitySettings.activeColorSpace == ColorSpace.Linear ? c.linear : c;
+        return new Vector4(linear.r, linear.g, linear.b, 1f);
+    }
+
+    /// <summary>Puts out the lamps whose pane <paramref name="isOut"/> says (by pane index), lighting the rest again.</summary>
+    public void Darken(System.Func<int, bool> isOut)
+    {
+        if (dark.Length != panes.Length) dark = new bool[panes.Length];
+        bool changed = false;
+        for (int i = 0; i < panes.Length; i++)
+        {
+            bool now = isOut(i);
+            changed |= now != dark[i];
+            dark[i] = now;
+        }
+        if (changed) Repaint();
+    }
+
+    /// <summary>How many panes show their lamp now, for the probe.</summary>
+    public int LampsLit
+    {
+        get
+        {
+            int n = 0;
+            for (int i = 0; i < panes.Length; i++)
+                if (Lamp(i) != Vector4.zero) n++;
+            return n;
+        }
     }
 
     // A corner's place on the pane, and in z its crack: 1 and a seed for the web (Prototype/WindowGlass), 0 for none.
@@ -215,9 +263,11 @@ public class WindowPanes : MonoBehaviour
             {
                 colors[i * 4 + k] = open[i] ? Gap : Glass;
                 uvs[i * 4 + k] = Uv(i, k);
+                lamps[i * 4 + k] = Lamp(i);
             }
         mesh.colors32 = colors;
         mesh.SetUVs(0, uvs);
+        if (Lit) mesh.SetUVs(1, lamps);
         if (hollow) CloseGaps();
     }
 

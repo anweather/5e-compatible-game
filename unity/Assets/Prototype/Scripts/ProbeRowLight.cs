@@ -11,7 +11,8 @@ public class RowLightProbe : RowHousesProbe
     const int StuccoX = 235, StuccoY = 390, StoneX = 297, StoneY = 352;
     const string StoneHouse = "probe-stone#1", Gatehouse = "probe-gate#1";
     const float Close = 12f, ClockWait = 4f;
-    static readonly string[] Times = { "10:00", "dusk", "23:00" };
+    static readonly string[] Times = { "noon", "dusk", "23:00" };
+    static readonly int LampGlow = Shader.PropertyToID("_LampGlow");
 
     protected override IEnumerator Run()
     {
@@ -33,6 +34,10 @@ public class RowLightProbe : RowHousesProbe
             yield return Tool("set_time", new JObject { ["time"] = time });
             yield return Wait(ClockWait);
             string label = time.Replace(":", "");
+            var panes = houses.Root(House).GetComponent<WindowPanes>();
+            float glow = Shader.GetGlobalFloat(LampGlow);
+            Check($"windows_lit_{label}", panes.LampsLit > 0 && (time == "noon" ? glow < 0.05f : glow > 0.4f),
+                $"{panes.LampsLit} of {panes.panes.Length} panes with a lamp, lamps at {glow:0.00}");
             yield return Look("stucco-" + label, StuccoX + 7, StuccoY + 8, Close);
             yield return Look("stone-" + label, StoneX + 3, StoneY + 6, Close);
             yield return Look("village-" + label, village.X + 3, village.Y + 6, Close);

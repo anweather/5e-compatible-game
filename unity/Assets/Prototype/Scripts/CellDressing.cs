@@ -60,7 +60,7 @@ public sealed partial class CellDressing
     {
         bool wall = grid.World.IsRaisedWall(c);
         var look = Of(grid.World.Rules, c.T);
-        bool parts = (HasParts(look) && !grid.IsBuiltWall(x, y, c)) || IsGrownTree(look, x, y);
+        bool parts = (HasParts(look) && !grid.IsBuiltWall(x, y, c)) || IsDrawnTree(look, x, y);
         bool stone = !wall && SteppingStone(c, x, y);
         if (!wall && !parts && !stone) return null;
         var center = grid.CellCenter(x, y);

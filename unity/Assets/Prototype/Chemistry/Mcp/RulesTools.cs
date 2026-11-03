@@ -289,7 +289,7 @@ namespace Chem.Mcp
         public string Validate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft) => Do(() =>
             {
                 var problems = bench.Validate(draft);
-                return Workbench.Report(problems) + (problems.Count == 0 ? bench.SimulateNote(draft) : "");
+                return Workbench.Report(problems) + (problems.Count == 0 ? bench.SimulateNote(draft) : "") + bench.UnseenNote(bench.PatchJson(draft));
             });
 
         [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm, walk) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash. Use it to see a change goes the way the player meant: one can do the opposite of what it seems (less fuel makes a fire spread less). Its numbers show the direction, not a multiple, so don't tune a value to fit them. A draft with a trigger on steps walks: its player runs a loop, a cell every 2 ticks, and it says how many times the triggers fired.")]

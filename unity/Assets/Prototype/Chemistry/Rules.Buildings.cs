@@ -67,6 +67,7 @@ namespace Chem
                     string becomes = Show(p.Value["becomes"]);
                     if (becomes != OpeningDef.StaysWall && becomes != OpeningDef.Open && terrain[becomes] == null)
                         Errors.Add($"opening {p.Name}: becomes names unknown terrain {becomes} (a terrain, \"{OpeningDef.StaysWall}\" or \"{OpeningDef.Open}\")");
+                    Lamp($"opening {p.Name}", p.Value["look"]?["lamp"]);
                 }
             }
 
@@ -147,6 +148,7 @@ namespace Chem
             void Opening(string wall, JObject o, int length, BuildingTables tables)
             {
                 Named(wall, "opening", "openings", o["kind"], tables);
+                Lamp($"{wall}: a {Show(o["kind"])}", o["lamp"]);
                 var kind = tables.Row("openings", Show(o["kind"]));
                 if (kind == null) return;
                 if (o["at"] != null && !IsWholeAtLeast(o["at"], 0))
@@ -179,6 +181,12 @@ namespace Chem
                 var over = (roof["over"] as JArray)?.Select(Show).ToList();
                 if (over == null || over.Count < 3) Errors.Add($"{who} needs \"over\": the joins of its outline, three or more");
                 else foreach (var j in over.Where(j => joins[j] == null)) Errors.Add($"{who} is over join {j}, which the building hasn't got");
+            }
+
+            // A window's light at night (the view's): a colour, or off.
+            void Lamp(string who, JToken lamp)
+            {
+                if (lamp != null && !BuildingsShown.IsLamp(lamp)) Errors.Add($"{who}: lamp is the colour its window glows at night, \"#rrggbb\", or \"{BuildingsShown.LampOff}\", not {Show(lamp)}");
             }
 
             void WallMaterial(string who, JToken material)
