@@ -1,8 +1,8 @@
-Brief from the PM: short designs for the bigger asks from Andrew's play test of 2026-11-02 (#73, #74, #75, #76, #60). Pro account. Design only: no code.
+Brief from the PM: short designs for the bigger asks from Andrew's play test of 2026-11-02 (#73, #74, #75, #76, #60). Max account. Design only: no code.
 
 You're a worker in a VM, running headless, with no Unity. Your final message is your full report, and it goes straight back to the PM. Before that final message, stop every background task you started, and don't send anything after it.
 
-First run `git config user.name "u1 (worker VM)"` and `git config user.email u1@workers.invalid` in your worktree. Setup: in ~/5e-compatible-game, `git fetch`, then `git worktree add ../playtest-designs origin/dev -b playtest-designs`. Read the issues (`gh issue view <n> --json body,comments`), `docs/ARCHITECTURE.md`, `docs/RULES_MCP.md`, `docs/design/primitives.md`, `builders.md` and `world-tools.md`, and decisions J-055, J-057 and J-058 in `JUDGMENT_CALLS.md`: the world is built from general primitives as data, and examples are tests of the tools, never features.
+First run `git config user.name "u2 (worker VM)"` and `git config user.email u2@workers.invalid` in your worktree. Setup: in ~/5e-compatible-game, `git fetch`, then `git worktree add ../playtest-designs origin/dev -b playtest-designs`. Read the issues (`gh issue view <n> --json body,comments`), `docs/ARCHITECTURE.md`, `docs/RULES_MCP.md`, `docs/design/primitives.md`, `builders.md` and `world-tools.md`, and decisions J-055, J-057 and J-058 in `JUDGMENT_CALLS.md`: the world is built from general primitives as data, and examples are tests of the tools, never features.
 
 Write two documents, each under 200 lines, each walking Andrew's real asks through the design to show they'd work:
 
