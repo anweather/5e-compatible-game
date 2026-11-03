@@ -11,16 +11,22 @@ namespace Chem
     {
         WorldThings thingsNow;
         Rules thingsFor;
+        int thingsPlaced = -1;
 
-        /// <summary>The things in this world under the rules in force: world/things.json plus what the mods on add, less any whose chance didn't hold for this seed.</summary>
+        /// <summary>
+        /// The things in this world under the rules in force: world/things.json plus what the mods on add, less any whose
+        /// chance didn't hold for this seed, then what spells placed (World.Place.cs). A new table whenever that changes, so
+        /// a view diffs it (ChangesFrom) after any tick whose table isn't the one it had.
+        /// </summary>
         public WorldThings ThingsNow
         {
             get
             {
-                if (!ReferenceEquals(thingsFor, Rules))
+                if (!ReferenceEquals(thingsFor, Rules) || thingsPlaced != placedVersion)
                 {
-                    thingsNow = (roomBudgets?.Things ?? WorldThings.Empty).With(Rules, Seed);
+                    thingsNow = (roomBudgets?.Things ?? WorldThings.Empty).With(Rules, Seed).Plus(placedThings);
                     thingsFor = Rules;
+                    thingsPlaced = placedVersion;
                 }
                 return thingsNow;
             }

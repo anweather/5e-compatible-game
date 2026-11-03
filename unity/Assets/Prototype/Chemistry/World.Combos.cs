@@ -215,8 +215,8 @@ namespace Chem
             ClearCast(c);
         }
 
-        /// <summary>A fingerprint (FNV-1a) of every player's cast state and grimoire, the whirlwinds still whirling, the spell zones, the course runs and the room, for the netcode checksum.</summary>
-        public string CastHash() => Fnv1a.Hash(CastState() + WhirlState() + WaveState() + BoulderState() + GolfText() + ZoneText() + CourseText() + RoomText() + StrikeText());
+        /// <summary>A fingerprint (FNV-1a) of every player's cast state and grimoire, the whirlwinds still whirling, the spell zones, the course runs, the room and what spells placed, for the netcode checksum.</summary>
+        public string CastHash() => Fnv1a.Hash(CastState() + WhirlState() + WaveState() + BoulderState() + GolfText() + ZoneText() + CourseText() + RoomText() + StrikeText() + PlacedText());
 
         /// <summary>The whirlwinds as text, "" when there are none (so worlds without any hash as they did): where, its age, and what it carries.</summary>
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));

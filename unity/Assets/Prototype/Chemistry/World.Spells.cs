@@ -504,6 +504,7 @@ namespace Chem
             {
                 // A spell with force and no element (Raise Earth) still throws what it lands under: the golf ball.
                 foreach (var (cx, cy) in cells) Force(s, cx, cy, dir, forced);
+                Place(s, cells, x, y);
                 return;
             }
             waveFrom = (x, y);
@@ -516,6 +517,7 @@ namespace Chem
             waveFrom = null;
             Scatter(s.Scatter, x, y);
             if (s.Core != null) Apply(x, y, s.Core, 1, -1, true);
+            Place(s, cells, x, y);
         }
     }
 }
