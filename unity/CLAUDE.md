@@ -42,7 +42,7 @@ Windows run it from Git Bash.
 - Never revert, checkout or stash a scene or prefab the Editor has open.
   Switch the Editor to a new empty scene first, or rebuild with the menu.
 - Driving Play mode while the Editor is unfocused: call
-  `editor set_auto_tick --enabled true` and
+  `editor set_auto_tick --enable true` and
   `editor.playmode set_run_in_background --enable true` first, and
   `editor.playmode set_run_in_background --enable false` afterwards. The
   project's own Run In Background is already on, so the override changes
