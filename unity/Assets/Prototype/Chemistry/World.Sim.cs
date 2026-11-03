@@ -150,7 +150,7 @@ namespace Chem
             switch (stage)
             {
                 case TickStage.Burn: BurnRange(from, to); break;
-                case TickStage.WaterCheck: CheckWater(tickChunks, from, to); break;
+                case TickStage.WaterCheck: CheckWater(tickChunks, from, to, Rules.HasLiquids); break;
                 case TickStage.Springs: Springs(tickRows, from, to, true); break;
                 // Odd ticks sweep backward: the slices go from the last row segment to the first.
                 case TickStage.Flow when Tick % 2 == 0: FlowForward(tickRows, from, to, true); break;
@@ -299,22 +299,28 @@ namespace Chem
                 c.Heat = 0;
                 return true;
             }
-            if (c.Water > 0 && !c.Frozen && t.QuenchesTo != null)
+            if (IsOpenWater(c) && t.QuenchesTo != null)
             {
                 Quench(ch, c, t);
                 return true;
             }
             if (t.RunsEvery > 0 && Tick % t.RunsEvery == 0) Run(ch, i, c);
-            if (c.Water > 0 && !c.Frozen)
-            {
-                c.Water--;
-                AddGas(c, Rules.Sim.WaterBoils, 1);
-                c.Heat = Math.Max(0, c.Heat - t.HotQuench);
-                WaterMoved(ch);
-                LogOnce("hot-quench", "Water hisses into steam on the hot metal");
-            }
+            if (c.Water > 0 && !c.Frozen) BoilOnHot(ch, c, t);
             if (c.Heat > 0) c.Heat--;
             return true;
+        }
+
+        // A unit of the liquid on hot metal boils off as its gas (water's steam), taking hot.quench of the heat;
+        // a liquid that doesn't boil (no boils) just lies on it.
+        void BoilOnHot(Chunk ch, Cell c, TerrainDef t)
+        {
+            var l = LiquidOf(c);
+            if (c.Liquid != 0 && l.Boils == null) return;
+            c.Water--;
+            AddGas(c, BoilsOf(l), 1);
+            c.Heat = Math.Max(0, c.Heat - t.HotQuench);
+            WaterMoved(ch);
+            if (c.Liquid == 0) LogOnce("hot-quench", "Water hisses into steam on the hot metal");
         }
 
         // Water on hot lava (quench.into): it sets at once into rock, a unit of the water flashing to steam.
@@ -354,7 +360,7 @@ namespace Chem
         /// </summary>
         bool Rust(Cell c)
         {
-            if (!((c.Water > 0 && !c.Frozen) || Raining || Tick < c.DampUntil)) return false;
+            if (!(IsOpenWater(c) || Raining || Tick < c.DampUntil)) return false;
             var t = TerrainOf(c);
             if (t.RustEvery <= 0) return false;
             c.Rust += Rules.Sim.SoakPass;
@@ -374,7 +380,7 @@ namespace Chem
         /// </summary>
         bool Float(Chunk ch, int i, Cell c)
         {
-            if (c.Frozen || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
+            if (c.Frozen || !LiquidOf(c).Floats || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
             if (Tick / Rules.Sim.SoakPass % Math.Max(1, cv.FloatEvery / Rules.Sim.SoakPass) != 0) return false;
             // Its reach left (fresh oil has its float.reach); a slick at the end of its reach spreads no further.
             int reach = c.Slick > 0 ? c.Slick : cv.FloatReach;
@@ -383,7 +389,7 @@ namespace Chem
             for (int d = 0; d < 4; d++)
             {
                 var n = Chunk.Next(ch, i, d, out var nch, out _);
-                if (n == null || !nch.Active || n.Cover != null || n.Water == 0 || n.Frozen || IsBlocking(n)) continue;
+                if (n == null || !nch.Active || n.Cover != null || n.Water == 0 || n.Frozen || !LiquidOf(n).Floats || IsBlocking(n)) continue;
                 floating.Add((n, c.Cover, cv.FloatReach > 0 ? reach - 1 : 0));
                 spread = true;
             }
@@ -402,21 +408,28 @@ namespace Chem
         bool Soak(Chunk ch, int i, Cell c)
         {
             var t = TerrainOf(c);
-            if (t.FreezesWater)
+            var l = LiquidOf(c);
+            if (t.FreezesWater && c.Liquid == 0)
             {
                 if (c.Frozen) return false;
                 c.Frozen = true;
                 WaterMoved(ch);
                 return true;
             }
-            if (t.BoilsWater)
+            if (t.BoilsWater && (c.Liquid == 0 || l.Boils != null))
             {
                 c.Water--;
                 c.Frozen = false;
-                AddGas(c, Rules.Sim.WaterBoils, 1);
+                AddGas(c, BoilsOf(l), 1);
                 WaterMoved(ch);
                 return true;
             }
+            return l.Soaks && SoakIn(ch, i, c, t);
+        }
+
+        // Thin water soaking in (Soak): a unit on its turn of the count, leaving the ground damp.
+        bool SoakIn(Chunk ch, int i, Cell c, TerrainDef t)
+        {
             int thin = Rules.Sim.ThinWater;
             if (c.Frozen || c.Water > thin) return false;
             for (int d = 0; d < 4; d++)
@@ -538,7 +551,7 @@ namespace Chem
             var c = ch.Cells[i];
             if (c.Fire == 0) return;
             // Water puts out anything but a floating oil or grease fire.
-            if (c.Water > 0 && !c.Frozen && !CoverBurns(c))
+            if (IsOpenWater(c) && !CoverBurns(c))
             {
                 c.Fire = 0;
                 c.Fuel = 0;
@@ -616,7 +629,7 @@ namespace Chem
             double heat = CoverBurns(c) ? 1 : TerrainOf(c).Heat;
             if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
             // Bare water beside a burning slick (a burning cover on water) boils at its own, lower chance.
-            if (n.Water > 0 && !n.Frozen) return CoverBurns(c) && c.Water > 0 && !c.Frozen ? p.SlickBoilChance : p.BoilChance;
+            if (IsOpenWater(n)) return CoverBurns(c) && IsOpenWater(c) ? p.SlickBoilChance : p.BoilChance;
             return p.HeatChance;
         }
 
@@ -656,8 +669,9 @@ namespace Chem
                 {
                     var c = cells[i];
                     int level = TerrainOf(c).Spring;
-                    if (level <= 0 || c.Frozen || c.Water >= level) continue;
+                    if (level <= 0 || c.Frozen || c.Water >= level || HoldsOther(c)) continue;
                     c.Water = Math.Min(level, max);
+                    c.Liquid = 0;
                     WaterMoved(s.Chunk);
                 }
             }
@@ -687,22 +701,53 @@ namespace Chem
             }
         }
 
-        /// <summary>Moves one unit of a wet cell's water to its best lower neighbour, if any.</summary>
+        /// <summary>
+        /// Moves one unit of a wet cell's liquid to its best lower neighbour, if any: dry, or of the
+        /// same kind. A thick liquid (Rules.Liquids.cs) tries only on one tick in its thick, and on the
+        /// flat needs its heap. Where the best it could run onto holds another kind, it lays its
+        /// touch there instead (World.Touch); a cell of another kind is otherwise a wall.
+        /// </summary>
         void Flow(Chunk ch, int i)
         {
             var c = ch.Cells[i];
             if (c.Frozen || IsBlocking(c)) return;
+            // With water alone in the rules (liquid null) none of a liquid's own rules can apply: water's path stays as it was.
+            int kind = c.Liquid;
+            var liquid = Rules.HasLiquids ? Rules.Liquid(kind) : null;
+            if (kind != 0 && (liquid.Thick == 0 || Tick % liquid.Thick != 0)) return;
+            var (best, bestI, other) = Lowest(ch, i, c, liquid);
+            if (best == null) return;
+            if (other)
+            {
+                Touch(ch, liquid, best, bestI);
+                return;
+            }
+            c.Water--;
+            if (c.Water == 0) c.Liquid = 0;
+            best.Cells[bestI].Water++;
+            best.Cells[bestI].Liquid = kind;
+            ch.Marks[i] |= FlowMark;
+            best.Marks[bestI] |= FlowMark;
+            WaterMoved(ch);
+            if (best != ch) WaterMoved(best);
+        }
+
+        // Where a wet cell's unit would run: its best lower neighbour (null for none), and whether another kind holds it.
+        (Chunk best, int bestI, bool other) Lowest(Chunk ch, int i, Cell c, LiquidDef liquid)
+        {
+            int kind = c.Liquid, heap = liquid?.Heap ?? LiquidDef.WaterHeap;
             int elevation = ElevationUnits(c);
             int level = elevation + c.Water;
             int here = LandOf(ch, i);
             // Water always runs onto lower ground; on the flat it needs a 2-step
-            // difference, so a still puddle doesn't slosh back and forth forever.
+            // difference (its heap), so a still puddle doesn't slosh back and forth forever.
             // Neighbours are visited inline in N, E, S, W order (the order Neighbours()
             // gives): this runs for every wet cell every tick, a whole lake of them.
             // A paused chunk next door is a wall.
             Chunk best = null;
             int bestI = 0;
             double bestScore = 0;
+            bool other = false;
             for (int d = 0; d < 4; d++)
             {
                 var nc = Chunk.Next(ch, i, d, out var nch, out int ni);
@@ -710,25 +755,21 @@ namespace Chem
                 // Between two dry-land cells the land's slope counts too; a water body's cells keep level.
                 int there = here == NoLand ? NoLand : LandOf(nch, ni);
                 int slope = there == NoLand ? 0 : here - there;
-                double score = FlowScore(nc, elevation + slope, level + slope);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = nch;
-                    bestI = ni;
-                }
+                double score = FlowScore(nc, elevation + slope, level + slope, heap);
+                if (score <= bestScore) continue;
+                // Another kind there: a wall, unless this one has a touch (asked only of a cell it could run onto).
+                bool held = liquid != null && nc.Water > 0 && nc.Liquid != kind;
+                if (held && liquid.Touch == null) continue;
+                bestScore = score;
+                best = nch;
+                bestI = ni;
+                other = held;
             }
-            if (best == null) return;
-            c.Water--;
-            best.Cells[bestI].Water++;
-            ch.Marks[i] |= FlowMark;
-            best.Marks[bestI] |= FlowMark;
-            WaterMoved(ch);
-            if (best != ch) WaterMoved(best);
+            return (best, bestI, other);
         }
 
         /// <summary>How much water at this level and elevation wants to run onto nc; 0 if it can't.</summary>
-        double FlowScore(Cell nc, int elevation, int level)
+        double FlowScore(Cell nc, int elevation, int level, int heap)
         {
             if (nc.Frozen && nc.Water > 0) return 0;
             var nt = TerrainOf(nc);
@@ -737,7 +778,7 @@ namespace Chem
             int nElevation = (nt.Elevation + nc.Height) * Rules.Sim.WaterUnitsPerStep;
             int drop = level - (nElevation + nc.Water);
             bool downhill = nElevation < elevation;
-            if (!(drop >= 2 || (downhill && drop >= 1))) return 0;
+            if (!(drop >= heap || (downhill && drop >= 1))) return 0;
             return drop + (downhill ? 0.5 : 0);
         }
 
@@ -766,8 +807,9 @@ namespace Chem
         void RainFrom(Chunk ch, Cell c)
         {
             if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.RainEvery <= 0 || Tick % g.RainEvery != 0) return;
-            if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            if ((IsBlocking(c) && !HasTag(c, "vessel")) || !TakesWater(c)) return;
             c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
+            c.Liquid = 0;
             WaterMoved(ch);
         }
 
@@ -810,9 +852,10 @@ namespace Chem
         void Condense(Chunk ch, int i, Cell c)
         {
             if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.CondenseEvery <= 0 || (c.GasAmt + 1) % g.CondenseEvery != 0) return;
-            if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            if ((IsBlocking(c) && !HasTag(c, "vessel")) || !TakesWater(c)) return;
             if (NearHeat(CellX(ch, i), CellY(ch, i), g.CondenseAway)) return;
             c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
+            c.Liquid = 0;
             WaterMoved(ch);
         }
 

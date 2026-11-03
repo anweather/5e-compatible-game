@@ -25,9 +25,9 @@ namespace Chem.Mcp
             var owner = MaterialKinds.FirstOrDefault(k => Doc[k]?[id] != null);
             if (owner != null) throw new RulesToolException($"There is already a {Single(owner)} called {id}; use set_material to change it.");
             var entry = new JObject { ["name"] = name.Trim() };
-            // A cover and a terrain must list tags, even none; a gas has no use for them.
+            // A cover and a terrain must list tags, even none; a gas or liquid needn't.
             var tagList = tags?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? new List<string>();
-            if (tagList.Count > 0 || kind != "gases") entry["tags"] = new JArray(tagList);
+            if (tagList.Count > 0 || (kind != "gases" && kind != Rules.LiquidsKey)) entry["tags"] = new JArray(tagList);
             if (!string.IsNullOrWhiteSpace(verbs))
             {
                 if (!(Value(verbs) is JObject groups)) throw new RulesToolException("verbs is a JSON object of verb groups, such as {\"burn\": {\"catch\": 0.4, \"fuel\": 10}}.");
@@ -46,7 +46,7 @@ namespace Chem.Mcp
             id = Required(id, "id");
             var draft = DraftOf(draftId);
             var kind = MaterialKinds.FirstOrDefault(k => draft.Patch[k]?[id] != null) ?? MaterialKinds.FirstOrDefault(k => Raw["materials"][k]?[id] != null)
-                ?? throw new RulesToolException($"There is no terrain, cover or gas called {id}; use add_material for a new one.");
+                ?? throw new RulesToolException($"There is no terrain, cover, gas or liquid called {id}; use add_material for a new one.");
             RuleFields.CheckMaterial(kind, Required(field, "field"), Value(value));
             var section = Section(draft, kind);
             if (!(section[id] is JObject entry)) section[id] = entry = new JObject();
@@ -319,7 +319,8 @@ namespace Chem.Mcp
             var k = Required(kind, "kind (terrain, cover or gas)").ToLowerInvariant();
             if (k == "cover") k = "covers";
             if (k == "gas") k = "gases";
-            if (!MaterialKinds.Contains(k)) throw new RulesToolException($"{kind} isn't a kind of material; say terrain, cover or gas.");
+            if (k == "liquid") k = Rules.LiquidsKey;
+            if (!MaterialKinds.Contains(k)) throw new RulesToolException($"{kind} isn't a kind of material; say terrain, cover, gas or liquid.");
             return k;
         }
 

@@ -192,7 +192,7 @@ namespace Chem
         }
 
         bool Rough(DefenseParams p, Cell from, Cell to) =>
-            (to.Water >= p.DeepWater && !to.Frozen) || Math.Abs(ElevationUnits(to) - ElevationUnits(from)) > Rules.Sim.WaterUnitsPerStep;
+            DrownDepth(to) >= p.DeepWater || Math.Abs(ElevationUnits(to) - ElevationUnits(from)) > Rules.Sim.WaterUnitsPerStep;
 
         /// <summary>The cheapest way to the flag from every square of the field (Unreached where there is none).</summary>
         void CostField(DefenseState d, DefenseParams p)

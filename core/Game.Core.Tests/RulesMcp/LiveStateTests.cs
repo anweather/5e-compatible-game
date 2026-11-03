@@ -262,12 +262,24 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AddMaterialMakesALiquid()
+        {
+            var b = NewBench();
+            Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "liquid", "tar", "Tar", null, "{\"sets\": {\"into\": \"rock\"}}"));
+            var d = b.AddMaterial(null, "liquid", "honey", "Honey", new[] { "sticky" }, "{\"thick\": 4, \"heap\": 6, \"soaks\": false, \"lapse\": {\"after\": 600}}");
+            d = b.SetMaterial(d.Id, "honey", "floats", "false");
+            StringAssert.Contains("switched on", b.Apply(d.Id, "Bo", "Honey"));
+            StringAssert.Contains("a new liquid, Honey", b.WhatsOn());
+            StringAssert.Contains("honey (liquid): Honey [sticky]", b.List("liquids"));
+        }
+
+        [Test]
         public void EveryFieldInTheRulesIsKnown()
         {
             var dir = ChemistryTests.RulesDir();
             var materials = JObject.Parse(File.ReadAllText(Path.Combine(dir, "materials.json")));
             foreach (var kind in Workbench.MaterialKinds)
-                foreach (var entry in ((JObject)materials[kind]).Properties())
+                foreach (var entry in (materials[kind] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                     Assert.DoesNotThrow(() => RuleFields.CheckMaterial(kind, (JObject)entry.Value), entry.Name);
             foreach (var spell in JArray.Parse(File.ReadAllText(Path.Combine(dir, "spells.json"))).OfType<JObject>())
                 foreach (var p in spell.Properties())

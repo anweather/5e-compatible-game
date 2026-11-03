@@ -224,7 +224,7 @@ namespace Chem
         // view's) and without the creature tables, which are the view's whole.
         string CanonicalRules()
         {
-            var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name) && !IsEmptyTriggers(p)).Select(p => new JProperty(p.Name, SharedPart(p))));
+            var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name) && !IsEmptyTriggers(p) && !IsEmptyLiquids(p)).Select(p => new JProperty(p.Name, SharedPart(p))));
             var sb = new StringBuilder();
             WriteCanonical(sb, shared);
             return sb.ToString();
@@ -232,6 +232,9 @@ namespace Chem
 
         // Rules without triggers fingerprint as they did before there was a table for them.
         static bool IsEmptyTriggers(JProperty p) => p.Name == TriggersKey && p.Value is JObject t && t.Count == 0;
+
+        // And without liquids (water is built in) as they did before the table.
+        static bool IsEmptyLiquids(JProperty p) => p.Name == LiquidsKey && p.Value is JObject t && t.Count == 0;
 
         static JToken SharedPart(JProperty p)
         {

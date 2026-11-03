@@ -138,7 +138,7 @@ namespace Chem
                 BurningTicks = BurnTime;
             }
             else if (c.Fire == 0) heatedSince = -1;
-            if (c.Water > 0 && !c.Frozen && Burning)
+            if (World.IsOpenWater(c) && Burning)
             {
                 BurningTicks = 0;
                 events |= PropEvents.Doused;

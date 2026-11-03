@@ -67,7 +67,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   `world/`, no trees and no yard), and say so.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
-- `add_material`, `set_material(id, field, value)`: a mod's own material is temporary and may `lapse` (see "Temporary materials")
+- `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials")
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
@@ -371,6 +371,56 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
    `World.RoomRules` in force as `CurrentRules`, with the redraw, recolour and `RulesChanged` of any switch: the mods
    panel, lights and looks go back as on a revert.
 4. The mods panel shows "lapses in 4:59" on a mod whose materials lapse (`RuleSwitcher.LapseNote`).
+
+## Liquids: what a cell's water is
+
+`docs/design/primitives.md` §3 P1, step 4 (core; branch `liquids`). `Cell.Water` stays the amount; `Cell.Liquid` is the
+**kind**, an index into the `liquids` table where 0 is water, built in (`Rules.Liquids.cs`, `World.Liquids.cs`). The
+base rules have no table, so a world of water runs, hashes and saves exactly as before. A mod adds a row:
+
+```json
+"liquids": { "honey": { "name": "Honey", "thick": 4, "heap": 6, "soaks": false, "floats": false, "speed": 0.4,
+                        "tags": ["sticky"], "look": { "color": [0.85, 0.6, 0.1] }, "lapse": { "after": 900 } } }
+```
+
+- **`thick`** (whole, 0 to 600; water 1): it flows on one tick in `thick` (on ticks a multiple of it); 0 never flows
+  (quicksand). **`heap`** (whole, 2 to 16; water 2): the drop in units it needs to run on the flat, so honey stands in
+  a mound (below 2 a puddle would slosh for ever). Downhill it runs on any drop, as water does.
+- **`soaks`**, **`floats`**, **`drowns`** (flags, all true by default, as water): thin pools sink into the ground
+  (`World.Soak`); a floating cover (oil) rides it (`World.Float`, `pushCover`); its depth counts for wading (raiders'
+  rough ground), the dragon's shelter and breath (`World.DrownDepth`).
+- **`boils`** (a gas): what it boils off as on hot metal, hot ground (`boil` terrains) and by a `boil` effect. None:
+  it doesn't boil (water's is `sim.water.boils`). Only water freezes (snow, `freeze`, arctic ground) for now.
+- **`touch`** (an element). **Two kinds never share a cell**: a liquid runs only onto a dry cell or its own kind.
+  Where the best cell it could run onto holds another kind, it lays its `touch` there at power 1 and the reactions
+  decide; with no `touch` the other is a wall. A mod's molten rock with `touch: "lava"` running into a pond makes
+  the base `lava-pool` row grow on the wet cell, and the water there quenches it into rock and steam (J-062: the base
+  lava stays terrain; this liquid lava is a mod's, and comes first).
+- **Water from the sky and the ground stays water**: rain, a rain cloud, springs, melting snow, a thaw, condensing
+  steam and `addWater` without a liquid don't fall into another kind's cell. Rain doesn't dry or freeze another
+  liquid. "Water" in a reaction (`if.water`, the `water` element's conductivity, dousing fire, rust) is kind 0.
+- **In a reaction**: the condition `liquid` (an id, `water` for kind 0, or a tag: `"sticky"`) holds on a cell of that
+  unfrozen liquid; the effect `addWater` with `liquid` pours that liquid (`{"addWater": "power", "liquid": "honey"}`).
+- **Interning.** The table is rebuilt at each switch: water, then the base rows in file order, then each mod's in
+  room order. At a switch every cell's kind is remapped by id (`World.RemapLiquids`), so nothing outside the core
+  holds an index: the patch carries the row, the cell hash appends `,q<id>` and a save appends the id to a cell's row
+  only when it isn't water; old saves load as water.
+- **Temporary.** A mod's liquid is temporary like any material it adds (counted in `materials.maxPerMod`, swept at a
+  revert or lapse). `lapse.into` may be `water` (the pool becomes water); with none, it dries.
+- **Limits.** At most 254 liquids besides water. The still-water pass waits out the thickest liquid's `thick` before
+  it skips a chunk as still, so a thick pool's turn is never missed.
+- **Tools.** `add_material` and `set_material` take kind `liquid` (its fields are those above, each one value but
+  `lapse`); `list liquids`, `describe liquids <id>`. A field the engine doesn't read (`sets`, `freezes`, `hot`) is
+  refused.
+
+**Cost.** On a full 384 × 384 lake of water with still-water skipping off, the flow pass costs about 0.3 ms a tick
+more than before liquids (about 2.0 to 2.3 ms on `dev`, 2.25 to 2.6 ms here, a VM); a still lake with the
+skip on costs the same as on `dev` (1.5 to 2 ms a tick in all). A honey lake costs less than water (about 3 ms
+against 4.4 to 5 ms a tick, the skip off): it tries one tick in four.
+
+**In the view (not built yet).** The water mesh takes a colour per kind (`LiquidDef.Look.color`, a vertex colour;
+water keeps its own look); a thick liquid's surface may move slower (`look.flow`). Breath and wading should read
+`World.DrownDepth` and `LiquidDef.Speed` instead of `Cell.Water` (the view's `Breath` caller, the mover's wading).
 
 ## Buildings: rows a mod can edit or add
 

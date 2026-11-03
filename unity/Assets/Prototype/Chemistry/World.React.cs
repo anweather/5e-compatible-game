@@ -107,7 +107,7 @@ namespace Chem
             if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
             int nx = x + DirX(dir), ny = y + DirY(dir);
             var n = LocateActive(nx, ny, out _, out _);
-            if (n == null || IsBlocking(n) || n.Cover != null || n.Water == 0 || n.Frozen) return false;
+            if (n == null || IsBlocking(n) || n.Cover != null || n.Water == 0 || n.Frozen || !LiquidOf(n).Floats) return false;
             n.Cover = c.Cover;
             n.Slick = c.Slick;
             n.Fire = c.Fire;
@@ -133,8 +133,16 @@ namespace Chem
         {
             if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.MeltWater <= 0) return false;
             PutCover(c, cv.MeltsTo);
-            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + cv.MeltWater);
+            Melted(c, cv.MeltWater);
             return true;
+        }
+
+        // Melt water onto a cell, unless another liquid holds it (then it runs off unseen).
+        void Melted(Cell c, int units)
+        {
+            if (!TakesWater(c)) return;
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + units);
+            c.Liquid = 0;
         }
 
         /// <summary>A crust effect (react.ts crust): cold crusts the terrain into its crustsTo, which grows back after crustFor ticks.</summary>
@@ -153,7 +161,7 @@ namespace Chem
             var t = TerrainOf(c);
             if (t.ThawsTo == null) return false;
             c.T = t.ThawsTo;
-            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + t.ThawWater);
+            Melted(c, t.ThawWater);
             WallLost(x, y);
             return true;
         }
@@ -185,7 +193,8 @@ namespace Chem
         /// <summary>The water, ice, melt and gas part of <see cref="Matches"/>.</summary>
         bool MatchesWater(Cell c, CellCond cond)
         {
-            if (cond.Water.HasValue && (c.Water > 0 && !c.Frozen) != cond.Water.Value) return false;
+            if (cond.Water.HasValue && IsOpenWater(c) != cond.Water.Value) return false;
+            if (cond.Liquid != null && !(c.Water > 0 && !c.Frozen && Rules.LiquidIs(c.Liquid, cond.Liquid))) return false;
             if (cond.Frozen.HasValue && (c.Frozen && c.Water > 0) != cond.Frozen.Value) return false;
             if (cond.Melts.HasValue && CoverMelts(c) != cond.Melts.Value) return false;
             return !(cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas));
@@ -273,7 +282,7 @@ namespace Chem
         {
             var c = At(x, y);
             int max = Rules.Sim.WaterMaxLevel;
-            int guard = 16;
+            int guard = 16, kind = c.Liquid;
             while (c.Water > 0 && guard-- > 0)
             {
                 bool moved = false;
@@ -281,8 +290,9 @@ namespace Chem
                 {
                     var n = At(nx, ny);
                     if (c.Water == 0) break;
-                    if (IsBlocking(n) || n.Water >= max) continue;
+                    if (IsBlocking(n) || n.Water >= max || (n.Water > 0 && n.Liquid != kind)) continue;
                     n.Water++;
+                    n.Liquid = kind;
                     c.Water--;
                     moved = true;
                 }
@@ -354,7 +364,7 @@ namespace Chem
             else if (eff.Freeze) changed = FreezeWater(c);
             else if (eff.Extinguish) changed = Douse(c);
             else if (eff.Condense) changed = CondenseSteam(c);
-            else if (eff.HasAddWater) changed = PourWater(c, eff.AddWaterPower ? power : eff.AddWaterN);
+            else if (eff.HasAddWater) changed = PourWater(c, eff.AddWaterPower ? power : eff.AddWaterN, eff.Liquid);
             else
             {
                 changed = false;
@@ -417,9 +427,10 @@ namespace Chem
         /// <summary>A boil effect: a level of unfrozen water goes up as steam.</summary>
         bool BoilOff(int x, int y, Cell c, int steam)
         {
-            if (c.Water == 0 || c.Frozen) return false;
+            var l = LiquidOf(c);
+            if (c.Water == 0 || c.Frozen || (c.Liquid != 0 && l.Boils == null)) return false;
             c.Water--;
-            AddGas(c, Rules.Sim.WaterBoils, steam);
+            AddGas(c, BoilsOf(l), steam);
             Mark(x, y, SteamMark);
             return true;
         }
@@ -432,10 +443,10 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A freeze effect: standing water freezes.</summary>
+        /// <summary>A freeze effect: standing water freezes (another liquid doesn't).</summary>
         static bool FreezeWater(Cell c)
         {
-            if (c.Water == 0 || c.Frozen) return false;
+            if (c.Water == 0 || c.Frozen || c.Liquid != 0) return false;
             c.Frozen = true;
             return true;
         }
@@ -459,17 +470,19 @@ namespace Chem
                 c.Gas = null;
                 c.GasAmt = 0;
             }
-            if (!IsBlocking(c) || HasTag(c, "vessel")) c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 2);
+            if ((!IsBlocking(c) || HasTag(c, "vessel")) && TakesWater(c))
+            {
+                c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 2);
+                c.Liquid = 0;
+            }
             return true;
         }
 
-        /// <summary>An addWater effect: n levels of water, up to the most a cell holds.</summary>
-        bool PourWater(Cell c, int n)
+        /// <summary>An addWater effect: n levels of water (or of its liquid), up to the most a cell holds; not onto another liquid.</summary>
+        bool PourWater(Cell c, int n, string liquid)
         {
-            int max = Rules.Sim.WaterMaxLevel;
-            if (c.Water >= max) return false;
-            c.Water = Math.Min(max, c.Water + n);
-            return true;
+            int kind = liquid == null ? 0 : Rules.LiquidIndex(liquid);
+            return kind >= 0 && Pour(c, kind, n, Rules.Sim.WaterMaxLevel);
         }
 
         /// <summary>A setCover effect.</summary>

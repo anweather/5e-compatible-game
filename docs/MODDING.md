@@ -27,6 +27,7 @@ Every field is optional.
   "terrain":  { "mud": { "name": "Mud", "tags": ["ground"] } },   // add by id, or patch: only the fields named change
   "covers":   { "tar": { "name": "Tar", "tags": ["flammable"], "flammability": 0.5, "fuel": 20 } },
   "gases":    { "spores": { "name": "Spores" } },
+  "liquids":  { "honey": { "name": "Honey", "thick": 4, "heap": 6, "soaks": false } },   // what a cell's water is: docs/RULES_MCP.md "Liquids"
   "components": { "furred": "Has fur, which burns long." },   // new component names (rules/components.json)
   "entities": { "ogre": { "name": "Ogre", "hp": 30, "mass": 3, "components": ["creature", "heavy", "furred"] } },
   "items":    { "spyglass": { "name": "Long spyglass", "use": "zoom", "zoom": 4 } },   // things to carry (rules/README.md)

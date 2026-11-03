@@ -324,7 +324,7 @@ namespace Chem
         {
             var s = Rules.Sim;
             if (c.Fire > 0) ApplyRaiderElement(r, "fire", false);
-            if (c.Water > 0 && !c.Frozen) ApplyRaiderElement(r, "water", false);
+            if (IsOpenWater(c)) ApplyRaiderElement(r, "water", false);
             HeatHazards(r, c, def);
             if (Shocked(r, c, def) && r.Alive)
             {
@@ -344,7 +344,7 @@ namespace Chem
             foreach (var (nx, ny, _) in ActiveNeighbours(r.X, r.Y))
             {
                 var n = At(nx, ny);
-                if (n.Charge == 3 && n.Water > 0 && !n.Frozen) return true;
+                if (n.Charge == 3 && IsOpenWater(n)) return true;
             }
             return false;
         }

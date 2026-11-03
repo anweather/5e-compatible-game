@@ -3,7 +3,7 @@
 // looks at its four neighbours for somewhere lower), only to find nowhere.
 // Before each water pass, every active chunk compares what the pass reads of
 // its cells (water, height, frozen, terrain) with how they were at the last
-// pass. A chunk is still when nothing changed in it or its four neighbours,
+// pass (and each cell's liquid kind). A chunk is still when nothing changed in it or its four neighbours,
 // those neighbours are as active as they were, and no water moved in it or
 // them last tick: then its springs and flows would do nothing, exactly, so
 // the pass skips them. Water moving anywhere disturbs the chunks around it,
@@ -23,14 +23,16 @@ namespace Chem
         /// <summary>How many chunks the last water pass found still, for the view's numbers.</summary>
         public int StillChunks { get; private set; }
 
-        // Before the water pass: which of chunks [from, to) changed since the last pass.
-        static void CheckWater(Chunk[] chunks, int from, int to)
+        // Before the water pass: which of chunks [from, to) changed since the last pass. kinds: the
+        // rules hold a liquid besides water, so each cell's kind is compared too (a rule switch
+        // drops every snapshot, so a world of water alone never needs it).
+        static void CheckWater(Chunk[] chunks, int from, int to, bool kinds)
         {
-            for (int k = from; k < to; k++) CheckWater(chunks[k]);
+            for (int k = from; k < to; k++) CheckWater(chunks[k], kinds);
         }
 
         // Whether a chunk changed since the last pass, refreshing its snapshot.
-        static void CheckWater(Chunk ch)
+        static void CheckWater(Chunk ch, bool kinds)
         {
             int n = ch.Cells.Length;
             if (ch.SnapWater == null)
@@ -39,6 +41,7 @@ namespace Chem
                 ch.SnapHeight = new int[n];
                 ch.SnapFrozen = new bool[n];
                 ch.SnapT = new string[n];
+                ch.SnapKind = new byte[n];
             }
             bool same = ch.SnapValid;
             var cells = ch.Cells;
@@ -48,14 +51,25 @@ namespace Chem
                 if (c == null) continue;
                 if (same && (ch.SnapWater[i] != c.Water || ch.SnapHeight[i] != c.Height || ch.SnapFrozen[i] != c.Frozen || !ReferenceEquals(ch.SnapT[i], c.T)))
                     same = false;
+                if (kinds) same = SnapKind(ch, i, c) && same;
                 ch.SnapWater[i] = c.Water;
                 ch.SnapHeight[i] = c.Height;
                 ch.SnapFrozen[i] = c.Frozen;
                 ch.SnapT[i] = c.T;
             }
             ch.Unchanged = same;
+            ch.UnchangedFor = same ? ch.UnchangedFor + 1 : 0;
             ch.SnapValid = true;
             ch.WaterDisturbed = false;
+        }
+
+        // A cell's kind against the snapshot's, refreshing it: true if the same.
+        static bool SnapKind(Chunk ch, int i, Cell c)
+        {
+            byte kind = (byte)c.Kind;
+            bool same = ch.SnapKind[i] == kind;
+            ch.SnapKind[i] = kind;
+            return same;
         }
 
         // Once every active chunk is checked: which are still this tick.
@@ -87,7 +101,13 @@ namespace Chem
             return true;
         }
 
-        bool Quiet(Chunk ch) => ch.Unchanged && ch.LastFlowTick < Tick - 1;
+        // With a thick liquid in the rules (Rules.Liquids.cs) it must have stood that many passes, so
+        // the stillness spans one of its turns; with water alone, one pass, as before liquids.
+        bool Quiet(Chunk ch)
+        {
+            int k = StillTicks();
+            return ch.UnchangedFor >= k && ch.LastFlowTick < Tick - k;
+        }
 
         static Chunk Neighbour(Chunk ch, int d) => d switch
         {
