@@ -635,6 +635,14 @@ that long, and doesn't march.
   (`ModValidator`) before switching it on; one that fails is **refused**
   everywhere, with a sentence. *Avoid:* "install", "enable".
 
+**Temporary material / lapse / retired**
+: A **temporary material** is a terrain, cover or gas a mod adds: it lives
+  while its mod is on, and only that mod may name it. It **lapses** when its
+  row's `lapse.after` ticks have passed since the switch, which takes its mod
+  off; lapsed or reverted, every cell of it is **swept** at that tick (into its
+  `lapse.into`, or nothing). The room's **retired** list remembers what went
+  (`World.Lapse.cs`, `docs/RULES_MCP.md`). *Avoid:* "expire", "despawn".
+
 **Shipped mod / player's mod**
 : A **shipped mod** is in `rules/mods/`, and comes with the build. A **player's
   mod** is one they saved, in their data folder beside `notes.md`

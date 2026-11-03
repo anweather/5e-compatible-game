@@ -217,6 +217,7 @@ namespace Chem
             stage = TickStage.None;
             tickRows = null;
             tickChunks = null;
+            LapseDue(); // between whole ticks, as a rule switch lands
         }
 
         /// <summary>
@@ -307,7 +308,7 @@ namespace Chem
             if (c.Water > 0 && !c.Frozen)
             {
                 c.Water--;
-                AddGas(c, "steam", 1);
+                AddGas(c, Rules.Sim.WaterBoils, 1);
                 c.Heat = Math.Max(0, c.Heat - t.HotQuench);
                 WaterMoved(ch);
                 LogOnce("hot-quench", "Water hisses into steam on the hot metal");
@@ -320,7 +321,7 @@ namespace Chem
         void Quench(Chunk ch, Cell c, TerrainDef t)
         {
             c.Water--;
-            AddGas(c, "steam", 2);
+            AddGas(c, Rules.Sim.WaterBoils, 2);
             c.T = t.QuenchesTo;
             c.Heat = 0;
             c.Life = 0;
@@ -401,18 +402,18 @@ namespace Chem
         bool Soak(Chunk ch, int i, Cell c)
         {
             var t = TerrainOf(c);
-            if (t.WaterTo == "ice")
+            if (t.FreezesWater)
             {
                 if (c.Frozen) return false;
                 c.Frozen = true;
                 WaterMoved(ch);
                 return true;
             }
-            if (t.WaterTo == "steam")
+            if (t.BoilsWater)
             {
                 c.Water--;
                 c.Frozen = false;
-                AddGas(c, "steam", 1);
+                AddGas(c, Rules.Sim.WaterBoils, 1);
                 WaterMoved(ch);
                 return true;
             }
@@ -541,12 +542,12 @@ namespace Chem
             {
                 c.Fire = 0;
                 c.Fuel = 0;
-                AddGas(c, "steam", 1);
+                AddGas(c, Rules.Sim.WaterBoils, 1);
                 return;
             }
             if (Doused(c)) return;
             if (c.Gas != null) FlashGas(CellX(ch, i), CellY(ch, i));
-            if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
+            if (c.Gas != Rules.Sim.WaterBoils && Rand() < p.SmokeChance) AddGas(c, SmokeOf(c), 1);
             Spread(ch, i, c, p);
             if (--c.Fuel > 0) return;
             BurnOut(ch, i, c);
@@ -557,6 +558,7 @@ namespace Chem
         {
             if (CoverBurns(c))
             {
+                string ash = CoverOf(c).BurnAsh ?? Rules.Sim.Fire.Ash;
                 c.Cover = null;
                 var tt = TerrainOf(c);
                 if (tt.Burns)
@@ -568,7 +570,7 @@ namespace Chem
                 {
                     c.Fire = 0;
                     // Burnt off open water (an oil slick) leaves no ash.
-                    if (!IsBlocking(c) && !(c.Water > 0 && !c.Frozen)) c.Cover = "ash";
+                    if (!IsBlocking(c) && !(c.Water > 0 && !c.Frozen)) c.Cover = ash;
                 }
                 return;
             }
@@ -578,11 +580,14 @@ namespace Chem
             if (t.BurnsTo != null)
             {
                 c.T = t.BurnsTo;
-                c.Cover = IsBlocking(c) || HasTag(c, "low") ? null : "ash";
+                c.Cover = IsBlocking(c) || HasTag(c, "low") ? null : t.BurnAsh ?? Rules.Sim.Fire.Ash;
                 if (t.BurnLog != null) AddLog(t.BurnLog, LogKind.Notable);
                 WallLost(CellX(ch, i), CellY(ch, i));
             }
         }
+
+        /// <summary>The gas a burning cell gives off: its burning cover's or terrain's burn.smoke, else sim.json fire.smoke.</summary>
+        string SmokeOf(Cell c) => (CoverBurns(c) ? CoverOf(c).BurnSmoke : TerrainOf(c).BurnSmoke) ?? Rules.Sim.Fire.Smoke;
 
         /// <summary>A burning cell's chance to light each neighbour, N, E, S, W; paused chunks don't catch.</summary>
         void Spread(Chunk ch, int i, Cell c, FireParams p)

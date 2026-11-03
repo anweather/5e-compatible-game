@@ -321,8 +321,9 @@ terrain or spell with no look, and any unknown family or form.
   holds 4 units.
 - A thing in `entities.json` or `items.json` names its `material` (a terrain id) and takes what it gives: `burn` makes it `flammable`, `break` `breakable`, `conduct` `conducts`, `shatter` `brittle` (`Rules.MaterialComponents`, the sandbox's `MATERIAL_COMPONENTS`). Its `components` list only the rest (`creature`, `heavy`).
 - `materials.json` spells its terrain and covers by **verb groups** (`docs/MATERIALS.md`; the flat keys below still read the same, for mods):
-  `"burn": { "catch", "fuel", "heat", "leaves", "log", "look" }` (cover: `catch`,
-  `fuel`, `intensity`, `look`), `"break": { "leaves" }`, `"dig": { "hardness",
+  `"burn": { "catch", "fuel", "heat", "leaves", "log", "look", "ash", "smoke" }` (cover: `catch`,
+  `fuel`, `intensity`, `look`, `ash`, `smoke`; `ash` is the cover a burnt-out cell is left with and `smoke`
+  the gas it gives off burning, else `sim.fire.ash` and `sim.fire.smoke`), `"break": { "leaves" }`, `"dig": { "hardness",
   "leaves" }`, `"soak": { "dry", "wet" }`, `"freeze": {}`, `"boil": {}`,
   `"conduct": {}`, `"grow": { "into", "log" }`, `"uproot": { "leaves", "log" }`,
   `"crust": { "into", "for" }` (tag `crusts`), `"thaw": { "into", "water" }` (tag `thaws`),
@@ -357,6 +358,17 @@ minutes). While rain falls, water moving doesn't count as live. A chunk the
 caps let go while live runs the ticks it missed when it next activates, up to
 `catchUpTicks` (720, two minutes).
 
+## Products (`sim.fire`, `sim.water`)
+
+What fire and water leave is data, never a name in code (`docs/design/primitives.md` P3):
+`fire.ash` (a cover, `ash`) and `fire.smoke` (a gas, `smoke`) are what burning leaves where a
+material's own `burn.ash` / `burn.smoke` don't say; `water.boils` (a gas, `steam`) is what water
+boils off as on hot ground, under fire, by a `boil` effect or when rain puts a fire out, and the gas
+a `condense` effect turns back into water and that scalds; `water.freezes` (a terrain, `ice`) is the
+material frozen water is, whose `shatter.cracks` it borrows. Leave one out and nothing is left.
+`weather.snow.cover` and `.bank` (covers) and `weather.meteors.spell` below are the same kind of name.
+Each must be a material (or spell) the rules know.
+
 ## Day and weather (`sim.day`, `sim.weather`)
 
 `day.dawn` and `day.dusk` are `[from, to]` hours of dim light. Between them
@@ -386,9 +398,9 @@ comes). What it does to squares, at full strength:
   `snow.freezeEvery` ticks the water on a square two units deep or less may
   freeze (`snow.freezeChance`): puddles and trenches ice over, ponds and
   the lake don't. On the same beat open, dry, unburnt ground may take a
-  `snow` cover (`snow.coverChance`), and a snowy square with something
+  `snow.cover` (`snow`, at `snow.coverChance`), and a snowy square with something
   blocking beside it (on its upwind side in a wind: a wall, a tree, a rock)
-  may drift into a `snowbank` (`snow.bankChance`), which stands the ground
+  may drift into a `snow.bank` (`snowbank`, at `snow.bankChance`), which stands the ground
   half a metre higher. Fire melts them (`fire-melt` in
   `reactions.json`, before `fire-flammable`, so snowy grass won't burn
   until the snow is gone). With neither rain nor snow, every
@@ -404,7 +416,7 @@ comes). What it does to squares, at full strength:
   chance `meteors.showerChance`, ramping in and out within it. Every
   `meteors.every` ticks a meteor may appear over a random square
   (`meteors.chance`), and `meteors.fallTicks` later it lands as the
-  `meteor` spell (its crater, its fire) with "A meteor strikes". One that
+  `meteors.spell` (`meteor`: its crater, its fire) with "A meteor strikes". One that
   lands where no one is near (a paused chunk) leaves no mark.
 - **fog**: every `fog.every` ticks fog lays a unit of `fog.gas` (`fog.chance`
   a cell at full strength, thinning towards a patch's rim) in patches, here

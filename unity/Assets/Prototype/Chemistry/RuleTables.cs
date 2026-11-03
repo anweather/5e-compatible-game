@@ -104,6 +104,10 @@ namespace Chem
         public string BakesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
+        /// <summary>WaterTo as what it does: water on it freezes, or boils off as sim water.boils.</summary>
+        public bool FreezesWater, BoilsWater;
+        /// <summary>The cover it leaves burnt out and the gas it gives off burning (burn.ash, burn.smoke); null, sim.json fire's.</summary>
+        public string BurnAsh, BurnSmoke;
         /// <summary>The terrain cold crusts it into, for CrustFor ticks (crust.into, crust.for: lava to a crust that grows back into lava), or null.</summary>
         public string CrustsTo;
         public int CrustFor;
@@ -150,6 +154,8 @@ namespace Chem
         public double Flammability;
         public int? Fuel;
         public int? BurnIntensity;
+        /// <summary>The cover it leaves burnt out and the gas it gives off burning (burn.ash, burn.smoke); null, sim.json fire's.</summary>
+        public string BurnAsh, BurnSmoke;
         /// <summary>How its fire looks (materials.json "fireLook"); the view's only.</summary>
         public string FireLook;
         /// <summary>How the view draws it (materials.json "look": a colour, and a family once one is drawn), or null. The view's only.</summary>
@@ -384,6 +390,12 @@ namespace Chem
         public double SpreadChance = 0.5, HeatChance = 0.04, BoilChance = 0.35, SlickBoilChance = 0.35, DownwindBonus = 0.35, SmokeChance = 0.25;
 
         /// <summary>
+        /// What fire leaves when a material's burn group doesn't say (sim.json fire.ash, fire.smoke): the cover
+        /// a burnt-out cell is left with and the gas a burning cell gives off. Null leaves none.
+        /// </summary>
+        public string Ash, Smoke;
+
+        /// <summary>
         /// When above 0, fire weakens as it spreads: a cell this many spreads from where the fire
         /// started can no longer pass it on. The chance stays near full for most of the way and
         /// falls off toward the end (1 - (generation / FadeCells)^3). 0 (the
@@ -458,6 +470,8 @@ namespace Chem
         /// </summary>
         public double ShowerChance = 0.15, MeteorChance = 0.6;
         public int MeteorEvery = 18, MeteorFallTicks = 11;
+        /// <summary>The spell a meteor lands as, its crater and its fire (sim.json weather.meteors.spell); null, no meteors.</summary>
+        public string MeteorSpell;
         /// <summary>
         /// Every FreezeEvery ticks of snow, a shallow square's chance (at full strength) its water freezes;
         /// every dryEvery ticks of neither rain nor snow, a shallow frozen square's chance to thaw.
@@ -471,6 +485,8 @@ namespace Chem
         public double CoverChance = 0.08, BankChance = 0.05;
         /// <summary>On the same beat, at full strength: a snowy square's chance to build up into a bank in the open, unsheltered (snow builds slowly).</summary>
         public double DeepenChance = 0.004;
+        /// <summary>The covers snow lays and drifts into (sim.json weather.snow.cover, bank); null, snow lays none.</summary>
+        public string SnowCover, BankCover;
         /// <summary>
         /// Every FogEvery ticks of fog weather, an open square's chance (at full strength) of a unit of FogGas
         /// (materials.json gases) inside a patch, where it has no gas yet; it thins away by the gas's own decay
@@ -498,6 +514,12 @@ namespace Chem
         public GasParams Gas = new GasParams();
         public HeightParams Height = new HeightParams();
         public int WaterMaxLevel = 16, WaterUnitsPerStep = 4;
+        /// <summary>
+        /// Water's products (sim.json water.boils, water.freezes): the gas it boils off as (hot ground, fire,
+        /// a boil effect, rain on a fire; a condense effect thins it back to water, and it scalds) and the
+        /// terrain frozen water is (it borrows that terrain's shatter). Null: no gas, frozen water never cracks.
+        /// </summary>
+        public string WaterBoils, WaterFreezes;
         /// <summary>
         /// Soaking (World.Soak): water this deep or less is thin (it and its four neighbours, so a
         /// lake's shore isn't), the pass runs every SoakPass ticks, and soaked-in water leaves the
@@ -874,6 +896,10 @@ namespace Chem
             DriesTo = Str(o["driesTo"]),
             Speed = Num(o["speed"]) ?? 1,
             WaterTo = Str(o["waterTo"]),
+            FreezesWater = Str(o["waterTo"]) == MaterialGroups.FreezesWater,
+            BoilsWater = Str(o["waterTo"]) == MaterialGroups.BoilsWater,
+            BurnAsh = Str(o["burnAsh"]),
+            BurnSmoke = Str(o["burnSmoke"]),
             CrustsTo = Str(o["crustsTo"]),
             CrustFor = Int(o["crustFor"]) ?? 1,
             ThawsTo = Str(o["thawsTo"]),
@@ -889,6 +915,8 @@ namespace Chem
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),
+            BurnAsh = Str(o["burnAsh"]),
+            BurnSmoke = Str(o["burnSmoke"]),
             FireLook = Str(o["fireLook"]),
             MeltsTo = Str(o["meltsTo"]),
             MeltWater = Int(o["meltWater"]) ?? 0,
@@ -1179,10 +1207,14 @@ namespace Chem
                 s.Fire.DownwindBonus = Num(f["downwindBonus"]) ?? s.Fire.DownwindBonus;
                 s.Fire.SmokeChance = Num(f["smokeChance"]) ?? s.Fire.SmokeChance;
                 s.Fire.FadeCells = Int(f["fadeCells"]) ?? s.Fire.FadeCells;
+                s.Fire.Ash = Str(f["ash"]);
+                s.Fire.Smoke = Str(f["smoke"]);
             }
             if (o["water"] is JObject w)
             {
                 s.WaterMaxLevel = Int(w["maxLevel"]) ?? s.WaterMaxLevel;
+                s.WaterBoils = Str(w["boils"]);
+                s.WaterFreezes = Str(w["freezes"]);
                 s.WaterUnitsPerStep = Int(w["unitsPerStep"]) ?? s.WaterUnitsPerStep;
                 s.ThinWater = Int(w["thin"]) ?? s.ThinWater;
                 s.SoakPass = Int(w["soakPass"]) ?? s.SoakPass;
@@ -1265,6 +1297,8 @@ namespace Chem
                 w.CoverChance = Num(snow["coverChance"]) ?? w.CoverChance;
                 w.BankChance = Num(snow["bankChance"]) ?? w.BankChance;
                 w.DeepenChance = Num(snow["deepenChance"]) ?? w.DeepenChance;
+                w.SnowCover = Str(snow["cover"]);
+                w.BankCover = Str(snow["bank"]);
             }
             if (o["fog"] is JObject fog)
             {
@@ -1287,6 +1321,7 @@ namespace Chem
                 w.MeteorEvery = Int(meteors["every"]) ?? w.MeteorEvery;
                 w.MeteorChance = Num(meteors["chance"]) ?? w.MeteorChance;
                 w.MeteorFallTicks = Int(meteors["fallTicks"]) ?? w.MeteorFallTicks;
+                w.MeteorSpell = Str(meteors["spell"]);
             }
         }
     }

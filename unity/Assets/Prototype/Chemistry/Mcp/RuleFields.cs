@@ -29,6 +29,7 @@ namespace Chem.Mcp
             ["rusts"] = null,
             ["burn"] = new[] { "flash" },
             ["sheds"] = new[] { "element", "every", "chance" },
+            [Rules.LapseKey] = Rules.LapseFields.ToArray(),
         };
 
         static readonly Dictionary<string, string[]> SpellFields = new Dictionary<string, string[]>
@@ -99,6 +100,11 @@ namespace Chem.Mcp
             var keys = path.Split('.');
             string top = keys[0];
             if (top == "look") return; // ModCheck.Looks and set_look know a look's parameters
+            if (top == Rules.LapseKey)
+            {
+                CheckLapse(what, path, value);
+                return;
+            }
             if (!MaterialGroups.Verbs(cover).Contains(top))
             {
                 if (MaterialGroups.GroupedName(cover, top) is string grouped) throw new RulesToolException($"{what} writes {top} as {grouped}.");
@@ -120,6 +126,15 @@ namespace Chem.Mcp
         public static void CheckMaterial(string kind, JObject entry)
         {
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
+        }
+
+        // A temporary material's lapse (World.Lapse.cs): into and after only.
+        static void CheckLapse(string what, string path, JToken value)
+        {
+            var keys = path.Split('.');
+            var below = keys.Length > 1 ? new[] { keys[1] } : (value as JObject)?.Properties().Select(p => p.Name) ?? Enumerable.Empty<string>();
+            var unknown = below.FirstOrDefault(k => !Rules.LapseFields.Contains(k));
+            if (keys.Length > 2 || unknown != null) throw new RulesToolException($"{what}'s lapse has no field {unknown ?? path}; it takes into and after.");
         }
 
         static readonly string[] ItemFields = RuleSchema.Items.ModNames.ToArray();
