@@ -638,11 +638,13 @@ that long, and doesn't march.
 **Temporary material / lapse / retired**
 : A **temporary material** is a terrain, cover or gas a mod adds: it lives
   while its mod is on. Another mod may name it while that mod is on, and is
-  then its **dependent**: it goes when its owner goes (#86). It **lapses** when its
+  then its **dependent**: it goes when its owner goes (#86). The same holds for
+  anything a mod adds, a style or other building table's row, a building row, a
+  species, a part, a trigger (`ModAdds`, #88). It **lapses** when its
   row's `lapse.after` ticks have passed since the switch, which takes its mod
   off; lapsed or reverted, every cell of it is **swept** at that tick (into its
-  `lapse.into`, or nothing). The room's **retired** list remembers what went
-  (`World.Lapse.cs`, `docs/RULES_MCP.md`). *Avoid:* "expire", "despawn".
+  `lapse.into`, or nothing). The room's **retired** lists remember what went
+  and whose it was (`Retired`, `RetiredRows`; `World.Lapse.cs`, `docs/RULES_MCP.md`). *Avoid:* "expire", "despawn".
 
 **Shipped mod / player's mod**
 : A **shipped mod** is in `rules/mods/`, and comes with the build. A **player's
