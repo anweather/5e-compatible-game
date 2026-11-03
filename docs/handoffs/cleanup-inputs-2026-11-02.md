@@ -45,3 +45,10 @@ Written before DesktopUnity finished the branch (709551c), so these may have mov
 - `Agree` (`ProbeRoom.cs:330`) has no tick wait; `room-agree-wait` is addressing it.
 - The room probes depend on the client's tick lag.
 - The rule-load slowdown (65 against 38 ms) was left in by choice.
+
+## room-agree-wait
+
+- `roomthing`'s `things_out` took up to 6.3 s against the 10 s bound, the tightest margin; its `InStep` is probably redundant now.
+- `no_desync`'s detail always reads "the client saw none", even when it fails.
+- `dotnet test` lists `ClearThenFog` and `EachStageUnderClearStormAndFog` as skipped while the summary says 0.
+- `unity recompile` is needed on an unfocused Editor, or an edited script doesn't compile; 3 runs ended up on base code that way.
