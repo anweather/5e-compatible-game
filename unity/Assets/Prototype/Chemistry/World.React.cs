@@ -419,7 +419,7 @@ namespace Chem
         {
             if (c.Water == 0 || c.Frozen) return false;
             c.Water--;
-            AddGas(c, "steam", steam);
+            AddGas(c, Rules.Sim.WaterBoils, steam);
             Mark(x, y, SteamMark);
             return true;
         }
@@ -449,10 +449,10 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A condense effect: steam thins and leaves water, unless a wall (other than a vessel) stands there.</summary>
+        /// <summary>A condense effect: water's vapour (sim.json water.boils) thins and leaves water, unless a wall (other than a vessel) stands there.</summary>
         bool CondenseSteam(Cell c)
         {
-            if (c.Gas != "steam") return false;
+            if (c.Gas == null || c.Gas != Rules.Sim.WaterBoils) return false;
             c.GasAmt -= 2;
             if (c.GasAmt <= 0)
             {

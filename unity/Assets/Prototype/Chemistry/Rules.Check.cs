@@ -88,6 +88,7 @@ namespace Chem
                 foreach (var p in ((JObject)r["entities"]).Properties()) EntityRefs(p);
                 DefenseRefs();
                 FogRef();
+                ProductRefs();
             }
 
             // Fog weather lays a gas the rules know (sim weather.fog.gas).
@@ -273,7 +274,8 @@ namespace Chem
                 foreach (var key in new[] { "soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench", "crustFor", "thawWater", "liftSteps" })
                     if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
                 if (t["dampens"] != null && !(IsNumber(t["dampens"]) && (double)t["dampens"] >= 0 && (double)t["dampens"] <= 1)) Errors.Add($"terrain {id}: dampens must be a number from 0 to 1");
-                if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
+                if (t["waterTo"] != null && Text(t["waterTo"]) != MaterialGroups.FreezesWater && Text(t["waterTo"]) != MaterialGroups.BoilsWater)
+                    Errors.Add($"terrain {id}: waterTo must be {MaterialGroups.FreezesWater} or {MaterialGroups.BoilsWater}");
             }
 
             static readonly string[] FireLooks = { "flare", "wood", "oil" };
@@ -534,7 +536,7 @@ namespace Chem
             // One sim.json entry: a section to go into, hours, names, or a number.
             void SimEntry(string key, JToken value)
             {
-                if (key == "defense.kinds" || key == "weather.fog.gas" || key == "dragon.wallTerrains") return; // names, checked by DefenseRefs, FogRef and DragonRefs
+                if (key == "defense.kinds" || key == "weather.fog.gas" || key == "dragon.wallTerrains" || IsSimProduct(key)) return; // names, checked by DefenseRefs, FogRef, DragonRefs and ProductRefs
                 if (key.StartsWith("dragon.", StringComparison.Ordinal) && key != "dragon.scale" && !IsWholeNumber(value)) Errors.Add($"sim {key} must be a whole number");
                 if (key == "status.shatter.when" || key == "status.shatter.notBy")
                 {

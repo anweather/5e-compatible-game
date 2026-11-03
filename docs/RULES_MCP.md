@@ -306,6 +306,22 @@ does nothing (white fire, black smoke, a white Fireball); a flat ground with no 
 land's own trees. `set_look` still takes the colour and says so in its reply, so Claude can tell the
 player. Ice, falling snow and the houses aren't looks at all.
 
+## Products: what a material leaves
+
+What burning and water leave is data (`docs/design/primitives.md` P3; `rules/README.md` "Products"), so a
+mod can say it with `set_material` and a sim patch, with no code naming it:
+
+- A terrain's or cover's `burn.ash` (a cover) and `burn.smoke` (a gas): peat that burns to bog leaving
+  `cinders` and giving off `reek`. Without them, `sim.fire.ash` (`ash`) and `sim.fire.smoke` (`smoke`).
+- `sim.water.boils` (a gas, `steam`): what water boils off as on hot ground, under fire, by `boil`, when
+  rain douses a fire; `condense` turns that gas back into water, and it scalds. `sim.water.freezes` (a
+  terrain, `ice`): what frozen water is, for its `shatter.cracks`.
+- `sim.weather.snow.cover` / `.bank` (covers) and `sim.weather.meteors.spell` (a spell).
+
+`validate` refuses a name that isn't a material (or spell) of the right kind. They are names, so no budget
+bounds them. The view still draws snow by the base ids (`World.SnowCover`, `BankCover`), so a mod's own snow
+cover falls and drifts in the sim but is drawn as a plain cover until the view reads the rules' names.
+
 ## Buildings: rows a mod can edit or add
 
 `docs/design/builders.md` section 4, option (a), outside only. A building is a row: join points in half cells
