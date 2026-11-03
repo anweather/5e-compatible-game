@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -57,13 +58,26 @@ public class RowHousesProbe : ProbeScenario
         yield return Look("house", x + 7, y + 4);
         yield return Look("garage", x + 2, y + 6, CloseBack, FromNorth);
 
-        int wallsWere = Walls();
+        int wallsWere = Walls(), vertsWere = Vertices(House);
+        var cellsWere = WallCells();
         yield return Tool("add_wing", new JObject { ["building"] = House, ["width"] = 4, ["depth"] = 4 });
+        string wing = Draft();
         yield return ApplyDraft("A wing");
-        yield return Until(() => Walls() != wallsWere);
+        yield return Until(() => Walls() != wallsWere && Vertices(House) != vertsWere);
         Check("the_wing_goes_in", Walls() > wallsWere, answer);
-        Drawn("the_wing_is_drawn", 20f, 11f);
+        WingDrawn(vertsWere, cellsWere);
+        var withWing = WallCells();
         yield return Look("wing", x + 7, y + 4);
+
+        // The wing names the house's clay tile (#86): reverting the house takes the wing with it, and both go back on.
+        yield return Revert(Title);
+        yield return Until(() => houses.Root(House) == null);
+        yield return Tool("whats_on", new JObject());
+        Check("the_wing_goes_with_its_house", houses.Root(House) == null && !(answer ?? "").Contains("A wing") && world.At(x + 4, y).T == was, answer);
+        yield return Tool("apply", new JObject { ["mod"] = ModJson(x, y), ["title"] = Title });
+        yield return Tool("apply", new JObject { ["mod"] = wing, ["title"] = "A wing" });
+        yield return Until(() => Walls() > wallsWere);
+        Check("and_both_go_back_on", Walls() > wallsWere && WallCells().SetEquals(withWing), answer);
 
         yield return Tool("set_building", new JObject { ["id"] = House, ["field"] = "roofs.main.shape", ["value"] = "\"shed\"" });
         string shack = Draft();
@@ -149,6 +163,29 @@ public class RowHousesProbe : ProbeScenario
 
     int Walls() => (grid.World.BuildingRowOf(House)?.Json["walls"] as JObject)?.Count ?? 0;
 
+    HashSet<Vector2Int> WallCells()
+    {
+        var row = grid.World.BuildingRowOf(House);
+        if (row == null) return new HashSet<Vector2Int>();
+        return new HashSet<Vector2Int>(grid.World.BuildingCellsOf(row).Where(c => c.Part == BuildingPart.Wall).Select(c => new Vector2Int(c.X, c.Y)));
+    }
+
+    // The house drawn again with more than it had alone, and a drawn vertex over every wall cell the wing adds.
+    void WingDrawn(int vertsWere, HashSet<Vector2Int> cellsWere)
+    {
+        var added = WallCells().Where(c => !cellsWere.Contains(c)).ToList();
+        var root = houses.Root(House);
+        var points = root == null ? new List<Vector3>() : root.GetComponentsInChildren<MeshFilter>().SelectMany(f => f.sharedMesh.vertices.Select(f.transform.TransformPoint)).ToList();
+        float near = grid.cellSize;
+        int shown = added.Count(c =>
+        {
+            var at = grid.CellCenter(c.x, c.y);
+            return points.Any(v => Mathf.Abs(v.x - at.x) <= near && Mathf.Abs(v.z - at.z) <= near);
+        });
+        int now = Vertices(House);
+        Check("the_wing_is_drawn", now > vertsWere && added.Count > 0 && shown == added.Count, $"{now} vertices, {vertsWere} with the house alone; {shown} of {added.Count} new wall cells drawn");
+    }
+
     void Drawn(string name, float wide, float deep)
     {
         var root = houses.Root(House);
@@ -211,6 +248,15 @@ public class RowHousesProbe : ProbeScenario
         if (flown) brain.enabled = true;
         Destroy(page);
         Destroy(target);
+    }
+
+    // Reverts the mod on with this title, by the id whats_on gives it.
+    IEnumerator Revert(string title)
+    {
+        yield return Tool("whats_on", new JObject());
+        var id = Regex.Match(answer ?? "", @"^\d+\. " + Regex.Escape(title) + @".*\(([^)\n]+)\), added by", RegexOptions.Multiline);
+        Check("the_house_is_on_to_revert", id.Success, answer);
+        if (id.Success) yield return Tool("revert", new JObject { ["mod"] = id.Groups[1].Value });
     }
 
     protected IEnumerator RevertAll()
