@@ -154,6 +154,9 @@ public partial class ChemGrid
     public int SweptChunksDrawn { get; private set; }
     public int SweptChunksLeft => sweptChunks.Count;
 
+    /// <summary>How many sweeps have queued every chunk (RedrawEveryChunk), for the probe: one a switch, however many mods it took.</summary>
+    public int EveryChunkRedraws { get; private set; }
+
     /// <summary>
     /// A revert or a lapse swept its mod's materials from every cell (World.Lapse.cs), inactive chunks too, which
     /// Render doesn't walk: each inactive chunk is looked over once, a few a frame, so the lapse clears everywhere.
@@ -161,6 +164,7 @@ public partial class ChemGrid
     void RedrawEveryChunk()
     {
         if (views == null) return;
+        EveryChunkRedraws++;
         sweptChunks.Clear();
         int cw = (World.W + Chunks.Size - 1) >> Chunks.Shift, chh = (World.H + Chunks.Size - 1) >> Chunks.Shift;
         for (int cy = 0; cy < chh; cy++)

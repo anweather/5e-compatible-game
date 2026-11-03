@@ -113,12 +113,20 @@ public partial class ChemGrid
     }
 
     // A mod went off (a revert, or a lapse: World.Lapse.cs) and its temporary materials were swept from every cell,
-    // inactive chunks too. The rules are read again before the next tick (FollowLapse), and every chunk is redrawn.
-    bool reverted;
+    // inactive chunks too. The rules are read again before the next tick (FollowLapse), and every chunk is redrawn
+    // once the switch is done (RedrawOwed): a sweep of a mod and its dependents redraws once, not once a mod.
+    bool reverted, redrawOwed;
 
     void Reverted()
     {
         reverted = true;
+        redrawOwed = true;
+    }
+
+    void RedrawOwed()
+    {
+        if (!redrawOwed) return;
+        redrawOwed = false;
         RedrawEveryChunk();
     }
 
@@ -128,6 +136,7 @@ public partial class ChemGrid
     {
         if (!reverted) return;
         reverted = false;
+        RedrawOwed();
         if (World.Room == null || World.RoomRules == null || ReferenceEquals(CurrentRules, World.RoomRules)) return;
         var before = CurrentRules;
         CurrentRules = World.RoomRules;
@@ -152,6 +161,7 @@ public partial class ChemGrid
             queuedRules = null;
         }
         ComposeDone(before);
+        RedrawOwed();
     }
 
     /// <summary>Online: runs one of the host's tick batches (a rule switch if it has one, its casts, a step).</summary>
@@ -177,6 +187,7 @@ public partial class ChemGrid
             Debug.LogWarning("Rule switch at tick " + batch.Tick + " refused here: " + string.Join("; ", errors));
         }
         ComposeDone(before);
+        RedrawOwed();
     }
 
     readonly System.Diagnostics.Stopwatch composing = new();

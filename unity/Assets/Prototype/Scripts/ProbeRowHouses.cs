@@ -70,10 +70,13 @@ public class RowHousesProbe : ProbeScenario
         yield return Look("wing", x + 7, y + 4);
 
         // The wing names the house's clay tile (#86): reverting the house takes the wing with it, and both go back on.
+        // The two go in one switch, so every chunk is redrawn once, not once a mod (#88).
+        int redrawsWere = grid.EveryChunkRedraws;
         yield return Revert(Title);
         yield return Until(() => houses.Root(House) == null);
         yield return Tool("whats_on", new JObject());
         Check("the_wing_goes_with_its_house", houses.Root(House) == null && !(answer ?? "").Contains("A wing") && world.At(x + 4, y).T == was, answer);
+        Check("one_redraw_for_the_house_and_its_wing", grid.EveryChunkRedraws - redrawsWere == 1, $"{grid.EveryChunkRedraws - redrawsWere} sweeps");
         yield return Tool("apply", new JObject { ["mod"] = ModJson(x, y), ["title"] = Title });
         yield return Tool("apply", new JObject { ["mod"] = wing, ["title"] = "A wing" });
         yield return Until(() => Walls() > wallsWere);
