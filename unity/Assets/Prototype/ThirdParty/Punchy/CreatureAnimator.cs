@@ -71,7 +71,6 @@ namespace Punchy.Fauna
                 pitch -= math.cos(math.PI * s.Air) * 0.9f;
 
             var id = s.Individual;
-            var worn = traits.Worn;
             var girth = traits.Girth;
 
             var bobs = math.lerp(b.BobsPerCycle.x, b.BobsPerCycle.y, run);
@@ -92,7 +91,7 @@ namespace Punchy.Fauna
 
             // Body.
             var body = b.Segments[0];
-            output[offset] = Instance(rootPos + math.mul(rootRot, new float3(0f, 0f, -halfLength + body.RadiusStart * scale)), rootRot, body, scale, girth, b.SegmentColor(0, in worn));
+            output[offset] = Instance(rootPos + math.mul(rootRot, new float3(0f, 0f, -halfLength + body.RadiusStart * scale)), rootRot, body, scale, girth, b.ColourOf(0, in traits));
 
             int styleGroup = 0, styleShown = 0;
             for (int i = 0; i < b.Parts.Length && i < MaxSegments; i++)
@@ -178,11 +177,7 @@ namespace Punchy.Fauna
             {
                 if (segHidden[seg])
                     continue;
-                var segment = b.Segments[seg];
-                var colour = b.SegmentColor(seg, in worn);
-                if (segment.Hair != 0 && traits.Hair.x >= 0f)
-                    colour = traits.Hair;
-                output[offset + written++] = Instance(segPos[seg], segRot[seg], segment, scale, girth, colour);
+                output[offset + written++] = Instance(segPos[seg], segRot[seg], b.Segments[seg], scale, girth, b.ColourOf(seg, in traits));
             }
             return written;
         }

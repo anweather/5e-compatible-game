@@ -94,6 +94,8 @@ public class ThingBodies : MonoBehaviour, ICreatureGround
         if (look.R == 1f && look.G == 1f && look.B == 1f) return traits;
         var colour = (Vector4)new Color(look.R, look.G, look.B).linear;
         traits.Worn.Base = traits.Worn.Accent = colour;
+        // A graft's donors' own coats take the look's colour too: one colour for the whole thing.
+        for (int i = 0; traits.OwnWorn != null && i < traits.OwnWorn.Length; i++) traits.OwnWorn[i].Base = traits.OwnWorn[i].Accent = colour;
         return traits;
     }
 

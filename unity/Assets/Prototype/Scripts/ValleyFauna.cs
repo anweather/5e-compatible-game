@@ -136,6 +136,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     /// <summary>An animal's colouring (one of its species' coats).</summary>
     public int Coat(int index) => creatures[index].coat;
 
+    /// <summary>What sets an animal apart, as it's drawn: its coat as worn, its hair and a graft's donors' own coats (the probe reads them).</summary>
+    public CreatureTraits Traits(int index) => creatures[index].traits;
+
     /// <summary>A species' body (by index in the list), or null; built once the rules are in.</summary>
     public CreatureBody Body(int speciesIndex) => bodies[speciesIndex];
 
