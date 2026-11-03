@@ -60,16 +60,22 @@ namespace Punchy.Fauna
         public CreaturePart[] Parts;
         public CreatureSegment[] Segments;
         public float3[] Poses;   // Segments.Length × PoseCount, radians
+        /// <summary>The row's colours: its coats, hair and how they vary.</summary>
+        public CreaturePalette Colours = new CreaturePalette();
+        /// <summary>
+        /// A graft's donors whose slots wear their own coats and hair ("coat": "own", Chem.SlotDef.OwnCoatOf): a
+        /// segment's <see cref="CreatureSegment.Palette"/> 1 is the first. Empty for a row of its own.
+        /// </summary>
+        public CreaturePalette[] Own = Array.Empty<CreaturePalette>();
         /// <summary>Colourings individuals choose between (at least one).</summary>
-        public CreatureCoatData[] Coats;
+        public CreatureCoatData[] Coats { get => Colours.Coats; set => Colours.Coats = value; }
         /// <summary>Hair colours individuals choose between (may be empty).</summary>
-        public float4[] HairColors = Array.Empty<float4>();
-        /// <summary>How one individual differs from the next (Chem.VaryDef).</summary>
-        public float Shade, Warm, Girth;
+        public float4[] HairColors { get => Colours.HairColors; set => Colours.HairColors = value; }
+        /// <summary>How much one individual's girth differs from the next (Chem.VaryDef); shade and warmth are the palette's.</summary>
+        public float Girth;
         /// <summary>Where it lives, how deep it swims and how many leaps it makes a minute.</summary>
         public Habitat Habitat;
         public float SwimDepth, Leaps;
-        public bool MixCoats;
 
         /// <summary>
         /// A fixed random number in -1..1 for one trait of one individual (posture, arm swing, hair…): the same for
@@ -84,7 +90,7 @@ namespace Punchy.Fauna
 
         /// <summary>An individual's hair colour (rgb), or the segment's own if the species has none.</summary>
         public float4 HairColor(uint individual, float4 fallback) =>
-            HairColors.Length == 0 ? fallback : new float4(HairColors[Style(individual, 9973, HairColors.Length)].xyz, 0f);
+            HairColors.Length == 0 ? fallback : Colours.HairOf(individual);
 
         /// <summary>A trait as a number in 0..1.</summary>
         public static float Unit(uint individual, int trait) => Trait(individual, trait) * 0.5f + 0.5f;
@@ -93,37 +99,34 @@ namespace Punchy.Fauna
         /// One of the coats as this individual wears it: lighter or darker, warmer or cooler, its accent (a skin)
         /// picked apart from its base (a tunic) if the species mixes them. Individual 0 is the coat itself.
         /// </summary>
-        public CreatureCoatData CoatOf(int coat, uint individual)
-        {
-            var c = Coats[math.clamp(coat, 0, Coats.Length - 1)];
-            if (individual == 0u)
-                return c;
-            if (MixCoats)
-                c.Accent = Coats[Style(individual, 9967, Coats.Length)].Accent;
-            c.Base = Tinted(c.Base, individual, 8);
-            c.Accent = Tinted(c.Accent, individual, 11);
-            return c;
-        }
-
-        float4 Tinted(float4 colour, uint individual, int trait)
-        {
-            var shade = 1f + Trait(individual, trait) * Shade;
-            var warm = Trait(individual, trait + 1) * Warm;
-            return new float4(colour.xyz * new float3(shade * (1f + warm), shade, shade * (1f - warm)), colour.w);
-        }
+        public CreatureCoatData CoatOf(int coat, uint individual) => Colours.CoatOf(coat, individual);
 
         /// <summary>All that sets this individual apart, worked out once so posing it needn't hash it every frame.</summary>
-        public CreatureTraits TraitsOf(int coat, uint individual) => new CreatureTraits
+        public CreatureTraits TraitsOf(int coat, uint individual)
         {
-            Lean = Trait(individual, 1) * 0.13f,
-            ArmSwing = 1f + Trait(individual, 2) * 0.45f,
-            Bounce = 1f + Trait(individual, 3) * 0.5f,
-            Twist = 1f + Trait(individual, 4) * 0.6f,
-            HeadTilt = new float3(Trait(individual, 6) * 0.1f, 0f, Trait(individual, 7) * 0.07f),
-            Girth = GirthOf(individual),
-            Worn = CoatOf(coat, individual),
-            Hair = HairColors.Length == 0 ? new float4(-1f) : new float4(HairColors[Style(individual, 9973, HairColors.Length)].xyz, 0f),
-        };
+            var traits = new CreatureTraits
+            {
+                Lean = Trait(individual, 1) * 0.13f,
+                ArmSwing = 1f + Trait(individual, 2) * 0.45f,
+                Bounce = 1f + Trait(individual, 3) * 0.5f,
+                Twist = 1f + Trait(individual, 4) * 0.6f,
+                HeadTilt = new float3(Trait(individual, 6) * 0.1f, 0f, Trait(individual, 7) * 0.07f),
+                Girth = GirthOf(individual),
+                Worn = CoatOf(coat, individual),
+                Hair = Colours.HairOf(individual),
+            };
+            if (Own.Length == 0)
+                return traits;
+            // Each donor's slots wear the coat that donor's own animal of this individual would: the same pick, the same tint.
+            traits.OwnWorn = new CreatureCoatData[Own.Length];
+            traits.OwnHair = new float4[Own.Length];
+            for (int i = 0; i < Own.Length; i++)
+            {
+                traits.OwnWorn[i] = Own[i].CoatOf(individual == 0u ? 0 : Own[i].PickCoat(Unit(individual, 0)), individual);
+                traits.OwnHair[i] = Own[i].HairOf(individual);
+            }
+            return traits;
+        }
 
         /// <summary>How much stockier or slimmer than the row this individual is (1 for individual 0).</summary>
         public float GirthOf(uint individual) => individual == 0u ? 1f : 1f + Trait(individual, 13) * Girth;
@@ -138,21 +141,21 @@ namespace Punchy.Fauna
             return new float4(rgb, math.saturate(glow));
         }
 
-        /// <summary>Picks a coat by weight from a random number in 0..1.</summary>
-        public int PickCoat(float random)
+        /// <summary>
+        /// A segment's colour as this individual wears it, as the animator draws it: its palette's coat (the row's, or
+        /// a graft's donor's for a slot with its own coat), or that palette's hair for a hair segment.
+        /// </summary>
+        public float4 ColourOf(int segment, in CreatureTraits traits)
         {
-            var total = 0f;
-            for (int i = 0; i < Coats.Length; i++)
-                total += Coats[i].Weight;
-            var pick = random * total;
-            for (int i = 0; i < Coats.Length; i++)
-            {
-                pick -= Coats[i].Weight;
-                if (pick <= 0f)
-                    return i;
-            }
-            return Coats.Length - 1;
+            var seg = Segments[segment];
+            var own = seg.Palette > 0 && traits.OwnWorn != null && seg.Palette <= traits.OwnWorn.Length;
+            var worn = own ? traits.OwnWorn[seg.Palette - 1] : traits.Worn;
+            var hair = own ? traits.OwnHair[seg.Palette - 1] : traits.Hair;
+            return seg.Hair != 0 && hair.x >= 0f ? hair : SegmentColor(segment, in worn);
         }
+
+        /// <summary>Picks a coat by weight from a random number in 0..1.</summary>
+        public int PickCoat(float random) => Colours.PickCoat(random);
 
         /// <summary>Blend of a part's key poses for one segment at gait phase p (0..1).</summary>
         public float3 Angles(int segment, float p, float move, float run)
@@ -184,7 +187,7 @@ namespace Punchy.Fauna
             public int Parent;
         }
 
-        static Color Rgb(double[] c) => new Color((float)c[0], (float)c[1], (float)c[2]);
+        internal static Color Rgb(double[] c) => new Color((float)c[0], (float)c[1], (float)c[2]);
 
         /// <summary>
         /// Builds a species from its row. A variant takes its body, parts, gait and behaviour from the species it is
@@ -268,36 +271,19 @@ namespace Punchy.Fauna
             root.Poses = new float3[segmentCount * PoseCount];
 
             // Coats come from the variant (or the species itself): its listed coats, or just its coat.
-            var coats = new List<CoatDef>(variant.Coats);
-            if (coats.Count == 0)
-                coats.Add(variant.Coat);
-            root.Coats = new CreatureCoatData[coats.Count];
-            for (int i = 0; i < coats.Count; i++)
-                root.Coats[i] = new CreatureCoatData
-                {
-                    Base = (Vector4)Rgb(coats[i].Base).linear,
-                    Accent = (Vector4)Rgb(coats[i].Accent).linear,
-                    AccentGlow = (float)coats[i].Glow,
-                    Weight = math.max((float)coats[i].Weight, 0.0001f)
-                };
-
-            var hair = variant.Hair.Count > 0 ? variant.Hair : species.Hair;
-            root.HairColors = new float4[hair.Count];
-            for (int i = 0; i < hair.Count; i++)
-                root.HairColors[i] = (Vector4)Rgb(hair[i]).linear;
+            root.Colours = CreaturePalette.Of(tables, id);
+            // A graft's slots with their own coat wear their donor's, one palette a donor.
+            var own = new List<string>();
+            foreach (var slot in species.Slots)
+                if (slot.OwnCoatOf != null && !own.Contains(slot.OwnCoatOf) && tables.Species(slot.OwnCoatOf) != null)
+                    own.Add(slot.OwnCoatOf);
+            root.Own = own.Select(d => CreaturePalette.Of(tables, d)).ToArray();
 
             root.Habitat = species.Habitats.Contains("swims") ? Habitat.Swims : species.Habitats.Contains("floats") ? Habitat.Floats : Habitat.Land;
             root.SwimDepth = (float)species.Depth;
             root.Leaps = (float)species.Leaps;
 
-            var vary = variant.Vary ?? species.Vary;
-            if (vary != null)
-            {
-                root.Shade = (float)vary.Shade;
-                root.Warm = (float)vary.Warm;
-                root.Girth = (float)vary.Girth;
-                root.MixCoats = vary.Mix;
-            }
+            root.Girth = (float)((variant.Vary ?? species.Vary)?.Girth ?? 0);
 
             root.Segments[0] = new CreatureSegment
             {
@@ -342,6 +328,7 @@ namespace Punchy.Fauna
                 };
 
                 float scale = (float)slot.Scale, thickness = (float)slot.Thickness;
+                var palette = slot.OwnCoatOf != null ? own.IndexOf(slot.OwnCoatOf) + 1 : 0;
                 for (int s = 0; s < limb.Segments.Count; s++)
                 {
                     var seg = limb.Segments[s];
@@ -355,7 +342,8 @@ namespace Punchy.Fauna
                         Fixed = seg.Colour != null ? 1 : 0,
                         FixedColor = seg.Colour != null ? (Vector4)Rgb(seg.Colour).linear : default,
                         Glow = (float)seg.Glow,
-                        Hair = seg.Hair ? 1 : 0
+                        Hair = seg.Hair ? 1 : 0,
+                        Palette = palette
                     };
                     for (int k = 0; k < PoseCount; k++)
                     {
@@ -479,6 +467,8 @@ namespace Punchy.Fauna
         public float Glow;
         /// <summary>Non-zero: coloured by the individual's hair colour.</summary>
         public int Hair;
+        /// <summary>Whose colours it wears: 0 the row's, n the body's Own[n - 1] (a graft's donor).</summary>
+        public int Palette;
     }
 
     /// <summary>What one individual's way of moving and looking come to (CreatureBody.TraitsOf).</summary>
@@ -489,6 +479,9 @@ namespace Punchy.Fauna
         public CreatureCoatData Worn;
         /// <summary>Its hair colour; x under 0 keeps the segments' own.</summary>
         public float4 Hair;
+        /// <summary>A graft's: what it wears on each donor's own-coat slots, by CreatureBody.Own; null for a row of its own.</summary>
+        public CreatureCoatData[] OwnWorn;
+        public float4[] OwnHair;
     }
 
     public struct CreatureCoatData
@@ -496,6 +489,87 @@ namespace Punchy.Fauna
         public float4 Base, Accent;   // linear
         public float AccentGlow;
         public float Weight;
+    }
+
+    /// <summary>A species' colours: the coats its animals pick from, their hair, and how one animal's differ from the next.</summary>
+    public sealed class CreaturePalette
+    {
+        /// <summary>The species whose colours these are.</summary>
+        public string Id;
+        /// <summary>Colourings individuals choose between (at least one).</summary>
+        public CreatureCoatData[] Coats = { new CreatureCoatData { Base = new float4(1f), Accent = new float4(1f), Weight = 1f } };
+        /// <summary>Hair colours individuals choose between (may be empty).</summary>
+        public float4[] HairColors = Array.Empty<float4>();
+        /// <summary>How one individual differs from the next (Chem.VaryDef).</summary>
+        public float Shade, Warm;
+        public bool MixCoats;
+
+        /// <summary>A species' colours as its row gives them: a variant's own coats, and its hair and vary or its base's.</summary>
+        public static CreaturePalette Of(FaunaTables tables, string id)
+        {
+            var variant = tables.Species(id);
+            var species = tables.BodyOf(id);
+            var coats = new List<CoatDef>(variant.Coats);
+            if (coats.Count == 0)
+                coats.Add(variant.Coat);
+            var hair = variant.Hair.Count > 0 ? variant.Hair : species.Hair;
+            var vary = variant.Vary ?? species.Vary;
+            return new CreaturePalette
+            {
+                Id = id,
+                Coats = coats.Select(c => new CreatureCoatData
+                {
+                    Base = (Vector4)CreatureBody.Rgb(c.Base).linear,
+                    Accent = (Vector4)CreatureBody.Rgb(c.Accent).linear,
+                    AccentGlow = (float)c.Glow,
+                    Weight = math.max((float)c.Weight, 0.0001f)
+                }).ToArray(),
+                HairColors = hair.Select(h => (float4)(Vector4)CreatureBody.Rgb(h).linear).ToArray(),
+                Shade = (float)(vary?.Shade ?? 0),
+                Warm = (float)(vary?.Warm ?? 0),
+                MixCoats = vary?.Mix ?? false,
+            };
+        }
+
+        /// <summary>One of the coats as this individual wears it (CreatureBody.CoatOf).</summary>
+        public CreatureCoatData CoatOf(int coat, uint individual)
+        {
+            var c = Coats[math.clamp(coat, 0, Coats.Length - 1)];
+            if (individual == 0u)
+                return c;
+            if (MixCoats)
+                c.Accent = Coats[CreatureBody.Style(individual, 9967, Coats.Length)].Accent;
+            c.Base = Tinted(c.Base, individual, 8);
+            c.Accent = Tinted(c.Accent, individual, 11);
+            return c;
+        }
+
+        float4 Tinted(float4 colour, uint individual, int trait)
+        {
+            var shade = 1f + CreatureBody.Trait(individual, trait) * Shade;
+            var warm = CreatureBody.Trait(individual, trait + 1) * Warm;
+            return new float4(colour.xyz * new float3(shade * (1f + warm), shade, shade * (1f - warm)), colour.w);
+        }
+
+        /// <summary>This individual's hair colour (rgb); x is -1 when the species has none, so segments keep their own.</summary>
+        public float4 HairOf(uint individual) =>
+            HairColors.Length == 0 ? new float4(-1f) : new float4(HairColors[CreatureBody.Style(individual, 9973, HairColors.Length)].xyz, 0f);
+
+        /// <summary>Picks a coat by weight from a random number in 0..1.</summary>
+        public int PickCoat(float random)
+        {
+            var total = 0f;
+            for (int i = 0; i < Coats.Length; i++)
+                total += Coats[i].Weight;
+            var pick = random * total;
+            for (int i = 0; i < Coats.Length; i++)
+            {
+                pick -= Coats[i].Weight;
+                if (pick <= 0f)
+                    return i;
+            }
+            return Coats.Length - 1;
+        }
     }
 
     public enum LimbRole : byte
