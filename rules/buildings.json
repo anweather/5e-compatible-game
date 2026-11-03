@@ -1,11 +1,21 @@
 {
   "about": "What a building's parts can be (docs/design/builders.md section 4; Buildings.cs). Rows, like every table: a mod adds or replaces one whole under \"buildings\". What's under \"look\" is the view's and stays out of Rules.Fingerprint; the rest decides cells. A building's own rows are world data: world/buildings.json, the villages (world/villages.json), or a mod's \"world\" section.",
   "ground": "dirt",
+  "drawn": {
+    "about": "What the view reads of a building (RowMesher, RowHouses), kept in step with it by hand: anything else a row, wall, opening or parts row says is kept but never drawn, and validate and apply say so. A roof's fields are its shape's look.takes, a part's its detail's. An opening's look \"lamp\" is the colour its pane glows from dusk to dawn (\"#rrggbb\", brighter the lighter; \"off\" for none), and an opening in a row may give its own; the glass goes dark when its pane breaks or its stretch of wall burns or falls. On a building the cells' own looks aren't drawn: the house draws each opening from its row here, and only a pane cell shows glass that breaks.",
+    "row": ["id", "at", "style", "seed", "storeys", "fill", "floor", "wall", "joins", "walls", "roofs", "parts", "built", "site"],
+    "floor": ["kind", "height"],
+    "wall": ["from", "to", "material", "height", "thickness", "finish", "storey", "openings"],
+    "finish": ["color", "pattern"],
+    "opening": ["kind", "at", "width", "shape", "finish", "lamp"],
+    "openingLook": ["width", "height", "sill", "lamp"],
+    "style": ["fill", "floor", "wall", "storeys", "roof", "parts", "recipe"]
+  },
   "openings": {
     "door": { "cells": 1, "becomes": "door", "look": { "width": 0.9, "height": 2.1, "sill": 0 } },
     "double-door": { "cells": 2, "becomes": "door", "look": { "width": 1.8, "height": 2.1, "sill": 0 } },
-    "window": { "cells": 1, "becomes": "pane", "look": { "width": 0.9, "height": 1.2, "sill": 0.9 } },
-    "wide-window": { "cells": 2, "becomes": "pane", "look": { "width": 1.8, "height": 1.2, "sill": 0.9 } },
+    "window": { "cells": 1, "becomes": "pane", "look": { "width": 0.9, "height": 1.2, "sill": 0.9, "lamp": "#ffb867" } },
+    "wide-window": { "cells": 2, "becomes": "pane", "look": { "width": 1.8, "height": 1.2, "sill": 0.9, "lamp": "#ffb867" } },
     "garage": { "cells": 2, "becomes": "door", "look": { "width": 2.7, "height": 2.1, "sill": 0 } },
     "double-garage": { "cells": 3, "becomes": "door", "look": { "width": 4.9, "height": 2.1, "sill": 0 } },
     "arch": { "cells": 0, "becomes": "open", "look": { "height": 2.2, "sill": 0 } },

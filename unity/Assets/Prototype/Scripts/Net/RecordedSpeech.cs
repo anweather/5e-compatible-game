@@ -20,7 +20,7 @@ public sealed class RecordedSpeech : ISpeech
     public RecordedSpeech(string folder) => this.folder = folder;
 
     /// <summary>The samples' folder, in a checkout.</summary>
-    public static string SamplesFolder => Path.Combine(Application.dataPath, "..", "..", "tools", "voice-samples", "out");
+    public static string SamplesFolder => Path.Combine(ChemGrid.Folders.Repo, "tools", "voice-samples", "out");
 
     /// <summary>Set by the probe: the sample the next hold plays.</summary>
     public static string Next { get; set; }

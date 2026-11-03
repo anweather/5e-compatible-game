@@ -55,7 +55,7 @@ public class ChatTelemetry : MonoBehaviour
     public static string Folder { get; set; }
 
     /// <summary>Where the records and the MCP log go now: ChatLog.Home unless the probe says otherwise. On the main thread.</summary>
-    public static string Home => Folder ?? ChatLog.Home(Application.persistentDataPath, GivenLogFolder());
+    public static string Home => Folder ?? ChatLog.Home(ChemGrid.Folders.PlayerData, GivenLogFolder());
 
     // The folder of a log this process was told to use: a test's. Null for a player started as players start it.
     static string GivenLogFolder()

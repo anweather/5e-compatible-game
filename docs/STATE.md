@@ -1,4 +1,4 @@
-# State (2026-11-02, evening)
+# State (2026-11-03, early)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -10,7 +10,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 | **PM** (this role; the `coordination` worktree, pushes to dev) | Max | Plans, briefs, merges (`tools/workers/land.sh`), GitHub issues, releases, reports. Writes no game code unless asked |
 | **DesktopUnity** (the PC, interactive) | Max | The only Windows GPU: host passes (looks, feel, sound), player builds, release candidates. Long passes run as fresh sub-agents per part |
 | **unity-game-macbook** (Remote Control) | Max | Compute with Unity and a GPU (EditMode, probes, profiling); the headless Windows build as a fallback. Its route doesn't confirm reading; check its branch if quiet |
-| **Windows VMs** w1 (Pro), w3 (Max); w2 and w4 are rescued and off, for Andrew to remove | | Rules plus Unity batch compile. Idle since Oct 30 |
+| **Windows VMs** w1 (Pro), w3 (Max); w2 and w4 are rescued and off, for Andrew to remove | | Rules plus Unity batch compile. Idle since Oct 30; w1 didn't fit beside the PC's Editor on 2026-11-02 |
 | **Linux VMs** u1 (Pro), u2 (Max) | | Core and sandbox only, about 10x cheaper for rules work. 1 GB start |
 
 - **Workers take briefs straight from the mailbox:** `start.cmd <vm> <brief.md>` boots and briefs;
@@ -56,27 +56,27 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Play test done (2026-11-02 evening):** issues #70 to #77, #57 closed, #58 narrowed (the game hears nothing with any mic; Win+H works). DesktopUnity on #70 (`water-look-perf`), then #58. 0.1.11 waits, no rush (Andrew, 2026-11-02). Cleanup: items 1 and 3 landed (`game-folders`, 10da5b1; not yet in a built player: check the StreamingAssets path and `ModMove` in the next test player). The Mac next: `folders-rest`, then `fireline-out` (item 9). The draft notes promise voice: fix #58 or cut that line before it ships.
-- **Play-test lanes (Andrew: fix them all):** landed 2026-11-03: `creature-scale`, `fauna-rows`, `dragon-tools`, `mod-exception`, `voice-hears` (#72 closed). DesktopUnity: #71 (`lit-windows`), then #70. u2 merged `place-core` and `world-lay` into dev itself (3898071b) without a Unity compile: the PC compiled dev clean afterwards (681d6c45: EditMode 1160, smoke 28); briefs now say never merge. u2 on `triggers-core`. PC queue: dev compile, #71, `place-view`, #70. #58 needs Andrew's `-voice-check` (on the board). New: #79 (ApplyRoom), #80 (species follow-ups), #81 (pipeline settings leak). Design calls: yes to all six (J-067).
-- **Mac and DesktopUnity:** idle for the pause. `roomruin-wait` landed (1ada360): #65, #50 and #67 closed.
-- **Unmerged, kept:** `second-map` (afff4c9): the report and the word are on dev (`docs/design/second-map-2026-11-02.md`), the code waits for shipped maps (#69, backlog 29), after the cleanup.
-- **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
-- **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
-- **u1:** stopped; Pro weekly is out until Nov 5. **u2:** running.
+- **0.1.11 waits, no rush** (Andrew, 2026-11-02). Draft notes: `docs/handoffs/release-0.1.11-notes.md`. They promise voice: fix #58 or cut that line. Before it ships: version bump, the saved-mods warning (#63).
+- **Play-test fixes (Andrew: fix them all; issues #70 to #81).** On dev: `creature-scale`, `fauna-rows`, `dragon-tools` (u2), `mod-exception`, `voice-hears` (PC), `place-core` and `world-lay` (u2 merged these itself; the PC compiled dev clean after). #72 closed. Design calls J-067.
+  - **DesktopUnity:** `lit-windows` landed (#71 closed). Now `place-view` (the view of placed things, scatter trees), then #70 (water tiles 2 ms each after a shower).
+  - **u2 (Max):** `triggers-core` (#76) pushed (b378165e), waiting for a Unity compile. u2 stopped.
+  - **Mac:** `fireline-out` (cleanup item 9). Lists deletions: land with `--deletes` after reading why each is dead.
+  - Open: #58 needs Andrew's `-voice-check` (on the board); #73 bodies from parts and #60 water surface are designed (`docs/design/bodies-and-surfaces.md`), not built; #74 and #75 need `place-view`; #80 animals out don't resize; #77 dragon loop; #79, #78, #81.
+- **Cleanup:** items 1 and 3 landed (`game-folders` 10da5b1, `folders-rest` 6e5fb9e4), not yet in a built player. Next after item 9: items 5 then 4, 2, 7, 8 (`docs/design/cleanup-review-2026-11-02.md`); inputs `docs/handoffs/cleanup-inputs-2026-11-02.md`.
+- **u1:** stopped; Pro weekly is out until Nov 5 (the "pro is back" mail was the 5-hour limit). **Max** weekly was 75% on 2026-11-02 evening.
+- **Unmerged, kept:** `second-map` (afff4c9), for shipped maps (#69, backlog 29).
+- **#59 telemetry:** item 5 (faster) not started.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
-- **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Merged dev passed full EditMode on the Mac and Windows.
-- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/SpellChemistryValley.exe`, dev at f736c4d, for Andrew's play on 2026-11-02 after 8pm. Copies passed the squirrel test, save right after apply, 2 real Haiku prompts, two built peers over Relay on this PC. The exe itself has never been launched, or anything run in a real window. Older `PlayTest/` and `PlayTest-1ad55fb/` stay until he has moved over.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (played 2026-11-02). `VoiceCheck/` beside it for the voice test. Older `PlayTest/` and `PlayTest-1ad55fb/` can go.
 
 ## Next, in order
 
-1. Andrew plays the test player: #57 in a real window, voice words, the first real prompt, the creatures.
-2. Code base cleanup (Andrew, 2026-11-02), before new features: the ranked list is `docs/design/cleanup-review-2026-11-02.md`, on the board. Branches next, from the top, after his verdict.
-3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
-4. Gaits by rule (`docs/design/builders.md`).
-5. Design things on water (#60); size patches for Claude (#61).
-6. 0.1.11, when Andrew says: he put it on hold. Before it ships: the notes tell anyone with saved mods to copy them out first (#63), version bump. J-060 comes back before anything commercial.
-- Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
-- Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
+1. Land what's in flight; then a new test player for Andrew with the play-test fixes and the folders change.
+2. The cleanup, from item 5 down.
+3. `triggers-view`, then bodies from parts (#73) and building on water (#60), per the designs.
+4. Temporary materials and products as data (`docs/design/primitives.md`); gaits by rule (`builders.md`).
+5. 0.1.11, when Andrew says.
+- Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).
 
 ## Andrew's board
 
@@ -86,8 +86,8 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 
 ## Open questions for Andrew
 
-- The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
-- The sound pass and the cast sounds: he listens on the board when he has time (J-065).
+- Voice: run `-voice-check` when he can talk (the command is on the board), then once with the Arctis as default.
+- Watch the lit windows clip on the board; the sound pass when he has time (J-065).
 
 ## Telemetry
 

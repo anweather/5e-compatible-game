@@ -16,17 +16,20 @@ namespace Chem.Tests
     {
         const string TimedOut = "The game didn't answer in time; ask for the room to see whether it went in.";
 
-        string dir;
+        string data;
+        GameFolders folders;
 
+        // A player's data folder, with their mods in it, where a save goes.
         [SetUp]
         public void MakeFolder()
         {
-            dir = Path.Combine(Path.GetTempPath(), "site-refusal-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(dir);
+            data = Path.Combine(Path.GetTempPath(), "site-refusal-" + Guid.NewGuid().ToString("N"));
+            folders = new GameFolders(ChemistryTests.RulesDir(), data);
+            Directory.CreateDirectory(folders.Mods);
         }
 
         [TearDown]
-        public void RemoveFolder() => Directory.Delete(dir, true);
+        public void RemoveFolder() => Directory.Delete(data, true);
 
         // A running game, as GameRoomDesk is: a read runs on the main thread, where only a RulesToolException comes
         // back to the tool; anything else escapes into RulesMcpServer.Update, and the tool hears nothing until it gives up.
@@ -80,8 +83,8 @@ namespace Chem.Tests
 
         (Workbench bench, GameDesk desk, HouseToolsTests.Client client) Game()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
-            var desk = new GameDesk { Host = bench.LiveWorld, Peer = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld };
+            var bench = new Workbench(folders);
+            var desk = new GameDesk { Host = bench.LiveWorld, Peer = new Workbench(folders).LiveWorld };
             bench.Desk = desk;
             bench.WorldDesk = desk;
             return (bench, desk, new HouseToolsTests.Client(bench));
@@ -120,7 +123,7 @@ namespace Chem.Tests
             Assert.That(peer.Line, Is.EqualTo(host.Line), "every peer refuses it with the same sentence");
             desk.Host.Step();
             desk.Peer.Step();
-            var plain = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
+            var plain = new Workbench(folders).LiveWorld;
             for (int i = 0; i < desk.Host.Tick; i++) plain.Step();
             Assert.That(State(desk.Host), Is.EqualTo(State(desk.Peer)), "host and peer agree");
             Assert.That(desk.Host.CellHash(), Is.EqualTo(plain.CellHash()), "the cells are as if nothing was asked");
@@ -153,7 +156,7 @@ namespace Chem.Tests
         [Test]
         public void SiteProblemOfAPatchThatDoesNotComposeIsASentence()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var world = bench.LiveWorld;
             string before = State(world);
             const string patch = "{ \"world\": { \"buildings\": { \"dock#1\": { \"at\": [10, 10], \"style\": \"plain\", \"wall\": { \"material\": \"wood\" } } } } }";
@@ -166,7 +169,7 @@ namespace Chem.Tests
             Assert.That(State(world), Is.EqualTo(before));
 
             // A peer asking the same of its own world hears the same sentence.
-            var peer = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
+            var peer = new Workbench(folders).LiveWorld;
             Assert.That(peer.SiteProblemOf(patch, "The draft"), Is.EqualTo(why));
             Assert.That(State(peer), Is.EqualTo(before));
         }

@@ -228,7 +228,7 @@ public class PerfScenario : MonoBehaviour
     // A screenshot is written at the end of the frame it was asked for.
     static IEnumerator Shot(string name)
     {
-        var file = Path.Combine(Application.persistentDataPath, $"perf-{name}.png");
+        var file = Path.Combine(ChemGrid.Folders.PlayerData, $"perf-{name}.png");
         ScreenCapture.CaptureScreenshot(file);
         Debug.Log($"PERF SHOT {file}");
         yield return null;
@@ -434,7 +434,7 @@ public class PerfScenario : MonoBehaviour
         var handles = new List<ProfilerRecorderHandle>();
         ProfilerRecorderHandle.GetAvailable(handles);
         var lines = handles.Select(ProfilerRecorderHandle.GetDescription).Select(d => $"{d.Category.Name}\t{d.Name}\t{d.UnitType}");
-        var file = Path.Combine(Application.persistentDataPath, "perf-markers.txt");
+        var file = Path.Combine(ChemGrid.Folders.PlayerData, "perf-markers.txt");
         File.WriteAllLines(file, lines.OrderBy(l => l, StringComparer.Ordinal));
         Debug.Log($"PERF MARKER LIST {file}");
     }

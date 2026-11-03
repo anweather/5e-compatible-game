@@ -173,7 +173,7 @@ public class PlaytestBot : MonoBehaviour
         offscreen = args.Contains("-playtest-offscreen");
         long.TryParse(Arg("-playtest-hand-focus"), NumberStyles.Integer, CultureInfo.InvariantCulture, out handFocus);
         mute = args.Contains("-playtest-mute");
-        outDir = Arg("-playtest-out") ?? Path.Combine(Application.persistentDataPath, "playtest", run.RunId);
+        outDir = Arg("-playtest-out") ?? Path.Combine(ChemGrid.Folders.PlayerData, "playtest", run.RunId);
         dice = new PlaytestRandom(run.Seed);
     }
 

@@ -15,6 +15,8 @@ using UnityEngine;
 // on the roof's edge, and eaves are the grid's last ring, drawn out to the row's overhang.
 // Every wall is cut into stretches, one per cell it stands on, and the meshes remember what each
 // stretch drew and which roof squares it holds up, so a burnt wall can leave a ruin (RowRuin).
+// A window's pane carries its lamp (the opening's "lamp", or its table row's look): the glass glows
+// at night (WindowPanes), and remembers its stretch so a burnt or fallen wall puts it out.
 public static class RowMesher
 {
     const float HalfCell = 0.75f, Step = 0.375f, FloorSkirt = 0.5f, DoorDepth = 0.05f, PaneDepth = 0.08f, FlatRise = 0.04f;
@@ -44,6 +46,8 @@ public static class RowMesher
     {
         public Mesh body, roof;
         public WindowPanes.Pane[] panes;
+        /// <summary>The stretch each pane stands in, by pane.</summary>
+        public Stretch[] paneStretches;
         public Stretch[] stretches;
         /// <summary>The top of each chimney, for its smoke.</summary>
         public Vector3[] chimneys;
@@ -104,7 +108,7 @@ public static class RowMesher
         // A colour's alpha is glow to VillageLit: with theirs at 1, whole houses shone all night and pulsed.
         var body = new MeshKit { Glows = false };
         var roof = new MeshKit { Glows = false };
-        var panes = new List<WindowPanes.Pane>();
+        var panes = new List<(WindowPanes.Pane pane, Stretch on)>();
         float floor = (float?)row["floor"]?["height"] ?? 0f;
         float wallTop = 0f;
         var walls = Walls(row, joins, tables, floor);
@@ -123,7 +127,7 @@ public static class RowMesher
                 ridge = Mathf.Max(ridge, RoofOf(roof, body, (JObject)r.Value, joins, walls, wallTop, tables));
         var chimneys = new List<Vector3>();
         DrawDetails(body, row, walls, ridge, chimneys);
-        return new Result { body = body.ToMesh("Row body"), roof = roof.ToMesh("Row roof"), panes = panes.ToArray(), stretches = walls.SelectMany(w => w.Stretches).ToArray(), chimneys = chimneys.ToArray() };
+        return new Result { body = body.ToMesh("Row body"), roof = roof.ToMesh("Row roof"), panes = panes.Select(p => p.pane).ToArray(), paneStretches = panes.Select(p => p.on).ToArray(), stretches = walls.SelectMany(w => w.Stretches).ToArray(), chimneys = chimneys.ToArray() };
     }
 
     static float ParapetOver(JObject row) =>
@@ -233,7 +237,7 @@ public static class RowMesher
         return color;
     }
 
-    static void DrawWall(MeshKit kit, Wall w, Tables tables, List<WindowPanes.Pane> panes)
+    static void DrawWall(MeshKit kit, Wall w, Tables tables, List<(WindowPanes.Pane pane, Stretch on)> panes)
     {
         float cursor = -w.Past0, end = w.Length + w.Past1, top = w.Height;
         var openings = (w.Openings ?? new JArray()).OfType<JObject>().Select(o => Hole(o, tables)).OrderBy(h => h.from).ToList();
@@ -254,7 +258,7 @@ public static class RowMesher
     }
 
     // A stretch's share of the wall, its holes' fillings, and what's left of it when it falls.
-    static void DrawStretch(MeshKit kit, Wall w, Stretch s, List<(float u0, float u1, float y0, float y1)> pieces, List<HoleShape> holes, List<WindowPanes.Pane> panes)
+    static void DrawStretch(MeshKit kit, Wall w, Stretch s, List<(float u0, float u1, float y0, float y1)> pieces, List<HoleShape> holes, List<(WindowPanes.Pane pane, Stretch on)> panes)
     {
         s.Whole.Add(Record(kit, () =>
         {
@@ -295,6 +299,7 @@ public static class RowMesher
     {
         public float from, to, sill, height;
         public bool round;
+        public Color lamp;
         public string kind;
         public JObject row;
     }
@@ -314,10 +319,15 @@ public static class RowMesher
             sill = (float?)look?["sill"] ?? 0f,
             height = (float?)look?["height"] ?? 2.1f,
             round = (string)o["shape"] == "round",
+            lamp = LampOf(o["lamp"] ?? look?["lamp"]),
             kind = kind,
             row = o,
         };
     }
+
+    // A lamp's colour ("#rrggbb"), or clear for "off" or none.
+    static Color LampOf(JToken lamp) =>
+        (string)lamp is { } hex && hex != Chem.BuildingsShown.LampOff && ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.clear;
 
     // A stretch of wall from u0 to u1 along it, y0 to y1 up it, as a box in its thickness.
     static void Piece(MeshKit kit, Wall w, float u0, float u1, float y0, float y1, Color color)
@@ -338,7 +348,7 @@ public static class RowMesher
     }
 
     // What fills a stretch's share of a hole: a door's panel or a window's pane; an arch is open.
-    static void Infill(MeshKit kit, Wall w, HoleShape h, float from, float to, Stretch s, List<WindowPanes.Pane> panes)
+    static void Infill(MeshKit kit, Wall w, HoleShape h, float from, float to, Stretch s, List<(WindowPanes.Pane pane, Stretch on)> panes)
     {
         if (h.kind == "arch") return;
         float mid = (from + to) / 2f;
@@ -346,7 +356,7 @@ public static class RowMesher
         {
             var at = w.At(mid, PaneDepth, w.Bottom + h.sill + h.height / 2f);
             var along = new Vector3(w.Along.x, 0f, w.Along.y) * (to - from) / 2f;
-            panes.Add(new WindowPanes.Pane { at = at, along = along, up = Vector3.up * h.height / 2f, facing = -new Vector3(w.Right.x, 0f, w.Right.y) });
+            panes.Add((new WindowPanes.Pane { at = at, along = along, up = Vector3.up * h.height / 2f, facing = -new Vector3(w.Right.x, 0f, w.Right.y), lamp = h.lamp }, s));
             return;
         }
         var color = Finished(h.row["finish"], DoorColor);
