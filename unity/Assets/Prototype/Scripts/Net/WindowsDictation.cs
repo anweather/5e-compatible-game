@@ -16,16 +16,20 @@ using UnityEngine.Windows.Speech;
 // the main thread for the same reason.
 // Dictation takes a moment to start: until then the state says so, and a Stop waits for it, as a
 // recogniser stopped while starting has heard nothing. Unity's Microphone reads the level beside
-// it, Windows sharing the device; -voice-no-meter leaves that out.
+// it, Windows sharing the device; -voice-no-meter leaves that out. A Windows setting that's off is
+// said before a hold starts (WindowsSpeechSettings), and a hold that heard sound but got no words
+// back says so, apart from one that heard nothing (#58).
 public sealed class WindowsDictation : ISpeech
 {
     // SPERR_SPEECH_PRIVACY_POLICY_NOT_ACCEPTED: Windows' online speech recognition setting is off.
     const int SettingOff = unchecked((int)0x80045509);
-    const string TurnItOn = "Voice needs Windows' online speech recognition: turn it on in Settings > Privacy & security > Speech.";
     const string StillBusy = "Windows dictation is still busy with the last try. Give it a moment.";
     const string NoAnswer = "Windows dictation didn't answer, so nothing came through. Try again, or type.";
+    const string NoWordsBack = "Windows' speech service got sound from the microphone but sent no words back. Try again, or type.";
     const float SilenceSeconds = 60f, MostStopSeconds = 4f;
     const int MeterRate = 16000, MeterSeconds = 1, MeterWindow = 800;
+    /// <summary>A peak over this is sound, not a quiet room: Andrew talking peaked at 0.059, his room at 0.001.</summary>
+    public const float HeardSound = 0.02f;
 
     /// <summary>Whether the level meter runs beside dictation.</summary>
     public static bool Metered { get; set; } = !Environment.GetCommandLineArgs().Contains("-voice-no-meter");
@@ -59,6 +63,15 @@ public sealed class WindowsDictation : ISpeech
         stoppedAt = -1f;
         finished = false;
         VoiceTrace.Line($"microphones: {string.Join(", ", Microphone.devices)}");
+        var settings = WindowsSpeechSettings.Read();
+        VoiceTrace.Line($"windows: {settings}");
+        string off = WindowsSpeechSettings.Problem(settings);
+        if (off != null)
+        {
+            finished = true; // nothing was started
+            Fail(off);
+            return;
+        }
         deviceName = Task.Run(WindowsCaptureDevice.Default);
         try
         {
@@ -113,7 +126,7 @@ public sealed class WindowsDictation : ISpeech
             if (Time.unscaledTime - stoppedAt > MostStopSeconds)
             {
                 VoiceTrace.Line($"no DictationComplete in {MostStopSeconds} s: ending the hold");
-                Fail(NoAnswer);
+                Fail(Metered && peak >= HeardSound ? NoWordsBack : NoAnswer);
             }
         }
         if (holding) ReadMeter();
@@ -170,7 +183,7 @@ public sealed class WindowsDictation : ISpeech
     {
         VoiceTrace.Line($"error {result:X8}: {error}");
         Debug.LogWarning($"Voice: {error} ({result:X8})");
-        Fail(result == SettingOff ? TurnItOn : "Windows dictation failed: " + error);
+        Fail(result == SettingOff ? WindowsSpeechSettings.OnlineSpeechOff : "Windows dictation failed: " + error);
     }
 
     void Fail(string why)

@@ -6,10 +6,11 @@ using UnityEngine;
 
 // The probe's dictation scenario: the real Windows recogniser on the real default microphone, held
 // and let go a few times with the meter on and off. A room with nobody talking still shows whether a
-// hold ends and whether the next press stops the game. Real words need a real voice in the room.
+// hold ends and whether the next press stops the game. Real words need a real voice in the room:
+// the player's -voice-check (VoiceCheck), which this runs short, with no one talking.
 public class DictationProbe : ProbeScenario
 {
-    const float HoldSeconds = 3f, MostSeconds = 2f, Recover = 2f, MostPressMs = 50f, FirstPressMs = 600f, MostEnd = 12f;
+    const float HoldSeconds = 3f, MostSeconds = 2f, Recover = 2f, MostPressMs = 50f, FirstPressMs = 600f, MostEnd = 12f, CheckSeconds = 2f;
     const int Holds = 3;
 
     readonly List<string> traces = new();
@@ -21,6 +22,13 @@ public class DictationProbe : ProbeScenario
         yield return Series("meter", true);
         yield return Series("no_meter", false);
         yield return LeftUnfinished();
+        var settings = WindowsSpeechSettings.Read();
+        Check("windows_lets_voice_in", WindowsSpeechSettings.Problem(settings) == null, settings.ToString());
+        yield return Wait(Recover);
+        // The real-words check (-voice-check), short and with nobody talking: every pass must end.
+        var passes = new List<VoiceCheck.Pass>();
+        yield return VoiceCheck.Run(CheckSeconds, passes);
+        Check("voice_check_passes_all_end", passes.Count == 3 && passes.All(p => p.Done), string.Join(" | ", passes));
         Application.logMessageReceived -= Note;
         Check("trace", true, string.Join(" | ", traces));
 #else

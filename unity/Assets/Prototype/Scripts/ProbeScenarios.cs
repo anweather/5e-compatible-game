@@ -205,7 +205,7 @@ public static class ProbeScenarios
             "--model, --context bare and --also <args> change how claude starts, for that run only; --only <kind> sends one prompt, and --set <file> another set of prompts. Each prompt's world is kept beside its record for tools/chat-strict.mjs. " +
             "With --shots, replays the recorded patches and films them, spending nothing. --replay <folders> casts each run's recorded spell on the lake, spending nothing."),
         new Entry("dictation", typeof(DictationProbe), 240f,
-            "The real Windows recogniser on the real microphone, three holds with the level meter and three without: no press may stop the game, and every hold must end."),
+            "The real Windows recogniser on the real microphone, three holds with the level meter and three without: no press may stop the game, and every hold must end; no Windows setting voice needs is off; the player's -voice-check runs short and each of its passes ends."),
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
