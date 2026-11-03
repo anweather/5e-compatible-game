@@ -70,8 +70,8 @@ public class SleetStorm : MonoBehaviour
     // Downwind if the wind blows (the world's weather), else across the viewer's line of sight.
     static Vector3 DriftOf(Vector3 center, Vector3 viewer)
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
-        int windDir = grid != null && grid.World != null ? grid.World.WindDir : -1;
+        var world = ChemGrid.Current?.World;
+        int windDir = world != null ? world.WindDir : -1;
         if (windDir >= 0) return WeatherFx.Downwind(windDir);
         var ahead = center - viewer;
         ahead.y = 0f;

@@ -47,7 +47,7 @@ public class Village : MonoBehaviour
         if (sky == null && Time.unscaledTime >= nextSkyLookup)
         {
             sky = FindAnyObjectByType<SkyLight>();
-            grid = FindAnyObjectByType<ChemGrid>();
+            grid = ChemGrid.Current?.Grid;
             nextSkyLookup = Time.unscaledTime + 2f;
         }
         // Playing, the windows and door lamps light as the rules' daylight drops from bright

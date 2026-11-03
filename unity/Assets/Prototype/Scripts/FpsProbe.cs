@@ -77,7 +77,7 @@ public class FpsProbe : MonoBehaviour
     // the robes' stepping time a frame (all of them together) and the frame times.
     IEnumerator Cloth(int count)
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var wizard = WizardRig.FindLocal();
         if (grid == null || wizard == null) yield break;
         if (Camera.main.TryGetComponent<Unity.Cinemachine.CinemachineBrain>(out var brain)) brain.enabled = false;
@@ -130,7 +130,7 @@ public class FpsProbe : MonoBehaviour
     // cover a big fire too: a second line, "FPS PROBE fire".
     IEnumerator Wildfire()
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var wizard = WizardRig.FindLocal();
         var caster = wizard != null ? wizard.GetComponent<SpellCaster>() : null;
         if (grid == null || caster == null) yield break;

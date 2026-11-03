@@ -59,11 +59,11 @@ public class Vitals : MonoBehaviour
 
     void Start()
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
-        var wizard = grid != null && grid.World != null ? grid.World.Rules.Entity(EntityIds.Wizard) : null;
+        var rules = ChemGrid.Current?.Rules;
+        var wizard = rules?.Entity(EntityIds.Wizard);
         if (wizard != null) HealthMax = Mathf.Max(1, wizard.Hp);
-        Breath = new Breath(grid != null && grid.World != null ? grid.World.Rules.Sim.Breath : null, sides => Random.Range(1, sides + 1));
-        down = new Downed(grid != null && grid.World != null ? grid.World.Rules.Sim.Downed : null);
+        Breath = new Breath(rules?.Sim.Breath, sides => Random.Range(1, sides + 1));
+        down = new Downed(rules?.Sim.Downed);
         Health = HealthMax;
     }
 

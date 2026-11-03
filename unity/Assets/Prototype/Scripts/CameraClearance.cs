@@ -44,7 +44,7 @@ public class CameraClearance : CinemachineExtension
     // cells, so the lens keeps over the highest of them), or far below off the land.
     float GroundUnder(Vector3 at)
     {
-        if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
+        if (grid == null) grid = ChemGrid.Current?.Grid;
         if (grid == null || grid.World == null) return float.MinValue;
         var cell = grid.CellAt(at);
         float top = float.MinValue;

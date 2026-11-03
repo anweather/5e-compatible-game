@@ -92,7 +92,7 @@ public class DragonView : MonoBehaviour
 
     void Start()
     {
-        if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
+        if (grid == null) grid = ChemGrid.Current?.Grid;
         if (grid == null || model == null)
         {
             if (grid != null) Debug.LogWarning("DragonView has no model: rebuild the yard (Prototype > Build Chemistry Yard)");

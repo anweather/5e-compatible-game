@@ -97,10 +97,10 @@ public class NetCommandLine : MonoBehaviour
 
     static string Status()
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var world = ChemGrid.Current?.World;
         var chem = FindAnyObjectByType<NetChem>();
         int players = FindObjectsByType<NetWizard>(FindObjectsSortMode.None).Length;
-        string tick = grid != null && grid.World != null ? grid.World.Tick.ToString(CultureInfo.InvariantCulture) : "-";
+        string tick = world != null ? world.Tick.ToString(CultureInfo.InvariantCulture) : "-";
         bool desync = chem != null && chem.DesyncSeen;
         return $"NET STATUS: role={Role()} players={players} tick={tick} desync={desync}";
     }

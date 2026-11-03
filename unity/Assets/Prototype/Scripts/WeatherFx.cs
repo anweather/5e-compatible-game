@@ -46,7 +46,7 @@ public class WeatherFx : MonoBehaviour
 
     void Start()
     {
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         skyLight = GetComponent<SkyLight>();
         clouds = GetComponent<CloudSky>();
         if (rainMaterial != null) rain = MakeRain();

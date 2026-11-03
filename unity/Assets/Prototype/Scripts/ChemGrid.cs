@@ -126,6 +126,7 @@ public partial class ChemGrid : MonoBehaviour
 
     void Awake()
     {
+        TakeCurrent();
         BuildWorld();
         LoadThings();
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.

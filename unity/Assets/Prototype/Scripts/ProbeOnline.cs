@@ -395,7 +395,7 @@ public class OnlineProbeClient : MonoBehaviour
         errors.Clear();
         var session = FindAnyObjectByType<NetSession>();
         session.Join("127.0.0.1");
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var net = grid.GetComponent<NetChem>();
         GameObject wizard = null;
         for (float waited = 0f; waited < 30f && wizard == null; waited += Time.unscaledDeltaTime)
@@ -445,7 +445,7 @@ public class OnlineProbeClient : MonoBehaviour
     // The host's dragon as this side has it, in its own core and its own sky: not run yet (needs the PC's `online`).
     static void WatchDragon(OnlineObservation seen)
     {
-        var world = FindAnyObjectByType<ChemGrid>().World;
+        var world = ChemGrid.Current.World;
         var sky = FindAnyObjectByType<SkyLight>();
         seen.dragonFlights = world.DragonFlights;
         seen.sawDragonWarning |= world.Dragon?.Phase == DragonPhase.Warning;

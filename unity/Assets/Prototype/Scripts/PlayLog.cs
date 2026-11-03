@@ -281,7 +281,7 @@ public class PlayLog : MonoBehaviour
 
     World WorldNow()
     {
-        if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
+        if (grid == null) grid = ChemGrid.Current?.Grid;
         return grid != null ? grid.World : null;
     }
 
