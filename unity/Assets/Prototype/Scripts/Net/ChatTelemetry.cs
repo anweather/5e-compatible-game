@@ -97,7 +97,7 @@ public class ChatTelemetry : MonoBehaviour
     {
         if (current != null) Flush();
         currentId = Guid.NewGuid().ToString("N").Substring(0, 12);
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         current = new ChatRecorder(prompt, source, Now, Who(grid, currentId));
         live = current;
         worstMs = 0f;

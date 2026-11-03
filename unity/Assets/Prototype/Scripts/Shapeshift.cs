@@ -75,7 +75,7 @@ public partial class Shapeshift : MonoBehaviour
     {
         get
         {
-            if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
+            if (grid == null) grid = ChemGrid.Current?.Grid;
             return grid;
         }
     }

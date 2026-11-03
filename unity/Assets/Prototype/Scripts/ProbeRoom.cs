@@ -185,7 +185,7 @@ public class RoomProbeClient : MonoBehaviour
 
     IEnumerator Do(RoomProbeAsk ask)
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var net = grid != null ? grid.GetComponent<NetChem>() : null;
         switch (ask.ask)
         {
@@ -273,7 +273,7 @@ public class RoomProbeClient : MonoBehaviour
     {
         var session = FindAnyObjectByType<NetSession>();
         session.Join("127.0.0.1");
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var net = grid.GetComponent<NetChem>();
         record = new RoomProbeRecord(grid, net);
         for (float t = 0f; t < 30f && !(net.Online && net.CaughtUp && grid.World.Tick > 0); t += Time.unscaledDeltaTime) yield return null;

@@ -245,6 +245,7 @@ makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
 | **Pure core + view** | The rules engine knows nothing about graphics; the view only reads its state and draws it | `Chemistry/` vs. `ChemGrid*`, `ValleyChemistry` |
 | **Rules as data + interpreter** | Behaviour is a table in JSON; one small engine reads the table | `rules/reactions.json` + `World.React.cs` |
 | **Command / intent** | A cast is a small message, `(spell, x, y, direction)`, not a change to the world. Solo it is applied when the projectile lands; online it is queued, stamped with a tick and applied everywhere at once. A rule switch travels the same way | `SpellCaster.Cast`, `NetChem.CastIntent`, `TickBatch` |
+| **One known instance** | The grid in play registers itself when it wakes and lets go when destroyed, so the view reaches it without searching the scene; most callers see only its world, rules and effect door | `ChemGrid.Current` (`ChemGrid.Current.cs`). Editor code and EditMode tests, where no Awake runs, still find a grid in an opened scene |
 | **Immutable value + observer** | The rules in force are a value replaced whole at a tick boundary; props and items listen for `ChemGrid.RulesChanged` and re-read their rows | `RuleSet`, `ChemGrid.Rules.cs`, `PhysicsProp.ReadRules` |
 | **Lockstep simulation** | Share the inputs, not the results; a deterministic world does the rest | `NetChem.cs`, seeded RNG in `World` |
 | **Dirty checking** | Each cell keeps a fingerprint of what's drawn and is only redrawn when it changes | `ChemGrid.View`, `ChemGrid.Key` |

@@ -100,7 +100,7 @@ public class EventLog : MonoBehaviour
     public static bool ResetYard()
     {
         if (OnlineReset.Summon()) return false;
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         if (grid == null || grid.valley == null || grid.World == null || !grid.World.HasStart) return RebuildYard();
         if (PlaytestBot.Active)
         {

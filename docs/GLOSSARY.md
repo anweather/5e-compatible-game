@@ -83,6 +83,14 @@ touch them.
   `ChemGrid.Folders`. With no player (the MCP server), a saved mod goes to
   `rules/mods`.
 
+**The grid in play**
+: `ChemGrid.Current`: the view's grid that woke last and isn't destroyed,
+  found without searching the scene. Its narrow face shows the `World`,
+  the `Rules` in force and `Request(EffectCommand)` (the `ChemEffects`
+  door); code that draws on the grid takes the grid itself from
+  `Current.Grid`. Null before the grid's Awake, after it's destroyed and
+  outside Play mode (EditMode tests, builders); a world reset keeps it.
+
 **The valley**
 : The hand-made start of the world: 9 × 9 chunks, 864 m, with the yard,
   the lake, the river, the falls, Hollowmere and the coast. Shaped by

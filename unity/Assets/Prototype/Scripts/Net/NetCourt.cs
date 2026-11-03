@@ -27,7 +27,7 @@ public class NetCourt : NetworkBehaviour
     {
         Live = this;
         if (!IsServer) return;
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         net = grid != null ? grid.GetComponent<NetChem>() : null;
         if (grid != null) grid.WorldReset += Nil;
     }
