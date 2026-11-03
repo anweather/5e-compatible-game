@@ -103,6 +103,10 @@ public static class ProbeScenarios
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
         new Entry("roomopen", typeof(RoomOpenProbe), 150f,
             "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, a late joiner gets them. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
+        new Entry("faunaresize", typeof(FaunaResizeProbe), 150f,
+            "set_species deer scale 3 through the rules MCP in an Open room (#80), this Editor hosting and the virtual player joined: each side puts the same three deer by its wizard. " +
+            "Checks: the same three scales on both peers before, three times them on both once the mod is on, and back once it's reverted; every deer out on each side at its row's size each time; " +
+            "pace one for one at 0.35 and 1.25 and 1.5 at 3; checksums equal, no client errors. Metrics: pace_at_3 (how much a 3× animal's speed and flee distance grow). With --shots, a film of the three deer from the host's side.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("modthing", typeof(ModThingProbe), 90f,
@@ -233,6 +237,10 @@ public static class ProbeScenarios
             "through the room over Hollowmere's square, quiet and then after a minute of his meteor mod's shower. Checks: ChemGrid.Render a frame with the looks on " +
             "within 1 ms or 20% of the stretches with them off, quiet and after the shower; the shower costs more than quiet; the cells' water drawn purple; no " +
             "console errors. Metrics: each stretch's view markers, frame and water counts, a frame."),
+        new Entry("showerstorm", typeof(ShowerStormProbe), 420f,
+            "The view's cost after a meteor shower and through the storm that follows (#70), as Andrew's evening went: over Hollowmere's square, quiet, then a minute of his " +
+            "meteor mod's shower, then a storm for three minutes, the camera still. Logs each stretch's markers, tick stages and view counts a frame (PROBE WATERLOOK lines); " +
+            "checks that the storm came and that redrawn water and slick tiles keep their outline's noise (under 2 points a tile cell). Metrics: each stretch's view markers, frame and water counts, a frame."),
         new Entry("looksmod", typeof(LooksModProbe), 120f,
             "The view draws from the rules in force (docs/RULES_MCP.md, \"Looks\"): a Fireball, the Big fireball mod switched on mid-game, " +
             "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +

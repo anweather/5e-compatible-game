@@ -58,7 +58,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - **0.1.11 waits, no rush** (Andrew, 2026-11-02). Draft notes: `docs/handoffs/release-0.1.11-notes.md`. They promise voice: fix #58 or cut that line. Before it ships: version bump, the saved-mods warning (#63).
 - **Play-test fixes (Andrew: fix them all; issues #70 to #81).** On dev: `creature-scale`, `fauna-rows`, `dragon-tools` (u2), `mod-exception`, `voice-hears` (PC), `place-core` and `world-lay` (u2 merged these itself; the PC compiled dev clean after). #72 closed. Design calls J-067.
-  - **DesktopUnity:** `lit-windows` and `place-view` landed (#71, #74, #75 closed). #70 measured; gates and the perf doc next.
+  - **DesktopUnity:** `lit-windows` and `place-view` landed (#71, #74, #75 closed). `water-perf` landed (about 2.4 ms faster); now `water-perf-2`.
   - **u2 (Max):** `triggers-core` (#76) pushed (b378165e): compiles, but solo triggers with no `who` never fire; u2 fixing it (`triggers-fix.md`).
   - **Mac:** resting; next brief cleanup item 5.
   - Open: #58 needs Andrew's `-voice-check` (on the board); #73 bodies from parts and #60 water surface are designed (`docs/design/bodies-and-surfaces.md`), not built; #80 animals out don't resize; #77 dragon loop; #79, #78, #81.
@@ -73,7 +73,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 1. Land what's in flight; then a new test player for Andrew with the play-test fixes and the folders change.
 2. The cleanup, from item 5 down.
-3. `triggers-view`, then bodies from parts (#73) and building on water (#60), per the designs.
+3. Made-up bodies (#73, Andrew's pick, 2026-11-03): `fauna-read`, `graft`, `graft-coats` (handoff). Then `triggers-view`, building on water (#60).
 4. Temporary materials and products as data (`docs/design/primitives.md`); gaits by rule (`builders.md`).
 5. 0.1.11, when Andrew says.
 - Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).

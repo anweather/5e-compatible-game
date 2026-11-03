@@ -268,7 +268,7 @@ public partial class ValleyFauna
         }
         s.YawRate = Wrap(yaw - s.Yaw) / math.max(dt, 1e-4f);
         s.Yaw = Wrap(yaw);
-        s.Speed = b.WalkSpeed * s.Scale * (1f + CreatureBody.Trait(s.Individual, 5) * 0.08f);
+        s.Speed = b.WalkSpeed * CreatureBrain.Pace(s.Scale) * (1f + CreatureBody.Trait(s.Individual, 5) * 0.08f);
         return false;
     }
 

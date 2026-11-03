@@ -95,6 +95,7 @@ public sealed class CellWaterMesh
         calmness = (x, y) => grid.World.InBounds(x, y) && calmCell[grid.World.Idx(x, y)] ? 0f : 1f;
         flowX = (x, y) => FlowOf(x, y).x;
         flowY = (x, y) => FlowOf(x, y).y;
+        kept = new KeptCells(this);
         root = new GameObject("Water and ice");
         root.transform.SetParent(grid.transform, false);
     }
@@ -119,7 +120,7 @@ public sealed class CellWaterMesh
         wetCell[key] = isWet;
         outline |= isWet && c.Frozen ? ice.Add(key) : ice.Remove(key);
         if (PerfCounts.On) CountChange(c, outline, was != level);
-        if (outline) MarkAround(x, y);
+        if (outline) MarkAround(x, y, "water.mark.outline");
         stale |= outline || was != level;
     }
 
@@ -141,8 +142,10 @@ public sealed class CellWaterMesh
     {
         flowPass++;
         lastFlowX = float.NaN;
+        PerfCounts.Add("water.ground_changed");
+        if (PerfCounts.On && !AnyWetNear(new RectInt(x - 1, y - 1, 3, 3))) PerfCounts.Add("water.ground_changed_no_water_near");
         if (wet.Count == 0) return;
-        MarkAround(x, y);
+        MarkAround(x, y, "water.mark.ground");
         stale = true;
     }
 
@@ -159,12 +162,13 @@ public sealed class CellWaterMesh
 
     // A cell's change reaches two cells round it (its outline reads one ring out, a bank's another):
     // the tiles under that square are redrawn.
-    void MarkAround(int x, int y)
+    void MarkAround(int x, int y, string why)
     {
         int tx0 = Mathf.Max(0, (x - 2) / TileCells), tx1 = Mathf.Min(tilesX - 1, (x + 2) / TileCells);
         int ty0 = Mathf.Max(0, (y - 2) / TileCells), ty1 = (y + 2) / TileCells;
         for (int ty = ty0; ty <= ty1; ty++)
-            for (int tx = tx0; tx <= tx1; tx++) dirtyTiles.Add(ty * tilesX + tx);
+            for (int tx = tx0; tx <= tx1; tx++)
+                if (dirtyTiles.Add(ty * tilesX + tx) && PerfCounts.On) PerfCounts.Add(why);
     }
 
     /// <summary>The water surface drawn at a wet cell after the last Rebuild, or <paramref name="fallback"/>.</summary>
@@ -194,7 +198,7 @@ public sealed class CellWaterMesh
     {
         if (dirtyTiles.Count == 0 && !stale && step == LevelStep.Resting) return;
         PerfCounts.Add("water.rebuilds");
-        if (stale || step != LevelStep.Resting)
+        if (step != LevelStep.Resting || (stale && Time.frameCount - restingSince >= RestFrames))
             using (RecomputeMarker.Auto()) Recompute(levelOver);
         PerfCounts.Peak("water.dirty_tiles", dirtyTiles.Count);
         if (dirtyTiles.Count == 0 || busy) return;
@@ -232,6 +236,11 @@ public sealed class CellWaterMesh
     const int CellsAStride = 256, ExactLevelStrides = 16;
     readonly ChemGrid.FrameBudget levelBudget = new(LevelBudgetMs, ExactLevelStrides);
     readonly System.Func<bool> levelOver;
+    // Frames between the end of one pass and the start of the next. In rain or by a fire some level
+    // moves every frame, so passes ran back to back, 2 ms every frame (#70); a level drawn this
+    // much later than it moved doesn't show.
+    const int RestFrames = 8;
+    int restingSince = int.MinValue / 2;
 
     // The levels of every body of water and the banks round them, as far as the frame's budget goes;
     // where a level moved, far from the cell that changed, those tiles are redrawn too.
@@ -283,8 +292,9 @@ public sealed class CellWaterMesh
         foreach (int key in nextTopped)
             if (!Mathf.Approximately(tops[key], nextTops[key]))
             {
-                MarkAround(key % world.W, key / world.W);
+                MarkAround(key % world.W, key / world.W, "water.mark.top");
                 PerfCounts.Add("water.tops_moved");
+                if (PerfCounts.On && Mathf.Abs(tops[key] - nextTops[key]) < 0.02f) PerfCounts.Add("water.tops_moved_under_2cm");
             }
         foreach (int key in topped) tops[key] = float.NaN;
         foreach (int key in nextTopped) tops[key] = nextTops[key];
@@ -344,7 +354,11 @@ public sealed class CellWaterMesh
         if (box.width <= 0 || box.height <= 0) return;
         if (!tiles.TryGetValue(tile, out var t))
         {
-            if (!AnyWetNear(box)) return;
+            if (!AnyWetNear(box))
+            {
+                PerfCounts.Add("water.tiles_none");
+                return;
+            }
             t = (new ContourSurface(grid, "Water", waterMaterial, Outline, RippleMetres, tiled: true),
                  new ContourSurface(grid, "Ice", iceMaterial, Outline, RippleMetres, tiled: true));
             t.water.go.transform.SetParent(root.transform, true);
@@ -537,6 +551,7 @@ public sealed class CellWaterMesh
         nextBanks.Clear();
         nextCalm.Clear();
         NextStep(LevelStep.Resting);
+        restingSince = Time.frameCount;
     }
 
     // Sets the marks to the new list. A cell that gained or lost one moves the outline round it,
@@ -557,7 +572,7 @@ public sealed class CellWaterMesh
             marks[key] = false;
             changedMarks.Add(key);
         }
-        foreach (int key in changedMarks) MarkAround(key % world.W, key / world.W);
+        foreach (int key in changedMarks) MarkAround(key % world.W, key / world.W, "water.mark.bank");
         goneMarks.Clear();
         changedMarks.Clear();
     }
@@ -566,13 +581,148 @@ public sealed class CellWaterMesh
 
     static readonly (int dx, int dy)[] Ring = { (-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1) };
 
+    /// <summary>
+    /// Whether a tile's points are drawn from its cells read once (KeptCells) rather than through
+    /// delegates per point and cell: the same vertices, cheaper (#70). Off for a before run.
+    /// </summary>
+    public static bool KeptPoints { get; set; } = true;
+
+    /// <summary>For the probe: draws each tile both ways, counting whether they came out the same bit for bit.</summary>
+    public static bool CheckKeptPoints { get; set; }
+
+    /// <summary>
+    /// The tiles drawn both ways under CheckKeptPoints, those that came out different, their vertices,
+    /// and the time each way spent over their points (ms).
+    /// </summary>
+    public static (int drawn, int different, long vertices, double keptMs, double perPointMs) KeptPointsChecked =>
+        (keptChecked, keptDifferent, keptVertices, keptTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency,
+         perPointTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+
+    static int keptChecked, keptDifferent;
+    static long keptVertices, keptTicks, perPointTicks;
+    readonly KeptCells kept;
+    ContourSurface checkSurface;
+
     // The water (or the ice) of one tile's wet cells: their outline, each point at the blended top
     // of the wet cells around it, fading out toward an edge on open ground.
     void Draw(ContourSurface surface, RectInt box, bool frozen)
     {
         FindRocksNear(box);
+        if (!KeptPoints)
+        {
+            DrawPerPoint(surface, box, frozen);
+            return;
+        }
+        kept.Read(box, frozen);
+        surface.Build(box, frozen ? iceValue : waterValue, kept, calmness);
+        if (!CheckKeptPoints) return;
+        checkSurface ??= new ContourSurface(grid, "Water check", waterMaterial, Outline, RippleMetres, tiled: true);
+        checkSurface.go.SetActive(false);
+        DrawPerPoint(checkSurface, box, frozen);
+        keptChecked++;
+        keptVertices += surface.Vertices;
+        keptTicks += surface.PointsTicks;
+        perPointTicks += checkSurface.PointsTicks;
+        if (!surface.SamePointsAs(checkSurface)) keptDifferent++;
+    }
+
+    // The same, through the delegates: each point asks after each cell round it.
+    void DrawPerPoint(ContourSurface surface, RectInt box, bool frozen) =>
         surface.Build(box, frozen ? iceValue : waterValue, frozen ? iceHeight : waterHeight, frozen ? iceColor : waterColor, calmness,
             frozen ? null : (gx, gy, v) => FlowAndFoam(surface, gx, gy, v));
+
+    /// <summary>
+    /// A tile's cells as its points read them, read once a draw: each cell's top (NaN for none),
+    /// whether it's the river, and its flow (read when first asked, as FlowOf would be). A point
+    /// blends them as the delegates do, the same sums in the same order (ContourSurface.BlendKept).
+    /// </summary>
+    sealed class KeptCells : ContourSurface.IPoints
+    {
+        // The box and the ring round it, and two past its far side: a tile's points run from the
+        // centre of its first cell to the centre of the cell past its last, blending the cells round each.
+        const int Side = TileCells + 4;
+        readonly CellWaterMesh owner;
+        readonly float[] tops = new float[Side * Side], flowX = new float[Side * Side], flowY = new float[Side * Side];
+        readonly bool[] river = new bool[Side * Side];
+        readonly int[] flowRead = new int[Side * Side];
+        int x0, y0, cols, rows, read;
+        bool frozen;
+        Vector3 origin;
+        float cellSize;
+
+        public KeptCells(CellWaterMesh owner) => this.owner = owner;
+
+        public bool Flows => !frozen;
+
+        public void Read(RectInt box, bool frozen)
+        {
+            this.frozen = frozen;
+            var grid = owner.grid;
+            var world = grid.World;
+            origin = grid.CellCenter(0, 0);
+            cellSize = grid.cellSize;
+            x0 = box.xMin - 1;
+            y0 = box.yMin - 1;
+            cols = Mathf.Min(Side, box.width + 4);
+            rows = Mathf.Min(Side, box.height + 4);
+            read++;
+            for (int b = 0; b < rows; b++)
+                for (int a = 0; a < cols; a++)
+                {
+                    int x = x0 + a, y = y0 + b, n = b * cols + a;
+                    tops[n] = owner.TopOf(x, y, frozen) ?? float.NaN;
+                    var c = world.InBounds(x, y) ? world.At(x, y) : null;
+                    river[n] = c != null && c.T == TerrainIds.River;
+                }
+        }
+
+        public void Point(float gx, float gy, float value, out float height, out Color color, out Vector3 flow)
+        {
+            bool inside = ContourSurface.InKept(x0, y0, cols, rows, gx, gy);
+            // The colour asks after the flow only inside the outline's iso value (RunoffOpacity).
+            bool runoff = value >= Outline.Iso, flows = !frozen || runoff;
+            Vector2 blended;
+            if (inside)
+            {
+                if (flows) ReadFlows(gx, gy);
+                height = ContourSurface.BlendKept(tops, (x0, y0, cols), (gx, gy), 0f, flows ? (flowX, flowY) : (null, null), out blended);
+            }
+            else
+            {
+                // Off the kept cells (never, for a tile's own points), the delegates.
+                height = frozen ? owner.iceHeight(gx, gy) : owner.waterHeight(gx, gy);
+                blended = flows ? owner.BlendedFlow(gx, gy) : Vector2.zero;
+            }
+            color = new Color(1f, 1f, 1f, Mathf.Max(Opacity(value, frozen), runoff && blended.sqrMagnitude > 0.04f ? 0.7f : 0f));
+            if (frozen)
+            {
+                flow = Vector3.zero;
+                return;
+            }
+            flow = owner.Foamed(blended, ContourSurface.Flat(origin, cellSize, gx, gy), OnRiver(gx, gy), value);
+        }
+
+        bool OnRiver(float gx, float gy)
+        {
+            int cx = (int)gx - x0, cy = (int)gy - y0;
+            return cx >= 0 && cy >= 0 && cx < cols && cy < rows ? river[cy * cols + cx] : owner.OnRiver(gx, gy);
+        }
+
+        // The flows of the four kept cells round a point, read if they aren't yet.
+        void ReadFlows(float gx, float gy)
+        {
+            int x = Mathf.FloorToInt(gx - 0.5f) - x0, y = Mathf.FloorToInt(gy - 0.5f) - y0;
+            for (int dy = 0; dy <= 1; dy++)
+                for (int dx = 0; dx <= 1; dx++)
+                {
+                    int n = (y + dy) * cols + x + dx;
+                    if (flowRead[n] == read) continue;
+                    var f = owner.FlowOf(x0 + x + dx, y0 + y + dy);
+                    flowX[n] = f.x;
+                    flowY[n] = f.y;
+                    flowRead[n] = read;
+                }
+        }
     }
 
     readonly System.Func<int, int, float> waterValue, iceValue, calmness;
@@ -589,7 +739,10 @@ public sealed class CellWaterMesh
     readonly int[] flowRead;
     int flowPass = 1;
     RockWake[] rocks;
-    readonly List<RockWake> rocksNear = new();
+    // The rocks near the tile being drawn, read once a draw: where each stands, the way its wake runs
+    // (normalised, on the ground) and its radius. Asking each rock's transform at every point cost more
+    // than the rest of the point.
+    readonly List<(Vector3 at, Vector2 down, float radius)> rocksNear = new();
     // A rock's wake reaches this many of its radii (FlowAndFoam).
     const float WakeRadii = 7f;
     // Runoff: metres a second per unit of slope, and its fastest.
@@ -601,6 +754,7 @@ public sealed class CellWaterMesh
         if (!world.InBounds(x, y)) return Vector2.zero;
         int key = world.Idx(x, y);
         if (flowRead[key] == flowPass) return flowOf[key];
+        PerfCounts.Add("water.flow_misses");
         var c = world.Cells[key];
         var at = grid.CellCenter(x, y);
         at.y = grid.GroundTop(x, y, c);
@@ -649,29 +803,38 @@ public sealed class CellWaterMesh
             if (rock == null) continue;
             var at = rock.transform.position;
             float reach = half + rock.radius * WakeRadii;
-            if (Mathf.Abs(at.x - middle.x) <= reach && Mathf.Abs(at.z - middle.z) <= reach) rocksNear.Add(rock);
+            if (Mathf.Abs(at.x - middle.x) <= reach && Mathf.Abs(at.z - middle.z) <= reach)
+                rocksNear.Add((at, new Vector2(rock.downstream.x, rock.downstream.z).normalized, rock.radius));
         }
+        PerfCounts.Add("water.rocks_near", rocksNear.Count);
     }
 
     // A point's flow, and its foam: where moving water meets its edge (a bank, the end of a runoff)
     // and round the river's rocks, trailing off downstream.
-    Vector3 FlowAndFoam(ContourSurface surface, float gx, float gy, float value)
+    Vector3 FlowAndFoam(ContourSurface surface, float gx, float gy, float value) =>
+        Foamed(BlendedFlow(gx, gy), surface.Flat(gx, gy), OnRiver(gx, gy), value);
+
+    // Whether a point (grid units) is over a river cell.
+    bool OnRiver(float gx, float gy)
     {
-        var flow = BlendedFlow(gx, gy);
+        var c = grid.World.InBounds((int)gx, (int)gy) ? grid.World.At((int)gx, (int)gy) : null;
+        return c != null && c.T == TerrainIds.River;
+    }
+
+    // A point's blended flow with its foam, the point at p on the ground plane.
+    Vector3 Foamed(Vector2 flow, Vector3 p, bool onRiver, float value)
+    {
         float speed = flow.magnitude;
         float edge = 1f - Mathf.InverseLerp(Outline.Iso, Outline.Iso + 0.35f, value);
         // Banks foam where the river runs; a runoff is all edge, and only flecks.
-        var c = grid.World.InBounds((int)gx, (int)gy) ? grid.World.At((int)gx, (int)gy) : null;
-        float foam = edge * Mathf.Clamp01(speed / 1.2f) * (c != null && c.T == TerrainIds.River ? 1f : 0.15f);
-        var p = surface.Flat(gx, gy);
-        foreach (var rock in rocksNear)
+        float foam = edge * Mathf.Clamp01(speed / 1.2f) * (onRiver ? 1f : 0.15f);
+        foreach (var (at, down, radius) in rocksNear)
         {
-            var d = new Vector2(p.x - rock.transform.position.x, p.z - rock.transform.position.z);
-            var down = new Vector2(rock.downstream.x, rock.downstream.z).normalized;
+            var d = new Vector2(p.x - at.x, p.z - at.z);
             float along = Vector2.Dot(d, down), across = Mathf.Abs(d.x * down.y - d.y * down.x);
             // Round its upstream face, then a wake three times as long as it is wide.
             float reach = along > 0f ? new Vector2(along / 3f, across).magnitude : d.magnitude;
-            foam = Mathf.Max(foam, 1f - Mathf.InverseLerp(rock.radius * 0.8f, rock.radius * 2.2f, reach));
+            foam = Mathf.Max(foam, 1f - Mathf.InverseLerp(radius * 0.8f, radius * 2.2f, reach));
         }
         return new Vector3(flow.x, flow.y, foam);
     }
@@ -729,6 +892,7 @@ public sealed class CellWaterMesh
             t.ice.Destroy();
         }
         tiles.Clear();
+        checkSurface?.Destroy();
         Object.Destroy(waterMaterial);
         Object.Destroy(root);
     }

@@ -14,7 +14,7 @@ using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
 // (docs/perf/, the MacOSProfiling build in PrototypeBuild). Start the game with
-//   -fps-probe -perf-scenario <meadow|wildfire|forestload|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
+//   -fps-probe -perf-scenario <meadow|wildfire|forestload|showerstorm|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
 // and FpsProbe hands over to this instead of its showcase: PerfStage sets the
 // scene, it settles, every frame is measured for N seconds (30 by default, 20
 // for the wildfire), one "PERF RESULT" line of key=value pairs goes to the
@@ -38,10 +38,12 @@ using Debug = UnityEngine.Debug;
 // (the bot turns it on; compare a budget in work units with one in milliseconds);
 // -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
 // <file>, which lists what a -pso-trace file has that the shipped collection hasn't;
-// and -perf-water-check, which redraws the water tiles at the end and counts any that differ.
+// and -perf-water-check, which redraws the water tiles at the end and counts any that differ;
+// -perf-same-check draws every water tile both ways and paints every ground strip with its noise
+// kept and afresh, counting any that differ bit for bit (#70; doubles that work, so not for timing).
 // -perf-offscreen draws the camera into a 1080p texture of real play's colour and depth
 // formats: with no desktop session a camera bound for the window draws nothing, so frame
-// times mean nothing and no pipeline state is made.
+// times mean nothing and no pipeline state is made (with -perf-offscreen-4k, 3840x2160).
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -61,7 +63,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm" };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast" };
 
@@ -118,6 +120,7 @@ public class PerfScenario : MonoBehaviour
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
         if (Has("-perf-exact")) ChemGrid.ExactFrames = true;
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
+        if (Has("-perf-same-check")) CellWaterMesh.CheckKeptPoints = ValleyGround.CheckKeptNoise = true;
         yield return WaitToHost();
         grid = FindAnyObjectByType<ChemGrid>();
         wizard = WizardRig.FindLocal();
@@ -163,8 +166,10 @@ public class PerfScenario : MonoBehaviour
     static void DrawOffscreenIfAsked()
     {
         if (!Has("-perf-offscreen")) return;
-        Camera.main.targetTexture = new RenderTexture(OffscreenWide, OffscreenHigh, GraphicsFormat.B10G11R11_UFloatPack32, GraphicsFormat.D32_SFloat_S8_UInt);
-        Debug.Log($"PERF OFFSCREEN {OffscreenWide}x{OffscreenHigh}");
+        // -perf-offscreen-4k draws into 3840x2160, as Andrew's own screen is.
+        int scale = Has("-perf-offscreen-4k") ? 2 : 1;
+        Camera.main.targetTexture = new RenderTexture(OffscreenWide * scale, OffscreenHigh * scale, GraphicsFormat.B10G11R11_UFloatPack32, GraphicsFormat.D32_SFloat_S8_UInt);
+        Debug.Log($"PERF OFFSCREEN {OffscreenWide * scale}x{OffscreenHigh * scale}");
     }
 
     void ReadTimes()
@@ -364,6 +369,13 @@ public class PerfScenario : MonoBehaviour
         {
             var (tiles, different) = grid.CheckWaterTiles();
             Debug.Log($"PERF WATER CHECK tiles={tiles} different={different}");
+        }
+        if (Environment.GetCommandLineArgs().Contains("-perf-same-check"))
+        {
+            var (tiles, tilesDifferent, vertices, keptMs, perPointMs) = CellWaterMesh.KeptPointsChecked;
+            var (strips, stripsDifferent) = ValleyGround.KeptNoiseChecked;
+            Debug.Log($"PERF SAME CHECK water_tiles={tiles} different={tilesDifferent} vertices={vertices} points_kept_ms={keptMs.ToString("0.0", inv)} " +
+                $"points_delegates_ms={perPointMs.ToString("0.0", inv)} paint_strips={strips} different={stripsDifferent}");
         }
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
     }
