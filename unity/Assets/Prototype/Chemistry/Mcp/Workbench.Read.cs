@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, PartsTable, DragonTable, BuildingsTable, ThingsTable, LayTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, PartsTable, DragonTable, BuildingsTable, ThingsTable, LayTable, TriggersTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -54,6 +54,9 @@ namespace Chem.Mcp
                     break;
                 case ThingsTable:
                     lines.AddRange(ModThingLines());
+                    break;
+                case TriggersTable:
+                    lines.AddRange(TriggerLines());
                     break;
                 case LayTable:
                     lines.AddRange(OnWorld(w => w.Rules.ModLays.Select(l => FormattableString.Invariant($"{l.Terrain ?? l.Cover}#{l.Seed}: {l.Cells.Count} cells of {(l.Terrain != null ? "terrain" : "cover")} {l.Terrain ?? l.Cover}")).ToList()));
@@ -332,7 +335,7 @@ namespace Chem.Mcp
             if (t == "look" || t == "families") t = "looks";
             if (t == "species" || t == "animals" || t == "creatures") t = FaunaTable;
             if (t == "part" || t == "shapes") t = PartsTable;
-            if (t == "spell" || t == "cover" || t == "gas" || t == "element" || t == "group" || t == "critter" || t == "entity" || t == "item" || t == "machine")
+            if (t == "spell" || t == "cover" || t == "gas" || t == "element" || t == "group" || t == "critter" || t == "entity" || t == "item" || t == "machine" || t == "trigger")
                 t = Plural(t);
             if (!Tables.Contains(t)) throw new RulesToolException($"{table} isn't a table; the tables are {string.Join(", ", Tables)}.");
             return t;

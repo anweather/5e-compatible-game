@@ -725,6 +725,7 @@ namespace Chem
                 [ElementLooksKey] = get("elements.json", false) as JObject ?? new JObject(),
                 [FaunaTables.SpeciesKey] = get("fauna.json", false) as JObject ?? new JObject(),
                 [FaunaTables.PartsKey] = get("parts.json", false) as JObject ?? new JObject(),
+                [TriggersKey] = get("triggers.json", false) as JObject ?? new JObject(),
             };
         }
 
@@ -776,6 +777,7 @@ namespace Chem
             r.ParseBuildings(doc);
             r.ParseThings(doc);
             r.ParseLays(doc);
+            r.ParseTriggers(doc);
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {

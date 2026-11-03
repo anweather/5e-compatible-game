@@ -99,7 +99,12 @@ namespace Chem
         {
             var p = s.Place;
             if (p == null) return;
-            var area = p.Within >= 0 ? Placement.Around(x, y, p.Within) : cells;
+            PlaceOn(p, s.Name, p.Within >= 0 ? Placement.Around(x, y, p.Within) : cells);
+        }
+
+        // A place's Count cells picked over an area, by the world's seed, the tick and the actions run so far; each gets what's placed.
+        void PlaceOn(PlaceDef p, string name, List<(int x, int y)> area)
+        {
             int salt = unchecked((int)WorldHash.Hash4(unchecked((int)Seed), PlaceSalt, Tick, placeActions));
             placeActions++;
             var picks = Placement.Pick(area, p.Count, p.Spacing, PlaceOpen(p.Onto), unchecked((int)Seed), salt);
@@ -111,7 +116,7 @@ namespace Chem
                 else if (p.Cover != null) LayFresh(At(cx, cy), null, p.Cover);
             }
             if (picks.Count < p.Count)
-                AddLog(picks.Count == 0 ? $"{s.Name} finds no room" : $"{s.Name}: {picks.Count} of {p.Count} had room", LogKind.Info);
+                AddLog(picks.Count == 0 ? $"{name} finds no room" : $"{name}: {picks.Count} of {p.Count} had room", LogKind.Info);
         }
 
         void PlaceThing(PlaceDef p, int x, int y, int salt)
