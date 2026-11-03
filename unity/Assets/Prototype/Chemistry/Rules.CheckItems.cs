@@ -73,20 +73,6 @@ namespace Chem
                 Values(what, "breaks.spill.", spill, schema.SectionOf("spill"));
             }
 
-            /// <summary>A section's numbers and colours, each held to its field in the schema, in the schema's order.</summary>
-            void Values(string what, string path, JToken section, RuleSchema schema)
-            {
-                foreach (var f in schema.Fields)
-                {
-                    var v = section[f.Name];
-                    if (f.Type == RuleFieldType.Colour && v != null && !IsHexColor(v)) Errors.Add($"{what}: {path}{f.Name} must be #rrggbb");
-                    if (!f.Ranged) continue;
-                    bool missing = v == null || v.Type == JTokenType.Null;
-                    if (missing && f.Required) Errors.Add($"{what}: {path}{f.Name} must be a number {RangeWords(f.Min, f.Above, f.Max)}");
-                    else Range(v, $"{what}: {path}{f.Name}", f.Min, f.Above, f.Max);
-                }
-            }
-
             /// <summary>An optional sub-object: true if it is there; anything else there is an error.</summary>
             bool Section(JToken parent, string key, string what, out JObject section)
             {
@@ -99,21 +85,6 @@ namespace Chem
             /// <summary>"#rrggbb".</summary>
             static bool IsHexColor(JToken v) =>
                 v.Type == JTokenType.String && ((string)v).Length == 7 && ((string)v)[0] == '#' && ((string)v).Skip(1).All(Uri.IsHexDigit);
-
-            /// <summary>A number from <paramref name="min"/> (or above it), up to <paramref name="max"/>, when present.</summary>
-            void Range(JToken v, string what, double min, bool above = false, double max = double.MaxValue)
-            {
-                if (v == null || v.Type == JTokenType.Null) return;
-                double n = IsNumber(v) ? (double)v : double.NaN;
-                if (n >= min && (!above || n > min) && n <= max) return;
-                Errors.Add($"{what} must be a number {RangeWords(min, above, max)}");
-            }
-
-            static string RangeWords(double min, bool above, double max)
-            {
-                if (above) return $"above {min}";
-                return max < double.MaxValue ? $"from {min} to {max}" : $"from {min}";
-            }
         }
     }
 }
