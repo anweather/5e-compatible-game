@@ -230,30 +230,44 @@ namespace Chem
         /// </summary>
         public (int x, int y)? NearestFree(int x, int y)
         {
+            var built = BuiltIndexes();
+            for (int reach = 1; reach <= PushReach; reach++)
+            {
+                var best = NearestFreeAt(x, y, reach, built);
+                if (best != null) return best;
+            }
+            return null;
+        }
+
+        // The cells of every building standing now, by index (NearestFree's own, uncached, unlike BuiltCells).
+        HashSet<int> BuiltIndexes()
+        {
             var built = new HashSet<int>();
             foreach (var row in RowsUnder(Rules))
                 foreach (var c in BuildingRaster.Cells(row, Rules.Buildings))
                     if (InBounds(c.X, c.Y)) built.Add(Idx(c.X, c.Y));
-            for (int reach = 1; reach <= PushReach; reach++)
-            {
-                (int x, int y)? best = null;
-                long bestDistance = long.MaxValue;
-                for (int ny = y - reach; ny <= y + reach; ny++)
-                    for (int nx = x - reach; nx <= x + reach; nx++)
+            return built;
+        }
+
+        // The nearest free cell on the square ring this far out, north to south and west to east on ties; null if none.
+        (int x, int y)? NearestFreeAt(int x, int y, int reach, HashSet<int> built)
+        {
+            (int x, int y)? best = null;
+            long bestDistance = long.MaxValue;
+            for (int ny = y - reach; ny <= y + reach; ny++)
+                for (int nx = x - reach; nx <= x + reach; nx++)
+                {
+                    if (Math.Max(Math.Abs(nx - x), Math.Abs(ny - y)) != reach || !InBounds(nx, ny) || built.Contains(Idx(nx, ny))) continue;
+                    var c = At(nx, ny);
+                    if (IsBlocking(c) || c.Water > 0) continue;
+                    long d = (long)(nx - x) * (nx - x) + (long)(ny - y) * (ny - y);
+                    if (d < bestDistance)
                     {
-                        if (Math.Max(Math.Abs(nx - x), Math.Abs(ny - y)) != reach || !InBounds(nx, ny) || built.Contains(Idx(nx, ny))) continue;
-                        var c = At(nx, ny);
-                        if (IsBlocking(c) || c.Water > 0) continue;
-                        long d = (long)(nx - x) * (nx - x) + (long)(ny - y) * (ny - y);
-                        if (d < bestDistance)
-                        {
-                            bestDistance = d;
-                            best = (nx, ny);
-                        }
+                        bestDistance = d;
+                        best = (nx, ny);
                     }
-                if (best != null) return best;
-            }
-            return null;
+                }
+            return best;
         }
 
         // ---------- the site check, on every peer at the tick ----------

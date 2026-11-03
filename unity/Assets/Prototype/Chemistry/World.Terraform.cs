@@ -158,28 +158,42 @@ namespace Chem
             var ring = new List<int> { Idx(x, y) };
             while (units > 0 && ring.Count > 0)
             {
-                var next = new List<int>();
-                foreach (int i in ring)
-                    foreach (var (nx, ny, _) in ActiveNeighbours(i % W, i / W))
-                    {
-                        int k = Idx(nx, ny);
-                        var nc = Cells[k];
-                        if (seen.Add(k) && !IsBlocking(nc) && !(nc.Frozen && nc.Water > 0)) next.Add(k);
-                    }
-                for (bool moved = true; units > 0 && moved;)
-                {
-                    moved = false;
-                    foreach (int k in next)
-                    {
-                        if (units == 0) break;
-                        if (Cells[k].Water >= max) continue;
-                        Cells[k].Water++;
-                        units--;
-                        moved = true;
-                    }
-                }
+                var next = NextRing(ring, seen);
+                units = PourRound(next, units, max);
                 ring = next;
             }
+        }
+
+        // The open cells around a ring not yet seen, in N, E, S, W order round each cell.
+        List<int> NextRing(List<int> ring, HashSet<int> seen)
+        {
+            var next = new List<int>();
+            foreach (int i in ring)
+                foreach (var (nx, ny, _) in ActiveNeighbours(i % W, i / W))
+                {
+                    int k = Idx(nx, ny);
+                    var nc = Cells[k];
+                    if (seen.Add(k) && !IsBlocking(nc) && !(nc.Frozen && nc.Water > 0)) next.Add(k);
+                }
+            return next;
+        }
+
+        // Pours units onto a ring one at a time round and round until they're gone or it's full; returns what's left.
+        int PourRound(List<int> next, int units, int max)
+        {
+            for (bool moved = true; units > 0 && moved;)
+            {
+                moved = false;
+                foreach (int k in next)
+                {
+                    if (units == 0) break;
+                    if (Cells[k].Water >= max) continue;
+                    Cells[k].Water++;
+                    units--;
+                    moved = true;
+                }
+            }
+            return units;
         }
     }
 }
