@@ -79,7 +79,7 @@ namespace Chem
 
     public static class ModValidator
     {
-        static readonly HashSet<string> Sections = new HashSet<string>(ModPatch.Tables.Concat(new[] { "elements", "reactions", "spells", "critters", "sim", "combos", BuildingTables.Key, "world" }));
+        static readonly HashSet<string> Sections = new HashSet<string>(ModPatch.Tables.Concat(new[] { "elements", "reactions", "spells", "critters", "sim", "combos", BuildingTables.Key, "world", Rules.TriggersKey }));
         static readonly string[] RandomKeys = { "seed", "random", "rng" };
 
         /// <summary>
@@ -444,10 +444,34 @@ namespace Chem
                 int laid = (patch["world"]?["lay"] as JArray)?.OfType<JObject>().Sum(l => (l["cells"] as JArray)?.Count ?? 0) ?? 0;
                 if (laid > maxLaid) Add(ModCheck.Budget, $"The mod lays {laid} cells; a mod may lay at most {Num(maxLaid)}.");
                 if (composed == null) return;
+                TriggerBudget(composed);
                 FaunaBudget(composed);
                 BuildingBudget(composed);
                 MaterialBudget(composed);
                 ChainDepth(composed);
+            }
+
+            // A mod's triggers (Rules.Triggers.cs): how many, how many actions each, how strong a spell they cast, how much they place.
+            void TriggerBudget(JObject composed)
+            {
+                if (!(patch[Rules.TriggersKey] is JObject rows)) return;
+                var given = rows.Properties().Where(p => p.Value is JObject).ToList();
+                double maxPerMod = budgets.Number("triggers.maxPerMod", 4), maxActions = budgets.Number("triggers.maxActions", 2), maxLevel = budgets.Number("triggers.maxLevel", 7);
+                if (given.Count > maxPerMod) Add(ModCheck.Budget, $"The mod has {given.Count} triggers; a mod may have at most {Num(maxPerMod)}.");
+                foreach (var row in given)
+                {
+                    var actions = (composed[Rules.TriggersKey]?[row.Name]?["do"] as JArray)?.OfType<JObject>().ToList() ?? new List<JObject>();
+                    if (actions.Count > maxActions) Add(ModCheck.Budget, $"Trigger {row.Name} does {actions.Count} things; a trigger does at most {Num(maxActions)}.");
+                    foreach (var a in actions)
+                    {
+                        var spell = (composed["spells"] as JArray)?.OfType<JObject>().FirstOrDefault(s => Text(s["id"]) == Text(a["cast"]));
+                        if (spell != null && IsNumber(spell["level"]) && (double)spell["level"] > maxLevel)
+                            Add(ModCheck.Budget, $"Trigger {row.Name} casts {Text(spell["id"])}, level {spell["level"]}; a trigger casts spells of level {Num(maxLevel)} at most (Meteor).");
+                        if (a["place"] is JObject place)
+                            foreach (var line in SpellCaps(budgets, row.Name, new JObject { ["place"] = place }))
+                                Add(ModCheck.Budget, "Trigger" + line.Substring("Spell".Length));
+                    }
+                }
             }
 
             void NewEntries()
