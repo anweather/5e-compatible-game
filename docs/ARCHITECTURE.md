@@ -192,8 +192,15 @@ new mod list (`RuleChangeMsg`). Every machine runs them as a `TickBatch` on
 its own `Chem.World`, so all worlds stay identical without sending any
 cells. A checksum every 30 ticks (cell hash and rules fingerprint) catches
 a desync and says whether the rules differ. A late joiner gets the casts,
-rule switches and effects and replays them. When a live batch's casts run,
-their shoves run too: the host moves the props, each player their own
+rule switches and effects and replays them. Commands sent just before
+their tick's batch (defense, combos, strikes, the dragon, room commands)
+each repeat one shape: pending on the host, stamped, held for the batch,
+kept for joiners. `CommandChannel.cs` is that shape as one small class
+(`Request`, `Stamp`, `Receive`/`Deliver`, `HistoryForJoiner`/`Replay`,
+`ForgetBefore`, a compaction hook); combo input is on it so far, and
+`NetChem` keeps the RPCs, which Netcode generates on its own methods.
+When a live batch's casts run, their shoves run too: the host moves the
+props, each player their own
 wizard. `NetWizard.cs` switches a spawned wizard on for its owner and
 passes a shove worked out elsewhere (a barrel blast on the host) to it.
 

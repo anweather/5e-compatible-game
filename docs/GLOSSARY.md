@@ -159,6 +159,13 @@ touch them.
   An **intent** is the network message asking the host for one
   (`CastIntent`, `EffectIntent`, `ChunkIntent`).
 
+**Command channel**
+: One kind of command on its way over the network (`CommandChannel`, `NetChem`): the host's
+  pending requests, stamping them for a tick, a peer holding them until that tick's batch arrives,
+  and the history a late joiner replays, with a compaction hook that may drop what a later command
+  makes needless. Combo input travels on one; casts, effects, chunk switches, defense, strikes, the
+  dragon and room commands still have their own lists.
+
 **Deterministic / lockstep**
 : Every peer runs the same world from the same commands and gets the same
   cells (D3, D7). Integer state, the world's seeded RNG, ordered iteration.
