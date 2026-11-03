@@ -50,6 +50,7 @@ public sealed class PerfMarkers : IDisposable
             "ChemGrid.ChunkPlan", "ChemGrid.ChunkApply", "ChemGrid.ChunkEvent", "ChemGrid.DetailChunks",
             "ThingSpawner.SpawnChunk", "ThingSpawner.UnloadChunk", "ValleyGround.DrawDetails",
             "ValleyGround.HeightUpdate", "ValleyGround.HeightEase", "ValleyGround.HeightWrite", "ValleyGround.SyncHeightmap",
+            "ValleyGround.Paint.Block", "ValleyGround.Paint.Compose", "ValleyGround.UploadPaint.Apply",
             "Water.Recompute", "Water.ComputeTops", "Water.FindBanks", "Water.DrawTile",
             "Contour.Tile.Outline", "Contour.Tile.Points", "Contour.Tile.Upload",
             "Contour.Film.Outline", "Contour.Film.Points", "Contour.Film.Upload",

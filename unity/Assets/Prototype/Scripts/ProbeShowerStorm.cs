@@ -5,7 +5,8 @@ using Chem;
 // a quiet stretch, then a minute of his meteor mod's shower, then a storm and its rain for a few
 // minutes, the camera still. Each stretch logs the view's markers, the tick's stages and the view's
 // counts a frame (WaterLookProbe.Stretch), so what grows with the storm and the chunks it wakes shows.
-// Checks that the storm came and that redrawn tiles keep their noise; the rest is for a
+// Checks that the storm came, that redrawn tiles keep their noise and that their points drawn from
+// kept cells are what the delegates drew; the rest is for a
 // performance pass (docs/perf/2026-11-03-water.md).
 public class ShowerStormProbe : WaterLookProbe
 {
@@ -13,6 +14,7 @@ public class ShowerStormProbe : WaterLookProbe
     static readonly float[] StormStretchesAt = { 30f, 90f, 150f };
     // Noise points worked out per tile cell drawn: about 8 when every redraw works it all out again.
     const long MostNoisePerCell = 2;
+    const float KeptCheckSeconds = 10f;
 
     protected override IEnumerator Run()
     {
@@ -46,6 +48,23 @@ public class ShowerStormProbe : WaterLookProbe
         // worked out about 8 points a cell, most of an outline's cost, and the storm redraws all the time.
         Check("redrawn_tiles_keep_their_noise", boxCells > 0 && noisePoints < boxCells * MostNoisePerCell,
             $"{noisePoints} noise points over {boxCells} tile cells drawn in the storm");
+        // A tile's points from its cells read once (CellWaterMesh.KeptCells) are what the delegates
+        // drew: for a while every tile is drawn both ways and compared bit for bit.
+        var (drawnBefore, differentBefore, verticesBefore, keptBefore, perPointBefore) = CellWaterMesh.KeptPointsChecked;
+        CellWaterMesh.CheckKeptPoints = CellWaterMesh.KeptPoints;
+        try
+        {
+            yield return Wait(KeptCheckSeconds);
+        }
+        finally
+        {
+            CellWaterMesh.CheckKeptPoints = false;
+        }
+        var (drawn, different, vertices, keptMs, perPointMs) = CellWaterMesh.KeptPointsChecked;
+        double perVertex = 1000.0 / System.Math.Max(1, vertices - verticesBefore);
+        Check("kept_points_draw_what_delegates_did", drawn > drawnBefore && different == differentBefore,
+            $"{drawn - drawnBefore} tiles drawn both ways in the storm, {different - differentBefore} different; points " +
+            $"{(keptMs - keptBefore) * perVertex:0.000} us a vertex kept, {(perPointMs - perPointBefore) * perVertex:0.000} through delegates");
         Check("storm_came", grid.World.Weather.Kind is WeatherKind.Storm or WeatherKind.Rain, grid.World.Weather.Kind.ToString());
         switcher.Ask(RoomCommand.Revert(switcher.Me, "storm"));
     }

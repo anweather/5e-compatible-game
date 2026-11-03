@@ -77,7 +77,7 @@ namespace Chem
         // A fallen tree: torn-up earth and moss where it lay.
         static readonly float[] DeadfallMix = { 0, 0.4f, 0, 0, 0, 0, 0.6f, 0 };
         static readonly float[] RockMix = { 0, 0, 1, 0, 0, 0, 0, 0 };
-        // A raised wall: rock, spread over its side slopes (see Spread).
+        // A raised wall: rock, spread over its side slopes (see CellMixes.Spread).
         static readonly float[] WallMix = { 0, 0, 1, 0, 0, 0, 0, 0 };
         // Bare earth, a little sand in it so it reads worn rather than wet.
         static readonly float[] EarthMix = { 0, 0, 0, 0.2f, 0, 0, 0.8f, 0 };
@@ -151,14 +151,6 @@ namespace Chem
         /// <summary>Whether layer weights (Layers order) read as grass that detail grass grows on.</summary>
         public static bool IsGrassy(IReadOnlyList<float> w) => w[0] + w[1] >= 0.5f;
 
-        /// <summary>How far a mix reaches past its cell: 1 to the cell's border, more for walls.</summary>
-        // Snow reaches a little past its cell too, over its bank's rounded skirt (CellHeightfield.BankAt).
-        static float Spread(IReadOnlyList<float> mix)
-        {
-            if (ReferenceEquals(mix, WallMix)) return 2f;
-            return ReferenceEquals(mix, SnowMix) ? 1.3f : 1f;
-        }
-
         /// <summary>The texel blocks to repaint when these cells change, one rectangle per chunk.</summary>
         public static List<ChunkRect> DirtyRects(TerrainGrid grid, IEnumerable<(int x, int y)> cells)
         {
@@ -210,13 +202,21 @@ namespace Chem
         /// (grassy ground the valley already paints, a cell as it was baked); cells off the grid
         /// keep the base.
         /// </summary>
-        public static PaintBlock Block(TerrainGrid grid, ChunkRect r, Func<int, int, IReadOnlyList<float>> paintOf)
+        public static PaintBlock Block(TerrainGrid grid, ChunkRect r, Func<int, int, IReadOnlyList<float>> paintOf) =>
+            Block(grid, r, paintOf, null);
+
+        /// <summary>
+        /// The same, with each texel's noise kept in <paramref name="noise"/> from one call to the next
+        /// (null works it out afresh): the texels come out the same either way.
+        /// </summary>
+        public static PaintBlock Block(TerrainGrid grid, ChunkRect r, Func<int, int, IReadOnlyList<float>> paintOf, TexelNoise noise)
         {
             if (grid == null) throw new ArgumentNullException(nameof(grid));
             if (paintOf == null) throw new ArgumentNullException(nameof(paintOf));
             var block = new PaintBlock(r, Layers.Count);
             var cells = new CellMixes(grid, r, paintOf);
-            int p = grid.SamplesPerCell(r.I, r.J);
+            int p = grid.SamplesPerCell(r.I, r.J), res = grid.TexelResolution(r.I, r.J);
+            var kept = noise?.Of(grid, r.I, r.J);
             var mix = new float[Layers.Count];
             for (int tz = r.Z; tz <= r.ZMax; tz++)
             {
@@ -224,7 +224,8 @@ namespace Chem
                 {
                     float u = r.I * TerrainGrid.ChunkCells + (tx + 0.5f) / p;
                     float v = r.J * TerrainGrid.ChunkCells + (tz + 0.5f) / p;
-                    float cover = Texel(cells, u, v, mix);
+                    var noiseAt = TexelNoise.At(kept, (tz * res + tx) * TexelNoise.Values, u, v);
+                    float cover = Texel(cells, u, v, noiseAt, mix);
                     block.Cover[tz - r.Z, tx - r.X] = cover;
                     for (int k = 0; k < mix.Length; k++) block.Mix[tz - r.Z, tx - r.X, k] = mix[k];
                 }
@@ -236,48 +237,66 @@ namespace Chem
         // it matter), how wide the fade from paint to base is and how far it slides.
         const float Wander = 0.9f, WanderScale = 0.8f, FadeFrom = 0.3f, FadeTo = 0.7f, Slide = 0.36f;
 
-        // One texel at world-cell point (u, v): fills mix (normalised) and returns its cover.
-        static float Texel(CellMixes cells, float u, float v, float[] mix)
+        /// <summary>
+        /// A texel's noise, from where it is alone: what ValueNoise gives for how far its point wanders
+        /// (U, V), how much of its char shows as earth (Patches) and how far its fade slides (Fade). The
+        /// texel's sums use them as they used the calls, so it paints the same bits kept or afresh.
+        /// </summary>
+        internal readonly struct Noise
+        {
+            public Noise(float u, float v, float patches, float fade)
+            {
+                U = u;
+                V = v;
+                Patches = patches;
+                Fade = fade;
+            }
+
+            public float U { get; }
+            public float V { get; }
+            public float Patches { get; }
+            public float Fade { get; }
+        }
+
+        // The noise of the texel at world-cell point (u, v).
+        internal static Noise NoiseAt(float u, float v) => new Noise(
+            ValueNoise.Twice(u * WanderScale, v * WanderScale, 1), ValueNoise.Twice(u * WanderScale, v * WanderScale, 2),
+            ValueNoise.Twice(u * 0.6f, v * 0.6f, 3), ValueNoise.At(u * 0.3f, v * 0.3f, 4));
+
+        // One texel at world-cell point (u, v), with its noise: fills mix (normalised) and returns its cover.
+        static float Texel(CellMixes cells, float u, float v, Noise noise, float[] mix)
         {
             Array.Clear(mix, 0, mix.Length);
-            float wu = u + Wander * (ValueNoise.Twice(u * WanderScale, v * WanderScale, 1) - 0.5f);
-            float wv = v + Wander * (ValueNoise.Twice(u * WanderScale, v * WanderScale, 2) - 0.5f);
+            float wu = u + Wander * (noise.U - 0.5f);
+            float wv = v + Wander * (noise.V - 0.5f);
             float bu = wu - 0.5f, bv = wv - 0.5f;
             int cu = (int)Math.Floor(bu), cv = (int)Math.Floor(bv);
             float fu = bu - cu, fv = bv - cv;
-            float raw = Add(cells.At(cu, cv), (1f - fu) * (1f - fv), mix) + Add(cells.At(cu + 1, cv), fu * (1f - fv), mix) +
-                        Add(cells.At(cu, cv + 1), (1f - fu) * fv, mix) + Add(cells.At(cu + 1, cv + 1), fu * fv, mix);
+            float raw = cells.Add(cu, cv, (1f - fu) * (1f - fv), mix) + cells.Add(cu + 1, cv, fu * (1f - fv), mix) +
+                        cells.Add(cu, cv + 1, (1f - fu) * fv, mix) + cells.Add(cu + 1, cv + 1, fu * fv, mix);
             if (raw <= 0f) return 0f;
             for (int k = 0; k < mix.Length; k++) mix[k] /= raw;
-            Mottle(mix, u, v);
+            Mottle(mix, noise.Patches);
             // The fade itself slides in and out over a few cells, so a long straight run of
             // painted cells (a pad's side) bulges and narrows instead of following the row.
-            float slide = Slide * (ValueNoise.At(u * 0.3f, v * 0.3f, 4) - 0.5f);
+            float slide = Slide * (noise.Fade - 0.5f);
             return ValueNoise.SmoothStep(FadeFrom + slide, FadeTo + slide, raw);
         }
 
-        // Adds a cell's mix at a bilinear weight (scaled by its spread) and returns that weight.
-        static float Add(IReadOnlyList<float> cell, float weight, float[] mix)
-        {
-            if (cell.Count == 0) return 0f;
-            float w = weight * Spread(cell);
-            for (int k = 0; k < mix.Length; k++) mix[k] += w * cell[k];
-            return w;
-        }
-
         // Burnt ground isn't one flat colour: some of its char shows as earth, in patches.
-        static void Mottle(float[] mix, float u, float v)
+        static void Mottle(float[] mix, float noise)
         {
-            float moved = mix[CharredIndex] * 0.45f * ValueNoise.Twice(u * 0.6f, v * 0.6f, 3);
+            float moved = mix[CharredIndex] * 0.45f * noise;
             mix[CharredIndex] -= moved;
             mix[EarthIndex] += moved;
         }
 
-        /// <summary>The mixes of the cells around a texel rectangle, looked up once, by world cell.</summary>
+        /// <summary>The mixes of the cells around a texel rectangle, looked up once, by world cell, as arrays with their spreads.</summary>
         sealed class CellMixes
         {
             static readonly float[] Keep = Array.Empty<float>();
-            readonly IReadOnlyList<float>[] mixes;
+            readonly float[][] mixes;
+            readonly float[] spreads;
             readonly int u0, v0, width, height;
 
             public CellMixes(TerrainGrid grid, ChunkRect r, Func<int, int, IReadOnlyList<float>> paintOf)
@@ -287,23 +306,80 @@ namespace Chem
                 v0 = r.J * TerrainGrid.ChunkCells + r.Z / p - 1;
                 width = r.I * TerrainGrid.ChunkCells + r.XMax / p + 1 - u0 + 1;
                 height = r.J * TerrainGrid.ChunkCells + r.ZMax / p + 1 - v0 + 1;
-                mixes = new IReadOnlyList<float>[width * height];
+                mixes = new float[width * height][];
+                spreads = new float[width * height];
                 for (int b = 0; b < height; b++)
                 {
                     for (int a = 0; a < width; a++)
                     {
                         var (x, y) = grid.GridCell(u0 + a, v0 + b);
-                        mixes[b * width + a] = (grid.InGrid(x, y) ? paintOf(x, y) : null) ?? Keep;
+                        var mix = grid.InGrid(x, y) ? paintOf(x, y) : null;
+                        int n = b * width + a;
+                        mixes[n] = mix == null ? Keep : mix as float[] ?? new List<float>(mix).ToArray();
+                        if (mix != null) spreads[n] = Spread(mix);
                     }
                 }
             }
 
-            /// <summary>The mix of world cell (u, v); empty where the base shows (or outside the rectangle's cells).</summary>
-            public IReadOnlyList<float> At(int u, int v)
+            /// <summary>How far a mix reaches past its cell: 1 to the cell's border, more for walls.</summary>
+            // Snow reaches a little past its cell too, over its bank's rounded skirt (CellHeightfield.BankAt).
+            static float Spread(IReadOnlyList<float> mix)
+            {
+                if (ReferenceEquals(mix, WallMix)) return 2f;
+                return ReferenceEquals(mix, SnowMix) ? 1.3f : 1f;
+            }
+
+            /// <summary>
+            /// Adds world cell (u, v)'s mix into <paramref name="into"/> at a bilinear weight (scaled by
+            /// its spread) and returns that weight: 0 where the base shows (or outside the rectangle's cells).
+            /// </summary>
+            public float Add(int u, int v, float weight, float[] into)
             {
                 int a = u - u0, b = v - v0;
-                return a < 0 || b < 0 || a >= width || b >= height ? Keep : mixes[b * width + a];
+                if (a < 0 || b < 0 || a >= width || b >= height) return 0f;
+                int n = b * width + a;
+                var cell = mixes[n];
+                if (cell.Length == 0) return 0f;
+                float w = weight * spreads[n];
+                for (int k = 0; k < into.Length; k++) into[k] += w * cell[k];
+                return w;
             }
+        }
+    }
+
+    /// <summary>
+    /// Each texel's noise for its paint (CellPaint.Block), by chunk: it depends only on where the
+    /// texel is, so it's worked out the first time the texel paints and kept. A shower's ash repaints
+    /// the same texels for minutes (#70). About 1 MB a full-detail chunk and 64 KB a coarse one, made
+    /// for the chunks that paint. Visual only, like ValueNoise.
+    /// </summary>
+    public sealed class TexelNoise
+    {
+        internal const int Values = 4;
+        readonly Dictionary<(int i, int j), float[]> chunks = new Dictionary<(int i, int j), float[]>();
+
+        /// <summary>The chunk's texels' noise, Values a texel in row order; NaN where not worked out yet.</summary>
+        internal float[] Of(TerrainGrid grid, int i, int j)
+        {
+            if (chunks.TryGetValue((i, j), out var kept)) return kept;
+            int res = grid.TexelResolution(i, j);
+            kept = new float[res * res * Values];
+            for (int n = 0; n < kept.Length; n++) kept[n] = float.NaN;
+            chunks[(i, j)] = kept;
+            return kept;
+        }
+
+        /// <summary>A texel's noise as kept at <paramref name="at"/> (worked out now if it isn't yet), or afresh with nothing kept.</summary>
+        internal static CellPaint.Noise At(float[] kept, int at, float u, float v)
+        {
+            if (kept == null) return CellPaint.NoiseAt(u, v);
+            if (!float.IsNaN(kept[at])) return new CellPaint.Noise(kept[at], kept[at + 1], kept[at + 2], kept[at + 3]);
+            var fresh = CellPaint.NoiseAt(u, v);
+            kept[at] = fresh.U;
+            kept[at + 1] = fresh.V;
+            kept[at + 2] = fresh.Patches;
+            kept[at + 3] = fresh.Fade;
+            return fresh;
         }
     }
 }

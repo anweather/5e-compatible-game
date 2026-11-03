@@ -38,7 +38,9 @@ using Debug = UnityEngine.Debug;
 // (the bot turns it on; compare a budget in work units with one in milliseconds);
 // -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
 // <file>, which lists what a -pso-trace file has that the shipped collection hasn't;
-// and -perf-water-check, which redraws the water tiles at the end and counts any that differ.
+// and -perf-water-check, which redraws the water tiles at the end and counts any that differ;
+// -perf-same-check draws every water tile both ways and paints every ground strip with its noise
+// kept and afresh, counting any that differ bit for bit (#70; doubles that work, so not for timing).
 // -perf-offscreen draws the camera into a 1080p texture of real play's colour and depth
 // formats: with no desktop session a camera bound for the window draws nothing, so frame
 // times mean nothing and no pipeline state is made (with -perf-offscreen-4k, 3840x2160).
@@ -118,6 +120,7 @@ public class PerfScenario : MonoBehaviour
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
         if (Has("-perf-exact")) ChemGrid.ExactFrames = true;
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
+        if (Has("-perf-same-check")) CellWaterMesh.CheckKeptPoints = ValleyGround.CheckKeptNoise = true;
         yield return WaitToHost();
         grid = FindAnyObjectByType<ChemGrid>();
         wizard = WizardRig.FindLocal();
@@ -366,6 +369,13 @@ public class PerfScenario : MonoBehaviour
         {
             var (tiles, different) = grid.CheckWaterTiles();
             Debug.Log($"PERF WATER CHECK tiles={tiles} different={different}");
+        }
+        if (Environment.GetCommandLineArgs().Contains("-perf-same-check"))
+        {
+            var (tiles, tilesDifferent, vertices, keptMs, perPointMs) = CellWaterMesh.KeptPointsChecked;
+            var (strips, stripsDifferent) = ValleyGround.KeptNoiseChecked;
+            Debug.Log($"PERF SAME CHECK water_tiles={tiles} different={tilesDifferent} vertices={vertices} points_kept_ms={keptMs.ToString("0.0", inv)} " +
+                $"points_delegates_ms={perPointMs.ToString("0.0", inv)} paint_strips={strips} different={stripsDifferent}");
         }
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
     }

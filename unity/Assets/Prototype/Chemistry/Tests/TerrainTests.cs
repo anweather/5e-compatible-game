@@ -479,6 +479,63 @@ namespace Chem.Tests
             Assert.AreEqual(CellPaint.Earth, Top(Enumerable.Range(0, CellPaint.Layers.Count).Select(k => a.Mix[0, 0, k]).ToList()));
         }
 
+        // Every texel of the strips round scattered cells of a rugged world (walls, ash, snow, dug and
+        // scorched ground, full-detail and coarse chunks), Cover and Mix as bits, FNV-1a.
+        static uint PaintHash(Func<ChunkRect, Func<int, int, IReadOnlyList<float>>, PaintBlock> block)
+        {
+            var w = Rugged(11);
+            var rng = new Random(12);
+            foreach (var c in w.Cells)
+            {
+                int roll = rng.Next(10);
+                if (roll == 0) c.Cover = "ash";
+                else if (roll == 1) c.Cover = World.SnowCover;
+                else if (roll == 2) c.Cover = World.BankCover;
+            }
+            Func<int, int, IReadOnlyList<float>> paintOf = (x, y) =>
+                (x * 7 + y * 3) % 5 == 0 ? null : CellPaint.Mix(w, w.At(x, y), (x + y) % 4 == 0);
+            uint h = 2166136261u;
+            // Twice over, so texels painted again (noise kept from the first time) count too.
+            for (int round = 0; round < 2; round++)
+                foreach (var r in CellPaint.Runs(G, CellPaint.Around(G, RandomCells(new Random(13), 300))))
+                    h = HashBlock(h, block(r, paintOf));
+            return h;
+        }
+
+        static uint HashBlock(uint h, PaintBlock b)
+        {
+            for (int z = 0; z < b.Rect.Height; z++)
+                for (int x = 0; x < b.Rect.Width; x++)
+                {
+                    h = HashFloat(h, b.Cover[z, x]);
+                    for (int k = 0; k < CellPaint.Layers.Count; k++) h = HashFloat(h, b.Mix[z, x, k]);
+                }
+            return h;
+        }
+
+        static uint HashFloat(uint h, float f)
+        {
+            unchecked
+            {
+                uint bits = (uint)BitConverter.SingleToInt32Bits(f);
+                for (int b = 0; b < 4; b++) h = (h ^ ((bits >> (8 * b)) & 0xFF)) * 16777619u;
+            }
+            return h;
+        }
+
+        // The paint as composed before it kept each texel's noise and read the mixes as arrays (#70):
+        // the same texels, bit for bit. Unity's Mono keeps a sum's steps in double precision where .NET
+        // rounds each to a float, so each runtime has its own bits (both taken from the code before).
+        static readonly uint PaintGolden = Type.GetType("Mono.Runtime") != null ? 411641309u : 454580981u;
+
+        [Test]
+        public void PaintDrawsWhatItDidBeforeItKeptItsNoise()
+        {
+            Assert.AreEqual(PaintGolden, PaintHash((r, paintOf) => CellPaint.Block(G, r, paintOf)), "fresh noise");
+            var noise = new TexelNoise();
+            Assert.AreEqual(PaintGolden, PaintHash((r, paintOf) => CellPaint.Block(G, r, paintOf, noise)), "noise kept");
+        }
+
         [Test]
         public void RunsJoinNeighboursInARowOfOneChunk()
         {
