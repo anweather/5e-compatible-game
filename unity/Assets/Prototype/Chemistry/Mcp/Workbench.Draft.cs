@@ -266,6 +266,9 @@ namespace Chem.Mcp
                 case ThingsTable:
                     ((JArray)draft.Patch["world"]["add"]).Where(t => CellKey(t["cell"]) == id).ToList().ForEach(t => t.Remove());
                     break;
+                case LayTable:
+                    RemoveLay(draft, id);
+                    break;
                 case "openings":
                 case "floors":
                 case "roofs":

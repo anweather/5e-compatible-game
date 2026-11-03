@@ -440,6 +440,9 @@ namespace Chem
                 double maxThings = budgets.Number("things.maxPerMod", 16);
                 if (patch["world"]?["add"] is JArray things && things.Count > maxThings)
                     Add(ModCheck.Budget, $"The mod adds {things.Count} things to the world; a mod may add at most {Num(maxThings)}.");
+                double maxLaid = budgets.Number("lay.maxCells", 256);
+                int laid = (patch["world"]?["lay"] as JArray)?.OfType<JObject>().Sum(l => (l["cells"] as JArray)?.Count ?? 0) ?? 0;
+                if (laid > maxLaid) Add(ModCheck.Budget, $"The mod lays {laid} cells; a mod may lay at most {Num(maxLaid)}.");
                 if (composed == null) return;
                 FaunaBudget(composed);
                 BuildingBudget(composed);

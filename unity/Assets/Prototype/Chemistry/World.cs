@@ -100,6 +100,7 @@ namespace Chem
             }
             SanitizeRaiders();
             LayBuildings(before, rules);
+            LayCells(before, rules);
         }
 
         // A cell made to fit the rules in force (sanitizeCell in the TS).

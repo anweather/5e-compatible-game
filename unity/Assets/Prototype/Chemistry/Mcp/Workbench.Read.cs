@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, DragonTable, BuildingsTable, ThingsTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, DragonTable, BuildingsTable, ThingsTable, LayTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -54,6 +54,9 @@ namespace Chem.Mcp
                     break;
                 case ThingsTable:
                     lines.AddRange(ModThingLines());
+                    break;
+                case LayTable:
+                    lines.AddRange(OnWorld(w => w.Rules.ModLays.Select(l => FormattableString.Invariant($"{l.Terrain ?? l.Cover}#{l.Seed}: {l.Cells.Count} cells of {(l.Terrain != null ? "terrain" : "cover")} {l.Terrain ?? l.Cover}")).ToList()));
                     break;
                 case "openings":
                 case "floors":

@@ -775,6 +775,7 @@ namespace Chem
             ParseMachines(r, doc["machines"] as JObject ?? new JObject());
             r.ParseBuildings(doc);
             r.ParseThings(doc);
+            r.ParseLays(doc);
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {

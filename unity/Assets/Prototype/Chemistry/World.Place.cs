@@ -158,16 +158,17 @@ namespace Chem
         }
 
         /// <summary>
-        /// Whether something may be placed on a cell: on the world and active, open ground (a terrain with one of
-        /// <paramref name="onto"/>'s tags, or "ground" with none), not blocking, dry, and with no building or thing on it.
+        /// Whether something may be placed on a cell: on the world (and active, with <paramref name="activeOnly"/>), open
+        /// ground (a terrain with one of <paramref name="onto"/>'s tags, or "ground" with none), not blocking, dry, and with
+        /// no building or thing on it. A cast places only where it's active; a world edit lays anywhere.
         /// </summary>
-        public Func<int, int, bool> PlaceOpen(IReadOnlyList<string> onto)
+        public Func<int, int, bool> PlaceOpen(IReadOnlyList<string> onto, bool activeOnly = true)
         {
             var built = BuiltCells();
             var things = new HashSet<(int, int)>(ThingsNow.All.Select(t => (t.CellX, t.CellY)));
             return (x, y) =>
             {
-                if (!InBounds(x, y) || !IsActiveAt(x, y) || built.Contains((x, y)) || things.Contains((x, y))) return false;
+                if (!InBounds(x, y) || (activeOnly && !IsActiveAt(x, y)) || built.Contains((x, y)) || things.Contains((x, y))) return false;
                 var c = At(x, y);
                 if (c.Water > 0 || c.Frozen || IsBlocking(c)) return false;
                 if (onto == null || onto.Count == 0) return HasTag(c, "ground");
