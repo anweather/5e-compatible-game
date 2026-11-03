@@ -359,9 +359,11 @@ public sealed class ValleyGround
     static int Bits(float f) => System.BitConverter.SingleToInt32Bits(f);
 
     // Composing paint gets about this much of a frame (ms); the cells it takes follow from how long
-    // the last ones took, between the bounds below.
+    // the last ones took, between the bounds below. The budget decides, not the most: at 48 a cheaper
+    // paint (kept noise) stopped well short of its millisecond while a shower's ash waited (#70), so
+    // the most is only a guard against a wild estimate.
     const float PaintBudgetMs = 1f;
-    const int FewestRepaints = 8, MostRepaints = 48;
+    const int FewestRepaints = 8, MostRepaints = 1000;
     readonly List<(int x, int y)> batch = new();
     readonly System.Diagnostics.Stopwatch paintTimer = new();
     float msPerCell = 0.02f;
