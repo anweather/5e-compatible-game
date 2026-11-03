@@ -84,9 +84,10 @@ namespace Chem
 
         /// <summary>
         /// Every problem with a patch (bare or {"title", "patch"}) over these base rules; empty means
-        /// it may switch on. Stops after the shape check if the patch can't be read.
+        /// it may switch on. Stops after the shape check if the patch can't be read. A room passes its
+        /// temporary materials by id with the mod each is from (TempMaterials.Owners): no other mod may name one.
         /// </summary>
-        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson)
+        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson, IReadOnlyDictionary<string, string> temporary = null)
         {
             var problems = new List<ModProblem>();
             ModPatch mod;
@@ -114,6 +115,7 @@ namespace Chem
             v.Design(composed);
             v.Determinism();
             v.Budgets(composed);
+            v.Temporary(temporary);
             if (budgets.Looks != null) v.Looks(budgets.Looks, composed);
             return problems;
         }
@@ -424,6 +426,54 @@ namespace Chem
                 string id = path.Substring(open + 1, close - open - 1);
                 string rest = path.Substring(close + 1).TrimStart('.');
                 return rest.Length == 0 ? $"{kind} {id}" : $"{kind} {id}'s {rest}";
+            }
+
+            // ---------- temporary materials (World.Lapse.cs) ----------
+
+            /// <summary>
+            /// The materials the mod adds: how many, their lapse (only a material the mod adds lapses, within the
+            /// budget, into one that stays), no thing made of one, and no other mod's temporary material named.
+            /// </summary>
+            public void Temporary(IReadOnlyDictionary<string, string> temporary)
+            {
+                var added = new HashSet<string>(Rows(Rules.MaterialTables).Where(r => baseDoc[r.table]?[r.row.Name] == null).Select(r => r.row.Name));
+                double max = budgets.Number("materials.maxPerMod", 8);
+                if (added.Count > max) Add(ModCheck.Budget, $"The mod adds {added.Count} materials; a mod may add at most {Num(max)}.");
+                foreach (var (table, row) in Rows(Rules.MaterialTables))
+                    if (row.Value[Rules.LapseKey] is JObject lapse) LapseOf(table, row.Name, lapse, added);
+                foreach (var (_, row) in Rows(new[] { "entities", "items" }))
+                    if (Text(row.Value["material"]) is string m && added.Contains(m))
+                        Add(ModCheck.Design, $"{row.Name} is made of {m}, a material the mod adds; a thing outlives a mod, so it can't be made of one that goes with it.");
+                if (temporary != null && temporary.Count > 0) Names(temporary);
+            }
+
+            // The patch's rows in these tables, table by table in the patch's order.
+            IEnumerable<(string table, JProperty row)> Rows(IEnumerable<string> tables) =>
+                tables.SelectMany(t => ((patch[t] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()).Select(p => (t, p)));
+
+            void LapseOf(string table, string id, JObject lapse, HashSet<string> added)
+            {
+                string what = char.ToUpperInvariant(table[0]) + (table == "gases" ? "as" : table.Substring(1).TrimEnd('s')) + " " + id;
+                if (!added.Contains(id))
+                {
+                    Add(ModCheck.Design, $"{what} is in the rules already, so it can't lapse; only a material the mod adds lapses.");
+                    return;
+                }
+                double maxAfter = budgets.Number("materials.maxLapse", 21600);
+                if (IsNumber(lapse["after"]) && (double)lapse["after"] > maxAfter)
+                    Add(ModCheck.Budget, $"{what} lapses after {lapse["after"]} ticks; a material lapses within {Num(maxAfter)} ticks (an hour) at most, or give no after and it lasts while the mod is on.");
+                if (Text(lapse["into"]) is string into && added.Contains(into))
+                    Add(ModCheck.Design, $"{what} lapses into {into}, which the mod adds too and goes with it; lapse into a material the rules already have.");
+            }
+
+            // Another mod's temporary material, named anywhere in the patch: when that mod goes, the name would dangle.
+            void Names(IReadOnlyDictionary<string, string> temporary)
+            {
+                var named = new SortedSet<string>(Rows(ModPatch.Tables).Select(r => r.row.Name).Where(temporary.ContainsKey), StringComparer.Ordinal);
+                foreach (var v in patch.Descendants().OfType<JValue>())
+                    if (v.Type == JTokenType.String && temporary.ContainsKey((string)v)) named.Add((string)v);
+                foreach (var id in named)
+                    Add(ModCheck.References, $"{id} is a temporary material of the mod {temporary[id]}; only that mod may name it, as it goes when that mod does.");
             }
 
             // ---------- budgets ----------

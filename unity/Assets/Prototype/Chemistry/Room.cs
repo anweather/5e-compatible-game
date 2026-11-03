@@ -81,6 +81,15 @@ namespace Chem
         public List<RoomMod> Mods { get; } = new List<RoomMod>();
         /// <summary>The things a mod added that someone has picked up, by ThingId: the first pick-up is logged, once.</summary>
         public SortedSet<ulong> Found { get; } = new SortedSet<ulong>();
+        /// <summary>The temporary materials gone from the room, lapsed or reverted (World.Lapse.cs), oldest first: what a cell still naming one turns into.</summary>
+        public List<RetiredMaterial> Retired { get; } = new List<RetiredMaterial>();
+    }
+
+    /// <summary>A temporary material that went with its mod: its table and id, what a cell of it turns into (null: none, or dirt for a terrain), its mod and the tick.</summary>
+    public sealed class RetiredMaterial
+    {
+        public string Table, Id, Into, Mod;
+        public int Tick;
     }
 
     /// <summary>What a room command came to: done or refused, and the log line saying so.</summary>

@@ -67,7 +67,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   `world/`, no trees and no yard), and say so.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
-- `add_material`, `set_material(id, field, value)`
+- `add_material`, `set_material(id, field, value)`: a mod's own material is temporary and may `lapse` (see "Temporary materials")
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
@@ -321,6 +321,52 @@ mod can say it with `set_material` and a sim patch, with no code naming it:
 `validate` refuses a name that isn't a material (or spell) of the right kind. They are names, so no budget
 bounds them. The view still draws snow by the base ids (`World.SnowCover`, `BankCover`), so a mod's own snow
 cover falls and drifts in the sim but is drawn as a plain cover until the view reads the rules' names.
+
+## Temporary materials: what a mod adds lasts while it's on
+
+`docs/design/primitives.md` §4, step 2; J-062. Every terrain, cover or gas a mod adds is **temporary**: it lives while
+its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
+
+```json
+"black-ice": { "name": "Black ice", "tags": ["slippery"], "lasts": 360, "melt": { "water": 1 },
+               "look": { "color": [0.08, 0.12, 0.35] }, "lapse": { "after": 3600 } }
+```
+
+- **`after`** (optional, ticks, 1 to `materials.maxLapse` 21 600, an hour): that many ticks after the mod switched on,
+  the mod goes off by itself, as if reverted but past the change mode: its rows name the material, so they go with it,
+  and the rules are back to what they were. The log says "Black ice lapsed (Open room)" and `RoomDecided` is raised with
+  a revert. Without `after` it lasts while the mod is on. A cell's own `lasts` still withers a single cover sooner.
+- **`into`** (optional): what a cell of it turns into, a material of the same kind the rules already have (not one the
+  mod adds). None: a cover or gas just goes, a terrain becomes dirt.
+- **The sweep.** When a mod goes, by revert or lapse, every loaded cell holding one of its materials is swept at that
+  tick, in row-major order: the terrain turns into `into`, the cover or gas goes (or turns into `into`), and the cell's
+  `Life` (and a cover's `Slick`) is cleared. Inactive chunks are swept too, as `ApplyRules`' `Sanitize` already writes
+  them, so no chunk wakes holding one.
+- **The retired list** (`RoomState.Retired`): each swept material with its `into`, mod and tick, the newest 32. A cell
+  that comes back naming one later (the dragon's starting state, an older save) turns into the same `into`. It is in
+  `RoomText` (so `CastHash`) and the room's save, both unchanged while it's empty; a mod switched on again takes its
+  materials off it.
+- **Lockstep.** A lapse is checked at the end of each tick (`World.EndTick`), mods in room order, at most one a tick
+  (the next due waits a tick). The due tick is the mod's switch tick plus the shortest `after` of its materials, so a
+  late joiner or a loaded save, which has both, lapses it at the same tick. No clock but the tick.
+- **What may name it.** Only its own mod: `validate` and every peer's check refuse another mod naming a temporary
+  material anywhere in its patch ("black-ice is a temporary material of the mod black-ice; only that mod may name it"),
+  so a lapse never leaves a dangling reference; a thing can't be made of one. Ids travel as strings (cells, saves, the
+  patch): nothing on the wire holds an index.
+- **Budgets** (`budgets.json` `materials`): `maxPerMod` 8 new materials a mod, `maxLive` 32 temporary rows live in a
+  room (refused at the switch: "Big mod would make 35 temporary materials live; a room holds at most 32"), `maxLapse`
+  21 600. A lapse on a material the rules already have is refused.
+- **Tools.** `add_material` and `set_material` take `lapse` (`lapse.after`, `lapse.into`) on a terrain, cover or gas.
+
+**In the view (`temp-materials-view`).** What drawing a temporary cover needs:
+1. A cover by id the view has never seen: `ChemGrid.RenderCover` and `CellSlickMesh` must draw any cover from its
+   `look` (colour, and slick or not from its tags: `slippery`), not by id, the P3 slick `needs` gap. Until then black
+   ice is drawn as a plain cover.
+2. After a sweep, every cell that held it changes at once, inactive chunks included: redraw the covers (and terrain)
+   of every chunk on `RoomDecided` (a revert, lapse or not), not only the active ones, as for a rule switch.
+3. `RuleSwitcher` and the mods panel take a lapse as a revert: on `RoomDecided` with a revert, read `World.Room.Mods`
+   and `World.RoomRules` again (a `TickBatch.RunOn` hands back the old `RuleSet` across a lapse, as no room command came).
+4. Optional: a mod with a lapse shows its time left (`World.LapsesAt(mod)` minus `World.Tick`) in the mods panel.
 
 ## Buildings: rows a mod can edit or add
 
