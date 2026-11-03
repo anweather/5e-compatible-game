@@ -264,7 +264,8 @@ namespace Chem
         /// </summary>
         public string SiteProblem(Rules next, string title = null)
         {
-            string things = ThingSiteProblem(next, title);
+            var leaving = LeavingThings(next);
+            string things = ThingSiteProblem(next, title, leaving);
             if (things != null) return things;
             if (Rules.ModBuildings.Count == 0 && next.ModBuildings.Count == 0) return null;
             NoteBaseBuildings();
@@ -279,20 +280,20 @@ namespace Chem
                 var others = OtherBuildings(next, id);
                 foreach (var c in BuildingRaster.Cells(row, next.Buildings).Where(c => !had.Contains((c.X, c.Y))))
                 {
-                    string why = CellProblem(c.X, c.Y, others);
+                    string why = CellProblem(c.X, c.Y, others, leaving);
                     if (why != null) return $"{title ?? "that mod"} can't build {id} at cell ({c.X}, {c.Y}): {why}";
                 }
             }
             return OverlapProblem(next, title);
         }
 
-        /// <summary>Why a building can't stand on this cell (null if it can), other than on the given buildings' cells.</summary>
-        public string CellProblem(int x, int y, IReadOnlyDictionary<(int, int), string> others = null)
+        /// <summary>Why a building can't stand on this cell (null if it can), other than on the given buildings' cells or under the things leaving.</summary>
+        public string CellProblem(int x, int y, IReadOnlyDictionary<(int, int), string> others = null, ISet<(string, int, int)> leaving = null)
         {
             if (!InBounds(x, y)) return "it's off the world";
             if (others != null && others.TryGetValue((x, y), out var building)) return $"{building} stands there";
             var thing = ThingsNow.At(x, y);
-            if (thing != null) return $"a {thing.Kind} ({thing.Id}) stands there";
+            if (thing != null && leaving?.Contains((thing.Kind, thing.CellX, thing.CellY)) != true) return $"a {thing.Kind} ({thing.Id}) stands there";
             var c = At(x, y);
             if (c.Water > 0 || c.Frozen) return "there's water there";
             if (!HasTag(c, "ground") || IsBlocking(c)) return $"it's {TerrainOf(c).Name}, not open ground";
@@ -323,11 +324,15 @@ namespace Chem
             return null;
         }
 
-        /// <summary>The site problem a patch would meet here if it switched on now: null if none. It doesn't switch it on.</summary>
-        public string SiteProblemOf(string patchJson, string title = null)
+        /// <summary>
+        /// The site problem a patch would meet here if it switched on now: null if none. It doesn't switch it on.
+        /// With <paramref name="replacing"/>, a mod on that is an earlier state of this same patch, it goes in that mod's
+        /// place rather than over it, so what that mod put in the world doesn't count against the patch.
+        /// </summary>
+        public string SiteProblemOf(string patchJson, string title = null, string replacing = null)
         {
             if (RoomRules == null) return null;
-            var mods = RoomRules.Mods.Append(new ActiveMod("\0site", patchJson));
+            var mods = RoomRules.IsOn(replacing) ? RoomRules.Replaced(new ActiveMod(replacing, patchJson)) : RoomRules.Mods.Append(new ActiveMod("\0site", patchJson));
             return SiteProblem(RoomRules.WithMods(mods).Effective, title);
         }
 

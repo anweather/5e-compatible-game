@@ -106,8 +106,15 @@ namespace Chem.Mcp
             string changes = Changes(draft) + NewSpellsReach(draft);
             Applied?.Invoke(key, json);
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
-            return Refused(said) ? said : said + "\n" + changes;
+            if (Refused(said)) return said;
+            draft.WentOn(slug.Length > 0 ? slug : draft.Id, json);
+            return said + "\n" + changes;
         }
+
+        // The mod this draft switched on as, while it's on as the draft sent it; a revert ends that, and so does another
+        // mod taking the id. Null if none. Whatever else is on stays someone else's, so it can still refuse the draft.
+        string OwnMod(Draft draft) =>
+            draft?.OnAs != null && Now()?.Room.Mods.Exists(m => m.Id == draft.OnAs && m.Json == draft.OnJson) == true ? draft.OnAs : null;
 
         /// <summary>What a draft does, in a sentence: each entry it holds against the rules in force.</summary>
         public string Changes(Draft draft) => "It changes " + string.Join("; ", draft.Changed.Select(c => ChangeOf(draft, c))) + ".";
