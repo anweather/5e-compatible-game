@@ -255,6 +255,10 @@ touch them.
 : Choosing cells over an area the same on every peer (`Placement.Pick`): each open cell scored by `WorldHash`
   of the seed, a salt and the cell, best first, kept `spacing` cells apart. No draw from the world's generator.
 
+**Lay / scatter**
+: **Lay** is a mod's world edit setting cells (`world.lay`, `World.LayCells`): fresh at the switch, taken back by a
+  revert. **Scatter** is the MCP tool that picks those cells over an area by `Pick` and writes them into a draft.
+
 **Summon**
 : An animal a spell's `place` brings out (`World.Summoned`): the core says which species, on which cell and with
   which Individual; each peer's `ValleyFauna` then lets it live as ambient life, on its own.

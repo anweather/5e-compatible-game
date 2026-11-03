@@ -23,6 +23,7 @@ namespace Chem
             check.Numbers();
             check.Buildings();
             check.Things();
+            check.Lays();
             check.Fauna();
             return check.Errors;
         }
