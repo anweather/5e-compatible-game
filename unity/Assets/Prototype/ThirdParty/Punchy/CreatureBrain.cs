@@ -95,11 +95,19 @@ namespace Punchy.Fauna
         const float FireFear = 10f;
 
         /// <summary>
-        /// How much an animal's size (its scale) raises its speeds and the distance it takes fright at: the square
-        /// root of the scale, held between 0.5 and 1.5. A deer three times the size runs 1.5 times as fast and flees
-        /// from 1.5 times as far, not three; legs still scale with the body, so a giant strides slower.
+        /// How much an animal's size (its scale) raises its speeds and the distance it takes fright at: one for one
+        /// across the usual variety (0.8 to 1.25, where the valley's land animals all are, so they behave exactly as
+        /// before), and by the square root of the rest beyond it, held between 0.5 and 1.5. A deer three times the size runs 1.5 times as
+        /// fast and flees from 1.5 times as far, not three; legs still scale with the body, so a giant strides slower.
         /// </summary>
-        public static float Pace(float scale) => math.clamp(math.sqrt(scale), 0.5f, 1.5f);
+        public static float Pace(float scale)
+        {
+            if (scale > NormalMost) return math.min(NormalMost * math.sqrt(scale / NormalMost), 1.5f);
+            if (scale < NormalLeast) return math.max(NormalLeast * math.sqrt(scale / NormalLeast), 0.5f);
+            return scale;
+        }
+
+        const float NormalLeast = 0.8f, NormalMost = 1.25f;
 
         // Flee's stages: running, off to one side of what's in the way, or cornered.
         const byte Running = 0, Veering = 1, Milling = 2;
