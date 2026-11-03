@@ -104,6 +104,19 @@ namespace Chem
                 var wall = Fields(who, "wall", row["wall"]) ? (JObject)row["wall"] : null;
                 if (Fields(who, "floor", row["floor"]) && row["floor"]["kind"] != null) Named(who, "floor", "floors", row["floor"]["kind"], tables);
                 if (row["storeys"] != null && !IsWholeAtLeast(row["storeys"], 1)) Errors.Add($"{who}: storeys must be a whole number, 1 or more");
+                var joins = RowCells(who, row);
+                var walls = row["walls"] as JObject;
+                if (walls == null || walls.Count == 0)
+                {
+                    if (row["built"] == null) Errors.Add($"{who} has no walls, and its style has no recipe to lay them");
+                }
+                else RowWalls(who, row, wall, walls, joins, tables);
+                RowParts(who, row, walls, joins, tables);
+            }
+
+            // A row's built spans and its joins; the joins, for its walls and roofs.
+            JObject RowCells(string who, JObject row)
+            {
                 foreach (var t in (row["built"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                 {
                     if (terrain[t.Name] == null) Errors.Add($"{who}: built names unknown terrain {t.Name}");
@@ -112,19 +125,20 @@ namespace Chem
                 var joins = row["joins"] as JObject ?? new JObject();
                 foreach (var j in joins.Properties())
                     if (!(j.Value is JArray xy) || xy.Count != 2 || !xy.All(IsWhole)) Errors.Add($"{who}: join {j.Name} must be [x, y], whole half cells from at");
-                var walls = row["walls"] as JObject;
-                if (walls == null || walls.Count == 0)
-                {
-                    if (row["built"] == null) Errors.Add($"{who} has no walls, and its style has no recipe to lay them");
-                }
-                else
-                {
-                    var each = walls.Properties().Where(w => Fields(who, $"wall {w.Name}", w.Value)).ToList();
-                    if (wall?["material"] == null && each.Any(w => w.Value["material"] == null)) Errors.Add($"{who} needs a wall material, in \"wall\", in its style or on each wall");
-                    else WallMaterial(who, wall?["material"]);
-                    int storeys = IsWholeAtLeast(row["storeys"], 1) ? (int)row["storeys"] : 1;
-                    foreach (var w in each) Wall(who, w.Name, w.Value, joins, tables, storeys);
-                }
+                return joins;
+            }
+
+            void RowWalls(string who, JObject row, JObject wall, JObject walls, JObject joins, BuildingTables tables)
+            {
+                var each = walls.Properties().Where(w => Fields(who, $"wall {w.Name}", w.Value)).ToList();
+                if (wall?["material"] == null && each.Any(w => w.Value["material"] == null)) Errors.Add($"{who} needs a wall material, in \"wall\", in its style or on each wall");
+                else WallMaterial(who, wall?["material"]);
+                int storeys = IsWholeAtLeast(row["storeys"], 1) ? (int)row["storeys"] : 1;
+                foreach (var w in each) Wall(who, w.Name, w.Value, joins, tables, storeys);
+            }
+
+            void RowParts(string who, JObject row, JObject walls, JObject joins, BuildingTables tables)
+            {
                 foreach (var f in (row["roofs"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                     if (Fields(who, $"roof {f.Name}", f.Value)) Roof($"{who}: roof {f.Name}", f.Value, tables, joins);
                 foreach (var part in (row["parts"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
