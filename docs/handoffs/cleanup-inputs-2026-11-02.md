@@ -52,3 +52,11 @@ Written before DesktopUnity finished the branch (709551c), so these may have mov
 - `no_desync`'s detail always reads "the client saw none", even when it fails.
 - `dotnet test` lists `ClearThenFog` and `EachStageUnderClearStormAndFog` as skipped while the summary says 0.
 - `unity recompile` is needed on an unfocused Editor, or an edited script doesn't compile; 3 runs ended up on base code that way.
+
+## roomruin-wait
+
+- `NetTick` counts a tick still in progress, so "reached" means started, not finished. Anything reading tick results at that moment would race.
+- `Agree`'s 0.6 s is capped game time, so its margin over the rule's tick is only 0 to 3 ticks.
+- `roomhost` and `roomlocked` compare only 1 or 2 checksums, because they end near tick 60.
+- `RoomProbeRecord.Seen` returns one shared object.
+- A passing checksum detail prints `first at net tick -1`.
