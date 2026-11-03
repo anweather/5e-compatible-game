@@ -144,7 +144,9 @@ namespace Chem
             {
                 problems = ModValidator.Validate(Rules, roomBudgets, json);
             }
-            catch (Exception e) when (e is FormatException || e is InvalidCastException || e is ArgumentException || e is OverflowException)
+            // InvalidOperationException is Newtonsoft reading a field of a string or a number (#79): the checks
+            // refuse the shapes known to do that, and this keeps one they miss a refusal on every peer, not a throw.
+            catch (Exception e) when (e is FormatException || e is InvalidCastException || e is ArgumentException || e is OverflowException || e is InvalidOperationException)
             {
                 return $"{title} can't be read as a mod";
             }
