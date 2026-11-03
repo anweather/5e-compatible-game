@@ -137,14 +137,54 @@ public partial class ChemGrid
         foreach (var (cx, cy) in World.ActiveChunks)
         {
             if (turn++ % RenderTurns != renderTurn) continue;
-            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
-            int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
-            for (int y = y0; y < y1; y++)
-                for (int x = x0; x < x1; x++) RenderCell(x, y);
+            RenderChunk(cx, cy);
         }
         RenderFresh(out int fresh);
+        RenderSwept();
         FinishRender();
         AnnounceFresh(fresh);
+    }
+
+    // The inactive chunks still to look over after a sweep (RedrawEveryChunk), and how many a frame: a cell
+    // that hasn't changed costs a hash, so a chunk is about what a third of the active ones costs a frame.
+    readonly Queue<Vector2Int> sweptChunks = new();
+    const int SweptChunksAFrame = 6;
+
+    /// <summary>Inactive chunks redrawn after a sweep, for the probe; and how many are still to come.</summary>
+    public int SweptChunksDrawn { get; private set; }
+    public int SweptChunksLeft => sweptChunks.Count;
+
+    /// <summary>
+    /// A revert or a lapse swept its mod's materials from every cell (World.Lapse.cs), inactive chunks too, which
+    /// Render doesn't walk: each inactive chunk is looked over once, a few a frame, so the lapse clears everywhere.
+    /// </summary>
+    void RedrawEveryChunk()
+    {
+        if (views == null) return;
+        sweptChunks.Clear();
+        int cw = (World.W + Chunks.Size - 1) >> Chunks.Shift, chh = (World.H + Chunks.Size - 1) >> Chunks.Shift;
+        for (int cy = 0; cy < chh; cy++)
+            for (int cx = 0; cx < cw; cx++) sweptChunks.Enqueue(new Vector2Int(cx, cy));
+    }
+
+    void RenderSwept()
+    {
+        for (int n = 0; n < SweptChunksAFrame && sweptChunks.Count > 0; n++)
+        {
+            var ch = sweptChunks.Dequeue();
+            if (World.IsActive(ch.x, ch.y)) continue; // Render walks it
+            SweptChunksDrawn++;
+            RenderChunk(ch.x, ch.y);
+        }
+    }
+
+    // Every cell of a chunk, looked over.
+    void RenderChunk(int cx, int cy)
+    {
+        int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+        int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+        for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++) RenderCell(x, y);
     }
 
     /// <summary>Inactive chunks redrawn because the dragon's breath reset them, for the probe.</summary>
@@ -158,10 +198,7 @@ public partial class ChemGrid
         {
             if (World.IsActive(f.CX, f.CY)) continue;
             FreshInactiveDrawn++;
-            int x0 = f.CX << Chunks.Shift, y0 = f.CY << Chunks.Shift;
-            int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
-            for (int y = y0; y < y1; y++)
-                for (int x = x0; x < x1; x++) RenderCell(x, y);
+            RenderChunk(f.CX, f.CY);
         }
     }
 
@@ -247,7 +284,7 @@ public partial class ChemGrid
         int elevation = World.ElevationUnits(c);
         bool reshaped = v.terrain != null && v.elevation != elevation;
         bool rebuild = v.terrain != c.T || v.height != c.Height;
-        bool banked = (v.coverId == World.BankCover) != (c.Cover == World.BankCover);
+        bool banked = CellPaint.IsBank(v.coverId, World.Rules) != CellPaint.IsBank(c.Cover, World.Rules);
         if (v.terrain != c.T) TerrainTurned(v.terrain, c, x, y);
         if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped || banked);
         if (rebuild) Redress(v, c, x, y, reshaped);
@@ -406,8 +443,9 @@ public partial class ChemGrid
 
     // --- covers ------------------------------------------------------------------
 
-    // Oil and grease (and mud and glass ground) are a glossy film over the cells (CellSlickMesh); ash is the terrain's own
-    // charred paint (CellPaint), or a grey sheet without a valley.
+    // Slippery covers, a mod's own covers (and mud and glass ground) are a glossy film over the cells (CellSlickMesh); ash
+    // (whatever the rules say fire leaves: CellPaint.IsAsh) is the terrain's own charred paint (CellPaint), or a sheet
+    // in its colour without a valley. A mod's own ash wears its film over the charred paint as well.
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         bool cooled = lava.Changed(x, y, c, LavaHeat(c), MoltenTint(c, x, y));
@@ -417,10 +455,10 @@ public partial class ChemGrid
         cracks.Changed(x, y, c, ground);
         spellLights.Changed(x, y, c, ground);
         if (valley != null) valley.PaneCracked(World.Idx(x, y), c.Cracked != 0);
-        cellFx.Oil(x, y, CellSlickMesh.IsSlick(c.Cover) && c.Water > 0 && !c.Frozen);
+        cellFx.Oil(x, y, slicks.IsSheen(c.Cover) && c.Water > 0 && !c.Frozen);
         RenderThorns(v, c, x, y, center, ground);
         RenderVines(v, c, x, y, center);
-        if (c.Cover != CoverIds.Ash || valley != null)
+        if (valley != null || slicks.IsFilm(c.Cover) || !CellPaint.IsAsh(c.Cover, World.Rules))
         {
             Hide(v.cover);
             return;
@@ -428,7 +466,7 @@ public partial class ChemGrid
         var film = Ensure(ref v.cover, "Cover", center);
         film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
         film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
-        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-ash", CoverColor(CoverIds.Ash, new Color(0.35f, 0.34f, 0.33f)), 0.05f);
+        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-" + c.Cover, CoverColor(c.Cover, new Color(0.35f, 0.34f, 0.33f)), 0.05f);
     }
 
     // Spike Growth's thorns: a clump of spikes on the cell (CellThorns) while the cover is there.

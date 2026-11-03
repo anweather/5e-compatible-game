@@ -67,6 +67,10 @@ public partial class ChemGrid
     /// <summary>The film colour a cell is drawn in, for a probe.</summary>
     public Color? SlickColorAt(int x, int y) => slicks.FilmColorAt(x, y);
 
+    /// <summary>How many cells are drawn wearing a film (a cover's id), and whether a cover wears one, for a probe.</summary>
+    public int FilmCells(string film) => slicks.FilmCells(film);
+    public bool IsFilm(string cover) => slicks.IsFilm(cover);
+
     /// <summary>The top of the water or the lake at a point in grid units, or <paramref name="fallback"/>.</summary>
     public float DrawnSurfaceAt(float gx, float gy, float fallback)
     {

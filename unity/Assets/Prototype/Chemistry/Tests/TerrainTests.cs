@@ -377,6 +377,19 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AshAndSnowPaintWhatTheRulesName()
+        {
+            Assert.That(CellPaint.IsAsh("ash", R) && !CellPaint.IsAsh("snow", R) && !CellPaint.IsAsh("oil", R) && !CellPaint.IsAsh(null, R), "the base, as the ids were");
+            Assert.That(CellPaint.IsSnowy(new Cell("grass") { Cover = "snowbank" }, R) && CellPaint.IsBank("snowbank", R) && !CellPaint.IsBank("snow", R));
+            var soot = RuleSet.Plain(R).WithMods(new[] { new ActiveMod("soot", @"{ ""patch"": {
+                ""covers"": { ""soot"": { ""name"": ""Soot"", ""tags"": [], ""look"": { ""color"": [0.2, 0.3, 0.9] } } },
+                ""terrain"": { ""grass"": { ""burn"": { ""ash"": ""soot"" } } } } }") }).Effective;
+            Assert.That(CellPaint.IsAsh("soot", soot) && CellPaint.IsAsh("ash", soot), "a material's own ash, and fire's");
+            Assert.AreEqual(CellPaint.Charred, Top(CellPaint.Weights(new Cell("grass") { Cover = "soot" }, false, soot)));
+            Assert.AreEqual(CellPaint.Grass, Top(CellPaint.Weights(new Cell("grass") { Cover = "soot" })), "with no rules, only the base ash");
+        }
+
+        [Test]
         public void WallsAreRockAndDugGrassIsEarth()
         {
             var w = Meadow();

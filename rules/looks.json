@@ -15,8 +15,8 @@
     "wall": { "about": "A log wall, built by its house or worn thin on its posts.", "forms": ["built", "worn"], "params": ["color"] }
   },
   "covers": {
-    "slick": { "drawn": false, "needs": "CellSlickMesh's id checks read from the cover's look; its colours already are" },
-    "scorch": { "drawn": false, "needs": "CellPaint's and ChemGrid.RenderCover's ash check read from the cover's look; its colour already is" },
+    "slick": { "about": "A glossy film lying on the cell in the look's colour, fading at its edge (CellSlickMesh). Every slippery cover and every cover a mod adds wears it without naming the family.", "params": ["color"] },
+    "scorch": { "about": "Charred ground under the cover, as fire leaves (CellPaint). What sim.json fire.ash or a material's burn.ash names is drawn so without naming the family; a mod's own wears its colour as a film too.", "params": ["color"] },
     "ember": { "drawn": false, "needs": "CellLavaMesh's embers check read from the cover's look" },
     "growth": { "drawn": false, "needs": "ChemGrid's thorns and vines checks to pick CellThorns or CellVines from the cover's look; their colours already are" }
   },

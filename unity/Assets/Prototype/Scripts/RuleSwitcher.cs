@@ -73,6 +73,21 @@ public class RuleSwitcher : MonoBehaviour
         if (command.Peer == Me) LastError = verdict.Done ? null : verdict.Line;
     }
 
+    /// <summary>
+    /// For a mod on whose materials lapse (World.LapsesAt): "lapses in 4:59", the play time left at the world's
+    /// tick rate; null for a mod that isn't on or doesn't lapse. A lapse itself comes as a revert (RoomDecided).
+    /// </summary>
+    public string LapseNote(string id)
+    {
+        var world = grid.World;
+        var mod = Room?.Mods.Find(m => m.Id == id);
+        if (mod == null) return null;
+        int at = world.LapsesAt(mod);
+        if (at < 0) return null;
+        int seconds = Mathf.Max(0, at - world.Tick) / Mathf.Max(1, world.Rules.Sim.TicksPerSecond);
+        return $"lapses in {seconds / 60}:{seconds % 60:00}";
+    }
+
     // What a new switch builds on: a switch already queued but not yet in force counts.
     RuleSet Upcoming => grid.UpcomingRules;
 

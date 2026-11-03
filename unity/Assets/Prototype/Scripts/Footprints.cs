@@ -151,7 +151,7 @@ public class Footprints : MonoBehaviour
         if (step.magnitude < Stride * size) return;
         w.last = at;
         var cell = grid.CellAt(at);
-        if (!CellPaint.IsSnowy(world.At(cell.x, cell.y))) return;
+        if (!CellPaint.IsSnowy(world.At(cell.x, cell.y), world.Rules)) return;
         w.left = !w.left;
         forward.y = 0f;
         forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : step.normalized;
@@ -195,7 +195,7 @@ public class Footprints : MonoBehaviour
         {
             var pr = prints[i];
             float age = Time.time - pr.born;
-            bool shown = age < life && CellPaint.IsSnowy(world.At(pr.cell.x, pr.cell.y));
+            bool shown = age < life && CellPaint.IsSnowy(world.At(pr.cell.x, pr.cell.y), world.Rules);
             int v = i * 4;
             if (!shown)
             {
