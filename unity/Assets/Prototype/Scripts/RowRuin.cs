@@ -7,6 +7,7 @@ using UnityEngine;
 // down), and a wall on fire is sooted. A door's panel goes with its cell; the head over a gap stands
 // while the wall beside it does. It only hides and tints what RowMesher drew, so a change writes one
 // index list and one colour list and never builds a mesh, and cells that come back bring it all back.
+// It also says which stretches are out, so their windows' lamps go dark (RowHouses, WindowPanes).
 // Only the show: the cells are the truth, so every peer's ruin comes out alike, a late joiner's too.
 public sealed class RowRuin
 {
@@ -68,6 +69,9 @@ public sealed class RowRuin
         body.MarkDynamic();
         Write(true);
     }
+
+    /// <summary>Whether a window in this stretch has gone dark: its wall fell, fire reached it or its neighbours, or the house fell (half its stretches down).</summary>
+    public bool Out(RowMesher.Stretch s) => s != null && index.TryGetValue(s, out int i) && (states[i] == State.Down || sooted[i] || Down * 2 >= stretches.Length);
 
     void Unfix(RowMesher.Run run) => Array.Clear(bodyFixed, run.Index, run.Indices);
 

@@ -98,7 +98,8 @@ namespace Chem.Mcp
             if (!drafts.TryGetValue(key, out var draft))
             {
                 Applied?.Invoke(key, json);
-                return Decide(RoomCommand.Apply(PeerOf(peer), key.StartsWith('{') ? IdOf(json) : key, json, title));
+                string verdict = Decide(RoomCommand.Apply(PeerOf(peer), key.StartsWith('{') ? IdOf(json) : key, json, title));
+                return Refused(verdict) ? verdict : verdict + UnseenNote(json);
             }
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A draft needs a title, the name players read in the log; apply it again with one.");
             var slug = Slug(title);
@@ -108,7 +109,7 @@ namespace Chem.Mcp
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
             if (Refused(said)) return said;
             draft.WentOn(slug.Length > 0 ? slug : draft.Id, json);
-            return said + "\n" + changes;
+            return said + "\n" + changes + UnseenNote(json);
         }
 
         // The mod this draft switched on as, while it's on as the draft sent it; a revert ends that, and so does another

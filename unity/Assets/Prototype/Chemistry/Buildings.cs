@@ -266,6 +266,7 @@ namespace Chem
             if (o["styles"] is JObject styles)
                 foreach (var p in styles.Properties().ToList()) p.Value = Shared((JObject)p.Value);
             o.Remove("about");
+            o.Remove("drawn");
             return o;
         }
     }
