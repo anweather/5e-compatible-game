@@ -144,7 +144,12 @@ public sealed class ValleyGround
                 bakedPaint[w.Idx(x, y)] = CellPaint.Mix(w, w.At(x, y));
             }
         }
+        paintedMix = (IReadOnlyList<float>[])bakedPaint.Clone();
     }
+
+    // Each cell's mix as its texels were last composed (the baked one at first): a cell asked to
+    // repaint that would paint the same mix again changes nothing.
+    IReadOnlyList<float>[] paintedMix;
 
     void Recover((int i, int j) at, Chunk ch)
     {
@@ -277,7 +282,8 @@ public sealed class ValleyGround
     public void Flush(System.Func<int, int, bool> scorched)
     {
         using var marked = FlushMarker.Auto();
-        SyncOneHeightmap();
+        using (SyncMarker.Auto()) SyncOneHeightmap();
+        PerfCounts.Peak("ground.repaint_waiting", repaint.Count);
         using (DetailMarker.Auto()) WriteDetail();
         if (repaint.Count == 0)
         {
@@ -287,22 +293,30 @@ public sealed class ValleyGround
         }
         // A big fire scorches hundreds of cells a tick: repaint only as many as fit the frame's
         // budget, the rest over the next frames, so the terrain's paint never stalls a frame.
-        batch.Clear();
-        int most = PaintCellsThisFrame();
-        foreach (var cell in repaint)
+        TakeBatch(scorched);
+        if (batch.Count == 0)
         {
-            batch.Add(cell);
-            if (batch.Count == most) break;
+            WriteOnePaint();
+            return;
         }
-        foreach (var cell in batch) repaint.Remove(cell);
         // A cell's paint reaches its neighbours' texels: repaint them too, as strips of cells.
         System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => PaintOf(x, y, scorched(x, y));
         paintTimer.Restart();
+        HashSet<(int x, int y)> around;
         using (PaintMarker.Auto())
         {
-            foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, batch))) Paint(r, paintOf);
+            around = CellPaint.Around(layout, batch);
+            foreach (var r in CellPaint.Runs(layout, around)) Paint(r, paintOf);
         }
         msPerCell = Mathf.Lerp(msPerCell, (float)paintTimer.Elapsed.TotalMilliseconds / batch.Count, 0.3f);
+        // A neighbour composed here with a mix it hasn't been painted with (it's waiting its turn)
+        // is no longer what paintedMix says: it paints in full on its turn, whatever its mix then.
+        foreach (var (x, y) in around)
+        {
+            if (!world.InBounds(x, y)) continue;
+            int key = world.Idx(x, y);
+            if (!ReferenceEquals(paintedMix[key], CellPaint.Mix(world, world.Cells[key], scorched(x, y)))) paintedMix[key] = null;
+        }
         WriteOnePaint();
         using (DetailMarker.Auto()) ClearBareDetail(scorched);
     }
@@ -311,7 +325,8 @@ public sealed class ValleyGround
     static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
         PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint"),
         DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"),
-        HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite");
+        HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
+        SyncMarker = new("ValleyGround.SyncHeightmap");
 
     // Composing paint gets about this much of a frame (ms); the cells it takes follow from how long
     // the last ones took, between the bounds below.
@@ -320,6 +335,33 @@ public sealed class ValleyGround
     readonly List<(int x, int y)> batch = new();
     readonly System.Diagnostics.Stopwatch paintTimer = new();
     float msPerCell = 0.02f;
+
+    // Cells asked to repaint looked at a frame, painted or not: a storm's rain washing the ash off
+    // scorched ground asks for thousands that paint just as they did (charred), and looking costs little.
+    const int MostLooks = 2000;
+    readonly List<(int x, int y)> looked = new();
+
+    // This frame's cells to paint: those whose mix differs from the one their texels were composed
+    // with. The rest are dropped without painting, and don't use the frame's budget.
+    void TakeBatch(System.Func<int, int, bool> scorched)
+    {
+        batch.Clear();
+        looked.Clear();
+        int most = PaintCellsThisFrame();
+        foreach (var cell in repaint)
+        {
+            if (batch.Count == most || looked.Count == MostLooks) break;
+            looked.Add(cell);
+            int key = world.Idx(cell.x, cell.y);
+            var mix = CellPaint.Mix(world, world.Cells[key], scorched(cell.x, cell.y));
+            bool same = ReferenceEquals(mix, paintedMix[key]);
+            PerfCounts.Add(same ? "ground.repaint_same" : "ground.repaint_new");
+            if (same) continue;
+            paintedMix[key] = mix;
+            batch.Add(cell);
+        }
+        foreach (var cell in looked) repaint.Remove(cell);
+    }
 
     int PaintCellsThisFrame() => Mathf.Clamp(Mathf.FloorToInt(PaintBudgetMs / Mathf.Max(msPerCell, 1e-4f)), FewestRepaints, MostRepaints);
 

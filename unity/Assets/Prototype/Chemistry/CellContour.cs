@@ -76,6 +76,9 @@ namespace Chem
         /// <summary>Works out every lattice point, skipping none (Sample): tests compare the two.</summary>
         public bool EveryPoint { get; set; }
 
+        /// <summary>The lattice points the last Build worked the noise out for, not kept from before (for a performance pass).</summary>
+        public int NoisePoints { get; private set; }
+
         /// <summary>
         /// Outlines the cells x0..x1, y0..y1 (inclusive) into <paramref name="mesh"/> (cleared first).
         /// <paramref name="value"/>(x, y) is a cell's value; it is also read one cell outside the
@@ -146,6 +149,7 @@ namespace Chem
             Fit(ref field, lw * lh);
             Fit(ref latticePoint, lw * lh);
             FindOutside();
+            NoisePoints = 0;
             for (int j = 0; j < lh; j++)
             {
                 for (int i = 0; i < lw; i++)
@@ -155,16 +159,42 @@ namespace Chem
                         field[j * lw + i] = spec.Iso - 1f;
                         continue;
                     }
-                    float x = lx0 + i / (float)n, y = ly0 + j / (float)n;
-                    // A broad bend (a few cells across) so a long straight run of cells
-                    // doesn't give a straight shore, and a finer wobble on top; blending
-                    // octaves narrows the spread, so it's stretched back out to ±0.5.
-                    float noise = 0.55f * ValueNoise.Twice(x * 0.35f, y * 0.35f, spec.Seed + 7) +
-                                  0.45f * ValueNoise.Twice(x * 1.1f, y * 1.1f, spec.Seed) - 0.5f;
-                    noise = Math.Max(-0.5f, Math.Min(0.5f, noise * 2.5f));
-                    field[j * lw + i] = Blend(cellValues, i, j) + spec.Wobble * Blend(cellWobbles, i, j) * noise;
+                    field[j * lw + i] = Blend(cellValues, i, j) + spec.Wobble * Blend(cellWobbles, i, j) * NoiseAt(i, j);
                 }
             }
+        }
+
+        // A tile's box never moves, so the noise at its lattice points is the same every time it's
+        // redrawn: kept, worked out the first time a point is inside (NaN until then), and dropped
+        // only if the box does move. Most of a redrawn tile's outline was this noise.
+        float[] noiseKept;
+        int keptX0 = int.MinValue, keptY0, keptW, keptH;
+
+        float NoiseAt(int i, int j)
+        {
+            if (!Tiled) return Noise(i, j);
+            if (keptX0 != cx0 || keptY0 != cy0 || keptW != lw || keptH != lh)
+            {
+                Fit(ref noiseKept, lw * lh);
+                for (int k = 0; k < lw * lh; k++) noiseKept[k] = float.NaN;
+                (keptX0, keptY0, keptW, keptH) = (cx0, cy0, lw, lh);
+            }
+            float kept = noiseKept[j * lw + i];
+            if (float.IsNaN(kept)) noiseKept[j * lw + i] = kept = Noise(i, j);
+            return kept;
+        }
+
+        float Noise(int i, int j)
+        {
+            NoisePoints++;
+            int n = spec.Lattice;
+            float x = lx0 + i / (float)n, y = ly0 + j / (float)n;
+            // A broad bend (a few cells across) so a long straight run of cells
+            // doesn't give a straight shore, and a finer wobble on top; blending
+            // octaves narrows the spread, so it's stretched back out to ±0.5.
+            float noise = 0.55f * ValueNoise.Twice(x * 0.35f, y * 0.35f, spec.Seed + 7) +
+                          0.45f * ValueNoise.Twice(x * 1.1f, y * 1.1f, spec.Seed) - 0.5f;
+            return Math.Max(-0.5f, Math.Min(0.5f, noise * 2.5f));
         }
 
         // Which square of four cell centres a lattice index falls in, as Blend reads it.

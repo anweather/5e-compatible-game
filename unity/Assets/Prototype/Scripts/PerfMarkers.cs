@@ -49,7 +49,7 @@ public sealed class PerfMarkers : IDisposable
             "RobeCloth.Step", "PlaytestBot.LateUpdate", BotShot,
             "ChemGrid.ChunkPlan", "ChemGrid.ChunkApply", "ChemGrid.ChunkEvent", "ChemGrid.DetailChunks",
             "ThingSpawner.SpawnChunk", "ThingSpawner.UnloadChunk", "ValleyGround.DrawDetails",
-            "ValleyGround.HeightUpdate", "ValleyGround.HeightEase", "ValleyGround.HeightWrite",
+            "ValleyGround.HeightUpdate", "ValleyGround.HeightEase", "ValleyGround.HeightWrite", "ValleyGround.SyncHeightmap",
             "Water.Recompute", "Water.ComputeTops", "Water.FindBanks", "Water.DrawTile",
             "Contour.Tile.Outline", "Contour.Tile.Points", "Contour.Tile.Upload",
             "Contour.Film.Outline", "Contour.Film.Points", "Contour.Film.Upload",

@@ -87,6 +87,27 @@ public sealed class ContourSurface
         mesh.SetTriangles(shape.Triangles, 0);
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
+        if (PerfCounts.On) CountSame(count);
+    }
+
+    // For a performance pass: whether this build drew what the last did (a redraw that changed nothing).
+    long lastPicture;
+
+    void CountSame(string count)
+    {
+        unchecked
+        {
+            long h = 1469598103934665603L;
+            void Mix(float f) => h = (h ^ System.BitConverter.SingleToInt32Bits(f)) * 1099511628211L;
+            for (int n = 0; n < vertices.Count; n++)
+            {
+                Mix(vertices[n].x); Mix(vertices[n].y); Mix(vertices[n].z); Mix(colors[n].a);
+            }
+            foreach (int t in shape.Triangles) h = (h ^ t) * 1099511628211L;
+            PerfCounts.Add(count + (h == lastPicture ? ".unchanged" : ".changed"));
+            PerfCounts.Add(count + ".noise_points", contour.NoisePoints);
+            lastPicture = h;
+        }
     }
 
     void Attributes(System.Func<float, float, float> height, System.Func<float, float, float, Color> color, System.Func<float, float, float, Vector3> flow)

@@ -44,6 +44,7 @@ public partial class PerfStage : ShowcaseScript
         yield return Sky(Scenario is "storm" or "rain" or "snow" or "fog" ? Scenario : "clear");
         if (Scenario == "wildfire") yield return Wildfire();
         else if (Scenario == "village") Hollowmere();
+        else if (Scenario == "showerstorm") yield return ShowerStorm();
         else if (Scenario == "forest") LogMap();
         else if (Scenario is "dragon" or "dragonclear" or "dragonlow") DragonShot();
         else Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));

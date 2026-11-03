@@ -16,16 +16,16 @@ public class WaterLookProbe : ProbeScenario
     const string ByMe = "{ \"title\": \"Purple Create Water\", \"patch\": { \"elements\": { \"water\": { \"look\": { \"scoped\": [ { \"by\": 0, \"color\": [0.6, 0.2, 0.85] } ] } } }, \"spells\": [ { \"id\": \"create-water\", \"look\": { \"color\": [0.6, 0.2, 0.85] } } ] } }";
     const string AllWater = "{ \"title\": \"All water purple\", \"patch\": { \"elements\": { \"water\": { \"look\": { \"color\": [0.6, 0.2, 0.85] } } }, \"spells\": [ { \"id\": \"create-water\", \"look\": { \"color\": [0.6, 0.2, 0.85] } }, { \"id\": \"flood\", \"look\": { \"color\": [0.6, 0.2, 0.85] } }, { \"id\": \"wave\", \"look\": { \"color\": [0.6, 0.2, 0.85] } } ] } }";
     // His "Constant meteor showers", in a clear stretch so the shower comes at once.
-    const string Meteors = "{ \"title\": \"Constant meteor showers\", \"patch\": { \"sim\": { \"weather\": { \"calmPeriods\": 0, \"rampMinutes\": 0.02, \"weights\": { \"clear\": 1, \"cloudy\": 0, \"windy\": 0, \"fog\": 0, \"rain\": 0, \"storm\": 0, \"snow\": 0 }, \"meteors\": { \"showerChance\": 1, \"every\": 1 } } } } }";
+    public const string Meteors = "{ \"title\": \"Constant meteor showers\", \"patch\": { \"sim\": { \"weather\": { \"calmPeriods\": 0, \"rampMinutes\": 0.02, \"weights\": { \"clear\": 1, \"cloudy\": 0, \"windy\": 0, \"fog\": 0, \"rain\": 0, \"storm\": 0, \"snow\": 0 }, \"meteors\": { \"showerChance\": 1, \"every\": 1 } } } } }";
     // Hollowmere's place and square in cells (world/villages.json, PerfStage).
-    const int HollowmereX = 222, HollowmereY = 300, SquareX = 5, SquareY = 6;
-    const float SettleAfterSwitch = 3f, Hold = 4f, ShowerSeconds = 60f, AfterShower = 15f;
+    protected const int HollowmereX = 222, HollowmereY = 300, SquareX = 5, SquareY = 6;
+    protected const float SettleAfterSwitch = 3f, Hold = 4f, ShowerSeconds = 60f, AfterShower = 15f;
     // A stretch with the looks on may cost no more a frame than the stretches round it with them off, by this or this share.
     const float MostExtraMs = 1f, MostExtraShare = 0.2f;
 
     static readonly string[] Markers = { "ChemGrid.Render", "ChemGrid.FinishRender", "ChemGrid.WaterMesh", "ChemGrid.SlickMesh", "ValleyGround.Flush" };
 
-    RuleSwitcher switcher;
+    protected RuleSwitcher switcher;
 
     protected override IEnumerator Run()
     {
@@ -85,7 +85,10 @@ public class WaterLookProbe : ProbeScenario
 
     // A stretch with the camera still: each marker's mean a frame, the frame's, and the view's counts
     // a frame (PerfCounts), as metrics and one log line each; ChemGrid.Render's mean goes to <paramref name="render"/>.
-    IEnumerator Stretch(string name, System.Action<double> render)
+    /// <summary>The last stretch's view counts, summed over its frames.</summary>
+    protected SortedDictionary<string, long> LastCounts { get; private set; } = new();
+
+    protected IEnumerator Stretch(string name, System.Action<double> render)
     {
         var recorders = new Unity.Profiling.ProfilerRecorder[Markers.Length];
         for (int i = 0; i < Markers.Length; i++) recorders[i] = Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Scripts, Markers[i]);
@@ -119,8 +122,9 @@ public class WaterLookProbe : ProbeScenario
             recorders[i].Dispose();
         }
         Metric($"{name}_frame_ms", frameMs / frames);
-        foreach (string key in new[] { "water.wet_cells", "water.dirty_tiles", "water.tiles_drawn", "water.changed" })
+        foreach (string key in new[] { "water.wet_cells", "water.dirty_tiles", "water.tiles_drawn", "water.changed", "tile.box_cells", "tile.noise_points" })
             Metric($"{name}_{key}", counts.TryGetValue(key, out long n) ? (double)n / frames : 0);
+        LastCounts = counts;
         Debug.Log(line.Append(wide.WindowSummary()).ToString());
         var countLine = new System.Text.StringBuilder($"PROBE WATERLOOK {name} counts a frame:");
         foreach (var kv in counts) countLine.Append(' ').Append(kv.Key).Append('=').Append(((double)kv.Value / frames).ToString("0.0", inv));
