@@ -75,6 +75,24 @@ public class RowMesherTests
     }
 
     [Test]
+    public void AWindowsLampComesFromItsTableOrItsOwnAndRemembersItsStretch()
+    {
+        var lit = new RowMesher.Tables
+        {
+            OpeningLook = kind => JObject.Parse(kind == "window" ? "{ \"width\": 0.9, \"height\": 1.2, \"sill\": 0.9, \"lamp\": \"#ff8000\" }" : "{ \"width\": 0.9, \"height\": 2.1, \"sill\": 0 }"),
+            TerrainColor = _ => Color.grey,
+            Tiled = _ => false,
+        };
+        var made = RowMesher.Make(Box("\"shape\": \"flat\"", ", \"openings\": [{ \"kind\": \"window\", \"at\": 0 }, { \"kind\": \"window\", \"at\": 3, \"lamp\": \"#0000ff\" }, { \"kind\": \"window\", \"at\": 6, \"lamp\": \"off\" }]"), lit);
+        // A window across two cells is a pane in each, so it goes dark a cell at a time.
+        var lamps = made.panes.OrderBy(p => p.at.x).Select(p => p.lamp).Distinct().ToList();
+        CollectionAssert.AreEqual(new[] { new Color(1f, 128f / 255f, 0f, 1f), Color.blue, Color.clear }, lamps, "the table's, its own, off");
+        Assert.AreEqual(made.panes.Length, made.paneStretches.Length);
+        Assert.That(made.paneStretches.All(s => made.stretches.Contains(s)));
+        Assert.AreEqual(Color.clear, RowMesher.Make(Box("\"shape\": \"flat\"", ", \"openings\": [{ \"kind\": \"window\", \"at\": 2 }]"), Plain).panes[0].lamp, "no lamp, no light");
+    }
+
+    [Test]
     public void ARowOfNoWallsDrawsNoRoof()
     {
         var made = RowMesher.Make(JObject.Parse("{ \"built\": { }, \"roofs\": { \"main\": { \"shape\": \"gable\" } } }"), Plain);

@@ -101,12 +101,15 @@ public class RowBurnProbe : RowHousesProbe
     {
         var world = grid.World;
         var pane = world.BuildingCellsOf(world.BuildingRowOf(House)).First(c => c.Terrain == TerrainIds.Pane && c.Y >= y + 6);
+        var glass = houses.Root(House).GetComponent<WindowPanes>();
+        int lit = glass.LampsLit;
         int folded() => houses.Root(House).GetComponentsInChildren<MeshFilter>().Where(f => f.name == "Panes").Sum(f => f.sharedMesh.vertices.Where((v, i) => i % 4 == 0 && v == f.sharedMesh.vertices[i + 2]).Count());
         ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, pane.X, pane.Y, "", ThingId.None)); // the first hit only cracks it
         yield return Wait(1f);
         ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, pane.X, pane.Y, "", ThingId.None));
         yield return Until(() => folded() > 0);
         Check("a_shattered_pane_opens", folded() > 0, $"{world.At(pane.X, pane.Y).T}, {folded()} folded");
+        Check("a_shattered_pane_goes_dark", glass.LampsLit < lit, $"{glass.LampsLit} of {lit} lamps lit");
         for (int i = 0; i < Settle; i++) yield return null;
         Check("the_wall_round_it_stands", houses.Ruin(House).Down == 0, $"{houses.Ruin(House).Down} down");
         Still("pane-gone", Cell(pane.X, pane.Y + 4), Cell(pane.X, pane.Y));
@@ -117,6 +120,8 @@ public class RowBurnProbe : RowHousesProbe
         var ruin = houses.Ruin(House);
         int redraws = houses.Redraws;
         Metric("stretches", ruin.Stretches);
+        var glass = houses.Root(House).GetComponent<WindowPanes>();
+        int lit = glass.LampsLit;
         caster.Cast(SpellIds.Fireball, x + 8, y + 7, 0, 3);
         float burning = 0f, sinceShot = 0f, calm = 0f, worst = 0f, sum = 0f;
         int frames = 0, hitches = 0, shot = 0;
@@ -146,6 +151,7 @@ public class RowBurnProbe : RowHousesProbe
         Metric("film_shots", shot);
         Check("the_fire_takes_walls_down", ruin.Down > 0, $"{ruin.Down} of {ruin.Stretches} stretches down in {burning:0.0} s");
         Check("a_ruin_has_no_roof_where_walls_fell", ruin.Down == 0 || ruin.RoofHurt);
+        Check("burnt_windows_go_dark", glass.LampsLit < lit && (ruin.Down * 2 < ruin.Stretches || glass.LampsLit == 0), $"{glass.LampsLit} of {lit} lamps still lit, {ruin.Down} of {ruin.Stretches} stretches down");
         Check("no_redraw_hitch", houses.WorstRedrawMs < 4f, $"{houses.WorstRedrawMs:0.00} ms");
         yield return null;
         Still("ruin", Cell(x + 7, y + 13), Cell(x + 7, y + 4));

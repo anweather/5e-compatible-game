@@ -36,6 +36,33 @@ namespace Chem.Mcp
 
         string StandInLine => WorldBlind || WorldDesk == null ? "\n(A stand-in of the valley: no game's world is attached, so there are no trees or yard here.)" : "";
 
+        /// <summary>
+        /// validate's and apply's line naming what a patch's buildings say that nothing draws (BuildingsShown), or "".
+        /// A patch that can't switch on is read against the tables in force.
+        /// </summary>
+        public string UnseenNote(string patchJson)
+        {
+            JObject patch;
+            try
+            {
+                patch = ModPatch.Parse(patchJson).Json;
+            }
+            catch (ModException)
+            {
+                return "";
+            }
+            BuildingTables composed;
+            try
+            {
+                composed = InForce.WithMods(new[] { ModPatch.Parse(patchJson) }).Buildings;
+            }
+            catch (ModException)
+            {
+                composed = InForce.Buildings;
+            }
+            return BuildingsShown.Note(BuildingsShown.Unseen(patch, composed, Base.Buildings));
+        }
+
         // ---------- find ----------
 
         /// <summary>find(): buildings and things, with their ids, nearest first.</summary>

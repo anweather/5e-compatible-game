@@ -12,7 +12,8 @@ using UnityEngine;
 // the rules in force, so a switch, a revert, a late join and a save all come the same way, and it
 // moves this peer's player off a new wall (players aren't core state). RuleSwitcher adds it.
 // A house follows its cells in play (RowRuin): one house is looked at a frame and redrawn if it must
-// be, so a burning street spreads over frames, and a house's chimney smokes while it stands.
+// be, so a burning street spreads over frames, and a house's chimney smokes while it stands. Its
+// windows glow at night from their rows' lamps (WindowPanes), and go dark as their walls burn or fall.
 [RequireComponent(typeof(ChemGrid))]
 public class RowHouses : MonoBehaviour
 {
@@ -28,6 +29,7 @@ public class RowHouses : MonoBehaviour
         public BuildingRow row;
         public MeshCollider roofCollider;
         public WindowPanes panes;
+        public RowMesher.Stretch[] paneOn;
         public bool roofBurns, told;
         public System.Func<Vector2Int, RowRuin.CellNow> cells;
         public ParticleSystem[] smoke;
@@ -100,6 +102,7 @@ public class RowHouses : MonoBehaviour
         Redraws++;
         WorstRedrawMs = System.Math.Max(WorstRedrawMs, timer.Elapsed.TotalMilliseconds);
         if (d.roofCollider != null) d.roofCollider.enabled = !d.ruin.RoofHurt;
+        d.panes.Darken(i => d.ruin.Out(d.paneOn[i]));
         foreach (var puff in d.smoke) puff.gameObject.SetActive(!d.ruin.RoofHurt);
         if (d.told || d.ruin.Down * 2 < d.ruin.Stretches) return;
         d.told = true;
@@ -195,6 +198,7 @@ public class RowHouses : MonoBehaviour
             ruin = new RowRuin(made, cells.Contains),
             roofCollider = roof,
             panes = panes,
+            paneOn = made.paneStretches,
             roofBurns = RoofBurns(world, row),
             cells = at => CellOf(row, at),
             smoke = Smoke(root, made.chimneys),

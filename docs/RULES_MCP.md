@@ -340,6 +340,24 @@ the real valley. `ValleyShape.Cabins` reads `site`; `RowMesherTests` holds the c
 villages' base rows to `ValleyShape.Villages`' digests. The game has no save of its own yet, so `World.Save` is
 reached only from tests.
 
+**Lit windows** (#71). An opening's `look.lamp` in `rules/buildings.json` is the colour its glass glows from dusk
+to dawn (`"#rrggbb"`, brighter the lighter; `"off"` for none), and an opening in a row may give its own `lamp`;
+`window` and `wide-window` ship with lamplight, `#ffb867`. The checks refuse anything else. The view draws it
+in the pane's own mesh (`WindowPanes`, uv1, `Prototype/WindowGlass`), lit by the same `_LampGlow` the village
+windows use (`Village`, from `Nightfall`): nothing by day, part lit at dusk, full at night. No light and no
+material per window, so it costs nothing a house doesn't already draw. A pane goes dark when it shatters, when
+fire reaches its stretch of wall or the one beside it, when its stretch falls, and all of them once half the
+house is down (`RowRuin.Out`). Village houses and cabins keep their own lit windows.
+
+**What won't show.** `buildings.json` `drawn` lists what the view reads of a row, a wall, a finish, an opening,
+an opening's look and a style; a roof's fields are its shape's `look.takes`, a part's its detail's. It's kept
+by hand in step with `RowMesher` and `RowHouses`. `validate` and `apply` end with a `Won't show:` line
+(`BuildingsShown`) naming every field outside those lists, a roof shape or detail the shipped rules don't have, and
+an opening that `becomes` a terrain of its own: on a building the house draws each opening from its row, so that
+terrain's look never shows (Andrew's "Lit windows on the lake house", a `lit-pane` terrain with `glow`, was
+this). The line tells Claude not to say it worked. It covers buildings only; colours that won't show have
+`set_look`'s own line (above).
+
 **A house in play.** `RowRuin` follows the cells, view only, so peers and late joiners get the same ruin. Each wall is
 cut into **stretches**, one per cell. A stretch whose cell stops blocking falls to a broken stump, and the roof squares
 nearest it go with it; a roof whose cover burns goes as soon as the fire reaches its wall; at half the stretches down
