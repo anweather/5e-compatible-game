@@ -6,25 +6,20 @@ using Unity.Netcode;
 // Live rule changes over the network (docs/RULES_MCP.md "Change modes", World.Room.cs).
 // Anyone asks with the mod's patch (RoomIntent); the host names who asked, may refuse at
 // once by the room's change mode, and stamps the command just before the next tick's
-// batch, as a defense command goes. Every peer then decides it itself at that tick. A late
-// joiner gets the room as its history starts, then the commands since. An online reset
-// keeps the room, so the host notes it at each one.
+// batch, as a defense command goes (both on a CommandChannel). Every peer then decides it
+// itself at that tick. A late joiner gets the room as its history starts, then the commands
+// since. An online reset keeps the room, so the host notes it at each one.
 public partial class NetChem
 {
     // A patch is rules, not a world: past this the host refuses it before it costs anyone anything.
     const int MaxPatchChars = 64 * 1024;
 
-    // Host only.
-    readonly List<RoomIntent> pendingRoom = new();
-    readonly List<RoomIntent> roomHistory = new();
-    // The room's mods where the kept history starts, and who's waiting for that history.
+    // The room commands on their way (made in Awake, with the other channels).
+    CommandChannel<RoomIntent> roomCommands;
+
+    // Host only: the room's mods where the kept history starts, and who's waiting for that history.
     RoomIntent[] roomStart = System.Array.Empty<RoomIntent>();
     readonly List<ulong> joiners = new();
-
-    // Everyone: room commands stamped for a tick, sent just before its batch, waiting to join it.
-    readonly Dictionary<int, RoomIntent[]> roomFor = new();
-    // Joining: the room commands of the history, sent just before the rest of it.
-    RoomIntent[] pastRoom = System.Array.Empty<RoomIntent>();
 
     /// <summary>This peer's name in the room.</summary>
     public string LocalPeer => PeerName(NetworkManager.LocalClientId);
@@ -39,15 +34,12 @@ public partial class NetChem
     /// Host: someone was granted a thing a mod added. Stamped straight in, past RequestRoomRpc: finding
     /// something changes no rule, so a Locked room's RoomPolicy has no say.
     /// </summary>
-    public void StampFound(string peer, ThingId thing) => pendingRoom.Add(RoomIntent.From(RoomCommand.Found(peer, thing), 0));
+    public void StampFound(string peer, ThingId thing) => roomCommands.Request(RoomIntent.From(RoomCommand.Found(peer, thing), 0));
 
     void ClearRoom()
     {
-        pendingRoom.Clear();
-        roomHistory.Clear();
-        roomFor.Clear();
+        roomCommands.Clear();
         joiners.Clear();
-        pastRoom = System.Array.Empty<RoomIntent>();
         roomStart = System.Array.Empty<RoomIntent>();
     }
 
@@ -70,7 +62,7 @@ public partial class NetChem
         var room = grid.World.Room;
         string why = RoomPolicy.Refusal(room.Mode, room.Host, intent.Peer);
         if (why == null && intent.Json.Length > MaxPatchChars) why = "that patch is too long for a live change";
-        if (why == null) pendingRoom.Add(intent);
+        if (why == null) roomCommands.Request(intent);
         else RoomRefusedRpc(intent, why);
     }
 
@@ -83,25 +75,17 @@ public partial class NetChem
 
     void StampRoom()
     {
-        if (pendingRoom.Count == 0) return;
-        var stamped = pendingRoom.ToArray();
-        pendingRoom.Clear();
-        for (int i = 0; i < stamped.Length; i++) stamped[i].Tick = hostTick;
-        roomHistory.AddRange(stamped);
-        RoomStampedRpc(hostTick, stamped);
+        var stamped = roomCommands.Stamp(hostTick);
+        if (stamped.Length > 0) RoomStampedRpc(hostTick, stamped);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void RoomStampedRpc(int tick, RoomIntent[] commands)
-    {
-        if (batches.TryGetValue(tick, out var batch)) batch.Room.AddRange(commands.Select(c => c.ToCommand()));
-        else roomFor[tick] = commands;
-    }
+    void RoomStampedRpc(int tick, RoomIntent[] commands) => roomCommands.Receive(tick, commands);
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendRoomHistoryRpc(byte mode, string host, RoomIntent[] start, RoomIntent[] past, RpcParams rpc = default)
     {
-        pastRoom = past;
+        roomCommands.Joining(past);
         grid.JoinRoom((ChangeMode)mode, host, start.Select(m => m.ToMod()).ToList());
     }
 }
@@ -110,11 +94,15 @@ public partial class NetChem
 /// A room command (Chem.RoomCommand) on its way, stamped with the sim tick it takes effect on; or
 /// a mod on in a room, with the tick it went on.
 /// </summary>
-public struct RoomIntent : INetworkSerializable
+public struct RoomIntent : INetworkSerializable, ITickStamped
 {
     public int Tick;
     public RoomChange Change;
     public string Peer, Mod, Json, Title;
+
+    int ITickStamped.Tick => Tick;
+
+    void ITickStamped.StampFor(int tick) => Tick = tick;
 
     public static RoomIntent From(RoomCommand c, int tick) => new RoomIntent
     {

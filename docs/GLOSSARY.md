@@ -163,8 +163,8 @@ touch them.
 : One kind of command on its way over the network (`CommandChannel`, `NetChem`): the host's
   pending requests, stamping them for a tick, a peer holding them until that tick's batch arrives,
   and the history a late joiner replays, with a compaction hook that may drop what a later command
-  makes needless. Combo input travels on one; casts, effects, chunk switches, defense, strikes, the
-  dragon and room commands still have their own lists.
+  makes needless. Defense commands, combo input and room commands travel on one each; casts,
+  effects, chunk switches, strikes and the dragon still have their own lists.
 
 **Deterministic / lockstep**
 : Every peer runs the same world from the same commands and gets the same
