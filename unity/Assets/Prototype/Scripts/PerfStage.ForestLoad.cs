@@ -123,7 +123,7 @@ public partial class PerfStage
     void NearMeGreen()
     {
         var switcher = grid.GetComponent<RuleSwitcher>();
-        var bench = new Chem.Mcp.Workbench(ChemGrid.FindRulesDir()) { Here = new Chem.Mcp.StandInHere(new Chem.Mcp.HereSpot(switcher.Me, 0, 0)) };
+        var bench = new Chem.Mcp.Workbench(ChemGrid.Folders.Rules) { Here = new Chem.Mcp.StandInHere(new Chem.Mcp.HereSpot(switcher.Me, 0, 0)) };
         var draft = bench.SetLook(null, ElementIds.Fire, "color", "[0.2, 0.9, 0.3]", "elements", out _, ("{\"around\": \"me\", \"within\": 10}", null));
         string mod = new Newtonsoft.Json.Linq.JObject { ["title"] = "Near me green", ["patch"] = draft.Patch }.ToString();
         Debug.Log("PERF SCOPE " + switcher.Ask(RoomCommand.Apply(switcher.Me, "near-me-green", mod, "Near me green")));

@@ -236,7 +236,7 @@ public class GameChat : MonoBehaviour
         }
         var telemetry = ChatTelemetry.Instance;
         saveAsked = ClaudeRun.AsksToSave(message);
-        Harness.Send(message, ClaudeTerminal.Folder, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
+        Harness.Send(message, ChemGrid.Folders.Claude.Path, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
     }
 
     /// <summary>

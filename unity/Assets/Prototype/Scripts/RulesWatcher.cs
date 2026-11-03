@@ -30,10 +30,10 @@ public class RulesWatcher : MonoBehaviour
 
     void OnEnable()
     {
-        RulesDir = ChemGrid.FindRulesDir();
+        RulesDir = ChemGrid.Folders.Rules;
         Watch(RulesDir);
         Watch(Path.Combine(RulesDir, "mods"));
-        Watch(RuleSwitcher.PlayerModsDir);
+        Watch(ChemGrid.Folders.Mods);
     }
 
     void Watch(string dir)

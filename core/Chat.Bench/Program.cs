@@ -48,7 +48,7 @@ namespace Chem.Bench
                 Console.Error.WriteLine("claude isn't installed");
                 return 2;
             }
-            string rules = Workbench.FindRulesDir(Directory.GetCurrentDirectory());
+            string rules = GameFolders.InRepo(Directory.GetCurrentDirectory()).Rules;
             var records = new List<JObject>();
             for (int run = 0; run < runs; run++)
                 foreach (var (_, prompt) in Prompts)

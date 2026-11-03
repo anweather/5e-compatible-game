@@ -66,7 +66,7 @@ public static class ValleySurroundings
             WarpStrength = 70f,
         }, Biomes(), Surfaces);
 
-        var registry = ThemeRegistry.Load(ChemGrid.FindWorldDir());
+        var registry = ThemeRegistry.Load(ChemGrid.Folders.World);
         blueprint = ThemeBlueprint.Solve(ThemeSeed, registry.Themes[ThemeId], RegionCells);
         field = new ThemeField(blueprint, new GeoBox(-600, -600, 600, 600));
         SampleLayout(registry);

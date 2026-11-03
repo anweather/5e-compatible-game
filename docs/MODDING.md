@@ -186,7 +186,7 @@ types, too: a sim number that isn't a number, or is negative, is refused
 - **Shipped mods** are `rules/mods/*.json`: tracked in the repo, copied into a build's
   `StreamingAssets/rules/mods`, and replaced with the rest of the install by an update.
 - **A player's mods** are in their data folder beside `notes.md`:
-  `<persistentDataPath>/claude-terminal/mods/` (`RuleSwitcher.PlayerModsDir`). The game's `save` writes
+  `<persistentDataPath>/claude-terminal/mods/` (`GameFolders.Mods`). The game's `save` writes
   there, in the Editor too, so a save never dirties the repo; to ship one, move it to `rules/mods/`.
   An Editor shares that folder with the player's game on the same machine, so it lists those mods.
 - **The same id in both:** the player's copy wins, in the Mods page and for the tools, and deleting it

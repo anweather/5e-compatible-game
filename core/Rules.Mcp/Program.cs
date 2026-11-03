@@ -23,7 +23,7 @@ namespace Chem.Mcp
         public static void Main(string[] args)
         {
             int at = Array.IndexOf(args, "--rules");
-            string rulesDir = at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : Workbench.FindRulesDir(Directory.GetCurrentDirectory());
+            string rulesDir = at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : GameFolders.InRepo(Directory.GetCurrentDirectory()).Rules;
 
             var builder = Host.CreateApplicationBuilder(Array.Empty<string>());
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);

@@ -14,7 +14,7 @@ public class LookTintTests
 
     static Rules BlueFireballs(Rules rules)
     {
-        string json = System.IO.File.ReadAllText(System.IO.Path.Combine(ChemGrid.FindRulesDir(), "mods", "blue-fireballs.json"));
+        string json = System.IO.File.ReadAllText(System.IO.Path.Combine(ChemGrid.Folders.ShippedMods, "blue-fireballs.json"));
         return rules.WithMods(new[] { ModPatch.Parse(json) });
     }
 
@@ -50,7 +50,7 @@ public class LookTintTests
     [Test]
     public void EveryShippedSpellIsDrawnAsAuthored()
     {
-        var rules = Rules.Load(ChemGrid.FindRulesDir());
+        var rules = Rules.Load(ChemGrid.Folders.Rules);
         foreach (var spell in rules.Spells)
             Assert.That(Visuals.For(rules, spell.Id)?.Tint.Any ?? false, Is.False, spell.Id);
         Assert.That(Visuals.lookParticle, Is.Not.Null, "run Prototype > Build Chemistry Yard");
@@ -71,7 +71,7 @@ public class LookTintTests
     [Test]
     public void BlueFireballsTurnTheShowWithNoRebuild()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         var blue = BlueFireballs(plain);
         Assert.That(Visuals.For(blue, "fireball").Tint.Any, Is.True);
         Assert.That(Visuals.For(blue, "fire-bolt").Tint.Any, Is.False, "only the spell the mod changes");
@@ -95,7 +95,7 @@ public class LookTintTests
     [Test]
     public void ASpellThatChoseNoColourFollowsItsElement()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         var blue = ElementIn(plain, "fire", "[0.2, 0.45, 1]");
         var fireball = Visuals.For(blue, "fireball", plain);
         Assert.That(fireball.Tint.Any, Is.True, "its whole show turns");
@@ -110,7 +110,7 @@ public class LookTintTests
     [Test]
     public void EverySpellOfAnElementFollowsIt()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         foreach (var spell in plain.Spells.Where(s => plain.ElementLook(s.Element) != null))
         {
             var pink = ElementIn(plain, spell.Element, "[1, 0.1, 0.6]");
@@ -121,7 +121,7 @@ public class LookTintTests
     [Test]
     public void ASpellThatChoseAColourKeepsItAmongItsElements()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         var both = ElementIn(BlueFireballs(plain), "fire", "[0.2, 0.9, 0.3]");
         var fireball = Visuals.For(both, "fireball", plain);
         Assert.That(fireball.ChoseColour, Is.True);
@@ -133,7 +133,7 @@ public class LookTintTests
     [Test]
     public void AColourOfTheArtsHueIsStillAChoice()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         var orange = Mod(ElementIn(plain, "fire", "[0.2, 0.45, 1]"), "{ \"spells\": [ " + Moved(plain, "fireball", "[1, 0.5, 0.05]") + " ] }");
         var fireball = Visuals.For(orange, "fireball", plain);
         Assert.That(fireball.ChoseColour, Is.True);
@@ -144,7 +144,7 @@ public class LookTintTests
     [Test]
     public void APaleColourAsksForNoneSoTheElementTakesOver()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         var pale = Mod(plain, "{ \"spells\": [ " + Moved(plain, "fireball", "[1, 1, 1]") + " ] }");
         Assert.That(Visuals.For(pale, "fireball", plain).ChoseColour, Is.False);
         IsColour(Visuals.For(pale, "fireball", plain).glow, 1f, 1f, 1f, "the element hasn't moved: as a look's colour always was");
@@ -154,7 +154,7 @@ public class LookTintTests
     [Test]
     public void ANewSpellWithNoColourTakesItsElementsAsItStands()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         var entry = Newtonsoft.Json.Linq.JObject.Parse(Moved(plain, "fireball", "[1, 1, 1]"));
         entry["id"] = "cold-ball";
         entry["element"] = "cold";
@@ -168,7 +168,7 @@ public class LookTintTests
     [Test]
     public void TheRulesAsTheyShipChangeNoShow()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
         foreach (var spell in plain.Spells.Where(s => s.Look != null))
         {
             var look = Visuals.For(plain, spell.Id, plain);
@@ -191,7 +191,7 @@ public class LookTintTests
     public void DressingTurnsAPackEffectAndLeavesItsSmoke()
     {
         var blast = Visuals.families.First(e => e.family == "blast");
-        var look = Visuals.For(BlueFireballs(Rules.Load(ChemGrid.FindRulesDir())), "fireball");
+        var look = Visuals.For(BlueFireballs(Rules.Load(ChemGrid.Folders.Rules)), "fireball");
         var fx = Object.Instantiate(blast.impact);
         try
         {
@@ -210,7 +210,7 @@ public class LookTintTests
     public void APlainShowKeepsThePacksMaterials()
     {
         var blast = Visuals.families.First(e => e.family == "blast");
-        var look = Visuals.For(Rules.Load(ChemGrid.FindRulesDir()), "fireball");
+        var look = Visuals.For(Rules.Load(ChemGrid.Folders.Rules), "fireball");
         var fx = Object.Instantiate(blast.impact);
         try
         {
@@ -227,8 +227,8 @@ public class LookTintTests
     [Test]
     public void ABurstScalesWithItsShow()
     {
-        var plain = Rules.Load(ChemGrid.FindRulesDir());
-        var big = plain.WithMods(new[] { ModPatch.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(ChemGrid.FindRulesDir(), "mods", "big-fireball.json"))) });
+        var plain = Rules.Load(ChemGrid.Folders.Rules);
+        var big = plain.WithMods(new[] { ModPatch.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(ChemGrid.Folders.ShippedMods, "big-fireball.json"))) });
         float Size(Rules rules, int charge) => SpellVisuals.Entry.BurstSize(Visuals.For(rules, "fireball"), rules.Spell("fireball"), charge);
         Assert.That(Size(plain, 1), Is.EqualTo(1f), "a plain Fireball's debris as it always was");
         Assert.That(Size(plain, 3), Is.EqualTo(2f), "held, as it always was");

@@ -52,7 +52,7 @@ public class CreatureMeshTests
     [Test]
     public void NoSpeciesTurnsACapsuleInsideOut()
     {
-        var tables = Rules.Load(ChemGrid.FindRulesDir()).Fauna;
+        var tables = Rules.Load(ChemGrid.Folders.Rules).Fauna;
         foreach (var species in tables.SpeciesIds)
             foreach (var s in CreatureBody.Build(tables, species).Segments)
             {

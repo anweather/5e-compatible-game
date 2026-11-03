@@ -33,7 +33,7 @@ public partial class ChemGrid
     public event Action RulesChanged;
 
     /// <summary>rules/*.json with this scene's tuning on top. Throws if a file can't be read or the tuning doesn't fit.</summary>
-    public Rules LoadBaseRules() => RuleSet.BaseOf(Rules.Load(FindRulesDir()), SceneTuning());
+    public Rules LoadBaseRules() => RuleSet.BaseOf(Rules.Load(Folders.Rules), SceneTuning());
 
     /// <summary>A room command was decided on this machine (or, early, refused by the host).</summary>
     public event Action<RoomCommand, RoomVerdict> RoomDecided;
@@ -65,7 +65,7 @@ public partial class ChemGrid
         RoomDecided?.Invoke(command, verdict);
     }
 
-    ModBudgets Budgets => budgets ??= ModBudgets.Load(FindRulesDir());
+    ModBudgets Budgets => budgets ??= ModBudgets.Load(Folders.Rules);
 
     // Every world is a room, solo too (docs/RULES_MCP.md): a rebuilt one keeps the room it replaces.
     void OpenRoom(RoomState was)

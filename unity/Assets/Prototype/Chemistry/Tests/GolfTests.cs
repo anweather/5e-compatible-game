@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using NUnit.Framework;
 
@@ -10,8 +9,6 @@ namespace Chem.Tests
     {
         static Rules R => ChemistryTests.R;
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
-
-        static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
 
         // A dirt strip with a rise to climb (x 11-12) and a pond across the way (x 17-18), the tee at (4, 5) and the hole at (30, 5).
         static World Strip()
@@ -99,14 +96,14 @@ namespace Chem.Tests
         [Test]
         public void TheCourseIsOnOpenGroundClearOfTheVillages()
         {
-            var course = GolfCommand.Load(WorldDir());
+            var course = GolfCommand.Load(ChemistryTests.WorldDir());
             Assert.That(course, Is.Not.Null, "world/golf.json");
             var c = course.Value;
             double metres = 1.5 * Math.Sqrt(Math.Pow(c.HoleX - c.TeeX, 2) + Math.Pow(c.HoleY - c.TeeY, 2));
             Assert.That(metres, Is.InRange(60, 100), "tee to hole");
             var valley = TerrainGrid.Valley();
             Assert.That(valley.InGrid(c.TeeX, c.TeeY) && valley.InGrid(c.HoleX, c.HoleY));
-            foreach (var v in VillageLayout.Load(WorldDir()))
+            foreach (var v in VillageLayout.Load(ChemistryTests.WorldDir()))
                 foreach (var (x, y) in new[] { (c.TeeX, c.TeeY), (c.HoleX, c.HoleY) })
                     Assert.That(Math.Max(Math.Abs(x - v.X), Math.Abs(y - v.Y)), Is.GreaterThan(40), v.Name);
         }

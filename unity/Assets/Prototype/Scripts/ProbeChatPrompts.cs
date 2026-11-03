@@ -75,11 +75,11 @@ public class ChatPromptsProbe : RowHousesProbe
         if (!knownContext || !knownHarness || !knownNotes) yield break;
         outDir = OutDir ?? Path.Combine(Application.temporaryCachePath, "chat-prompts");
         chatFolder = Path.Combine(outDir, "claude-terminal");
-        modsDirs = new[] { Path.Combine(ChemGrid.FindRulesDir(), "mods"), Directory.CreateDirectory(Path.Combine(chatFolder, "mods")).FullName }; // a save goes to the second
+        modsDirs = new[] { ChemGrid.Folders.ShippedMods, Directory.CreateDirectory(Path.Combine(chatFolder, "mods")).FullName }; // a save goes to the second
         modsWere = ModsNow();
         if (RealClaude && !SafeToSpend()) yield break;
         Directory.CreateDirectory(Path.Combine(outDir, "raw"));
-        ClaudeTerminal.TestFolder = chatFolder;
+        ChemGrid.Folders.Claude.Test = chatFolder;
         ChatTelemetry.Folder = outDir;
         McpLog.Folder = outDir;
         ClaudeChat.StandIn = RealClaude ? null : StandIn();
@@ -100,7 +100,7 @@ public class ChatPromptsProbe : RowHousesProbe
             ClaudeChat.Model = null;
             ClaudeChat.Extra = null;
             ClaudeChat.NotesOff = false;
-            ClaudeTerminal.TestFolder = null;
+            ChemGrid.Folders.Claude.Test = null;
             ChatTelemetry.Folder = null;
         }
     }

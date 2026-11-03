@@ -13,8 +13,6 @@ namespace Chem.Tests
 
         static string Last(World w) => w.Log[w.Log.Count - 1].Text;
 
-        static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
-
         // A little course, run east to west: the gate, a lava pit (water and air), a Misty Step booth, the bell.
         // The same text was in sandbox/test/course.test.ts (frozen 2026-10-31).
         const string Little = @"{
@@ -127,26 +125,26 @@ namespace Chem.Tests
         [Test]
         public void TheGauntletReadsAndStandsOnTheLakesFarShoreClearOfEverythingElse()
         {
-            var course = CourseLayout.Load(WorldDir());
+            var course = CourseLayout.Load(ChemistryTests.WorldDir());
             Assert.That(course.Check(R), Is.Empty);
             Assert.That(course.Booths.Select(b => b.Zone.Id), Is.EqualTo(new[] { "lava-pit", "misty-gaps", "ice-wall", "geyser-launch" }));
-            Assert.That(CourseLayout.Load(Path.Combine(WorldDir(), "no-such-folder")), Is.Null);
-            var puzzle = WorldPuzzles.Load(WorldDir()).All.Single(p => p.Name == "The Gauntlet");
+            Assert.That(CourseLayout.Load(Path.Combine(ChemistryTests.WorldDir(), "no-such-folder")), Is.Null);
+            var puzzle = WorldPuzzles.Load(ChemistryTests.WorldDir()).All.Single(p => p.Name == "The Gauntlet");
             foreach (var (x, y, _, _) in puzzle.Cells()) Assert.That(course.Area.Contains(x, y), $"({x}, {y}) is in the course");
 
             var valley = TerrainGrid.Valley();
-            var land = LandFile.Read(File.ReadAllText(Path.Combine(WorldDir(), "land.json")), valley.GridW, valley.GridH);
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), "land.json")), valley.GridW, valley.GridH);
             for (int y = course.Area.Y; y < course.Area.Bottom; y++)
                 for (int x = course.Area.X; x < course.Area.Right; x++)
                     Assert.That(land[y * valley.GridW + x], Is.InRange(-2, 12), $"({x}, {y}) is dry, flat shore");
             Assert.That(Enumerable.Range(course.Area.X, course.Area.W).Any(x => land[(course.Area.Y - 10) * valley.GridW + x] < -4), "the lake is just north");
 
-            var golf = GolfCommand.Load(WorldDir()).Value;
+            var golf = GolfCommand.Load(ChemistryTests.WorldDir()).Value;
             int m = R.Sim.Golf.Margin;
             Assert.That(course.Area.Y, Is.GreaterThan(Math.Max(golf.TeeY, golf.HoleY) + m + 40), "far from spell golf");
-            var coil = WorldPuzzles.Load(WorldDir()).All.Single(p => p.Name == "The meadow coil");
+            var coil = WorldPuzzles.Load(ChemistryTests.WorldDir()).All.Single(p => p.Name == "The meadow coil");
             Assert.That(course.Area.Y - coil.Y, Is.GreaterThan(100), "far from the meadow coil's gate");
-            foreach (var v in VillageLayout.Load(WorldDir()))
+            foreach (var v in VillageLayout.Load(ChemistryTests.WorldDir()))
                 Assert.That(Math.Max(Math.Abs(course.Area.X + course.Area.W / 2 - v.X), Math.Abs(course.Area.Y - v.Y)), Is.GreaterThan(60), v.Name);
         }
 
@@ -155,9 +153,9 @@ namespace Chem.Tests
         {
             var valley = TerrainGrid.Valley();
             var w = new World(R, valley.GridW, valley.GridH, 1, "grass");
-            WorldPuzzles.Load(WorldDir()).LayInto(w);
-            w.SetLand(LandFile.Read(File.ReadAllText(Path.Combine(WorldDir(), "land.json")), valley.GridW, valley.GridH));
-            w.SetCourse(CourseLayout.Load(WorldDir()));
+            WorldPuzzles.Load(ChemistryTests.WorldDir()).LayInto(w);
+            w.SetLand(LandFile.Read(File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), "land.json")), valley.GridW, valley.GridH));
+            w.SetCourse(CourseLayout.Load(ChemistryTests.WorldDir()));
             w.Cast("frost", 307, 433, 3);
             Assert.That(Enumerable.Range(300, 7).All(x => w.At(x, 433).T == "lava-crust"), "a crust across the pit");
             w.Cast("fireball", 280, 433, 3);

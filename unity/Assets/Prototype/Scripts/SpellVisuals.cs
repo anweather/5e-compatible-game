@@ -130,7 +130,7 @@ public class SpellVisuals : ScriptableObject
         var family = look != null ? families.Find(f => f.family == look.Family) : null;
         if (family == null) return shows[spellId] = null;
         // Read from the file, not this asset, so a family's own colour needs no yard build.
-        looks ??= LookFamilies.Load(ChemGrid.FindRulesDir());
+        looks ??= LookFamilies.Load(ChemGrid.Folders.Rules);
         var color = ColourOf(spell, rules, from, out bool chose);
         return shows[spellId] = family.Colored(color, lookParticle, looks.Find("spells", look.Family)?.Own, chose);
     }

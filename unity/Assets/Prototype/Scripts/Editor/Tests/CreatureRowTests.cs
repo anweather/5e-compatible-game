@@ -9,7 +9,7 @@ using Punchy.Fauna;
 // Creatures as rows (docs/design/builders.md, section 2): a change to a row builds again only what it touches.
 public class CreatureRowTests
 {
-    static Rules Base() => Rules.Load(ChemGrid.FindRulesDir());
+    static Rules Base() => Rules.Load(ChemGrid.Folders.Rules);
 
     [Test]
     public void ARowChangeRebuildsOnlyThatSpecies()
@@ -105,7 +105,7 @@ public class CreatureRowTests
         double refresh = Median(times);
         var mod = new[] { ModPatch.Parse($"{{ \"fauna\": {{ \"deer\": {row} }} }}") };
         var sim = new[] { ModPatch.Parse("{ \"sim\": { \"conductLimit\": 9 } }") };
-        var bare = Rules.FromJson(Directory.GetFiles(ChemGrid.FindRulesDir(), "*.json")
+        var bare = Rules.FromJson(Directory.GetFiles(ChemGrid.Folders.Rules, "*.json")
             .Where(f => Path.GetFileName(f) != "fauna.json" && Path.GetFileName(f) != "parts.json")
             .ToDictionary(f => Path.GetFileName(f), File.ReadAllText));
         double compose = Timed(() => plain.WithMods(mod));
