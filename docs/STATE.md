@@ -57,17 +57,17 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **0.1.11 waits** (Andrew, 2026-11-03: "wait on the creatures"; the creatures have landed). Nothing blocks it: the notes cut voice and carry the saved-mods warning (#63). Before cutting: version bump, add today's landings to `docs/handoffs/release-0.1.11-notes.md`, a green release candidate on the PC (no VMs then).
-- **Single thread on the PC (Andrew, 2026-11-03):** all other Claude accounts are offline, so all work runs on `~/.claude-account3`, frugally: this PM plus one new DesktopUnity session. No Mac, no VMs. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). This account can't see the board.
-- **Landed since the last handoff:** `glow` (P4), `dependents-all` (#88).
-- **liquids** (ac5041e5): not landed, needs a Unity compile. `host-ux` has it merged with dev as `liquids-check` (058a2684), clean, no result reported. `liquids-view` isn't started.
-- **Mac:** `channels-3` (strikes onto CommandChannel with #83) has no pushed branch; anything done is only on the Mac. `whisper-spike` (51e5bed0, not landed): the real Whisper step waits on Andrew clearing the downloads in the Mac's session (J-061 seam; no Windows compile yet).
+- **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
+- **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c).
+- **DesktopUnityPro:** `liquids-view` (coloured water mesh, honey and paint clip). Then `liquids-2`, parked on `wip/u2-liquids-2`, needs an owner.
+- **Mac:** Andrew is starting a session to push `channels-3` (strikes onto CommandChannel with #83), which has no pushed branch yet. `whisper-spike` (51e5bed0, not landed): the real Whisper step waits on Andrew clearing the downloads in the Mac's session (J-061 seam; no Windows compile yet).
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
 ## Next, in order
 
-1. Land what's in flight (liquids + view, liquids-2, channels-3).
+1. Land what's in flight (liquids-view, liquids-2, channels-3).
 2. 0.1.11 when Andrew says.
 3. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 4. Gaits by rule (`builders.md`), after bodies (J-068).
