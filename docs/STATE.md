@@ -68,7 +68,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## Next, in order
 
 1. Land what's in flight (the Vivox PC run).
-2. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
+2. **The Mac (Andrew, 2026-11-04):** P5 mix, then the playtester on Sonnet or Haiku with its cost measured (`briefs/mac-mix-and-cheap-playtester.md`). Then maps as data (#69, `second-map`), held until the PC's mod work settles.
+   Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 3. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
 - Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).
