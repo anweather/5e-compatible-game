@@ -76,8 +76,15 @@ namespace Chem
             };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
             RoomDecided?.Invoke(c, verdict);
+            // The mods that went with a revert (World.Lapse.cs): each heard as reverted too, after it.
+            var also = wentWith ?? new List<RoomMod>();
+            wentWith = null;
+            foreach (var m in also) RoomDecided?.Invoke(RoomCommand.Revert(m.By, m.Id), verdict);
             return verdict;
         }
+
+        // The mods a revert took with it, for ApplyRoom to tell the view; null between commands.
+        List<RoomMod> wentWith;
 
         RoomVerdict SwitchOn(RoomCommand c)
         {
@@ -102,15 +109,15 @@ namespace Chem
             string title = at >= 0 ? Room.Mods[at].Title : c.Mod;
             string named = c.Mod.Length == 0 ? "that mod" : c.Mod;
             RuleSet next = null;
+            var gone = at < 0 ? null : WithDependents(at);
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer)
                 ?? (at < 0 ? $"{named} isn't on in this room" : null)
-                ?? Compose(Room.Mods.Where((m, i) => i != at).Select(m => new ActiveMod(m.Id, m.Json)), $"without {title} the other mods don't fit", out next)
+                ?? Compose(Without(gone), $"without {title} the other mods don't fit", out next)
                 ?? OverlapProblem(next.Effective, $"without {title}");
             if (why != null) return Refused(c, why);
-            Room.Mods.RemoveAt(at);
-            PutInForce(next);
-            Room.Found.RemoveWhere(t => ThingsNow.Find(new ThingId(t)) == null);
-            return new RoomVerdict(true, null, $"{c.Peer} switched off {title} ({RoomPolicy.Words(Room.Mode)} room)");
+            TakeOff(gone, next);
+            wentWith = gone.Skip(1).ToList();
+            return new RoomVerdict(true, null, $"{c.Peer} switched off {title}{AlsoGone(gone)} ({RoomPolicy.Words(Room.Mode)} room)");
         }
 
         static RoomVerdict Refused(RoomCommand c, string why) => new RoomVerdict(false, why, RoomPolicy.RefusedLine(c.Change, why));
@@ -146,6 +153,7 @@ namespace Chem
                 return $"{title} can't be read as a mod";
             }
             if (problems.Count == 0) return null;
+            if (OwnerProblem(title, json) is string owner) return owner;
             string more = problems.Count == 1 ? "" : $" (and {problems.Count - 1} more)";
             return $"{title} doesn't pass the checks: {problems[0].Message.TrimEnd('.')}{more}";
         }
@@ -173,7 +181,7 @@ namespace Chem
         /// <summary>
         /// The room as text, "" without one (so worlds without a room hash as they did):
         /// "#room mode host" and then "|id:by:tick:patch hash" for each mod on, in order,
-        /// then the things found and the retired materials (World.Lapse.cs), each only when there are any.
+        /// then the things found, the retired materials and the other retired rows (World.Lapse.cs), each only when there are any.
         /// </summary>
         public string RoomText()
         {
@@ -186,6 +194,8 @@ namespace Chem
             foreach (ulong t in Room.Found) sb.Append("|found:").Append(t.ToString(inv));
             foreach (var r in Room.Retired)
                 sb.Append("|retired:").Append(r.Table).Append(':').Append(r.Id).Append(':').Append(r.Into ?? "").Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
+            foreach (var r in Room.RetiredRows)
+                sb.Append("|gone:").Append(r.Kind).Append(':').Append(r.Id).Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
             return sb.ToString();
         }
 
@@ -203,6 +213,7 @@ namespace Chem
             };
             if (Room.Found.Count > 0) save["room"]["found"] = new JArray(Room.Found.Select(t => t.ToString(CultureInfo.InvariantCulture)));
             if (Room.Retired.Count > 0) save["room"]["retired"] = new JArray(Room.Retired.Select(r => new JArray(r.Table, r.Id, r.Into, r.Mod, r.Tick)));
+            if (Room.RetiredRows.Count > 0) save["room"]["retiredRows"] = new JArray(Room.RetiredRows.Select(r => new JArray(r.Kind, r.Id, r.Mod, r.Tick)));
             SaveBuildings((JObject)save["room"]);
         }
 
@@ -231,6 +242,8 @@ namespace Chem
             foreach (var t in room["found"] ?? new JArray()) Room.Found.Add(ulong.Parse((string)t, CultureInfo.InvariantCulture));
             foreach (var r in room["retired"] ?? new JArray())
                 Room.Retired.Add(new RetiredMaterial { Table = (string)r[0], Id = (string)r[1], Into = (string)r[2], Mod = (string)r[3], Tick = (int)r[4] });
+            foreach (var r in room["retiredRows"] ?? new JArray())
+                Room.RetiredRows.Add(new RetiredRow { Kind = (string)r[0], Id = (string)r[1], Mod = (string)r[2], Tick = (int)r[3] });
             LoadBuildings(room);
         }
     }

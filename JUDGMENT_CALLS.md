@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-070: Which voice goes in 0.1.11?
+
+- **Asked:** 2026-11-03, by the PM after Andrew said he wants voice in 0.1.11: talking to Claude (Whisper), proximity voice (Vivox), or both.
+- **Also comes up when:** any release's voice scope; Vivox and the Unity Gaming Services setup.
+- **Answer:** Andrew: talking to Claude first, using Whisper. Vivox comes later. The Whisper downloads are cleared.
+- **Why:** Windows dictation is broken (#58), and Whisper's seam is already built. Vivox isn't started and needs his setup.
+- **Revisited:** 0. J-061 said Windows first; this moves Whisper ahead of it.
+
 ### J-069: Cleanup item 4 and a gesture for walking rules
 
 - **Asked:** 2026-11-03, by the PM, after the Mac found item 4 needs a game assembly first, and after the triggers-view clip.

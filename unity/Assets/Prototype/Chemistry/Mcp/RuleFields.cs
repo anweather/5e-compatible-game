@@ -14,6 +14,9 @@ namespace Chem.Mcp
         static readonly string[] TerrainFields = { "name", "tags", "look", "elevation", "spring", "speed" };
         static readonly string[] CoverFields = { "name", "tags", "look", "lasts", "witherLog", "damage", "speed" };
 
+        // A liquid's fields (RuleSchema.Liquids): each one value but its lapse.
+        static readonly Dictionary<string, string[]> LiquidFields = RuleSchema.Liquids.Names.ToDictionary(n => n, n => n == Rules.LapseKey ? Rules.LapseFields.ToArray() : null);
+
         static readonly Dictionary<string, string[]> GasFields = new Dictionary<string, string[]>
         {
             ["name"] = null,
@@ -87,24 +90,27 @@ namespace Chem.Mcp
 
         static readonly string[] RuleKeys = RuleSchema.Reactions.ModNames.ToArray();
 
+        // A gas's or liquid's fields, which are named one by one (a terrain's and a cover's are verb groups: null).
+        static (string who, Dictionary<string, string[]> fields)? NamedFields(string kind) => kind switch
+        {
+            "gases" => ("A gas", GasFields),
+            Rules.LiquidsKey => ("A liquid", LiquidFields),
+            _ => null,
+        };
+
         /// <summary>A material's field set to this value: throws saying what's wrong with the field, or returns.</summary>
         public static void CheckMaterial(string kind, string path, JToken value)
         {
-            if (kind == "gases")
+            if (NamedFields(kind) is var (who, fields))
             {
-                CheckNamed("A gas", GasFields, path, value);
+                CheckNamed(who, fields, path, value);
                 return;
             }
             bool cover = kind == "covers";
             string what = cover ? "A cover" : "A terrain";
             var keys = path.Split('.');
             string top = keys[0];
-            if (top == "look") return; // ModCheck.Looks and set_look know a look's parameters
-            if (top == Rules.LapseKey)
-            {
-                CheckLapse(what, path, value);
-                return;
-            }
+            if (CheckedElsewhere(what, top, path, value)) return;
             if (!MaterialGroups.Verbs(cover).Contains(top))
             {
                 if (MaterialGroups.GroupedName(cover, top) is string grouped) throw new RulesToolException($"{what} writes {top} as {grouped}.");
@@ -126,6 +132,15 @@ namespace Chem.Mcp
         public static void CheckMaterial(string kind, JObject entry)
         {
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
+        }
+
+        // The fields a material's own check hands off: a look (ModCheck.Looks and set_look know its parameters) and a lapse.
+        static bool CheckedElsewhere(string what, string top, string path, JToken value)
+        {
+            if (top == "look") return true;
+            if (top != Rules.LapseKey) return false;
+            CheckLapse(what, path, value);
+            return true;
         }
 
         // A temporary material's lapse (World.Lapse.cs): into and after only.

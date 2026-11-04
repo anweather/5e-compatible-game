@@ -2,7 +2,8 @@
 // every terrain, cover or gas row the rules in force have and the base rules don't,
 // owned by the first mod on that adds it. Pure: a RuleSet in, a list out, in mod
 // order, then table order (Rules.MaterialTables), then the patch's own order, so every
-// peer lists them alike. World.Lapse.cs sweeps and lapses them.
+// peer lists them alike. World.Lapse.cs sweeps and lapses them. Another mod may name
+// one while its owner is on, and goes with it (#86), as with anything a mod adds (ModAdds, #88).
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
@@ -34,7 +35,7 @@ namespace Chem
             if (set == null) return list;
             var seen = new HashSet<string>();
             foreach (var m in set.Mods)
-                if (TryPatch(m.Json, out var patch))
+                if (ModAdds.TryPatch(m.Json, out var patch))
                     foreach (var table in Rules.MaterialTables) AddOwn(set, m.Id, table, patch[table] as JObject, seen, list);
             return list;
         }
@@ -48,26 +49,12 @@ namespace Chem
                     list.Add(new TempMaterial(table, p.Name, mod, set.Effective.LapseOf(table, p.Name)));
         }
 
-        /// <summary>The temporary materials by id, each with its mod: what ModValidator lets no other mod name.</summary>
+        /// <summary>The temporary materials by id, each with its mod: a mod naming one goes when that mod does (World.Lapse.cs).</summary>
         public static IReadOnlyDictionary<string, string> Owners(IEnumerable<TempMaterial> temps)
         {
             var owners = new Dictionary<string, string>();
             foreach (var t in temps) owners[t.Id] = t.Mod;
             return owners;
-        }
-
-        static bool TryPatch(string json, out JObject patch)
-        {
-            try
-            {
-                patch = ModPatch.Parse(json).Json;
-                return true;
-            }
-            catch (ModException)
-            {
-                patch = null; // it composed when it went on, so this isn't reached
-                return false;
-            }
         }
     }
 }

@@ -22,6 +22,7 @@ namespace Chem
             check.Combos();
             check.Numbers();
             check.Lapses();
+            check.Liquids();
             check.Buildings();
             check.Things();
             check.Lays();
@@ -300,11 +301,20 @@ namespace Chem
                 if (look["family"] != null && Text(look["family"]) == null) Errors.Add($"{what}: look.family must be a name");
                 if (look["color"] != null && !(look["color"] is JArray c && c.Count == 3 && c.All(x => IsNumber(x) && (double)x >= 0 && (double)x <= 1)))
                     Errors.Add($"{what}: look.color must be three numbers from 0 to 1");
-                foreach (var key in new[] { "height", "glow", "flow" })
+                foreach (var key in new[] { "height", "flow" })
                     if (look[key] != null && !(IsNumber(look[key]) && (double)look[key] >= 0)) Errors.Add($"{what}: look.{key} must be a number from 0");
-                if (look["roughness"] != null && !(IsNumber(look["roughness"]) && (double)look["roughness"] >= 0 && (double)look["roughness"] <= 1))
-                    Errors.Add($"{what}: look.roughness must be a number from 0 to 1");
+                // A glow is how strongly it shines in its colour after dark, the view's alone (out of the fingerprint with the rest of the look).
+                Fraction(what, look, "glow", "from 0 (none) to 1 (brightest)", true);
+                Fraction(what, look, "roughness", "from 0 to 1", false);
                 foreach (var m in LookScopes.ShapeProblems(look)) Errors.Add($"{what}: {m}");
+            }
+
+            // A look's number from 0 to 1, if it gives one; with showWhat the refusal says what it gave.
+            void Fraction(string what, JObject look, string key, string range, bool showWhat)
+            {
+                var v = look[key];
+                if (v != null && !(IsNumber(v) && (double)v >= 0 && (double)v <= 1))
+                    Errors.Add($"{what}: look.{key} must be a number {range}{(showWhat ? $", not {Show(v)}" : "")}");
             }
 
             // The element entries (elements.json, a mod's "elements" by id): known elements, each with only
@@ -361,6 +371,30 @@ namespace Chem
                 if (t["meltWater"] != null && !(IsWholeNumber(t["meltWater"]) && (double)t["meltWater"] >= 1)) Errors.Add($"cover {id}: meltWater must be a whole number from 1");
             }
 
+            // A cover's spread (World.Spread.cs): whole ticks and cells from 1, a chance from 0 to 1, and onto and
+            // notOnto lists of terrain ids or tags some terrain has.
+            void Spreads(string id, JToken t)
+            {
+                foreach (var key in new[] { "spreadEvery", "spreadReach" })
+                    if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"cover {id}: {MaterialGroups.GroupedName(true, key)} must be a whole number from 1");
+                if (t["spreadChance"] != null && !(IsNumber(t["spreadChance"]) && (double)t["spreadChance"] > 0 && (double)t["spreadChance"] <= 1))
+                    Errors.Add($"cover {id}: spread.chance must be a number above 0, up to 1");
+                foreach (var key in new[] { "spreadOnto", "spreadNotOnto" })
+                    if (t[key] != null) SpreadNames(id, key, t[key]);
+            }
+
+            void SpreadNames(string id, string key, JToken list)
+            {
+                if (!(list is JArray names) || names.Any(n => Text(n) == null))
+                {
+                    Errors.Add($"cover {id}: {MaterialGroups.GroupedName(true, key)} must be a list of terrain ids or tags");
+                    return;
+                }
+                var tags = new HashSet<string>(terrain.Properties().SelectMany(p => Strings(p.Value["tags"])));
+                foreach (var name in names.Select(Text).Where(n => terrain[n] == null && !tags.Contains(n)))
+                    Errors.Add($"cover {id}: {MaterialGroups.GroupedName(true, key)} {name} is no terrain or terrain tag");
+            }
+
             // What dissolves a terrain or cover (an element) and what it leaves (one of its own kind).
             void Dissolves(string what, JToken t, JObject kind)
             {
@@ -398,6 +432,7 @@ namespace Chem
                     EffectRefs(id, e);
                     DissolveRef(id, e);
                 }
+                LiquidRef(id, cond, effects.OfType<JObject>());
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
                 VerbCond(id, cond);
@@ -483,6 +518,7 @@ namespace Chem
                     if (p.Value["floatReach"] != null && !(IsWholeNumber(p.Value["floatReach"]) && (double)p.Value["floatReach"] >= 1)) Errors.Add($"cover {p.Name}: floatReach must be a whole number from 1");
                     Dissolves($"cover {p.Name}", p.Value, covers);
                     Melts(p.Name, p.Value);
+                    Spreads(p.Name, p.Value);
                 }
                 foreach (var p in gases.Properties())
                 {

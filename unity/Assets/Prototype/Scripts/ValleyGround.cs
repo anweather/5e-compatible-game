@@ -514,7 +514,7 @@ public sealed class ValleyGround
         {
             // Snow only lies on the grass (clearing it under snow would leave the grass bare after the thaw).
             var c = world.At(x, y);
-            if (CellPaint.IsSnowy(c)) continue;
+            if (CellPaint.IsSnowy(c, world.Rules)) continue;
             bool grassy = CellPaint.IsGrassy(CellPaint.Mix(world, c, scorched(x, y)));
             int key = world.Idx(x, y);
             if (grassy && !cleared.Remove(key)) continue;

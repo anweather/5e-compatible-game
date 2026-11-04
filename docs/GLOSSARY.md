@@ -163,8 +163,8 @@ touch them.
 : One kind of command on its way over the network (`CommandChannel`, `NetChem`): the host's
   pending requests, stamping them for a tick, a peer holding them until that tick's batch arrives,
   and the history a late joiner replays, with a compaction hook that may drop what a later command
-  makes needless. Combo input travels on one; casts, effects, chunk switches, defense, strikes, the
-  dragon and room commands still have their own lists.
+  makes needless. Defense commands, combo input and room commands travel on one each; casts,
+  effects, chunk switches, strikes and the dragon still have their own lists.
 
 **Deterministic / lockstep**
 : Every peer runs the same world from the same commands and gets the same
@@ -196,6 +196,14 @@ touch them.
 : The three kinds of material a cell has: what it is (grass, stone, log
   wall, river), what lies on it (oil, ash, snow), what hangs over it
   (steam, smoke, fog) (`materials.json`).
+
+**Liquid**
+: What a cell's water is (P1, `Rules.Liquids.cs`): `Cell.Water` is the
+  amount and `Cell.Liquid` the **kind**, an index into the `liquids` table
+  where 0 is water, built in. A mod's honey, paint or molten rock is a row
+  there (`thick`, `heap`, `touch` ...). Two kinds never share a cell. The
+  index is the core's own; the wire, saves and the cell hash carry the id.
+  "Water" in a rule still means kind 0.
 
 **Element**
 : What a spell or reaction brings to a cell: fire, cold, water, air,
@@ -637,11 +645,14 @@ that long, and doesn't march.
 
 **Temporary material / lapse / retired**
 : A **temporary material** is a terrain, cover or gas a mod adds: it lives
-  while its mod is on, and only that mod may name it. It **lapses** when its
+  while its mod is on. Another mod may name it while that mod is on, and is
+  then its **dependent**: it goes when its owner goes (#86). The same holds for
+  anything a mod adds, a style or other building table's row, a building row, a
+  species, a part, a trigger (`ModAdds`, #88). It **lapses** when its
   row's `lapse.after` ticks have passed since the switch, which takes its mod
   off; lapsed or reverted, every cell of it is **swept** at that tick (into its
-  `lapse.into`, or nothing). The room's **retired** list remembers what went
-  (`World.Lapse.cs`, `docs/RULES_MCP.md`). *Avoid:* "expire", "despawn".
+  `lapse.into`, or nothing). The room's **retired** lists remember what went
+  and whose it was (`Retired`, `RetiredRows`; `World.Lapse.cs`, `docs/RULES_MCP.md`). *Avoid:* "expire", "despawn".
 
 **Shipped mod / player's mod**
 : A **shipped mod** is in `rules/mods/`, and comes with the build. A **player's

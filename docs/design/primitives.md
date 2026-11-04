@@ -147,18 +147,26 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
 
 1. **P3, products by data** (S), and slick covers drawn from data (`looks.json` `needs`); goldens hold.
    *Core done (branch `products-data`): `sim.json` fire.ash/smoke, water.boils/freezes, weather.snow.cover/bank,
-   weather.meteors.spell, and a material's `burn.ash`/`burn.smoke`. Left for the view: the slick and scorch
-   `needs` (`CellSlickMesh`, `ChemGrid.RenderCover`) and snow drawn by `World.SnowCover`/`BankCover`.
+   weather.meteors.spell, and a material's `burn.ash`/`burn.smoke`. View done (branch `products-view`): the slick
+   and scorch families drawn from data (`looks.json`), ash and snow painted by the rules' names (RULES_MCP.md "Products").
    Not P3 and kept: `waterTo`'s two flat-format words, the storm's `lightning`, `sheds == "lightning"`.*
 2. **Temporary materials on strings** (S to M): `lapse`, the sweep, the retired list, the limits.
    *Core done (branch `temp-materials`, RULES_MCP.md "Temporary materials"): every material a mod adds is temporary;
    `lapse` {into?, after?}; a lapse takes the whole mod off (its rows name the material, so they go with it), at the end
    of the tick, one a tick; revert and lapse sweep every loaded cell at that tick (Sanitize already wrote inactive chunks,
    so no wake-time sweep); the retired list in the room (save, `CastHash`); budgets `materials.maxPerMod` 8, `maxLive` 32,
-   `maxLapse` 21 600. Black ice passes on two peers (`TempMaterialTests`). Left for the view: listed in RULES_MCP.md.*
+   `maxLapse` 21 600. Black ice passes on two peers (`TempMaterialTests`). View done (branch `products-view`, probe `productsview`):
+   RULES_MCP.md "In the view".*
 3. **P2 spread** and **P4 glow** (S each).
 4. **P1 liquids** (M to L): the kind, the `liquids` table, `Flow`'s rule, `touch`, the flags in
    `Soak`/`Float`/`Cool`/rain, the coloured water mesh, new goldens. Then the interning step.
+   *Core done (branch `liquids`, RULES_MCP.md "Liquids"): `Cell.Liquid`, the table (water built in, `thick` 0 to 600,
+   `heap` 2 to 16, `soaks`/`floats`/`drowns`, `boils`, `touch`, `speed`, `tags`, `look`, `lapse` into water or dry), flow
+   by thick and heap, touch at power 1 (the base `lava-pool` row on a pond for a mod's molten rock), the flags in
+   Soak/Float/Cool/rain, `liquid` as a condition and with `addWater`, interning (remap by id at every switch; the cell
+   hash, saves and patches by id), temporary like any mod material, the still-water pass waiting out `thick`, the MCP's
+   kind `liquid`. Every golden holds; new goldens for honey, red paint and molten rock (`LiquidTests`). Left: `hot`,
+   `freezes`, `sets` (P3's products for a liquid), the view's coloured water mesh, breath and wading by `DrownDepth`.*
 5. **P5 mix** (S, on P1 and temporary materials).
 
 **The first test** (after step 2): asked of Claude, "give me a spell that lays a slick of black ice

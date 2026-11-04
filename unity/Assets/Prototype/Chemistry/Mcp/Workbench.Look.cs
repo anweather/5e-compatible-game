@@ -481,7 +481,8 @@ namespace Chem.Mcp
         List<string> LookLines()
         {
             var looks = Budgets.Looks;
-            var lines = new List<string> { $"bare ({string.Join(", ", looks.BareTables)}): no family; takes {List(looks.Bare.Params)}. {looks.Bare.About}" };
+            var also = looks.BareTables.Where(t => looks.BareParams(t).Count > looks.Bare.Params.Count).Select(t => $"; a bare look on {t} takes {List(looks.BareParams(t))}");
+            var lines = new List<string> { $"bare ({string.Join(", ", looks.BareTables)}): no family; takes {List(looks.Bare.Params)}{string.Concat(also)}. {looks.Bare.About}" };
             var noColour = new List<string>();
             foreach (var table in looks.TableNames)
                 foreach (var f in looks.In(table))

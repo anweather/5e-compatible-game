@@ -125,12 +125,36 @@ namespace Chem
         /// remember) and ash paint charred; a film of oil or grease is drawn on top
         /// (CellSlickMesh) and leaves the ground as it is.
         /// </summary>
-        public static IReadOnlyList<float> Weights(Cell c, bool scorched = false)
+        public static IReadOnlyList<float> Weights(Cell c, bool scorched = false) => Weights(c, scorched, null);
+
+        /// <summary>
+        /// The same, with the rules in force naming the snow covers (sim weather.snow) and the ash (sim fire.ash, a
+        /// material's burn.ash, or a cover whose look is a scorch): a mod's own paint as theirs. Null rules: the base ids.
+        /// </summary>
+        public static IReadOnlyList<float> Weights(Cell c, bool scorched, Rules rules)
         {
             if (c == null) throw new ArgumentNullException(nameof(c));
-            if (IsSnowy(c)) return SnowMix;
-            if (scorched || c.Cover == "ash") return CharredMix;
+            if (IsSnowy(c, rules)) return SnowMix;
+            if (scorched || IsAsh(c.Cover, rules)) return CharredMix;
             return ByTerrain.TryGetValue(c.T, out var mix) ? mix : EarthMix;
+        }
+
+        /// <summary>
+        /// Whether a cover is ash, painted charred: what fire leaves (sim.json fire.ash), what any terrain or cover
+        /// burns to (its burn.ash), or a cover whose look family is scorch. Null rules: the base "ash".
+        /// </summary>
+        public static bool IsAsh(string cover, Rules rules)
+        {
+            if (cover == null) return false;
+            if (rules == null) return cover == "ash";
+            if (cover == rules.Sim.Fire.Ash) return true;
+            if (!rules.Covers.TryGetValue(cover, out var def)) return false;
+            if (def.Look?.Family == "scorch") return true;
+            foreach (var t in rules.Terrain.Values)
+                if (t.BurnAsh == cover) return true;
+            foreach (var o in rules.Covers.Values)
+                if (o.BurnAsh == cover) return true;
+            return false;
         }
 
         /// <summary>
@@ -141,12 +165,24 @@ namespace Chem
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
             if (world.IsRaisedWall(c)) return WallMix;
-            var mix = Weights(c, scorched);
+            var mix = Weights(c, scorched, world.Rules);
             return c.Height < 0 && IsGrassy(mix) ? DugMix : mix;
         }
 
-        /// <summary>Whether snow lies on a cell (World.SnowCover or BankCover).</summary>
-        public static bool IsSnowy(Cell c) => c != null && (c.Cover == World.SnowCover || c.Cover == World.BankCover);
+        /// <summary>Whether snow lies on a cell: the base rules' snow covers (World.SnowCover or BankCover).</summary>
+        public static bool IsSnowy(Cell c) => IsSnowy(c, null);
+
+        /// <summary>Whether snow lies on a cell: the covers the rules' snow lays and drifts into (sim.json weather.snow.cover, bank); null rules, the base ones.</summary>
+        public static bool IsSnowy(Cell c, Rules rules)
+        {
+            if (c?.Cover == null) return false;
+            if (rules == null) return c.Cover == World.SnowCover || c.Cover == World.BankCover;
+            var w = rules.Sim.Weather;
+            return c.Cover == w.SnowCover || c.Cover == w.BankCover;
+        }
+
+        /// <summary>Whether a cover is the rules' snow bank (sim.json weather.snow.bank), which stands the ground higher; null rules, the base one.</summary>
+        public static bool IsBank(string cover, Rules rules) => cover != null && cover == (rules == null ? World.BankCover : rules.Sim.Weather.BankCover);
 
         /// <summary>Whether layer weights (Layers order) read as grass that detail grass grows on.</summary>
         public static bool IsGrassy(IReadOnlyList<float> w) => w[0] + w[1] >= 0.5f;

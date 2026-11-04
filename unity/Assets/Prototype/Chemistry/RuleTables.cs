@@ -177,6 +177,14 @@ namespace Chem
         public int FloatReach;
         /// <summary>When it withers (Lasts), its roots break the terrain under it into its BreaksTo (materials.json rot.breaks: vines crack a stone wall).</summary>
         public bool RotBreaks;
+        /// <summary>
+        /// It lays itself on a neighbour (materials.json spread, World.Spread.cs) on its turn every this many ticks
+        /// (spread.every; 0 never), each with this chance (spread.chance), onto a terrain whose id or a tag is in
+        /// SpreadOnto (empty: any) and none in SpreadNotOnto, as far as SpreadReach cells from where it was laid (0: no end).
+        /// </summary>
+        public int SpreadEvery, SpreadReach;
+        public double SpreadChance = 1;
+        public IReadOnlyList<string> SpreadOnto, SpreadNotOnto;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -568,6 +576,8 @@ namespace Chem
         /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
         public bool? Hot;
         public string Gas, TerrainTag, NotTerrainTag;
+        /// <summary>liquid: the cell holds (unfrozen) this liquid, by id or tag (Rules.Liquids.cs); "water" is liquid 0, as the water condition.</summary>
+        public string Liquid;
         /// <summary>The least power the element must arrive with (a charged cast's).</summary>
         public int? Power;
         /// <summary>The chance the rule applies, rolled last, once everything else holds.</summary>
@@ -581,6 +591,8 @@ namespace Chem
         public int? Boil;
         public bool Melt, Freeze, Extinguish, Condense;
         public bool HasAddWater, AddWaterPower; public int AddWaterN;
+        /// <summary>liquid: the liquid addWater pours (Rules.Liquids.cs); null, water.</summary>
+        public string Liquid;
         public bool HasSetCover; public string SetCover;
         public int? SpreadCover;
         public bool Break;
@@ -647,6 +659,8 @@ namespace Chem
 
         public IReadOnlyDictionary<string, TerrainDef> Terrain => terrain;
         public IReadOnlyDictionary<string, CoverDef> Covers => covers;
+        /// <summary>Some cover spreads (spread.every): without one, the soak pass never looks (World.Spread.cs).</summary>
+        public bool AnySpreads { get; private set; }
         public IReadOnlyDictionary<string, GasDef> Gases => gases;
         /// <summary>machines.json by terrain id: what powers each machine (World.TickMachines).</summary>
         public IReadOnlyDictionary<string, MachineDef> Machines => machines;
@@ -732,6 +746,7 @@ namespace Chem
                 ["terrain"] = materials["terrain"] as JObject ?? new JObject(),
                 ["covers"] = materials["covers"] as JObject ?? new JObject(),
                 ["gases"] = materials["gases"] as JObject ?? new JObject(),
+                [LiquidsKey] = materials[LiquidsKey] as JObject ?? new JObject(),
                 ["cellRules"] = reactions["cell"] as JArray ?? new JArray(),
                 ["entityRules"] = reactions["entity"] as JArray ?? new JArray(),
                 ["spells"] = get("spells.json", false) as JArray ?? new JArray(),
@@ -774,6 +789,7 @@ namespace Chem
             ParseComponents(r, doc["components"] as JObject ?? new JObject());
             foreach (var p in ((JObject)doc["terrain"]).Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["covers"]).Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
+            r.AnySpreads = r.covers.Values.Any(c => c.SpreadEvery > 0);
             foreach (var p in ((JObject)doc["gases"]).Properties())
                 r.gases[p.Name] = new GasDef
                 {
@@ -818,6 +834,7 @@ namespace Chem
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
             r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
+            r.ParseLiquids(doc);
             ParseGroups(r, (JObject)doc["groups"]);
             ParseCombos(r, (JObject)doc["combos"]);
             return r;
@@ -929,6 +946,11 @@ namespace Chem
             FloatEvery = Int(o["floatEvery"]) ?? 0,
             FloatReach = Int(o["floatReach"]) ?? 0,
             RotBreaks = Truthy(o["rotBreaks"]),
+            SpreadEvery = Int(o["spreadEvery"]) ?? 0,
+            SpreadChance = Num(o["spreadChance"]) ?? 1,
+            SpreadOnto = Strings(o["spreadOnto"]),
+            SpreadNotOnto = Strings(o["spreadNotOnto"]),
+            SpreadReach = Int(o["spreadReach"]) ?? 0,
             Look = ParseLook(o["look"]),
         };
 
@@ -1096,6 +1118,7 @@ namespace Chem
                 Hot = Bool(c["hot"]),
                 Conductive = Bool(c["conductive"]),
                 Gas = Str(c["gas"]),
+                Liquid = Str(c["liquid"]),
                 TerrainTag = Str(c["terrainTag"]),
                 NotTerrainTag = Str(c["notTerrainTag"]),
                 Power = Int(c["power"]),
@@ -1147,6 +1170,7 @@ namespace Chem
                 if (aw.Type == JTokenType.String) e.AddWaterPower = (string)aw == "power";
                 else e.AddWaterN = Int(aw) ?? 0;
             }
+            e.Liquid = Str(o["liquid"]);
             // setCover: null is meaningful (clear the cover), so presence is what counts.
             if (o.TryGetValue("setCover", out var sc))
             {

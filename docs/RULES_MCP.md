@@ -67,7 +67,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   `world/`, no trees and no yard), and say so.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
-- `add_material`, `set_material(id, field, value)`: a mod's own material is temporary and may `lapse` (see "Temporary materials")
+- `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials")
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
@@ -204,6 +204,20 @@ looks of the mods before it, ahead of its own. `rules/budgets.json` `looks` caps
 (8), a look's scoped looks (8) and a scope's reach (64 cells). All of it is inside `"look"`, so
 it stays out of `Rules.Fingerprint` and the cell hash.
 
+**Glow** (`docs/design/primitives.md` P4). A cover's look (bare, `slick` or `scorch`) and a `ground` terrain's may
+give `glow`, a number from 0 (none) to 1 (brightest); `block` already took one. Anything else is refused: a glow past
+0 to 1 by the checks ("look.glow must be a number from 0 (none) to 1 (brightest), not 1.5"), and a glow on a gas's
+or element's look, or a family that doesn't list it, by validate (looks.json `bare.also` gives the covers' extra
+parameter, and `list looks` says so). `set_look river-moss glow 0.3` sets it. Like the rest of the look it stays out
+of `Rules.Fingerprint` and the cell hash (`LookTests.AGlowLeavesTheFingerprintAndTheCellHashAlone`), so a glow-only
+mod never moves the netcode checksum. How it's drawn (`CellSlickMesh`): over every cell whose cover glows (a cover
+hides its ground's), or whose ground terrain does with no cover, a second film in the films' tiles adds the look's
+colour times `0.55 × (1 − e^(−glow / 0.3))` (0.1 gives 0.16, 0.3 gives 0.35, 1 gives 0.53), mottled by a small
+tiling noise texture, through one shared additive material lit as the lamps are (`Nightfall.Lamps`, the windows'
+light): 4% of it by day, all of it at night. No lights, no material per cell, nothing made while nothing glows; a
+cell's own film and paint are drawn as before. 0.1 is a shimmer, 0.3 a clear glow at dusk; past about 0.6 a patch
+reads as a lamp. Probe `glowmoss`.
+
 How the view draws them (`ChemGrid.LookScopes.cs`). A cell's colour is worked out when it's drawn, and
 with no such look on none of this runs. Flames, embers, fog, steam and smoke, oil, grease, frost,
 thorns and vines take it cell by cell. The land and the lake are one surface each, so a `where` on
@@ -319,8 +333,11 @@ mod can say it with `set_material` and a sim patch, with no code naming it:
 - `sim.weather.snow.cover` / `.bank` (covers) and `sim.weather.meteors.spell` (a spell).
 
 `validate` refuses a name that isn't a material (or spell) of the right kind. They are names, so no budget
-bounds them. The view still draws snow by the base ids (`World.SnowCover`, `BankCover`), so a mod's own snow
-cover falls and drifts in the sim but is drawn as a plain cover until the view reads the rules' names.
+bounds them. The view reads the same names (`products-view`): snow paint, banks, footprints and the scoped snow
+look follow `sim.weather.snow.cover` / `.bank` (`CellPaint.IsSnowy`, `IsBank`); what `sim.fire.ash` or any material's
+`burn.ash` names (or a cover whose look family is `scorch`) paints charred ground (`CellPaint.IsAsh`), and a mod's own
+ash wears its look's colour as a film over it (`CellSlickMesh`), so peat's `cinders` show as cinders. Probe
+`productsview`.
 
 ## Temporary materials: what a mod adds lasts while it's on
 
@@ -349,24 +366,121 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
 - **Lockstep.** A lapse is checked at the end of each tick (`World.EndTick`), mods in room order, at most one a tick
   (the next due waits a tick). The due tick is the mod's switch tick plus the shortest `after` of its materials, so a
   late joiner or a loaded save, which has both, lapses it at the same tick. No clock but the tick.
-- **What may name it.** Only its own mod: `validate` and every peer's check refuse another mod naming a temporary
-  material anywhere in its patch ("black-ice is a temporary material of the mod black-ice; only that mod may name it"),
-  so a lapse never leaves a dangling reference; a thing can't be made of one. Ids travel as strings (cells, saves, the
-  patch): nothing on the wire holds an index.
+- **What may name it** (#86, #88). Any mod, while its owner is on: a wing names its house's `clay-tile`. Not only
+  materials: anything a mod adds counts (`ModAdds`: a material, a style or other `buildings` table row, a building
+  row under `world.buildings`, a species, a part, a trigger, any row of an id table the base rules lack, owned by
+  the first mod on to add it). A mod naming one (a row by its id, or a string anywhere in its patch, `ModAdds.Named`;
+  a variant's `variantOf` names its species) is that mod's
+  **dependent**, and goes with it: when the owner is reverted or lapses, every dependent goes at that tick, and
+  every dependent of a dependent (one pass in room order, `World.WithDependents`). They go in one switch, with one
+  log line ("Ana switched off A stucco house, and A wing with it"), the owner first and then its dependents in
+  reverse of the order they went on; the view hears a revert for each, in that order. A lapsing material is no
+  exception: its dependents go at the lapse. A mod naming a material whose owner went is refused, naming it ("A wing
+  names clay-tile, a material of the mod house, which isn't on; switch house on first", from the retired list; a
+  style or another row the same way, "names adobe, a style of the mod house", from `RetiredRows`, which is in
+  `RoomText` and the save only once it holds any, at most 64 kept); one
+  never on in the room gets the checks' own reference sentence. No thing is made of another mod's material, and none
+  lapses into one, since it would go at the same tick. Ids travel as strings (cells, saves, the patch): nothing on
+  the wire holds an index.
 - **Budgets** (`budgets.json` `materials`): `maxPerMod` 8 new materials a mod, `maxLive` 32 temporary rows live in a
   room (refused at the switch: "Big mod would make 35 temporary materials live; a room holds at most 32"), `maxLapse`
   21 600. A lapse on a material the rules already have is refused.
 - **Tools.** `add_material` and `set_material` take `lapse` (`lapse.after`, `lapse.into`) on a terrain, cover or gas.
 
-**In the view (`temp-materials-view`).** What drawing a temporary cover needs:
-1. A cover by id the view has never seen: `ChemGrid.RenderCover` and `CellSlickMesh` must draw any cover from its
-   `look` (colour, and slick or not from its tags: `slippery`), not by id, the P3 slick `needs` gap. Until then black
-   ice is drawn as a plain cover.
-2. After a sweep, every cell that held it changes at once, inactive chunks included: redraw the covers (and terrain)
-   of every chunk on `RoomDecided` (a revert, lapse or not), not only the active ones, as for a rule switch.
-3. `RuleSwitcher` and the mods panel take a lapse as a revert: on `RoomDecided` with a revert, read `World.Room.Mods`
-   and `World.RoomRules` again (a `TickBatch.RunOn` hands back the old `RuleSet` across a lapse, as no room command came).
-4. Optional: a mod with a lapse shows its time left (`World.LapsesAt(mod)` minus `World.Tick`) in the mods panel.
+**In the view (`products-view`).** How a temporary cover is drawn:
+1. `CellSlickMesh.IsFilm`: a slippery cover (oil, grease, frost, black ice), one whose look family is `slick`, and any
+   cover the base rules don't have wears the glossy film, in its look's colour (`ChemGrid.CoverColorAt`); snow covers
+   stay the land's paint. `IsSheen` (slippery and burns: oil, grease) is the rainbow on water. No cover is skipped.
+2. On `RoomDecided` with a revert (a lapse is one), every inactive chunk is looked over again, six a frame
+   (`ChemGrid.RedrawEveryChunk`), so a sweep clears everywhere; the active ones are walked anyway.
+3. Before the next tick (`ChemGrid.FollowLapse`, solo and online), a revert the view didn't ask for puts
+   `World.RoomRules` in force as `CurrentRules`, with the redraw, recolour and `RulesChanged` of any switch: the mods
+   panel, lights and looks go back as on a revert.
+4. The mods panel shows "lapses in 4:59" on a mod whose materials lapse (`RuleSwitcher.LapseNote`).
+
+## Covers that spread
+
+`docs/design/primitives.md` §3, P2. A cover may give `spread`, and it creeps onto the ground next to it with no cast
+(`World.Spread.cs`):
+
+```json
+"river-moss": { "name": "Glowing moss", "tags": [], "look": { "color": [0.3, 0.85, 0.55] },
+                "spread": { "every": 30, "chance": 0.5, "onto": ["stone", "rock"], "notOnto": ["sandy"] },
+                "lapse": { "after": 1800 } }
+```
+
+- **`every`** (ticks, from 1; a mod's from `materials.minSpreadEvery` 30): each cell of it gets a turn every that many
+  ticks, on the soak pass, each cell on its own turn of the count (as soaking is), so a patch doesn't pulse.
+- **`chance`** (above 0, up to 1, default 1; a mod's at most `materials.maxSpreadChance` 0.5): on its turn, for each
+  neighbour in N, E, S, W order that takes it, one roll of the world's seeded RNG.
+- **`onto`**, **`notOnto`** (lists of terrain ids or terrain tags): a neighbour takes it if it's bare (no cover, no
+  fire), not open water (a cover on water is `float`'s), its terrain's id or a tag is in `onto` (none: any terrain)
+  and none is in `notOnto`. A name no terrain has is refused ("spread.notOnto pebbles is no terrain or terrain tag").
+- **`reach`** (cells, from 1; a mod's at most `materials.maxSpreadReach` 64): how far it creeps from where it was laid,
+  counting that cell, carried in `Cell.Slick` as a slick's reach is. None: no end.
+- **When it lands.** What spreads in a tick is laid at its end, first come first laid, so it creeps a cell a turn
+  whichever way the rows run; at most `materials.maxSpreadPerTick` (64) cells a tick in the whole world, and only into
+  active chunks. A catch-up's spread lands on the next tick, under the same cap.
+- **Cost.** None when no cover in the rules spreads (`Rules.AnySpreads`; no RNG is drawn, so every golden holds).
+  A whole active chunk of spreading moss with nowhere left to go costs about 22 µs a tick more than the same chunk under
+  a cover that doesn't spread (a VM, best of six runs of 2 400 ticks); a growing patch adds at most 64 landings a tick.
+- **Temporary.** A mod's spreading cover is swept like any other at its lapse, every cell it reached and its reach.
+- **Tools.** `add_material` and `set_material` take `spread` on a cover, whole (`spread`) or by field (`spread.every`,
+  `spread.chance`, `spread.onto`, `spread.notOnto`, `spread.reach`), within the checks above.
+
+**For the view.** Spreading moss is a mod's own cover, so it wears a film of its look's colour, redrawn as it creeps
+in with no cast (a spreading cell counts as live, so its chunk's `LastLive` moves). With `look.glow` it glows after
+dark (P4, "Glow" under Looks); probe `glowmoss` lays river stones on the bank and moss with glow 0.3 that creeps over them.
+
+## Liquids: what a cell's water is
+
+`docs/design/primitives.md` §3 P1, step 4 (core; branch `liquids`). `Cell.Water` stays the amount; `Cell.Liquid` is the
+**kind**, an index into the `liquids` table where 0 is water, built in (`Rules.Liquids.cs`, `World.Liquids.cs`). The
+base rules have no table, so a world of water runs, hashes and saves exactly as before. A mod adds a row:
+
+```json
+"liquids": { "honey": { "name": "Honey", "thick": 4, "heap": 6, "soaks": false, "floats": false, "speed": 0.4,
+                        "tags": ["sticky"], "look": { "color": [0.85, 0.6, 0.1] }, "lapse": { "after": 900 } } }
+```
+
+- **`thick`** (whole, 0 to 600; water 1): it flows on one tick in `thick` (on ticks a multiple of it); 0 never flows
+  (quicksand). **`heap`** (whole, 2 to 16; water 2): the drop in units it needs to run on the flat, so honey stands in
+  a mound (below 2 a puddle would slosh for ever). Downhill it runs on any drop, as water does.
+- **`soaks`**, **`floats`**, **`drowns`** (flags, all true by default, as water): thin pools sink into the ground
+  (`World.Soak`); a floating cover (oil) rides it (`World.Float`, `pushCover`); its depth counts for wading (raiders'
+  rough ground), the dragon's shelter and breath (`World.DrownDepth`).
+- **`boils`** (a gas): what it boils off as on hot metal, hot ground (`boil` terrains) and by a `boil` effect. None:
+  it doesn't boil (water's is `sim.water.boils`). Only water freezes (snow, `freeze`, arctic ground) for now.
+- **`touch`** (an element). **Two kinds never share a cell**: a liquid runs only onto a dry cell or its own kind.
+  Where the best cell it could run onto holds another kind, it lays its `touch` there at power 1 and the reactions
+  decide; with no `touch` the other is a wall. A mod's molten rock with `touch: "lava"` running into a pond makes
+  the base `lava-pool` row grow on the wet cell, and the water there quenches it into rock and steam (J-062: the base
+  lava stays terrain; this liquid lava is a mod's, and comes first).
+- **Water from the sky and the ground stays water**: rain, a rain cloud, springs, melting snow, a thaw, condensing
+  steam and `addWater` without a liquid don't fall into another kind's cell. Rain doesn't dry or freeze another
+  liquid. "Water" in a reaction (`if.water`, the `water` element's conductivity, dousing fire, rust) is kind 0.
+- **In a reaction**: the condition `liquid` (an id, `water` for kind 0, or a tag: `"sticky"`) holds on a cell of that
+  unfrozen liquid; the effect `addWater` with `liquid` pours that liquid (`{"addWater": "power", "liquid": "honey"}`).
+- **Interning.** The table is rebuilt at each switch: water, then the base rows in file order, then each mod's in
+  room order. At a switch every cell's kind is remapped by id (`World.RemapLiquids`), so nothing outside the core
+  holds an index: the patch carries the row, the cell hash appends `,q<id>` and a save appends the id to a cell's row
+  only when it isn't water; old saves load as water.
+- **Temporary.** A mod's liquid is temporary like any material it adds (counted in `materials.maxPerMod`, swept at a
+  revert or lapse). `lapse.into` may be `water` (the pool becomes water); with none, it dries.
+- **Limits.** At most 254 liquids besides water. The still-water pass waits out the thickest liquid's `thick` before
+  it skips a chunk as still, so a thick pool's turn is never missed.
+- **Tools.** `add_material` and `set_material` take kind `liquid` (its fields are those above, each one value but
+  `lapse`); `list liquids`, `describe liquids <id>`. A field the engine doesn't read (`sets`, `freezes`, `hot`) is
+  refused.
+
+**Cost.** On a full 384 × 384 lake of water with still-water skipping off, the flow pass costs about 0.3 ms a tick
+more than before liquids (about 2.0 to 2.3 ms on `dev`, 2.25 to 2.6 ms here, a VM); a still lake with the
+skip on costs the same as on `dev` (1.5 to 2 ms a tick in all). A honey lake costs less than water (about 3 ms
+against 4.4 to 5 ms a tick, the skip off): it tries one tick in four.
+
+**In the view (not built yet).** The water mesh takes a colour per kind (`LiquidDef.Look.color`, a vertex colour;
+water keeps its own look); a thick liquid's surface may move slower (`look.flow`). Breath and wading should read
+`World.DrownDepth` and `LiquidDef.Speed` instead of `Cell.Water` (the view's `Breath` caller, the mover's wading).
 
 ## Buildings: rows a mod can edit or add
 

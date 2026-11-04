@@ -56,7 +56,7 @@ namespace Chem.Mcp
         /// <summary>The rules in force: the base rules with the room's mods on, in order.</summary>
         public Rules InForce { get; private set; }
 
-        /// <summary>The room's temporary materials by id, each with its mod (TempMaterials): validate lets no other mod name one.</summary>
+        /// <summary>The room's temporary materials by id, each with its mod (TempMaterials): another mod may name one, but makes no thing of one.</summary>
         IReadOnlyDictionary<string, string> Temporary { get; set; } = new Dictionary<string, string>();
 
         /// <summary>The rules in force as the engine reads them (materials ungrouped into flat keys).</summary>
@@ -119,7 +119,8 @@ namespace Chem.Mcp
         {
             var raw = new Dictionary<string, JToken>(baseRaw, StringComparer.Ordinal);
             var materials = (JObject)baseRaw["materials"].DeepClone();
-            foreach (var kind in MaterialKinds) materials[kind] = written[kind].DeepClone();
+            foreach (var kind in MaterialKinds)
+                if (materials[kind] != null || (written[kind] as JObject)?.Count > 0) materials[kind] = written[kind].DeepClone();
             raw["materials"] = materials;
             var reactions = (JObject)baseRaw["reactions"].DeepClone();
             reactions["cell"] = written["cellRules"].DeepClone();
@@ -163,7 +164,7 @@ namespace Chem.Mcp
         IEnumerable<string> LayerChanges(int i)
         {
             var (under, over) = (layers[i - 1].Raw, layers[i].Raw);
-            foreach (var table in new[] { "terrain", "covers", "gases", "spells", "elements", "reactions", "critters", "entities", "items", "machines", "groups", FaunaTable, PartsTable, TriggersTable })
+            foreach (var table in new[] { "terrain", "covers", "gases", Rules.LiquidsKey, "spells", "elements", "reactions", "critters", "entities", "items", "machines", "groups", FaunaTable, PartsTable, TriggersTable })
                 foreach (var id in EntryIds(over, table).Union(EntryIds(under, table)))
                 {
                     var (was, now) = (EntryIn(under, table, id), EntryIn(over, table, id));
@@ -182,6 +183,7 @@ namespace Chem.Mcp
                 case "terrain":
                 case "covers":
                 case "gases":
+                case Rules.LiquidsKey:
                     return (raw["materials"][table] as JObject)?.Properties().Select(p => p.Name) ?? Enumerable.Empty<string>();
                 case "reactions":
                     return ((raw["reactions"]["cell"] as JArray) ?? new JArray()).Concat((raw["reactions"]["entity"] as JArray) ?? new JArray()).Select(r => Str(r["id"]));

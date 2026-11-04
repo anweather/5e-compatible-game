@@ -1,4 +1,4 @@
-# State (2026-11-03, early)
+# State (2026-11-03, evening)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -56,26 +56,22 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **0.1.11 waits, no rush** (Andrew, 2026-11-02). Draft notes: `docs/handoffs/release-0.1.11-notes.md`. They promise voice: fix #58 or cut that line. Before it ships: version bump, the saved-mods warning (#63).
-- **Play-test fixes (Andrew: fix them all; issues #70 to #81).** On dev: `creature-scale`, `fauna-rows`, `dragon-tools` (u2), `mod-exception`, `voice-hears` (PC), `place-core` and `world-lay` (u2 merged these itself; the PC compiled dev clean after). #72 closed. Design calls J-067.
-  - **DesktopUnity:** `lit-windows` and `place-view` landed (#71, #74, #75 closed). `water-perf` landed (about 2.4 ms faster); now `water-perf-2`.
-  - **u2 (Max):** `triggers-core` (#76) pushed (b378165e): compiles, but solo triggers with no `who` never fire; u2 fixing it (`triggers-fix.md`).
-  - **Mac:** resting; next brief cleanup item 5.
-  - Open: #58 needs Andrew's `-voice-check` (on the board); #73 bodies from parts and #60 water surface are designed (`docs/design/bodies-and-surfaces.md`), not built; #80 animals out don't resize; #77 dragon loop; #79, #78, #81.
-- **Cleanup:** items 1 and 3 landed (`game-folders` 10da5b1, `folders-rest` 6e5fb9e4), not yet in a built player. Item 9 landed too (`fireline-out`). Next: items 5 then 4, 2, 7, 8 (`docs/design/cleanup-review-2026-11-02.md`); inputs `docs/handoffs/cleanup-inputs-2026-11-02.md`.
-- **u1:** stopped; Pro weekly is out until Nov 5 (the "pro is back" mail was the 5-hour limit). **Max** weekly was 75% on 2026-11-02 evening.
-- **Unmerged, kept:** `second-map` (afff4c9), for shipped maps (#69, backlog 29).
-- **#59 telemetry:** item 5 (faster) not started.
+- **0.1.11 waits on Whisper** (Andrew, J-070): talking to Claude goes in; Vivox doesn't. Before cutting: land `whisper-spike`, add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
+- **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
+- **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour).
+- **DesktopUnityPro:** `liquids-2` (from `wip/u2-liquids-2`), then the PC side of Whisper.
+- **Mac (`macbook-unity-pro`):** proving `channels-3` (40034327; strikes onto CommandChannel, #83 reduced, not gone), then the real Whisper step on `whisper-spike`. The PC checks the Windows compile, native lib and mic in a player.
+- **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
-- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (played 2026-11-02). `VoiceCheck/` beside it for the voice test. Older `PlayTest/` and `PlayTest-1ad55fb/` can go.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
 ## Next, in order
 
-1. Land what's in flight; then a new test player for Andrew with the play-test fixes and the folders change.
-2. The cleanup, from item 5 down.
-3. Made-up bodies (#73, Andrew's pick, 2026-11-03): `fauna-read`, `graft`, `graft-coats` (handoff). Then `triggers-view`, building on water (#60).
-4. Temporary materials and products as data (`docs/design/primitives.md`); gaits by rule (`builders.md`).
-5. 0.1.11, when Andrew says.
+1. Land what's in flight (liquids-2, channels-3, Whisper).
+2. 0.1.11 when Andrew says.
+3. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
+4. Gaits by rule (`builders.md`), after bodies (J-068).
+- Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
 - Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).
 
 ## Andrew's board
@@ -86,8 +82,8 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 
 ## Open questions for Andrew
 
-- Voice: run `-voice-check` when he can talk (the command is on the board), then once with the Arctis as default.
-- Watch the lit windows clip on the board; the sound pass when he has time (J-065).
+- On the board: soot and black ice read as a pale blue film; darker and more solid? Creatures clip; walking-rules clip judged (no gesture, J-069).
+- Release 0.1.11 when he says ship (after Whisper).
 
 ## Telemetry
 

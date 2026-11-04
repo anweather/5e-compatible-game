@@ -117,7 +117,7 @@ public class ModsPanel : MonoBehaviour
         bool on = switcher.Rules.IsOn(mod.Id);
         string mark = on ? "<color=#7CFC7C>✔</color>" : "<color=#ffffff55>○</color>";
         string number = i < 9 ? $"{i + 1}" : " ";
-        string idea = mod.Error != null ? $"<color=#ff8a80>{mod.Error}</color>" : mod.Idea;
+        string idea = mod.Error != null ? $"<color=#ff8a80>{mod.Error}</color>" : Lapsing(mod.Id, mod.Idea);
         string label = $"{mark}  <b>{number}  {mod.Title}</b>\n<size=13><color=#ffffffbb>{Shorten(idea, 90)}</color></size>";
         if (PauseMenu.Button(label, on ? rowOn : row, GUILayout.Width(Width - 56), GUILayout.Height(52))) Toggle(i);
     }
@@ -127,7 +127,7 @@ public class ModsPanel : MonoBehaviour
 
     void DrawOther(RoomMod mod)
     {
-        string label = $"<color=#7CFC7C>✔</color>  <b>{mod.Title}</b>\n<size=13><color=#ffffffbb>Added by {mod.By}</color></size>";
+        string label = $"<color=#7CFC7C>✔</color>  <b>{mod.Title}</b>\n<size=13><color=#ffffffbb>{Lapsing(mod.Id, "Added by " + mod.By)}</color></size>";
         if (PauseMenu.Button(label, rowOn, GUILayout.Width(Width - 56), GUILayout.Height(52))) switcher.Toggle(mod.Id);
     }
 
@@ -143,6 +143,13 @@ public class ModsPanel : MonoBehaviour
             sb.Append(room.Mods[i].Title);
         }
         return sb.ToString();
+    }
+
+    // A mod whose materials lapse says how long it has left, ahead of the rest of its line.
+    string Lapsing(string id, string rest)
+    {
+        string note = switcher.LapseNote(id);
+        return note == null ? rest : $"<color=#ffd54f>{note}</color> · {rest}";
     }
 
     static string Shorten(string s, int max) => string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max - 1) + "…";

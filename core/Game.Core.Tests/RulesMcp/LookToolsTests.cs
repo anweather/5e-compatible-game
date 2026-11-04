@@ -53,6 +53,14 @@ namespace Chem.Tests
             Assert.That(Said(id, colour, table), Does.Not.Contain("won't show"));
 
         [Test]
+        public void SetLookTakesACoversOrGroundsGlowButNotAGass()
+        {
+            Assert.That(With(Look("oil", "glow", "0.3", "covers")).Covers["oil"].Look.Glow, Is.EqualTo(0.3f));
+            Assert.That(With(Look("grass", "glow", "0.2")).Terrain["grass"].Look.Glow, Is.EqualTo(0.2f));
+            Assert.That(Refusal("steam", "glow", "0.3", "gases"), Does.Contain("glow"));
+        }
+
+        [Test]
         public void WhatShowsNamesRealThings()
         {
             var looks = Bench.Base;
@@ -154,12 +162,14 @@ namespace Chem.Tests
         public void ListLooksGivesTheFamiliesTheirParametersAndWhatTakesNoColour()
         {
             var list = Bench.List("looks");
-            StringAssert.Contains("bare (covers, gases, elements): no family; takes color.", list);
+            StringAssert.Contains("bare (covers, gases, elements): no family; takes color; a bare look on covers takes color, glow.", list);
             StringAssert.Contains("spells blast: takes color.", list);
             StringAssert.Contains("terrain plant: takes color, height, baked; forms bush, tree, sapling, stump.", list);
             StringAssert.Contains("A tree or sapling is the valley's own tree model, so it takes no colour there.", list);
             var none = list.Split('\n').Single(l => l.StartsWith("Takes no colour:", StringComparison.Ordinal));
-            foreach (var f in new[] { "fire plain", "fire oil", "gases bank", "covers slick" }) StringAssert.Contains(f, none);
+            foreach (var f in new[] { "fire plain", "fire oil", "gases bank", "covers ember" }) StringAssert.Contains(f, none);
+            StringAssert.DoesNotContain("covers slick", none, "drawn from data now (products-view)");
+            StringAssert.Contains("covers slick: takes color, glow.", list);
             StringAssert.DoesNotContain("spells blast", none);
             StringAssert.Contains("colour [0.95,0.42,0.12]", Bench.List("elements"));
         }
