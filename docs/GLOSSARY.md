@@ -763,7 +763,7 @@ that long, and doesn't march.
   shaped (`docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own.
 
 **Map**
-: A whole world to play on. One build holds one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
+: A whole world to play on, a folder under `world/maps/`. Its **map hash** is over every file there (`MapIdentity`): the host turns away a peer without its id and hash. One build still draws one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
   **cell map** in the map's `cells.txt`, one character a cell, nor a **shore map**.
 
 **Theme look**

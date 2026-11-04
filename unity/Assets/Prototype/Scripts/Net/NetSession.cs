@@ -191,6 +191,7 @@ public class NetSession : MonoBehaviour
             session = null;
         }
         if (Net.IsListening) Net.Shutdown();
+        ChemGrid.BackToOwnMap();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
@@ -199,7 +200,7 @@ public class NetSession : MonoBehaviour
     void PrepareForNetwork()
     {
         joinFailure = null;
-        Net.NetworkConfig.ConnectionData = BuildVersion.Encode(BuildInfo.Stamp);
+        Net.NetworkConfig.ConnectionData = BuildVersion.Encode(BuildInfo.Stamp, MapIdentity.Offered(ChemGrid.Folders));
         var solo = WizardRig.FindLocal();
         if (solo != null && solo.GetComponent<NetworkObject>() == null) Destroy(solo);
     }
@@ -207,7 +208,9 @@ public class NetSession : MonoBehaviour
     void Approve(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
         bool self = request.ClientNetworkId == NetworkManager.ServerClientId;
-        string refusal = self ? null : BuildVersion.Mismatch(BuildInfo.Stamp, BuildVersion.Decode(request.Payload));
+        var client = self ? null : BuildVersion.Decode(request.Payload);
+        string refusal = self ? null : BuildVersion.Mismatch(BuildInfo.Stamp, client);
+        if (refusal == null && !self) refusal = ChemGrid.MapRefusal(client.Maps);
         if (refusal == null && Net.ConnectedClientsIds.Count >= MaxPlayers) refusal = $"The yard is full ({MaxPlayers} players).";
         if (refusal != null) Debug.Log($"NET: turned client {request.ClientNetworkId} away: {refusal}");
         response.Approved = refusal == null;
