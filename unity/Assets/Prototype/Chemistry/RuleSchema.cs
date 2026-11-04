@@ -163,6 +163,7 @@ namespace Chem
             RuleField.Flag("frozen"),
             RuleField.Flag("melts"),
             RuleField.Flag("hot"),
+            RuleField.Flag("freezes"),
             RuleField.Reference("gas", "gases"),
             RuleField.Text("liquid"),
             RuleField.Text("terrainTag"),
@@ -226,6 +227,9 @@ namespace Chem
             RuleField.Flag("drowns"),
             RuleField.Reference("boils", "gases"),
             RuleField.Reference("touch", "elements"),
+            RuleField.Value("hot"),
+            RuleField.Value("freezes"),
+            RuleField.Value("sets"),
             RuleField.Number("speed", 0, max: 1),
             RuleField.Look("look"),
             RuleField.Value("lapse"));

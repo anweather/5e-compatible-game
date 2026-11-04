@@ -194,10 +194,17 @@ namespace Chem
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
-                    if (c.Water == 0 || c.Water > 2 || c.Frozen == freeze || c.Liquid != 0) continue;
-                    if (Rand() < chance) c.Frozen = freeze;
+                    if (c.Water == 0 || c.Water > 2 || c.Frozen == freeze) continue;
+                    if (c.Liquid == 0 ? Rand() < chance : freeze && LiquidFreezes(c) != null && Rand() < chance) FreezeThin(s.Chunk, c, freeze);
                 }
             }
+        }
+
+        // Snow's freeze on a thin pool: water to ice and back; another liquid with freezes into its terrain or cover.
+        void FreezeThin(Chunk ch, Cell c, bool freeze)
+        {
+            if (c.Liquid == 0) c.Frozen = freeze;
+            else FreezeLiquid(ch, c);
         }
 
         /// <summary>Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered.</summary>
