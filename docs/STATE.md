@@ -62,7 +62,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **Whisper landed** (e7480c2b): Andrew's voice reached Claude in a Windows release player (11 voice messages, open 6-56 ms, about 1 s to transcribe). The VC++ runtime and Vulkan loader ship with the game (J-072); proven on a clean-ish VM clone. Update from 0.1.10 is 142.7 MB. Credits' copyright lines checked against the LICENSE files (whisper.unity corrected to Macoron, in 058c5cb1; reaches players in 0.1.12). VC++ DLLs: Microsoft's pages allow unmodified retail copies from VCRedist for licensed Visual Studio users; Andrew has Community; its full licence terms aren't read yet. Linux and Steam Deck haven't run.
 - **Vivox (0.1.12):** `vivox-spike` (8f44eae9, not landed): sign-in and libraries answered; the mic and fade aren't. Next: `briefs/vivox-pc-run.md` on the PC with Andrew. Vivox is on in the Dashboard. The Mac may need unlocking to be the second participant: its audio stalled with the screen locked.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
-- **`mcp-act` landed** (e8c1113b; `docs/design/world-acts.md`, backlog 30): `act` and `undo_act`, one-off happenings that aren't mods. Not tried with a real Claude yet.
+- **`mcp-act` landed** (e8c1113b; `docs/design/world-acts.md`, backlog-archive 30, #127): `act` and `undo_act`, one-off happenings that aren't mods. Not tried with a real Claude yet.
 - **`mix` landed** (d53feb01, P5; core 1411 passed): rows of one `mix` group that meet derive a material. Owed: seen in a running game (view unproven), EditMode on the merged tree, a late join over real netcode; `ApiKeyTests` fail 8 on the Mac (Windows-only vault, not confirmed on plain dev). Only `setCover` mixes covers.
 - **`ball-in-cup` landed** (1e7fb5b5): `act` places a ball and cup, spells move it, turns, the `holed` trigger. Two-player turns tested in core only; no real-Claude test.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
@@ -76,7 +76,7 @@ The one page a new PM session reads first. Keep it short: history goes in
    Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 3. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
-- Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).
+- Backlog and priority: the board, https://github.com/users/anweather/projects/3 (epics, `area:` and `p1`-`p3` labels); `docs/BACKLOG.md` is the pointer and `docs/backlog-archive.md` keeps the design detail (more than one map is #69).
 
 ## Andrew's board
 

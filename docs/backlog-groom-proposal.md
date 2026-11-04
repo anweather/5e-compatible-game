@@ -1,6 +1,6 @@
 # Backlog groom: proposal (2026-11-04)
 
-Status: **waiting for Andrew's approval.** Nothing has been created or changed on GitHub yet.
+Status: **applied 2026-11-04** except the closures (defect review), which wait for Andrew. Board: https://github.com/users/anweather/projects/3. Epics #94 to #101 and #69; new issues #102 to #141; every existing issue labelled and linked as a sub-issue. [x] labels [x] board [x] epics [x] new issues [x] existing issues [x] BACKLOG.md cut, archive kept [x] STATE.md.
 Read: 56 open issues, `docs/BACKLOG.md` (30 sections), `docs/STATE.md`, `docs/design/maps-as-data.md`.
 `gh` has the project scope. Existing boards: "Boardgame Platform" and "Hex Brain Prototype" (not this game); a new board is made.
 
