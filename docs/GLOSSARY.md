@@ -808,6 +808,11 @@ that long, and doesn't march.
   so a record has a real "in the world". A stand-in answers unless it's given
   `--real-claude true`, which spends real prompts (J-064).
 
+**Act**
+: Something that happens once, now, for everyone, with no mod: `act` lays ground, places a
+  thing, brings out an animal or casts a spell (`World.Acts.cs`). A mod is a rule that keeps
+  holding; an act is an event. `docs/design/world-acts.md`.
+
 **Chat profile**
 : How the game reaches Claude, picked in Settings > Claude setup (`ChatProfile`,
   `ChatSetup`): the player's API key, or their own Claude Code by path with its

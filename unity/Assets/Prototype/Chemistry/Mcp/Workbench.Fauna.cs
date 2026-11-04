@@ -59,13 +59,14 @@ namespace Chem.Mcp
         }
 
         /// <summary>A species' size, against its normal size, and its behaviour, keeping the rest of its row.</summary>
-        public Draft SetSpecies(string draftId, string id, double? scale, string behave, string from = null)
+        public Draft SetSpecies(string draftId, string id, double? scale, string behave, string from = null, string color = null, string accent = null, double? glow = null, double? density = null)
         {
             id = Required(id, "id");
             var draft = DraftOf(draftId);
             if (!(Current(draft, FaunaTable, id) is JObject now)) throw new RulesToolException($"There is no species {id}; list fauna shows them.");
             bool grafting = !string.IsNullOrWhiteSpace(from);
-            if (!scale.HasValue && string.IsNullOrWhiteSpace(behave) && !grafting) throw new RulesToolException("set_species changes scale, behave, from or some of them; give one.");
+            bool recoloured = !string.IsNullOrWhiteSpace(color) || !string.IsNullOrWhiteSpace(accent) || glow.HasValue;
+            if (!scale.HasValue && string.IsNullOrWhiteSpace(behave) && !grafting && !recoloured && !density.HasValue) throw new RulesToolException("set_species changes scale, behave, from, color, accent, glow, density or some of them; give one.");
             var entry = Section(draft, FaunaTable)[id] as JObject ?? new JObject();
             if (grafting)
             {
@@ -81,6 +82,12 @@ namespace Chem.Mcp
                 else entry["size"] = new JArray(((normal["size"] as JArray)?.Select(s => (double)s) ?? new[] { 0.9, 1.1 }).Select(s => Rounded(s * times)));
             }
             if (!string.IsNullOrWhiteSpace(behave)) entry["behave"] = Rules.MergedEntry(entry["behave"], Behave(id, behave, Str(now["variantOf"]) != null));
+            if (recoloured) Recolour(entry, now, color, accent, glow);
+            if (density.HasValue)
+            {
+                if (density < 0) throw new RulesToolException("density is animals per hectare in the wilds, 0 or more; 0 means it never comes out on its own.");
+                entry["spawn"] = new JObject { ["density"] = Rounded(density.Value) };
+            }
             Section(draft, FaunaTable)[id] = entry;
             draft.Changed.Add($"{FaunaTable} {id}");
             return draft;
@@ -135,6 +142,17 @@ namespace Chem.Mcp
         }
 
         // A colour over the coat it took: one coat in the colours given, the accent kept if none is.
+        // An existing species' coat: one coat in place of whatever it wore, its own colours where none is given.
+        static void Recolour(JObject entry, JObject now, string color, string accent, double? glow)
+        {
+            var row = new JObject();
+            foreach (var key in new[] { "coat", "coats" })
+                if ((entry[key] ?? now[key]) is JToken worn && worn.Type != JTokenType.Null) row[key] = worn.DeepClone();
+            Colour(row, color, accent, glow);
+            entry["coat"] = row["coat"];
+            if (now["coats"] != null) entry["coats"] = JValue.CreateNull();
+        }
+
         static void Colour(JObject row, string color, string accent, double? glow)
         {
             if (string.IsNullOrWhiteSpace(color) && string.IsNullOrWhiteSpace(accent) && !glow.HasValue) return;

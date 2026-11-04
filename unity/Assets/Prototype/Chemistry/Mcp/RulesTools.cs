@@ -31,7 +31,8 @@ namespace Chem.Mcp
             "These tools change the rules of Spell Chemistry Valley, a game about how spells and materials react, in the game the player is watching. When the player asks for a change, write it yourself: " +
             "read what's on now (whats_on, then list, describe, explain), build a new draft, check it with validate, run simulate if validate says to, then apply it with a short title the players will read. " +
             "Each tool's description says what it needs: colours are always set_look. Before you try or refuse what may not be in the rules, read outside_rules, so you can say what's nearest. " +
-            "After apply, tell the player what changed, from its answer, and claim nothing it doesn't list. Don't save unless the player asks.";
+            "After apply, tell the player what changed, from its answer, and claim nothing it doesn't list. Don't save unless the player asks. " +
+            "A mod is a rule that keeps holding; something that happens once (20 trees here, three centaurs near me, a meteor there) is act, with no draft and no mod.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
         const string ValueHelp = "The new value as JSON (0.5, true, \"ash\", [8, 6], {\"catch\": 0.4}); null removes the field.";
@@ -113,7 +114,26 @@ namespace Chem.Mcp
 
         // ---------- draft ----------
 
-        [RulesTool("scatter"), Description("Scatters a terrain, cover or thing over open ground near a place, a building, a cell or you, in a draft: \"50 trees near the lake\" is scatter(what: tree, count: 50, near: lake, edge: shore, within: 12, spacing: 2), not a building of tree. The cells are picked now from the world's seed and written into the draft (a terrain or cover as a lay row of its world section, laid fresh at the switch and taken back by a revert; a thing as add rows), so every peer gets the same. Another seed picks other cells; the same what and seed replace the row. Laid trees and bushes (brush) are the real terrain: they block, burn and topple. At most 256 cells a mod, within 32 cells.")]
+        [RulesTool("act"), Description("Does something once, now, for everyone, with no mod: lays a terrain or cover, places a thing, brings out an animal (a species from list fauna) or casts a spell, on open ground near a place, a building, a cell or the player asking. \"Add 20 trees near me\" is act(what: tree, count: 20, spacing: 2); asked again, it's act again, so the mod list stays as it was. \"Spawn three centaurs near me\" is act(what: centaur, count: 3), once the species is there. Use it for anything that happens rather than a rule that holds: no draft, validate or apply. undo_act takes back ground and things; animals and casts stay.")]
+        public string Act([Description("A terrain (tree), a cover, a thing's kind, a species or a spell.")] string what,
+            [Description("How many; 1 when left out. Up to budgets.json lay.maxCells for ground, place.maxLive for things, place.maxSummoned for animals, triggers.maxPerTick for casts.")] int? count = null,
+            [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
+            [Description("How far from it, in cells; 12 when left out, 32 at most.")] int? within = null,
+            [Description("The fewest cells between two; 0 when left out.")] int? spacing = null,
+            [Description("A side of what it's near: north, south, east or west.")] string side = null,
+            [Description("shore for the edge of water.")] string edge = null,
+            [Description("Picks other cells; each act picks afresh when left out.")] int? seed = null,
+            [Description("Only on terrain with one of these tags; open ground when left out.")] string[] onto = null,
+            [Description("A thing's life in ticks; it stays when left out.")] int? lasts = null,
+            [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null) =>
+            Do(() => bench.Act(what, count, near, within, spacing, side, edge, seed, onto, lasts, peer));
+
+        [RulesTool("undo_act"), Description("Takes back an act that laid ground or placed things: the player's last when none is named. Ground goes back to what stood under, unless something has changed it since. Animals and casts can't be taken back.")]
+        public string UndoAct([Description("The act's number, from act's answer; the player's last when left out.")] int? act = null,
+            [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null) =>
+            Do(() => bench.UndoAct(act, peer));
+
+        [RulesTool("scatter"), Description("For a mod to keep or share; to do it now and be done, use act. Scatters a terrain, cover or thing over open ground near a place, a building, a cell or you, in a draft: \"50 trees near the lake\" is scatter(what: tree, count: 50, near: lake, edge: shore, within: 12, spacing: 2), not a building of tree. The cells are picked now from the world's seed and written into the draft (a terrain or cover as a lay row of its world section, laid fresh at the switch and taken back by a revert; a thing as add rows), so every peer gets the same. Another seed picks other cells; the same what and seed replace the row. Laid trees and bushes (brush) are the real terrain: they block, burn and topple. At most 256 cells a mod, within 32 cells.")]
         public string Scatter([Description("A terrain (tree, brush), a cover or a thing's kind.")] string what, [Description("How many.")] int count,
             [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
             [Description("How far from it, in cells; 12 when left out, 32 at most.")] int? within = null,
@@ -189,12 +209,16 @@ namespace Chem.Mcp
 
         const string GraftHelp = "Donors as a JSON list, at most 3; each {\"species\": id, \"take\": [slot ids] or \"drop\": [slot ids] (a slot brings every slot hung on it; all of them when neither is given), \"at\": [x, y, z] body units where its first loose slot goes (a mirrored pair keeps its spread), \"dir\": [pitch, yaw, roll] added, \"scale\": 0.25 to 4, \"coat\": \"own\" to keep its own colours}. A slot id already taken gets the donor's id before it. At most 40 slots once flattened.";
 
-        [RulesTool("set_species"), Description("Changes a kind of animal in a draft (list fauna): its size against its normal size, so \"make the deer three times bigger\" is scale 3 and 1 puts it back, its habits, and the donors a body takes slots from (from: \"six legs on the bear\" is from [{\"species\": \"black-bear\", \"take\": [\"fore\"], \"at\": [0.55, -0.45, 0]}], its own slots kept). Every animal of that species changes, in the wilds and in the villages.")]
+        [RulesTool("set_species"), Description("Changes a kind of animal in a draft (list fauna): its coat (\"make the turkeys blue\" is color; every one of that species, as one animal alone can't be picked), how many there are in the wilds (density 0 and no more come out, as for \"turn all deer into centaurs\" with add_species), its size against its normal size, so \"make the deer three times bigger\" is scale 3 and 1 puts it back, its habits, and the donors a body takes slots from (from: \"six legs on the bear\" is from [{\"species\": \"black-bear\", \"take\": [\"fore\"], \"at\": [0.55, -0.45, 0]}], its own slots kept). Every animal of that species changes, in the wilds and in the villages.")]
         public string SetSpecies([Description("The species' id, such as deer or turkey.")] string id,
             [Description("Its size against its normal size in the base rules. Above 0 and at most budgets.json things.maxScale.")] double? scale = null,
             [Description("Habits as a JSON object, merged over its own: active (day, night or always), graze, thirst, play, laze, hunger, chase, hunts; a species not built on another also takes wander and flee (metres) and idle and group ([low, high]).")] string behave = null,
             [Description(GraftHelp + " Replaces the row's from; its own slots stay, first.")] string from = null,
-            [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpecies(draft, id, scale, behave, from).Show());
+            [Description("Its coat's main colour as [r, g, b], each 0 to 1.")] string color = null,
+            [Description("Its coat's second colour (belly, markings) as [r, g, b].")] string accent = null,
+            [Description("How much its markings glow, 0 to 1.")] double? glow = null,
+            [Description("Animals per hectare in the wilds; 0 and no more come out on their own.")] double? density = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpecies(draft, id, scale, behave, from, color, accent, glow, density).Show());
 
         [RulesTool("add_material"), Description("Adds a new terrain, cover or gas to a draft. Its behaviour comes from material verb groups (burn, soak, dig, melt, freeze, float, dissolve, grow and the rest; rules/README.md). A new terrain also needs a look: {\"look\": {\"family\": \"block\", \"color\": [0.6, 0.7, 1], \"height\": 1.2}} in verbs, with a family from rules/looks.json. It lasts while its mod is on; another mod may name it while it is, and goes when it does; {\"lapse\": {\"after\": 3600}} takes the mod off by itself that many ticks later (an hour, 21600, at most), and lapse.into says what a cell of it turns into (a material that stays). When the mod goes, every cell of it is swept. At most 8 a mod, 32 live in a room.")]
         public string AddMaterial([Description("terrain, cover or gas.")] string kind, [Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,

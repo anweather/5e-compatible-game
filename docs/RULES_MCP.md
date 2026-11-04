@@ -66,13 +66,18 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - With no game attached these read a stand-in of the valley (`StandInValley`: the land, water and buildings from
   `world/`, no trees and no yard), and say so.
 
+**Act** (`docs/design/world-acts.md`)
+- `act(what, count?, near?, within?, spacing?, side?, edge?, seed?, onto?, lasts?)`: something that happens once, now, for
+  everyone, with no draft and no mod: a terrain, cover, thing, animal or spell near the player or a place. `undo_act(act?)`
+  takes back ground and things, the player's last if none is named; animals and casts stay.
+
 **Draft** (each returns a draft id and the patch so far; drafts compose)
 - `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials")
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
   a new kind of thing with the look that draws it; `add_thing(kind, at, chance?, rot?)` puts one in the world (see "Things")
-- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?)`:
+- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?, color?, accent?, glow?, density?)`:
   a kind of animal that moves, built on one or grafted from others' slots, and a change to one's size, habits or donors (see "Animals")
 - `set_look(id, param, value, table?, where?, by?, spells?)`: one parameter of the look of a spell, terrain,
   cover, gas, element, entity or item, a `mix` of colours, with `where` a colour or mix that holds only

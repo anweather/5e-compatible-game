@@ -37,7 +37,7 @@ public class ChatPromptsProbe : RowHousesProbe
     // No user settings (their skills and plugins) and no slash commands. Neither reads or moves the login.
     static readonly string[] BareArguments = { "--setting-sources", "project,local", "--disable-slash-commands" };
     static readonly string[] ClaudesOwn = { "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID" };
-    static readonly HashSet<string> WorldTools = new() { "apply", "revert", "set_time", "set_weather" };
+    static readonly HashSet<string> WorldTools = new() { "apply", "revert", "act", "undo_act", "set_time", "set_weather" };
 
     // What the frames showed for one prompt, from the world and the view themselves, in ms from the send.
     sealed class Watch
