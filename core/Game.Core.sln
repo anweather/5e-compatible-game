@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rules.Mcp", "Rules.Mcp\Rule
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.Bench", "Chat.Bench\Chat.Bench.csproj", "{174BB0E4-78FD-4A9C-AD4B-F3B2AD02DD8E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playtest.Text", "Playtest.Text\Playtest.Text.csproj", "{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{174BB0E4-78FD-4A9C-AD4B-F3B2AD02DD8E}.Release|x64.Build.0 = Release|Any CPU
 		{174BB0E4-78FD-4A9C-AD4B-F3B2AD02DD8E}.Release|x86.ActiveCfg = Release|Any CPU
 		{174BB0E4-78FD-4A9C-AD4B-F3B2AD02DD8E}.Release|x86.Build.0 = Release|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Debug|x64.Build.0 = Debug|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Debug|x86.Build.0 = Debug|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Release|x64.ActiveCfg = Release|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Release|x64.Build.0 = Release|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Release|x86.ActiveCfg = Release|Any CPU
+		{460D6825-2F0B-4E36-8920-3E7C24E3E1CD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
