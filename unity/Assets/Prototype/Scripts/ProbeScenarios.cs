@@ -376,6 +376,9 @@ public static class ProbeScenarios
             "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
             "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), a deer backed into a corner of the valley mills about " +
             "(on the move at least 25% of the time, no more than 2 reversals a second), a deer on a 7 m leash stays in reach of home running from the wizard and mills about there, no console errors."),
+        new Entry("liquidsview", typeof(LiquidsViewProbe), 60f,
+            "A mod's honey and red paint poured beside plain water (CellWaterMesh), colours read back from the tiles' meshes; with --shots films the pours for ffmpeg. " +
+            "Checks: plain water stays white, each liquid wears its look's colour, water beside them is untouched, kept and per-point drawing agree, a look change redraws, the mod off leaves no colour, no console errors."),
         new Entry("faunarows", typeof(FaunaRowsProbe), 40f,
             "A creature row changed in a running game (rules/fauna.json, CreatureBodies): a deer and a fox put by the wizard, a mod turns the deer red and doubles its walk, then goes off. " +
             "Checks: only the deer's body is built again, the new numbers are in force, the deer keeps its place and seed, the fingerprint doesn't move, switching off brings it back, no console errors."),
