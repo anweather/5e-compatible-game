@@ -137,3 +137,5 @@ Mac's sound server, or whether a player behaves the same. A player on each
 system still has to show the open and close are quick: Whisper is the default
 now, and this is the one main-thread wait left in a hold. That's why the probe's microphone step only runs with
 `--only microphone`.
+
+**In players (2026-11-03):** on Windows, a release player over 13 presses opened in 6-56 ms and closed in 8-14 ms. On the Mac, Andrew saw no stall in a release player, by eye and untimed. So far the block belongs to the hidden Editor, not to players.
