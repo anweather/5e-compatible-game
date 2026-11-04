@@ -71,7 +71,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 1. Land what's in flight (the Vivox PC run).
 2. **Cheap playtester landed** (`core/Playtest.Text`, `playtest/cheap/README.md`; text only, no view): Haiku $2.20 and Sonnet $3.68 for 20 minutes, one confirmed finding each (#90, #91), 9 of 10 false alarms from the tool. Fixed tool, Haiku: $2.78, 2 confirmed, 2 false alarms, 0 tool faults ($1.39 each; #91 comment, #92). `run.sh` is zsh, so the PC needs a port; the github sink has filed nothing real; a person judges before filing.
-   **Maps as data with terrain through the MCP (Andrew, 2026-11-04, #69):** design first, `briefs/maps-as-data-design.md`, on the Mac after its Haiku run.
+   **Maps as data with terrain through the MCP (Andrew, 2026-11-04, #69):** designed (`docs/design/maps-as-data.md`, nine phases, about five weeks); phase 1 `briefs/maps-phase-1-folder.md` on the Mac; six questions out to Andrew. Land phase 3 after named acts.
    Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 3. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
