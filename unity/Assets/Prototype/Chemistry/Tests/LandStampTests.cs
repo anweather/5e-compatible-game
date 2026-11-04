@@ -1,0 +1,222 @@
+// Land stamps (docs/design/maps-as-data.md, section 3): integers every peer agrees on, taken back exactly, kept by a save
+// and a late joiner, gone with the dragon, and drawn as the cells have them.
+using System.Linq;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
+
+namespace Chem.Tests
+{
+    public class LandStampTests
+    {
+        const int Size = 128;
+        static readonly ModBudgets Budgets = ModBudgets.Load(ChemistryTests.RulesDir());
+
+        sealed class AllGrass : IChunkSource
+        {
+            public string Version => "land-stamp-tests";
+            public void Make(int x, int y, Cell cell) => cell.T = "grass";
+        }
+
+        static World Flat()
+        {
+            var w = new World(ChemistryTests.R, Size, Size, 7);
+            for (int y = 0; y < Size; y++)
+                for (int x = 0; x < Size; x++) w.Paint(x, y, "grass");
+            w.SetLand(new int[Size * Size]);
+            Open(w);
+            return w;
+        }
+
+        static void Open(World w) => w.OpenRoom(ChangeMode.Open, "Host", ChemistryTests.R, Budgets);
+
+        static RoomCommand Stamp(int x, int y, int radius, int rise, string profile = LandStamp.Dome, int rough = 0) =>
+            RoomCommand.Act("Host", new JObject
+            {
+                ["kind"] = World.ActLand,
+                ["what"] = World.ActLand,
+                ["stamp"] = LandStamp.Make(x, y, radius, rise, profile, 0, 0, rough, 3).Row,
+            }.ToString());
+
+        static int[] Moved(World w) => Enumerable.Range(0, Size * Size).Select(i => w.LandMovedAt(i % Size, i / Size)).ToArray();
+
+        [Test]
+        public void ADomeIsHighestAtItsMiddleAndNothingPastItsEdge()
+        {
+            var w = Flat();
+            Assert.That(w.ApplyRoom(Stamp(64, 64, 20, 400)).Done);
+            Assert.That(w.LandMovedAt(64, 64), Is.EqualTo(400));
+            Assert.That(w.LandMovedAt(74, 64), Is.EqualTo(300));
+            Assert.That(w.LandMovedAt(85, 64), Is.Zero);
+        }
+
+        [Test]
+        public void EachProfileIsAShapeAppliedToHeight()
+        {
+            Assert.That(LandStamp.Make(0, 0, 10, 80, LandStamp.Flat, 0, 0, 0, 1).At(9, 0), Is.EqualTo(80));
+            Assert.That(LandStamp.Make(0, 0, 10, 80, LandStamp.Cone, 0, 0, 0, 1).At(5, 0), Is.EqualTo(40));
+            var ridge = LandStamp.Make(0, 0, 10, 80, LandStamp.Ridge, 1, 0, 0, 1);
+            Assert.That(ridge.At(0, 0), Is.EqualTo(80));
+            Assert.That(ridge.At(0, 5), Is.EqualTo(40), "down off its line");
+            Assert.That(ridge.At(5, 0), Is.EqualTo(40), "down towards its ends");
+            Assert.That(LandStamp.Make(0, 0, 10, -80, LandStamp.Flat, 0, 0, 0, 1).At(1, 1), Is.EqualTo(-80), "a hollow");
+        }
+
+        [Test]
+        public void TheSameRowIsTheSameLandOnEveryPeer()
+        {
+            World a = Flat(), b = Flat();
+            a.ApplyRoom(Stamp(64, 64, 32, 500, LandStamp.Dome, 40));
+            b.ApplyRoom(Stamp(64, 64, 32, 500, LandStamp.Dome, 40));
+            Assert.That(Moved(a), Is.EqualTo(Moved(b)));
+            Assert.That(a.LandHash(), Is.EqualTo(b.LandHash()));
+            Assert.That(Moved(a).Distinct().Count(), Is.GreaterThan(100), "rough ground isn't a smooth dome");
+        }
+
+        [Test]
+        public void UndoPutsTheLandBackInAnyOrder()
+        {
+            var w = Flat();
+            w.ApplyRoom(Stamp(60, 60, 20, 300, LandStamp.Dome, 30));
+            w.ApplyRoom(Stamp(70, 64, 20, -100));
+            Assert.That(w.ApplyRoom(RoomCommand.Undo("Host", 1)).Done, "the older one first");
+            Assert.That(w.ApplyRoom(RoomCommand.Undo("Host", 2)).Done);
+            Assert.That(Moved(w).All(m => m == 0));
+            Assert.That(w.LandHasMoved, Is.False);
+            Assert.That(w.LandHash(), Is.EqualTo(""));
+        }
+
+        [Test]
+        public void TheLandHashStaysEmptyUntilLandIsStamped()
+        {
+            var w = Flat();
+            string cells = w.CellHash();
+            Assert.That(w.LandHash(), Is.EqualTo(""));
+            w.ApplyRoom(Stamp(64, 64, 8, 80));
+            Assert.That(w.LandHash(), Is.Not.Empty);
+            Assert.That(w.CellHash(), Is.EqualTo(cells), "land moves under the cells, not in them");
+        }
+
+        [Test]
+        public void AStampKeepsOffWater()
+        {
+            var w = new World(ChemistryTests.R, Size, Size, 7);
+            for (int y = 0; y < Size; y++)
+                for (int x = 0; x < Size; x++) w.Paint(x, y, "grass");
+            w.At(70, 64).Water = 4;
+            w.SetLand(new int[Size * Size]);
+            Open(w);
+            var said = w.ApplyRoom(Stamp(64, 64, 10, 80));
+            Assert.That(said.Done, Is.False);
+            Assert.That(said.Reason, Does.Contain("cross water"));
+            Assert.That(w.LandHasMoved, Is.False, "all or nothing");
+            Assert.That(w.ApplyRoom(Stamp(64, 40, 10, 80)).Done, "clear of it");
+        }
+
+        [Test]
+        public void PastWhatCanBeDrawnIsRefusedNeverClamped()
+        {
+            var w = Flat();
+            Assert.That(w.ApplyRoom(Stamp(64, 64, 10, World.LandHighest + 1)).Done, Is.False);
+            Assert.That(w.ApplyRoom(Stamp(64, 64, 10, World.LandLowest - 1)).Done, Is.False);
+            Assert.That(w.LandHasMoved, Is.False);
+        }
+
+        [Test]
+        public void AnUndoThatWouldLeaveTheRangeWaits()
+        {
+            var w = Flat();
+            w.ApplyRoom(Stamp(64, 64, 10, 100, LandStamp.Flat));
+            w.ApplyRoom(Stamp(64, 64, 10, World.LandLowest - 50, LandStamp.Flat));
+            var said = w.ApplyRoom(RoomCommand.Undo("Host", 1));
+            Assert.That(said.Done, Is.False);
+            Assert.That(w.LandMovedAt(64, 64), Is.EqualTo(100 + World.LandLowest - 50), "nothing moved");
+            Assert.That(w.ApplyRoom(RoomCommand.Undo("Host", 2)).Done);
+        }
+
+        [Test]
+        public void ASaveKeepsTheStampsAndTheirUndo()
+        {
+            var w = Flat();
+            w.ApplyRoom(Stamp(64, 64, 20, 300, LandStamp.Dome, 30));
+            var back = World.Load(w.Save(new AllGrass()), ChemistryTests.R, new AllGrass(), Budgets);
+            Assert.That(Moved(back), Is.EqualTo(Moved(w)));
+            Assert.That(back.LandHash(), Is.EqualTo(w.LandHash()));
+            back.SetLand(new int[Size * Size]);
+            Assert.That(back.ApplyRoom(RoomCommand.Undo("Host", 1)).Done);
+            Assert.That(back.LandHasMoved, Is.False);
+        }
+
+        [Test]
+        public void ALateJoinerReplayingTheHistoryHasTheSameLand()
+        {
+            var w = Flat();
+            var history = new[] { Stamp(64, 64, 20, 300), Stamp(30, 30, 10, -80), RoomCommand.Undo("Host", 1) };
+            foreach (var c in history) w.ApplyRoom(c);
+            var joiner = Flat();
+            foreach (var c in history) joiner.ApplyRoom(c);
+            Assert.That(Moved(joiner), Is.EqualTo(Moved(w)));
+            Assert.That(joiner.LandHash(), Is.EqualTo(w.LandHash()));
+        }
+
+        [Test]
+        public void TheDragonsResetTakesTheStampsBack()
+        {
+            var w = Flat();
+            w.KeepStart();
+            w.ApplyRoom(Stamp(64, 64, 20, 300));
+            w.ApplyDragon(new DragonCommand());
+            for (int i = 0; w.Dragon != null && i < 20000; i++) w.Step();
+            Assert.That(w.Dragon, Is.Null);
+            Assert.That(w.LandHasMoved, Is.False);
+            Assert.That(w.LandHash(), Is.EqualTo(""));
+            Assert.That(w.ApplyRoom(RoomCommand.Undo("Host", 1)).Done, Is.False, "nothing left to take back");
+        }
+
+        [Test]
+        public void WaterRunsDownTheNewSlope()
+        {
+            var w = Flat();
+            w.ApplyRoom(Stamp(64, 64, 16, 300, LandStamp.Cone));
+            var top = w.At(64, 60);
+            top.Water = 8;
+            for (int t = 0; t < 120; t++) w.Step();
+            Assert.That(top.Water, Is.LessThan(8), "it ran off");
+        }
+
+        [Test]
+        public void TheDrawnGroundIsTheCellsLand()
+        {
+            var grid = TerrainGrid.Valley();
+            var w = new World(ChemistryTests.R, grid.GridW, grid.GridH, 7);
+            for (int y = 0; y < w.H; y++)
+                for (int x = 0; x < w.W; x++) w.Paint(x, y, "grass");
+            w.SetLand(new int[w.W * w.H]);
+            Open(w);
+            var field = new CellHeightfield(grid, 0.5f, 1f);
+            field.Reset(w);
+            int cx = w.W / 2, cy = w.H / 2;
+            var moved = new System.Collections.Generic.List<(int x, int y)>();
+            w.LandMoved += (x, y, reach) =>
+            {
+                for (int v = y - reach - 1; v <= y + reach + 1; v++)
+                    for (int u = x - reach - 1; u <= x + reach + 1; u++) moved.Add((u, v));
+            };
+            Assert.That(w.ApplyRoom(Stamp(cx, cy, 32, 400, LandStamp.Dome, 30)).Done);
+            field.Update(w, moved, true);
+            double unit = 0.5 / w.Rules.Sim.WaterUnitsPerStep;
+            for (int y = cy - 34; y <= cy + 34; y++)
+                for (int x = cx - 34; x <= cx + 34; x++)
+                {
+                    var (i, j, sx, sz) = grid.CellSample(x, y);
+                    if (!grid.IsHighRes(i, j)) continue;
+                    double cell = field.CellOffset(w, w.At(x, y));
+                    Assert.That(field.Current(i, j)[sz, sx] - cell, Is.EqualTo(w.LandMovedAt(x, y) * unit).Within(0.001), $"({x}, {y})");
+                }
+            moved.Clear();
+            w.ApplyRoom(RoomCommand.Undo("Host", 1));
+            field.Update(w, moved, true);
+            var (ci, cj, csx, csz) = grid.CellSample(cx, cy);
+            Assert.That(field.Current(ci, cj)[csz, csx], Is.EqualTo(field.CellOffset(w, w.At(cx, cy))).Within(0.001), "undo draws it back");
+        }
+    }
+}

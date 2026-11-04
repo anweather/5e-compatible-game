@@ -10,6 +10,7 @@
   "looks": { "maxMix": 8, "maxScoped": 8, "maxWithin": 64 },
   "things": { "maxPerMod": 16, "maxScale": 20 },
   "lay": { "maxCells": 256, "maxWithin": 32 },
+  "land": { "maxRadius": 32, "maxRise": 100 },
   "place": { "maxCount": 8, "maxWithin": 8, "maxLasts": 21600, "maxLive": 64, "maxSummoned": 24 },
   "fauna": { "maxPerMod": 4, "maxDonors": 3, "maxSlots": 40, "minScale": 0.25, "maxScale": 4 },
   "triggers": { "maxPerMod": 4, "maxActions": 2, "maxLevel": 7, "maxPerTick": 4 },

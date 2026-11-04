@@ -139,7 +139,40 @@ namespace Chem
         /// rather than a staircase of blocks; a coarse chunk's samples are its cells' corners, the
         /// average of the four cells there.
         /// </summary>
-        float RawOffset(World world, int i, int j, int sx, int sz)
+        float RawOffset(World world, int i, int j, int sx, int sz) =>
+            CellsOffset(world, i, j, sx, sz) + (world.LandHasMoved ? LandOffset(world, i, j, sx, sz) : 0f);
+
+        // What land stamps have added here, in metres: between cell centres at full detail, a corner's four cells on a
+        // coarse chunk, as the cells' own offsets are, so a stamp's ground takes the same path as a dug cell's.
+        float LandOffset(World world, int i, int j, int sx, int sz)
+        {
+            int p = grid.SamplesPerCell(i, j);
+            float unit = StepHeight / world.Rules.Sim.WaterUnitsPerStep;
+            if (p == 1)
+            {
+                var (u0, u1) = Touching(sx, p, i * TerrainGrid.ChunkCells);
+                var (v0, v1) = Touching(sz, p, j * TerrainGrid.ChunkCells);
+                float sum = 0f;
+                for (int v = v0; v <= v1; v++)
+                    for (int u = u0; u <= u1; u++) sum += LandAt(world, u, v);
+                return sum * unit / ((u1 - u0 + 1) * (v1 - v0 + 1));
+            }
+            float fu = i * TerrainGrid.ChunkCells + (float)sx / p - 0.5f, fv = j * TerrainGrid.ChunkCells + (float)sz / p - 0.5f;
+            int cu = (int)Math.Floor(fu), cv = (int)Math.Floor(fv);
+            float tu = fu - cu, tv = fv - cv;
+            float near = LandAt(world, cu, cv) + (LandAt(world, cu + 1, cv) - LandAt(world, cu, cv)) * tu;
+            float far = LandAt(world, cu, cv + 1) + (LandAt(world, cu + 1, cv + 1) - LandAt(world, cu, cv + 1)) * tu;
+            return (near + (far - near) * tv) * unit;
+        }
+
+        // Land moved at a cell by TerrainGrid's u, v, which the cells are offset from.
+        float LandAt(World world, int u, int v)
+        {
+            var (x, y) = grid.GridCell(u, v);
+            return world.LandMovedAt(x, y);
+        }
+
+        float CellsOffset(World world, int i, int j, int sx, int sz)
         {
             int p = grid.SamplesPerCell(i, j);
             var (u0, u1) = Touching(sx, p, i * TerrainGrid.ChunkCells);

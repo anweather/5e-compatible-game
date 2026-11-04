@@ -346,6 +346,7 @@ namespace Chem
                 default:
                     if (Tick < d.Until) return;
                     Dragon = null;
+                    ForgetLandStamps();
                     AddLog("The dragon wheels away: the valley is fresh", LogKind.Notable);
                     break;
             }
