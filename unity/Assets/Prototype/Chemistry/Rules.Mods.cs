@@ -57,6 +57,9 @@ namespace Chem
         /// <summary>The effective rules as JSON, in the shape of the sandbox's Rules object (for tools and tests).</summary>
         public string ToJson() => doc.ToString(Formatting.Indented);
 
+        /// <summary>The rules as mods compose over them (their materials still in groups): what ModAdds reads ids from. Never modified.</summary>
+        internal JObject Written => written ?? doc;
+
         // ---------- merging: composeRules, one patch at a time, in the TS order ----------
 
         internal static void ApplyPatch(JObject r, JObject p)

@@ -158,9 +158,9 @@ namespace Chem.Tests
             Assert.That(off.Line, Does.Contain("off the world"));
             var uses = w.ApplyRoom(RoomCommand.Apply("Bo", "uses", Adds("{ 'kind': 'test-find', 'cell': [11, 10] }", false)));
             Assert.That(uses.Done, uses.Line);
-            Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", "hide")).Done, Is.False, "the other mod still places its kind");
-            Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", "uses")).Done);
-            Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", "hide")).Done);
+            // The other mod places hide's kind, so it goes with hide (#88).
+            Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", "hide")).Line, Is.EqualTo("Ana switched off hide, and uses with it (Open room)"));
+            Assert.That(w.Room.Mods, Is.Empty);
             Assert.That(w.ThingsNow.Count, Is.EqualTo(before));
             Assert.That(w.Rules.Fingerprint, Is.EqualTo(R.Fingerprint));
         }

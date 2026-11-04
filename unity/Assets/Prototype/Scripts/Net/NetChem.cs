@@ -33,9 +33,10 @@ using UnityEngine;
 //   batches, so every machine pauses the same chunks at the same tick.
 // - The defense field's start command (DefenseField) travels like a cast:
 //   anyone asks the host, which sends it for the next tick just before that
-//   tick's batch, so the waves start on the same tick everywhere. The waves
-//   and raiders are then pure chemistry: every machine runs them, and the
-//   checksum's last part is their hash (World.DefenseHash).
+//   tick's batch (a CommandChannel holds it on the way), so the waves start
+//   on the same tick everywhere. The waves and raiders are then pure
+//   chemistry: every machine runs them, and the checksum's last part is
+//   their hash (World.DefenseHash).
 // - Players' combo input (ComboCommand: an element loaded, a cast cancelled, the d-pad's spells)
 //   travels like a cast: anyone asks, the host names the player and stamps it into the next
 //   batch (a CommandChannel holds it on the way), and every machine drains the same meters. A
@@ -72,8 +73,6 @@ public partial class NetChem : NetworkBehaviour
     readonly List<EffectIntent> pendingEffects = new();
     readonly List<EffectIntent> effectHistory = new();
     readonly List<ChunkIntent> chunkHistory = new();
-    readonly List<DefenseIntent> pendingDefense = new();
-    readonly List<DefenseIntent> defenseHistory = new();
     readonly List<StrikeIntent> pendingStrikes = new();
     readonly List<StrikeIntent> strikeHistory = new();
     // The last tick with a strike in the history: stands before it are kept.
@@ -91,9 +90,9 @@ public partial class NetChem : NetworkBehaviour
     readonly Dictionary<int, TickBatch> batches = new();
     // The casts of batches that arrived live (not replayed history), for their shoves.
     readonly Dictionary<int, CastIntent[]> liveCasts = new();
-    // Defense commands stamped for a tick, sent just before its batch, waiting to join it.
-    readonly Dictionary<int, DefenseIntent[]> defenseFor = new();
-    // Players' combo input, the first kind on a CommandChannel (made in Awake: it adds to batches).
+    // Commands on a CommandChannel (made in Awake: they add to batches): defense commands, players'
+    // combo input, and room commands (NetChem.Room.cs).
+    CommandChannel<DefenseIntent> defense;
     CommandChannel<ComboIntent> combos;
     readonly Dictionary<int, StrikeIntent[]> strikesFor = new();
     // And the dragon's summons, by the tick they're stamped for.
@@ -168,7 +167,9 @@ public partial class NetChem : NetworkBehaviour
     void Awake()
     {
         grid = GetComponent<ChemGrid>();
+        defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
         combos = new CommandChannel<ComboIntent>(batches, (batch, c) => batch.Combos.Add(c.ToCommand()));
+        roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
     }
 
     public override void OnNetworkSpawn()
@@ -186,9 +187,7 @@ public partial class NetChem : NetworkBehaviour
         pendingEffects.Clear();
         effectHistory.Clear();
         chunkHistory.Clear();
-        pendingDefense.Clear();
-        defenseHistory.Clear();
-        defenseFor.Clear();
+        defense.Clear();
         combos.Clear();
         strikesFor.Clear();
         pastStrikes = System.Array.Empty<StrikeIntent>();
@@ -374,11 +373,11 @@ public partial class NetChem : NetworkBehaviour
         history.RemoveAll(c => c.Tick < hostTick);
         effectHistory.RemoveAll(e => e.Tick < hostTick);
         chunkHistory.RemoveAll(c => c.Tick < hostTick);
-        defenseHistory.RemoveAll(d => d.Tick < hostTick);
+        defense.ForgetBefore(hostTick);
         combos.ForgetBefore(hostTick);
         strikeHistory.RemoveAll(s => s.Tick < hostTick);
         dragonHistory.RemoveAll(t => t < hostTick);
-        roomHistory.RemoveAll(r => r.Tick < hostTick);
+        roomCommands.ForgetBefore(hostTick);
         ruleHistory.Clear();
         ruleHistory.Add(rules);
         historyFrom = hostTick;
@@ -408,16 +407,12 @@ public partial class NetChem : NetworkBehaviour
     // (the same reliable channel keeps them in order), and into the history for late joiners.
     void StampDefense()
     {
-        if (pendingDefense.Count == 0) return;
-        var stamped = pendingDefense.ToArray();
-        pendingDefense.Clear();
-        for (int i = 0; i < stamped.Length; i++) stamped[i].Tick = hostTick;
-        defenseHistory.AddRange(stamped);
-        DefenseStampedRpc(hostTick, stamped);
+        var stamped = defense.Stamp(hostTick);
+        if (stamped.Length > 0) DefenseStampedRpc(hostTick, stamped);
     }
 
     [Rpc(SendTo.Server)]
-    void RequestDefenseRpc(DefenseIntent command) => pendingDefense.Add(command);
+    void RequestDefenseRpc(DefenseIntent command) => defense.Request(command);
 
     // As StampDefense: the input asked for since the last tick goes out just before this tick's batch.
     void StampCombos()
@@ -472,11 +467,7 @@ public partial class NetChem : NetworkBehaviour
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void DefenseStampedRpc(int tick, DefenseIntent[] commands)
-    {
-        if (batches.TryGetValue(tick, out var batch)) batch.Defense.AddRange(commands.Select(c => c.ToCommand()));
-        else defenseFor[tick] = commands;
-    }
+    void DefenseStampedRpc(int tick, DefenseIntent[] commands) => defense.Receive(tick, commands);
 
     // The chunk switches for this tick's batch: around every wizard, against what is already planned.
     ChunkIntent[] PlanChunks()
@@ -513,11 +504,11 @@ public partial class NetChem : NetworkBehaviour
     void SendHistory(ulong client)
     {
         var joiner = RpcTarget.Single(client, RpcTargetUse.Temp);
-        SendRoomHistoryRpc((byte)grid.World.Room.Mode, grid.World.Room.Host, roomStart, roomHistory.ToArray(), joiner);
+        SendRoomHistoryRpc((byte)grid.World.Room.Mode, grid.World.Room.Host, roomStart, roomCommands.HistoryForJoiner(), joiner);
         SendComboHistoryRpc(combos.HistoryForJoiner(), joiner);
         SendStrikeHistoryRpc(strikeHistory.ToArray(), joiner);
         SendDragonHistoryRpc(dragonHistory.ToArray(), joiner);
-        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defenseHistory.ToArray(),
+        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defense.HistoryForJoiner(),
             joiner);
     }
 
@@ -549,11 +540,11 @@ public partial class NetChem : NetworkBehaviour
     {
         batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()),
             chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
-        if (defenseFor.Remove(tick, out var defense)) batches[tick].Defense.AddRange(defense.Select(d => d.ToCommand()));
+        defense.Deliver(tick);
         combos.Deliver(tick);
         if (strikesFor.Remove(tick, out var strikes)) batches[tick].Strikes.AddRange(strikes.Select(s => s.ToCommand()));
         if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
-        if (roomFor.Remove(tick, out var room)) batches[tick].Room.AddRange(room.Select(r => r.ToCommand()));
+        roomCommands.Deliver(tick);
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0)
         {
@@ -578,13 +569,16 @@ public partial class NetChem : NetworkBehaviour
     {
         // Since an online reset the host keeps the history from it on, headed by the reset's rules:
         // the replay starts there, on a fresh world counting from that tick (the reset itself replays first).
+        // The defense commands come in this RPC, not one of their own, so they join the replay from here.
         int from = ruleChanges.Where(r => r.Reset).Select(r => r.Tick).DefaultIfEmpty(1).Max();
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
-            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())), from);
+            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), null, from);
+        this.defense.Joining(defense);
+        this.defense.Replay(timeline);
         combos.Replay(timeline);
         TickBatch.AddStrikes(timeline, pastStrikes.Select(s => (s.Tick, s.ToCommand())));
         TickBatch.AddDragon(timeline, pastDragon);
-        TickBatch.AddRoom(timeline, pastRoom.Select(r => (r.Tick, r.ToCommand())));
+        roomCommands.Replay(timeline);
         for (int t = from; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         tickBase = from - 1;
@@ -942,10 +936,14 @@ public struct ComboIntent : INetworkSerializable, ITickStamped
 }
 
 /// <summary>A defense command (Chem.DefenseCommand: the start pedestal's), stamped with the sim tick it takes effect on.</summary>
-public struct DefenseIntent : INetworkSerializable
+public struct DefenseIntent : INetworkSerializable, ITickStamped
 {
     public byte Kind;
     public int GateX, GateY, FlagX, FlagY, Tick;
+
+    int ITickStamped.Tick => Tick;
+
+    void ITickStamped.StampFor(int tick) => Tick = tick;
 
     public static DefenseIntent From(DefenseCommand d, int tick) => new DefenseIntent
     {

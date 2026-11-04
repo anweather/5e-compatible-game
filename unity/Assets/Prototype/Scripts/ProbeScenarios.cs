@@ -101,8 +101,8 @@ public static class ProbeScenarios
             "One whole flight of the Dragon, staged quicker than a real one (DragonView, World.Dragon). Checks: the world keeps a start, R summons it, the sky darkens and it's seen, " +
             "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
-        new Entry("roomopen", typeof(RoomOpenProbe), 150f,
-            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, a late joiner gets them. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
+        new Entry("roomopen", typeof(RoomOpenProbe), 180f,
+            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, the client starts the defense waves through the host, a late joiner gets the mods and the waves. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
         new Entry("faunaresize", typeof(FaunaResizeProbe), 150f,
             "set_species deer scale 3 through the rules MCP in an Open room (#80), this Editor hosting and the virtual player joined: each side puts the same three deer by its wizard. " +
             "Checks: the same three scales on both peers before, three times them on both once the mod is on, and back once it's reverted; every deer out on each side at its row's size each time; " +
@@ -120,6 +120,11 @@ public static class ProbeScenarios
             "and a Fire Bolt on a second lot: the soot is charred and its film is the soot's look, the base ash unchanged, both peers alike, checksums equal; reverted, the soot is swept. " +
             "Then black ice cast in a slick (lapse after 120 ticks): drawn as a film in its colour on both, the host's wizard skids across it, the panel shows time left; at the lapse every slick goes in every chunk on both, " +
             "and the view's rules and the mods list follow. With --shots: products-view-before.jpg, products-view-after.jpg and black-ice/ frames at 720p, off screen.", players: 2),
+        new Entry("glowmoss", typeof(GlowMossProbe), 300f,
+            "A look's glow (primitives P4) on P2's glowing moss, on two peers: this Editor hosts an Open room, the virtual player joins. The base glows nowhere. Through the real MCP, " +
+            "set_time dusk and the moss mod (a cover with look.glow 0.3 spreading onto stone and rock, laid on two river stones): it creeps, every moss cell glows and nothing else, its film is its colour as before. " +
+            "At midnight a moss cell's glow passes 0.15 and a bare stone's is 0, in the moss's colour; the other peer has the same moss and glowing cells, checksums equal; at noon under 0.03; reverted, no glow is left. " +
+            "With --shots: glow-moss/ frames of the moss creeping at dusk, 720p, off screen.", players: 2),
         new Entry("modthing", typeof(ModThingProbe), 90f,
             "A mod's new kinds of thing, solo (docs/RULES_MCP.md \"Things\"): an item and a prop spawn on their cells dressed as animals, resting on the ground; the first pick-up logs a find and the second doesn't; a revert takes the item out of the hand and the world, and the same mod brings them back. With --shots, a picture standing and one in hand."),
         new Entry("roomthing", typeof(RoomThingProbe), 150f,
@@ -371,6 +376,9 @@ public static class ProbeScenarios
             "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
             "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), a deer backed into a corner of the valley mills about " +
             "(on the move at least 25% of the time, no more than 2 reversals a second), a deer on a 7 m leash stays in reach of home running from the wizard and mills about there, no console errors."),
+        new Entry("liquidsview", typeof(LiquidsViewProbe), 60f,
+            "A mod's honey and red paint poured beside plain water (CellWaterMesh), colours read back from the tiles' meshes; with --shots films the pours for ffmpeg. " +
+            "Checks: plain water stays white, each liquid wears its look's colour, water beside them is untouched, kept and per-point drawing agree, a look change redraws, the mod off leaves no colour, no console errors."),
         new Entry("faunarows", typeof(FaunaRowsProbe), 40f,
             "A creature row changed in a running game (rules/fauna.json, CreatureBodies): a deer and a fox put by the wizard, a mod turns the deer red and doubles its walk, then goes off. " +
             "Checks: only the deer's body is built again, the new numbers are in force, the deer keeps its place and seed, the fingerprint doesn't move, switching off brings it back, no console errors."),
