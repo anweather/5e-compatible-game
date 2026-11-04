@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 // The chat box in the game (J-060): Enter opens it, or holding to talk does (GameVoice, J-061, the
-// only way in from a pad); what's typed or said goes to the player's own Claude Code, one process a message (ClaudeChat), and what comes back
+// only way in from a pad); what's typed or said goes to the player's own Claude Code, one process a message (ClaudeChat), or with
+// their own API key to the game's own loop (ApiChat, J-071; ChatSetup says which), and what comes back
 // fades up over the game while they carry on playing. Messages sent while Claude is answering wait
 // in a short line, shown as one status line. The wizard's controls are off only while the
 // box is open. It talks only to this game's rules MCP, and a room's change mode decides what
@@ -36,8 +37,35 @@ public class GameChat : MonoBehaviour
     GUIStyle lineStyle, boxStyle, talkStyle, sourceStyle;
     Texture2D shade;
 
-    /// <summary>What answers the messages. Claude Code in play; only the probe's comparisons change it.</summary>
-    public IChatHarness Harness { get; set; } = new ClaudeChat();
+    /// <summary>What the API harness is built on: the real wire in play, a stand-in in a probe.</summary>
+    public static System.Func<IChatWire> ApiWireMaker { get; set; } = () => new ApiWire();
+
+    // How long the loop's prompt stays cached: a player's messages can be minutes apart.
+    const string PrefixTtl = "1h";
+
+    readonly ClaudeChat claudeCode = new();
+    ApiChat api;
+    IChatHarness harness, pinned;
+
+    /// <summary>What answered last, and answers until the next message picks again. Setting it holds it: only the probe's comparisons do.</summary>
+    public IChatHarness Harness
+    {
+        get => harness ??= claudeCode;
+        set => harness = pinned = value;
+    }
+
+    /// <summary>What the next message goes to, as the player set it up.</summary>
+    public IChatHarness ChosenHarness
+    {
+        get
+        {
+            if (pinned != null) return pinned;
+            if (!ChatSetup.OnApi) return claudeCode;
+            string model = ApiKey.Model;
+            if (api == null || api.Model != model) api = new ApiChat(ApiWireMaker(), ApiKey.Session, model, PrefixTtl);
+            return api;
+        }
+    }
 
     /// <summary>The chat, or null where the game doesn't serve Claude.</summary>
     public static GameChat Instance { get; private set; }
@@ -111,10 +139,21 @@ public class GameChat : MonoBehaviour
         var args = System.Environment.GetCommandLineArgs();
         int asked = System.Array.IndexOf(args, "-claude-stand-in");
         if (asked >= 0 && asked + 1 < args.Length) ClaudeChat.StandIn = args[asked + 1];
+        // -api-stand-in saves a stand-in key in a folder of its own and answers from ApiStandIn, to test a player's way to the API with no real key.
+        if (System.Array.IndexOf(args, "-api-stand-in") >= 0) StandInForTheApi();
         // -chat-say sends these messages, split on |, once the game is up, to test a player with nobody at its keys.
         int say = System.Array.IndexOf(args, "-chat-say");
         if (say >= 0 && say + 1 < args.Length) StartCoroutine(Says(args[say + 1].Split('|')));
         QuickExit.BeforeExit += CancelNow; // some players have no OnApplicationQuit
+    }
+
+    static void StandInForTheApi()
+    {
+        string folder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "spell-valley-api-stand-in");
+        ApiKey.TestFile = System.IO.Path.Combine(folder, "api-key.dat");
+        ChatSetup.TestFile = System.IO.Path.Combine(folder, "chat-setup.dat");
+        ApiWireMaker = () => new ApiStandIn();
+        ApiKey.Save(ApiStandIn.GoodKey);
     }
 
     System.Collections.IEnumerator Says(string[] messages)
@@ -125,6 +164,8 @@ public class GameChat : MonoBehaviour
             Send(message);
             yield return new WaitUntil(() => !Busy);
         }
+        yield return null;
+        Debug.Log($"Chat said, through {Harness.GetType().Name}: {string.Join(" | ", Lines)}");
     }
 
     void OnEnable() => PauseMenu.AddSection(DrawDeveloper, PauseMenu.LastOrder, PauseMenu.Submenu.Developer);
@@ -236,6 +277,7 @@ public class GameChat : MonoBehaviour
         }
         var telemetry = ChatTelemetry.Instance;
         saveAsked = ClaudeRun.AsksToSave(message);
+        harness = ChosenHarness;
         Harness.Send(message, ChemGrid.Folders.Claude.Path, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
     }
 

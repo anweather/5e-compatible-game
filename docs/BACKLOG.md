@@ -701,7 +701,8 @@ support for Codex, Kiro and others, and advanced options to tune all of it.
 - **Open:** J-060 covers only Claude Code, so each other harness needs its own terms
   check before shipping.
 - **Size:** M per harness after the first, L for the first.
-- **Evaluated (2026-11-02):** the API mode is built behind `IChatHarness`, probe only, with no picker: `docs/telemetry/chat-api-2026-11-02.md`.
+- **Evaluated (2026-11-02):** the API mode is built behind `IChatHarness`: `docs/telemetry/chat-api-2026-11-02.md`.
+- **In play (J-071, 0.1.11):** Settings > Claude setup picks a `ChatProfile` (API key or Claude Code). A key is sealed with DPAPI (`ApiKey`), the setup likewise (`ChatSetup`), and only that screen writes them. Mac and Linux have no vault yet, so they use the environment variable. A model the loop has no price for isn't offered. Another harness is a row in `ChatProfile` and an adapter.
 
 ## 28. Game modes: saved sets of mods (Andrew, 2026-11-02; later)
 

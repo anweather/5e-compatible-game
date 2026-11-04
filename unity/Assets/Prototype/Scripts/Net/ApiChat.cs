@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading;
 using Chem.Mcp;
 
-// The chat's other harness (#59, backlog 27): ApiLoop on a thread of its own, over ApiWire. An evaluation: nothing in play
-// reaches it, and only the chatprompts probe's --harness api starts one. Its lines go where Claude Code's do: the recorder,
+// The chat's other harness (#59, backlog 27): ApiLoop on a thread of its own, over ApiWire. GameChat uses it for a player
+// with their own key (J-071), and the chatprompts probe's --harness api for a run. Its lines go where Claude Code's do: the recorder,
 // the probe's tap and what the chat shows. The player sees a reply's words when the block ends, as with Claude Code.
 public sealed class ApiChat : IChatHarness
 {
@@ -29,6 +29,9 @@ public sealed class ApiChat : IChatHarness
     }
 
     public bool Busy => busy;
+
+    /// <summary>The model it asks for.</summary>
+    public string Model => model;
 
     public bool Take(out (ClaudeSaid said, string text) line)
     {
@@ -77,7 +80,7 @@ public sealed class ApiChat : IChatHarness
         }
         catch (Exception e) when (e is IOException or InvalidOperationException or UnauthorizedAccessException)
         {
-            failure = e.Message;
+            failure = ClaudeRun.Without(e.Message, ApiKey.Current);
             UnityEngine.Debug.LogWarning("API chat: " + e.GetType().Name + ": " + failure);
         }
         ChatOutcome? how = null;

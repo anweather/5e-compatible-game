@@ -44,6 +44,12 @@ namespace Chem
         /// <summary>The chat's folder in the player's data folder; null with no player.</summary>
         public ClaudeFolder Claude { get; }
 
+        /// <summary>A player's own API key, sealed (ApiKey), beside the chat's folder and not in it, which claude can read; null with no player.</summary>
+        public string ApiKeyFile => PlayerData == null ? null : System.IO.Path.Combine(PlayerData, "api-key.dat");
+
+        /// <summary>How the game reaches Claude, sealed as the key is (ChatSetup); null with no player.</summary>
+        public string ChatSetupFile => PlayerData == null ? null : System.IO.Path.Combine(PlayerData, "chat-setup.dat");
+
         /// <summary>
         /// Where a save goes, read before the shipped mods: the player's, beside notes.md, in the Editor too, so a save
         /// there leaves the repo's rules/mods alone. With no player it's rules/mods, which is how the MCP server ships a mod.

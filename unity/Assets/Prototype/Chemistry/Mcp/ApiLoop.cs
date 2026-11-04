@@ -118,7 +118,7 @@ namespace Chem.Mcp
             }
             if (!budget.HasRoom)
             {
-                Finish("The API budget is spent, so this message wasn't sent.", "budget");
+                Finish(budget.Refusal, "budget");
                 return;
             }
             try
@@ -196,7 +196,7 @@ namespace Chem.Mcp
                 }
                 if (!budget.HasRoom)
                 {
-                    Finish("The API budget ran out partway through this message.", "budget");
+                    Finish(budget.Stopped, "budget");
                     return;
                 }
                 var reply = Reply(stop);
