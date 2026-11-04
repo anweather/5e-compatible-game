@@ -643,7 +643,7 @@ sky (`SkyLight.Menace`), a procedural horn and roar. Model: Quaternius's Animate
 against 29.62, GPU 30.6 against 30.3, worst frame 56 ms; the wall through the camera (`dragonlow`): worst 44 ms.
 Starting state: 20 ms to keep, a palette of 20 cells, 1.3 MB. A real flight is 4 passes, about 2 minutes all told.
 The budget, 100000 cells, is 30% of the valley's 331776; a bot session of 2840 ticks (8 minutes) reached 1221, so a normal
-session doesn't bring it. Dragon stage in a tick: 0.17 ms mean, 2.3 ms at worst, over a whole flight.
+session didn't bring it. Since J-073 the budget is 0: it comes only when summoned, so nothing built is reset by surprise. Dragon stage in a tick: 0.17 ms mean, 2.3 ms at worst, over a whole flight.
 
 **Tweaks after Andrew's look (2026-10-31, J-043, branch `dragon-tweaks`, for 0.1.10):**
 - **Half as big again, as data:** `sim.json` `dragon.scale`, 1.5, read by the view every frame (a mod or a room's

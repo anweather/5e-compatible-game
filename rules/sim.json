@@ -21,7 +21,7 @@
   "dragon": {
     "warningTicks": 180, "turnTicks": 24, "leavingTicks": 120,
     "speed": 6, "depth": 12, "breathChunks": 3, "overlapChunks": 1, "chunksPerTick": 1,
-    "budget": 100000,
+    "budget": 0,
     "shelterWater": 8, "wallReach": 2, "wallTerrains": ["stone", "rock"],
     "scale": 1.5
   },

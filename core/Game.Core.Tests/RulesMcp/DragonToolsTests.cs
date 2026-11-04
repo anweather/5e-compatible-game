@@ -27,6 +27,7 @@ namespace Chem.Tests
         [Test]
         public void NeverMeansItNeverComesByItself()
         {
+            Assert.That(Bench.LiveWorld.Rules.Sim.Dragon.Budget, Is.Zero, "by default it comes only when summoned (J-073)");
             var d = Bench.Tune(null, "dragon.budget", "never");
             Assert.That(Bench.Validate(d.Id), Is.Empty, Workbench.Report(Bench.Validate(d.Id)));
             Assert.That(With(d).Sim.Dragon.Budget, Is.Zero);
