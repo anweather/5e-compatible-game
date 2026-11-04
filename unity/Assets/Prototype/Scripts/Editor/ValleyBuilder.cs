@@ -98,7 +98,7 @@ public static class ValleyBuilder
         cellAt = at => CellOf(at, grid.cellSize, left, top, yardRows.Length);
         valleyTrees.RemoveAll(t => OnPlayedGround(t.at, 1));
         WireChemistry(grid, yardRows, valleyTrees);
-        var world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
+        var world = ChemGrid.MapWorld(grid.LoadBaseRules(), ChemGrid.CellMap(), grid.seed, out _);
         ValleyTerrain.BakeCells(world, grid.stepHeight);
 
         // The cells painted as they are: the old yard's, the ball court's dirt floor (CellKind), and the
@@ -1504,7 +1504,8 @@ public static class ValleyBuilder
             if (y < h - 1) rows.Append('\n');
         }
 
-        grid.map = rows.ToString();
+        // The bake still works the cells out, until the land is data; rebuilding writes what is there already.
+        MapFile.WriteCells(ChemGrid.Folders.World, rows.ToString());
         grid.yardCells = new RectInt(left, top, yw, yh);
         grid.fireFadeCells = FireFadeCells;
         grid.conductLimit = LightningReach;

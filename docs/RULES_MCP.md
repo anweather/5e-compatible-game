@@ -64,7 +64,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   something by `Placement.Pick` from the world's seed, now, and writes them into a draft: a terrain or cover as a `lay`
   row, a thing as `add` rows. "50 trees near the lake" (see "Laying cells").
 - With no game attached these read a stand-in of the valley (`StandInValley`: the land, water and buildings from
-  `world/`, no trees and no yard), and say so.
+  the map's folder, no trees and no yard), and say so. The server's `--map <id>` picks the map; the valley when left out.
 
 **Act** (`docs/design/world-acts.md`)
 - `act(what, count?, near?, within?, spacing?, side?, edge?, seed?, onto?, lasts?)`: something that happens once, now, for

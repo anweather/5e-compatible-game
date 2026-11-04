@@ -95,7 +95,7 @@ grass).
 
 ### Props and items from data (done)
 
-- **The data:** `world/things.json` (repo root, next to `rules/`). Per
+- **The data:** a map's `things.json` (`world/maps/<id>/`, next to `rules/`). Per
   chunk, a list of things: `kind` (an id in `rules/entities.json` or
   `rules/items.json`), `cell` (inside the chunk, 0 to 63; the world cell is
   chunk × 64 + cell), optional `rot` (degrees about the vertical), optional

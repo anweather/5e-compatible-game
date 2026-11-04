@@ -20,7 +20,7 @@ ones that trip people up:
   is), never awake, asleep, paused or frozen.
 - **tick** for a step of the simulation; a **height step** is 0.5 m.
 - A **thing** is a **prop** (pushed, not carried) or an **item** (carried),
-  from `world/things.json`. **Entity** is the rules' word for anything on
+  from a map's `things.json`. **Entity** is the rules' word for anything on
   cells. "Critter" is retired: say raider or ambient life.
 - **peer** for a player's copy of the game (a **machine** is a boiler or a
   wheel). A **command** goes into the core; an **intent** asks the host for
@@ -76,7 +76,7 @@ stable), not something to commit or keep reverting.
 | Folder | What it is |
 |---|---|
 | `rules/` | The game's interaction rules as JSON. The single source of truth for what spells, materials and reactions do |
-| `world/` | What stands where: `things.json` lists the props and items per 64×64 chunk; each gets a stable id from its chunk and its place in the list, so append, never insert. `themes/` and `looks.json` lay the land out (world themes, D11) |
+| `world/maps/<id>/` | A map, the valley first (`docs/design/maps-as-data.md`): `map.json` says what it is, `cells.txt` and `land.json` are its cells and land, and `MapCheck` holds them together. What stands where: `things.json` lists the props and items per 64×64 chunk; each gets a stable id from its chunk and its place in the list, so append, never insert. `themes/` and `looks.json` lay the land out (world themes, D11) |
 | `unity/Assets/Prototype/Chemistry/` | The engine-free C# core (namespace `Chem`): loads the rules, runs the cell world one tick at a time, deterministically |
 | `unity/Assets/Prototype/Scripts/` | The Unity view: draws the world, input, the wizard, props, items, HUD; `Net/` is the multiplayer layer; `Editor/` builds scenes and players |
 | `core/` | .NET projects that *link* the Chemistry sources and tests from `unity/` so they build and test without Unity (CI runs these) |

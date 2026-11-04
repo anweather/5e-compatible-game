@@ -13,12 +13,15 @@ namespace Chem.Tests
         [Test]
         public void PlacesFileIsUpToDate()
         {
-            string path = Path.Combine(ChemistryTests.WorldDir(), WorldPlaces.FileName);
-            string made = WorldPlaces.Generate(ChemistryTests.WorldDir());
-            string file = Environment.GetEnvironmentVariable("PLACES_OUT");
-            if (!string.IsNullOrEmpty(file)) File.WriteAllText(file, made);
-            Assert.That(File.ReadAllText(path).Replace("\r\n", "\n"), Is.EqualTo(made),
-                "world/places.json is behind the world data; regenerate it: PLACES_OUT=world/places.json dotnet test core --filter PlacesFileIsUpToDate");
+            bool write = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PLACES_OUT"));
+            foreach (string map in Directory.GetDirectories(ChemistryTests.Folders.Maps))
+            {
+                string path = Path.Combine(map, WorldPlaces.FileName);
+                string made = WorldPlaces.Generate(map);
+                if (write) File.WriteAllText(path, made);
+                Assert.That(File.ReadAllText(path).Replace("\r\n", "\n"), Is.EqualTo(made),
+                    $"{path} is behind the map's data; regenerate it: PLACES_OUT=1 dotnet test core --filter PlacesFileIsUpToDate");
+            }
         }
 
         [Test]

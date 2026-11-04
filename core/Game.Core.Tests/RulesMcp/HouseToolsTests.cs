@@ -179,6 +179,35 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void FindSiteReadsTheMapItWasGiven()
+        {
+            string repo = Path.Combine(Path.GetTempPath(), "map-site-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var valley = new GameFolders(Path.Combine(repo, "rules"));
+                var isle = new GameFolders(valley.Rules, null, "isle");
+                CopyFiles(ChemistryTests.RulesDir(), valley.Rules);
+                CopyFiles(ChemistryTests.WorldDir(), valley.World);
+                CopyFiles(ChemistryTests.WorldDir(), isle.World);
+                File.WriteAllText(Path.Combine(isle.World, WorldPlaces.FileName), @"{ ""places"": [ { ""id"": ""dock"", ""name"": ""the dock"", ""kind"": ""village"", ""area"": [10, 10, 20, 20] } ] }");
+
+                Assert.That(new Client(new Workbench(valley)).Call("find_site", new { width = 6, depth = 6, near = "lake" }), Does.Contain("lake"), "the valley's lake");
+                var client = new Client(new Workbench(isle));
+                Assert.That(() => client.Call("find_site", new { width = 6, depth = 6, near = "lake" }), Throws.Exception.With.Message.Contain("dock"), "no lake on this map");
+            }
+            finally
+            {
+                Directory.Delete(repo, true);
+            }
+        }
+
+        static void CopyFiles(string from, string to)
+        {
+            Directory.CreateDirectory(to);
+            foreach (string file in Directory.GetFiles(from)) File.Copy(file, Path.Combine(to, Path.GetFileName(file)));
+        }
+
+        [Test]
         public void FindSiteUsesAShoreAndASide()
         {
             var bench = new Workbench(folders);

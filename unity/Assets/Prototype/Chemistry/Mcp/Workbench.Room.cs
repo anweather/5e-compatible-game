@@ -38,7 +38,7 @@ namespace Chem.Mcp
         World NewRoom(ChangeMode mode)
         {
             // Where the world files are there, the room is on a stand-in of the valley (StandInValley), so the world tools have a world.
-            standIn ??= StandInValley.Load(RulesDir, Budgets) ?? StandInValley.None;
+            standIn ??= StandInValley.Load(Folders, Budgets) ?? StandInValley.None;
             World w;
             if (standIn == StandInValley.None) w = new World(Base, 64, 64, 1);
             else

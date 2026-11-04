@@ -199,7 +199,7 @@ public class RowMesherTests
             var yard = ChemYardBuilder.Map.Split((char)10);
             ValleyShape.Plan(yard[0].Length, yard.Length, grid.cellSize);
             CollectionAssert.AreEqual(new[] { new Vector2(-16.75f, 15.25f), new Vector2(-30f, -40f), new Vector2(155f, 62f), new Vector2(-95f, 140f) }, ValleyShape.Cabins.Select(c => c.At).ToArray());
-            var world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
+            var world = ChemGrid.MapWorld(grid.LoadBaseRules(), ChemGrid.CellMap(), grid.seed, out _);
             var file = WorldBuildings.Load(ChemGrid.Folders.World);
             foreach (var plan in ValleyShape.Villages)
             {

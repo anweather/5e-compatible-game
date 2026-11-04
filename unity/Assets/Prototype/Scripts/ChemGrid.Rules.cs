@@ -65,7 +65,7 @@ public partial class ChemGrid
         RoomDecided?.Invoke(command, verdict);
     }
 
-    ModBudgets Budgets => budgets ??= ModBudgets.Load(Folders.Rules);
+    ModBudgets Budgets => budgets ??= ModBudgets.Load(Folders);
 
     // Every world is a room, solo too (docs/RULES_MCP.md): a rebuilt one keeps the room it replaces.
     void OpenRoom(RoomState was)

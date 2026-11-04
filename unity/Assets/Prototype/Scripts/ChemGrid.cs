@@ -13,7 +13,6 @@ using UnityEngine;
 // maps and demos: yard cell (0, 0) sits at world (0, 0, (yard height - 1) * cellSize).
 public partial class ChemGrid : MonoBehaviour
 {
-    [TextArea(8, 20)] public string map;
     public uint seed = 1;
     [Tooltip("World height of one step of elevation (a pit is one step deep).")]
     public float stepHeight = 0.5f;
@@ -164,7 +163,8 @@ public partial class ChemGrid : MonoBehaviour
         var rules = StartRules();
         var roomWas = World?.Room;
 
-        World = StartWorld(rules, map, seed, out var start);
+        CheckMap();
+        World = StartWorld(rules, CellMap(), seed, out var start);
         OpenRoom(roomWas);
         World.ChunkSwitched += OnChunkSwitched;
         World.ChunkFreshened += freshChunks.Add;
@@ -295,6 +295,20 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     static GameFolders folders;
+
+    /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
+    public static string CellMap() => MapFile.ReadCells(Folders.World);
+
+    static string checkedMap;
+
+    // A folder that's wrong stops the game here, by name, rather than start on the wrong land: once, not at every reset.
+    static void CheckMap()
+    {
+        if (checkedMap == Folders.World) return;
+        var errors = MapCheck.Errors(Folders.World);
+        if (errors.Count > 0) throw new InvalidDataException($"{Folders.World} can't be played:\n{string.Join("\n", errors)}");
+        checkedMap = Folders.World;
+    }
 
     // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
     public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath);

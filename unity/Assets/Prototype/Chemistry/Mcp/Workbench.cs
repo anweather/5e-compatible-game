@@ -27,17 +27,20 @@ namespace Chem.Mcp
         /// <summary>The rules in the folders' rules/, saving to their <see cref="GameFolders.Mods"/> as it is now.</summary>
         public Workbench(GameFolders folders)
         {
+            Folders = folders;
             RulesDir = folders.Rules;
             ShippedModsDir = folders.ShippedMods;
             ModsDir = folders.Mods;
             Base = Rules.Load(RulesDir);
-            Budgets = ModBudgets.Load(RulesDir);
+            Budgets = ModBudgets.Load(folders);
             baseRaw = new Dictionary<string, JToken>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(RulesDir, "*.json").OrderBy(p => p, StringComparer.Ordinal))
                 baseRaw[Path.GetFileNameWithoutExtension(path)] = JToken.Parse(File.ReadAllText(path));
             PutLayers(Array.Empty<RoomMod>());
         }
 
+        /// <summary>The folders it was made with: the world tools read their map.</summary>
+        public GameFolders Folders { get; }
         public string RulesDir { get; }
         /// <summary>Where a save goes, read before the shipped mods: the player's folder in the game, rules/mods for the headless server.</summary>
         public string ModsDir { get; }
