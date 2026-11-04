@@ -63,13 +63,14 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **Vivox (0.1.12):** `vivox-spike` (8f44eae9, not landed): sign-in and libraries answered; the mic and fade aren't. Next: `briefs/vivox-pc-run.md` on the PC with Andrew. Vivox is on in the Dashboard. The Mac may need unlocking to be the second participant: its audio stalled with the screen locked.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **`mcp-act` landed** (e8c1113b; `docs/design/world-acts.md`, backlog 30): `act` and `undo_act`, one-off happenings that aren't mods. Not tried with a real Claude yet.
+- **`mix` landed** (d53feb01, P5; core 1411 passed): rows of one `mix` group that meet derive a material. Owed: seen in a running game (view unproven), EditMode on the merged tree, a late join over real netcode; `ApiKeyTests` fail 8 on the Mac (Windows-only vault, not confirmed on plain dev). Only `setCover` mixes covers.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
 ## Next, in order
 
 1. Land what's in flight (the Vivox PC run).
-2. **The Mac (Andrew, 2026-11-04):** P5 mix, then the playtester on Sonnet or Haiku with its cost measured (`briefs/mac-mix-and-cheap-playtester.md`). Then maps as data (#69, `second-map`), held until the PC's mod work settles.
+2. **The Mac (Andrew, 2026-11-04):** the playtester on Sonnet or Haiku with its cost measured (`briefs/mac-mix-and-cheap-playtester.md`). Then maps as data (#69, `second-map`), held until the PC's mod work settles.
    Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 3. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
