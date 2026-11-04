@@ -11,7 +11,7 @@ namespace Chem.Tests
     /// </summary>
     public class NamedActsTests
     {
-        const string Rows = "[{\"act\": \"tree\", \"count\": 5, \"within\": 8}, {\"act\": \"land\", \"radius\": 10, \"rise\": 12}]";
+        const string Rows = "[{\"act\": \"tree\", \"count\": 5, \"within\": 8}, {\"act\": \"land\", \"radius\": 10, \"rise\": 12, \"rough\": 0}]";
 
         static (Workbench bench, RulesTools tools) Tools()
         {
