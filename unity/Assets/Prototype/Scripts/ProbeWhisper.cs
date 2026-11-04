@@ -38,11 +38,20 @@ public partial class TranscribeProbe
             if (Path.GetFileName(file) != SpeechChoice.ModelFile) yield return file;
     }
 
+    // What a sample says. Windows' make.ps1 gives short names and a transcript beside each ("0.100 make", a word a line,
+    // under a "seconds" line); the Mac's make.sh names a file by its words.
+    static string Wanted(string wav)
+    {
+        string transcript = Path.ChangeExtension(wav, ".txt");
+        if (!File.Exists(transcript)) return StubTranscriber.TextFor(wav);
+        return string.Join(" ", File.ReadAllLines(transcript).Skip(1).Select(l => l.Split(' ').Last()).Where(w => w.Length > 0));
+    }
+
     static string Plain(string text) => new string((text ?? "").ToLowerInvariant().Where(c => char.IsLetter(c) || c == ' ').ToArray()).Trim();
 
     IEnumerator Presses(string wav)
     {
-        string said = StubTranscriber.TextFor(wav);
+        string said = Wanted(wav);
         var engine = new WhisperTranscriber(SpeechChoice.ModelPath);
         using var speech = new TranscribedSpeech(new WavAudio(wav), engine, TimeSpan.FromSeconds(WhisperTimeout));
 
@@ -101,7 +110,7 @@ public partial class TranscribeProbe
         while (!cut.IsCompleted || !next.IsCompleted) yield return null;
         _ = cut.Exception;
         Check("whisper_cancelled_call_drops_its_words", cut.Status != TaskStatus.RanToCompletion, cut.Status.ToString());
-        Check("whisper_call_behind_a_cancelled_one_works", next.Status == TaskStatus.RanToCompletion && Plain(next.Result) == StubTranscriber.TextFor(wav), next.Status.ToString());
+        Check("whisper_call_behind_a_cancelled_one_works", next.Status == TaskStatus.RanToCompletion && Plain(next.Result) == Wanted(wav), next.Status.ToString());
     }
 
     IEnumerator Hears(string model, string[] wavs)
@@ -127,8 +136,8 @@ public partial class TranscribeProbe
             }
             times.Add(clock.Elapsed.TotalMilliseconds);
             string said = work.Status == TaskStatus.RanToCompletion ? work.Result : "failed: " + work.Exception?.GetBaseException().Message;
-            if (Plain(said) == StubTranscriber.TextFor(wav)) right++;
-            else heard.Add($"{StubTranscriber.TextFor(wav)} -> {said}");
+            if (Plain(said) == Wanted(wav)) right++;
+            else heard.Add($"{Wanted(wav)} -> {said}");
         }
         Check($"{name}_hears_the_samples", right >= LeastHeard, $"{right} of {wavs.Length}. {string.Join("; ", heard)}");
         Metric($"{name}_right", right);
