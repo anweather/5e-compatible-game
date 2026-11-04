@@ -185,6 +185,8 @@ namespace Chem
         public int SpreadEvery, SpreadReach;
         public double SpreadChance = 1;
         public IReadOnlyList<string> SpreadOnto, SpreadNotOnto;
+        /// <summary>Its mix group: laid on a cover of the same, they derive a mix (Rules.Mix.cs); null, it doesn't mix.</summary>
+        public string Mix;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -931,6 +933,7 @@ namespace Chem
             Id = id,
             Name = Str(o["name"]) ?? id,
             Tags = Strings(o["tags"]),
+            Mix = Str(o[MixKey]),
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),

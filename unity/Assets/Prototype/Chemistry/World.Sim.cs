@@ -219,6 +219,7 @@ namespace Chem
             tickRows = null;
             tickChunks = null;
             LapseDue(); // between whole ticks, as a rule switch lands
+            MixDue();
         }
 
         /// <summary>
@@ -728,14 +729,25 @@ namespace Chem
             int kind = c.Liquid;
             var liquid = Rules.HasLiquids ? Rules.Liquid(kind) : null;
             if (kind != 0 && (liquid.Thick == 0 || Tick % liquid.Thick != 0)) return;
+            if (liquid?.Mix != null && Contact(ch, i, c, liquid))
+            {
+                kind = c.Liquid;
+                liquid = Rules.Liquid(kind);
+            }
             var (best, bestI, other) = Lowest(ch, i, c, liquid);
             if (best == null) return;
+            var to = best.Cells[bestI];
+            int lands = kind;
             if (other)
             {
-                Touch(ch, liquid, best, bestI);
-                return;
+                if (!Mixes(liquid, to))
+                {
+                    Touch(ch, liquid, best, bestI);
+                    return;
+                }
+                lands = MeetLiquid(liquid, to, ch, best);
+                if (lands < 0) return;
             }
-            var to = best.Cells[bestI];
             if (kind != 0) Carry(c, to, liquid, to.Water == 0);
             c.Water--;
             if (c.Water == 0)
@@ -744,7 +756,7 @@ namespace Chem
                 c.Sets = 0;
             }
             to.Water++;
-            to.Liquid = kind;
+            to.Liquid = lands;
             ch.Marks[i] |= FlowMark;
             best.Marks[bestI] |= FlowMark;
             WaterMoved(ch);
@@ -778,7 +790,7 @@ namespace Chem
                 if (score <= bestScore) continue;
                 // Another kind there: a wall, unless this one has a touch (asked only of a cell it could run onto).
                 bool held = liquid != null && nc.Water > 0 && nc.Liquid != kind;
-                if (held && liquid.Touch == null) continue;
+                if (held && liquid.Touch == null && !Mixes(liquid, nc)) continue;
                 bestScore = score;
                 best = nch;
                 bestI = ni;

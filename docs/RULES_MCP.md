@@ -67,7 +67,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   `world/`, no trees and no yard), and say so.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
-- `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials")
+- `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials"), and a liquid or cover may name a `mix` group (see "Mix")
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
@@ -495,6 +495,33 @@ against 4.4 to 5 ms a tick, the skip off): it tries one tick in four.
 **In the view (not built yet).** The water mesh takes a colour per kind (`LiquidDef.Look.color`, a vertex colour;
 water keeps its own look); a thick liquid's surface may move slower (`look.flow`). Breath and wading should read
 `World.DrownDepth` and `LiquidDef.Speed` instead of `Cell.Water` (the view's `Breath` caller, the mover's wading).
+
+## Mix: rows of a group that meet make a third
+
+`docs/design/primitives.md` §4, P5 (J-062; `Rules.Mix.cs`, `World.Mix.cs`, `MixTests`). A liquid or cover row may say
+`"mix": "paint"` (any name; the core names none). Two rows of a table sharing a group that meet need no reaction row:
+the room derives their mix. Red and blue paint make purple with only their own two rows.
+
+- **Meeting.** A liquid touching another of its group (cells side by side, or one running onto the other), a cover laid
+  by `setCover` on another. Touching mixes the two cells that touch; a mix beside its own parent changes nothing unless
+  liquid runs onto it, so a band of purple stands between the pools rather than eating both. Water, and a liquid of no
+  group or another, stays a wall (or lays its `touch`). With a group in common, a mix comes before a `touch`.
+- **The row**, a pure function of the two rows, in id order: id every parent's sorted and joined by `+`
+  (`blue-paint+red-paint`), so red meeting purple is purple and three paints come to one id whichever met first. Colour
+  mixes as paint (`Colors.cs`), on the first look; numbers are the mean, rounded down when both are whole; flags hold if
+  both do; a list keeps what both have (`tags`); a text stays only if both say the same, and a section holding one that
+  differs goes whole. A field only one row gives counts its default if it has one (a liquid's `thick` 1, `heap` 2, `speed`
+  1, flags true; a cover's `speed` 1), else it's left out. `lapse` isn't derived.
+- **When.** Asked for where the pair first meets and made at the end of that tick, every pair of the tick in the order it
+  met, in one switch: until then the liquid stops as at a wall and a cover waits to land. A meeting between ticks (a cast)
+  makes it at once. Ticks run in a fixed order, so every peer makes it at the same tick.
+- **The list.** `Room.Mixes`: table, id, parents, row and tick, in the order made. The derived rows compose over the mods,
+  so they're in `Rules` and its fingerprint (bar the look, as ever); the list is in `RoomText` (`CastHash`) and the save,
+  so a late joiner gets it with the snapshot. Each row is kept whole, because a parent may be gone by then.
+- **Limits.** At most `materials.maxMixes` (16) a room: past it the arriving one stops as at a wall. A row that won't go in
+  the rules is never made, and neither is a mix that stops fitting: it goes as if lapsed.
+- **Lapse.** A mix lasts while any parent is in force. When the last goes, cells of it lapse as that parent's do (the
+  retired list names `mix` as its owner). Without a room there's no list, so rows of a group are walls.
 
 ## Buildings: rows a mod can edit or add
 

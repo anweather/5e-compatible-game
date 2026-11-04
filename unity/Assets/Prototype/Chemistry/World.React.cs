@@ -494,7 +494,9 @@ namespace Chem
         bool LayCover(Cell c, string coverId)
         {
             if (c.Cover == coverId) return false;
-            PutCover(c, coverId);
+            string laid = LaidOver(c, coverId);
+            if (laid == null && coverId != null) return false; // it waits for a mix, or stops at the cap
+            PutCover(c, laid);
             return true;
         }
 

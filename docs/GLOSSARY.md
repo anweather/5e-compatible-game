@@ -398,6 +398,11 @@ that long, and doesn't march.
   fingerprint. *Not* a world theme's look (`world/looks.json`, a biome a theme
   may paint), nor a fire's `burn.look`.
 
+**Mix** (of materials)
+: A material the room derives when two liquid or cover rows of one `mix` group
+  meet, with no reaction row: red and blue paint make `blue-paint+red-paint`.
+  Held in the room's mix list (`Room.Mixes`). See `docs/RULES_MCP.md` "Mix".
+
 **Mix** (of a look)
 : Several colours with weights in place of a look's one colour (`"mix"`), each
   cell picking one by a hash of where it is (`LookScopes.CellHash`), never the

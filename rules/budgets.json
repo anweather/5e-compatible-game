@@ -3,7 +3,7 @@
   "mod": { "maxNewEntries": 12, "maxNewElements": 1 },
   "spells": { "maxLevel": 9, "diceSides": [4, 6, 8, 10, 12], "maxDice": 20, "maxPower": 6, "maxRadius": 6, "maxLength": 24, "maxSize": 5, "maxPush": 6, "maxRaise": 4, "maxDig": 4 },
   "effects": { "ignite": 3, "boil": 4, "n": 6, "spreadCover": 3, "conduct": 3, "wave": 4, "addWater": 2 },
-  "materials": { "maxFloatReach": 8, "maxPerMod": 8, "maxLive": 32, "maxLapse": 21600, "minSpreadEvery": 30, "maxSpreadChance": 0.5, "maxSpreadReach": 64, "maxSpreadPerTick": 64 },
+  "materials": { "maxFloatReach": 8, "maxPerMod": 8, "maxLive": 32, "maxMixes": 16, "maxLapse": 21600, "minSpreadEvery": 30, "maxSpreadChance": 0.5, "maxSpreadReach": 64, "maxSpreadPerTick": 64 },
   "critters": { "minEvery": 4 },
   "chainDepth": 3,
   "buildings": { "maxCells": 24, "maxJoins": 64, "maxWalls": 64, "maxOpenings": 64, "maxParts": 32, "maxStoreys": 3, "maxPerMod": 4 },

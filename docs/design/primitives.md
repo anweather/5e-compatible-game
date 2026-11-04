@@ -171,6 +171,13 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
    `Cell.Sets` count into a terrain; goldens for a mod's magma and syrup. The view's coloured water mesh is in too
    (`liquids-view`). Left: breath and wading by `DrownDepth`.*
 5. **P5 mix** (S, on P1 and temporary materials).
+   *Core done (branch `mix`, RULES_MCP.md "Mix"): `mix` on a liquid or cover row; a mix made at the end of the tick its
+   rows first met, or at once between ticks (a cast); its id every parent's sorted, so red on purple is purple and three
+   paints come to one id; `Room.Mixes` in the save, `CastHash` and a joiner's snapshot, each row kept whole, since a mix
+   outlives its first parent; budget `materials.maxMixes` 16. Touching counts, not only running onto: pools settle a step
+   apart, under their `heap`, so a contact mixes the two cells and a band of purple stands between them. Red and blue
+   paint make purple, from the mods' rows only (`MixTests`). Not yet seen in a running game: the view should follow a mix
+   as it does a lapse (`ChemGrid.FollowLapse`), and draw it from the row's look.*
 
 **The first test** (after step 2): asked of Claude, "give me a spell that lays a slick of black ice
 that melts in a minute, and take it away again after ten minutes". It ends as one mod: a cover

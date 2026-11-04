@@ -509,6 +509,7 @@ namespace Chem
                     Tags(p.Value["tags"], $"cover {p.Name}");
                     FireLookOf($"cover {p.Name}", p.Value);
                     LookOf($"cover {p.Name}", p.Value, false);
+                    if (p.Value[MixKey] != null && Text(p.Value[MixKey]) == null) Errors.Add($"cover {p.Name}: mix must be a group's name");
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);

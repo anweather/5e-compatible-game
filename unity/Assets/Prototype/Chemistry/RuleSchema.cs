@@ -231,6 +231,7 @@ namespace Chem
             RuleField.Value("freezes"),
             RuleField.Value("sets"),
             RuleField.Number("speed", 0, max: 1),
+            RuleField.Text("mix"),
             RuleField.Look("look"),
             RuleField.Value("lapse"));
 
