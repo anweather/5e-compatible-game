@@ -127,6 +127,7 @@ public sealed class ValleyGround
     public void Bind(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls = false)
     {
         world = w;
+        landUnit = stepHeight / w.Rules.Sim.WaterUnitsPerStep;
         heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls };
         heightfield.Reset(w);
         repaint.Clear();
@@ -190,7 +191,7 @@ public sealed class ValleyGround
     }
 
     /// <summary>The valley's own ground at a cell, before the cell's offset.</summary>
-    public float BaseHeight(int x, int y) => cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
+    public float BaseHeight(int x, int y) => cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] + world.LandMovedAt(x, y) * landUnit : 0f;
 
     /// <summary>
     /// Counts some cells' ground from higher than the terrain is drawn there (after Bind): the river's
@@ -209,7 +210,8 @@ public sealed class ValleyGround
     public float ShownGround(int x, int y)
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
-        return BaseHeight(x, y) + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
+        float drawnBase = cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
+        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
     }
 
     /// <summary>The terrain's ground drawn now at a world point over the cells (0 off them).</summary>
@@ -414,6 +416,8 @@ public sealed class ValleyGround
     }
 
     List<Chunk> syncOrder = new();
+    // Metres in a land unit: what a land stamp's integers are drawn at.
+    float landUnit;
     int nextSync;
 
     // What a cell paints over the saved paint: nothing while it paints as it was baked.

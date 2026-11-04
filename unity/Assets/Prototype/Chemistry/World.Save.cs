@@ -98,6 +98,7 @@ namespace Chem
             SaveRoom(save);
             SavePlaced(save);
             SaveActs(save);
+            SaveLand(save);
             SaveLaid(save);
             SaveTriggers(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
@@ -271,6 +272,7 @@ namespace Chem
             LoadCourse(s);
             LoadPlaced(s);
             LoadActs(s);
+            LoadLand(s);
             LoadLaid(s);
             LoadTriggers(s);
             NextEntityId = (int)s["nextEntityId"];

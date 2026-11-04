@@ -52,8 +52,7 @@ places a ball and a cup, and everyone takes turns "golfing", which is using any 
 - **One animal** ("the turkey near me"). Animals live in each peer's view, so there's nothing shared to name. It needs a
   way to promote one into shared state with its own row. The hardest design question here.
 - **The water level.** The lake's level is fixed in the view (`ValleyChemistry.lakeLevel`), not a rule.
-- **Real mountains.** Ground runs from -6 to +8 height steps (about -3 m to +4 m). Hills and trenches can come to `act`
-  first; a mountain needs a bigger range.
+- **Real mountains.** Built as land stamps (`docs/design/maps-as-data.md`): `act("land")`, on `land`, not a cell's height.
 - **Undoing animals.** It needs the view to take back what it brought out.
 
 ## Also seen in the logs

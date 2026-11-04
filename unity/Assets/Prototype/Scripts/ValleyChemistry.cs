@@ -298,6 +298,15 @@ public partial class ValleyChemistry : MonoBehaviour
     /// look, which the baked valley already shows): burn its trees, char the cabin, repaint it
     /// and, if it was <paramref name="reshaped"/>, ease its ground to its new height.
     /// </summary>
+    /// <summary>A land stamp moved these cells: they ease to it as a dug cell does.</summary>
+    public void LandMoved(int x, int y, int reach)
+    {
+        if (ground == null) return;
+        for (int v = y - reach - 1; v <= y + reach + 1; v++)
+            for (int u = x - reach - 1; u <= x + reach + 1; u++)
+                if (grid.World.InBounds(u, v)) ground.Reshape(u, v);
+    }
+
     public void CellChanged(int x, int y, string from, string to, bool reshaped)
     {
         if (ground == null) return;

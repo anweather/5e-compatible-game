@@ -30,6 +30,8 @@ namespace Chem
             public string By, Kind, What;
             public readonly List<(int key, string terrain, string cover)> Cells = new List<(int, string, string)>();
             public readonly List<int> Things = new List<int>();
+            /// <summary>The stamp, when the act stamped land.</summary>
+            public LandStamp Land;
         }
 
         readonly List<ActDone> acts = new List<ActDone>();
@@ -44,12 +46,15 @@ namespace Chem
             string kind = (string)ask["kind"], what = (string)ask["what"];
             var cells = (ask["cells"] as JArray ?? new JArray()).OfType<JArray>().Select(a => ((int)a[0], (int)a[1])).ToList();
             var act = new ActDone { N = actCount + 1, By = c.Peer, Kind = kind, What = what };
-            int done = DoneOf(act, cells, ask);
+            RoomVerdict? stamped = kind == ActLand ? StampLand(c, act, ask) : null;
+            if (stamped.HasValue) return stamped.Value;
+            int done = kind == ActLand ? 1 : DoneOf(act, cells, ask);
             if (done == 0) return Refused(c, "none of those cells had room");
             actCount++;
             acts.Add(act);
             if (acts.Count > MostActsKept) acts.RemoveAt(0);
             string left = done < cells.Count ? $"; {cells.Count - done} had no room" : "";
+            if (kind == ActLand) return new RoomVerdict(true, null, $"{c.Peer} moved the land (act {Whole(act.N)})");
             return new RoomVerdict(true, null, $"{c.Peer} {(kind == ActCast ? "cast" : "brought out")} {Whole(done)} {what} (act {Whole(act.N)}){left}");
         }
 
@@ -82,6 +87,7 @@ namespace Chem
                 case ActAnimal: return Rules.Fauna.Species(what) != null;
                 case ActCast: return Rules.Spell(what) != null;
                 case ActGolf: return what == GolfBall || what == GolfCup;
+                case ActLand: return what == ActLand;
                 default: return false;
             }
         }
@@ -150,7 +156,10 @@ namespace Chem
             if (act == null) return Refused(c, "there's no act to take back");
             string stays = ActStays(act.Kind);
             if (stays != null) return Refused(c, stays);
+            string held = act.Land != null ? TakeLand(act) : null;
+            if (held != null) return Refused(c, held);
             acts.Remove(act);
+            if (act.Land != null) return new RoomVerdict(true, null, $"{c.Peer} put the land back (act {Whole(act.N)})");
             int gone = act.Things.Count > 0 ? TakeThings(act) : TakeCells(act);
             return new RoomVerdict(true, null, $"{c.Peer} took back {Whole(gone)} {act.What} (act {Whole(act.N)})");
         }
@@ -205,6 +214,7 @@ namespace Chem
                 sb.Append('|').Append(Whole(a.N)).Append(':').Append(a.By).Append(':').Append(a.Kind).Append(':').Append(a.What);
                 foreach (var (key, terrain, cover) in a.Cells) sb.Append(',').Append(Whole(key)).Append('=').Append(terrain).Append('/').Append(cover);
                 foreach (int t in a.Things) sb.Append(",t").Append(Whole(t));
+                if (a.Land != null) sb.Append(',').Append(a.Land.Text);
             }
             return sb.ToString();
         }
@@ -223,6 +233,7 @@ namespace Chem
                     ["what"] = a.What,
                     ["cells"] = new JArray(a.Cells.Select(c => new JArray(c.key, c.terrain, c.cover))),
                     ["things"] = new JArray(a.Things),
+                    ["land"] = a.Land?.Row,
                 })),
             };
         }
@@ -236,6 +247,7 @@ namespace Chem
                 var a = new ActDone { N = (int)o["n"], By = (string)o["by"], Kind = (string)o["kind"], What = (string)o["what"] };
                 foreach (var c in (o["cells"] as JArray ?? new JArray()).OfType<JArray>()) a.Cells.Add(((int)c[0], (string)c[1], (string)c[2]));
                 foreach (var t in o["things"] as JArray ?? new JArray()) a.Things.Add((int)t);
+                a.Land = LandStamp.Read(o["land"]);
                 acts.Add(a);
             }
         }

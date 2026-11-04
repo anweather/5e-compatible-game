@@ -18,9 +18,10 @@ namespace Chem.Mcp
         int actSeed;
 
         /// <summary>act(): count of a terrain, cover, thing or animal over open cells near something, or a spell cast there, now.</summary>
-        public string Act(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, string peer = null)
+        public string Act(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, string peer = null, LandAsk landAsk = null)
         {
             what = Required(what, "what");
+            if (what == World.ActLand) return ActOnLand(near, side, edge, seed, landAsk ?? new LandAsk(), peer);
             string kind = ActKind(what) ?? throw new RulesToolException($"There is no terrain, cover, thing, animal or spell called {what}, and it isn't golf-ball or cup; list shows what there is.");
             int wanted = count ?? 1;
             double most = MostOf(kind);
@@ -36,6 +37,67 @@ namespace Chem.Mcp
             string said = Decide(RoomCommand.Act(PeerOf(peer), ask.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
             return FormattableString.Invariant($"{said}\nNear {name}. It's done, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(kind)}");
+        }
+
+        /// <summary>What a land stamp asks for: metres and cells as a player says them.</summary>
+        public sealed class LandAsk
+        {
+            public string Profile = LandStamp.Dome, Along;
+            public int? Radius, Rise, Rough;
+        }
+
+        static readonly Dictionary<string, (int x, int y)> Lines = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["north"] = (0, 1),
+            ["east"] = (1, 0),
+            ["northeast"] = (1, -1),
+            ["southeast"] = (1, 1),
+        };
+
+        // One stamp at a time, where it's asked for, off buildings and settled ground; water and the terrain's range the world refuses itself.
+        string ActOnLand(string near, string side, string edge, int? seed, LandAsk ask, string peer)
+        {
+            int radius = ask.Radius ?? 8, rise = ask.Rise ?? 0;
+            double mostRadius = Budgets.Number("land.maxRadius", 32), mostRise = Budgets.Number("land.maxRise", 100);
+            if (radius < 1 || radius > mostRadius) throw new RulesToolException(FormattableString.Invariant($"radius is 1 to {mostRadius} cells."));
+            if (rise == 0 || Math.Abs(rise) > mostRise) throw new RulesToolException(FormattableString.Invariant($"rise is in metres, up to {mostRise} either way, and not 0."));
+            var line = (x: 0, y: 0);
+            if (ask.Profile == LandStamp.Ridge && (ask.Along == null || !Lines.TryGetValue(ask.Along, out line)))
+                throw new RulesToolException($"A ridge needs along: {string.Join(", ", Lines.Keys)}.");
+            var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
+            var (x, y) = (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
+            var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? 0, seed ?? ++actSeed);
+            if (!stamp.Known) throw new RulesToolException("profile is flat, dome, cone or ridge, and rough is 0 to 100.");
+            string settled = OnWorld(w => SettledUnder(w, stamp));
+            if (settled != null) return $"That would move the ground under {settled}; try further off.";
+            var command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row };
+            string said = Decide(RoomCommand.Act(PeerOf(peer), command.ToString(Newtonsoft.Json.Formatting.None)));
+            if (Refused(said)) return said;
+            return $"{said}\nAt {name}. It's done, for everyone, and it isn't a mod: nothing to apply or save. undo_act takes it back. Land stops nothing yet: raiders, sight and spells pass over it.";
+        }
+
+        const int LandUnitsPerMetre = 8;
+
+        // What stands on a stamp's cells: a building, or a village, course or puzzle's ground.
+        string SettledUnder(World w, LandStamp s)
+        {
+            var built = new HashSet<(int, int)>();
+            var names = new Dictionary<(int, int), string>();
+            foreach (var row in w.BuildingsNow)
+                foreach (var c in w.BuildingCellsOf(row))
+                {
+                    built.Add((c.X, c.Y));
+                    names[(c.X, c.Y)] = row.Id;
+                }
+            for (int y = s.Y - s.Radius; y <= s.Y + s.Radius; y++)
+                for (int x = s.X - s.Radius; x <= s.X + s.Radius; x++)
+                {
+                    if ((x - s.X) * (x - s.X) + (y - s.Y) * (y - s.Y) > s.Radius * s.Radius) continue;
+                    if (built.Contains((x, y))) return names[(x, y)];
+                    var place = Places.All.FirstOrDefault(p => (p.Kind == "village" || p.Kind == "course" || p.Kind == "puzzle") && p.Contains(x, y));
+                    if (place != null) return place.Name;
+                }
+            return null;
         }
 
         static string AfterAct(string kind)

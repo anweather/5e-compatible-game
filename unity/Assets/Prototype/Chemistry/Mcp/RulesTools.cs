@@ -115,7 +115,7 @@ namespace Chem.Mcp
         // ---------- draft ----------
 
         [RulesTool("act"), Description("Does something once, now, for everyone, with no mod: lays a terrain or cover, places a thing, brings out an animal (a species from list fauna) or casts a spell, on open ground near a place, a building, a cell or the player asking. \"Add 20 trees near me\" is act(what: tree, count: 20, spacing: 2); asked again, it's act again, so the mod list stays as it was. \"Spawn three centaurs near me\" is act(what: centaur, count: 3), once the species is there. \"Put a ball and a cup near me\" is act(what: cup, within: 20) then act(what: golf-ball): spell golf, a new round. Any spell landing on the ball moves it, players take turns, and fireworks go off when it goes in. Use it for anything that happens rather than a rule that holds: no draft, validate or apply. undo_act takes back ground and things; animals, casts, the ball and the cup stay.")]
-        public string Act([Description("A terrain (tree), a cover, a thing's kind, a species, a spell, or golf-ball or cup for spell golf (ball alone is the court's kicking ball).")] string what,
+        public string Act([Description("A terrain (tree), a cover, a thing's kind, a species, a spell, golf-ball or cup for spell golf (ball alone is the court's kicking ball), or land to shape the land's height.")] string what,
             [Description("How many; 1 when left out. Up to budgets.json lay.maxCells for ground, place.maxLive for things, place.maxSummoned for animals, triggers.maxPerTick for casts.")] int? count = null,
             [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
             [Description("How far from it, in cells; 12 when left out, 32 at most.")] int? within = null,
@@ -125,8 +125,14 @@ namespace Chem.Mcp
             [Description("Picks other cells; each act picks afresh when left out.")] int? seed = null,
             [Description("Only on terrain with one of these tags; open ground when left out.")] string[] onto = null,
             [Description("A thing's life in ticks; it stays when left out.")] int? lasts = null,
-            [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null) =>
-            Do(() => bench.Act(what, count, near, within, spacing, side, edge, seed, onto, lasts, peer));
+            [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null,
+            [Description("With what: land, the shape applied to the land's height: flat, dome, cone or ridge; dome when left out.")] string profile = null,
+            [Description("With what: land, how far it reaches, in cells; 8 when left out, 32 at most.")] int? radius = null,
+            [Description("With what: land, metres at its middle, below 0 for a hollow; 100 at most either way.")] int? rise = null,
+            [Description("With what: land, how uneven, 0 to 100 percent; 0 when left out.")] int? rough = null,
+            [Description("With a ridge, its line: north, east, northeast or southeast.")] string along = null) =>
+            Do(() => bench.Act(what, count, near, within, spacing, side, edge, seed, onto, lasts, peer,
+                new Workbench.LandAsk { Profile = profile ?? LandStamp.Dome, Along = along, Radius = radius, Rise = rise, Rough = rough }));
 
         [RulesTool("undo_act"), Description("Takes back an act that laid ground or placed things: the player's last when none is named. Ground goes back to what stood under, unless something has changed it since. Animals and casts can't be taken back.")]
         public string UndoAct([Description("The act's number, from act's answer; the player's last when left out.")] int? act = null,
