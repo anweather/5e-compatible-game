@@ -23,15 +23,29 @@ thing: **a mod is a rule that keeps holding, and many requests aren't rules. The
   though `apply` never times a mod. It now says the number is a guide, that fire spreading costs far more than the cast
   that lit it, and to tell the player and apply unless they say otherwise. Whether meteors on steps run well is unmeasured.
 
-## Next: the ball in the cup
+## Built: the ball in the cup (branch `ball-in-cup`)
 
-The north star: "spawn a cup, spawn a ball, hit the ball into the cup, and fireworks go off".
+The north star: "spawn a cup, spawn a ball, hit the ball into the cup, and fireworks go off". Andrew, 2026-11-04: anyone
+places a ball and a cup, and everyone takes turns "golfing", which is using any spell to move it toward the cup.
 
+- **Placing.** `act` takes `golf-ball` and `cup` (`ball` alone stays the court's physics ball). It's the golf ball's own
+  simulation, not a physics object (D4). Each placing starts a round. There's one round in a world, so placing moves the
+  valley's course, and only a dragon's reset brings it back. Neither can be taken back with `undo_act`.
+- **Any spell.** A spell with no force that lands on the ball sends it away from where it landed, `pushRoll + level ×
+  levelRoll` cells, times a held charge, less the cells it landed off the ball, so a blast beside it is a tap. Spells with
+  force go on as they did. The ball still rolls only the grid's four ways, so a placed cup takes a ball within `cupReach`.
+- **Turns.** Who just hit it waits while someone else is at the course (`CastCommand.By`, from the `Caster` already on the
+  wire), for at most `turnTicks`, so nobody stalls the game by walking off. There's no order among three or more. A
+  delayed spell, a wave or a boulder lands with no player, so it isn't turn-checked and takes no turn.
+- **Fireworks.** The view sets them off over the cup on every peer when the ball goes in.
+- **`holed`.** A second trigger event: `add_trigger(on: holed)` fires at the cup for whoever sank it.
+
+## Next
+
+- **Playing again.** After holing out, a new round needs the ball placed again. Placing only works through the chat.
 - **Named acts.** A trigger with `on: "called"`, and a tool to fire one at a place: for a custom thing worth defining once,
   like "my fireworks". For 20 trees, `act` is enough.
-- **More events.** Triggers know only `step`. This needs something like "this thing entered that cell".
-- **A ball anyone can place.** `World.Golf.cs` has a ball, a tee and a hole, hard-coded. Physics can't decide shared
-  state (D4), so this generalises the golf ball's own simulation: rolling balls, not any physics object.
+- **More events.** "This thing entered that cell", for things other than the golf ball.
 
 ## Later
 
