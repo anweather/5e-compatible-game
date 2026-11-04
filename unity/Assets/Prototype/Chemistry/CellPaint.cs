@@ -169,6 +169,14 @@ namespace Chem
             return c.Height < 0 && IsGrassy(mix) ? DugMix : mix;
         }
 
+        /// <summary>Weights at a cell, as the world and the land stamps shape it: what a stamp has made steep is bare rock, under anything lying on it.</summary>
+        public static IReadOnlyList<float> Mix(World world, int x, int y, bool scorched = false)
+        {
+            if (world == null) throw new ArgumentNullException(nameof(world));
+            var c = world.At(x, y);
+            return !scorched && c.Cover == null && world.LandDrop(x, y) >= World.LandSteep ? WallMix : Mix(world, c, scorched);
+        }
+
         /// <summary>Whether snow lies on a cell: the base rules' snow covers (World.SnowCover or BankCover).</summary>
         public static bool IsSnowy(Cell c) => IsSnowy(c, null);
 

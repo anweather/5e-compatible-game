@@ -760,7 +760,7 @@ that long, and doesn't march.
 
 **Land stamp**
 : One integer change to land: a centre, radius, profile, rise and seed. How `act` moves the ground, and how a map will be
-  shaped (`World.Land.cs`, `docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own.
+  shaped (`World.Land.cs`, `docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own. Its **profile** is its shape; a **canyon** and a **cliff** are the two with a **face**, a steep wall of rock that wanders along a line. What's on a face (`LandRocks`) is only drawn.
 
 **Map**
 : A whole world to play on, a folder under `world/maps/`. Its **map hash** is over every file there (`MapIdentity`): the host turns away a peer without its id and hash. One build still draws one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the

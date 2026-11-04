@@ -1,5 +1,6 @@
 // Land stamps (docs/design/maps-as-data.md, section 3): integers every peer agrees on, taken back exactly, kept by a save
 // and a late joiner, gone with the dragon, and drawn as the cells have them.
+using System;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -36,6 +37,133 @@ namespace Chem.Tests
                 ["what"] = World.ActLand,
                 ["stamp"] = LandStamp.Make(x, y, radius, rise, profile, 0, 0, rough, 3).Row,
             }.ToString());
+
+        static RoomCommand Formed(string profile, int wall, int rough = 40) =>
+            RoomCommand.Act("Host", new JObject
+            {
+                ["kind"] = World.ActLand,
+                ["what"] = World.ActLand,
+                ["stamp"] = LandStamp.Make(64, 64, 32, wall, profile, 1, 0, rough, 3).Row,
+            }.ToString());
+
+        // The biggest step from one cell to the next, walking across the line at each column near the middle.
+        static int SteepestAcross(World w) =>
+            Enumerable.Range(56, 16).Max(x => Enumerable.Range(33, 62).Max(y => Math.Abs(w.LandMovedAt(x, y + 1) - w.LandMovedAt(x, y))));
+
+        [Test]
+        public void ACanyonIsAFloorBetweenSteepWalls()
+        {
+            var w = Flat();
+            Assert.That(w.ApplyRoom(Formed(LandStamp.Canyon, 288)).Done);
+            int floor = Enumerable.Range(58, 12).Min(y => w.LandMovedAt(64, y));
+            int rim = Enumerable.Range(40, 48).Max(y => w.LandMovedAt(64, y));
+            Assert.That(floor, Is.LessThan(-90), "cut well down");
+            Assert.That(rim, Is.GreaterThan(120), "the rest of the wall stands up as a rim");
+            Assert.That(SteepestAcross(w), Is.GreaterThanOrEqualTo(40), "a wall, not a slope: 5 m in a cell");
+        }
+
+        // Whether a player on the floor can get out, by steps of at most a metre a cell (34 degrees, inside what the wizard climbs).
+        static bool CanWalkOut(World w)
+        {
+            const int mostStep = 8;
+            int start = Enumerable.Range(40, 48).OrderBy(y => w.LandMovedAt(64, y)).First();
+            var seen = new System.Collections.Generic.HashSet<(int x, int y)> { (64, start) };
+            var open = new System.Collections.Generic.Queue<(int x, int y)>(seen);
+            while (open.Count > 0)
+            {
+                var (x, y) = open.Dequeue();
+                if ((x - 64) * (x - 64) + (y - 64) * (y - 64) > 33 * 33) return true;
+                foreach (var (u, v) in new[] { (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1) })
+                    if (Math.Abs(w.LandMovedAt(u, v) - w.LandMovedAt(x, y)) <= mostStep && seen.Add((u, v))) open.Enqueue((u, v));
+            }
+            return false;
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        public void ACanyonCanBeWalkedOutOf(int seed)
+        {
+            var w = Flat();
+            w.ApplyRoom(RoomCommand.Act("Host", new JObject
+            {
+                ["kind"] = World.ActLand,
+                ["what"] = World.ActLand,
+                ["stamp"] = LandStamp.Make(64, 64, 32, 288, LandStamp.Canyon, 1, 0, 40, seed).Row,
+            }.ToString()));
+            Assert.That(CanWalkOut(w), "its floor climbs to the land at the ends");
+        }
+
+        [Test]
+        public void ADeepCanyonCutsNoFurtherAndRaisesItsRim()
+        {
+            var w = Flat();
+            Assert.That(w.ApplyRoom(Formed(LandStamp.Canyon, 800, 0)).Done, "a 100 m wall stays inside what can be drawn");
+            Assert.That(Enumerable.Range(40, 48).Min(y => w.LandMovedAt(64, y)), Is.GreaterThanOrEqualTo(World.LandLowest));
+        }
+
+        [Test]
+        public void ACliffStandsOnOneSideOfItsLineAndRiseTurnsIt()
+        {
+            var w = Flat();
+            w.ApplyRoom(Formed(LandStamp.Cliff, 240));
+            Assert.That(w.LandMovedAt(64, 52), Is.GreaterThan(w.LandMovedAt(64, 76) + 100), "high to the north of east");
+            var other = Flat();
+            other.ApplyRoom(Formed(LandStamp.Cliff, -240));
+            Assert.That(other.LandMovedAt(64, 76), Is.GreaterThan(other.LandMovedAt(64, 52) + 100), "and the other way below 0");
+        }
+
+        [Test]
+        public void ACanyonOrCliffNeedsALine()
+        {
+            Assert.That(LandStamp.Make(64, 64, 32, 200, LandStamp.Canyon, 0, 0, 40, 3).Known, Is.False);
+            Assert.That(LandStamp.Make(64, 64, 32, 200, LandStamp.Cliff, 1, 1, 40, 3).Known, Is.True);
+        }
+
+        [TestCase(LandStamp.Canyon)]
+        [TestCase(LandStamp.Cliff)]
+        public void AFormedStampMeetsTheLandRoundItAndComesOffExactly(string profile)
+        {
+            var w = Flat();
+            var before = Moved(w);
+            Assert.That(w.ApplyRoom(Formed(profile, 288)).Done);
+            for (int a = 0; a < 360; a += 15)
+            {
+                int dx = (int)Math.Round(32 * Math.Cos(a * Math.PI / 180)), dy = (int)Math.Round(32 * Math.Sin(a * Math.PI / 180));
+                Assert.That(Math.Abs(w.LandMovedAt(64 + dx, 64 + dy)), Is.LessThanOrEqualTo(8), "a metre at most at its rim");
+            }
+            Assert.That(w.ApplyRoom(RoomCommand.Undo("Host", 1)).Done);
+            Assert.That(Moved(w), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void RoughLandIsNotOneSmoothSlab()
+        {
+            var smooth = Flat();
+            smooth.ApplyRoom(Stamp(64, 64, 32, 160));
+            var rough = Flat();
+            rough.ApplyRoom(Stamp(64, 64, 32, 160, LandStamp.Dome, 40));
+            int differ = Enumerable.Range(0, Size * Size).Count(i => Math.Abs(smooth.LandMovedAt(i % Size, i / Size) - rough.LandMovedAt(i % Size, i / Size)) >= 8);
+            Assert.That(differ, Is.GreaterThan(300), "a metre or more off the plain dome over many cells");
+        }
+
+        [Test]
+        public void WhatAStampMakesSteepPaintsAsBareRock()
+        {
+            var w = Flat();
+            Assert.That(CellPaint.Mix(w, 64, 64), Is.SameAs(CellPaint.Mix(w, w.At(64, 64))), "nothing until land is stamped");
+            w.ApplyRoom(Formed(LandStamp.Cliff, 240));
+            int rock = 0;
+            for (int y = 40; y < 90; y++)
+                if (w.LandDrop(64, y) >= World.LandSteep)
+                {
+                    rock++;
+                    Assert.That(CellPaint.Mix(w, 64, y)[CellPaint.Layers.ToList().IndexOf(CellPaint.Rock)], Is.GreaterThan(0.9f));
+                }
+            Assert.That(rock, Is.GreaterThan(0), "the face is steep");
+        }
 
         static int[] Moved(World w) => Enumerable.Range(0, Size * Size).Select(i => w.LandMovedAt(i % Size, i / Size)).ToArray();
 

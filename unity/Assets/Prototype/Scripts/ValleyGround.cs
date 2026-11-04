@@ -317,7 +317,7 @@ public sealed class ValleyGround
         {
             if (!world.InBounds(x, y)) continue;
             int key = world.Idx(x, y);
-            if (!ReferenceEquals(paintedMix[key], CellPaint.Mix(world, world.Cells[key], scorched(x, y)))) paintedMix[key] = null;
+            if (!ReferenceEquals(paintedMix[key], CellPaint.Mix(world, x, y, scorched(x, y)))) paintedMix[key] = null;
         }
         WriteOnePaint();
         using (DetailMarker.Auto()) ClearBareDetail(scorched);
@@ -387,7 +387,7 @@ public sealed class ValleyGround
             if (batch.Count == most || looked.Count == MostLooks) break;
             looked.Add(cell);
             int key = world.Idx(cell.x, cell.y);
-            var mix = CellPaint.Mix(world, world.Cells[key], scorched(cell.x, cell.y));
+            var mix = CellPaint.Mix(world, cell.x, cell.y, scorched(cell.x, cell.y));
             bool same = ReferenceEquals(mix, paintedMix[key]);
             PerfCounts.Add(same ? "ground.repaint_same" : "ground.repaint_new");
             if (same) continue;
@@ -423,7 +423,7 @@ public sealed class ValleyGround
     // What a cell paints over the saved paint: nothing while it paints as it was baked.
     IReadOnlyList<float> PaintOf(int x, int y, bool scorched)
     {
-        var mix = CellPaint.Mix(world, world.At(x, y), scorched);
+        var mix = CellPaint.Mix(world, x, y, scorched);
         return ReferenceEquals(mix, bakedPaint[world.Idx(x, y)]) ? null : mix;
     }
 
@@ -519,7 +519,7 @@ public sealed class ValleyGround
             // Snow only lies on the grass (clearing it under snow would leave the grass bare after the thaw).
             var c = world.At(x, y);
             if (CellPaint.IsSnowy(c, world.Rules)) continue;
-            bool grassy = CellPaint.IsGrassy(CellPaint.Mix(world, c, scorched(x, y)));
+            bool grassy = CellPaint.IsGrassy(CellPaint.Mix(world, x, y, scorched(x, y)));
             int key = world.Idx(x, y);
             if (grassy && !cleared.Remove(key)) continue;
             if (!grassy) cleared.Add(key);

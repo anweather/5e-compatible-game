@@ -32,6 +32,7 @@ public partial class ValleyChemistry : MonoBehaviour
     readonly TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
     WetGround wet;
+    LandRocks rocks;
 
     // A layer's colour in the rules, from what it's made of.
     static LookDef LayerLook(Rules rules, string layer)
@@ -123,6 +124,9 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The ground under the cells; null before the first Bind.</summary>
     public ValleyGround Ground => ground;
 
+    /// <summary>The rocks on stamped land; null until the ground is bound.</summary>
+    public LandRocks Rocks => rocks;
+
     /// <summary>How wet the ground looks, 0 dry to 1 soaked (WetGround).</summary>
     public float Wetness => wet != null ? wet.Wetness : 0f;
 
@@ -134,6 +138,7 @@ public partial class ValleyChemistry : MonoBehaviour
         if (ground == null)
         {
             ground = new ValleyGround(layout, chunks);
+            rocks = new LandRocks(grid);
             // Details only on the terrains near the camera (ChemGrid.Detail).
             grid.DetailDistance = ground.DetailDistance;
             grid.DetailChunksChanged += ground.DrawDetails;
@@ -319,7 +324,12 @@ public partial class ValleyChemistry : MonoBehaviour
         if (ground == null) return;
         for (int v = y - reach - 1; v <= y + reach + 1; v++)
             for (int u = x - reach - 1; u <= x + reach + 1; u++)
-                if (grid.World.InBounds(u, v)) ground.Reshape(u, v);
+                if (grid.World.InBounds(u, v))
+                {
+                    ground.Reshape(u, v);
+                    ground.Repaint(u, v);
+                }
+        rocks?.Moved(x, y, reach + 1);
     }
 
     public void CellChanged(int x, int y, string from, string to, bool reshaped)
@@ -547,6 +557,7 @@ public partial class ValleyChemistry : MonoBehaviour
     void LateUpdate()
     {
         if (ground == null) return;
+        rocks.Tick(Time.deltaTime);
         timer.Restart();
         foreach (var at in treesChanged) ground.WritableData(at).treeInstances = trees[at];
         treesChanged.Clear();

@@ -79,6 +79,15 @@ land units, roughness, seed. A mountain is a large rough dome, or several; a val
 tool). Profiles are integer maths with `WorldNoise`, so a row of about 100 bytes on the
 wire expands alike on every peer.
 
+**Canyons and cliffs (2026-11-04).** Two more profiles, with a **face**: a wall that wanders along a line, a cell wide for every
+6 m of it, in bands of rock. `rise` is the wall's height. A canyon cuts down at most 14 m and raises the rest as a rim, which
+is how it gets walls past the -17 m floor, and its floor climbs to the land at both ends so nobody is trapped. `rough` is 40
+when left out, on four octaves of integer noise, so a plain ask isn't a smooth slab. Land has one height a point, so there's
+no true overhang: `LandRocks` sets boulders into the faces and jutting at the lips, only drawn, worked out by each peer from
+the land. Land a stamp makes steep paints as rock, and `TerrainRock.shader` maps the rock layer from the sides at two sizes,
+so a wall doesn't smear and a mountain doesn't show the tile. Known gaps: forest trees stay on a face, and a canyon cut
+beside a lake leaves the lake's surface ending in a straight edge above the floor.
+
 **Live:** `act` gains `what: "land"` with the row, through `RoomChange.Act` and the room's change mode. `World.Acts.cs` keeps
 it. **`undo_act`** subtracts the same integers, so unlike laid ground it always works in any order; a stamp that would leave
 the terrain's range is refused, never clamped, or undo would break. The save keeps stamps (as `ActText`), and a late joiner
