@@ -12,7 +12,7 @@ import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
 import { golfState, startGolf } from "../src/golf.ts";
 import { courseFromJson, courseRespawn, courseState, courseStep, setCourse, zoneState } from "../src/course.ts";
-import gauntlet from "../../world/gauntlet.json" with { type: "json" };
+import gauntlet from "../../world/maps/valley/gauntlet.json" with { type: "json" };
 import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, fnv1a, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, liftAt, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../rules-frozen/mods/high-walls.json" with { type: "json" };
 
