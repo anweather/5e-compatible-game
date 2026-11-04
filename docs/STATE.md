@@ -62,6 +62,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **Whisper landed** (e7480c2b): Andrew's voice reached Claude in a Windows release player (11 voice messages, open 6-56 ms, about 1 s to transcribe). The VC++ runtime and Vulkan loader ship with the game (J-072); proven on a clean-ish VM clone. Update from 0.1.10 is 142.7 MB. Credits' copyright lines checked against the LICENSE files (whisper.unity corrected to Macoron, in 058c5cb1; reaches players in 0.1.12). VC++ DLLs: Microsoft's pages allow unmodified retail copies from VCRedist for licensed Visual Studio users; Andrew has Community; its full licence terms aren't read yet. Linux and Steam Deck haven't run.
 - **Vivox (0.1.12):** `vivox-spike` (8f44eae9, not landed): sign-in and libraries answered; the mic and fade aren't. Next: `briefs/vivox-pc-run.md` on the PC with Andrew. Vivox is on in the Dashboard. The Mac may need unlocking to be the second participant: its audio stalled with the screen locked.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
+- **`mcp-act` landed** (e8c1113b; `docs/design/world-acts.md`, backlog 30): `act` and `undo_act`, one-off happenings that aren't mods. Not tried with a real Claude yet.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
