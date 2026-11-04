@@ -48,14 +48,14 @@ The one page a new PM session reads first. Keep it short: history goes in
   the cast sounds (B + pulse 30%), the lost-cast fix (#39), the play log (F8 marks), the Gauntlet's rules, surf
   toward land, the night stutter fix. Notes: `docs/handoffs/release-0.1.10-notes.md`. Install from the draft
   and update from 0.1.9 green on the PC; main merged back (dev = main = 155ac1c).
-- **0.1.11:** live rule changes, talking to Claude by voice (Whisper), bring your own Claude. **0.1.12:** proximity voice (Andrew, 2026-11-03), and the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
+- **0.1.11** published 2026-11-03: live rule changes, talking to Claude by voice (Whisper), bring your own Claude. **0.1.12:** proximity voice (Andrew, 2026-11-03), and the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
 - Builds: Windows builds on the PC (Andrew, 2026-10-31); the Mac's headless build
   (`PrototypeBuild.BuildWindowsFromCommandLine`, RELEASING.md) is the fallback. The GitHub Actions runner is
   shelved (`docs/CI_BUILDS.md`). The Mac app is shelved at 0.1.7 until Andrew brings it up (J-049): releases are Windows only.
 
 ## In flight
 
-- **0.1.11: ship when `voice-libs-bundled` lands and the candidate is green** (Andrew, 2026-11-03; no further ask). J-070: talking to Claude goes in; Vivox doesn't. A player's own API key goes in too (J-071). Before cutting: add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
+- **0.1.11 published** 2026-11-03 at b79f537 (Windows only): `main` merged back into dev. The update hop 0.1.106 → 0.1.107 passed; the Esc menu's "Update and restart" wasn't tried.
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
 - **Settings > Claude setup:** landed and worked with Andrew's real key in a release player (e0074b28 fixed sideways scrolling; one look after a relaunch). His key is still saved on the PC. Not tried for real: the cap stopping a run, Remove, a second Claude Code install. Cap default $1 a session; the model list stays Haiku and Opus (J-072).
@@ -67,7 +67,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Next, in order
 
-1. Land what's in flight (0.1.11).
+1. Land what's in flight (vivox-spike).
 2. 0.1.11 when Andrew says.
 3. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 4. Gaits by rule (`builders.md`), after bodies (J-068).
