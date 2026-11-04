@@ -576,6 +576,8 @@ namespace Chem
         /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
         public bool? Hot;
         public string Gas, TerrainTag, NotTerrainTag;
+        /// <summary>liquid: the cell holds (unfrozen) this liquid, by id or tag (Rules.Liquids.cs); "water" is liquid 0, as the water condition.</summary>
+        public string Liquid;
         /// <summary>The least power the element must arrive with (a charged cast's).</summary>
         public int? Power;
         /// <summary>The chance the rule applies, rolled last, once everything else holds.</summary>
@@ -589,6 +591,8 @@ namespace Chem
         public int? Boil;
         public bool Melt, Freeze, Extinguish, Condense;
         public bool HasAddWater, AddWaterPower; public int AddWaterN;
+        /// <summary>liquid: the liquid addWater pours (Rules.Liquids.cs); null, water.</summary>
+        public string Liquid;
         public bool HasSetCover; public string SetCover;
         public int? SpreadCover;
         public bool Break;
@@ -742,6 +746,7 @@ namespace Chem
                 ["terrain"] = materials["terrain"] as JObject ?? new JObject(),
                 ["covers"] = materials["covers"] as JObject ?? new JObject(),
                 ["gases"] = materials["gases"] as JObject ?? new JObject(),
+                [LiquidsKey] = materials[LiquidsKey] as JObject ?? new JObject(),
                 ["cellRules"] = reactions["cell"] as JArray ?? new JArray(),
                 ["entityRules"] = reactions["entity"] as JArray ?? new JArray(),
                 ["spells"] = get("spells.json", false) as JArray ?? new JArray(),
@@ -829,6 +834,7 @@ namespace Chem
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
             r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
+            r.ParseLiquids(doc);
             ParseGroups(r, (JObject)doc["groups"]);
             ParseCombos(r, (JObject)doc["combos"]);
             return r;
@@ -1112,6 +1118,7 @@ namespace Chem
                 Hot = Bool(c["hot"]),
                 Conductive = Bool(c["conductive"]),
                 Gas = Str(c["gas"]),
+                Liquid = Str(c["liquid"]),
                 TerrainTag = Str(c["terrainTag"]),
                 NotTerrainTag = Str(c["notTerrainTag"]),
                 Power = Int(c["power"]),
@@ -1163,6 +1170,7 @@ namespace Chem
                 if (aw.Type == JTokenType.String) e.AddWaterPower = (string)aw == "power";
                 else e.AddWaterN = Int(aw) ?? 0;
             }
+            e.Liquid = Str(o["liquid"]);
             // setCover: null is meaningful (clear the cover), so presence is what counts.
             if (o.TryGetValue("setCover", out var sc))
             {

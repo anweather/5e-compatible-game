@@ -164,6 +164,7 @@ namespace Chem
             RuleField.Flag("melts"),
             RuleField.Flag("hot"),
             RuleField.Reference("gas", "gases"),
+            RuleField.Text("liquid"),
             RuleField.Text("terrainTag"),
             RuleField.Text("notTerrainTag"),
             RuleField.Flag("conductive"),
@@ -184,6 +185,7 @@ namespace Chem
             RuleField.Flag("extinguish"),
             RuleField.Flag("condense"),
             RuleField.Value("addWater").CappedBy("effects.addWater"),
+            RuleField.Reference("liquid", "liquids"),
             RuleField.Reference("setCover", "covers"),
             RuleField.Number("spreadCover").CappedBy("effects.spreadCover"),
             RuleField.Flag("break"),
@@ -212,6 +214,21 @@ namespace Chem
             RuleField.Reference("grow", "terrain"),
             RuleField.Value("ticks"),
             RuleField.Number("wave").CappedBy("effects.wave"));
+
+        /// <summary>materials.json "liquids" (Rules.Liquids.cs): a row of the liquids table, water being built in.</summary>
+        public static readonly RuleSchema Liquids = new RuleSchema(
+            RuleField.Text("name"),
+            RuleField.Value("tags"),
+            RuleField.Whole("thick", 0, max: 600),
+            RuleField.Whole("heap", 2, max: 16),
+            RuleField.Flag("soaks"),
+            RuleField.Flag("floats"),
+            RuleField.Flag("drowns"),
+            RuleField.Reference("boils", "gases"),
+            RuleField.Reference("touch", "elements"),
+            RuleField.Number("speed", 0, max: 1),
+            RuleField.Look("look"),
+            RuleField.Value("lapse"));
 
         /// <summary>reactions.json's cell and entity rules.</summary>
         public static readonly RuleSchema Reactions = new RuleSchema(

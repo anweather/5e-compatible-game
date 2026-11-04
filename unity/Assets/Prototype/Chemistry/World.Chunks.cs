@@ -247,7 +247,8 @@ namespace Chem
         /// <summary>
         /// Stable fingerprint of the cells (FNV-1a), matching the TS golden script in the tests
         /// (cellHash in sandbox/test/sim.test.ts). Height and Life are written only when they
-        /// aren't 0, so worlds nobody has terraformed or grown hash as they did before them.
+        /// aren't 0, and a liquid only when it isn't water, so worlds nobody has terraformed,
+        /// grown or poured a liquid on hash as they did before them.
         /// </summary>
         public string CellHash()
         {
@@ -292,7 +293,7 @@ namespace Chem
         }
 
         // What AppendCell writes, into a running hash.
-        static void AddCell(ref Fnv1aSum sum, Cell c)
+        void AddCell(ref Fnv1aSum sum, Cell c)
         {
             sum.Add(c.T);
             sum.Add(',');
@@ -319,6 +320,13 @@ namespace Chem
             AddIfSet(ref sum, 'k', c.Slick);
             AddIfSet(ref sum, 's', c.Star);
             AddIfSet(ref sum, 'c', c.Cracked);
+            // A liquid other than water by its id (never its index), so a world of water hashes as it did.
+            if (c.Kind != 0)
+            {
+                sum.Add(',');
+                sum.Add('q');
+                sum.Add(LiquidId(c));
+            }
             sum.Add(';');
         }
 
@@ -330,7 +338,7 @@ namespace Chem
             sum.Add(value);
         }
 
-        static void AppendCell(StringBuilder sb, Cell c)
+        void AppendCell(StringBuilder sb, Cell c)
         {
             sb.Append(c.T).Append(',').Append(c.Water).Append(',').Append(c.Frozen ? 1 : 0).Append(',')
               .Append(c.Cover ?? "").Append(',').Append(c.Fire).Append(',').Append(c.Fuel).Append(',')
@@ -343,6 +351,7 @@ namespace Chem
             if (c.Slick != 0) sb.Append(",k").Append(c.Slick.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Star != 0) sb.Append(",s").Append(c.Star.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Cracked != 0) sb.Append(",c").Append(c.Cracked.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (c.Kind != 0) sb.Append(",q").Append(LiquidId(c));
             sb.Append(';');
         }
     }

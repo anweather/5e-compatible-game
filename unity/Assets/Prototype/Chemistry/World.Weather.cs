@@ -22,8 +22,9 @@ namespace Chem
         readonly List<(int x, int y, int lands)> newMeteors = new List<(int x, int y, int lands)>();
 
         /// <summary>
-        /// The base rules' snow covers, for the view's drawing (CellPaint, CellHeightfield, ChemGrid), which
-        /// doesn't read the rules' yet; the world's snow reads sim.json weather.snow.cover and bank.
+        /// The base rules' snow covers: what the view's drawing (CellPaint, CellHeightfield) falls back on
+        /// with no rules to hand, and the probes' names. The world's snow, and the view given the rules,
+        /// read sim.json weather.snow.cover and bank (CellPaint.Snowy, IsBank).
         /// </summary>
         public const string SnowCover = "snow", BankCover = "snowbank";
 
@@ -159,8 +160,12 @@ namespace Chem
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
-                    if (IsBlocking(c) || c.Water >= max) continue;
-                    if (Rand() < chance) c.Water++;
+                    if (IsBlocking(c) || c.Water >= max || !TakesWater(c)) continue;
+                    if (Rand() < chance)
+                    {
+                        c.Water++;
+                        c.Liquid = 0;
+                    }
                 }
             }
         }
@@ -174,7 +179,7 @@ namespace Chem
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
-                    if (c.Water == 0 || c.Water > 2 || c.Frozen) continue;
+                    if (c.Water == 0 || c.Water > 2 || c.Frozen || c.Liquid != 0) continue;
                     if (Rand() < chance) c.Water--;
                 }
             }
@@ -189,7 +194,7 @@ namespace Chem
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
-                    if (c.Water == 0 || c.Water > 2 || c.Frozen == freeze) continue;
+                    if (c.Water == 0 || c.Water > 2 || c.Frozen == freeze || c.Liquid != 0) continue;
                     if (Rand() < chance) c.Frozen = freeze;
                 }
             }
@@ -327,7 +332,9 @@ namespace Chem
                 return;
             }
             c.Cover = null;
-            if (c.Water == 0) c.Water = 1;
+            if (c.Water > 0) return;
+            c.Water = 1;
+            c.Liquid = 0;
         }
 
         void Strike()

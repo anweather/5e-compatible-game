@@ -321,11 +321,11 @@ namespace Chem
         }
 
         static bool SameCell(Cell a, Cell b) =>
-            a.T == b.T && a.Water == b.Water && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
+            a.T == b.T && a.Water == b.Water && a.Kind == b.Kind && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
             && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Cracked == b.Cracked && a.Lit == b.Lit && a.Slick == b.Slick;
 
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
-        static JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
+        JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
         {
             var o = new JObject { ["x"] = ch.X, ["y"] = ch.Y };
             if (!ch.Active) o["inactive"] = true;
@@ -341,8 +341,21 @@ namespace Chem
             return o;
         }
 
-        // Rust only when it has some, so saves without it read as they did.
-        static JArray SaveCell(int i, Cell c)
+        // Rust only when it has some, so saves without it read as they did; a liquid other than water
+        // last, by its id (never its index), so saves of water read as they did.
+        JArray SaveCell(int i, Cell c)
+        {
+            var a = SaveCellFields(i, c);
+            if (c.Kind == 0) return a;
+            while (a.Count < LiquidField) a.Add(0);
+            a.Add(LiquidId(c));
+            return a;
+        }
+
+        // Where a cell's liquid id goes: after Cracked.
+        const int LiquidField = 19;
+
+        static JArray SaveCellFields(int i, Cell c)
         {
             var a = new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
             if (c.Rust != 0 || c.Heat != 0 || c.Lit != 0 || c.Slick != 0 || c.Star != 0 || c.Cracked != 0) a.Add(c.Rust);
@@ -368,7 +381,7 @@ namespace Chem
         }
 
         // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.
-        static void LoadCell(Cell c, JArray a)
+        void LoadCell(Cell c, JArray a)
         {
             c.T = (string)a[1];
             c.Water = (int)a[2];
@@ -388,7 +401,17 @@ namespace Chem
             c.Slick = Later(a, 16);
             c.Star = Later(a, 17);
             c.Cracked = Later(a, 18);
+            c.Liquid = LoadLiquid(a);
             c.ForgetDef();
+        }
+
+        // A saved liquid's kind in the rules in force (the save's fingerprint matched them, so they have it).
+        int LoadLiquid(JArray a)
+        {
+            if (a.Count <= LiquidField) return 0;
+            int kind = Rules.LiquidIndex((string)a[LiquidField]);
+            if (kind < 0) throw new SaveException($"This save doesn't fit: a cell holds liquid {a[LiquidField]}, which the rules don't have");
+            return kind;
         }
 
         // A field added after the first save format: 0 when the cell's array stops short of it.

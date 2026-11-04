@@ -19,7 +19,7 @@ namespace Chem.Mcp
     public sealed partial class Workbench
     {
         /// <summary>materials.json's three tables, the kinds of material.</summary>
-        public static readonly string[] MaterialKinds = { "terrain", "covers", "gases" };
+        public static readonly string[] MaterialKinds = { "terrain", "covers", "gases", Rules.LiquidsKey };
 
         readonly Dictionary<string, Draft> drafts = new Dictionary<string, Draft>(StringComparer.Ordinal);
         int nextDraft = 1;

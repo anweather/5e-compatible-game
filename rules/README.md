@@ -50,7 +50,8 @@ Each has a colour in `elements.json` (see "Looks").
   - `cover` (list)
   - `fire` (`true`, `false` or a minimum)
   - `fireBelow`
-  - `water` (unfrozen water present)
+  - `water` (unfrozen water present: liquid 0)
+  - `liquid` (unfrozen liquid of this id, or with this tag, present; `"water"` is liquid 0; see "Liquids")
   - `frozen`
   - `melts` (the cover melts: its material has `melt.water`)
   - `gas` (`"any"` or an id)
@@ -61,7 +62,7 @@ Each has a colour in `elements.json` (see "Looks").
 - **Effects:**
   - `ignite` (an intensity, or `"cover"`), `extinguish`
   - `boil`, `melt`, `freeze`, `condense`
-  - `addWater` (a number, or `"power"` for the caster's power)
+  - `addWater` (a number, or `"power"` for the caster's power), with `liquid` (a liquid's id) to pour that liquid instead of water
   - `setCover`, `spreadCover`
   - `break`, `setTerrain`, `raise`
   - `shatter` (a hit on the cell's ice or terrain: it cracks, or if cracked shatters)
@@ -170,6 +171,13 @@ replaying the casts, has the same clock and weather):
   fog it clears first), for `duration` ticks (half again per charge level),
   ramping in over `weather.rampMinutes`; then the seed's weather resumes.
   Held weather works even in the calm start.
+
+## Liquids (`materials.json` `liquids`)
+
+What a cell's water is: `Cell.Water` is the amount, `Cell.Liquid` the kind, 0 being water, built in. The base
+rules have no rows; a mod adds them (`thick`, `heap`, `soaks`, `floats`, `drowns`, `boils`, `touch`, `speed`,
+`tags`, `look`, `lapse`). Two kinds never share a cell; where one would run onto another it lays its `touch`
+element there instead. The fields and the rest are in `docs/RULES_MCP.md` "Liquids".
 
 ## Gases (`materials.json` `gases`)
 

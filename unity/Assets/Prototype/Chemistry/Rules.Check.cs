@@ -22,6 +22,7 @@ namespace Chem
             check.Combos();
             check.Numbers();
             check.Lapses();
+            check.Liquids();
             check.Buildings();
             check.Things();
             check.Lays();
@@ -431,6 +432,7 @@ namespace Chem
                     EffectRefs(id, e);
                     DissolveRef(id, e);
                 }
+                LiquidRef(id, cond, effects.OfType<JObject>());
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
                 VerbCond(id, cond);
