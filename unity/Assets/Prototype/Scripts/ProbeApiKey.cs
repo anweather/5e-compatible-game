@@ -68,7 +68,10 @@ public class ApiKeyProbe : ProbeScenario
             ApiKey.Session.Limit = capWas;
             ApiKey.Remove();
             Check("removed_goes_back_to_claude_code", !ApiKey.InPlay && chat.ChosenHarness is ClaudeChat);
+            ClaudeSetupSettings.ShowPath(new string('x', 300));
             yield return ShowSetup("claude-code");
+            Check("a_long_path_doesnt_widen_the_page", ClaudeSetupSettings.Widest > 0f && ClaudeSetupSettings.Widest <= ClaudeSetupSettings.Room, $"{ClaudeSetupSettings.Widest:0} of {ClaudeSetupSettings.Room:0}");
+            ClaudeSetupSettings.ShowPath(null);
         }
         finally
         {
