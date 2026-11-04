@@ -151,7 +151,7 @@ namespace Chem
         void SpillWater(int x, int y)
         {
             var c = At(x, y);
-            int units = c.Water, max = Rules.Sim.WaterMaxLevel, kind = c.Liquid;
+            int units = c.Water, max = Rules.Sim.WaterMaxLevel;
             c.Water = 0;
             c.Frozen = false;
             var seen = new HashSet<int> { Idx(x, y) };
@@ -159,7 +159,7 @@ namespace Chem
             while (units > 0 && ring.Count > 0)
             {
                 var next = NextRing(ring, seen);
-                units = PourRound(next, units, max, kind);
+                units = PourRound(c, next, units, max);
                 ring = next;
             }
         }
@@ -179,8 +179,9 @@ namespace Chem
         }
 
         // Pours units onto a ring one at a time round and round until they're gone or it's full; returns what's left.
-        int PourRound(List<int> next, int units, int max, int kind)
+        int PourRound(Cell from, List<int> next, int units, int max)
         {
+            int kind = from.Liquid;
             for (bool moved = true; units > 0 && moved;)
             {
                 moved = false;
@@ -189,6 +190,7 @@ namespace Chem
                     if (units == 0) break;
                     var n = Cells[k];
                     if (n.Water >= max || (n.Water > 0 && n.Liquid != kind)) continue;
+                    Pushed(from, n, kind);
                     n.Water++;
                     n.Liquid = kind;
                     units--;

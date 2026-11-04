@@ -168,8 +168,8 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
    kind `liquid`. Every golden holds; new goldens for honey, red paint and molten rock (`LiquidTests`).
    Then `hot`, `freezes`, `sets` (branch `liquids-2`, `LiquidProductTests`): heat that lights what it touches and
    cools, a freeze into a terrain or cover wherever water would freeze (with the base `cold-liquid` row), a
-   `Cell.Sets` count into a terrain; goldens for a mod's magma and syrup. Left: the view's coloured water mesh,
-   breath and wading by `DrownDepth`.*
+   `Cell.Sets` count into a terrain; goldens for a mod's magma and syrup. The view's coloured water mesh is in too
+   (`liquids-view`). Left: breath and wading by `DrownDepth`.*
 5. **P5 mix** (S, on P1 and temporary materials).
 
 **The first test** (after step 2): asked of Claude, "give me a spell that lays a slick of black ice

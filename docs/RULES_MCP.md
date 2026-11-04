@@ -461,7 +461,7 @@ base rules have no table, so a world of water runs, hashes and saves exactly as 
   cold spell freezes any liquid that freezes, naming none), freezing ground (`freeze` terrains, on the soak pass) and
   snow on a thin pool (two units or less). Without `freezes` it doesn't freeze. A frozen syrup is a cover of candy.
 - **`sets`** `{ "into": a terrain, "after": ticks }` (1 to 21 600): a pour of it sets that long after (`Cell.Sets`,
-  counting down on the timers pass); a unit that runs onto a dry cell takes its count, onto its own kind the sooner of
+  counting down on the timers pass); a unit that runs or is pushed (a raised cell) onto a dry cell takes its count, onto its own kind the sooner of
   the two. At 0 the cell's liquid is gone and its terrain is `into` (`World.TickSets`). A mod's molten rock with
   `hot` and `sets` burns the grass it runs over, cools, and sets into rock where it lies. `Cell.Sets` is in the cell
   hash (`,p<n>`, only when set) and in a save (after the liquid's id), so old hashes and saves are unchanged.

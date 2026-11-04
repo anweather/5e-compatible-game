@@ -292,6 +292,7 @@ namespace Chem
                     var n = At(nx, ny);
                     if (c.Water == 0) break;
                     if (IsBlocking(n) || n.Water >= max || (n.Water > 0 && n.Liquid != kind)) continue;
+                    Pushed(c, n, kind);
                     n.Water++;
                     n.Liquid = kind;
                     c.Water--;

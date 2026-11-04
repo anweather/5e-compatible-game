@@ -94,6 +94,35 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void PushedOutOfACellItStillSetsAndBurns()
+        {
+            var w = new World(With(MagmaRow), 64, 64, 7, "grass");
+            Assert.That(w.AddLiquid(20, 20, "magma", 4), Is.True);
+            w.DisplaceWater(20, 20);
+            var pushed = w.Cells.Where(c => c.Water > 0).ToList();
+            Assert.That(pushed, Is.Not.Empty);
+            Assert.That(pushed.All(c => c.Sets == 300 && c.Heat == 160), Is.True, "each cell it was pushed onto took its count and heat");
+            Run(w, 310);
+            Assert.That(Wet(w, "magma"), Is.Zero, "pushed magma sets as poured magma does");
+        }
+
+        [Test]
+        public void ADriedCellHoldsNoSettingInItsHashOrSave()
+        {
+            var rules = With(MagmaRow);
+            var w = new World(rules, 64, 64, 7, "grass");
+            Assert.That(w.AddLiquid(20, 20, "magma", 2), Is.True);
+            var c = w.At(20, 20);
+            c.Water = 0;
+            Assert.That(c.Sets, Is.GreaterThan(0), "the count lingers until the timers pass clears it");
+            Assert.That(w.CellText(), Does.Not.Contain(",p"));
+            var back = World.Load(w.Save(new ComboTests.Blank()), rules, new ComboTests.Blank());
+            Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()), "a peer loading now agrees");
+            Assert.That(w.AddLiquid(20, 20, "magma", 2), Is.True);
+            Assert.That(c.Sets, Is.EqualTo(300), "a fresh pour starts its own count, not the dried one's");
+        }
+
+        [Test]
         public void SyrupFreezesIntoItsCoverWhereColdLands()
         {
             var w = new World(Syrup(), 64, 64, 7, "grass");

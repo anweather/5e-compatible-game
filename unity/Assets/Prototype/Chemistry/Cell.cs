@@ -18,6 +18,8 @@ namespace Chem
         public int Kind => Water > 0 ? Liquid : 0;
         /// <summary>Ticks until the liquid here sets into its terrain (sets {into, after}, World.SetLiquid). 0: it doesn't set, or the cell is dry.</summary>
         public int Sets;
+        /// <summary>The count of the liquid setting here: Sets while a liquid besides water holds it, else 0. What's hashed and saved, as Kind is.</summary>
+        public int Setting => Kind != 0 ? Sets : 0;
         /// <summary>The water here is ice.</summary>
         public bool Frozen;
         /// <summary>oil, grease, ash, or null.</summary>

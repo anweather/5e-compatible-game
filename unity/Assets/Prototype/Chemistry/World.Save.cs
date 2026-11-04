@@ -322,7 +322,7 @@ namespace Chem
 
         static bool SameCell(Cell a, Cell b) =>
             a.T == b.T && a.Water == b.Water && a.Kind == b.Kind && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
-            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Cracked == b.Cracked && a.Lit == b.Lit && a.Slick == b.Slick && a.Sets == b.Sets;
+            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Cracked == b.Cracked && a.Lit == b.Lit && a.Slick == b.Slick && a.Setting == b.Setting;
 
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
         JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
@@ -349,7 +349,7 @@ namespace Chem
             if (c.Kind == 0) return a;
             while (a.Count < LiquidField) a.Add(0);
             a.Add(LiquidId(c));
-            if (c.Sets != 0) a.Add(c.Sets);
+            if (c.Setting != 0) a.Add(c.Setting);
             return a;
         }
 

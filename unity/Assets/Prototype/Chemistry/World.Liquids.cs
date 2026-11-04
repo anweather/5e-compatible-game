@@ -54,6 +54,7 @@ namespace Chem
         {
             if (c.Water > 0 && c.Liquid != kind) return false;
             if (c.Water >= max) return false;
+            if (c.Water == 0) c.Sets = 0;
             c.Water = Math.Min(max, c.Water + n);
             c.Liquid = kind;
             return true;
@@ -85,6 +86,12 @@ namespace Chem
             if (l.HotFor > 0 && from.Heat > to.Heat) to.Heat = from.Heat;
             if (l.SetsInto == null) return;
             if (dry || (from.Sets > 0 && (to.Sets == 0 || from.Sets < to.Sets))) to.Sets = from.Sets;
+        }
+
+        // A unit pushed out of a cell (DisplaceWater, SpillWater) onto another: as if it ran there. Before the unit lands.
+        void Pushed(Cell from, Cell to, int kind)
+        {
+            if (kind != 0) Carry(from, to, Rules.Liquid(kind), to.Water == 0);
         }
 
         /// <summary>
