@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -145,6 +146,7 @@ public partial class ValleyChemistry : MonoBehaviour
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
         SetLand(world);
+        CheckGround(world);
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
@@ -252,6 +254,15 @@ public partial class ValleyChemistry : MonoBehaviour
 
     /// <summary>The map changed: the next world reads its land afresh.</summary>
     public static void ForgetLand() => landFromFile = null;
+
+    // The ground drawn and the land the core reads are one ground: a few cells' worth, as a probe can't see land.
+    void CheckGround(World world)
+    {
+        if (landFromFile == null) return;
+        float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
+        var apart = LandCheck.Disagreements(ground.BaseHeight, landFromFile, world.W, world.H, unit, unit);
+        if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
+    }
 
     static void SetLand(World world)
     {

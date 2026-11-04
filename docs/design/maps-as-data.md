@@ -40,7 +40,7 @@ grass, and that's where most of the 13 MB is. So there are two levels:
 - **A map with no `ground/`** is drawn from `land` and the cells alone: heights interpolated from `land`, paint from
   `CellPaint`, trees and grass scattered from a seed by the cell's terrain. This is the Drowned Chain, and every map shaped
   through the MCP. No bake at all.
-- **The valley has a `ground/`:** one last bake, exported once and committed. Heights are 899 thousand samples (9 × 257²,
+- **The valley has a `ground/`:** one last bake, exported once and committed (Prototype > Export Valley Ground: 1.6 MB in all, within 0.064 m of `land` on every cell, in plain git). Heights are 899 thousand samples (9 × 257²,
   72 × 65²), 1.8 MB raw at 16 bits. The riverbed, the yard's gully and the soft paint stay exactly as they are.
 
 Both fill the same arrays, and one builder turns arrays into `TerrainData`. `land.json` stays what the core reads and stays
