@@ -726,6 +726,12 @@ Ship and load maps other than the valley: maps as shipped content, with a map id
 checksum, and a game mode (28) that just names one. A map inside a mod comes later. Findings, ranked:
 `docs/design/second-map-2026-11-02.md`; issue #69; test code on the `second-map` branch.
 
+## 30. What Claude can do in the world (Andrew, 2026-11-04)
+
+`act`, `undo_act`, superseded mods and `set_species` colours are built (`docs/design/world-acts.md`). Next, toward "spawn a
+cup and a ball, hit it in, fireworks": named acts, trigger events beyond `step`, and the golf ball generalised. Later: one
+animal apart from its kind, the water level, real mountains, undoing animals.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,

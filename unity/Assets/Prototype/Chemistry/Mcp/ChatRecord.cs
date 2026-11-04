@@ -53,7 +53,7 @@ namespace Chem.Mcp
         const string ToolError = "An error occurred invoking '";
 
         /// <summary>The tools that change the world for everyone: a success of any of these is Applied.</summary>
-        static readonly HashSet<string> WorldTools = new HashSet<string> { "apply", "revert", "set_time", "set_weather" };
+        static readonly HashSet<string> WorldTools = new HashSet<string> { "apply", "revert", "act", "undo_act", "set_time", "set_weather" };
 
         sealed class Call
         {

@@ -109,7 +109,7 @@ namespace Chem.Mcp
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
             if (Refused(said)) return said;
             draft.WentOn(slug.Length > 0 ? slug : draft.Id, json);
-            return said + "\n" + changes + UnseenNote(json);
+            return said + "\n" + changes + UnseenNote(json) + Superseded(json, draft.OnAs, PeerOf(peer));
         }
 
         // The mod this draft switched on as, while it's on as the draft sent it; a revert ends that, and so does another

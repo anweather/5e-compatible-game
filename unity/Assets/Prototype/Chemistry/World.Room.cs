@@ -72,6 +72,8 @@ namespace Chem
                 RoomChange.Revert => Revert(c),
                 RoomChange.SetTime => SetTime(c),
                 RoomChange.SetWeather => SetWeather(c),
+                RoomChange.Act => DoAct(c),
+                RoomChange.Undo => UndoAct(c),
                 _ => SwitchOn(c),
             };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);

@@ -229,6 +229,8 @@ public static class ProbeScenarios
         new Entry("apikey", typeof(ApiKeyProbe), 60f,
             "A player's own key against ApiStandIn, no real key or call: no key stays on Claude Code, a good key turns the chat to ApiChat, a message runs through the server and the loop, the spend cap stops the next one. " +
             "Checks: the check doesn't block, the key is in no record, console, environment or save, Remove goes back to Claude Code, no console errors."),
+        new Entry("act", typeof(ActProbe), 60f,
+            "Acts through the real MCP server in a running game (docs/design/world-acts.md): 20 trees near the wizard twice leave the mod list as it was, three deer come out, undo_act takes the second trees back and refuses animals, and set_species turns the turkeys blue. Checks: each of those, no console errors."),
         new Entry("chat", typeof(ChatProbe), 40f,
             "The chat box to Claude (J-060), with a stand-in for claude: Enter opens it and the wizard's controls go off, and come back; a message reaches one process on stdin, with the game's tools only and dontAsk; its words and tools show; a second message waits; notes.md stays bounded; " +
             "a failure shows, a sign-in failure says to sign in, and with no claude the install line shows. With --shots, a film of the box."),
