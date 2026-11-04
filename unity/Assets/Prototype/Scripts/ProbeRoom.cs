@@ -465,12 +465,12 @@ public abstract class RoomProbe : ProbeScenario
     /// lands at a tick, and a virtual player can be ticks behind, so the two are compared once it has run the tick
     /// this side is on; one that never gets there fails _client_reached_tick as well.
     /// </summary>
-    protected IEnumerator Agree(string name, string line)
+    protected IEnumerator Agree(string name, string line, float seconds = ReachSeconds)
     {
         yield return Wait(0.6f);
         var mine = Record.Seen(id, step);
         int tick = mine.netTick;
-        yield return Reach(name, tick);
+        yield return Reach(name, tick, seconds);
         if (Theirs == null) yield break;
         slowestReach = Mathf.Max(slowestReach, Theirs.reachSeconds);
         Metric("client_reach_slowest_s", slowestReach);

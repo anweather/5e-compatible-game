@@ -125,14 +125,16 @@ public class TriggerViewProbe : RoomProbe
         // Reverted: steps fire nothing, and nothing new shows, on either side.
         var off = RoomMcpProbe.Post(RoomMcpProbe.Tool("revert", $"{{\"mod\":\"{Slug}\"}}"));
         yield return RoomMcpProbe.Until(off);
-        yield return Agree("reverted", $"Player 1 switched off {Title}");
+        // The joiner of the long walk is still catching up (NetChem's CatchUpBudgetMs gains on this side only slowly),
+        // so these two give it the replay's time to reach their tick, not a live player's.
+        yield return Agree("reverted", $"Player 1 switched off {Title}", ReplaySeconds);
         if (Theirs == null) yield break;
         int casts = World.TriggeredCasts, theirShows = Theirs.showsSince, shows = grid.TriggeredShown.Count;
         var (projectiles, meteors) = (count.Projectiles, count.Meteors);
         yield return Walk(grid, me, -1, 0, BackSteps);
         yield return Ask("walk", $"-1,0,{BackSteps}");
         yield return Wait(Settle);
-        yield return Reach("after_revert", Net.NetTick);
+        yield return Reach("after_revert", Net.NetTick, ReplaySeconds);
         if (Theirs == null) yield break;
         Check("reverted_fires_nothing", World.TriggeredCasts == casts && Theirs.triggered == casts, $"{casts} casts, then {World.TriggeredCasts} here and {Theirs.triggered} there");
         Check("reverted_shows_nothing_here", grid.TriggeredShown.Count == shows && count.Projectiles == projectiles && count.Meteors == meteors,
