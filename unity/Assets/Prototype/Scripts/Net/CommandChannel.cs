@@ -50,6 +50,9 @@ public sealed class CommandChannel<TIntent> where TIntent : struct, ITickStamped
     /// <summary>Host: someone asked for this; it goes out with the next stamp.</summary>
     public void Request(TIntent intent) => pending.Add(intent);
 
+    /// <summary>Host: something was asked that the next stamp sends.</summary>
+    public bool HasPending => pending.Count > 0;
+
     /// <summary>
     /// Host: what was asked since the last stamp, stamped for <paramref name="tick"/> and recorded
     /// for joiners, in the order asked. Empty when nothing was: then nothing is sent.

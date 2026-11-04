@@ -101,16 +101,17 @@ public static class ProbeScenarios
             "One whole flight of the Dragon, staged quicker than a real one (DragonView, World.Dragon). Checks: the world keeps a start, R summons it, the sky darkens and it's seen, " +
             "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
-        new Entry("roomopen", typeof(RoomOpenProbe), 180f,
-            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, the client starts the defense waves through the host, a late joiner gets the mods and the waves. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
+        new Entry("roomopen", typeof(RoomOpenProbe), 200f,
+            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, the client starts the defense waves through the host, the client's wizard punches the host's (the same punch logged on both), a late joiner gets the mods, the waves and the punch. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
         new Entry("faunaresize", typeof(FaunaResizeProbe), 150f,
             "set_species deer scale 3 through the rules MCP in an Open room (#80), this Editor hosting and the virtual player joined: each side puts the same three deer by its wizard. " +
             "Checks: the same three scales on both peers before, three times them on both once the mod is on, and back once it's reverted; every deer out on each side at its row's size each time; " +
             "pace one for one at 0.35 and 1.25 and 1.5 at 3; checksums equal, no client errors. Metrics: pace_at_3 (how much a 3× animal's speed and flee distance grow). With --shots, a film of the three deer from the host's side.", players: 2),
-        new Entry("triggerview", typeof(TriggerViewProbe), 300f,
+        new Entry("triggerview", typeof(TriggerViewProbe), 420f,
             "Two step triggers through the rules MCP in an Open room (bolt-steps: a Fire Bolt 2 behind, every 6; meteor-steps: a Meteor 2 ahead after 6 ticks, every 12; each player's), " +
             "this Editor hosting and the virtual player joined; each wizard walks 12 cells. Checks: every triggered cast plays one show on each peer (one projectile a bolt, one meteor a meteor, no small star), " +
-            "the meteor falls for its delay, the log names Player 1 and Player 2, a late joiner plays no old shows, nothing fires or shows once reverted, checksums equal. " +
+            "the meteor falls for its delay, the log names Player 1 and Player 2, a late joiner plays no old shows; after a long walk (a loop, a step a tick) a second late joiner fires every cast the host did " +
+            "(metrics late_joiner_strike_history and long_walk_strike_history: the stands, strikes and leavings each joiner's history held, #83); nothing fires or shows once reverted, checksums equal. " +
             "With --shots, a film from behind the host's wizard.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
