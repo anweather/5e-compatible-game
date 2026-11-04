@@ -72,7 +72,7 @@ namespace Chem.Tests
             var (b, tools) = Tools();
             Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 33, rise: 10), Throws.Exception.With.Message.Contain("radius is 1 to 32"));
             Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 101), Throws.Exception.With.Message.Contain("rise is in metres"));
-            Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 10, profile: "mountain"), Throws.Exception.With.Message.Contain("flat, dome, cone or ridge"));
+            Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 10, profile: "mountain"), Throws.Exception.With.Message.Contain("flat, dome, cone, ridge, canyon or cliff"));
             Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 10, profile: "ridge"), Throws.Exception.With.Message.Contain("needs along"));
             StringAssert.Contains("cross water", tools.Act("land", near: "lake", radius: 8, rise: 10));
             var village = b.Places.All.First(p => p.Kind == "village");
