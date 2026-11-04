@@ -240,6 +240,9 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The terrain's ground drawn now at a world point over the cells.</summary>
     public float GroundAt(Vector3 p) => ground != null ? ground.GroundAt(p.x, p.z) : 0f;
 
+    /// <summary>Whether the drawn ground is still easing somewhere.</summary>
+    public bool GroundMoving => ground != null && ground.Shaping;
+
     /// <summary>Eases reshaped ground by dt seconds (ChemGrid calls this once a frame).</summary>
     public void AdvanceShaping(float dt) => ground?.Advance(dt);
 

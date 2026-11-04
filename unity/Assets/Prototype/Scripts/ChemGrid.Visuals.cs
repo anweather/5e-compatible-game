@@ -99,6 +99,8 @@ public partial class ChemGrid
         vineClumps ??= new CellVines(this, materials);
         boulderRests.Clear();
         shaping.Clear();
+        landAreas.Clear();
+        landGround.Clear();
         ForgetFx();
         fireLights = new FireLightPool(this, maxFireLights);
     }
