@@ -37,3 +37,6 @@
 
 # Visual Studio solution files are left exactly as committed (Windows line endings).
 *.sln -text
+
+# A map's ground pack: small, and exported once, so plain git rather than LFS (CI's checkout reads it).
+world/maps/*/ground/*.bin binary
