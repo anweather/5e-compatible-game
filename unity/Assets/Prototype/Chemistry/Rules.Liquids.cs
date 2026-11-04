@@ -39,6 +39,8 @@ namespace Chem
         public int SetsAfter;
         /// <summary>How fast a creature wades it (1 unhindered). Carried for the view and movers.</summary>
         public double Speed = 1;
+        /// <summary>Its mix group: meeting a liquid of the same, they derive a mix (Rules.Mix.cs); null, it doesn't mix.</summary>
+        public string Mix;
         /// <summary>How the view draws it (the water mesh's colour), or null for water's own. The view's only.</summary>
         public LookDef Look;
 
@@ -116,6 +118,7 @@ namespace Chem
             SetsInto = Str((o["sets"] as JObject)?["into"]),
             SetsAfter = Int((o["sets"] as JObject)?["after"]) ?? 0,
             Speed = Num(o["speed"]) ?? 1,
+            Mix = Str(o[MixKey]),
             Look = ParseLook(o["look"]),
         };
 

@@ -94,6 +94,8 @@ namespace Chem
         public List<RetiredMaterial> Retired { get; } = new List<RetiredMaterial>();
         /// <summary>The other rows gone from the room with their mods (a style, a building row, a species; World.Lapse.cs), oldest first: who added each, for a refusal.</summary>
         public List<RetiredRow> RetiredRows { get; } = new List<RetiredRow>();
+        /// <summary>The materials derived in this room, in the order they were made (World.Mix.cs): they compose over the mods, in this order.</summary>
+        public List<RoomMix> Mixes { get; } = new List<RoomMix>();
     }
 
     /// <summary>A row that went with its mod and isn't a material: the word for its table (ModAdd.Kind), its id, its mod and the tick.</summary>

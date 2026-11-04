@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
@@ -47,6 +48,11 @@ namespace Chem
         public IReadOnlyList<ActiveMod> Mods { get; }
         /// <summary>Base with every mod applied: what the world runs on.</summary>
         public Rules Effective { get; }
+        /// <summary>The same rules without the room's mixes (World.Mix.cs): what they compose over.</summary>
+        internal RuleSet Unmixed => unmixed ?? this;
+
+        RuleSet unmixed;
+
         /// <summary>The effective rules' fingerprint, for the netcode checksum.</summary>
         public string Fingerprint => Effective.Fingerprint;
 
@@ -57,6 +63,20 @@ namespace Chem
         /// </summary>
         public static Rules BaseOf(Rules loaded, ModPatch tuning) =>
             tuning == null ? loaded : loaded.WithMods(new[] { tuning });
+
+        /// <summary>These rules with a room's derived rows over them, in order. Throws <see cref="ModException"/> if one doesn't fit.</summary>
+        internal RuleSet WithMixes(IEnumerable<RoomMix> mixes)
+        {
+            var plain = Unmixed;
+            var patch = new JObject();
+            foreach (var m in mixes)
+            {
+                if (!(patch[m.Table] is JObject rows)) patch[m.Table] = rows = new JObject();
+                rows[m.Id] = JObject.Parse(m.Row);
+            }
+            if (patch.Count == 0) return plain;
+            return new RuleSet(plain.Base, plain.Mods, plain.Effective.WithMods(new[] { ModPatch.Parse(patch.ToString()) })) { unmixed = plain };
+        }
 
         /// <summary>The rules with no mods switched on.</summary>
         public static RuleSet Plain(Rules baseRules) =>

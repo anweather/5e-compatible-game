@@ -155,7 +155,9 @@ namespace Chem
         /// <summary>Puts the room's rules in force: the temporary materials they drop are retired and swept first.</summary>
         void PutInForce(RuleSet next)
         {
-            var gone = TemporaryMaterials.Where(t => !next.Effective.HasMaterial(t.Table, t.Id)).ToList();
+            var mixesGone = new List<TempMaterial>();
+            next = MixedOver(next, mixesGone);
+            var gone = TemporaryMaterials.Where(t => !next.Effective.HasMaterial(t.Table, t.Id)).Concat(mixesGone).ToList();
             var was = ModAdded;
             RoomRules = next;
             Room.Retired.RemoveAll(r => next.Effective.HasMaterial(r.Table, r.Id));

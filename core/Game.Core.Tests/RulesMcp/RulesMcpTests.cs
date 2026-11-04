@@ -136,6 +136,15 @@ namespace Chem.Tests
         // ---------- drafts and save ----------
 
         [Test]
+        public void SetMaterialPutsACoverInAMixGroup()
+        {
+            var d = Bench.SetMaterial(null, "ash", Rules.MixKey, "\"stain\"");
+            Assert.That((string)d.Patch["covers"]["ash"][Rules.MixKey], Is.EqualTo("stain"));
+            Assert.That(Bench.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) }).Covers["ash"].Mix, Is.EqualTo("stain"));
+            Assert.That(() => Bench.SetMaterial(null, "ash", "mixes", "\"stain\""), Throws.Exception.With.Message.Contains(Rules.MixKey), "a wrong name is refused, naming it among the fields");
+        }
+
+        [Test]
         public void ADraftSavesAndParsesBackToTheSamePatch()
         {
             var dir = Path.Combine(Path.GetTempPath(), "rules-mcp-" + Guid.NewGuid().ToString("N"));
