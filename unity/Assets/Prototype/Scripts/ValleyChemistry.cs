@@ -260,7 +260,8 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (landFromFile == null) return;
         float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
-        var apart = LandCheck.Disagreements(ground.BaseHeight, landFromFile, world.W, world.H, unit, unit);
+        // The map's own land: a loaded world's stamps are on the ground, not in the file.
+        var apart = LandCheck.Disagreements((x, y) => ground.BaseHeight(x, y) - world.LandMovedAt(x, y) * unit, landFromFile, world.W, world.H, unit, unit);
         if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
     }
 
