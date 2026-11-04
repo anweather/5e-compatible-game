@@ -56,6 +56,7 @@ public abstract class ProbeScenario : ShowcaseScript
     public string PrefixTtl { get; set; }
 
     readonly List<float> frameMs = new();
+    readonly Chem.FallWatch fall = new();
     readonly List<string> consoleLines = new();
     bool measuring;
     float measureStarted;
@@ -81,6 +82,7 @@ public abstract class ProbeScenario : ShowcaseScript
         measuring = true;
         yield return Run();
         measuring = false;
+        Check("fell", !fall.Fell, $"deepest under the ground {fall.Deepest:0.0} m");
         Summarise();
         // A screenshot is written at the end of the frame it was asked for.
         yield return null;
@@ -89,7 +91,9 @@ public abstract class ProbeScenario : ShowcaseScript
 
     void Update()
     {
-        if (measuring) frameMs.Add(Time.unscaledDeltaTime * 1000f);
+        if (!measuring) return;
+        frameMs.Add(Time.unscaledDeltaTime * 1000f);
+        if (wizard != null) fall.Feed(grid.GroundAt(wizard.transform.position) - wizard.transform.position.y, Time.deltaTime);
     }
 
     void OnLog(string message, string stack, LogType type)

@@ -98,8 +98,8 @@ touch them.
   `ValleyShape` and baked in the Editor.
 
 **Ground pack**
-: The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk. Planned
-  (`docs/design/maps-as-data.md`). A map without one is drawn from its land and cells.
+: The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
+  Prototype > Export Valley Ground; `docs/design/maps-as-data.md`). The valley has one, not yet read: the terrains are still baked. A map without one will be drawn from its land and cells.
 
 **Land**
 : The valley's baked ground under each cell, in water units: the hills
