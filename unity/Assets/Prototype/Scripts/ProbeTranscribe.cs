@@ -11,11 +11,12 @@ using UnityEngine;
 // frame times idle and meanwhile; one slower than its timeout, then the next; a silent file; a hold
 // through GameVoice to the chat, the way dictation's words go. With --only microphone, the default
 // microphone opened and closed instead: on a Mac its open blocked the Editor for minutes (#58), so no
-// ordinary run touches it. No model, no recording kept and no Claude: a stand-in harness takes the
-// chat's message.
-public class TranscribeProbe : ProbeScenario
+// ordinary run touches it. With --only whisper, the real model instead (ProbeWhisper.cs): it needs
+// the model and the spoken samples, so no ordinary run touches that either. Otherwise no model, no
+// recording kept and no Claude: a stand-in harness takes the chat's message.
+public partial class TranscribeProbe : ProbeScenario
 {
-    const string Said = "make the deer three times bigger", MicrophoneKind = "microphone";
+    const string Said = "make the deer three times bigger", MicrophoneKind = "microphone", WhisperKind = "whisper";
     const float BusySeconds = 1.5f, SlowSeconds = 3f, ShortTimeout = 1f, MicSeconds = 1f, MostWait = 10f;
     // A frame while transcribing may be this much worse than the worst idle one before it's a hitch.
     const float MostHitchMs = 20f;
@@ -31,6 +32,12 @@ public class TranscribeProbe : ProbeScenario
         if (OnlyKind == MicrophoneKind)
         {
             yield return Microphone();
+            Directory.Delete(folder, true);
+            yield break;
+        }
+        if (OnlyKind == WhisperKind)
+        {
+            yield return RealWhisper();
             Directory.Delete(folder, true);
             yield break;
         }

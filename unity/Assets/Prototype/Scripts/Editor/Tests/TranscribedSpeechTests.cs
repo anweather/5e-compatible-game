@@ -178,12 +178,33 @@ public class TranscribedSpeechTests
     }
 
     [Test]
-    public void WindowsDictationStaysTheDefault()
+    public void WhisperIsTheDefault()
     {
-        Assert.AreEqual(SpeechChoice.Windows, SpeechChoice.Chosen(new string[0], ""));
-        Assert.AreEqual(SpeechChoice.Windows, SpeechChoice.Chosen(new[] { "Game.exe", "-speech" }, null));
+        Assert.AreEqual(SpeechChoice.Whisper, SpeechChoice.Chosen(new string[0], ""));
+        Assert.AreEqual(SpeechChoice.Whisper, SpeechChoice.Chosen(new[] { "Game.exe", "-speech" }, null));
         Assert.AreEqual(SpeechChoice.StandIn, SpeechChoice.Chosen(new string[0], SpeechChoice.StandIn));
         Assert.AreEqual(SpeechChoice.Stub, SpeechChoice.Chosen(new[] { "Game.exe", "-speech", SpeechChoice.Stub }, SpeechChoice.Windows));
+    }
+
+    [TestCase(" Make the deer bigger.", "Make the deer bigger.")]
+    [TestCase("[BLANK_AUDIO]", "")]
+    [TestCase(" (wind blowing)  freeze the river *sighs* ", "freeze the river")]
+    [TestCase(null, "")]
+    public void WhisperKeepsOnlyTheWords(string written, string words) =>
+        Assert.AreEqual(words, WhisperTranscriber.Words(written));
+
+    [TestCase(1, 1)]
+    [TestCase(2, 1)]
+    [TestCase(6, 3)]
+    [TestCase(32, 4)]
+    public void WhisperLeavesCoresForTheGame(int cores, int threads) =>
+        Assert.AreEqual(threads, WhisperTranscriber.Threads(cores));
+
+    [Test]
+    public void SilenceNeverReachesWhisper()
+    {
+        using var whisper = new WhisperTranscriber("no-such-model.bin");
+        Assert.AreEqual("", whisper.Transcribe(new float[SpeechSamples.Rate], System.Threading.CancellationToken.None));
     }
 
     [Test]

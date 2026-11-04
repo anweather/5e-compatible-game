@@ -1,11 +1,10 @@
 # The speech check, and where Whisper plugs in (#58)
 
-Status, 2026-11-03: scaffolding only, on branch `whisper-spike`. There is no
-Whisper model or plugin in the repo yet: downloading one hasn't been cleared.
-The **stub transcriber** stands in for it, so everything around the model
-(recording, the worker thread, the timeout, the hand-off to the chat) is
-built and tested now. Windows dictation is still the default and is
-unchanged.
+Status, 2026-11-03: Whisper is the default recogniser, on branch
+`whisper-spike`. `WhisperTranscriber` runs whisper.cpp (the MIT `whisper.unity`
+package, pinned at 1.4.0 in `Packages/manifest.json`) on this machine with
+`ggml-base.en.bin`. Windows dictation stays as `-speech windows`. The stub
+stays for tests.
 
 ## What's there
 
@@ -18,8 +17,10 @@ unchanged.
   box and sends them exactly as it does Windows' words.
 - **The switch:** `-speech <name>` on the command line picks the adapter for
   that run and isn't saved; otherwise the `speech.adapter` setting; otherwise
-  `windows`. Names: `windows`, `stub-transcriber`, and the probe's
+  `whisper`. Names: `whisper`, `windows`, `stub-transcriber`, and the probe's
   `stand-in` and `recorded`. More flags for a transcriber:
+  `-speech-model <file>` (another model), `-speech-gpu` (Whisper on the GPU;
+  the default is the CPU, see below),
   `-speech-wav <file>` (hear a WAV file in place of the microphone),
   `-speech-timeout <s>` (default 15), `-speech-stub-seconds <s>` (how long
   the stub works, default 0.5).
@@ -38,8 +39,8 @@ unchanged.
 
 ## Trying it (Andrew, two minutes)
 
-The check needs a **development build** while the stub is the only
-transcriber (a release says the stub is for testing). On the PC, through the
+With `-speech whisper` (or nothing: it's the default) any player will do. The
+stub needs a **development build** (a release says the stub is for testing). On the PC, through the
 Editor (`script eval`, or a menu item if you add one):
 `PrototypeBuild.Build(BuildTarget.StandaloneWindows64, "Builds/SpeechCheck/SpellChemistryValley.exe", BuildOptions.Development)`;
 on the Mac, Prototype > Build > macOS (profiling) is a development build.
@@ -56,11 +57,9 @@ SpellChemistryValley -speech-check -speech stub-transcriber -speech-wav tools/vo
 SpellChemistryValley -speech-check 4 -speech stub-transcriber
 ```
 
-A Mac player has no microphone yet: a Mac build that names Unity's
-`Microphone` fails while Player Settings' Microphone Usage Description is
-empty, so `MicrophoneAudio` leaves it out of Mac players and says so. Filling
-that description in (and macOS then asking the player) is a decision for
-later. WAV files work on the Mac player.
+A Mac player has the microphone too: Player Settings' Microphone Usage
+Description is "Hold to talk to Claude in the game", which macOS shows when
+it asks the player to allow it. The first hold is when it asks.
 
 On Windows it's `SpellChemistryValley.exe` with the same flags, and a WAV
 from `tools/voice-samples/make.ps1`. The check waits a second to measure
@@ -85,20 +84,46 @@ while transcribing close to the idle one means no hitch. In the game itself,
 In the Editor: `tools/probe.sh transcribe` runs the same check from WAV
 files (and `--only microphone` the microphone, see below).
 
-## What will change with a real model
+## Whisper
 
-- A `WhisperTranscriber : ITranscriber` and one `case` in
-  `SpeechChoice.Make`. It loads the model on the worker thread at its first
-  call (so the first press is slower: the timeout may need to allow for
-  that, or the model loads once at start), passes the token to whisper's
-  abort callback so a cancel ends it, and serialises its own calls if two
-  can't share the model.
-- The check's line will name the model, and `transcribe` will be the real
-  number to compare (tiny.en against base.en, CPU against GPU).
-- The stub's gate stays: Whisper's adapter is meant for releases.
-- Files to add once cleared: the `whisper.unity` package (MIT) with its
-  native libraries for Windows x64 and macOS, and a `ggml-*.en.bin` model
-  in `StreamingAssets` or downloaded on first use. None is in the repo now.
+- **The model isn't in git.** `StreamingAssets` is ignored. Every player build
+  runs `WhisperModelIntoBuild`, which fetches `ggml-base.en.bin` (148 MB) from
+  whisper.cpp's model page into `StreamingAssets/Whisper` once and checks its
+  SHA-256; a build that can't get it fails. Prototype > Fetch Whisper Model
+  does the same for an Editor. A player with no model gets a line saying so,
+  and typing still works. The player grows by the model plus the native
+  libraries (Windows about 22 MB, of which `ggml-vulkan.dll` is 20).
+- **Why base.en.** On a Mac (M2 Pro, CPU, 4 threads), ten phrases spoken by
+  `say`: base.en 10 of 10, about 385 ms a phrase; tiny.en 10 of 10, about
+  200 ms, 78 MB. Both are fast enough, and `say` is far cleaner than a headset
+  in a room, so the bigger model is the safer pick. Real voices haven't been
+  measured.
+- **The first press** loads the model on the worker thread (about 1.1 s here),
+  so it takes about 1.6 s; the next take about 0.4 s.
+- **CPU by default.** A native GPU failure would take the game down, and the
+  CPU is already fast enough. `-speech-gpu` is there to compare.
+- **A cancel can't stop whisper once it's going.** The package hides
+  `abort_callback`; set by reflection it only took effect after the encoder,
+  nearly all of the work (cancelled at 30 ms, a 384 ms call ran 359 ms, then
+  whisper returned -6), so that was taken out. A cancelled call runs to its
+  end and its words are dropped, and a press behind it waits on the worker
+  thread. The main thread never waits, so a slow PC gets the timeout's line,
+  not a freeze.
+- **Logs:** the package prints what it heard at its default level, so
+  `WhisperTranscriber` turns it down.
+- **Load-time needs on Windows:** `libwhisper.dll` links `ggml.dll`, which
+  links `ggml-vulkan.dll`, which links `vulkan-1.dll`; they also need
+  `MSVCP140`, `VCRUNTIME140`, `VCRUNTIME140_1` and `VCOMP140`. A PC missing any
+  fails at the first press with the failed line (and the DLL's name in the
+  trace), and typing still works.
+- **Linux (Steam Deck):** the package has Linux x86_64 libraries and the path
+  has nothing Windows-only, but nothing has run there. They link
+  `libvulkan.so.1` and `libgomp.so.1`.
+
+In the Editor, `tools/probe.sh transcribe --only whisper` runs the real model:
+words come back, the next press works, a timeout and the press after it, a
+cancelled call, and every model it finds (the build's, plus any in
+`~/.cache/spell-chemistry-valley/whisper`) over `tools/voice-samples`.
 
 ## Known problem: opening the microphone on the Mac
 
@@ -108,8 +133,7 @@ initializing output device (60)"; the second time for 391 s, then it opened.
 Closing it (the clip's cleanup leaving Play) blocked for minutes too. Unity's `Microphone` is main-thread
 only, so the open can't simply move off it. Not yet known: whether a
 microphone permission prompt was waiting (none was seen), whether it's this
-Mac's sound server, or whether a player behaves the same. Before Whisper is
-the default, a player on each system has to show the open and close are
-quick, and the project's Microphone Usage Description (Player Settings,
-empty now) needs text for macOS. That's why the probe's microphone step only runs with
+Mac's sound server, or whether a player behaves the same. A player on each
+system still has to show the open and close are quick: Whisper is the default
+now, and this is the one main-thread wait left in a hold. That's why the probe's microphone step only runs with
 `--only microphone`.

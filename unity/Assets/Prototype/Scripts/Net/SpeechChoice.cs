@@ -1,25 +1,24 @@
 using System;
 using System.Globalization;
+using System.IO;
 using UnityEngine;
 
 // Which recogniser the game uses (J-061), the one place adapters are named: a setting kept between
-// sessions (PlayerPrefs) and a factory. Adding Whisper is a line here and its adapter. Developers can
-// pick one for a run with -speech <name>, which wins over the setting and isn't saved; Windows
-// dictation stays the default. A transcriber (TranscribedSpeech) records from the default microphone,
-// or with -speech-wav <file> from that WAV file; -speech-timeout <s> sets how long it may take, and
-// -speech-stub-seconds <s> how long the stub transcriber works. The stub only answers in an Editor or
-// a development build: a release gets a NoSpeech that says so.
-//
-// What Whisper will still need: the recording (MicrophoneAudio: 16 kHz mono floats, resampled if
-// the device gives another rate), the worker thread, the timeout and the hand-off are built and
-// tested with the stub (TranscribedSpeech). Whisper is an ITranscriber, a WhisperTranscriber that
-// loads its model on the worker thread at its first call and passes the token to whisper's abort
-// callback, plus a case here making TranscribedSpeech with it. Its test set: tools/voice-samples
-// (make.ps1 on Windows, make.sh on a Mac) renders WAVs it will transcribe. docs/design/speech-check.md.
+// sessions (PlayerPrefs) and a factory. Developers can pick one for a run with -speech <name>, which
+// wins over the setting and isn't saved; Whisper is the default. A transcriber (TranscribedSpeech)
+// records from the default microphone, or with -speech-wav <file> from that WAV file; -speech-timeout
+// <s> sets how long it may take, -speech-model <file> which model Whisper loads, -speech-gpu puts
+// Whisper on the GPU, and -speech-stub-seconds <s> says how long the stub transcriber works. The stub
+// only answers in an Editor or a development build: a release gets a NoSpeech that says so.
+// docs/design/speech-check.md.
 public static class SpeechChoice
 {
-    public const string Windows = "windows", StandIn = "stand-in", Recorded = "recorded", Stub = "stub-transcriber";
+    public const string Whisper = "whisper", Windows = "windows", StandIn = "stand-in", Recorded = "recorded", Stub = "stub-transcriber";
     public const string Flag = "-speech", WavFlag = "-speech-wav", TimeoutFlag = "-speech-timeout", StubSecondsFlag = "-speech-stub-seconds";
+    public const string ModelFlag = "-speech-model", GpuFlag = "-speech-gpu";
+
+    /// <summary>The Whisper model a build ships, in StreamingAssets/Whisper (WhisperModelIntoBuild).</summary>
+    public const string ModelFile = "ggml-base.en.bin";
     const string Key = "speech.adapter";
     const float DefaultStubSeconds = 0.5f;
 
@@ -43,12 +42,16 @@ public static class SpeechChoice
     /// <summary>How long the stub transcriber works before it answers.</summary>
     public static TimeSpan StubDelay { get; set; } = Seconds(StubSecondsFlag, TimeSpan.FromSeconds(DefaultStubSeconds));
 
-    /// <summary>The adapter these arguments and this saved setting pick: the flag, the setting, or Windows.</summary>
+    /// <summary>Where the model is: -speech-model's file, otherwise the one the build shipped.</summary>
+    public static string ModelPath =>
+        Arg(Environment.GetCommandLineArgs(), ModelFlag) ?? Path.Combine(Application.streamingAssetsPath, "Whisper", ModelFile);
+
+    /// <summary>The adapter these arguments and this saved setting pick: the flag, the setting, or Whisper.</summary>
     public static string Chosen(string[] args, string saved)
     {
         string flag = Arg(args, Flag);
         if (!string.IsNullOrEmpty(flag)) return flag;
-        return string.IsNullOrEmpty(saved) ? Windows : saved;
+        return string.IsNullOrEmpty(saved) ? Whisper : saved;
     }
 
     /// <summary>Whether this copy may use the adapter: the stub only in an Editor or a development build.</summary>
@@ -81,6 +84,10 @@ public static class SpeechChoice
             return new NoSpeech("That voice setting is for testing only. Press Enter to type to Claude.");
         switch (adapter)
         {
+            case Whisper:
+                if (!File.Exists(ModelPath)) return new NoSpeech("The voice model is missing from this copy. Press Enter to type to Claude.");
+                bool gpu = Array.IndexOf(Environment.GetCommandLineArgs(), GpuFlag) >= 0;
+                return new TranscribedSpeech(Audio(), new WhisperTranscriber(ModelPath, gpu), Timeout);
             case Stub:
                 return new TranscribedSpeech(Audio(), MakeStub(), Timeout);
             case StandIn:

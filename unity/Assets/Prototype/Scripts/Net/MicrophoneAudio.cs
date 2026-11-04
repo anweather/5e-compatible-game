@@ -4,31 +4,15 @@ using UnityEngine;
 // Speech audio from the default microphone, through Unity's Microphone: it asks for 16 kHz into a
 // looping clip, copies what's new each frame (Pump) and converts once at the end if the device gave
 // another rate or more channels. A hold longer than MostSeconds keeps its first MostSeconds.
-// A Mac player that names Unity's Microphone won't build while Player Settings' Microphone Usage
-// Description is empty (and macOS would ask the player to allow it), so a Mac player has none yet:
-// every use goes through the few lines below, and there it says so.
+// A Mac player names Unity's Microphone too: it builds because Player Settings has a Microphone Usage
+// Description, the line macOS shows when it asks the player to allow it.
 public sealed class MicrophoneAudio : ISpeechAudio
 {
-#if UNITY_STANDALONE_OSX && !UNITY_EDITOR
-    /// <summary>Whether this copy can use a microphone.</summary>
-    public static bool Here => false;
-    /// <summary>The microphones there are, by name.</summary>
-    public static string[] Devices => new string[0];
-    /// <summary>Whether the default microphone is recording.</summary>
-    public static bool IsRecording => false;
-    static AudioClip StartRecording() => null;
-    static int Position => 0;
-    static void EndRecording()
-    {
-    }
-#else
-    public static bool Here => true;
     public static string[] Devices => Microphone.devices;
     public static bool IsRecording => Microphone.IsRecording(null);
     static AudioClip StartRecording() => Microphone.Start(null, true, MostSeconds, SpeechSamples.Rate);
     static int Position => Microphone.GetPosition(null);
     static void EndRecording() => Microphone.End(null);
-#endif
 
     /// <summary>The longest recording kept.</summary>
     public const int MostSeconds = 30;
@@ -54,7 +38,6 @@ public sealed class MicrophoneAudio : ISpeechAudio
     {
         Close();
         recorded.Clear();
-        if (!Here) return "Voice from the microphone isn't in the Mac game yet. Press Enter to type to Claude.";
         if (Devices.Length == 0) return "No microphone found. Plug one in, or type.";
         // This can block the main thread: in the hidden Editor on a Mac it took 450 s and failed, then 391 s
         // and opened (2026-11-03, docs/design/speech-check.md).
