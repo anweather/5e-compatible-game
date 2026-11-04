@@ -274,7 +274,7 @@ namespace Chem.PlaytestText
 
         string SetWeather(string kind, int minutes)
         {
-            if (!Enum.TryParse<WeatherKind>(kind, true, out var weather)) throw new ArgumentException($"no weather {kind}; {string.Join(", ", Enum.GetNames(typeof(WeatherKind)))}");
+            if (!Enum.TryParse<WeatherKind>(kind, true, out var weather)) throw new ArgumentException($"no weather {kind}; {string.Join(", ", Enum.GetNames<WeatherKind>())}");
             return world.ApplyRoom(RoomCommand.SetWeather(Player, weather, minutes)).Line + NewLines();
         }
 
