@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-071: Bring your own API key in 0.1.11
+
+- **Asked:** 2026-11-03, raised by Andrew: players set their own Anthropic API key in Settings.
+- **Also comes up when:** the release notes; storing any secret; Mac and Linux players.
+- **Answer:** Andrew: yes, in 0.1.11, so people can bring their own keys. PM's default: encrypted per user with DPAPI on Windows, never in PlayerPrefs, and checked in Settings with `GET /v1/models`.
+- **Why:** players pay for their own use, and the game holds no shared key.
+- **Revisited:** 0.
+
 ### J-070: Which voice goes in 0.1.11?
 
 - **Asked:** 2026-11-03, by the PM after Andrew said he wants voice in 0.1.11: talking to Claude (Whisper), proximity voice (Vivox), or both.
