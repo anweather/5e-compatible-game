@@ -158,6 +158,27 @@ public class TranscribedSpeechTests
         Assert.AreEqual(SpeechState.Idle, speech.State);
     }
 
+    sealed class NoLibrary : ITranscriber
+    {
+        public string Name => "no library";
+        public string Transcribe(float[] samples, System.Threading.CancellationToken cancel) => throw new System.DllNotFoundException("libwhisper");
+        public void Dispose() { }
+    }
+
+    [Test]
+    public void AMissingLibrarySaysSoAndDoesntAskToTryAgain()
+    {
+        using var speech = new TranscribedSpeech(new WavAudio(Wav("ask", Tone(1f))), new NoLibrary(), LongTimeout);
+        speech.Start();
+        speech.Stop();
+        var (text, done, _) = Hold(speech);
+        Assert.IsTrue(done);
+        Assert.IsEmpty(text ?? "");
+        StringAssert.Contains("missing", speech.Why);
+        StringAssert.Contains("Typing still works", speech.Why);
+        StringAssert.DoesNotContain("Try again", speech.Why);
+    }
+
     [Test]
     public void AFileItCantReadSaysWhyAndEndsTheHold()
     {
