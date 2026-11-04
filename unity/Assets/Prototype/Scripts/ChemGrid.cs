@@ -299,6 +299,44 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
     public static string CellMap() => MapFile.ReadCells(Folders.World);
 
+    // The map this copy starts on, its own pick: the host's map when it hosts.
+    static string OwnMap => MapIdentity.Named(System.Environment.GetCommandLineArgs());
+
+    static string mapHash, mapHashOf;
+
+    /// <summary>Why the host turns away a copy offering these maps, or null when it has this one.</summary>
+    public static string MapRefusal(string offered)
+    {
+        if (mapHashOf != Folders.World)
+        {
+            mapHash = MapIdentity.Hash(Folders.World);
+            mapHashOf = Folders.World;
+        }
+        return MapIdentity.Refusal(Folders.Map, MapFile.Load(Folders.World).Name, mapHash, offered);
+    }
+
+    /// <summary>The host's map, for a world about to be built: what's read from the map's folder is read again.</summary>
+    public void UseMap(string id)
+    {
+        if (string.IsNullOrEmpty(id) || id == Folders.Map) return;
+        Debug.Log($"NET: on the host's map, {id}");
+        SwitchFolders(id);
+        budgets = null;
+        LoadThings();
+    }
+
+    /// <summary>Back from a host's map to this copy's own, before the scene starts over.</summary>
+    public static void BackToOwnMap()
+    {
+        if (OwnMap != Folders.Map) SwitchFolders(OwnMap);
+    }
+
+    static void SwitchFolders(string id)
+    {
+        folders = Folders.WithMap(id);
+        ValleyChemistry.ForgetLand();
+    }
+
     static string checkedMap;
 
     // A folder that's wrong stops the game here, by name, rather than start on the wrong land: once, not at every reset.
@@ -311,7 +349,7 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
-    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath);
+    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather

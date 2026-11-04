@@ -221,6 +221,12 @@ namespace Chem
         int[] land;
         public const int NoLand = int.MinValue;
 
+        // The land stamps so far, as text, in order (docs/design/maps-as-data.md); none yet, as nothing stamps land.
+        readonly List<string> landStamps = new List<string>();
+
+        /// <summary>For the netcode checksum, beside CellHash: what has moved the land since the map's own, "" until land is stamped.</summary>
+        public string LandHash() => string.Concat(landStamps);
+
         /// <summary>
         /// The land's height under each cell (Idx order), in water units, so water on a hillside runs
         /// down it (playtest #31): world/land.json (LandFile), the same integers on every peer. A cell

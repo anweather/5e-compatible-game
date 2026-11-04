@@ -448,3 +448,7 @@ The two decisions this doc proposed are ADRs:
 [D8, voice](adr/0008-voice-vivox-with-spell-effects-applied-by-each-listener.md)
 (Vivox, with spell effects applied by each listener), still Proposed. See
 `DECISIONS.md`.
+
+## Which map (2026-11-04)
+
+The host picks the map (`-map <id>` until there's a menu; the valley by default). A joining copy offers the id and hash of each map it has in the connection payload, beside its build; `NetSession.Approve` refuses by name a copy without the host's (`MapIdentity.Refusal`), as it does a different build. The host's map then reaches the joiner in `NetChem.hostMap`, a `NetworkVariable` read before `grid.ResetWorld()`, so a late joiner builds the right world and then replays history; no map goes through history. `World.LandHash` joins the checksum's `Others`, "" until land is stamped, so `CellHash` and its goldens stay as they were. Leaving goes back to the copy's own map.

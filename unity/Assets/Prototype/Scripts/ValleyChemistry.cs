@@ -250,6 +250,9 @@ public partial class ValleyChemistry : MonoBehaviour
     // peer on every platform has the same (BakeLand writes it); without it the land is flat.
     static int[] landFromFile;
 
+    /// <summary>The map changed: the next world reads its land afresh.</summary>
+    public static void ForgetLand() => landFromFile = null;
+
     static void SetLand(World world)
     {
         if (landFromFile == null || landFromFile.Length != world.W * world.H)

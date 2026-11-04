@@ -60,6 +60,9 @@ using UnityEngine;
 [RequireComponent(typeof(ChemGrid))]
 public partial class NetChem : NetworkBehaviour
 {
+    // Which map the host is on (docs/design/maps-as-data.md, section 2).
+    readonly NetworkVariable<Unity.Collections.FixedString64Bytes> hostMap = new();
+
     const int HashEvery = RollingHash.Every, HashesKept = 4;
     // A late joiner replays the whole history; spread it so no frame spends more than this.
     const double CatchUpBudgetMs = 8.0;
@@ -175,6 +178,9 @@ public partial class NetChem : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        // The host's map, before any world is built: a late joiner builds the right one, then replays the history.
+        if (IsServer) hostMap.Value = ChemGrid.Folders.Map;
+        else grid.UseMap(hostMap.Value.ToString());
         // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
         if (IsServer) grid.PlanRoom(NetSession.RoomMode);
         else grid.AwaitRoom();
@@ -506,13 +512,13 @@ public partial class NetChem : NetworkBehaviour
     /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
     /// things' (World.ThingsNow: the props' stable ids), the sky's (Hasten Time's clock and Control
     /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's, the
-    /// players' casts and grimoires (World.CastHash) and, last, the dragon's (World.DragonHash).
+    /// players' casts and grimoires (World.CastHash), the dragon's (World.DragonHash) and, last, the land's (World.LandHash).
     /// </summary>
     static string Checksum(ChemGrid grid) => grid.World.CellHash() + Others(grid);
 
     // All but the cells: what follows them in a checksum, in a window's too.
     static string Others(ChemGrid grid) =>
-        "/" + grid.World.Rules.Fingerprint + "/" + grid.World.ThingsNow.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
+        "/" + grid.World.Rules.Fingerprint + "/" + grid.World.ThingsNow.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash() + "/" + grid.World.LandHash();
 
     // --- everyone --------------------------------------------------------------
 

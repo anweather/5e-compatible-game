@@ -28,6 +28,11 @@ namespace Chem
             Claude = playerData == null ? null : new ClaudeFolder(playerData);
         }
 
+        GameFolders(GameFolders folders, string map) : this(folders.Rules, folders.PlayerData, map) => Claude = folders.Claude;
+
+        /// <summary>The same folders on another map: the player's, a probe's chat folder among them, stay as they are.</summary>
+        public GameFolders WithMap(string map) => new GameFolders(this, map);
+
         /// <summary>rules/: the rules JSON, looks and budgets.</summary>
         public string Rules { get; }
 
@@ -73,11 +78,11 @@ namespace Chem
         /// virtual players, whose project copies live deeper (unity/Library/VP/&lt;id&gt;/). A build's data folder is the one
         /// it's given; the Editor's is <see cref="EditorPlayerData"/>, as Unity gives the Editor the shipped game's (#78).
         /// </summary>
-        public static GameFolders ForGame(string streamingAssets, string project, bool editor, string playerData)
+        public static GameFolders ForGame(string streamingAssets, string project, bool editor, string playerData, string map = DefaultMap)
         {
             string packed = Path.Combine(streamingAssets, RulesName);
             return new GameFolders(!editor && File.Exists(Path.Combine(packed, Marker)) ? packed : RulesAbove(project),
-                editor ? EditorPlayerData(project) : playerData);
+                editor ? EditorPlayerData(project) : playerData, map);
         }
 
         /// <summary>
