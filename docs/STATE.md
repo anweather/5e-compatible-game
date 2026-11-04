@@ -70,7 +70,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## Next, in order
 
 1. Land what's in flight (the Vivox PC run).
-2. **The Mac (Andrew, 2026-11-04):** the playtester on Sonnet or Haiku with its cost measured (`briefs/mac-mix-and-cheap-playtester.md`). Then maps as data (#69, `second-map`), held until the PC's mod work settles.
+2. **Cheap playtester landed** (`core/Playtest.Text`, `playtest/cheap/README.md`; text only, no view): Haiku $2.20 and Sonnet $3.68 for 20 minutes, one confirmed finding each (#90, #91), 9 of 10 false alarms from the tool, since fixed but not re-run. Multi-segment replay is unproven. Then maps as data (#69, `second-map`), held until the PC's mod work settles.
    Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 3. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
