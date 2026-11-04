@@ -265,7 +265,10 @@ namespace Chem.Tests
         public void AddMaterialMakesALiquid()
         {
             var b = NewBench();
-            Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "liquid", "tar", "Tar", null, "{\"sets\": {\"into\": \"rock\"}}"));
+            Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "liquid", "tar", "Tar", null, "{\"sets\": {\"until\": 600}}"));
+            Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "liquid", "tar", "Tar", null, "{\"hot\": {\"burns\": 1}}"));
+            Assert.DoesNotThrow(() => b.AddMaterial(null, "liquid", "magma", "Magma", null,
+                "{\"hot\": {\"for\": 300}, \"sets\": {\"into\": \"rock\", \"after\": 600}, \"freezes\": \"rock\", \"lapse\": {\"after\": 900}}"));
             var d = b.AddMaterial(null, "liquid", "honey", "Honey", new[] { "sticky" }, "{\"thick\": 4, \"heap\": 6, \"soaks\": false, \"lapse\": {\"after\": 600}}");
             d = b.SetMaterial(d.Id, "honey", "floats", "false");
             StringAssert.Contains("switched on", b.Apply(d.Id, "Bo", "Honey"));

@@ -52,9 +52,11 @@ using UnityEngine;
 // - The host alone summons the dragon (SummonDragon): stamped for the next tick like a defense command,
 //   then it's rules (World.Dragon.cs): every machine flies the same flight from there.
 // - A wizard's stands and unarmed strikes (WizardStrike, World.Strike.cs) travel as combo input
-//   does: its owner asks, the host names the player and stamps them into the next tick. The host
-//   sends a leaving player's Leave. A late joiner gets them with the history; a stand that a later
-//   one replaces before any strike is dropped from it, so walking doesn't make it grow.
+//   does (a CommandChannel holds them on the way): its owner asks, the host names the player and
+//   stamps them into the next tick. The host sends a leaving player's Leave. A late joiner gets them
+//   with the history, without the stands its replay doesn't need (StandKeeper): a stand a later one
+//   replaces before any strike, and while a step trigger is on, one that fired nothing and leaves
+//   the next step as it was.
 [RequireComponent(typeof(ChemGrid))]
 public partial class NetChem : NetworkBehaviour
 {
@@ -73,10 +75,9 @@ public partial class NetChem : NetworkBehaviour
     readonly List<EffectIntent> pendingEffects = new();
     readonly List<EffectIntent> effectHistory = new();
     readonly List<ChunkIntent> chunkHistory = new();
-    readonly List<StrikeIntent> pendingStrikes = new();
-    readonly List<StrikeIntent> strikeHistory = new();
-    // The last tick with a strike in the history: stands before it are kept.
-    int lastStrikeTick;
+    // Which stands the strike history keeps for joiners (#83), and the last tick a room command was stamped for.
+    StandKeeper standKeeper;
+    int roomStampedFor;
     bool dragonAsked;
     readonly List<int> dragonHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
@@ -91,15 +92,13 @@ public partial class NetChem : NetworkBehaviour
     // The casts of batches that arrived live (not replayed history), for their shoves.
     readonly Dictionary<int, CastIntent[]> liveCasts = new();
     // Commands on a CommandChannel (made in Awake: they add to batches): defense commands, players'
-    // combo input, and room commands (NetChem.Room.cs).
+    // combo input, wizards' stands and strikes, and room commands (NetChem.Room.cs).
     CommandChannel<DefenseIntent> defense;
     CommandChannel<ComboIntent> combos;
-    readonly Dictionary<int, StrikeIntent[]> strikesFor = new();
+    CommandChannel<StrikeIntent> strikes;
     // And the dragon's summons, by the tick they're stamped for.
     readonly HashSet<int> dragonFor = new();
-    // Joining: the strikes of the history, sent just before the rest of it.
-    StrikeIntent[] pastStrikes = System.Array.Empty<StrikeIntent>();
-    // Joining: the ticks of the dragon's summons in the history, the same way.
+    // Joining: the ticks of the dragon's summons in the history, sent just before the rest of it.
     int[] pastDragon = System.Array.Empty<int>();
     // Windows of the desync check (RollingHash) still waiting for the other side's: either can come first.
     readonly Dictionary<int, string> hostHashes = new(), ownHashes = new();
@@ -169,6 +168,8 @@ public partial class NetChem : NetworkBehaviour
         grid = GetComponent<ChemGrid>();
         defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
         combos = new CommandChannel<ComboIntent>(batches, (batch, c) => batch.Combos.Add(c.ToCommand()));
+        standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y));
+        strikes = new CommandChannel<StrikeIntent>(batches, (batch, s) => batch.Strikes.Add(s.ToCommand()), standKeeper.Record);
         roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
     }
 
@@ -189,11 +190,9 @@ public partial class NetChem : NetworkBehaviour
         chunkHistory.Clear();
         defense.Clear();
         combos.Clear();
-        strikesFor.Clear();
-        pastStrikes = System.Array.Empty<StrikeIntent>();
-        pendingStrikes.Clear();
-        strikeHistory.Clear();
-        lastStrikeTick = 0;
+        strikes.Clear();
+        standKeeper.Clear();
+        roomStampedFor = 0;
         dragonAsked = false;
         dragonHistory.Clear();
         dragonFor.Clear();
@@ -234,7 +233,7 @@ public partial class NetChem : NetworkBehaviour
     }
 
     // Host only: the core forgets a wizard whose player has gone.
-    void PlayerLeft(ulong clientId) => pendingStrikes.Add(StrikeIntent.From(StrikeCommand.Leave(PlayerName(clientId)), 0));
+    void PlayerLeft(ulong clientId) => strikes.Request(StrikeIntent.From(StrikeCommand.Leave(PlayerName(clientId)), 0));
 
     /// <summary>
     /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
@@ -375,7 +374,7 @@ public partial class NetChem : NetworkBehaviour
         chunkHistory.RemoveAll(c => c.Tick < hostTick);
         defense.ForgetBefore(hostTick);
         combos.ForgetBefore(hostTick);
-        strikeHistory.RemoveAll(s => s.Tick < hostTick);
+        strikes.ForgetBefore(hostTick);
         dragonHistory.RemoveAll(t => t < hostTick);
         roomCommands.ForgetBefore(hostTick);
         ruleHistory.Clear();
@@ -424,38 +423,27 @@ public partial class NetChem : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     void CombosStampedRpc(int tick, ComboIntent[] commands) => combos.Receive(tick, commands);
 
-    // As StampCombos. Replaying, a stand only has to be there for the next strike or the end, so a newer one replaces it;
-    // but while a step trigger is in force every stand is a step that may fire one (World.Triggers.cs), so each is kept.
+    // As StampCombos. The history keeps the stands a joiner's replay needs (StandKeeper, the channel's hook).
     void StampStrikes()
     {
-        if (pendingStrikes.Count == 0) return;
-        var stamped = pendingStrikes.ToArray();
-        pendingStrikes.Clear();
-        bool steps = grid.World != null && grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0;
-        for (int i = 0; i < stamped.Length; i++)
-        {
-            stamped[i].Tick = hostTick;
-            var player = stamped[i].Player;
-            if ((StrikeKind)stamped[i].Kind == StrikeKind.Stand && !steps) strikeHistory.RemoveAll(s => (StrikeKind)s.Kind == StrikeKind.Stand && s.Player == player && s.Tick > lastStrikeTick);
-            else lastStrikeTick = hostTick;
-            strikeHistory.Add(stamped[i]);
-        }
-        StrikesStampedRpc(hostTick, stamped);
+        var stamped = strikes.Stamp(hostTick);
+        if (stamped.Length > 0) StrikesStampedRpc(hostTick, stamped);
     }
 
+    // Whether a stand stamped now may be a step that fires a trigger (World.Triggers.cs): one is in force, or
+    // a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
+    bool StepsMayFire() =>
+        grid.World != null && (grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0 || roomCommands.HasPending || roomStampedFor > NetTick);
+
     [Rpc(SendTo.ClientsAndHost)]
-    void StrikesStampedRpc(int tick, StrikeIntent[] commands)
-    {
-        if (batches.TryGetValue(tick, out var batch)) batch.Strikes.AddRange(commands.Select(c => c.ToCommand()));
-        else strikesFor[tick] = commands;
-    }
+    void StrikesStampedRpc(int tick, StrikeIntent[] commands) => strikes.Receive(tick, commands);
 
     // The sender is whose wizard it is, whatever it says.
     [Rpc(SendTo.Server)]
     void RequestStrikeCommandRpc(StrikeIntent command, RpcParams rpc = default)
     {
         command.Player = new FixedString32Bytes(PlayerName(rpc.Receive.SenderClientId));
-        pendingStrikes.Add(command);
+        strikes.Request(command);
     }
 
     // The sender is who the input is for, whatever it says.
@@ -506,7 +494,9 @@ public partial class NetChem : NetworkBehaviour
         var joiner = RpcTarget.Single(client, RpcTargetUse.Temp);
         SendRoomHistoryRpc((byte)grid.World.Room.Mode, grid.World.Room.Host, roomStart, roomCommands.HistoryForJoiner(), joiner);
         SendComboHistoryRpc(combos.HistoryForJoiner(), joiner);
-        SendStrikeHistoryRpc(strikeHistory.ToArray(), joiner);
+        var strikeHistory = strikes.HistoryForJoiner();
+        StrikeHistorySent = strikeHistory.Length;
+        SendStrikeHistoryRpc(strikeHistory, joiner);
         SendDragonHistoryRpc(dragonHistory.ToArray(), joiner);
         SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defense.HistoryForJoiner(),
             joiner);
@@ -542,7 +532,7 @@ public partial class NetChem : NetworkBehaviour
             chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
         defense.Deliver(tick);
         combos.Deliver(tick);
-        if (strikesFor.Remove(tick, out var strikes)) batches[tick].Strikes.AddRange(strikes.Select(s => s.ToCommand()));
+        strikes.Deliver(tick);
         if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
         roomCommands.Deliver(tick);
         if (casts.Length > 0) liveCasts[tick] = casts;
@@ -558,7 +548,7 @@ public partial class NetChem : NetworkBehaviour
     void SendComboHistoryRpc(ComboIntent[] combos, RpcParams rpc = default) => this.combos.Joining(combos);
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void SendStrikeHistoryRpc(StrikeIntent[] strikes, RpcParams rpc = default) => pastStrikes = strikes;
+    void SendStrikeHistoryRpc(StrikeIntent[] strikes, RpcParams rpc = default) => this.strikes.Joining(strikes);
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendDragonHistoryRpc(int[] ticks, RpcParams rpc = default) => pastDragon = ticks;
@@ -576,7 +566,7 @@ public partial class NetChem : NetworkBehaviour
         this.defense.Joining(defense);
         this.defense.Replay(timeline);
         combos.Replay(timeline);
-        TickBatch.AddStrikes(timeline, pastStrikes.Select(s => (s.Tick, s.ToCommand())));
+        strikes.Replay(timeline);
         TickBatch.AddDragon(timeline, pastDragon);
         roomCommands.Replay(timeline);
         for (int t = from; t <= upToTick; t++)
@@ -649,6 +639,7 @@ public partial class NetChem : NetworkBehaviour
     {
         if (liveCasts.Remove(tick, out var casts)) Shove(casts);
         grid.NoteTickDone();
+        if (IsServer) standKeeper.Ran(tick, grid.World.TriggerFirings);
         HashTick(tick);
         TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
     }
@@ -728,6 +719,9 @@ public partial class NetChem : NetworkBehaviour
 
     /// <summary>For tests and the CLI: the last checksum this machine would send or compare.</summary>
     public string CurrentChecksum => Checksum(grid);
+
+    /// <summary>Host, for the probe: how many stands, strikes and leavings the last joiner's strike history held.</summary>
+    public int StrikeHistorySent { get; private set; }
 }
 
 /// <summary>A spell cast, stamped with the sim tick it takes effect on, with who cast it and from where.</summary>
@@ -867,11 +861,15 @@ public struct ChunkIntent : INetworkSerializable
 }
 
 /// <summary>A wizard's stand, strike or leaving (Chem.StrikeCommand), stamped with the sim tick it lands on.</summary>
-public struct StrikeIntent : INetworkSerializable
+public struct StrikeIntent : INetworkSerializable, ITickStamped
 {
     public byte Kind;
     public FixedString32Bytes Player;
     public int X, Y, AimX, AimY, Hp, Tick;
+
+    int ITickStamped.Tick => Tick;
+
+    void ITickStamped.StampFor(int tick) => Tick = tick;
 
     public static StrikeIntent From(StrikeCommand c, int tick) => new StrikeIntent
     {

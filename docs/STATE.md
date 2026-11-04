@@ -56,18 +56,18 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **0.1.11 waits on Whisper** (Andrew, J-070): talking to Claude goes in; Vivox doesn't. Before cutting: land `whisper-spike`, add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
+- **0.1.11 waits on Whisper** (Andrew, J-070): talking to Claude goes in; Vivox doesn't. A player's own API key goes in too (J-071). Before cutting: land `whisper-spike` and `settings-api-key`, add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
-- **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour).
-- **DesktopUnityPro:** `liquids-2` (from `wip/u2-liquids-2`), then the PC side of Whisper.
-- **Mac (`macbook-unity-pro`):** proving `channels-3` (40034327; strikes onto CommandChannel, #83 reduced, not gone), then the real Whisper step on `whisper-spike`. The PC checks the Windows compile, native lib and mic in a player.
+- **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
+- **DesktopUnityPro:** `settings-api-key` (J-071, `briefs/settings-api-key.md`), then the PC side of Whisper.
+- **Mac (`macbook-unity-pro`):** the real Whisper step on `whisper-spike`, downloads approved. The PC then checks the Windows compile, native lib and mic in a player.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
 ## Next, in order
 
-1. Land what's in flight (liquids-2, channels-3, Whisper).
+1. Land what's in flight (Whisper, settings-api-key).
 2. 0.1.11 when Andrew says.
 3. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 4. Gaits by rule (`builders.md`), after bodies (J-068).

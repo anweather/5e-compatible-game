@@ -14,7 +14,8 @@ using UnityEngine;
 // 2 cells behind each step (every 6 ticks) and a Meteor 2 cells ahead after 6 ticks (every 12), for each player.
 // Each wizard walks a row of cells, moved cell by cell. Each side counts the shows it plays (TriggerShowCount):
 // one projectile per bolt, one meteor per meteor, falling for the meteor's delay, and none from the core's small
-// falling star. Then a late joiner sees no stale shows, and once reverted, steps fire nothing.
+// falling star. Then a late joiner sees no stale shows; the host walks a long loop at a step a tick and a second
+// late joiner replays every cast from the stands its strike history kept (#83); and once reverted, steps fire nothing.
 public class TriggerViewProbe : RoomProbe
 {
     const string Title = "Steps of fire", Slug = "steps-of-fire";
@@ -24,6 +25,9 @@ public class TriggerViewProbe : RoomProbe
     /// <summary>Seconds between a walk's steps: 3 ticks, a run.</summary>
     public const float StepSeconds = 0.5f;
     const float Settle = 3f, FrameSeconds = 1f / 15f, ReplaySeconds = 100f;
+    /// <summary>The long walk: a loop of cells (east, south, west, north), a step a tick.</summary>
+    static readonly (int dx, int dy, int steps)[] Loop = { (1, 0, 18), (0, 1, 8), (-1, 0, 18), (0, -1, 8) };
+    const float LongStepSeconds = 1f / 6f;
     const int FilmWidth = 1280, FilmHeight = 720;
 
     protected override ChangeMode Mode => ChangeMode.Open;
@@ -41,7 +45,7 @@ public class TriggerViewProbe : RoomProbe
     }
 
     /// <summary>Walks a wizard a cell at a time along (dx, dy), as its stand sends each new cell (WizardStrike), facing the way.</summary>
-    public static IEnumerator Walk(ChemGrid grid, GameObject wizard, int dx, int dy, int steps)
+    public static IEnumerator Walk(ChemGrid grid, GameObject wizard, int dx, int dy, int steps, float seconds = StepSeconds)
     {
         var body = wizard.GetComponent<CharacterController>();
         var vitals = wizard.GetComponent<Vitals>();
@@ -56,7 +60,7 @@ public class TriggerViewProbe : RoomProbe
             body.enabled = true;
             if (vitals != null) vitals.Refill();
             at = to;
-            yield return new WaitForSecondsRealtime(StepSeconds);
+            yield return new WaitForSecondsRealtime(seconds);
         }
     }
 
@@ -110,27 +114,56 @@ public class TriggerViewProbe : RoomProbe
         yield return Reach("late_joiner", Net.NetTick, ReplaySeconds);
         if (Theirs == null) yield break;
         Metric("late_joiner_reach_s", Theirs.reachSeconds);
+        Metric("late_joiner_strike_history", Net.StrikeHistorySent);
         Check("late_joiner_replayed_the_casts", Theirs.triggered == World.TriggeredCasts && Theirs.triggered > 0, $"{Theirs.triggered} cast there, {World.TriggeredCasts} here");
         Check("late_joiner_plays_no_old_shows", Theirs.showsSince == 0 && Theirs.projectiles == 0 && Theirs.meteors == 0,
             $"{Theirs.showsSince} shows, {Theirs.projectiles} projectiles, {Theirs.meteors} meteors since it joined");
 
+        yield return LongWalk();
+        if (Theirs == null) yield break;
+
         // Reverted: steps fire nothing, and nothing new shows, on either side.
         var off = RoomMcpProbe.Post(RoomMcpProbe.Tool("revert", $"{{\"mod\":\"{Slug}\"}}"));
         yield return RoomMcpProbe.Until(off);
-        yield return Agree("reverted", $"Player 1 switched off {Title}");
+        // The joiner of the long walk is still catching up (NetChem's CatchUpBudgetMs gains on this side only slowly),
+        // so these two give it the replay's time to reach their tick, not a live player's.
+        yield return Agree("reverted", $"Player 1 switched off {Title}", ReplaySeconds);
         if (Theirs == null) yield break;
         int casts = World.TriggeredCasts, theirShows = Theirs.showsSince, shows = grid.TriggeredShown.Count;
         var (projectiles, meteors) = (count.Projectiles, count.Meteors);
         yield return Walk(grid, me, -1, 0, BackSteps);
         yield return Ask("walk", $"-1,0,{BackSteps}");
         yield return Wait(Settle);
-        yield return Reach("after_revert", Net.NetTick);
+        yield return Reach("after_revert", Net.NetTick, ReplaySeconds);
         if (Theirs == null) yield break;
         Check("reverted_fires_nothing", World.TriggeredCasts == casts && Theirs.triggered == casts, $"{casts} casts, then {World.TriggeredCasts} here and {Theirs.triggered} there");
         Check("reverted_shows_nothing_here", grid.TriggeredShown.Count == shows && count.Projectiles == projectiles && count.Meteors == meteors,
             $"{grid.TriggeredShown.Count - shows} shows, {count.Projectiles - projectiles} projectiles, {count.Meteors - meteors} meteors");
         Check("reverted_shows_nothing_there", Theirs.showsSince == theirShows, $"{Theirs.showsSince - theirShows} shows");
         Metric("film_frames", frames);
+    }
+
+    // A long walk with the triggers on, then a late joiner (#83): its strike history keeps the stands its replay needs,
+    // not every step, and it still fires every cast the host did, at the same ticks (the checksums carry the firings).
+    IEnumerator LongWalk()
+    {
+        int casts = World.TriggeredCasts;
+        foreach (var (dx, dy, steps) in Loop) yield return Walk(grid, me, dx, dy, steps, LongStepSeconds);
+        yield return Wait(Settle);
+        yield return Reach("long_walk", Net.NetTick);
+        if (Theirs == null) yield break;
+        CompareHashes("late_joiner_stayed_in_step", HashesFrom);
+        Metric("long_walk_casts", World.TriggeredCasts - casts);
+
+        HashesFrom = Net.NetTick;
+        yield return Ask("rejoin");
+        yield return Wait(Settle);
+        yield return Reach("long_walk_late_joiner", Net.NetTick, ReplaySeconds);
+        if (Theirs == null) yield break;
+        Metric("long_walk_late_joiner_reach_s", Theirs.reachSeconds);
+        Metric("long_walk_strike_history", Net.StrikeHistorySent);
+        Check("long_walk_late_joiner_replayed_the_casts", Theirs.triggered == World.TriggeredCasts && World.TriggeredCasts > casts,
+            $"{Theirs.triggered} cast there, {World.TriggeredCasts} here");
     }
 
     // One walk (the host's when wizard is given, else the virtual player's) and its checks: every cast it fired

@@ -44,6 +44,7 @@ namespace Chem
             int kind = Rules.LiquidIndex(id);
             if (c == null || kind < 0 || IsBlocking(c) || units <= 0) return false;
             if (!Pour(c, kind, units, Rules.Sim.WaterMaxLevel)) return false;
+            if (kind != 0) Fresh(c, Rules.Liquid(kind));
             if (Locate(x, y, out var ch, out _) != null) WaterMoved(ch);
             return true;
         }
@@ -53,6 +54,7 @@ namespace Chem
         {
             if (c.Water > 0 && c.Liquid != kind) return false;
             if (c.Water >= max) return false;
+            if (c.Water == 0) c.Sets = 0;
             c.Water = Math.Min(max, c.Water + n);
             c.Liquid = kind;
             return true;
@@ -67,6 +69,99 @@ namespace Chem
             Apply(CellX(nch, ni), CellY(nch, ni), l.Touch, 1, -1, false);
             WaterMoved(ch);
             WaterMoved(nch);
+        }
+
+        // A liquid poured fresh onto a cell (AddLiquid, an addWater effect): hot for its hot.for, and
+        // setting in its sets.after unless what was there already is setting sooner.
+        static void Fresh(Cell c, LiquidDef l)
+        {
+            if (l.HotFor > c.Heat) c.Heat = l.HotFor;
+            if (l.SetsInto != null && c.Sets == 0) c.Sets = l.SetsAfter;
+        }
+
+        // A unit of liquid l run from one cell onto another (World.Flow): it takes its heat, and the
+        // soonest setting of the two; onto a dry cell, the setting it brought.
+        static void Carry(Cell from, Cell to, LiquidDef l, bool dry)
+        {
+            if (l.HotFor > 0 && from.Heat > to.Heat) to.Heat = from.Heat;
+            if (l.SetsInto == null) return;
+            if (dry || (from.Sets > 0 && (to.Sets == 0 || from.Sets < to.Sets))) to.Sets = from.Sets;
+        }
+
+        // A unit pushed out of a cell (DisplaceWater, SpillWater) onto another: as if it ran there. Before the unit lands.
+        void Pushed(Cell from, Cell to, int kind)
+        {
+            if (kind != 0) Carry(from, to, Rules.Liquid(kind), to.Water == 0);
+        }
+
+        /// <summary>
+        /// A hot liquid (hot.for) cools a tick at a time (Cell.Heat); every HotTouchEvery ticks while it's
+        /// hot it lays fire at power 1, quietly, on the cell under it and on each dry cell beside it, and
+        /// the fire rows decide: grass catches, a creature there burns. Called by World.Cool.
+        /// </summary>
+        void HotLiquid(Chunk ch, int i, Cell c)
+        {
+            c.Heat--;
+            if (Tick % HotTouchEvery != 0) return;
+            int x = CellX(ch, i), y = CellY(ch, i);
+            if (c.Fire == 0) Apply(x, y, "fire", 1, -1, false);
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out var nch, out _);
+                if (n != null && nch.Active && n.Fire == 0 && n.Water == 0) Apply(x + DirX(d), y + DirY(d), "fire", 1, -1, false);
+            }
+        }
+
+        /// <summary>How often a hot liquid lays its fire on what it touches, in ticks.</summary>
+        public const int HotTouchEvery = 4;
+
+        /// <summary>Whether a cell holds a hot liquid (not water): its heat is the liquid's, not the ground's.</summary>
+        bool HoldsHot(Cell c) => HoldsOther(c) && LiquidOf(c).HotFor > 0;
+
+        /// <summary>What the liquid on a cell freezes into (a terrain or cover id), or null: water (which turns to ice) and a liquid without freezes.</summary>
+        string LiquidFreezes(Cell c) => HoldsOther(c) ? LiquidOf(c).Freezes : null;
+
+        /// <summary>
+        /// A liquid with freezes, where water would freeze (a freeze effect, freezing ground, snow on a
+        /// thin pool): it's gone, and its terrain or cover is there instead. True if it froze.
+        /// </summary>
+        bool FreezeLiquid(Chunk ch, Cell c)
+        {
+            var into = LiquidFreezes(c);
+            if (into == null) return false;
+            var l = LiquidOf(c);
+            Solidify(ch, c);
+            if (Rules.Covers.ContainsKey(into)) PutCover(c, into);
+            else c.T = into;
+            LogOnce("freezes-" + l.Id, $"The {l.Name.ToLowerInvariant()} freezes solid");
+            return true;
+        }
+
+        // A cell's Sets ran a tick (World.TickCell): at 0 its liquid sets into sets.into. A dry cell, or
+        // one whose liquid doesn't set, just drops its count.
+        void TickSets(Chunk ch, Cell c)
+        {
+            var l = LiquidOf(c);
+            if (c.Water == 0 || l.SetsInto == null)
+            {
+                c.Sets = 0;
+                return;
+            }
+            if (--c.Sets > 0) return;
+            Solidify(ch, c);
+            c.T = l.SetsInto;
+            c.Life = 0;
+            LogOnce("sets-" + l.Id, $"The {l.Name.ToLowerInvariant()} sets hard");
+        }
+
+        // The liquid on a cell becomes solid: the cell is dry (what it turns into is the caller's).
+        void Solidify(Chunk ch, Cell c)
+        {
+            c.Water = 0;
+            c.Liquid = 0;
+            c.Sets = 0;
+            c.Frozen = false;
+            WaterMoved(ch);
         }
 
         /// <summary>The longest Thick of any liquid in force (water's 1): how long the still-water pass waits before it trusts a chunk to be still.</summary>

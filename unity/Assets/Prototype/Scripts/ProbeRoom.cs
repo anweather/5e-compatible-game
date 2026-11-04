@@ -24,7 +24,7 @@ public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "deer" (faunaresize's), "grafts" (graftcoats'), "hostile", "defense" (roomopen's), "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
+    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "deer" (faunaresize's), "grafts" (graftcoats'), "hostile", "defense" and "strike" (roomopen's; strike's mod: the host's wizard's cell), "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
     public string ask, mod;
     /// <summary>How long a "report" may wait for its tick.</summary>
     public float reach;
@@ -64,6 +64,8 @@ public class RoomProbeSeen
     public float fireTurn;
     /// <summary>The defense field's waves on this side: phase, wave, gate and flag, or "-" before any (roomopen's).</summary>
     public string defense;
+    /// <summary>The punches in this side's log, distinct and sorted (roomopen's).</summary>
+    public string strikes;
     /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
     public List<float> turns = new();
     /// <summary>
@@ -116,6 +118,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.fireTurn = grid.FireElementTint.Turn;
         var waves = grid.World.Defense;
         seen.defense = waves == null ? "-" : $"{waves.Phase} wave {waves.Wave}, gate {waves.GateX},{waves.GateY}, flag {waves.FlagX},{waves.FlagY}";
+        seen.strikes = string.Join("|", grid.World.Log.Select(l => l.Text).Where(t => t.Contains("punch")).Distinct().OrderBy(t => t, StringComparer.Ordinal));
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
         var fauna = UnityEngine.Object.FindAnyObjectByType<ValleyFauna>();
         if (fauna != null)
@@ -252,6 +255,10 @@ public class RoomProbeClient : MonoBehaviour
             case "defense":
                 yield return StartWaves(grid);
                 break;
+            case "strike":
+                var target = ask.mod.Split(',').Select(int.Parse).ToArray();
+                yield return Punch(grid, target[0], target[1]);
+                break;
             case "film":
                 var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
                 var cells = ask.mod.Split(',').Select(int.Parse).ToArray();
@@ -306,6 +313,21 @@ public class RoomProbeClient : MonoBehaviour
         var field = FindAnyObjectByType<DefenseField>();
         DefenseField.Request(grid, field.StartCommand);
         for (float t = 0f; t < 3f && !field.Running; t += Time.unscaledDeltaTime) yield return null;
+    }
+
+    // Steps onto the cell west of the host's wizard and punches east, at it: online the stand and the strike go through the host.
+    static IEnumerator Punch(ChemGrid grid, int x, int y)
+    {
+        var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
+        var body = wizard.GetComponent<CharacterController>();
+        var way = grid.CellCenter(x, y) - grid.CellCenter(x - 1, y);
+        way.y = 0f;
+        body.enabled = false;
+        wizard.transform.SetPositionAndRotation(grid.CellCenter(x - 1, y) + Vector3.up * (grid.SurfaceY(x - 1, y) + 0.05f), Quaternion.LookRotation(way));
+        body.enabled = true;
+        yield return new WaitForSecondsRealtime(0.5f);
+        wizard.GetComponent<WizardStrike>().Strike(way.normalized);
+        yield return new WaitForSecondsRealtime(1f);
     }
 
     // Stands by the first thing of a kind and asks the host for it.
@@ -443,12 +465,12 @@ public abstract class RoomProbe : ProbeScenario
     /// lands at a tick, and a virtual player can be ticks behind, so the two are compared once it has run the tick
     /// this side is on; one that never gets there fails _client_reached_tick as well.
     /// </summary>
-    protected IEnumerator Agree(string name, string line)
+    protected IEnumerator Agree(string name, string line, float seconds = ReachSeconds)
     {
         yield return Wait(0.6f);
         var mine = Record.Seen(id, step);
         int tick = mine.netTick;
-        yield return Reach(name, tick);
+        yield return Reach(name, tick, seconds);
         if (Theirs == null) yield break;
         slowestReach = Mathf.Max(slowestReach, Theirs.reachSeconds);
         Metric("client_reach_slowest_s", slowestReach);
@@ -543,6 +565,8 @@ public class RoomOpenProbe : RoomProbe
     const float FilmSeconds = 5f;
     /// <summary>Long enough for two 30-tick checksums after the waves start (5 s each at 6 ticks a second).</summary>
     const float DefenseChecksum = 11f;
+    /// <summary>Long enough for a 30-tick checksum after the punch.</summary>
+    const float StrikeChecksum = 6f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
 
@@ -645,6 +669,7 @@ public class RoomOpenProbe : RoomProbe
             $"{World.Room.Mods.Count} mods on, there {Theirs.roomText}");
 
         yield return ClientDefense();
+        yield return ClientStrike();
 
         // A late joiner after a reset and a change after it: the mods as they stood, then the change.
         yield return HostToggle(Wildfire);
@@ -655,6 +680,24 @@ public class RoomOpenProbe : RoomProbe
         Check("late_joiner_has_the_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
         Check("late_joiner_fireball", Theirs.fireballRadius == World.Rules.Spell(SpellIds.Fireball).Radius, $"radius {Theirs.fireballRadius}");
         Check("late_joiner_has_the_waves", Theirs.defense == Mine.defense, $"{Theirs.defense}, here {Mine.defense}");
+        Check("late_joiner_has_the_strike", !string.IsNullOrEmpty(Mine.strikes) && Theirs.strikes == Mine.strikes, $"{Theirs.strikes}, here {Mine.strikes}");
+    }
+
+    // Strikes over the network, after the reset so a late joiner replays it: the client's wizard steps beside the host's
+    // and punches it (a stand and a strike through the host), both log the same punch, and the checksums (whose stands
+    // and the strike's roll are in them) agree from then on.
+    IEnumerator ClientStrike()
+    {
+        int asked = Net.NetTick;
+        var at = grid.CellAt(NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position);
+        yield return Ask("strike", $"{at.x},{at.y}");
+        if (Theirs == null) yield break;
+        yield return Wait(StrikeChecksum);
+        yield return Reach("client_strike", Net.NetTick);
+        if (Theirs == null) yield break;
+        Check("client_strike_lands_here", Mine.strikes.Contains("p1 punches p0") || Mine.strikes.Contains("p1's punch misses p0"), Mine.strikes);
+        Check("client_strike_on_both", Theirs.strikes == Mine.strikes, $"{Theirs.strikes}, here {Mine.strikes}");
+        CompareHashes("strike_checksums_match", asked);
     }
 
     // Defense over the network, after the reset so a late joiner replays it: the client starts the waves through the

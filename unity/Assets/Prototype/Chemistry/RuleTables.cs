@@ -575,6 +575,8 @@ namespace Chem
         public bool? Melts;
         /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
         public bool? Hot;
+        /// <summary>freezes: whether the cell holds a liquid that freezes (its row gives freezes, Rules.Liquids.cs).</summary>
+        public bool? Freezes;
         public string Gas, TerrainTag, NotTerrainTag;
         /// <summary>liquid: the cell holds (unfrozen) this liquid, by id or tag (Rules.Liquids.cs); "water" is liquid 0, as the water condition.</summary>
         public string Liquid;
@@ -1116,6 +1118,7 @@ namespace Chem
                 Frozen = Bool(c["frozen"]),
                 Melts = Bool(c["melts"]),
                 Hot = Bool(c["hot"]),
+                Freezes = Bool(c["freezes"]),
                 Conductive = Bool(c["conductive"]),
                 Gas = Str(c["gas"]),
                 Liquid = Str(c["liquid"]),

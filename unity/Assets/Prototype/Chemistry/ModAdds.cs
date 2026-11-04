@@ -1,7 +1,6 @@
 // What each mod in a room's rules adds (#88): every row of an id table the rules
 // in force have and the base rules don't (a material, a style or another building
-// table's row, a building row, a species, a part, a trigger, a liquid once there
-// is that table), owned by the first mod on that adds it. Another mod naming one,
+// table's row, a building row, a species, a part, a trigger, a liquid), owned by the first mod on that adds it. Another mod naming one,
 // by a row of that id or a string anywhere in it, is that mod's dependent and goes
 // with it (World.Lapse.cs). Pure: a RuleSet in, a list out, in mod order, then
 // table order (Paths), then the patch's own order, so every peer lists them alike.

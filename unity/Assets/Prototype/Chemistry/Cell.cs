@@ -16,6 +16,10 @@ namespace Chem
         public int Liquid;
         /// <summary>The liquid here: Liquid while it holds some, else 0 (water).</summary>
         public int Kind => Water > 0 ? Liquid : 0;
+        /// <summary>Ticks until the liquid here sets into its terrain (sets {into, after}, World.SetLiquid). 0: it doesn't set, or the cell is dry.</summary>
+        public int Sets;
+        /// <summary>The count of the liquid setting here: Sets while a liquid besides water holds it, else 0. What's hashed and saved, as Kind is.</summary>
+        public int Setting => Kind != 0 ? Sets : 0;
         /// <summary>The water here is ice.</summary>
         public bool Frozen;
         /// <summary>oil, grease, ash, or null.</summary>
@@ -78,13 +82,13 @@ namespace Chem
         /// <summary>Takes every field of another cell (the starting state, World.KeepStart).</summary>
         internal void CopyFrom(Cell o)
         {
-            T = o.T; Water = o.Water; Liquid = o.Liquid; Frozen = o.Frozen; Cover = o.Cover; Fire = o.Fire; Fuel = o.Fuel; Gas = o.Gas; GasAmt = o.GasAmt; Charge = o.Charge; Height = o.Height; Life = o.Life; DampUntil = o.DampUntil; Rust = o.Rust; Heat = o.Heat; Lit = o.Lit; Slick = o.Slick; Star = o.Star; Cracked = o.Cracked;
+            T = o.T; Water = o.Water; Liquid = o.Liquid; Sets = o.Sets; Frozen = o.Frozen; Cover = o.Cover; Fire = o.Fire; Fuel = o.Fuel; Gas = o.Gas; GasAmt = o.GasAmt; Charge = o.Charge; Height = o.Height; Life = o.Life; DampUntil = o.DampUntil; Rust = o.Rust; Heat = o.Heat; Lit = o.Lit; Slick = o.Slick; Star = o.Star; Cracked = o.Cracked;
         }
 
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Liquid = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0; Heat = 0; Lit = 0; Slick = 0; Star = 0; Cracked = 0;
+            T = terrain; Water = 0; Liquid = 0; Sets = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0; Heat = 0; Lit = 0; Slick = 0; Star = 0; Cracked = 0;
         }
     }
 

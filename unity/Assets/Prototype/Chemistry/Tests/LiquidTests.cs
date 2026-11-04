@@ -223,7 +223,7 @@ namespace Chem.Tests
         [TestCase(@"""water"": { ""thick"": 2 }", "water is built in")]
         [TestCase(@"""goo"": { ""heap"": 1 }", "heap must be a whole number from 2")]
         [TestCase(@"""goo"": { ""thick"": 1.5 }", "thick must be a whole number")]
-        [TestCase(@"""goo"": { ""sets"": { ""into"": ""rock"" } }", "unknown field \"sets\"")]
+        [TestCase(@"""goo"": { ""wet"": 1 }", "unknown field \"wet\"")]
         [TestCase(@"""goo"": { ""boils"": ""vapour"" }", "boils vapour isn't a gas")]
         [TestCase(@"""goo"": { ""touch"": ""glue"" }", "touch glue isn't an element")]
         [TestCase(@"""goo"": { ""lapse"": { ""into"": ""honey"" } }", "lapse.into honey must be water")]
