@@ -374,7 +374,7 @@ that long, and doesn't march.
   The **ball** (core state, not a thing) starts on the **tee**; a cast
   whose force moves it is a **stroke**; it drops in on the **hole** cell.
   Lost in water or out of the course's bounds, it goes back on the tee for
-  a stroke's penalty. The course is `world/golf.json`.
+  a stroke's penalty. The course is `world/golf.json`; an act can place a ball and a cup elsewhere.
 
 **Spell zone**
 : A block of cells that allows only some elements (a spell is allowed when a
@@ -688,7 +688,7 @@ that long, and doesn't march.
 
 **Dragon**
 : The world reset as an event (BACKLOG §26, `World.Dragon.cs`, `sandbox/src/dragon.ts`). Summoned by a
-  `DragonCommand` (the Reset, the host alone online), or by itself past the changed-cell budget. Its path
+  `DragonCommand` (the Reset, the host alone online), or by itself past the changed-cell budget, if a mod sets one. Its path
   comes from the seed and the flight's number, never from the world's random numbers. How big it's drawn is
   `dragon.scale` (against a 70 m wingspan): the view's alone, and the breath reaches no further for it.
 
@@ -744,7 +744,7 @@ that long, and doesn't march.
 : Cells that differ from the starting state in what lasts: ground, height and cover. What goes by itself
   doesn't count: fire, gas, charge, timers, water, ice, snow, mud that dries. **The audit** keeps the
   count (`World.ChangedCount`): each tick it compares one active chunk with the starting state. Past
-  `dragon.budget`, the warning starts.
+  `dragon.budget`, when a mod sets one, the warning starts (0, the default, is never: J-073).
 
 **Sheltered**
 : Out of the dragon's breath though under it (`World.ShelteredFromBreath`): in water at least

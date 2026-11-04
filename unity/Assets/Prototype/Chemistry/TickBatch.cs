@@ -13,11 +13,14 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>A spell cast: what NetChem's CastIntent carries, minus who cast it.</summary>
+    /// <summary>A spell cast: what NetChem's CastIntent carries. By is the stand's player, or null alone.</summary>
     public readonly struct CastCommand
     {
-        public CastCommand(string spell, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
+#pragma warning disable S107 // a command's fields are what the wire carries
+        public CastCommand(string spell, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0, string by = null)
+#pragma warning restore S107
         {
+            By = by;
             Spell = spell;
             X = x;
             Y = y;
@@ -28,6 +31,7 @@ namespace Chem
         }
 
         public string Spell { get; }
+        public string By { get; }
         public int X { get; }
         public int Y { get; }
         public int Dir { get; }
@@ -135,7 +139,7 @@ namespace Chem
             }
             foreach (var r in Room) world.ApplyRoom(r);
             if (Room.Count > 0) rules = world.RoomRules;
-            foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
+            foreach (var c in Casts) world.Cast(c);
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.ApplyDefense(d);
             foreach (var c in Combos) world.ApplyCombo(c);

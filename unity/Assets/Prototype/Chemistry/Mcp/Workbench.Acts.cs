@@ -21,7 +21,7 @@ namespace Chem.Mcp
         public string Act(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, string peer = null)
         {
             what = Required(what, "what");
-            string kind = ActKind(what) ?? throw new RulesToolException($"There is no terrain, cover, thing, animal or spell called {what}; list shows what there is.");
+            string kind = ActKind(what) ?? throw new RulesToolException($"There is no terrain, cover, thing, animal or spell called {what}, and it isn't golf-ball or cup; list shows what there is.");
             int wanted = count ?? 1;
             double most = MostOf(kind);
             if (wanted < 1 || wanted > most) throw new RulesToolException(FormattableString.Invariant($"count is 1 to {most} for a {kind}."));
@@ -35,8 +35,13 @@ namespace Chem.Mcp
             if (onto?.Length > 0) ask["onto"] = new JArray(onto.Cast<object>().ToArray());
             string said = Decide(RoomCommand.Act(PeerOf(peer), ask.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
-            string undo = kind == World.ActThing || kind == World.ActTerrain || kind == World.ActCover ? " undo_act takes it back." : "";
-            return FormattableString.Invariant($"{said}\nNear {name}. It's done, for everyone, and it isn't a mod: nothing to apply or save.{undo}");
+            return FormattableString.Invariant($"{said}\nNear {name}. It's done, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(kind)}");
+        }
+
+        static string AfterAct(string kind)
+        {
+            if (kind == World.ActGolf) return " Any spell that lands on the ball moves it, and players at the course take turns.";
+            return kind == World.ActThing || kind == World.ActTerrain || kind == World.ActCover ? " undo_act takes it back." : "";
         }
 
         /// <summary>undo_act(): takes back an act that laid ground or placed things, the last of the player's if none is named.</summary>
@@ -45,6 +50,7 @@ namespace Chem.Mcp
 
         string ActKind(string what)
         {
+            if (what == World.GolfBall || what == World.GolfCup) return World.ActGolf;
             if (InForce.Terrain.ContainsKey(what)) return World.ActTerrain;
             if (InForce.Covers.ContainsKey(what)) return World.ActCover;
             if (InForce.Entities.ContainsKey(what) || InForce.Items.ContainsKey(what)) return World.ActThing;
@@ -56,6 +62,7 @@ namespace Chem.Mcp
         {
             switch (kind)
             {
+                case World.ActGolf: return 1;
                 case World.ActCast: return Budgets.Number("triggers.maxPerTick", 4);
                 case World.ActAnimal: return Budgets.Number("place.maxSummoned", 24);
                 case World.ActThing: return Budgets.Number("place.maxLive", 64);

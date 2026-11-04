@@ -1,5 +1,5 @@
 // The Dragon (docs/BACKLOG.md 26): the world reset as an event. A DragonCommand,
-// or the changed-cell budget passed, starts a flight: a warning, long passes
+// or the changed-cell budget a mod set passed (the rules' 0 is never, J-073), starts a flight: a warning, long passes
 // over the valley, then leaving. Each pass sweeps a strip of chunks, and every
 // chunk its breath reaches goes back to the starting state, a few a tick, in
 // the tick's own stage (TickStage.Dragon), so StepSome can stop between them.
@@ -36,7 +36,7 @@ namespace Chem
         /// <summary>Chunks reset at most in one tick.</summary>
         public int ChunksPerTick = 1;
         /// <summary>Cells that may differ from the starting state before the dragon comes by itself; 0: never.</summary>
-        public int Budget = 100000;
+        public int Budget;
         /// <summary>Water units from which a cell's water (not frozen) hides what's in it from the breath.</summary>
         public int ShelterWater = 8;
         /// <summary>Cells from a creature, toward the dragon, in which a wall of WallTerrains shelters it.</summary>

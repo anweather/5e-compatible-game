@@ -5,7 +5,8 @@
 // the same cells that aren't open. A room's change mode decides an act as it does a mod, and what each did is kept, so
 // RoomChange.Undo can take back the last ones: ground it laid goes back to what stood under, unless something has
 // changed it since, and things it placed go. Animals live in each peer's view (J-056) and casts are over, so those stay.
-// ActText joins CastHash and the save, "" until an act, so worlds without hash as they did.
+// A golf ball or a cup is an act too (World.Golf.cs), and starts a round. ActText joins CastHash and the save, "" until an act,
+// so worlds without hash as they did.
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace Chem
     public sealed partial class World
     {
         /// <summary>What an act can be: laying a terrain or cover, placing a thing, bringing out an animal, or casting a spell.</summary>
-        public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast";
+        public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast", ActGolf = "golf";
 
         /// <summary>How many acts are kept to undo: the oldest are forgotten, and stay done.</summary>
         public const int MostActsKept = 32;
@@ -43,13 +44,19 @@ namespace Chem
             string kind = (string)ask["kind"], what = (string)ask["what"];
             var cells = (ask["cells"] as JArray ?? new JArray()).OfType<JArray>().Select(a => ((int)a[0], (int)a[1])).ToList();
             var act = new ActDone { N = actCount + 1, By = c.Peer, Kind = kind, What = what };
-            int done = kind == ActCast ? CastAct(act, cells) : PlaceAct(act, cells, ask);
+            int done = DoneOf(act, cells, ask);
             if (done == 0) return Refused(c, "none of those cells had room");
             actCount++;
             acts.Add(act);
             if (acts.Count > MostActsKept) acts.RemoveAt(0);
             string left = done < cells.Count ? $"; {cells.Count - done} had no room" : "";
             return new RoomVerdict(true, null, $"{c.Peer} {(kind == ActCast ? "cast" : "brought out")} {Whole(done)} {what} (act {Whole(act.N)}){left}");
+        }
+
+        int DoneOf(ActDone act, List<(int x, int y)> cells, JObject ask)
+        {
+            if (act.Kind == ActCast) return CastAct(act, cells);
+            return act.Kind == ActGolf ? PlaceGolf(act.What, cells) : PlaceAct(act, cells, ask);
         }
 
         static JObject ReadAct(string json)
@@ -74,6 +81,7 @@ namespace Chem
                 case ActThing: return Rules.Entities.ContainsKey(what) || Rules.Items.ContainsKey(what);
                 case ActAnimal: return Rules.Fauna.Species(what) != null;
                 case ActCast: return Rules.Spell(what) != null;
+                case ActGolf: return what == GolfBall || what == GolfCup;
                 default: return false;
             }
         }
@@ -140,10 +148,22 @@ namespace Chem
                 ? acts.Find(a => a.N == n)
                 : acts.FindLast(a => a.By == c.Peer);
             if (act == null) return Refused(c, "there's no act to take back");
-            if (act.Kind == ActAnimal || act.Kind == ActCast) return Refused(c, act.Kind == ActCast ? "a cast can't be taken back" : "animals can't be taken back once they're out");
+            string stays = ActStays(act.Kind);
+            if (stays != null) return Refused(c, stays);
             acts.Remove(act);
             int gone = act.Things.Count > 0 ? TakeThings(act) : TakeCells(act);
             return new RoomVerdict(true, null, $"{c.Peer} took back {Whole(gone)} {act.What} (act {Whole(act.N)})");
+        }
+
+        static string ActStays(string kind)
+        {
+            switch (kind)
+            {
+                case ActCast: return "a cast can't be taken back";
+                case ActAnimal: return "animals can't be taken back once they're out";
+                case ActGolf: return "a ball or cup can't be taken back: place it again somewhere else";
+                default: return null;
+            }
         }
 
         int TakeThings(ActDone act)

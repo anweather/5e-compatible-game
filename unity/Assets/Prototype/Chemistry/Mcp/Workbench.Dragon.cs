@@ -14,7 +14,7 @@ namespace Chem.Mcp
         /// <summary>What each of sim.json's dragon fields does, in DragonParams' words.</summary>
         static readonly (string field, string what)[] DragonFields =
         {
-            ("budget", "the cells (ground, height or cover) that may differ from how the world started before it comes by itself; 0, or tune it to never, and it never comes by itself"),
+            ("budget", "the cells (ground, height or cover) that may differ from how the world started before it comes by itself; 0, the default, or never, and it comes only when summoned"),
             ("warningTicks", "ticks of warning before it dives out of the clouds"),
             ("turnTicks", "ticks it wheels round between passes"),
             ("leavingTicks", "ticks it takes to leave after its last pass"),
@@ -29,7 +29,7 @@ namespace Chem.Mcp
             ("scale", "how big it's drawn, against a 70 m wingspan; drawn only, so its reach doesn't follow it"),
         };
 
-        const string DragonAbout = "The dragon resets the world: when too much of it has changed (budget), it comes by itself, warns, then flies passes over the valley, and every chunk its breath reaches goes back to how it started, things and all. Whoever the breath catches is downed unless sheltered by deep water or a stone wall. Its fields are sim parameters: tune dragon.<field>, such as dragon.budget never so it only comes when summoned.";
+        const string DragonAbout = "The dragon resets the world: it comes when summoned, or by itself past a budget if a mod sets one (0, the default, is never), warns, then flies passes over the valley, and every chunk its breath reaches goes back to how it started, things and all. Whoever the breath catches is downed unless sheltered by deep water or a stone wall. Its fields are sim parameters: tune dragon.<field>, such as dragon.budget never so it only comes when summoned.";
 
         // The dragon's fields as list sim gives them, each with what it does.
         IEnumerable<string> DragonLines()

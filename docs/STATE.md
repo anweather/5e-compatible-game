@@ -64,6 +64,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **`mcp-act` landed** (e8c1113b; `docs/design/world-acts.md`, backlog 30): `act` and `undo_act`, one-off happenings that aren't mods. Not tried with a real Claude yet.
 - **`mix` landed** (d53feb01, P5; core 1411 passed): rows of one `mix` group that meet derive a material. Owed: seen in a running game (view unproven), EditMode on the merged tree, a late join over real netcode; `ApiKeyTests` fail 8 on the Mac (Windows-only vault, not confirmed on plain dev). Only `setCover` mixes covers.
+- **`ball-in-cup` landed** (1e7fb5b5): `act` places a ball and cup, spells move it, turns, the `holed` trigger. Two-player turns tested in core only; no real-Claude test.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
@@ -71,7 +72,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 1. Land what's in flight (the Vivox PC run).
 2. **Cheap playtester landed** (`core/Playtest.Text`, `playtest/cheap/README.md`; text only, no view): Haiku $2.20 and Sonnet $3.68 for 20 minutes, one confirmed finding each (#90, #91), 9 of 10 false alarms from the tool. Fixed tool, Haiku: $2.78, 2 confirmed, 2 false alarms, 0 tool faults ($1.39 each; #91 comment, #92). `run.sh` is zsh, so the PC needs a port; the github sink has filed nothing real; a person judges before filing.
-   **Maps as data with terrain through the MCP (Andrew, 2026-11-04, #69):** designed (`docs/design/maps-as-data.md`, nine phases, about five weeks); phase 1 `briefs/maps-phase-1-folder.md` on the Mac; six questions out to Andrew. Land phase 3 after named acts.
+   **Maps as data with terrain through the MCP (Andrew, 2026-11-04, #69):** designed (`docs/design/maps-as-data.md`, nine phases, about five weeks); phase 1 `briefs/maps-phase-1-folder.md` on the Mac; questions answered (J-073). Land phase 3 after named acts.
    Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 3. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.

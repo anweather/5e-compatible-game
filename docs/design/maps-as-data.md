@@ -170,13 +170,11 @@ second map loads. The Drowned Chain is the test of 8, not a feature: what breaks
 **Not closed off for a map in a mod:** the folder's layout, a hash per folder, the builder reading paths rather than Unity
 assets, and the map chosen before the world starts. Not designed further.
 
-## Questions for Andrew
+## Decided (Andrew, 2026-11-04, J-073)
 
-1. **Build land at run time, or ship one baked scene per map?** Baked is about a week less, but each map costs 13 MB+, needs
-   an Editor bake that can't repeat, and can't be kept from the MCP without one. **Recommend: at run time.**
-2. **Should a mountain stop things?** Raiders walk over it, spells and sight pass through. **Recommend: not in this work.** It
-   needs a walking and sight pass of its own, sized once hills exist to try.
-3. **How big may a live stamp be?** **Recommend: radius 32 cells (48 m) until measured,** one stamp at a time.
-4. **May a stamp cross water, and may the water level change live?** **Recommend: neither yet;** the sea level per map only.
-5. **Who chooses the map?** **Recommend: the host, at the start, with the valley as the default;** a mode can name one later.
-6. **Should the dragon's reset undo stamps?** **Recommend: yes,** as it does for all cells.
+1. Land is built at run time.
+2. A mountain doesn't stop raiders, sight or spells yet.
+3. A live stamp is at most radius 32 cells (48 m), one at a time.
+4. Sea level is set per map for now: no stamps across water, no live water level.
+5. The host picks the map, with the valley as the default.
+6. The dragon's reset undoes stamps, and the automatic dragon is off (`dragon.budget` 0), so it comes only when summoned.

@@ -21,7 +21,9 @@ namespace Chem.Mcp
         {
             id = Required(id, "id");
             on = string.IsNullOrEmpty(on) ? "step" : on.ToLowerInvariant();
-            if (!Rules.TriggerEvents.Contains(on)) throw new RulesToolException($"A trigger reacts to {string.Join(" or ", Rules.TriggerEvents)} so far (a player stepping onto another cell), not {on}.");
+            if (!Rules.TriggerEvents.Contains(on)) throw new RulesToolException($"A trigger reacts to step (a player stepping onto another cell) or holed (a golf ball going in the cup), not {on}.");
+            // Whoever sinks it, unless a player is named: a ball is everyone's.
+            if (string.IsNullOrEmpty(who) && on != "step") who = TriggerDef.Each;
             who = string.IsNullOrEmpty(who) || who == "me" ? AskerForTrigger() : who;
             var list = TriggerActions(does);
             CheckTriggerOdds(every, chance);
@@ -45,6 +47,7 @@ namespace Chem.Mcp
                 throw;
             }
             draft.Changed.Add($"{TriggersTable} {id}");
+            if (on != "step") return draft.Show() + $"\n{id} fires when a golf ball goes in the cup, at the cup's cell. act places a ball and a cup; simulate can't play a round.";
             int gap = Math.Max(TriggerDef.MinEvery, every ?? TriggerDef.MinEvery);
             double perSecond = InForce.Sim.TicksPerSecond / (double)gap;
             return draft.Show() + "\n" + string.Format(CultureInfo.InvariantCulture,

@@ -737,7 +737,7 @@ public struct CastIntent : INetworkSerializable
     /// <summary>Where the caster stood when casting: the centre of a burst's shove (Thunderwave).</summary>
     public Vector3 From;
 
-    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge, AimX, AimY);
+    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge, AimX, AimY, NetChem.PlayerName(Caster));
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
