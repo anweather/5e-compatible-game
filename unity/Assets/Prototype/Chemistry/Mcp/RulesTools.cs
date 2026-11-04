@@ -134,6 +134,14 @@ namespace Chem.Mcp
             Do(() => bench.Act(what, count, near, within, spacing, side, edge, seed, onto, lasts, peer,
                 new Workbench.LandAsk { Profile = profile ?? LandStamp.Dome, Along = along, Radius = radius, Rise = rise, Rough = rough }));
 
+        [RulesTool("call_act"), Description("Fires a named act at a place, now, for everyone: a trigger with on: called from a mod that's on, each of its rows done as act would do it, as one act undo_act takes back whole. Defined once with add_trigger(on: called, do: rows like {\"act\": \"tree\", \"count\": 5, \"within\": 6} or {\"act\": \"land\", \"radius\": 12, \"rise\": 20}) and kept by saving the mod.")]
+        public string CallAct([Description("The named act's id, from list triggers.")] string id,
+            [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
+            [Description("A side of what it's near: north, south, east or west.")] string side = null,
+            [Description("shore for the edge of water.")] string edge = null,
+            [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null) =>
+            Do(() => bench.CallAct(id, near, side, edge, peer));
+
         [RulesTool("undo_act"), Description("Takes back an act that laid ground or placed things: the player's last when none is named. Ground goes back to what stood under, unless something has changed it since. Animals and casts can't be taken back.")]
         public string UndoAct([Description("The act's number, from act's answer; the player's last when left out.")] int? act = null,
             [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null) =>
@@ -198,7 +206,7 @@ namespace Chem.Mcp
             [Description("Whose steps fire it: a player's name, me, or each for everyone; the player asking when left out.")] string who = null,
             [Description("The fewest ticks between two firings for one player, 3 or more; 3 when left out.")] int? every = null,
             [Description("Above 0 and at most 1: how likely a step fires it, the same on every peer; every time when left out.")] double? chance = null,
-            [Description("The event: step (a player stepping onto another cell), or holed (a golf ball going in the cup; everyone's when who is left out).")] string on = null,
+            [Description("The event: step (a player stepping onto another cell), holed (a golf ball going in the cup; everyone's when who is left out), or called (a named act, fired by call_act; its do rows are what act takes, {\"act\": what, ...}, up to 8).")] string on = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.AddTrigger(draft, id, on, who, @do, every, chance));
 
         [RulesTool("add_species"), Description("Adds a new kind of animal to a draft: a row of the fauna table (list fauna) built on a species there is, so it has that one's body and gait and wanders, flees, grazes and comes out in the wilds as it does, with its own name, size, colours and habits. \"A giant rabbit that hops about\" is basedOn rabbit, scale 10, behave {\"play\": 0.6}. Or a body made from other species' slots (a graft): give from instead of basedOn, and it moves and behaves as its first donor. A centaur is from [{\"species\": \"deer\", \"drop\": [\"neck\", \"head\", \"ears\", \"eyes\"]}, {\"species\": \"human\", \"take\": [\"human-torso\"], \"at\": [0, 0.45, 0.8], \"scale\": 1.1, \"coat\": \"own\"}]; describe fauna on each donor lists its slots, and on the new one says where each sits. It's an animal that moves: add_entity with a creature look is a still figure, for a statue or a find. A mod adds at most 12 new entries and 4 species.")]

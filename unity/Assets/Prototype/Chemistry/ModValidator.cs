@@ -518,6 +518,7 @@ namespace Chem
             void TriggerRowBudget(JObject composed, string id, double maxActions, double maxLevel)
             {
                 var actions = (composed[Rules.TriggersKey]?[id]?["do"] as JArray)?.OfType<JObject>().ToList() ?? new List<JObject>();
+                if (Text(composed[Rules.TriggersKey]?[id]?["on"]) == "called") maxActions = budgets.Number("triggers.maxActs", 8);
                 if (actions.Count > maxActions) Add(ModCheck.Budget, $"Trigger {id} does {actions.Count} things; a trigger does at most {Num(maxActions)}.");
                 foreach (var a in actions)
                 {

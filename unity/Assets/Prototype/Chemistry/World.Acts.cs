@@ -19,7 +19,7 @@ namespace Chem
     public sealed partial class World
     {
         /// <summary>What an act can be: laying a terrain or cover, placing a thing, bringing out an animal, or casting a spell.</summary>
-        public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast", ActGolf = "golf";
+        public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast", ActGolf = "golf", ActCalled = "called";
 
         /// <summary>How many acts are kept to undo: the oldest are forgotten, and stay done.</summary>
         public const int MostActsKept = 32;
@@ -32,6 +32,8 @@ namespace Chem
             public readonly List<int> Things = new List<int>();
             /// <summary>The stamp, when the act stamped land.</summary>
             public LandStamp Land;
+            /// <summary>What a named act's firing did, each kept as an act of its own; empty for any other act.</summary>
+            public readonly List<ActDone> Parts = new List<ActDone>();
         }
 
         readonly List<ActDone> acts = new List<ActDone>();
@@ -44,18 +46,56 @@ namespace Chem
             var ask = ReadAct(c.Json);
             if (!ActKnown((string)ask["kind"], (string)ask["what"])) return Refused(c, "that isn't something to do");
             string kind = (string)ask["kind"], what = (string)ask["what"];
-            var cells = (ask["cells"] as JArray ?? new JArray()).OfType<JArray>().Select(a => ((int)a[0], (int)a[1])).ToList();
+            if (kind == ActCalled) return FireNamed(c, what, ask);
+            var cells = CellsOf(ask);
             var act = new ActDone { N = actCount + 1, By = c.Peer, Kind = kind, What = what };
-            RoomVerdict? stamped = kind == ActLand ? StampLand(c, act, ask) : null;
-            if (stamped.HasValue) return stamped.Value;
+            string stampRefused = kind == ActLand ? StampLand(act, ask) : null;
+            if (stampRefused != null) return Refused(c, stampRefused);
             int done = kind == ActLand ? 1 : DoneOf(act, cells, ask);
             if (done == 0) return Refused(c, "none of those cells had room");
-            actCount++;
-            acts.Add(act);
-            if (acts.Count > MostActsKept) acts.RemoveAt(0);
+            KeepAct(act);
             string left = done < cells.Count ? $"; {cells.Count - done} had no room" : "";
             if (kind == ActLand) return new RoomVerdict(true, null, $"{c.Peer} moved the land (act {Whole(act.N)})");
             return new RoomVerdict(true, null, $"{c.Peer} {(kind == ActCast ? "cast" : "brought out")} {Whole(done)} {what} (act {Whole(act.N)}){left}");
+        }
+
+        static List<(int x, int y)> CellsOf(JObject ask) =>
+            (ask["cells"] as JArray ?? new JArray()).OfType<JArray>().Select(a => ((int)a[0], (int)a[1])).ToList();
+
+        void KeepAct(ActDone act)
+        {
+            actCount++;
+            acts.Add(act);
+            if (acts.Count > MostActsKept) acts.RemoveAt(0);
+        }
+
+        // A named act fired: each ask in it as an act of its own, one firing to keep and take back. A part with no room
+        // is skipped, as a cell with no room is in an act; the peer asking has to be someone it's for.
+        RoomVerdict FireNamed(RoomCommand c, string id, JObject ask)
+        {
+            var named = Rules.TriggersOn(TriggerEvent.Called).First(t => t.Id == id);
+            if (!named.IsFor(c.Peer, c.Peer)) return Refused(c, $"{id} isn't {c.Peer}'s to call");
+            var firing = new ActDone { N = actCount + 1, By = c.Peer, Kind = ActCalled, What = id };
+            var parts = (ask["parts"] as JArray ?? new JArray()).OfType<JObject>().ToList();
+            foreach (var part in parts)
+            {
+                var done = DonePart(c, part);
+                if (done != null) firing.Parts.Add(done);
+            }
+            if (firing.Parts.Count == 0) return Refused(c, "none of it had room");
+            KeepAct(firing);
+            string left = firing.Parts.Count < parts.Count ? $"; {Whole(parts.Count - firing.Parts.Count)} of it had no room" : "";
+            return new RoomVerdict(true, null, $"{c.Peer} called {id} (act {Whole(firing.N)}){left}");
+        }
+
+        // One ask of a firing, or null if it did nothing.
+        ActDone DonePart(RoomCommand c, JObject ask)
+        {
+            string kind = (string)ask["kind"], what = (string)ask["what"];
+            if (kind == ActCalled || !ActKnown(kind, what)) return null;
+            var part = new ActDone { N = actCount + 1, By = c.Peer, Kind = kind, What = what };
+            if (kind == ActLand) return StampLand(part, ask) == null ? part : null;
+            return DoneOf(part, CellsOf(ask), ask) > 0 ? part : null;
         }
 
         int DoneOf(ActDone act, List<(int x, int y)> cells, JObject ask)
@@ -88,6 +128,7 @@ namespace Chem
                 case ActCast: return Rules.Spell(what) != null;
                 case ActGolf: return what == GolfBall || what == GolfCup;
                 case ActLand: return what == ActLand;
+                case ActCalled: return Rules.TriggersOn(TriggerEvent.Called).Any(t => t.Id == what);
                 default: return false;
             }
         }
@@ -154,6 +195,7 @@ namespace Chem
                 ? acts.Find(a => a.N == n)
                 : acts.FindLast(a => a.By == c.Peer);
             if (act == null) return Refused(c, "there's no act to take back");
+            if (act.Kind == ActCalled) return UndoFiring(c, act);
             string stays = ActStays(act.Kind);
             if (stays != null) return Refused(c, stays);
             string held = act.Land != null ? TakeLand(act) : null;
@@ -162,6 +204,25 @@ namespace Chem
             if (act.Land != null) return new RoomVerdict(true, null, $"{c.Peer} put the land back (act {Whole(act.N)})");
             int gone = act.Things.Count > 0 ? TakeThings(act) : TakeCells(act);
             return new RoomVerdict(true, null, $"{c.Peer} took back {Whole(gone)} {act.What} (act {Whole(act.N)})");
+        }
+
+        // One firing whole: all its parts that can be taken back, or none if any land can't go back yet.
+        RoomVerdict UndoFiring(RoomCommand c, ActDone firing)
+        {
+            var parts = firing.Parts.Where(p => ActStays(p.Kind) == null).ToList();
+            if (parts.Count == 0) return Refused(c, "nothing of that can be taken back: casts, animals and golf stay");
+            string held = parts.Where(p => p.Land != null).Select(p => LandRefusal(p.Land, -1)).FirstOrDefault(why => why != null);
+            if (held != null) return Refused(c, held);
+            parts.Reverse();
+            foreach (var part in parts)
+            {
+                if (part.Land != null) TakeStamp(part.Land);
+                else if (part.Things.Count > 0) TakeThings(part);
+                else TakeCells(part);
+            }
+            acts.Remove(firing);
+            string stays = parts.Count < firing.Parts.Count ? "; what can't be taken back stays" : "";
+            return new RoomVerdict(true, null, $"{c.Peer} took back {firing.What} (act {Whole(firing.N)}){stays}");
         }
 
         static string ActStays(string kind)
@@ -209,14 +270,17 @@ namespace Chem
         {
             if (actCount == 0) return "";
             var sb = new StringBuilder("|acts:").Append(Whole(actCount));
-            foreach (var a in acts)
-            {
-                sb.Append('|').Append(Whole(a.N)).Append(':').Append(a.By).Append(':').Append(a.Kind).Append(':').Append(a.What);
-                foreach (var (key, terrain, cover) in a.Cells) sb.Append(',').Append(Whole(key)).Append('=').Append(terrain).Append('/').Append(cover);
-                foreach (int t in a.Things) sb.Append(",t").Append(Whole(t));
-                if (a.Land != null) sb.Append(',').Append(a.Land.Text);
-            }
+            foreach (var a in acts) AppendAct(sb, a);
             return sb.ToString();
+        }
+
+        static void AppendAct(StringBuilder sb, ActDone a)
+        {
+            sb.Append('|').Append(Whole(a.N)).Append(':').Append(a.By).Append(':').Append(a.Kind).Append(':').Append(a.What);
+            foreach (var (key, terrain, cover) in a.Cells) sb.Append(',').Append(Whole(key)).Append('=').Append(terrain).Append('/').Append(cover);
+            foreach (int t in a.Things) sb.Append(",t").Append(Whole(t));
+            if (a.Land != null) sb.Append(',').Append(a.Land.Text);
+            foreach (var part in a.Parts) AppendAct(sb, part);
         }
 
         void SaveActs(JObject save)
@@ -225,31 +289,41 @@ namespace Chem
             save["acts"] = new JObject
             {
                 ["count"] = actCount,
-                ["kept"] = new JArray(acts.Select(a => new JObject
-                {
-                    ["n"] = a.N,
-                    ["by"] = a.By,
-                    ["kind"] = a.Kind,
-                    ["what"] = a.What,
-                    ["cells"] = new JArray(a.Cells.Select(c => new JArray(c.key, c.terrain, c.cover))),
-                    ["things"] = new JArray(a.Things),
-                    ["land"] = a.Land?.Row,
-                })),
+                ["kept"] = new JArray(acts.Select(SavedAct)),
             };
+        }
+
+        static JObject SavedAct(ActDone a)
+        {
+            var saved = new JObject
+            {
+                ["n"] = a.N,
+                ["by"] = a.By,
+                ["kind"] = a.Kind,
+                ["what"] = a.What,
+                ["cells"] = new JArray(a.Cells.Select(c => new JArray(c.key, c.terrain, c.cover))),
+                ["things"] = new JArray(a.Things),
+                ["land"] = a.Land?.Row,
+            };
+            if (a.Parts.Count > 0) saved["parts"] = new JArray(a.Parts.Select(SavedAct));
+            return saved;
         }
 
         void LoadActs(JObject s)
         {
             if (!(s["acts"] is JObject saved)) return;
             actCount = (int)saved["count"];
-            foreach (var o in (saved["kept"] as JArray ?? new JArray()).OfType<JObject>())
-            {
-                var a = new ActDone { N = (int)o["n"], By = (string)o["by"], Kind = (string)o["kind"], What = (string)o["what"] };
-                foreach (var c in (o["cells"] as JArray ?? new JArray()).OfType<JArray>()) a.Cells.Add(((int)c[0], (string)c[1], (string)c[2]));
-                foreach (var t in o["things"] as JArray ?? new JArray()) a.Things.Add((int)t);
-                a.Land = LandStamp.Read(o["land"]);
-                acts.Add(a);
-            }
+            foreach (var o in (saved["kept"] as JArray ?? new JArray()).OfType<JObject>()) acts.Add(LoadedAct(o));
+        }
+
+        static ActDone LoadedAct(JObject o)
+        {
+            var a = new ActDone { N = (int)o["n"], By = (string)o["by"], Kind = (string)o["kind"], What = (string)o["what"] };
+            foreach (var c in (o["cells"] as JArray ?? new JArray()).OfType<JArray>()) a.Cells.Add(((int)c[0], (string)c[1], (string)c[2]));
+            foreach (var t in o["things"] as JArray ?? new JArray()) a.Things.Add((int)t);
+            a.Land = LandStamp.Read(o["land"]);
+            foreach (var part in (o["parts"] as JArray ?? new JArray()).OfType<JObject>()) a.Parts.Add(LoadedAct(part));
+            return a;
         }
     }
 }

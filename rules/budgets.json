@@ -13,7 +13,7 @@
   "land": { "maxRadius": 32, "maxRise": 100 },
   "place": { "maxCount": 8, "maxWithin": 8, "maxLasts": 21600, "maxLive": 64, "maxSummoned": 24 },
   "fauna": { "maxPerMod": 4, "maxDonors": 3, "maxSlots": 40, "minScale": 0.25, "maxScale": 4 },
-  "triggers": { "maxPerMod": 4, "maxActions": 2, "maxLevel": 7, "maxPerTick": 4 },
+  "triggers": { "maxPerMod": 4, "maxActions": 2, "maxActs": 8, "maxLevel": 7, "maxPerTick": 4 },
   "sim": {
     "ticksPerSecond": [6, 6],
     "fire.spreadChance": [0, 0.9],

@@ -20,8 +20,25 @@ namespace Chem.Mcp
         /// <summary>act(): count of a terrain, cover, thing or animal over open cells near something, or a spell cast there, now.</summary>
         public string Act(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, string peer = null, LandAsk landAsk = null)
         {
+            var plan = PlanAct(what, count, near, within, spacing, side, edge, seed, onto, lasts, landAsk);
+            if (plan.NoRoom != null) return plan.NoRoom;
+            string said = Decide(RoomCommand.Act(PeerOf(peer), plan.Command.ToString(Newtonsoft.Json.Formatting.None)));
+            if (Refused(said)) return said;
+            return FormattableString.Invariant($"{said}\n{(plan.ActKindOf == World.ActLand ? "At" : "Near")} {plan.PlaceName}. It's done, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(plan.ActKindOf)}");
+        }
+
+        // What act will send, worked out from the world as it is: the ask, or what's wrong with the place.
+        sealed class ActPlan
+        {
+            public JObject Command;
+            public string ActKindOf, PlaceName, NoRoom;
+        }
+
+        // One ask of act. A wrong ask throws; a place with no room is NoRoom, as it's no mistake of the asker's.
+        ActPlan PlanAct(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, LandAsk landAsk)
+        {
             what = Required(what, "what");
-            if (what == World.ActLand) return ActOnLand(near, side, edge, seed, landAsk ?? new LandAsk(), peer);
+            if (what == World.ActLand) return PlanLand(near, side, edge, seed, landAsk ?? new LandAsk());
             string kind = ActKind(what) ?? throw new RulesToolException($"There is no terrain, cover, thing, animal or spell called {what}, and it isn't golf-ball or cup; list shows what there is.");
             int wanted = count ?? 1;
             double most = MostOf(kind);
@@ -30,13 +47,37 @@ namespace Chem.Mcp
                 throw new RulesToolException(FormattableString.Invariant($"{what} is past level {Budgets.Number("triggers.maxLevel", 7)}, the highest an act can cast."));
             if (lasts < 0 || lasts > Budgets.Number("place.maxLasts", 21600)) throw new RulesToolException("lasts is in ticks, up to an hour.");
             var picked = PickNear(wanted, string.IsNullOrWhiteSpace(near) ? "me" : near, within ?? 12, spacing ?? 0, side, edge, seed ?? ++actSeed, kind == World.ActCast ? null : onto, out string name);
-            if (picked.Count == 0) return FormattableString.Invariant($"No open cell within {within ?? 12} cells of {name}; try further out, or somewhere else.");
+            if (picked.Count == 0) return new ActPlan { ActKindOf = kind, PlaceName = name, NoRoom = FormattableString.Invariant($"No open cell within {within ?? 12} cells of {name}; try further out, or somewhere else.") };
             var ask = new JObject { ["kind"] = kind, ["what"] = what, ["cells"] = new JArray(picked.Select(c => new JArray(c.x, c.y))) };
             if (lasts > 0) ask["lasts"] = lasts.Value;
             if (onto?.Length > 0) ask["onto"] = new JArray(onto.Cast<object>().ToArray());
+            return new ActPlan { Command = ask, ActKindOf = kind, PlaceName = name };
+        }
+
+        /// <summary>call_act(): a named act, a trigger with on: called from a mod that's on, fired at a place: each of its rows as act would do it, one firing.</summary>
+        public string CallAct(string id, string near, string side, string edge, string peer = null)
+        {
+            id = Required(id, "id");
+            var named = InForce.TriggersOn(TriggerEvent.Called).FirstOrDefault(t => t.Id == id)
+                ?? throw new RulesToolException($"There is no named act called {id}: it's a trigger with on: called in a mod that's on. list triggers shows them.");
+            var plans = named.Do.Select(a => PlanOfRow(a.Act, near, side, edge)).ToList();
+            var parts = plans.Where(p => p.NoRoom == null).ToList();
+            if (parts.Count == 0) return plans[0].NoRoom;
+            int cells = parts.Sum(p => (p.Command["cells"] as JArray)?.Count ?? 0);
+            double most = Budgets.Number("lay.maxCells", 256);
+            if (cells > most) throw new RulesToolException(FormattableString.Invariant($"{id} asks for {cells} cells at once; a firing does at most {most}."));
+            var ask = new JObject { ["kind"] = World.ActCalled, ["what"] = id, ["parts"] = new JArray(parts.Select(p => (object)p.Command).ToArray()) };
             string said = Decide(RoomCommand.Act(PeerOf(peer), ask.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
-            return FormattableString.Invariant($"{said}\nNear {name}. It's done, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(kind)}");
+            return $"{said}\nAt {parts[0].PlaceName}. It's done, for everyone. undo_act takes back what can be, all at once: casts, animals and golf stay.";
+        }
+
+        // A row of a called trigger, what act would be asked, with where it's being called.
+        ActPlan PlanOfRow(JObject row, string near, string side, string edge)
+        {
+            var land = new LandAsk { Profile = (string)row["profile"] ?? LandStamp.Dome, Along = (string)row["along"], Radius = (int?)row["radius"], Rise = (int?)row["rise"], Rough = (int?)row["rough"] };
+            var onto = (row["onto"] as JArray)?.Select(t => (string)t).ToArray();
+            return PlanAct((string)row["act"], (int?)row["count"], near, (int?)row["within"], (int?)row["spacing"], side, edge, (int?)row["seed"], onto, (int?)row["lasts"], land);
         }
 
         /// <summary>What a land stamp asks for: metres and cells as a player says them.</summary>
@@ -55,7 +96,7 @@ namespace Chem.Mcp
         };
 
         // One stamp at a time, where it's asked for, off buildings and settled ground; water and the terrain's range the world refuses itself.
-        string ActOnLand(string near, string side, string edge, int? seed, LandAsk ask, string peer)
+        ActPlan PlanLand(string near, string side, string edge, int? seed, LandAsk ask)
         {
             int radius = ask.Radius ?? 8, rise = ask.Rise ?? 0;
             double mostRadius = Budgets.Number("land.maxRadius", 32), mostRise = Budgets.Number("land.maxRise", 100);
@@ -69,11 +110,8 @@ namespace Chem.Mcp
             var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? 0, seed ?? ++actSeed);
             if (!stamp.Known) throw new RulesToolException("profile is flat, dome, cone or ridge, and rough is 0 to 100.");
             string settled = OnWorld(w => SettledUnder(w, stamp));
-            if (settled != null) return $"That would move the ground under {settled}; try further off.";
-            var command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row };
-            string said = Decide(RoomCommand.Act(PeerOf(peer), command.ToString(Newtonsoft.Json.Formatting.None)));
-            if (Refused(said)) return said;
-            return $"{said}\nAt {name}. It's done, for everyone, and it isn't a mod: nothing to apply or save. undo_act takes it back. Land stops nothing yet: raiders, sight and spells pass over it.";
+            if (settled != null) return new ActPlan { ActKindOf = World.ActLand, PlaceName = name, NoRoom = $"That would move the ground under {settled}; try further off." };
+            return new ActPlan { ActKindOf = World.ActLand, PlaceName = name, Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
         }
 
         const int LandUnitsPerMetre = 8;
@@ -103,6 +141,7 @@ namespace Chem.Mcp
         static string AfterAct(string kind)
         {
             if (kind == World.ActGolf) return " Any spell that lands on the ball moves it, and players at the course take turns.";
+            if (kind == World.ActLand) return " undo_act takes it back. Land stops nothing yet: raiders, sight and spells pass over it.";
             return kind == World.ActThing || kind == World.ActTerrain || kind == World.ActCover ? " undo_act takes it back." : "";
         }
 

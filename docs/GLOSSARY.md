@@ -758,6 +758,9 @@ that long, and doesn't march.
 : A **theme** is JSON goals for the land (`world/themes/`); solved for a
   seed it's a **blueprint** of zones, mountains, lakes and rivers (D11).
 
+**Named act**
+: A one-off defined once and fired again by name at a place: a trigger with `on: "called"` in a mod, its rows what `act` takes, fired by `call_act` as one firing (`docs/design/world-acts.md`).
+
 **Land stamp**
 : One integer change to land: a centre, radius, profile, rise and seed. How `act` moves the ground, and how a map will be
   shaped (`World.Land.cs`, `docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own.
