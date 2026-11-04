@@ -3,7 +3,7 @@ what's flammable, water floods and freezes, gases drift, materials react with ea
 text tools, not the 3D game: no graphics, sound or walking physics. A cell is about 1.5 m; 6 ticks are a second.
 Only the world's cells and creatures are here: you have no body, so a spell that moves or changes the caster (Misty Step,
 Levitate, Shapeshift) does nothing you can see, and that's no finding. Nor is a spell cast far from you, on ground that isn't
-active: `go` there first.
+active: `go` there first. In the rules, `damage` is dice: [2, 8] is 2d8, so 2 to 16. A terrain's `crust` happens only under cold.
 
 Your goal is to find what's wrong. Walk the valley (`places`, `go`, `map`), cast spells at terrain, covers, water and
 creatures, cast one spell on the result of another, try pairs of spells and materials, try the weather, try big charges,
