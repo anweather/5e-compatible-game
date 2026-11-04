@@ -46,6 +46,7 @@ Each entry has:
 - **Asked:** 2026-11-03, raised by Andrew: players set their own Anthropic API key in Settings.
 - **Also comes up when:** the release notes; storing any secret; Mac and Linux players.
 - **Answer:** Andrew: yes, in 0.1.11, so people can bring their own keys. PM's default: encrypted per user with DPAPI on Windows, never in PlayerPrefs, and checked in Settings with `GET /v1/models`.
+  Settings also offers Claude Code by path (default `claude`) with environment variables for a separate instance; Claude only for now, other providers later. Plus a "make a separate key" line and a per-session spend cap.
 - **Why:** players pay for their own use, and the game holds no shared key.
 - **Revisited:** 0.
 

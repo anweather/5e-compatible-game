@@ -15,6 +15,20 @@ Work in `host-ux` on a new branch `settings-api-key` off `origin/dev`. Push that
 - Never handed to a child process: `claude_is_handed_no_key` must still pass.
 - Key checks and API calls never block the main thread.
 
-**Tests:** use `ApiStandIn`, with no real key and no real call. Cover good key, bad key (401), no network, remove, and restart keeps the key. Compile, EditMode, the chat probes and `smoke`.
+**Added by Andrew: a Claude setup section in Settings**
+The player picks how the game reaches Claude:
+- **API key:** the above; the game calls the API itself.
+- **Claude Code:** the game runs the player's install. The path defaults to `claude`, or they give a full path, plus environment variables for that run (such as `CLAUDE_CONFIG_DIR`), because they may keep a separate Claude Code instance and account.
+
+Add a Check here too: run the chosen install with `--version` and say plainly whether it's found. Claude only for now, but keep it a connection profile (`docs/BACKLOG.md`: picker of profiles), so Codex or others can be added later without rework. Don't build them.
+
+- The path and environment variables are set only from the local Settings screen, never from mods, rules, saves or peers: that path runs a program on the player's PC. Test it.
+- Environment values may hold secrets: store them like the key, and keep them out of logs and records. Add only what the player listed; the game's own saved key is still never handed to a child process.
+
+**Added by Andrew: limiting the damage**
+- Beside the key field: one line and a link telling the player to make a separate key for this game with a low spend limit in the Anthropic Console, so they can revoke it any time.
+- A spend cap per session for API mode, with a sensible default the player can change. At the cap, the chat stops and says why, in plain words.
+
+**Tests:** use `ApiStandIn`, with no real key and no real call. Cover good key, bad key (401), no network, remove, restart keeps the key, the cap stopping a run, and a Claude Code path found and not found. Compile, EditMode, the chat probes and `smoke`.
 
 **Report:** `bash tools/workers/bridge.sh send pm "settings-api-key" < report.md`: commit, test counts, what isn't proven. Say whether a release player actually reaches `ApiChat`; if a build flag or setting hides it, fix that and say so. Add a line for the notes in player words.

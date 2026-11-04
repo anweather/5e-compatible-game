@@ -154,6 +154,11 @@ public class PauseMenu : MonoBehaviour
     /// <summary>A text box outside the menu has the keys, so Esc and M are letters to it, not the menu's.</summary>
     public static bool KeysTaken { get; set; }
 
+    /// <summary>A text field on a page has the keys this frame: letters are letters to it, and Esc only lets go of it.</summary>
+    public static void FieldHasKeys() => fieldFrame = Time.frameCount;
+
+    static int fieldFrame = -2;
+
     void Awake()
     {
         controls = new MenuControls();
@@ -163,6 +168,11 @@ public class PauseMenu : MonoBehaviour
 
     void Update()
     {
+        if (Open && Time.frameCount - fieldFrame <= 1)
+        {
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) GUIUtility.keyboardControl = 0;
+            return;
+        }
         if (controls.Menu.WasPressedThisFrame() && !KeysTaken)
         {
             bool pad = MenuControls.PressedOnPad(controls.Menu);

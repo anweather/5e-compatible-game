@@ -808,10 +808,15 @@ that long, and doesn't march.
   so a record has a real "in the world". A stand-in answers unless it's given
   `--real-claude true`, which spends real prompts (J-064).
 
+**Chat profile**
+: How the game reaches Claude, picked in Settings > Claude setup (`ChatProfile`,
+  `ChatSetup`): the player's API key, or their own Claude Code by path with its
+  environment variables. Each is a row, so another harness is one more.
+
 **Harness**
 : What answers a chat message, behind `IChatHarness`: Claude Code by way of
-  `ClaudeChat` in play, and the **API loop** for evaluation. Backlog 27's picker
-  would choose between them.
+  `ClaudeChat`, or the **API loop** with a player's own key. A **chat profile**
+  picks between them.
 
 **Chat records**
 : `chat-log-<date>.jsonl`, one line per prompt, with the prompt in it, in

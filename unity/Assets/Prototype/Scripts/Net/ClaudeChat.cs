@@ -47,7 +47,11 @@ public sealed class ClaudeChat : IChatHarness
 
     /// <summary>Where claude is, or null if it isn't installed.</summary>
     public static string FindClaude() =>
-        StandIn == "" ? null : StandIn ?? ClaudeRun.Find(Environment.GetEnvironmentVariable("PATH"), Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), File.Exists);
+        StandIn == "" ? null : StandIn ?? Locate(ChatSetup.ProgramPath);
+
+    /// <summary>Where this path leads (ChatSetup's), or null if nothing's there.</summary>
+    public static string Locate(string path) =>
+        ClaudeRun.Resolve(path, Environment.GetEnvironmentVariable("PATH"), Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), File.Exists);
 
     /// <summary>The next thing heard, on the main thread; false when there's nothing yet.</summary>
     public bool Take(out (ClaudeSaid said, string text) line)
@@ -94,7 +98,15 @@ public sealed class ClaudeChat : IChatHarness
 
     static ProcessStartInfo StartOf(string claude, string folder, string model)
     {
-        string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments(model).Concat(Extra ?? Array.Empty<string>()));
+        var start = Starting(claude, folder, ClaudeRun.CommandLine(ClaudeRun.Arguments(model).Concat(Extra ?? Array.Empty<string>())));
+        ChatSetup.Hand(start.Environment);
+        secrets = ChatSetup.Secrets;
+        return start;
+    }
+
+    /// <summary>A run of this install with its streams taken, and the game's key out of its environment.</summary>
+    public static ProcessStartInfo Starting(string claude, string folder, string arguments)
+    {
         bool script = claude.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
         var start = new ProcessStartInfo(script ? "cmd.exe" : claude, script ? $"/c \"\"{claude}\" {arguments}\"" : arguments)
         {
@@ -130,6 +142,9 @@ public sealed class ClaudeChat : IChatHarness
         if (failure != null) heard.Enqueue((ClaudeSaid.Failed, told));
     }
 
+    // What the player listed for claude's environment, cut from all it says before anyone keeps it.
+    static string[] secrets = Array.Empty<string>();
+
     // The message in, each line out, and a watchdog so one that never ends can't hold the chat. Null if the process said it was done, else what went wrong.
     string Hear(Process process, byte[] input, ChatRecorder recorder, Func<long> clock)
     {
@@ -147,6 +162,7 @@ public sealed class ClaudeChat : IChatHarness
             string line;
             while ((line = process.StandardOutput.ReadLine()) != null)
             {
+                line = ClaudeRun.Without(line, secrets);
                 long at = clock();
                 Tap?.Invoke(line, at);
                 recorder.Line(line, at);
@@ -165,7 +181,7 @@ public sealed class ClaudeChat : IChatHarness
         }
         catch (Exception e) when (e is IOException or InvalidOperationException or ObjectDisposedException)
         {
-            lastError = e.Message;
+            lastError = ClaudeRun.Without(e.Message, secrets);
         }
         if (done) return null;
         return failure ?? (string.IsNullOrWhiteSpace(lastError) ? "Claude stopped before it answered." : lastError.Trim());
