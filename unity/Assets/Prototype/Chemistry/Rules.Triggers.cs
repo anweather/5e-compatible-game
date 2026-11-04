@@ -14,11 +14,13 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>What a trigger reacts to. Only a step so far; each later one is a place in the core that already runs on a command.</summary>
+    /// <summary>What a trigger reacts to; each is a place in the core that already runs the same on every peer.</summary>
     public enum TriggerEvent
     {
         /// <summary>A player's stand moves to another cell (not a first stand, not while downed).</summary>
         Step,
+        /// <summary>A golf ball goes in the cup (World.Golf.cs): the player who hit it, at the cup.</summary>
+        Holed,
     }
 
     /// <summary>Where an action lands, from the player whose event it was.</summary>
@@ -96,7 +98,7 @@ namespace Chem
         /// <summary>Where the rule document keeps the triggers (rules/triggers.json), rows by id.</summary>
         public const string TriggersKey = "triggers";
 
-        internal static readonly string[] TriggerEvents = { "step" };
+        internal static readonly string[] TriggerEvents = { "step", "holed" };
         internal static readonly string[] TriggerAts = { "here", "ahead", "behind", "around" };
         static readonly string[] TriggerFields = { "on", "who", "every", "chance", "do" };
         static readonly string[] ActionFields = { "cast", "place", "at", "by", "within", "delay" };
@@ -121,7 +123,7 @@ namespace Chem
         static TriggerDef ParseTrigger(string id, JObject o) => new TriggerDef
         {
             Id = id,
-            On = TriggerEvent.Step,
+            On = (TriggerEvent)Math.Max(0, Array.IndexOf(TriggerEvents, Str(o["on"]))),
             Who = Str(o["who"]),
             Every = Math.Max(TriggerDef.MinEvery, Int(o["every"]) ?? TriggerDef.MinEvery),
             Chance = Num(o["chance"]) ?? 1,

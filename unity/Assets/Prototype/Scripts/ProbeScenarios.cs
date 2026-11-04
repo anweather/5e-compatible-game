@@ -86,6 +86,8 @@ public static class ProbeScenarios
         new Entry("golf", typeof(GolfProbe), 150f,
             "Spell golf's hole played through the caster (GolfCourse, World.Golf): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
             "to the hole; then the meadow coil beside it: its cells laid, no tree on its pond, a bolt into the pond opens the gate. Shots with --shots."),
+        new Entry("cup", typeof(CupProbe), 90f,
+            "A ball and a cup placed through the real MCP server (act) by the wizard: the course moves to them, Fire Bolt moves the ball, and it goes in with fireworks over the cup. Shots with --shots."),
         new Entry("feel", typeof(FeelProbe), 280f,
             "What a hand on the controls should feel, on a virtual pad and keyboard: running onto ice and Frost's glaze keeps the speed and slides, snow and a bank slow " +
             "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball, by CastFeel's strength, the arm reaching it, a hit-stop, one landing (a miss too, and off still), the same ticks with and without the stop; Plant Growth charged on burnt ground and Wall of " +

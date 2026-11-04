@@ -63,7 +63,7 @@ namespace Chem.Tests
             StringAssert.Contains("every is at least 3 ticks", Assert.Throws<RulesToolException>(() => tools.AddTrigger("t", MeteorAhead, every: 2)).Message);
             StringAssert.Contains("unknown spell nope", Assert.Throws<RulesToolException>(() => tools.AddTrigger("t", "[{\"cast\": \"nope\"}]")).Message);
             StringAssert.Contains("do is a list of one or two actions", Assert.Throws<RulesToolException>(() => tools.AddTrigger("t", "3")).Message);
-            StringAssert.Contains("reacts to step so far", Assert.Throws<RulesToolException>(() => tools.AddTrigger("t", MeteorAhead, on: "jump")).Message);
+            StringAssert.Contains("reacts to step", Assert.Throws<RulesToolException>(() => tools.AddTrigger("t", MeteorAhead, on: "jump")).Message);
             string said = tools.AddTrigger("weather-steps", "[{\"cast\": \"control-weather\"}]");
             Assert.That(b.Validate(DraftIn(said)).Select(p => p.Message), Has.Some.Contains("level 7 at most"));
         }

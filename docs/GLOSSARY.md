@@ -369,7 +369,7 @@ that long, and doesn't march.
   The **ball** (core state, not a thing) starts on the **tee**; a cast
   whose force moves it is a **stroke**; it drops in on the **hole** cell.
   Lost in water or out of the course's bounds, it goes back on the tee for
-  a stroke's penalty. The course is `world/golf.json`.
+  a stroke's penalty. The course is `world/golf.json`; an act can place a ball and a cup elsewhere.
 
 **Spell zone**
 : A block of cells that allows only some elements (a spell is allowed when a

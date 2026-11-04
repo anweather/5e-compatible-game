@@ -68,7 +68,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 
 **Act** (`docs/design/world-acts.md`)
 - `act(what, count?, near?, within?, spacing?, side?, edge?, seed?, onto?, lasts?)`: something that happens once, now, for
-  everyone, with no draft and no mod: a terrain, cover, thing, animal or spell near the player or a place. `undo_act(act?)`
+  everyone, with no draft and no mod: a terrain, cover, thing, animal or spell near the player or a place, or `golf-ball` and `cup` for a round of spell golf. `undo_act(act?)`
   takes back ground and things, the player's last if none is named; animals and casts stay.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)

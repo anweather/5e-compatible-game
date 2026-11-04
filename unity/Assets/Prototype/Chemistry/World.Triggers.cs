@@ -1,7 +1,7 @@
 // Triggers firing (docs/design/events-and-placing.md 2c, J-067): rules/triggers.json rows
-// reacting to an event. The one event so far is a step: a player's Stand command whose cell
-// differs from the one the core has (ApplyStrike; not a first stand, not while downed). A
-// trigger fires inside that command, in batch order, so every peer fires the same ones, and
+// reacting to an event: a step, a player's Stand command whose cell differs from the one the
+// core has (ApplyStrike; not a first stand, not while downed), or a golf ball holed, in the
+// ball's tick, at the cup. A trigger fires inside that, in order, so every peer fires the same ones, and
 // its actions run there as a cast does: a cast of a spell (through Release, a delay giving it
 // a target mark as Falling Star has) or a place (PlaceOn, as a spell's). The cell is the
 // player's own input, as a cast's is: physics decides nothing shared (D4).
@@ -90,6 +90,17 @@ namespace Chem
                 if (t.IsFor(me.Player, peer) && Due(t, me.Player)) Fire(t, me, dx, dy);
         }
 
+        // The ball went in: the holed triggers of who hit it fire at the cup, facing south as nobody stepped.
+        void BallHoled(GolfState g)
+        {
+            var list = Rules.TriggersOn(TriggerEvent.Holed);
+            if (list.Count == 0) return;
+            var cup = new WizardStand { Player = g.LastBy ?? TriggerDef.SoloPlayer, X = g.HoleX, Y = g.HoleY };
+            string peer = TriggerDef.PeerOf(cup.Player);
+            foreach (var t in list)
+                if (t.IsFor(cup.Player, peer) && Due(t, cup.Player)) Fire(t, cup, 0, 1);
+        }
+
         // Whether a trigger of the player's fires now: past its floor, under the tick's cap, and its chance met.
         bool Due(TriggerDef t, string player)
         {
@@ -119,7 +130,7 @@ namespace Chem
             if (s == null) return;
             int dir = DirOf(dx, dy), delay = a.Delay > 0 ? a.Delay : s.Delay;
             // The log names the player as the room does ("Player 1"), not their stand ("solo", "p0").
-            if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{TriggerDef.PeerOf(me.Player)}'s step calls down {s.Name}")) return;
+            if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{TriggerDef.PeerOf(me.Player)}'s {(t.On == TriggerEvent.Holed ? "shot" : "step")} calls down {s.Name}")) return;
             var cast = new TriggeredCast { N = ++triggeredCasts, Trigger = t.Id, Player = me.Player, Spell = s.Id, X = x, Y = y, Dir = dir, Tick = Tick, Lands = Tick + delay };
             triggered.Add(cast);
             triggeredHistory.Add(cast);
