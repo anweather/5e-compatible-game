@@ -20,7 +20,7 @@ public sealed class ContourSurface
         bool Flows { get; }
 
         /// <summary>A point's height, colour and flow, as the delegates Build takes would give them.</summary>
-        void Point(float gx, float gy, float value, out float height, out Color color, out Vector3 flow);
+        void Point(float gx, float gy, float value, out float height, out Color color, out Vector4 flow);
     }
 
     public readonly Mesh mesh;
@@ -65,12 +65,13 @@ public sealed class ContourSurface
     /// 0 out, see CellContour), <paramref name="height"/> and <paramref name="color"/> per point
     /// (grid units; the colour also gets the point's blended value, for fading the edge);
     /// <paramref name="wobble"/> optionally calms the outline's wobble per cell (see CellContour.Build);
-    /// <paramref name="flow"/> optionally gives each point the water's flow (x, z in m/s, into uv1)
-    /// and its foam (z, into uv2.x), from its blended value too.
+    /// <paramref name="flow"/> optionally gives each point the water's flow (x, z in m/s, into uv1),
+    /// its foam (z, into uv2.x) and how much it wears its colour's rgb (w, into uv2.y; 0 for water),
+    /// from its blended value too.
     /// </summary>
     public void Build(RectInt cells, System.Func<int, int, float> value, System.Func<float, float, float> height,
         System.Func<float, float, float, Color> color, System.Func<int, int, float> wobble = null,
-        System.Func<float, float, float, Vector3> flow = null)
+        System.Func<float, float, float, Vector4> flow = null)
     {
         Outline(cells, value, wobble);
         long from = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -152,7 +153,7 @@ public sealed class ContourSurface
         Color ca = colors[n], cb = other.colors[n];
         bool same = Bits(a.x, b.x) && Bits(a.y, b.y) && Bits(a.z, b.z) && Bits(ca.r, cb.r) && Bits(ca.g, cb.g) && Bits(ca.b, cb.b) && Bits(ca.a, cb.a) &&
                     Bits(uvs[n].x, other.uvs[n].x) && Bits(uvs[n].y, other.uvs[n].y);
-        return same && (n >= flows.Count || (Bits(flows[n].x, other.flows[n].x) && Bits(flows[n].y, other.flows[n].y) && Bits(foams[n].x, other.foams[n].x)));
+        return same && (n >= flows.Count || (Bits(flows[n].x, other.flows[n].x) && Bits(flows[n].y, other.flows[n].y) && Bits(foams[n].x, other.foams[n].x) && Bits(foams[n].y, other.foams[n].y)));
     }
 
     static bool Bits(float a, float b) => System.BitConverter.SingleToInt32Bits(a) == System.BitConverter.SingleToInt32Bits(b);
@@ -192,11 +193,11 @@ public sealed class ContourSurface
             uvs.Add(new Vector2(at.x / uvMetres, at.z / uvMetres));
             if (!withFlow) continue;
             flows.Add(f);
-            foams.Add(new Vector2(f.z, 0f));
+            foams.Add(new Vector2(f.z, f.w));
         }
     }
 
-    void Attributes(System.Func<float, float, float> height, System.Func<float, float, float, Color> color, System.Func<float, float, float, Vector3> flow)
+    void Attributes(System.Func<float, float, float> height, System.Func<float, float, float, Color> color, System.Func<float, float, float, Vector4> flow)
     {
         for (int n = 0; n < shape.Points.Count; n++)
         {
@@ -209,7 +210,7 @@ public sealed class ContourSurface
             if (flow == null) continue;
             var f = flow(gx, gy, shape.Values[n]);
             flows.Add(f);
-            foams.Add(new Vector2(f.z, 0f));
+            foams.Add(new Vector2(f.z, f.w));
         }
     }
 

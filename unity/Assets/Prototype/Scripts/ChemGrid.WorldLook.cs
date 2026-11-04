@@ -87,6 +87,10 @@ public partial class ChemGrid
     /// <summary>The colour the wet cells' water is drawn in, for a probe.</summary>
     public Color CellWaterColor => waterSurface.Color;
 
+    /// <summary>Water's drawn vertices and those in a liquid's colour; and a cell's colour and share of it as drawn. For a probe.</summary>
+    public (int vertices, int worn) WornWaterVertices => waterSurface.WornVertices();
+    public (Color color, float own)? WaterDrawnAt(int x, int y) => waterSurface.DrawnAt(x, y);
+
     /// <summary>The valley's land and lake; null in the yard alone.</summary>
     public ValleyChemistry Valley => valley;
 
@@ -157,7 +161,7 @@ public partial class ChemGrid
         var now = CurrentRules.Effective;
         var water = TintBetween(was.ElementLook(ElementIds.Water), now.ElementLook(ElementIds.Water));
         spotWas.Clear();
-        waterSurface.Recolour(water);
+        waterSurface.Recolour(water, now);
         if (Ocean.Instance != null) Ocean.Instance.Recolour(water);
         if (valley != null)
         {

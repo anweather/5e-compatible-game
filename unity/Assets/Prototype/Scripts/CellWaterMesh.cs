@@ -24,6 +24,10 @@ using UnityEngine;
 // neighbouring cells meet without steps. The outline reaches a quarter cell
 // into a bank, under the terrain; on open ground it rounds off inside the wet
 // cells and fades out, so a puddle is a blob with a soft edge, not a square.
+//
+// A liquid that isn't water (a mod's honey or paint: Rules.Liquids.cs) is the same surface in its
+// look's colour: a point's vertex colour is the blend of the liquids round it, and uv2.y how much
+// of it is theirs, so plain water, at 0, is drawn from the material alone, as ever.
 public sealed class CellWaterMesh
 {
     // How far the water stays under the land around it, and a puddle's film over its ground.
@@ -52,6 +56,10 @@ public sealed class CellWaterMesh
     // Tiles to redraw at the next Rebuild (a tile key: ty * tilesX + tx), and each tile's surfaces.
     readonly HashSet<int> dirtyTiles = new();
     readonly Dictionary<int, (ContourSurface water, ContourSurface ice)> tiles = new();
+    // Each liquid's colour by Cell.Liquid (alpha 0: drawn as water, as water itself and a liquid with
+    // no look are), and each cell's liquid as last seen.
+    Color[] liquidColors;
+    readonly byte[] kindOf;
     readonly int tilesX;
     readonly GameObject root;
     // By cell, for the outline's reads: what FindBanks found, and the cells it marked, to clear them.
@@ -71,6 +79,8 @@ public sealed class CellWaterMesh
         this.iceMaterial = iceMaterial;
         tilesX = (grid.World.W + TileCells - 1) / TileCells;
         int cells = grid.World.W * grid.World.H;
+        liquidColors = LiquidColors(grid.World.Rules);
+        kindOf = new byte[cells];
         wetCell = new bool[cells];
         tops = new float[cells];
         nextTops = new float[cells];
@@ -90,11 +100,15 @@ public sealed class CellWaterMesh
         iceTop = (x, y) => TopOf(x, y, true);
         waterHeight = (gx, gy) => ContourSurface.BlendAround(gx, gy, waterTop, 0f);
         iceHeight = (gx, gy) => ContourSurface.BlendAround(gx, gy, iceTop, 0f);
-        waterColor = (gx, gy, v) => new Color(1f, 1f, 1f, Mathf.Max(Opacity(v, false), RunoffOpacity(gx, gy, v)));
+        waterColor = (gx, gy, v) => Worn(gx, gy, Mathf.Max(Opacity(v, false), RunoffOpacity(gx, gy, v)));
         iceColor = (gx, gy, v) => new Color(1f, 1f, 1f, Mathf.Max(Opacity(v, true), RunoffOpacity(gx, gy, v)));
         calmness = (x, y) => grid.World.InBounds(x, y) && calmCell[grid.World.Idx(x, y)] ? 0f : 1f;
         flowX = (x, y) => FlowOf(x, y).x;
         flowY = (x, y) => FlowOf(x, y).y;
+        ownAt = (x, y) => Holds(x, y, false) ? (float?)LiquidColor(x, y).a : null;
+        hueR = (x, y) => Hue(x, y)?.r;
+        hueG = (x, y) => Hue(x, y)?.g;
+        hueB = (x, y) => Hue(x, y)?.b;
         kept = new KeptCells(this);
         root = new GameObject("Water and ice");
         root.transform.SetParent(grid.transform, false);
@@ -103,8 +117,32 @@ public sealed class CellWaterMesh
     /// <summary>The water's colour as drawn.</summary>
     public Color Color => waterMaterial.GetColor(ColorId);
 
-    /// <summary>The rules switched: the water's colour, tinted from its art (ChemGrid.WorldLook.cs).</summary>
-    public void Recolour(Color tint) => this.waterMaterial.SetColor(ColorId, ownColor * new Color(tint.r, tint.g, tint.b, 1f));
+    /// <summary>The rules switched: the water's colour, tinted from its art (ChemGrid.WorldLook.cs), and each liquid's from its look.</summary>
+    public void Recolour(Color tint, Rules rules)
+    {
+        waterMaterial.SetColor(ColorId, ownColor * new Color(tint.r, tint.g, tint.b, 1f));
+        var colors = LiquidColors(rules);
+        bool same = System.Linq.Enumerable.SequenceEqual(colors, liquidColors);
+        liquidColors = colors;
+        if (same) return;
+        var world = grid.World;
+        foreach (int key in wet)
+            if (world.Cells[key].Kind != 0) MarkAround(key % world.W, key / world.W, "water.mark.kind");
+    }
+
+    static Color[] LiquidColors(Rules rules)
+    {
+        var colors = new Color[rules.Liquids.Count];
+        for (int n = 1; n < colors.Length; n++)
+        {
+            var look = rules.Liquids[n].Look;
+            if (look == null) continue;
+            var drawn = look.Mix != null ? look.Mix.Blended : LookColour.Of(look);
+            // Vertex colours reach the shader as they are, unlike a material's: the look is in sRGB.
+            colors[n] = new Color(drawn.R, drawn.G, drawn.B, 1f).linear;
+        }
+        return colors;
+    }
 
     /// <summary>A cell's water changed (or its ground did): the tiles round it are redrawn at the next Rebuild.</summary>
     public void Changed(int x, int y, bool isWet)
@@ -119,6 +157,12 @@ public sealed class CellWaterMesh
         bool outline = isWet ? wet.Add(key) : wet.Remove(key);
         wetCell[key] = isWet;
         outline |= isWet && c.Frozen ? ice.Add(key) : ice.Remove(key);
+        int kind = isWet ? c.Kind : 0;
+        if (kind != kindOf[key])
+        {
+            kindOf[key] = (byte)kind;
+            MarkAround(x, y, "water.mark.kind");
+        }
         if (PerfCounts.On) CountChange(c, outline, was != level);
         if (outline) MarkAround(x, y, "water.mark.outline");
         stale |= outline || was != level;
@@ -643,6 +687,10 @@ public sealed class CellWaterMesh
         const int Side = TileCells + 4;
         readonly CellWaterMesh owner;
         readonly float[] tops = new float[Side * Side], flowX = new float[Side * Side], flowY = new float[Side * Side];
+        // Read only for a tile with a liquid beside water in reach: how much each cell is its liquid's
+        // colour and that colour, NaN off the liquids, so water beside honey doesn't pale it.
+        readonly float[] own = new float[Side * Side], hueR = new float[Side * Side], hueG = new float[Side * Side], hueB = new float[Side * Side];
+        bool liquids;
         readonly bool[] river = new bool[Side * Side];
         readonly int[] flowRead = new int[Side * Side];
         int x0, y0, cols, rows, read;
@@ -666,6 +714,7 @@ public sealed class CellWaterMesh
             cols = Mathf.Min(Side, box.width + 4);
             rows = Mathf.Min(Side, box.height + 4);
             read++;
+            liquids = false;
             for (int b = 0; b < rows; b++)
                 for (int a = 0; a < cols; a++)
                 {
@@ -673,10 +722,24 @@ public sealed class CellWaterMesh
                     tops[n] = owner.TopOf(x, y, frozen) ?? float.NaN;
                     var c = world.InBounds(x, y) ? world.At(x, y) : null;
                     river[n] = c != null && c.T == TerrainIds.River;
+                    if (!frozen) ReadLiquid(x, y, n);
                 }
         }
 
-        public void Point(float gx, float gy, float value, out float height, out Color color, out Vector3 flow)
+        void ReadLiquid(int x, int y, int n)
+        {
+            if (owner.liquidColors.Length < 2) return;
+            own[n] = owner.ownAt(x, y) ?? float.NaN;
+            var hue = owner.Hue(x, y);
+            hueR[n] = hue?.r ?? float.NaN;
+            hueG[n] = hue?.g ?? float.NaN;
+            hueB[n] = hue?.b ?? float.NaN;
+            liquids |= hue.HasValue;
+        }
+
+        float Blended(float[] cells, float gx, float gy, float fallback) => ContourSurface.BlendKept(cells, x0, y0, cols, gx, gy, fallback);
+
+        public void Point(float gx, float gy, float value, out float height, out Color color, out Vector4 flow)
         {
             bool inside = ContourSurface.InKept(x0, y0, cols, rows, gx, gy);
             // The colour asks after the flow only inside the outline's iso value (RunoffOpacity).
@@ -696,10 +759,18 @@ public sealed class CellWaterMesh
             color = new Color(1f, 1f, 1f, Mathf.Max(Opacity(value, frozen), runoff && blended.sqrMagnitude > 0.04f ? 0.7f : 0f));
             if (frozen)
             {
-                flow = Vector3.zero;
+                flow = Vector4.zero;
                 return;
             }
             flow = owner.Foamed(blended, ContourSurface.Flat(origin, cellSize, gx, gy), OnRiver(gx, gy), value);
+            if (liquids) Wear(gx, gy, inside, ref color, ref flow);
+        }
+
+        // A point's colour and share of the liquids round it.
+        void Wear(float gx, float gy, bool inside, ref Color color, ref Vector4 flow)
+        {
+            color = inside ? new Color(Blended(hueR, gx, gy, 1f), Blended(hueG, gx, gy, 1f), Blended(hueB, gx, gy, 1f), color.a) : owner.Worn(gx, gy, color.a);
+            flow.w = inside ? Blended(own, gx, gy, 0f) : owner.Own(gx, gy);
         }
 
         bool OnRiver(float gx, float gy)
@@ -726,7 +797,7 @@ public sealed class CellWaterMesh
     }
 
     readonly System.Func<int, int, float> waterValue, iceValue, calmness;
-    readonly System.Func<int, int, float?> waterTop, iceTop, flowX, flowY;
+    readonly System.Func<int, int, float?> waterTop, iceTop, flowX, flowY, ownAt, hueR, hueG, hueB;
     readonly System.Func<float, float, float> waterHeight, iceHeight;
     readonly System.Func<float, float, float, Color> waterColor, iceColor;
 
@@ -811,8 +882,12 @@ public sealed class CellWaterMesh
 
     // A point's flow, and its foam: where moving water meets its edge (a bank, the end of a runoff)
     // and round the river's rocks, trailing off downstream.
-    Vector3 FlowAndFoam(ContourSurface surface, float gx, float gy, float value) =>
-        Foamed(BlendedFlow(gx, gy), surface.Flat(gx, gy), OnRiver(gx, gy), value);
+    Vector4 FlowAndFoam(ContourSurface surface, float gx, float gy, float value)
+    {
+        Vector4 flow = Foamed(BlendedFlow(gx, gy), surface.Flat(gx, gy), OnRiver(gx, gy), value);
+        flow.w = Own(gx, gy);
+        return flow;
+    }
 
     // Whether a point (grid units) is over a river cell.
     bool OnRiver(float gx, float gy)
@@ -837,6 +912,74 @@ public sealed class CellWaterMesh
             foam = Mathf.Max(foam, 1f - Mathf.InverseLerp(radius * 0.8f, radius * 2.2f, reach));
         }
         return new Vector3(flow.x, flow.y, foam);
+    }
+
+    // ---------- liquids ----------
+
+    // The colour of the kind a cell holds (past the table, for the moment of a switch: as water).
+    Color LiquidColor(int x, int y)
+    {
+        int kind = grid.World.At(x, y).Kind;
+        return kind < liquidColors.Length ? liquidColors[kind] : default;
+    }
+
+    // The colour of the liquid in a cell, for those drawn in one.
+    Color? Hue(int x, int y)
+    {
+        if (liquidColors.Length < 2 || !Holds(x, y, false)) return null;
+        var color = LiquidColor(x, y);
+        return color.a > 0f ? color : null;
+    }
+
+    // How much of a point is its liquids' colour (none for water), from the unfrozen cells round it.
+    float Own(float gx, float gy) => liquidColors.Length < 2 ? 0f : ContourSurface.BlendAround(gx, gy, ownAt, 0f);
+
+    // A point's vertex colour: white with this alpha for water, else the blend of the liquids round it.
+    Color Worn(float gx, float gy, float alpha) => liquidColors.Length < 2
+        ? new Color(1f, 1f, 1f, alpha)
+        : new Color(ContourSurface.BlendAround(gx, gy, hueR, 1f), ContourSurface.BlendAround(gx, gy, hueG, 1f), ContourSurface.BlendAround(gx, gy, hueB, 1f), alpha);
+
+    /// <summary>For a probe: every water vertex drawn and those in a liquid's colour, read back from the tiles' meshes.</summary>
+    public (int vertices, int worn) WornVertices()
+    {
+        int all = 0, worn = 0;
+        var own = new List<Vector2>();
+        var colors = new List<Color>();
+        foreach (var t in tiles.Values)
+        {
+            t.water.mesh.GetColors(colors);
+            t.water.mesh.GetUVs(2, own);
+            all += colors.Count;
+            for (int n = 0; n < own.Count; n++)
+                if (!IsPlain(colors[n], own[n].y)) worn++;
+        }
+        return (all, worn);
+    }
+
+    /// <summary>Whether a point's colour and share of a liquid are plain water's: white, none.</summary>
+    public static bool IsPlain(Color color, float own) => own <= 0f && Mathf.Min(color.r, Mathf.Min(color.g, color.b)) >= 1f;
+
+    /// <summary>For a probe: the colour and the liquid's share at the vertex nearest a cell's centre, read back from its tile's mesh.</summary>
+    public (Color color, float own)? DrawnAt(int x, int y)
+    {
+        if (!tiles.TryGetValue(y / TileCells * tilesX + x / TileCells, out var t) || t.water.Empty) return null;
+        var mesh = t.water.mesh;
+        var at = mesh.vertices;
+        var colors = mesh.colors;
+        var own = new List<Vector2>();
+        mesh.GetUVs(2, own);
+        var cell = grid.CellCenter(x, y);
+        int nearest = -1;
+        float best = float.PositiveInfinity;
+        for (int n = 0; n < at.Length; n++)
+        {
+            float dx = at[n].x - cell.x, dz = at[n].z - cell.z, d = dx * dx + dz * dz;
+            if (d >= best) continue;
+            best = d;
+            nearest = n;
+        }
+        if (nearest < 0) return null;
+        return (colors[nearest], own[nearest].y);
     }
 
     // A thin runoff down a hillside is a line one cell wide, whose soft outline would fade it to

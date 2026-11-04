@@ -386,6 +386,7 @@ public partial class ChemGrid
         unchecked
         {
             int k = c.Water;
+            k = k * 31 + c.Kind;
             k = k * 31 + (c.Frozen ? 1 : 0);
             k = k * 31 + (c.Cover?.GetHashCode() ?? 0);
             k = k * 31 + c.Fire;
