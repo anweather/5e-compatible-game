@@ -167,7 +167,12 @@ public partial class ChemGrid : MonoBehaviour
         World = StartWorld(rules, CellMap(), seed, out var start);
         OpenRoom(roomWas);
         World.ChunkSwitched += OnChunkSwitched;
-        World.LandMoved += (x, y, reach) => valley?.LandMoved(x, y, reach);
+        World.LandMoved += (x, y, reach) =>
+        {
+            if (valley == null) return;
+            valley.LandMoved(x, y, reach);
+            LandShaped(x, y, reach);
+        };
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
