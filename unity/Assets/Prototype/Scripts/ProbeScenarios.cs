@@ -242,6 +242,10 @@ public static class ProbeScenarios
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
+        new Entry("transcribe", typeof(TranscribeProbe), 240f,
+            "A transcriber (Whisper's kind) with the stub transcriber standing in for a model: the speech check from a WAV file with the stub busy 1.5 s on its own thread, frame times idle and meanwhile, no hitch; " +
+            "one slower than its timeout ends at the timeout with a line, and the next works; a silent file says nothing within the timeout; a hold through GameVoice with -speech's choice set to the stub puts the words in the chat once; " +
+            "--only microphone opens and closes the default microphone instead (on a Mac that open once blocked the Editor for minutes). No model, no recording kept, no Claude."),
         new Entry("rowlight", typeof(RowLightProbe), 240f,
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,
