@@ -80,6 +80,44 @@ namespace Chem.Tests
             Assert.That(b.LiveWorld.LandHasMoved, Is.False);
         }
 
+        [TestCase("ball-court")]
+        [TestCase("defense-field")]
+        [TestCase("tower")]
+        [TestCase("bridge")]
+        [TestCase("standing-stones")]
+        [TestCase("outcrop")]
+        [TestCase("falls-cliff")]
+        [TestCase("scree-ramp")]
+        public void AStampOnAPlacedFeatureIsRefusedAndTheLandStays(string id)
+        {
+            var (b, tools) = Tools();
+            var place = b.Places.All.First(p => p.Id == id);
+            var (x, y) = place.Cells().Last();
+            StringAssert.Contains($"the ground under {place.Name}", tools.Act("land", near: $"[{x}, {y}]", radius: 1, rise: 15));
+            Assert.That(b.LiveWorld.LandHasMoved, Is.False);
+            Assert.That(b.LiveWorld.LandHash(), Is.Empty);
+            Assert.That(b.LiveWorld.LandMovedAt(x, y), Is.Zero);
+        }
+
+        [Test]
+        public void AStampThatOnlyReachesTheCourtIsRefused()
+        {
+            var (b, tools) = Tools();
+            var court = b.Places.All.First(p => p.Id == "ball-court");
+            var edge = court.Cells().OrderBy(c => c.x).First();
+            StringAssert.Contains(court.Name, tools.Act("land", near: $"[{edge.x - 10}, {edge.y}]", radius: 10, rise: 15));
+            Assert.That(b.LiveWorld.LandHasMoved, Is.False);
+            StringAssert.Contains("moved the land", tools.Act("land", near: $"[{edge.x - 10}, {edge.y}]", radius: 9, rise: 15));
+        }
+
+        [Test]
+        public void TheActToolSaysHowLowLandGoes()
+        {
+            var rise = typeof(RulesTools).GetMethod(nameof(RulesTools.Act)).GetParameters().First(p => p.Name == "rise");
+            string said = rise.GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false).Cast<System.ComponentModel.DescriptionAttribute>().Single().Description;
+            StringAssert.Contains($"below {World.LandLowest / 8} m", said);
+        }
+
         [Test]
         public void TooManyOrAnUnknownThingIsRefusedAtOnce()
         {
