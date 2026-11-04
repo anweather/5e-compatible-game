@@ -7,20 +7,58 @@ using System.Threading;
 using Chem.Mcp;
 
 // ApiLoop's way out, in the view as the core has no HTTP: the Messages API over HTTPS, read as it streams, and the
-// game's own MCP server on this machine. Raw HTTP, as Unity's runtime can't take the C# SDK. The key is here and only
-// here: read from this process's environment for each request, sent as a header, in nothing else. Whatever comes
-// back is cleaned of it before anyone reads a failure.
-public sealed class ApiWire : IChatWire
+// game's own MCP server on this machine. Raw HTTP, as Unity's runtime can't take the C# SDK. A key is read for each
+// request (ApiKey) and goes out through Signed alone, as a header to api.anthropic.com, in nothing else. Redirects are
+// off, as following one would carry the header to wherever it points. Whatever comes back is cleaned of the key before
+// anyone reads a failure.
+public sealed class ApiWire : IChatWire, IKeyLister
 {
-    const string Address = "https://api.anthropic.com/v1/messages", Version = "2026-10-21", Json = "application/json", DataLine = "data: ";
+    const string Host = "api.anthropic.com", Address = "https://" + Host + "/v1/messages", Version = "2026-10-21", Json = "application/json", DataLine = "data: ";
+
+    /// <summary>Where a key's models are asked for.</summary>
+    public const string ModelsAddress = "https://" + Host + "/v1/models?limit=1000";
+
+    static readonly HttpClientHandler Handler = new() { AllowAutoRedirect = false };
 
     // Each message's whole run is bounded by its watchdog, not by this client.
-    static readonly HttpClient Client = new() { Timeout = Timeout.InfiniteTimeSpan };
+    static readonly HttpClient Client = new(Handler) { Timeout = Timeout.InfiniteTimeSpan };
 
-    /// <summary>Whether a key is there to use. Says no more than that.</summary>
+    /// <summary>Whether a redirect would be followed, for a test: it must not be.</summary>
+    public static bool FollowsRedirects => Handler.AllowAutoRedirect;
+
+    /// <summary>Whether a key is there to use. Says no more than that. Opens a saved key, so not on the main thread in play.</summary>
     public static bool HasKey => !string.IsNullOrEmpty(Key);
 
-    static string Key => Environment.GetEnvironmentVariable(ClaudeRun.GameKey);
+    static string Key => ApiKey.Current;
+
+    /// <summary>A request carrying a key: the one place one is put on the wire, and only ever to the API, over HTTPS.</summary>
+    public static HttpRequestMessage Signed(HttpMethod method, string address, string key)
+    {
+        var request = new HttpRequestMessage(method, address);
+        if (request.RequestUri.Host != Host || request.RequestUri.Scheme != Uri.UriSchemeHttps)
+        {
+            request.Dispose();
+            throw new InvalidOperationException("A key goes to the API and nowhere else.");
+        }
+        request.Headers.Add("x-api-key", key);
+        request.Headers.Add("anthropic-version", Version);
+        return request;
+    }
+
+    /// <summary>Which models this key can use, off the main thread: free, and the check that it works at all.</summary>
+    public KeyCheck Models(string key, CancellationToken token)
+    {
+        try
+        {
+            using var request = Signed(HttpMethod.Get, ModelsAddress, key);
+            using var response = Client.SendAsync(request, token).GetAwaiter().GetResult();
+            return ApiModels.Read((int)response.StatusCode, response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+        }
+        catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
+        {
+            return ApiModels.Unreached();
+        }
+    }
 
     public string Mcp(string url, string body, CancellationToken token)
     {
@@ -40,9 +78,8 @@ public sealed class ApiWire : IChatWire
     {
         string key = Key;
         if (string.IsNullOrEmpty(key)) return new WireAnswer { Status = 401, Failure = "There's no key for the API here." };
-        using var request = new HttpRequestMessage(HttpMethod.Post, Address) { Content = new StringContent(body, Encoding.UTF8, Json) };
-        request.Headers.Add("x-api-key", key);
-        request.Headers.Add("anthropic-version", Version);
+        using var request = Signed(HttpMethod.Post, Address, key);
+        request.Content = new StringContent(body, Encoding.UTF8, Json);
         try
         {
             using var response = Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).GetAwaiter().GetResult();

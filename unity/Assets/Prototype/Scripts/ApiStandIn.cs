@@ -6,14 +6,26 @@ using Newtonsoft.Json.Linq;
 
 // The API loop's stand-in for the chatprompts probe, which spends nothing: the real server over the real
 // HTTP, and canned replies for the API. Its first reply also asks for a shell and a save nobody asked for: both must be turned away.
-public sealed class ApiStandIn : IChatWire
+// It answers a key's check too, by the key: no real key, no real call (J-071).
+public sealed class ApiStandIn : IChatWire, IKeyLister
 {
+    /// <summary>What a key starts with to be taken, turned down, or met with no network.</summary>
+    public const string GoodKey = "stand-in-good", BadKey = "stand-in-bad", OfflineKey = "stand-in-offline";
+
     const string MessageStop = "{\"type\":\"message_stop\"}";
+    // The list holds a model the key can use and the game can't run, which the player must never be offered.
+    const string Listed = "{\"data\":[{\"id\":\"claude-opus-5-5\"},{\"id\":\"claude-unpriced-1\"},{\"id\":\"claude-haiku-5-5\"}],\"has_more\":false}";
 
     readonly ApiWire real = new();
     int turn;
 
     public string Mcp(string url, string body, CancellationToken token) => real.Mcp(url, body, token);
+
+    public KeyCheck Models(string key, CancellationToken token)
+    {
+        if (key.StartsWith(OfflineKey, StringComparison.Ordinal)) return ApiModels.Unreached();
+        return key.StartsWith(GoodKey, StringComparison.Ordinal) ? ApiModels.Read(200, Listed) : ApiModels.Read(401, "{\"error\":{\"message\":\"invalid x-api-key " + key + "\"}}");
+    }
 
     public WireAnswer Messages(string body, Action<string> data, CancellationToken token)
     {

@@ -1,6 +1,7 @@
 // What a message costs on the Claude API, and the ceiling on real money (#59, backlog 27). Prices are the
 // API's own per million tokens, so unlike Claude Code's list price on a plan, these dollars are really spent.
-// A budget keeps its running total in a file, so it holds across runs, and refuses with no file at all.
+// A budget keeps its running total in a file, so it holds across runs, and refuses with no file at all. A player's own
+// key has a session's budget instead: in memory, gone when the game closes, its limit theirs to change (J-071).
 using System;
 using System.Globalization;
 using System.IO;
@@ -56,13 +57,35 @@ namespace Chem.Mcp
 
         readonly object gate = new object();
         readonly string file;
-        readonly double stopAt;
+        readonly bool session;
+        double spentInSession;
 
         public ApiBudget(string file, double stopAt = StopAt)
         {
             this.file = file;
-            this.stopAt = stopAt;
+            Limit = stopAt;
         }
+
+        ApiBudget(double limit)
+        {
+            session = true;
+            Limit = limit;
+        }
+
+        /// <summary>A budget for one sitting: what's spent is held here, and nothing is written anywhere.</summary>
+        public static ApiBudget ForSession(double limit) => new ApiBudget(limit);
+
+        /// <summary>No request starts once this much is spent.</summary>
+        public double Limit { get; set; }
+
+        /// <summary>What to tell someone whose message wasn't sent.</summary>
+        public string Refusal => session ? SessionWords() : "The API budget is spent, so this message wasn't sent.";
+
+        /// <summary>What to tell someone whose message stopped partway.</summary>
+        public string Stopped => session ? SessionWords() : "The API budget ran out partway through this message.";
+
+        string SessionWords() =>
+            $"That's this session's spend limit of ${Limit.ToString("0.00", CultureInfo.InvariantCulture)}, so Claude has stopped. Raise it in Settings, or restart the game.";
 
         /// <summary>Dollars spent so far; infinity if the file can't be read, so nothing starts on a total nobody knows.</summary>
         public double Spent
@@ -71,6 +94,7 @@ namespace Chem.Mcp
             {
                 lock (gate)
                 {
+                    if (session) return spentInSession;
                     if (string.IsNullOrEmpty(file)) return double.PositiveInfinity;
                     if (!File.Exists(file)) return 0;
                     try
@@ -86,13 +110,14 @@ namespace Chem.Mcp
         }
 
         /// <summary>Whether another request may start.</summary>
-        public bool HasRoom => Spent < stopAt;
+        public bool HasRoom => Spent < Limit;
 
         /// <summary>Adds what a reply cost, as soon as it's known.</summary>
         public void Add(double dollars)
         {
             lock (gate)
             {
+                if (session) spentInSession += dollars;
                 if (string.IsNullOrEmpty(file)) return;
                 double spent = Spent + dollars;
                 string temporary = file + ".new";

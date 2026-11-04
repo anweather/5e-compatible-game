@@ -81,7 +81,7 @@ public class ClaudeTerminal : MonoBehaviour
         File.WriteAllText(Path.Combine(folder, "CLAUDE.md"), Guide);
         File.WriteAllText(Path.Combine(folder, WelcomeFile), Welcome);
         File.WriteAllText(Path.Combine(folder, StartFile), PathLine() + "@type " + WelcomeFile + "\r\n");
-        File.WriteAllText(Path.Combine(folder, SignInFile), PathLine() + "@claude auth login\r\n");
+        File.WriteAllText(Path.Combine(folder, SignInFile), PathLine() + $"@{SignInProgram()} auth login\r\n");
     }
 
     // claude's own folder for this one window, as its installer may have put it where a game started from the desktop can't see.
@@ -89,6 +89,13 @@ public class ClaudeTerminal : MonoBehaviour
     {
         string claude = ClaudeChat.FindClaude();
         return claude == null ? "" : $"@set \"PATH={Path.GetDirectoryName(claude)};%PATH%\"\r\n";
+    }
+
+    // The player's own install by its full path, whatever it's called; plain claude otherwise.
+    static string SignInProgram()
+    {
+        string claude = ClaudeChat.FindClaude();
+        return claude == null ? "claude" : $"\"{claude}\"";
     }
 
     /// <summary>Opens a terminal on Anthropic's own sign-in: the game never sees it. The player's chat says why.</summary>
@@ -104,6 +111,15 @@ public class ClaudeTerminal : MonoBehaviour
     // NoDefaultCurrentDirectoryInExePath set, as from Claude Code: cmd then won't look in its own folder.
     static string Launch(string folder, string script)
     {
+        // What the player listed goes by the process's environment and never into these files, which claude can read.
+        // Windows Terminal may hand the window to one already open, without it, so those players get a command prompt.
+        if (ChatSetup.Secrets.Length > 0)
+        {
+            var start = new ProcessStartInfo("cmd.exe", $"/k .\\{script}") { WorkingDirectory = folder, UseShellExecute = false };
+            ChatSetup.Hand(start.Environment);
+            Process.Start(start);
+            return "a command prompt";
+        }
         try
         {
             Process.Start(new ProcessStartInfo("wt.exe", $"-d \"{folder}\" cmd /k .\\{script}") { UseShellExecute = true });

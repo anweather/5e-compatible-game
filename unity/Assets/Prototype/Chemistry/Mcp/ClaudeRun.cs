@@ -191,6 +191,14 @@ namespace Chem.Mcp
             return null;
         }
 
+        /// <summary>The program the player chose: on the PATH as Find has it for the plain name, else exactly the file they gave; null if it isn't there.</summary>
+        public static string Resolve(string given, string pathVariable, string home, Func<string, bool> exists)
+        {
+            string path = (given ?? "").Trim().Trim('"');
+            if (path.Length == 0 || path == ChatProfile.ClaudeCode.Program) return Find(pathVariable, home, exists);
+            return exists(path) ? path : null;
+        }
+
         /// <summary>Notes kept to their newest lines: the file's only ever read whole, so it mustn't grow for ever.</summary>
         public static string Trimmed(string notes, int most = MostNoteLines)
         {
@@ -234,12 +242,21 @@ namespace Chem.Mcp
         /// <summary>The API loop's key, in the environment: the name, never the value. The claude process must never be handed it.</summary>
         public const string GameKey = "SPELL_VALLEY_API_KEY";
 
-        /// <summary>A process's environment without the game's key.</summary>
-        public static void Scrub(IDictionary<string, string> environment) => environment.Remove(GameKey);
+        /// <summary>A process's environment without the game's key: by its name, and, given the saved key, under any name.</summary>
+        public static void Scrub(IDictionary<string, string> environment, string key = null)
+        {
+            environment.Remove(GameKey);
+            if (string.IsNullOrEmpty(key)) return;
+            foreach (string name in environment.Where(v => v.Value == key).Select(v => v.Key).ToList()) environment.Remove(name);
+        }
 
         /// <summary>Text with a key cut out, for anything a person might read.</summary>
         public static string Without(string text, string key) =>
             string.IsNullOrEmpty(key) || text == null ? text : text.Replace(key, "[key]");
+
+        /// <summary>Text with each of these cut out: what a player listed for claude's environment may be a secret.</summary>
+        public static string Without(string text, IEnumerable<string> secrets) =>
+            secrets.Aggregate(text, Without);
 
         /// <summary>The arguments as one command line, each quoted where it has to be.</summary>
         public static string CommandLine(IEnumerable<string> arguments) =>
