@@ -76,7 +76,9 @@ public partial class NetChem
     void StampRoom()
     {
         var stamped = roomCommands.Stamp(hostTick);
-        if (stamped.Length > 0) RoomStampedRpc(hostTick, stamped);
+        if (stamped.Length == 0) return;
+        roomStampedFor = hostTick;
+        RoomStampedRpc(hostTick, stamped);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
