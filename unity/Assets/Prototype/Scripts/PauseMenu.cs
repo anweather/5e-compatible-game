@@ -358,9 +358,11 @@ public class PauseMenu : MonoBehaviour
     /// A scroll view that keeps the controller highlight in sight and scrolls with the right
     /// stick. Draw its contents in <paramref name="content"/>; returns the new scroll position.
     /// </summary>
-    public static Vector2 ScrollView(Vector2 scroll, float height, Action content)
+    /// <param name="across">Whether it may scroll sideways too; a page that holds to a width of its own needn't.</param>
+    public static Vector2 ScrollView(Vector2 scroll, float height, Action content, bool across = true)
     {
-        var view = GUILayout.BeginScrollView(scroll, GUILayout.Height(height));
+        var view = across ? GUILayout.BeginScrollView(scroll, GUILayout.Height(height))
+            : GUILayout.BeginScrollView(scroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(height));
         bool repaint = Event.current.type == EventType.Repaint;
         if (instance != null) instance.focusDrawn = false;
         content();
