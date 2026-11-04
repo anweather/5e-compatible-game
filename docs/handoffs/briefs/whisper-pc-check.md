@@ -8,3 +8,5 @@ Brief from the PM: the Windows side of Whisper, for 0.1.11 (#58, J-070). Frugal 
 4. **Mic:** leave the player ready, then ask Andrew by the PM's mailbox to hold H and speak on the Arctis. Report how long `Microphone.Start` and closing took, what it heard, and press timing from the play log.
 
 Report: `bash tools/workers/bridge.sh send pm "whisper-pc-check" < report.md`.
+
+Also from `settings-api-key`, landed on dev (merge it in): build the player from the merged tree. When Andrew comes for the mic, have him open Settings > Claude setup in the same player and check by eye the layout, scrolling, typing, the console link, and a real key with Check and one chat. He types the key himself; never see or ask for it.
