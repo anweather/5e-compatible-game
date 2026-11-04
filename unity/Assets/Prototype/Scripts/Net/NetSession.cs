@@ -128,7 +128,7 @@ public class NetSession : MonoBehaviour
 
     // Each running copy signs in as its own anonymous player, so several copies on one
     // machine (Multiplayer Play Mode, or two builds) don't collide.
-    static async Task SignIn()
+    internal static async Task SignIn()
     {
         if (UnityServices.State != ServicesInitializationState.Initialized)
         {
