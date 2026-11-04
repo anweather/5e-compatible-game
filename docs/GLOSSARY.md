@@ -96,6 +96,10 @@ touch them.
   the lake, the river, the falls, Hollowmere and the coast. Shaped by
   `ValleyShape` and baked in the Editor.
 
+**Ground pack**
+: The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk. Planned
+  (`docs/design/maps-as-data.md`). A map without one is drawn from its land and cells.
+
 **Land**
 : The valley's baked ground under each cell, in water units: the hills
   the cells themselves don't hold (a cell's elevation and height are on
@@ -752,6 +756,10 @@ that long, and doesn't march.
 **Theme / blueprint**
 : A **theme** is JSON goals for the land (`world/themes/`); solved for a
   seed it's a **blueprint** of zones, mountains, lakes and rivers (D11).
+
+**Land stamp**
+: One integer change to land: a centre, radius, profile, rise and seed. Planned; how `act` moves the ground and how a map is
+  shaped (`docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own.
 
 **Map**
 : A whole world to play on. One build holds one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
