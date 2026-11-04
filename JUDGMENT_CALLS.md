@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-073: Maps as data: the design's six questions
+
+- **Asked:** 2026-11-04, by the Mac's design (`docs/design/maps-as-data.md`).
+- **Also comes up when:** terrain through the MCP, a second map, the dragon, game modes.
+- **Answer:** Andrew: land is built at run time. A mountain doesn't stop raiders, sight or spells yet. A live stamp is at most radius 32 cells. Sea level is set per map for now, with no stamps across water or live water level. The host picks the map. The dragon's reset undoes stamps, but the automatic dragon goes off: "Would feel really bad to build something then have it deleted."
+- **Why:** the design's reasons; building has to feel safe.
+- **Revisited:** 0.
+
 ### J-072: What may a player have to install for voice?
 
 - **Asked:** 2026-11-03, by the PM: Whisper needs the VC++ runtime and Vulkan, and neither was in the build.
