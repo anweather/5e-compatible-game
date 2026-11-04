@@ -226,8 +226,8 @@ public static class PrototypeBuild
     }
 }
 
-// Copies rules/*.json, rules/mods/*.json and world/*.json (the props and items,
-// world/things.json) into StreamingAssets before any player build, lists the
+// Copies rules/*.json, rules/mods/*.json and all of world/ (every map in world/maps/)
+// into StreamingAssets before any player build, lists the
 // shipped mods beside them (ModMove), and writes StreamingAssets/build.json: the version, the commit (with
 // "-dirty" when the tree has changes) and the build date, for BuildInfo.
 class PackRulesIntoBuild : IPreprocessBuildWithReport
@@ -239,7 +239,8 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         Pack("rules");
         Pack(Path.Combine("rules", "mods")); // the M panel's mods (RuleSwitcher)
         Chem.ModMove.WriteShippedList(Path.Combine(Application.dataPath, "StreamingAssets", "rules", "mods"));
-        Pack("world");
+        int world = PackTree(Path.Combine(ChemGrid.Folders.Repo, "world"), Path.Combine(Application.dataPath, "StreamingAssets", "world"));
+        Debug.Log($"Packed {world} files of world/ into the build");
         WriteStamp();
         AssetDatabase.Refresh();
     }
@@ -277,5 +278,19 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         var files = Directory.GetFiles(source, "*.json");
         foreach (var file in files) File.Copy(file, Path.Combine(target, Path.GetFileName(file)));
         Debug.Log($"Packed {files.Length} {folder} files into the build: {string.Join(", ", files.Select(Path.GetFileName))}");
+    }
+
+    /// <summary>Copies a folder and all under it, every map with its land, cells and themes; what was packed before goes first.</summary>
+    internal static int PackTree(string source, string target)
+    {
+        if (Directory.Exists(target)) Directory.Delete(target, true);
+        var files = Directory.GetFiles(source, "*", SearchOption.AllDirectories).Where(f => !Path.GetFileName(f).StartsWith(".")).ToList();
+        foreach (var file in files)
+        {
+            string there = Path.Combine(target, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(there));
+            File.Copy(file, there);
+        }
+        return files.Count;
     }
 }

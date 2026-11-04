@@ -70,12 +70,13 @@ touch them.
 
 **The world**
 : `Chem.World`: the cells, the chunk store and everything that ticks.
-  `world/` (the folder) is the **world data**: where things stand
-  (`things.json`), the villages, the themes and looks.
+  A map's folder, `world/maps/<id>/`, is the **world data**: where things stand
+  (`things.json`), the villages, the themes and looks. Older docs write
+  `world/things.json` for the map's file; it's in the map's folder now.
 
 **Game folders**
-: Where the game finds its files (`Chem.GameFolders`): `rules/`, `world/`
-  beside it, the shipped mods in `rules/mods`, the **player's data folder**
+: Where the game finds its files (`Chem.GameFolders`): `rules/`, the map's
+  folder (`World`, under `world/maps/` beside it), the shipped mods in `rules/mods`, the **player's data folder**
   (what an update leaves alone) and the player's mods in it; `Repo` is the
   checkout's root above `rules/`, for docs and tools. A build reads
   the copies packed into its StreamingAssets; the Editor, the MCP server
@@ -103,7 +104,7 @@ touch them.
 **Land**
 : The valley's baked ground under each cell, in water units: the hills
   the cells themselves don't hold (a cell's elevation and height are on
-  top of it). Baked once into `world/land.json` (Prototype > Bake Valley
+  top of it). Baked once into the map's `land.json` (Prototype > Bake Valley
   Land) so every peer has the same integers; only the water reads it, so
   water runs down a hillside (`World.SetLand`).
 
@@ -763,7 +764,7 @@ that long, and doesn't march.
 
 **Map**
 : A whole world to play on. One build holds one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
-  **cell map** in `ChemGrid.map`, one character a cell, nor a **shore map**.
+  **cell map** in the map's `cells.txt`, one character a cell, nor a **shore map**.
 
 **Theme look**
 : Which of Punchy's lands paints a place (`world/looks.json`). Not a

@@ -35,9 +35,9 @@ namespace Chem.PlaytestText
         {
             this.seed = seed;
             this.minutes = minutes;
-            budgets = ModBudgets.Load(folders.Rules);
+            budgets = ModBudgets.Load(folders);
             rules = Rules.Load(folders.Rules);
-            valley = StandInValley.Load(folders.Rules, budgets) ?? throw new InvalidOperationException("No world files beside the rules.");
+            valley = StandInValley.Load(folders, budgets) ?? throw new InvalidOperationException("No world files beside the rules.");
             if (outDir != null)
             {
                 Directory.CreateDirectory(outDir);

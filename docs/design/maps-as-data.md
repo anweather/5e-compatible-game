@@ -46,7 +46,7 @@ grass, and that's where most of the 13 MB is. So there are two levels:
 Both fill the same arrays, and one builder turns arrays into `TerrainData`. `land.json` stays what the core reads and stays
 byte for byte, so **no golden moves**. A test holds the two together: `ground/` at each cell centre within one unit of `land`.
 
-**What becomes of the bake.** The 81 assets and `ChemGrid.map` go. The exporter is the bake's last job, after which
+**What becomes of the bake.** The 81 assets go, and `ChemGrid.map` has (phase 1). The exporter is the bake's last job, after which
 `ValleyTerrain` and the height half of `ValleyShape` can retire, and D11's float noise stops mattering. That shrinks cleanup
 item 6 to the place builders: no `MapPlan` through the land code. The source of the valley's land becomes `ground/`, so it's
 committed, unlike `Generated/`. Prototypes (terrain layers, trees, grass) stay assets, on one template `TerrainData`.
@@ -158,7 +158,7 @@ Each phase lands alone, with the valley unchanged and dev playable. No golden mo
 | 3 | **Land stamps live.** The row, `act`, `undo_act`, third term, `budgets`, save, reset | 3-4 days | Mac; PC for the cost | **Backlog 30**: `World.Acts.cs`, `Workbench.Acts.cs`, `RulesTools.cs` |
 | 4 | **Export.** The valley's `ground/`, its tests, the `fell` and `Bind` checks | 2 days | Mac (one bake; the PC's is no better) | None |
 | 5 | **Builder.** Arrays to `TerrainData`, behind a switch beside the baked chunks; look compared, start-up measured | 4-5 days | Mac to code; **PC GPU to judge** | `host-ux` if it's in `ValleyGround` |
-| 6 | **The scene lets go.** Terrains and `ChemGrid.map` out, place roots, `ValleyTerrain` retired | 3 days | Mac, Editor | **Any Editor builder work**: one owner of `ChemYardBuilder`, `ValleyBuilder` |
+| 6 | **The scene lets go.** Terrains out (`ChemGrid.map` went in phase 1), place roots, `ValleyTerrain` retired | 3 days | Mac, Editor | **Any Editor builder work**: one owner of `ChemYardBuilder`, `ValleyBuilder` |
 | 7 | **Sea and life.** `Ocean` from `land`, shore map, level from `map.json`, AmbientLife freed | 3-4 days | **PC GPU** | `host-ux` looks |
 | 8 | **The test.** Host picks a map; the Drowned Chain's folder from `second-map`, no `ground/`; a player build, two peers; probes that mean it | 3 days | **PC** | Backlog 28 names a map after this |
 | 9 | **Keeping.** `keep_land`, and a hill shaped by asking Claude then played on | 2 days | Mac | Backlog 30, lightly |

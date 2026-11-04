@@ -42,7 +42,7 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   shipped game's folder, #78); the MCP server, chatbench and the tests use
   `GameFolders.InRepo(start)`, which walks up to the repo's `rules/`.
   Code that loads from a rules folder it was given (`ModBudgets.Load`,
-  `StandInValley.Load`) finds `world/` through it too, and the rules
+  `StandInValley.Load`) finds the map's folder through it too, and the rules
   tools' `Workbench` takes a `GameFolders` (its save goes to `Mods`).
 - `World.cs` holds the cells (`Cell.cs`), the seeded random number
   generator, the log and the tick counter.

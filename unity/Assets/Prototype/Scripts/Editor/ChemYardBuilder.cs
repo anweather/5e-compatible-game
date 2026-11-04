@@ -56,7 +56,6 @@ public static class ChemYardBuilder
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
         var grid = new GameObject("ChemGrid").AddComponent<ChemGrid>();
-        grid.map = Map;
         AssignEffects(grid);
 
         // Find the @ to place the wizard; cell (x, y) sits at world (x, 0, H-1-y) times the cell size.

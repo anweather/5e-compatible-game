@@ -54,11 +54,14 @@ namespace Chem
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
 
         /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
-        public static ModBudgets Load(string rulesDir)
+        public static ModBudgets Load(string rulesDir) => Load(new GameFolders(rulesDir));
+
+        /// <summary>The same, with the places, buildings and things of the folders' map.</summary>
+        public static ModBudgets Load(GameFolders folders)
         {
-            var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
-            budgets.Looks = LookFamilies.Load(rulesDir);
-            string worldDir = new GameFolders(rulesDir).World;
+            var budgets = Parse(File.ReadAllText(Path.Combine(folders.Rules, "budgets.json")));
+            budgets.Looks = LookFamilies.Load(folders.Rules);
+            string worldDir = folders.World;
             budgets.Places = WorldPlaces.Load(worldDir);
             budgets.Buildings = WorldBuildings.Load(worldDir);
             if (Directory.Exists(worldDir)) budgets.Things = WorldThings.Load(worldDir);
