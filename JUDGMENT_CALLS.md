@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-072: What may a player have to install for voice?
+
+- **Asked:** 2026-11-03, by the PM: Whisper needs the VC++ runtime and Vulkan, and neither was in the build.
+- **Also comes up when:** any native library; the installer; other platforms.
+- **Answer:** Andrew: nothing by hand. "Making someone [download] a library is not an acceptable option." Bundle it with the application through Velopack, or download it as part of first-run setup. Also: the model list stays Haiku and Opus; no Sonnet row.
+- **Why:** an install has to just work.
+- **Revisited:** 0.
+
 ### J-071: Bring your own API key in 0.1.11
 
 - **Asked:** 2026-11-03, raised by Andrew: players set their own Anthropic API key in Settings.
