@@ -84,8 +84,8 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   round a place, a cell or the player asking, and with `by` one that colours only what a
   player casts (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare. The dragon's fields are sim
-  (`dragon.*`, `World.Dragon.cs`), each bounded in `budgets.json`; `dragon.budget never` (or 0) and it never comes by
-  itself. `list dragon` and `describe dragon` say what each field does (`Workbench.Dragon.cs`, #77)
+  (`dragon.*`, `World.Dragon.cs`), each bounded in `budgets.json`; `dragon.budget` is 0 (or `never`) by default, so it comes only
+  when summoned; a number brings it by itself past that many changed cells. `list dragon` and `describe dragon` say what each field does (`Workbench.Dragon.cs`, #77)
 - `remove(table, id)`, only for things the draft itself added
 - `add_building(at, width, depth, style?, front?, id?, fill?)`, or a whole `row`; `add_wing(building, width?, depth?, side?)`;
   `set_building(id, field, value)`; `add_building_part(table, id, row)` for a style, opening, floor, roof shape or detail
