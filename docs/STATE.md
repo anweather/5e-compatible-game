@@ -48,15 +48,14 @@ The one page a new PM session reads first. Keep it short: history goes in
   the cast sounds (B + pulse 30%), the lost-cast fix (#39), the play log (F8 marks), the Gauntlet's rules, surf
   toward land, the night stutter fix. Notes: `docs/handoffs/release-0.1.10-notes.md`. Install from the draft
   and update from 0.1.9 green on the PC; main merged back (dev = main = 155ac1c).
-- **0.1.11:** live rule changes in the game (Claude writes and applies mods), proximity voice (Vivox: Andrew
-  sets up Unity Gaming Services first), the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
+- **0.1.11:** live rule changes, talking to Claude by voice (Whisper), bring your own Claude. **0.1.12:** proximity voice (Andrew, 2026-11-03), and the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
 - Builds: Windows builds on the PC (Andrew, 2026-10-31); the Mac's headless build
   (`PrototypeBuild.BuildWindowsFromCommandLine`, RELEASING.md) is the fallback. The GitHub Actions runner is
   shelved (`docs/CI_BUILDS.md`). The Mac app is shelved at 0.1.7 until Andrew brings it up (J-049): releases are Windows only.
 
 ## In flight
 
-- **0.1.11 waits on Whisper** (Andrew, J-070): talking to Claude goes in; Vivox doesn't. A player's own API key goes in too (J-071). Before cutting: land `voice-libs-bundled`, add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
+- **0.1.11: ship when `voice-libs-bundled` lands and the candidate is green** (Andrew, 2026-11-03; no further ask). J-070: talking to Claude goes in; Vivox doesn't. A player's own API key goes in too (J-071). Before cutting: land `voice-libs-bundled`, add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
 - **Settings > Claude setup:** landed and worked with Andrew's real key in a release player (e0074b28 fixed sideways scrolling; one look after a relaunch). His key is still saved on the PC. Not tried for real: the cap stopping a run, Remove, a second Claude Code install. Cap default $1 a session; the model list stays Haiku and Opus (J-072).
@@ -83,7 +82,6 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 ## Open questions for Andrew
 
 - On the board: soot and black ice read as a pale blue film; darker and more solid? Creatures clip; walking-rules clip judged (no gesture, J-069).
-- Release 0.1.11 when he says ship (after Whisper).
 
 ## Telemetry
 
