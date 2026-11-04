@@ -32,7 +32,7 @@ namespace Chem
         public static readonly IReadOnlyList<string> LapseFields = new[] { "into", "after" };
 
         /// <summary>The material tables a temporary material may be in, in the order they're swept.</summary>
-        public static readonly IReadOnlyList<string> MaterialTables = new[] { "terrain", "covers", "gases" };
+        public static readonly IReadOnlyList<string> MaterialTables = new[] { "terrain", "covers", "gases", LiquidsKey };
 
         /// <summary>The lapse of a terrain, cover or gas row (table as in MaterialTables); none when the row gives none or isn't there.</summary>
         public MaterialLapse LapseOf(string table, string id)
@@ -48,6 +48,7 @@ namespace Chem
             "terrain" => terrain.ContainsKey(id),
             "covers" => covers.ContainsKey(id),
             "gases" => gases.ContainsKey(id),
+            LiquidsKey => id != WaterLiquid && liquidIndex.ContainsKey(id),
             _ => false,
         };
 

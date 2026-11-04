@@ -71,6 +71,10 @@ public partial class ChemGrid
     public int FilmCells(string film) => slicks.FilmCells(film);
     public bool IsFilm(string cover) => slicks.IsFilm(cover);
 
+    /// <summary>The glow a cell adds now (look.glow: its colour, strength and the light), black for none; and how many cells glow. For a probe.</summary>
+    public Color GlowAt(int x, int y) => slicks.GlowAt(x, y);
+    public int GlowCells => slicks.GlowCells;
+
     /// <summary>The top of the water or the lake at a point in grid units, or <paramref name="fallback"/>.</summary>
     public float DrawnSurfaceAt(float gx, float gy, float fallback)
     {

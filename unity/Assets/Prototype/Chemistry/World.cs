@@ -93,6 +93,7 @@ namespace Chem
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             ForgetWaterSnapshots(); // terrain may mean something else now
             Weather = SkyNow();
+            RemapLiquids(before, rules);
             foreach (var c in Cells)
             {
                 c.ForgetDef();
@@ -110,6 +111,11 @@ namespace Chem
             c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
             if (!Rules.Terrain.ContainsKey(c.T)) c.T = RetiredInto(c.T) ?? "dirt";
             if (c.Cover != null && !Rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
+            if (c.Liquid >= Rules.Liquids.Count)
+            {
+                c.Water = 0;
+                c.Liquid = 0;
+            }
             if (c.Gas != null && !Rules.Gases.ContainsKey(c.Gas))
             {
                 c.Gas = null;
@@ -271,7 +277,7 @@ namespace Chem
 
         /// <summary>Whether walkers can climb or cross a cell on its cover (vines: up a wall, over a pit or a stream), for the view.</summary>
         public bool IsClimbable(Cell c) => CoverHasTag(c, "climbable");
-        public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || TerrainOf(c).Conducts;
+        public bool IsConductive(Cell c) => IsOpenWater(c) || TerrainOf(c).Conducts;
 
         public double Flammability(Cell c)
         {
@@ -353,11 +359,12 @@ namespace Chem
             if (!def.Burns && c.Cover == null) c.Fire = 0;
         }
 
-        /// <summary>Pours water units onto a square (not onto blocking terrain), capped at maxLevel.</summary>
+        /// <summary>Pours water units onto a square (not onto blocking terrain, nor another liquid), capped at maxLevel.</summary>
         public void AddWater(int x, int y, int units)
         {
             var c = At(x, y);
-            if (c == null || IsBlocking(c)) return;
+            if (c == null || IsBlocking(c) || (units > 0 && !TakesWater(c))) return;
+            if (units > 0) c.Liquid = 0;
             c.Water = Math.Max(0, Math.Min(Rules.Sim.WaterMaxLevel, c.Water + units));
             if (c.Water == 0) c.Frozen = false;
         }

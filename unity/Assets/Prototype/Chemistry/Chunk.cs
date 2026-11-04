@@ -78,12 +78,16 @@ namespace Chem
         // frozen, terrain) as it was at the last pass, and the neighbours' active state then.
         public int[] SnapWater, SnapHeight;
         public bool[] SnapFrozen;
+        /// <summary>Each cell's liquid kind (Cell.Kind; at most Rules.MaxLiquids, so a byte).</summary>
+        public byte[] SnapKind;
         public string[] SnapT;
         public readonly bool[] SnapNeighbourActive = new bool[4];
         /// <summary>The snapshot is from the last water pass (false after activating or a rule switch).</summary>
         public bool SnapValid;
         /// <summary>Nothing the water pass reads changed since the last pass.</summary>
         public bool Unchanged;
+        /// <summary>How many passes in a row it has been Unchanged (a thick liquid must sit out its turn first).</summary>
+        public int UnchangedFor;
         /// <summary>The last tick water moved into, out of or within it.</summary>
         public int LastFlowTick = World.NeverLive;
         /// <summary>This tick's water pass may skip it (until water moves in it or next to it: Disturbed).</summary>

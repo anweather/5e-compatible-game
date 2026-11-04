@@ -50,7 +50,8 @@ Each has a colour in `elements.json` (see "Looks").
   - `cover` (list)
   - `fire` (`true`, `false` or a minimum)
   - `fireBelow`
-  - `water` (unfrozen water present)
+  - `water` (unfrozen water present: liquid 0)
+  - `liquid` (unfrozen liquid of this id, or with this tag, present; `"water"` is liquid 0; see "Liquids")
   - `frozen`
   - `melts` (the cover melts: its material has `melt.water`)
   - `gas` (`"any"` or an id)
@@ -61,7 +62,7 @@ Each has a colour in `elements.json` (see "Looks").
 - **Effects:**
   - `ignite` (an intensity, or `"cover"`), `extinguish`
   - `boil`, `melt`, `freeze`, `condense`
-  - `addWater` (a number, or `"power"` for the caster's power)
+  - `addWater` (a number, or `"power"` for the caster's power), with `liquid` (a liquid's id) to pour that liquid instead of water
   - `setCover`, `spreadCover`
   - `break`, `setTerrain`, `raise`
   - `shatter` (a hit on the cell's ice or terrain: it cracks, or if cracked shatters)
@@ -171,6 +172,13 @@ replaying the casts, has the same clock and weather):
   ramping in over `weather.rampMinutes`; then the seed's weather resumes.
   Held weather works even in the calm start.
 
+## Liquids (`materials.json` `liquids`)
+
+What a cell's water is: `Cell.Water` is the amount, `Cell.Liquid` the kind, 0 being water, built in. The base
+rules have no rows; a mod adds them (`thick`, `heap`, `soaks`, `floats`, `drowns`, `boils`, `touch`, `speed`,
+`tags`, `look`, `lapse`). Two kinds never share a cell; where one would run onto another it lays its `touch`
+element there instead. The fields and the rest are in `docs/RULES_MCP.md` "Liquids".
+
 ## Gases (`materials.json` `gases`)
 
 `scald` (damage a creature in it takes), `decay` (its own chance per tick a
@@ -250,7 +258,8 @@ does:
 - **`color`**: three numbers 0 to 1. A spell's is the glow in the hand, the aim
   marker and any tint, and its effects turn to it (below). A pale colour
   (saturation under 0.22, white among them) asks for no colour.
-- **`height`** (metres over the ground), **`glow`** (shining in its own colour),
+- **`height`** (metres over the ground), **`glow`** (0 to 1: shining in its own colour after dark; a
+  cover's, a `ground` terrain's or a `block`'s; `docs/RULES_MCP.md` "Glow"),
   **`roughness`** (0 glossy, 1 matt), **`flow`** (a liquid's speed; no drawn
   family reads it yet). `params` in `looks.json` says which a family takes.
 - **`baked`**: the land draws it until it grows in this world (the valley's trees).

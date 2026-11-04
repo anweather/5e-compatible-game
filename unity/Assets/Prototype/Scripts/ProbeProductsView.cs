@@ -184,7 +184,7 @@ public class ProductsViewProbe : RoomProbe
     }
 
     RoomMod iceMod;
-    int lapses;
+    int lapses, redrawsWere;
     Lens lens;
 
     IEnumerator BlackIce(Vector2Int from)
@@ -213,6 +213,7 @@ public class ProductsViewProbe : RoomProbe
         yield return Agree("ice_on", $"Player 1 switched on {IceTitle}");
         iceMod = World.Room.Mods.FirstOrDefault(m => m.Title == IceTitle);
         lapses = iceMod != null ? World.LapsesAt(iceMod) : -1;
+        redrawsWere = grid.EveryChunkRedraws;
         Metric("ice_lapses_at", lapses);
         Check("ice_lapses", lapses > start, $"{lapses}, now {World.Tick}");
         Check("the_panel_says_time_left", (grid.GetComponent<RuleSwitcher>().LapseNote(iceMod?.Id ?? "") ?? "").StartsWith("lapses in", System.StringComparison.Ordinal));
@@ -260,6 +261,7 @@ public class ProductsViewProbe : RoomProbe
         for (float t = 0f; t < SweepWait && grid.SweptChunksLeft > 0; t += Time.unscaledDeltaTime) yield return null;
         yield return Wait(Settle);
         Metric("swept_chunks_drawn", grid.SweptChunksDrawn);
+        Check("the_lapse_redraws_every_chunk_once", grid.EveryChunkRedraws - redrawsWere == 1, $"{grid.EveryChunkRedraws - redrawsWere} sweeps");
         Check("no_ice_left_in_any_chunk", !World.Cells.Any(c => c.Cover == Ice) && grid.FilmCells(Ice) == 0, Films(grid));
         Check("the_view_follows_the_lapse", grid.CurrentRules.Mods.Count == World.Room.Mods.Count && !grid.CurrentRules.IsOn(iceMod.Id) && !grid.IsFilm(Ice), $"view {string.Join(",", grid.CurrentRules.Mods.Select(m => m.Id))}, room {World.RoomText()}");
         Check("the_panel_drops_it", grid.GetComponent<RuleSwitcher>().LapseNote(iceMod.Id) == null);
@@ -276,8 +278,8 @@ public class ProductsViewProbe : RoomProbe
     }
 
     // A fixed camera at 720p, rendered off screen (the brain off): the black ice's film a frame at a time on a 30 fps
-    // clock, or one still. With no folder it films nothing.
-    sealed class Lens
+    // clock, or one still. With no folder it films nothing. glowmoss films with it too.
+    internal sealed class Lens
     {
         readonly Camera cam;
         readonly CinemachineBrain brain;
@@ -360,17 +362,23 @@ public class ProductsViewProbe : RoomProbe
     // The MCP over HTTP, as a client outside calls it, off the main thread so the server can answer.
     IEnumerator Tool(string name, JObject arguments)
     {
+        yield return Call(name, arguments, said => answer = said);
+        Metric($"mcp_{name}_chars", answer?.Length ?? 0);
+    }
+
+    /// <summary>One tool of the game's own rules MCP over HTTP, its answer (or the error) handed to <paramref name="said"/>.</summary>
+    internal static IEnumerator Call(string name, JObject arguments, System.Action<string> said)
+    {
         string url = RulesMcpServer.Url;
         string body = new JObject { ["jsonrpc"] = "2.0", ["id"] = 1, ["method"] = "tools/call", ["params"] = new JObject { ["name"] = name, ["arguments"] = arguments } }.ToString();
         var call = Task.Run(() => Http.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).Result.Content.ReadAsStringAsync().Result);
         while (!call.IsCompleted) yield return null;
         if (call.IsFaulted)
         {
-            answer = call.Exception?.GetBaseException().Message;
+            said(call.Exception?.GetBaseException().Message);
             yield break;
         }
         var json = JObject.Parse(call.Result);
-        answer = json["error"]?.ToString() ?? string.Join("\n", (json["result"]?["content"] as JArray ?? new JArray()).Select(c => (string)c["text"]));
-        Metric($"mcp_{name}_chars", answer.Length);
+        said(json["error"]?.ToString() ?? string.Join("\n", (json["result"]?["content"] as JArray ?? new JArray()).Select(c => (string)c["text"])));
     }
 }

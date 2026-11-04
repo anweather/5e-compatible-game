@@ -181,7 +181,7 @@ namespace Chem
         /// <summary>
         /// The room as text, "" without one (so worlds without a room hash as they did):
         /// "#room mode host" and then "|id:by:tick:patch hash" for each mod on, in order,
-        /// then the things found and the retired materials (World.Lapse.cs), each only when there are any.
+        /// then the things found, the retired materials and the other retired rows (World.Lapse.cs), each only when there are any.
         /// </summary>
         public string RoomText()
         {
@@ -194,6 +194,8 @@ namespace Chem
             foreach (ulong t in Room.Found) sb.Append("|found:").Append(t.ToString(inv));
             foreach (var r in Room.Retired)
                 sb.Append("|retired:").Append(r.Table).Append(':').Append(r.Id).Append(':').Append(r.Into ?? "").Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
+            foreach (var r in Room.RetiredRows)
+                sb.Append("|gone:").Append(r.Kind).Append(':').Append(r.Id).Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
             return sb.ToString();
         }
 
@@ -211,6 +213,7 @@ namespace Chem
             };
             if (Room.Found.Count > 0) save["room"]["found"] = new JArray(Room.Found.Select(t => t.ToString(CultureInfo.InvariantCulture)));
             if (Room.Retired.Count > 0) save["room"]["retired"] = new JArray(Room.Retired.Select(r => new JArray(r.Table, r.Id, r.Into, r.Mod, r.Tick)));
+            if (Room.RetiredRows.Count > 0) save["room"]["retiredRows"] = new JArray(Room.RetiredRows.Select(r => new JArray(r.Kind, r.Id, r.Mod, r.Tick)));
             SaveBuildings((JObject)save["room"]);
         }
 
@@ -239,6 +242,8 @@ namespace Chem
             foreach (var t in room["found"] ?? new JArray()) Room.Found.Add(ulong.Parse((string)t, CultureInfo.InvariantCulture));
             foreach (var r in room["retired"] ?? new JArray())
                 Room.Retired.Add(new RetiredMaterial { Table = (string)r[0], Id = (string)r[1], Into = (string)r[2], Mod = (string)r[3], Tick = (int)r[4] });
+            foreach (var r in room["retiredRows"] ?? new JArray())
+                Room.RetiredRows.Add(new RetiredRow { Kind = (string)r[0], Id = (string)r[1], Mod = (string)r[2], Tick = (int)r[3] });
             LoadBuildings(room);
         }
     }

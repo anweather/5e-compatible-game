@@ -283,7 +283,7 @@ namespace Chem
             var p = Rules.Sim.Dragon;
             var c = At(x, y);
             if (c == null) return false;
-            if (c.Water >= p.ShelterWater && !c.Frozen) return true;
+            if (DrownDepth(c) >= p.ShelterWater) return true;
             var d = Dragon;
             if (d == null) return false;
             int back = Backward(d) ? 1 : -1;

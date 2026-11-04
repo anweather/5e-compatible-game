@@ -14,6 +14,9 @@ namespace Chem.Mcp
         static readonly string[] TerrainFields = { "name", "tags", "look", "elevation", "spring", "speed" };
         static readonly string[] CoverFields = { "name", "tags", "look", "lasts", "witherLog", "damage", "speed" };
 
+        // A liquid's fields (RuleSchema.Liquids): each one value but its lapse.
+        static readonly Dictionary<string, string[]> LiquidFields = RuleSchema.Liquids.Names.ToDictionary(n => n, n => n == Rules.LapseKey ? Rules.LapseFields.ToArray() : null);
+
         static readonly Dictionary<string, string[]> GasFields = new Dictionary<string, string[]>
         {
             ["name"] = null,
@@ -87,12 +90,20 @@ namespace Chem.Mcp
 
         static readonly string[] RuleKeys = RuleSchema.Reactions.ModNames.ToArray();
 
+        // A gas's or liquid's fields, which are named one by one (a terrain's and a cover's are verb groups: null).
+        static (string who, Dictionary<string, string[]> fields)? NamedFields(string kind) => kind switch
+        {
+            "gases" => ("A gas", GasFields),
+            Rules.LiquidsKey => ("A liquid", LiquidFields),
+            _ => null,
+        };
+
         /// <summary>A material's field set to this value: throws saying what's wrong with the field, or returns.</summary>
         public static void CheckMaterial(string kind, string path, JToken value)
         {
-            if (kind == "gases")
+            if (NamedFields(kind) is var (who, fields))
             {
-                CheckNamed("A gas", GasFields, path, value);
+                CheckNamed(who, fields, path, value);
                 return;
             }
             bool cover = kind == "covers";

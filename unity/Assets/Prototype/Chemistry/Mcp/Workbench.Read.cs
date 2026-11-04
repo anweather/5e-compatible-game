@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, PartsTable, DragonTable, BuildingsTable, ThingsTable, LayTable, TriggersTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", Rules.LiquidsKey, "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, PartsTable, DragonTable, BuildingsTable, ThingsTable, LayTable, TriggersTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -27,6 +27,7 @@ namespace Chem.Mcp
                 case "terrain":
                 case "covers":
                 case "gases":
+                case Rules.LiquidsKey:
                     lines.AddRange(Entries(table).Select(p => MaterialLine(table, p)));
                     break;
                 case "elements":
@@ -183,6 +184,7 @@ namespace Chem.Mcp
                 case "terrain":
                 case "covers":
                 case "gases":
+                case Rules.LiquidsKey:
                     return raw["materials"][table]?[id];
                 case "reactions":
                     return ((raw["reactions"]["cell"] as JArray) ?? new JArray()).Concat((raw["reactions"]["entity"] as JArray) ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id);
@@ -354,7 +356,7 @@ namespace Chem.Mcp
             _ => table.TrimEnd('s'),
         };
 
-        IEnumerable<JProperty> Entries(string kind) => ((JObject)Raw["materials"][kind]).Properties();
+        IEnumerable<JProperty> Entries(string kind) => (Raw["materials"][kind] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>();
         IEnumerable<JToken> RawList(string file, string key) => (Raw[file][key] as JArray) ?? new JArray();
 
         internal static string Str(JToken t) => t != null && t.Type == JTokenType.String ? (string)t : null;

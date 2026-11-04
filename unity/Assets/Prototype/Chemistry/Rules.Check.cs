@@ -22,6 +22,7 @@ namespace Chem
             check.Combos();
             check.Numbers();
             check.Lapses();
+            check.Liquids();
             check.Buildings();
             check.Things();
             check.Lays();
@@ -300,11 +301,20 @@ namespace Chem
                 if (look["family"] != null && Text(look["family"]) == null) Errors.Add($"{what}: look.family must be a name");
                 if (look["color"] != null && !(look["color"] is JArray c && c.Count == 3 && c.All(x => IsNumber(x) && (double)x >= 0 && (double)x <= 1)))
                     Errors.Add($"{what}: look.color must be three numbers from 0 to 1");
-                foreach (var key in new[] { "height", "glow", "flow" })
+                foreach (var key in new[] { "height", "flow" })
                     if (look[key] != null && !(IsNumber(look[key]) && (double)look[key] >= 0)) Errors.Add($"{what}: look.{key} must be a number from 0");
-                if (look["roughness"] != null && !(IsNumber(look["roughness"]) && (double)look["roughness"] >= 0 && (double)look["roughness"] <= 1))
-                    Errors.Add($"{what}: look.roughness must be a number from 0 to 1");
+                // A glow is how strongly it shines in its colour after dark, the view's alone (out of the fingerprint with the rest of the look).
+                Fraction(what, look, "glow", "from 0 (none) to 1 (brightest)", true);
+                Fraction(what, look, "roughness", "from 0 to 1", false);
                 foreach (var m in LookScopes.ShapeProblems(look)) Errors.Add($"{what}: {m}");
+            }
+
+            // A look's number from 0 to 1, if it gives one; with showWhat the refusal says what it gave.
+            void Fraction(string what, JObject look, string key, string range, bool showWhat)
+            {
+                var v = look[key];
+                if (v != null && !(IsNumber(v) && (double)v >= 0 && (double)v <= 1))
+                    Errors.Add($"{what}: look.{key} must be a number {range}{(showWhat ? $", not {Show(v)}" : "")}");
             }
 
             // The element entries (elements.json, a mod's "elements" by id): known elements, each with only
@@ -422,6 +432,7 @@ namespace Chem
                     EffectRefs(id, e);
                     DissolveRef(id, e);
                 }
+                LiquidRef(id, cond, effects.OfType<JObject>());
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
                 VerbCond(id, cond);
