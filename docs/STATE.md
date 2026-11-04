@@ -56,11 +56,11 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **0.1.11 waits** (Andrew, 2026-11-03: "wait on the creatures"; the creatures have landed). Nothing blocks it: the notes cut voice and carry the saved-mods warning (#63). Before cutting: version bump, add today's landings to `docs/handoffs/release-0.1.11-notes.md`, a green release candidate on the PC (no VMs then).
+- **0.1.11 waits on Whisper** (Andrew, J-070): talking to Claude goes in; Vivox doesn't. Before cutting: land `whisper-spike`, add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c).
 - **DesktopUnityPro:** `liquids-view` (coloured water mesh, honey and paint clip). Then `liquids-2`, parked on `wip/u2-liquids-2`, needs an owner.
-- **Mac:** Andrew is starting a session to push `channels-3` (strikes onto CommandChannel with #83), which has no pushed branch yet. `whisper-spike` (51e5bed0, not landed): the real Whisper step waits on Andrew clearing the downloads in the Mac's session (J-061 seam; no Windows compile yet).
+- **Mac (`macbook-unity-pro`):** proving `channels-3` (40034327; strikes onto CommandChannel, #83 reduced, not gone), then the real Whisper step on `whisper-spike`. The PC checks the Windows compile, native lib and mic in a player.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
@@ -82,9 +82,8 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 
 ## Open questions for Andrew
 
-- Whisper: clear the downloads in the Mac's session (whisper.unity, native libs, a 75-150 MB model).
 - On the board: soot and black ice read as a pale blue film; darker and more solid? Creatures clip; walking-rules clip judged (no gesture, J-069).
-- Release 0.1.11 when he says ship.
+- Release 0.1.11 when he says ship (after Whisper).
 
 ## Telemetry
 
