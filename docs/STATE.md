@@ -1,4 +1,4 @@
-# State (2026-11-03, evening)
+# State (2026-11-03, night)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -60,14 +60,14 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
 - **Settings > Claude setup:** landed and worked with Andrew's real key in a release player (e0074b28 fixed sideways scrolling; one look after a relaunch). His key is still saved on the PC. Not tried for real: the cap stopping a run, Remove, a second Claude Code install. Cap default $1 a session; the model list stays Haiku and Opus (J-072).
 - **Whisper landed** (e7480c2b): Andrew's voice reached Claude in a Windows release player (11 voice messages, open 6-56 ms, about 1 s to transcribe). The VC++ runtime and Vulkan loader ship with the game (J-072); proven on a clean-ish VM clone. Update from 0.1.10 is 142.7 MB. Credits' copyright lines for whisper.cpp, whisper.unity and the model are from memory: check them against their LICENSE files. Linux and Steam Deck haven't run.
-- **Mac:** `briefs/vivox-spike.md` for 0.1.12 (D8 accepted; Vivox is on in the Dashboard).
+- **Vivox (0.1.12):** `vivox-spike` (8f44eae9, not landed): sign-in and libraries answered; the mic and fade aren't. Next: `briefs/vivox-pc-run.md` on the PC with Andrew. Vivox is on in the Dashboard.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
 ## Next, in order
 
-1. Land what's in flight (vivox-spike).
+1. Land what's in flight (the Vivox PC run).
 2. 0.1.11 when Andrew says.
 3. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
 4. Gaits by rule (`builders.md`), after bodies (J-068).
