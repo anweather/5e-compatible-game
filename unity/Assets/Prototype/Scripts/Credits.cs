@@ -37,7 +37,10 @@ public static class Credits
     public const string Engine = "Made with Unity. Unity is a trademark of Unity Technologies.";
 
     /// <summary>Libraries in the build whose licences ask to be credited.</summary>
-    public const string Libraries = "Velopack (updates in place), MIT License. Copyright (c) 2021 Caelan Sayler, (c) 2024 Velopack Ltd.";
+    public const string Libraries = "Velopack (updates in place), MIT License. Copyright (c) 2021 Caelan Sayler, (c) 2024 Velopack Ltd. " +
+        "Voice: whisper.cpp and ggml, MIT License, Copyright (c) 2023-2026 The ggml authors; whisper.unity, MIT License, Copyright (c) 2023 Aleksandr Evgrashin; " +
+        "the Whisper model, MIT License, Copyright (c) 2022 OpenAI. The Vulkan Loader, Apache License 2.0, The Khronos Group, LunarG and Valve (VulkanRT-License.txt, beside the libraries). " +
+        "The Microsoft Visual C++ runtime, redistributed under Microsoft's terms.";
 
     /// <summary>Other people's code in the game, used with their permission (unity/Assets/Prototype/ThirdParty).</summary>
     public const string Contributions =

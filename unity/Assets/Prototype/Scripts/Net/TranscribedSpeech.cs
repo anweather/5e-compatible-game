@@ -17,6 +17,9 @@ public sealed class TranscribedSpeech : ISpeech
     /// <summary>How long transcribing may take before the hold gives up on it.</summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
 
+    // Trying again can't bring a library back, so this one doesn't ask to.
+    const string NoLibrary = "Voice can't run on this PC: a library it needs is missing or won't load. Typing still works.";
+
     readonly ISpeechAudio audio;
     readonly ITranscriber transcriber;
     readonly Queue<(SpeechHeard heard, string text)> heard = new();
@@ -123,10 +126,11 @@ public sealed class TranscribedSpeech : ISpeech
             End();
             return;
         }
-        string error = done.Exception?.GetBaseException().Message ?? "cancelled";
+        var cause = done.Exception?.GetBaseException();
+        string error = cause?.Message ?? "cancelled";
         VoiceTrace.Line($"transcribing failed after {TranscribeMs:0} ms: {error}");
         Debug.LogWarning("Voice: transcribing failed: " + error);
-        Fail("Making out the words failed. Try again, or type.");
+        Fail(cause is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException ? NoLibrary : "Making out the words failed. Try again, or type.");
     }
 
     // Cancels work still going and leaves it to end on its own thread, which nothing waits for.

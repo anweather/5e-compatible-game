@@ -272,3 +272,11 @@ back to the full package.
   from `StreamingAssets` at runtime, so a newer data pack could be fetched
   without a new build; online, both players would need the same pack.
 - Code signing, so SmartScreen stops warning; a macOS build.
+
+## What voice ships with on Windows
+
+`libwhisper.dll` needs Microsoft's C++ runtime and the Vulkan loader (`ggml-vulkan.dll` imports it even on the CPU), and a
+friend's PC may have neither (J-072). Every Windows build fetches them from two pinned packages, checks each package and
+file against hashes, and puts them beside `libwhisper.dll`: `VoiceLibsIntoBuild.cs`. A build that can't get them fails.
+They aren't in git, as the repo is public. With no GPU driver the loader finds nothing and Whisper runs on the CPU, as it
+does by default. A new whisper.unity can import something else: check its DLLs' imports when it moves.
