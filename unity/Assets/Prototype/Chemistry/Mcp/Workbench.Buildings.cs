@@ -251,8 +251,14 @@ namespace Chem.Mcp
             return true;
         }
 
-        // The world's streets, courses and puzzles stay as they are; only open country is a site.
-        bool Settled(int x, int y) => Places.All.Any(p => (p.Kind == "village" || p.Kind == "course" || p.Kind == "puzzle") && p.Contains(x, y));
+        // The kinds of place that stay as they are, whatever a mod or an act asks: what the map says stands there.
+        static readonly HashSet<string> SettledKinds = new HashSet<string> { "village", "course", "puzzle", "court", "field", "tower", "bridge", "landmark" };
+
+        // The settled place on a cell, or null for open country.
+        Place SettledPlace(int x, int y) => Places.All.FirstOrDefault(p => SettledKinds.Contains(p.Kind) && p.Contains(x, y));
+
+        // Only open country is a site.
+        bool Settled(int x, int y) => SettledPlace(x, y) != null;
 
         // Cells from the targets (-1 past reach), by steps across the grid.
         static int[] DistanceMap(World w, List<(int x, int y)> from, int reach)

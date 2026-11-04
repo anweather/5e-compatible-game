@@ -128,7 +128,7 @@ namespace Chem.Mcp
             [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null,
             [Description("With what: land, the shape applied to the land's height: flat, dome, cone or ridge; dome when left out.")] string profile = null,
             [Description("With what: land, how far it reaches, in cells; 8 when left out, 32 at most.")] int? radius = null,
-            [Description("With what: land, metres at its middle, below 0 for a hollow; 100 at most either way.")] int? rise = null,
+            [Description("With what: land, metres at its middle, below 0 for a hollow; 100 at most either way, but a hollow that would take land below -17 m is refused.")] int? rise = null,
             [Description("With what: land, how uneven, 0 to 100 percent; 0 when left out.")] int? rough = null,
             [Description("With a ridge, its line: north, east, northeast or southeast.")] string along = null) =>
             Do(() => bench.Act(what, count, near, within, spacing, side, edge, seed, onto, lasts, peer,
