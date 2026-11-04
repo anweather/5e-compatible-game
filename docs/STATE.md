@@ -57,8 +57,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **0.1.11 waits** (Andrew, 2026-11-03: "wait on the creatures"; the creatures have landed). Nothing blocks it: the notes cut voice and carry the saved-mods warning (#63). Before cutting: version bump, add today's landings to `docs/handoffs/release-0.1.11-notes.md`, a green release candidate on the PC (no VMs then).
-- **Max is out until Nov 5, 4pm Phoenix** (weekly limit, hit 13:28 on 2026-11-03). The watcher's "max is back" at 18:32 is false (#89). DesktopUnity, the Mac, u2 and w3 can't run until then. This PM ran on `~/.claude-account3`, which the watcher doesn't track and which can't see the board.
-- **Pro** was marked out until 20:00 on 2026-11-03. When "pro is back" arrives: `start.cmd u1 docs/handoffs/briefs/liquids-2-resume.md` (12 GB free beside the Editor at 18:40).
+- **Single thread on the PC (Andrew, 2026-11-03):** all other Claude accounts are offline, so all work runs on `~/.claude-account3`, frugally: this PM plus one new DesktopUnity session. No Mac, no VMs. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). This account can't see the board.
 - **Landed since the last handoff:** `glow` (P4), `dependents-all` (#88).
 - **liquids** (ac5041e5): not landed, needs a Unity compile. `host-ux` has it merged with dev as `liquids-check` (058a2684), clean, no result reported. `liquids-view` isn't started.
 - **Mac:** `channels-3` (strikes onto CommandChannel with #83) has no pushed branch; anything done is only on the Mac. `whisper-spike` (51e5bed0, not landed): the real Whisper step waits on Andrew clearing the downloads in the Mac's session (J-061 seam; no Windows compile yet).
