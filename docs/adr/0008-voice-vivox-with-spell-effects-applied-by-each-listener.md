@@ -1,6 +1,6 @@
-# D8. Voice: Vivox, with spell effects applied by each listener (2026-10-24, proposed)
+# D8. Voice: Vivox, with spell effects applied by each listener (2026-10-24, accepted 2026-11-03)
 
-**Status:** Proposed (from `MULTIPLAYER.md`, not yet accepted)
+**Status:** Accepted (Andrew, 2026-11-03). Positional channel first, for 0.1.12.
 
 - **Decision:** Vivox for voice. Start with a positional channel; move
   to participant taps played through Unity AudioSources so the game
