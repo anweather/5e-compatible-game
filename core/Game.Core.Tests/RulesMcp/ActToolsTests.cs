@@ -72,12 +72,50 @@ namespace Chem.Tests
             var (b, tools) = Tools();
             Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 33, rise: 10), Throws.Exception.With.Message.Contain("radius is 1 to 32"));
             Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 101), Throws.Exception.With.Message.Contain("rise is in metres"));
-            Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 10, profile: "mountain"), Throws.Exception.With.Message.Contain("flat, dome, cone or ridge"));
+            Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 10, profile: "mountain"), Throws.Exception.With.Message.Contain("flat, dome, cone, ridge, canyon or cliff"));
             Assert.That(() => tools.Act("land", near: "[120, 120]", radius: 8, rise: 10, profile: "ridge"), Throws.Exception.With.Message.Contain("needs along"));
             StringAssert.Contains("cross water", tools.Act("land", near: "lake", radius: 8, rise: 10));
             var village = b.Places.All.First(p => p.Kind == "village");
             StringAssert.Contains(village.Name, tools.Act("land", near: village.Id, radius: 8, rise: 10));
             Assert.That(b.LiveWorld.LandHasMoved, Is.False);
+        }
+
+        [TestCase("ball-court")]
+        [TestCase("defense-field")]
+        [TestCase("tower")]
+        [TestCase("bridge")]
+        [TestCase("standing-stones")]
+        [TestCase("outcrop")]
+        [TestCase("falls-cliff")]
+        [TestCase("scree-ramp")]
+        public void AStampOnAPlacedFeatureIsRefusedAndTheLandStays(string id)
+        {
+            var (b, tools) = Tools();
+            var place = b.Places.All.First(p => p.Id == id);
+            var (x, y) = place.Cells().Last();
+            StringAssert.Contains($"the ground under {place.Name}", tools.Act("land", near: $"[{x}, {y}]", radius: 1, rise: 15));
+            Assert.That(b.LiveWorld.LandHasMoved, Is.False);
+            Assert.That(b.LiveWorld.LandHash(), Is.Empty);
+            Assert.That(b.LiveWorld.LandMovedAt(x, y), Is.Zero);
+        }
+
+        [Test]
+        public void AStampThatOnlyReachesTheCourtIsRefused()
+        {
+            var (b, tools) = Tools();
+            var court = b.Places.All.First(p => p.Id == "ball-court");
+            var edge = court.Cells().OrderBy(c => c.x).First();
+            StringAssert.Contains(court.Name, tools.Act("land", near: $"[{edge.x - 10}, {edge.y}]", radius: 10, rise: 15));
+            Assert.That(b.LiveWorld.LandHasMoved, Is.False);
+            StringAssert.Contains("moved the land", tools.Act("land", near: $"[{edge.x - 10}, {edge.y}]", radius: 9, rise: 15));
+        }
+
+        [Test]
+        public void TheActToolSaysHowLowLandGoes()
+        {
+            var rise = typeof(RulesTools).GetMethod(nameof(RulesTools.Act)).GetParameters().First(p => p.Name == "rise");
+            string said = rise.GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false).Cast<System.ComponentModel.DescriptionAttribute>().Single().Description;
+            StringAssert.Contains($"below {World.LandLowest / 8} m", said);
         }
 
         [Test]

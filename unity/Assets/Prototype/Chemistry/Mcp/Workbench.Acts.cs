@@ -101,14 +101,14 @@ namespace Chem.Mcp
             int radius = ask.Radius ?? 8, rise = ask.Rise ?? 0;
             double mostRadius = Budgets.Number("land.maxRadius", 32), mostRise = Budgets.Number("land.maxRise", 100);
             if (radius < 1 || radius > mostRadius) throw new RulesToolException(FormattableString.Invariant($"radius is 1 to {mostRadius} cells."));
-            if (rise == 0 || Math.Abs(rise) > mostRise) throw new RulesToolException(FormattableString.Invariant($"rise is in metres, up to {mostRise} either way, and not 0."));
+            if (rise == 0 || Math.Abs(rise) > mostRise) throw new RulesToolException(FormattableString.Invariant($"rise is in metres, up to {mostRise} either way, and not 0; no land goes below {World.LandLowest / LandUnitsPerMetre} m."));
             var line = (x: 0, y: 0);
-            if (ask.Profile == LandStamp.Ridge && (ask.Along == null || !Lines.TryGetValue(ask.Along, out line)))
-                throw new RulesToolException($"A ridge needs along: {string.Join(", ", Lines.Keys)}.");
+            if (LandStamp.NeedsLine(ask.Profile) && (ask.Along == null || !Lines.TryGetValue(ask.Along, out line)))
+                throw new RulesToolException($"A {ask.Profile} needs along: {string.Join(", ", Lines.Keys)}.");
             var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
             var (x, y) = (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
-            var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? 0, seed ?? ++actSeed);
-            if (!stamp.Known) throw new RulesToolException("profile is flat, dome, cone or ridge, and rough is 0 to 100.");
+            var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? (ask.Profile == LandStamp.Flat ? 0 : LandRoughness), seed ?? ++actSeed);
+            if (!stamp.Known) throw new RulesToolException("profile is flat, dome, cone, ridge, canyon or cliff, and rough is 0 to 100.");
             string settled = OnWorld(w => SettledUnder(w, stamp));
             if (settled != null) return new ActPlan { ActKindOf = World.ActLand, PlaceName = name, NoRoom = $"That would move the ground under {settled}; try further off." };
             return new ActPlan { ActKindOf = World.ActLand, PlaceName = name, Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
@@ -116,7 +116,10 @@ namespace Chem.Mcp
 
         const int LandUnitsPerMetre = 8;
 
-        // What stands on a stamp's cells: a building, or a village, course or puzzle's ground.
+        // How uneven land is when nobody says: nothing the land makes is a smooth slab, and a flat is asked for as flat.
+        const int LandRoughness = 40;
+
+        // What stands on a stamp's cells: a building, or the ground of a settled place (SettledKinds).
         string SettledUnder(World w, LandStamp s)
         {
             var built = new HashSet<(int, int)>();
@@ -132,7 +135,7 @@ namespace Chem.Mcp
                 {
                     if ((x - s.X) * (x - s.X) + (y - s.Y) * (y - s.Y) > s.Radius * s.Radius) continue;
                     if (built.Contains((x, y))) return names[(x, y)];
-                    var place = Places.All.FirstOrDefault(p => (p.Kind == "village" || p.Kind == "course" || p.Kind == "puzzle") && p.Contains(x, y));
+                    var place = SettledPlace(x, y);
                     if (place != null) return place.Name;
                 }
             return null;

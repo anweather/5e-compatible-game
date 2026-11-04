@@ -334,6 +334,14 @@
       [421,302,313]
     ]},
     {"id":"river","name":"the river","kind":"river","from":"ValleyShape.River (the Editor's valley), metres to cells by TerrainGrid.Valley; its bends are smoothed in the valley, so this line is within a few cells of it","line":[[371,135],[379,163],[364,217],[374,267],[359,310],[346,360]],"width":6},
-    {"id":"falls","name":"the falls","kind":"pond","from":"ValleyShape.Falls and PondRadius (10 m): the pond at the foot of the falls, where the river starts","circle":{"at":[371,135],"radius":7}}
+    {"id":"falls","name":"the falls","kind":"pond","from":"ValleyShape.Falls and PondRadius (10 m): the pond at the foot of the falls, where the river starts","circle":{"at":[371,135],"radius":7}},
+    {"id":"ball-court","name":"the ball court","kind":"court","from":"ValleyShape.CourtCentre, CourtLength and CourtWidth, with 3 m round the rails for the goals and the scoreboard","area":[308,316,339,337]},
+    {"id":"defense-field","name":"the defense field","kind":"field","from":"DefenseFieldBuilder.NearDefenseField: Gate to Flag, HalfWidth and EndRoom","area":[258,264,306,282]},
+    {"id":"tower","name":"the climbing tower","kind":"tower","from":"ValleyTower.Site and Reach (13 m), with 2 m round it","circle":{"at":[239,343],"radius":10}},
+    {"id":"bridge","name":"the bridge","kind":"bridge","from":"ValleyShape.PlanBridge: its line from ramp foot to ramp foot, and room either side","line":[[362,281],[377,287]],"width":7},
+    {"id":"standing-stones","name":"the standing stones","kind":"landmark","from":"ValleyBuilder.StonesAt, the ring of 9 m and 2 m round it","circle":{"at":[199,213],"radius":8}},
+    {"id":"outcrop","name":"the outcrop","kind":"landmark","from":"ValleyBuilder.OutcropAt, the pile of rocks and 2 m round it","circle":{"at":[422,257],"radius":9}},
+    {"id":"falls-cliff","name":"the cliff at the falls","kind":"landmark","from":"ValleyShape.Falls and CliffNorth: the clad face, 27 m either side of the falls","line":[[353,127],[389,127]],"width":5},
+    {"id":"scree-ramp","name":"the scree ramp","kind":"landmark","from":"ValleyShape.Falls, RampFoot and RampTop: the rocks either side of the way up","line":[[395,145],[387,113]],"width":7}
   ]
 }
