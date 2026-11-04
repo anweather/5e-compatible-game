@@ -16,3 +16,17 @@
 - Sonnet 2: Molten Boulder's lava never cools. Base lava is terrain: cold crusts it, water boils off it. Both happened as the rules say.
 
 **Duplicates of open issues:** none (`gh issue list`, `known-issues.json`). Nearest is #21, a different complaint about Rolling Boulder.
+
+## The second Haiku run, on the fixed tool (`haiku-2-notes.jsonl`)
+
+Four notes, every one checked by hand.
+
+**Confirmed:**
+- Note 1 is F-0010, thorns on a lava pool. Probably the cause of #91, in a new place.
+- Note 4 is F-0011, Molten Boulder's lava hurts nothing. New; a design question.
+
+**False alarms, the model misread the rules (the prompt now says both):**
+- Note 2: Thunderwave "deals 13, above its range [2,8]". `damage` is dice, 2d8, so 13 is a fair roll. The "two hits on one goblin" were one hit on each.
+- Note 3: Molten Boulder's lava never crusts. `crust` happens only under cold, as Sonnet 2 found in the first runs.
+
+None was the tool's fault, and all four said `reproduced`, so that flag doesn't separate real from false.
