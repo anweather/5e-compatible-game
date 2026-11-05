@@ -59,12 +59,17 @@ public class JobsProbe : ProbeScenario
         float water = grid.WaterSurfaceY(cell.x, cell.y);
         Metric("deck_over_water_m", wizard.transform.position.y - water);
         Check("the_dock_carries_a_wizard", cell.x >= DockEndX - 3 && wizard.transform.position.y > water, $"at {cell}, y {wizard.transform.position.y:0.0}, water {water:0.0}");
-        var end = Ground(DockEndX, DockY);
-        var house = Ground(244, DockY);
-        Cut(end + new Vector3(8f, 4f, -16f), Ground(256, DockY) + Vector3.up);
+        float deck = wizard.transform.position.y;
+        Vector3 Over(int x, int y, float up)
+        {
+            var p = grid.CellCenter(x, y);
+            p.y = deck + up;
+            return p;
+        }
+        Cut(Over(272, 384, 7f), Over(256, DockY, 0f));
         yield return Wait(0.8f);
         Shot("dock");
-        Cut(Ground(258, 382) + Vector3.up * 2.5f, house + Vector3.up * 2f);
+        Cut(Over(262, 382, 3f), Over(244, DockY, 1f));
         yield return Wait(0.8f);
         Shot("lake-house");
     }
