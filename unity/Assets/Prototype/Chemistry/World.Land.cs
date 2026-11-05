@@ -219,6 +219,21 @@ namespace Chem
 
         readonly List<LandStamp> landStamps = new List<LandStamp>();
         int[] landMoved;
+        int[] landLaid;
+
+        /// <summary>Land the map itself lays when the world is made, a road's cut: under the stamps, and no reset takes it.</summary>
+        public void LayLand(IEnumerable<(int x, int y, int by)> cells)
+        {
+            landMoved ??= new int[W * H];
+            landLaid ??= new int[W * H];
+            foreach (var (x, y, by) in cells)
+            {
+                int i = Idx(x, y);
+                landMoved[i] += by;
+                landLaid[i] += by;
+                if (land != null && land[i] != NoLand) land[i] += by;
+            }
+        }
 
         /// <summary>A stamp moved the land, or one was taken back: the middle and the reach of the cells to draw again.</summary>
         public event Action<int, int, int> LandMoved;
@@ -232,15 +247,40 @@ namespace Chem
         /// <summary>How far the stamps have moved a cell's land, in land units; 0 off the world.</summary>
         public int LandMovedAt(int x, int y) => landMoved != null && InBounds(x, y) ? landMoved[Idx(x, y)] : 0;
 
-        /// <summary>The most the stamps put between a cell and a cell beside it, in land units; 0 until land is stamped.</summary>
+        /// <summary>The most the stamps put between a cell and a cell beside it, in land units; 0 until land is stamped. What the map laid is no stamp: a road's bank is grass.</summary>
         public int LandDrop(int x, int y)
         {
             if (landMoved == null || !InBounds(x, y)) return 0;
-            int here = landMoved[Idx(x, y)];
+            int here = Stamped(Idx(x, y));
             return Math.Max(Math.Max(Beside(x + 1, y, here), Beside(x - 1, y, here)), Math.Max(Beside(x, y + 1, here), Beside(x, y - 1, here)));
         }
 
-        int Beside(int x, int y, int here) => InBounds(x, y) ? Math.Abs(landMoved[Idx(x, y)] - here) : 0;
+        int Beside(int x, int y, int here) => InBounds(x, y) ? Math.Abs(Stamped(Idx(x, y)) - here) : 0;
+
+        /// <summary>What the stamps alone have moved a cell by, in land units: the map's laid land left out.</summary>
+        public int LandStampedAt(int x, int y) => landMoved != null && InBounds(x, y) ? Stamped(Idx(x, y)) : 0;
+
+        /// <summary>The cells the map's laid land moved, row by row.</summary>
+        public IEnumerable<(int x, int y)> LandLaidCells()
+        {
+            if (landLaid == null) yield break;
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                    if (landLaid[Idx(x, y)] != 0) yield return (x, y);
+        }
+
+        /// <summary>Whether a road's cut leaves this cell a bank: the most it moved past a cell beside it is steep.</summary>
+        public bool LandBank(int x, int y)
+        {
+            if (landLaid == null || !InBounds(x, y)) return false;
+            int here = landLaid[Idx(x, y)];
+            for (int v = -1; v <= 1; v++)
+                for (int u = -1; u <= 1; u++)
+                    if (InBounds(x + u, y + v) && Math.Abs(landLaid[Idx(x + u, y + v)] - here) >= LandSteep) return true;
+            return false;
+        }
+
+        int Stamped(int i) => landMoved[i] - (landLaid?[i] ?? 0);
 
         // Null when it's stamped; why not otherwise.
         string StampLand(ActDone act, JObject ask)
@@ -321,7 +361,7 @@ namespace Chem
         {
             Press(s, -1);
             landStamps.RemoveAt(landStamps.FindLastIndex(k => k.Text == s.Text));
-            if (landStamps.Count == 0) landMoved = null;
+            if (landStamps.Count == 0 && landLaid == null) landMoved = null;
             LandMoved?.Invoke(s.X, s.Y, s.Radius);
         }
 
@@ -345,10 +385,13 @@ namespace Chem
         void SaveLand(JObject save)
         {
             if (landStamps.Count > 0) save["land"] = new JArray(landStamps.Select(s => (object)s.Row).ToArray());
+            if (landLaid != null) save["landLaid"] = new JArray(LandLaidCells().SelectMany(c => new object[] { c.x, c.y, landLaid[Idx(c.x, c.y)] }).ToArray());
         }
 
         void LoadLand(JObject s)
         {
+            if (s["landLaid"] is JArray laid)
+                LayLand(Enumerable.Range(0, laid.Count / 3).Select(k => ((int)laid[3 * k], (int)laid[3 * k + 1], (int)laid[3 * k + 2])));
             foreach (var row in s["land"] as JArray ?? new JArray())
             {
                 var stamp = LandStamp.Read(row);

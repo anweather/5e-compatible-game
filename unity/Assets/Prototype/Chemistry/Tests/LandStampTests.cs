@@ -302,6 +302,33 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ACutTheMapLaidOutlivesTheStamps()
+        {
+            var w = Flat();
+            w.LayLand(new[] { (40, 40, -16) });
+            w.ApplyRoom(Stamp(40, 40, 10, 100, LandStamp.Flat));
+            Assert.That(w.LandMovedAt(40, 40), Is.EqualTo(84));
+            Assert.That(w.ApplyRoom(RoomCommand.Undo("Host", 1)).Done);
+            Assert.That(w.LandMovedAt(40, 40), Is.EqualTo(-16), "the stamps go, as the dragon's reset takes them, and the road stays");
+            Assert.That(w.LandHasMoved);
+            Assert.That(w.LandHash(), Is.EqualTo(""));
+        }
+
+        [Test]
+        public void ALateJoinerGetsTheCutTheMapLaid()
+        {
+            var w = Flat();
+            w.LayLand(new[] { (40, 40, -16), (41, 40, -8) });
+            w.ApplyRoom(Stamp(70, 70, 8, 80, LandStamp.Flat));
+            var back = World.Load(w.Save(new AllGrass()), ChemistryTests.R, new AllGrass(), Budgets);
+            Assert.That(back.LandMovedAt(40, 40), Is.EqualTo(-16));
+            Assert.That(back.LandMovedAt(41, 40), Is.EqualTo(-8));
+            Assert.That(back.LandMovedAt(70, 70), Is.EqualTo(80));
+            Assert.That(back.LandStampedAt(40, 40), Is.Zero);
+            Assert.That(back.LandHash(), Is.EqualTo(w.LandHash()));
+        }
+
+        [Test]
         public void AnUndoThatWouldLeaveTheRangeWaits()
         {
             var w = Flat();
