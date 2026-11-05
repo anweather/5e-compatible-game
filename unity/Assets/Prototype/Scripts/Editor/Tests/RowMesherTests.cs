@@ -26,6 +26,18 @@ public class RowMesherTests
         " \"roofs\": { \"main\": { \"over\": [\"a\", \"b\", \"c\", \"d\"], " + roof + " } } }");
 
     [Test]
+    public void AParapetStopsAWizardFromItsOwnRail()
+    {
+        var plain = RowMesher.Make(Box("\"shape\": \"flat\""), Plain);
+        Assert.AreEqual(0, plain.rail.vertexCount, "no battlements, no rail");
+        var row = Box("\"shape\": \"flat\"");
+        row["parts"] = JArray.Parse("[{ \"kind\": \"battlements\", \"on\": \"n\", \"every\": 1.8, \"height\": 1.3 }]");
+        var made = RowMesher.Make(row, Plain);
+        Assert.Greater(made.rail.vertexCount, 0);
+        Assert.AreEqual(plain.walk.vertexCount, made.walk.vertexCount, "the walk the camera keeps out of has no parapet in it");
+    }
+
+    [Test]
     public void WallsStandInsideTheirLines()
     {
         var bounds = RowMesher.Make(Box("\"shape\": \"flat\""), Plain).body.bounds;

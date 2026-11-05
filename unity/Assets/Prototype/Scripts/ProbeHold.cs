@@ -130,6 +130,10 @@ public class HoldProbe : ProbeScenario
         yield return Walk(28, 3);
         yield return Walk(28, 15);
         Check("along_it_over_the_gate", OnCell(28, 15) && wizard.transform.position.y > walkTop - OnTop, $"at {grid.CellAt(wizard.transform.position)}, y {wizard.transform.position.y:0.0}");
+        var outward = puppet.WalkTo(At(36, 15));
+        for (float t = 0f; t < 3f && outward.MoveNext(); t += Time.deltaTime) yield return outward.Current;
+        puppet.Move(Vector2.zero);
+        Check("the_rail_stops_a_wizard", wizard.transform.position.y > walkTop - OnTop, $"at {grid.CellAt(wizard.transform.position)}, y {wizard.transform.position.y:0.0}");
         yield return Picture("from-the-walls", wizard.transform.position + Vector3.up * 1.7f, At(60, 19));
         yield return FramesHere("walls");
 

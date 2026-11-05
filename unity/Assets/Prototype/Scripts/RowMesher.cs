@@ -49,6 +49,8 @@ public static class RowMesher
         public Mesh body, roof;
         /// <summary>What a wizard walks on and against up a level row, drawn by nothing: stairs, the deck over a passage, parapets, a tower's rim.</summary>
         public Mesh walk;
+        /// <summary>What stops a wizard at a parapet, drawn by nothing, and what the camera passes: a wall walk is too narrow for it to stay behind one.</summary>
+        public Mesh rail;
         /// <summary>How high each wall's top stands from the root, by the cell it stands on: where the blockers stop.</summary>
         public Dictionary<Vector2Int, float> tops;
         public WindowPanes.Pane[] panes;
@@ -117,6 +119,7 @@ public static class RowMesher
         var body = new MeshKit { Glows = false };
         var roof = new MeshKit { Glows = false };
         var walk = new MeshKit { Glows = false };
+        var rail = new MeshKit { Glows = false };
         var panes = new List<(WindowPanes.Pane pane, Stretch on)>();
         bool level = (bool?)row["level"] ?? false;
         float floor = level ? 0f : (float?)row["floor"]?["height"] ?? 0f;
@@ -136,9 +139,9 @@ public static class RowMesher
             foreach (var r in roofs.Properties().OrderBy(p => p.Name, StringComparer.Ordinal))
                 ridge = Mathf.Max(ridge, RoofOf(roof, body, (JObject)r.Value, joins, walls, wallTop, tables));
         var chimneys = new List<Vector3>();
-        DrawDetails(body, walk, row, walls, ridge, chimneys, tables);
+        DrawDetails(body, walk, rail, row, walls, ridge, chimneys, tables);
         RowTowers.Draw(body, walk, row, joins, walls.Select(w => (w.At(0f, 0f, 0f), w.At(w.Length, 0f, 0f), w.At(0f, w.Thickness, 0f))).ToList(), WalkTop(row), tables.Footing, (float?)row["wall"]?["thickness"] ?? 0.3f, Finished(row["wall"]?["finish"], tables.TerrainColor((string)row["wall"]?["material"])));
-        return new Result { body = body.ToMesh("Row body"), roof = roof.ToMesh("Row roof"), walk = walk.ToMesh("Row walk"), tops = Tops(walls), panes = panes.Select(p => p.pane).ToArray(), paneStretches = panes.Select(p => p.on).ToArray(), stretches = walls.SelectMany(w => w.Stretches).ToArray(), chimneys = chimneys.ToArray() };
+        return new Result { body = body.ToMesh("Row body"), roof = roof.ToMesh("Row roof"), walk = walk.ToMesh("Row walk"), rail = rail.ToMesh("Row rail"), tops = Tops(walls), panes = panes.Select(p => p.pane).ToArray(), paneStretches = panes.Select(p => p.on).ToArray(), stretches = walls.SelectMany(w => w.Stretches).ToArray(), chimneys = chimneys.ToArray() };
     }
 
     /// <summary>How high a level row's wall walk stands above its root: its "wall" height.</summary>
@@ -696,7 +699,7 @@ public static class RowMesher
         }
     }
 
-    static void DrawDetails(MeshKit kit, MeshKit walk, JObject row, List<Wall> walls, float ridge, List<Vector3> chimneys, Tables tables)
+    static void DrawDetails(MeshKit kit, MeshKit walk, MeshKit rail, JObject row, List<Wall> walls, float ridge, List<Vector3> chimneys, Tables tables)
     {
         if (!(row["parts"] is JArray parts)) return;
         foreach (var part in parts.OfType<JObject>())
@@ -706,7 +709,7 @@ public static class RowMesher
             float at = ((float?)part["at"] ?? w.Length / HalfCell / 2f) * HalfCell, every = (float?)part["every"] ?? 0.6f;
             switch ((string)part["kind"])
             {
-                case "battlements": Battlements(kit, walk, w, every, (float?)part["height"] ?? 1.2f); break;
+                case "battlements": Battlements(kit, rail, w, every, (float?)part["height"] ?? 1.2f); break;
                 case "stair": Stair(kit, walk, w, at, ((float?)part["length"] ?? w.Length / HalfCell) * HalfCell, tables); break;
                 case "viga": Vigas(kit, w, every); break;
                 case "canale": Held(kit, w, at, () => kit.Box(w.At(at, -CanaleLength / 2f, w.Bottom + w.Height - CanaleSize), new Vector3(CanaleSize, CanaleSize, CanaleLength), Timber, w.Turn)); break;
@@ -723,11 +726,11 @@ public static class RowMesher
     }
 
     // A low parapet along the wall's outer edge, with a merlon every so often; what stops a wizard is the parapet's full height.
-    static void Battlements(MeshKit kit, MeshKit walk, Wall w, float every, float height)
+    static void Battlements(MeshKit kit, MeshKit rail, Wall w, float every, float height)
     {
         float top = w.Bottom + w.Height;
         kit.Box(w.At(w.Length / 2f, MerlonDepth / 2f, top + ParapetHeight / 2f), new Vector3(w.Length, ParapetHeight, MerlonDepth), w.Color, w.Turn);
-        walk.Box(w.At(w.Length / 2f, MerlonDepth / 2f, top + height / 2f), new Vector3(w.Length, height, MerlonDepth), Color.clear, w.Turn);
+        rail.Box(w.At(w.Length / 2f, MerlonDepth / 2f, top + height / 2f), new Vector3(w.Length, height, MerlonDepth), Color.clear, w.Turn);
         for (float u = every / 2f; u < w.Length; u += Mathf.Max(0.4f, every))
         {
             float along = u;

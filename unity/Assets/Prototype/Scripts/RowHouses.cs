@@ -181,7 +181,8 @@ public class RowHouses : MonoBehaviour
         var made = RowMesher.Make(row.Json, tables);
         Part(root, "Body", made.body, false);
         var roof = Part(root, "Roof", made.roof, true);
-        Walk(root, made.walk);
+        Walk(root, made.walk, "Walk", 0);
+        Walk(root, made.rail, "Rail", CameraPassesLayer);
         var panes = root.AddComponent<WindowPanes>();
         panes.hollow = true;
         panes.Show(made.panes, glass);
@@ -231,11 +232,14 @@ public class RowHouses : MonoBehaviour
         return rootY + top - grid.GroundTop(c.x, c.y, grid.World.At(c.x, c.y));
     }
 
+    // TransparentFX: a wizard meets it, and the follow camera's obstacle check, which looks at Default alone, doesn't.
+    const int CameraPassesLayer = 1;
+
     // Collides, and nothing draws it.
-    static void Walk(GameObject root, Mesh mesh)
+    static void Walk(GameObject root, Mesh mesh, string name, int layer)
     {
         if (mesh.vertexCount == 0) return;
-        var go = new GameObject("Walk");
+        var go = new GameObject(name) { layer = layer };
         go.transform.SetParent(root.transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
         go.AddComponent<MeshCollider>().sharedMesh = mesh;
