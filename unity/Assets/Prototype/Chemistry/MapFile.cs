@@ -25,6 +25,8 @@ namespace Chem
         public int Lowest { get; private set; }
         /// <summary>How low and high land can be stamped, in land units; left out, the valley's.</summary>
         public (int low, int high) LandRange { get; private set; } = (World.LandLowest, World.LandHighest);
+        /// <summary>Whether map.json says its own range. The valley's doesn't hold its land: it's where stamps stop, and the sea bed lies below it.</summary>
+        public bool OwnLandRange { get; private set; }
 
         /// <summary>The map.json in a map's folder; throws if it's missing or a field is.</summary>
         public static MapFile Load(string worldDir)
@@ -35,6 +37,7 @@ namespace Chem
             return new MapFile
             {
                 LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
+                OwnLandRange = drawable != null,
                 Id = (string)o["id"],
                 Name = (string)o["name"],
                 W = (int)o["size"][0],
