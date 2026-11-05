@@ -117,6 +117,16 @@ touch them.
 : The top of a level row's walls, where a wizard can stand: reached by a **stair**, a part on a wall's inner side. The core has no idea of it: the
   cells are blocking, and a wizard up there stands on the view's colliders.
 
+**The Hold, a run**
+: The game on the far side of the valley (`docs/design/the-hold.md`). A **run** starts on the **plate** and ends when the **keep** falls; the score is the
+  wave reached. The **heart** is the cell raiders go for, a **spawner** a place raiders come from, and **keep health** what replaces lives. **Mended**: a castle's cells put back when a run ends.
+
+**Adjective** (of a raider)
+: A row that changes a raider (Armoured, Burning, Soaked): `kind~adjective` is an entity made from the two, so its name, `weak` and `resist` reach everything that reads a raider.
+
+**Blow, batter**
+: What a raider does to a wall in its way: a terrain takes `hold.strength` blows, then breaks. Not a spell's damage.
+
 **Swing**
 : A hand on a gate: a command that turns a terrain into its `swing.into`, with the cells of that terrain joined to it. A **timber gate** swings; a machine's `gate` doesn't.
 

@@ -27,7 +27,8 @@ public class RowHouses : MonoBehaviour
         public Transform hidden;
         public RowRuin ruin;
         public BuildingRow row;
-        public MeshCollider roofCollider;
+        public MeshCollider roofCollider, walkCollider, railCollider;
+        public Mesh walkMesh, railMesh;
         public WindowPanes panes;
         public RowMesher.Stretch[] paneOn;
         public bool roofBurns, told;
@@ -102,6 +103,8 @@ public class RowHouses : MonoBehaviour
         Redraws++;
         WorstRedrawMs = System.Math.Max(WorstRedrawMs, timer.Elapsed.TotalMilliseconds);
         if (d.roofCollider != null) d.roofCollider.enabled = !d.ruin.RoofHurt;
+        if (d.walkCollider != null) d.walkCollider.sharedMesh = d.walkMesh; // cooked again, as it now stands
+        if (d.railCollider != null) d.railCollider.sharedMesh = d.railMesh;
         d.panes.Darken(i => d.ruin.Out(d.paneOn[i]));
         foreach (var puff in d.smoke) puff.gameObject.SetActive(!d.ruin.RoofHurt);
         if (d.told || d.ruin.Down * 2 < d.ruin.Stretches) return;
@@ -181,8 +184,8 @@ public class RowHouses : MonoBehaviour
         var made = RowMesher.Make(row.Json, tables);
         Part(root, "Body", made.body, false);
         var roof = Part(root, "Roof", made.roof, true);
-        Walk(root, made.walk, "Walk", 0);
-        Walk(root, made.rail, "Rail", CameraPassesLayer);
+        var walkCollider = Walk(root, made.walk, "Walk", 0);
+        var railCollider = Walk(root, made.rail, "Rail", CameraPassesLayer);
         var panes = root.AddComponent<WindowPanes>();
         panes.hollow = true;
         panes.Show(made.panes, glass);
@@ -202,6 +205,10 @@ public class RowHouses : MonoBehaviour
             row = row,
             ruin = new RowRuin(made, cells.Contains),
             roofCollider = roof,
+            walkCollider = walkCollider,
+            walkMesh = made.walk,
+            railCollider = railCollider,
+            railMesh = made.rail,
             panes = panes,
             paneOn = made.paneStretches,
             roofBurns = RoofBurns(world, row),
@@ -236,13 +243,15 @@ public class RowHouses : MonoBehaviour
     const int CameraPassesLayer = 1;
 
     // Collides, and nothing draws it.
-    static void Walk(GameObject root, Mesh mesh, string name, int layer)
+    static MeshCollider Walk(GameObject root, Mesh mesh, string name, int layer)
     {
-        if (mesh.vertexCount == 0) return;
+        if (mesh.vertexCount == 0) return null;
         var go = new GameObject(name) { layer = layer };
         go.transform.SetParent(root.transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
-        go.AddComponent<MeshCollider>().sharedMesh = mesh;
+        var collider = go.AddComponent<MeshCollider>();
+        collider.sharedMesh = mesh;
+        return collider;
     }
 
     float Highest(World world, BuildingRow row) =>

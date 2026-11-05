@@ -1,0 +1,7 @@
+{ "about": "The Hold's run (docs/design/the-hold.md, World.Hold.cs). health is the keep's. A wave is first plus growth a wave, each raider hpPerWave stronger; adjectives come in from adjectiveFrom, percent of a wave's raiders adjectivePercent. strength is how many blows of a raider a blocking terrain takes (none: it can't be battered); a way through it costs batterCost a blow. An adjective's hp is a percent of its raider's; keeps is a status it never loses, lights that it fires the ground it steps on, color how it looks.",
+  "health": 100, "plateTicks": 6, "first": 4, "growth": 2, "hpPerWave": 2, "warmup": 60, "spawnEvery": 9, "betweenWaves": 90, "batterTicks": 12, "batterCost": 12, "margin": 14, "adjectiveFrom": 2, "adjectivePercent": 34,
+  "strength": { "timber-gate": 8, "door": 4, "pane": 1, "logwall": 10, "stone": 30 },
+  "adjectives": {
+    "armoured": { "name": "Armoured", "hp": 160, "resist": ["earth"], "weak": ["lightning"], "color": [0.62, 0.64, 0.7] },
+    "burning": { "name": "Burning", "hp": 100, "lights": true, "color": [1, 0.45, 0.1] },
+    "soaked": { "name": "Soaked", "hp": 100, "keeps": "wet", "color": [0.25, 0.5, 0.95] } } }

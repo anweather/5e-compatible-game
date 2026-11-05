@@ -82,6 +82,97 @@ public class HoldProbe : ProbeScenario
         Destroy(copy);
     }
 
+    // A run with today's spells: the wizard on the walls, a bolt now and then, until the keep falls.
+    IEnumerator PlayToALoss(System.Collections.Generic.List<BuildingCell> cells, System.Collections.Generic.List<BuildingCell> gate, RowHouses houses)
+    {
+        var world = grid.World;
+        var site = world.HoldSite;
+        var show = grid.GetComponent<HoldShow>();
+        var defense = FindAnyObjectByType<DefenseField>();
+        Check("the_plate_is_there", site != null && show != null && GameObject.Find("Hold plate") != null);
+        if (site == null) yield break;
+        var plate = grid.CellCenter(site.Plate.x, site.Plate.y);
+        Teleport(new Vector3(plate.x, grid.GroundAt(plate) + 0.05f, plate.z));
+        for (float t = 0f; t < 8f && !world.HoldRunning; t += Time.deltaTime) yield return null;
+        Check("standing_on_the_plate_starts_a_run", world.HoldRunning, show.HudLine());
+        if (!world.HoldRunning) yield break;
+        for (float t = 0f; t < 40f && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
+        Check("raiders_come", world.Raiders.Count > 0);
+        yield return Wait(0.5f);
+        Check("they_are_drawn", defense != null && defense.DrawnRaiders > 0, $"{defense?.DrawnRaiders}");
+        Stand(21, 3);
+        yield return Wait(0.5f);
+        var armoured = world.Raiders[0];
+        var marked = world.SpawnRaider(Rules.PlainKind(armoured.Kind) + Rules.AdjectiveMark + "armoured", armoured.X, armoured.Y + 2, 40);
+        Check("an_adjective_raider_stands", marked != null && world.Rules.AdjectiveOf(marked.Kind) != null, marked?.Kind);
+        yield return Breach(houses, cells);
+        int casts = 0;
+        float took = 0f, worst = 0f;
+        int frames = 0, most = 0, wave = 1, inVillage = 0, backEast = 0, westmost = int.MaxValue;
+        var village = WorldPlaces.Load(ChemGrid.Folders.World).Find("hollowmere").Cells().ToHashSet();
+        var started = new System.Collections.Generic.Dictionary<int, int>();
+        for (float t = 0f; t < 300f && world.HoldRunning; t += Time.unscaledDeltaTime)
+        {
+            took += Time.unscaledDeltaTime;
+            worst = Mathf.Max(worst, Time.unscaledDeltaTime);
+            frames++;
+            most = Mathf.Max(most, world.Raiders.Count);
+            wave = world.Hold.Wave;
+            foreach (var r in world.Raiders)
+            {
+                inVillage += village.Contains((r.X, r.Y)) ? 1 : 0;
+                if (!started.ContainsKey(r.Id)) started[r.Id] = r.X;
+                backEast = Mathf.Max(backEast, r.X - started[r.Id]);
+                westmost = Mathf.Min(westmost, r.X);
+            }
+            if (frames % 900 == 1 && world.Raiders.Count > 0 && wave <= 2)
+            {
+                var r = world.Raiders[0];
+                caster.Cast(caster.SelectedId, r.X, r.Y, 0);
+                casts++;
+            }
+            if (frames == 2400) yield return Picture("run", At(40, 6) + Vector3.up * 12f, At(28, 15) + Vector3.up * 2f);
+            yield return null;
+        }
+        Metric("run_frame_ms", took / Mathf.Max(1, frames) * 1000f);
+        Metric("run_worst_ms", worst * 1000f);
+        Metric("run_most_raiders", most);
+        Metric("run_seconds", took);
+        Metric("run_casts", casts);
+        Metric("run_score", world.Hold.Wave);
+        Check("raiders_stay_out_of_hollowmere", inVillage == 0, $"{inVillage} sightings");
+        Check("raiders_climb_west", backEast <= 2 && westmost <= site.Heart.x + 2, $"at most {backEast} cells back east, west to x {westmost}");
+        Check("played_to_a_loss", world.Hold.Phase == HoldPhase.Lost, show.HudLine());
+        Check("raiders_cleared", world.Raiders.Count == 0);
+        yield return Wait(1f);
+        Check("the_castle_is_mended", cells.All(c => world.At(c.X, c.Y).T == c.Terrain), $"{cells.Count(c => world.At(c.X, c.Y).T != c.Terrain)} cells off");
+        Metric("ruined_stretches_after", houses.Ruin(Row).Down);
+        for (float t = 0f; t < 5f && houses.Ruin(Row).Down > 0; t += Time.deltaTime) yield return null;
+        Check("its_look_follows", houses.Ruin(Row).Down == 0, houses.Ruins);
+        Check("the_hud_says_so", show.HudLine().Contains("fell"), show.HudLine());
+    }
+
+    // What the fight does to the castle, shown: a stretch of the north walls, a tower and the top of a stair, gone by hand
+    // (a raider's blows are the core's tests); the end of the run mends them.
+    IEnumerator Breach(RowHouses houses, System.Collections.Generic.List<BuildingCell> cells)
+    {
+        var world = grid.World;
+        var ruin = houses.Ruin(Row);
+        var walkOn = houses.Root(Row).transform.Find("Walk").GetComponent<MeshCollider>();
+        var railOn = houses.Root(Row).transform.Find("Rail").GetComponent<MeshCollider>();
+        uint triangles = walkOn.sharedMesh.GetIndexCount(0), railed = railOn.sharedMesh.GetIndexCount(0);
+        int down = ruin.Down;
+        var tower = cells.Where(c => c.Terrain == "stone" && c.X - row.X >= 26 && c.Y - row.Y <= 5).ToList();
+        foreach (var c in cells.Where(c => c.Terrain == "stone" && c.Y - row.Y <= 4 && c.X - row.X >= 18 && c.X - row.X <= 23).Concat(tower)) world.At(c.X, c.Y).T = "rubble";
+        for (float t = 0f; t < 6f && ruin.Down == down; t += Time.deltaTime) yield return null;
+        yield return Wait(0.5f);
+        Check("the_walls_fall_with_their_cells", ruin.Down > down, $"{ruin.Down} of {ruin.Stretches} stretches down");
+        Check("what_stood_on_them_goes", walkOn.sharedMesh.GetIndexCount(0) < triangles, $"{walkOn.sharedMesh.GetIndexCount(0)} of {triangles} walk indices");
+        Check("the_rail_goes_with_them", railOn.sharedMesh.GetIndexCount(0) < railed, $"{railOn.sharedMesh.GetIndexCount(0)} of {railed} rail indices");
+        yield return Picture("breach", At(32, -14) + Vector3.up * 16f, At(24, 4) + Vector3.up * 3f);
+        Metric("breach_stretches_down", ruin.Down);
+    }
+
     protected override IEnumerator Run()
     {
         var houses = grid.GetComponent<RowHouses>();
@@ -172,5 +263,6 @@ public class HoldProbe : ProbeScenario
         }
         Check("the_gate_burns_through", gate.All(c => !world.IsBlocking(world.At(c.X, c.Y))), string.Join(", ", gate.Select(c => world.At(c.X, c.Y).T)));
         yield return Picture("gate-burnt", At(36, 13) + Vector3.up * 2f, At(28, 15) + Vector3.up * 3f);
+        yield return PlayToALoss(cells, gate, houses);
     }
 }

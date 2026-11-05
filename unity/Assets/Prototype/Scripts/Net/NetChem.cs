@@ -171,7 +171,7 @@ public partial class NetChem : NetworkBehaviour
         grid = GetComponent<ChemGrid>();
         defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
         combos = new CommandChannel<ComboIntent>(batches, (batch, c) => batch.Combos.Add(c.ToCommand()));
-        standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y));
+        standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y), HoldReads);
         strikes = new CommandChannel<StrikeIntent>(batches, (batch, s) => batch.Strikes.Add(s.ToCommand()), standKeeper.Record);
         roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
     }
@@ -450,6 +450,13 @@ public partial class NetChem : NetworkBehaviour
 
     // Whether a stand stamped now may be a step that fires a trigger (World.Triggers.cs): one is in force, or
     // a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
+    // A stand the Hold's run reads: all of them during one, and those on its plate.
+    bool HoldReads(int x, int y)
+    {
+        var world = grid.World;
+        return world?.HoldSite != null && (world.HoldRunning || world.HoldSite.Plate == (x, y));
+    }
+
     bool StepsMayFire() =>
         grid.World != null && (grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0 || roomCommands.HasPending || roomStampedFor > NetTick);
 

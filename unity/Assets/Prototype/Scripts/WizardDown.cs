@@ -125,6 +125,12 @@ public class WizardDown : MonoBehaviour
     {
         if (!Mine) return;
         var grid = caster.grid;
+        if (grid.World.HoldRespawn() is { } rise)
+        {
+            ToSpot(Above(grid, new Vector2Int(rise.x, rise.y)));
+            EventLog.Add("You come to in the castle");
+            return;
+        }
         var checkpoint = grid.World.CourseRespawn(caster.CastPlayer, fellOn.x, fellOn.y);
         if (checkpoint is { } cell)
         {

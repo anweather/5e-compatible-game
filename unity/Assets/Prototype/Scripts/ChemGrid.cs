@@ -130,6 +130,7 @@ public partial class ChemGrid : MonoBehaviour
         LoadThings();
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
+        if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
     }
 
     // The things file is read once: it is the same for every world this scene starts (and online
@@ -231,6 +232,7 @@ public partial class ChemGrid : MonoBehaviour
         LayPuzzles(world);
         LayRows(world);
         LayGolf(world);
+        SetHold(world);
         return world;
     }
 
@@ -273,6 +275,22 @@ public partial class ChemGrid : MonoBehaviour
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {
             Debug.LogError($"world/{WorldBuildings.FileName} can't be read, so its laid rows aren't: {e.Message}");
+        }
+    }
+
+    // The map's Hold, only in a world big enough to hold it (the valley, not a small test yard).
+    static void SetHold(World world)
+    {
+        try
+        {
+            var site = WorldHold.Load(Folders.World);
+            if (site == null || !world.InBounds(site.Heart.x, site.Heart.y)) return;
+            foreach (var problem in site.Check(world.Rules)) Debug.LogWarning(problem);
+            world.SetHold(site);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldHold.FileName} can't be read, so no Hold: {e.Message}");
         }
     }
 
