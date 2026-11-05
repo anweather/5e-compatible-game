@@ -9,7 +9,7 @@ using UnityEngine;
 public class LandShapesProbe : ProbeScenario
 {
     // Open ground the size of a full stamp, clear of what stamps keep off.
-    const int X = 218, Y = 402, Reach = 32, Wall = 36;
+    const int X = 110, Y = 450, Reach = 32, Wall = 36;
     const float EaseSeconds = 40f;
 
     string said;
@@ -51,11 +51,12 @@ public class LandShapesProbe : ProbeScenario
         // On the spot: the floor drops under the wizard's feet.
         PlaceCell(X, Y);
         yield return Wait(1f);
+        float before = valley.Ground.ShownGround(X, Y);
         yield return Land(LandStamp.Canyon, Wall);
         Metric("canyon_floor_m", valley.Ground.ShownGround(X, Y));
         Metric("canyon_steepest_m_a_cell", Steepest(world) / 8f);
         Metric("canyon_rocks", valley.Rocks.Count);
-        Check("the_floor_is_down", valley.Ground.ShownGround(X, Y) < -10f, $"{valley.Ground.ShownGround(X, Y):0.0} m");
+        Check("the_floor_is_down", valley.Ground.ShownGround(X, Y) < before - 10f, $"{valley.Ground.ShownGround(X, Y):0.0} m, from {before:0.0} m");
         Check("the_walls_are_walls", Steepest(world) >= 40, $"{Steepest(world) / 8f:0.0} m in a cell");
         Check("rocks_grow_on_the_faces", valley.Rocks.Count > 100, $"{valley.Rocks.Count} rocks");
         Shot("canyon");
