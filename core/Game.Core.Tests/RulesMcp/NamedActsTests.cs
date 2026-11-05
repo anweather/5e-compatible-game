@@ -88,6 +88,87 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AFiringNamesWhatLandedAndWhatDidNot()
+        {
+            var (_, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 2}, {\"act\": \"land\", \"radius\": 10, \"rise\": 12}]");
+            string said = tools.CallAct("my-camp", near: "lake");
+            StringAssert.Contains("only part landed: 2 crate", said);
+            StringAssert.Contains("1 of it had no room: land (that would cross water", said);
+            StringAssert.DoesNotContain("It's done", said);
+            StringAssert.Contains("tell the player what didn't", said);
+        }
+
+        // #149's case: the row is found to have no room before the command, so only the reply can say so.
+        [Test]
+        public void ARowWithNoRoomBeforeTheCommandIsStillNamed()
+        {
+            var (_, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 1, \"within\": 2}, {\"act\": \"barrel\", \"count\": 1, \"within\": 0, \"onto\": [\"lava\"]}]");
+            string said = tools.CallAct("my-camp", near: "[120, 120]");
+            StringAssert.Contains("only part landed: 1 crate", said);
+            StringAssert.Contains("1 of it had no room: barrel (No open cell", said);
+            StringAssert.DoesNotContain("It's done", said);
+        }
+
+        [Test]
+        public void AShortRowSaysHowShort()
+        {
+            var (_, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 4, \"within\": 1, \"spacing\": 2}, {\"act\": \"barrel\", \"count\": 1, \"within\": 1}]");
+            string said = tools.CallAct("my-camp", near: "[120, 120]");
+            StringAssert.Contains("1 of 4 crate", said);
+            StringAssert.DoesNotContain("It's done", said);
+        }
+
+        [Test]
+        public void AShortActSaysHowShort()
+        {
+            var (_, tools) = Tools();
+            string said = tools.Act("crate", 4, near: "[120, 120]", within: 1, spacing: 2);
+            StringAssert.Contains("only part landed:", said);
+            StringAssert.Contains("had no room", said);
+            StringAssert.DoesNotContain("It's done", said);
+        }
+
+        [Test]
+        public void ANothingFiringIsNotDone()
+        {
+            var (b, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 1, \"within\": 0}, {\"act\": \"barrel\", \"count\": 1, \"within\": 0}]");
+            int wet = System.Array.FindIndex(b.LiveWorld.Cells.ToArray(), c => c.Water > 0);
+            string said = tools.CallAct("my-camp", near: $"[{wet % b.LiveWorld.W}, {wet / b.LiveWorld.W}]");
+            StringAssert.Contains("None of my-camp landed", said);
+            StringAssert.DoesNotContain("It's done", said);
+        }
+
+        [Test]
+        public void AFiringAtAPlaceStandsTogether()
+        {
+            var (b, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 1, \"within\": 3}, {\"act\": \"crate\", \"count\": 2, \"within\": 3}, {\"act\": \"barrel\", \"count\": 1, \"within\": 3}]");
+            int before = b.LiveWorld.Placed.Count;
+            string said = tools.CallAct("my-camp", near: "lake", edge: "shore");
+            StringAssert.Contains("It's done", said);
+            var placed = b.LiveWorld.Placed.Skip(before).ToList();
+            Assert.That(placed.Count, Is.EqualTo(4));
+            int across = placed.Max(p => placed.Max(q => System.Math.Max(System.Math.Abs(p.CellX - q.CellX), System.Math.Abs(p.CellY - q.CellY))));
+            Assert.That(across, Is.LessThanOrEqualTo(6), "every row within 3 of the one spot");
+        }
+
+        [Test]
+        public void TheSameFiringOnTheSameWorldPicksTheSameSpot()
+        {
+            string Fired()
+            {
+                var (_, tools) = Tools();
+                On(tools, "[{\"act\": \"crate\", \"count\": 1, \"within\": 3}, {\"act\": \"barrel\", \"count\": 1, \"within\": 3}]");
+                return tools.CallAct("my-camp", near: "lake", edge: "shore").Split('\n').First(l => l.StartsWith("At ", System.StringComparison.Ordinal));
+            }
+            Assert.That(Fired(), Is.EqualTo(Fired()));
+        }
+
+        [Test]
         public void ItLivesInAModThatsOn()
         {
             var (_, tools) = Tools();

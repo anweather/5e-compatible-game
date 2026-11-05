@@ -53,6 +53,11 @@ change mode decides it once and every peer does it at one tick. A part with no r
 `who` says who may call it, everyone by default. Up to `triggers.maxActs` rows, `lay.maxCells` cells a firing. A named act
 can't call another. Without a called trigger nothing hashes or saves differently.
 
+A firing is honest and stands together (#149, #150). Every row goes in the command, a row with no room as its name and why, so
+the verdict's line says what landed row by row, and "done" is only said of what did. At a place of many cells `Workbench.SpotFor`
+takes one spot from the world's seed and the firing's id and number, the first with room for every row, else the one with room
+for most, and says so: rows don't scatter across the place.
+
 ## Next
 
 - **Playing again.** After holing out, a new round needs the ball placed again. Placing only works through the chat.

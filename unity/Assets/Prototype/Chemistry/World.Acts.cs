@@ -54,10 +54,20 @@ namespace Chem
             int done = kind == ActLand ? 1 : DoneOf(act, cells, ask);
             if (done == 0) return Refused(c, "none of those cells had room");
             KeepAct(act);
-            string left = done < cells.Count ? $"; {cells.Count - done} had no room" : "";
+            int wanted = Wanted(ask, cells.Count);
+            string left = done < wanted ? $"; {FellShort} {wanted - done} had no room" : "";
             if (kind == ActLand) return new RoomVerdict(true, null, $"{c.Peer} moved the land (act {Whole(act.N)})");
             return new RoomVerdict(true, null, $"{c.Peer} {(kind == ActCast ? "cast" : "brought out")} {Whole(done)} {what} (act {Whole(act.N)}){left}");
         }
+
+        /// <summary>In a verdict's line when part of what was asked didn't land.</summary>
+        public const string FellShort = "only part landed:";
+
+        // How many were asked for: an ask says, as the cells found may be fewer.
+        static int Wanted(JObject ask, int cells) => System.Math.Max((int?)ask["wanted"] ?? 0, cells);
+
+        /// <summary>How many acts have been done: with the world's seed, what tells one firing from the next.</summary>
+        public int ActsDone => actCount;
 
         static List<(int x, int y)> CellsOf(JObject ask) =>
             (ask["cells"] as JArray ?? new JArray()).OfType<JArray>().Select(a => ((int)a[0], (int)a[1])).ToList();
@@ -70,32 +80,60 @@ namespace Chem
         }
 
         // A named act fired: each ask in it as an act of its own, one firing to keep and take back. A part with no room
-        // is skipped, as a cell with no room is in an act; the peer asking has to be someone it's for.
+        // is skipped, as a cell with no room is in an act; the peer asking has to be someone it's for. The line says what
+        // landed row by row, so whoever asked can tell the player the truth.
         RoomVerdict FireNamed(RoomCommand c, string id, JObject ask)
         {
             var named = Rules.TriggersOn(TriggerEvent.Called).First(t => t.Id == id);
             if (!named.IsFor(c.Peer, c.Peer)) return Refused(c, $"{id} isn't {c.Peer}'s to call");
             var firing = new ActDone { N = actCount + 1, By = c.Peer, Kind = ActCalled, What = id };
             var parts = (ask["parts"] as JArray ?? new JArray()).OfType<JObject>().ToList();
+            var landed = new List<string>();
+            var missed = new List<string>();
+            bool whole = true;
             foreach (var part in parts)
             {
-                var done = DonePart(c, part);
-                if (done != null) firing.Parts.Add(done);
+                var done = DonePart(c, part, out int count, out string why);
+                string what = (string)part["what"];
+                int wanted = what == ActLand ? 1 : Wanted(part, CellsOf(part).Count);
+                if (done == null)
+                {
+                    missed.Add(why == null ? what : $"{what} ({why})");
+                    continue;
+                }
+                firing.Parts.Add(done);
+                whole &= count >= wanted;
+                landed.Add(RowLanded(what, count, wanted));
             }
-            if (firing.Parts.Count == 0) return Refused(c, "none of it had room");
+            if (firing.Parts.Count == 0) return Refused(c, $"none of it had room: {string.Join(", ", missed)}");
             KeepAct(firing);
-            string left = firing.Parts.Count < parts.Count ? $"; {Whole(parts.Count - firing.Parts.Count)} of it had no room" : "";
-            return new RoomVerdict(true, null, $"{c.Peer} called {id} (act {Whole(firing.N)}){left}");
+            string left = missed.Count > 0 ? $"; {Whole(missed.Count)} of it had no room: {string.Join(", ", missed)}" : "";
+            string opening = whole && missed.Count == 0 ? "landed" : FellShort;
+            return new RoomVerdict(true, null, $"{c.Peer} called {id} (act {Whole(firing.N)}); {opening} {string.Join(", ", landed)}{left}");
         }
 
-        // One ask of a firing, or null if it did nothing.
-        ActDone DonePart(RoomCommand c, JObject ask)
+        static string RowLanded(string what, int count, int wanted)
         {
+            if (what == ActLand) return what;
+            return count < wanted ? $"{Whole(count)} of {Whole(wanted)} {what}" : $"{Whole(count)} {what}";
+        }
+
+        // One ask of a firing and how many of it landed, or null if none did, with why when there's more to say than no room.
+        ActDone DonePart(RoomCommand c, JObject ask, out int count, out string why)
+        {
+            count = 0;
+            why = (string)ask["why"];
             string kind = (string)ask["kind"], what = (string)ask["what"];
-            if (kind == ActCalled || !ActKnown(kind, what)) return null;
+            if (why != null || kind == ActCalled || !ActKnown(kind, what)) return null;
             var part = new ActDone { N = actCount + 1, By = c.Peer, Kind = kind, What = what };
-            if (kind == ActLand) return StampLand(part, ask) == null ? part : null;
-            return DoneOf(part, CellsOf(ask), ask) > 0 ? part : null;
+            if (kind == ActLand)
+            {
+                why = StampLand(part, ask);
+                count = 1;
+                return why == null ? part : null;
+            }
+            count = DoneOf(part, CellsOf(ask), ask);
+            return count > 0 ? part : null;
         }
 
         int DoneOf(ActDone act, List<(int x, int y)> cells, JObject ask)
@@ -211,7 +249,7 @@ namespace Chem
         {
             var parts = firing.Parts.Where(p => ActStays(p.Kind) == null).ToList();
             if (parts.Count == 0) return Refused(c, "nothing of that can be taken back: casts, animals and golf stay");
-            string held = parts.Where(p => p.Land != null).Select(p => LandRefusal(p.Land, -1)).FirstOrDefault(why => why != null);
+            string held = parts.Where(p => p.Land != null).Select(p => UndoRefusal(p.Land)).FirstOrDefault(why => why != null);
             if (held != null) return Refused(c, held);
             parts.Reverse();
             foreach (var part in parts)

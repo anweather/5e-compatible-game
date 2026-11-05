@@ -46,6 +46,47 @@ namespace Chem.Tests
                 ["stamp"] = LandStamp.Make(64, 64, 32, wall, profile, 1, 0, rough, 3).Row,
             }.ToString());
 
+        // The PC's case (#146): wall 36, radius 32, on the lowest dry land there is.
+        [Test]
+        public void TheSameCanyonIsTakenOnEverySeed()
+        {
+            var w = Flat();
+            w.SetLand(Enumerable.Repeat(-4, Size * Size).ToArray());
+            for (int seed = 0; seed < 200; seed++)
+            {
+                var canyon = LandStamp.Make(64, 64, 32, 288, LandStamp.Canyon, 1, 0, 40, seed);
+                Assert.That(w.LandRefusal(canyon), Is.Null, $"seed {seed}");
+                for (int dy = -32; dy <= 32; dy++)
+                    for (int dx = -32; dx <= 32; dx++)
+                        Assert.That(canyon.At(dx, dy), Is.InRange(canyon.Extent.low, canyon.Extent.high), $"seed {seed}");
+            }
+        }
+
+        [TestCase(LandStamp.Dome, -120, 40, 0, 0)]
+        [TestCase(LandStamp.Cone, 300, 100, 0, 0)]
+        [TestCase(LandStamp.Ridge, 200, 60, 1, 0)]
+        [TestCase(LandStamp.Canyon, 800, 100, 1, 1)]
+        [TestCase(LandStamp.Cliff, 800, 100, 1, -1)]
+        [TestCase(LandStamp.Cliff, -400, 40, 0, 1)]
+        public void AStampStaysInsideItsExtentOnEverySeed(string profile, int rise, int rough, int alongX, int alongY)
+        {
+            for (int seed = 0; seed < 60; seed++)
+            {
+                var s = LandStamp.Make(64, 64, 32, rise, profile, alongX, alongY, rough, seed);
+                for (int dy = -32; dy <= 32; dy++)
+                    for (int dx = -32; dx <= 32; dx++)
+                        Assert.That(s.At(dx, dy), Is.InRange(s.Extent.low, s.Extent.high), $"seed {seed}");
+            }
+        }
+
+        [Test]
+        public void WhetherAStampIsTakenDoesNotHangOnItsSeed()
+        {
+            var w = Flat();
+            var said = Enumerable.Range(0, 100).Select(seed => w.LandRefusal(LandStamp.Make(64, 64, 20, -110, LandStamp.Dome, 0, 0, 40, seed))).Distinct().ToList();
+            Assert.That(said.Count, Is.EqualTo(1));
+        }
+
         // The biggest step from one cell to the next, walking across the line at each column near the middle.
         static int SteepestAcross(World w) =>
             Enumerable.Range(56, 16).Max(x => Enumerable.Range(33, 62).Max(y => Math.Abs(w.LandMovedAt(x, y + 1) - w.LandMovedAt(x, y))));
