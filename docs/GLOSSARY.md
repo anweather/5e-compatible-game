@@ -550,6 +550,15 @@ that long, and doesn't march.
 **Attune**
 : To change a hand's element, in the castle keep's attuning room only.
 
+**Attuning room**
+: The room of the keep where a hand is attuned, named by two of the row's joins in the map's `hold.json`.
+
+**Hand spell**
+: A spell in the table of `rules/hold.json` `hands`: by the elements in the hands that cast it, and whether a **hand** was modified.
+
+**Cooldown**
+: The ticks after a hand spell goes off before that hand casts again; a two-hand spell locks both, for longer.
+
 **Kit**
 : The spells every wizard has in the Hold, on the D-pad, whatever the hands hold.
 

@@ -79,6 +79,10 @@ namespace Chem
         CastSelected,
         /// <summary>Lets go of a held element: the cast goes off at the charge its meter has reached.</summary>
         Release,
+        /// <summary>During a run: a hand's button, <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> whether it's modified.</summary>
+        Hand,
+        /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>.</summary>
+        Attune,
     }
 
     /// <summary>A player's cast input: what goes into the core for the button, stamped like a cast.</summary>
@@ -105,6 +109,8 @@ namespace Chem
         public static ComboCommand Cycle(string player, int step) => new ComboCommand(player, ComboCommandKind.Cycle, null, step);
         public static ComboCommand CastSelected(string player) => new ComboCommand(player, ComboCommandKind.CastSelected);
         public static ComboCommand Release(string player) => new ComboCommand(player, ComboCommandKind.Release);
+        public static ComboCommand Hand(string player, int hand, bool modified = false) => new ComboCommand(player, ComboCommandKind.Hand, null, hand, modified);
+        public static ComboCommand Attune(string player, int hand, string element) => new ComboCommand(player, ComboCommandKind.Attune, element, hand);
     }
 
     /// <summary>

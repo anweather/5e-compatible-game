@@ -30,8 +30,8 @@ using Unity.Collections;
 // The history still grows by about a stand a firing and one a checksum while players walk.
 //
 // The Hold reads stands too: every stand of a run (a raider's blow goes by where a wizard stood), and every stand on its
-// plate and the one that leaves it (a run starts by how long someone stood there), so these are all kept, as a strike keeps
-// what's up to it.
+// plate or in its attuning room and the one that leaves it (a run starts by how long someone stood there, and a hand is
+// attuned only there), so these are all kept, as a strike keeps what's up to it.
 public sealed class StandKeeper
 {
     readonly System.Func<bool> stepsOn;

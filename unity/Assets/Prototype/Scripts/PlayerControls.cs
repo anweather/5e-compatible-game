@@ -66,6 +66,11 @@ public class PlayerControls : MonoBehaviour
     public InputAction DpadPrevious { get; private set; }
     public InputAction DpadCast { get; private set; }
     public InputAction Grimoire { get; private set; }
+    /// <summary>The hands in the Hold (<see cref="HandPad"/>): a hand's button, and what modifies it.</summary>
+    public InputAction HandLeft { get; private set; }
+    public InputAction HandRight { get; private set; }
+    public InputAction ModifyLeft { get; private set; }
+    public InputAction ModifyRight { get; private set; }
 
     /// <summary>
     /// The controller's layout: casting by elements (the default), or with false the spell radial's,
@@ -81,6 +86,21 @@ public class PlayerControls : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// The hands' layout, on during a Hold run and in its attuning room (SpellCaster): the triggers and clicks are hands and the
+    /// bumpers modify, so what else they do is off. The d-pad and Cancel stay as the element pad has them.
+    /// </summary>
+    public bool HandPad
+    {
+        get => handPad;
+        set
+        {
+            if (handPad == value) return;
+            handPad = value;
+            ApplyPadLayout();
+        }
+    }
+
     /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
     public bool ItemInReach { get; set; }
 
@@ -92,9 +112,9 @@ public class PlayerControls : MonoBehaviour
 
     InputAction[] all;
     InputAction swapLayout;
-    bool elementPad = true;
+    bool elementPad = true, handPad;
     // Each layout's own bindings, by action and index.
-    (InputAction action, int binding)[] radialOnly, elementOnly;
+    (InputAction action, int binding)[] radialOnly, elementOnly, elementButtons, handsTake;
 
     void Awake()
     {
@@ -124,6 +144,10 @@ public class PlayerControls : MonoBehaviour
         DpadCast = Button("Cast d-pad spell", "<Keyboard>/t", "<Gamepad>/dpad/up");
         Grimoire = Button("Grimoire", "<Keyboard>/j", "<Gamepad>/dpad/down");
         swapLayout = Button("Swap the controller's layout", "<Keyboard>/f2");
+        HandLeft = Button("Left hand", "<Mouse>/leftButton", "<Gamepad>/leftTrigger");
+        HandRight = Button("Right hand", "<Mouse>/rightButton", "<Gamepad>/rightTrigger");
+        ModifyLeft = Button("Modify the left hand", "<Keyboard>/leftShift", "<Keyboard>/rightShift", "<Gamepad>/leftShoulder");
+        ModifyRight = Button("Modify the right hand", "<Keyboard>/leftShift", "<Keyboard>/rightShift", "<Gamepad>/rightShoulder");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
         Zoom.AddBinding("<Mouse>/scroll/y");
@@ -135,6 +159,7 @@ public class PlayerControls : MonoBehaviour
         {
             Cast, RadialHold, RadialCancel, NextSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Punch, Throw, Roll,
             Elements[0], Elements[1], Elements[2], Elements[3], CancelCast, DpadNext, DpadPrevious, DpadCast, Grimoire, swapLayout,
+            HandLeft, HandRight, ModifyLeft, ModifyRight,
         };
         foreach (var a in all) a.performed += Track;
 
@@ -142,16 +167,20 @@ public class PlayerControls : MonoBehaviour
         radialOnly = new[] { (Cast, 1), (RadialHold, 1), (NextSpell, 1), (NextElement, 0), (PrevElement, 0), (Zoom, ZoomPadUp), (Zoom, ZoomPadDown), (Roll, 1) };
         elementOnly = new[]
         {
-            (Elements[0], 1), (Elements[1], 1), (Elements[2], 1), (Elements[3], 1), (CancelCast, 1), (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (Grimoire, 1), (Roll, 2),
+            (CancelCast, 1), (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (Grimoire, 1), (Roll, 2),
         };
+        elementButtons = new[] { (Elements[0], 1), (Elements[1], 1), (Elements[2], 1), (Elements[3], 1) };
+        handsTake = new[] { (Cast, 0), (Throw, 1) };
         ApplyPadLayout();
     }
 
     // An override to an empty path switches a binding off.
     void ApplyPadLayout()
     {
-        Switch(radialOnly, !elementPad);
-        Switch(elementOnly, elementPad);
+        Switch(radialOnly, !elementPad && !handPad);
+        Switch(elementOnly, elementPad || handPad);
+        Switch(elementButtons, elementPad && !handPad);
+        Switch(handsTake, !handPad);
     }
 
     static void Switch((InputAction action, int binding)[] bindings, bool on)
@@ -191,11 +220,12 @@ public class PlayerControls : MonoBehaviour
     public bool NextSpellPressed() =>
         NextSpell.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && NextSpell.activeControl?.device is Keyboard);
 
-    /// <summary>A cast button was pressed this frame, of either way of casting: Cast, an element or the d-pad's cast.</summary>
+    /// <summary>A cast button was pressed this frame, of any way of casting: Cast, an element, a hand or the d-pad's cast.</summary>
     public bool AnyCastPressed()
     {
         foreach (var element in Elements)
             if (element.WasPressedThisFrame()) return true;
+        if (handPad && (HandLeft.WasPressedThisFrame() || HandRight.WasPressedThisFrame())) return true;
         return Cast.WasPressedThisFrame() || DpadCast.WasPressedThisFrame();
     }
 

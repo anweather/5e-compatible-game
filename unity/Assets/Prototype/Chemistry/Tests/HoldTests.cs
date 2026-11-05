@@ -7,14 +7,14 @@ namespace Chem.Tests
 {
     public class HoldTests
     {
-        const string Me = "Ana";
+        internal const string Me = "Ana";
         const int MostTicks = 12000;
 
         static Rules R => ChemistryTests.R;
         static WorldHold Site => WorldHold.Load(ChemistryTests.WorldDir());
 
         // Grass round the castle and the spawners, the rows laid, and the map's Hold.
-        static World Field(int seed = 7)
+        internal static World Field(int seed = 7)
         {
             var s = Site;
             var w = new World(R, 576, 576, (uint)seed);
@@ -26,14 +26,14 @@ namespace Chem.Tests
             return w;
         }
 
-        static void Stand(World w, string who, (int x, int y) at, int hp = 12) => w.ApplyStrike(StrikeCommand.Stand(who, at.x, at.y, hp));
+        internal static void Stand(World w, string who, (int x, int y) at, int hp = 12) => w.ApplyStrike(StrikeCommand.Stand(who, at.x, at.y, hp));
 
-        static void Ticks(World w, int n)
+        internal static void Ticks(World w, int n)
         {
             for (int i = 0; i < n; i++) w.Step();
         }
 
-        static World Running(int seed = 7)
+        internal static World Running(int seed = 7)
         {
             var w = Field(seed);
             Stand(w, Me, w.HoldSite.Plate);
@@ -41,14 +41,14 @@ namespace Chem.Tests
             return w;
         }
 
-        static void Until(World w, System.Func<bool> done, string what)
+        internal static void Until(World w, System.Func<bool> done, string what)
         {
             for (int i = 0; i < MostTicks && !done(); i++) w.Step();
             Assert.That(done(), what);
         }
 
         // A wizard out of the way, on no cell a raider reaches.
-        static void Away(World w, string who = Me) => Stand(w, who, (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
+        internal static void Away(World w, string who = Me) => Stand(w, who, (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
 
         // The map's own trees on the field, as they stand in cells.txt.
         static void Trees(World w)
@@ -398,7 +398,7 @@ namespace Chem.Tests
             Assert.That(joined.CastHash(), Is.EqualTo(w.CastHash()));
         }
 
-        sealed class Grass : IChunkSource
+        internal sealed class Grass : IChunkSource
         {
             public string Version => "grass";
             public void Make(int x, int y, Cell cell) => cell.T = "grass";

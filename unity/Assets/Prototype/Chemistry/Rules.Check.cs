@@ -20,6 +20,7 @@ namespace Chem
             check.Components();
             check.Groups();
             check.Combos();
+            check.Hands();
             check.Numbers();
             check.Lapses();
             check.Liquids();

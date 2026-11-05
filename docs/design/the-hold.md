@@ -120,6 +120,13 @@ This needs a table in the rules (hand spells, by element and modifier) and a lim
 with a two-hand spell locking both, so a big spell leaves you open. A one-trigger cast may have to wait a few ticks for the
 second trigger: feel it on a real pad. **Done when:** Andrew has played a run on a pad and says which parts stay.
 
+**As built.** `rules/hold.json` `hands` has the table (14 rows by element or pair, each `plain` and `modified`: the 28 spells), the cooldowns, the window and the
+kit; a map's `hold.json` names the attuning room by two of the row's joins (`k1`, `k6`). `World.Hands.cs` is the hands: `ComboCommand`s `Hand` and `Attune`, so they
+go the way of the rest. A hand's cast runs on the cast meter and the window runs inside it, so a one-trigger cast isn't held back: it goes off at its `castTicks`, and
+a second trigger within `window` ticks starts the meter again for the two-hand spell. The hands' layout is on during a run and in the attuning room (`PlayerControls.HandPad`);
+in the room a hand's button attunes that hand to the next element, so a wizard there can't cast from it. The kit starts as the `dpad` spells. Hand spells aren't charged and
+don't join the grimoire. Stands in the room stay in a joiner's history (`StandKeeper`), since attuning reads them. Shift is also sprint, so a wizard that modifies with it runs too: feel it on the keyboard.
+
 ### 4. Endless, tuned
 
 - **Waves by formula, from the rules:** count, health, kinds and adjectives grow with the wave number, per peer count.

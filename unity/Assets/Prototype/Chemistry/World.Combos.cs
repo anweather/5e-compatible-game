@@ -68,7 +68,7 @@ namespace Chem
         /// <summary>The d-pad's selected spell for this player, or null if the list is empty.</summary>
         public DpadSpellDef SelectedDpad(string player)
         {
-            var dpad = Rules.Combos.Dpad;
+            var dpad = DpadOf(player);
             return dpad.Count == 0 ? null : dpad[(CastOf(player)?.Slot ?? 0) % dpad.Count];
         }
 
@@ -88,6 +88,8 @@ namespace Chem
                 case ComboCommandKind.Cycle: return CycleDpad(c, command.Step);
                 case ComboCommandKind.CastSelected: return CastSelected(c);
                 case ComboCommandKind.Release: return ReleaseHold(c);
+                case ComboCommandKind.Hand: return CastHand(c, command.Step, command.Hold);
+                case ComboCommandKind.Attune: return Attune(c.Player, command.Step, command.Element);
                 default: return false;
             }
         }
@@ -110,9 +112,10 @@ namespace Chem
             return true;
         }
 
-        static bool CancelCast(PlayerCast c)
+        bool CancelCast(PlayerCast c)
         {
             if (!c.Casting) return false;
+            if (hands.TryGetValue(c.Player, out var h)) DropHands(h);
             ClearCast(c);
             return true;
         }
@@ -139,7 +142,7 @@ namespace Chem
 
         bool CycleDpad(PlayerCast c, int step)
         {
-            int n = Rules.Combos.Dpad.Count;
+            int n = DpadOf(c.Player).Count;
             if (n == 0 || step == 0) return false;
             c.Slot = (((c.Slot + Math.Sign(step)) % n) + n) % n;
             return true;
@@ -149,7 +152,7 @@ namespace Chem
         {
             var d = SelectedDpad(c.Player);
             if (c.Casting || d?.Spell == null) return false;
-            c.DpadCasting = c.Slot % Rules.Combos.Dpad.Count;
+            c.DpadCasting = c.Slot % DpadOf(c.Player).Count;
             StartMeter(c, d.CastTicks);
             return true;
         }
@@ -196,10 +199,15 @@ namespace Chem
         // What a mod took away since the cast began just doesn't go off.
         void FireCast(PlayerCast c)
         {
-            var combos = Rules.Combos;
+            if (FireHands(c))
+            {
+                ClearCast(c);
+                return;
+            }
+            var dpad = DpadOf(c.Player);
             if (c.DpadCasting >= 0)
             {
-                var d = c.DpadCasting < combos.Dpad.Count ? combos.Dpad[c.DpadCasting] : null;
+                var d = c.DpadCasting < dpad.Count ? dpad[c.DpadCasting] : null;
                 if (d?.Spell != null) NoteFired(new ComboFired(c.Player, null, d.Name, d.Spell, Rules.Spell(d.Spell)?.Shape, false));
             }
             else
@@ -216,7 +224,7 @@ namespace Chem
         }
 
         /// <summary>A fingerprint (FNV-1a) of every player's cast state and grimoire, the whirlwinds still whirling, the spell zones, the course runs, the room, what spells placed and laid, and the triggers' cooldowns, for the netcode checksum.</summary>
-        public string CastHash() => Fnv1a.Hash(CastState() + WhirlState() + WaveState() + BoulderState() + GolfText() + ZoneText() + CourseText() + RoomText() + StrikeText() + HoldText() + PlacedText() + ActText() + LaidText() + TriggerText());
+        public string CastHash() => Fnv1a.Hash(CastState() + WhirlState() + WaveState() + BoulderState() + GolfText() + ZoneText() + CourseText() + RoomText() + StrikeText() + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText());
 
         /// <summary>The whirlwinds as text, "" when there are none (so worlds without any hash as they did): where, its age, and what it carries.</summary>
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));

@@ -4,4 +4,179 @@
   "adjectives": {
     "armoured": { "name": "Armoured", "hp": 160, "resist": ["earth"], "weak": ["lightning"], "color": [0.62, 0.64, 0.7] },
     "burning": { "name": "Burning", "hp": 100, "lights": true, "color": [1, 0.45, 0.1] },
-    "soaked": { "name": "Soaked", "hp": 100, "keeps": "wet", "color": [0.25, 0.5, 0.95] } } }
+    "soaked": { "name": "Soaked", "hp": 100, "keeps": "wet", "color": [0.25, 0.5, 0.95] } },
+  "hands": {
+    "about": "A wizard's hands in the Hold (the-hold.md, phase 3, World.Hands.cs). start is what each holds at first. A second hand joins inside window ticks of the first, which is within the first's cast, so it holds nothing back. A hand spell's cooldown is handCooldown ticks on its hand, bothCooldown on both for a two-hand one. spells is by element, or by the two hands' elements in either order; plain, or modified by the bumper or Shift. kit is the D-pad's list during a run.",
+    "start": {
+      "left": "water",
+      "right": "fire"
+    },
+    "window": 4,
+    "handCooldown": 12,
+    "bothCooldown": 30,
+    "spells": {
+      "fire": {
+        "plain": {
+          "spell": "fire-bolt",
+          "castTicks": 6
+        },
+        "modified": {
+          "spell": "burning-hands",
+          "castTicks": 6
+        }
+      },
+      "water": {
+        "plain": {
+          "spell": "create-water",
+          "castTicks": 6
+        },
+        "modified": {
+          "spell": "ray-of-frost",
+          "castTicks": 6
+        }
+      },
+      "earth": {
+        "plain": {
+          "spell": "mold-earth-heap",
+          "castTicks": 6
+        },
+        "modified": {
+          "spell": "stone-ramp",
+          "castTicks": 9
+        }
+      },
+      "air": {
+        "plain": {
+          "spell": "gust-of-wind",
+          "castTicks": 6
+        },
+        "modified": {
+          "spell": "shocking-grasp",
+          "castTicks": 6
+        }
+      },
+      "fire+fire": {
+        "plain": {
+          "spell": "fireball",
+          "castTicks": 12
+        },
+        "modified": {
+          "spell": "meteor",
+          "castTicks": 18
+        }
+      },
+      "water+water": {
+        "plain": {
+          "spell": "wave",
+          "castTicks": 9
+        },
+        "modified": {
+          "spell": "flood",
+          "castTicks": 12
+        }
+      },
+      "earth+earth": {
+        "plain": {
+          "spell": "wall-of-stone",
+          "castTicks": 12
+        },
+        "modified": {
+          "spell": "earthen-trench",
+          "castTicks": 12
+        }
+      },
+      "air+air": {
+        "plain": {
+          "spell": "whirlwind",
+          "castTicks": 9
+        },
+        "modified": {
+          "spell": "thunderwave",
+          "castTicks": 9
+        }
+      },
+      "fire+water": {
+        "plain": {
+          "spell": "scalding-steam",
+          "castTicks": 9
+        },
+        "modified": {
+          "spell": "geyser",
+          "castTicks": 9
+        }
+      },
+      "fire+earth": {
+        "plain": {
+          "spell": "lava-pool",
+          "castTicks": 12
+        },
+        "modified": {
+          "spell": "forge",
+          "castTicks": 12
+        }
+      },
+      "fire+air": {
+        "plain": {
+          "spell": "lightning-bolt",
+          "castTicks": 9
+        },
+        "modified": {
+          "spell": "falling-star",
+          "castTicks": 9
+        }
+      },
+      "water+earth": {
+        "plain": {
+          "spell": "mud",
+          "castTicks": 9
+        },
+        "modified": {
+          "spell": "plant-growth",
+          "castTicks": 9
+        }
+      },
+      "water+air": {
+        "plain": {
+          "spell": "frost",
+          "castTicks": 6
+        },
+        "modified": {
+          "spell": "rain-cloud",
+          "castTicks": 12
+        }
+      },
+      "earth+air": {
+        "plain": {
+          "spell": "rolling-boulder",
+          "castTicks": 9
+        },
+        "modified": {
+          "spell": "sand-blast",
+          "castTicks": 9
+        }
+      }
+    },
+    "kit": [
+      {
+        "name": "Hasten Time",
+        "spell": "hasten-time",
+        "castTicks": 12
+      },
+      {
+        "name": "Shapeshift",
+        "spell": "shapeshift",
+        "castTicks": 12
+      },
+      {
+        "name": "Light",
+        "spell": "light",
+        "castTicks": 6
+      },
+      {
+        "name": "Control Weather",
+        "spell": "control-weather",
+        "castTicks": 18
+      }
+    ]
+  }
+}
