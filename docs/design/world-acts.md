@@ -40,11 +40,22 @@ places a ball and a cup, and everyone takes turns "golfing", which is using any 
 - **Fireworks.** The view sets them off over the cup on every peer when the ball goes in.
 - **`holed`.** A second trigger event: `add_trigger(on: holed)` fires at the cup for whoever sank it.
 
+## Built: named acts (branch `named-acts`)
+
+A **named act** is a one-off defined once and fired again by name at a place. It's a trigger with `on: "called"`, in a mod,
+so a mod that's on has it and a saved mod carries it; `call_act(id, near)` fires it. The trigger shape fits with one bend:
+a step or holed trigger's `do` rows are casts and places run inside a strike, from a player's stand, but a called trigger's
+rows are what `act` takes (`{"act": "tree", "count": 5, "within": 8}`, `{"act": "land", "radius": 10, "rise": 12}`), because
+a firing happens at a place someone names, through the room. `Workbench.PlanAct` is one path for both tools: `call_act`
+works out every row against the world as it is, with `act`'s limits, and sends one `RoomChange.Act` holding the parts, so the
+change mode decides it once and every peer does it at one tick. A part with no room is skipped, and the verdict says so.
+`undo_act` takes one firing back whole: all that can go, or nothing if land can't go back yet; casts, animals and golf stay.
+`who` says who may call it, everyone by default. Up to `triggers.maxActs` rows, `lay.maxCells` cells a firing. A named act
+can't call another. Without a called trigger nothing hashes or saves differently.
+
 ## Next
 
 - **Playing again.** After holing out, a new round needs the ball placed again. Placing only works through the chat.
-- **Named acts.** A trigger with `on: "called"`, and a tool to fire one at a place: for a custom thing worth defining once,
-  like "my fireworks". For 20 trees, `act` is enough.
 - **More events.** "This thing entered that cell", for things other than the golf ball.
 
 ## Later

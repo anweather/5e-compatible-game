@@ -218,14 +218,14 @@ namespace Chem
 
         int Beside(int x, int y, int here) => InBounds(x, y) ? Math.Abs(landMoved[Idx(x, y)] - here) : 0;
 
-        // Null when it's stamped; a refusal otherwise.
-        RoomVerdict? StampLand(RoomCommand c, ActDone act, JObject ask)
+        // Null when it's stamped; why not otherwise.
+        string StampLand(ActDone act, JObject ask)
         {
             var stamp = LandStamp.Read(ask["stamp"]);
-            if (stamp == null || !stamp.Known) return Refused(c, "that isn't a land stamp");
+            if (stamp == null || !stamp.Known) return "that isn't a land stamp";
             if (land == null) SetLand(new int[W * H]);
             string why = LandRefusal(stamp, 1);
-            if (why != null) return Refused(c, why);
+            if (why != null) return why;
             Press(stamp, 1);
             landStamps.Add(stamp);
             act.Land = stamp;
@@ -289,6 +289,8 @@ namespace Chem
         {
             for (int k = landStamps.Count - 1; k >= 0; k--) TakeStamp(landStamps[k]);
             acts.RemoveAll(a => a.Land != null);
+            foreach (var firing in acts) firing.Parts.RemoveAll(p => p.Land != null);
+            acts.RemoveAll(a => a.Kind == ActCalled && a.Parts.Count == 0);
         }
 
         // SetLand reads the map's land afresh: what's been stamped goes back on it.

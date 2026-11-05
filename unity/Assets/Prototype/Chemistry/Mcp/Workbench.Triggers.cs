@@ -25,7 +25,7 @@ namespace Chem.Mcp
             // Whoever sinks it, unless a player is named: a ball is everyone's.
             if (string.IsNullOrEmpty(who) && on != "step") who = TriggerDef.Each;
             who = string.IsNullOrEmpty(who) || who == "me" ? AskerForTrigger() : who;
-            var list = TriggerActions(does);
+            var list = TriggerActions(does, on == "called");
             CheckTriggerOdds(every, chance);
             var draft = DraftOf(draftId);
             var row = new JObject { ["on"] = on, ["who"] = who };
@@ -47,6 +47,7 @@ namespace Chem.Mcp
                 throw;
             }
             draft.Changed.Add($"{TriggersTable} {id}");
+            if (on == "called") return draft.Show() + $"\n{id} is a named act: once this mod is on, call_act fires it at a place, each row as act would do it.";
             if (on != "step") return draft.Show() + $"\n{id} fires when a golf ball goes in the cup, at the cup's cell. act places a ball and a cup; simulate can't play a round.";
             int gap = Math.Max(TriggerDef.MinEvery, every ?? TriggerDef.MinEvery);
             double perSecond = InForce.Sim.TicksPerSecond / (double)gap;
@@ -60,10 +61,11 @@ namespace Chem.Mcp
             Here?.Asking()?.Player ?? throw new RulesToolException("No player is in the game to name, so give who: a player's name, or each for everyone.");
 
         // do: one action or a list of them, each an object.
-        static JArray TriggerActions(string does)
+        static JArray TriggerActions(string does, bool called)
         {
             var actions = Value(Required(does, "do"));
             if (actions is JObject one) actions = new JArray(one);
+            if (called && actions is JArray rows && rows.Count > 0 && rows.All(a => a is JObject)) return rows;
             if (!(actions is JArray list) || list.Count == 0 || list.Any(a => !(a is JObject)))
                 throw new RulesToolException("do is a list of one or two actions, each {\"cast\": spell, \"at\": here, ahead, behind or around, \"by\": cells, \"delay\": ticks} or {\"place\": {...as a spell's place}, \"at\": ...}.");
             return list;
@@ -84,6 +86,7 @@ namespace Chem.Mcp
         {
             string who = Str(t["who"]) == TriggerDef.Each ? "anyone's" : Str(t["who"]) + "'s";
             var does = (t["do"] as JArray ?? new JArray()).Select(ActionWords);
+            if (Str(t["on"]) == "called") return $"a named act, for {(Str(t["who"]) == TriggerDef.Each ? "anyone" : Str(t["who"]))} to call: {string.Join(", then ", does)}";
             string chance = t["chance"] == null ? "" : $", at a chance of {Num((double)t["chance"])}";
             return string.Format(CultureInfo.InvariantCulture, "on {0} {1}, at most every {2} ticks{3}: {4}",
                 who, Str(t["on"]) ?? "step", (int?)t["every"] ?? TriggerDef.MinEvery, chance, string.Join(", then ", does));
@@ -91,6 +94,7 @@ namespace Chem.Mcp
 
         static string ActionWords(JToken a)
         {
+            if (a["act"] != null) return $"act {Str(a["act"])}" + ((int?)a["count"] > 1 ? $" x{(int)a["count"]}" : "");
             string at = Str(a["at"]) ?? "here";
             string where = at switch
             {
