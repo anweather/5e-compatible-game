@@ -25,6 +25,8 @@ public static class RowMesher
     const float MinRoofTiltAboveEaves = 0.01f, DefaultRun = 12f, TileShade = 0.86f, WornShade = 0.8f;
     const float StumpLow = 0.2f, StumpHigh = 0.7f, Cell = HalfCell * 2f, Touching = 0.05f;
     const int ArchSlices = 20, VigaSides = 6;
+    const float DockAbove = 0.45f, PlankWide = 0.32f, PlankThick = 0.08f, PlankGap = 0.03f, DockBeam = 0.18f, PostEvery = 3f, PostSize = 0.24f, PostAbove = 0.8f, PostDown = 4f;
+    const int DockSeed = 41;
     static readonly Color DefaultCover = new(0.32f, 0.3f, 0.32f), DoorColor = new(0.36f, 0.25f, 0.16f), Stone = new(0.45f, 0.44f, 0.42f), Timber = new(0.3f, 0.2f, 0.13f), Underside = new(0.24f, 0.18f, 0.14f);
     const float RoofLift = 0.03f, DeckDepth = 0.5f, GateDepth = 0.25f, MerlonDepth = 0.45f, ParapetHeight = 0.5f, Tread = 0.4f;
 
@@ -720,6 +722,7 @@ public static class RowMesher
             {
                 case "battlements": Battlements(kit, rail, w, every, (float?)part["height"] ?? 1.2f); break;
                 case "stair": Stair(kit, walk, w, at, ((float?)part["length"] ?? w.Length / HalfCell) * HalfCell, tables); break;
+                case "dock": Dock(kit, walk, w, at, ((float?)part["length"] ?? 20f) * HalfCell, ((float?)part["width"] ?? 4f) * HalfCell, tables); break;
                 case "viga": Vigas(kit, w, every); break;
                 case "canale": Held(kit, w, at, () => kit.Box(w.At(at, -CanaleLength / 2f, w.Bottom + w.Height - CanaleSize), new Vector3(CanaleSize, CanaleSize, CanaleLength), Timber, w.Turn)); break;
                 case "chimney":
@@ -780,6 +783,31 @@ public static class RowMesher
         });
         holder?.Whole.Add(treads);
         holder?.Walk.Add(ramp);
+    }
+
+    // Out from a wall over the water: planks on two beams, on posts down into the lake bed, and a deck to walk on. Its height
+    // is the shore's at the wall, so the water it stands in is what's under it.
+    static void Dock(MeshKit kit, MeshKit walk, Wall w, float at, float length, float width, Tables tables)
+    {
+        float deck = tables.GroundAt(Flat(w.At(at, 0f, 0f))) + DockAbove;
+        var rng = new System.Random(DockSeed);
+        for (float d = 0f; d < length; d += PlankWide)
+        {
+            float tone = 0.8f + 0.4f * (float)rng.NextDouble(), ragged = 0.92f + 0.08f * (float)rng.NextDouble();
+            var color = new Color(Timber.r * tone * 1.5f, Timber.g * tone * 1.5f, Timber.b * tone * 1.5f);
+            kit.Box(w.At(at, -d - PlankWide / 2f, deck - PlankThick / 2f), new Vector3(width * ragged, PlankThick, PlankWide - PlankGap), color, w.Turn);
+        }
+        foreach (float side in new[] { -1f, 1f })
+        {
+            kit.Box(w.At(at + side * (width / 2f - DockBeam), -length / 2f, deck - PlankThick - DockBeam / 2f), new Vector3(DockBeam, DockBeam, length), Timber, w.Turn);
+            for (float d = PostEvery; d <= length; d += PostEvery)
+            {
+                float top = d + PostEvery > length ? deck + PostAbove : deck;
+                float foot = deck - PostDown;
+                kit.Box(w.At(at + side * (width / 2f), -d, (top + foot) / 2f), new Vector3(PostSize, top - foot, PostSize), Timber, w.Turn);
+            }
+        }
+        walk.Box(w.At(at, -length / 2f, deck - PlankThick / 2f), new Vector3(width, PlankThick, length), Color.clear, w.Turn);
     }
 
     static Vector2 Flat(Vector3 p) => new(p.x, p.z);
