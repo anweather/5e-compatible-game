@@ -1,9 +1,12 @@
 // The rocks on stamped land: boulders set into its faces, big ones jutting at their lips, and loose stones at their feet.
 // The ground has one height a point, so these are what make a wall read as a crag and give it an overhang. They're
 // only drawn: no collider, nothing shared, and each peer works the same ones out from the land itself, so a late joiner
-// and an undo need nothing of their own. A rock is placed a few a frame and rides its cell's ground as that eases.
+// and an undo need nothing of their own. A rock is placed a few a frame and rides its cell's ground as that eases. A map's
+// rocks.json lays more by hand, where a hill wants them.
 using System.Collections.Generic;
+using System.IO;
 using Chem;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 public sealed class LandRocks
@@ -18,6 +21,7 @@ public sealed class LandRocks
         Face,
         Lip,
         Scree,
+        Laid,
     }
 
     sealed class Rock
@@ -33,6 +37,7 @@ public sealed class LandRocks
     readonly Dictionary<int, Rock> rocks = new();
     readonly Queue<(int x, int y)> waiting = new();
     readonly HashSet<int> queued = new();
+    readonly Dictionary<int, float> laid = new();
     float still;
 
     public LandRocks(ChemGrid grid)
@@ -42,8 +47,30 @@ public sealed class LandRocks
         root.SetParent(grid.transform, false);
     }
 
-    /// <summary>How many rocks stand now.</summary>
-    public int Count => rocks.Count;
+    /// <summary>How many rocks the land's faces have now; a map's own aren't counted.</summary>
+    public int Count
+    {
+        get
+        {
+            int n = 0;
+            foreach (var r in rocks.Values)
+                if (r.Kind != Kind.Laid) n++;
+            return n;
+        }
+    }
+
+    /// <summary>The rocks a map's folder lays, each [x, y, metres across]: none without a rocks.json.</summary>
+    public void Lay(string worldDir)
+    {
+        string path = Path.Combine(worldDir, "rocks.json");
+        if (!File.Exists(path)) return;
+        foreach (var r in (JArray)JObject.Parse(File.ReadAllText(path))["rocks"])
+        {
+            int x = (int)r[0], y = (int)r[1];
+            laid[grid.World.Idx(x, y)] = (float)r[2];
+            Moved(x, y, 0);
+        }
+    }
 
     /// <summary>The land moved round a cell: what stands there is looked at again.</summary>
     public void Moved(int x, int y, int reach)
@@ -64,7 +91,7 @@ public sealed class LandRocks
             var (x, y) = waiting.Dequeue();
             int key = world.Idx(x, y);
             queued.Remove(key);
-            var kind = KindAt(world, x, y);
+            var kind = laid.ContainsKey(key) ? Kind.Laid : KindAt(world, x, y);
             rocks.TryGetValue(key, out var was);
             if ((was?.Kind ?? Kind.None) == kind) continue;
             if (was != null)
@@ -161,6 +188,12 @@ public sealed class LandRocks
                 tall = wide * 1.4f;
                 over = -2f;
                 outward = -down * 0.8f;
+                break;
+            case Kind.Laid:
+                wide = laid[world.Idx(x, y)];
+                tall = wide * (0.6f + 0.4f * (float)rng.NextDouble());
+                over = -wide * 0.2f;
+                outward = Vector3.zero;
                 break;
             default:
                 wide = 0.7f + 1.6f * (float)rng.NextDouble();

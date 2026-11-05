@@ -9,7 +9,7 @@ using UnityEngine;
 public class LandShapesProbe : ProbeScenario
 {
     // Open ground the size of a full stamp, clear of what stamps keep off.
-    const int X = 216, Y = 384, Reach = 32, Wall = 36;
+    const int X = 218, Y = 402, Reach = 32, Wall = 36;
     const float EaseSeconds = 40f;
 
     string said;

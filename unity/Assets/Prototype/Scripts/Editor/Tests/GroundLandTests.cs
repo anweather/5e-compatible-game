@@ -19,7 +19,7 @@ public class GroundLandTests
         var layout = TerrainGrid.Valley();
         var world = ChemGrid.MapWorld(Rules.Load(ChemGrid.Folders.Rules), ChemGrid.CellMap(), 1u, out _);
         var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), world.W, world.H);
-        var field = new CellHeightfield(layout, 0.5f, 1f);
+        var field = new CellHeightfield(layout, 0.5f, 1f) { LaidLandDrawn = false };
         var chunks = pack.Chunks.ToDictionary(c => (c.I, c.J));
         var channel = new Dictionary<int, float>();
         for (int k = 0; k < pack.ChannelCells.Length; k++) channel[pack.ChannelCells[k]] = pack.ChannelDepths[k];

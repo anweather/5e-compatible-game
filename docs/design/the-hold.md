@@ -20,11 +20,16 @@ South-west of Hollowmere (centred 222, 300), the land climbs from 0 m at about x
 
 - **Castle:** on the crest, the plateau's east edge, 32 x 32 cells at x 120 to 151, y 352 to 383 (Andrew, 2026-11-05: on the skyline
   above the village). Ground 31.8 to 49.8 m: the foundations reach down to it, 18 m at the north-east tower. It moved from the flattest
-  site, x 87, y 367, where the plateau's edge hid it from the valley floor. The gate faces east down the slope; a road runs from it to
-  the foot at (196, 372). Its trees are gone by being laid over (`WorldBuildings.LayInto`): `cells.txt` and `things.json` don't change.
-- **Seen from:** the foot of the slope best, up to 7% of the frame at (192, 360). Hollowmere and the lake shore see about 1% at most: the woods
-  between hide all but a tower top or a stretch of wall, and the square sees 0.2%. The rendered frames with it and without it, in the same instant.
-- **Spawners:** along the foot of the slope, from about (184, 340) to (206, 390), so raiders don't walk through the village, 48 cells north of the road's foot.
+  site, x 87, y 367, where the plateau's edge hid it from the valley floor. The gate faces east down the slope. Its road leaves Hollowmere's south lane, runs through the woods
+  to (176, 345), and climbs in three hairpins to the gate. Its trees are gone by being laid over (`WorldBuildings.LayInto`): `cells.txt` and `things.json` don't change.
+- **The road:** cut into the hill, not laid on it. A road marked `graded` is level across and climbs evenly, with the land leaning back
+  to where it was over three cells either side (`RoadGrade`). The cut comes from `buildings.json` and `land.json` at load, so every peer has
+  the same one, a save carries it to a late joiner, and it lies under the stamps, so the dragon's reset keeps it. Its banks are bare earth.
+- **Rocks on the hill:** `rocks.json`, drawn only, as `LandRocks` draws a crag's.
+- **Seen from:** the foot of the slope best, up to 8% of the frame. Hollowmere sees about 1.6% at most and the lake shore 1.2%: the woods hide
+  all but a tower top or a stretch of wall, and the road's cut through them is too narrow to change that much. The rendered frames with it and
+  without it, in the same instant.
+- **Spawners:** along the foot of the slope, from about (184, 340) to (206, 390), so raiders do not walk through the village (`hold-foot` in `places.json`).
 - **Slope:** about 40 m over 46 cells along the road. Raiders ignore height today (J-073: a mountain doesn't stop them, sight or
   spells), so they can climb it, but nothing slows them or blocks a spell on the way.
 - **The brook behind the castle:** `west-brook` of the `home-valley` theme, 2 to 4 cells wide and cut 0.5 to 2 m into the plateau, from about

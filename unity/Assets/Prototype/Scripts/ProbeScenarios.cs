@@ -256,7 +256,7 @@ public static class ProbeScenarios
             "--only microphone opens and closes the default microphone instead (on a Mac that open once blocked the Editor for minutes). No model, no recording kept, no Claude."),
         new Entry("rowlight", typeof(RowLightProbe), 240f,
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
-        new Entry("hold", typeof(HoldProbe), 240f,
+        new Entry("hold", typeof(HoldProbe), 400f,
             "The valley's laid row (the-hold.md): its cells and drawing, no tree on it, a walk through the gate into the keep and its room, " +
             "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,

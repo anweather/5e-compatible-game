@@ -174,7 +174,9 @@ namespace Chem
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
             var c = world.At(x, y);
-            return !scorched && c.Cover == null && world.LandDrop(x, y) >= World.LandSteep ? WallMix : Mix(world, c, scorched);
+            if (scorched || c.Cover != null) return Mix(world, c, scorched);
+            if (world.LandDrop(x, y) >= World.LandSteep) return WallMix;
+            return world.LandBank(x, y) ? EarthMix : Mix(world, c, scorched);
         }
 
         /// <summary>Whether snow lies on a cell: the base rules' snow covers (World.SnowCover or BankCover).</summary>

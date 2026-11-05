@@ -20,8 +20,8 @@ namespace Chem.Tests
         static World Laid(out BuildingRow row, Rules rules = null)
         {
             var w = new World(rules ?? Rules, 576, 576, 7);
-            for (int y = 345; y < 410; y++)
-                for (int x = 80; x < 215; x++) w.Paint(x, y, "grass");
+            for (int y = 318; y < 410; y++)
+                for (int x = 80; x < 230; x++) w.Paint(x, y, "grass");
             Valley.LayInto(w);
             row = BuildingRow.Read(Hold, Row, w.Rules.Buildings);
             return w;
@@ -56,7 +56,7 @@ namespace Chem.Tests
             var w = Laid(out var row);
             var cells = Cells(row, w);
             Assert.That(cells.Where(c => c.Part != BuildingPart.Road).Max(c => c.X) - row.X, Is.EqualTo(Footprint - 1));
-            Assert.That(cells.Max(c => c.Y) - row.Y, Is.EqualTo(Footprint - 1));
+            Assert.That(cells.Where(c => c.Part != BuildingPart.Road).Max(c => c.Y) - row.Y, Is.EqualTo(Footprint - 1));
             foreach (var c in cells) Assert.That(w.At(c.X, c.Y).T, Is.EqualTo(c.Terrain), $"({c.X}, {c.Y})");
             Assert.That(cells.Count(c => c.Terrain == "stone"), Is.GreaterThan(300));
             Assert.That(cells.Count(c => c.Terrain == Open), Is.EqualTo(3));
@@ -156,13 +156,13 @@ namespace Chem.Tests
             var w = Laid(out var row);
             var cells = Cells(row, w);
             var foot = cells.Where(c => c.Part == BuildingPart.Road).OrderByDescending(c => c.X).First();
-            var walked = Walked(w, (foot.X, foot.Y), 80, 345, 215, 409);
+            var walked = Walked(w, (foot.X, foot.Y), 80, 318, 229, 409);
             Assert.That(walked.Contains((row.X + 12, row.Y + 12)), "the keep's attuning room");
             Assert.That(walked.Contains((row.X + 12, row.Y + 19)), "the keep's hall");
             Assert.That(walked.Contains((row.X + 22, row.Y + 8)), "the foot of the north stair");
             Assert.That(walked.Contains((row.X + 22, row.Y + 26)), "the foot of the south stair");
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, row.X + 28, row.Y + 15, null));
-            var shut = Walked(w, (foot.X, foot.Y), 80, 345, 215, 409);
+            var shut = Walked(w, (foot.X, foot.Y), 80, 318, 229, 409);
             Assert.That(shut.Contains((row.X + 12, row.Y + 19)), Is.False, "a shut gate keeps the court shut");
         }
 

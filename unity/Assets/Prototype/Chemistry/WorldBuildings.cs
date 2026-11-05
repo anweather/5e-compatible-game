@@ -24,6 +24,7 @@ namespace Chem
 
         readonly List<JObject> rows;
         readonly List<VillageSpec> villages;
+        string folder;
 
         WorldBuildings(List<JObject> rows, List<VillageSpec> villages)
         {
@@ -43,7 +44,7 @@ namespace Chem
             if (worldDir == null || !Directory.Exists(worldDir)) return Empty;
             var path = Path.Combine(worldDir, FileName);
             var rows = File.Exists(path) ? (JObject.Parse(File.ReadAllText(path))["buildings"] as JArray)?.OfType<JObject>().ToList() : null;
-            return new WorldBuildings(rows ?? new List<JObject>(), VillageLayout.Load(worldDir));
+            return new WorldBuildings(rows ?? new List<JObject>(), VillageLayout.Load(worldDir)) { folder = worldDir };
         }
 
         /// <summary>The rows the map's cells don't hold: walls and no built cells, laid over the cells at the start (LayInto).</summary>
@@ -62,9 +63,23 @@ namespace Chem
             {
                 var row = BuildingRow.Read((string)r["id"], r, world.Rules.Buildings);
                 var cells = BuildingRaster.Cells(row, world.Rules.Buildings);
-                if (cells.All(c => world.InBounds(c.X, c.Y)))
-                    foreach (var c in cells) world.Paint(c.X, c.Y, c.Terrain);
+                if (!cells.All(c => world.InBounds(c.X, c.Y))) continue;
+                foreach (var c in cells) world.Paint(c.X, c.Y, c.Terrain);
+                GradeRoads(world, row, cells);
             }
+        }
+
+        // The graded roads' cuts, from the map's land as its file has it. A world without that land keeps its ground.
+        void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells)
+        {
+            if (row.Roads.All(r => !r.Graded) || folder == null) return;
+            string path = Path.Combine(folder, MapFile.LandName);
+            if (!File.Exists(path)) return;
+            var land = LandFile.Read(File.ReadAllText(path), world.W, world.H);
+            if (land.Length == 0) return;
+            var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));
+            foreach (var road in row.Roads.Where(r => r.Graded))
+                world.LayLand(RoadGrade.Of(road, row.X, row.Y, (x, y) => land[world.Idx(x, y)], building));
         }
 
         /// <summary>
