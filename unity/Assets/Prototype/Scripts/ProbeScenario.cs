@@ -177,6 +177,14 @@ public abstract class ProbeScenario : ShowcaseScript
     }
 
     /// <summary>Runs game time at 60 frames a second however long a frame really takes, so a beat or a stop counts the same frames every run; off, the real clock.</summary>
+    /// <summary>Whether a terrain's collider stands over a point, a metre or more above its ground: a tree's trunk.</summary>
+    protected static bool TreeColliderAt(Vector3 at)
+    {
+        foreach (var hit in Physics.RaycastAll(at + Vector3.up * 120f, Vector3.down, 200f))
+            if (hit.collider is TerrainCollider terrain && hit.point.y > terrain.GetComponent<Terrain>().SampleHeight(hit.point) + terrain.transform.position.y + 1f) return true;
+        return false;
+    }
+
     protected static void FixClock(bool on) => Time.captureDeltaTime = on ? 1f / 60f : 0f;
 
     /// <summary>

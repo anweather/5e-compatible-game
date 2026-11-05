@@ -24,6 +24,8 @@ namespace Chem
         Dig,
         /// <summary>A thing of a material that cracks took its first hard hit (shatter.cracks): cracked by its Thing id, not a cell.</summary>
         Crack,
+        /// <summary>Someone worked a gate (materials.json "swing"): its leaves swing to the other way (World.Swing).</summary>
+        Swing,
     }
 
     /// <summary>A prop's effect on one cell: small enough to send like a cast.</summary>
@@ -84,6 +86,9 @@ namespace Chem
                     break;
                 case EffectKind.Crack:
                     if (!effect.Thing.Equals(ThingId.None)) crackedThings.Add(effect.Thing.Value);
+                    break;
+                case EffectKind.Swing:
+                    Swing(effect.X, effect.Y);
                     break;
             }
         }

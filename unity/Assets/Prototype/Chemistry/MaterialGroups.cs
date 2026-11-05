@@ -31,6 +31,7 @@
 //   run     { every }                                             runsEvery (a hot liquid terrain, lava, runs to a lower cell that often, leaving its grow.into)
 //   quench  { into, log }                                         quenchesTo, quenchLog (water on it while hot sets it at once: lava to rock)
 //   crust   { into, for }                                         crusts tag, crustsTo, crustFor (cold: lava to a crust that grows back into it)
+//   swing   { into }                                              swingsTo (a hand on it: a gate that opens and shuts, World.Swing)
 //   thaw    { into, water }                                       thaws tag, thawsTo, thawWater (heat: an ice wall to the ground under it and its meltwater)
 //   lift    { by }                                                lifts tag, liftSteps (an updraft: steps it lifts what stands over it; World.LiftAt)
 //   rot     { breaks }                                            rotBreaks (covers: when it withers its roots break the terrain under it)
@@ -69,6 +70,7 @@ namespace Chem
             ("crust", "crusts", new[] { ("into", "crustsTo"), ("for", "crustFor") }),
             ("thaw", "thaws", new[] { ("into", "thawsTo"), ("water", "thawWater") }),
             ("lift", "lifts", new[] { ("by", "liftSteps") }),
+            ("swing", null, new[] { ("into", "swingsTo") }),
         };
 
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =

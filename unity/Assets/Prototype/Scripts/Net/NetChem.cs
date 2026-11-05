@@ -277,6 +277,18 @@ public partial class NetChem : NetworkBehaviour
         if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= StrikeReachCells) StampEffect(new EffectCommand(EffectKind.Shatter, x, y, "", ThingId.None));
     }
 
+    /// <summary>Client: asks the host to work a gate for this client's wizard (ChemEffects.SwingNear).</summary>
+    public void RequestSwing(Vector2Int cell) => RequestSwingRpc(cell.x, cell.y);
+
+    [Rpc(SendTo.Server)]
+    void RequestSwingRpc(int x, int y, RpcParams rpc = default)
+    {
+        var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(rpc.Receive.SenderClientId);
+        if (wizard == null || !grid.World.InBounds(x, y) || grid.World.TerrainOf(grid.World.At(x, y)).SwingsTo == null) return;
+        var at = grid.CellAt(wizard.transform.position);
+        if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= ChemEffects.SwingReachCells) StampEffect(new EffectCommand(EffectKind.Swing, x, y, "", ThingId.None));
+    }
+
     /// <summary>
     /// Asks the host to run a defense command (the start pedestal: DefenseField). Anyone may ask; the
     /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.

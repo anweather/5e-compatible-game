@@ -21,8 +21,11 @@ public class ToppleProbe : ProbeScenario
         at.y = grid.GroundAt(at);
         Cut(at + V(-9f, 7f, -9f), at);
         yield return Wait(0.5f);
+        grid.valley.TrunkAt(tree.x, tree.y, out var trunk);
+        Check("a_tree_has_a_collider", TreeColliderAt(trunk));
         World.Cast(SpellIds.MoveEarth, tree.x, tree.y, 0);
         yield return Wait(2f);
+        Check("no_trunk_left_unseen", !TreeColliderAt(trunk), "the toppled tree's collider");
         var c = World.At(tree.x, tree.y);
         Check("tree_toppled", c.T == TerrainIds.Deadfall, $"the tree's square is {c.T}");
         var dressing = grid.transform.Cast<Transform>().FirstOrDefault(t => t.name == $"{TerrainIds.Deadfall} {tree.x},{tree.y}");

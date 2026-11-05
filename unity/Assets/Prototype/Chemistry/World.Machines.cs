@@ -5,6 +5,7 @@
 // any machine no one linked.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Chem
 {
@@ -42,6 +43,39 @@ namespace Chem
 
         /// <summary>The state of the machine at (x, y), or null if it hasn't run.</summary>
         public MachineState MachineAt(int x, int y) => machines.TryGetValue(Idx(x, y), out var m) ? m : null;
+
+        /// <summary>
+        /// Works the gate at this cell (materials.json "swing"): it and the cells of the same terrain joined to it, north,
+        /// east, south and west, all become its swingsTo. A gate that would shut on a raider stays open, as a machine's does.
+        /// </summary>
+        public void Swing(int x, int y)
+        {
+            var c = At(x, y);
+            string to = c == null ? null : TerrainOf(c).SwingsTo;
+            if (to == null || !Rules.Terrain.TryGetValue(to, out var into)) return;
+            var leaves = LeavesFrom(x, y, c.T);
+            if (into.Has("blocking") && leaves.Any(l => RaiderAt(l.x, l.y) != null)) return;
+            foreach (var (lx, ly) in leaves)
+            {
+                var leaf = At(lx, ly);
+                leaf.T = to;
+                leaf.ForgetDef();
+            }
+        }
+
+        // The cells of one terrain joined to this one, in the order a flood reaches them.
+        List<(int x, int y)> LeavesFrom(int x, int y, string terrain)
+        {
+            var leaves = new List<(int x, int y)> { (x, y) };
+            var seen = new HashSet<(int, int)> { (x, y) };
+            for (int i = 0; i < leaves.Count; i++)
+                foreach (var (dx, dy) in new[] { (0, -1), (1, 0), (0, 1), (-1, 0) })
+                {
+                    var n = (leaves[i].x + dx, leaves[i].y + dy);
+                    if (InBounds(n.Item1, n.Item2) && At(n.Item1, n.Item2).T == terrain && seen.Add(n)) leaves.Add(n);
+                }
+            return leaves;
+        }
 
         /// <summary>
         /// Links the gate at (gx, gy) to the machine at (mx, my) (linkGate in the TS): from then on that gate opens

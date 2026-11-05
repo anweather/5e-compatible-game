@@ -79,6 +79,7 @@ public partial class ItemHolder : MonoBehaviour
         {
             if (Held != null) Drop();
             else if (InReach != null) PickUp(InReach);
+            else ChemEffects.SwingNear(FindAnyObjectByType<ChemGrid>(), transform.position);
         }
         if (Held != null) HandleHeld();
         else throwPressedAt = -1f;

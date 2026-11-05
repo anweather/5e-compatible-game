@@ -46,14 +46,35 @@ namespace Chem
             return new WorldBuildings(rows ?? new List<JObject>(), VillageLayout.Load(worldDir));
         }
 
+        /// <summary>The rows the map's cells don't hold: walls and no built cells, laid over the cells at the start (LayInto).</summary>
+        public IEnumerable<JObject> LaidRows => rows.Where(IsLaid);
+
+        static bool IsLaid(JObject row) => row["walls"] != null && row["built"] == null;
+
         /// <summary>
-        /// The rows of the buildings standing on these cells: a file's row whose built cells are there,
-        /// and each village's as the cells say it was laid. A world without them (a small test yard) has none.
+        /// Lays the rows the map's cells don't hold, before the world starts, on every peer alike. Over the cells, as a
+        /// map's puzzles are, so cells.txt and the things keep what they say: a tree under a wall is simply no longer there.
+        /// Only where the whole row fits (the valley, not a small test yard).
         /// </summary>
-        public List<JObject> RowsOn(Func<int, int, string> terrainAt)
+        public void LayInto(World world)
+        {
+            foreach (var r in LaidRows)
+            {
+                var row = BuildingRow.Read((string)r["id"], r, world.Rules.Buildings);
+                var cells = BuildingRaster.Cells(row, world.Rules.Buildings);
+                if (cells.All(c => world.InBounds(c.X, c.Y)))
+                    foreach (var c in cells) world.Paint(c.X, c.Y, c.Terrain);
+            }
+        }
+
+        /// <summary>
+        /// The rows of the buildings standing on these cells: a file's row whose built cells are there, or whose
+        /// laid cells are, and each village's as the cells say it was laid. A world without them (a small test yard) has none.
+        /// </summary>
+        public List<JObject> RowsOn(Func<int, int, string> terrainAt, BuildingTables tables)
         {
             var found = new List<JObject>();
-            found.AddRange(rows.Where(r => Stands(r, terrainAt)).Select(r => (JObject)r.DeepClone()));
+            found.AddRange(rows.Where(r => IsLaid(r) ? WasLaid(r, terrainAt, tables) : Stands(r, terrainAt)).Select(r => (JObject)r.DeepClone()));
             foreach (var spec in villages)
                 found.AddRange(VillageRows.Of(LaidPlan(spec, terrainAt)));
             return found;
@@ -65,6 +86,9 @@ namespace Chem
             var walls = new HashSet<string>(spec.Materials.Walls.Values) { spec.Materials.Window };
             return VillageLayout.Lay(spec, (x, y) => terrainAt(x, y) is string t && walls.Contains(t));
         }
+
+        static bool WasLaid(JObject r, Func<int, int, string> terrainAt, BuildingTables tables) =>
+            BuildingRaster.Cells(BuildingRow.Read((string)r["id"], r, tables), tables).All(c => terrainAt(c.X, c.Y) == c.Terrain);
 
         static bool Stands(JObject row, Func<int, int, string> terrainAt)
         {

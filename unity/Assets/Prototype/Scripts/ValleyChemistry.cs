@@ -205,9 +205,22 @@ public partial class ValleyChemistry : MonoBehaviour
                 cabinCells[k]++;
                 buildingCells[k].Add(world.Idx(x, y));
             }
+        ClearLaidRows(world);
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
         panesByCell.Clear();
         foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
+    }
+
+    // A row laid over the cells at the start (WorldBuildings.LayInto) stands where the bake drew trees and grass: they go,
+    // and its ground is painted as its cells say.
+    void ClearLaidRows(World world)
+    {
+        foreach (var row in world.RowsDrawn().Where(r => world.IsBaseBuilding(r.Id)))
+            foreach (var c in world.BuildingCellsOf(row))
+            {
+                BurnTrees(c.X, c.Y);
+                ground.PaintAnew(c.X, c.Y);
+            }
     }
 
     void IndexTrees()
@@ -588,7 +601,11 @@ public partial class ValleyChemistry : MonoBehaviour
         if (ground == null) return;
         rocks.Tick(Time.deltaTime);
         timer.Restart();
-        foreach (var at in treesChanged) ground.WritableData(at).treeInstances = trees[at];
+        foreach (var at in treesChanged)
+        {
+            ground.WritableData(at).treeInstances = trees[at];
+            ground.TreesMoved(at);
+        }
         treesChanged.Clear();
         TreesMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();

@@ -18,13 +18,14 @@ gate's approach.
 
 West of Hollowmere (centred 222, 300), the land climbs from 0 m at about x 180 to a plateau at 45 to 49 m.
 
-- **Castle:** on the plateau, about x 88 to 128, y 350 to 390, where the ground varies 3 to 5 m across 24 cells. Exact spot
-  chosen in phase 1.
+- **Castle:** on the plateau, 32 x 32 cells at x 87 to 118, y 367 to 398, the flattest such site (ground 44.4 to 50 m). The gate
+  faces east down the slope; a road runs from it to the foot, near x 180. Its trees are gone by being laid over (`WorldBuildings.LayInto`):
+  `cells.txt` and `things.json` don't change.
 - **Spawners:** along the foot of the slope, about x 180, y 340 to 400, so raiders don't walk through the village.
 - **Slope:** about 37 m over 48 cells at y 336. Raiders ignore height today (J-073: a mountain doesn't stop them, sight or
   spells), so they can climb it, but nothing slows them or blocks a spell on the way.
-- **The stream behind the castle:** Andrew remembers one. A band of `r` cells runs north to south at x 45 to 86, which may be
-  it; nobody has confirmed what they are. Phase 1 looks.
+- **The brook behind the castle:** `west-brook` of the `home-valley` theme, 2 to 4 cells wide and cut 0.5 to 2 m into the plateau, from about
+  (105, 260) south past x 57 to 68 to the map's edge. It runs about 20 cells behind the west wall.
 - **Reach:** 2 chunks from a wizard at the castle should cover the foot of the slope. Phase 2 checks raiders at the far
   spawners still tick when everyone is on the walls.
 

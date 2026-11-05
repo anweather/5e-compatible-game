@@ -79,6 +79,36 @@ namespace Chem.Tests
             Assert.That(Errors, Does.Contain("under the sea"));
         }
 
+        void RowMovesTo(int x, int y)
+        {
+            string path = Path.Combine(map, WorldBuildings.FileName);
+            var o = JObject.Parse(File.ReadAllText(path));
+            ((JArray)o["buildings"]).OfType<JObject>().Single(r => r["walls"] != null)["at"] = new JArray(x, y);
+            File.WriteAllText(path, o.ToString());
+        }
+
+        [Test]
+        public void ALaidRowOnTheBrookIsSaid()
+        {
+            RowMovesTo(50, 367);
+            Assert.That(Errors, Does.Contain("stands on water at"));
+        }
+
+        [Test]
+        public void ALaidRowOffTheMapIsSaid()
+        {
+            RowMovesTo(560, 367);
+            Assert.That(Errors, Does.Contain("runs off the map"));
+        }
+
+        [Test]
+        public void ALaidRowOnAThingIsSaid()
+        {
+            var thing = WorldThings.Load(map).All.First(t => t.CellX > 40 && t.CellY > 40 && t.CellX < 530 && t.CellY < 530);
+            RowMovesTo(thing.CellX - 16, thing.CellY - 16);
+            Assert.That(Errors, Does.Contain("stands on the thing " + thing.Id));
+        }
+
         [Test]
         public void ADrawableRangeUpsideDownIsSaid()
         {

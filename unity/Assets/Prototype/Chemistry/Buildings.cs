@@ -21,7 +21,7 @@ namespace Chem
     public enum BuildingFill { Hollow, Solid }
 
     /// <summary>What part of a building a cell is.</summary>
-    public enum BuildingPart { Wall, Opening, Fill, Built }
+    public enum BuildingPart { Wall, Opening, Fill, Built, Road }
 
     /// <summary>One opening's row (rules/buildings.json "openings"): its cells, and what they become.</summary>
     public sealed class OpeningDef
@@ -85,6 +85,21 @@ namespace Chem
         public List<WallOpening> Openings { get; } = new List<WallOpening>();
     }
 
+    /// <summary>A round tower: every cell whose middle lies within its radius of a join, in half cells.</summary>
+    public sealed class BuildingTower
+    {
+        public string Id, Material;
+        public int X, Y, Radius;
+    }
+
+    /// <summary>A way laid on the ground through the row's joins, in order: cells of its terrain, whole cells wide.</summary>
+    public sealed class BuildingRoad
+    {
+        public string Id, Terrain;
+        public int Width;
+        public List<(int x, int y)> Points { get; } = new List<(int, int)>();
+    }
+
     /// <summary>One building: the fields that decide cells, and the whole row (Json) for the view.</summary>
     public sealed class BuildingRow
     {
@@ -98,6 +113,10 @@ namespace Chem
         public string WallMaterial { get; private set; }
         /// <summary>The walls, by id, in id order.</summary>
         public IReadOnlyList<BuildingWall> Walls { get; private set; } = Array.Empty<BuildingWall>();
+        /// <summary>The towers, by id, in id order.</summary>
+        public IReadOnlyList<BuildingTower> Towers { get; private set; } = Array.Empty<BuildingTower>();
+        /// <summary>The roads, by id, in id order.</summary>
+        public IReadOnlyList<BuildingRoad> Roads { get; private set; } = Array.Empty<BuildingRoad>();
         /// <summary>The row with its style's defaults and recipe filled in: everything the view draws from.</summary>
         public JObject Json { get; private set; }
 
@@ -114,6 +133,8 @@ namespace Chem
             b.WallMaterial = (string)json["wall"]?["material"];
             b.Floor = (string)tables.Row("floors", (string)json["floor"]?["kind"])?["terrain"] ?? tables.Ground;
             b.ReadWalls(json, tables);
+            b.ReadTowers(json);
+            b.ReadRoads(json);
             b.ReadBuilt(json["built"] as JObject);
             return b;
         }
@@ -141,6 +162,33 @@ namespace Chem
                 walls.Add(w);
             }
             Walls = walls;
+        }
+
+        void ReadTowers(JObject json)
+        {
+            var towers = new List<BuildingTower>();
+            foreach (var p in (json["towers"] as JObject)?.Properties().OrderBy(p => p.Name, StringComparer.Ordinal) ?? Enumerable.Empty<JProperty>())
+            {
+                var at = json["joins"]?[(string)p.Value["at"] ?? ""] as JArray ?? throw new FormatException($"building {Id}: tower {p.Name} has no at");
+                towers.Add(new BuildingTower { Id = p.Name, Material = (string)p.Value["material"] ?? WallMaterial, X = (int)at[0], Y = (int)at[1], Radius = (int?)p.Value["radius"] ?? 0 });
+            }
+            Towers = towers;
+        }
+
+        void ReadRoads(JObject json)
+        {
+            var roads = new List<BuildingRoad>();
+            foreach (var p in (json["roads"] as JObject)?.Properties().OrderBy(p => p.Name, StringComparer.Ordinal) ?? Enumerable.Empty<JProperty>())
+            {
+                var road = new BuildingRoad { Id = p.Name, Terrain = (string)p.Value["terrain"], Width = (int?)p.Value["width"] ?? 1 };
+                foreach (var name in p.Value["through"]?.OfType<JValue>() ?? Enumerable.Empty<JValue>())
+                {
+                    var at = json["joins"]?[(string)name ?? ""] as JArray ?? throw new FormatException($"building {Id}: road {p.Name} goes through {name}, which it hasn't got");
+                    road.Points.Add(((int)at[0], (int)at[1]));
+                }
+                roads.Add(road);
+            }
+            Roads = roads;
         }
 
         void ReadBuilt(JObject built)
@@ -233,7 +281,7 @@ namespace Chem
 
         // ---------- what the fingerprint sees ----------
 
-        static readonly string[] SharedKeys = { "at", "style", "seed", "fill", "joins", "built" };
+        static readonly string[] SharedKeys = { "at", "style", "seed", "fill", "joins", "built", "roads" };
 
         /// <summary>A row with only what decides cells: joins, walls and openings, fill and floor kind. The rest is the view's (Rules.Fingerprint).</summary>
         internal static JObject Shared(JObject row)
@@ -244,6 +292,8 @@ namespace Chem
             if (row["floor"]?["kind"] != null) o["floor"] = row["floor"]["kind"].DeepClone();
             if (row["wall"]?["material"] != null) o["wall"] = row["wall"]["material"].DeepClone();
             if (row["recipe"] != null) o["recipe"] = row["recipe"].DeepClone();
+            if (row["towers"] is JObject towers)
+                o["towers"] = new JObject(towers.Properties().Select(t => new JProperty(t.Name, new JObject { ["at"] = t.Value["at"]?.DeepClone(), ["radius"] = t.Value["radius"]?.DeepClone(), ["material"] = t.Value["material"]?.DeepClone() })));
             if (row["walls"] is JObject walls)
             {
                 var kept = new JObject();
@@ -300,7 +350,9 @@ namespace Chem
             var open = new HashSet<(int y, int x)>();
             foreach (var (x, y, terrain) in row.Built) taken[(y, x)] = (terrain, BuildingPart.Built);
             LayWalls(row, tables, taken, open);
+            LayTowers(row, taken);
             Fill(row, taken, open);
+            LayRoads(row, taken);
             return taken.Select(c => new BuildingCell(row.X + c.Key.x, row.Y + c.Key.y, c.Value.terrain, c.Value.part)).ToList();
         }
 
@@ -340,6 +392,41 @@ namespace Chem
                     if (opening != null && takers[c] == 1) LayOpening(opening, walls[i], c, taken, open);
                     else if (!taken.ContainsKey(c)) taken[c] = (walls[i].Material, BuildingPart.Wall);
                 }
+        }
+
+        // A tower takes what no wall's opening has: a gate between two towers stays a gate.
+        static void LayTowers(BuildingRow row, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken)
+        {
+            foreach (var t in row.Towers)
+                for (int y = FloorDiv(t.Y - t.Radius, 2); y <= FloorDiv(t.Y + t.Radius, 2); y++)
+                    for (int x = FloorDiv(t.X - t.Radius, 2); x <= FloorDiv(t.X + t.Radius, 2); x++)
+                    {
+                        long dx = 2 * x + 1 - t.X, dy = 2 * y + 1 - t.Y;
+                        if (dx * dx + dy * dy > (long)t.Radius * t.Radius) continue;
+                        if (!taken.TryGetValue((y, x), out var had) || had.part == BuildingPart.Wall) taken[(y, x)] = (t.Material, BuildingPart.Wall);
+                    }
+        }
+
+        // After the fill, since a road runs out past the walls: it takes the cells no part of the building has.
+        static void LayRoads(BuildingRow row, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken)
+        {
+            foreach (var road in row.Roads)
+                for (int i = 0; i + 1 < road.Points.Count; i++)
+                    foreach (var (x, y) in Line(road.Points[i], road.Points[i + 1]))
+                        for (int dy = 0; dy < road.Width; dy++)
+                            for (int dx = 0; dx < road.Width; dx++)
+                            {
+                                var c = (FloorDiv(y, 2) + dy - road.Width / 2, FloorDiv(x, 2) + dx - road.Width / 2);
+                                if (!taken.ContainsKey(c)) taken[c] = (road.Terrain, BuildingPart.Road);
+                            }
+        }
+
+        // The half cells from one point to another, in whole numbers: the longer axis steps by one.
+        static IEnumerable<(int x, int y)> Line((int x, int y) a, (int x, int y) b)
+        {
+            int dx = b.x - a.x, dy = b.y - a.y, steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+            for (int i = 0; i <= steps; i++)
+                yield return steps == 0 ? a : (a.x + FloorDiv(2 * i * dx + steps, 2 * steps), a.y + FloorDiv(2 * i * dy + steps, 2 * steps));
         }
 
         static void LayOpening(OpeningDef opening, BuildingWall wall, (int y, int x) c, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken, HashSet<(int y, int x)> open)
