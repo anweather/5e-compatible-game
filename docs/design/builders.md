@@ -127,7 +127,8 @@ first. A building becomes parts, in `world` rows a mod adds (G5) or edits by id 
 - **A wall segment** runs between two joins, along an axis or at 45° (bays, cut corners), in a `storey`,
   with a `height` (m), a `material` (a terrain id, so it burns, breaks or shatters as that terrain does),
   a `finish` (a `wall` look: pattern and colour, G2) and `openings` (`kind`, `at` in half cells from
-  `from`). A row's `wall` gives the defaults.
+  `from`). A row's `wall` gives the defaults. A row's `wall` finish of pattern `coursed` draws its stone in courses of blocks
+  (`VillageLit`), towers and parapets too, at no cost in vertices.
 - **Standard lengths** are whole and half cells. **Openings** (`rules/buildings.json`) are rows: a view
   width and height, sill and head, and what their cells become. `door` 1 cell (0.9 m, a `door` terrain
   that burns or breaks to a gap), `double-door` 2 (1.8 m), `window` 1 (`pane`), `wide-window` 2,

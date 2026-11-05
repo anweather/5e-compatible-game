@@ -15,6 +15,7 @@ public sealed class MeshKit
     readonly List<Vector3> normals = new();
     readonly List<Color> colors = new();
     readonly List<int> triangles = new();
+    readonly List<Vector2> marks = new();
 
     /// <summary>Where parts go: every point and normal is put through it.</summary>
     public Matrix4x4 Frame = Matrix4x4.identity;
@@ -26,6 +27,9 @@ public sealed class MeshKit
     /// <summary>False for a builder whose colours come from rules and art with alpha 1: nothing it draws glows.</summary>
     public bool Glows = true;
 
+    /// <summary>Parts of this colour are drawn as stone in courses: VillageLit lays the blocks, so they cost no vertices.</summary>
+    public Color? Coursed;
+
     public int VertexCount => positions.Count;
     public int IndexCount => triangles.Count;
 
@@ -34,6 +38,7 @@ public sealed class MeshKit
         positions.Clear();
         normals.Clear();
         colors.Clear();
+        marks.Clear();
         triangles.Clear();
         Frame = Matrix4x4.identity;
     }
@@ -43,6 +48,7 @@ public sealed class MeshKit
         var at = Frame.MultiplyPoint3x4(p);
         float shade = 1f - Occlusion * (1f - Mathf.Clamp01(at.y / OcclusionHeight));
         positions.Add(at);
+        marks.Add(new Vector2(c == Coursed ? 1f : 0f, 0f));
         normals.Add(Frame.MultiplyVector(n).normalized);
         // Colours are picked in sRGB, as in a colour picker; the shader works in linear.
         float glow = Glows ? c.a : 0f;
@@ -190,6 +196,7 @@ public sealed class MeshKit
         mesh.SetVertices(positions);
         mesh.SetNormals(normals);
         mesh.SetColors(colors);
+        if (Coursed != null) mesh.SetUVs(0, marks);
         mesh.SetTriangles(triangles, 0);
         mesh.RecalculateBounds();
         return mesh;
