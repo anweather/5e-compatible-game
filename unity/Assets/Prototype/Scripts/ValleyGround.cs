@@ -130,6 +130,9 @@ public sealed class ValleyGround
     /// <summary>What making the chunks took at the last Bind (ms): the probe compares built with baked.</summary>
     public double BindMs { get; private set; }
 
+    // How many heightmap samples a frame works out for reshaped ground (#151): a radius 32 stamp's take a dozen frames or so.
+    const int MostSamplesAFrame = 4096;
+
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
 
@@ -266,9 +269,13 @@ public sealed class ValleyGround
         if (reshaped.Count > 0)
         {
             PerfCounts.Add("shape.reshaped_cells", reshaped.Count);
-            using (HeightUpdateMarker.Auto()) CountRects("shape.update", heightfield.Update(world, reshaped));
-            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
+            using (HeightQueueMarker.Auto()) heightfield.Queue(reshaped);
             reshaped.Clear();
+        }
+        if (heightfield.Waiting > 0)
+        {
+            using (HeightUpdateMarker.Auto()) heightfield.FillSome(world, MostSamplesAFrame);
+            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
         }
         List<ChunkRect> moved;
         using (HeightEaseMarker.Auto()) moved = heightfield.Advance(dt);
@@ -356,7 +363,7 @@ public sealed class ValleyGround
     // Profiler markers (Window > Analysis > Profiler) round the terrain's per-frame work.
     static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
         PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint"),
-        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"),
+        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"), HeightQueueMarker = new("ValleyGround.HeightQueue"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
         SyncMarker = new("ValleyGround.SyncHeightmap"), TreeColliderMarker = new("ValleyGround.TreeCollider"), BlockMarker = new("ValleyGround.Paint.Block"),
         ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
