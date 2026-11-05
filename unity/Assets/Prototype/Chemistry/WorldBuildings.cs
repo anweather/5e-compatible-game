@@ -102,8 +102,12 @@ namespace Chem
             return VillageLayout.Lay(spec, (x, y) => terrainAt(x, y) is string t && walls.Contains(t));
         }
 
-        static bool WasLaid(JObject r, Func<int, int, string> terrainAt, BuildingTables tables) =>
-            BuildingRaster.Cells(BuildingRow.Read((string)r["id"], r, tables), tables).All(c => terrainAt(c.X, c.Y) == c.Terrain);
+        // By what it built: a road or a clearing is ground, and wears, burns and grows over like any.
+        static bool WasLaid(JObject r, Func<int, int, string> terrainAt, BuildingTables tables)
+        {
+            var cells = BuildingRaster.Cells(BuildingRow.Read((string)r["id"], r, tables), tables);
+            return cells.Where(c => c.Part != BuildingPart.Road).All(c => terrainAt(c.X, c.Y) == c.Terrain) && cells.Any(c => terrainAt(c.X, c.Y) == c.Terrain);
+        }
 
         static bool Stands(JObject row, Func<int, int, string> terrainAt)
         {

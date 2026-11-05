@@ -167,6 +167,15 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ARoadWornAwayLeavesItsRowStanding()
+        {
+            var w = Laid(out var row);
+            var worn = Cells(row, w).First(c => c.Part == BuildingPart.Road);
+            string TerrainAt(int x, int y) => x == worn.X && y == worn.Y ? "ash" : w.At(x, y).T;
+            Assert.That(Valley.RowsOn(TerrainAt, w.Rules.Buildings).Any(r => (string)r["id"] == Hold));
+        }
+
+        [Test]
         public void TheRoadRunsDownToTheFootOfTheSlope()
         {
             var w = Laid(out var row);

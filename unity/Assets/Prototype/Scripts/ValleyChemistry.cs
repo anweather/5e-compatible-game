@@ -220,7 +220,8 @@ public partial class ValleyChemistry : MonoBehaviour
             foreach (var c in world.BuildingCellsOf(row))
             {
                 BurnTrees(c.X, c.Y);
-                ground.PaintAnew(c.X, c.Y);
+                // A clearing keeps the ground the bake drew, grass and all: only what's laid on it is painted.
+                if (c.Terrain != TerrainIds.Grass) ground.PaintAnew(c.X, c.Y);
             }
     }
 

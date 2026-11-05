@@ -26,9 +26,12 @@ South-west of Hollowmere (centred 222, 300), the land climbs from 0 m at about x
   to where it was over three cells either side (`RoadGrade`). The cut comes from `buildings.json` and `land.json` at load, so every peer has
   the same one, a save carries it to a late joiner, and it lies under the stamps, so the dragon's reset keeps it. Its banks are bare earth.
 - **Rocks on the hill:** `rocks.json`, drawn only, as `LandRocks` draws a crag's.
-- **Seen from:** the foot of the slope best, up to 8% of the frame. Hollowmere sees about 1.6% at most and the lake shore 1.2%: the woods hide
-  all but a tower top or a stretch of wall, and the road's cut through them is too narrow to change that much. The rendered frames with it and
-  without it, in the same instant.
+- **The clearing:** `hold-glade#1`, a laid row of wide grass roads and a few stumps along the line from Hollowmere to the castle (Andrew,
+  2026-11-05). It takes 45 of the map's 3,473 tree cells, keeps the ground the bake drew, and lies under the castle's road. It's ground, so it
+  wears and burns as ground does: a row stands by what it built, not by its roads.
+- **Seen from:** the shared rendered frames with it and without it, in the same instant. From the square 4.6% of the frame, a castle on the skyline
+  over the roofs; from Hollowmere's west edge 7.3%; from 33 of 49 spots in the village, 29 of them over 1%. The foot of the slope up to 10%; the
+  lake shore under 1%, as the clearing doesn't look that way. Raiders' routes are the same with it, and their field stops short of the village.
 - **Spawners:** along the foot of the slope, from about (184, 340) to (206, 390), so raiders do not walk through the village (`hold-foot` in `places.json`).
 - **Slope:** about 40 m over 46 cells along the road. Raiders ignore height today (J-073: a mountain doesn't stop them, sight or
   spells), so they can climb it, but nothing slows them or blocks a spell on the way.
