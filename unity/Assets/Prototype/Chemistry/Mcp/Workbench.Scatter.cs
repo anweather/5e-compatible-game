@@ -49,11 +49,17 @@ namespace Chem.Mcp
             return OnWorld(w =>
             {
                 var distance = DistanceMap(w, from, reach);
-                var area = Enumerable.Range(0, w.W * w.H).Where(i => distance[i] >= 0).Select(i => (x: i % w.W, y: i / w.W));
-                var open = w.PlaceOpen(onto, false);
-                var cells = Placement.Pick(area, count, apart, (x, y) => open(x, y) && !Settled(x, y), unchecked((int)w.Seed), salt);
+                var cells = OpenNear(w, distance, count, apart, salt, onto);
                 return cells.Select(c => (c.x, c.y, d: distance[w.Idx(c.x, c.y)], ground: w.TerrainOf(w.At(c.x, c.y)).Name)).ToList();
             });
+        }
+
+        // The cells a distance map reaches, picked by the world's seed, off villages and courses.
+        List<(int x, int y)> OpenNear(World w, int[] distance, int count, int apart, int salt, string[] onto)
+        {
+            var area = Enumerable.Range(0, w.W * w.H).Where(i => distance[i] >= 0).Select(i => (x: i % w.W, y: i / w.W));
+            var open = w.PlaceOpen(onto, false);
+            return Placement.Pick(area, count, apart, (x, y) => open(x, y) && !Settled(x, y), unchecked((int)w.Seed), salt);
         }
 
         // Whether a scatter's what is a terrain, a cover or a thing, with the draft on; null for none.

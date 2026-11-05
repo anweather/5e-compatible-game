@@ -24,14 +24,14 @@ namespace Chem.Mcp
             if (plan.NoRoom != null) return plan.NoRoom;
             string said = Decide(RoomCommand.Act(PeerOf(peer), plan.Command.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
-            return FormattableString.Invariant($"{said}\n{(plan.ActKindOf == World.ActLand ? "At" : "Near")} {plan.PlaceName}. It's done, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(plan.ActKindOf)}");
+            return FormattableString.Invariant($"{said}\n{(plan.ActKindOf == World.ActLand ? "At" : "Near")} {plan.PlaceName}. {Landed(said)}, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(plan.ActKindOf)}");
         }
 
         // What act will send, worked out from the world as it is: the ask, or what's wrong with the place.
         sealed class ActPlan
         {
             public JObject Command;
-            public string ActKindOf, PlaceName, NoRoom;
+            public string What, ActKindOf, PlaceName, NoRoom;
         }
 
         // One ask of act. A wrong ask throws; a place with no room is NoRoom, as it's no mistake of the asker's.
@@ -47,11 +47,11 @@ namespace Chem.Mcp
                 throw new RulesToolException(FormattableString.Invariant($"{what} is past level {Budgets.Number("triggers.maxLevel", 7)}, the highest an act can cast."));
             if (lasts < 0 || lasts > Budgets.Number("place.maxLasts", 21600)) throw new RulesToolException("lasts is in ticks, up to an hour.");
             var picked = PickNear(wanted, string.IsNullOrWhiteSpace(near) ? "me" : near, within ?? 12, spacing ?? 0, side, edge, seed ?? ++actSeed, kind == World.ActCast ? null : onto, out string name);
-            if (picked.Count == 0) return new ActPlan { ActKindOf = kind, PlaceName = name, NoRoom = FormattableString.Invariant($"No open cell within {within ?? 12} cells of {name}; try further out, or somewhere else.") };
-            var ask = new JObject { ["kind"] = kind, ["what"] = what, ["cells"] = new JArray(picked.Select(c => new JArray(c.x, c.y))) };
+            if (picked.Count == 0) return new ActPlan { What = what, ActKindOf = kind, PlaceName = name, NoRoom = FormattableString.Invariant($"No open cell within {within ?? 12} cells of {name}; try further out, or somewhere else.") };
+            var ask = new JObject { ["kind"] = kind, ["what"] = what, ["wanted"] = wanted, ["cells"] = new JArray(picked.Select(c => new JArray(c.x, c.y))) };
             if (lasts > 0) ask["lasts"] = lasts.Value;
             if (onto?.Length > 0) ask["onto"] = new JArray(onto.Cast<object>().ToArray());
-            return new ActPlan { Command = ask, ActKindOf = kind, PlaceName = name };
+            return new ActPlan { What = what, Command = ask, ActKindOf = kind, PlaceName = name };
         }
 
         /// <summary>call_act(): a named act, a trigger with on: called from a mod that's on, fired at a place: each of its rows as act would do it, one firing.</summary>
@@ -60,24 +60,80 @@ namespace Chem.Mcp
             id = Required(id, "id");
             var named = InForce.TriggersOn(TriggerEvent.Called).FirstOrDefault(t => t.Id == id)
                 ?? throw new RulesToolException($"There is no named act called {id}: it's a trigger with on: called in a mod that's on. list triggers shows them.");
-            var plans = named.Do.Select(a => PlanOfRow(a.Act, near, side, edge)).ToList();
+            var rows = named.Do.Select(a => a.Act).ToList();
+            var spot = SpotFor(id, rows, near, side, edge);
+            var plans = rows.Select(row => spot != null ? PlanOfRow(row, spot.Near, null, null) : PlanOfRow(row, near, side, edge)).ToList();
             var parts = plans.Where(p => p.NoRoom == null).ToList();
-            if (parts.Count == 0) return plans[0].NoRoom;
+            string place = spot?.Name ?? plans[0].PlaceName;
+            if (parts.Count == 0) return $"None of {id} landed at {place}, so nothing's done: {string.Join(" ", plans.Select(p => $"{p.What}: {p.NoRoom}"))}";
             int cells = parts.Sum(p => (p.Command["cells"] as JArray)?.Count ?? 0);
             double most = Budgets.Number("lay.maxCells", 256);
             if (cells > most) throw new RulesToolException(FormattableString.Invariant($"{id} asks for {cells} cells at once; a firing does at most {most}."));
-            var ask = new JObject { ["kind"] = World.ActCalled, ["what"] = id, ["parts"] = new JArray(parts.Select(p => (object)p.Command).ToArray()) };
+            var sent = plans.Select(p => (object)(p.Command ?? new JObject { ["kind"] = p.ActKindOf, ["what"] = p.What, ["why"] = p.NoRoom }));
+            var ask = new JObject { ["kind"] = World.ActCalled, ["what"] = id, ["parts"] = new JArray(sent.ToArray()) };
             string said = Decide(RoomCommand.Act(PeerOf(peer), ask.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
-            return $"{said}\nAt {parts[0].PlaceName}. It's done, for everyone. undo_act takes back what can be, all at once: casts, animals and golf stay.";
+            string roomy = spot != null && !spot.Fits ? " No spot there had room for all of it, so this was the one with the most." : "";
+            return $"{said}\nAt {place}.{roomy} {Landed(said)}, for everyone. undo_act takes back what can be, all at once: casts, animals and golf stay.";
         }
+
+        // How a reply ends: only what really landed is called done.
+        static string Landed(string said) => said.Contains(World.FellShort) ? "What landed is done; tell the player what didn't" : "It's done";
+
+        // Where a firing at a place stands: one cell for all its rows, and whether every row has room there.
+        sealed class Spot
+        {
+            public string Near, Name;
+            public bool Fits;
+        }
+
+        const int SpotsTried = 16, SpotsApart = 6, DefaultWithin = 12;
+
+        // One spot for a firing of several rows at a place of many cells, so its rows stand together. It comes from the
+        // world's seed and the firing's id and number, never a peer; the first with room for every row, else the one with
+        // room for most. Null when it's fired at one cell, or has one row: each row is where it's asked already.
+        Spot SpotFor(string id, List<JObject> rows, string near, string side, string edge)
+        {
+            if (rows.Count < 2) return null;
+            var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
+            if (from.Count < 2) return null;
+            int reach = rows.Where(r => (string)r["act"] != World.ActLand).Select(r => (int?)r["within"] ?? DefaultWithin).DefaultIfEmpty(DefaultWithin).Max();
+            return OnWorld(w =>
+            {
+                int salt = id.Aggregate(w.ActsDone, (hash, c) => unchecked(hash * 31 + c));
+                var best = (x: from[0].x, y: from[0].y, rows: -1);
+                foreach (var (x, y) in OpenNear(w, DistanceMap(w, from, reach), SpotsTried, SpotsApart, salt, null))
+                {
+                    int fit = rows.Count(row => RowFits(w, row, x, y));
+                    if (fit > best.rows) best = (x, y, fit);
+                    if (fit == rows.Count) break;
+                }
+                return new Spot { Near = FormattableString.Invariant($"[{best.x}, {best.y}]"), Name = FormattableString.Invariant($"{name}, round [{best.x}, {best.y}]"), Fits = best.rows == rows.Count };
+            });
+        }
+
+        // Whether all of a row can land round a cell.
+        bool RowFits(World w, JObject row, int x, int y)
+        {
+            if ((string)row["act"] == World.ActLand)
+            {
+                var stamp = StampOf(AskOf(row), x, y, (int?)row["seed"] ?? 1);
+                return SettledUnder(w, stamp) == null && w.LandRefusal(stamp) == null;
+            }
+            int wanted = (int?)row["count"] ?? 1;
+            var distance = DistanceMap(w, new List<(int, int)> { (x, y) }, (int?)row["within"] ?? DefaultWithin);
+            return OpenNear(w, distance, wanted, (int?)row["spacing"] ?? 0, 1, OntoOf(row)).Count >= wanted;
+        }
+
+        static LandAsk AskOf(JObject row) =>
+            new LandAsk { Profile = (string)row["profile"] ?? LandStamp.Dome, Along = (string)row["along"], Radius = (int?)row["radius"], Rise = (int?)row["rise"], Rough = (int?)row["rough"] };
+
+        static string[] OntoOf(JObject row) => (row["onto"] as JArray)?.Select(t => (string)t).ToArray();
 
         // A row of a called trigger, what act would be asked, with where it's being called.
         ActPlan PlanOfRow(JObject row, string near, string side, string edge)
         {
-            var land = new LandAsk { Profile = (string)row["profile"] ?? LandStamp.Dome, Along = (string)row["along"], Radius = (int?)row["radius"], Rise = (int?)row["rise"], Rough = (int?)row["rough"] };
-            var onto = (row["onto"] as JArray)?.Select(t => (string)t).ToArray();
-            return PlanAct((string)row["act"], (int?)row["count"], near, (int?)row["within"], (int?)row["spacing"], side, edge, (int?)row["seed"], onto, (int?)row["lasts"], land);
+            return PlanAct((string)row["act"], (int?)row["count"], near, (int?)row["within"], (int?)row["spacing"], side, edge, (int?)row["seed"], OntoOf(row), (int?)row["lasts"], AskOf(row));
         }
 
         /// <summary>What a land stamp asks for: metres and cells as a player says them.</summary>
@@ -98,6 +154,17 @@ namespace Chem.Mcp
         // One stamp at a time, where it's asked for, off buildings and settled ground; water and the terrain's range the world refuses itself.
         ActPlan PlanLand(string near, string side, string edge, int? seed, LandAsk ask)
         {
+            var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
+            var (x, y) = (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
+            var stamp = StampOf(ask, x, y, seed ?? ++actSeed);
+            string settled = OnWorld(w => SettledUnder(w, stamp));
+            if (settled != null) return new ActPlan { What = World.ActLand, ActKindOf = World.ActLand, PlaceName = name, NoRoom = $"That would move the ground under {settled}; try further off." };
+            return new ActPlan { What = World.ActLand, ActKindOf = World.ActLand, PlaceName = name, Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
+        }
+
+        // The stamp a land ask makes at a cell; a wrong ask throws.
+        LandStamp StampOf(LandAsk ask, int x, int y, int seed)
+        {
             int radius = ask.Radius ?? 8, rise = ask.Rise ?? 0;
             double mostRadius = Budgets.Number("land.maxRadius", 32), mostRise = Budgets.Number("land.maxRise", 100);
             if (radius < 1 || radius > mostRadius) throw new RulesToolException(FormattableString.Invariant($"radius is 1 to {mostRadius} cells."));
@@ -105,13 +172,9 @@ namespace Chem.Mcp
             var line = (x: 0, y: 0);
             if (LandStamp.NeedsLine(ask.Profile) && (ask.Along == null || !Lines.TryGetValue(ask.Along, out line)))
                 throw new RulesToolException($"A {ask.Profile} needs along: {string.Join(", ", Lines.Keys)}.");
-            var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
-            var (x, y) = (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
-            var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? (ask.Profile == LandStamp.Flat ? 0 : LandRoughness), seed ?? ++actSeed);
+            var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? (ask.Profile == LandStamp.Flat ? 0 : LandRoughness), seed);
             if (!stamp.Known) throw new RulesToolException("profile is flat, dome, cone, ridge, canyon or cliff, and rough is 0 to 100.");
-            string settled = OnWorld(w => SettledUnder(w, stamp));
-            if (settled != null) return new ActPlan { ActKindOf = World.ActLand, PlaceName = name, NoRoom = $"That would move the ground under {settled}; try further off." };
-            return new ActPlan { ActKindOf = World.ActLand, PlaceName = name, Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
+            return stamp;
         }
 
         const int LandUnitsPerMetre = 8;

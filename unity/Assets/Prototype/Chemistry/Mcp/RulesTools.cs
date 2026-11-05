@@ -134,7 +134,7 @@ namespace Chem.Mcp
             Do(() => bench.Act(what, count, near, within, spacing, side, edge, seed, onto, lasts, peer,
                 new Workbench.LandAsk { Profile = profile ?? LandStamp.Dome, Along = along, Radius = radius, Rise = rise, Rough = rough }));
 
-        [RulesTool("call_act"), Description("Fires a named act at a place, now, for everyone: a trigger with on: called from a mod that's on, each of its rows done as act would do it, as one act undo_act takes back whole. Defined once with add_trigger(on: called, do: rows like {\"act\": \"tree\", \"count\": 5, \"within\": 6} or {\"act\": \"land\", \"radius\": 12, \"rise\": 20}) and kept by saving the mod.")]
+        [RulesTool("call_act"), Description("Fires a named act at a place, now, for everyone: a trigger with on: called from a mod that's on, each of its rows done as act would do it, as one act undo_act takes back whole. The reply says what landed row by row: tell the player what didn't. Defined once with add_trigger(on: called, do: rows like {\"act\": \"tree\", \"count\": 5, \"within\": 6} or {\"act\": \"land\", \"radius\": 12, \"rise\": 20}) and kept by saving the mod.")]
         public string CallAct([Description("The named act's id, from list triggers.")] string id,
             [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
             [Description("A side of what it's near: north, south, east or west.")] string side = null,

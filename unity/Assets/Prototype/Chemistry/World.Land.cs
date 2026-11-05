@@ -152,8 +152,26 @@ namespace Chem
             long ramp = Math.Min(One, (reach - along) * One / (reach * 3 / 4));
             long height = Profile == Canyon ? CanyonAt(Math.Abs(off), reach, face, wall, ramp, x, y) : CliffAt(side, reach, face, wall, x, y);
             height += wall * Fractal(x, y, 4) * Rough / (100 * One * 3);
+            // A canyon's floor is as deep as it's asked, on any seed: noise past it folds back up, so the floor keeps its grain.
+            long deepest = CanyonDepth(wall);
+            if (Profile == Canyon && height < -deepest) height = -2 * deepest - height;
             // Nothing at the rim of the stamp, so it meets the land round it.
             return height * Smooth((reach - Root(d2 * One * One)) * One / (reach * 3 / 10)) / One;
+        }
+
+        static long CanyonDepth(long wall) => Math.Min(wall * 2 / 5, CanyonDeepest);
+
+        /// <summary>The least and the most it can add anywhere, whatever its seed: what decides if the land can take it.</summary>
+        public (int low, int high) Extent
+        {
+            get
+            {
+                long wall = Math.Abs((long)Rise), noise = wall * Rough / 300;
+                if (Profile == Canyon) return ((int)-CanyonDepth(wall), (int)(wall + noise));
+                if (Profile == Cliff) return ((int)-noise, (int)(wall + noise));
+                long a = Rise * (50L + Rough) / 50, b = Rise * (50L - Rough) / 50;
+                return ((int)Math.Min(0, Math.Min(a, b)), (int)Math.Max(0, Math.Max(a, b)));
+            }
         }
 
         // Cut down to a floor, the rest of the wall raised as a rim that falls back to nothing.
@@ -161,7 +179,7 @@ namespace Chem
         long CanyonAt(long off, long reach, long face, long wall, long ramp, int x, int y)
 #pragma warning restore S107
         {
-            long deepest = Math.Min(wall * 2 / 5, CanyonDeepest), cut = deepest * Math.Max(0, ramp) / One, rim = wall - deepest;
+            long deepest = CanyonDepth(wall), cut = deepest * Math.Max(0, ramp) / One, rim = wall - deepest;
             long half = reach / 5 + Lattice(x, y, 16, 5) * Radius / 16;
             if (off <= half) return wall * Math.Abs(Fractal(x, y, 6)) / (16 * One) - cut;
             if (off <= half + face) return (rim + cut) * Strata((off - half) * One / face + Lattice(x, y, 6, 7) / 8, 3) / One - cut;
@@ -224,7 +242,7 @@ namespace Chem
             var stamp = LandStamp.Read(ask["stamp"]);
             if (stamp == null || !stamp.Known) return "that isn't a land stamp";
             if (land == null) SetLand(new int[W * H]);
-            string why = LandRefusal(stamp, 1);
+            string why = LandRefusal(stamp);
             if (why != null) return why;
             Press(stamp, 1);
             landStamps.Add(stamp);
@@ -233,19 +251,36 @@ namespace Chem
             return null;
         }
 
-        // Why these cells can't take this: water, or the end of what can be drawn. All or nothing, so undo is exact.
-        string LandRefusal(LandStamp s, int sign)
+        const string PastTheLand = "that goes past how low or high the land can be drawn";
+
+        /// <summary>Why the land as it stands can't take this stamp, or null. Its seed has no say.</summary>
+        public string LandRefusal(LandStamp s)
+        {
+            var (low, high) = s.Extent;
+            foreach (var (x, y, _) in Reach(s))
+            {
+                int now = land?[Idx(x, y)] ?? 0;
+                if (now == NoLand) return Wet;
+                if (now + low < LandLowest || now + high > LandHighest) return PastTheLand;
+            }
+            return null;
+        }
+
+        // Why a stamp in force can't come off: taking it back moves what it really moved. All or nothing, so undo is exact.
+        string UndoRefusal(LandStamp s)
         {
             foreach (var (x, y, by) in Reach(s))
             {
                 int now = land[Idx(x, y)];
-                if (now == NoLand) return "that would cross water, and land stamps keep off it for now";
+                if (now == NoLand) return Wet;
                 if (by == 0) continue;
-                int then = now + sign * by;
-                if (then < LandLowest || then > LandHighest) return "that goes past how low or high the land can be drawn";
+                int then = now - by;
+                if (then < LandLowest || then > LandHighest) return PastTheLand;
             }
             return null;
         }
+
+        const string Wet = "that would cross water, and land stamps keep off it for now";
 
         // The cells a stamp reaches, on the world, row by row, and what it adds at each.
         IEnumerable<(int x, int y, int by)> Reach(LandStamp s)
@@ -270,7 +305,7 @@ namespace Chem
         // Taken back, in any order: the same integers off. Null when it's done, else why not.
         string TakeLand(ActDone act)
         {
-            string why = LandRefusal(act.Land, -1);
+            string why = UndoRefusal(act.Land);
             if (why != null) return why;
             TakeStamp(act.Land);
             return null;
