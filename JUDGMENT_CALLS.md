@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-075: How do a hand's buttons work?
+
+- **Asked:** 2026-11-05, by Andrew, after the first hands were built with the bumper as a modifier.
+- **Also comes up when:** weapons, new spells, pad layout, an unattuned hand.
+- **Answer:** Andrew: the button is the gesture. Trigger short range, bumper long range, both an area; an empty hand punches, throws or shoves. The same gesture on both hands makes something new; different gestures each do their own, and the chemistry decides. Spells stay unique, never re-skinned. Weapons fit later under the same rule.
+- **Why:** one rule you can feel, and mixed gestures cost no table entries.
+- **Revisited:** 0.
+
 ### J-074: What's the first game loop, and how do wizards cast in it?
 
 - **Asked:** 2026-11-04, by Andrew (#152): the game has mechanics but no objective.

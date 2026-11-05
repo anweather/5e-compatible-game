@@ -545,10 +545,10 @@ that long, and doesn't march.
 : A row naming where a Hold's raiders enter, which kinds and how fast.
 
 **Hand**
-: One of a wizard's two slots in the Hold, holding an **element** or nothing today (`empty`, a row of the table like any other, so a later weapon is another row). The **gesture** is what the hand does, and what it holds is what comes out.
+: One of a wizard's two slots in the Hold: an **element** of the combo table, or nothing. Its **gesture** says what comes out.
 
 **Gesture**
-: What a hand's buttons do in the Hold: **thrust** (the trigger), **throw** (the bumper), or **sweep** (both on one hand). Not `CastGesture`, the arms' pose for a spell.
+: What a hand's buttons do in the Hold: thrust (trigger, short range), throw (bumper, long range), sweep (both, area). The same gesture on both hands makes something new; different gestures each do their own. Not `CastGestures`, the view's animation of a cast.
 
 **Range**
 : How far from the wizard a hand's spell can land, in cells: short or long, by its gesture (`rules/hold.json`).

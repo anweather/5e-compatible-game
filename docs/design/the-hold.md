@@ -101,32 +101,42 @@ A late joiner gets a run by replaying stands, so `StandKeeper` keeps every stand
 
 ### 3. Hands
 
-The pad already has an element on each shoulder button and trigger, and `combos.json` has the 4 × 4 table. So this is a change
-of what the buttons mean, in a Hold loadout:
+**The button is the gesture; what's in the hand is what comes out** (Andrew, 2026-11-05, J-075). Once you've felt it, you know
+what any hand will do: a trigger is short range, a bumper long range, both an area.
 
-- **Each hand holds an element.** The right trigger casts the right hand, the left trigger the left.
-- **The bumper modifies** that hand's spell. Both triggers together cast the two hands' combination. Mouse: left and right
-  click are the hands, Shift modifies.
-- **The D-pad stays the kit:** the spells every wizard has. The set is to choose in this phase.
+| Input | Gesture | Empty hand | Element in hand |
+|---|---|---|---|
+| Trigger | Thrust forward | Punch | Short-range spell |
+| Bumper | Arm up, throw | Throw | Long-range spell |
+| Trigger and bumper, one hand | Sideways sweep | Shove or swing | Area spell |
+
+**Two hands:** the same gesture on both makes something new, from the table. Different gestures do each hand's own thing
+at once, with no table entry, and the chemistry decides what they make.
+
+Spells stay unique per element and combination, never one spell re-skinned.
+
+| Element | Short | Long | Area |
+|---|---|---|---|
+| Fire | Burning Hands | Fire Bolt | Flame Wave |
+| Water | Create Water | Ray of Frost | Sleet Storm |
+| Earth | Raise Earth | Earthen Trench (a thrown stone would suit better) | Spike Growth |
+| Air | Shocking Grasp | Gust of Wind | Thunderwave |
+
+- **Thrust plus thrust, throw plus throw:** the 16 pairs of `combos.json` and a few same-element extras (Meteor, Flood).
+- **Sweep plus sweep:** about 14 spells still to design, a third tier that can arrive as discoveries and unlocks.
+- **Range is a real limit,** from the rules. Spells have none today.
+- **A hand is a slot.** It holds an element or nothing today. A weapon can sit there later under the same rule: sword and spell on
+  different gestures, you swing and cast; on the same gesture, fire on the sword. Not built yet.
+- **The D-pad stays the kit:** the spells every wizard has.
 - **Changing a hand's element happens only in the keep's attuning room,** so getting it right before the fight matters. Being
   downed lands you near it, which softens a bad choice.
 - **Showing it:** each hand visibly holds its element at all times (fire in the hand, water round it, stones orbiting it, air
-  curling off it), for the player and for their friends. `CastPose` already lights the casting hand. GPU first.
+  curling off it), for the player and for their friends. `CastPose` already has thrust, overhand and shove gestures. GPU first.
+- **A limit on casting:** a cooldown per hand, with a combined spell locking both.
+- **To test on a pad:** trigger and bumper on one hand is awkward with one finger on both. If it's bad, holding the trigger
+  could become the sweep.
 
-The spells, all existing, 28 of the 46:
-
-| Input | From |
-|---|---|
-| One hand | `singles`: Fire Bolt, Create Water, Raise Earth, Gust of Wind |
-| One hand, modified | Burning Hands, Ray of Frost, Stone Ramp, Shocking Grasp (to try) |
-| Both hands, two elements | The pair in one order, e.g. air and fire: Lightning |
-| Both, either modified | The pair in the other order, e.g. fire and air: Falling Star |
-| Both, same element | Fireball, Wave, Wall of Stone, Whirlwind |
-| Both, same, modified | Meteor, Flood, Earthen Trench, Thunderwave (to try) |
-
-This needs a table in the rules (hand spells, by element and modifier) and a limit on casting: try a cooldown per hand,
-with a two-hand spell locking both, so a big spell leaves you open. A one-trigger cast may have to wait a few ticks for the
-second trigger: feel it on a real pad. **Done when:** Andrew has played a run on a pad and says which parts stay.
+**Done when:** Andrew has played a run on a pad and says which parts stay.
 
 **As built.** (Andrew's rule, 2026-11-05: the button is the gesture, the element is what comes out.) `rules/hold.json` `hands` has the table: a row for each thing a hand can
 hold, `empty` and the four elements, by gesture (thrust, throw, sweep), and a row for two of them together, by thrust and throw. A gesture with no combined row, like every
