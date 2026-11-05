@@ -260,8 +260,8 @@ public static class ProbeScenarios
             "The valley's laid row (the-hold.md): its cells and drawing, no tree on it, a walk through the gate into the keep and its room, " +
             "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls."),
         new Entry("hands", typeof(HandsProbe), 240f,
-            "The Hold's hands (the-hold.md, phase 3) on a virtual pad, mouse and keyboard: attuning in the room, each trigger and click, each with its bumper or Shift, " +
-            "both together, the same element in both, the second a moment late, a cooling hand refused, and the D-pad's kit."),
+            "The Hold's hands (the-hold.md, phase 3) on a virtual pad, mouse and keyboard: attuning in the room, each hand's thrust, throw and sweep, the same gesture on both, " +
+            "different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, an empty hand's acts, and the D-pad's kit."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,
             "A stucco house through the MCP, close up from a wizard's height, then a fireball: its walls follow their cells to a ruin (RowRuin), with the frame numbers while it burns."),
         new Entry("rowhouses", typeof(RowHousesProbe), 180f,

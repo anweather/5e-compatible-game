@@ -1,7 +1,9 @@
-// A wizard's hands in the Hold (docs/design/the-hold.md, phase 3). Each hand holds an element, changed only by a command and
-// only in the attuning room. During a run a hand's button starts its spell on the cast meter of World.Combos.cs; the other hand
-// can join inside the window, which runs within that cast, so a one-hand spell goes off when it would have anyway. When a spell
-// goes off the hands that cast it cool down. Commands are ComboCommands, so they're stamped and replayed like the rest.
+// A wizard's hands in the Hold (docs/design/the-hold.md, phase 3). A hand holds an element or nothing, changed only by a command
+// and only in the attuning room. During a run a hand's button is a gesture: the first press starts the cast meter of
+// World.Combos.cs, and inside the window that hand's other button makes it a sweep and the other hand's buttons join, each
+// starting the meter again for what's now coming. When it runs out: two hands making the same gesture bring out the table's
+// combined row, if it has one; anything else, each hand does its own, both at once, and the chemistry decides what they make.
+// Commands are ComboCommands, so they're stamped and replayed like the rest.
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -19,7 +21,7 @@ namespace Chem
         {
             if (hands.TryGetValue(player, out var h)) return h;
             h = new PlayerHands { Player = player };
-            for (int i = 0; i < HandsDef.Count; i++) h.Element[i] = HandRules.Start[i];
+            for (int i = 0; i < HandsDef.Count; i++) h.Holds[i] = HandRules.Start[i];
             return h;
         }
 
@@ -38,12 +40,24 @@ namespace Chem
         /// <summary>The ticks until this hand casts again; 0 when it's ready.</summary>
         public int HandCooling(string player, int hand) => System.Math.Max(0, HandsOf(player).Ready[hand] - Tick);
 
-        /// <summary>The spell a hand cast under way will go off as, or null.</summary>
-        public string HandSpellUnderWay(string player) => hands.TryGetValue(player, out var h) && h.Casting ? SpellOf(h)?.Spell : null;
+        /// <summary>The first spell a hand cast under way will bring out, or null.</summary>
+        public string HandSpellUnderWay(string player) => hands.TryGetValue(player, out var h) && h.Casting ? Coming(h).Select(c => c.row.Spell).FirstOrDefault(s => s != null) : null;
 
-        HandSpellDef SpellOf(PlayerHands h) => h.Both
-            ? HandRules.Spell(h.Element[HandsDef.Left], h.Element[HandsDef.Right], h.Modified)
-            : HandRules.Spell(h.Element[h.First], null, h.Modified);
+        // What the hands bring out as they stand: a combined row with both hands, or each hand's own.
+        List<(HandRowDef row, int gesture, int hand)> Coming(PlayerHands h)
+        {
+            const int both = -1;
+            var coming = new List<(HandRowDef, int, int)>();
+            int left = h.Gesture[HandsDef.Left], right = h.Gesture[HandsDef.Right];
+            if (left != HandsDef.NoGesture && left == right && HandRules.Both(h.Holds[HandsDef.Left], h.Holds[HandsDef.Right], left) is { } row)
+            {
+                coming.Add((row, left, both));
+                return coming;
+            }
+            for (int hand = 0; hand < HandsDef.Count; hand++)
+                if (h.Gesture[hand] != HandsDef.NoGesture && HandRules.One(h.Holds[hand], h.Gesture[hand]) is { } own) coming.Add((own, h.Gesture[hand], hand));
+            return coming;
+        }
 
         PlayerHands OwnHands(string player)
         {
@@ -52,79 +66,73 @@ namespace Chem
             return h;
         }
 
+        // A null element empties the hand.
         bool Attune(string player, int hand, string element)
         {
-            if (hand < 0 || hand >= HandsDef.Count || !Rules.Combos.Elements.Contains(element) || !InAttuning(player) || HandsOf(player).Casting) return false;
-            OwnHands(player).Element[hand] = element;
+            if (hand < 0 || hand >= HandsDef.Count || (element != null && !Rules.Combos.Elements.Contains(element)) || !InAttuning(player) || HandsOf(player).Casting) return false;
+            OwnHands(player).Holds[hand] = element;
             return true;
         }
 
-        // The first hand starts the meter; the other, inside the window, starts it again for the two-hand spell.
-        bool CastHand(PlayerCast c, int hand, bool modified)
+        // A hand's button: a thrust or a throw, or with the hand's other button inside the window, a sweep.
+        bool PressHand(PlayerCast c, int hand, int gesture)
         {
             if (!HoldRunning || hand < 0 || hand >= HandsDef.Count) return false;
             var h = HandsOf(c.Player);
             if (h.Ready[hand] > Tick) return false;
-            return c.Casting ? JoinHand(c, h, hand, modified) : StartHand(c, h, hand, modified);
-        }
-
-        bool StartHand(PlayerCast c, PlayerHands h, int hand, bool modified)
-        {
-            var spell = HandRules.Spell(h.Element[hand], null, modified);
-            if (spell == null) return false;
-            h = OwnHands(c.Player);
-            h.First = hand;
-            h.Both = false;
-            h.Modified = modified;
-            c.Window = HandRules.Window;
-            StartMeter(c, spell.CastTicks);
+            if (!c.Casting)
+            {
+                h = OwnHands(c.Player);
+                h.Gesture[hand] = gesture;
+                c.Window = HandRules.Window;
+            }
+            else if (!h.Casting || c.Window <= 0 || !Join(h, hand, gesture)) return false;
+            StartMeter(c, Coming(h).Select(x => x.row.CastTicks).DefaultIfEmpty(1).Max());
             return true;
         }
 
-        bool JoinHand(PlayerCast c, PlayerHands h, int hand, bool modified)
+        static bool Join(PlayerHands h, int hand, int gesture)
         {
-            if (!h.Casting || h.Both || h.First == hand || c.Window <= 0) return false;
-            var spell = HandRules.Spell(h.Element[HandsDef.Left], h.Element[HandsDef.Right], h.Modified || modified);
-            if (spell == null) return false;
-            h.Both = true;
-            h.Modified |= modified;
-            c.Window = 0;
-            StartMeter(c, spell.CastTicks);
+            int was = h.Gesture[hand];
+            if (was == HandsDef.Sweep || was == gesture) return false;
+            h.Gesture[hand] = was == HandsDef.NoGesture ? gesture : HandsDef.Sweep;
             return true;
         }
 
-        // True if this was a hand's cast, gone off now.
+        // True if this was the hands' cast, gone off now.
         bool FireHands(PlayerCast c)
         {
             if (!hands.TryGetValue(c.Player, out var h) || !h.Casting) return false;
-            var spell = SpellOf(h);
-            if (spell != null) NoteFired(new ComboFired(c.Player, null, Rules.Spell(spell.Spell)?.Name ?? spell.Spell, spell.Spell, Rules.Spell(spell.Spell)?.Shape, false));
-            if (h.Both) h.Ready[HandsDef.Left] = h.Ready[HandsDef.Right] = Tick + HandRules.BothCooldown;
-            else h.Ready[h.First] = Tick + HandRules.HandCooldown;
+            foreach (var (row, gesture, hand) in Coming(h))
+            {
+                var spell = Rules.Spell(row.Spell);
+                NoteFired(new ComboFired(c.Player, null, spell?.Name ?? row.Act, row.Spell, spell?.Shape, false).FromHand(row.Act, HandRules.RangeOf(gesture)));
+                if (row.Spell == null) continue;
+                if (hand >= 0) h.Ready[hand] = Tick + HandRules.HandCooldown;
+                else h.Ready[HandsDef.Left] = h.Ready[HandsDef.Right] = Tick + HandRules.BothCooldown;
+            }
             DropHands(h);
             return true;
         }
 
-        static void DropHands(PlayerHands h)
-        {
-            h.First = -1;
-            h.Both = h.Modified = false;
-        }
+        static void DropHands(PlayerHands h) => h.Gesture[HandsDef.Left] = h.Gesture[HandsDef.Right] = HandsDef.NoGesture;
 
         /// <summary>The hands as text, "" when none has changed (so worlds without any hash as they did).</summary>
-        public string HandsText() => string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Element[0]}:{h.Element[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.First)}:{(h.Both ? 1 : 0)}:{(h.Modified ? 1 : 0)}"));
+        public string HandsText() => string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}"));
 
-        static JArray SaveHands(PlayerHands h) => new JArray(h.Player, h.Element[0], h.Element[1], h.Ready[0], h.Ready[1], h.First, h.Both, h.Modified);
+        static JArray SaveHands(PlayerHands h) => new JArray(h.Player, h.Holds[0], h.Holds[1], h.Ready[0], h.Ready[1], h.Gesture[0], h.Gesture[1]);
 
         void LoadHands(JToken saved)
         {
             foreach (var a in saved ?? new JArray())
             {
-                var h = new PlayerHands { Player = (string)a[0], First = (int)a[5], Both = (bool)a[6], Modified = (bool)a[7] };
-                h.Element[0] = (string)a[1];
-                h.Element[1] = (string)a[2];
-                h.Ready[0] = (int)a[3];
-                h.Ready[1] = (int)a[4];
+                var h = new PlayerHands { Player = (string)a[0] };
+                for (int i = 0; i < HandsDef.Count; i++)
+                {
+                    h.Holds[i] = (string)a[1 + i];
+                    h.Ready[i] = (int)a[3 + i];
+                    h.Gesture[i] = (int)a[5 + i];
+                }
                 hands[h.Player] = h;
             }
         }

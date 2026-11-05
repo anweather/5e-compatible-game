@@ -66,11 +66,11 @@ public class PlayerControls : MonoBehaviour
     public InputAction DpadPrevious { get; private set; }
     public InputAction DpadCast { get; private set; }
     public InputAction Grimoire { get; private set; }
-    /// <summary>The hands in the Hold (<see cref="HandPad"/>): a hand's button, and what modifies it.</summary>
-    public InputAction HandLeft { get; private set; }
-    public InputAction HandRight { get; private set; }
-    public InputAction ModifyLeft { get; private set; }
-    public InputAction ModifyRight { get; private set; }
+    /// <summary>The hands in the Hold (<see cref="HandPad"/>): each hand's two buttons, its thrust and its throw; both at once are its sweep.</summary>
+    public InputAction ThrustLeft { get; private set; }
+    public InputAction ThrustRight { get; private set; }
+    public InputAction ThrowLeft { get; private set; }
+    public InputAction ThrowRight { get; private set; }
 
     /// <summary>
     /// The controller's layout: casting by elements (the default), or with false the spell radial's,
@@ -87,8 +87,8 @@ public class PlayerControls : MonoBehaviour
     }
 
     /// <summary>
-    /// The hands' layout, on during a Hold run and in its attuning room (SpellCaster): the triggers and clicks are hands and the
-    /// bumpers modify, so what else they do is off. The d-pad and Cancel stay as the element pad has them.
+    /// The hands' layout, on during a Hold run and in its attuning room (SpellCaster): the triggers, bumpers and clicks are hands'
+    /// gestures, so what else they do is off. The d-pad and Cancel stay as the element pad has them.
     /// </summary>
     public bool HandPad
     {
@@ -144,10 +144,10 @@ public class PlayerControls : MonoBehaviour
         DpadCast = Button("Cast d-pad spell", "<Keyboard>/t", "<Gamepad>/dpad/up");
         Grimoire = Button("Grimoire", "<Keyboard>/j", "<Gamepad>/dpad/down");
         swapLayout = Button("Swap the controller's layout", "<Keyboard>/f2");
-        HandLeft = Button("Left hand", "<Mouse>/leftButton", "<Gamepad>/leftTrigger");
-        HandRight = Button("Right hand", "<Mouse>/rightButton", "<Gamepad>/rightTrigger");
-        ModifyLeft = Button("Modify the left hand", "<Keyboard>/leftShift", "<Keyboard>/rightShift", "<Gamepad>/leftShoulder");
-        ModifyRight = Button("Modify the right hand", "<Keyboard>/leftShift", "<Keyboard>/rightShift", "<Gamepad>/rightShoulder");
+        ThrustLeft = Button("Left hand's thrust", "<Mouse>/leftButton", "<Gamepad>/leftTrigger");
+        ThrustRight = Button("Right hand's thrust", "<Mouse>/rightButton", "<Gamepad>/rightTrigger");
+        ThrowLeft = Button("Left hand's throw", "<Keyboard>/q", "<Gamepad>/leftShoulder");
+        ThrowRight = Button("Right hand's throw", "<Keyboard>/c", "<Gamepad>/rightShoulder");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
         Zoom.AddBinding("<Mouse>/scroll/y");
@@ -159,7 +159,7 @@ public class PlayerControls : MonoBehaviour
         {
             Cast, RadialHold, RadialCancel, NextSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Punch, Throw, Roll,
             Elements[0], Elements[1], Elements[2], Elements[3], CancelCast, DpadNext, DpadPrevious, DpadCast, Grimoire, swapLayout,
-            HandLeft, HandRight, ModifyLeft, ModifyRight,
+            ThrustLeft, ThrustRight, ThrowLeft, ThrowRight,
         };
         foreach (var a in all) a.performed += Track;
 
@@ -225,7 +225,7 @@ public class PlayerControls : MonoBehaviour
     {
         foreach (var element in Elements)
             if (element.WasPressedThisFrame()) return true;
-        if (handPad && (HandLeft.WasPressedThisFrame() || HandRight.WasPressedThisFrame())) return true;
+        if (handPad && (ThrustLeft.WasPressedThisFrame() || ThrustRight.WasPressedThisFrame() || ThrowLeft.WasPressedThisFrame() || ThrowRight.WasPressedThisFrame())) return true;
         return Cast.WasPressedThisFrame() || DpadCast.WasPressedThisFrame();
     }
 

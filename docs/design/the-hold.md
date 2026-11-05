@@ -128,12 +128,17 @@ This needs a table in the rules (hand spells, by element and modifier) and a lim
 with a two-hand spell locking both, so a big spell leaves you open. A one-trigger cast may have to wait a few ticks for the
 second trigger: feel it on a real pad. **Done when:** Andrew has played a run on a pad and says which parts stay.
 
-**As built.** `rules/hold.json` `hands` has the table (14 rows by element or pair, each `plain` and `modified`: the 28 spells), the cooldowns, the window and the
-kit; a map's `hold.json` names the attuning room by two of the row's joins (`k1`, `k6`). `World.Hands.cs` is the hands: `ComboCommand`s `Hand` and `Attune`, so they
-go the way of the rest. A hand's cast runs on the cast meter and the window runs inside it, so a one-trigger cast isn't held back: it goes off at its `castTicks`, and
-a second trigger within `window` ticks starts the meter again for the two-hand spell. The hands' layout is on during a run and in the attuning room (`PlayerControls.HandPad`);
-in the room a hand's button attunes that hand to the next element, so a wizard there can't cast from it. The kit starts as the `dpad` spells. Hand spells aren't charged and
-don't join the grimoire. Stands in the room stay in a joiner's history (`StandKeeper`), since attuning reads them. Shift is also sprint, so a wizard that modifies with it runs too: feel it on the keyboard.
+**As built.** (Andrew's rule, 2026-11-05: the button is the gesture, the element is what comes out.) `rules/hold.json` `hands` has the table: a row for each thing a hand can
+hold, `empty` and the four elements, by gesture (thrust, throw, sweep), and a row for two of them together, by thrust and throw. A gesture with no combined row, like every
+sweep today, leaves each hand to its own. An `empty` row is an act; a later weapon would be rows too, and nothing in code knows what a slot holds. Empty sweep is a punch for
+now, and an empty hand's act takes the window's 4 ticks, since it can't go before a sweep might come. The map's `hold.json` names the attuning room by two of the row's joins
+(`k1`, `k6`). `World.Hands.cs` is the hands: `ComboCommand`s `Hand` and `Attune`, so they go the way of the rest. The first press starts the cast meter; inside `window` ticks
+of it the hand's other button makes a sweep and the other hand's buttons join, each starting the meter again. A spell's own `castTicks` hold the window open, so a lone
+trigger isn't held back. Different gestures go off together when the longer is done, each hand cooling on its own. `range` is in cells by gesture: the view pulls the target
+back along its line (`HandsDef.Within`), so it's a limit on what the caster aims, and a spell from the caster's own cell is shaped by its own numbers. The hands' layout is on
+during a run and in the attuning room (`PlayerControls.HandPad`); in the room a trigger moves that hand to the next element or nothing, so a wizard there can't cast. The kit
+starts as the `dpad` spells. Hand spells aren't charged and don't join the grimoire. Keyboard: the clicks are the triggers, Q and C the bumpers. Stands in the room stay in a
+joiner's history (`StandKeeper`), since attuning reads them.
 
 ### 4. Endless, tuned
 

@@ -6,7 +6,7 @@
     "burning": { "name": "Burning", "hp": 100, "lights": true, "color": [1, 0.45, 0.1] },
     "soaked": { "name": "Soaked", "hp": 100, "keeps": "wet", "color": [0.25, 0.5, 0.95] } },
   "hands": {
-    "about": "A wizard's hands in the Hold (the-hold.md, phase 3, World.Hands.cs). start is what each holds at first. A second hand joins inside window ticks of the first, which is within the first's cast, so it holds nothing back. A hand spell's cooldown is handCooldown ticks on its hand, bothCooldown on both for a two-hand one. spells is by element, or by the two hands' elements in either order; plain, or modified by the bumper or Shift. kit is the D-pad's list during a run.",
+    "about": "A wizard's hands in the Hold (the-hold.md, phase 3, World.Hands.cs). A hand is a slot: start says what each holds at first, an element or empty. The button is the gesture, thrust or throw, and both on one hand a sweep, and what the hand holds is what comes out. spells is by what a hand holds, and by what both hold (either order) when both make the same gesture; a gesture with no such row, like every sweep today, leaves each hand to its own, as different gestures do. A row is a spell, or an act for a hand with no spell. A hand's buttons, and the other hand's, come together inside window ticks of the first press, which a spell's cast holds open. range is how far a gesture's spell lands, in cells, by rangeOf. A spell's cooldown is handCooldown ticks on its hand, bothCooldown on both for a combined one. kit is the D-pad's list during a run.",
     "start": {
       "left": "water",
       "right": "fire"
@@ -14,144 +14,183 @@
     "window": 4,
     "handCooldown": 12,
     "bothCooldown": 30,
+    "range": {
+      "short": 8,
+      "long": 30
+    },
+    "rangeOf": {
+      "thrust": "short",
+      "throw": "long",
+      "sweep": "short"
+    },
     "spells": {
+      "empty": {
+        "thrust": {
+          "act": "punch",
+          "castTicks": 4
+        },
+        "throw": {
+          "act": "throw",
+          "castTicks": 4
+        },
+        "sweep": {
+          "act": "shove",
+          "castTicks": 4
+        }
+      },
       "fire": {
-        "plain": {
+        "thrust": {
+          "spell": "burning-hands",
+          "castTicks": 6
+        },
+        "throw": {
           "spell": "fire-bolt",
           "castTicks": 6
         },
-        "modified": {
-          "spell": "burning-hands",
-          "castTicks": 6
+        "sweep": {
+          "spell": "flame-wave",
+          "castTicks": 9
         }
       },
       "water": {
-        "plain": {
+        "thrust": {
           "spell": "create-water",
           "castTicks": 6
         },
-        "modified": {
+        "throw": {
           "spell": "ray-of-frost",
           "castTicks": 6
+        },
+        "sweep": {
+          "spell": "sleet-storm",
+          "castTicks": 9
         }
       },
       "earth": {
-        "plain": {
+        "thrust": {
           "spell": "mold-earth-heap",
           "castTicks": 6
         },
-        "modified": {
-          "spell": "stone-ramp",
+        "throw": {
+          "spell": "earthen-trench",
+          "castTicks": 6
+        },
+        "sweep": {
+          "spell": "spike-growth",
           "castTicks": 9
         }
       },
       "air": {
-        "plain": {
+        "thrust": {
+          "spell": "shocking-grasp",
+          "castTicks": 6
+        },
+        "throw": {
           "spell": "gust-of-wind",
           "castTicks": 6
         },
-        "modified": {
-          "spell": "shocking-grasp",
-          "castTicks": 6
+        "sweep": {
+          "spell": "thunderwave",
+          "castTicks": 9
         }
       },
       "fire+fire": {
-        "plain": {
+        "thrust": {
           "spell": "fireball",
           "castTicks": 12
         },
-        "modified": {
+        "throw": {
           "spell": "meteor",
           "castTicks": 18
         }
       },
       "water+water": {
-        "plain": {
+        "thrust": {
           "spell": "wave",
           "castTicks": 9
         },
-        "modified": {
+        "throw": {
           "spell": "flood",
           "castTicks": 12
         }
       },
       "earth+earth": {
-        "plain": {
+        "thrust": {
           "spell": "wall-of-stone",
           "castTicks": 12
         },
-        "modified": {
-          "spell": "earthen-trench",
+        "throw": {
+          "spell": "stone-ramp",
           "castTicks": 12
         }
       },
       "air+air": {
-        "plain": {
+        "thrust": {
           "spell": "whirlwind",
           "castTicks": 9
         },
-        "modified": {
-          "spell": "thunderwave",
-          "castTicks": 9
+        "throw": {
+          "spell": "dust-storm",
+          "castTicks": 12
         }
       },
       "fire+water": {
-        "plain": {
+        "thrust": {
           "spell": "scalding-steam",
           "castTicks": 9
         },
-        "modified": {
+        "throw": {
           "spell": "geyser",
           "castTicks": 9
         }
       },
       "fire+earth": {
-        "plain": {
-          "spell": "lava-pool",
+        "thrust": {
+          "spell": "forge",
           "castTicks": 12
         },
-        "modified": {
-          "spell": "forge",
+        "throw": {
+          "spell": "lava-pool",
           "castTicks": 12
         }
       },
       "fire+air": {
-        "plain": {
+        "thrust": {
           "spell": "lightning-bolt",
           "castTicks": 9
         },
-        "modified": {
+        "throw": {
           "spell": "falling-star",
           "castTicks": 9
         }
       },
       "water+earth": {
-        "plain": {
+        "thrust": {
           "spell": "mud",
           "castTicks": 9
         },
-        "modified": {
+        "throw": {
           "spell": "plant-growth",
           "castTicks": 9
         }
       },
       "water+air": {
-        "plain": {
+        "thrust": {
           "spell": "frost",
           "castTicks": 6
         },
-        "modified": {
+        "throw": {
           "spell": "rain-cloud",
           "castTicks": 12
         }
       },
       "earth+air": {
-        "plain": {
-          "spell": "rolling-boulder",
+        "thrust": {
+          "spell": "sand-blast",
           "castTicks": 9
         },
-        "modified": {
-          "spell": "sand-blast",
+        "throw": {
+          "spell": "rolling-boulder",
           "castTicks": 9
         }
       }

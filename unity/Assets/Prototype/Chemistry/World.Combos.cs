@@ -88,7 +88,7 @@ namespace Chem
                 case ComboCommandKind.Cycle: return CycleDpad(c, command.Step);
                 case ComboCommandKind.CastSelected: return CastSelected(c);
                 case ComboCommandKind.Release: return ReleaseHold(c);
-                case ComboCommandKind.Hand: return CastHand(c, command.Step, command.Hold);
+                case ComboCommandKind.Hand: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust);
                 case ComboCommandKind.Attune: return Attune(c.Player, command.Step, command.Element);
                 default: return false;
             }

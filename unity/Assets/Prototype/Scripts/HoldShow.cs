@@ -35,8 +35,8 @@ public class HoldShow : MonoBehaviour
         var world = grid != null ? grid.World : null;
         if (world?.HoldSite == null || !world.HandsOn(player)) return "";
         var h = world.HandsOf(player);
-        string line = $"Left: {h.Element[HandsDef.Left]}{Cooling(world, player, HandsDef.Left)}   Right: {h.Element[HandsDef.Right]}{Cooling(world, player, HandsDef.Right)}";
-        return world.InAttuning(player) ? line + "   (attuning: a hand's button changes it)" : line;
+        string line = $"Left: {h.Holds[HandsDef.Left] ?? "nothing"}{Cooling(world, player, HandsDef.Left)}   Right: {h.Holds[HandsDef.Right] ?? "nothing"}{Cooling(world, player, HandsDef.Right)}";
+        return world.InAttuning(player) ? line + "   (attuning: a hand's trigger changes it)" : line;
     }
 
     static string Cooling(World world, string player, int hand)

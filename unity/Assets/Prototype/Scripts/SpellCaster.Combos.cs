@@ -169,12 +169,13 @@ public partial class SpellCaster
         {
             if (fired.Player != player) continue;
             if (fired.Discovered) EventLog.Add($"New in your grimoire: {fired.Name}");
-            CastAtCrosshair(fired.Spell, fired.Charge);
+            if (fired.Range > 0 || fired.Act != null) FromHand(fired);
+            else CastAtCrosshair(fired.Spell, fired.Charge);
         }
     }
 
     /// <summary>Aims a spell from the crosshair now (or a few cells ahead, with nothing under it) and casts it.</summary>
-    void CastAtCrosshair(string spellId, int charge)
+    void CastAtCrosshair(string spellId, int charge, int range = 0)
     {
         if (!FindCrosshair())
         {
@@ -182,8 +183,11 @@ public partial class SpellCaster
             crosshair.point = transform.position + transform.forward * (AheadCells * grid.cellSize);
             crosshair.normal = Vector3.up;
         }
-        var aim = Aim(spellId, CrosshairCell, out var error);
+        var me = grid.CellAt(transform.position);
+        var (toX, toY) = HandsDef.Within(me.x, me.y, CrosshairCell.x, CrosshairCell.y, range);
+        var aim = Aim(spellId, new Vector2Int(toX, toY), out var error);
         if (error != null) EventLog.Add(error);
+        if (range > 0 && aim.HasValue) LastHandAim = new Vector2Int(aim.Value.x, aim.Value.y);
         if (aim.HasValue) Cast(new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
     }
 

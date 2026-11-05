@@ -79,9 +79,9 @@ namespace Chem
         CastSelected,
         /// <summary>Lets go of a held element: the cast goes off at the charge its meter has reached.</summary>
         Release,
-        /// <summary>During a run: a hand's button, <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> whether it's modified.</summary>
+        /// <summary>During a run: a hand's button, <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> its bumper rather than its trigger.</summary>
         Hand,
-        /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>.</summary>
+        /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>, or with none, nothing.</summary>
         Attune,
     }
 
@@ -109,7 +109,7 @@ namespace Chem
         public static ComboCommand Cycle(string player, int step) => new ComboCommand(player, ComboCommandKind.Cycle, null, step);
         public static ComboCommand CastSelected(string player) => new ComboCommand(player, ComboCommandKind.CastSelected);
         public static ComboCommand Release(string player) => new ComboCommand(player, ComboCommandKind.Release);
-        public static ComboCommand Hand(string player, int hand, bool modified = false) => new ComboCommand(player, ComboCommandKind.Hand, null, hand, modified);
+        public static ComboCommand Hand(string player, int hand, bool bumper = false) => new ComboCommand(player, ComboCommandKind.Hand, null, hand, bumper);
         public static ComboCommand Attune(string player, int hand, string element) => new ComboCommand(player, ComboCommandKind.Attune, element, hand);
     }
 
@@ -117,10 +117,12 @@ namespace Chem
     /// A meter that reached zero this tick. The view aims it and sends the usual
     /// <see cref="CastCommand"/>, since where a spell lands is only known as it goes off.
     /// </summary>
-    public readonly struct ComboFired
+    public struct ComboFired
     {
         public ComboFired(string player, string combo, string name, string spell, string shape, bool discovered, int charge = 1)
         {
+            Act = null;
+            Range = 0;
             Player = player;
             Combo = combo;
             Name = name;
@@ -140,6 +142,19 @@ namespace Chem
         public bool Discovered { get; }
         /// <summary>The strength it goes off at (CastCommand.Charge).</summary>
         public int Charge { get; }
+        /// <summary>An empty hand's act, with no <see cref="Spell"/>; null for a spell.</summary>
+        public string Act { get; private set; }
+        /// <summary>How far it can land, in cells; 0 for as far as it's aimed.</summary>
+        public int Range { get; private set; }
+
+        /// <summary>This, as a hand brings it out.</summary>
+        public ComboFired FromHand(string act, int range)
+        {
+            var fired = this;
+            fired.Act = act;
+            fired.Range = range;
+            return fired;
+        }
     }
 
     /// <summary>

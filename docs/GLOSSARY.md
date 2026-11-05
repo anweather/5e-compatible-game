@@ -545,7 +545,13 @@ that long, and doesn't march.
 : A row naming where a Hold's raiders enter, which kinds and how fast.
 
 **Hand**
-: One of a wizard's two element slots in the Hold. Each holds an **element** of the combo table; the trigger casts it, the bumper modifies it, both triggers combine.
+: One of a wizard's two slots in the Hold, holding an **element** or nothing today (`empty`, a row of the table like any other, so a later weapon is another row). The **gesture** is what the hand does, and what it holds is what comes out.
+
+**Gesture**
+: What a hand's buttons do in the Hold: **thrust** (the trigger), **throw** (the bumper), or **sweep** (both on one hand). Not `CastGesture`, the arms' pose for a spell.
+
+**Range**
+: How far from the wizard a hand's spell can land, in cells: short or long, by its gesture (`rules/hold.json`).
 
 **Attune**
 : To change a hand's element, in the castle keep's attuning room only.
@@ -554,7 +560,7 @@ that long, and doesn't march.
 : The room of the keep where a hand is attuned, named by two of the row's joins in the map's `hold.json`.
 
 **Hand spell**
-: A spell in the table of `rules/hold.json` `hands`: by the elements in the hands that cast it, and whether a **hand** was modified.
+: A spell in the table of `rules/hold.json` `hands`: by what a hand holds and its gesture, or by what both hold when both make the same gesture. An empty hand's row is an action instead (a punch, a throw, a shove).
 
 **Cooldown**
 : The ticks after a hand spell goes off before that hand casts again; a two-hand spell locks both, for longer.

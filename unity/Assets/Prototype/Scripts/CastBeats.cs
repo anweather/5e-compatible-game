@@ -218,7 +218,7 @@ public class CastBeats : MonoBehaviour
         foreach (var fired in firedCasts.Take(world))
         {
             if (fired.Player != player) continue;
-            firedSpell = fired.Spell;
+            firedSpell = fired.Spell ?? fired.Act;
             firedAt = Time.time;
             Charge = fired.Charge;
         }
