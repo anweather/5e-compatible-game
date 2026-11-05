@@ -39,7 +39,12 @@ namespace Chem
             public ChunkRect? Moving;
             /// <summary>The Update that last filled each sample, so cells close together fill it once.</summary>
             public int[,] FilledBy;
+            /// <summary>The samples in the queue for FillSome, so a sample waits only once.</summary>
+            public bool[,] Queued;
         }
+
+        // Samples Queue has asked for and FillSome hasn't reached, oldest first.
+        readonly Queue<(int i, int j, int x, int z)> waiting = new Queue<(int i, int j, int x, int z)>();
 
         /// <param name="grid">The chunk layout.</param>
         /// <param name="stepHeight">Metres per height step (ChemGrid.stepHeight).</param>
@@ -70,11 +75,15 @@ namespace Chem
         /// <summary>The chunks the cells shape (TerrainGrid.GridChunks); the others keep their baked heights.</summary>
         public IEnumerable<(int i, int j)> Chunks => chunks.Keys;
 
-        /// <summary>Whether every eased sample has reached its target.</summary>
+        /// <summary>How many samples are waiting for FillSome.</summary>
+        public int Waiting => waiting.Count;
+
+        /// <summary>Whether every eased sample has reached its target, and none waits to be worked out.</summary>
         public bool Settled
         {
             get
             {
+                if (waiting.Count > 0) return false;
                 foreach (var s in chunks.Values) if (s.Moving.HasValue) return false;
                 return true;
             }
@@ -335,7 +344,9 @@ namespace Chem
                 s.Target = Compute(world, kv.Key.i, kv.Key.j);
                 s.Current = (float[,])s.Target.Clone();
                 s.Moving = null;
+                s.Queued = null;
             }
+            waiting.Clear();
         }
 
         /// <summary>
@@ -361,6 +372,49 @@ namespace Chem
                 else s.Moving = s.Moving.HasValue ? s.Moving.Value.Union(r) : r;
             }
             return rects;
+        }
+
+        /// <summary>
+        /// Update spread over frames: notes the samples round changed cells for FillSome, each once however
+        /// many cells reach it, and works none out yet. A big land stamp's samples took 80 ms in one frame
+        /// (#151). Only the view draws from this, so a sample waiting a few frames moves nothing shared.
+        /// </summary>
+        public void Queue(IEnumerable<(int x, int y)> cells)
+        {
+            foreach (var (x, y) in cells) ForEachRect(x, y, Enqueue);
+        }
+
+        void Enqueue(ChunkRect r)
+        {
+            var s = chunks[(r.I, r.J)];
+            if (s.Target == null) throw new InvalidOperationException("Call Reset before Queue");
+            s.Queued ??= new bool[s.Target.GetLength(0), s.Target.GetLength(1)];
+            for (int sz = r.Z; sz <= r.ZMax; sz++)
+            {
+                for (int sx = r.X; sx <= r.XMax; sx++)
+                {
+                    if (s.Queued[sz, sx]) continue;
+                    s.Queued[sz, sx] = true;
+                    waiting.Enqueue((r.I, r.J, sx, sz));
+                }
+            }
+        }
+
+        /// <summary>Works out up to <paramref name="most"/> waiting samples from the cells as they are now, for Advance to ease to.</summary>
+        public void FillSome(World world, int most)
+        {
+            SamplesFilled = 0;
+            while (SamplesFilled < most && waiting.Count > 0)
+            {
+                var (i, j, x, z) = waiting.Dequeue();
+                var s = chunks[(i, j)];
+                s.Queued[z, x] = false;
+                s.Target[z, x] = SampleOffset(world, i, j, x, z);
+                SamplesFilled++;
+                if (Math.Abs(s.Target[z, x] - s.Current[z, x]) <= 0f) continue;
+                var sample = new ChunkRect(i, j, x, z, x, z);
+                s.Moving = s.Moving.HasValue ? s.Moving.Value.Union(sample) : sample;
+            }
         }
 
         int updates;
