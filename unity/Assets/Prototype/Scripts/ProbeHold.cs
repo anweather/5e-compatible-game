@@ -102,8 +102,12 @@ public class HoldProbe : ProbeScenario
         Metric("vertices", body);
 
         var middle = At(16, 16);
-        Stand(58, 19);
-        yield return Picture("valley-floor", At(135, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);
+        Stand(82, 19);
+        yield return Picture("valley-floor", At(90, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);
+        yield return Picture("from-hollowmere", At(78, -40) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("from-the-square", At(102, -52) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("from-the-foot", At(72, 8) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("from-the-shore", At(124, 20) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return FramesHere("floor");
         yield return Picture("approach", At(46, 12) + Vector3.up * 3f, At(28, 15) + Vector3.up * 5f);
         yield return Picture("from-above", At(46, -24) + Vector3.up * 60f, middle);
