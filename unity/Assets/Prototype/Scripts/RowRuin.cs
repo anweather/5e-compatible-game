@@ -24,9 +24,8 @@ public sealed class RowRuin
     enum State : byte { Standing, Holed, Down }
 
     readonly RowMesher.Stretch[] stretches;
-    readonly Mesh body, roof, walk;
-    readonly int[] walkAll, walkFixed;
-    readonly List<int> walkShown = new();
+    readonly Mesh body, roof;
+    readonly Held walk, rail;
     // Each mesh's triangles whole, what nothing owns (the floor, the chimney), and what's shown now.
     readonly int[] bodyAll, bodyFixed, bodyShown, roofAll, roofShown;
     readonly Color32[] colorsAll, colorsShown;
@@ -45,9 +44,8 @@ public sealed class RowRuin
         stretches = made.stretches;
         body = made.body;
         roof = made.roof;
-        walk = made.walk;
-        walkAll = walk != null ? walk.triangles : System.Array.Empty<int>();
-        walkFixed = (int[])walkAll.Clone();
+        walk = new Held(made.walk, stretches, s => s.Walk);
+        rail = new Held(made.rail, stretches, s => s.Rail);
         bodyAll = body.triangles;
         roofAll = roof.triangles;
         bodyFixed = (int[])bodyAll.Clone();
@@ -69,7 +67,6 @@ public sealed class RowRuin
             ours[i] = onACell(s.Place);
             solid[i] = ours[i];
             foreach (var run in s.Whole) Unfix(run);
-            foreach (var run in s.Walk) System.Array.Clear(walkFixed, run.Index, run.Indices);
             foreach (var run in s.Door) Unfix(run);
             foreach (var run in s.Gable) Unfix(run);
             Unfix(s.Left);
@@ -179,7 +176,8 @@ public sealed class RowRuin
         for (int i = 0; i < stretches.Length; i++) WriteStretch(i);
         body.SetTriangles(bodyShown, 0, false);
         body.colors32 = colorsShown;
-        WriteWalk();
+        walk.Write(stretches, i => states[i] != State.Down);
+        rail.Write(stretches, i => states[i] != State.Down);
         if (!roofToo) return;
         Array.Clear(roofShown, 0, roofShown.Length);
         RoofHurt = false;
@@ -192,18 +190,36 @@ public sealed class RowRuin
         roof.SetTriangles(roofShown, 0, false);
     }
 
-    // What's left to stand on: what no stretch owns, and what the stretches still up hold.
-    void WriteWalk()
+    // A collider's mesh, what's left of it: what no stretch holds, and what the stretches still up hold.
+    sealed class Held
     {
-        if (walk == null) return;
-        walkShown.Clear();
-        for (int k = 0; k + 2 < walkFixed.Length; k += 3)
-            if (walkFixed[k] != walkFixed[k + 1]) walkShown.AddRange(new[] { walkFixed[k], walkFixed[k + 1], walkFixed[k + 2] });
-        for (int i = 0; i < stretches.Length; i++)
-            if (states[i] != State.Down)
-                foreach (var run in stretches[i].Walk)
-                    for (int k = run.Index; k < run.Index + run.Indices; k++) walkShown.Add(walkAll[k]);
-        walk.SetTriangles(walkShown, 0, false);
+        readonly Mesh mesh;
+        readonly Func<RowMesher.Stretch, List<RowMesher.Run>> runs;
+        readonly int[] all, loose;
+        readonly List<int> shown = new();
+
+        public Held(Mesh mesh, RowMesher.Stretch[] stretches, Func<RowMesher.Stretch, List<RowMesher.Run>> runs)
+        {
+            this.mesh = mesh;
+            this.runs = runs;
+            all = mesh != null ? mesh.triangles : Array.Empty<int>();
+            loose = (int[])all.Clone();
+            foreach (var s in stretches)
+                foreach (var run in runs(s)) Array.Clear(loose, run.Index, run.Indices);
+        }
+
+        public void Write(RowMesher.Stretch[] stretches, Func<int, bool> up)
+        {
+            if (mesh == null) return;
+            shown.Clear();
+            for (int k = 0; k + 2 < loose.Length; k += 3)
+                if (loose[k] != loose[k + 1]) shown.AddRange(new[] { loose[k], loose[k + 1], loose[k + 2] });
+            for (int i = 0; i < stretches.Length; i++)
+                if (up(i))
+                    foreach (var run in runs(stretches[i]))
+                        for (int k = run.Index; k < run.Index + run.Indices; k++) shown.Add(all[k]);
+            mesh.SetTriangles(shown, 0, false);
+        }
     }
 
     void WriteStretch(int i)

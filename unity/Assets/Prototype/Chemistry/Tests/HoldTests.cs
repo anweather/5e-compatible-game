@@ -50,6 +50,50 @@ namespace Chem.Tests
         // A wizard out of the way, on no cell a raider reaches.
         static void Away(World w, string who = Me) => Stand(w, who, (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
 
+        // The map's own trees on the field, as they stand in cells.txt.
+        static void Trees(World w)
+        {
+            var rows = MapFile.ReadCells(ChemistryTests.WorldDir()).Replace("\r", "").Trim('\n').Split('\n');
+            for (int y = 0; y < rows.Length; y++)
+                for (int x = 0; x < rows[y].Length; x++)
+                    if (rows[y][x] == 'T' && w.At(x, y).T == "grass") w.Paint(x, y, "tree");
+        }
+
+        [Test]
+        public void OnTheMapTheyClimbWestAndStayOutOfTheVillage()
+        {
+            var w = Field();
+            Trees(w);
+            Stand(w, Me, w.HoldSite.Plate);
+            Ticks(w, R.Sim.Hold.PlateTicks + 1);
+            Away(w);
+            var village = WorldPlaces.Load(ChemistryTests.WorldDir()).Find("hollowmere").Cells().ToHashSet();
+            var eastmost = new System.Collections.Generic.Dictionary<int, int>();
+            var startedAt = new System.Collections.Generic.Dictionary<int, int>();
+            Until(w, () =>
+            {
+                foreach (var r in w.Raiders)
+                {
+                    Assert.That(village.Contains((r.X, r.Y)), Is.False, $"{r.Kind} at {r.X}, {r.Y}");
+                    if (!startedAt.ContainsKey(r.Id)) startedAt[r.Id] = r.X;
+                    eastmost[r.Id] = eastmost.TryGetValue(r.Id, out int far) ? System.Math.Max(far, r.X) : r.X;
+                }
+                return w.Hold.Health < R.Sim.Hold.Health;
+            }, "a raider reaches the heart past the trees");
+            Assert.That(startedAt, Is.Not.Empty);
+            Assert.That(eastmost.All(e => e.Value <= startedAt[e.Key] + 2), "none turns back east");
+        }
+
+        [Test]
+        public void TheRunIsInTheChecksum()
+        {
+            var one = Running();
+            var other = Running();
+            Assert.That(other.CastHash(), Is.EqualTo(one.CastHash()));
+            other.Hold.Health--;
+            Assert.That(other.CastHash(), Is.Not.EqualTo(one.CastHash()), "a peer whose keep is hurt differently is seen to differ");
+        }
+
         [Test]
         public void TheMapsHoldReads()
         {
@@ -212,8 +256,10 @@ namespace Chem.Tests
             for (int wave = 1; wave <= 7; wave++)
             {
                 Until(w, () => w.Hold.Wave > wave || w.Raiders.Count > 0, "raiders come");
+                int left = MostTicks;
                 while (w.Hold.Wave == wave)
                 {
+                    Assert.That(left-- > 0, "the wave ends");
                     foreach (var r in w.Raiders) r.Hp = 1;
                     foreach (var r in w.Raiders) r.Status["burning"] = 30;
                     w.Step();

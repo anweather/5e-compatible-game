@@ -130,6 +130,9 @@ public sealed class ValleyGround
     /// <summary>What making the chunks took at the last Bind (ms): the probe compares built with baked.</summary>
     public double BindMs { get; private set; }
 
+    // How many heightmap samples a frame works out for reshaped ground (#151): a radius 32 stamp's take a dozen frames or so.
+    const int MostSamplesAFrame = 4096;
+
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
 
@@ -146,6 +149,7 @@ public sealed class ValleyGround
         repaint.Clear();
         cleared.Clear();
         pendingDetail.Clear();
+        treeColliders.Clear();
         reshaped.Clear();
         var timer = System.Diagnostics.Stopwatch.StartNew();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
@@ -265,9 +269,13 @@ public sealed class ValleyGround
         if (reshaped.Count > 0)
         {
             PerfCounts.Add("shape.reshaped_cells", reshaped.Count);
-            using (HeightUpdateMarker.Auto()) CountRects("shape.update", heightfield.Update(world, reshaped));
-            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
+            using (HeightQueueMarker.Auto()) heightfield.Queue(reshaped);
             reshaped.Clear();
+        }
+        if (heightfield.Waiting > 0)
+        {
+            using (HeightUpdateMarker.Auto()) heightfield.FillSome(world, MostSamplesAFrame);
+            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
         }
         List<ChunkRect> moved;
         using (HeightEaseMarker.Auto()) moved = heightfield.Advance(dt);
@@ -313,6 +321,7 @@ public sealed class ValleyGround
     {
         using var marked = FlushMarker.Auto();
         using (SyncMarker.Auto()) SyncOneHeightmap();
+        using (TreeColliderMarker.Auto()) RebuildOneTreeCollider();
         PerfCounts.Peak("ground.repaint_waiting", repaint.Count);
         using (DetailMarker.Auto()) WriteDetail();
         if (repaint.Count == 0)
@@ -354,9 +363,9 @@ public sealed class ValleyGround
     // Profiler markers (Window > Analysis > Profiler) round the terrain's per-frame work.
     static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
         PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint"),
-        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"),
+        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"), HeightQueueMarker = new("ValleyGround.HeightQueue"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
-        SyncMarker = new("ValleyGround.SyncHeightmap"), BlockMarker = new("ValleyGround.Paint.Block"),
+        SyncMarker = new("ValleyGround.SyncHeightmap"), TreeColliderMarker = new("ValleyGround.TreeCollider"), BlockMarker = new("ValleyGround.Paint.Block"),
         ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
 
     // Each texel's noise, worked out the first time it paints and kept (CellPaint.Block): a shower's
@@ -443,6 +452,24 @@ public sealed class ValleyGround
         }
     }
 
+    /// <summary>A chunk's trees changed: its collider catches up, a chunk a frame.</summary>
+    public void TreesMoved((int i, int j) at) => treeColliders.Add(at);
+
+    // A terrain's collider keeps the trees it was given: setting treeInstances draws the change and leaves the old trunks
+    // standing unseen (#161). Only giving it its data again takes them, and a fire changes many chunks at once. Players
+    // and props are all it stops, so a frame or two late moves nothing shared.
+    void RebuildOneTreeCollider()
+    {
+        if (treeColliders.Count == 0) return;
+        var at = treeColliders.First();
+        treeColliders.Remove(at);
+        if (!chunks[at].terrain.TryGetComponent<TerrainCollider>(out var collider)) return;
+        var data = collider.terrainData;
+        collider.terrainData = null;
+        collider.terrainData = data;
+    }
+
+    readonly HashSet<(int i, int j)> treeColliders = new();
     List<Chunk> syncOrder = new();
     // Metres in a land unit: what a land stamp's integers are drawn at.
     float landUnit;

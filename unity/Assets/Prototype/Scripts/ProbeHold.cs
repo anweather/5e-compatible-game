@@ -173,12 +173,18 @@ public class HoldProbe : ProbeScenario
         Check("its_cells_are_laid", cells.All(c => world.At(c.X, c.Y).T == c.Terrain));
         var valley = FindAnyObjectByType<ValleyChemistry>();
         Check("no_tree_stands_on_it", cells.All(c => !valley.TreeStands(c.X, c.Y)), $"{cells.Count(c => valley.TreeStands(c.X, c.Y))} of {cells.Count}");
+        var unseen = cells.Where(c => !Enumerable.Range(-1, 3).Any(dy => Enumerable.Range(-1, 3).Any(dx => valley.TreeStands(c.X + dx, c.Y + dy))) && TreeColliderAt(grid.CellCenter(c.X, c.Y))).ToList();
+        Check("no_trunk_stands_unseen_on_it", unseen.Count == 0, string.Join(" ", unseen.Take(8).Select(c => $"[{c.X}, {c.Y}]")));
         var body = houses.Root(Row).GetComponentsInChildren<MeshFilter>().Sum(f => f.sharedMesh.vertexCount);
         Metric("vertices", body);
 
         var middle = At(16, 16);
-        Stand(58, 19);
-        yield return Picture("valley-floor", At(135, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);
+        Stand(82, 19);
+        yield return Picture("valley-floor", At(90, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);
+        yield return Picture("from-hollowmere", At(78, -40) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("from-the-square", At(102, -52) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("from-the-foot", At(72, 8) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("from-the-shore", At(124, 20) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return FramesHere("floor");
         yield return Picture("approach", At(46, 12) + Vector3.up * 3f, At(28, 15) + Vector3.up * 5f);
         yield return Picture("from-above", At(46, -24) + Vector3.up * 60f, middle);
@@ -207,6 +213,10 @@ public class HoldProbe : ProbeScenario
         yield return Walk(28, 3);
         yield return Walk(28, 15);
         Check("along_it_over_the_gate", OnCell(28, 15) && wizard.transform.position.y > walkTop - OnTop, $"at {grid.CellAt(wizard.transform.position)}, y {wizard.transform.position.y:0.0}");
+        var outward = puppet.WalkTo(At(36, 15));
+        for (float t = 0f; t < 3f && outward.MoveNext(); t += Time.deltaTime) yield return outward.Current;
+        puppet.Move(Vector2.zero);
+        Check("the_rail_stops_a_wizard", wizard.transform.position.y > walkTop - OnTop, $"at {grid.CellAt(wizard.transform.position)}, y {wizard.transform.position.y:0.0}");
         yield return Picture("from-the-walls", wizard.transform.position + Vector3.up * 1.7f, At(60, 19));
         yield return FramesHere("walls");
 
