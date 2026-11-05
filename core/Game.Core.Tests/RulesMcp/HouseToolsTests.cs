@@ -110,7 +110,7 @@ namespace Chem.Tests
             var rows = JObject.Parse(kept)["patch"]["world"]["buildings"];
             Assert.That(((JObject)rows).Count, Is.EqualTo(2), "one edit by id and one new building, in one mod");
             Assert.That(rows["beach-house#1"], Is.Not.Null);
-            Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("cabin#"));
+            Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("lake-house#"), "the house by the lake");
 
             // Switched on from the kept file, it builds both; nothing but the row names anything.
             var world = bench.LiveWorld;

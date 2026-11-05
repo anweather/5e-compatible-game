@@ -83,7 +83,7 @@ namespace Chem.Tests
         {
             string path = Path.Combine(map, WorldBuildings.FileName);
             var o = JObject.Parse(File.ReadAllText(path));
-            ((JArray)o["buildings"]).OfType<JObject>().Single(r => r["walls"] != null)["at"] = new JArray(x, y);
+            ((JArray)o["buildings"]).OfType<JObject>().Single(r => (string)r["id"] == "hold#1")["at"] = new JArray(x, y);
             File.WriteAllText(path, o.ToString());
         }
 
