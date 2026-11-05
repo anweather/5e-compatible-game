@@ -23,6 +23,7 @@ namespace Chem.PlaytestText
         readonly ModBudgets budgets;
         readonly Rules rules;
         readonly StandInValley valley;
+        readonly (int low, int high) landRange;
         readonly uint seed;
         readonly string logPath, findingsPath;
         readonly double minutes;
@@ -38,6 +39,7 @@ namespace Chem.PlaytestText
             budgets = ModBudgets.Load(folders);
             rules = Rules.Load(folders.Rules);
             valley = StandInValley.Load(folders, budgets) ?? throw new InvalidOperationException("No world files beside the rules.");
+            landRange = MapFile.Load(folders.World).LandRange;
             if (outDir != null)
             {
                 Directory.CreateDirectory(outDir);
@@ -104,6 +106,7 @@ namespace Chem.PlaytestText
         string Fresh()
         {
             world = new World(rules, valley.W, valley.H, seed);
+            world.SetLandRange(landRange);
             world.MakeFrom(valley);
             world.KeepStart();
             world.OpenRoom(ChangeMode.Open, Player, rules, budgets);

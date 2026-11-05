@@ -110,6 +110,33 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ADrawableRangeUpsideDownIsSaid()
+        {
+            Change(o => o["drawable"] = new JArray(2000, -200));
+            Assert.That(Errors, Does.Contain("drawable range runs from 2000 up to -200"));
+            Change(o => o["drawable"] = new JArray(2000, 2000));
+            Assert.That(Errors, Does.Contain("drawable range runs from 2000 up to 2000"));
+        }
+
+        [Test]
+        public void LandOutsideADrawableRangeIsSaid()
+        {
+            Change(o => o["drawable"] = new JArray(-173, 1319));
+            Assert.That(Errors, Does.Contain("lowest cell is -174, below map.json's drawable -173"));
+            Assert.That(Errors, Does.Not.Contain("above map.json's drawable"));
+            Change(o => o["drawable"] = new JArray(-174, 1318));
+            Assert.That(Errors, Does.Contain("highest cell is 1319, above map.json's drawable 1318"));
+            Assert.That(Errors, Does.Not.Contain("below map.json's drawable"));
+        }
+
+        [Test]
+        public void LandRightUpToADrawableRangeIsFit()
+        {
+            Change(o => o["drawable"] = new JArray(-174, 1319));
+            Assert.That(Errors, Is.Empty);
+        }
+
+        [Test]
         public void AFolderThatIsntTheMapItNamesIsSaid()
         {
             Change(o => o["id"] = "drowned-chain");

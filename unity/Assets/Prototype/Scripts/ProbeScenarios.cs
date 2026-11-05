@@ -231,6 +231,8 @@ public static class ProbeScenarios
         new Entry("apikey", typeof(ApiKeyProbe), 60f,
             "A player's own key against ApiStandIn, no real key or call: no key stays on Claude Code, a good key turns the chat to ApiChat, a message runs through the server and the loop, the spend cap stops the next one. " +
             "Checks: the check doesn't block, the key is in no record, console, environment or save, Remove goes back to Claude Code, no console errors."),
+        new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
+            "What GroundSwitch put on the terrains (unity/Temp/ground-builder says on or land; no file is off) and what the ground's Bind took: compare runs. Checks: the chunks are built or baked as switched, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
             "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
         new Entry("act", typeof(ActProbe), 60f,

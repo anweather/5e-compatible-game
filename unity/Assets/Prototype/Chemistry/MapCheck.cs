@@ -39,6 +39,7 @@ namespace Chem
             if (map.W != Size || map.H != Size) errors.Add($"the map is {map.W} x {map.H}, and only {Size} x {Size} is laid out");
             CheckCells(worldDir, map, errors);
             int[] land = ReadLand(worldDir, map, errors);
+            CheckRange(map, land, errors);
             if (land.Length > 0)
             {
                 CheckLand(map, land, errors);
@@ -111,6 +112,16 @@ namespace Chem
             var land = LandFile.Read(File.ReadAllText(path), map.W, map.H);
             if (land.Length == 0) errors.Add($"{MapFile.LandName} isn't for a {map.W} x {map.H} map");
             return land;
+        }
+
+        // A range a map says is held to its land; one left out is the valley's, whose sea bed lies below where stamps stop.
+        static void CheckRange(MapFile map, int[] land, List<string> errors)
+        {
+            var (low, high) = map.LandRange;
+            if (low >= high) errors.Add($"{MapFile.FileName}'s drawable range runs from {low} up to {high}");
+            if (!map.OwnLandRange || land.Length == 0) return;
+            if (land.Min() < low) errors.Add($"the land's lowest cell is {land.Min()}, below {MapFile.FileName}'s drawable {low}");
+            if (land.Max() > high) errors.Add($"the land's highest cell is {land.Max()}, above {MapFile.FileName}'s drawable {high}");
         }
 
         static void CheckLand(MapFile map, int[] land, List<string> errors)
