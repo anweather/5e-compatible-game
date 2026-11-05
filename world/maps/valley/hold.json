@@ -1,0 +1,18 @@
+{
+  "about": "The Hold on this map (docs/design/the-hold.md, WorldHold): the row it's fought over, three of that row's joins (the keep's heart raiders go for, the plate that starts a run, where a downed wizard gets up), and the spawners: each a place in places.json and the raider kinds it sends, round and round. Wave numbers are in rules/hold.json.",
+  "castle": "hold#1",
+  "heart": "heart",
+  "plate": "plate",
+  "rise": "rise",
+  "spawners": [
+    {
+      "id": "foot",
+      "place": "hold-foot",
+      "kinds": [
+        "bone-hound",
+        "ash-crab",
+        "giant-spider"
+      ]
+    }
+  ]
+}

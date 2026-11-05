@@ -47,7 +47,21 @@ namespace Chem
             }
             CheckThings(worldDir, map, errors);
             CheckRows(worldDir, map, errors);
+            CheckHold(worldDir, errors);
             return errors;
+        }
+
+        // A map's Hold names a row, its joins and places that are there.
+        static void CheckHold(string worldDir, List<string> errors)
+        {
+            try
+            {
+                WorldHold.Load(worldDir);
+            }
+            catch (Exception e) when (e is FormatException || e is JsonException || e is IOException)
+            {
+                errors.Add(e.Message);
+            }
         }
 
         // A row laid over the cells stands on the map, dry and clear of its things: the box of its walls and towers.

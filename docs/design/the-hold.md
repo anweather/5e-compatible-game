@@ -89,6 +89,13 @@ Today's spells, today's controls, the castle from phase 1.
 - **A first endless curve,** rough: phase 4 tunes it.
 - **Done when:** two peers play a run to a loss with no desync, and Andrew says if it's fun.
 
+**As built.** `rules/hold.json` has the numbers and adjective rows, a map's `hold.json` the castle's row, three of its joins (`heart`, `plate`, `rise`) and the
+spawners, each a place in `places.json` and the kinds it sends. `World.Hold.cs` is the run. A wizard on the plate starts one, read from Stand commands, so there's no
+start command. Raiders use the field's list, so spells reach them as ever, but their way is `World.Hold.cs`'s: it can cost a way through a wall, by blows (`strength`). A
+wizard on a blocking cell is on the walls and no raider reaches it. An adjective's raider is an entity of its own, `kind~adjective`, so `World.Raiders.cs` and
+`World.Defense.cs` are unchanged. A defense field started during a run isn't refused, and its march moves all raiders: don't run both.
+A late joiner gets a run by replaying stands, so `StandKeeper` keeps every stand of a run and those on the plate.
+
 ### 3. Hands
 
 The pad already has an element on each shoulder button and trigger, and `combos.json` has the 4 × 4 table. So this is a change

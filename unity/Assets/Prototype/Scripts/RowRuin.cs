@@ -12,6 +12,8 @@ using UnityEngine;
 public sealed class RowRuin
 {
     const float Soot = 0.16f;
+    // A group of cells falls when one in this many have gone.
+    const int GroupFalls = 4;
 
     /// <summary>What a stretch's cell says now.</summary>
     public struct CellNow
@@ -23,6 +25,7 @@ public sealed class RowRuin
 
     readonly RowMesher.Stretch[] stretches;
     readonly Mesh body, roof;
+    readonly HeldMesh walk, rail;
     // Each mesh's triangles whole, what nothing owns (the floor, the chimney), and what's shown now.
     readonly int[] bodyAll, bodyFixed, bodyShown, roofAll, roofShown;
     readonly Color32[] colorsAll, colorsShown;
@@ -41,6 +44,8 @@ public sealed class RowRuin
         stretches = made.stretches;
         body = made.body;
         roof = made.roof;
+        walk = new HeldMesh(made.walk, stretches, s => s.Walk);
+        rail = new HeldMesh(made.rail, stretches, s => s.Rail);
         bodyAll = body.triangles;
         roofAll = roof.triangles;
         bodyFixed = (int[])bodyAll.Clone();
@@ -89,7 +94,7 @@ public sealed class RowRuin
         bool bodyChanged = false, roofChanged = false;
         for (int i = 0; i < n; i++)
         {
-            var c = cell(stretches[i].Place);
+            var c = stretches[i].Group != null ? GroupNow(stretches[i].Group, cell) : cell(stretches[i].Place);
             bodyChanged |= solid[i] != c.blocking;
             solid[i] = c.blocking;
             burnt[i] |= c.burning || (c.ashen && !c.blocking);
@@ -113,6 +118,22 @@ public sealed class RowRuin
         if (!bodyChanged && !roofChanged) return false;
         Write(roofChanged);
         return true;
+    }
+
+    // A part on many cells stands until a share of them have gone; it burns if any of them does.
+    static CellNow GroupNow(List<Vector2Int> cells, Func<Vector2Int, CellNow> cell)
+    {
+        int gone = 0;
+        var now = new CellNow();
+        foreach (var at in cells)
+        {
+            var c = cell(at);
+            if (!c.blocking) gone++;
+            now.burning |= c.burning;
+            now.ashen |= c.ashen;
+        }
+        now.blocking = gone * GroupFalls < cells.Count;
+        return now;
     }
 
     // Whether a wall's cell, or the head over a gap, still has what it needs.
@@ -155,6 +176,8 @@ public sealed class RowRuin
         for (int i = 0; i < stretches.Length; i++) WriteStretch(i);
         body.SetTriangles(bodyShown, 0, false);
         body.colors32 = colorsShown;
+        walk.Write(stretches, i => states[i] != State.Down);
+        rail.Write(stretches, i => states[i] != State.Down);
         if (!roofToo) return;
         Array.Clear(roofShown, 0, roofShown.Length);
         RoofHurt = false;
@@ -165,6 +188,38 @@ public sealed class RowRuin
             foreach (var run in stretches[i].Roof) Array.Copy(roofAll, run.Index, roofShown, run.Index, run.Indices);
         }
         roof.SetTriangles(roofShown, 0, false);
+    }
+
+    // A collider's mesh, what's left of it: what no stretch holds, and what the stretches still up hold.
+    sealed class HeldMesh
+    {
+        readonly Mesh mesh;
+        readonly Func<RowMesher.Stretch, List<RowMesher.Run>> runs;
+        readonly int[] all, loose;
+        readonly List<int> shown = new();
+
+        public HeldMesh(Mesh mesh, RowMesher.Stretch[] stretches, Func<RowMesher.Stretch, List<RowMesher.Run>> runs)
+        {
+            this.mesh = mesh;
+            this.runs = runs;
+            all = mesh != null ? mesh.triangles : Array.Empty<int>();
+            loose = (int[])all.Clone();
+            foreach (var s in stretches)
+                foreach (var run in runs(s)) Array.Clear(loose, run.Index, run.Indices);
+        }
+
+        public void Write(RowMesher.Stretch[] stretches, Func<int, bool> up)
+        {
+            if (mesh == null) return;
+            shown.Clear();
+            for (int k = 0; k + 2 < loose.Length; k += 3)
+                if (loose[k] != loose[k + 1]) shown.AddRange(new[] { loose[k], loose[k + 1], loose[k + 2] });
+            for (int i = 0; i < stretches.Length; i++)
+                if (up(i))
+                    foreach (var run in runs(stretches[i]))
+                        for (int k = run.Index; k < run.Index + run.Indices; k++) shown.Add(all[k]);
+            mesh.SetTriangles(shown, 0, false);
+        }
     }
 
     void WriteStretch(int i)

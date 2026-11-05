@@ -288,6 +288,25 @@ public class CommandChannelTests
         return asked;
     }
 
+    [Test]
+    public void AStandTheHoldReadsAndTheOneThatLeavesItStayInTheHistory()
+    {
+        const int Plate = 5;
+        var keeper = new StandKeeper(() => false, (x, y) => true, (x, y) => x == Plate);
+        var host = StrikeChannel(new Dictionary<int, TickBatch>(), keeper);
+        var walk = new[] { 1, 2, Plate, 8, 9, 10 };
+        for (int t = 1; t <= walk.Length; t++)
+        {
+            host.Request(Stand("p0", walk[t - 1], 1));
+            host.Stamp(t);
+        }
+        var kept = host.HistoryForJoiner().Select(s => s.X).ToList();
+        Assert.That(kept.Contains(Plate));
+        Assert.That(kept.Contains(8), "the stand off it says when it was left");
+        Assert.That(kept.Contains(10));
+        Assert.That(kept.Contains(9), Is.False, "the rest go, as ever");
+    }
+
     static Dictionary<int, string> Replay(Rules rules, string mod, IEnumerable<StrikeIntent> strikes, int ticks)
     {
         var joiner = StrikeChannel(new Dictionary<int, TickBatch>(), new StandKeeper(() => true, (x, y) => true));

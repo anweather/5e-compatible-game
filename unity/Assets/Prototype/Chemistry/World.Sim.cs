@@ -117,6 +117,7 @@ namespace Chem
                     TickWeather(tickRows);
                     TickRaiders();
                     TickDefense();
+                    TickHold();
                     TickCombos();
                     TickWhirlwinds();
                     TickWaves();
