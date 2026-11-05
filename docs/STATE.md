@@ -77,7 +77,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 3. **The Hold (Andrew, 2026-11-05, #152, J-074; `docs/design/the-hold.md`):** the first game loop, on the hill west of Hollowmere. Phase 1 is the castle. Castle landed (1322bce0; Andrew likes it). It cannot be seen from the valley floor, so Andrew chose to move it east to the crest: PC on `castle-crest`. Crest and stone landed. Phase 2 landed (4687e9e3): one peer to a loss; real peers owed (`briefs/hold-fight-pc-run.md`, after `castle-road`, Andrew's road, jobs and lake house on the PC). Mac on phase 3 (`briefs/hold-hands.md`, `hold-hands`). Clearing landed; the castle shows from the square. Hands rework to gestures (J-075) on `hold-hands`. Road failure in the Mac player being checked on the PC.
 4. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
-- Tests: #162, `briefs/test-speed.md` on u1 (parallel, trimmed gates). Decoupling waits until the Hold is done (Andrew, 2026-11-05).
+- Tests: #162, `briefs/test-speed.md` on the Mac (parallel, trimmed gates; the Linux VMs' account is down, Andrew, 2026-11-05). Decoupling waits until the Hold is done (Andrew, 2026-11-05).
 - Backlog and priority: the board, https://github.com/users/anweather/projects/3 (epics, `area:` and `p1`-`p3` labels); `docs/BACKLOG.md` is the pointer and `docs/backlog-archive.md` keeps the design detail (more than one map is #69).
 
 ## Andrew's board
