@@ -507,6 +507,7 @@ namespace Chem.Tests
         /// Prints the numbers; run with --logger "console;verbosity=detailed" to read them.
         /// </summary>
         [Test]
+        [NonParallelizable] // it times itself: it needs the machine to itself
         public void AFullSweepStaysWithinTheTickBudget()
         {
             const int size = 576, dragonStage = 8;
