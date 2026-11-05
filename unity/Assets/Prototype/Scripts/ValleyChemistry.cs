@@ -601,7 +601,11 @@ public partial class ValleyChemistry : MonoBehaviour
         if (ground == null) return;
         rocks.Tick(Time.deltaTime);
         timer.Restart();
-        foreach (var at in treesChanged) ground.WritableData(at).treeInstances = trees[at];
+        foreach (var at in treesChanged)
+        {
+            ground.WritableData(at).treeInstances = trees[at];
+            ground.TreesMoved(at);
+        }
         treesChanged.Clear();
         TreesMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
