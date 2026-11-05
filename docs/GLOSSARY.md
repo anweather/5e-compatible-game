@@ -545,7 +545,10 @@ that long, and doesn't march.
 : A row naming where a Hold's raiders enter, which kinds and how fast.
 
 **Hand**
-: One of a wizard's two element slots in the Hold. Each holds an **element** of the combo table; the trigger casts it, the bumper modifies it, both triggers combine.
+: One of a wizard's two slots in the Hold: an **element** of the combo table, or nothing. Its **gesture** says what comes out.
+
+**Gesture**
+: What a hand's buttons do in the Hold: thrust (trigger, short range), throw (bumper, long range), sweep (both, area). The same gesture on both hands makes something new; different gestures each do their own. Not `CastGestures`, the view's animation of a cast.
 
 **Attune**
 : To change a hand's element, in the castle keep's attuning room only.
