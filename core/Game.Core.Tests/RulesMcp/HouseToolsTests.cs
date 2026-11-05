@@ -125,7 +125,7 @@ namespace Chem.Tests
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "stucco-wall"), Is.GreaterThan(0));
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "door"), Is.EqualTo(1));
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "rock"), Is.GreaterThan(0), "new houses are hollow");
-            string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("cabin#", StringComparison.Ordinal));
+            string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("lake-house#", StringComparison.Ordinal));
             Assert.That(world.BuildingRowOf(wing).Walls.Any(w => w.Id.StartsWith("wing1", StringComparison.Ordinal)));
             Assert.That(client.Call("find", new { kind = "building", near = "lake", within = 12 }), Does.Contain(wing));
             Assert.That(client.Call("whats_on", new { }), Does.Contain("the building beach-house#1"));

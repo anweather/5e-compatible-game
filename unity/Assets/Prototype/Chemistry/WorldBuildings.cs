@@ -102,11 +102,14 @@ namespace Chem
             return VillageLayout.Lay(spec, (x, y) => terrainAt(x, y) is string t && walls.Contains(t));
         }
 
-        // By its walls: a road or a clearing is ground, and wears, burns and grows over like any, and an opening's cells follow the tables.
+        // By its walls, nearly all of them: a road or a clearing is ground, and wears, burns and grows over like any, and a table can
+        // close an opening into wall that was laid as glass.
         static bool WasLaid(JObject r, Func<int, int, string> terrainAt, BuildingTables tables)
         {
             var cells = BuildingRaster.Cells(BuildingRow.Read((string)r["id"], r, tables), tables);
-            return cells.Where(c => c.Part == BuildingPart.Wall).All(c => terrainAt(c.X, c.Y) == c.Terrain) && cells.Any(c => terrainAt(c.X, c.Y) == c.Terrain);
+            var walls = cells.Where(c => c.Part == BuildingPart.Wall).ToList();
+            int standing = walls.Count(c => terrainAt(c.X, c.Y) == c.Terrain);
+            return standing * 10 >= walls.Count * 9 && cells.Any(c => terrainAt(c.X, c.Y) == c.Terrain);
         }
 
         static bool Stands(JObject row, Func<int, int, string> terrainAt)
