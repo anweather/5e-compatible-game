@@ -4,6 +4,7 @@ Shader "Prototype/VillageLit"
     // window lit from inside, brighter the darker the sky: the global _LampGlow, which Village sets
     // from SkyLight). Soft wrapped lighting, main-light shadows and URP's fog, like the creatures.
     // A house between the camera and the wizard is dithered away round it (OccluderDither.hlsl).
+    // A vertex marked in its first uv is stone in courses: Coursed lays the blocks from where it stands in the world.
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
@@ -29,6 +30,7 @@ Shader "Prototype/VillageLit"
             float4 positionOS : POSITION;
             float3 normalOS : NORMAL;
             half4 color : COLOR;
+            float2 mark : TEXCOORD0;
             UNITY_VERTEX_INPUT_INSTANCE_ID
         };
         ENDHLSL
@@ -58,7 +60,38 @@ Shader "Prototype/VillageLit"
                 half3 normalWS : TEXCOORD1;
                 half4 color : TEXCOORD2;
                 half fogFactor : TEXCOORD3;
+                half coursed : TEXCOORD4;
             };
+
+            float Hashed(float2 p)
+            {
+                return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+            }
+
+            // Blocks a course high, of uneven lengths and each its own tone, with thin joints, a lit top edge and a rough face.
+            // sharp fades the fine detail as it nears a pixel, so a far wall keeps the weathering and doesn't shimmer. Facing
+            // east or west, a wall runs along z.
+            half Coursed(float3 at, half3 n, half sharp)
+            {
+                const float course = 0.75, block = 1.7, joint = 0.035;
+                float along = abs(n.x) > abs(n.z) ? at.z : at.x;
+                float row = floor(at.y / course);
+                float u = along / block + Hashed(float2(row, 3.0));
+                float i = floor(u);
+                float start = i + (Hashed(float2(i, row)) - 0.5) * 0.3;
+                if (u < start) { i -= 1.0; start = i + (Hashed(float2(i, row)) - 0.5) * 0.3; }
+                float end = i + 1.0 + (Hashed(float2(i + 1.0, row)) - 0.5) * 0.3;
+                float2 stone = float2(i, row);
+                float high = frac(at.y / course) * course;
+                float edge = min(min(u - start, end - u) * block, min(high, course - high));
+                half tone = 1.0 + (Hashed(stone) - 0.5) * 0.42 * sharp;
+                half joints = 1.0 - 0.42 * sharp * (1.0 - smoothstep(joint * 0.4, joint * 1.6, edge));
+                half lip = 1.0 + 0.1 * sharp * (1.0 - smoothstep(0.0, 0.09, course - high));
+                half rough = 1.0 + (Hashed(floor(float2(along, at.y) * 9.0)) - 0.5) * 0.12 * sharp * sharp;
+                float2 patch = float2(along, at.y) / float2(9.0, 5.0);
+                half weather = 0.86 + 0.28 * lerp(Hashed(floor(patch)), Hashed(floor(patch + 0.5)), 0.5);
+                return tone * joints * lip * rough * weather;
+            }
 
             Varyings Vert(Attributes input)
             {
@@ -69,6 +102,7 @@ Shader "Prototype/VillageLit"
                 o.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 o.color = input.color * _Tint;
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
+                o.coursed = input.mark.x;
                 return o;
             }
 
@@ -83,6 +117,8 @@ Shader "Prototype/VillageLit"
                 Light light = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half diffuse = saturate(dot(n, light.direction) * 0.8 + 0.2);
                 half3 albedo = input.color.rgb;
+                half sharp = saturate(1.0 - fwidth(input.positionWS.y) * 6.0);
+                UNITY_BRANCH if (input.coursed > 0.5) albedo *= Coursed(input.positionWS, n, sharp);
                 half3 color = albedo * (light.color * light.shadowAttenuation * diffuse + SampleSH(n));
                 // Lit windows: a dim warmth by day, bright enough to bloom at night, with a slow flicker.
                 half lamp = lerp(lerp(0.15, 2.4, saturate(_LampGlow)), 1.2, _SteadyGlow);

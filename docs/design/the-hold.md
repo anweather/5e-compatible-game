@@ -62,7 +62,7 @@ open, a keep you can walk into, and a way up to the wall tops so wizards can fig
 
 - Rows in the valley's `buildings.json`, using and growing the building tables (`rules/buildings.json`, `builders.md`
   section 4). Expect new row kinds for round towers, battlements and a gatehouse. A mod should be able to build another castle.
-- Real materials: stone walls, a timber gate that burns.
+- Real materials: stone walls in courses of blocks (a `coursed` finish on the row), a timber gate that burns.
 - Look first at what the land does under it. Prefer building on the plateau as it stands, with foundations for the 3 to 5 m. If
   `land.json` must change, stop and say so: it moves the map hash.
 - A road from the gate down the hill, and the keep's attuning room (phase 3 fills it).
