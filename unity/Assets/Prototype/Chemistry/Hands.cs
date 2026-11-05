@@ -76,11 +76,12 @@ namespace Chem
     {
         sealed partial class Checker
         {
-            // Every element has its rows, and every pair, in one order or the other.
+            // Every element the table has a row for has them all, and every pair, in one order or the other. A mod can change
+            // the combos' elements and can't reach this table, so the table answers for its own.
             public void Hands()
             {
                 if (!(r["hold"]?["hands"] is JObject h)) return;
-                var names = Strings(r["combos"]?["elements"]);
+                var names = (h["spells"] as JObject)?.Properties().Select(p => p.Name).Where(n => !n.Contains('+')).ToList() ?? new List<string>();
                 foreach (var side in new[] { "left", "right" })
                     if (!names.Contains((string)h["start"]?[side] ?? "")) Errors.Add($"hands: start {side} must be an element");
                 foreach (var key in new[] { "window", "handCooldown", "bothCooldown" })
