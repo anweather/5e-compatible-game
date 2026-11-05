@@ -34,7 +34,7 @@ if [[ "${SANDBOX_GATES:-0}" == 1 ]]; then
   gate "sandbox build" npm --prefix sandbox run build
 fi
 
-gate "core build" dotnet build core -c Release -warnaserror
+gate "core build" dotnet build core -c Release -warnaserror -m:1 # -m:1: a parallel build can turn Rules.Mcp's S3776 into an error
 # Formatting after the build, not beside it: both write core's obj folders.
 [[ $failed == 0 ]] && gate "core format" dotnet format core --verify-no-changes --no-restore
 [[ $failed == 0 ]] && gate "core tests" dotnet test core -c Release --no-build
