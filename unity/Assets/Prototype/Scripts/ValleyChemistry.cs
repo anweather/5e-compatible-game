@@ -167,6 +167,7 @@ public partial class ValleyChemistry : MonoBehaviour
             if (builder != null) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays ready in {timer.Elapsed.TotalMilliseconds:0} ms");
             ground = new ValleyGround(layout, chunks, builder);
             rocks = new LandRocks(grid);
+            rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).
             grid.DetailDistance = ground.DetailDistance;
             grid.DetailChunksChanged += ground.DrawDetails;

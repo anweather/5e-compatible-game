@@ -107,6 +107,10 @@ public class HoldProbe : ProbeScenario
         yield return Picture("from-hollowmere", At(78, -40) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return Picture("from-the-square", At(102, -52) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return Picture("from-the-foot", At(72, 8) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("road-from-the-lane", At(100, -26) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("road-in-the-woods", At(76, -18) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
+        yield return Picture("the-bends", At(52, -6) + Vector3.up * 1.7f, At(62, 30));
+        yield return Picture("the-hill-from-above", At(80, -30) + Vector3.up * 70f, At(50, 25));
         yield return Picture("from-the-shore", At(124, 20) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return FramesHere("floor");
         yield return Picture("approach", At(46, 12) + Vector3.up * 3f, At(28, 15) + Vector3.up * 5f);
