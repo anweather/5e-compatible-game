@@ -16,16 +16,19 @@ gate's approach.
 
 ## Where
 
-West of Hollowmere (centred 222, 300), the land climbs from 0 m at about x 180 to a plateau at 45 to 49 m.
+South-west of Hollowmere (centred 222, 300), the land climbs from 0 m at about x 190 to a plateau at 45 to 49 m.
 
-- **Castle:** on the plateau, 32 x 32 cells at x 87 to 118, y 367 to 398, the flattest such site (ground 44.4 to 50 m). The gate
-  faces east down the slope; a road runs from it to the foot, near x 180. Its trees are gone by being laid over (`WorldBuildings.LayInto`):
-  `cells.txt` and `things.json` don't change.
-- **Spawners:** along the foot of the slope, about x 180, y 340 to 400, so raiders don't walk through the village.
-- **Slope:** about 37 m over 48 cells at y 336. Raiders ignore height today (J-073: a mountain doesn't stop them, sight or
+- **Castle:** on the crest, the plateau's east edge, 32 x 32 cells at x 120 to 151, y 352 to 383 (Andrew, 2026-11-05: on the skyline
+  above the village). Ground 31.8 to 49.8 m: the foundations reach down to it, 18 m at the north-east tower. It moved from the flattest
+  site, x 87, y 367, where the plateau's edge hid it from the valley floor. The gate faces east down the slope; a road runs from it to
+  the foot at (196, 372). Its trees are gone by being laid over (`WorldBuildings.LayInto`): `cells.txt` and `things.json` don't change.
+- **Seen from:** the foot of the slope best, up to 7% of the frame at (192, 360). Hollowmere and the lake shore see about 1% at most: the woods
+  between hide all but a tower top or a stretch of wall, and the square sees 0.2%. The rendered frames with it and without it, in the same instant.
+- **Spawners:** along the foot of the slope, from about (184, 340) to (206, 390), so raiders don't walk through the village, 48 cells north of the road's foot.
+- **Slope:** about 40 m over 46 cells along the road. Raiders ignore height today (J-073: a mountain doesn't stop them, sight or
   spells), so they can climb it, but nothing slows them or blocks a spell on the way.
 - **The brook behind the castle:** `west-brook` of the `home-valley` theme, 2 to 4 cells wide and cut 0.5 to 2 m into the plateau, from about
-  (105, 260) south past x 57 to 68 to the map's edge. It runs about 20 cells behind the west wall.
+  (105, 260) south past x 57 to 68 to the map's edge. It runs about 50 cells behind the west wall.
 - **Reach:** 2 chunks from a wizard at the castle should cover the foot of the slope. Phase 2 checks raiders at the far
   spawners still tick when everyone is on the walls.
 

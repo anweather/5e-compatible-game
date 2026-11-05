@@ -10,7 +10,7 @@ namespace Chem.Tests
     public class LaidRowTests
     {
         const string Hold = "hold#1", Shut = "timber-gate", Open = "timber-gate-open";
-        const int Size = 192, Footprint = 32;
+        const int Size = 192, Footprint = 32, HoldX = 120, HoldY = 352;
 
         static Rules Rules => ChemistryTests.R;
         static WorldBuildings Valley => WorldBuildings.Load(ChemistryTests.WorldDir());
@@ -20,8 +20,8 @@ namespace Chem.Tests
         static World Laid(out BuildingRow row, Rules rules = null)
         {
             var w = new World(rules ?? Rules, 576, 576, 7);
-            for (int y = 360; y < 410; y++)
-                for (int x = 80; x < 195; x++) w.Paint(x, y, "grass");
+            for (int y = 345; y < 410; y++)
+                for (int x = 80; x < 215; x++) w.Paint(x, y, "grass");
             Valley.LayInto(w);
             row = BuildingRow.Read(Hold, Row, w.Rules.Buildings);
             return w;
@@ -74,9 +74,9 @@ namespace Chem.Tests
         [Test]
         public void AWorldTooSmallForARowIsLeftAlone()
         {
-            var w = new World(Rules, 100, 576, 7);
+            var w = new World(Rules, HoldX + 13, 576, 7);
             Valley.LayInto(w);
-            Assert.That(Enumerable.Range(87, 13).All(x => w.At(x, 370).T != "stone"), "part of it would fit, and none of it goes in");
+            Assert.That(Enumerable.Range(HoldX, 13).All(x => w.At(x, HoldY + 3).T != "stone"), "part of it would fit, and none of it goes in");
         }
 
         [Test]
@@ -84,12 +84,12 @@ namespace Chem.Tests
         {
             var rules = Rules;
             var w = new World(rules, 576, 576, 7);
-            w.Paint(87 + 4, 367 + 15, "tree");
-            w.Paint(87 + 12, 367 + 6, "tree");
+            w.Paint(HoldX + 4, HoldY + 15, "tree");
+            w.Paint(HoldX + 12, HoldY + 6, "tree");
             int thingsWere = WorldThings.Load(ChemistryTests.WorldDir()).All.Count;
             Valley.LayInto(w);
-            Assert.That(w.At(87 + 4, 367 + 15).T, Is.Not.EqualTo("tree"));
-            Assert.That(w.At(87 + 12, 367 + 6).T, Is.Not.EqualTo("tree"));
+            Assert.That(w.At(HoldX + 4, HoldY + 15).T, Is.Not.EqualTo("tree"));
+            Assert.That(w.At(HoldX + 12, HoldY + 6).T, Is.Not.EqualTo("tree"));
             Assert.That(WorldThings.Load(ChemistryTests.WorldDir()).All.Count, Is.EqualTo(thingsWere));
         }
 
@@ -156,13 +156,13 @@ namespace Chem.Tests
             var w = Laid(out var row);
             var cells = Cells(row, w);
             var foot = cells.Where(c => c.Part == BuildingPart.Road).OrderByDescending(c => c.X).First();
-            var walked = Walked(w, (foot.X, foot.Y), 80, 360, 195, 409);
+            var walked = Walked(w, (foot.X, foot.Y), 80, 345, 215, 409);
             Assert.That(walked.Contains((row.X + 12, row.Y + 12)), "the keep's attuning room");
             Assert.That(walked.Contains((row.X + 12, row.Y + 19)), "the keep's hall");
             Assert.That(walked.Contains((row.X + 22, row.Y + 8)), "the foot of the north stair");
             Assert.That(walked.Contains((row.X + 22, row.Y + 26)), "the foot of the south stair");
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, row.X + 28, row.Y + 15, null));
-            var shut = Walked(w, (foot.X, foot.Y), 80, 360, 195, 409);
+            var shut = Walked(w, (foot.X, foot.Y), 80, 345, 215, 409);
             Assert.That(shut.Contains((row.X + 12, row.Y + 19)), Is.False, "a shut gate keeps the court shut");
         }
 
@@ -171,7 +171,7 @@ namespace Chem.Tests
         {
             var w = Laid(out var row);
             var road = Cells(row, w).Where(c => c.Part == BuildingPart.Road).ToList();
-            Assert.That(road.Max(c => c.X), Is.GreaterThanOrEqualTo(178));
+            Assert.That(road.Max(c => c.X), Is.GreaterThanOrEqualTo(190));
             Assert.That(road.All(c => c.Terrain == "dirt"));
             var byX = road.Select(c => c.X).Distinct().OrderBy(x => x).ToList();
             Assert.That(byX.Zip(byX.Skip(1), (a, b) => b - a).All(d => d == 1), "no gap in it");
