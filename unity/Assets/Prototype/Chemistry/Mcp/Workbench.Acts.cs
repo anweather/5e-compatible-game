@@ -168,7 +168,7 @@ namespace Chem.Mcp
             int radius = ask.Radius ?? 8, rise = ask.Rise ?? 0;
             double mostRadius = Budgets.Number("land.maxRadius", 32), mostRise = Budgets.Number("land.maxRise", 100);
             if (radius < 1 || radius > mostRadius) throw new RulesToolException(FormattableString.Invariant($"radius is 1 to {mostRadius} cells."));
-            if (rise == 0 || Math.Abs(rise) > mostRise) throw new RulesToolException(FormattableString.Invariant($"rise is in metres, up to {mostRise} either way, and not 0; no land goes below {World.LandLowest / LandUnitsPerMetre} m."));
+            if (rise == 0 || Math.Abs(rise) > mostRise) throw new RulesToolException(FormattableString.Invariant($"rise is in metres, up to {mostRise} either way, and not 0; no land goes below {OnWorld(w => w.LandRange.low) / LandUnitsPerMetre} m."));
             var line = (x: 0, y: 0);
             if (LandStamp.NeedsLine(ask.Profile) && (ask.Along == null || !Lines.TryGetValue(ask.Along, out line)))
                 throw new RulesToolException($"A {ask.Profile} needs along: {string.Join(", ", Lines.Keys)}.");

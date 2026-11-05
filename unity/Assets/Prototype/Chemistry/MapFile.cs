@@ -23,14 +23,18 @@ namespace Chem
         /// <summary>The land's highest and lowest cells, in land units.</summary>
         public int Highest { get; private set; }
         public int Lowest { get; private set; }
+        /// <summary>How low and high land can be stamped, in land units; left out, the valley's.</summary>
+        public (int low, int high) LandRange { get; private set; } = (World.LandLowest, World.LandHighest);
 
         /// <summary>The map.json in a map's folder; throws if it's missing or a field is.</summary>
         public static MapFile Load(string worldDir)
         {
             var o = JObject.Parse(File.ReadAllText(Path.Combine(worldDir, FileName)));
             var expects = (JObject)o["expects"];
+            var drawable = o["drawable"] as JArray;
             return new MapFile
             {
+                LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
                 Id = (string)o["id"],
                 Name = (string)o["name"],
                 W = (int)o["size"][0],
