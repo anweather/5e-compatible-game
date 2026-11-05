@@ -230,6 +230,15 @@ public sealed class ValleyGround
     /// <summary>A cell's terrain or cover changed: its texels are repainted at the next Flush.</summary>
     public void Repaint(int x, int y) => repaint.Add((x, y));
 
+    /// <summary>A cell the bake drew as something else (a laid row's): its paint is laid afresh, and its grass goes.</summary>
+    public void PaintAnew(int x, int y)
+    {
+        int key = world.Idx(x, y);
+        bakedPaint[key] = null;
+        paintedMix[key] = null;
+        repaint.Add((x, y));
+    }
+
     /// <summary>Eases reshaped ground by <paramref name="dt"/> seconds and hands the moved samples to the terrains.</summary>
     public void Advance(float dt)
     {

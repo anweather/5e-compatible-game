@@ -200,7 +200,7 @@ namespace Chem.Tests
         [Test]
         public void TheCabinRowsAreWhereValleyShapePutsThem()
         {
-            var rows = WorldBuildings.Load(ChemistryTests.WorldDir()).FileRows;
+            var rows = WorldBuildings.Load(ChemistryTests.WorldDir()).FileRows.Where(r => r["built"] != null).ToList();
             Assert.That(rows.Select(r => (string)r["id"]), Is.EqualTo(new[] { "cabin#1", "cabin#2", "cabin#3", "cabin#4" }));
             foreach (var row in rows)
             {

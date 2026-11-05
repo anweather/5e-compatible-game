@@ -102,6 +102,8 @@ namespace Chem
         public string QuenchesTo, QuenchLog;
         /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
         public string BakesTo;
+        /// <summary>What a hand on it turns it into (materials.json swing.into): a gate's other way, or null (World.Swing).</summary>
+        public string SwingsTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
         /// <summary>WaterTo as what it does: water on it freezes, or boils off as sim water.boils.</summary>
@@ -900,6 +902,7 @@ namespace Chem
             QuenchLog = Str(o["quenchLog"]),
             ScourWears = Truthy(o["scourWears"]),
             BakesTo = Str(o["bakesTo"]),
+            SwingsTo = Str(o["swingsTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
             Dampens = Num(o["dampens"]) ?? 0,

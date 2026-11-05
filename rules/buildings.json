@@ -2,14 +2,15 @@
   "about": "What a building's parts can be (docs/design/builders.md section 4; Buildings.cs). Rows, like every table: a mod adds or replaces one whole under \"buildings\". What's under \"look\" is the view's and stays out of Rules.Fingerprint; the rest decides cells. A building's own rows are world data: world/buildings.json, the villages (world/villages.json), or a mod's \"world\" section.",
   "ground": "dirt",
   "drawn": {
-    "about": "What the view reads of a building (RowMesher, RowHouses), kept in step with it by hand: anything else a row, wall, opening or parts row says is kept but never drawn, and validate and apply say so. A roof's fields are its shape's look.takes, a part's its detail's. An opening's look \"lamp\" is the colour its pane glows from dusk to dawn (\"#rrggbb\", brighter the lighter; \"off\" for none), and an opening in a row may give its own; the glass goes dark when its pane breaks or its stretch of wall burns or falls. On a building the cells' own looks aren't drawn: the house draws each opening from its row here, and only a pane cell shows glass that breaks.",
-    "row": ["id", "at", "style", "seed", "storeys", "fill", "floor", "wall", "joins", "walls", "roofs", "parts", "built", "site"],
+    "about": "What the view reads of a building (RowMesher, RowHouses). A row's \"level\" stands its walls from the highest ground under it, running them down to the lowest, so their tops are one height; a tower's height and a wall's count from there, kept in step with it by hand: anything else a row, wall, opening or parts row says is kept but never drawn, and validate and apply say so. A roof's fields are its shape's look.takes, a part's its detail's. An opening's look \"lamp\" is the colour its pane glows from dusk to dawn (\"#rrggbb\", brighter the lighter; \"off\" for none), and an opening in a row may give its own; the glass goes dark when its pane breaks or its stretch of wall burns or falls. On a building the cells' own looks aren't drawn: the house draws each opening from its row here, and only a pane cell shows glass that breaks.",
+    "row": ["id", "at", "style", "seed", "storeys", "fill", "floor", "wall", "joins", "walls", "roofs", "parts", "built", "site", "level", "towers", "roads"],
     "floor": ["kind", "height"],
     "wall": ["from", "to", "material", "height", "thickness", "finish", "storey", "openings"],
     "finish": ["color", "pattern"],
     "opening": ["kind", "at", "width", "shape", "finish", "lamp"],
     "openingLook": ["width", "height", "sill", "lamp"],
-    "style": ["fill", "floor", "wall", "storeys", "roof", "parts", "recipe"]
+    "style": ["fill", "floor", "wall", "storeys", "roof", "parts", "recipe"],
+    "tower": ["at", "radius", "material", "height", "roof"]
   },
   "openings": {
     "door": { "cells": 1, "becomes": "door", "look": { "width": 0.9, "height": 2.1, "sill": 0 } },
@@ -19,11 +20,16 @@
     "garage": { "cells": 2, "becomes": "door", "look": { "width": 2.7, "height": 2.1, "sill": 0 } },
     "double-garage": { "cells": 3, "becomes": "door", "look": { "width": 4.9, "height": 2.1, "sill": 0 } },
     "arch": { "cells": 0, "becomes": "open", "look": { "height": 2.2, "sill": 0 } },
-    "drawn-door": { "cells": 1, "becomes": "wall", "look": { "width": 0.9, "height": 2.1, "sill": 0 } }
+    "drawn-door": { "cells": 1, "becomes": "wall", "look": { "width": 0.9, "height": 2.1, "sill": 0 } },
+    "timber-gate": { "cells": 3, "becomes": "timber-gate-open", "look": { "width": 4.2, "height": 5.2, "sill": 0 } },
+    "passage": { "cells": 3, "becomes": "dirt", "look": { "width": 4.2, "height": 5.2, "sill": 0 } },
+    "doorway": { "cells": 2, "becomes": "dirt", "look": { "width": 2.4, "height": 3.2, "sill": 0 } },
+    "slit": { "cells": 1, "becomes": "wall", "look": { "width": 0.3, "height": 1.8, "sill": 7, "lamp": "#ffb867" } }
   },
   "floors": {
     "slab": { "terrain": "rock", "look": { "height": 0.15 } },
-    "plinth": { "terrain": "brick", "look": { "height": 0.45 } }
+    "plinth": { "terrain": "brick", "look": { "height": 0.45 } },
+    "court": { "terrain": "dirt", "look": { "height": 0 } }
   },
   "roofs": {
     "gable": { "look": { "takes": ["over", "gables", "pitch", "overhang", "cover"] } },
@@ -38,7 +44,9 @@
     "porch": { "look": { "takes": ["on", "at", "width", "depth"] } },
     "beam": { "look": { "takes": ["on", "every"] } },
     "shutters": { "look": { "takes": ["on", "at"] } },
-    "planter": { "look": { "takes": ["on", "at"] } }
+    "planter": { "look": { "takes": ["on", "at"] } },
+    "battlements": { "look": { "takes": ["on", "every", "height"] } },
+    "stair": { "look": { "takes": ["on", "at", "length"] } }
   },
   "styles": {
     "plain": { "fill": "hollow", "floor": { "kind": "slab", "height": 0.15 },
@@ -49,6 +57,8 @@
                  "roof": { "shape": "gable", "pitch": [8, 12], "overhang": 0.4, "cover": "thatch" } },
     "cabin": { "fill": "solid", "floor": { "kind": "plinth", "height": 0.3 },
                "wall": { "material": "logwall", "height": 2.7, "thickness": 0.45 },
-               "roof": { "shape": "gable", "pitch": [8, 12], "overhang": 0.4, "cover": "shingle" } }
+               "roof": { "shape": "gable", "pitch": [8, 12], "overhang": 0.4, "cover": "shingle" } },
+    "stronghold": { "fill": "hollow", "floor": { "kind": "court", "height": 0 },
+                    "wall": { "material": "stone", "height": 9, "thickness": 1.5, "finish": { "color": "#8d8a84" } } }
   }
 }

@@ -137,7 +137,7 @@ public class RowHouses : MonoBehaviour
 
     void Sync(World world)
     {
-        var rows = world.Rules.ModBuildings;
+        var rows = world.RowsDrawn();
         foreach (string id in drawn.Keys.Where(id => rows.All(r => r.Id != id)).ToList())
         {
             Remove(drawn[id]);
@@ -167,17 +167,21 @@ public class RowHouses : MonoBehaviour
         var corner = grid.CellCenter(row.X, row.Y) + new Vector3(-grid.cellSize / 2f, 0f, grid.cellSize / 2f);
         var root = new GameObject("Row house " + row.Id);
         root.transform.SetParent(transform, false);
-        root.transform.position = new Vector3(corner.x, grid.GroundAt(Middle(corner, row)), corner.z);
+        bool level = (bool?)row.Json["level"] ?? false;
+        float rootY = level ? Highest(world, row) : grid.GroundAt(Middle(corner, row));
+        root.transform.position = new Vector3(corner.x, rootY, corner.z);
         var tables = new RowMesher.Tables
         {
             OpeningLook = kind => world.Rules.Buildings.Row("openings", kind)?["look"],
             TerrainColor = terrain => terrain == null ? Color.clear : CellDressing.Look(world.Rules, terrain).color,
             Tiled = terrain => terrain != null && CellDressing.Of(world.Rules, terrain)?.Form == "tile",
             Footing = Footing(world, row, root.transform.position.y),
+            GroundAt = p => grid.GroundAt(corner + new Vector3(p.x, 0f, p.y)) - rootY,
         };
         var made = RowMesher.Make(row.Json, tables);
         Part(root, "Body", made.body, false);
         var roof = Part(root, "Roof", made.roof, true);
+        Walk(root, made.walk);
         var panes = root.AddComponent<WindowPanes>();
         panes.hollow = true;
         panes.Show(made.panes, glass);
@@ -186,9 +190,9 @@ public class RowHouses : MonoBehaviour
         var laid = world.BuildingCellsOf(row);
         var cells = new HashSet<Vector2Int>(laid.Where(c => c.Part != BuildingPart.Fill).Select(c => new Vector2Int(c.X - row.X, c.Y - row.Y)));
         // What the scene's own box covers (a cabin's cells) keeps it; the rest needs a blocker to meet.
-        var walls = laid.Where(c => c.Part != BuildingPart.Built).Select(c => new Vector2Int(c.X, c.Y)).ToList();
+        var walls = laid.Where(c => c.Part != BuildingPart.Built && c.Part != BuildingPart.Road).Select(c => new Vector2Int(c.X, c.Y)).ToList();
         float tall = (float?)row.Json["wall"]?["height"] ?? DefaultWall;
-        foreach (var c in walls) grid.BuiltWall(c.x, c.y, tall);
+        foreach (var c in walls) grid.BuiltWall(c.x, c.y, level ? TopOver(made, row, c, rootY) : tall);
         return new Drawn
         {
             json = json,
@@ -220,6 +224,26 @@ public class RowHouses : MonoBehaviour
         }).ToArray();
     }
 
+    // A level row's blocker stops at the wall's top, however far down its cell's ground lies.
+    float TopOver(RowMesher.Result made, BuildingRow row, Vector2Int c, float rootY)
+    {
+        float top = made.tops.TryGetValue(new Vector2Int(c.x - row.X, c.y - row.Y), out float wall) ? wall : RowMesher.WalkTop(row.Json);
+        return rootY + top - grid.GroundTop(c.x, c.y, grid.World.At(c.x, c.y));
+    }
+
+    // Collides, and nothing draws it.
+    static void Walk(GameObject root, Mesh mesh)
+    {
+        if (mesh.vertexCount == 0) return;
+        var go = new GameObject("Walk");
+        go.transform.SetParent(root.transform, false);
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        go.AddComponent<MeshCollider>().sharedMesh = mesh;
+    }
+
+    float Highest(World world, BuildingRow row) =>
+        world.BuildingCellsOf(row).Where(c => c.Part != BuildingPart.Road).Max(c => grid.GroundAt(grid.CellCenter(c.X, c.Y)));
+
     static bool RoofBurns(World world, BuildingRow row) =>
         (row.Json["roofs"] as JObject)?.Properties().Any(r => world.Rules.Terrain.TryGetValue((string)r.Value["cover"] ?? "", out var cover) && cover.Burns) ?? false;
 
@@ -227,7 +251,7 @@ public class RowHouses : MonoBehaviour
     float Footing(World world, BuildingRow row, float floor)
     {
         float lowest = floor;
-        foreach (var c in world.BuildingCellsOf(row)) lowest = Mathf.Min(lowest, grid.GroundAt(grid.CellCenter(c.X, c.Y)));
+        foreach (var c in world.BuildingCellsOf(row).Where(c => c.Part != BuildingPart.Road)) lowest = Mathf.Min(lowest, grid.GroundAt(grid.CellCenter(c.X, c.Y)));
         return floor - lowest + FootingMore;
     }
 

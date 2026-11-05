@@ -101,6 +101,25 @@ touch them.
 : The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
   Prototype > Export Valley Ground; `docs/design/maps-as-data.md`). The valley has one, not yet read: the terrains are still baked. A map without one will be drawn from its land and cells.
 
+**Laid row**
+: A row of a map's `buildings.json` with walls and no `built` cells: its cells are laid over `cells.txt` at the start, on
+  every peer, and it's drawn from its row. A tree under it is gone, and `cells.txt` and `things.json` don't change.
+
+**Level** (of a row)
+: A row whose walls stand from the highest ground under it and run down to the lowest, so their tops are one height over
+  ground that isn't. The foundations are the walls' own stone.
+
+**Tower, road** (of a row)
+: A tower is a round part of a row: the cells within its radius of a join, drawn as a drum a wall walk passes through. A road is cells of a ground
+  terrain laid through a row's joins, past its walls.
+
+**Wall walk**
+: The top of a level row's walls, where a wizard can stand: reached by a **stair**, a part on a wall's inner side. The core has no idea of it: the
+  cells are blocking, and a wizard up there stands on the view's colliders.
+
+**Swing**
+: A hand on a gate: a command that turns a terrain into its `swing.into`, with the cells of that terrain joined to it. A **timber gate** swings; a machine's `gate` doesn't.
+
 **Land**
 : The valley's baked ground under each cell, in water units: the hills
   the cells themselves don't hold (a cell's elevation and height are on

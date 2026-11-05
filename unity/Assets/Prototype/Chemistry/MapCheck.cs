@@ -17,6 +17,8 @@ namespace Chem
 
         // How far the land's share may stray from what map.json says, in percentage points.
         const int ShareSlack = 1;
+        // The cells of a map's text that hold water.
+        const string Wet = "wr*~";
 
         /// <summary>Everything wrong with the map in this folder; empty when it's fit to play.</summary>
         public static List<string> Errors(string worldDir)
@@ -43,7 +45,42 @@ namespace Chem
                 CheckPlaces(worldDir, map, land, errors);
             }
             CheckThings(worldDir, map, errors);
+            CheckRows(worldDir, map, errors);
             return errors;
+        }
+
+        // A row laid over the cells stands on the map, dry and clear of its things: the box of its walls and towers.
+        static void CheckRows(string worldDir, MapFile map, List<string> errors)
+        {
+            if (!File.Exists(Path.Combine(worldDir, MapFile.CellsName))) return; // said once, by CheckCells
+            var rows = MapFile.ReadCells(worldDir).Replace("\r", "").Trim('\n').Split('\n');
+            var things = WorldThings.Load(worldDir).All;
+            foreach (var row in WorldBuildings.Load(worldDir).LaidRows)
+            {
+                var (x0, y0, x1, y1) = RowBox(row);
+                string id = (string)row["id"];
+                if (x0 < 0 || y0 < 0 || x1 >= map.W || y1 >= map.H || y1 >= rows.Length)
+                {
+                    errors.Add($"the row {id} runs off the map");
+                    continue;
+                }
+                var wet = Enumerable.Range(y0, y1 - y0 + 1).SelectMany(y => Enumerable.Range(x0, Math.Min(x1 + 1, rows[y].Length) - x0).Select(x => (x, y))).Where(c => Wet.Contains(rows[c.y][c.x])).ToList();
+                if (wet.Count > 0) errors.Add($"the row {id} stands on water at {wet[0]}");
+                foreach (var thing in things.Where(t => t.CellX >= x0 && t.CellX <= x1 && t.CellY >= y0 && t.CellY <= y1))
+                    errors.Add($"the row {id} stands on the thing {thing.Id}");
+            }
+        }
+
+        // The cells a row's walls and towers lie in; a road isn't in it, since it runs out over the land.
+        static (int x0, int y0, int x1, int y1) RowBox(JObject row)
+        {
+            var joins = row["joins"] as JObject ?? new JObject();
+            var used = (row["walls"] as JObject)?.PropertyValues().SelectMany(w => new[] { (string)w["from"], (string)w["to"] }).Select(j => (j, r: 0)).ToList() ?? new List<(string j, int r)>();
+            used.AddRange((row["towers"] as JObject)?.PropertyValues().Select(t => ((string)t["at"], (int?)t["radius"] ?? 0)) ?? Enumerable.Empty<(string, int)>());
+            var points = used.Where(u => joins[u.j ?? ""] is JArray).Select(u => (x: (int)joins[u.j][0], y: (int)joins[u.j][1], u.r)).ToList();
+            int ax = (int)row["at"][0], ay = (int)row["at"][1];
+            if (points.Count == 0) return (ax, ay, ax, ay);
+            return (ax + points.Min(p => p.x - p.r) / 2, ay + points.Min(p => p.y - p.r) / 2, ax + (points.Max(p => p.x + p.r) - 1) / 2, ay + (points.Max(p => p.y + p.r) - 1) / 2);
         }
 
         static void CheckCells(string worldDir, MapFile map, List<string> errors)

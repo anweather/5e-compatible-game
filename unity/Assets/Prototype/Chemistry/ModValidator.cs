@@ -638,7 +638,7 @@ namespace Chem
                     Cap("joins", (p.row["joins"] as JObject)?.Count ?? 0, "maxJoins");
                     Cap("walls", (p.row["walls"] as JObject)?.Count ?? 0, "maxWalls");
                     Cap("openings", (p.row["walls"] as JObject)?.PropertyValues().Sum(w => (w["openings"] as JArray)?.Count ?? 0) ?? 0, "maxOpenings");
-                    Cap("parts", (p.row["parts"] as JArray)?.Count ?? 0, "maxParts");
+                    Cap("parts", ((p.row["parts"] as JArray)?.Count ?? 0) + ((p.row["towers"] as JObject)?.Count ?? 0) + ((p.row["roads"] as JObject)?.Count ?? 0), "maxParts");
                     Cap("storeys", p.row["storeys"] != null && IsWhole(p.row["storeys"]) ? (int)p.row["storeys"] : 1, "maxStoreys");
                     SiteSize(p.id, p.row);
                 }

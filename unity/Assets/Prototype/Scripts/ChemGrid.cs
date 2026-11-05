@@ -228,6 +228,7 @@ public partial class ChemGrid : MonoBehaviour
             }
         }
         LayPuzzles(world);
+        LayRows(world);
         LayGolf(world);
         return world;
     }
@@ -258,6 +259,19 @@ public partial class ChemGrid : MonoBehaviour
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {
             Debug.LogError($"world/{WorldPuzzles.FileName} can't be read, so no puzzles: {e.Message}");
+        }
+    }
+
+    // The map's rows its cells don't hold, laid over them: only in a world big enough (the valley, not a small test yard).
+    static void LayRows(World world)
+    {
+        try
+        {
+            WorldBuildings.Load(Folders.World).LayInto(world);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldBuildings.FileName} can't be read, so its laid rows aren't: {e.Message}");
         }
     }
 
