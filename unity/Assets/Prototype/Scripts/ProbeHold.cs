@@ -44,6 +44,19 @@ public class HoldProbe : ProbeScenario
         Teleport(p + Vector3.up * 0.05f);
     }
 
+    // Across a stretch of the road and down the hill beside it: the bench is level where the hill isn't.
+    void LevelAcross()
+    {
+        float Ground(int x, int y) => grid.GroundAt(grid.CellCenter(row.X + x, row.Y + y));
+        float across = Mathf.Abs(Ground(54, 16) - Ground(56, 16));
+        float hill = Mathf.Abs(Ground(46, 16) - Ground(48, 16));
+        float bank = Mathf.Abs(Ground(50, 16) - Ground(58, 16));
+        Metric("road_across_m", across);
+        Metric("hill_across_m", hill);
+        Metric("road_bank_m", bank);
+        Check("the_road_is_level_across", across < 0.3f, $"{across:0.00} m over two cells, the hill beside it {hill:0.00} m");
+    }
+
     IEnumerator FramesHere(string name)
     {
         yield return Wait(1f);
@@ -101,6 +114,7 @@ public class HoldProbe : ProbeScenario
         var body = houses.Root(Row).GetComponentsInChildren<MeshFilter>().Sum(f => f.sharedMesh.vertexCount);
         Metric("vertices", body);
 
+        LevelAcross();
         var middle = At(16, 16);
         Stand(82, 19);
         yield return Picture("valley-floor", At(90, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);
@@ -110,6 +124,8 @@ public class HoldProbe : ProbeScenario
         yield return Picture("road-from-the-lane", At(100, -26) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return Picture("road-in-the-woods", At(76, -18) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return Picture("the-bends", At(52, -6) + Vector3.up * 1.7f, At(62, 30));
+        yield return Picture("on-the-road", At(53, 8) + Vector3.up * 1.7f, At(60, 28) + Vector3.up * 1.5f);
+        yield return Picture("across-the-bench", At(62, 16) + Vector3.up * 3f, At(50, 16) + Vector3.up * 2f);
         yield return Picture("the-hill-from-above", At(80, -30) + Vector3.up * 70f, At(50, 25));
         yield return Picture("from-the-shore", At(124, 20) + Vector3.up * 1.7f, middle + Vector3.up * 14f);
         yield return FramesHere("floor");

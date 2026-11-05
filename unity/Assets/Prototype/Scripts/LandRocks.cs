@@ -47,8 +47,17 @@ public sealed class LandRocks
         root.SetParent(grid.transform, false);
     }
 
-    /// <summary>How many rocks stand now.</summary>
-    public int Count => rocks.Count;
+    /// <summary>How many rocks the land's faces have now; a map's own aren't counted.</summary>
+    public int Count
+    {
+        get
+        {
+            int n = 0;
+            foreach (var r in rocks.Values)
+                if (r.Kind != Kind.Laid) n++;
+            return n;
+        }
+    }
 
     /// <summary>The rocks a map's folder lays, each [x, y, metres across]: none without a rocks.json.</summary>
     public void Lay(string worldDir)

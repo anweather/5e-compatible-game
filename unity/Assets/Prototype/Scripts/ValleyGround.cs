@@ -144,7 +144,7 @@ public sealed class ValleyGround
     {
         world = w;
         landUnit = stepHeight / w.Rules.Sim.WaterUnitsPerStep;
-        heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls };
+        heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
         heightfield.Reset(w);
         repaint.Clear();
         cleared.Clear();
@@ -153,6 +153,8 @@ public sealed class ValleyGround
         reshaped.Clear();
         var timer = System.Diagnostics.Stopwatch.StartNew();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
+        heightfield.LaidLandDrawn = true;
+        foreach (var r in heightfield.Update(w, w.LandLaidCells(), snap: true)) WriteHeights(r);
         BindMs = timer.Elapsed.TotalMilliseconds;
         Debug.Log($"GROUND BIND {(builder != null ? "built" : "baked")}: {chunks.Count} chunks in {BindMs:0} ms");
         cellBase = new float[w.W * w.H];

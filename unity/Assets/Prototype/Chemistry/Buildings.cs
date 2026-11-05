@@ -97,6 +97,8 @@ namespace Chem
     {
         public string Id, Terrain;
         public int Width;
+        /// <summary>Cut into the land it crosses (RoadGrade), not laid on it.</summary>
+        public bool Graded;
         public List<(int x, int y)> Points { get; } = new List<(int, int)>();
     }
 
@@ -180,7 +182,7 @@ namespace Chem
             var roads = new List<BuildingRoad>();
             foreach (var p in (json["roads"] as JObject)?.Properties().OrderBy(p => p.Name, StringComparer.Ordinal) ?? Enumerable.Empty<JProperty>())
             {
-                var road = new BuildingRoad { Id = p.Name, Terrain = (string)p.Value["terrain"], Width = (int?)p.Value["width"] ?? 1 };
+                var road = new BuildingRoad { Id = p.Name, Terrain = (string)p.Value["terrain"], Width = (int?)p.Value["width"] ?? 1, Graded = (bool?)p.Value["graded"] ?? false };
                 foreach (var name in p.Value["through"]?.OfType<JValue>() ?? Enumerable.Empty<JValue>())
                 {
                     var at = json["joins"]?[(string)name ?? ""] as JArray ?? throw new FormatException($"building {Id}: road {p.Name} goes through {name}, which it hasn't got");
@@ -420,6 +422,9 @@ namespace Chem
                                 if (!taken.ContainsKey(c)) taken[c] = (road.Terrain, BuildingPart.Road);
                             }
         }
+
+        /// <summary>The half cells of a road's stretch.</summary>
+        public static IEnumerable<(int x, int y)> HalfCells((int x, int y) a, (int x, int y) b) => Line(a, b);
 
         // The half cells from one point to another, in whole numbers: the longer axis steps by one.
         static IEnumerable<(int x, int y)> Line((int x, int y) a, (int x, int y) b)

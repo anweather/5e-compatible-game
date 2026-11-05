@@ -178,7 +178,7 @@ namespace Chem
         float LandAt(World world, int u, int v)
         {
             var (x, y) = grid.GridCell(u, v);
-            return world.LandMovedAt(x, y);
+            return LaidLandDrawn ? world.LandMovedAt(x, y) : world.LandStampedAt(x, y);
         }
 
         float CellsOffset(World world, int i, int j, int sx, int sz)
@@ -334,6 +334,9 @@ namespace Chem
                 Math.Max(0, u0 - x0) * p, Math.Max(0, v0 - z0) * p,
                 Math.Min(last, u1 - x0) * p, Math.Min(last, v1 - z0) * p);
         }
+
+        /// <summary>False while the baked ground is read: it knows the stamps a save brings, and not the map's laid land.</summary>
+        public bool LaidLandDrawn { get; set; } = true;
 
         /// <summary>Computes every chunk's offsets and draws them at once (no easing).</summary>
         public void Reset(World world)
