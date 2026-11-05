@@ -31,7 +31,8 @@ namespace Chem
             var moved = new List<(int x, int y, int by)>();
             foreach (var cell in nearest.OrderBy(c => c.Key.y).ThenBy(c => c.Key.x))
             {
-                if (keepOff.Contains(cell.Key)) continue;
+                // Past its ends the land stays as it is: flattened up to a gate, it left a step no one could climb.
+                if (keepOff.Contains(cell.Key) || cell.Value.at == 0 || cell.Value.at == line.Count - 1) continue;
                 int by = surface[cell.Value.at] - land(cell.Key.x, cell.Key.y);
                 int part = by * Kept(cell.Value.d2, inner) / (Scale * Scale);
                 if (part != 0) moved.Add((cell.Key.x, cell.Key.y, part));
