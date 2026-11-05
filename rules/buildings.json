@@ -46,7 +46,8 @@
     "shutters": { "look": { "takes": ["on", "at"] } },
     "planter": { "look": { "takes": ["on", "at"] } },
     "battlements": { "look": { "takes": ["on", "every", "height"] } },
-    "stair": { "look": { "takes": ["on", "at", "length"] } }
+    "stair": { "look": { "takes": ["on", "at", "length"] } },
+    "dock": { "look": { "takes": ["on", "at", "length", "width"] } }
   },
   "styles": {
     "plain": { "fill": "hollow", "floor": { "kind": "slab", "height": 0.15 },

@@ -532,6 +532,9 @@ that long, and doesn't march.
 : Anything whose presence keeps the world around it active: today every
   wizard; later perhaps raiders or villagers that matter to play.
 
+**Worker**
+: One of the folk with a job (a map's `jobs.json`): stops it goes round, walked by the quickest way on foot. View only.
+
 **Raider**
 : A core entity in the defense field's waves (`Raider`, BACKLOG §17).
 
