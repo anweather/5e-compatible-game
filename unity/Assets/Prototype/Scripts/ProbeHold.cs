@@ -9,7 +9,7 @@ using UnityEngine;
 // taken in a batch player too.
 public class HoldProbe : ProbeScenario
 {
-    const string Row = "hold#1", Glade = "hold-glade#1";
+    const string Row = "hold#1";
     const float MostWalk = 40f, Frames = 4f, OnTop = 0.7f;
     const int PictureWidth = 1280, PictureHeight = 720;
 
@@ -202,7 +202,7 @@ public class HoldProbe : ProbeScenario
         Check("no_tree_stands_on_it", cells.All(c => !valley.TreeStands(c.X, c.Y)), $"{cells.Count(c => valley.TreeStands(c.X, c.Y))} of {cells.Count}");
         var unseen = cells.Where(c => !Enumerable.Range(-1, 3).Any(dy => Enumerable.Range(-1, 3).Any(dx => valley.TreeStands(c.X + dx, c.Y + dy))) && TreeColliderAt(grid.CellCenter(c.X, c.Y))).ToList();
         Check("no_trunk_stands_unseen_on_it", unseen.Count == 0, string.Join(" ", unseen.Take(8).Select(c => $"[{c.X}, {c.Y}]")));
-        var glade = world.BuildingCellsOf(world.BuildingRowOf(Glade));
+        var glade = cells.Where(c => c.Part == BuildingPart.Road && c.Terrain != TerrainIds.Dirt).ToList();
         var ghosts = glade.Where(c => !Enumerable.Range(-1, 3).Any(dy => Enumerable.Range(-1, 3).Any(dx => valley.TreeStands(c.X + dx, c.Y + dy))) && TreeColliderAt(grid.CellCenter(c.X, c.Y))).ToList();
         Metric("clearing_cells", glade.Count);
         Check("no_tree_stands_in_the_clearing", glade.All(c => !valley.TreeStands(c.X, c.Y)), $"{glade.Count(c => valley.TreeStands(c.X, c.Y))} of {glade.Count}");

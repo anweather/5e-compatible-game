@@ -179,7 +179,7 @@ namespace Chem.Tests
         public void TheRoadRunsDownToTheFootOfTheSlope()
         {
             var w = Laid(out var row);
-            var road = Cells(row, w).Where(c => c.Part == BuildingPart.Road).ToList();
+            var road = Cells(row, w).Where(c => c.Part == BuildingPart.Road && c.Terrain == "dirt").ToList();
             Assert.That(road.Max(c => c.X), Is.GreaterThanOrEqualTo(190));
             Assert.That(road.All(c => c.Terrain == "dirt"));
             var byX = road.Select(c => c.X).Distinct().OrderBy(x => x).ToList();

@@ -26,7 +26,7 @@ South-west of Hollowmere (centred 222, 300), the land climbs from 0 m at about x
   to where it was over three cells either side (`RoadGrade`). The cut comes from `buildings.json` and `land.json` at load, so every peer has
   the same one, a save carries it to a late joiner, and it lies under the stamps, so the dragon's reset keeps it. Its banks are bare earth.
 - **Rocks on the hill:** `rocks.json`, drawn only, as `LandRocks` draws a crag's.
-- **The clearing:** `hold-glade#1`, a laid row of wide grass roads and a few stumps along the line from Hollowmere to the castle (Andrew,
+- **The clearing:** wide grass roads and a few stumps in the castle's own row, along the line from Hollowmere to the castle (Andrew,
   2026-11-05). It takes 45 of the map's 3,473 tree cells, keeps the ground the bake drew, and lies under the castle's road. It's ground, so it
   wears and burns as ground does: a row stands by what it built, not by its roads.
 - **Seen from:** the shared rendered frames with it and without it, in the same instant. From the square 4.6% of the frame, a castle on the skyline
