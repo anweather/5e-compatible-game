@@ -4,10 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Fixtures run side by side, and they make whole worlds: on the workstation collector they wait on it, and run slower than one at a time (#162). -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="../../unity/Assets/Prototype/Chemistry/Tests/*.cs" Link="Tests/%(Filename)%(Extension)" />
+    <!-- How they run here (#162): only this project's, so Unity's runner never reads it. -->
+    <Compile Include="Parallel.cs" />
     <!-- The playtest bot's tests (its logic is in Game.Core; playtest/DESIGN.md). -->
     <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
     <!-- The playtest runner's tests (core/Playtest.Runner): the parts that don't launch anything. -->

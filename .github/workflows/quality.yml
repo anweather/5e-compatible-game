@@ -58,3 +58,4 @@ jobs:
       # Settings and threshold are in .jscpd.json.
       - run: npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
       - run: node --test tools/chat-report.test.mjs
+      - run: node --test tools/workers/gates.test.mjs

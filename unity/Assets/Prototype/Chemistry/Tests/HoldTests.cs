@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    public class HoldTests
+    public partial class HoldTests
     {
         const string Me = "Ana";
         const int MostTicks = 12000;
