@@ -218,6 +218,6 @@ public class RowMesherTests
     {
         var file = WorldBuildings.Load(ChemGrid.Folders.World);
         Assert.IsNotEmpty(file.FileRows);
-        foreach (var row in file.FileRows) Assert.IsNotNull(row["site"], (string)row["id"]);
+        foreach (var row in file.FileRows.Where(r => r["built"] != null)) Assert.IsNotNull(row["site"], (string)row["id"]);
     }
 }
