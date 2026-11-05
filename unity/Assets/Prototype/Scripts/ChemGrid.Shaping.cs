@@ -119,7 +119,7 @@ public partial class ChemGrid
     void FindOnLand((int x, int y, int reach) area)
     {
         float unit = stepHeight / World.Rules.Sim.WaterUnitsPerStep;
-        float low = World.LandLowest * unit - LandHeadroom, high = World.LandHighest * unit + LandHeadroom;
+        float low = World.LandRange.low * unit - LandHeadroom, high = World.LandRange.high * unit + LandHeadroom;
         var centre = CellCenter(area.x, area.y);
         float side = (area.reach + 1) * cellSize;
         int n = Physics.OverlapBoxNonAlloc(new Vector3(centre.x, (low + high) / 2f, centre.z), new Vector3(side, (high - low) / 2f, side), landHits, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);

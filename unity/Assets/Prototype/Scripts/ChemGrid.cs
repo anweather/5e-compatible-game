@@ -217,6 +217,7 @@ public partial class ChemGrid : MonoBehaviour
         int h = rows.Length, w = 0;
         foreach (var r in rows) w = Mathf.Max(w, r.Length);
         var world = new World(rules, w, h, seed);
+        world.SetLandRange(MapFile.Load(Folders.World).LandRange);
         start = Vector2Int.zero;
         for (int y = 0; y < h; y++)
         {

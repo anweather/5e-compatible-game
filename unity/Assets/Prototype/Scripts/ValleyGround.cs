@@ -13,7 +13,8 @@ using UnityEngine;
 // gully), so a burnt patch fades into whatever was there before.
 //
 // Works on runtime copies of the chunks, made when a world starts (Bind), so
-// playing never changes the saved valley. They are made up front, not when a
+// playing never changes the saved valley: copies of the scene's baked chunks, or with
+// GroundSwitch on, chunks built from arrays (GroundBuilder). They are made up front, not when a
 // chunk first changes: swapping a terrain's collider under a prop resting on it
 // drops the contact, and the prop falls through the ground. The baked heights already hold the starting cells' offsets
 // (ValleyBuilder bakes them with the same CellHeightfield), so the base under
@@ -22,6 +23,7 @@ public sealed class ValleyGround
 {
     sealed class Chunk
     {
+        public (int i, int j) at;
         public Terrain terrain;
         // How far it drew details (grass, small plants) as built.
         public float detailDistance;
@@ -50,13 +52,20 @@ public sealed class ValleyGround
     // this keeps the saved paint.
     IReadOnlyList<float>[] bakedPaint;
 
-    public ValleyGround(TerrainGrid layout, Terrain[] terrains)
+    readonly GroundBuilder builder;
+
+    public ValleyGround(TerrainGrid layout, Terrain[] terrains, GroundBuilder builder = null)
     {
         this.layout = layout;
+        this.builder = builder;
         foreach (var (i, j) in layout.GridChunks())
         {
             var terrain = terrains[j * layout.ChunksX + i];
-            if (terrain != null) chunks[(i, j)] = new Chunk { terrain = terrain, original = terrain.terrainData, detailDistance = terrain.detailObjectDistance };
+            if (terrain == null) continue;
+            chunks[(i, j)] = new Chunk { at = (i, j), terrain = terrain, original = terrain.terrainData, detailDistance = terrain.detailObjectDistance };
+            if (builder == null) continue;
+            var p = terrain.transform.position;
+            terrain.transform.position = new Vector3(p.x, builder.Bottom, p.z);
         }
     }
 
@@ -93,10 +102,10 @@ public sealed class ValleyGround
     static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
 
     // The chunk's runtime copy (Bind makes them all; this only covers a chunk Bind didn't reach).
-    static TerrainData Writable(Chunk ch)
+    TerrainData Writable(Chunk ch)
     {
         if (ch.data != null) return ch.data;
-        ch.data = Object.Instantiate(ch.original);
+        ch.data = builder != null ? builder.Build(ch.at) : Object.Instantiate(ch.original);
         Use(ch, ch.data);
         return ch.data;
     }
@@ -112,10 +121,14 @@ public sealed class ValleyGround
     {
         if (ch.data == null) return;
         if (ch.terrain != null) Use(ch, ch.original);
-        Object.Destroy(ch.data);
+        if (Application.isPlaying) Object.Destroy(ch.data);
+        else Object.DestroyImmediate(ch.data);
         ch.data = null;
         ch.heightsChanged = false;
     }
+
+    /// <summary>What making the chunks took at the last Bind (ms): the probe compares built with baked.</summary>
+    public double BindMs { get; private set; }
 
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
@@ -134,7 +147,10 @@ public sealed class ValleyGround
         cleared.Clear();
         pendingDetail.Clear();
         reshaped.Clear();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
+        BindMs = timer.Elapsed.TotalMilliseconds;
+        Debug.Log($"GROUND BIND {(builder != null ? "built" : "baked")}: {chunks.Count} chunks in {BindMs:0} ms");
         cellBase = new float[w.W * w.H];
         bakedPaint = new IReadOnlyList<float>[w.W * w.H];
         for (int y = 0; y < w.H; y++)
@@ -155,15 +171,15 @@ public sealed class ValleyGround
     void Recover((int i, int j) at, Chunk ch)
     {
         Restore(ch);
-        Writable(ch);
-        int res = ch.original.heightmapResolution;
-        var heights = ch.original.GetHeights(0, 0, res, res);
+        var data = Writable(ch);
+        int res = data.heightmapResolution;
+        var heights = data.GetHeights(0, 0, res, res);
         var offsets = heightfield.Current(at.i, at.j);
-        float size = ch.original.size.y;
+        float size = data.size.y;
         ch.baseHeights = new float[res, res];
         for (int z = 0; z < res; z++)
             for (int x = 0; x < res; x++) ch.baseHeights[z, x] = heights[z, x] * size - offsets[z, x];
-        ch.layers = LayerIndices(ch.original.terrainLayers);
+        ch.layers = LayerIndices(data.terrainLayers);
         ch.baseAlpha = null;
         ch.frameAlpha = null;
         // Paint still waiting was the old world's, and what it would write from has just gone.
@@ -172,14 +188,17 @@ public sealed class ValleyGround
     }
 
     /// <summary>CellPaint's layers as indices into a terrain's layers, by name ("&lt;name&gt;_TerrainLayer...", as ValleyBuilder names them); -1 where missing.</summary>
-    public static int[] LayerIndices(TerrainLayer[] layers)
+    public static int[] LayerIndices(TerrainLayer[] layers) => LayerIndices(layers.Select(l => l != null ? l.name : "").ToArray());
+
+    /// <summary>The same, by the layers' names.</summary>
+    public static int[] LayerIndices(string[] layers)
     {
         var map = new int[CellPaint.Layers.Count];
         for (int k = 0; k < map.Length; k++)
         {
             map[k] = -1;
             for (int n = 0; n < layers.Length; n++)
-                if (layers[n] != null && layers[n].name.StartsWith(CellPaint.Layers[k] + "_TerrainLayer", System.StringComparison.Ordinal)) map[k] = n;
+                if (layers[n].StartsWith(CellPaint.Layers[k] + "_TerrainLayer", System.StringComparison.Ordinal)) map[k] = n;
         }
         return map;
     }
@@ -552,14 +571,14 @@ public sealed class ValleyGround
 
     // The saved chunk's detail grass copied back over texel rectangles of its runtime copy: like
     // ClearDetail, the box round them read once per grass kind (from both) and written back once.
-    static void RestoreDetail(Chunk ch, List<ChunkRect> rects)
+    void RestoreDetail(Chunk ch, List<ChunkRect> rects)
     {
         var data = Writable(ch);
         var spans = DetailSpans(data, rects, out int bx0, out int bz0, out int w, out int h);
         for (int layer = 0; layer < data.detailPrototypes.Length; layer++)
         {
             var map = data.GetDetailLayer(bx0, bz0, w, h, layer);
-            var saved = ch.original.GetDetailLayer(bx0, bz0, w, h, layer);
+            var saved = builder != null ? builder.DetailLayer(ch.at, layer, bx0, bz0, w, h) : ch.original.GetDetailLayer(bx0, bz0, w, h, layer);
             foreach (var (x0, z0, x1, z1) in spans)
                 for (int z = z0; z <= z1; z++)
                     for (int x = x0; x <= x1; x++) map[z - bz0, x - bx0] = saved[z - bz0, x - bx0];

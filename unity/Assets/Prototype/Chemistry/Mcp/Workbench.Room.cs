@@ -44,6 +44,7 @@ namespace Chem.Mcp
             else
             {
                 w = new World(Base, standIn.W, standIn.H, 1);
+                w.SetLandRange(MapFile.Load(Folders.World).LandRange);
                 w.MakeFrom(standIn);
                 w.KeepStart();
             }

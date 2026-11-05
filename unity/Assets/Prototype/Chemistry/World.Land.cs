@@ -208,8 +208,14 @@ namespace Chem
         /// <summary>A stamp's slope this steep, in land units across a cell, is bare rock: about 30 degrees.</summary>
         public const int LandSteep = 7;
 
-        /// <summary>How low and high land can be stamped, in land units: inside what a chunk's terrain can draw, with room for a cell's own height.</summary>
+        /// <summary>The valley's drawable range: how low and high land can be stamped, in land units, inside what a chunk's terrain can draw with room for a cell's own height.</summary>
         public const int LandLowest = -136, LandHighest = 2176;
+
+        /// <summary>This world's drawable range: its map's (map.json), every peer's the same.</summary>
+        public (int low, int high) LandRange { get; private set; } = (LandLowest, LandHighest);
+
+        /// <summary>Sets the drawable range, before the world starts.</summary>
+        public void SetLandRange((int low, int high) range) => LandRange = range;
 
         readonly List<LandStamp> landStamps = new List<LandStamp>();
         int[] landMoved;
@@ -261,7 +267,7 @@ namespace Chem
             {
                 int now = land?[Idx(x, y)] ?? 0;
                 if (now == NoLand) return Wet;
-                if (now + low < LandLowest || now + high > LandHighest) return PastTheLand;
+                if (now + low < LandRange.low || now + high > LandRange.high) return PastTheLand;
             }
             return null;
         }
@@ -275,7 +281,7 @@ namespace Chem
                 if (now == NoLand) return Wet;
                 if (by == 0) continue;
                 int then = now - by;
-                if (then < LandLowest || then > LandHighest) return PastTheLand;
+                if (then < LandRange.low || then > LandRange.high) return PastTheLand;
             }
             return null;
         }

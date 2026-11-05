@@ -46,6 +46,17 @@ namespace Chem.Tests
                 ["stamp"] = LandStamp.Make(64, 64, 32, wall, profile, 1, 0, rough, 3).Row,
             }.ToString());
 
+        [Test]
+        public void TheDrawableRangeIsTheMapsOwn()
+        {
+            var w = Flat();
+            Assert.That(w.ApplyRoom(Stamp(64, 64, 10, 200, LandStamp.Flat)).Done, Is.True, "the valley's range takes it");
+            var low = Flat();
+            low.SetLandRange((-40, 100));
+            Assert.That(low.ApplyRoom(Stamp(64, 64, 10, 200, LandStamp.Flat)).Done, Is.False);
+            Assert.That(low.ApplyRoom(Stamp(64, 64, 10, 90, LandStamp.Flat)).Done, Is.True);
+        }
+
         // The PC's case (#146): wall 36, radius 32, on the lowest dry land there is.
         [Test]
         public void TheSameCanyonIsTakenOnEverySeed()

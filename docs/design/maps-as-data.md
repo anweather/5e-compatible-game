@@ -57,6 +57,13 @@ it. `Recover` then restores from the arrays. Start-up: *estimate* about level wi
 scene loses anything (phase 5). The limit: no more than 2 s added on a Windows player, or the pack stays and the builder
 waits. Build size: *estimate* down about 8 MB for the valley; a new map without `ground/` is about 200 KB against 13 MB baked.
 
+**The switch (phase 5).** `GroundBuilder` makes the chunks when `GroundSwitch` says so, off until the PC has judged it: `-ground-builder on`
+in a player (`land` draws a map's land alone even with a `ground/`), `unity/Temp/ground-builder` in the open Editor, `GROUND_BUILDER`
+on either. The template is the scene's first chunk until phase 6, which needs a real asset for it. A map's drawable range is `drawable`
+in `map.json`, `[low, high]` in land units, the valley's when left out: every peer's map has it, so a stamp is refused alike.
+`MapCheck` holds a range a map says to its land. The valley says none, since its range is where stamps stop and its sea bed lies below that.
+Measured on the Mac, in a development player: `Bind` 45 ms baked, 225 ms built, plus 21 ms to read the pack; a map's land takes 2 s to work out.
+
 ## 2. Identity
 
 **Map id and hash.** The hash is over every file in the folder, sorted by path, `ground/` included, since peers should draw
