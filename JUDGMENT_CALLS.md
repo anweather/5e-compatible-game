@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-074: What's the first game loop, and how do wizards cast in it?
+
+- **Asked:** 2026-11-04, by Andrew (#152): the game has mechanics but no objective.
+- **Also comes up when:** progression, roles, new modes, the second map, sandbox controls.
+- **Answer:** Andrew: real-time wave defence, the Hold, in the valley for now, on the hill west of Hollowmere. Castle first, as a set piece from primitives. Endless waves. An element per hand, changed only in the keep, with a kit on top (`docs/design/the-hold.md`).
+- **Why:** chemistry decides the fight, it needs the least content, and staying in the valley avoids waiting for maps. Hands keep combining and make co-op roles.
+- **Revisited:** 0.
+
 ### J-073: Maps as data: the design's six questions
 
 - **Asked:** 2026-11-04, by the Mac's design (`docs/design/maps-as-data.md`).

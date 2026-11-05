@@ -506,6 +506,24 @@ that long, and doesn't march.
 **Raider**
 : A core entity in the defense field's waves (`Raider`, BACKLOG §17).
 
+**The Hold**
+: The wave game on the hill west of Hollowmere (`docs/design/the-hold.md`, #152): raiders climb to a castle in endless waves. Not built yet.
+
+**Adjective**
+: A row that changes a raider in the Hold: Armoured, Burning, Soaked. Its numbers, weaknesses, and a status or cover it leaves.
+
+**Spawner**
+: A row naming where a Hold's raiders enter, which kinds and how fast.
+
+**Hand**
+: One of a wizard's two element slots in the Hold. Each holds an **element** of the combo table; the trigger casts it, the bumper modifies it, both triggers combine.
+
+**Attune**
+: To change a hand's element, in the castle keep's attuning room only.
+
+**Kit**
+: The spells every wizard has in the Hold, on the D-pad, whatever the hands hold.
+
 **Creature / fauna**
 : Animals and folk drawn in the view (`ValleyFauna`, Punchy's creatures).
   View-only, never in the rules.
