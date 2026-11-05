@@ -25,7 +25,7 @@ public sealed class RowRuin
 
     readonly RowMesher.Stretch[] stretches;
     readonly Mesh body, roof;
-    readonly Held walk, rail;
+    readonly HeldMesh walk, rail;
     // Each mesh's triangles whole, what nothing owns (the floor, the chimney), and what's shown now.
     readonly int[] bodyAll, bodyFixed, bodyShown, roofAll, roofShown;
     readonly Color32[] colorsAll, colorsShown;
@@ -44,8 +44,8 @@ public sealed class RowRuin
         stretches = made.stretches;
         body = made.body;
         roof = made.roof;
-        walk = new Held(made.walk, stretches, s => s.Walk);
-        rail = new Held(made.rail, stretches, s => s.Rail);
+        walk = new HeldMesh(made.walk, stretches, s => s.Walk);
+        rail = new HeldMesh(made.rail, stretches, s => s.Rail);
         bodyAll = body.triangles;
         roofAll = roof.triangles;
         bodyFixed = (int[])bodyAll.Clone();
@@ -191,14 +191,14 @@ public sealed class RowRuin
     }
 
     // A collider's mesh, what's left of it: what no stretch holds, and what the stretches still up hold.
-    sealed class Held
+    sealed class HeldMesh
     {
         readonly Mesh mesh;
         readonly Func<RowMesher.Stretch, List<RowMesher.Run>> runs;
         readonly int[] all, loose;
         readonly List<int> shown = new();
 
-        public Held(Mesh mesh, RowMesher.Stretch[] stretches, Func<RowMesher.Stretch, List<RowMesher.Run>> runs)
+        public HeldMesh(Mesh mesh, RowMesher.Stretch[] stretches, Func<RowMesher.Stretch, List<RowMesher.Run>> runs)
         {
             this.mesh = mesh;
             this.runs = runs;

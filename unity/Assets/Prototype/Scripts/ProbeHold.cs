@@ -108,7 +108,9 @@ public class HoldProbe : ProbeScenario
         yield return Breach(houses, cells);
         int casts = 0;
         float took = 0f, worst = 0f;
-        int frames = 0, most = 0, wave = 1;
+        int frames = 0, most = 0, wave = 1, inVillage = 0, backEast = 0, westmost = int.MaxValue;
+        var village = WorldPlaces.Load(ChemGrid.Folders.World).Find("hollowmere").Cells().ToHashSet();
+        var started = new System.Collections.Generic.Dictionary<int, int>();
         for (float t = 0f; t < 300f && world.HoldRunning; t += Time.unscaledDeltaTime)
         {
             took += Time.unscaledDeltaTime;
@@ -116,6 +118,13 @@ public class HoldProbe : ProbeScenario
             frames++;
             most = Mathf.Max(most, world.Raiders.Count);
             wave = world.Hold.Wave;
+            foreach (var r in world.Raiders)
+            {
+                inVillage += village.Contains((r.X, r.Y)) ? 1 : 0;
+                if (!started.ContainsKey(r.Id)) started[r.Id] = r.X;
+                backEast = Mathf.Max(backEast, r.X - started[r.Id]);
+                westmost = Mathf.Min(westmost, r.X);
+            }
             if (frames % 900 == 1 && world.Raiders.Count > 0 && wave <= 2)
             {
                 var r = world.Raiders[0];
@@ -131,6 +140,8 @@ public class HoldProbe : ProbeScenario
         Metric("run_seconds", took);
         Metric("run_casts", casts);
         Metric("run_score", world.Hold.Wave);
+        Check("raiders_stay_out_of_hollowmere", inVillage == 0, $"{inVillage} sightings");
+        Check("raiders_climb_west", backEast <= 2 && westmost <= site.Heart.x + 2, $"at most {backEast} cells back east, west to x {westmost}");
         Check("played_to_a_loss", world.Hold.Phase == HoldPhase.Lost, show.HudLine());
         Check("raiders_cleared", world.Raiders.Count == 0);
         yield return Wait(1f);
@@ -148,13 +159,16 @@ public class HoldProbe : ProbeScenario
         var world = grid.World;
         var ruin = houses.Ruin(Row);
         var walkOn = houses.Root(Row).transform.Find("Walk").GetComponent<MeshCollider>();
-        int triangles = walkOn.sharedMesh.GetIndexCount(0), down = ruin.Down;
+        var railOn = houses.Root(Row).transform.Find("Rail").GetComponent<MeshCollider>();
+        uint triangles = walkOn.sharedMesh.GetIndexCount(0), railed = railOn.sharedMesh.GetIndexCount(0);
+        int down = ruin.Down;
         var tower = cells.Where(c => c.Terrain == "stone" && c.X - row.X >= 26 && c.Y - row.Y <= 5).ToList();
         foreach (var c in cells.Where(c => c.Terrain == "stone" && c.Y - row.Y <= 4 && c.X - row.X >= 18 && c.X - row.X <= 23).Concat(tower)) world.At(c.X, c.Y).T = "rubble";
         for (float t = 0f; t < 6f && ruin.Down == down; t += Time.deltaTime) yield return null;
         yield return Wait(0.5f);
         Check("the_walls_fall_with_their_cells", ruin.Down > down, $"{ruin.Down} of {ruin.Stretches} stretches down");
         Check("what_stood_on_them_goes", walkOn.sharedMesh.GetIndexCount(0) < triangles, $"{walkOn.sharedMesh.GetIndexCount(0)} of {triangles} walk indices");
+        Check("the_rail_goes_with_them", railOn.sharedMesh.GetIndexCount(0) < railed, $"{railOn.sharedMesh.GetIndexCount(0)} of {railed} rail indices");
         yield return Picture("breach", At(32, -14) + Vector3.up * 16f, At(24, 4) + Vector3.up * 3f);
         Metric("breach_stretches_down", ruin.Down);
     }

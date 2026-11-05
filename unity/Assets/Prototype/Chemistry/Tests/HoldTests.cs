@@ -208,6 +208,27 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void EveryBlowGoesByTheFifthEditionRoll()
+        {
+            var w = Running();
+            Away(w);
+            Until(w, () => w.Raiders.Count > 0, "a raider comes");
+            var r = w.Raiders[0];
+            Stand(w, Me, (r.X - 1, r.Y), 100000);
+            var hits = new System.Collections.Generic.List<StrikeHit>();
+            Until(w, () =>
+            {
+                hits.AddRange(w.TakeStrikeHits().Where(h => h.TargetPlayer == Me));
+                return hits.Count >= 60;
+            }, "sixty blows");
+            int ac = R.Entity("wizard").Ac;
+            Assert.That(hits.All(h => h.Hit == (h.Roll == 20 || (h.Roll != 1 && h.Total >= ac))));
+            Assert.That(hits.Any(h => h.Hit && h.Roll < 20), "a plain roll can hit");
+            Assert.That(hits.Any(h => !h.Hit), "and miss");
+            Assert.That(hits.Where(h => !h.Hit).All(h => h.Damage == 0));
+        }
+
+        [Test]
         public void AWizardCanBeDownedAndGetsUpAtTheCastle()
         {
             var w = Running();
