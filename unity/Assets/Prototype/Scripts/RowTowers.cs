@@ -9,27 +9,55 @@ using UnityEngine;
 public static class RowTowers
 {
     const float HalfCell = 0.75f, Rim = 0.6f, ArchHeight = 2.6f, ConeRise = 1.15f, Eaves = 0.5f, MerlonHeight = 1.1f;
+    const float StumpShare = 0.3f, Broken = 0.8f;
     const int Sides = 28;
     static readonly Color Cover = new(0.27f, 0.29f, 0.34f);
 
-    /// <summary>Draws the row's towers. Each wall is its line's two ends and a point a thickness to its right, all at y 0.</summary>
-    public static void Draw(MeshKit body, MeshKit walk, JObject row, Dictionary<string, Vector2> joins, List<(Vector3 from, Vector3 to, Vector3 right)> walls, float walkTop, float footing, float thickness, Color color)
+    /// <summary>
+    /// Draws the row's towers, a stretch each that stands on all its cells (RowRuin takes it down when enough of them have gone).
+    /// Each wall is its line's two ends and a point a thickness to its right, all at y 0.
+    /// </summary>
+    public static List<RowMesher.Stretch> Draw(MeshKit body, MeshKit walk, JObject row, Dictionary<string, Vector2> joins, List<(Vector3 from, Vector3 to, Vector3 right)> walls, float walkTop, float footing, Color color)
     {
-        if (!(row["towers"] is JObject towers)) return;
+        var made = new List<RowMesher.Stretch>();
+        if (!(row["towers"] is JObject towers)) return made;
         foreach (var t in towers.Properties().OrderBy(p => p.Name, System.StringComparer.Ordinal))
         {
             var at = joins[(string)t.Value["at"]];
-            float radius = (float)t.Value["radius"] * HalfCell, top = (float?)t.Value["height"] ?? walkTop + 4f;
+            int half = (int)t.Value["radius"];
+            float radius = half * HalfCell, top = (float?)t.Value["height"] ?? walkTop + 4f;
             var middle = new Vector3(at.x, 0f, at.y);
-            body.Cylinder(middle + Vector3.down * footing, middle + Vector3.up * walkTop, radius, Sides, color);
-            Drum(body, walk, middle, radius, walkTop, top, walls, color);
-            if ((string)t.Value["roof"] == "cone") body.Cone(middle + Vector3.up * top, radius + Eaves, radius * ConeRise, Sides, Cover);
-            else Crown(body, middle, radius, top, color);
+            var s = new RowMesher.Stretch { Group = CellsOf((int)Mathf.Round(at.x / HalfCell), (int)Mathf.Round(-at.y / HalfCell), half), Middle = middle };
+            s.Place = s.Group[s.Group.Count / 2];
+            s.Whole.Add(RowMesher.Record(body, () =>
+            {
+                body.Cylinder(middle + Vector3.down * footing, middle + Vector3.up * walkTop, radius, Sides, color);
+                if ((string)t.Value["roof"] == "cone") body.Cone(middle + Vector3.up * top, radius + Eaves, radius * ConeRise, Sides, Cover);
+                else Crown(body, middle, radius, top, color);
+            }));
+            s.Whole.Add(RowMesher.Record(body, () => Drum(body, middle, radius, walkTop, top, walls, color)));
+            s.Walk.Add(RowMesher.Record(walk, () => Drum(walk, middle, radius, walkTop, top, walls, Color.clear)));
+            s.Left = RowMesher.Record(body, () => body.Cylinder(middle + Vector3.down * footing, middle + Vector3.up * walkTop * StumpShare, radius, Sides, color * Broken));
+            made.Add(s);
         }
+        return made;
+    }
+
+    // The cells BuildingRaster.LayTowers takes, from the row's at cell: a cell's middle within the radius of the join, in half cells.
+    static List<Vector2Int> CellsOf(int x, int y, int radius)
+    {
+        var cells = new List<Vector2Int>();
+        for (int cy = (y - radius - 1) / 2 - 1; cy <= (y + radius) / 2 + 1; cy++)
+            for (int cx = (x - radius - 1) / 2 - 1; cx <= (x + radius) / 2 + 1; cx++)
+            {
+                int dx = 2 * cx + 1 - x, dy = 2 * cy + 1 - y;
+                if (dx * dx + dy * dy <= radius * radius) cells.Add(new Vector2Int(cx, cy));
+            }
+        return cells;
     }
 
     // The wall above the walk, a piece a side: where a wall comes in, only what's over the arch.
-    static void Drum(MeshKit body, MeshKit walk, Vector3 middle, float radius, float walkTop, float top, List<(Vector3 from, Vector3 to, Vector3 right)> walls, Color color)
+    static void Drum(MeshKit kit, Vector3 middle, float radius, float walkTop, float top, List<(Vector3 from, Vector3 to, Vector3 right)> walls, Color color)
     {
         float side = 2f * Mathf.PI * radius / Sides * 1.08f;
         for (int i = 0; i < Sides; i++)
@@ -41,8 +69,7 @@ public static class RowTowers
             var turn = Quaternion.LookRotation(out_);
             var centre = at + Vector3.up * (from + top) / 2f;
             var size = new Vector3(side, top - from, Rim);
-            body.Box(centre, size, color, turn);
-            walk.Box(centre, size, Color.clear, turn);
+            kit.Box(centre, size, color, turn);
         }
     }
 

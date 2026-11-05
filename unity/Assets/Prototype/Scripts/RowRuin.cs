@@ -12,6 +12,8 @@ using UnityEngine;
 public sealed class RowRuin
 {
     const float Soot = 0.16f;
+    // A group of cells falls when one in this many have gone.
+    const int GroupFalls = 4;
 
     /// <summary>What a stretch's cell says now.</summary>
     public struct CellNow
@@ -22,7 +24,9 @@ public sealed class RowRuin
     enum State : byte { Standing, Holed, Down }
 
     readonly RowMesher.Stretch[] stretches;
-    readonly Mesh body, roof;
+    readonly Mesh body, roof, walk;
+    readonly int[] walkAll, walkFixed;
+    readonly List<int> walkShown = new();
     // Each mesh's triangles whole, what nothing owns (the floor, the chimney), and what's shown now.
     readonly int[] bodyAll, bodyFixed, bodyShown, roofAll, roofShown;
     readonly Color32[] colorsAll, colorsShown;
@@ -41,6 +45,9 @@ public sealed class RowRuin
         stretches = made.stretches;
         body = made.body;
         roof = made.roof;
+        walk = made.walk;
+        walkAll = walk != null ? walk.triangles : System.Array.Empty<int>();
+        walkFixed = (int[])walkAll.Clone();
         bodyAll = body.triangles;
         roofAll = roof.triangles;
         bodyFixed = (int[])bodyAll.Clone();
@@ -62,6 +69,7 @@ public sealed class RowRuin
             ours[i] = onACell(s.Place);
             solid[i] = ours[i];
             foreach (var run in s.Whole) Unfix(run);
+            foreach (var run in s.Walk) System.Array.Clear(walkFixed, run.Index, run.Indices);
             foreach (var run in s.Door) Unfix(run);
             foreach (var run in s.Gable) Unfix(run);
             Unfix(s.Left);
@@ -89,7 +97,7 @@ public sealed class RowRuin
         bool bodyChanged = false, roofChanged = false;
         for (int i = 0; i < n; i++)
         {
-            var c = cell(stretches[i].Place);
+            var c = stretches[i].Group != null ? GroupNow(stretches[i].Group, cell) : cell(stretches[i].Place);
             bodyChanged |= solid[i] != c.blocking;
             solid[i] = c.blocking;
             burnt[i] |= c.burning || (c.ashen && !c.blocking);
@@ -113,6 +121,22 @@ public sealed class RowRuin
         if (!bodyChanged && !roofChanged) return false;
         Write(roofChanged);
         return true;
+    }
+
+    // A part on many cells stands until a share of them have gone; it burns if any of them does.
+    static CellNow GroupNow(List<Vector2Int> cells, Func<Vector2Int, CellNow> cell)
+    {
+        int gone = 0;
+        var now = new CellNow();
+        foreach (var at in cells)
+        {
+            var c = cell(at);
+            if (!c.blocking) gone++;
+            now.burning |= c.burning;
+            now.ashen |= c.ashen;
+        }
+        now.blocking = gone * GroupFalls < cells.Count;
+        return now;
     }
 
     // Whether a wall's cell, or the head over a gap, still has what it needs.
@@ -155,6 +179,7 @@ public sealed class RowRuin
         for (int i = 0; i < stretches.Length; i++) WriteStretch(i);
         body.SetTriangles(bodyShown, 0, false);
         body.colors32 = colorsShown;
+        WriteWalk();
         if (!roofToo) return;
         Array.Clear(roofShown, 0, roofShown.Length);
         RoofHurt = false;
@@ -165,6 +190,20 @@ public sealed class RowRuin
             foreach (var run in stretches[i].Roof) Array.Copy(roofAll, run.Index, roofShown, run.Index, run.Indices);
         }
         roof.SetTriangles(roofShown, 0, false);
+    }
+
+    // What's left to stand on: what no stretch owns, and what the stretches still up hold.
+    void WriteWalk()
+    {
+        if (walk == null) return;
+        walkShown.Clear();
+        for (int k = 0; k + 2 < walkFixed.Length; k += 3)
+            if (walkFixed[k] != walkFixed[k + 1]) walkShown.AddRange(new[] { walkFixed[k], walkFixed[k + 1], walkFixed[k + 2] });
+        for (int i = 0; i < stretches.Length; i++)
+            if (states[i] != State.Down)
+                foreach (var run in stretches[i].Walk)
+                    for (int k = run.Index; k < run.Index + run.Indices; k++) walkShown.Add(walkAll[k]);
+        walk.SetTriangles(walkShown, 0, false);
     }
 
     void WriteStretch(int i)

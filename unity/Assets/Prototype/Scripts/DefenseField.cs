@@ -141,8 +141,10 @@ public partial class DefenseField : MonoBehaviour
     void OnGUI()
     {
         HudScale.Apply();
-        if (!EventLog.HudVisible || World == null || !Near()) return;
-        DrawHealthBars();
+        if (!EventLog.HudVisible || World == null) return;
+        if (World.HoldRunning) DrawHealthBars();
+        if (!Near()) return;
+        if (!World.HoldRunning) DrawHealthBars();
         hudStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         GUI.Label(new Rect(HudScale.Width / 2f - 400f, 54f, 800f, 36f), $"<b>{HudLine()}</b>", hudStyle);
     }

@@ -342,6 +342,7 @@
     {"id":"standing-stones","name":"the standing stones","kind":"landmark","from":"ValleyBuilder.StonesAt, the ring of 9 m and 2 m round it","circle":{"at":[199,213],"radius":8}},
     {"id":"outcrop","name":"the outcrop","kind":"landmark","from":"ValleyBuilder.OutcropAt, the pile of rocks and 2 m round it","circle":{"at":[422,257],"radius":9}},
     {"id":"falls-cliff","name":"the cliff at the falls","kind":"landmark","from":"ValleyShape.Falls and CliffNorth: the clad face, 27 m either side of the falls","line":[[353,127],[389,127]],"width":5},
+    {"id":"hold-foot","name":"the foot of the hold's hill","kind":"landmark","from":"docs/design/the-hold.md: where the Hold's raiders come from, off the village's way","line":[[180,345],[180,400]],"width":1},
     {"id":"scree-ramp","name":"the scree ramp","kind":"landmark","from":"ValleyShape.Falls, RampFoot and RampTop: the rocks either side of the way up","line":[[395,145],[387,113]],"width":7}
   ]
 }

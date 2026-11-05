@@ -377,6 +377,9 @@ namespace Chem
     {
         public string Id, Name;
         public int Hp, Mass;
+
+        /// <summary>A copy to change, for a raider with an adjective.</summary>
+        internal EntityDef Copy() => (EntityDef)MemberwiseClone();
         /// <summary>A score or AC an entity row leaves out: 10, an average Strength, and an unarmoured AC.</summary>
         public const int DefaultScore = 10;
         /// <summary>Its Strength score (entities.json "str") and Armor Class ("ac"), for the unarmed strike (World.Strike.cs).</summary>
@@ -553,6 +556,8 @@ namespace Chem
         public string ShatterWhen, ShatterNotBy;
         /// <summary>The defense field's waves (sim.json defense).</summary>
         public DefenseParams Defense = new DefenseParams();
+        /// <summary>hold.json: the Hold's run.</summary>
+        public HoldParams Hold = new HoldParams();
         /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
         public GolfParams Golf = new GolfParams();
         /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
@@ -703,7 +708,11 @@ namespace Chem
         public IReadOnlyDictionary<string, LookDef> ElementLooks => elementLooks;
 
         /// <summary>The entity with this id, or null.</summary>
-        public EntityDef Entity(string id) => id != null && entities.TryGetValue(id, out var e) ? e : null;
+        public EntityDef Entity(string id)
+        {
+            if (id == null) return null;
+            return entities.TryGetValue(id, out var e) ? e : HoldVariant(id);
+        }
 
         /// <summary>Cell rules for one element, top to bottom.</summary>
         public IReadOnlyList<CellRule> CellRulesFor(string element) =>
@@ -765,6 +774,7 @@ namespace Chem
                 ["components"] = get("components.json", false) as JObject ?? new JObject(),
                 ["combos"] = get("combos.json", false) as JObject ?? new JObject(),
                 [BuildingTables.Key] = get("buildings.json", false) as JObject ?? new JObject(),
+                ["hold"] = get("hold.json", false) as JObject ?? new JObject(),
                 [ElementLooksKey] = get("elements.json", false) as JObject ?? new JObject(),
                 [FaunaTables.SpeciesKey] = get("fauna.json", false) as JObject ?? new JObject(),
                 [FaunaTables.PartsKey] = get("parts.json", false) as JObject ?? new JObject(),
@@ -840,6 +850,7 @@ namespace Chem
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
             r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
+            r.Sim.Hold = HoldParams.Parse(doc["hold"]);
             r.ParseLiquids(doc);
             ParseGroups(r, (JObject)doc["groups"]);
             ParseCombos(r, (JObject)doc["combos"]);

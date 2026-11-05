@@ -75,7 +75,7 @@ public partial class DefenseField : ICreatureGround
             if (!shown.TryGetValue(r.Id, out var s))
             {
                 var at = Ground(cell);
-                s = new Shown { kind = System.Array.IndexOf(kinds, r.Kind), cell = cell, from = at, to = at, at = at, state = NewState(at) };
+                s = new Shown { kind = System.Array.IndexOf(kinds, Rules.PlainKind(r.Kind)), cell = cell, from = at, to = at, at = at, state = NewState(at) };
                 SizeUp(s);
                 shown[r.Id] = s;
             }
@@ -152,6 +152,7 @@ public partial class DefenseField : ICreatureGround
             int need = used + b.Segments.Length;
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
             int end = used + animator.Evaluate(b, s.state, 0, this, instances, used);
+            Adjective(s, used, end);
             Frost(s, used, end);
             CreatureDrawer.HideAtLens(instances, used, end - used, cam);
             used = end;
@@ -159,6 +160,19 @@ public partial class DefenseField : ICreatureGround
             DrawnRaiders++;
         }
         drawer.Draw(instances, used, centre);
+    }
+
+    // A raider with an adjective shows it: its segments lean to the adjective's colour (Hold.cs).
+    void Adjective(Shown s, int from, int to)
+    {
+        var color = s.raider != null ? World.Rules.AdjectiveOf(s.raider.Kind)?.Color : null;
+        if (color == null || color.Length != 3) return;
+        var tint = new float3((float)color[0], (float)color[1], (float)color[2]);
+        for (int i = from; i < to; i++)
+        {
+            var c = instances[i].Color;
+            instances[i].Color = new float4(math.lerp(c.xyz, tint, 0.6f), c.w);
+        }
     }
 
     // A frozen raider's segments in ice; cracked, a spiderweb over the ice (Punchy/Creature draws it
@@ -234,6 +248,11 @@ public partial class DefenseField : ICreatureGround
             float f = Mathf.Clamp01(s.hp / (float)s.maxHp);
             GUI.color = Color.Lerp(new Color(0.9f, 0.15f, 0.1f), new Color(0.3f, 0.9f, 0.3f), f);
             GUI.DrawTexture(new Rect(back.x + 1f, back.y + 1f, (width - 2f) * f, height - 2f), bar);
+            if (s.raider != null && World.Rules.AdjectiveOf(s.raider.Kind) != null)
+            {
+                GUI.color = Color.white;
+                GUI.Label(new Rect(screen.x - 90f, back.y - 22f, 180f, 22f), World.Rules.Entity(s.raider.Kind).Name);
+            }
         }
         GUI.color = before;
     }
