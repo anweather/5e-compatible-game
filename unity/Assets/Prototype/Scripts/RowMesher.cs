@@ -125,6 +125,7 @@ public static class RowMesher
         float floor = level ? 0f : (float?)row["floor"]?["height"] ?? 0f;
         float wallTop = 0f;
         var walls = Walls(row, joins, tables, floor);
+        if ((string)row["wall"]?["finish"]?["pattern"] == "coursed") body.Coursed = Finished(row["wall"]["finish"], tables.TerrainColor((string)row["wall"]["material"]));
         foreach (var w in walls)
         {
             float parapet = ParapetOver(row);

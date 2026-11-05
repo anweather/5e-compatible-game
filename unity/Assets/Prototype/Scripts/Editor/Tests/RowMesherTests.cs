@@ -38,6 +38,19 @@ public class RowMesherTests
     }
 
     [Test]
+    public void ACoursedRowMarksItsStoneAndNothingElse()
+    {
+        const string door = ", \"openings\": [{ \"kind\": \"door\", \"at\": 2 }]";
+        Assert.AreEqual(0, RowMesher.Make(Box("\"shape\": \"flat\"", door), Plain).body.uv.Length, "a plain row carries no marks");
+        var row = Box("\"shape\": \"flat\"", door);
+        row["wall"]["finish"] = JObject.Parse("{ \"pattern\": \"coursed\" }");
+        var mesh = RowMesher.Make(row, Plain).body;
+        Assert.AreEqual(mesh.vertexCount, mesh.uv.Length);
+        Assert.That(mesh.uv.Any(m => m.x > 0.5f), "the walls are stone in courses");
+        Assert.That(mesh.uv.Any(m => m.x < 0.5f), "the door isn't");
+    }
+
+    [Test]
     public void WallsStandInsideTheirLines()
     {
         var bounds = RowMesher.Make(Box("\"shape\": \"flat\""), Plain).body.bounds;
