@@ -8,19 +8,21 @@
 #   linux.sh attention <worker> <ip>   print the attention hook's last report (~/.worker/attention.json)
 #   linux.sh runner <worker> <ip>      copy in and start the mailbox runner (runner.mjs)
 #   linux.sh brief <worker> <ip> <f>   put a brief into the worker's inbox
-#   linux.sh outbox <worker> <ip>      print finished reports ("=== <file>" each) and remove them
+#   linux.sh outbox <worker> <ip>      print finished reports ("=== <file>" each); they stay until outbox-done
+#   linux.sh outbox-done <worker> <ip> <file>...   remove reports the host has mailed
 #   linux.sh wip  <worker> <ip>   push uncommitted or unpushed work as wip/<worker>-<branch>
 # Slots are the Windows workers' (<Root>\signins\<worker>, this account only): claude
 # (its refresh token rotates, so one sign-in lives in one worker) and github (gh's
 # hosts.yml, which doesn't rotate, and .gitconfig). Nothing here prints a token.
 set -euo pipefail
 cmd="${1:-}"; w="${2:-}"; ip="${3:-}"
-[[ -n "$cmd" && -n "$w" && -n "$ip" ]] || { sed -n 2,15p "$0"; exit 2; }
+[[ -n "$cmd" && -n "$w" && -n "$ip" ]] || { sed -n 2,16p "$0"; exit 2; }
 here="$(cd "$(dirname "$0")" && pwd)"
 bank="${WORKERS_ROOT:-/c/HyperV/Workers}/signins/$w"
 user="${WORKER_USER:-anweather}"
 # Clones share the template's host key and get a new IP each boot, on a private NAT switch.
-ssh_() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 "$user@$ip" "$@"; }
+# Keepalives: a guest that stops answering (shut off, saved) ends the call instead of hanging the watcher on it.
+ssh_() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 "$user@$ip" "$@"; }
 
 # What a slot holds: paths under the guest's home. Slot files are named after them, / as ~.
 declare -A items=([claude]=".claude/.credentials.json" [github]=".config/gh/hosts.yml .gitconfig")
@@ -101,8 +103,8 @@ exit $failed
 EOF
 }
 
-# The IP shows up before sshd is listening.
-for _ in $(seq 24); do ssh_ true 2>/dev/null && break; sleep 5; done
+# The IP shows up before sshd is listening. The watcher's polls (attention, outbox) don't wait: they try again in a minute.
+case "$cmd" in attention|outbox*) ;; *) for _ in $(seq 24); do ssh_ true 2>/dev/null && break; sleep 5; done ;; esac
 ssh_ true || { echo "Can't reach $w over SSH ($user@$ip, the host's key)."; exit 1; }
 case "$cmd" in
   push) push ;; pull) pull ;; hook) hook ;; wip) wip ;;
@@ -113,7 +115,10 @@ case "$cmd" in
           ssh_ 'setsid nohup node ~/.worker/runner.mjs >/dev/null 2>&1 < /dev/null & echo "The mailbox runner is running."' ;;
   brief)  f="${4:?linux.sh brief <worker> <ip> <file>}"
           ssh_ "mkdir -p ~/.worker/inbox && cat > ~/.worker/inbox/$(basename "$f")" < "$f" ;;
-  # Finished reports, each as "=== <file>" then its text, then removed from the worker.
-  outbox) ssh_ 'cd ~/.worker/outbox 2>/dev/null || exit 0; for f in *.md; do [ -f "$f" ] || continue; echo "=== $f"; cat "$f"; rm -f "$f"; done' ;;
-  *) sed -n 2,15p "$0"; exit 2 ;;
+  # Finished reports, each as "=== <file>" then its text. They stay on the worker until the host has mailed them
+  # (outbox-done), so a watcher stopped mid-pass loses none.
+  outbox) ssh_ 'cd ~/.worker/outbox 2>/dev/null || exit 0; for f in *.md; do [ -f "$f" ] || continue; echo "=== $f"; cat "$f"; done' ;;
+  outbox-done) shift 3; for f in "$@"; do [[ "$f" =~ ^[A-Za-z0-9._-]+\.md$ ]] || { echo "Not a report name: $f"; exit 2; }; done
+               ssh_ "cd ~/.worker/outbox && rm -f $*" ;;
+  *) sed -n 2,16p "$0"; exit 2 ;;
 esac

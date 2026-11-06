@@ -3,7 +3,7 @@
 #   Exits 0 only if each gate exits 0. What doesn't need the build runs alongside it, each with its own log, and each is
 #   waited for and its own exit code read: a gate that fails must stop the landing (a hidden failure reached dev once).
 #   SANDBOX_GATES=1 adds the sandbox's.
-#   The workers tests: gates.test.mjs (any gate failing fails this), queue.test.mjs (the brief queue), land.test.mjs (land.sh here).
+#   The workers tests: gates.test.mjs (any gate failing fails this), queue.test.mjs (the brief queue), land.test.mjs (land.sh here), bridge-watch.test.mjs (the watcher's worker pass).
 set -uo pipefail
 log="${1:?gates.sh <log>}"
 : > "$log"
@@ -28,7 +28,7 @@ gate() {
 alongside "duplicates" npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
 alongside "chat-report" node --test tools/chat-report.test.mjs
 alongside "chat-strict" node --test tools/chat-strict.test.mjs
-alongside "workers" node --test tools/workers/gates.test.mjs tools/workers/queue.test.mjs tools/workers/land.test.mjs
+alongside "workers" node --test tools/workers/gates.test.mjs tools/workers/queue.test.mjs tools/workers/land.test.mjs tools/workers/bridge-watch.test.mjs
 if [[ "${SANDBOX_GATES:-0}" == 1 ]]; then
   gate "sandbox types" npm --prefix sandbox run typecheck
   gate "sandbox tests" npm --prefix sandbox test
