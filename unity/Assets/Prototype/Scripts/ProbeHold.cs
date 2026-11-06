@@ -48,9 +48,9 @@ public class HoldProbe : ProbeScenario
     void LevelAcross()
     {
         float Ground(int x, int y) => grid.GroundAt(grid.CellCenter(row.X + x, row.Y + y));
-        float across = Mathf.Abs(Ground(54, 16) - Ground(56, 16));
-        float hill = Mathf.Abs(Ground(46, 16) - Ground(48, 16));
-        float bank = Mathf.Abs(Ground(50, 16) - Ground(58, 16));
+        float across = Mathf.Abs(Ground(62, 16) - Ground(64, 16));
+        float hill = Mathf.Abs(Ground(54, 16) - Ground(56, 16));
+        float bank = Mathf.Abs(Ground(58, 16) - Ground(66, 16));
         Metric("road_across_m", across);
         Metric("hill_across_m", hill);
         Metric("road_bank_m", bank);
@@ -115,6 +115,7 @@ public class HoldProbe : ProbeScenario
         if (!world.HoldRunning) yield break;
         for (float t = 0f; t < 40f && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
         Check("raiders_come", world.Raiders.Count > 0);
+        TheRoadIsTheWay(world);
         yield return Wait(0.5f);
         Check("they_are_drawn", defense != null && defense.DrawnRaiders > 0, $"{defense?.DrawnRaiders}");
         Stand(21, 3);
@@ -238,7 +239,6 @@ public class HoldProbe : ProbeScenario
         Metric("vertices", body);
 
         LevelAcross();
-        TheRoadIsTheWay(world);
         var middle = At(16, 16);
         Stand(82, 19);
         yield return Picture("valley-floor", At(90, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);

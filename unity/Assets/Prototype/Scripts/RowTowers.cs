@@ -8,6 +8,29 @@ using UnityEngine;
 // it, and a floor at the walk's height, which is the blockers' top. "roof": "cone" puts one on it; none, a crown of merlons.
 public static class RowTowers
 {
+    // A cone roof in overlapping rings of slates, each slate its own tone, every other ring a half step round.
+    static void Slates(MeshKit kit, Vector3 foot, float radius, float height)
+    {
+        const int Rings = 9, Round = 20;
+        const float Lap = 0.1f;
+        var tip = foot + Vector3.up * height;
+        for (int ring = 0; ring < Rings; ring++)
+        {
+            float low = ring / (float)Rings, high = (ring + 1) / (float)Rings;
+            float lowR = radius * (1f - low) + Lap, highR = radius * (1f - high);
+            float lowY = height * low - Lap * 0.6f, highY = height * high;
+            for (int i = 0; i < Round; i++)
+            {
+                float a = (i + (ring % 2) * 0.5f) / Round * Mathf.PI * 2f, b = (i + 1 + (ring % 2) * 0.5f) / Round * Mathf.PI * 2f;
+                Vector3 Around(float angle, float r, float y) => foot + new Vector3(Mathf.Cos(angle) * r, y, Mathf.Sin(angle) * r);
+                var outward = (Around((a + b) / 2f, radius, 0f) - foot).normalized + Vector3.up * 0.7f;
+                float tone = 0.78f + 0.44f * Mathf.Abs(Mathf.Sin(ring * 12.9898f + i * 78.233f));
+                kit.Quad(Around(a, lowR, lowY), Around(b, lowR, lowY), Around(b, highR, highY), Around(a, highR, highY), new Color(Cover.r * tone, Cover.g * tone, Cover.b * tone), outward);
+            }
+        }
+        kit.Cone(tip + Vector3.down * 0.15f, radius / Rings + 0.1f, 0.5f, 8, Cover * 0.8f);
+    }
+
     const float HalfCell = 0.75f, Rim = 0.6f, ArchHeight = 2.6f, ConeRise = 1.15f, Eaves = 0.5f, MerlonHeight = 1.1f;
     const float StumpShare = 0.3f, Broken = 0.8f;
     const int Sides = 28;
@@ -32,7 +55,7 @@ public static class RowTowers
             s.Whole.Add(RowMesher.Record(body, () =>
             {
                 body.Cylinder(middle + Vector3.down * footing, middle + Vector3.up * walkTop, radius, Sides, color);
-                if ((string)t.Value["roof"] == "cone") body.Cone(middle + Vector3.up * top, radius + Eaves, radius * ConeRise, Sides, Cover);
+                if ((string)t.Value["roof"] == "cone") Slates(body, middle + Vector3.up * top, radius + Eaves, radius * ConeRise);
                 else Crown(body, middle, radius, top, color);
             }));
             s.Whole.Add(RowMesher.Record(body, () => Drum(body, middle, radius, walkTop, top, walls, color)));

@@ -14,6 +14,18 @@ public partial class DefenseField
     const float BossSize = 1.9f, MostCreaturePitch = 0.45f;
     static readonly float4 Ash = new(0.2f, 0.19f, 0.2f, 1f);
 
+    const float Rounding = 7f, Turning = 8f, LungeReach = 0.8f, LungeSeconds = 0.35f;
+
+    // A blow, seen: the core gives a raider its wait as it strikes, so a wait that jumps up is a blow, and the raider lunges.
+    void Struck(Shown s)
+    {
+        int wait = s.raider?.Wait ?? 0;
+        int every = s.raider != null ? World.Rules.Entity(s.raider.Kind)?.Raider?.AttackEvery ?? 0 : 0;
+        if (every > 0 && wait >= every && s.waitWas < every) s.lunge = 1f;
+        s.waitWas = wait;
+        s.lunge = Mathf.Max(0f, s.lunge - Time.deltaTime / LungeSeconds);
+    }
+
     Mesh shadowMesh;
     Material shadowMaterial;
 

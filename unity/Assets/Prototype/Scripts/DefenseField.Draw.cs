@@ -26,7 +26,10 @@ public partial class DefenseField : ICreatureGround
         public int kind;
         public Vector2Int cell;
         public Vector3 from, to, at;
-        public float movedAt, stepSeconds, lift;
+        public float movedAt, stepSeconds, lift, lunge;
+        public Vector3 smooth;
+        public bool smoothed;
+        public int waitWas;
         public CreatureState state;
         public int hp, maxHp;
         public Raider raider;
@@ -121,11 +124,19 @@ public partial class DefenseField : ICreatureGround
             float t = s.stepSeconds > 0f ? Mathf.Clamp01((Time.time - s.movedAt) / s.stepSeconds) : 1f;
             var at = Vector3.Lerp(s.from, s.to, t);
             Lift(s, World);
-            at.y = grid.GroundAt(at) + s.lift;
-            var way = s.to - s.from;
+            // The cells make a staircase of a diagonal: the body takes the corners off it.
+            if (!s.smoothed) s.smooth = at;
+            s.smoothed = true;
+            var before = s.smooth;
+            s.smooth = Vector3.Lerp(s.smooth, at, 1f - Mathf.Exp(-Rounding * Time.deltaTime));
+            at = s.smooth;
+            var way = s.smooth - before;
             way.y = 0f;
-            float speed = t < 1f && s.stepSeconds > 0f ? way.magnitude / s.stepSeconds : 0f;
-            if (way.sqrMagnitude > 1e-4f) s.state.Yaw = Mathf.Atan2(way.x, way.z);
+            float speed = Time.deltaTime > 0f ? way.magnitude / Time.deltaTime : 0f;
+            if (way.sqrMagnitude > 1e-7f) s.state.Yaw = Mathf.LerpAngle(s.state.Yaw * Mathf.Rad2Deg, Mathf.Atan2(way.x, way.z) * Mathf.Rad2Deg, 1f - Mathf.Exp(-Turning * Time.deltaTime)) * Mathf.Deg2Rad;
+            Struck(s);
+            at += new Vector3(Mathf.Sin(s.state.Yaw), 0f, Mathf.Cos(s.state.Yaw)) * (Mathf.Sin(s.lunge * Mathf.PI) * LungeReach);
+            at.y = grid.GroundAt(at) + s.lift;
             s.state.Speed = Mathf.Lerp(s.state.Speed, speed, 1f - Mathf.Exp(-8f * Time.deltaTime));
             s.state.Position = at;
             s.state.Clock += Time.deltaTime;
