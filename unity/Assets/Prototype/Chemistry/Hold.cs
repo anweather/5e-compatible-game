@@ -30,6 +30,8 @@ namespace Chem
         public IReadOnlyDictionary<string, int> Strength = new Dictionary<string, int>();
         /// <summary>The adjectives, in the rules' order.</summary>
         public IReadOnlyList<AdjectiveDef> Adjectives = Array.Empty<AdjectiveDef>();
+        /// <summary>The hands' table and numbers.</summary>
+        public HandsDef Hands = new HandsDef();
 
         internal static HoldParams Parse(JToken t)
         {
@@ -49,6 +51,7 @@ namespace Chem
             h.Margin = Int("margin", h.Margin);
             h.AdjectiveFrom = Int("adjectiveFrom", h.AdjectiveFrom);
             h.AdjectivePercent = Int("adjectivePercent", h.AdjectivePercent);
+            h.Hands = HandsDef.Parse(o["hands"]);
             h.Strength = (o["strength"] as JObject)?.Properties().ToDictionary(p => p.Name, p => (int)p.Value, StringComparer.Ordinal) ?? new Dictionary<string, int>();
             h.Adjectives = (o["adjectives"] as JObject)?.Properties().Select(p => new AdjectiveDef
             {
@@ -85,6 +88,9 @@ namespace Chem
         public (int x, int y) Heart { get; private set; }
         public (int x, int y) Plate { get; private set; }
         public (int x, int y) Rise { get; private set; }
+        /// <summary>Two corners of the attuning room, as cells; (-1, -1) if the map has none.</summary>
+        public (int x, int y) AttuningFrom { get; private set; } = (-1, -1);
+        public (int x, int y) AttuningTo { get; private set; } = (-1, -1);
         public IReadOnlyList<HoldSpawner> Spawners { get; private set; } = Array.Empty<HoldSpawner>();
         /// <summary>The castle's row as the map has it.</summary>
         public JObject Row { get; private set; }
@@ -112,9 +118,17 @@ namespace Chem
                 Heart = Mark(row, (string)o["heart"]),
                 Plate = Mark(row, (string)o["plate"]),
                 Rise = Mark(row, (string)o["rise"]),
+                AttuningFrom = Corner(row, o["attuning"], 0),
+                AttuningTo = Corner(row, o["attuning"], 1),
                 Spawners = spawners,
             };
         }
+
+        static (int x, int y) Corner(JObject row, JToken corners, int i) => corners is JArray c && c.Count == 2 ? Mark(row, (string)c[i]) : (-1, -1);
+
+        /// <summary>Whether a cell is in the attuning room: the box of its two corners.</summary>
+        public bool InAttuning(int x, int y) =>
+            x >= AttuningFrom.x && x <= AttuningTo.x && y >= AttuningFrom.y && y <= AttuningTo.y && AttuningFrom.x >= 0;
 
         // A join of the row as a world cell: the cell whose north-west corner it is, or whose middle.
         static (int x, int y) Mark(JObject row, string join)

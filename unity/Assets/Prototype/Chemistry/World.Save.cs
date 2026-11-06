@@ -87,6 +87,7 @@ namespace Chem
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
             if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
+            if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
             if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
@@ -278,6 +279,7 @@ namespace Chem
             LoadTriggers(s);
             NextEntityId = (int)s["nextEntityId"];
             LoadHold(s["hold"]);
+            LoadHands(s["hands"]);
             if (s["defense"] is JObject d)
             {
                 var at = d["at"];

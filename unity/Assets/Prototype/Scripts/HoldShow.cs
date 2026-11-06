@@ -29,6 +29,22 @@ public class HoldShow : MonoBehaviour
             : $"The keep fell in wave {h.Wave}. Stand on the plate to try again";
     }
 
+    /// <summary>What a wizard's hands hold and whether they're ready, for the HUD and the probe; empty with its hands off.</summary>
+    public string HandsLine(string player)
+    {
+        var world = grid != null ? grid.World : null;
+        if (world?.HoldSite == null || !world.HandsOn(player)) return "";
+        var h = world.HandsOf(player);
+        string line = $"Left: {h.Holds[HandsDef.Left] ?? "nothing"}{Cooling(world, player, HandsDef.Left)}   Right: {h.Holds[HandsDef.Right] ?? "nothing"}{Cooling(world, player, HandsDef.Right)}";
+        return world.InAttuning(player) ? line + "   (attuning: a hand's trigger changes it)" : line;
+    }
+
+    static string Cooling(World world, string player, int hand)
+    {
+        int ticks = world.HandCooling(player, hand);
+        return ticks > 0 ? $" ({(ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond}s)" : "";
+    }
+
     void Awake() => grid = GetComponent<ChemGrid>();
 
     void Update()
@@ -83,12 +99,14 @@ public class HoldShow : MonoBehaviour
     {
         HudScale.Apply();
         var world = grid.World;
-        if (!EventLog.HudVisible || world?.HoldSite == null || world.Hold == null) return;
-        if (!world.HoldRunning && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
+        if (!EventLog.HudVisible || world?.HoldSite == null) return;
         var caster = EventLog.TrackedCaster;
+        style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
+        if (caster != null) GUI.Label(new Rect(HudScale.Width / 2f - 400f, 90f, 800f, 36f), HandsLine(caster.CastPlayer), style);
+        if (world.Hold == null) return;
+        if (!world.HoldRunning && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
         var (hx, hy) = world.HoldSite.Heart;
         if (caster == null || Vector3.Distance(caster.transform.position, grid.CellCenter(hx, hy)) > HudRange) return;
-        style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         GUI.Label(new Rect(HudScale.Width / 2f - 400f, 54f, 800f, 36f), $"<b>{HudLine()}</b>", style);
     }
 }

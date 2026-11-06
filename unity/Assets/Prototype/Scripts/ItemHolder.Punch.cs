@@ -66,6 +66,16 @@ public partial class ItemHolder
         PunchStarted?.Invoke(InReachOfFist());
     }
 
+    /// <summary>
+    /// An empty hand's gesture in the Hold (rules/hold.json): a throw lets go of what's carried, and the rest are a punch, which
+    /// is all a free hand has today.
+    /// </summary>
+    public void HandAct(string act)
+    {
+        if (act == "throw") Throw(hardThrow);
+        else TryPunch();
+    }
+
     /// <summary>Nothing stops the wizard punching right now.</summary>
     public bool MayPunchNow => Held == null && MayPunch(
         (TryGetComponent<SpellCaster>(out var caster) && caster.CastInProgress) || beats.HandsBusy || (radial != null && radial.BusyThisFrame),

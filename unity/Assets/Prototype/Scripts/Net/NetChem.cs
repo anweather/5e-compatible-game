@@ -450,12 +450,8 @@ public partial class NetChem : NetworkBehaviour
 
     // Whether a stand stamped now may be a step that fires a trigger (World.Triggers.cs): one is in force, or
     // a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
-    // A stand the Hold's run reads: all of them during one, and those on its plate.
-    bool HoldReads(int x, int y)
-    {
-        var world = grid.World;
-        return world?.HoldSite != null && (world.HoldRunning || world.HoldSite.Plate == (x, y));
-    }
+    // A stand the Hold reads: all of them during a run, and those on its plate or in its attuning room.
+    bool HoldReads(int x, int y) => grid.World?.HoldReadsStand(x, y) == true;
 
     bool StepsMayFire() =>
         grid.World != null && (grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0 || roomCommands.HasPending || roomStampedFor > NetTick);
