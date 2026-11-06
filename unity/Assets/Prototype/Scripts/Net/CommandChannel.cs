@@ -25,6 +25,7 @@ public sealed class CommandChannel<TIntent> where TIntent : struct, ITickStamped
     readonly Dictionary<int, TickBatch> batches;
     readonly System.Action<TickBatch, TIntent> into;
     readonly System.Action<List<TIntent>, TIntent> record;
+    readonly System.Func<TIntent, bool> takes;
 
     // Host only.
     readonly List<TIntent> pending = new();
@@ -40,15 +41,23 @@ public sealed class CommandChannel<TIntent> where TIntent : struct, ITickStamped
     /// The compaction hook: adds a just-stamped command to the history, and may drop ones it makes
     /// needless (a stand a newer one replaces). Left out, every command is kept.
     /// </param>
-    public CommandChannel(Dictionary<int, TickBatch> batches, System.Action<TickBatch, TIntent> into, System.Action<List<TIntent>, TIntent> record = null)
+    /// <param name="takes">
+    /// Host: whether to take what's asked. One it doesn't is never stamped, so no peer runs it and no joiner replays it;
+    /// the host decides, as a peer deciding for itself would desync. Left out, it takes everything.
+    /// </param>
+    public CommandChannel(Dictionary<int, TickBatch> batches, System.Action<TickBatch, TIntent> into, System.Action<List<TIntent>, TIntent> record = null, System.Func<TIntent, bool> takes = null)
     {
         this.batches = batches;
         this.into = into;
         this.record = record ?? ((h, c) => h.Add(c));
+        this.takes = takes;
     }
 
     /// <summary>Host: someone asked for this; it goes out with the next stamp.</summary>
-    public void Request(TIntent intent) => pending.Add(intent);
+    public void Request(TIntent intent)
+    {
+        if (takes == null || takes(intent)) pending.Add(intent);
+    }
 
     /// <summary>Host: something was asked that the next stamp sends.</summary>
     public bool HasPending => pending.Count > 0;

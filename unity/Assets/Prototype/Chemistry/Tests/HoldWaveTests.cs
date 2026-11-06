@@ -200,6 +200,16 @@ namespace Chem.Tests
             BuildingRaster.Cells(BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings), R.Buildings).Count(c => w.At(c.X, c.Y).T != c.Terrain);
 
         [Test]
+        public void OnlyADevBuildTakesAMoment()
+        {
+            var moment = ComboCommand.Moment(Me, "first-wave");
+            Assert.That(moment.TakenBy(devBuild: true));
+            Assert.That(moment.TakenBy(devBuild: false), Is.False);
+            Assert.That(ComboCommand.Load(Me, "fire").TakenBy(devBuild: false), "the rest go by as ever");
+            Assert.That(ComboCommand.Hand(Me, HandsDef.Right).TakenBy(devBuild: false));
+        }
+
+        [Test]
         public void EveryMomentGoesIn()
         {
             foreach (var m in P.Moments)
@@ -409,6 +419,8 @@ namespace Chem.Tests
             var w = Barricaded();
             var cells = Barricades(w);
             int was = cells.Count;
+            foreach (var (x, y) in cells) w.At(x, y).Cover = null; // it's the barricade's own catch under test, not the grass under it
+            Assert.That(w.Flammability(w.At(cells[0].x, cells[0].y)), Is.GreaterThan(0));
             var beside = cells.SelectMany(c => new[] { (c.x + 1, c.y), (c.x - 1, c.y), (c.x, c.y + 1), (c.x, c.y - 1) })
                 .Where(c => w.At(c.Item1, c.Item2).T != P.BarricadeTerrain).Take(4).ToList();
             for (int i = 0; i < 600 && Barricades(w).Count == was; i++)

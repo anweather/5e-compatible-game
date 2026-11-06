@@ -106,6 +106,9 @@ namespace Chem
         /// <summary>For a <see cref="ComboCommandKind.Load"/>: the button is down, so the cast waits for a Release before it goes off.</summary>
         public bool Hold { get; }
 
+        /// <summary>Whether a host takes this: a moment only from a dev build or the Editor, never in a released player.</summary>
+        public bool TakenBy(bool devBuild) => Kind != ComboCommandKind.Moment || devBuild;
+
         public static ComboCommand Load(string player, string element, bool hold = false) => new ComboCommand(player, ComboCommandKind.Load, element, hold: hold);
         public static ComboCommand Cancel(string player) => new ComboCommand(player, ComboCommandKind.Cancel);
         public static ComboCommand Cycle(string player, int step) => new ComboCommand(player, ComboCommandKind.Cycle, null, step);

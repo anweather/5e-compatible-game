@@ -170,7 +170,7 @@ public partial class NetChem : NetworkBehaviour
     {
         grid = GetComponent<ChemGrid>();
         defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
-        combos = new CommandChannel<ComboIntent>(batches, (batch, c) => batch.Combos.Add(c.ToCommand()));
+        combos = ComboChannel(batches, HoldMoments.Offered);
         standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y), HoldReads);
         strikes = new CommandChannel<StrikeIntent>(batches, (batch, s) => batch.Strikes.Add(s.ToCommand()), standKeeper.Record);
         roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
@@ -300,6 +300,10 @@ public partial class NetChem : NetworkBehaviour
 
     /// <summary>A client's name in the core's casts.</summary>
     public static string PlayerName(ulong clientId) => $"p{clientId}";
+
+    /// <summary>The channel players' combo input goes by: a host that isn't a dev build takes no moment, whoever asks.</summary>
+    public static CommandChannel<ComboIntent> ComboChannel(Dictionary<int, TickBatch> batches, bool devBuild) =>
+        new(batches, (batch, c) => batch.Combos.Add(c.ToCommand()), takes: c => c.ToCommand().TakenBy(devBuild));
 
     /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
     public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));
