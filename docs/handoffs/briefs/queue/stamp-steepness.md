@@ -1,5 +1,5 @@
 Needs: core
-Area: unity/Assets/Prototype/Chemistry/Terraform*, unity/Assets/Prototype/Chemistry/Tests/TerraformTests.cs, rules/terraform*.json
+Area: unity/Assets/Prototype/Chemistry/World.Terraform.cs, unity/Assets/Prototype/Chemistry/CellHeightfield.cs, unity/Assets/Prototype/Chemistry/Tests/TerraformTests.cs
 Branch: stamp-steepness
 
 # Land stamps: limit steepness, and don't move a refused stamp far away (#156, the core half)

@@ -1,5 +1,5 @@
 Needs: core
-Area: unity/Assets/Prototype/Chemistry/Hold*, rules/hold.json, tools/workers/gates.sh
+Area: unity/Assets/Prototype/Chemistry/Hold.cs, unity/Assets/Prototype/Chemistry/HoldProgress.cs, unity/Assets/Prototype/Chemistry/Tests/HoldTests.cs, rules/hold.json, tools/workers/gates.sh
 Branch: hold-offer-suits
 
 # The Hold's offer only draws upgrades the wizard can use (#165)
