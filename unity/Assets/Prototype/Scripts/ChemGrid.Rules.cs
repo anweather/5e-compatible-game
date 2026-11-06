@@ -75,7 +75,11 @@ public partial class ChemGrid
             if (command.Change == RoomChange.Revert && verdict.Done) Reverted();
             RoomDecided?.Invoke(command, verdict);
         };
-        if (roomAwaited) return;
+        if (roomAwaited)
+        {
+            World.AwaitRoom(Budgets);
+            return;
+        }
         var mode = plannedMode ?? was?.Mode ?? ChangeMode.Open;
         plannedMode = null;
         string host = was?.Host ?? NetChem.PeerName(0);

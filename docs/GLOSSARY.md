@@ -553,6 +553,9 @@ that long, and doesn't march.
 **Wave warning**
 : What the core says of the next Hold wave while it waits: its number, theme, boss and size, long enough ahead to reach the keep and attune. Not the dragon's **warning**.
 
+**Barricade**
+: A small wooden block on the Hold's road, appearing at the start of a wave. Raiders break through it, and it burns.
+
 **Moment**
 : A canned setup for playtesting the Hold: a rules row naming a wave, hand sets and the keep's state, to jump straight to in dev builds and the Editor.
 

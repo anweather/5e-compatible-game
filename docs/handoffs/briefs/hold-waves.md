@@ -8,7 +8,9 @@ Brief for the Mac: the Hold, phase 4, endless and tuned. Read `docs/design/the-h
 - **Waves by formula, from the rules:** count, health, damage, kinds and adjectives grow with the wave number. Peer count at the run's start scales them, from a rules row. Same seed, same waves.
 - **Wave themes:** rows that lean a wave on one or two adjectives, chosen by the seeded RNG with no theme twice running, so no one hand set wins everything.
 - **More adjectives:** about four more, as rows, so each of fire, water, earth and air has raiders it's good and bad against. Use what the chemistry already does. Say what you chose.
-- **A boss** every so many waves, from the same rows: a raider with a bigger row, its own name and health bar. A flyer or swimmer is a stretch: leave it out.
+- **A boss** every so many waves, from the same rows: a raider with a bigger row, its own name and health bar. Swimmers are left out.
+- **Routes (Andrew, 2026-11-05):** raiders take the road by default; today they ignore it and come straight up the east slope. A raider's row says how it moves: road (the default), climbing (straight up the cliff, ignoring the road) or flying (over everything, in a straight line). Add at least one of each new kind, and let themes and waves bring them in. Flying is new for raiders: keep it integer core state like everything else, and say what can hit a flyer and how it comes down.
+- **Barricades:** small wooden barricades that appear on the road at the start of a wave, for road raiders to break through. Where they go is a row or a place, how many and how strong are dials, and they're made of a terrain that really burns, so fire can clear or lose them through the chemistry. They clear with the run's mending.
 - **Warning:** core state saying what the next wave is, set long enough before it to reach the keep and attune. The dial is the time, and the PC does the HUD and the castle's sign later.
 - **Dials:** every number above is a named field, and `about` says what each does. A short section in `the-hold.md` lists them: name, start value, what you'd feel if you raised it.
 
@@ -20,6 +22,6 @@ Brief for the Mac: the Hold, phase 4, endless and tuned. Read `docs/design/the-h
 
 **Keep:** the same rules as `the-hold.md`: core state, commands only, seeded RNG, no golden moved, words in the glossary first ("boss", "theme" and anything else new). Raiders' existing kinds stay as they are in the sandbox. Keep the test suite fast: the runner isn't a gate, and any test of it stays under about 2 s.
 
-**Tests:** the formula, a moment giving the same wave as reaching it by play, themes never repeating, peer scaling, the warning's timing, two worlds matching over several waves.
+**Tests:** road raiders staying on the road, climbers and flyers ignoring it, barricades blocking, breaking and burning, the formula, a moment giving the same wave as reaching it by play, themes never repeating, peer scaling, the warning's timing, two worlds matching over several waves.
 
-**Report:** one short message: the commit, gates with exit codes, the curve as a table, the dials you'd turn first, and a numbered list for the PC: what the warning and the boss must show. Don't merge it. Ask before anything much larger than this brief.
+**Report:** one short message: the commit, gates with exit codes, the curve as a table, the dials you'd turn first, and a numbered list for the PC: what the warning, the boss, barricades, climbers and flyers must show. Don't merge it. Ask before anything much larger than this brief.

@@ -155,7 +155,9 @@ joiner's history (`StandKeeper`), since attuning reads them.
 - **Waves by formula, from the rules:** count, health, kinds and adjectives grow with the wave number, per peer count.
 - **Wave themes:** a wave leans on one or two adjectives, so no one hand set wins everything.
 - **Warning:** between waves the castle shows what's next, in time to run to the keep and attune.
-- **More adjectives and a boss every so often,** from the same rows. Raiders that fly or swim are a stretch.
+- **More adjectives and a boss every so often,** from the same rows. Raiders that swim are a stretch.
+- **Routes:** raiders take the road by default. Some climb the cliff and some fly, ignoring it (Andrew, 2026-11-05).
+- **Barricades:** small wooden ones appear on the road at the start of a wave. Raiders break through them, and they burn.
 - **Playtest moments:** canned setups as rows (a wave, a theme, hand sets, the keep's health) to jump straight to and play, in dev builds and the Editor (Andrew, 2026-11-05).
 - **Run length:** a good run lasts about 20 minutes (Andrew, 2026-11-05), a dial.
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no

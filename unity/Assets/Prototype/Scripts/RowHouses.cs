@@ -23,6 +23,7 @@ public class RowHouses : MonoBehaviour
     sealed class Drawn
     {
         public string json;
+        public World on;
         public GameObject root;
         public Transform hidden;
         public RowRuin ruin;
@@ -153,7 +154,8 @@ public class RowHouses : MonoBehaviour
             string json = row.Json.ToString(Formatting.None);
             if (drawn.TryGetValue(row.Id, out var old))
             {
-                if (old.json == json) continue;
+                // A reset took what was drawn with the grid's children, and its blockers with it.
+                if (old.json == json && old.on == world) continue;
                 Remove(old);
                 order.Remove(old);
             }
@@ -200,6 +202,7 @@ public class RowHouses : MonoBehaviour
         return new Drawn
         {
             json = json,
+            on = world,
             root = root,
             hidden = HideBase(world, row, corner),
             row = row,
