@@ -1,3 +1,4 @@
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -45,11 +46,11 @@ public sealed class CastHud
     {
         float cx = HudScale.Width / 2f, y = HudScale.Height * DownTheScreen;
         var dpad = world.DpadOf(cast.Player);
-        string hand = world.HandSpellUnderWay(cast.Player);
+        var hand = world.HandSpellsUnderWay(cast.Player);
         if (cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count)
             GUI.Label(new Rect(cx - 200f, y - 22f, 400f, 44f), $"<b>{dpad[cast.DpadCasting].Name}</b>", small);
-        else if (hand != null)
-            GUI.Label(new Rect(cx - 200f, y - 22f, 400f, 44f), $"<b>{world.Rules.Spell(hand)?.Name ?? hand}</b>", small);
+        else if (hand.Count > 0)
+            GUI.Label(new Rect(cx - 200f, y - 22f, 400f, 44f), $"<b>{string.Join(" + ", hand.Select(s => world.Rules.Spell(s)?.Name ?? s))}</b>", small);
         else if (cast.Second != null || cast.Window > 0)
         {
             float x = OrbRadius + OrbGap / 2f;
