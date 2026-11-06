@@ -162,6 +162,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 - **Barricades:** small wooden ones appear on the road at the start of a wave. Raiders break through them, and they burn.
 - **Playtest moments:** canned setups as rows (a wave, a theme, hand sets, the keep's health) to jump straight to and play, in dev builds and the Editor (Andrew, 2026-11-05).
 - **Run length:** a good run lasts about 20 minutes (Andrew, 2026-11-05), a dial.
+- **More players:** raiders scale by count, a boss by health (Andrew, 2026-11-05).
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no
   view). **Done when:** a good player's run lasts about the length Andrew picks, and a wrong hand set is felt.
 
@@ -199,7 +200,7 @@ Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list i
 Progress belongs to the player, not the world (J-038).
 
 - **Inside a run:** between waves, choose one of three upgrades.
-- **Between runs:** you start with one hand and one element. You unlock the second hand, modifiers, then other elements,
+- **Between runs:** you start with one hand and one element. You unlock gestures, the second hand, then other elements,
   then kit spells. Discoveries stay.
 - **Later:** castle upgrades, and things worth finding on the hill.
 
