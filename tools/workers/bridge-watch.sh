@@ -12,7 +12,12 @@
 #   3. Delivery: mail taken but not acked in 10 min goes back to the inbox; mail unread for 5 min while its role's listener isn't running and its account
 #      isn't out wakes the role (at most once every 30 min); the PM has no wake recipe, so its
 #      mail is only logged as waiting.
-# Everything is logged in bridge.log as "watch". State: $BRIDGE/watch/.
+#   4. Workers (once a minute): each running worker VM's attention prompt and finished reports, read
+#      over SSH (Linux) or PowerShell Direct (Windows). Each call is cut off after
+#      BRIDGE_WATCH_GUEST_SECS (default 60): one guest that never answers must not stop the loop
+#      for the rest (2026-11-06: u2's reports sat on it for a day while the watcher still had a pid).
+#      What it sees running, and a worker it can't reach, are logged when they change.
+# Everything is logged in bridge.log as "watch". State: $BRIDGE/watch/; "alive" is touched each pass.
 #   BRIDGE_WATCH_DRY=1    log what it would do, but stop no VM and wake nobody (testing)
 #   BRIDGE_WATCH_ONCE=1   one pass, then exit (testing)
 #   BRIDGE_WATCH_HOMES    override the accounts' config folders: "pro=<dir> max=<dir>" (testing)
@@ -24,11 +29,15 @@ bridge="$here/bridge.sh"
 dry="${BRIDGE_WATCH_DRY:-}"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') watch $*" >> "$root/bridge.log"; [[ -n "${BRIDGE_WATCH_ONCE:-}" ]] && echo "$*"; }
 
-# One copy at a time: a live pid in the lock file means another is running.
+# One copy at a time: a live pid in the lock file means another is running, unless it hasn't finished
+# a pass in 10 min (stuck: a live pid alone said "running" while nothing was watched), so this one replaces it.
 lock="$state/pid"
-if [[ -z "${BRIDGE_WATCH_ONCE:-}" ]]; then
+if [[ -z "${BRIDGE_WATCH_ONCE:-}" || -n "${BRIDGE_WATCH_LOCK:-}" ]]; then
   old="$(cat "$lock" 2>/dev/null || true)"
-  if [[ -n "$old" ]] && kill -0 "$old" 2>/dev/null; then echo "bridge-watch already running (pid $old)."; exit 0; fi
+  if [[ -n "$old" && "$old" != $$ ]] && kill -0 "$old" 2>/dev/null; then
+    if [[ -e "$state/alive" ]] && (( $(date +%s) - $(date -r "$state/alive" +%s) < 600 )); then echo "bridge-watch already running (pid $old)."; exit 0; fi
+    kill "$old" 2>/dev/null; log "replaced pid $old: no pass finished in 10 min"
+  fi
   echo $$ > "$lock"
 fi
 
@@ -43,8 +52,10 @@ declare -A of_role=([coordinator]=pro [pm]=max)
 mail() { # mail <to> <subject> <body>
   printf '%s\n' "$3" | BRIDGE_FROM=watch bash "$bridge" send "$1" "$2" >/dev/null && log "mailed $1: $2"
 }
+# A guest or Hyper-V call, cut off if it hangs. Without coreutils' timeout (a Mac running the tests) it runs as is.
+bounded() { if command -v timeout >/dev/null; then timeout "${BRIDGE_WATCH_GUEST_SECS:-60}" "$@"; else "$@"; fi; }
 running_vms() { # the given VMs that are running, by Hyper-V
-  powershell -NoProfile -Command "Get-VM -ErrorAction SilentlyContinue | Where-Object { \$_.State -eq 'Running' -and ('$*' -split ' ') -contains \$_.Name } | ForEach-Object Name" 2>/dev/null | tr -d '\r'
+  bounded powershell -NoProfile -Command "Get-VM -ErrorAction SilentlyContinue | Where-Object { \$_.State -eq 'Running' -and ('$*' -split ' ') -contains \$_.Name } | ForEach-Object Name" 2>/dev/null | tr -d '\r'
 }
 stop_vm() {
   [[ -n "$dry" ]] && { log "dry: would stop $1"; return 0; }
@@ -159,13 +170,33 @@ check_delivery() { # $1 = role
   wake "$r"
 }
 
+guest_ip() { # a Linux worker's IPv4, as Hyper-V reports it
+  bounded powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $1).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r'
+}
+reached() { # reached <vm> <what> <problem, empty when it worked>: logs a worker the watcher can't reach, and when it can again
+  local f="$state/$1.reach" was; was="$(cat "$f" 2>/dev/null || true)"
+  [[ "$3" == "$was" ]] && return 0
+  if [[ -n "$3" ]]; then echo "$3" > "$f"; log "can't read $1's $2: $3"; else rm -f "$f"; log "reading $1 again"; fi
+}
+linux() { # linux <what> <vm> [args]: linux.sh over SSH, bounded; its errors go to the log, not to /dev/null
+  local what="$1" vm="$2" ip out err; shift 2
+  ip="$(guest_ip "$vm")"
+  [[ -n "$ip" ]] || { reached "$vm" "$what" "Hyper-V reports no IPv4 for it"; return 1; }
+  err="$(mktemp)"
+  if out="$(bounded bash "${BRIDGE_WATCH_LINUX:-$here/linux.sh}" "$what" "$vm" "$ip" "$@" 2>"$err")"; then
+    reached "$vm" "$what" ""; rm -f "$err"; printf '%s\n' "$out"
+  else
+    local code=$?; reached "$vm" "$what" "linux.sh $what at $ip exited $code$( (( code == 124 )) && echo " (cut off)"): $(tr '\n' ' ' < "$err" | cut -c1-200) $(tail -c 200 <<<"$out" | tr '\n' ' ')"
+    rm -f "$err"; return 1
+  fi
+}
+
 guest_attention() { # the worker's ~/.worker/attention.json (attention.mjs writes it), or nothing
-  local vm="$1" ip
+  local vm="$1"
   if [[ "$vm" == u* ]]; then   # Linux workers over SSH
-    ip="$(powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $vm).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r')"
-    [[ -n "$ip" ]] && bash "$here/linux.sh" attention "$vm" "$ip" 2>/dev/null
+    linux attention "$vm"
   else                          # Windows workers over PowerShell Direct (the scripts' guest account)
-    powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-Content \"\$env:USERPROFILE\\.worker\\attention.json\" -ErrorAction SilentlyContinue }" 2>/dev/null | tr -d '\r'
+    bounded powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-Content \"\$env:USERPROFILE\\.worker\\attention.json\" -ErrorAction SilentlyContinue }" 2>/dev/null | tr -d '\r'
   fi
 }
 
@@ -186,23 +217,24 @@ Only Andrew can answer it: in the Claude app, open $vm under Remote Control and 
   done
 }
 
-guest_outbox() { # the worker's finished reports ("=== <file>" then its text each), removed from the guest
-  local vm="$1" ip
+guest_outbox() { # the worker's finished reports ("=== <file>" then its text each); a Linux worker keeps them until outbox-done
+  local vm="$1"
   if [[ "$vm" == u* ]]; then
-    ip="$(powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $vm).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r')"
-    [[ -n "$ip" ]] && bash "$here/linux.sh" outbox "$vm" "$ip" 2>/dev/null
+    linux outbox "$vm"
   else
-    powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-ChildItem \"\$env:USERPROFILE\\.worker\\outbox\\*.md\" -ErrorAction SilentlyContinue | ForEach-Object { '=== ' + \$_.Name; Get-Content -Raw \$_.FullName; Remove-Item \$_.FullName } }" 2>/dev/null | tr -d '\r'
+    bounded powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-ChildItem \"\$env:USERPROFILE\\.worker\\outbox\\*.md\" -ErrorAction SilentlyContinue | ForEach-Object { '=== ' + \$_.Name; Get-Content -Raw \$_.FullName; Remove-Item \$_.FullName } }" 2>/dev/null | tr -d '\r'
   fi
 }
 
 check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a usage limit in it marks the account out
-  local vm a raw report subject when until
+  local vm a raw report file subject when until mailed
   for vm in $(running_vms ${vms[pro]} ${vms[max]}); do
     raw="$(guest_outbox "$vm")"; [[ -n "$raw" ]] || continue
     a=pro; [[ " ${vms[max]} " == *" $vm "* ]] && a=max
+    mailed=()
     while IFS= read -r -d $'\x1e' report; do
-      [[ -n "${report//[$'\n ']/}" ]] || continue
+      file="${report%%$'\n'*}"; report="${report#*$'\n'}"
+      [[ -n "${report//[$'\n ']/}" ]] || { mailed+=("$file"); continue; }
       subject="$(sed -n 's/^# //p' <<<"$report" | head -1)"
       if grep -q '^Limit:' <<<"$report"; then
         subject="$subject (usage limit)"
@@ -212,8 +244,10 @@ check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a us
           log "$a is out (seen in $vm's report), back after $(date -d "@$until" '+%H:%M')"
         fi
       fi
-      mail pm "${subject:-$vm reports}" "$report"
-    done < <(awk 'BEGIN{n=0} /^=== /{if(n)printf "\x1e"; n=1; next} {print} END{if(n)printf "\x1e"}' <<<"$raw")
+      mail pm "${subject:-$vm reports}" "$report" && mailed+=("$file")
+    done < <(awk 'BEGIN{n=0} /^=== /{if(n)printf "\x1e"; n=1; print substr($0, 5); next} {print} END{if(n)printf "\x1e"}' <<<"$raw")
+    # Only what reached the PM's mailbox leaves the worker; the rest is read again next pass.
+    [[ "$vm" == u* && ${#mailed[@]} -gt 0 ]] && linux outbox-done "$vm" "${mailed[@]}" >/dev/null
   done
 }
 
@@ -221,9 +255,9 @@ check_memory() { # free memory under the floor: stop the newest worker VM (stop.
   # start.cmd checks memory only at a VM's start; VMs grow after it (Linux to 6 GB, Windows to 8) and so does
   # a host Editor building a player (13.7 GB on 2026-10-31, with 0.7 GB left).
   local floor="${BRIDGE_WATCH_MIN_FREE_GB:-1.5}" free vm
-  free="$(powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB,2)" 2>/dev/null | tr -d '\r')"
+  free="$(bounded powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB,2)" 2>/dev/null | tr -d '\r')"
   [[ -n "$free" ]] && awk -v f="$free" -v m="$floor" 'BEGIN { exit !(f < m) }' || return 0
-  vm="$(powershell -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
+  vm="$(bounded powershell -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
   [[ -n "$vm" ]] || { log "only $free GB free, and no worker VM to stop"; return 0; }
   log "only $free GB free (floor $floor): stopping $vm, the newest worker"
   stop_vm "$vm"
@@ -237,7 +271,11 @@ while :; do
   for a in pro max; do check_usage "$a"; check_back "$a"; done
   for r in coordinator pm; do check_delivery "$r"; done
   # The guests answer slowly (PowerShell Direct takes seconds): every other pass, once a minute.
-  (( n++ % 2 == 0 )) && { check_attention; check_outbox; }
+  if (( n++ % 2 == 0 )); then
+    seen="$(running_vms ${vms[pro]} ${vms[max]} | sort | xargs)"
+    [[ "$seen" == "$(cat "$state/running" 2>/dev/null)" ]] || { echo "$seen" > "$state/running"; log "workers running: ${seen:-none}"; }
+    check_attention; check_outbox
+  fi
   touch "$state/alive"
   [[ -n "${BRIDGE_WATCH_ONCE:-}" ]] && exit 0
   sleep 30

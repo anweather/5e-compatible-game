@@ -320,7 +320,22 @@ accept the workspace trust dialog: Remote Control refuses an untrusted folder
   - **Mail unread for 5 min, nobody listening, account not out:** it wakes
     the coordinator (at most once every 30 min). The PM has no wake recipe,
     so its unread mail is only logged.
-  Test it with `BRIDGE=<scratch dir> BRIDGE_WATCH_DRY=1 BRIDGE_WATCH_ONCE=1`.
+  - **Once a minute, each running worker:** its attention prompt and its
+    finished reports (`~/.worker/outbox`) go to `pm`. A Linux worker's
+    report is deleted on the worker only once it's in `pm`'s mailbox. Every
+    guest call is cut off after 60 s (`BRIDGE_WATCH_GUEST_SECS`), so one
+    worker that never answers can't stop the loop. `bridge.log` says which
+    workers it sees running, and when it can't read one, why (no IP, SSH
+    failed, cut off), each time that changes.
+  Test it with `BRIDGE=<scratch dir> BRIDGE_WATCH_DRY=1 BRIDGE_WATCH_ONCE=1`
+  (`bridge-watch.test.mjs` does, with Hyper-V and the guest stood in).
+  **Is it watching?** `~/.agent-bridge/watch/alive` is touched every pass: a
+  live pid with an `alive` older than a few minutes means a stuck loop.
+  Starting `bridge-watch.cmd` again then replaces it (a copy that hasn't
+  finished a pass in 10 min is killed). A running copy keeps the code it
+  started with, so after changing this script stop it (its pid is in
+  `watch/pid`) and start `bridge-watch.cmd`, which runs the coordinator
+  worktree's copy: that worktree must be on current `dev`.
 - **A worker waiting at a permission prompt is reported within a minute.**
   `start.cmd` (and `linux.sh hook`) installs `attention.mjs` as the worker
   Claude's Notification hook (`worker-settings.mjs` merges it into
