@@ -34,7 +34,17 @@ public static class RowTowers
     const float HalfCell = 0.75f, Rim = 0.6f, ArchHeight = 2.6f, ConeRise = 1.15f, Eaves = 0.5f, MerlonHeight = 1.1f;
     const float StumpShare = 0.3f, Broken = 0.8f;
     const int Sides = 28;
-    static readonly Color Cover = new(0.27f, 0.29f, 0.34f);
+    static readonly Color Cover = new(0.27f, 0.29f, 0.34f), Floor = new(0.56f, 0.52f, 0.46f), Ceiling = new(0.2f, 0.14f, 0.09f);
+    const float FloorThick = 0.08f;
+
+    /// <summary>Each tower's middle and radius on the ground, in metres from the row's corner.</summary>
+    public static List<(Vector2 middle, float radius)> Rings(JObject row, Dictionary<string, Vector2> joins)
+    {
+        var rings = new List<(Vector2, float)>();
+        if (row["towers"] is JObject towers)
+            foreach (var t in towers.Properties()) rings.Add((joins[(string)t.Value["at"]], (int)t.Value["radius"] * HalfCell));
+        return rings;
+    }
 
     /// <summary>
     /// Draws the row's towers, a stretch each that stands on all its cells (RowRuin takes it down when enough of them have gone).
@@ -55,7 +65,12 @@ public static class RowTowers
             s.Whole.Add(RowMesher.Record(body, () =>
             {
                 body.Cylinder(middle + Vector3.down * footing, middle + Vector3.up * walkTop, radius, Sides, color);
-                if ((string)t.Value["roof"] == "cone") Slates(body, middle + Vector3.up * top, radius + Eaves, radius * ConeRise);
+                body.Cylinder(middle + Vector3.up * walkTop, middle + Vector3.up * (walkTop + FloorThick), radius - Rim / 2f, Sides, Floor);
+                if ((string)t.Value["roof"] == "cone")
+                {
+                    Slates(body, middle + Vector3.up * top, radius + Eaves, radius * ConeRise);
+                    body.Cylinder(middle + Vector3.up * (top - FloorThick), middle + Vector3.up * top, radius, Sides, Ceiling);
+                }
                 else Crown(body, middle, radius, top, color);
             }));
             s.Whole.Add(RowMesher.Record(body, () => Drum(body, middle, radius, walkTop, top, walls, color)));

@@ -17,6 +17,8 @@ public class CameraClearance : CinemachineExtension
     const float OverGround = 0.35f, InsideWizard = 0.55f;
     // How fast a lift eases off (m/s).
     const float SettleSpeed = 1.5f;
+    // A lift of many metres (a jump to somewhere higher) doesn't hang in the air: it goes at this share of itself a second.
+    const float BigLiftRate = 5f;
 
     float lift;
 
@@ -32,7 +34,7 @@ public class CameraClearance : CinemachineExtension
         // Up at once (never into the ground), back down gently (the cells' ground steps by half a
         // metre, which would jolt it).
         float need = Mathf.Max(0f, GroundUnder(at) + OverGround - at.y);
-        lift = need >= lift || deltaTime < 0f ? need : Mathf.MoveTowards(lift, need, deltaTime * SettleSpeed);
+        lift = need >= lift || deltaTime < 0f ? need : Mathf.MoveTowards(lift, need, deltaTime * Mathf.Max(SettleSpeed, (lift - need) * BigLiftRate));
         if (lift > 0f) state.PositionCorrection += Vector3.up * lift;
 
         var target = vcam.Follow;

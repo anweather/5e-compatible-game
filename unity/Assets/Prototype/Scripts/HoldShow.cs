@@ -9,6 +9,9 @@ public class HoldShow : MonoBehaviour
     const float PlateHeight = 0.08f, BannerRise = 26f, BannerSize = 0.25f, HudRange = 160f, ShowLoss = 30f;
     static readonly Color PlateColor = new(0.8f, 0.68f, 0.25f);
 
+    const float HurtSeconds = 0.35f;
+    static float hurtAt = -1f;
+
     ChemGrid grid;
     World shownFor;
     GameObject plate;
@@ -115,6 +118,19 @@ public class HoldShow : MonoBehaviour
         banner.fontSize = 48;
     }
 
+    /// <summary>The local wizard took a blow: the screen flashes red for a moment.</summary>
+    public static void Hurt() => hurtAt = Time.time;
+
+    static void DrawHurt()
+    {
+        float left = 1f - (Time.time - hurtAt) / HurtSeconds;
+        if (left <= 0f || hurtAt < 0f) return;
+        var before = GUI.color;
+        GUI.color = new Color(0.8f, 0.05f, 0.02f, 0.38f * left);
+        GUI.DrawTexture(new Rect(0f, 0f, HudScale.Width, HudScale.Height), Texture2D.whiteTexture);
+        GUI.color = before;
+    }
+
     void BossBar(World world)
     {
         var boss = BossOf(world);
@@ -133,6 +149,7 @@ public class HoldShow : MonoBehaviour
     void OnGUI()
     {
         HudScale.Apply();
+        DrawHurt();
         var world = grid.World;
         if (!EventLog.HudVisible || world?.HoldSite == null) return;
         var caster = EventLog.TrackedCaster;

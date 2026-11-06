@@ -14,7 +14,26 @@ public partial class DefenseField
     const float BossSize = 1.9f, MostCreaturePitch = 0.45f;
     static readonly float4 Ash = new(0.2f, 0.19f, 0.2f, 1f);
 
-    const float Rounding = 7f, Turning = 8f, LungeReach = 0.8f, LungeSeconds = 0.35f;
+    const float Rounding = 7f, Turning = 8f, LungeReach = 1.1f, LungeSeconds = 0.45f, RearAngle = 0.75f;
+    static readonly float3 BlowTint = new(1f, 0.25f, 0.12f);
+
+    // A raider's blow on the body: up on its back end, then down onto what it strikes, flushing red.
+    void Blow(Shown s, int from, int to)
+    {
+        if (s.lunge <= 0f) return;
+        float t = 1f - s.lunge;
+        float rear = t < 0.4f ? t / 0.4f : -(t - 0.4f) / 0.6f * 0.6f + (1f - (t - 0.4f) / 0.6f);
+        var turn = quaternion.AxisAngle(math.mul(quaternion.RotateY(s.state.Yaw), new float3(1f, 0f, 0f)), -rear * RearAngle);
+        float3 about = s.at;
+        float flush = Mathf.Sin(s.lunge * Mathf.PI) * 0.7f;
+        for (int i = from; i < to; i++)
+        {
+            instances[i].Position = about + math.mul(turn, instances[i].Position - about);
+            instances[i].Rotation = math.mul(turn, instances[i].Rotation);
+            var c = instances[i].Color;
+            instances[i].Color = new float4(math.lerp(c.xyz, BlowTint, flush), c.w);
+        }
+    }
 
     // A blow, seen: the core gives a raider its wait as it strikes, so a wait that jumps up is a blow, and the raider lunges.
     void Struck(Shown s)

@@ -106,6 +106,8 @@ public static class RowMesher
         public string Id;
         public Vector2 From, To, Along, Right;
         public float Length, Thickness, Height, Bottom, Past0, Past1;
+        /// <summary>The row's towers, middle and radius: a wall's top stops at their edge.</summary>
+        public List<(Vector2 middle, float radius)> Towers = new();
         /// <summary>A level row's wall: its openings stand on the ground under them, not on its foot.</summary>
         public bool Level;
         public Color Color;
@@ -208,7 +210,12 @@ public static class RowMesher
         }
         foreach (var w in walls)
             foreach (var other in walls.Where(o => o != w)) Reach(w, other);
-        foreach (var w in walls) w.Stretches = StretchesOf(w);
+        var towerRings = RowTowers.Rings(row, joins);
+        foreach (var w in walls)
+        {
+            w.Towers = towerRings;
+            w.Stretches = StretchesOf(w);
+        }
         foreach (var w in walls)
             foreach (var other in walls.Where(o => o != w && w.Stretches.Count > 0 && o.Stretches.Count > 0)) Join(w, other);
         return walls;
@@ -762,16 +769,47 @@ public static class RowMesher
         float top = w.Bottom + w.Height;
         foreach (var s in w.Stretches)
         {
-            float u = (s.From + s.To) / 2f, long_ = s.To - s.From;
             s.Whole.Add(Record(kit, () => Flagstones(kit, w, s.From, s.To, top)));
-            s.Whole.Add(Record(kit, () => kit.Box(w.At(u, MerlonDepth / 2f, top + ParapetHeight / 2f), new Vector3(long_, ParapetHeight, MerlonDepth), w.Color, w.Turn)));
-            s.Rail.Add(Record(rail, () => rail.Box(w.At(u, MerlonDepth / 2f, top + height / 2f), new Vector3(long_, height, MerlonDepth), Color.clear, w.Turn)));
+            foreach (var (from, to) in OutsideTowers(w, s.From, s.To))
+            {
+                float u = (from + to) / 2f, long_ = to - from;
+                s.Whole.Add(Record(kit, () => kit.Box(w.At(u, MerlonDepth / 2f, top + ParapetHeight / 2f), new Vector3(long_, ParapetHeight, MerlonDepth), w.Color, w.Turn)));
+                s.Rail.Add(Record(rail, () => rail.Box(w.At(u, MerlonDepth / 2f, top + height / 2f), new Vector3(long_, height, MerlonDepth), Color.clear, w.Turn)));
+            }
         }
         for (float u = every / 2f; u < w.Length; u += Mathf.Max(0.4f, every))
         {
             float along = u;
+            if (InTower(w, along, MerlonDepth / 2f, every / 2f)) continue;
             Held(kit, w, along, () => kit.Box(w.At(along, MerlonDepth / 2f, top + height / 2f), new Vector3(every / 2f, height, MerlonDepth), w.Color, w.Turn));
         }
+    }
+
+    // Whether a point along a wall, this far in from its face, is inside a tower, with some room to spare.
+    static bool InTower(Wall w, float along, float depth, float spare = 0f)
+    {
+        var at = w.At(along, depth, 0f);
+        foreach (var (middle, radius) in w.Towers)
+            if (new Vector2(at.x - middle.x, at.z - middle.y).sqrMagnitude < (radius + spare) * (radius + spare)) return true;
+        return false;
+    }
+
+    // The runs of a stretch of wall's outer edge that aren't inside a tower.
+    static List<(float from, float to)> OutsideTowers(Wall w, float from, float to)
+    {
+        const float Step = 0.25f, Shortest = 0.1f;
+        var runs = new List<(float, float)>();
+        float start = from;
+        bool open = false;
+        for (float u = from; u < to; u += Step)
+        {
+            bool clear = !InTower(w, u, MerlonDepth / 2f);
+            if (clear && !open) start = u;
+            else if (!clear && open && u - start > Shortest) runs.Add((start, u));
+            open = clear;
+        }
+        if (open && to - start > Shortest) runs.Add((start, to));
+        return runs;
     }
 
     static void Flagstones(MeshKit kit, Wall w, float from, float to, float top)
@@ -781,6 +819,7 @@ public static class RowMesher
         float each = (to - from) / stones, across = w.Thickness * 0.5f;
         for (int i = 0; i < stones; i++)
             for (int row = 0; row < 2; row++)
+                if (!InTower(w, from + (i + 0.5f) * each, MerlonDepth + across * (row + 0.5f) * 0.9f, each / 2f))
                 kit.Box(w.At(from + (i + 0.5f) * each, MerlonDepth + across * (row + 0.5f) * 0.9f, top + Thin / 2f), new Vector3(each * 0.96f, Thin, across * 0.86f), (i + row) % 3 == 0 ? FlagDark : (i + row) % 3 == 1 ? Flag : FlagPale, w.Turn);
     }
 

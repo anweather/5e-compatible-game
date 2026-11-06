@@ -171,6 +171,7 @@ public partial class DefenseField : ICreatureGround
             Shadow(s);
             if (Boss(World, s.raider)) BossesDrawn++;
             Adjective(s, used, end);
+            Blow(s, used, end);
             Frost(s, used, end);
             CreatureDrawer.HideAtLens(instances, used, end - used, cam);
             used = end;
