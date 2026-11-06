@@ -162,6 +162,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 - **Barricades:** small wooden ones appear on the road at the start of a wave. Raiders break through them, and they burn.
 - **Playtest moments:** canned setups as rows (a wave, a theme, hand sets, the keep's health) to jump straight to and play, in dev builds and the Editor (Andrew, 2026-11-05).
 - **Run length:** a good run lasts about 20 minutes (Andrew, 2026-11-05), a dial.
+- **More players:** raiders scale by count, a boss by health (Andrew, 2026-11-05).
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no
   view). **Done when:** a good player's run lasts about the length Andrew picks, and a wrong hand set is felt.
 
