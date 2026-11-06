@@ -15,9 +15,16 @@ using Debug = UnityEngine.Debug;
 // hidden Editor exiting Play then held the main thread in vx_uninitialize for 12 minutes. Why it stalls
 // is not known. ForceCaptureSilence still opens the device; -vivox-no-capture (input "No Device") doesn't,
 // and everything answers, but injected audio was not heard that way.
+// Everyone measures from Woods, a spot in the trees 60 m east-south-east of the yard spawn.
 // Inert without one of its arguments:
-//   -vivox-speaker <wav>   stands at the origin and injects the file; no microphone needed
-//   -vivox-listener <out>  walks away from the origin, writing what a channel tap hears
+//   -vivox-speaker <wav>   the voice in the woods: stands at Woods and injects the file on a loop, playing
+//                          nothing out loud, until it's closed (or -vivox-seconds N); no microphone needed
+//   -vivox-listener <out>  stands 0 to 40 m from Woods and walks back, writing what a channel tap hears
+//   -vivox-loopback        with -vivox-listener: plays out loud for tools/vivox/Loopback to measure instead
+//   -vivox-walker          in the game: hears the channel at the wizard, turned the way the camera looks
+// On the PC (2026-11-06) the channel tap read the same floor (rms 0.0017) at every distance, voice or
+// none, while a WASAPI loopback of the device heard the fade: measure with -vivox-loopback. The
+// injected file must be 48 kHz (the codec's rate): a 16 kHz one was injected but never heard.
 //   -vivox-hold <out>      stands 2 m away for the whole run, writing the level each second
 //   -vivox-mic <out>       the real microphone in the channel, with Whisper's capture opened beside it
 //   -vivox-group           a plain group channel in place of the positional one
@@ -28,8 +35,9 @@ public static class VivoxSpike
     const string Channel = "vivox-spike";
     const int Audible = 32, Conversational = 4;
     const float Fade = 1f, PositionEvery = 1f / 3f, Settle = 2f, Window = 8f;
-    const int SpeakerSeconds = 200, HoldSeconds = 60, Phase = 6, QuietVolume = -50; // Vivox's lowest: heard by the tap, not the room
-    static readonly int[] Distances = { 2, 4, 8, 16, 24, 31, 40 };
+    const int HoldSeconds = 60, Phase = 6, QuietVolume = -50; // Vivox's lowest: heard by the tap, not the room
+    static readonly int[] Distances = { 0, 8, 16, 24, 32, 40, 32, 24, 16, 8, 0 }; // out, then back
+    static readonly Vector3 Woods = new(75f, 1.6f, -20f); // the yard spawn is (19.5, 0, 3)
 
     static StreamWriter log;
     static int sent;
@@ -72,9 +80,11 @@ public static class VivoxSpike
     // Positional channels with different properties are different channels: every end uses this.
     static Channel3DProperties Properties => new(Audible, Conversational, Fade, AudioFadeModel.InverseByDistance);
 
-    static void Place(Vector3 at)
+    static void Place(Vector3 at) => Place(at, Vector3.forward, Vector3.up);
+
+    static void Place(Vector3 at, Vector3 forward, Vector3 up)
     {
-        if (!Environment.GetCommandLineArgs().Contains("-vivox-group")) VivoxService.Instance.Set3DPosition(at, at, Vector3.forward, Vector3.up, Channel, false);
+        if (!Environment.GetCommandLineArgs().Contains("-vivox-group")) VivoxService.Instance.Set3DPosition(at, at, forward, up, Channel, false);
     }
 
     // Sends the position three times a second, by the clock rather than by counting loops.
@@ -110,6 +120,7 @@ public static class VivoxSpike
         else if (Arg("-vivox-listener") is { } walk) _ = Guarded(walk, Walk);
         else if (Arg("-vivox-hold") is { } hold) _ = Guarded(hold, Hold);
         else if (Arg("-vivox-mic") is { } mic) _ = Guarded(mic, Mic);
+        else if (args.Contains("-vivox-walker")) _ = Walker();
     }
 
     static void Say(string line)
@@ -176,12 +187,57 @@ public static class VivoxSpike
     static async Task Speak(string wav)
     {
         await Join("speaker", false);
-        VivoxService.Instance.SetOutputDeviceVolume(QuietVolume);
+        VivoxService.Instance.MuteOutputDevice();
+        AudioListener.volume = 0f; // nothing out loud, the game's sounds included
         VivoxService.Instance.StartAudioInjection(wav);
-        await Keep(Vector3.zero, 3f); // the flag is set when the request's answer arrives
-        Say($"injecting {VivoxService.Instance.IsInjectingAudio}");
-        await Keep(Vector3.zero, SpeakerSeconds);
+        await Keep(Woods, 3f); // the flag is set when the request's answer arrives
+        Say($"injecting {VivoxService.Instance.IsInjectingAudio} at {Woods}");
+        string limit = Environment.GetCommandLineArgs().SkipWhile(a => a != "-vivox-seconds").Skip(1).FirstOrDefault();
+        float seconds = limit != null ? float.Parse(limit, System.Globalization.CultureInfo.InvariantCulture) : float.MaxValue;
+        var clock = Stopwatch.StartNew();
+        int loops = 1;
+        while (clock.Elapsed.TotalSeconds < seconds)
+        {
+            await Keep(Woods, 1f);
+            if ((int)clock.Elapsed.TotalSeconds % 5 == 0) Say($"sending energy {Self()?.AudioEnergy:0.000} speaking {Self()?.SpeechDetected} injecting {VivoxService.Instance.IsInjectingAudio}");
+            if (VivoxService.Instance.IsInjectingAudio) continue;
+            VivoxService.Instance.StartAudioInjection(wav); // the file plays once: start it again
+            Say($"loop {++loops}");
+        }
         VivoxService.Instance.StopAudioInjection();
+    }
+
+    // The game's own player in the channel: its ears at the wizard, facing where the camera looks.
+    // Muted, so the microphone stays Whisper's. Runs until the game closes.
+    static async Task Walker()
+    {
+        try
+        {
+            await Join("walker", true);
+            var clock = Stopwatch.StartNew();
+            PlayerControls wizard = null;
+            while (true)
+            {
+                var eye = Camera.main;
+                if (wizard == null) wizard = UnityEngine.Object.FindFirstObjectByType<PlayerControls>();
+                if (eye != null)
+                {
+                    Vector3 at = wizard != null ? wizard.transform.position + Vector3.up * 1.6f : eye.transform.position;
+                    Place(at, eye.transform.forward, eye.transform.up);
+                    if (clock.Elapsed.TotalSeconds >= 5)
+                    {
+                        clock.Restart();
+                        var voice = People().FirstOrDefault(p => !p.IsSelf);
+                        Say($"walker {Vector3.Distance(at, Woods):0} m from the woods, voice {(voice != null ? $"listed, energy {voice.AudioEnergy:0.000}" : "not listed")}");
+                    }
+                }
+                await Task.Delay(TimeSpan.FromSeconds(PositionEvery));
+            }
+        }
+        catch (Exception e)
+        {
+            Say("FAILED: " + e);
+        }
     }
 
     static async Task<Meter> Tap(Vector3 at)
@@ -202,19 +258,33 @@ public static class VivoxSpike
     static async Task Walk()
     {
         await Join("listener", true);
-        VivoxService.Instance.SetOutputDeviceVolume(QuietVolume);
-        var meter = await Tap(new Vector3(0f, 0f, -Distances[0]));
+        // -vivox-loopback: play out loud and let a WASAPI loopback recorder (tools/vivox/Loopback)
+        // measure the output device, matched to the windows logged here by the clock.
+        bool loud = Environment.GetCommandLineArgs().Contains("-vivox-loopback");
+        Meter meter = null;
+        if (loud)
+        {
+            AudioListener.volume = 0f; // the game's own sounds; Vivox plays to the device by itself
+            await Keep(Woods, 60f, () => People().Any(p => !p.IsSelf));
+        }
+        else
+        {
+            VivoxService.Instance.SetOutputDeviceVolume(QuietVolume);
+            meter = await Tap(Woods);
+        }
         double near = 0;
         foreach (int distance in Distances)
         {
-            var at = new Vector3(0f, 0f, -distance);
+            var at = Woods + new Vector3(0f, 0f, -distance);
             await Keep(at, Settle);
-            meter.Take();
+            meter?.Take();
             sent = 0;
+            string from = $"{DateTime.Now:HH:mm:ss.fff}";
             await Keep(at, Window);
-            double rms = meter.Take();
+            double rms = meter?.Take() ?? 0;
             if (near == 0) near = rms;
-            Say($"distance {distance} rms {rms:0.000000} gain {(near > 0 ? rms / near : 0):0.000} expected {ExpectedGain(distance):0.000} positions/s {sent / Window:0.0} people {People().Count()} samples {meter.LastCount} energy {People().FirstOrDefault(p => !p.IsSelf)?.AudioEnergy:0.000} speaking {People().FirstOrDefault(p => !p.IsSelf)?.SpeechDetected}");
+            var voice = People().LastOrDefault(p => !p.IsSelf);
+            Say($"distance {distance} window {from} {DateTime.Now:HH:mm:ss.fff} rms {rms:0.000000} gain {(near > 0 ? rms / near : 0):0.000} expected {ExpectedGain(distance):0.000} positions/s {sent / Window:0.0} people {People().Count()} samples {meter?.LastCount} energy {voice?.AudioEnergy:0.000} speaking {voice?.SpeechDetected}");
         }
     }
 
@@ -222,7 +292,7 @@ public static class VivoxSpike
     {
         await Join("holder", true);
         VivoxService.Instance.SetOutputDeviceVolume(QuietVolume);
-        var at = new Vector3(0f, 0f, -2f);
+        var at = Woods + new Vector3(0f, 0f, -2f);
         var meter = await Tap(at);
         for (int second = 0; second < HoldSeconds; second++)
         {
@@ -236,7 +306,7 @@ public static class VivoxSpike
     static async Task Mic()
     {
         await Join("mic", false);
-        await Keep(Vector3.zero, 3f);
+        await Keep(Woods, 3f);
         await Phased("vivox_alone", false);
         await Phased("both_open", true);
         await Phased("vivox_after_capture", false);
@@ -258,7 +328,7 @@ public static class VivoxSpike
         bool speech = false;
         for (float t = 0f; t < Phase; t += 0.1f)
         {
-            Place(Vector3.zero);
+            Place(Woods);
             await Task.Delay(100);
             audio?.Pump();
             level = Mathf.Max(level, audio?.Level ?? 0f);
