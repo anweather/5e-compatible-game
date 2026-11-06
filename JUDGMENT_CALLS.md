@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-077: Who coordinates the workers?
+
+- **Asked:** 2026-11-06, by Andrew, after the cost report showed coordination at half of all spend.
+- **Also comes up when:** a new worker or machine, a long PM session, a landing, feature intake, the board.
+- **Answer:** Andrew: workers land their own branches with `land.sh auto` and take briefs from a queue; the backlog-groom agent (Sonnet) does feature intake; the PM is a short session only for planning, decisions and releases; the board only with a decision (D15).
+- **Why:** PM cost follows the clock; routine steps shouldn't pay for a day of context.
+- **Revisited:** 0.
+
 ### J-076: How is proximity voice proved before a person tries it?
 
 - **Asked:** 2026-11-06, by Andrew, when the PM asked whether 0.1.12 waits for a live Vivox run with him.
