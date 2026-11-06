@@ -81,7 +81,10 @@ namespace Chem
 
         /// <summary>A raider wave's size: First, Growth more for each wave after, and PeerPercent of that for the wizards at the start.</summary>
         public static int HoldWaveSize(HoldParams p, int wave, int peers = 1) =>
-            (p.First + p.Growth * (wave - 1)) * p.PeerPercent[Math.Min(Math.Max(peers, 1), p.PeerPercent.Count) - 1] / 100;
+            (p.First + p.Growth * (wave - 1)) * ByPeers(p.PeerPercent, peers) / 100;
+
+        // A row of percents by the wizards at the run's start: the last for more.
+        static int ByPeers(IReadOnlyList<int> percents, int peers) => percents[Math.Min(Math.Max(peers, 1), percents.Count) - 1];
 
         /// <summary>A wave as the rules and this world's seed make it, however the run came to it.</summary>
         public WavePlan HoldPlan(int wave, int peers, string theme) =>
@@ -210,7 +213,8 @@ namespace Chem
                 PickForTheLate();
             }
             var (x, y) = spawner.Cells[(int)(Rand() * spawner.Cells.Count)];
-            var r = SpawnRaider(kind, x, y, def.Hp + (p.HpPerWave + (boss ? p.BossHpPerWave : 0)) * (h.Wave - 1));
+            int hp = def.Hp + (p.HpPerWave + (boss ? p.BossHpPerWave : 0)) * (h.Wave - 1);
+            var r = SpawnRaider(kind, x, y, boss ? hp * ByPeers(p.BossPeerHealth, h.Peers) / 100 : hp);
             if (r == null) return; // someone stands there: next tick
             r.Wait = PaceOf(def) - 1;
             h.ToSpawn--;

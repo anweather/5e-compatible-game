@@ -84,6 +84,8 @@ namespace Chem
         public int BarricadeFrom, BarricadeFirst, BarricadePerWaves = 1, BarricadeMost, BarricadeRadius;
         /// <summary>A wave's size in percent, by the wizards at the run's start: the first is one wizard's.</summary>
         public IReadOnlyList<int> PeerPercent = new[] { 100 };
+        /// <summary>A boss's health in percent, by the same count: there's one of it, so numbers can't scale it.</summary>
+        public IReadOnlyList<int> BossPeerHealth = new[] { 100 };
         public IReadOnlyList<WaveThemeDef> Themes = Array.Empty<WaveThemeDef>();
         public IReadOnlyList<MomentDef> Moments = Array.Empty<MomentDef>();
         public IReadOnlyList<UpgradeDef> Upgrades = Array.Empty<UpgradeDef>();
@@ -192,6 +194,7 @@ namespace Chem
             h.BossEvery = (int?)o["boss"]?["every"] ?? 0;
             h.BossHpPerWave = (int?)o["boss"]?["hpPerWave"] ?? 0;
             h.BossAdjective = (string)o["boss"]?["adjective"];
+            if (o["boss"]?["peerHealth"] is JArray bossPeers && bossPeers.Count > 0) h.BossPeerHealth = bossPeers.Select(v => (int)v).ToList();
             if (o["peerPercent"] is JArray peers && peers.Count > 0) h.PeerPercent = peers.Select(v => (int)v).ToList();
             h.Themes = (o["themes"] as JObject)?.Properties().Select(p => new WaveThemeDef
             {
