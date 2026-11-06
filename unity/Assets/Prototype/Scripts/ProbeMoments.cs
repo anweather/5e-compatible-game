@@ -32,6 +32,12 @@ public class MomentsProbe : ProbeScenario
             Check(m.Id + "_at_the_castle", Mathf.Abs(at.x - site.Rise.x) + Mathf.Abs(at.y - site.Rise.y) <= NearRise, at.ToString());
             for (float t = 0f; t < MostWait && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
             Check(m.Id + "_raiders_come", world.Raiders.Count > 0);
+            yield return Wait(0.5f);
+            var drawn = FindAnyObjectByType<DefenseField>();
+            Check(m.Id + "_raiders_drawn", drawn.DrawnRaiders > 0, $"{drawn.DrawnRaiders} of {world.Raiders.Count}");
+            int barricades = World.BarricadesOf(world.Rules.Sim.Hold, m.Wave);
+            var stakes = grid.GetComponent<HoldBarricades>();
+            Check(m.Id + "_barricades_drawn", (stakes.Drawn > 0) == (barricades > 0), $"{stakes.Drawn} cells for {barricades}");
         }
         caster.enabled = false;
     }

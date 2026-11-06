@@ -264,7 +264,7 @@ public static class ProbeScenarios
         new Entry("hands", typeof(HandsProbe), 240f,
             "The Hold's hands (the-hold.md, phase 3) on a virtual pad, mouse and keyboard: attuning in the room, each hand's thrust, throw and sweep, the same gesture on both, " +
             "different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, an empty hand's acts, and the D-pad's kit."),
-        new Entry("moments", typeof(MomentsProbe), 120f,
+        new Entry("moments", typeof(MomentsProbe), 200f,
             "Every Hold moment by name (rules/hold.json) through HoldMoments, or just MOMENT if the environment names one: the wave, the hands, the keep's health, the wizard at the castle, and raiders coming."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,
             "A stucco house through the MCP, close up from a wizard's height, then a fireball: its walls follow their cells to a ruin (RowRuin), with the frame numbers while it burns."),

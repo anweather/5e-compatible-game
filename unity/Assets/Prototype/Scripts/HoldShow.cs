@@ -29,6 +29,25 @@ public class HoldShow : MonoBehaviour
             : $"The keep fell in wave {h.Wave}. Stand on the plate to try again";
     }
 
+    /// <summary>What's coming while a wave waits: its number, theme, boss and how long; empty with a wave under way. For the probe too.</summary>
+    public string WarningLine()
+    {
+        var world = grid != null ? grid.World : null;
+        if (world?.HoldSite == null || world.HoldWarning is not { } warning) return "";
+        var rows = world.Rules.Sim.Hold;
+        string theme = warning.plan.Theme != null ? $": {rows.Theme(warning.plan.Theme)?.Name}" : "";
+        string boss = warning.plan.Boss ? ", with a boss" : "";
+        return $"Wave {warning.plan.Wave}{theme}{boss}, in {(warning.ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond} s";
+    }
+
+    /// <summary>The boss in the field, or null: for the HUD's bar.</summary>
+    public static Raider BossOf(World world)
+    {
+        foreach (var r in world.Raiders)
+            if (world.Rules.AdjectiveOf(r.Kind)?.Boss == true) return r;
+        return null;
+    }
+
     /// <summary>What a wizard's hands hold and whether they're ready, for the HUD and the probe; empty with its hands off.</summary>
     public string HandsLine(string player)
     {
@@ -53,7 +72,8 @@ public class HoldShow : MonoBehaviour
         if (world == null) return;
         if (world != shownFor) Show(world);
         if (world.HoldSite == null) return;
-        string text = world.Hold == null ? "" : $"THE KEEP {Mathf.Max(0, world.Hold.Health)}\nWAVE {world.Hold.Wave}";
+        string warning = WarningLine();
+        string text = world.Hold == null ? "" : warning.Length > 0 ? $"THE KEEP {Mathf.Max(0, world.Hold.Health)}\n{warning.ToUpperInvariant()}" : $"THE KEEP {Mathf.Max(0, world.Hold.Health)}\nWAVE {world.Hold.Wave}";
         if (banner != null && text != bannerText) banner.text = bannerText = text;
         if (banner != null && Camera.main != null) banner.transform.rotation = Camera.main.transform.rotation;
         if (world.HoldRunning) sawRun = true;
@@ -95,6 +115,21 @@ public class HoldShow : MonoBehaviour
         banner.fontSize = 48;
     }
 
+    void BossBar(World world)
+    {
+        var boss = BossOf(world);
+        if (boss == null) return;
+        const float Width = 520f, Height = 18f, Top = 128f;
+        var before = GUI.color;
+        var back = new Rect(HudScale.Width / 2f - Width / 2f, Top + 26f, Width, Height);
+        GUI.Label(new Rect(back.x, Top, Width, 26f), $"<b>{world.Rules.Entity(boss.Kind)?.Name}</b>", style);
+        GUI.color = new Color(0f, 0f, 0f, 0.7f);
+        GUI.DrawTexture(back, Texture2D.whiteTexture);
+        GUI.color = new Color(0.72f, 0.12f, 0.52f);
+        GUI.DrawTexture(new Rect(back.x + 2f, back.y + 2f, (Width - 4f) * Mathf.Clamp01(boss.Hp / (float)Mathf.Max(1, boss.MaxHp)), Height - 4f), Texture2D.whiteTexture);
+        GUI.color = before;
+    }
+
     void OnGUI()
     {
         HudScale.Apply();
@@ -108,5 +143,8 @@ public class HoldShow : MonoBehaviour
         var (hx, hy) = world.HoldSite.Heart;
         if (caster == null || Vector3.Distance(caster.transform.position, grid.CellCenter(hx, hy)) > HudRange) return;
         GUI.Label(new Rect(HudScale.Width / 2f - 400f, 54f, 800f, 36f), $"<b>{HudLine()}</b>", style);
+        string warning = WarningLine();
+        if (warning.Length > 0) GUI.Label(new Rect(HudScale.Width / 2f - 400f, 124f, 800f, 36f), $"<color=#ffd27a><b>{warning}</b></color>", style);
+        BossBar(world);
     }
 }

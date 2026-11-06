@@ -42,7 +42,8 @@ namespace Chem
         // The cells of the road raiders take, and the ways to the heart by road and straight, worked out every RouteEvery ticks.
         readonly HashSet<int> holdRoad = new HashSet<int>();
         int[] roadWay = Array.Empty<int>(), straightWay = Array.Empty<int>();
-        const string ClimbRoute = "climb", FlyRoute = "fly", LandedStatus = "landed";
+        public const string ClimbRoute = "climb", FlyRoute = "fly";
+        const string LandedStatus = "landed";
 
         /// <summary>The map's Hold, or null: a world without one has no runs.</summary>
         public WorldHold HoldSite { get; private set; }

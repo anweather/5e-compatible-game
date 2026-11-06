@@ -193,6 +193,8 @@ joiner's history (`StandKeeper`), since attuning reads them.
 
 Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list is F8 in dev builds and the Editor, going in is a `ComboCommand` that a host takes only in a dev build or the Editor (`NetChem.ComboChannel`), so a released player never runs one, whoever asks, and `MOMENT` names one for the probe. The curve is `core/Hold.Runner`: `dotnet run --project core/Hold.Runner -c Release -- --seeds 3` or `-- --moment cinders-right,cinders-wrong`. Its wizard stands on the wall by the heart and keeps casting what hurts, and never moves or plays chemistry, so it's a stand-in: water and earth look worse in it than they should.
 
+**What waves look like.** `HoldShow` puts the warning on the HUD and the keep's banner, and a boss's name and long bar on the HUD; a boss is drawn bigger, on one cell like any raider. `HoldBarricades` draws crossed stakes on barricade cells, charred while they burn, and stops a wizard as a built wall does. `DefenseField.Routes.cs` draws a flyer's wings, height and shadow, drops it when the core lands it, and lays a climber flat on the slope. A cliff stalker is a large gila monster and an ash wing has its own few segments until there are models.
+
 ### 5. Progress
 
 Progress belongs to the player, not the world (J-038).
