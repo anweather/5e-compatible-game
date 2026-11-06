@@ -29,6 +29,9 @@ namespace Chem
         /// <summary>A room command was decided, on this peer, as the log says. For the view: it never touches the world.</summary>
         public event Action<RoomCommand, RoomVerdict> RoomDecided;
 
+        /// <summary>A joining peer's world, its room still on the way: what's built doesn't wait for the host, and the view reads it from the first frame.</summary>
+        public void AwaitRoom(ModBudgets budgets) => roomBudgets = budgets ?? throw new ArgumentNullException(nameof(budgets));
+
         /// <summary>
         /// Makes this world a room, as it is made: the change mode, the host's name, the base rules
         /// every mod composes over, the budgets the checks use (rules/budgets.json) and the mods it
