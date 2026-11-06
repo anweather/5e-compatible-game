@@ -20,3 +20,5 @@ Brief for the Mac: the Hold, phase 5, progress. Read `docs/design/the-hold.md` (
 **Tests:** offers are the same on all peers, a pick reaches only that wizard, the seeded default, unlock order, a save round trip, a joiner's unlocks matching on all peers, a reset keeping unlocks, two worlds matching.
 
 **Report:** one short message: the commit, gates with exit codes, the curve with and without upgrades, how long a new player takes to unlock everything, and a numbered list for the PC: what the offer and the unlocks must show. Don't merge it. Ask before anything much larger than this brief.
+
+**Addition (Andrew, 2026-11-05): scaling with players.** Normal raiders keep scaling by count (`peerPercent`). A boss also scales by health with peer count, from a new dial, since there's only one of it. Leave a health bump for everyone unbuilt, but say from the curve if two peers still coast.
