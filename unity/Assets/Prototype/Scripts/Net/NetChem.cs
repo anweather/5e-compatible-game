@@ -60,6 +60,9 @@ using UnityEngine;
 [RequireComponent(typeof(ChemGrid))]
 public partial class NetChem : NetworkBehaviour
 {
+    // Which map the host is on (docs/design/maps-as-data.md, section 2).
+    readonly NetworkVariable<Unity.Collections.FixedString64Bytes> hostMap = new();
+
     const int HashEvery = RollingHash.Every, HashesKept = 4;
     // A late joiner replays the whole history; spread it so no frame spends more than this.
     const double CatchUpBudgetMs = 8.0;
@@ -167,14 +170,17 @@ public partial class NetChem : NetworkBehaviour
     {
         grid = GetComponent<ChemGrid>();
         defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
-        combos = new CommandChannel<ComboIntent>(batches, (batch, c) => batch.Combos.Add(c.ToCommand()));
-        standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y));
+        combos = ComboChannel(batches, HoldMoments.Offered);
+        standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y), HoldReads);
         strikes = new CommandChannel<StrikeIntent>(batches, (batch, s) => batch.Strikes.Add(s.ToCommand()), standKeeper.Record);
         roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
     }
 
     public override void OnNetworkSpawn()
     {
+        // The host's map, before any world is built: a late joiner builds the right one, then replays the history.
+        if (IsServer) hostMap.Value = ChemGrid.Folders.Map;
+        else grid.UseMap(hostMap.Value.ToString());
         // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
         if (IsServer) grid.PlanRoom(NetSession.RoomMode);
         else grid.AwaitRoom();
@@ -271,6 +277,18 @@ public partial class NetChem : NetworkBehaviour
         if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= StrikeReachCells) StampEffect(new EffectCommand(EffectKind.Shatter, x, y, "", ThingId.None));
     }
 
+    /// <summary>Client: asks the host to work a gate for this client's wizard (ChemEffects.SwingNear).</summary>
+    public void RequestSwing(Vector2Int cell) => RequestSwingRpc(cell.x, cell.y);
+
+    [Rpc(SendTo.Server)]
+    void RequestSwingRpc(int x, int y, RpcParams rpc = default)
+    {
+        var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(rpc.Receive.SenderClientId);
+        if (wizard == null || !grid.World.InBounds(x, y) || grid.World.TerrainOf(grid.World.At(x, y)).SwingsTo == null) return;
+        var at = grid.CellAt(wizard.transform.position);
+        if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= ChemEffects.SwingReachCells) StampEffect(new EffectCommand(EffectKind.Swing, x, y, "", ThingId.None));
+    }
+
     /// <summary>
     /// Asks the host to run a defense command (the start pedestal: DefenseField). Anyone may ask; the
     /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.
@@ -282,6 +300,10 @@ public partial class NetChem : NetworkBehaviour
 
     /// <summary>A client's name in the core's casts.</summary>
     public static string PlayerName(ulong clientId) => $"p{clientId}";
+
+    /// <summary>The channel players' combo input goes by: a host that isn't a dev build takes no moment, whoever asks.</summary>
+    public static CommandChannel<ComboIntent> ComboChannel(Dictionary<int, TickBatch> batches, bool devBuild) =>
+        new(batches, (batch, c) => batch.Combos.Add(c.ToCommand()), takes: c => c.ToCommand().TakenBy(devBuild));
 
     /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
     public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));
@@ -432,6 +454,9 @@ public partial class NetChem : NetworkBehaviour
 
     // Whether a stand stamped now may be a step that fires a trigger (World.Triggers.cs): one is in force, or
     // a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
+    // A stand the Hold reads: all of them during a run, and those on its plate or in its attuning room.
+    bool HoldReads(int x, int y) => grid.World?.HoldReadsStand(x, y) == true;
+
     bool StepsMayFire() =>
         grid.World != null && (grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0 || roomCommands.HasPending || roomStampedFor > NetTick);
 
@@ -506,13 +531,13 @@ public partial class NetChem : NetworkBehaviour
     /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
     /// things' (World.ThingsNow: the props' stable ids), the sky's (Hasten Time's clock and Control
     /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's, the
-    /// players' casts and grimoires (World.CastHash) and, last, the dragon's (World.DragonHash).
+    /// players' casts and grimoires (World.CastHash), the dragon's (World.DragonHash) and, last, the land's (World.LandHash).
     /// </summary>
     static string Checksum(ChemGrid grid) => grid.World.CellHash() + Others(grid);
 
     // All but the cells: what follows them in a checksum, in a window's too.
     static string Others(ChemGrid grid) =>
-        "/" + grid.World.Rules.Fingerprint + "/" + grid.World.ThingsNow.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
+        "/" + grid.World.Rules.Fingerprint + "/" + grid.World.ThingsNow.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash() + "/" + grid.World.LandHash();
 
     // --- everyone --------------------------------------------------------------
 
@@ -737,7 +762,7 @@ public struct CastIntent : INetworkSerializable
     /// <summary>Where the caster stood when casting: the centre of a burst's shove (Thunderwave).</summary>
     public Vector3 From;
 
-    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge, AimX, AimY);
+    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge, AimX, AimY, NetChem.PlayerName(Caster));
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -31,6 +32,7 @@ public partial class ValleyChemistry : MonoBehaviour
     readonly TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
     WetGround wet;
+    LandRocks rocks;
 
     // A layer's colour in the rules, from what it's made of.
     static LookDef LayerLook(Rules rules, string layer)
@@ -122,6 +124,34 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The ground under the cells; null before the first Bind.</summary>
     public ValleyGround Ground => ground;
 
+    GroundBuilder builder;
+
+    // The run-time builder when GroundSwitch says so, from the map's folder; the scene's first chunk is the prototypes' template.
+    GroundBuilder BuiltGround(World world)
+    {
+        var template = chunks.First(c => c != null).terrainData;
+        return GroundBuilder.For(GroundSwitch.Mode, ChemGrid.Folders.World, template, () =>
+        {
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
+            return GroundFromLand.Build(new GroundFromLand.Source
+            {
+                World = world,
+                Land = land,
+                Layout = layout,
+                StepHeight = grid.stepHeight,
+                Unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep,
+                Lowest = land.Min(),
+                Layers = template.terrainLayers.Select(l => l.name).ToArray(),
+                Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
+                TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
+                DetailResolution = template.detailResolution,
+            });
+        }, layout.ChunkSize);
+    }
+
+    /// <summary>The rocks on stamped land; null until the ground is bound.</summary>
+    public LandRocks Rocks => rocks;
+
     /// <summary>How wet the ground looks, 0 dry to 1 soaked (WetGround).</summary>
     public float Wetness => wet != null ? wet.Wetness : 0f;
 
@@ -132,7 +162,12 @@ public partial class ValleyChemistry : MonoBehaviour
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
         if (ground == null)
         {
-            ground = new ValleyGround(layout, chunks);
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            builder = BuiltGround(world);
+            if (builder != null) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays ready in {timer.Elapsed.TotalMilliseconds:0} ms");
+            ground = new ValleyGround(layout, chunks, builder);
+            rocks = new LandRocks(grid);
+            rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).
             grid.DetailDistance = ground.DetailDistance;
             grid.DetailChunksChanged += ground.DrawDetails;
@@ -143,8 +178,10 @@ public partial class ValleyChemistry : MonoBehaviour
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
-        ground.RaiseBase(channelCells, channelDepths);
+        var channel = builder != null ? builder.Channel : (channelCells, channelDepths);
+        ground.RaiseBase(channel.Item1, channel.Item2);
         SetLand(world);
+        CheckGround(world);
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
@@ -169,9 +206,23 @@ public partial class ValleyChemistry : MonoBehaviour
                 cabinCells[k]++;
                 buildingCells[k].Add(world.Idx(x, y));
             }
+        ClearLaidRows(world);
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
         panesByCell.Clear();
         foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
+    }
+
+    // A row laid over the cells at the start (WorldBuildings.LayInto) stands where the bake drew trees and grass: they go,
+    // and its ground is painted as its cells say.
+    void ClearLaidRows(World world)
+    {
+        foreach (var row in world.RowsDrawn().Where(r => world.IsBaseBuilding(r.Id)))
+            foreach (var c in world.BuildingCellsOf(row))
+            {
+                BurnTrees(c.X, c.Y);
+                // A clearing keeps the ground the bake drew, grass and all: only what's laid on it is painted.
+                if (c.Terrain != TerrainIds.Grass) ground.PaintAnew(c.X, c.Y);
+            }
     }
 
     void IndexTrees()
@@ -238,6 +289,9 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The terrain's ground drawn now at a world point over the cells.</summary>
     public float GroundAt(Vector3 p) => ground != null ? ground.GroundAt(p.x, p.z) : 0f;
 
+    /// <summary>Whether the drawn ground is still easing somewhere.</summary>
+    public bool GroundMoving => ground != null && ground.Shaping;
+
     /// <summary>Eases reshaped ground by dt seconds (ChemGrid calls this once a frame).</summary>
     public void AdvanceShaping(float dt) => ground?.Advance(dt);
 
@@ -249,6 +303,19 @@ public partial class ValleyChemistry : MonoBehaviour
     // land comes from world/land.json, integers baked once from this terrain and committed, so every
     // peer on every platform has the same (BakeLand writes it); without it the land is flat.
     static int[] landFromFile;
+
+    /// <summary>The map changed: the next world reads its land afresh.</summary>
+    public static void ForgetLand() => landFromFile = null;
+
+    // The ground drawn and the land the core reads are one ground: a few cells' worth, as a probe can't see land.
+    void CheckGround(World world)
+    {
+        if (landFromFile == null) return;
+        float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
+        // The map's own land: a loaded world's stamps are on the ground, not in the file.
+        var apart = LandCheck.Disagreements((x, y) => ground.BaseHeight(x, y) - world.LandMovedAt(x, y) * unit, landFromFile, world.W, world.H, unit, unit);
+        if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
+    }
 
     static void SetLand(World world)
     {
@@ -295,6 +362,20 @@ public partial class ValleyChemistry : MonoBehaviour
     /// look, which the baked valley already shows): burn its trees, char the cabin, repaint it
     /// and, if it was <paramref name="reshaped"/>, ease its ground to its new height.
     /// </summary>
+    /// <summary>A land stamp moved these cells: they ease to it as a dug cell does.</summary>
+    public void LandMoved(int x, int y, int reach)
+    {
+        if (ground == null) return;
+        for (int v = y - reach - 1; v <= y + reach + 1; v++)
+            for (int u = x - reach - 1; u <= x + reach + 1; u++)
+                if (grid.World.InBounds(u, v))
+                {
+                    ground.Reshape(u, v);
+                    ground.Repaint(u, v);
+                }
+        rocks?.Moved(x, y, reach + 1);
+    }
+
     public void CellChanged(int x, int y, string from, string to, bool reshaped)
     {
         if (ground == null) return;
@@ -520,8 +601,13 @@ public partial class ValleyChemistry : MonoBehaviour
     void LateUpdate()
     {
         if (ground == null) return;
+        rocks.Tick(Time.deltaTime);
         timer.Restart();
-        foreach (var at in treesChanged) ground.WritableData(at).treeInstances = trees[at];
+        foreach (var at in treesChanged)
+        {
+            ground.WritableData(at).treeInstances = trees[at];
+            ground.TreesMoved(at);
+        }
         treesChanged.Clear();
         TreesMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();

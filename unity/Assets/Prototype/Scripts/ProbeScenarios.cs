@@ -86,6 +86,8 @@ public static class ProbeScenarios
         new Entry("golf", typeof(GolfProbe), 150f,
             "Spell golf's hole played through the caster (GolfCourse, World.Golf): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
             "to the hole; then the meadow coil beside it: its cells laid, no tree on its pond, a bolt into the pond opens the gate. Shots with --shots."),
+        new Entry("cup", typeof(CupProbe), 90f,
+            "A ball and a cup placed through the real MCP server (act) by the wizard: the course moves to them, Fire Bolt moves the ball, and it goes in with fireworks over the cup. Shots with --shots."),
         new Entry("feel", typeof(FeelProbe), 280f,
             "What a hand on the controls should feel, on a virtual pad and keyboard: running onto ice and Frost's glaze keeps the speed and slides, snow and a bank slow " +
             "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball, by CastFeel's strength, the arm reaching it, a hit-stop, one landing (a miss too, and off still), the same ticks with and without the stop; Plant Growth charged on burnt ground and Wall of " +
@@ -113,6 +115,8 @@ public static class ProbeScenarios
             "the meteor falls for its delay, the log names Player 1 and Player 2, a late joiner plays no old shows; after a long walk (a loop, a step a tick) a second late joiner fires every cast the host did " +
             "(metrics late_joiner_strike_history and long_walk_strike_history: the stands, strikes and leavings each joiner's history held, #83); nothing fires or shows once reverted, checksums equal. " +
             "With --shots, a film from behind the host's wizard.", players: 2),
+        new Entry("handlooks", typeof(HandLooksProbe), 180f,
+            "What each hand holds, shown on the other peer's wizard (HandHeld): this Editor hosts, the virtual player joins, each attunes differently, an empty hand among them, and each peer shows both wizards' hands.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("productsview", typeof(ProductsViewProbe), 300f,
@@ -229,6 +233,12 @@ public static class ProbeScenarios
         new Entry("apikey", typeof(ApiKeyProbe), 60f,
             "A player's own key against ApiStandIn, no real key or call: no key stays on Claude Code, a good key turns the chat to ApiChat, a message runs through the server and the loop, the spend cap stops the next one. " +
             "Checks: the check doesn't block, the key is in no record, console, environment or save, Remove goes back to Claude Code, no console errors."),
+        new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
+            "What GroundSwitch put on the terrains (unity/Temp/ground-builder says on or land; no file is off) and what the ground's Bind took: compare runs. Checks: the chunks are built or baked as switched, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
+        new Entry("landshapes", typeof(LandShapesProbe), 240f,
+            "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
+        new Entry("act", typeof(ActProbe), 60f,
+            "Acts through the real MCP server in a running game (docs/design/world-acts.md): 20 trees near the wizard twice leave the mod list as it was, three deer come out, undo_act takes the second trees back and refuses animals, and set_species turns the turkeys blue. Checks: each of those, no console errors."),
         new Entry("chat", typeof(ChatProbe), 40f,
             "The chat box to Claude (J-060), with a stand-in for claude: Enter opens it and the wizard's controls go off, and come back; a message reaches one process on stdin, with the game's tools only and dontAsk; its words and tools show; a second message waits; notes.md stays bounded; " +
             "a failure shows, a sign-in failure says to sign in, and with no claude the install line shows. With --shots, a film of the box."),
@@ -248,6 +258,14 @@ public static class ProbeScenarios
             "--only microphone opens and closes the default microphone instead (on a Mac that open once blocked the Editor for minutes). No model, no recording kept, no Claude."),
         new Entry("rowlight", typeof(RowLightProbe), 240f,
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
+        new Entry("hold", typeof(HoldProbe), 400f,
+            "The valley's laid row (the-hold.md): its cells and drawing, no tree on it, a walk through the gate into the keep and its room, " +
+            "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls."),
+        new Entry("hands", typeof(HandsProbe), 240f,
+            "The Hold's hands (the-hold.md, phase 3) on a virtual pad, mouse and keyboard: attuning in the room, each hand's thrust, throw and sweep, the same gesture on both, " +
+            "different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, an empty hand's acts, and the D-pad's kit."),
+        new Entry("moments", typeof(MomentsProbe), 200f,
+            "Every Hold moment by name (rules/hold.json) through HoldMoments, or just MOMENT if the environment names one: the wave, the hands, the keep's health, the wizard at the castle, and raiders coming."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,
             "A stucco house through the MCP, close up from a wizard's height, then a fireball: its walls follow their cells to a ruin (RowRuin), with the frame numbers while it burns."),
         new Entry("rowhouses", typeof(RowHousesProbe), 180f,
@@ -355,6 +373,8 @@ public static class ProbeScenarios
             "Andrew's playtest paper cuts of 2026-10-27, framed for before/after pictures (the same script with or without the fixes). Checks: the " +
             "signs drawn with SignText (one-sided), a villager sitting on the seat, the house roof solid and landed on, the well wall stopping you, " +
             "the beach off-limits to wild animals, the island's south pier, and a burnt-down inn's door light out at night."),
+        new Entry("jobs", typeof(JobsProbe), 120f,
+            "People with work to go to (FolkJobs, jobs.json): each job's worker stands where the clock says when a wizard comes near; a wizard walks out along the lake house's dock and stays on it. With --shots, a worker at each job, the dock and the lake house."),
         new Entry("villagers", typeof(VillagersProbe), 120f,
             "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
             "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +

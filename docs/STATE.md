@@ -1,4 +1,4 @@
-# State (2026-11-03, evening)
+# State (2026-11-05, night)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -48,31 +48,38 @@ The one page a new PM session reads first. Keep it short: history goes in
   the cast sounds (B + pulse 30%), the lost-cast fix (#39), the play log (F8 marks), the Gauntlet's rules, surf
   toward land, the night stutter fix. Notes: `docs/handoffs/release-0.1.10-notes.md`. Install from the draft
   and update from 0.1.9 green on the PC; main merged back (dev = main = 155ac1c).
-- **0.1.11:** live rule changes, talking to Claude by voice (Whisper), bring your own Claude. **0.1.12:** proximity voice (Andrew, 2026-11-03), and the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
+- **0.1.11** published 2026-11-03: live rule changes, talking to Claude by voice (Whisper), bring your own Claude. **0.1.12:** proximity voice (Andrew, 2026-11-03), and the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
 - Builds: Windows builds on the PC (Andrew, 2026-10-31); the Mac's headless build
   (`PrototypeBuild.BuildWindowsFromCommandLine`, RELEASING.md) is the fallback. The GitHub Actions runner is
   shelved (`docs/CI_BUILDS.md`). The Mac app is shelved at 0.1.7 until Andrew brings it up (J-049): releases are Windows only.
 
 ## In flight
 
-- **0.1.11: ship when `voice-libs-bundled` lands and the candidate is green** (Andrew, 2026-11-03; no further ask). J-070: talking to Claude goes in; Vivox doesn't. A player's own API key goes in too (J-071). Before cutting: add voice and today's landings to `docs/handoffs/release-0.1.11-notes.md`, version bump, a green release candidate on the PC (no VMs then).
-- **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (the watcher's "max is back" was false, #89). The PM's account can't see the board.
+- **Today's workers:** the PC is `DesktopUnityPro`, the Mac's session is `Vivox spike branch push`. Linux VMs' account is down.
+- **0.1.11 published** 2026-11-03 at b79f537 (Windows only): `main` merged back into dev. The update hop 0.1.106 → 0.1.107 passed; the Esc menu's "Update and restart" wasn't tried.
+- **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (#89 fixed: the watcher reads dated resets). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
 - **Settings > Claude setup:** landed and worked with Andrew's real key in a release player (e0074b28 fixed sideways scrolling; one look after a relaunch). His key is still saved on the PC. Not tried for real: the cap stopping a run, Remove, a second Claude Code install. Cap default $1 a session; the model list stays Haiku and Opus (J-072).
-- **Whisper landed** (e7480c2b): Andrew's voice reached Claude in a Windows release player (11 voice messages, open 6-56 ms, about 1 s to transcribe). The VC++ runtime and Vulkan loader ship with the game (J-072); proven on a clean-ish VM clone. Update from 0.1.10 is 142.7 MB. Credits' copyright lines for whisper.cpp, whisper.unity and the model are from memory: check them against their LICENSE files. Linux and Steam Deck haven't run.
-- **Mac:** `briefs/vivox-spike.md` for 0.1.12 (D8 accepted; Vivox is on in the Dashboard).
+- **Whisper landed** (e7480c2b): Andrew's voice reached Claude in a Windows release player (11 voice messages, open 6-56 ms, about 1 s to transcribe). The VC++ runtime and Vulkan loader ship with the game (J-072); proven on a clean-ish VM clone. Update from 0.1.10 is 142.7 MB. Credits' copyright lines checked against the LICENSE files (whisper.unity corrected to Macoron, in 058c5cb1; reaches players in 0.1.12). VC++ DLLs: Microsoft's pages allow unmodified retail copies from VCRedist for licensed Visual Studio users; Andrew has Community; its full licence terms aren't read yet. Linux and Steam Deck haven't run.
+- **Vivox (0.1.12):** `vivox-spike` (8f44eae9, not landed): sign-in and libraries answered; the mic and fade aren't. Next: `briefs/vivox-pc-run.md` on the PC with Andrew. Vivox is on in the Dashboard. The Mac may need unlocking to be the second participant: its audio stalled with the screen locked.
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
+- **`mcp-act` landed** (e8c1113b; `docs/design/world-acts.md`, backlog-archive 30, #127): `act` and `undo_act`, one-off happenings that aren't mods. Not tried with a real Claude yet.
+- **`mix` landed** (d53feb01, P5; core 1411 passed): rows of one `mix` group that meet derive a material. Owed: seen in a running game (view unproven), EditMode on the merged tree, a late join over real netcode; `ApiKeyTests` fail 8 on the Mac (Windows-only vault, not confirmed on plain dev). Only `setCover` mixes covers.
+- **`ball-in-cup` landed** (1e7fb5b5): `act` places a ball and cup, spells move it, turns, the `holed` trigger. Two-player turns tested in core only; no real-Claude test.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
 
 ## Next, in order
 
-1. Land what's in flight (0.1.11).
-2. 0.1.11 when Andrew says.
-3. Primitives: P5 mix (after liquids), the rest of P1 (`hot`, `freezes`, `sets`); `hot` and the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
+1. Land what's in flight (the Vivox PC run).
+2. **Cheap playtester landed** (`core/Playtest.Text`, `playtest/cheap/README.md`; text only, no view): Haiku $2.20 and Sonnet $3.68 for 20 minutes, one confirmed finding each (#90, #91), 9 of 10 false alarms from the tool. Fixed tool, Haiku: $2.78, 2 confirmed, 2 false alarms, 0 tool faults ($1.39 each; #91 comment, #92). `run.sh` is zsh, so the PC needs a port; the github sink has filed nothing real; a person judges before filing.
+   **Maps as data with terrain through the MCP (Andrew, 2026-11-04, #69):** designed (`docs/design/maps-as-data.md`, nine phases, about five weeks); phase 1 landed (5638da4d; Windows with graphics checked, valley unchanged; `BuildWindowsFromCommandLine` untested on it, so watch the first release build); phase 2 landed (real two-peer run passed, no desync); questions answered (J-073). Phase 4 landed; start-up baseline on the PC 7.37 s on dev, 7.49 s with `ground/` (3 runs, not cold-disk, no real screen): phase 5 may add 2 s. Phase 3 landed (ba5a2326; PC run: no desync on three peers, worst r32 frame 30.3 ms bar one 115 ms undo, 1 m/s ease; canyon then dragon not run; four full-detail chunks under one stamp never run; #142 props; #143 and #144 fixed by `stamp-guards`, dcd1e76a, new places not yet seen against the drawn map; #145 Editor memory, maybe a leak). `land-shapes` landed (43658bcb: canyon, cliff, rough 40, rock; three peers on the new shapes and TerrainRock PSO warm-up not run; rebuild the yard). `props-follow-land` landed (1c682dc9, #142). `named-acts` landed (c81b6382) and the TerrainRock PSO (46897dfb) after the combined PC run; real Claude used `call_act` over MCP, the chat box itself untried. Open: #146 canyon refused by seed, #147 crate slide, #148 small stamps, #149 dropped rows say done, #150 rows do not share a spot; #151 stamp frame over 100 ms on the Mac (measure on the PC). `acts-honest` landed (da3184e4, #149, #146, #150; not drawn, PC owes a look: campsite at a real place, folded floor on several seeds, spot-search hitch, a real Claude on a short row). PC profiling done (#151, #153-155); playtest findings #156-159. Phase 5 landed behind its switch (9372ba25; 34be621d compiled only in core until the PC opens it); Phase 5 judged safe on the PC (#137 closed; land mode's look not judged). #151 fixed (a3824945). Maps phase 6 waits. Do not ship `Builds/PcDev` or `PcRel` (they contain `PcPerf`). Phase 8 must give a joiner's `RulesMcpServer` the host's map. Same-network Host and Join have no menu or flag: the PC needed a throwaway driver.
+   Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
+3. **The Hold (Andrew, 2026-11-05, #152, J-074, J-075; `docs/design/the-hold.md`):** the first game loop, on the hill west of Hollowmere. Phases 1 to 4 landed (6e6b8b3b); best hand set about 19 minutes against a 20 minute target. Andrew is playing from `Builds/PcDev`; moments are on F8. PC on `castle-seat` (ground at the road's top, raiders on the switchbacks, the robe NaN, maybe #158). Mac on phase 5 (`briefs/hold-progress.md`, `hold-progress`). Verdicts owed: `docs/handoffs/pm-2026-11-05.md`.
 4. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
-- Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).
+- Tests: #162 landed (56f7a3e5): parallel core tests, gates in `tools/workers/gates.sh`. PC gates 121 s, tests 85 s; dotnet peaks at 6.8 GB, so keep other heavy work off a landing. The Linux VMs' account is down (Andrew, 2026-11-05). Tiers and slimming not needed yet. Decoupling waits until the Hold is done (Andrew, 2026-11-05).
+- Backlog and priority: the board, https://github.com/users/anweather/projects/3 (epics, `area:` and `p1`-`p3` labels); `docs/BACKLOG.md` is the pointer and `docs/backlog-archive.md` keeps the design detail (more than one map is #69).
 
 ## Andrew's board
 

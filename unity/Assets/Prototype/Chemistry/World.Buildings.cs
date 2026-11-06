@@ -48,7 +48,7 @@ namespace Chem
         public event Action<BuildingsChange> BuildingsChanged;
 
         /// <summary>The rows of the buildings the world was made with (WorldBuildings), by the world's starting cells.</summary>
-        internal IReadOnlyList<JObject> BaseBuildings => baseBuildings ??= (roomBudgets?.Buildings ?? WorldBuildings.Empty).RowsOn(StartTerrain);
+        internal IReadOnlyList<JObject> BaseBuildings => baseBuildings ??= (roomBudgets?.Buildings ?? WorldBuildings.Empty).RowsOn(StartTerrain, Rules.Buildings);
 
         // Before a mod's building lands, so the rows read the world as it was made.
         internal void NoteBaseBuildings() => _ = BaseBuildings;
@@ -64,6 +64,13 @@ namespace Chem
 
         /// <summary>Whether the world was made with this building, so a mod's row of that id edits it.</summary>
         public bool IsBaseBuilding(string id) => BaseBuildings.Any(r => (string)r["id"] == id);
+
+        /// <summary>The buildings drawn from their rows: what the mods brought and edited, and the world's rows laid at the start. The rest stand as the valley drew them.</summary>
+        public List<BuildingRow> RowsDrawn()
+        {
+            var laid = new HashSet<string>((roomBudgets?.Buildings ?? WorldBuildings.Empty).LaidRows.Select(r => (string)r["id"]), StringComparer.Ordinal);
+            return BuildingsNow.Where(r => (laid.Contains(r.Id) && IsBaseBuilding(r.Id)) || Rules.ModBuildings.Any(m => m.Id == r.Id)).ToList();
+        }
 
         /// <summary>A building in force by id, or null.</summary>
         public BuildingRow BuildingRowOf(string id) => RowOf(id, Rules);

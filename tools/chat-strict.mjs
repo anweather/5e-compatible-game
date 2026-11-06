@@ -16,7 +16,7 @@ const json = file => JSON.parse(readFileSync(file, "utf8"));
 const lines = file => readFileSync(file, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l));
 const logs = dir => readdirSync(dir).filter(f => f.startsWith("chat-log-") && f.endsWith(".jsonl")).sort().flatMap(f => lines(join(dir, f)));
 
-const WORLD_TOOLS = new Set(["apply", "revert", "set_time", "set_weather"]);
+const WORLD_TOOLS = new Set(["apply", "revert", "act", "undo_act", "set_time", "set_weather"]);
 const CATCH_MARGIN = 0.1; // of the factor asked for
 const HUE_LEAD = 0.2, HUE_LEAST = 0.5;
 const HUE = { red: 0, green: 1, blue: 2 };

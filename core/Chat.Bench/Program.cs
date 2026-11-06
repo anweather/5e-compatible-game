@@ -78,7 +78,7 @@ namespace Chem.Bench
             {
                 Directory.CreateDirectory(folder);
                 Copy(folders.Rules, Path.Combine(dir, "rules"));
-                Copy(folders.World, Path.Combine(dir, "world"));
+                Copy(folders.World, new GameFolders(Path.Combine(dir, "rules"), null, folders.Map).World);
                 WriteFolder(folder, Path.Combine(dir, "rules"), applied);
                 return Follow(claude, model, folder, prompt, applied);
             }

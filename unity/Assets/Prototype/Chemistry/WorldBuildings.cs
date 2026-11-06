@@ -24,6 +24,7 @@ namespace Chem
 
         readonly List<JObject> rows;
         readonly List<VillageSpec> villages;
+        string folder;
 
         WorldBuildings(List<JObject> rows, List<VillageSpec> villages)
         {
@@ -43,17 +44,59 @@ namespace Chem
             if (worldDir == null || !Directory.Exists(worldDir)) return Empty;
             var path = Path.Combine(worldDir, FileName);
             var rows = File.Exists(path) ? (JObject.Parse(File.ReadAllText(path))["buildings"] as JArray)?.OfType<JObject>().ToList() : null;
-            return new WorldBuildings(rows ?? new List<JObject>(), VillageLayout.Load(worldDir));
+            return new WorldBuildings(rows ?? new List<JObject>(), VillageLayout.Load(worldDir)) { folder = worldDir };
+        }
+
+        /// <summary>The rows the map's cells don't hold: walls and no built cells, laid over the cells at the start (LayInto).</summary>
+        public IEnumerable<JObject> LaidRows => rows.Where(IsLaid);
+
+        static bool IsLaid(JObject row) => row["walls"] != null && row["built"] == null;
+
+        /// <summary>
+        /// Lays the rows the map's cells don't hold, before the world starts, on every peer alike. Over the cells, as a
+        /// map's puzzles are, so cells.txt and the things keep what they say: a tree under a wall is simply no longer there.
+        /// Only where the whole row fits (the valley, not a small test yard).
+        /// </summary>
+        public void LayInto(World world)
+        {
+            foreach (var r in LaidRows)
+            {
+                var row = BuildingRow.Read((string)r["id"], r, world.Rules.Buildings);
+                var cells = BuildingRaster.Cells(row, world.Rules.Buildings);
+                if (!cells.All(c => world.InBounds(c.X, c.Y))) continue;
+                foreach (var c in cells) world.Paint(c.X, c.Y, c.Terrain);
+                GradeRoads(world, row, cells);
+            }
+        }
+
+        // The graded roads' cuts, from the map's land as its file has it. A world without that land keeps its ground.
+        void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells)
+        {
+            var pad = row.Json["pad"];
+            if ((pad == null && row.Roads.All(r => !r.Graded)) || folder == null) return;
+            string path = Path.Combine(folder, MapFile.LandName);
+            if (!File.Exists(path)) return;
+            var land = LandFile.Read(File.ReadAllText(path), world.W, world.H);
+            if (land.Length == 0) return;
+            var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));
+            if (pad != null)
+            {
+                var moved = RowPad.Of(building, (int)pad["margin"], (int)pad["bank"], (x, y) => land[world.Idx(x, y)], world.InBounds);
+                world.LayLand(moved);
+                foreach (var (x, y, by) in moved) land[world.Idx(x, y)] += by;
+            }
+            foreach (var road in row.Roads.Where(r => r.Graded))
+                world.LayLand(RoadGrade.Of(road, row.X, row.Y, (x, y) => land[world.Idx(x, y)], building));
         }
 
         /// <summary>
-        /// The rows of the buildings standing on these cells: a file's row whose built cells are there,
-        /// and each village's as the cells say it was laid. A world without them (a small test yard) has none.
+        /// The rows of the buildings standing on these cells: a file's row whose built cells are there, or whose
+        /// laid cells are, and each village's as the cells say it was laid. A world without them (a small test yard) has none.
         /// </summary>
-        public List<JObject> RowsOn(Func<int, int, string> terrainAt)
+        public List<JObject> RowsOn(Func<int, int, string> terrainAt, BuildingTables tables)
         {
             var found = new List<JObject>();
-            found.AddRange(rows.Where(r => Stands(r, terrainAt)).Select(r => (JObject)r.DeepClone()));
+            found.AddRange(rows.Where(r => IsLaid(r) ? WasLaid(r, terrainAt, tables) : Stands(r, terrainAt)).Select(r => (JObject)r.DeepClone()));
             foreach (var spec in villages)
                 found.AddRange(VillageRows.Of(LaidPlan(spec, terrainAt)));
             return found;
@@ -64,6 +107,16 @@ namespace Chem
         {
             var walls = new HashSet<string>(spec.Materials.Walls.Values) { spec.Materials.Window };
             return VillageLayout.Lay(spec, (x, y) => terrainAt(x, y) is string t && walls.Contains(t));
+        }
+
+        // By its walls, nearly all of them: a road or a clearing is ground, and wears, burns and grows over like any, and a table can
+        // close an opening into wall that was laid as glass.
+        static bool WasLaid(JObject r, Func<int, int, string> terrainAt, BuildingTables tables)
+        {
+            var cells = BuildingRaster.Cells(BuildingRow.Read((string)r["id"], r, tables), tables);
+            var walls = cells.Where(c => c.Part == BuildingPart.Wall).ToList();
+            int standing = walls.Count(c => terrainAt(c.X, c.Y) == c.Terrain);
+            return standing * 10 >= walls.Count * 9 && cells.Any(c => terrainAt(c.X, c.Y) == c.Terrain);
         }
 
         static bool Stands(JObject row, Func<int, int, string> terrainAt)

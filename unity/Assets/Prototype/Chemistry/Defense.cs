@@ -20,6 +20,11 @@ namespace Chem
         public int TicksPerSquare = 4;
         /// <summary>Elements it takes double damage from, and half (rounded up).</summary>
         public IReadOnlyList<string> Weak = Array.Empty<string>(), Resist = Array.Empty<string>();
+        /// <summary>Its blow in the Hold (entities.json raider.attack): [n, sides] damage, and ticks until its next; empty for none.</summary>
+        public int[] AttackDice = Array.Empty<int>();
+        public int AttackEvery = 12;
+        /// <summary>How it comes in the Hold (entities.json raider.route): by the road, unless it's "climb" or "fly".</summary>
+        public string Route;
     }
 
     /// <summary>sim.json's "defense": the waves, the lives and how raiders find their way.</summary>
@@ -111,7 +116,15 @@ namespace Chem
 
         static RaiderDef ParseRaider(JToken t) =>
             t is JObject o
-                ? new RaiderDef { TicksPerSquare = Math.Max(1, Int(o["ticksPerSquare"]) ?? 4), Weak = Strings(o["weak"]), Resist = Strings(o["resist"]) }
+                ? new RaiderDef
+                {
+                    TicksPerSquare = Math.Max(1, Int(o["ticksPerSquare"]) ?? 4),
+                    Weak = Strings(o["weak"]),
+                    Resist = Strings(o["resist"]),
+                    AttackDice = (o["attack"]?["dice"] as JArray)?.Select(v => (int)v).ToArray() ?? Array.Empty<int>(),
+                    AttackEvery = Math.Max(1, Int(o["attack"]?["every"]) ?? 12),
+                    Route = Str(o["route"]),
+                }
                 : null;
 
         static DefenseParams ParseDefense(JToken t)

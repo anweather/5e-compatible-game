@@ -14,11 +14,15 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>What a trigger reacts to. Only a step so far; each later one is a place in the core that already runs on a command.</summary>
+    /// <summary>What a trigger reacts to; each is a place in the core that already runs the same on every peer.</summary>
     public enum TriggerEvent
     {
         /// <summary>A player's stand moves to another cell (not a first stand, not while downed).</summary>
         Step,
+        /// <summary>A golf ball goes in the cup (World.Golf.cs): the player who hit it, at the cup.</summary>
+        Holed,
+        /// <summary>A player calls it by name (call_act): a named act, each action an act's ask, at the place they name.</summary>
+        Called,
     }
 
     /// <summary>Where an action lands, from the player whose event it was.</summary>
@@ -46,6 +50,8 @@ namespace Chem
         public int By, Within;
         /// <summary>Ticks before a cast lands, a target mark glowing until then (as Falling Star); 0 as the spell has it.</summary>
         public int Delay;
+        /// <summary>A called trigger's action: the row as written, what act would be asked; null for a cast or a place.</summary>
+        public JObject Act;
     }
 
     /// <summary>A row of triggers.json: on an event, by whom, how often and how likely, and what it does.</summary>
@@ -96,10 +102,12 @@ namespace Chem
         /// <summary>Where the rule document keeps the triggers (rules/triggers.json), rows by id.</summary>
         public const string TriggersKey = "triggers";
 
-        internal static readonly string[] TriggerEvents = { "step" };
+        internal static readonly string[] TriggerEvents = { "step", "holed", "called" };
         internal static readonly string[] TriggerAts = { "here", "ahead", "behind", "around" };
         static readonly string[] TriggerFields = { "on", "who", "every", "chance", "do" };
         static readonly string[] ActionFields = { "cast", "place", "at", "by", "within", "delay" };
+        // What act takes, but for where: a called trigger is told where when it's called.
+        static readonly string[] ActFields = { "act", "count", "within", "spacing", "seed", "onto", "lasts", "profile", "radius", "rise", "rough", "along" };
 
         IReadOnlyList<TriggerDef>[] triggersOn = Array.Empty<IReadOnlyList<TriggerDef>>();
 
@@ -121,7 +129,7 @@ namespace Chem
         static TriggerDef ParseTrigger(string id, JObject o) => new TriggerDef
         {
             Id = id,
-            On = TriggerEvent.Step,
+            On = (TriggerEvent)Math.Max(0, Array.IndexOf(TriggerEvents, Str(o["on"]))),
             Who = Str(o["who"]),
             Every = Math.Max(TriggerDef.MinEvery, Int(o["every"]) ?? TriggerDef.MinEvery),
             Chance = Num(o["chance"]) ?? 1,
@@ -136,6 +144,7 @@ namespace Chem
             By = Int(a["by"]) ?? 0,
             Within = Int(a["within"]) ?? 0,
             Delay = Int(a["delay"]) ?? 0,
+            Act = a["act"] != null ? a : null,
         };
 
         // A mod's rows over the table: a row changes only the fields it names, a null takes it out.
@@ -171,13 +180,36 @@ namespace Chem
                 if (t["every"] != null && !(IsWholeNumber(t["every"]) && (double)t["every"] >= TriggerDef.MinEvery))
                     Errors.Add($"{who}: every is the ticks between firings, a whole number from {TriggerDef.MinEvery}");
                 if (t["chance"] != null && !(IsNumber(t["chance"]) && (double)t["chance"] > 0 && (double)t["chance"] <= 1)) Errors.Add($"{who}: chance is above 0 and at most 1");
-                TriggerActions(who, t["do"]);
+                bool called = Text(t["on"]) == "called";
+                if (called && (t["every"] != null || t["chance"] != null)) Errors.Add($"{who}: a called trigger fires when it's called, so it takes no every or chance");
+                TriggerActions(who, t["do"], called);
             }
 
-            void TriggerActions(string who, JToken does)
+            void TriggerActions(string who, JToken does, bool called)
             {
-                if (!(does is JArray actions) || actions.Count == 0) Errors.Add($"{who} needs \"do\": a list of actions, each a cast or a place");
-                else for (int i = 0; i < actions.Count; i++) TriggerAction($"{who}: action {i + 1}", actions[i]);
+                if (!(does is JArray actions) || actions.Count == 0) Errors.Add($"{who} needs \"do\": a list of actions, each {(called ? "an act" : "a cast or a place")}");
+                else
+                {
+                    for (int i = 0; i < actions.Count; i++)
+                    {
+                        if (called) CalledAction($"{who}: action {i + 1}", actions[i]);
+                        else TriggerAction($"{who}: action {i + 1}", actions[i]);
+                    }
+                }
+            }
+
+            // What it names is looked up when it's called, as act does: a mod can bring its own.
+            void CalledAction(string who, JToken a)
+            {
+                if (!(a is JObject o))
+                {
+                    Errors.Add($"{who} must be an object");
+                    return;
+                }
+                foreach (var f in o.Properties().Where(f => !ActFields.Contains(f.Name))) Errors.Add($"{who}: {f.Name} isn't a field of an act; it takes {string.Join(", ", ActFields)}");
+                if (string.IsNullOrEmpty(Text(o["act"]))) Errors.Add($"{who} needs act: what act would be asked for");
+                foreach (var k in new[] { "count", "within", "spacing", "seed", "lasts", "radius", "rise", "rough" })
+                    if (o[k] != null && !IsWholeNumber(o[k])) Errors.Add($"{who}: {k} must be a whole number");
             }
 
             void TriggerAction(string who, JToken a)

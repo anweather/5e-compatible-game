@@ -56,7 +56,6 @@ public static class ChemYardBuilder
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
         var grid = new GameObject("ChemGrid").AddComponent<ChemGrid>();
-        grid.map = Map;
         AssignEffects(grid);
 
         // Find the @ to place the wizard; cell (x, y) sits at world (x, 0, H-1-y) times the cell size.
@@ -344,6 +343,7 @@ public static class ChemYardBuilder
         wizard.AddComponent<SwimPose>();
         wizard.AddComponent<ThrowPose>();
         wizard.AddComponent<PunchPose>();
+        wizard.AddComponent<HandPose>();
         wizard.AddComponent<SitPose>();
         wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
         wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)

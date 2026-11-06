@@ -117,7 +117,7 @@ namespace Chem.Tests
                 foreach (var w in new[] { host, peer })
                 {
                     var rows = w.BuildingsNow;
-                    Assert.That(rows.Count, Is.EqualTo(row == null ? 23 : 24), "the world's buildings, and the dock");
+                    Assert.That(rows.Count, Is.EqualTo(row == null ? 25 : 26), "the world's buildings, and the dock");
                     Assert.That(rows.All(r => w.BuildingCellsOf(r).Count > 0), "each row reads and rasterises over the new tables");
                 }
                 var off = RoomCommand.Revert("Ana", "tables");

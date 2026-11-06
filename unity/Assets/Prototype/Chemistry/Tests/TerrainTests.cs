@@ -306,6 +306,67 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void QueuedSamplesEndWhereUpdateEnds()
+        {
+            var w = Meadow();
+            var field = new CellHeightfield(G, Step, easeSpeed: 1f);
+            field.Reset(w);
+            var changed = new List<(int x, int y)>();
+            for (int y = 70; y < 100; y++)
+                for (int x = 50; x < 80; x++)
+                {
+                    w.At(x, y).Height = -2;
+                    changed.Add((x, y));
+                }
+            field.Queue(changed);
+            Assert.Greater(field.Waiting, 0);
+            Assert.IsFalse(field.Settled, "samples waiting aren't settled");
+            int rounds = 0;
+            while (field.Waiting > 0)
+            {
+                field.FillSome(w, 100);
+                Assert.LessOrEqual(field.SamplesFilled, 100);
+                field.Advance(0.05f);
+                rounds++;
+            }
+            Assert.Greater(rounds, 1, "spread over frames");
+            foreach (var (i, j) in field.Chunks) AssertSame(field.Compute(w, i, j), field.Target(i, j), $"target ({i}, {j})");
+            while (!field.Settled) field.Advance(0.25f);
+            foreach (var (i, j) in field.Chunks) AssertSame(field.Target(i, j), field.Current(i, j), $"settled ({i}, {j})");
+        }
+
+        [Test]
+        public void AQueuedSampleTakesTheCellsAsTheyAreWhenItsTurnComes()
+        {
+            var w = Meadow();
+            var field = new CellHeightfield(G, Step, easeSpeed: 1f);
+            field.Reset(w);
+            var cell = (55, 81);
+            w.At(55, 81).Height = -3;
+            field.Queue(new[] { cell });
+            int once = field.Waiting;
+            field.Queue(new[] { cell });
+            Assert.AreEqual(once, field.Waiting, "a sample waits once");
+            w.At(55, 81).Height = 2;
+            field.FillSome(w, once);
+            var (i, j, sx, sz) = G.CellSample(55, 81);
+            Assert.AreEqual(1f, field.Target(i, j)[sz, sx]);
+            Assert.AreEqual(0, field.Waiting);
+        }
+
+        [Test]
+        public void ResetForgetsWhatWasWaiting()
+        {
+            var w = Meadow();
+            var field = new CellHeightfield(G, Step, easeSpeed: 1f);
+            field.Reset(w);
+            field.Queue(new[] { (55, 81) });
+            field.Reset(w);
+            Assert.AreEqual(0, field.Waiting);
+            Assert.IsTrue(field.Settled);
+        }
+
+        [Test]
         public void EasingReachesTheTargetAtItsSpeed()
         {
             var w = Meadow();

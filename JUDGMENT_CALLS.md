@@ -41,6 +41,38 @@ Each entry has:
 
 ## Decided
 
+### J-076: How is proximity voice proved before a person tries it?
+
+- **Asked:** 2026-11-06, by Andrew, when the PM asked whether 0.1.12 waits for a live Vivox run with him.
+- **Also comes up when:** any voice, sound or audio feature; anything that seems to need a person to listen.
+- **Answer:** Andrew: prove it first with canned audio (Vivox audio injection from a bot) and a measured fade with distance; he then judges by ear in his next playtest, walking toward a fixed voice in the woods.
+- **Why:** the machinery can be checked without him; his time goes on whether it sounds right.
+- **Revisited:** 0.
+
+### J-075: How do a hand's buttons work?
+
+- **Asked:** 2026-11-05, by Andrew, after the first hands were built with the bumper as a modifier.
+- **Also comes up when:** weapons, new spells, pad layout, an unattuned hand.
+- **Answer:** Andrew: the button is the gesture. Trigger short range, bumper long range, both an area; an empty hand punches, throws or shoves. The same gesture on both hands makes something new; different gestures each do their own, and the chemistry decides. Spells stay unique, never re-skinned. Weapons fit later under the same rule.
+- **Why:** one rule you can feel, and mixed gestures cost no table entries.
+- **Revisited:** 0.
+
+### J-074: What's the first game loop, and how do wizards cast in it?
+
+- **Asked:** 2026-11-04, by Andrew (#152): the game has mechanics but no objective.
+- **Also comes up when:** progression, roles, new modes, the second map, sandbox controls.
+- **Answer:** Andrew: real-time wave defence, the Hold, in the valley for now, on the hill west of Hollowmere. Castle first, as a set piece from primitives. Endless waves. An element per hand, changed only in the keep, with a kit on top (`docs/design/the-hold.md`).
+- **Why:** chemistry decides the fight, it needs the least content, and staying in the valley avoids waiting for maps. Hands keep combining and make co-op roles.
+- **Revisited:** 0.
+
+### J-073: Maps as data: the design's six questions
+
+- **Asked:** 2026-11-04, by the Mac's design (`docs/design/maps-as-data.md`).
+- **Also comes up when:** terrain through the MCP, a second map, the dragon, game modes.
+- **Answer:** Andrew: land is built at run time. A mountain doesn't stop raiders, sight or spells yet. A live stamp is at most radius 32 cells. Sea level is set per map for now, with no stamps across water or live water level. The host picks the map. The dragon's reset undoes stamps, but the automatic dragon goes off: "Would feel really bad to build something then have it deleted."
+- **Why:** the design's reasons; building has to feel safe.
+- **Revisited:** 0.
+
 ### J-072: What may a player have to install for voice?
 
 - **Asked:** 2026-11-03, by the PM: Whisper needs the VC++ runtime and Vulkan, and neither was in the build.

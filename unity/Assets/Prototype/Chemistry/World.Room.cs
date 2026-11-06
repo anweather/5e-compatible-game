@@ -29,6 +29,9 @@ namespace Chem
         /// <summary>A room command was decided, on this peer, as the log says. For the view: it never touches the world.</summary>
         public event Action<RoomCommand, RoomVerdict> RoomDecided;
 
+        /// <summary>A joining peer's world, its room still on the way: what's built doesn't wait for the host, and the view reads it from the first frame.</summary>
+        public void AwaitRoom(ModBudgets budgets) => roomBudgets = budgets ?? throw new ArgumentNullException(nameof(budgets));
+
         /// <summary>
         /// Makes this world a room, as it is made: the change mode, the host's name, the base rules
         /// every mod composes over, the budgets the checks use (rules/budgets.json) and the mods it
@@ -72,6 +75,8 @@ namespace Chem
                 RoomChange.Revert => Revert(c),
                 RoomChange.SetTime => SetTime(c),
                 RoomChange.SetWeather => SetWeather(c),
+                RoomChange.Act => DoAct(c),
+                RoomChange.Undo => UndoAct(c),
                 _ => SwitchOn(c),
             };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
@@ -196,6 +201,8 @@ namespace Chem
                 sb.Append("|retired:").Append(r.Table).Append(':').Append(r.Id).Append(':').Append(r.Into ?? "").Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
             foreach (var r in Room.RetiredRows)
                 sb.Append("|gone:").Append(r.Kind).Append(':').Append(r.Id).Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
+            foreach (var m in Room.Mixes) // not its row: the rows it came from decide that, and its look holds floats
+                sb.Append("|mix:").Append(m.Table).Append(':').Append(m.Id).Append(':').Append(m.Tick.ToString(inv));
             return sb.ToString();
         }
 
@@ -214,6 +221,7 @@ namespace Chem
             if (Room.Found.Count > 0) save["room"]["found"] = new JArray(Room.Found.Select(t => t.ToString(CultureInfo.InvariantCulture)));
             if (Room.Retired.Count > 0) save["room"]["retired"] = new JArray(Room.Retired.Select(r => new JArray(r.Table, r.Id, r.Into, r.Mod, r.Tick)));
             if (Room.RetiredRows.Count > 0) save["room"]["retiredRows"] = new JArray(Room.RetiredRows.Select(r => new JArray(r.Kind, r.Id, r.Mod, r.Tick)));
+            if (Room.Mixes.Count > 0) save["room"]["mixes"] = new JArray(Room.Mixes.Select(SavedMix));
             SaveBuildings((JObject)save["room"]);
         }
 
@@ -224,7 +232,8 @@ namespace Chem
             Expect((string)room["base"] == baseRules.Fingerprint, "a room saved over other base rules");
             try
             {
-                return RuleSet.Compose(baseRules, (room["mods"] ?? new JArray()).Select(m => new ActiveMod((string)m[0], (string)m[4])));
+                return RuleSet.Compose(baseRules, (room["mods"] ?? new JArray()).Select(m => new ActiveMod((string)m[0], (string)m[4])))
+                    .WithMixes((room["mixes"] ?? new JArray()).Select(LoadedMix));
             }
             catch (ModException e)
             {
@@ -244,6 +253,7 @@ namespace Chem
                 Room.Retired.Add(new RetiredMaterial { Table = (string)r[0], Id = (string)r[1], Into = (string)r[2], Mod = (string)r[3], Tick = (int)r[4] });
             foreach (var r in room["retiredRows"] ?? new JArray())
                 Room.RetiredRows.Add(new RetiredRow { Kind = (string)r[0], Id = (string)r[1], Mod = (string)r[2], Tick = (int)r[3] });
+            foreach (var m in room["mixes"] ?? new JArray()) Room.Mixes.Add(LoadedMix(m));
             LoadBuildings(room);
         }
     }

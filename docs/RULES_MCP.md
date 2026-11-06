@@ -63,24 +63,31 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `scatter(what, count, near?, within?, spacing?, side?, edge?, seed?, onto?, draft?)`: picks `count` open cells near
   something by `Placement.Pick` from the world's seed, now, and writes them into a draft: a terrain or cover as a `lay`
   row, a thing as `add` rows. "50 trees near the lake" (see "Laying cells").
+- `act("land", near, radius, rise, profile, rough, along)` moves the land now, for everyone: a **land stamp**, a shape applied to height. `profile` is flat, dome, cone, ridge, canyon or cliff, `rise` metres (below 0 a hollow; a canyon's or cliff's wall height), at most `land.maxRadius` and `land.maxRise` in `budgets.json`; one stamp an act. `rough` is 40 when left out, 0 for flat, so a plain ask isn't a smooth slab. Land a stamp makes steep paints as bare rock and grows `LandRocks` by itself. It keeps off water, buildings and settled ground (a place of kind village, course, puzzle, court, field, tower, bridge or landmark), is refused past what can be drawn (no land below -17 m or above 272 m, so a deep hollow in low ground is refused), and stops nothing: raiders, sight and spells pass over. `undo_act` takes it off exactly, in any order; a save and a late joiner keep it, and the dragon's reset takes all stamps back.
+- `call_act(id, near)` fires a **named act**: a trigger with `on: "called"` in a mod that's on, each `do` row what `act` takes, as one firing `undo_act` takes back whole (`docs/design/world-acts.md`). Define it with `add_trigger(on: called, do: [...])`; saving the mod keeps it. At a place of many cells its rows share one spot, from the world's seed and the firing, each within its `within` of it. The reply names what landed row by row, a short count included, and what didn't and why; it only says done when all of it landed, and if none did, nothing's done. `act` says a short count the same way.
 - With no game attached these read a stand-in of the valley (`StandInValley`: the land, water and buildings from
-  `world/`, no trees and no yard), and say so.
+  the map's folder, no trees and no yard), and say so. The server's `--map <id>` picks the map; the valley when left out.
+
+**Act** (`docs/design/world-acts.md`)
+- `act(what, count?, near?, within?, spacing?, side?, edge?, seed?, onto?, lasts?)`: something that happens once, now, for
+  everyone, with no draft and no mod: a terrain, cover, thing, animal or spell near the player or a place, or `golf-ball` and `cup` for a round of spell golf. `undo_act(act?)`
+  takes back ground and things, the player's last if none is named; animals and casts stay.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
-- `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials")
+- `add_material`, `set_material(id, field, value)`: a terrain, cover, gas or liquid (see "Liquids"); a mod's own material is temporary and may `lapse` (see "Temporary materials"), and a liquid or cover may name a `mix` group (see "Mix")
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
   a new kind of thing with the look that draws it; `add_thing(kind, at, chance?, rot?)` puts one in the world (see "Things")
-- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?)`:
+- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?, color?, accent?, glow?, density?)`:
   a kind of animal that moves, built on one or grafted from others' slots, and a change to one's size, habits or donors (see "Animals")
 - `set_look(id, param, value, table?, where?, by?, spells?)`: one parameter of the look of a spell, terrain,
   cover, gas, element, entity or item, a `mix` of colours, with `where` a colour or mix that holds only
   round a place, a cell or the player asking, and with `by` one that colours only what a
   player casts (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare. The dragon's fields are sim
-  (`dragon.*`, `World.Dragon.cs`), each bounded in `budgets.json`; `dragon.budget never` (or 0) and it never comes by
-  itself. `list dragon` and `describe dragon` say what each field does (`Workbench.Dragon.cs`, #77)
+  (`dragon.*`, `World.Dragon.cs`), each bounded in `budgets.json`; `dragon.budget` is 0 (or `never`) by default, so it comes only
+  when summoned; a number brings it by itself past that many changed cells. `list dragon` and `describe dragon` say what each field does (`Workbench.Dragon.cs`, #77)
 - `remove(table, id)`, only for things the draft itself added
 - `add_building(at, width, depth, style?, front?, id?, fill?)`, or a whole `row`; `add_wing(building, width?, depth?, side?)`;
   `set_building(id, field, value)`; `add_building_part(table, id, row)` for a style, opening, floor, roof shape or detail
@@ -495,6 +502,33 @@ against 4.4 to 5 ms a tick, the skip off): it tries one tick in four.
 **In the view (not built yet).** The water mesh takes a colour per kind (`LiquidDef.Look.color`, a vertex colour;
 water keeps its own look); a thick liquid's surface may move slower (`look.flow`). Breath and wading should read
 `World.DrownDepth` and `LiquidDef.Speed` instead of `Cell.Water` (the view's `Breath` caller, the mover's wading).
+
+## Mix: rows of a group that meet make a third
+
+`docs/design/primitives.md` §4, P5 (J-062; `Rules.Mix.cs`, `World.Mix.cs`, `MixTests`). A liquid or cover row may say
+`"mix": "paint"` (any name; the core names none). Two rows of a table sharing a group that meet need no reaction row:
+the room derives their mix. Red and blue paint make purple with only their own two rows.
+
+- **Meeting.** A liquid touching another of its group (cells side by side, or one running onto the other), a cover laid
+  by `setCover` on another. Touching mixes the two cells that touch; a mix beside its own parent changes nothing unless
+  liquid runs onto it, so a band of purple stands between the pools rather than eating both. Water, and a liquid of no
+  group or another, stays a wall (or lays its `touch`). With a group in common, a mix comes before a `touch`.
+- **The row**, a pure function of the two rows, in id order: id every parent's sorted and joined by `+`
+  (`blue-paint+red-paint`), so red meeting purple is purple and three paints come to one id whichever met first. Colour
+  mixes as paint (`Colors.cs`), on the first look; numbers are the mean, rounded down when both are whole; flags hold if
+  both do; a list keeps what both have (`tags`); a text stays only if both say the same, and a section holding one that
+  differs goes whole. A field only one row gives counts its default if it has one (a liquid's `thick` 1, `heap` 2, `speed`
+  1, flags true; a cover's `speed` 1), else it's left out. `lapse` isn't derived.
+- **When.** Asked for where the pair first meets and made at the end of that tick, every pair of the tick in the order it
+  met, in one switch: until then the liquid stops as at a wall and a cover waits to land. A meeting between ticks (a cast)
+  makes it at once. Ticks run in a fixed order, so every peer makes it at the same tick.
+- **The list.** `Room.Mixes`: table, id, parents, row and tick, in the order made. The derived rows compose over the mods,
+  so they're in `Rules` and its fingerprint (bar the look, as ever); the list is in `RoomText` (`CastHash`) and the save,
+  so a late joiner gets it with the snapshot. Each row is kept whole, because a parent may be gone by then.
+- **Limits.** At most `materials.maxMixes` (16) a room: past it the arriving one stops as at a wall. A row that won't go in
+  the rules is never made, and neither is a mix that stops fitting: it goes as if lapsed.
+- **Lapse.** A mix lasts while any parent is in force. When the last goes, cells of it lapse as that parent's do (the
+  retired list names `mix` as its owner). Without a room there's no list, so rows of a group are walls.
 
 ## Buildings: rows a mod can edit or add
 

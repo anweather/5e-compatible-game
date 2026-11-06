@@ -47,6 +47,9 @@ namespace Chem
 
         sealed partial class Checker
         {
+            // The widest a tower and a road may be: past these they're not a tower or a road, and a raster of them is work for nothing.
+            const int MostTowerRadius = 32, MostRoadWidth = 8;
+
             public void Buildings()
             {
                 var tables = BuildingTables.Parse(r);
@@ -112,6 +115,37 @@ namespace Chem
                 }
                 else RowWalls(who, row, wall, walls, joins, tables);
                 RowParts(who, row, walls, joins, tables);
+                RowTowers(who, row, joins);
+                RowRoads(who, row, joins);
+            }
+
+            void RowTowers(string who, JObject row, JObject joins)
+            {
+                foreach (var t in (row["towers"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                {
+                    if (!Fields($"{who}", $"tower {t.Name}", t.Value)) continue;
+                    string me = $"{who}: tower {t.Name}";
+                    if (joins[Show(t.Value["at"])] == null) Errors.Add($"{me} needs \"at\": one of its joins");
+                    if (!IsWholeAtLeast(t.Value["radius"], 2) || (double)t.Value["radius"] > MostTowerRadius) Errors.Add($"{me}: radius is in half cells, 2 to {MostTowerRadius}");
+                    if (t.Value["material"] != null) WallMaterial(me, t.Value["material"]);
+                    else if (row["wall"]?["material"] == null) Errors.Add($"{me} needs a material, on it or in \"wall\"");
+                }
+            }
+
+            void RowRoads(string who, JObject row, JObject joins)
+            {
+                foreach (var road in (row["roads"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                {
+                    if (!Fields($"{who}", $"road {road.Name}", road.Value)) continue;
+                    string me = $"{who}: road {road.Name}";
+                    var through = (road.Value["through"] as JArray)?.Select(Show).ToList();
+                    if (through == null || through.Count < 2) Errors.Add($"{me} needs \"through\": two or more of its joins");
+                    else foreach (var j in through.Where(j => joins[j] == null)) Errors.Add($"{me} goes through join {j}, which the building hasn't got");
+                    if (road.Value["width"] != null && (!IsWholeAtLeast(road.Value["width"], 1) || (double)road.Value["width"] > MostRoadWidth)) Errors.Add($"{me}: width is whole cells, 1 to {MostRoadWidth}");
+                    var ground = terrain[Show(road.Value["terrain"])];
+                    if (ground == null) Errors.Add($"{me}: unknown terrain {Show(road.Value["terrain"])}");
+                    else if (!Strings(ground["tags"]).Contains("ground")) Errors.Add($"{me}: terrain {Show(road.Value["terrain"])} isn't ground (it needs the tag ground)");
+                }
             }
 
             // A row's built spans and its joins; the joins, for its walls and roofs.

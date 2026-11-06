@@ -70,12 +70,13 @@ touch them.
 
 **The world**
 : `Chem.World`: the cells, the chunk store and everything that ticks.
-  `world/` (the folder) is the **world data**: where things stand
-  (`things.json`), the villages, the themes and looks.
+  A map's folder, `world/maps/<id>/`, is the **world data**: where things stand
+  (`things.json`), the villages, the themes and looks. Older docs write
+  `world/things.json` for the map's file; it's in the map's folder now.
 
 **Game folders**
-: Where the game finds its files (`Chem.GameFolders`): `rules/`, `world/`
-  beside it, the shipped mods in `rules/mods`, the **player's data folder**
+: Where the game finds its files (`Chem.GameFolders`): `rules/`, the map's
+  folder (`World`, under `world/maps/` beside it), the shipped mods in `rules/mods`, the **player's data folder**
   (what an update leaves alone) and the player's mods in it; `Repo` is the
   checkout's root above `rules/`, for docs and tools. A build reads
   the copies packed into its StreamingAssets; the Editor, the MCP server
@@ -96,10 +97,43 @@ touch them.
   the lake, the river, the falls, Hollowmere and the coast. Shaped by
   `ValleyShape` and baked in the Editor.
 
+**Ground pack**
+: The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
+  Prototype > Export Valley Ground; `docs/design/maps-as-data.md`). The valley has one, not yet read: the terrains are still baked. A map without one will be drawn from its land and cells.
+
+**Laid row**
+: A row of a map's `buildings.json` with walls and no `built` cells: its cells are laid over `cells.txt` at the start, on
+  every peer, and it's drawn from its row. A tree under it is gone, and `cells.txt` and `things.json` don't change.
+
+**Level** (of a row)
+: A row whose walls stand from the highest ground under it and run down to the lowest, so their tops are one height over
+  ground that isn't. The foundations are the walls' own stone.
+
+**Tower, road** (of a row)
+: A tower is a round part of a row: the cells within its radius of a join, drawn as a drum a wall walk passes through. A road is cells of a ground
+  terrain laid through a row's joins, past its walls.
+
+**Wall walk**
+: The top of a level row's walls, where a wizard can stand: reached by a **stair**, a part on a wall's inner side. The core has no idea of it: the
+  cells are blocking, and a wizard up there stands on the view's colliders.
+
+**The Hold, a run**
+: The game on the far side of the valley (`docs/design/the-hold.md`). A **run** starts on the **plate** and ends when the **keep** falls; the score is the
+  wave reached. The **heart** is the cell raiders go for, a **spawner** a place raiders come from, and **keep health** what replaces lives. **Mended**: a castle's cells put back when a run ends.
+
+**Adjective** (of a raider)
+: A row that changes a raider (Armoured, Burning, Soaked): `kind~adjective` is an entity made from the two, so its name, `weak` and `resist` reach everything that reads a raider.
+
+**Blow, batter**
+: What a raider does to a wall in its way: a terrain takes `hold.strength` blows, then breaks. Not a spell's damage.
+
+**Swing**
+: A hand on a gate: a command that turns a terrain into its `swing.into`, with the cells of that terrain joined to it. A **timber gate** swings; a machine's `gate` doesn't.
+
 **Land**
 : The valley's baked ground under each cell, in water units: the hills
   the cells themselves don't hold (a cell's elevation and height are on
-  top of it). Baked once into `world/land.json` (Prototype > Bake Valley
+  top of it). Baked once into the map's `land.json` (Prototype > Bake Valley
   Land) so every peer has the same integers; only the water reads it, so
   water runs down a hillside (`World.SetLand`).
 
@@ -369,7 +403,7 @@ that long, and doesn't march.
   The **ball** (core state, not a thing) starts on the **tee**; a cast
   whose force moves it is a **stroke**; it drops in on the **hole** cell.
   Lost in water or out of the course's bounds, it goes back on the tee for
-  a stroke's penalty. The course is `world/golf.json`.
+  a stroke's penalty. The course is `world/golf.json`; an act can place a ball and a cup elsewhere.
 
 **Spell zone**
 : A block of cells that allows only some elements (a spell is allowed when a
@@ -397,6 +431,11 @@ that long, and doesn't march.
   The view's only: never in a tick, the cell hash or the rules
   fingerprint. *Not* a world theme's look (`world/looks.json`, a biome a theme
   may paint), nor a fire's `burn.look`.
+
+**Mix** (of materials)
+: A material the room derives when two liquid or cover rows of one `mix` group
+  meet, with no reaction row: red and blue paint make `blue-paint+red-paint`.
+  Held in the room's mix list (`Room.Mixes`). See `docs/RULES_MCP.md` "Mix".
 
 **Mix** (of a look)
 : Several colours with weights in place of a look's one colour (`"mix"`), each
@@ -493,8 +532,68 @@ that long, and doesn't march.
 : Anything whose presence keeps the world around it active: today every
   wizard; later perhaps raiders or villagers that matter to play.
 
+**Worker**
+: One of the folk with a job (a map's `jobs.json`): stops it goes round, walked by the quickest way on foot. View only.
+
 **Raider**
 : A core entity in the defense field's waves (`Raider`, BACKLOG §17).
+
+**The Hold**
+: The wave game on the hill west of Hollowmere (`docs/design/the-hold.md`, #152): raiders climb to a castle in endless waves. Not built yet.
+
+**Adjective**
+: A row that changes a raider in the Hold: Armoured, Burning, Soaked. Its numbers, weaknesses, and a status or cover it leaves.
+
+**Boss**
+: A raider a wave brings every so many waves: a kind with the boss adjective's bigger row, its own name and health bar (`rules/hold.json` `boss`).
+
+**Wave theme**
+: A row of `rules/hold.json` `themes` that leans a Hold wave on one or two adjectives, so no one hand set wins everything. Not a world's **theme**.
+
+**Wave warning**
+: What the core says of the next Hold wave while it waits: its number, theme, boss and size, long enough ahead to reach the keep and attune. Not the dragon's **warning**.
+
+**Barricade**
+: A small wooden block on the Hold's road, appearing at the start of a wave. Raiders break through it, and it burns.
+
+**Upgrade**
+: A row of `rules/hold.json` `upgrades` a wizard picks between waves, changing a number it already has (a cooldown, a gesture's damage or range, its health). It ends with the run.
+
+**Unlock**
+: A row of `rules/hold.json` `unlocks`, in order: a gesture, the second hand, an element or a kit spell a wizard keeps between runs. What's unlocked comes from the wizard's **points**.
+
+**Points**
+: What a player earns by waves survived, added up across runs, and all their save holds of the Hold (J-038). They travel with the player, not the world.
+
+**Moment**
+: A canned setup for playtesting the Hold: a rules row naming a wave, hand sets and the keep's state, to jump straight to in dev builds and the Editor.
+
+**Spawner**
+: A row naming where a Hold's raiders enter, which kinds and how fast.
+
+**Hand**
+: One of a wizard's two slots in the Hold: an **element** of the combo table, or nothing. Its **gesture** says what comes out.
+
+**Gesture**
+: What a hand's buttons do in the Hold: thrust (trigger, short range), throw (bumper, long range), sweep (both, area). The same gesture on both hands makes something new; different gestures each do their own. Not `CastGestures`, the view's animation of a cast.
+
+**Range**
+: How far from the wizard a hand's spell can land, in cells: short or long, by its gesture (`rules/hold.json`).
+
+**Attune**
+: To change a hand's element, in the castle keep's attuning room only.
+
+**Attuning room**
+: The room of the keep where a hand is attuned, named by two of the row's joins in the map's `hold.json`.
+
+**Hand spell**
+: A spell in the table of `rules/hold.json` `hands`: by what a hand holds and its gesture, or by what both hold when both make the same gesture. An empty hand's row is an action instead (a punch, a throw, a shove).
+
+**Cooldown**
+: The ticks after a hand spell goes off before that hand casts again; a two-hand spell locks both, for longer.
+
+**Kit**
+: The spells every wizard has in the Hold, on the D-pad, whatever the hands hold.
 
 **Creature / fauna**
 : Animals and folk drawn in the view (`ValleyFauna`, Punchy's creatures).
@@ -678,7 +777,7 @@ that long, and doesn't march.
 
 **Dragon**
 : The world reset as an event (BACKLOG §26, `World.Dragon.cs`, `sandbox/src/dragon.ts`). Summoned by a
-  `DragonCommand` (the Reset, the host alone online), or by itself past the changed-cell budget. Its path
+  `DragonCommand` (the Reset, the host alone online), or by itself past the changed-cell budget, if a mod sets one. Its path
   comes from the seed and the flight's number, never from the world's random numbers. How big it's drawn is
   `dragon.scale` (against a 70 m wingspan): the view's alone, and the breath reaches no further for it.
 
@@ -734,7 +833,7 @@ that long, and doesn't march.
 : Cells that differ from the starting state in what lasts: ground, height and cover. What goes by itself
   doesn't count: fire, gas, charge, timers, water, ice, snow, mud that dries. **The audit** keeps the
   count (`World.ChangedCount`): each tick it compares one active chunk with the starting state. Past
-  `dragon.budget`, the warning starts.
+  `dragon.budget`, when a mod sets one, the warning starts (0, the default, is never: J-073).
 
 **Sheltered**
 : Out of the dragon's breath though under it (`World.ShelteredFromBreath`): in water at least
@@ -748,9 +847,16 @@ that long, and doesn't march.
 : A **theme** is JSON goals for the land (`world/themes/`); solved for a
   seed it's a **blueprint** of zones, mountains, lakes and rivers (D11).
 
+**Named act**
+: A one-off defined once and fired again by name at a place: a trigger with `on: "called"` in a mod, its rows what `act` takes, fired by `call_act` as one firing (`docs/design/world-acts.md`).
+
+**Land stamp**
+: One integer change to land: a centre, radius, profile, rise and seed. How `act` moves the ground, and how a map will be
+  shaped (`World.Land.cs`, `docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own. Its **profile** is its shape; a **canyon** and a **cliff** are the two with a **face**, a steep wall of rock that wanders along a line. What's on a face (`LandRocks`) is only drawn.
+
 **Map**
-: A whole world to play on. One build holds one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
-  **cell map** in `ChemGrid.map`, one character a cell, nor a **shore map**.
+: A whole world to play on, a folder under `world/maps/`. Its **map hash** is over every file there (`MapIdentity`): the host turns away a peer without its id and hash. One build still draws one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
+  **cell map** in the map's `cells.txt`, one character a cell, nor a **shore map**.
 
 **Theme look**
 : Which of Punchy's lands paints a place (`world/looks.json`). Not a
@@ -807,6 +913,11 @@ that long, and doesn't march.
 : The probe that sends a fixed set of prompts through the running game's chat,
   so a record has a real "in the world". A stand-in answers unless it's given
   `--real-claude true`, which spends real prompts (J-064).
+
+**Act**
+: Something that happens once, now, for everyone, with no mod: `act` lays ground, places a
+  thing, brings out an animal or casts a spell (`World.Acts.cs`). A mod is a rule that keeps
+  holding; an act is an event. `docs/design/world-acts.md`.
 
 **Chat profile**
 : How the game reaches Claude, picked in Settings > Claude setup (`ChatProfile`,

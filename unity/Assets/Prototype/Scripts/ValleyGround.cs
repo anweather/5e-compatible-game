@@ -13,7 +13,8 @@ using UnityEngine;
 // gully), so a burnt patch fades into whatever was there before.
 //
 // Works on runtime copies of the chunks, made when a world starts (Bind), so
-// playing never changes the saved valley. They are made up front, not when a
+// playing never changes the saved valley: copies of the scene's baked chunks, or with
+// GroundSwitch on, chunks built from arrays (GroundBuilder). They are made up front, not when a
 // chunk first changes: swapping a terrain's collider under a prop resting on it
 // drops the contact, and the prop falls through the ground. The baked heights already hold the starting cells' offsets
 // (ValleyBuilder bakes them with the same CellHeightfield), so the base under
@@ -22,6 +23,7 @@ public sealed class ValleyGround
 {
     sealed class Chunk
     {
+        public (int i, int j) at;
         public Terrain terrain;
         // How far it drew details (grass, small plants) as built.
         public float detailDistance;
@@ -50,13 +52,20 @@ public sealed class ValleyGround
     // this keeps the saved paint.
     IReadOnlyList<float>[] bakedPaint;
 
-    public ValleyGround(TerrainGrid layout, Terrain[] terrains)
+    readonly GroundBuilder builder;
+
+    public ValleyGround(TerrainGrid layout, Terrain[] terrains, GroundBuilder builder = null)
     {
         this.layout = layout;
+        this.builder = builder;
         foreach (var (i, j) in layout.GridChunks())
         {
             var terrain = terrains[j * layout.ChunksX + i];
-            if (terrain != null) chunks[(i, j)] = new Chunk { terrain = terrain, original = terrain.terrainData, detailDistance = terrain.detailObjectDistance };
+            if (terrain == null) continue;
+            chunks[(i, j)] = new Chunk { at = (i, j), terrain = terrain, original = terrain.terrainData, detailDistance = terrain.detailObjectDistance };
+            if (builder == null) continue;
+            var p = terrain.transform.position;
+            terrain.transform.position = new Vector3(p.x, builder.Bottom, p.z);
         }
     }
 
@@ -93,10 +102,10 @@ public sealed class ValleyGround
     static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
 
     // The chunk's runtime copy (Bind makes them all; this only covers a chunk Bind didn't reach).
-    static TerrainData Writable(Chunk ch)
+    TerrainData Writable(Chunk ch)
     {
         if (ch.data != null) return ch.data;
-        ch.data = Object.Instantiate(ch.original);
+        ch.data = builder != null ? builder.Build(ch.at) : Object.Instantiate(ch.original);
         Use(ch, ch.data);
         return ch.data;
     }
@@ -112,10 +121,17 @@ public sealed class ValleyGround
     {
         if (ch.data == null) return;
         if (ch.terrain != null) Use(ch, ch.original);
-        Object.Destroy(ch.data);
+        if (Application.isPlaying) Object.Destroy(ch.data);
+        else Object.DestroyImmediate(ch.data);
         ch.data = null;
         ch.heightsChanged = false;
     }
+
+    /// <summary>What making the chunks took at the last Bind (ms): the probe compares built with baked.</summary>
+    public double BindMs { get; private set; }
+
+    // How many heightmap samples a frame works out for reshaped ground (#151): a radius 32 stamp's take a dozen frames or so.
+    const int MostSamplesAFrame = 4096;
 
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
@@ -127,13 +143,20 @@ public sealed class ValleyGround
     public void Bind(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls = false)
     {
         world = w;
-        heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls };
+        landUnit = stepHeight / w.Rules.Sim.WaterUnitsPerStep;
+        heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
         heightfield.Reset(w);
         repaint.Clear();
         cleared.Clear();
         pendingDetail.Clear();
+        treeColliders.Clear();
         reshaped.Clear();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
+        heightfield.LaidLandDrawn = true;
+        foreach (var r in heightfield.Update(w, w.LandLaidCells(), snap: true)) WriteHeights(r);
+        BindMs = timer.Elapsed.TotalMilliseconds;
+        Debug.Log($"GROUND BIND {(builder != null ? "built" : "baked")}: {chunks.Count} chunks in {BindMs:0} ms");
         cellBase = new float[w.W * w.H];
         bakedPaint = new IReadOnlyList<float>[w.W * w.H];
         for (int y = 0; y < w.H; y++)
@@ -154,15 +177,15 @@ public sealed class ValleyGround
     void Recover((int i, int j) at, Chunk ch)
     {
         Restore(ch);
-        Writable(ch);
-        int res = ch.original.heightmapResolution;
-        var heights = ch.original.GetHeights(0, 0, res, res);
+        var data = Writable(ch);
+        int res = data.heightmapResolution;
+        var heights = data.GetHeights(0, 0, res, res);
         var offsets = heightfield.Current(at.i, at.j);
-        float size = ch.original.size.y;
+        float size = data.size.y;
         ch.baseHeights = new float[res, res];
         for (int z = 0; z < res; z++)
             for (int x = 0; x < res; x++) ch.baseHeights[z, x] = heights[z, x] * size - offsets[z, x];
-        ch.layers = LayerIndices(ch.original.terrainLayers);
+        ch.layers = LayerIndices(data.terrainLayers);
         ch.baseAlpha = null;
         ch.frameAlpha = null;
         // Paint still waiting was the old world's, and what it would write from has just gone.
@@ -171,14 +194,17 @@ public sealed class ValleyGround
     }
 
     /// <summary>CellPaint's layers as indices into a terrain's layers, by name ("&lt;name&gt;_TerrainLayer...", as ValleyBuilder names them); -1 where missing.</summary>
-    public static int[] LayerIndices(TerrainLayer[] layers)
+    public static int[] LayerIndices(TerrainLayer[] layers) => LayerIndices(layers.Select(l => l != null ? l.name : "").ToArray());
+
+    /// <summary>The same, by the layers' names.</summary>
+    public static int[] LayerIndices(string[] layers)
     {
         var map = new int[CellPaint.Layers.Count];
         for (int k = 0; k < map.Length; k++)
         {
             map[k] = -1;
             for (int n = 0; n < layers.Length; n++)
-                if (layers[n] != null && layers[n].name.StartsWith(CellPaint.Layers[k] + "_TerrainLayer", System.StringComparison.Ordinal)) map[k] = n;
+                if (layers[n].StartsWith(CellPaint.Layers[k] + "_TerrainLayer", System.StringComparison.Ordinal)) map[k] = n;
         }
         return map;
     }
@@ -190,7 +216,7 @@ public sealed class ValleyGround
     }
 
     /// <summary>The valley's own ground at a cell, before the cell's offset.</summary>
-    public float BaseHeight(int x, int y) => cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
+    public float BaseHeight(int x, int y) => cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] + world.LandMovedAt(x, y) * landUnit : 0f;
 
     /// <summary>
     /// Counts some cells' ground from higher than the terrain is drawn there (after Bind): the river's
@@ -209,7 +235,8 @@ public sealed class ValleyGround
     public float ShownGround(int x, int y)
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
-        return BaseHeight(x, y) + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
+        float drawnBase = cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
+        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
     }
 
     /// <summary>The terrain's ground drawn now at a world point over the cells (0 off them).</summary>
@@ -228,6 +255,15 @@ public sealed class ValleyGround
     /// <summary>A cell's terrain or cover changed: its texels are repainted at the next Flush.</summary>
     public void Repaint(int x, int y) => repaint.Add((x, y));
 
+    /// <summary>A cell the bake drew as something else (a laid row's): its paint is laid afresh, and its grass goes.</summary>
+    public void PaintAnew(int x, int y)
+    {
+        int key = world.Idx(x, y);
+        bakedPaint[key] = null;
+        paintedMix[key] = null;
+        repaint.Add((x, y));
+    }
+
     /// <summary>Eases reshaped ground by <paramref name="dt"/> seconds and hands the moved samples to the terrains.</summary>
     public void Advance(float dt)
     {
@@ -235,9 +271,13 @@ public sealed class ValleyGround
         if (reshaped.Count > 0)
         {
             PerfCounts.Add("shape.reshaped_cells", reshaped.Count);
-            using (HeightUpdateMarker.Auto()) CountRects("shape.update", heightfield.Update(world, reshaped));
-            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
+            using (HeightQueueMarker.Auto()) heightfield.Queue(reshaped);
             reshaped.Clear();
+        }
+        if (heightfield.Waiting > 0)
+        {
+            using (HeightUpdateMarker.Auto()) heightfield.FillSome(world, MostSamplesAFrame);
+            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
         }
         List<ChunkRect> moved;
         using (HeightEaseMarker.Auto()) moved = heightfield.Advance(dt);
@@ -283,6 +323,7 @@ public sealed class ValleyGround
     {
         using var marked = FlushMarker.Auto();
         using (SyncMarker.Auto()) SyncOneHeightmap();
+        using (TreeColliderMarker.Auto()) RebuildOneTreeCollider();
         PerfCounts.Peak("ground.repaint_waiting", repaint.Count);
         using (DetailMarker.Auto()) WriteDetail();
         if (repaint.Count == 0)
@@ -315,7 +356,7 @@ public sealed class ValleyGround
         {
             if (!world.InBounds(x, y)) continue;
             int key = world.Idx(x, y);
-            if (!ReferenceEquals(paintedMix[key], CellPaint.Mix(world, world.Cells[key], scorched(x, y)))) paintedMix[key] = null;
+            if (!ReferenceEquals(paintedMix[key], CellPaint.Mix(world, x, y, scorched(x, y)))) paintedMix[key] = null;
         }
         WriteOnePaint();
         using (DetailMarker.Auto()) ClearBareDetail(scorched);
@@ -324,9 +365,9 @@ public sealed class ValleyGround
     // Profiler markers (Window > Analysis > Profiler) round the terrain's per-frame work.
     static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
         PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint"),
-        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"),
+        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"), HeightQueueMarker = new("ValleyGround.HeightQueue"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
-        SyncMarker = new("ValleyGround.SyncHeightmap"), BlockMarker = new("ValleyGround.Paint.Block"),
+        SyncMarker = new("ValleyGround.SyncHeightmap"), TreeColliderMarker = new("ValleyGround.TreeCollider"), BlockMarker = new("ValleyGround.Paint.Block"),
         ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
 
     // Each texel's noise, worked out the first time it paints and kept (CellPaint.Block): a shower's
@@ -385,7 +426,7 @@ public sealed class ValleyGround
             if (batch.Count == most || looked.Count == MostLooks) break;
             looked.Add(cell);
             int key = world.Idx(cell.x, cell.y);
-            var mix = CellPaint.Mix(world, world.Cells[key], scorched(cell.x, cell.y));
+            var mix = CellPaint.Mix(world, cell.x, cell.y, scorched(cell.x, cell.y));
             bool same = ReferenceEquals(mix, paintedMix[key]);
             PerfCounts.Add(same ? "ground.repaint_same" : "ground.repaint_new");
             if (same) continue;
@@ -413,13 +454,33 @@ public sealed class ValleyGround
         }
     }
 
+    /// <summary>A chunk's trees changed: its collider catches up, a chunk a frame.</summary>
+    public void TreesMoved((int i, int j) at) => treeColliders.Add(at);
+
+    // A terrain's collider keeps the trees it was given: setting treeInstances draws the change and leaves the old trunks
+    // standing unseen (#161). Only giving it its data again takes them, and a fire changes many chunks at once. Players
+    // and props are all it stops, so a frame or two late moves nothing shared.
+    void RebuildOneTreeCollider()
+    {
+        if (treeColliders.Count == 0) return;
+        var at = treeColliders.First();
+        treeColliders.Remove(at);
+        if (!chunks[at].terrain.TryGetComponent<TerrainCollider>(out var collider)) return;
+        var data = collider.terrainData;
+        collider.terrainData = null;
+        collider.terrainData = data;
+    }
+
+    readonly HashSet<(int i, int j)> treeColliders = new();
     List<Chunk> syncOrder = new();
+    // Metres in a land unit: what a land stamp's integers are drawn at.
+    float landUnit;
     int nextSync;
 
     // What a cell paints over the saved paint: nothing while it paints as it was baked.
     IReadOnlyList<float> PaintOf(int x, int y, bool scorched)
     {
-        var mix = CellPaint.Mix(world, world.At(x, y), scorched);
+        var mix = CellPaint.Mix(world, x, y, scorched);
         return ReferenceEquals(mix, bakedPaint[world.Idx(x, y)]) ? null : mix;
     }
 
@@ -515,7 +576,7 @@ public sealed class ValleyGround
             // Snow only lies on the grass (clearing it under snow would leave the grass bare after the thaw).
             var c = world.At(x, y);
             if (CellPaint.IsSnowy(c, world.Rules)) continue;
-            bool grassy = CellPaint.IsGrassy(CellPaint.Mix(world, c, scorched(x, y)));
+            bool grassy = CellPaint.IsGrassy(CellPaint.Mix(world, x, y, scorched(x, y)));
             int key = world.Idx(x, y);
             if (grassy && !cleared.Remove(key)) continue;
             if (!grassy) cleared.Add(key);
@@ -548,14 +609,14 @@ public sealed class ValleyGround
 
     // The saved chunk's detail grass copied back over texel rectangles of its runtime copy: like
     // ClearDetail, the box round them read once per grass kind (from both) and written back once.
-    static void RestoreDetail(Chunk ch, List<ChunkRect> rects)
+    void RestoreDetail(Chunk ch, List<ChunkRect> rects)
     {
         var data = Writable(ch);
         var spans = DetailSpans(data, rects, out int bx0, out int bz0, out int w, out int h);
         for (int layer = 0; layer < data.detailPrototypes.Length; layer++)
         {
             var map = data.GetDetailLayer(bx0, bz0, w, h, layer);
-            var saved = ch.original.GetDetailLayer(bx0, bz0, w, h, layer);
+            var saved = builder != null ? builder.DetailLayer(ch.at, layer, bx0, bz0, w, h) : ch.original.GetDetailLayer(bx0, bz0, w, h, layer);
             foreach (var (x0, z0, x1, z1) in spans)
                 for (int z = z0; z <= z1; z++)
                     for (int x = x0; x <= x1; x++) map[z - bz0, x - bx0] = saved[z - bz0, x - bx0];

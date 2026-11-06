@@ -1,4 +1,4 @@
-// Where the game's folders are, worked out in one place: rules/, world/ beside it, and the
+// Where the game's folders are, worked out in one place: rules/, the map's folder under world/maps/ beside it, and the
 // player's data folder with the chat's folder (ClaudeFolder) and their saved mods in it. The view
 // hands in the roots only Unity knows (a build's StreamingAssets, the project, the data folder);
 // the MCP server, chatbench and the tests hand in where they start. Nothing else works a
@@ -10,18 +10,28 @@ namespace Chem
     /// <summary>The game's folders: rules/, world/ beside it, and the player's own when there is a player.</summary>
     public sealed class GameFolders
     {
-        const string RulesName = "rules", WorldName = "world", ModsName = "mods", Marker = "materials.json", EditorDataName = "EditorPlayerData";
+        /// <summary>The map when none is named: the first one.</summary>
+        public const string DefaultMap = "valley";
 
-        /// <summary>A given rules folder (the MCP server's --rules, a test's copy), world/ beside it, and the player's data folder if there is one.</summary>
-        public GameFolders(string rules, string playerData = null)
+        const string RulesName = "rules", WorldName = "world", MapsName = "maps", ModsName = "mods", Marker = "materials.json", EditorDataName = "EditorPlayerData";
+
+        /// <summary>A given rules folder (the MCP server's --rules, a test's copy), a map's folder under world/maps/ beside it, and the player's data folder if there is one.</summary>
+        public GameFolders(string rules, string playerData = null, string map = DefaultMap)
         {
             Rules = rules;
             Repo = Path.GetDirectoryName(Path.GetFullPath(rules).TrimEnd('/', '\\')) ?? "";
-            World = Path.Combine(Repo, WorldName);
+            Map = map;
+            Maps = Path.Combine(Repo, WorldName, MapsName);
+            World = Path.Combine(Maps, map);
             ShippedMods = Path.Combine(rules, ModsName);
             PlayerData = playerData;
             Claude = playerData == null ? null : new ClaudeFolder(playerData);
         }
+
+        GameFolders(GameFolders folders, string map) : this(folders.Rules, folders.PlayerData, map) => Claude = folders.Claude;
+
+        /// <summary>The same folders on another map: the player's, a probe's chat folder among them, stay as they are.</summary>
+        public GameFolders WithMap(string map) => new GameFolders(this, map);
 
         /// <summary>rules/: the rules JSON, looks and budgets.</summary>
         public string Rules { get; }
@@ -32,7 +42,13 @@ namespace Chem
         /// </summary>
         public string Repo { get; }
 
-        /// <summary>world/, beside rules/: things, places, buildings, land and themes.</summary>
+        /// <summary>The map these folders are for: its id, and its folder's name.</summary>
+        public string Map { get; }
+
+        /// <summary>world/maps/, beside rules/: a folder for each map.</summary>
+        public string Maps { get; }
+
+        /// <summary>The map's folder, world/maps/&lt;id&gt;: map.json, cells, land, things, places, buildings and themes.</summary>
         public string World { get; }
 
         /// <summary>rules/mods: the shipped mods, which come with the build.</summary>
@@ -62,11 +78,11 @@ namespace Chem
         /// virtual players, whose project copies live deeper (unity/Library/VP/&lt;id&gt;/). A build's data folder is the one
         /// it's given; the Editor's is <see cref="EditorPlayerData"/>, as Unity gives the Editor the shipped game's (#78).
         /// </summary>
-        public static GameFolders ForGame(string streamingAssets, string project, bool editor, string playerData)
+        public static GameFolders ForGame(string streamingAssets, string project, bool editor, string playerData, string map = DefaultMap)
         {
             string packed = Path.Combine(streamingAssets, RulesName);
             return new GameFolders(!editor && File.Exists(Path.Combine(packed, Marker)) ? packed : RulesAbove(project),
-                editor ? EditorPlayerData(project) : playerData);
+                editor ? EditorPlayerData(project) : playerData, map);
         }
 
         /// <summary>
@@ -78,7 +94,7 @@ namespace Chem
             Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project).TrimEnd('/', '\\')) ?? project, "Library", EditorDataName);
 
         /// <summary>The repo's rules/ above a folder, with no player: anything started inside the repo.</summary>
-        public static GameFolders InRepo(string start) => new GameFolders(RulesAbove(start));
+        public static GameFolders InRepo(string start, string map = DefaultMap) => new GameFolders(RulesAbove(start), null, map);
 
         static string RulesAbove(string start)
         {

@@ -14,7 +14,7 @@ namespace Chem
     public enum ChangeMode { Open, HostOnly, Locked }
 
     /// <summary>What a room command asks: switch a mod on, revert (take off) one that is on, move the clock or the weather (World.RoomSky.cs), or note that someone picked up a thing a mod added (World.Things.cs).</summary>
-    public enum RoomChange { Apply, Revert, SetTime, SetWeather, Found }
+    public enum RoomChange { Apply, Revert, SetTime, SetWeather, Found, Act, Undo }
 
     /// <summary>
     /// Asks the room to switch a mod on or revert one, naming the peer who asked. Stamped like a
@@ -34,6 +34,13 @@ namespace Chem
         public static RoomCommand Apply(string peer, string mod, string json, string title = null) => new RoomCommand(RoomChange.Apply, peer, mod, json, title);
         public static RoomCommand Revert(string peer, string mod) => new RoomCommand(RoomChange.Revert, peer, mod);
 
+        /// <summary>Does something once, now, with no mod: JSON of its kind, what and cells (World.Acts.cs).</summary>
+        public static RoomCommand Act(string peer, string json) => new RoomCommand(RoomChange.Act, peer, ActMod, json);
+
+        /// <summary>Takes back an act, or with none the peer's last.</summary>
+        public static RoomCommand Undo(string peer, int? act = null) =>
+            new RoomCommand(RoomChange.Undo, peer, ActMod, act?.ToString(CultureInfo.InvariantCulture));
+
         /// <summary>Moves the clock on to this minute of the day (0 to 1439).</summary>
         public static RoomCommand SetTime(string peer, int minuteOfDay) =>
             new RoomCommand(RoomChange.SetTime, peer, TimeMod, minuteOfDay.ToString(CultureInfo.InvariantCulture));
@@ -50,6 +57,8 @@ namespace Chem
         public RoomCommand As(string peer) => new RoomCommand(Change, peer, Mod, Json, Title);
 
         const string TimeMod = "time", WeatherMod = "weather";
+        /// <summary>The name an act goes by in a command: it has no mod.</summary>
+        public const string ActMod = "act";
         internal const string NaturalWeather = "natural";
 
         public RoomChange Change { get; }
@@ -85,6 +94,8 @@ namespace Chem
         public List<RetiredMaterial> Retired { get; } = new List<RetiredMaterial>();
         /// <summary>The other rows gone from the room with their mods (a style, a building row, a species; World.Lapse.cs), oldest first: who added each, for a refusal.</summary>
         public List<RetiredRow> RetiredRows { get; } = new List<RetiredRow>();
+        /// <summary>The materials derived in this room, in the order they were made (World.Mix.cs): they compose over the mods, in this order.</summary>
+        public List<RoomMix> Mixes { get; } = new List<RoomMix>();
     }
 
     /// <summary>A row that went with its mod and isn't a material: the word for its table (ModAdd.Kind), its id, its mod and the tick.</summary>
@@ -151,6 +162,8 @@ namespace Chem
                 RoomChange.Revert => "Revert",
                 RoomChange.SetTime => "Set time",
                 RoomChange.SetWeather => "Set weather",
+                RoomChange.Act => "Act",
+                RoomChange.Undo => "Undo",
                 _ => "Switch on",
             };
             return $"{what} refused: {why}";

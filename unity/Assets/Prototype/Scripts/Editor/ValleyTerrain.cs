@@ -150,7 +150,7 @@ public static class ValleyTerrain
     /// <summary>The starting cells' offsets (pits, the pond) added to the chunks they reach, by CellHeightfield.</summary>
     public static void BakeCells(World world, float stepHeight)
     {
-        var field = new CellHeightfield(Layout, stepHeight);
+        var field = new CellHeightfield(Layout, stepHeight) { LaidLandDrawn = false };
         field.Reset(world);
         foreach (var (i, j) in field.Chunks)
         {
@@ -369,10 +369,20 @@ public static class ValleyTerrain
         terrain.detailObjectDistance = 120f;
         terrain.heightmapPixelError = 4f;
         terrain.drawInstanced = true;
+        terrain.materialTemplate = RockMaterial();
         terrain.allowAutoConnect = true;
         terrain.groupingID = fullDetail ? 1 : 0;
         return terrain;
     }
+
+    // One material for every chunk: URP's terrain with rock mapped from the sides (TerrainRock.shader). Normal maps on, or a wall has no relief.
+    static Material RockMaterial() => EditorAssets.LoadOrCreate($"{Folder}/TerrainRock.mat", () =>
+    {
+        var material = new Material(Shader.Find("Prototype/TerrainRock"));
+        material.EnableKeyword("_TERRAIN_INSTANCED_PERPIXEL_NORMAL");
+        material.EnableKeyword("_NORMALMAP");
+        return material;
+    });
 
     /// <summary>The terrain's height at a world point (after PlaceTerrains).</summary>
     public static float GroundAt(Vector3 p)

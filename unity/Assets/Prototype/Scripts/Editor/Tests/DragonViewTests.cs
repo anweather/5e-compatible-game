@@ -3,7 +3,6 @@ using System.Linq;
 using Chem;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using UnityEngine;
 
@@ -12,7 +11,6 @@ using UnityEngine;
 // state, the dragon wipes. And the flight drawn must stay in one piece at any frame rate.
 public class DragonViewTests
 {
-    const string Yard = "Assets/Prototype/Scenes/ChemistryYard.unity";
     // The Gauntlet's lava pit, its first booth (world/gauntlet.json, puzzles.json).
     const int LavaX = 303, LavaY = 433;
 
@@ -25,19 +23,6 @@ public class DragonViewTests
     }
 
     // The whole valley's map is on the built yard's ChemGrid (ValleyBuilder writes it there).
-    static string ValleyMap()
-    {
-        var scene = EditorSceneManager.OpenScene(Yard, OpenSceneMode.Additive);
-        try
-        {
-            return scene.GetRootGameObjects().Select(g => g.GetComponentInChildren<ChemGrid>()).First(g => g != null).map;
-        }
-        finally
-        {
-            EditorSceneManager.CloseScene(scene, true);
-        }
-    }
-
     static void FlyAFlight(World world)
     {
         world.ApplyDragon(new DragonCommand());
@@ -48,7 +33,7 @@ public class DragonViewTests
     [Test]
     public void AFlightPutsBackWhatTheValleyLaidAtItsStart()
     {
-        var world = ChemGrid.StartWorld(Quick(), ValleyMap(), 1u, out _);
+        var world = ChemGrid.StartWorld(Quick(), ChemGrid.CellMap(), 1u, out _);
         Assert.That(world.HasStart, "a world to play in keeps its start");
         Assert.That(world.At(LavaX, LavaY).T, Is.EqualTo(TerrainIds.Lava), "the Gauntlet is laid");
         var puzzleCoils = world.Cells.Count(c => c.T == TerrainIds.Coil);

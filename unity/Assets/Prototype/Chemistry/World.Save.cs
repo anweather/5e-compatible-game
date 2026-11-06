@@ -86,6 +86,9 @@ namespace Chem
                 ["defense"] = SaveDefense(),
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
+            if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
+            if (progress.Count > 0) save["progress"] = SaveProgress();
+            if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
             if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
@@ -97,6 +100,8 @@ namespace Chem
             SaveCourse(save);
             SaveRoom(save);
             SavePlaced(save);
+            SaveActs(save);
+            SaveLand(save);
             SaveLaid(save);
             SaveTriggers(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
@@ -269,9 +274,14 @@ namespace Chem
             LoadGolf(s);
             LoadCourse(s);
             LoadPlaced(s);
+            LoadActs(s);
+            LoadLand(s);
             LoadLaid(s);
             LoadTriggers(s);
             NextEntityId = (int)s["nextEntityId"];
+            LoadHold(s["hold"]);
+            LoadHands(s["hands"]);
+            LoadProgress(s["progress"]);
             if (s["defense"] is JObject d)
             {
                 var at = d["at"];

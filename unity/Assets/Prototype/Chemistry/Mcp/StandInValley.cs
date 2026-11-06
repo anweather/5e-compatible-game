@@ -35,10 +35,10 @@ namespace Chem.Mcp
         public int H { get; }
         public string Version => "stand-in-valley-1";
 
-        /// <summary>The stand-in for the world/ folder beside a rules folder; null if that has no land or places.</summary>
-        public static StandInValley Load(string rulesDir, ModBudgets budgets)
+        /// <summary>The stand-in for the folders' map; null if it has no land or places.</summary>
+        public static StandInValley Load(GameFolders folders, ModBudgets budgets)
         {
-            string worldDir = new GameFolders(rulesDir).World;
+            string worldDir = folders.World;
             string landPath = Path.Combine(worldDir, "land.json");
             if (!File.Exists(landPath) || budgets.Places.Count == 0) return null;
             var doc = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(landPath));
@@ -52,6 +52,7 @@ namespace Chem.Mcp
                     if (x >= 0 && y >= 0 && x < w && y < h) valley.water[y * w + x] = true;
             valley.MarkBeach(budgets.Places);
             valley.LayBuildings(budgets.Buildings);
+            valley.LayRows(budgets.Buildings, folders);
             return valley;
         }
 
@@ -86,7 +87,7 @@ namespace Chem.Mcp
         void LayBuildings(WorldBuildings buildings)
         {
             foreach (var spec in buildings.Villages) LayVillage(VillageLayout.Lay(spec, MayBuild));
-            foreach (var row in buildings.FileRows)
+            foreach (var row in buildings.FileRows.Where(r => r["built"] != null))
             {
                 int ax = (int)row["at"][0], ay = (int)row["at"][1];
                 foreach (var t in ((Newtonsoft.Json.Linq.JObject)row["built"]).Properties())
@@ -94,6 +95,16 @@ namespace Chem.Mcp
                         for (int k = 1; k + 1 < r.Count(); k += 2)
                             for (int x = (int)r[k]; x <= (int)r[k + 1]; x++) Lay(ax + x, ay + (int)r[0], t.Name);
             }
+        }
+
+        // The rows the cells don't hold, as the game lays them, so a site here is refused as it is there.
+        void LayRows(WorldBuildings buildings, GameFolders folders)
+        {
+            if (!buildings.LaidRows.Any()) return;
+            var doc = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(folders.Rules, "buildings.json")));
+            var tables = BuildingTables.Parse(new Newtonsoft.Json.Linq.JObject { [BuildingTables.Key] = doc });
+            foreach (var row in buildings.LaidRows)
+                foreach (var c in BuildingRaster.Cells(BuildingRow.Read((string)row["id"], row, tables), tables)) Lay(c.X, c.Y, c.Terrain);
         }
 
         void LayVillage(VillagePlan plan)

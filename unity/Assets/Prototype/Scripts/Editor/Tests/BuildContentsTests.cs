@@ -1,3 +1,4 @@
+using System.IO;
 using NUnit.Framework;
 
 // BuildContents: a headless Windows build only counts with its PSO collection and shaders inside.
@@ -25,4 +26,22 @@ public class BuildContentsTests
     [Test]
     public void IncompleteWithNoShaders() =>
         Assert.That(BuildContents.Of("PsoDirect3D12", new[] { (Pso, "GraphicsStateCollection", 500UL) }).Complete, Is.False);
+
+    [Test]
+    public void WhatIsPackedIsAMapABuildCanRead()
+    {
+        string packed = Path.Combine(Path.GetTempPath(), "pack-" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(packed, "rules"));
+            Assert.That(PackRulesIntoBuild.PackTree(Path.Combine(ChemGrid.Folders.Repo, "world"), Path.Combine(packed, "world")), Is.GreaterThan(0));
+            var folders = new Chem.GameFolders(Path.Combine(packed, "rules"));
+            Assert.That(Chem.MapCheck.Errors(folders.World), Is.Empty, "land, cells and map.json came through");
+            Assert.That(File.Exists(Path.Combine(folders.World, "themes", "home-valley.json")), "folders under a map too");
+        }
+        finally
+        {
+            Directory.Delete(packed, true);
+        }
+    }
 }

@@ -13,7 +13,6 @@ using UnityEngine;
 // maps and demos: yard cell (0, 0) sits at world (0, 0, (yard height - 1) * cellSize).
 public partial class ChemGrid : MonoBehaviour
 {
-    [TextArea(8, 20)] public string map;
     public uint seed = 1;
     [Tooltip("World height of one step of elevation (a pit is one step deep).")]
     public float stepHeight = 0.5f;
@@ -131,6 +130,10 @@ public partial class ChemGrid : MonoBehaviour
         LoadThings();
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
+        if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
+        if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
+        if (!TryGetComponent<HoldBarricades>(out _)) gameObject.AddComponent<HoldBarricades>();
+        if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
     }
 
     // The things file is read once: it is the same for every world this scene starts (and online
@@ -164,9 +167,16 @@ public partial class ChemGrid : MonoBehaviour
         var rules = StartRules();
         var roomWas = World?.Room;
 
-        World = StartWorld(rules, map, seed, out var start);
+        CheckMap();
+        World = StartWorld(rules, CellMap(), seed, out var start);
         OpenRoom(roomWas);
         World.ChunkSwitched += OnChunkSwitched;
+        World.LandMoved += (x, y, reach) =>
+        {
+            if (valley == null) return;
+            valley.LandMoved(x, y, reach);
+            LandShaped(x, y, reach);
+        };
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
@@ -211,6 +221,7 @@ public partial class ChemGrid : MonoBehaviour
         int h = rows.Length, w = 0;
         foreach (var r in rows) w = Mathf.Max(w, r.Length);
         var world = new World(rules, w, h, seed);
+        world.SetLandRange(MapFile.Load(Folders.World).LandRange);
         start = Vector2Int.zero;
         for (int y = 0; y < h; y++)
         {
@@ -222,7 +233,9 @@ public partial class ChemGrid : MonoBehaviour
             }
         }
         LayPuzzles(world);
+        LayRows(world);
         LayGolf(world);
+        SetHold(world);
         return world;
     }
 
@@ -252,6 +265,35 @@ public partial class ChemGrid : MonoBehaviour
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {
             Debug.LogError($"world/{WorldPuzzles.FileName} can't be read, so no puzzles: {e.Message}");
+        }
+    }
+
+    // The map's rows its cells don't hold, laid over them: only in a world big enough (the valley, not a small test yard).
+    static void LayRows(World world)
+    {
+        try
+        {
+            WorldBuildings.Load(Folders.World).LayInto(world);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldBuildings.FileName} can't be read, so its laid rows aren't: {e.Message}");
+        }
+    }
+
+    // The map's Hold, only in a world big enough to hold it (the valley, not a small test yard).
+    static void SetHold(World world)
+    {
+        try
+        {
+            var site = WorldHold.Load(Folders.World);
+            if (site == null || !world.InBounds(site.Heart.x, site.Heart.y)) return;
+            foreach (var problem in site.Check(world.Rules)) Debug.LogWarning(problem);
+            world.SetHold(site);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldHold.FileName} can't be read, so no Hold: {e.Message}");
         }
     }
 
@@ -296,8 +338,60 @@ public partial class ChemGrid : MonoBehaviour
 
     static GameFolders folders;
 
+    /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
+    public static string CellMap() => MapFile.ReadCells(Folders.World);
+
+    // The map this copy starts on, its own pick: the host's map when it hosts.
+    static string OwnMap => MapIdentity.Named(System.Environment.GetCommandLineArgs());
+
+    static string mapHash, mapHashOf;
+
+    /// <summary>Why the host turns away a copy offering these maps, or null when it has this one.</summary>
+    public static string MapRefusal(string offered)
+    {
+        if (mapHashOf != Folders.World)
+        {
+            mapHash = MapIdentity.Hash(Folders.World);
+            mapHashOf = Folders.World;
+        }
+        return MapIdentity.Refusal(Folders.Map, MapFile.Load(Folders.World).Name, mapHash, offered);
+    }
+
+    /// <summary>The host's map, for a world about to be built: what's read from the map's folder is read again.</summary>
+    public void UseMap(string id)
+    {
+        if (string.IsNullOrEmpty(id) || id == Folders.Map) return;
+        Debug.Log($"NET: on the host's map, {id}");
+        SwitchFolders(id);
+        budgets = null;
+        LoadThings();
+    }
+
+    /// <summary>Back from a host's map to this copy's own, before the scene starts over.</summary>
+    public static void BackToOwnMap()
+    {
+        if (OwnMap != Folders.Map) SwitchFolders(OwnMap);
+    }
+
+    static void SwitchFolders(string id)
+    {
+        folders = Folders.WithMap(id);
+        ValleyChemistry.ForgetLand();
+    }
+
+    static string checkedMap;
+
+    // A folder that's wrong stops the game here, by name, rather than start on the wrong land: once, not at every reset.
+    static void CheckMap()
+    {
+        if (checkedMap == Folders.World) return;
+        var errors = MapCheck.Errors(Folders.World);
+        if (errors.Count > 0) throw new InvalidDataException($"{Folders.World} can't be played:\n{string.Join("\n", errors)}");
+        checkedMap = Folders.World;
+    }
+
     // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
-    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath);
+    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather

@@ -14,10 +14,10 @@ using UnityEngine;
 public partial class DefenseField : ICreatureGround
 {
     [Tooltip("The raider kinds (rules/entities.json ids) and the species drawn for each (rules/fauna.json ids), in the same order.")]
-    public string[] kinds = { RaiderIds.BoneHound, RaiderIds.AshCrab, RaiderIds.GiantSpider };
-    public string[] species = { "bone-hound", "ash-crab", "giant-spider" };
+    public string[] kinds = { RaiderIds.BoneHound, RaiderIds.AshCrab, RaiderIds.GiantSpider, RaiderIds.CliffStalker, RaiderIds.AshWing };
+    public string[] species = { "bone-hound", "ash-crab", "giant-spider", "gila-monster", null };
     [Tooltip("How big each kind is drawn, times its species' size.")]
-    public float[] sizes = { 1.2f, 1.6f, 1.4f };
+    public float[] sizes = { 1.2f, 1.6f, 1.4f, 3f, 1.5f };
     [Tooltip("The creature material (Punchy/Creature), the valley animals' own.")]
     public Material creatureMaterial;
 
@@ -26,7 +26,10 @@ public partial class DefenseField : ICreatureGround
         public int kind;
         public Vector2Int cell;
         public Vector3 from, to, at;
-        public float movedAt, stepSeconds;
+        public float movedAt, stepSeconds, lift, lunge;
+        public Vector3 smooth;
+        public bool smoothed;
+        public int waitWas;
         public CreatureState state;
         public int hp, maxHp;
         public Raider raider;
@@ -75,7 +78,8 @@ public partial class DefenseField : ICreatureGround
             if (!shown.TryGetValue(r.Id, out var s))
             {
                 var at = Ground(cell);
-                s = new Shown { kind = System.Array.IndexOf(kinds, r.Kind), cell = cell, from = at, to = at, at = at, state = NewState(at) };
+                s = new Shown { kind = System.Array.IndexOf(kinds, Rules.PlainKind(r.Kind)), cell = cell, from = at, to = at, at = at, state = NewState(at) };
+                s.raider = r;
                 SizeUp(s);
                 shown[r.Id] = s;
             }
@@ -119,11 +123,20 @@ public partial class DefenseField : ICreatureGround
         {
             float t = s.stepSeconds > 0f ? Mathf.Clamp01((Time.time - s.movedAt) / s.stepSeconds) : 1f;
             var at = Vector3.Lerp(s.from, s.to, t);
-            at.y = grid.GroundAt(at);
-            var way = s.to - s.from;
+            Lift(s, World);
+            // The cells make a staircase of a diagonal: the body takes the corners off it.
+            if (!s.smoothed) s.smooth = at;
+            s.smoothed = true;
+            var before = s.smooth;
+            s.smooth = Vector3.Lerp(s.smooth, at, 1f - Mathf.Exp(-Rounding * Time.deltaTime));
+            at = s.smooth;
+            var way = s.smooth - before;
             way.y = 0f;
-            float speed = t < 1f && s.stepSeconds > 0f ? way.magnitude / s.stepSeconds : 0f;
-            if (way.sqrMagnitude > 1e-4f) s.state.Yaw = Mathf.Atan2(way.x, way.z);
+            float speed = Time.deltaTime > 0f ? way.magnitude / Time.deltaTime : 0f;
+            if (way.sqrMagnitude > 1e-7f) s.state.Yaw = Mathf.LerpAngle(s.state.Yaw * Mathf.Rad2Deg, Mathf.Atan2(way.x, way.z) * Mathf.Rad2Deg, 1f - Mathf.Exp(-Turning * Time.deltaTime)) * Mathf.Deg2Rad;
+            Struck(s);
+            at += new Vector3(Mathf.Sin(s.state.Yaw), 0f, Mathf.Cos(s.state.Yaw)) * (Mathf.Sin(s.lunge * Mathf.PI) * LungeReach);
+            at.y = grid.GroundAt(at) + s.lift;
             s.state.Speed = Mathf.Lerp(s.state.Speed, speed, 1f - Mathf.Exp(-8f * Time.deltaTime));
             s.state.Position = at;
             s.state.Clock += Time.deltaTime;
@@ -140,7 +153,7 @@ public partial class DefenseField : ICreatureGround
     // After everything has moved: pose every raider and draw them all in one go.
     void LateUpdate()
     {
-        DrawnRaiders = 0;
+        DrawnRaiders = BossesDrawn = 0;
         if (drawer == null || bodies == null) return;
         int used = 0;
         Vector3 centre = Vector3.zero;
@@ -148,10 +161,17 @@ public partial class DefenseField : ICreatureGround
         foreach (var s in shown.Values)
         {
             var b = Body(s.kind);
-            if (b == null) continue;
-            int need = used + b.Segments.Length;
+            string route = s.raider != null ? World.Rules.Entity(s.raider.Kind)?.Raider?.Route : null;
+            bool flyer = route == Chem.World.FlyRoute;
+            if (b == null && !flyer) continue;
+            int need = used + (b?.Segments.Length ?? 0);
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
-            int end = used + animator.Evaluate(b, s.state, 0, this, instances, used);
+            int end = flyer ? Wings(s, used) : used + animator.Evaluate(b, s.state, 0, this, instances, used);
+            if (route == Chem.World.ClimbRoute && s.kind == System.Array.IndexOf(kinds, RaiderIds.CliffStalker)) OntoTheSlope(s, used, end);
+            Shadow(s);
+            if (Boss(World, s.raider)) BossesDrawn++;
+            Adjective(s, used, end);
+            Blow(s, used, end);
             Frost(s, used, end);
             CreatureDrawer.HideAtLens(instances, used, end - used, cam);
             used = end;
@@ -159,6 +179,19 @@ public partial class DefenseField : ICreatureGround
             DrawnRaiders++;
         }
         drawer.Draw(instances, used, centre);
+    }
+
+    // A raider with an adjective shows it: its segments lean to the adjective's colour (Hold.cs).
+    void Adjective(Shown s, int from, int to)
+    {
+        var color = s.raider != null ? World.Rules.AdjectiveOf(s.raider.Kind)?.Color : null;
+        if (color == null || color.Length != 3) return;
+        var tint = new float3((float)color[0], (float)color[1], (float)color[2]);
+        for (int i = from; i < to; i++)
+        {
+            var c = instances[i].Color;
+            instances[i].Color = new float4(math.lerp(c.xyz, tint, 0.6f), c.w);
+        }
     }
 
     // A frozen raider's segments in ice; cracked, a spiderweb over the ice (Punchy/Creature draws it
@@ -187,7 +220,7 @@ public partial class DefenseField : ICreatureGround
     CreatureBody Body(int kind)
     {
         if (bodies.Count == 0) ReadRows();
-        return kind >= 0 && kind < species.Length ? bodies[bodies.IndexOf(species[kind])] : null;
+        return kind >= 0 && kind < species.Length && !string.IsNullOrEmpty(species[kind]) ? bodies[bodies.IndexOf(species[kind])] : null;
     }
 
     static CreatureState NewState(Vector3 at) => new CreatureState
@@ -210,9 +243,8 @@ public partial class DefenseField : ICreatureGround
     void SizeUp(Shown s)
     {
         var b = Body(s.kind);
-        if (b == null) return;
         float size = s.kind >= 0 && s.kind < sizes.Length ? sizes[s.kind] : 1f;
-        s.state.Scale = (b.Size.x + b.Size.y) * 0.5f * size;
+        s.state.Scale = (b != null ? (b.Size.x + b.Size.y) * 0.5f : 1f) * size * (Boss(World, s.raider) ? BossSize : 1f);
     }
 
     // --- health bars and puffs ----------------------------------------------------------
@@ -225,15 +257,24 @@ public partial class DefenseField : ICreatureGround
         var before = GUI.color;
         foreach (var s in shown.Values)
         {
-            var screen = cam.WorldToScreenPoint(s.at + Vector3.up * (1.2f + s.state.Scale * 0.6f));
+            var body = Body(s.kind);
+            var screen = cam.WorldToScreenPoint(s.at + Vector3.up * (0.5f + (body != null ? body.StandHeight * 2f * s.state.Scale : 0.4f)));
             if (screen.z <= 0f || screen.z > hudRange) continue;
-            const float width = 46f, height = 6f;
-            var back = new Rect(screen.x - width / 2f, Screen.height - screen.y, width, height);
+            bool boss = Boss(World, s.raider);
+            float width = boss ? 150f : 46f, height = boss ? 13f : 6f;
+            // The HUD's scale is on: a screen point is in pixels, the drawing in HUD units.
+            float sx = screen.x / HudScale.Factor, sy = (Screen.height - screen.y) / HudScale.Factor;
+            var back = new Rect(sx - width / 2f, sy, width, height);
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
             GUI.DrawTexture(back, bar);
             float f = Mathf.Clamp01(s.hp / (float)s.maxHp);
             GUI.color = Color.Lerp(new Color(0.9f, 0.15f, 0.1f), new Color(0.3f, 0.9f, 0.3f), f);
             GUI.DrawTexture(new Rect(back.x + 1f, back.y + 1f, (width - 2f) * f, height - 2f), bar);
+            if (s.raider != null && World.Rules.AdjectiveOf(s.raider.Kind) != null)
+            {
+                GUI.color = Color.white;
+                GUI.Label(new Rect(sx - 90f, back.y - 22f, 180f, 22f), World.Rules.Entity(s.raider.Kind).Name);
+            }
         }
         GUI.color = before;
     }

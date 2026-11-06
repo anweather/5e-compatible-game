@@ -50,8 +50,9 @@ public partial class SpellCaster
         var world = grid.World;
         var cast = world.CastOf(CastPlayer);
         if (cast == null || !cast.Casting) return (null, 1);
-        var dpad = world.Rules.Combos.Dpad;
+        var dpad = world.DpadOf(cast.Player);
         if (cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count) return (dpad[cast.DpadCasting].Spell, 1);
+        if (world.HandSpellUnderWay(cast.Player) is { } hand) return (hand, 1);
         var combo = world.ComboOf(cast);
         int charge = Mathf.Max(1, Mathf.Max(HoldCharge, cast.Charge));
         return (combo?.SpellAt(charge, world.MaxChargeOf(combo)), charge);
@@ -61,8 +62,9 @@ public partial class SpellCaster
     public string SpellOf(PlayerCast cast)
     {
         var world = grid.World;
-        var dpad = world.Rules.Combos.Dpad;
+        var dpad = world.DpadOf(cast.Player);
         if (cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count) return dpad[cast.DpadCasting].Spell;
+        if (world.HandSpellUnderWay(cast.Player) is { } hand) return hand;
         var combo = world.ComboOf(cast);
         return combo?.SpellAt(Mathf.Max(1, cast.Charge), world.MaxChargeOf(combo));
     }
@@ -77,7 +79,10 @@ public partial class SpellCaster
         var cast = world.CastOf(player);
         bool busy = (shape != null && shape.Shifted) || (radial != null && radial.IsOpen);
 
-        Elements(player, cast, busy);
+        bool handsOn = world.HandsOn(player);
+        controls.HandPad = handsOn;
+        Elements(player, cast, busy || handsOn);
+        if (handsOn) Hands(player, busy);
         if (busy) return;
         if (controls.CancelCast.WasPressedThisFrame() && cast?.Casting == true)
         {
@@ -164,12 +169,13 @@ public partial class SpellCaster
         {
             if (fired.Player != player) continue;
             if (fired.Discovered) EventLog.Add($"New in your grimoire: {fired.Name}");
-            CastAtCrosshair(fired.Spell, fired.Charge);
+            if (fired.Range > 0 || fired.Act != null) FromHand(fired);
+            else CastAtCrosshair(fired.Spell, fired.Charge);
         }
     }
 
     /// <summary>Aims a spell from the crosshair now (or a few cells ahead, with nothing under it) and casts it.</summary>
-    void CastAtCrosshair(string spellId, int charge)
+    void CastAtCrosshair(string spellId, int charge, int range = 0)
     {
         if (!FindCrosshair())
         {
@@ -177,9 +183,12 @@ public partial class SpellCaster
             crosshair.point = transform.position + transform.forward * (AheadCells * grid.cellSize);
             crosshair.normal = Vector3.up;
         }
-        var aim = Aim(spellId, CrosshairCell, out var error);
+        var me = grid.CellAt(transform.position);
+        var (toX, toY) = HandsDef.Within(me.x, me.y, CrosshairCell.x, CrosshairCell.y, range);
+        var aim = Aim(spellId, new Vector2Int(toX, toY), out var error);
         if (error != null) EventLog.Add(error);
-        if (aim.HasValue) Cast(new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
+        if (range > 0 && aim.HasValue) LastHandAim = new Vector2Int(aim.Value.x, aim.Value.y);
+        if (aim.HasValue) Cast(new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY, range > 0 ? CastPlayer : null));
     }
 
     const int AheadCells = 4;

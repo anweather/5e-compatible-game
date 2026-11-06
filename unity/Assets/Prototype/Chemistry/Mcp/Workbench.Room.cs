@@ -38,12 +38,13 @@ namespace Chem.Mcp
         World NewRoom(ChangeMode mode)
         {
             // Where the world files are there, the room is on a stand-in of the valley (StandInValley), so the world tools have a world.
-            standIn ??= StandInValley.Load(RulesDir, Budgets) ?? StandInValley.None;
+            standIn ??= StandInValley.Load(Folders, Budgets) ?? StandInValley.None;
             World w;
             if (standIn == StandInValley.None) w = new World(Base, 64, 64, 1);
             else
             {
                 w = new World(Base, standIn.W, standIn.H, 1);
+                w.SetLandRange(MapFile.Load(Folders.World).LandRange);
                 w.MakeFrom(standIn);
                 w.KeepStart();
             }
@@ -109,7 +110,7 @@ namespace Chem.Mcp
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
             if (Refused(said)) return said;
             draft.WentOn(slug.Length > 0 ? slug : draft.Id, json);
-            return said + "\n" + changes + UnseenNote(json);
+            return said + "\n" + changes + UnseenNote(json) + Superseded(json, draft.OnAs, PeerOf(peer));
         }
 
         // The mod this draft switched on as, while it's on as the draft sent it; a revert ends that, and so does another

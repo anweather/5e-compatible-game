@@ -87,6 +87,8 @@ public class WizardStrike : MonoBehaviour
         HitsTaken++;
         DamageTaken += was - vitals.Health;
         GameSounds.Play(SoundIds.Earth, transform.position);
+        if (TryGetComponent<HandPose>(out var body)) body.Flinch();
+        HoldShow.Hurt();
         var feel = beats.feel;
         CastImpact.Felt(transform.position, feel.punchFelt);
         tellAt = Time.time;

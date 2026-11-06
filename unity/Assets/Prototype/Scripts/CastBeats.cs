@@ -218,13 +218,14 @@ public class CastBeats : MonoBehaviour
         foreach (var fired in firedCasts.Take(world))
         {
             if (fired.Player != player) continue;
-            firedSpell = fired.Spell;
+            firedSpell = fired.Spell ?? fired.Act;
             firedAt = Time.time;
             Charge = fired.Charge;
         }
     }
 
-    string Player => net != null && net.IsSpawned ? net.CastPlayer : SpellCaster.SoloPlayer;
+    /// <summary>Whose wizard this is, in the core.</summary>
+    public string Player => net != null && net.IsSpawned ? net.CastPlayer : SpellCaster.SoloPlayer;
 
     void LateUpdate()
     {

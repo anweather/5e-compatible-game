@@ -1,0 +1,31 @@
+{
+  "about": "Who has work to go to (FolkJobs, docs/WORLD_LIFE.md). A spot is a cell; \"facing\" is degrees from north, \"out\" is the land a spot over the water is reached from. A job's people go round its stops for ever: \"stay\" is [least, most] seconds, \"do\" is watch, tend or gesture, and \"night\" keeps them out after dark. The walks between are found over the land, so the road is taken because it's quicker.",
+  "spots": {
+    "lane-foot": { "at": [221, 322], "facing": 180 },
+    "square": { "at": [219, 304], "facing": 90 },
+    "castle-gate": { "at": [145, 369], "facing": 90 },
+    "castle-court": { "at": [132, 367], "facing": 270 },
+    "dock-end": { "at": [268, 374], "out": [249, 374], "facing": 90 },
+    "dock-side": { "at": [260, 374], "out": [249, 374], "facing": 180 },
+    "lake-house": { "at": [249, 372], "facing": 90 }
+  },
+  "jobs": [
+    { "id": "guard", "people": 2, "night": true, "stops": [
+      { "at": "castle-gate", "stay": [120, 200], "do": "watch" },
+      { "at": "square", "stay": [40, 80], "do": "gesture" }
+    ] },
+    { "id": "porter", "people": 2, "stops": [
+      { "at": "castle-court", "stay": [50, 90], "do": "tend" },
+      { "at": "lane-foot", "stay": [30, 60], "do": "tend" }
+    ] },
+    { "id": "fisher", "people": 2, "stops": [
+      { "at": "dock-end", "stay": [120, 220], "do": "tend" },
+      { "at": "lake-house", "stay": [30, 60], "do": "tend" },
+      { "at": "square", "stay": [40, 70], "do": "gesture" }
+    ] },
+    { "id": "net-mender", "people": 1, "stops": [
+      { "at": "dock-side", "stay": [80, 140], "do": "tend" },
+      { "at": "lake-house", "stay": [60, 100], "do": "tend" }
+    ] }
+  ]
+}

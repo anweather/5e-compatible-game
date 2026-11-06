@@ -20,6 +20,8 @@ namespace Chem
             check.Components();
             check.Groups();
             check.Combos();
+            check.Hands();
+            check.HoldRows();
             check.Numbers();
             check.Lapses();
             check.Liquids();
@@ -344,7 +346,7 @@ namespace Chem
                 StatusTicks(id, t);
                 LookOf($"terrain {id}", t);
                 if (t["chainsWet"] != null && t["chainsWet"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: conduct.chainsWet must be true or false");
-                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo", "crustsTo", "thawsTo" }) KnownTerrain(id, t, key);
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo", "swingsTo", "crustsTo", "thawsTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 0)) Errors.Add($"terrain {id}: hardness must be a whole number from 0 (0 never digs)");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);
@@ -509,6 +511,7 @@ namespace Chem
                     Tags(p.Value["tags"], $"cover {p.Name}");
                     FireLookOf($"cover {p.Name}", p.Value);
                     LookOf($"cover {p.Name}", p.Value, false);
+                    if (p.Value[MixKey] != null && Text(p.Value[MixKey]) == null) Errors.Add($"cover {p.Name}: mix must be a group's name");
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);

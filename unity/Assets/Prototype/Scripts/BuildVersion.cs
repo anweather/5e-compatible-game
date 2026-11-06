@@ -93,26 +93,30 @@ public static class BuildVersion
         public string Commit;
         /// <summary>Running in the Unity Editor: its commit is whatever is checked out, so only the version counts.</summary>
         public bool Editor;
+        /// <summary>The maps this copy has (MapIdentity.Offered): read by the host, not part of the build's own stamp.</summary>
+        public string Maps = "";
 
         public string Label => $"alpha {Version}" + (string.IsNullOrEmpty(Commit) ? "" : $" ({Commit})");
     }
 
     const string HandshakeTag = "scv1";
 
-    /// <summary>The connection payload: "scv1|version|commit|editor".</summary>
-    public static byte[] Encode(Stamp stamp) =>
-        System.Text.Encoding.UTF8.GetBytes($"{HandshakeTag}|{stamp.Version}|{stamp.Commit}|{(stamp.Editor ? 1 : 0)}");
+    const int MostPayload = 1024;
+
+    /// <summary>The connection payload: "scv1|version|commit|editor|maps".</summary>
+    public static byte[] Encode(Stamp stamp, string maps = "") =>
+        System.Text.Encoding.UTF8.GetBytes($"{HandshakeTag}|{stamp.Version}|{stamp.Commit}|{(stamp.Editor ? 1 : 0)}|{maps}");
 
     /// <summary>Reads a connection payload, or null when it isn't one (an older or foreign build).</summary>
     public static Stamp Decode(byte[] payload)
     {
-        if (payload == null || payload.Length == 0 || payload.Length > 256) return null;
+        if (payload == null || payload.Length == 0 || payload.Length > MostPayload) return null;
         string text;
         try { text = System.Text.Encoding.UTF8.GetString(payload); }
         catch (ArgumentException) { return null; }
         var parts = text.Split('|');
-        if (parts.Length != 4 || parts[0] != HandshakeTag) return null;
-        return new Stamp { Version = parts[1], Commit = parts[2], Editor = parts[3] == "1" };
+        if (parts.Length != 5 || parts[0] != HandshakeTag) return null;
+        return new Stamp { Version = parts[1], Commit = parts[2], Editor = parts[3] == "1", Maps = parts[4] };
     }
 
     /// <summary>

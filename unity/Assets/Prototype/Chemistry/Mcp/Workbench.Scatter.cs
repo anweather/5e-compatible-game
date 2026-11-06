@@ -27,18 +27,7 @@ namespace Chem.Mcp
             double maxCount = table == "things" ? Budgets.Number("things.maxPerMod", 16) : Budgets.Number("lay.maxCells", 256);
             if (count < 1 || count > maxCount) throw new RulesToolException(FormattableString.Invariant($"count is 1 to {maxCount} for a {(table == "things" ? "thing" : "terrain or cover")}."));
             int reach = within ?? 12, apart = spacing ?? 0, salt = seed ?? 1;
-            double maxWithin = Budgets.Number("lay.maxWithin", 32);
-            if (reach < 0 || reach > maxWithin) throw new RulesToolException(FormattableString.Invariant($"within is 0 to {maxWithin} cells."));
-            if (apart < 0) throw new RulesToolException("spacing is the fewest cells between two, from 0.");
-            var from = Targets(near, side, edge, out string name);
-            var picked = OnWorld(w =>
-            {
-                var distance = DistanceMap(w, from, reach);
-                var area = Enumerable.Range(0, w.W * w.H).Where(i => distance[i] >= 0).Select(i => (x: i % w.W, y: i / w.W));
-                var open = w.PlaceOpen(onto, false);
-                var cells = Placement.Pick(area, count, apart, (x, y) => open(x, y) && !Settled(x, y), unchecked((int)w.Seed), salt);
-                return cells.Select(c => (c.x, c.y, d: distance[w.Idx(c.x, c.y)], ground: w.TerrainOf(w.At(c.x, c.y)).Name)).ToList();
-            });
+            var picked = PickNear(count, near, reach, apart, side, edge, salt, onto, out string name);
             if (picked.Count == 0)
                 return FormattableString.Invariant($"No open cell within {reach} cells of {name}{(onto?.Length > 0 ? " with " + string.Join(" or ", onto) : "")}; try further off, or other ground.") + StandInLine;
             if (table == "things")
@@ -48,6 +37,29 @@ namespace Chem.Mcp
             string line = FormattableString.Invariant($"{picked.Count} {what} on {ground.ToLowerInvariant()} near {name}, {apart} cells apart at least, the nearest {picked.Min(c => c.d)} cells from it and the furthest {picked.Max(c => c.d)} (seed {salt})");
             if (picked.Count < count) line += FormattableString.Invariant($"; only {picked.Count} of {count} had room");
             return line + ".\n" + Sited(draft) + StandInLine;
+        }
+
+        // Open cells near something, by the world's seed, off villages and courses: what scatter and act both place on.
+        List<(int x, int y, int d, string ground)> PickNear(int count, string near, int reach, int apart, string side, string edge, int salt, string[] onto, out string name)
+        {
+            double maxWithin = Budgets.Number("lay.maxWithin", 32);
+            if (reach < 0 || reach > maxWithin) throw new RulesToolException(FormattableString.Invariant($"within is 0 to {maxWithin} cells."));
+            if (apart < 0) throw new RulesToolException("spacing is the fewest cells between two, from 0.");
+            var from = Targets(near, side, edge, out name);
+            return OnWorld(w =>
+            {
+                var distance = DistanceMap(w, from, reach);
+                var cells = OpenNear(w, distance, count, apart, salt, onto);
+                return cells.Select(c => (c.x, c.y, d: distance[w.Idx(c.x, c.y)], ground: w.TerrainOf(w.At(c.x, c.y)).Name)).ToList();
+            });
+        }
+
+        // The cells a distance map reaches, picked by the world's seed, off villages and courses.
+        List<(int x, int y)> OpenNear(World w, int[] distance, int count, int apart, int salt, string[] onto)
+        {
+            var area = Enumerable.Range(0, w.W * w.H).Where(i => distance[i] >= 0).Select(i => (x: i % w.W, y: i / w.W));
+            var open = w.PlaceOpen(onto, false);
+            return Placement.Pick(area, count, apart, (x, y) => open(x, y) && !Settled(x, y), unchecked((int)w.Seed), salt);
         }
 
         // Whether a scatter's what is a terrain, a cover or a thing, with the draft on; null for none.

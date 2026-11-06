@@ -127,7 +127,8 @@ first. A building becomes parts, in `world` rows a mod adds (G5) or edits by id 
 - **A wall segment** runs between two joins, along an axis or at 45° (bays, cut corners), in a `storey`,
   with a `height` (m), a `material` (a terrain id, so it burns, breaks or shatters as that terrain does),
   a `finish` (a `wall` look: pattern and colour, G2) and `openings` (`kind`, `at` in half cells from
-  `from`). A row's `wall` gives the defaults.
+  `from`). A row's `wall` gives the defaults. A row's `wall` finish of pattern `coursed` draws its stone in courses of blocks
+  (`VillageLit`), towers and parapets too, at no cost in vertices.
 - **Standard lengths** are whole and half cells. **Openings** (`rules/buildings.json`) are rows: a view
   width and height, sill and head, and what their cells become. `door` 1 cell (0.9 m, a `door` terrain
   that burns or breaks to a gap), `double-door` 2 (1.8 m), `window` 1 (`pane`), `wide-window` 2,
@@ -214,6 +215,15 @@ checker refuses a site over a thing, a building, water or non-ground; a player o
 to wall is pushed to the nearest free cell in entity-id order. A chunk not held gets the edit when built; a
 revert lays the base again; a golden pins "a wing added". **Limits** (`budgets.json`): 24 × 24 cells, 64
 joins, walls and openings, 32 parts, 3 storeys, 4 buildings a mod.
+
+**Parts for a stronghold (the Hold, `the-hold.md` phase 1).** All rows, nothing named: a mod builds another within the budgets.
+A row's `level: true` stands its walls from the highest ground under it and runs them down to the lowest, so their tops are one height; openings
+stand on the ground beneath them, so a gate meets its road. `towers` (`at` a join, `radius` in half cells, `height`, `roof: cone`) take the
+cells in that radius and draw a drum a wall walk passes through. `roads` (`through` joins, `width`, `terrain`) take cells past the walls. The details
+`battlements` and `stair` draw a parapet and a way up the inner side: the view walks them (a ramp and a deck in a `Walk` collider), and the core has no
+idea of them. The opening `timber-gate` is cells a hand swings (`materials.json` `swing`, `EffectKind.Swing`). Two rows of walls side by side make a wall
+walk two cells wide. A row in a map's `buildings.json` with walls and no `built` is **laid** over `cells.txt` at the start
+(`WorldBuildings.LayInto`), which is how a tree under it goes without `cells.txt` or `things.json` changing: the view hides the baked tree and repaints the cell.
 
 **Places.** `places()` has `lake` and `sea` but no shores: a place reference takes a `side` and `edge:
 "shore"`, so "the lake's north shore" and "the beach" need no names (or hand-write `north-shore` in

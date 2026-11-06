@@ -23,7 +23,9 @@ namespace Chem.Mcp
         public static void Main(string[] args)
         {
             int at = Array.IndexOf(args, "--rules");
-            var folders = at >= 0 && at + 1 < args.Length ? new GameFolders(Path.GetFullPath(args[at + 1])) : InRepo(Directory.GetCurrentDirectory());
+            int named = Array.IndexOf(args, "--map");
+            string map = named >= 0 && named + 1 < args.Length ? args[named + 1] : GameFolders.DefaultMap;
+            var folders = at >= 0 && at + 1 < args.Length ? new GameFolders(Path.GetFullPath(args[at + 1]), null, map) : InRepo(Directory.GetCurrentDirectory());
 
             var builder = Host.CreateApplicationBuilder(Array.Empty<string>());
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);

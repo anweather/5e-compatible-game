@@ -102,6 +102,8 @@ namespace Chem
         public string QuenchesTo, QuenchLog;
         /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
         public string BakesTo;
+        /// <summary>What a hand on it turns it into (materials.json swing.into): a gate's other way, or null (World.Swing).</summary>
+        public string SwingsTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
         /// <summary>WaterTo as what it does: water on it freezes, or boils off as sim water.boils.</summary>
@@ -185,6 +187,8 @@ namespace Chem
         public int SpreadEvery, SpreadReach;
         public double SpreadChance = 1;
         public IReadOnlyList<string> SpreadOnto, SpreadNotOnto;
+        /// <summary>Its mix group: laid on a cover of the same, they derive a mix (Rules.Mix.cs); null, it doesn't mix.</summary>
+        public string Mix;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -373,6 +377,9 @@ namespace Chem
     {
         public string Id, Name;
         public int Hp, Mass;
+
+        /// <summary>A copy to change, for a raider with an adjective.</summary>
+        internal EntityDef Copy() => (EntityDef)MemberwiseClone();
         /// <summary>A score or AC an entity row leaves out: 10, an average Strength, and an unarmoured AC.</summary>
         public const int DefaultScore = 10;
         /// <summary>Its Strength score (entities.json "str") and Armor Class ("ac"), for the unarmed strike (World.Strike.cs).</summary>
@@ -549,6 +556,8 @@ namespace Chem
         public string ShatterWhen, ShatterNotBy;
         /// <summary>The defense field's waves (sim.json defense).</summary>
         public DefenseParams Defense = new DefenseParams();
+        /// <summary>hold.json: the Hold's run.</summary>
+        public HoldParams Hold = new HoldParams();
         /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
         public GolfParams Golf = new GolfParams();
         /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
@@ -699,7 +708,11 @@ namespace Chem
         public IReadOnlyDictionary<string, LookDef> ElementLooks => elementLooks;
 
         /// <summary>The entity with this id, or null.</summary>
-        public EntityDef Entity(string id) => id != null && entities.TryGetValue(id, out var e) ? e : null;
+        public EntityDef Entity(string id)
+        {
+            if (id == null) return null;
+            return entities.TryGetValue(id, out var e) ? e : HoldVariant(id);
+        }
 
         /// <summary>Cell rules for one element, top to bottom.</summary>
         public IReadOnlyList<CellRule> CellRulesFor(string element) =>
@@ -761,6 +774,7 @@ namespace Chem
                 ["components"] = get("components.json", false) as JObject ?? new JObject(),
                 ["combos"] = get("combos.json", false) as JObject ?? new JObject(),
                 [BuildingTables.Key] = get("buildings.json", false) as JObject ?? new JObject(),
+                ["hold"] = get("hold.json", false) as JObject ?? new JObject(),
                 [ElementLooksKey] = get("elements.json", false) as JObject ?? new JObject(),
                 [FaunaTables.SpeciesKey] = get("fauna.json", false) as JObject ?? new JObject(),
                 [FaunaTables.PartsKey] = get("parts.json", false) as JObject ?? new JObject(),
@@ -836,6 +850,8 @@ namespace Chem
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
             r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
+            r.Sim.Hold = HoldParams.Parse(doc["hold"]);
+            foreach (var p in (doc["hold"]?["raiders"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()) r.holdKinds[p.Name] = r.ParseEntity(p.Name, (JObject)p.Value);
             r.ParseLiquids(doc);
             ParseGroups(r, (JObject)doc["groups"]);
             ParseCombos(r, (JObject)doc["combos"]);
@@ -898,6 +914,7 @@ namespace Chem
             QuenchLog = Str(o["quenchLog"]),
             ScourWears = Truthy(o["scourWears"]),
             BakesTo = Str(o["bakesTo"]),
+            SwingsTo = Str(o["swingsTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
             Dampens = Num(o["dampens"]) ?? 0,
@@ -931,6 +948,7 @@ namespace Chem
             Id = id,
             Name = Str(o["name"]) ?? id,
             Tags = Strings(o["tags"]),
+            Mix = Str(o[MixKey]),
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),

@@ -110,7 +110,7 @@ namespace Chem.Tests
             var rows = JObject.Parse(kept)["patch"]["world"]["buildings"];
             Assert.That(((JObject)rows).Count, Is.EqualTo(2), "one edit by id and one new building, in one mod");
             Assert.That(rows["beach-house#1"], Is.Not.Null);
-            Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("cabin#"));
+            Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("lake-house#"), "the house by the lake");
 
             // Switched on from the kept file, it builds both; nothing but the row names anything.
             var world = bench.LiveWorld;
@@ -125,7 +125,7 @@ namespace Chem.Tests
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "stucco-wall"), Is.GreaterThan(0));
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "door"), Is.EqualTo(1));
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "rock"), Is.GreaterThan(0), "new houses are hollow");
-            string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("cabin#", StringComparison.Ordinal));
+            string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("lake-house#", StringComparison.Ordinal));
             Assert.That(world.BuildingRowOf(wing).Walls.Any(w => w.Id.StartsWith("wing1", StringComparison.Ordinal)));
             Assert.That(client.Call("find", new { kind = "building", near = "lake", within = 12 }), Does.Contain(wing));
             Assert.That(client.Call("whats_on", new { }), Does.Contain("the building beach-house#1"));
@@ -176,6 +176,35 @@ namespace Chem.Tests
             Assert.That(client.Call("list", new { table = "buildings" }), Does.Contain("cabin#2"));
             Assert.That(client.Call("describe", new { table = "buildings", id = "cabin#2" }), Does.Contain("built"));
             Assert.That(client.Call("list", new { table = "openings" }), Does.Contain("double-garage"));
+        }
+
+        [Test]
+        public void FindSiteReadsTheMapItWasGiven()
+        {
+            string repo = Path.Combine(Path.GetTempPath(), "map-site-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var valley = new GameFolders(Path.Combine(repo, "rules"));
+                var isle = new GameFolders(valley.Rules, null, "isle");
+                CopyFiles(ChemistryTests.RulesDir(), valley.Rules);
+                CopyFiles(ChemistryTests.WorldDir(), valley.World);
+                CopyFiles(ChemistryTests.WorldDir(), isle.World);
+                File.WriteAllText(Path.Combine(isle.World, WorldPlaces.FileName), @"{ ""places"": [ { ""id"": ""dock"", ""name"": ""the dock"", ""kind"": ""village"", ""area"": [10, 10, 20, 20] } ] }");
+
+                Assert.That(new Client(new Workbench(valley)).Call("find_site", new { width = 6, depth = 6, near = "lake" }), Does.Contain("lake"), "the valley's lake");
+                var client = new Client(new Workbench(isle));
+                Assert.That(() => client.Call("find_site", new { width = 6, depth = 6, near = "lake" }), Throws.Exception.With.Message.Contain("dock"), "no lake on this map");
+            }
+            finally
+            {
+                Directory.Delete(repo, true);
+            }
+        }
+
+        static void CopyFiles(string from, string to)
+        {
+            Directory.CreateDirectory(to);
+            foreach (string file in Directory.GetFiles(from)) File.Copy(file, Path.Combine(to, Path.GetFileName(file)));
         }
 
         [Test]

@@ -26,6 +26,31 @@ public class RowMesherTests
         " \"roofs\": { \"main\": { \"over\": [\"a\", \"b\", \"c\", \"d\"], " + roof + " } } }");
 
     [Test]
+    public void AParapetStopsAWizardFromItsOwnRail()
+    {
+        var plain = RowMesher.Make(Box("\"shape\": \"flat\""), Plain);
+        Assert.AreEqual(0, plain.rail.vertexCount, "no battlements, no rail");
+        var row = Box("\"shape\": \"flat\"");
+        row["parts"] = JArray.Parse("[{ \"kind\": \"battlements\", \"on\": \"n\", \"every\": 1.8, \"height\": 1.3 }]");
+        var made = RowMesher.Make(row, Plain);
+        Assert.Greater(made.rail.vertexCount, 0);
+        Assert.AreEqual(plain.walk.vertexCount, made.walk.vertexCount, "the walk the camera keeps out of has no parapet in it");
+    }
+
+    [Test]
+    public void ACoursedRowMarksItsStoneAndNothingElse()
+    {
+        const string door = ", \"openings\": [{ \"kind\": \"door\", \"at\": 2 }]";
+        Assert.AreEqual(0, RowMesher.Make(Box("\"shape\": \"flat\"", door), Plain).body.uv.Length, "a plain row carries no marks");
+        var row = Box("\"shape\": \"flat\"", door);
+        row["wall"]["finish"] = JObject.Parse("{ \"pattern\": \"coursed\" }");
+        var mesh = RowMesher.Make(row, Plain).body;
+        Assert.AreEqual(mesh.vertexCount, mesh.uv.Length);
+        Assert.That(mesh.uv.Any(m => m.x > 0.5f), "the walls are stone in courses");
+        Assert.That(mesh.uv.Any(m => m.x < 0.5f), "the door isn't");
+    }
+
+    [Test]
     public void WallsStandInsideTheirLines()
     {
         var bounds = RowMesher.Make(Box("\"shape\": \"flat\""), Plain).body.bounds;
@@ -199,7 +224,7 @@ public class RowMesherTests
             var yard = ChemYardBuilder.Map.Split((char)10);
             ValleyShape.Plan(yard[0].Length, yard.Length, grid.cellSize);
             CollectionAssert.AreEqual(new[] { new Vector2(-16.75f, 15.25f), new Vector2(-30f, -40f), new Vector2(155f, 62f), new Vector2(-95f, 140f) }, ValleyShape.Cabins.Select(c => c.At).ToArray());
-            var world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
+            var world = ChemGrid.MapWorld(grid.LoadBaseRules(), ChemGrid.CellMap(), grid.seed, out _);
             var file = WorldBuildings.Load(ChemGrid.Folders.World);
             foreach (var plan in ValleyShape.Villages)
             {
@@ -218,6 +243,6 @@ public class RowMesherTests
     {
         var file = WorldBuildings.Load(ChemGrid.Folders.World);
         Assert.IsNotEmpty(file.FileRows);
-        foreach (var row in file.FileRows) Assert.IsNotNull(row["site"], (string)row["id"]);
+        foreach (var row in file.FileRows.Where(r => r["built"] != null)) Assert.IsNotNull(row["site"], (string)row["id"]);
     }
 }

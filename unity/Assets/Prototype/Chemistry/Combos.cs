@@ -79,6 +79,16 @@ namespace Chem
         CastSelected,
         /// <summary>Lets go of a held element: the cast goes off at the charge its meter has reached.</summary>
         Release,
+        /// <summary>During a run: a hand's button, <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> its bumper rather than its trigger.</summary>
+        Hand,
+        /// <summary>Straight into the moment <see cref="ComboCommand.Element"/> (dev builds and the Editor offer it).</summary>
+        Moment,
+        /// <summary>Picks the upgrade <see cref="ComboCommand.Element"/> from this wizard's offer.</summary>
+        Pick,
+        /// <summary>A player brings <see cref="ComboCommand.Step"/> points, from their own save, for every peer to know.</summary>
+        Bring,
+        /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>, or with none, nothing.</summary>
+        Attune,
     }
 
     /// <summary>A player's cast input: what goes into the core for the button, stamped like a cast.</summary>
@@ -100,21 +110,31 @@ namespace Chem
         /// <summary>For a <see cref="ComboCommandKind.Load"/>: the button is down, so the cast waits for a Release before it goes off.</summary>
         public bool Hold { get; }
 
+        /// <summary>Whether a host takes this: a moment only from a dev build or the Editor, never in a released player.</summary>
+        public bool TakenBy(bool devBuild) => Kind != ComboCommandKind.Moment || devBuild;
+
         public static ComboCommand Load(string player, string element, bool hold = false) => new ComboCommand(player, ComboCommandKind.Load, element, hold: hold);
         public static ComboCommand Cancel(string player) => new ComboCommand(player, ComboCommandKind.Cancel);
         public static ComboCommand Cycle(string player, int step) => new ComboCommand(player, ComboCommandKind.Cycle, null, step);
         public static ComboCommand CastSelected(string player) => new ComboCommand(player, ComboCommandKind.CastSelected);
         public static ComboCommand Release(string player) => new ComboCommand(player, ComboCommandKind.Release);
+        public static ComboCommand Hand(string player, int hand, bool bumper = false) => new ComboCommand(player, ComboCommandKind.Hand, null, hand, bumper);
+        public static ComboCommand Moment(string player, string moment) => new ComboCommand(player, ComboCommandKind.Moment, moment);
+        public static ComboCommand Pick(string player, string upgrade) => new ComboCommand(player, ComboCommandKind.Pick, upgrade);
+        public static ComboCommand Bring(string player, int points) => new ComboCommand(player, ComboCommandKind.Bring, null, points);
+        public static ComboCommand Attune(string player, int hand, string element) => new ComboCommand(player, ComboCommandKind.Attune, element, hand);
     }
 
     /// <summary>
     /// A meter that reached zero this tick. The view aims it and sends the usual
     /// <see cref="CastCommand"/>, since where a spell lands is only known as it goes off.
     /// </summary>
-    public readonly struct ComboFired
+    public struct ComboFired
     {
         public ComboFired(string player, string combo, string name, string spell, string shape, bool discovered, int charge = 1)
         {
+            Act = null;
+            Range = 0;
             Player = player;
             Combo = combo;
             Name = name;
@@ -134,6 +154,19 @@ namespace Chem
         public bool Discovered { get; }
         /// <summary>The strength it goes off at (CastCommand.Charge).</summary>
         public int Charge { get; }
+        /// <summary>An empty hand's act, with no <see cref="Spell"/>; null for a spell.</summary>
+        public string Act { get; private set; }
+        /// <summary>How far it can land, in cells; 0 for as far as it's aimed.</summary>
+        public int Range { get; private set; }
+
+        /// <summary>This, as a hand brings it out.</summary>
+        public ComboFired FromHand(string act, int range)
+        {
+            var fired = this;
+            fired.Act = act;
+            fired.Range = range;
+            return fired;
+        }
     }
 
     /// <summary>

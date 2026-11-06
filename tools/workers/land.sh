@@ -11,7 +11,7 @@
 #   land.sh merge <branch> < message   fetch, reset this worktree's branch to origin/dev, merge
 #                                      origin/<branch> (--no-ff) with the message plus the
 #                                      coordinator's cost lines (commit-cost.mjs, Coordinator-*)
-#   (run the checks: core build, tests and format; sandbox typecheck, tests and build)
+#   (run the checks: gates.sh; the sandbox's only if the branch touches it)
 #   land.sh push <branch>              push to dev (refused if dev moved: merge again), then
 #                                      delete the merged branch on origin (Andrew's rule: always)
 # Set CLAUDE_CONFIG_DIR to the coordinator's account (~/.claude-pro) so its cost is read from there.
@@ -57,11 +57,9 @@ case "$cmd" in
     message="$(cat)"
     log="$(git rev-parse --absolute-git-dir)/land-gates.log"
     undo() { git reset -q --hard origin/dev; }
-    gate() {
-      local name="$1"; shift
-      if "$@" >> "$log" 2>&1; then echo "  ok  $name"
-      else grep -v " warning S3776" "$log" | tail -20; undo; stop "$name failed; the full log is $log; the worktree is back on dev."; fi
-    }
+    # The sandbox is frozen with its own rules (J-042): its gates run only when it changed, as sandbox.yml does.
+    sandbox=0
+    grep -qE '^(sandbox/|\.github/workflows/sandbox\.yml$)' <<< "$own" && sandbox=1
     for try in 1 2 3; do
       if ! printf '%s\n' "$message" | bash "$0" merge "$branch" > /dev/null 2>&1; then
         clash="$(git status --short | grep -E '^(UU|AA|DD|AU|UA|DU|UD)' || true)"
@@ -74,17 +72,10 @@ case "$cmd" in
         undo
         stop "the merge changes files outside the branch's own diff:"$'\n'"$foreign"
       fi
-      : > "$log"
-      gate "core build" dotnet build core -c Release -warnaserror
-      gate "core tests" dotnet test core
-      gate "core format" dotnet format core --verify-no-changes
-      gate "duplicates" npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
-      gate "chat report" node --test tools/chat-report.test.mjs
-      gate "chat strict" node --test tools/chat-strict.test.mjs
-      gate "sandbox types" npm --prefix sandbox run typecheck
-      gate "sandbox tests" npm --prefix sandbox test
-      gate "sandbox build" npm --prefix sandbox run build
-      grep -E 'Passed!|Failed!' "$log" | tail -1 | sed 's/^ */  /'
+      if ! SANDBOX_GATES=$sandbox bash "$here/gates.sh" "$log"; then
+        undo
+        stop "a gate failed; the full log is $log; the worktree is back on dev."
+      fi
       if [[ $dry == 1 ]]; then undo; echo "Dry run: $branch would land. Nothing pushed."; exit 0; fi
       git fetch -q origin
       if git merge-base --is-ancestor origin/dev HEAD; then bash "$0" push "$branch"; exit 0; fi

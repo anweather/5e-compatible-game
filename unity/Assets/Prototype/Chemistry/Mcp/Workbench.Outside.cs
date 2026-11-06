@@ -9,6 +9,9 @@ namespace Chem.Mcp
         static readonly (string what, string instead)[] OutsideRules =
         {
             ("Heat glow: the colour of hot metal and hot stone", "nothing yet: a material's own look and colour can change, not what heat does to it"),
+            ("One animal apart from its kind: the turkey near you, not all turkeys. Animals live in each player's own view, so none can be picked out", "set_species changes the whole species; a new species and act bring a different one out beside you"),
+            ("The lake's level, and the sea's: they're fixed in the land", "water poured somewhere runs and pools; Create Water, or a flood, in a place"),
+            ("A mountain or a deep canyon: the ground runs from 3 m under its level to 4 m over", "a hill or a trench within that, by a spell that raises or digs"),
             ("Player size: how tall or wide a player is", "nothing yet; the Shapeshift spell is the nearest thing a player can do"),
             ("Slippery terrain: only a cover can be slippery, not a terrain", "a cover tagged slippery spread over the ground, such as Grease"),
             ("Weather's cover: what rain, snow and fog lay on the ground", "weather's chances and strengths in sim can be tuned, and a cover's look changes how snow looks"),

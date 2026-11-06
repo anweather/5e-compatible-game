@@ -1,5 +1,5 @@
 {
-  "about": "The world's named landmarks and the cells each covers (docs/design/world-tools.md G1; Places.cs): what the rules MCP's places() and here() read, and what a look's \"where\" names. Read-only: mods can't change them. Cells are grid cells (y grows south). An entry with \"generated\": true is made from the world file in its \"from\" (villages.json, gauntlet.json, golf.json, puzzles.json, and land.json's water bodies by the \"generate\" settings), so don't edit it: change that file and regenerate (PLACES_OUT=world/places.json dotnet test core --filter PlacesFileIsUpToDate). The rest are written by hand, saying where they came from. Shapes: \"area\" [x0, y0, x1, y1] (corners inclusive), \"line\" points with a \"width\" in cells, \"circle\" {at, radius}, \"rows\" [y, x0, x1, ...] spans.",
+  "about": "The world's named landmarks and the cells each covers (docs/design/world-tools.md G1; Places.cs): what the rules MCP's places() and here() read, and what a look's \"where\" names. Read-only: mods can't change them. Cells are grid cells (y grows south). An entry with \"generated\": true is made from the world file in its \"from\" (villages.json, gauntlet.json, golf.json, puzzles.json, and land.json's water bodies by the \"generate\" settings), so don't edit it: change that file and regenerate (PLACES_OUT=1 dotnet test core --filter PlacesFileIsUpToDate). The rest are written by hand, saying where they came from. Shapes: \"area\" [x0, y0, x1, y1] (corners inclusive), \"line\" points with a \"width\" in cells, \"circle\" {at, radius}, \"rows\" [y, x0, x1, ...] spans.",
   "generate": {"water":{"about":"land.json's connected cells below this many land units (0.125 m: the lake's level, ValleyChemistry.lakeLevel -0.6 m), at least \"least\" of them: one touching the world's edge is a sea, one closed in a lake.","below":-4,"least":50}},
   "places": [
     {"id":"hollowmere","name":"Hollowmere","kind":"village","from":"villages.json","generated":true,"area":[198,287,234,324]},
@@ -334,6 +334,15 @@
       [421,302,313]
     ]},
     {"id":"river","name":"the river","kind":"river","from":"ValleyShape.River (the Editor's valley), metres to cells by TerrainGrid.Valley; its bends are smoothed in the valley, so this line is within a few cells of it","line":[[371,135],[379,163],[364,217],[374,267],[359,310],[346,360]],"width":6},
-    {"id":"falls","name":"the falls","kind":"pond","from":"ValleyShape.Falls and PondRadius (10 m): the pond at the foot of the falls, where the river starts","circle":{"at":[371,135],"radius":7}}
+    {"id":"falls","name":"the falls","kind":"pond","from":"ValleyShape.Falls and PondRadius (10 m): the pond at the foot of the falls, where the river starts","circle":{"at":[371,135],"radius":7}},
+    {"id":"ball-court","name":"the ball court","kind":"court","from":"ValleyShape.CourtCentre, CourtLength and CourtWidth, with 3 m round the rails for the goals and the scoreboard","area":[308,316,339,337]},
+    {"id":"defense-field","name":"the defense field","kind":"field","from":"DefenseFieldBuilder.NearDefenseField: Gate to Flag, HalfWidth and EndRoom","area":[258,264,306,282]},
+    {"id":"tower","name":"the climbing tower","kind":"tower","from":"ValleyTower.Site and Reach (13 m), with 2 m round it","circle":{"at":[239,343],"radius":10}},
+    {"id":"bridge","name":"the bridge","kind":"bridge","from":"ValleyShape.PlanBridge: its line from ramp foot to ramp foot, and room either side","line":[[362,281],[377,287]],"width":7},
+    {"id":"standing-stones","name":"the standing stones","kind":"landmark","from":"ValleyBuilder.StonesAt, the ring of 9 m and 2 m round it","circle":{"at":[199,213],"radius":8}},
+    {"id":"outcrop","name":"the outcrop","kind":"landmark","from":"ValleyBuilder.OutcropAt, the pile of rocks and 2 m round it","circle":{"at":[422,257],"radius":9}},
+    {"id":"falls-cliff","name":"the cliff at the falls","kind":"landmark","from":"ValleyShape.Falls and CliffNorth: the clad face, 27 m either side of the falls","line":[[353,127],[389,127]],"width":5},
+    {"id":"hold-foot","name":"the foot of the hold's hill","kind":"landmark","from":"docs/design/the-hold.md: where the Hold's raiders come from, off the village's way","line":[[184,340],[206,390]],"width":1},
+    {"id":"scree-ramp","name":"the scree ramp","kind":"landmark","from":"ValleyShape.Falls, RampFoot and RampTop: the rocks either side of the way up","line":[[395,145],[387,113]],"width":7}
   ]
 }

@@ -242,6 +242,7 @@ namespace Chem
                     var c = At(x, y);
                     if (c == null || c.Water > 0 || TerrainOf(c).Spring > 0) land[Idx(x, y)] = NoLand;
                 }
+            PutStampsOnLand();
         }
 
         int LandOf(Chunk ch, int i) =>

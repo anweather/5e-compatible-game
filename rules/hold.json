@@ -1,0 +1,694 @@
+{
+  "about": "The Hold's run (docs/design/the-hold.md, World.Hold.cs); the-hold.md's dials list says what you'd feel turning each. health is the keep's. A wave is first plus growth a wave, peerPercent of that by the wizards at the run's start (the last for more), each raider hpPerWave stronger and its blows damagePerWave percent harder a wave. A spawner's kinds come in one every kindEvery waves. Adjectives come in from adjectiveFrom, on adjectivePercent of a wave's raiders and adjectivePerWave more a wave up to adjectiveMost. From themeFrom a wave has a theme, never the same twice running, and themePercent of its raiders take one of the theme's adjectives. boss.every waves a boss leads the wave: the last kind in with boss.adjective, boss.hpPerWave stronger a wave, and boss.peerHealth percent of that for the wizards at the start, since there's only one of it. warmup is the ticks before wave 1 and betweenWaves the warning before each after it, spawnEvery between raiders. strength is how many blows of a raider a blocking terrain takes (none: it can't be battered, so a wizard's walls need a row or they stop a run for good), and one with no break of its own leaves rubble; a way through it costs batterCost a blow. An adjective's hp and damage are percents; keeps is a status it never loses, never the statuses it can't have, lights sets the ground it crosses burning, boss keeps it out of the common pool. raiders are kinds only the Hold has, rows like entities.json's. Raiders go by their row's raider.route: road (the default) costs offRoadCost a cell off the road, climb goes straight, fly goes straight over everything and comes down for good if flying.lands statuses reach it. routeEvery is the ticks between working the ways out. From barricades.from, first barricades stand on the road at a wave's start, one more every perWaves waves up to most, each of the road's cells within radius of one of the map's joins. Between waves a wizard is offered offer upgrades, by the seed, and one it doesn't pick is picked for it as the next wave starts; cooldown, bothCooldown, damage and range are percents on what the wizard has, health is points, and holds and gesture narrow what they touch. They end with the run. unlocks come in this order, each costing cost more points; pointsPerWave is what a wave survived earns. A moment is a canned setup for playtesting: wave, theme if forced, what the hands hold, the keep's health, broken percent of the castle's breakable cells. targetMinutes is how long a good run should last, for the curve (core/Hold.Runner).",
+  "health": 300,
+  "plateTicks": 6,
+  "first": 4,
+  "growth": 2,
+  "hpPerWave": 2,
+  "warmup": 60,
+  "spawnEvery": 9,
+  "betweenWaves": 150,
+  "batterTicks": 12,
+  "batterCost": 12,
+  "margin": 14,
+  "adjectiveFrom": 2,
+  "adjectivePercent": 34,
+  "strength": {
+    "timber-gate": 8,
+    "door": 4,
+    "pane": 1,
+    "logwall": 10,
+    "stone": 30,
+    "barricade": 3,
+    "pillar": 6,
+    "ice-wall": 4,
+    "stucco-wall": 12,
+    "worn-logwall": 6,
+    "gate": 8
+  },
+  "adjectives": {
+    "armoured": {
+      "name": "Armoured",
+      "hp": 160,
+      "resist": [
+        "earth"
+      ],
+      "weak": [
+        "lightning"
+      ],
+      "color": [
+        0.62,
+        0.64,
+        0.7
+      ]
+    },
+    "burning": {
+      "name": "Burning",
+      "hp": 100,
+      "lights": true,
+      "color": [
+        1,
+        0.45,
+        0.1
+      ],
+      "never": [
+        "burning"
+      ],
+      "weak": [
+        "cold"
+      ],
+      "resist": [
+        "fire"
+      ]
+    },
+    "soaked": {
+      "name": "Soaked",
+      "hp": 100,
+      "keeps": "wet",
+      "color": [
+        0.25,
+        0.5,
+        0.95
+      ]
+    },
+    "frosted": {
+      "name": "Frosted",
+      "hp": 100,
+      "weak": [
+        "fire"
+      ],
+      "resist": [
+        "cold"
+      ],
+      "color": [
+        0.7,
+        0.9,
+        1
+      ]
+    },
+    "molten": {
+      "name": "Molten",
+      "hp": 120,
+      "lights": true,
+      "weak": [
+        "cold"
+      ],
+      "resist": [
+        "fire"
+      ],
+      "color": [
+        0.85,
+        0.25,
+        0.05
+      ],
+      "never": [
+        "burning"
+      ]
+    },
+    "rooted": {
+      "name": "Rooted",
+      "hp": 130,
+      "weak": [
+        "thorns"
+      ],
+      "resist": [
+        "lightning",
+        "thunder"
+      ],
+      "color": [
+        0.4,
+        0.5,
+        0.2
+      ]
+    },
+    "gaunt": {
+      "name": "Gaunt",
+      "hp": 70,
+      "weak": [
+        "thunder",
+        "lightning"
+      ],
+      "resist": [
+        "thorns"
+      ],
+      "color": [
+        0.8,
+        0.78,
+        0.7
+      ]
+    },
+    "dread": {
+      "name": "Dread",
+      "hp": 700,
+      "damage": 200,
+      "boss": true,
+      "color": [
+        0.55,
+        0.1,
+        0.45
+      ]
+    }
+  },
+  "hands": {
+    "about": "A wizard's hands in the Hold (the-hold.md, phase 3, World.Hands.cs). A hand is a slot: start says what each holds at first, an element or empty. The button is the gesture, thrust or throw, and both on one hand a sweep, and what the hand holds is what comes out. spells is by what a hand holds, and by what both hold (either order) when both make the same gesture; a gesture with no such row, like every sweep today, leaves each hand to its own, as different gestures do. A row is a spell, or an act for a hand with no spell. A hand's buttons, and the other hand's, come together inside window ticks of the first press, which a spell's cast holds open. range is how far a gesture's spell lands, in cells, by rangeOf. A spell's cooldown is handCooldown ticks on its hand, bothCooldown on both for a combined one. kit is the D-pad's list during a run.",
+    "start": {
+      "left": "water",
+      "right": "fire"
+    },
+    "window": 4,
+    "handCooldown": 12,
+    "bothCooldown": 30,
+    "range": {
+      "short": 8,
+      "long": 30
+    },
+    "rangeOf": {
+      "thrust": "short",
+      "throw": "long",
+      "sweep": "short"
+    },
+    "spells": {
+      "empty": {
+        "thrust": {
+          "act": "punch",
+          "castTicks": 4
+        },
+        "throw": {
+          "act": "throw",
+          "castTicks": 4
+        },
+        "sweep": {
+          "act": "shove",
+          "castTicks": 4
+        }
+      },
+      "fire": {
+        "thrust": {
+          "spell": "burning-hands",
+          "castTicks": 6
+        },
+        "throw": {
+          "spell": "fire-bolt",
+          "castTicks": 6
+        },
+        "sweep": {
+          "spell": "flame-wave",
+          "castTicks": 9
+        }
+      },
+      "water": {
+        "thrust": {
+          "spell": "create-water",
+          "castTicks": 6
+        },
+        "throw": {
+          "spell": "ray-of-frost",
+          "castTicks": 6
+        },
+        "sweep": {
+          "spell": "sleet-storm",
+          "castTicks": 9
+        }
+      },
+      "earth": {
+        "thrust": {
+          "spell": "mold-earth-heap",
+          "castTicks": 6
+        },
+        "throw": {
+          "spell": "earthen-trench",
+          "castTicks": 6
+        },
+        "sweep": {
+          "spell": "spike-growth",
+          "castTicks": 9
+        }
+      },
+      "air": {
+        "thrust": {
+          "spell": "shocking-grasp",
+          "castTicks": 6
+        },
+        "throw": {
+          "spell": "gust-of-wind",
+          "castTicks": 6
+        },
+        "sweep": {
+          "spell": "thunderwave",
+          "castTicks": 9
+        }
+      },
+      "fire+fire": {
+        "thrust": {
+          "spell": "fireball",
+          "castTicks": 12
+        },
+        "throw": {
+          "spell": "meteor",
+          "castTicks": 18
+        }
+      },
+      "water+water": {
+        "thrust": {
+          "spell": "wave",
+          "castTicks": 9
+        },
+        "throw": {
+          "spell": "flood",
+          "castTicks": 12
+        }
+      },
+      "earth+earth": {
+        "thrust": {
+          "spell": "wall-of-stone",
+          "castTicks": 12
+        },
+        "throw": {
+          "spell": "stone-ramp",
+          "castTicks": 12
+        }
+      },
+      "air+air": {
+        "thrust": {
+          "spell": "whirlwind",
+          "castTicks": 9
+        },
+        "throw": {
+          "spell": "dust-storm",
+          "castTicks": 12
+        }
+      },
+      "fire+water": {
+        "thrust": {
+          "spell": "scalding-steam",
+          "castTicks": 9
+        },
+        "throw": {
+          "spell": "geyser",
+          "castTicks": 9
+        }
+      },
+      "fire+earth": {
+        "thrust": {
+          "spell": "forge",
+          "castTicks": 12
+        },
+        "throw": {
+          "spell": "lava-pool",
+          "castTicks": 12
+        }
+      },
+      "fire+air": {
+        "thrust": {
+          "spell": "lightning-bolt",
+          "castTicks": 9
+        },
+        "throw": {
+          "spell": "falling-star",
+          "castTicks": 9
+        }
+      },
+      "water+earth": {
+        "thrust": {
+          "spell": "mud",
+          "castTicks": 9
+        },
+        "throw": {
+          "spell": "plant-growth",
+          "castTicks": 9
+        }
+      },
+      "water+air": {
+        "thrust": {
+          "spell": "frost",
+          "castTicks": 6
+        },
+        "throw": {
+          "spell": "rain-cloud",
+          "castTicks": 12
+        }
+      },
+      "earth+air": {
+        "thrust": {
+          "spell": "sand-blast",
+          "castTicks": 9
+        },
+        "throw": {
+          "spell": "rolling-boulder",
+          "castTicks": 9
+        }
+      }
+    },
+    "kit": [
+      {
+        "name": "Hasten Time",
+        "spell": "hasten-time",
+        "castTicks": 12
+      },
+      {
+        "name": "Shapeshift",
+        "spell": "shapeshift",
+        "castTicks": 12
+      },
+      {
+        "name": "Light",
+        "spell": "light",
+        "castTicks": 6
+      },
+      {
+        "name": "Control Weather",
+        "spell": "control-weather",
+        "castTicks": 18
+      }
+    ]
+  },
+  "peerPercent": [
+    100,
+    210,
+    300,
+    380
+  ],
+  "damagePerWave": 4,
+  "kindEvery": 2,
+  "adjectivePerWave": 6,
+  "adjectiveMost": 90,
+  "themeFrom": 3,
+  "themePercent": 75,
+  "targetMinutes": 20,
+  "themes": {
+    "cinders": {
+      "name": "Cinders",
+      "adjectives": [
+        "molten",
+        "burning"
+      ]
+    },
+    "hoarfrost": {
+      "name": "Hoarfrost",
+      "adjectives": [
+        "frosted"
+      ]
+    },
+    "gale": {
+      "name": "Gale",
+      "adjectives": [
+        "gaunt",
+        "armoured"
+      ]
+    },
+    "roots": {
+      "name": "Roots",
+      "adjectives": [
+        "rooted"
+      ]
+    }
+  },
+  "boss": {
+    "every": 5,
+    "adjective": "dread",
+    "hpPerWave": 12,
+    "peerHealth": [
+      100,
+      190,
+      270,
+      340
+    ]
+  },
+  "moments": {
+    "first-wave": {
+      "name": "The first wave",
+      "wave": 1,
+      "left": "water",
+      "right": "fire"
+    },
+    "first-adjectives": {
+      "name": "The first adjectives",
+      "wave": 2,
+      "left": "water",
+      "right": "fire"
+    },
+    "cinders-right": {
+      "name": "Cinders, water in hand",
+      "wave": 6,
+      "left": "water",
+      "right": "water",
+      "theme": "cinders"
+    },
+    "cinders-wrong": {
+      "name": "Cinders, fire in hand",
+      "wave": 6,
+      "left": "fire",
+      "right": "fire",
+      "theme": "cinders"
+    },
+    "hoarfrost-right": {
+      "name": "Hoarfrost, fire in hand",
+      "wave": 6,
+      "left": "fire",
+      "right": "fire",
+      "theme": "hoarfrost"
+    },
+    "hoarfrost-wrong": {
+      "name": "Hoarfrost, water in hand",
+      "wave": 6,
+      "left": "water",
+      "right": "water",
+      "theme": "hoarfrost"
+    },
+    "gale-right": {
+      "name": "Gale, air in hand",
+      "wave": 6,
+      "left": "air",
+      "right": "air",
+      "theme": "gale"
+    },
+    "gale-wrong": {
+      "name": "Gale, earth in hand",
+      "wave": 6,
+      "left": "earth",
+      "right": "earth",
+      "theme": "gale"
+    },
+    "roots-right": {
+      "name": "Roots, earth in hand",
+      "wave": 6,
+      "left": "earth",
+      "right": "earth",
+      "theme": "roots"
+    },
+    "roots-wrong": {
+      "name": "Roots, air in hand",
+      "wave": 6,
+      "left": "air",
+      "right": "air",
+      "theme": "roots"
+    },
+    "first-boss": {
+      "name": "The first boss",
+      "wave": 5,
+      "left": "water",
+      "right": "fire"
+    },
+    "late-wave": {
+      "name": "A late wave, the keep hurt",
+      "wave": 14,
+      "left": "air",
+      "right": "fire",
+      "health": 60,
+      "broken": 20
+    }
+  },
+  "offRoadCost": 40,
+  "routeEvery": 6,
+  "flying": {
+    "lands": [
+      "frozen",
+      "wet"
+    ]
+  },
+  "barricades": {
+    "from": 2,
+    "first": 1,
+    "perWaves": 3,
+    "most": 4,
+    "radius": 2,
+    "terrain": "barricade"
+  },
+  "rubble": "rubble",
+  "raiders": {
+    "cliff-stalker": {
+      "name": "Cliff stalker",
+      "material": "chitin",
+      "hp": 8,
+      "str": 13,
+      "ac": 13,
+      "mass": 1,
+      "components": [
+        "creature"
+      ],
+      "raider": {
+        "route": "climb",
+        "ticksPerSquare": 5,
+        "attack": {
+          "dice": [
+            1,
+            6
+          ],
+          "every": 12
+        },
+        "weak": [
+          "thunder"
+        ]
+      }
+    },
+    "ash-wing": {
+      "name": "Ash wing",
+      "material": "bone",
+      "hp": 5,
+      "str": 11,
+      "ac": 13,
+      "mass": 1,
+      "components": [
+        "creature"
+      ],
+      "raider": {
+        "route": "fly",
+        "ticksPerSquare": 4,
+        "attack": {
+          "dice": [
+            1,
+            4
+          ],
+          "every": 12
+        },
+        "weak": [
+          "lightning",
+          "cold"
+        ]
+      }
+    }
+  },
+  "offer": 3,
+  "pointsPerWave": 1,
+  "upgrades": {
+    "quick-hands": {
+      "name": "Quick hands",
+      "cooldown": -15
+    },
+    "calm-hands": {
+      "name": "Calm hands",
+      "bothCooldown": -25
+    },
+    "fire-focus": {
+      "name": "Fire focus",
+      "holds": "fire",
+      "damage": 30
+    },
+    "water-focus": {
+      "name": "Water focus",
+      "holds": "water",
+      "damage": 30
+    },
+    "air-focus": {
+      "name": "Air focus",
+      "holds": "air",
+      "damage": 30
+    },
+    "earth-focus": {
+      "name": "Earth focus",
+      "holds": "earth",
+      "cooldown": -30
+    },
+    "hard-thrust": {
+      "name": "Hard thrust",
+      "gesture": "thrust",
+      "damage": 20
+    },
+    "hard-throw": {
+      "name": "Hard throw",
+      "gesture": "throw",
+      "damage": 20
+    },
+    "wide-sweep": {
+      "name": "Wide sweep",
+      "gesture": "sweep",
+      "damage": 25
+    },
+    "long-arm": {
+      "name": "Long arm",
+      "gesture": "throw",
+      "range": 25
+    },
+    "close-reach": {
+      "name": "Close reach",
+      "gesture": "thrust",
+      "range": 30
+    },
+    "tough": {
+      "name": "Tough",
+      "health": 6
+    }
+  },
+  "unlocks": [
+    {
+      "id": "throw",
+      "name": "Throw",
+      "cost": 3,
+      "gesture": "throw"
+    },
+    {
+      "id": "sweep",
+      "name": "Sweep",
+      "cost": 5,
+      "gesture": "sweep"
+    },
+    {
+      "id": "second-hand",
+      "name": "The second hand",
+      "cost": 8,
+      "hand": "left"
+    },
+    {
+      "id": "water",
+      "name": "Water",
+      "cost": 6,
+      "element": "water"
+    },
+    {
+      "id": "earth",
+      "name": "Earth",
+      "cost": 6,
+      "element": "earth"
+    },
+    {
+      "id": "air",
+      "name": "Air",
+      "cost": 6,
+      "element": "air"
+    },
+    {
+      "id": "light",
+      "name": "Light",
+      "cost": 4,
+      "kit": "light"
+    },
+    {
+      "id": "hasten-time",
+      "name": "Hasten Time",
+      "cost": 5,
+      "kit": "hasten-time"
+    },
+    {
+      "id": "shapeshift",
+      "name": "Shapeshift",
+      "cost": 6,
+      "kit": "shapeshift"
+    },
+    {
+      "id": "control-weather",
+      "name": "Control Weather",
+      "cost": 8,
+      "kit": "control-weather"
+    }
+  ]
+}

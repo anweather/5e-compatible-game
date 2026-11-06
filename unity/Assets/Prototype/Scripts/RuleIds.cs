@@ -166,4 +166,6 @@ public static class RaiderIds
     public const string BoneHound = "bone-hound";
     public const string AshCrab = "ash-crab";
     public const string GiantSpider = "giant-spider";
+    public const string CliffStalker = "cliff-stalker";
+    public const string AshWing = "ash-wing";
 }

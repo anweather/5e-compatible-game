@@ -2,7 +2,7 @@ The eleventh alpha of Spell Chemistry Valley, a 5E-compatible spell-chemistry sa
 
 **Saved a mod? Copy it out before you update.** Mods now live in your own data folder, safe from later updates, but this one update can still lose mods saved inside the old install. Copy them somewhere safe first.
 
-**Windows only again.** The Mac stays on 0.1.7 for now; a Mac on 0.1.7 and a PC on 0.1.11 can't play online together.
+**Windows only again.** The Mac stays on 0.1.7 for now, and there's no Linux build of this version. Only players on the same version can play online together.
 
 ## Install (new players)
 

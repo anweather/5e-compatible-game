@@ -59,11 +59,15 @@ reset_epoch() { # "8:20am (America/Phoenix)", "6:30am (UTC)" or "Nov 3, 8pm": th
     const s = process.argv[1], m = s.match(/(\d{1,2})(?::(\d\d))?\s*(am|pm)/i); if (!m) process.exit(1);
     const tz = (s.match(/\(([^)]+)\)/) ?? [])[1] ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
     const h = (+m[1] % 12) + (/pm/i.test(m[3]) ? 12 : 0), min = +(m[2] ?? 0), now = Date.now();
-    // The zone offset now, from how the zone writes this instant.
-    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(now).map(x => [x.type, x.value]));
-    const off = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(now / 1000) * 1000;
-    let t = Date.UTC(+p.year, +p.month - 1, +p.day, h, min) - off;
-    if (t < now - 3600e3) t += 86400e3;
+    // The zone offset at an instant, from how the zone writes it.
+    const parts = at => Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(at).map(x => [x.type, x.value]));
+    const offset = at => { const p = parts(at); return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(at / 1000) * 1000; };
+    const p = parts(now), dated = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/i);
+    const month = dated ? "janfebmaraprmayjunjulaugsepoctnovdec".indexOf(dated[1].toLowerCase()) / 3 : +p.month - 1, day = dated ? +dated[2] : +p.day;
+    const at = year => { const wall = Date.UTC(year, month, day, h, min); return wall - offset(wall); };
+    let t = at(+p.year);
+    // A date names one day: only a date months back means next year (a December notice for January). A stale date stays past, so it never holds an account out.
+    if (dated) { if (t < now - 182 * 86400e3) t = at(+p.year + 1); } else if (t < now - 3600e3) t += 86400e3;
     console.log(Math.floor(t / 1000));' "$1" 2>/dev/null)" || { echo $(( $(date +%s) + 18000 )); return; }
   (( t > $(date +%s) - 3600 )) || t=$(( t + 86400 ))
   echo "$t"

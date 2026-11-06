@@ -28,10 +28,16 @@ using Unity.Collections;
 // replays this history, or this history up to a tick and every stand after it (the live batches that
 // reach it while it asks), fires the same casts at the same ticks and checks the same checksums.
 // The history still grows by about a stand a firing and one a checksum while players walk.
+//
+// The Hold reads stands too: every stand of a run (a raider's blow goes by where a wizard stood), and every stand on its
+// plate or in its attuning room and the one that leaves it (a run starts by how long someone stood there, and a hand is
+// attuned only there), so these are all kept, as a strike keeps what's up to it.
 public sealed class StandKeeper
 {
     readonly System.Func<bool> stepsOn;
     readonly System.Func<int, int, bool> inBounds;
+    readonly System.Func<int, int, bool> keeps;
+    readonly HashSet<FixedString32Bytes> leaving = new();
 
     // The last tick with a strike (or a leaving) in the history: stands up to it are kept.
     int lastStrikeTick;
@@ -45,10 +51,12 @@ public sealed class StandKeeper
 
     /// <param name="stepsOn">Whether a step trigger is in force, or may be by the time a stand stamped now runs.</param>
     /// <param name="inBounds">Whether a cell is in the world: the core ignores a stand off it.</param>
-    public StandKeeper(System.Func<bool> stepsOn, System.Func<int, int, bool> inBounds)
+    /// <param name="keeps">Whether a stand on this cell, now, must stay in the history whatever else is true; null for none.</param>
+    public StandKeeper(System.Func<bool> stepsOn, System.Func<int, int, bool> inBounds, System.Func<int, int, bool> keeps = null)
     {
         this.stepsOn = stepsOn;
         this.inBounds = inBounds;
+        this.keeps = keeps;
     }
 
     /// <summary>Host: its world has run <paramref name="tick"/>, with this many trigger firings since it began (World.TriggerFirings).</summary>
@@ -68,6 +76,9 @@ public sealed class StandKeeper
             history.Add(command);
             return;
         }
+        bool keep = keeps != null && keeps(command.X, command.Y);
+        if (leaving.Remove(command.Player) || keep) lastStrikeTick = command.Tick;
+        if (keep) leaving.Add(command.Player);
         bool steps = stepsOn();
         if (steps != bySteps)
         {
@@ -88,6 +99,7 @@ public sealed class StandKeeper
         lastStrikeTick = switchedAt = lastStand = ranTo = firings = 0;
         bySteps = false;
         fired.Clear();
+        leaving.Clear();
     }
 
     // One pass over a player's stands that the core takes, oldest first, dropping each that the rules above allow.

@@ -34,7 +34,7 @@ namespace Chem.Tests
             Rules(Path.Combine(packed, "rules"));
             var folders = GameFolders.ForGame(packed, project, editor: true, data);
             Assert.That(folders.Rules, Is.EqualTo(Path.Combine(repo, "rules")), "the Editor never reads a pack");
-            Assert.That(folders.World, Is.EqualTo(Path.Combine(repo, "world")));
+            Assert.That(folders.World, Is.EqualTo(Path.Combine(repo, "world", "maps", "valley")));
             Assert.That(folders.ShippedMods, Is.EqualTo(Path.Combine(repo, "rules", "mods")));
         }
 
@@ -45,7 +45,7 @@ namespace Chem.Tests
             Rules(Path.Combine(packed, "rules"));
             var folders = GameFolders.ForGame(packed, project, editor: false, data);
             Assert.That(folders.Rules, Is.EqualTo(Path.Combine(packed, "rules")));
-            Assert.That(folders.World, Is.EqualTo(Path.Combine(packed, "world")));
+            Assert.That(folders.World, Is.EqualTo(Path.Combine(packed, "world", "maps", "valley")));
         }
 
         [Test]
@@ -95,7 +95,7 @@ namespace Chem.Tests
             Assert.That(File.Exists(Path.Combine(ChemistryTests.WorldDir(), WorldThings.FileName)));
             Assert.That(File.Exists(Path.Combine(ChemistryTests.Folders.Repo, "docs", "GLOSSARY.md")), "the repo's root");
             Assert.That(GameFolders.InRepo(project).Repo, Is.EqualTo(repo));
-            Assert.That(new GameFolders(Path.Combine(repo, "rules") + Path.DirectorySeparatorChar).World, Is.EqualTo(Path.Combine(repo, "world")), "a trailing slash");
+            Assert.That(new GameFolders(Path.Combine(repo, "rules") + Path.DirectorySeparatorChar).World, Is.EqualTo(Path.Combine(repo, "world", "maps", "valley")), "a trailing slash");
             Assert.Throws<DirectoryNotFoundException>(() => GameFolders.InRepo(packed));
         }
     }

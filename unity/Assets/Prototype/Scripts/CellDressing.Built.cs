@@ -119,9 +119,9 @@ public sealed partial class CellDressing
 
     // A rock model stood on <paramref name="foot"/>, turned about the vertical, scaled to about
     // <paramref name="width"/> across and <paramref name="height"/> high.
-    static void Rock(Transform root, GameObject prefab, Vector3 foot, float width, float height, System.Random rng)
+    internal static GameObject Rock(Transform root, GameObject prefab, Vector3 foot, float width, float height, System.Random rng)
     {
-        if (prefab == null) return;
+        if (prefab == null) return null;
         var b = BoundsOf(prefab);
         var rock = Object.Instantiate(prefab, root);
         var turn = Quaternion.Euler(0f, rng.Next(360), 0f);
@@ -129,6 +129,7 @@ public sealed partial class CellDressing
         var fit = new Vector3(width / Mathf.Max(0.01f, b.size.x), height / Mathf.Max(0.01f, b.size.y), width / Mathf.Max(0.01f, b.size.z));
         rock.transform.localScale = Vector3.Scale(prefab.transform.localScale, fit);
         rock.transform.SetPositionAndRotation(foot - turn * Vector3.Scale(new Vector3(b.center.x, b.min.y, b.center.z), fit), turn);
+        return rock;
     }
 
     static Bounds BoundsOf(GameObject prefab)

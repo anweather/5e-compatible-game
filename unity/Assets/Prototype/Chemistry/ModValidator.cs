@@ -54,11 +54,14 @@ namespace Chem
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
 
         /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
-        public static ModBudgets Load(string rulesDir)
+        public static ModBudgets Load(string rulesDir) => Load(new GameFolders(rulesDir));
+
+        /// <summary>The same, with the places, buildings and things of the folders' map.</summary>
+        public static ModBudgets Load(GameFolders folders)
         {
-            var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
-            budgets.Looks = LookFamilies.Load(rulesDir);
-            string worldDir = new GameFolders(rulesDir).World;
+            var budgets = Parse(File.ReadAllText(Path.Combine(folders.Rules, "budgets.json")));
+            budgets.Looks = LookFamilies.Load(folders.Rules);
+            string worldDir = folders.World;
             budgets.Places = WorldPlaces.Load(worldDir);
             budgets.Buildings = WorldBuildings.Load(worldDir);
             if (Directory.Exists(worldDir)) budgets.Things = WorldThings.Load(worldDir);
@@ -515,6 +518,7 @@ namespace Chem
             void TriggerRowBudget(JObject composed, string id, double maxActions, double maxLevel)
             {
                 var actions = (composed[Rules.TriggersKey]?[id]?["do"] as JArray)?.OfType<JObject>().ToList() ?? new List<JObject>();
+                if (Text(composed[Rules.TriggersKey]?[id]?["on"]) == "called") maxActions = budgets.Number("triggers.maxActs", 8);
                 if (actions.Count > maxActions) Add(ModCheck.Budget, $"Trigger {id} does {actions.Count} things; a trigger does at most {Num(maxActions)}.");
                 foreach (var a in actions)
                 {
@@ -634,7 +638,7 @@ namespace Chem
                     Cap("joins", (p.row["joins"] as JObject)?.Count ?? 0, "maxJoins");
                     Cap("walls", (p.row["walls"] as JObject)?.Count ?? 0, "maxWalls");
                     Cap("openings", (p.row["walls"] as JObject)?.PropertyValues().Sum(w => (w["openings"] as JArray)?.Count ?? 0) ?? 0, "maxOpenings");
-                    Cap("parts", (p.row["parts"] as JArray)?.Count ?? 0, "maxParts");
+                    Cap("parts", ((p.row["parts"] as JArray)?.Count ?? 0) + ((p.row["towers"] as JObject)?.Count ?? 0) + ((p.row["roads"] as JObject)?.Count ?? 0), "maxParts");
                     Cap("storeys", p.row["storeys"] != null && IsWhole(p.row["storeys"]) ? (int)p.row["storeys"] : 1, "maxStoreys");
                     SiteSize(p.id, p.row);
                 }
