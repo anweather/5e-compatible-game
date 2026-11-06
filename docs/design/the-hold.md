@@ -144,6 +144,8 @@ Spells stay unique per element and combination, never one spell re-skinned.
 - **Wave themes:** a wave leans on one or two adjectives, so no one hand set wins everything.
 - **Warning:** between waves the castle shows what's next, in time to run to the keep and attune.
 - **More adjectives and a boss every so often,** from the same rows. Raiders that fly or swim are a stretch.
+- **Playtest moments:** canned setups as rows (a wave, a theme, hand sets, the keep's health) to jump straight to and play, in dev builds and the Editor (Andrew, 2026-11-05).
+- **Run length:** a good run lasts about 20 minutes (Andrew, 2026-11-05), a dial.
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no
   view). **Done when:** a good player's run lasts about the length Andrew picks, and a wrong hand set is felt.
 
