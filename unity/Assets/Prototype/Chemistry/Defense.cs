@@ -23,6 +23,8 @@ namespace Chem
         /// <summary>Its blow in the Hold (entities.json raider.attack): [n, sides] damage, and ticks until its next; empty for none.</summary>
         public int[] AttackDice = Array.Empty<int>();
         public int AttackEvery = 12;
+        /// <summary>How it comes in the Hold (entities.json raider.route): by the road, unless it's "climb" or "fly".</summary>
+        public string Route;
     }
 
     /// <summary>sim.json's "defense": the waves, the lives and how raiders find their way.</summary>
@@ -121,6 +123,7 @@ namespace Chem
                     Resist = Strings(o["resist"]),
                     AttackDice = (o["attack"]?["dice"] as JArray)?.Select(v => (int)v).ToArray() ?? Array.Empty<int>(),
                     AttackEvery = Math.Max(1, Int(o["attack"]?["every"]) ?? 12),
+                    Route = Str(o["route"]),
                 }
                 : null;
 

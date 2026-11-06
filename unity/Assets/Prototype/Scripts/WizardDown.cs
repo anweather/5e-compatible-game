@@ -121,6 +121,13 @@ public class WizardDown : MonoBehaviour
         if (input != null) input.enabled = true;
     }
 
+    /// <summary>Up at the castle, as after going down in a run (HoldMoments).</summary>
+    public void ToTheCastle()
+    {
+        var grid = caster.grid;
+        if (Mine && grid.World.HoldRespawn() is { } rise) ToSpot(Above(grid, new Vector2Int(rise.x, rise.y)));
+    }
+
     void BackAtTheYard()
     {
         if (!Mine) return;

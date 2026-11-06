@@ -851,6 +851,7 @@ namespace Chem
             r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
             r.Sim.Hold = HoldParams.Parse(doc["hold"]);
+            foreach (var p in (doc["hold"]?["raiders"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()) r.holdKinds[p.Name] = r.ParseEntity(p.Name, (JObject)p.Value);
             r.ParseLiquids(doc);
             ParseGroups(r, (JObject)doc["groups"]);
             ParseCombos(r, (JObject)doc["combos"]);

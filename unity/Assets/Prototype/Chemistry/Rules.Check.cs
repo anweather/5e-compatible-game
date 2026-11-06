@@ -21,6 +21,7 @@ namespace Chem
             check.Groups();
             check.Combos();
             check.Hands();
+            check.HoldRows();
             check.Numbers();
             check.Lapses();
             check.Liquids();

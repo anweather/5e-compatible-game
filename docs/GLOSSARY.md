@@ -544,6 +544,15 @@ that long, and doesn't march.
 **Adjective**
 : A row that changes a raider in the Hold: Armoured, Burning, Soaked. Its numbers, weaknesses, and a status or cover it leaves.
 
+**Boss**
+: A raider a wave brings every so many waves: a kind with the boss adjective's bigger row, its own name and health bar (`rules/hold.json` `boss`).
+
+**Wave theme**
+: A row of `rules/hold.json` `themes` that leans a Hold wave on one or two adjectives, so no one hand set wins everything. Not a world's **theme**.
+
+**Wave warning**
+: What the core says of the next Hold wave while it waits: its number, theme, boss and size, long enough ahead to reach the keep and attune. Not the dragon's **warning**.
+
 **Barricade**
 : A small wooden block on the Hold's road, appearing at the start of a wave. Raiders break through it, and it burns.
 

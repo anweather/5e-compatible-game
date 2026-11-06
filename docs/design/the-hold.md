@@ -165,6 +165,33 @@ joiner's history (`StandKeeper`), since attuning reads them.
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no
   view). **Done when:** a good player's run lasts about the length Andrew picks, and a wrong hand set is felt.
 
+**As built.** `World.Hold.cs` runs the rows of `rules/hold.json`. A wave comes from the rules and the world's seed alone (`HoldPlan`, `WaveRoll`), so the same seed gives the same waves however a run got there, and a moment's wave is the one play reaches. New kinds and adjectives are rows of `rules/hold.json`, not `entities.json`, which the frozen sandbox's hash still matches: `cliff-stalker` climbs, `ash-wing` flies, and Frosted, Molten, Rooted and Gaunt join the three adjectives.
+
+**Routes.** A raider's row says how it comes (`raider.route`). A road raider's way costs `offRoadCost` a cell off the road (the row's road the map's `hold.json` names); `climb` is the straight way raiders always had; `fly` goes straight at the heart over everything, and reaches a wizard on the walls. A flyer is on its cell like any raider, so anything that lands on the cell hits it, covers and burning ground too. Frozen or wet (`flying.lands`) brings it down for good, and it walks on from there. Raiders on different ways who meet head on swap cells.
+
+**Dials,** in `rules/hold.json`. Turn the first three first.
+
+| Dial | Start | If you raise it |
+|---|---|---|
+| `health` | 360 | The keep takes more: longer runs, more forgiving of a leak |
+| `growth` | 2 | Waves get big sooner: shorter runs, more crowd spells |
+| `damagePerWave` | 4 | Late raiders hit harder (%, a wave): a sharper end |
+| `hpPerWave` | 2 | Late raiders take longer to kill |
+| `first` | 4 | A busier opening |
+| `peerPercent` | 100, 210, 300, 380 | A wave for more wizards is bigger |
+| `kindEvery` | 2 | New kinds come more slowly |
+| `adjectiveFrom`, `adjectivePercent`, `adjectivePerWave`, `adjectiveMost` | 2, 34, 6, 90 | More raiders with an adjective, sooner: your hands matter more |
+| `themeFrom`, `themePercent` | 3, 75 | Themes bite harder or sooner: a wrong hand set hurts more |
+| `boss.every`, `boss.hpPerWave` | 5, 12 | Bosses rarer, or tougher late on (and the `dread` row: hp 700, damage 200, in percent) |
+| `warmup`, `betweenWaves` | 60, 150 | More time before wave 1, and in the warning: longer to reach the keep and attune, and a longer run |
+| `spawnEvery` | 9 | Raiders come in a thinner stream |
+| `offRoadCost` | 6 | Road raiders stray less |
+| `barricades.from`, `first`, `perWaves`, `most`, `radius` | 2, 1, 3, 4, 2 | More barricades: road raiders are held up longer, and fire has something to clear |
+| `strength` | by terrain | Walls hold for more blows. A blocking terrain with no row can't be battered, so a wizard's wall needs one or it stops a run for good |
+| `targetMinutes` | 20 | What the curve aims at; nothing in the game reads it |
+
+Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list is F8 in dev builds and the Editor, going in is a `ComboCommand`, and `MOMENT` names one for the probe. The curve is `core/Hold.Runner`: `dotnet run --project core/Hold.Runner -c Release -- --seeds 3` or `-- --moment cinders-right,cinders-wrong`. Its wizard stands on the wall by the heart and keeps casting what hurts, and never moves or plays chemistry, so it's a stand-in: water and earth look worse in it than they should.
+
 ### 5. Progress
 
 Progress belongs to the player, not the world (J-038).
