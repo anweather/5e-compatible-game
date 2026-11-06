@@ -81,6 +81,8 @@ namespace Chem
         Release,
         /// <summary>During a run: a hand's button, <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> its bumper rather than its trigger.</summary>
         Hand,
+        /// <summary>Straight into the moment <see cref="ComboCommand.Element"/> (dev builds and the Editor offer it).</summary>
+        Moment,
         /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>, or with none, nothing.</summary>
         Attune,
     }
@@ -110,6 +112,7 @@ namespace Chem
         public static ComboCommand CastSelected(string player) => new ComboCommand(player, ComboCommandKind.CastSelected);
         public static ComboCommand Release(string player) => new ComboCommand(player, ComboCommandKind.Release);
         public static ComboCommand Hand(string player, int hand, bool bumper = false) => new ComboCommand(player, ComboCommandKind.Hand, null, hand, bumper);
+        public static ComboCommand Moment(string player, string moment) => new ComboCommand(player, ComboCommandKind.Moment, moment);
         public static ComboCommand Attune(string player, int hand, string element) => new ComboCommand(player, ComboCommandKind.Attune, element, hand);
     }
 

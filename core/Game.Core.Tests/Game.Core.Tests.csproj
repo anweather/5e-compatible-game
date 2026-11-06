@@ -25,6 +25,7 @@
     <ProjectReference Include="../Playtest.Runner/Playtest.Runner.csproj" />
     <ProjectReference Include="../Rules.Mcp/Rules.Mcp.csproj" />
     <ProjectReference Include="../Chat.Bench/Chat.Bench.csproj" />
+    <ProjectReference Include="../Hold.Runner/Hold.Runner.csproj" />
   </ItemGroup>
 
   <ItemGroup>

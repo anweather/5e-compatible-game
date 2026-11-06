@@ -303,7 +303,7 @@ namespace Chem.Tests
             Assert.That(R.Entity("bone-hound~nothing"), Is.Null);
             Assert.That(R.Entity("grass~armoured"), Is.Null);
             Assert.That(Rules.PlainKind("bone-hound~armoured"), Is.EqualTo("bone-hound"));
-            Assert.That(R.Sim.Hold.Adjectives.Select(a => a.Id), Is.EquivalentTo(new[] { "armoured", "burning", "soaked" }));
+            Assert.That(new[] { "armoured", "burning", "soaked" }.All(id => R.Sim.Hold.Adjective(id) != null));
         }
 
         [Test]

@@ -6,5 +6,7 @@
   "boulder": { "name": "Boulder", "material": "rock", "hp": 999, "mass": 3, "components": ["heavy"] },
   "bone-hound":   { "name": "Bone hound", "material": "bone", "hp": 6, "str": 12, "ac": 12, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 3, "attack": { "dice": [1, 4], "every": 9 }, "weak": ["fire"] } },
   "ash-crab":     { "name": "Ash crab", "material": "chitin", "hp": 9, "str": 14, "ac": 14, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 4, "attack": { "dice": [1, 6], "every": 12 }, "weak": ["cold", "lightning"], "resist": ["fire"] } },
+  "cliff-stalker": { "name": "Cliff stalker", "material": "chitin", "hp": 8, "str": 13, "ac": 13, "mass": 1, "components": ["creature"], "raider": { "route": "climb", "ticksPerSquare": 5, "attack": { "dice": [1, 6], "every": 12 }, "weak": ["thunder"] } },
+  "ash-wing": { "name": "Ash wing", "material": "bone", "hp": 5, "str": 11, "ac": 13, "mass": 1, "components": ["creature"], "raider": { "route": "fly", "ticksPerSquare": 4, "attack": { "dice": [1, 4], "every": 12 }, "weak": ["lightning", "cold"] } },
   "giant-spider": { "name": "Giant spider", "material": "chitin", "hp": 12, "str": 14, "ac": 14, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 5, "attack": { "dice": [1, 8], "every": 15 }, "weak": ["lightning"] } }
 }
