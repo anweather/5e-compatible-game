@@ -1,0 +1,37 @@
+using System;
+using System.Collections;
+using System.Linq;
+using Chem;
+using UnityEngine;
+
+// The probe's moments scenario (docs/design/the-hold.md, phase 4): each moment gone into by name, through what the list uses.
+// MOMENT in the environment plays just that one. Nothing here is in the game.
+public class MomentsProbe : ProbeScenario
+{
+    const float MostWait = 20f;
+
+    protected override IEnumerator Run()
+    {
+        var world = grid.World;
+        var moments = grid.GetComponent<HoldMoments>();
+        Check("offered_here", moments != null && HoldMoments.Offered);
+        if (moments == null || world.HoldSite == null) yield break;
+        caster.enabled = true;
+        string only = Environment.GetEnvironmentVariable("MOMENT");
+        var site = world.HoldSite;
+        var rise = grid.CellCenter(site.Rise.x, site.Rise.y);
+        foreach (var m in world.Rules.Sim.Hold.Moments.Where(m => only == null || m.Id == only))
+        {
+            Check(m.Id, moments.Enter(m.Id));
+            for (float t = 0f; t < MostWait && world.Hold?.Moment != m.Id; t += Time.deltaTime) yield return null;
+            yield return Wait(0.5f);
+            string me = caster.CastPlayer;
+            Check(m.Id + "_wave", world.Hold?.Wave == m.Wave, $"{world.Hold?.Wave}");
+            Check(m.Id + "_hands", world.HandsOf(me).Holds.SequenceEqual(m.Holds), string.Join("+", world.HandsOf(me).Holds));
+            Check(m.Id + "_at_the_castle", Vector3.Distance(wizard.transform.position, rise) < 6f, grid.CellAt(wizard.transform.position).ToString());
+            for (float t = 0f; t < MostWait && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
+            Check(m.Id + "_raiders_come", world.Raiders.Count > 0);
+        }
+        caster.enabled = false;
+    }
+}

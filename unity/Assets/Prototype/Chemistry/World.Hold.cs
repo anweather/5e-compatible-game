@@ -340,7 +340,9 @@ namespace Chem
                 r.Status[LandedStatus] = 2;
                 AddLog($"The {Rules.Entity(r.Kind).Name.ToLowerInvariant()} comes down", LogKind.Notable);
             }
-            string keeps = Rules.AdjectiveOf(r.Kind)?.Keeps;
+            var adjective = Rules.AdjectiveOf(r.Kind);
+            string keeps = adjective?.Keeps;
+            foreach (var status in adjective?.Never ?? Array.Empty<string>()) r.Status.Remove(status);
             if (keeps != null) r.Status[keeps] = Math.Max(r.StatusOf(keeps), 2);
         }
 
@@ -400,13 +402,25 @@ namespace Chem
                 Batter(p, r, def, nx, ny, to);
                 return;
             }
-            if (RaiderAt(nx, ny) != null) return; // wait for the one ahead
+            var ahead = RaiderAt(nx, ny);
+            if (ahead != null && !Flying(ahead) && !Swap(p, r, ahead)) return; // wait for the one ahead
             bool rough = Rough(Rules.Sim.Defense, At(r.X, r.Y), to);
             r.X = nx;
             r.Y = ny;
             r.Wait = PaceOf(def) - 1 + (rough ? Rules.Sim.Defense.RoughTicks : 0);
             Thorns(r, to);
             if (r.Alive && Rules.AdjectiveOf(r.Kind)?.Lights == true) Apply(r.X, r.Y, "fire", 1, -1, false);
+        }
+
+        // Two raiders on different ways can meet head on, each wanting the other's cell: they pass. True if this one may step.
+        bool Swap(HoldParams p, Raider r, Raider ahead)
+        {
+            var route = Rules.Entity(ahead.Kind).Raider?.Route;
+            int dir = HoldStep(p, ahead.X, ahead.Y, route != ClimbRoute && route != FlyRoute);
+            if (dir < 0 || ahead.X + DirX(dir) != r.X || ahead.Y + DirY(dir) != r.Y) return false;
+            ahead.X = r.X;
+            ahead.Y = r.Y;
+            return true;
         }
 
         void Batter(HoldParams p, Raider r, EntityDef def, int x, int y, Cell c)
@@ -423,12 +437,12 @@ namespace Chem
             if (blows < Blows(p, c)) return;
             battered.Remove(i);
             string was = TerrainOf(c).Name.ToLowerInvariant();
-            if (BreakWall(x, y, c)) AddLog($"The {was} gives way", LogKind.Notable);
+            if (BreakWall(x, y, c) || SetTerrainTo(x, y, c, p.Rubble)) AddLog($"The {was} gives way", LogKind.Notable);
         }
 
         // How many blows a blocking cell takes; 0 for anything else, or one that can't be battered.
         int Blows(HoldParams p, Cell c) =>
-            HasTag(c, "blocking") && TerrainOf(c).BreaksTo != null && p.Strength.TryGetValue(c.T, out int blows) ? blows : 0;
+            HasTag(c, "blocking") && p.Strength.TryGetValue(c.T, out int blows) ? blows : 0;
 
         // ---------- the end ----------
 
@@ -471,6 +485,13 @@ namespace Chem
             if (IsRaisedWall(to)) return d.WallCost;
             int cost = Rough(d, from, to) ? d.RoughCost : 1;
             return road && !holdRoad.Contains(toIdx) ? cost * p.OffRoadCost : cost;
+        }
+
+        /// <summary>The cell a raider here steps to next, by road or straight; null if it has no way on.</summary>
+        public (int x, int y)? HoldNext(int x, int y, bool road)
+        {
+            int dir = roadWay.Length == 0 ? -1 : HoldStep(Rules.Sim.Hold, x, y, road);
+            return dir < 0 ? ((int, int)?)null : (x + DirX(dir), y + DirY(dir));
         }
 
         void WorkOutWays(HoldParams p)

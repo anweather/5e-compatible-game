@@ -26,6 +26,9 @@ public partial class SpellCaster
         if (controls.ThrowLeft.WasPressedThisFrame()) Send(ComboCommand.Hand(player, HandsDef.Left, bumper: true));
     }
 
+    /// <summary>Goes into a moment, for every peer (HoldMoments).</summary>
+    public bool Moment(string id) => grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
+
     // Round the elements, then nothing, then the elements again.
     void AttuneNext(string player, int hand)
     {

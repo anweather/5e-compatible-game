@@ -1,6 +1,6 @@
 {
-  "about": "The Hold's run (docs/design/the-hold.md, World.Hold.cs); the-hold.md's dials list says what you'd feel turning each. health is the keep's. A wave is first plus growth a wave, peerPercent of that by the wizards at the run's start (the last for more), each raider hpPerWave stronger and its blows damagePerWave percent harder a wave. A spawner's kinds come in one every kindEvery waves. Adjectives come in from adjectiveFrom, on adjectivePercent of a wave's raiders and adjectivePerWave more a wave up to adjectiveMost. From themeFrom a wave has a theme, never the same twice running, and themePercent of its raiders take one of the theme's adjectives. boss.every waves a boss leads the wave: the last kind in with boss.adjective, boss.hpPerWave stronger a wave. warmup is the ticks before wave 1 and betweenWaves the warning before each after it, spawnEvery between raiders. strength is how many blows of a raider a blocking terrain takes (none: it can't be battered); a way through it costs batterCost a blow. An adjective's hp and damage are percents; keeps is a status it never loses, lights sets the ground it crosses burning, boss keeps it out of the common pool. Raiders go by their entity row's route: road (the default) costs offRoadCost a cell off the road, climb goes straight, fly goes straight over everything and comes down for good if flying.lands statuses reach it. routeEvery is the ticks between working the ways out. From barricades.from, first barricades stand on the road at a wave's start, one more every perWaves waves up to most, each of the road's cells within radius of one of the map's joins. A moment is a canned setup for playtesting: wave, theme if forced, what the hands hold, the keep's health, broken percent of the castle's breakable cells. targetMinutes is how long a good run should last, for the curve (core/Hold.Runner).",
-  "health": 100,
+  "about": "The Hold's run (docs/design/the-hold.md, World.Hold.cs); the-hold.md's dials list says what you'd feel turning each. health is the keep's. A wave is first plus growth a wave, peerPercent of that by the wizards at the run's start (the last for more), each raider hpPerWave stronger and its blows damagePerWave percent harder a wave. A spawner's kinds come in one every kindEvery waves. Adjectives come in from adjectiveFrom, on adjectivePercent of a wave's raiders and adjectivePerWave more a wave up to adjectiveMost. From themeFrom a wave has a theme, never the same twice running, and themePercent of its raiders take one of the theme's adjectives. boss.every waves a boss leads the wave: the last kind in with boss.adjective, boss.hpPerWave stronger a wave. warmup is the ticks before wave 1 and betweenWaves the warning before each after it, spawnEvery between raiders. strength is how many blows of a raider a blocking terrain takes (none: it can't be battered, so a wizard's walls need a row or they stop a run for good), and one with no break of its own leaves rubble; a way through it costs batterCost a blow. An adjective's hp and damage are percents; keeps is a status it never loses, never the statuses it can't have, lights sets the ground it crosses burning, boss keeps it out of the common pool. Raiders go by their entity row's route: road (the default) costs offRoadCost a cell off the road, climb goes straight, fly goes straight over everything and comes down for good if flying.lands statuses reach it. routeEvery is the ticks between working the ways out. From barricades.from, first barricades stand on the road at a wave's start, one more every perWaves waves up to most, each of the road's cells within radius of one of the map's joins. A moment is a canned setup for playtesting: wave, theme if forced, what the hands hold, the keep's health, broken percent of the castle's breakable cells. targetMinutes is how long a good run should last, for the curve (core/Hold.Runner).",
+  "health": 300,
   "plateTicks": 6,
   "first": 4,
   "growth": 2,
@@ -19,7 +19,12 @@
     "pane": 1,
     "logwall": 10,
     "stone": 30,
-    "barricade": 3
+    "barricade": 3,
+    "pillar": 6,
+    "ice-wall": 4,
+    "stucco-wall": 12,
+    "worn-logwall": 6,
+    "gate": 8
   },
   "adjectives": {
     "armoured": {
@@ -45,6 +50,15 @@
         1,
         0.45,
         0.1
+      ],
+      "never": [
+        "burning"
+      ],
+      "weak": [
+        "cold"
+      ],
+      "resist": [
+        "fire"
       ]
     },
     "soaked": {
@@ -86,6 +100,9 @@
         0.85,
         0.25,
         0.05
+      ],
+      "never": [
+        "burning"
       ]
     },
     "rooted": {
@@ -351,7 +368,7 @@
     230,
     280
   ],
-  "damagePerWave": 8,
+  "damagePerWave": 5,
   "kindEvery": 2,
   "adjectivePerWave": 6,
   "adjectiveMost": 90,
@@ -490,5 +507,6 @@
     "most": 4,
     "radius": 2,
     "terrain": "barricade"
-  }
+  },
+  "rubble": "rubble"
 }

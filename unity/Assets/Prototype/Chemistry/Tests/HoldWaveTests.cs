@@ -270,6 +270,49 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TwoRaidersMeetingHeadOnPass()
+        {
+            var w = WithRaider("bone-hound");
+            var hound = w.Raiders[0];
+            Ticks(w, 8); // the ways are worked out
+            hound.Wait = 100000;
+            (int x, int y)? meet = null;
+            for (int y = w.HoldSite.Heart.y - 30; y < w.HoldSite.Heart.y + 30 && meet == null; y++)
+                for (int x = w.HoldSite.Heart.x + 12; x < w.HoldSite.Heart.x + 60 && meet == null; x++)
+                    if (w.HoldNext(x, y, true) is { } on && w.HoldNext(on.x, on.y, false) == (x, y)) meet = (x, y);
+            Assert.That(meet, Is.Not.Null, "somewhere the road's way and the straight way run opposite");
+            var (ax, ay) = meet.Value;
+            var (bx, by) = w.HoldNext(ax, ay, true).Value;
+            var road = w.SpawnRaider("bone-hound", ax, ay, 500);
+            var climb = w.SpawnRaider("cliff-stalker", bx, by, 500);
+            Ticks(w, 8);
+            Assert.That((road.X, road.Y), Is.Not.EqualTo((ax, ay)), "the road raider got by");
+            Assert.That((climb.X, climb.Y), Is.Not.EqualTo((bx, by)), "and so did the climber");
+        }
+
+        [TestCase("pillar")]
+        [TestCase("ice-wall")]
+        public void AWizardsWallRoundTheHeartIsBatteredDown(string terrain)
+        {
+            var w = WithRaider("bone-hound");
+            var heart = w.HoldSite.Heart;
+            for (int y = heart.y - 2; y <= heart.y + 2; y++)
+                for (int x = heart.x - 2; x <= heart.x + 2; x++)
+                    if (!(x == heart.x && y == heart.y)) w.Paint(x, y, terrain);
+            Until(w, () => w.Hold.Health < P.Health, "it gets through");
+        }
+
+        [Test]
+        public void AMoltenRaiderWontBurn()
+        {
+            var w = WithRaider("bone-hound~molten");
+            var r = w.Raiders[0];
+            r.Status["burning"] = 20;
+            Ticks(w, 2);
+            Assert.That(r.StatusOf("burning"), Is.Zero);
+        }
+
+        [Test]
         public void AFlyerGoesOverEverything()
         {
             var w = WithRaider("ash-wing");

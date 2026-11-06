@@ -36,6 +36,7 @@ namespace Chem.HoldCurve
                 {
                     var run = new HoldRun(rules, worldDir, (uint)seed, p, set[0], set[1]);
                     run.Play(minutes * 60);
+                    if (run.World.HoldRunning) Console.Error.WriteLine($"still going: {set[0]}+{set[1]} seed {seed} wave {run.LastWave}, by the heart {string.Join(" ", Around(run.World))}; {string.Join(" ", run.World.Raiders.Take(6).Select(r => $"{r.Kind}@{r.X},{r.Y} hp {r.Hp}"))}");
                     return run;
                 }).ToList();
                 double tps = rules.Sim.TicksPerSecond * 60.0;
@@ -43,6 +44,13 @@ namespace Chem.HoldCurve
                 Console.WriteLine(lines[j]);
             });
             return 0;
+        }
+
+        // What stands round the heart: a run that stalls has usually lost its way to it.
+        static IEnumerable<string> Around(World w)
+        {
+            var (x, y) = w.HoldSite.Heart;
+            for (int dy = -2; dy <= 2; dy++) yield return string.Join(",", Enumerable.Range(-2, 5).Select(dx => w.At(x + dx, y + dy).T));
         }
 
         static int Moments(Rules rules, string worldDir, string[] names, int seeds, int minutes)

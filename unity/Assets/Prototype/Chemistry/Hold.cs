@@ -22,6 +22,8 @@ namespace Chem
         /// <summary>It's a boss's: never on a raider by chance.</summary>
         public bool Boss;
         public IReadOnlyList<string> Weak = Array.Empty<string>(), Resist = Array.Empty<string>();
+        /// <summary>Statuses it can't have: a molten raider doesn't catch fire.</summary>
+        public IReadOnlyList<string> Never = Array.Empty<string>();
         public double[] Color = Array.Empty<double>();
     }
 
@@ -77,6 +79,8 @@ namespace Chem
         public IReadOnlyList<string> FlyerLands = Array.Empty<string>();
         /// <summary>From this wave: the first barricades, one more every BarricadePerWaves, up to BarricadeMost; each the road's cells within BarricadeRadius.</summary>
         public string BarricadeTerrain;
+        /// <summary>What a battered terrain with no break of its own leaves.</summary>
+        public string Rubble = "rubble";
         public int BarricadeFrom, BarricadeFirst, BarricadePerWaves = 1, BarricadeMost, BarricadeRadius;
         /// <summary>A wave's size in percent, by the wizards at the run's start: the first is one wizard's.</summary>
         public IReadOnlyList<int> PeerPercent = new[] { 100 };
@@ -138,6 +142,7 @@ namespace Chem
             h.RouteEvery = Math.Max(1, Int("routeEvery", h.RouteEvery));
             h.FlyerLands = o["flying"]?["lands"]?.Select(v => (string)v).ToList() ?? h.FlyerLands;
             h.BarricadeTerrain = (string)o["barricades"]?["terrain"];
+            h.Rubble = (string)o["rubble"] ?? h.Rubble;
             h.BarricadeFrom = (int?)o["barricades"]?["from"] ?? 0;
             h.BarricadeFirst = (int?)o["barricades"]?["first"] ?? 0;
             h.BarricadePerWaves = Math.Max(1, (int?)o["barricades"]?["perWaves"] ?? 1);
@@ -167,6 +172,7 @@ namespace Chem
                 Name = (string)p.Value["name"] ?? p.Name,
                 Hp = (int?)p.Value["hp"] ?? 100,
                 Damage = (int?)p.Value["damage"] ?? 100,
+                Never = p.Value["never"]?.Select(v => (string)v).ToList() ?? new List<string>(),
                 Boss = (bool?)p.Value["boss"] ?? false,
                 Keeps = (string)p.Value["keeps"],
                 Lights = (bool?)p.Value["lights"] ?? false,
