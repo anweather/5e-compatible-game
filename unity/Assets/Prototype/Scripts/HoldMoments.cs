@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(ChemGrid))]
 public class HoldMoments : MonoBehaviour
 {
-    const float RowHeight = 30f, Width = 320f, Left = 16f, Top = 120f;
+    const float RowHeight = 30f, Width = 320f, Left = 16f, Top = 150f;
 
     ChemGrid grid;
     bool open;

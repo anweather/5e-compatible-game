@@ -132,6 +132,7 @@ public partial class ChemGrid : MonoBehaviour
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
         if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
         if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
+        if (!TryGetComponent<HoldBarricades>(out _)) gameObject.AddComponent<HoldBarricades>();
         if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
     }
 
