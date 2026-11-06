@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-076: How is proximity voice proved before a person tries it?
+
+- **Asked:** 2026-11-06, by Andrew, when the PM asked whether 0.1.12 waits for a live Vivox run with him.
+- **Also comes up when:** any voice, sound or audio feature; anything that seems to need a person to listen.
+- **Answer:** Andrew: prove it first with canned audio (Vivox audio injection from a bot) and a measured fade with distance; he then judges by ear in his next playtest, walking toward a fixed voice in the woods.
+- **Why:** the machinery can be checked without him; his time goes on whether it sounds right.
+- **Revisited:** 0.
+
 ### J-075: How do a hand's buttons work?
 
 - **Asked:** 2026-11-05, by Andrew, after the first hands were built with the bumper as a modifier.
