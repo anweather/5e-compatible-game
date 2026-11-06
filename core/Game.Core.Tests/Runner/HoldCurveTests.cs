@@ -8,7 +8,7 @@ namespace Chem.Tests
     {
         static HoldRun Short()
         {
-            var run = new HoldRun(ChemistryTests.R, ChemistryTests.WorldDir(), 3, 1, "water", "fire", "first-wave");
+            var run = new HoldRun(ChemistryTests.R, ChemistryTests.WorldDir(), 3, 1, ("water", "fire"), "first-wave");
             run.Play(13);
             return run;
         }

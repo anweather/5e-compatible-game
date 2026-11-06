@@ -1,5 +1,5 @@
 {
-  "about": "The Hold's run (docs/design/the-hold.md, World.Hold.cs); the-hold.md's dials list says what you'd feel turning each. health is the keep's. A wave is first plus growth a wave, peerPercent of that by the wizards at the run's start (the last for more), each raider hpPerWave stronger and its blows damagePerWave percent harder a wave. A spawner's kinds come in one every kindEvery waves. Adjectives come in from adjectiveFrom, on adjectivePercent of a wave's raiders and adjectivePerWave more a wave up to adjectiveMost. From themeFrom a wave has a theme, never the same twice running, and themePercent of its raiders take one of the theme's adjectives. boss.every waves a boss leads the wave: the last kind in with boss.adjective, boss.hpPerWave stronger a wave. warmup is the ticks before wave 1 and betweenWaves the warning before each after it, spawnEvery between raiders. strength is how many blows of a raider a blocking terrain takes (none: it can't be battered, so a wizard's walls need a row or they stop a run for good), and one with no break of its own leaves rubble; a way through it costs batterCost a blow. An adjective's hp and damage are percents; keeps is a status it never loses, never the statuses it can't have, lights sets the ground it crosses burning, boss keeps it out of the common pool. raiders are kinds only the Hold has, rows like entities.json's. Raiders go by their row's raider.route: road (the default) costs offRoadCost a cell off the road, climb goes straight, fly goes straight over everything and comes down for good if flying.lands statuses reach it. routeEvery is the ticks between working the ways out. From barricades.from, first barricades stand on the road at a wave's start, one more every perWaves waves up to most, each of the road's cells within radius of one of the map's joins. A moment is a canned setup for playtesting: wave, theme if forced, what the hands hold, the keep's health, broken percent of the castle's breakable cells. targetMinutes is how long a good run should last, for the curve (core/Hold.Runner).",
+  "about": "The Hold's run (docs/design/the-hold.md, World.Hold.cs); the-hold.md's dials list says what you'd feel turning each. health is the keep's. A wave is first plus growth a wave, peerPercent of that by the wizards at the run's start (the last for more), each raider hpPerWave stronger and its blows damagePerWave percent harder a wave. A spawner's kinds come in one every kindEvery waves. Adjectives come in from adjectiveFrom, on adjectivePercent of a wave's raiders and adjectivePerWave more a wave up to adjectiveMost. From themeFrom a wave has a theme, never the same twice running, and themePercent of its raiders take one of the theme's adjectives. boss.every waves a boss leads the wave: the last kind in with boss.adjective, boss.hpPerWave stronger a wave. warmup is the ticks before wave 1 and betweenWaves the warning before each after it, spawnEvery between raiders. strength is how many blows of a raider a blocking terrain takes (none: it can't be battered, so a wizard's walls need a row or they stop a run for good), and one with no break of its own leaves rubble; a way through it costs batterCost a blow. An adjective's hp and damage are percents; keeps is a status it never loses, never the statuses it can't have, lights sets the ground it crosses burning, boss keeps it out of the common pool. raiders are kinds only the Hold has, rows like entities.json's. Raiders go by their row's raider.route: road (the default) costs offRoadCost a cell off the road, climb goes straight, fly goes straight over everything and comes down for good if flying.lands statuses reach it. routeEvery is the ticks between working the ways out. From barricades.from, first barricades stand on the road at a wave's start, one more every perWaves waves up to most, each of the road's cells within radius of one of the map's joins. Between waves a wizard is offered offer upgrades, by the seed, and one it doesn't pick is picked for it as the next wave starts; cooldown, bothCooldown, damage and range are percents on what the wizard has, health is points, and holds and gesture narrow what they touch. They end with the run. unlocks come in this order, each costing cost more points; pointsPerWave is what a wave survived earns. A moment is a canned setup for playtesting: wave, theme if forced, what the hands hold, the keep's health, broken percent of the castle's breakable cells. targetMinutes is how long a good run should last, for the curve (core/Hold.Runner).",
   "health": 360,
   "plateTicks": 6,
   "first": 4,
@@ -561,5 +561,128 @@
         ]
       }
     }
-  }
+  },
+  "offer": 3,
+  "pointsPerWave": 1,
+  "upgrades": {
+    "quick-hands": {
+      "name": "Quick hands",
+      "cooldown": -15
+    },
+    "calm-hands": {
+      "name": "Calm hands",
+      "bothCooldown": -25
+    },
+    "fire-focus": {
+      "name": "Fire focus",
+      "holds": "fire",
+      "damage": 30
+    },
+    "water-focus": {
+      "name": "Water focus",
+      "holds": "water",
+      "damage": 30
+    },
+    "air-focus": {
+      "name": "Air focus",
+      "holds": "air",
+      "damage": 30
+    },
+    "earth-focus": {
+      "name": "Earth focus",
+      "holds": "earth",
+      "cooldown": -30
+    },
+    "hard-thrust": {
+      "name": "Hard thrust",
+      "gesture": "thrust",
+      "damage": 20
+    },
+    "hard-throw": {
+      "name": "Hard throw",
+      "gesture": "throw",
+      "damage": 20
+    },
+    "wide-sweep": {
+      "name": "Wide sweep",
+      "gesture": "sweep",
+      "damage": 25
+    },
+    "long-arm": {
+      "name": "Long arm",
+      "gesture": "throw",
+      "range": 25
+    },
+    "close-reach": {
+      "name": "Close reach",
+      "gesture": "thrust",
+      "range": 30
+    },
+    "tough": {
+      "name": "Tough",
+      "health": 6
+    }
+  },
+  "unlocks": [
+    {
+      "id": "throw",
+      "name": "Throw",
+      "cost": 3,
+      "gesture": "throw"
+    },
+    {
+      "id": "sweep",
+      "name": "Sweep",
+      "cost": 5,
+      "gesture": "sweep"
+    },
+    {
+      "id": "second-hand",
+      "name": "The second hand",
+      "cost": 8,
+      "hand": "left"
+    },
+    {
+      "id": "water",
+      "name": "Water",
+      "cost": 6,
+      "element": "water"
+    },
+    {
+      "id": "earth",
+      "name": "Earth",
+      "cost": 6,
+      "element": "earth"
+    },
+    {
+      "id": "air",
+      "name": "Air",
+      "cost": 6,
+      "element": "air"
+    },
+    {
+      "id": "light",
+      "name": "Light",
+      "cost": 4,
+      "kit": "light"
+    },
+    {
+      "id": "hasten-time",
+      "name": "Hasten Time",
+      "cost": 5,
+      "kit": "hasten-time"
+    },
+    {
+      "id": "shapeshift",
+      "name": "Shapeshift",
+      "cost": 6,
+      "kit": "shapeshift"
+    },
+    {
+      "id": "control-weather",
+      "name": "Control Weather",
+      "cost": 8,
+      "kit": "control-weather"
+    }
+  ]
 }

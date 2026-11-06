@@ -131,6 +131,7 @@ public partial class ChemGrid : MonoBehaviour
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
         if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
+        if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
         if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
     }
 

@@ -35,7 +35,11 @@ namespace Chem
         public bool HoldReadsStand(int x, int y) => HoldSite != null && (HoldRunning || HoldSite.Plate == (x, y) || HoldSite.InAttuning(x, y));
 
         /// <summary>The D-pad's list for this wizard: the kit during a run, else the combo table's.</summary>
-        public IReadOnlyList<DpadSpellDef> DpadOf(string player) => HandsOn(player) && HandRules.Kit.Count > 0 ? HandRules.Kit : Rules.Combos.Dpad;
+        public IReadOnlyList<DpadSpellDef> DpadOf(string player)
+        {
+            if (!HandsOn(player) || HandRules.Kit.Count == 0) return Rules.Combos.Dpad;
+            return AllOpen(player) ? HandRules.Kit : HandRules.Kit.Where(k => KitOpen(player, k.Spell)).ToList();
+        }
 
         /// <summary>The ticks until this hand casts again; 0 when it's ready.</summary>
         public int HandCooling(string player, int hand) => System.Math.Max(0, HandsOf(player).Ready[hand] - Tick);
@@ -72,7 +76,7 @@ namespace Chem
         // A null element empties the hand.
         bool Attune(string player, int hand, string element)
         {
-            if (hand < 0 || hand >= HandsDef.Count || (element != null && !Rules.Combos.Elements.Contains(element)) || !InAttuning(player) || HandsOf(player).Casting) return false;
+            if (hand < 0 || hand >= HandsDef.Count || (element != null && !Rules.Combos.Elements.Contains(element)) || !InAttuning(player) || HandsOf(player).Casting || !HandOpen(player, hand) || !ElementOpen(player, element)) return false;
             OwnHands(player).Holds[hand] = element;
             return true;
         }
@@ -80,7 +84,7 @@ namespace Chem
         // A hand's button: a thrust or a throw, or with the hand's other button inside the window, a sweep.
         bool PressHand(PlayerCast c, int hand, int gesture)
         {
-            if (!HoldRunning || hand < 0 || hand >= HandsDef.Count) return false;
+            if (!HoldRunning || hand < 0 || hand >= HandsDef.Count || !HandOpen(c.Player, hand) || !GestureOpen(c.Player, gesture)) return false;
             var h = HandsOf(c.Player);
             if (h.Ready[hand] > Tick) return false;
             if (!c.Casting)
@@ -89,15 +93,15 @@ namespace Chem
                 h.Gesture[hand] = gesture;
                 c.Window = HandRules.Window;
             }
-            else if (!h.Casting || c.Window <= 0 || !Join(h, hand, gesture)) return false;
+            else if (!h.Casting || c.Window <= 0 || !Join(h, hand, gesture, GestureOpen(c.Player, HandsDef.Sweep))) return false;
             StartMeter(c, Coming(h).Select(x => x.row.CastTicks).DefaultIfEmpty(1).Max());
             return true;
         }
 
-        static bool Join(PlayerHands h, int hand, int gesture)
+        static bool Join(PlayerHands h, int hand, int gesture, bool sweeps)
         {
             int was = h.Gesture[hand];
-            if (was == HandsDef.Sweep || was == gesture) return false;
+            if (was == HandsDef.Sweep || was == gesture || (was != HandsDef.NoGesture && !sweeps)) return false;
             h.Gesture[hand] = was == HandsDef.NoGesture ? gesture : HandsDef.Sweep;
             return true;
         }
@@ -109,10 +113,11 @@ namespace Chem
             foreach (var (row, gesture, hand) in Coming(h))
             {
                 var spell = Rules.Spell(row.Spell);
-                NoteFired(new ComboFired(c.Player, null, spell?.Name ?? row.Act, row.Spell, spell?.Shape, false).FromHand(row.Act, HandRules.RangeOf(gesture)));
+                string holds = hand >= 0 ? h.Holds[hand] : CombosDef.IdOf(h.Holds[HandsDef.Left], h.Holds[HandsDef.Right]);
+                NoteFired(new ComboFired(c.Player, null, spell?.Name ?? row.Act, row.Spell, spell?.Shape, false).FromHand(row.Act, RangeOf(c.Player, holds, gesture)));
                 if (row.Spell == null) continue;
-                if (hand >= 0) h.Ready[hand] = Tick + HandRules.HandCooldown;
-                else h.Ready[HandsDef.Left] = h.Ready[HandsDef.Right] = Tick + HandRules.BothCooldown;
+                if (hand >= 0) h.Ready[hand] = Tick + CooldownOf(c.Player, holds, gesture, false);
+                else h.Ready[HandsDef.Left] = h.Ready[HandsDef.Right] = Tick + CooldownOf(c.Player, holds, gesture, true);
             }
             DropHands(h);
             return true;
@@ -121,7 +126,7 @@ namespace Chem
         static void DropHands(PlayerHands h) => h.Gesture[HandsDef.Left] = h.Gesture[HandsDef.Right] = HandsDef.NoGesture;
 
         /// <summary>The hands as text, "" when none has changed (so worlds without any hash as they did).</summary>
-        public string HandsText() => string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}"));
+        public string HandsText() => ProgressText() + RunText(Hold) + string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}"));
 
         static JArray SaveHands(PlayerHands h) => new JArray(h.Player, h.Holds[0], h.Holds[1], h.Ready[0], h.Ready[1], h.Gesture[0], h.Gesture[1]);
 

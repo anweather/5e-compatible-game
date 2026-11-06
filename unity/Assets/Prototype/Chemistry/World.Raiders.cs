@@ -118,6 +118,7 @@ namespace Chem
         /// </summary>
         void DamageRaider(Raider r, int amount, string cause, string element)
         {
+            amount = amount * castPower / 100;
             if (amount <= 0 || !r.Alive) return;
             var def = Rules.Entity(r.Kind);
             if (def.Hp >= 999) return;

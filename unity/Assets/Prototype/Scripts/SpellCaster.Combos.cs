@@ -188,7 +188,7 @@ public partial class SpellCaster
         var aim = Aim(spellId, new Vector2Int(toX, toY), out var error);
         if (error != null) EventLog.Add(error);
         if (range > 0 && aim.HasValue) LastHandAim = new Vector2Int(aim.Value.x, aim.Value.y);
-        if (aim.HasValue) Cast(new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
+        if (aim.HasValue) Cast(new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY, range > 0 ? CastPlayer : null));
     }
 
     const int AheadCells = 4;

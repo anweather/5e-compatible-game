@@ -27,6 +27,7 @@ namespace Chem
 
         readonly Dictionary<string, HandRowDef[]> rows = new Dictionary<string, HandRowDef[]>(StringComparer.Ordinal);
         readonly int[] range = new int[GestureNames.Length];
+        readonly Dictionary<string, (string slot, int gesture)> bySpell = new Dictionary<string, (string, int)>(StringComparer.Ordinal);
 
         /// <summary>What each hand holds at first, by hand; null for nothing.</summary>
         public IReadOnlyList<string> Start { get; private set; } = new string[Count];
@@ -52,6 +53,12 @@ namespace Chem
             return rows.TryGetValue(CombosDef.IdOf(a, b), out var row) || rows.TryGetValue(CombosDef.IdOf(b, a), out row) ? row[gesture] : null;
         }
 
+        /// <summary>A gesture by its name in the rules, or NoGesture.</summary>
+        public static int GestureOf(string name) => name == null ? NoGesture : Array.IndexOf(GestureNames, name);
+
+        /// <summary>Where a spell is in the table: what's held and the gesture; a null slot if it isn't. Every spell is there once.</summary>
+        public (string slot, int gesture) Find(string spell) => spell != null && bySpell.TryGetValue(spell, out var at) ? at : (null, NoGesture);
+
         /// <summary>How far from the wizard this gesture's spell can land, in cells.</summary>
         public int RangeOf(int gesture) => range[gesture];
 
@@ -76,7 +83,11 @@ namespace Chem
             for (int g = 0; g < GestureNames.Length; g++)
                 h.range[g] = (int?)o["range"]?[(string)o["rangeOf"]?[GestureNames[g]] ?? ""] ?? 0;
             foreach (var row in (o["spells"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+            {
                 h.rows[row.Name] = GestureNames.Select(g => Row(row.Value[g])).ToArray();
+                for (int g = 0; g < GestureNames.Length; g++)
+                    if (h.rows[row.Name][g]?.Spell != null) h.bySpell[h.rows[row.Name][g].Spell] = (row.Name, g);
+            }
             return h;
         }
 
