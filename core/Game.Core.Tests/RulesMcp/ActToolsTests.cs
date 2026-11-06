@@ -80,6 +80,34 @@ namespace Chem.Tests
             Assert.That(b.LiveWorld.LandHasMoved, Is.False);
         }
 
+        // #156: a 100 m mountain came out about 12 cells across. Its rise is cut to land.steepest (1.5 m) a cell of radius.
+        [Test]
+        public void ATallNarrowStampIsCutToItsWidth()
+        {
+            var (b, tools) = Tools();
+            string said = tools.Act("land", near: "[120, 120]", radius: 6, rise: 100, profile: "cone");
+            StringAssert.Contains("100 m is too steep for a radius of 6, so it rises 9 m", said);
+            StringAssert.Contains("moved the land", said);
+            Assert.That(b.LiveWorld.LandHash(), Is.EqualTo("[120,120,6,72,\"cone\",0,0,40,1]"), "9 m, in land units");
+        }
+
+        // #156: canyons at radius 10 came out with 30 m walls. A hollow or a wall keeps its sign.
+        [Test]
+        public void ATallNarrowCanyonIsCutToItsWidth()
+        {
+            var (b, tools) = Tools();
+            StringAssert.Contains("30 m is too steep for a radius of 10, so it rises 15 m", tools.Act("land", near: "[120, 120]", radius: 10, rise: -30, profile: "canyon", along: "east"));
+            Assert.That(b.LiveWorld.LandHash(), Is.EqualTo("[120,120,10,-120,\"canyon\",1,0,40,1]"));
+        }
+
+        [Test]
+        public void AStampAsSteepAsAllowedIsAsAsked()
+        {
+            var (b, tools) = Tools();
+            StringAssert.DoesNotContain("too steep", tools.Act("land", near: "[120, 120]", radius: 12, rise: 18, profile: "cone", rough: 20));
+            Assert.That(b.LiveWorld.LandHash(), Is.EqualTo("[120,120,12,144,\"cone\",0,0,20,1]"));
+        }
+
         [TestCase("ball-court")]
         [TestCase("defense-field")]
         [TestCase("tower")]

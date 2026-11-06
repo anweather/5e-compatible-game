@@ -24,7 +24,7 @@ namespace Chem.Mcp
             if (plan.NoRoom != null) return plan.NoRoom;
             string said = Decide(RoomCommand.Act(PeerOf(peer), plan.Command.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
-            return FormattableString.Invariant($"{said}\n{(plan.ActKindOf == World.ActLand ? "At" : "Near")} {plan.PlaceName}. {Landed(said)}, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(plan.ActKindOf)}");
+            return FormattableString.Invariant($"{said}\n{(plan.ActKindOf == World.ActLand ? "At" : "Near")} {plan.PlaceName}.{plan.Note} {Landed(said)}, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(plan.ActKindOf)}");
         }
 
         // What act will send, worked out from the world as it is: the ask, or what's wrong with the place.
@@ -32,6 +32,8 @@ namespace Chem.Mcp
         {
             public JObject Command;
             public string What, ActKindOf, PlaceName, NoRoom;
+            /// <summary>What was changed from the ask (a stamp's rise cut to its width), said before the verdict; "" for nothing.</summary>
+            public string Note = "";
         }
 
         // One ask of act. A wrong ask throws; a place with no room is NoRoom, as it's no mistake of the asker's.
@@ -62,7 +64,7 @@ namespace Chem.Mcp
                 ?? throw new RulesToolException($"There is no named act called {id}: it's a trigger with on: called in a mod that's on. list triggers shows them.");
             var rows = named.Do.Select(a => a.Act).ToList();
             var spot = SpotFor(id, rows, near, side, edge);
-            var plans = rows.Select(row => spot != null ? PlanOfRow(row, spot.Near, null, null) : PlanOfRow(row, near, side, edge)).ToList();
+            var plans = rows.Select(row => spot != null ? PlanOfRow(row, spot.For(row), null, null) : PlanOfRow(row, near, side, edge)).ToList();
             var parts = plans.Where(p => p.NoRoom == null).ToList();
             string place = spot?.Name ?? plans[0].PlaceName;
             if (parts.Count == 0) return $"None of {id} landed at {place}, so nothing's done: {string.Join(" ", plans.Select(p => $"{p.What}: {p.NoRoom}"))}";
@@ -74,43 +76,89 @@ namespace Chem.Mcp
             string said = Decide(RoomCommand.Act(PeerOf(peer), ask.ToString(Newtonsoft.Json.Formatting.None)));
             if (Refused(said)) return said;
             string roomy = spot != null && !spot.Fits ? " No spot there had room for all of it, so this was the one with the most." : "";
-            return $"{said}\nAt {place}.{roomy} {Landed(said)}, for everyone. undo_act takes back what can be, all at once: casts, animals and golf stay.";
+            string notes = string.Concat(plans.Select(p => p.Note)) + (spot?.Moved ?? "");
+            return $"{said}\nAt {place}.{roomy}{notes} {Landed(said)}, for everyone. undo_act takes back what can be, all at once: casts, animals and golf stay.";
         }
 
         // How a reply ends: only what really landed is called done.
         static string Landed(string said) => said.Contains(World.FellShort) ? "What landed is done; tell the player what didn't" : "It's done";
 
-        // Where a firing at a place stands: one cell for all its rows, and whether every row has room there.
+        // Where a firing at a place stands: one cell for all its rows but land, the cell its land rows stand on, and
+        // whether every row has room there. Moved says how far the land went from where it was asked; "" if it didn't.
         sealed class Spot
         {
-            public string Near, Name;
+            public string Near, Land, Name, Moved = "";
+            public (int x, int y) At;
             public bool Fits;
+
+            /// <summary>Where a row of the firing stands.</summary>
+            public string For(JObject row) => IsLand(row) ? Land : Near;
         }
 
         const int SpotsTried = 16, SpotsApart = 6, DefaultWithin = 12;
 
+        static bool IsLand(JObject row) => (string)row["act"] == World.ActLand;
+
+        static string CellName((int x, int y) c) => FormattableString.Invariant($"[{c.x}, {c.y}]");
+
         // One spot for a firing of several rows at a place of many cells, so its rows stand together. It comes from the
         // world's seed and the firing's id and number, never a peer; the first with room for every row, else the one with
-        // room for most. Null when it's fired at one cell, or has one row: each row is where it's asked already.
+        // room for most. Land goes where a lone act would stamp it, the place's middle, or as near it as it fits, at most
+        // land.maxMove cells off: a stamp that fits nowhere so near isn't moved, and is refused there and says why (#156).
+        // Null when it's fired at one cell, or has one row: each row is where it's asked already.
         Spot SpotFor(string id, List<JObject> rows, string near, string side, string edge)
         {
             if (rows.Count < 2) return null;
             var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
             if (from.Count < 2) return null;
-            int reach = rows.Where(r => (string)r["act"] != World.ActLand).Select(r => (int?)r["within"] ?? DefaultWithin).DefaultIfEmpty(DefaultWithin).Max();
+            var others = rows.Where(r => !IsLand(r)).ToList();
+            int reach = others.Select(r => (int?)r["within"] ?? DefaultWithin).DefaultIfEmpty(DefaultWithin).Max();
             return OnWorld(w =>
             {
                 int salt = id.Aggregate(w.ActsDone, (hash, c) => unchecked(hash * 31 + c));
-                var best = (x: from[0].x, y: from[0].y, rows: -1);
-                foreach (var (x, y) in OpenNear(w, DistanceMap(w, from, reach), SpotsTried, SpotsApart, salt, null))
+                var spots = OpenNear(w, DistanceMap(w, from, reach), SpotsTried, SpotsApart, salt, null);
+                if (others.Count == rows.Count) return Best(w, rows, spots, from[0], name);
+                var asked = Middle(from);
+                var landFits = LandSpots(w, asked, salt).Where(c => rows.Where(IsLand).All(row => RowFits(w, row, c.x, c.y))).ToList();
+                if (landFits.Count > 0)
                 {
-                    int fit = rows.Count(row => RowFits(w, row, x, y));
-                    if (fit > best.rows) best = (x, y, fit);
-                    if (fit == rows.Count) break;
+                    var spot = Best(w, rows, landFits, asked, name);
+                    int off = Math.Max(Math.Abs(spot.At.x - asked.x), Math.Abs(spot.At.y - asked.y));
+                    if (off > 0) spot.Moved = FormattableString.Invariant($" The land stands {off} cell{(off == 1 ? "" : "s")} off {CellName(asked)}, the nearest it fit.");
+                    return spot;
                 }
-                return new Spot { Near = FormattableString.Invariant($"[{best.x}, {best.y}]"), Name = FormattableString.Invariant($"{name}, round [{best.x}, {best.y}]"), Fits = best.rows == rows.Count };
+                var rest = Best(w, others, others.Count > 0 ? spots : new List<(int, int)> { asked }, asked, name);
+                rest.Land = CellName(asked);
+                rest.Fits = false;
+                return rest;
             });
         }
+
+        // The first spot with room for every row, else the one with room for most; the fallback when no spot is open.
+        Spot Best(World w, List<JObject> rows, List<(int x, int y)> spots, (int x, int y) fallback, string name)
+        {
+            var best = (x: fallback.x, y: fallback.y, rows: -1);
+            foreach (var (x, y) in spots)
+            {
+                int fit = rows.Count(row => RowFits(w, row, x, y));
+                if (fit > best.rows) best = (x, y, fit);
+                if (fit == rows.Count) break;
+            }
+            string at = CellName((best.x, best.y));
+            return new Spot { Near = at, Land = at, At = (best.x, best.y), Name = $"{name}, round {at}", Fits = best.rows == rows.Count };
+        }
+
+        // Where a land row may stand: the cell asked first, then every open cell up to land.maxMove from it, nearest first.
+        List<(int x, int y)> LandSpots(World w, (int x, int y) asked, int salt)
+        {
+            int most = (int)Budgets.Number("land.maxMove", 4);
+            var distance = DistanceMap(w, new List<(int, int)> { asked }, most);
+            var near = OpenNear(w, distance, (2 * most + 1) * (2 * most + 1), 0, salt, null).OrderBy(c => distance[w.Idx(c.x, c.y)]);
+            return new[] { asked }.Concat(near.Where(c => c != asked)).ToList();
+        }
+
+        // A place's middle, as a lone land act takes it.
+        static (int x, int y) Middle(List<(int x, int y)> from) => (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
 
         // Whether all of a row can land round a cell.
         bool RowFits(World w, JObject row, int x, int y)
@@ -155,11 +203,11 @@ namespace Chem.Mcp
         ActPlan PlanLand(string near, string side, string edge, int? seed, LandAsk ask)
         {
             var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
-            var (x, y) = (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
+            var (x, y) = Middle(from);
             var stamp = StampOf(ask, x, y, seed ?? ++actSeed);
             string settled = OnWorld(w => SettledUnder(w, stamp));
             if (settled != null) return new ActPlan { What = World.ActLand, ActKindOf = World.ActLand, PlaceName = name, NoRoom = $"That would move the ground under {settled}; try further off." };
-            return new ActPlan { What = World.ActLand, ActKindOf = World.ActLand, PlaceName = name, Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
+            return new ActPlan { What = World.ActLand, ActKindOf = World.ActLand, PlaceName = name, Note = SteepNote(ask), Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
         }
 
         // The stamp a land ask makes at a cell; a wrong ask throws.
@@ -172,12 +220,25 @@ namespace Chem.Mcp
             var line = (x: 0, y: 0);
             if (LandStamp.NeedsLine(ask.Profile) && (ask.Along == null || !Lines.TryGetValue(ask.Along, out line)))
                 throw new RulesToolException($"A {ask.Profile} needs along: {string.Join(", ", Lines.Keys)}.");
+            rise = Math.Sign(rise) * Math.Min(Math.Abs(rise), SteepestRise(radius));
             var stamp = LandStamp.Make(x, y, radius, rise * LandUnitsPerMetre, ask.Profile, line.x, line.y, ask.Rough ?? (ask.Profile == LandStamp.Flat ? 0 : LandRoughness), seed);
             if (!stamp.Known) throw new RulesToolException("profile is flat, dome, cone, ridge, canyon or cliff, and rough is 0 to 100.");
             return stamp;
         }
 
         const int LandUnitsPerMetre = 8;
+
+        // The most a stamp this wide rises, in whole metres: land.steepest a cell of radius, so its sides look climbable
+        // (#156: a 100 m mountain 12 cells across, 30 m canyon walls at radius 6). Never below 1 m.
+        int SteepestRise(int radius) => Math.Max(1, (int)Math.Floor(Budgets.Number("land.steepest", 1.5) * radius));
+
+        // What the reply says when a stamp's rise was cut to its width; "" when it wasn't.
+        string SteepNote(LandAsk ask)
+        {
+            int radius = ask.Radius ?? 8, rise = Math.Abs(ask.Rise ?? 0), most = SteepestRise(radius);
+            if (rise <= most) return "";
+            return FormattableString.Invariant($" {rise} m is too steep for a radius of {radius}, so it rises {most} m: at most {Budgets.Number("land.steepest", 1.5)} m a cell of radius. A wider radius rises higher.");
+        }
 
         // How uneven land is when nobody says: nothing the land makes is a smooth slab, and a flat is asked for as flat.
         const int LandRoughness = 40;

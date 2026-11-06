@@ -56,7 +56,11 @@ can't call another. Without a called trigger nothing hashes or saves differently
 A firing is honest and stands together (#149, #150). Every row goes in the command, a row with no room as its name and why, so
 the verdict's line says what landed row by row, and "done" is only said of what did. At a place of many cells `Workbench.SpotFor`
 takes one spot from the world's seed and the firing's id and number, the first with room for every row, else the one with room
-for most, and says so: rows don't scatter across the place.
+for most, and says so: rows don't scatter across the place. A land row isn't searched for across the place (#156: refusals took
+canyons into thin slots far from where they were asked): it stands at the place's middle, where a lone `act` stamps it, or the
+nearest cell it fits at most `land.maxMove` cells off (`budgets.json`), and the other rows stand with it. If it fits nowhere so
+near, it's refused at the middle and says why, and the other rows take their spot as before. A stamp's rise is cut to
+`land.steepest` metres a cell of radius, so its sides look climbable.
 
 ## Next
 

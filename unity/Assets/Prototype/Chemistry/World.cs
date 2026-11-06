@@ -240,10 +240,13 @@ namespace Chem
                 for (int x = 0; x < W; x++)
                 {
                     var c = At(x, y);
-                    if (c == null || c.Water > 0 || TerrainOf(c).Spring > 0) land[Idx(x, y)] = NoLand;
+                    if (IsWaterBody(c)) land[Idx(x, y)] = NoLand;
                 }
             PutStampsOnLand();
         }
+
+        // A cell SetLand marks NoLand: none, or one with water or a spring now.
+        bool IsWaterBody(Cell c) => c == null || c.Water > 0 || TerrainOf(c).Spring > 0;
 
         int LandOf(Chunk ch, int i) =>
             land == null ? NoLand : land[Idx((ch.X << Chunks.Shift) + (i & Chunks.Mask), (ch.Y << Chunks.Shift) + (i >> Chunks.Shift))];

@@ -156,6 +156,34 @@ namespace Chem.Tests
             Assert.That(across, Is.LessThanOrEqualTo(6), "every row within 3 of the one spot");
         }
 
+        // #156: a stamp that didn't fit where it was asked was taken to the first spot anywhere round the place that it
+        // fit, far off. Now it moves at most land.maxMove (4) cells from the place's middle, the nearest it fits.
+        [Test]
+        public void AStampThatDoesNotFitMovesAFewCellsAtMost()
+        {
+            var (b, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 1, \"within\": 6}, {\"act\": \"land\", \"radius\": 2, \"rise\": 3, \"rough\": 0}]");
+            string said = tools.CallAct("my-camp", near: "hollowmere", side: "north");
+            var off = System.Text.RegularExpressions.Regex.Match(said, @"The land stands (\d+) cells? off \[(\d+), (\d+)\], the nearest it fit");
+            Assert.That(off.Success, Is.True, said);
+            int Got(int k) => int.Parse(off.Groups[k].Value, System.Globalization.CultureInfo.InvariantCulture);
+            var stamp = LandStamp.Read(Newtonsoft.Json.Linq.JArray.Parse(b.LiveWorld.LandHash()));
+            int moved = System.Math.Max(System.Math.Abs(stamp.X - Got(2)), System.Math.Abs(stamp.Y - Got(3)));
+            Assert.That(moved, Is.EqualTo(Got(1)).And.InRange(1, 4));
+            Assert.That(b.LiveWorld.LandHash(), Is.EqualTo("[216,284,2,24,\"dome\",0,0,0,2]"), "3 cells off [216, 287], the shore's middle");
+        }
+
+        // #156: a stamp with nowhere to fit near where it was asked isn't moved: it's refused there, and says why.
+        [Test]
+        public void AStampThatFitsNowhereNearIsRefusedWhereAsked()
+        {
+            var (b, tools) = Tools();
+            On(tools, "[{\"act\": \"crate\", \"count\": 1}, {\"act\": \"land\", \"radius\": 3, \"rise\": 3, \"rough\": 0}]");
+            string said = tools.CallAct("my-camp", near: "lake");
+            StringAssert.Contains("1 of it had no room: land (that would cross water", said);
+            Assert.That(b.LiveWorld.LandHasMoved, Is.False, "not taken to dry ground round the lake");
+        }
+
         [Test]
         public void TheSameFiringOnTheSameWorldPicksTheSameSpot()
         {
