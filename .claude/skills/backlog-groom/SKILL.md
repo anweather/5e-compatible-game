@@ -1,6 +1,6 @@
 ---
 name: backlog-groom
-description: Groom Spell Chemistry Valley's backlog on GitHub, run by Andrew as /backlog-groom. Moves docs/BACKLOG.md's open work into issues, reviews and categorises the defects, groups everything into epics and builds a Project board. Proposes first and changes GitHub only after Andrew approves.
+description: Groom Spell Chemistry Valley's backlog on GitHub, run by Andrew as /backlog-groom, and take in new features (/backlog-groom intake <idea>) as an issue plus a brief in the worker queue. Moves docs/BACKLOG.md's open work into issues, reviews and categorises the defects, groups everything into epics and builds a Project board. Proposes first and changes GitHub only after Andrew approves.
 model: sonnet
 disable-model-invocation: true
 ---
@@ -54,6 +54,21 @@ Then give Andrew counts and the epic list in a few lines, with the link to the p
   detail: move it to `docs/backlog-archive.md`, never delete it. Update the Backlog line in `docs/STATE.md`, and add the board's URL.
 
 Report: the board's link, counts of epics, new issues and relabelled issues, what's left for Andrew.
+
+## Intake: a new feature (`/backlog-groom intake <idea>`)
+
+Feature intake is this agent's job (D15, J-077). For each idea Andrew gives:
+
+1. Search open issues first; a known idea gets a comment, not a new issue. Check `JUDGMENT_CALLS.md` for a decision on it.
+2. File (or update) the issue: plain words, labels, epic, `Discovery-Cost:` line.
+3. Write a brief in `docs/handoffs/briefs/queue/<branch>.md` in the format in that folder's README: `Needs:`, `Area:` (the
+   files it owns; never the same area as another queued or taken brief), `Branch:`, then what done looks like, the tests
+   or probes that prove it, and the issue number. Keep it under 40 lines; a worker starts from it cold.
+4. Split an idea bigger than about a day into briefs that each land on their own; batch tiny related fixes into one brief.
+5. Commit the briefs on dev (docs-only) and push. Workers claim them; nobody needs to send them.
+6. Anything needing Andrew's design call: ask him one question, with options, before queueing.
+
+Intake may queue work; it still never changes code, rules or scenes, or reorders `docs/STATE.md`.
 
 ## Never
 

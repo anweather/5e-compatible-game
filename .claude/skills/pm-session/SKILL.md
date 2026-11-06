@@ -8,7 +8,12 @@ description: Start or hand off a PM (project manager) session for Spell Chemistr
 The PM plans, briefs workers, merges, keeps GitHub issues, cuts releases and reports. It writes no
 game code unless Andrew asks. A long PM session became the largest single cost, so: read little,
 delegate long reads to sub-agents (a cheaper model for read-only work), keep messages short, and
-restart after every release.
+end the session as soon as its job is done (D15).
+
+**Since D15 (2026-11-06) the PM is a short session, not a standing one.** Workers land their own branches and
+take briefs from `docs/handoffs/briefs/queue/`; the `backlog-groom` agent (Sonnet) does feature intake. Start a
+PM session only for: planning with Andrew, a decision, a release, or a landing `land.sh` refused (the mailbox
+says so). Do that one job, update STATE, and end. Don't sit on the mailbox all day.
 
 ## Start
 
@@ -45,7 +50,7 @@ restart after every release.
   VMs while a release candidate or perf run holds the PC. No idle compute; Pro before Max.
 - Issues: file, comment, label, close on ship, with a `Discovery-Cost:` line; a rediscovery is a
   comment, never a duplicate.
-- Keep Andrew's board current with `node tools/workers/board.mjs` (`who`, `landed`, `sub`, `drop`), then
+- Publish the board only when there's a decision for Andrew, not after landings or assignments. Then bring it up to date with `node tools/workers/board.mjs` (`who`, `landed`, `sub`, `drop`), then
   publish `.pm/board.html` with the Artifact tool and `url`, in one response: one small publish after each verdict,
   landing or assignment.
 - Anything Andrew reviews goes on the board as images or clips, never as text alone: upload with
