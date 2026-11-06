@@ -54,6 +54,10 @@ public class HoldProbe : ProbeScenario
         Metric("road_across_m", across);
         Metric("hill_across_m", hill);
         Metric("road_bank_m", bank);
+        float step = 0f;
+        for (int x = 26; x < 34; x++) step = Mathf.Max(step, Mathf.Abs(Ground(x, 15) - Ground(x + 1, 15)));
+        Metric("gate_steepest_m_a_cell", step);
+        Check("the_way_to_the_gate_can_be_walked", step < 1.3f, $"{step:0.00} m in a cell");
         Check("the_road_is_level_across", across < 0.3f, $"{across:0.00} m over two cells, the hill beside it {hill:0.00} m");
     }
 

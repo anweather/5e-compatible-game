@@ -229,6 +229,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         float dt = math.min(Time.deltaTime, 0.1f);
         Grow(dt);
         RunFolk(dt, night);
+        RunJobs(centre, dt, FolkGoIn(night));
         // Everyone as they were at the start of the frame, for seeing each other.
         herd.Clear();
         foreach (var c in creatures) herd.Add(c.id, c.species, c.state, bodies[c.species]);

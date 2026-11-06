@@ -150,7 +150,7 @@ public static class ValleyTerrain
     /// <summary>The starting cells' offsets (pits, the pond) added to the chunks they reach, by CellHeightfield.</summary>
     public static void BakeCells(World world, float stepHeight)
     {
-        var field = new CellHeightfield(Layout, stepHeight);
+        var field = new CellHeightfield(Layout, stepHeight) { LaidLandDrawn = false };
         field.Reset(world);
         foreach (var (i, j) in field.Chunks)
         {
