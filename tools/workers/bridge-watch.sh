@@ -27,7 +27,9 @@ root="${BRIDGE:-$HOME/.agent-bridge}"
 state="$root/watch"; mkdir -p "$state"
 bridge="$here/bridge.sh"
 dry="${BRIDGE_WATCH_DRY:-}"
-log() { echo "$(date '+%Y-%m-%d %H:%M:%S') watch $*" >> "$root/bridge.log"; [[ -n "${BRIDGE_WATCH_ONCE:-}" ]] && echo "$*"; }
+# Always true: callers chain on it (mail's "&& log" is mail's status), and outside a test pass the
+# "[[ ONCE ]] && echo" was false, so every mail looked failed and no report ever left a worker (2026-11-06).
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') watch $*" >> "$root/bridge.log"; [[ -z "${BRIDGE_WATCH_ONCE:-}" ]] || echo "$*"; }
 
 # One copy at a time: a live pid in the lock file means another is running, unless it hasn't finished
 # a pass in 10 min (stuck: a live pid alone said "running" while nothing was watched), so this one replaces it.
@@ -174,9 +176,12 @@ guest_ip() { # a Linux worker's IPv4, as Hyper-V reports it
   bounded powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $1).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r'
 }
 reached() { # reached <vm> <what> <problem, empty when it worked>: logs a worker the watcher can't reach, and when it can again
-  local f="$state/$1.reach" was; was="$(cat "$f" 2>/dev/null || true)"
+  # Removing mailed reports keeps its own record: a read that works between two failed removals mustn't log both every pass.
+  local f="$state/$1.reach" doing="read $1's $2" again="reading $1 again" was
+  [[ "$2" == outbox-done ]] && { f="$state/$1.done.reach"; doing="remove $1's mailed reports"; again="removing $1's mailed reports again"; }
+  was="$(cat "$f" 2>/dev/null || true)"
   [[ "$3" == "$was" ]] && return 0
-  if [[ -n "$3" ]]; then echo "$3" > "$f"; log "can't read $1's $2: $3"; else rm -f "$f"; log "reading $1 again"; fi
+  if [[ -n "$3" ]]; then echo "$3" > "$f"; log "can't $doing: $3"; else rm -f "$f"; log "$again"; fi
 }
 linux() { # linux <what> <vm> [args]: linux.sh over SSH, bounded; its errors go to the log, not to /dev/null
   local what="$1" vm="$2" ip out err; shift 2
@@ -247,7 +252,8 @@ check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a us
       mail pm "${subject:-$vm reports}" "$report" && mailed+=("$file")
     done < <(awk 'BEGIN{n=0} /^=== /{if(n)printf "\x1e"; n=1; print substr($0, 5); next} {print} END{if(n)printf "\x1e"}' <<<"$raw")
     # Only what reached the PM's mailbox leaves the worker; the rest is read again next pass.
-    [[ "$vm" == u* && ${#mailed[@]} -gt 0 ]] && linux outbox-done "$vm" "${mailed[@]}" >/dev/null
+    # A removal that fails is logged by linux (reached), once until it changes; those reports are mailed again.
+    if [[ "$vm" == u* && ${#mailed[@]} -gt 0 ]]; then linux outbox-done "$vm" "${mailed[@]}" >/dev/null || true; fi
   done
 }
 

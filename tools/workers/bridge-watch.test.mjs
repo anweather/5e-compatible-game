@@ -3,7 +3,7 @@
 // loop, and a copy that has stopped finishing passes is replaced. Hyper-V (powershell) and linux.sh are stand-ins
 // that serve a fake guest, so this needs neither.
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -37,21 +37,30 @@ case "$1" in
   outbox-done) shift 3; for f in "$@"; do rm -f "${guest}/$f"; done ;;
 esac
 `);
+  const env = extra => ({
+    ...process.env, PATH: `${bin}:${process.env.PATH}`, BRIDGE: bridge, BRIDGE_WATCH_DRY: "1", BRIDGE_WATCH_ONCE: "1",
+    BRIDGE_WATCH_HOMES: `pro=${join(dir, "pro")} max=${join(dir, "max")}`, STUB_VMS: "u2", STUB_IP: "172.26.223.16", STUB_HANG: "", ...extra,
+  });
   const pass = (extra = {}) => {
-    const r = spawnSync("bash", [join(work, "bridge-watch.sh")], {
-      encoding: "utf8",
-      env: {
-        ...process.env, PATH: `${bin}:${process.env.PATH}`, BRIDGE: bridge, BRIDGE_WATCH_DRY: "1", BRIDGE_WATCH_ONCE: "1",
-        BRIDGE_WATCH_HOMES: `pro=${join(dir, "pro")} max=${join(dir, "max")}`, STUB_VMS: "u2", STUB_IP: "172.26.223.16", STUB_HANG: "", ...extra,
-      },
-    });
+    const r = spawnSync("bash", [join(work, "bridge-watch.sh")], { encoding: "utf8", env: env(extra) });
     return { code: r.status, out: r.stdout + r.stderr };
+  };
+  // The watcher as the host runs it (no BRIDGE_WATCH_ONCE, which changes what log returns): its first pass, then stopped.
+  const live = async () => {
+    const alive = join(bridge, "watch", "alive");
+    rmSync(alive, { force: true });
+    const e = env({}); delete e.BRIDGE_WATCH_ONCE;
+    const p = spawn("bash", [join(work, "bridge-watch.sh")], { env: e, detached: true, stdio: "ignore" });
+    const exited = new Promise(r => p.on("exit", r));
+    for (let i = 0; i < 300 && !existsSync(alive); i++) await new Promise(r => setTimeout(r, 50));
+    process.kill(-p.pid);
+    await exited;
   };
   const report = (id, text) => writeFileSync(join(guest, `${id}.md`), `# u2 reports: ${id}\n\n${text}\n`);
   const pm = () => { const d = join(bridge, "pm"); return existsSync(d) ? readdirSync(d).filter(f => f.endsWith(".md")).map(f => readFileSync(join(d, f), "utf8")) : []; };
   const left = () => readdirSync(guest);
   const log = () => readFileSync(join(bridge, "bridge.log"), "utf8");
-  return { dir, bridge, pass, report, pm, left, log, done: () => rmSync(dir, { recursive: true, force: true }) };
+  return { dir, bridge, pass, live, report, pm, left, log, done: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
 test("a Linux worker's reports reach the PM's mailbox, and leave the worker once mailed", { skip: !bash4 }, () => {
@@ -67,6 +76,33 @@ test("a Linux worker's reports reach the PM's mailbox, and leave the worker once
     assert.ok(mail.some(m => m.startsWith("# u2 reports: 20261106-090022-self-landing\n")), "the subject is the report's first heading");
     assert.deepEqual(s.left(), []);
     assert.match(s.log(), /workers running: u2/);
+  } finally { s.done(); }
+});
+
+test("as the host runs it, a report mailed once is gone from the worker, and never mailed twice", { skip: !bash4 || process.platform === "win32" }, async () => {
+  const s = scratch();
+  try {
+    s.report("20261106-134400-u2-outbox", "Landed.");
+    await s.live();
+    assert.equal(s.pm().length, 1, s.log());
+    assert.deepEqual(s.left(), [], s.log());
+    await s.live();
+    assert.equal(s.pm().length, 1, s.log());
+    assert.equal(s.log().match(/mailed pm: u2 reports: 20261106-134400-u2-outbox/g)?.length, 1);
+  } finally { s.done(); }
+});
+
+test("a removal that fails is logged once, not every pass", { skip: !bash4 }, () => {
+  const s = scratch();
+  try {
+    s.report("20261106-120000-a", "text");
+    s.pass({ STUB_HANG: "outbox-done", BRIDGE_WATCH_GUEST_SECS: "1" });
+    s.pass({ STUB_HANG: "outbox-done", BRIDGE_WATCH_GUEST_SECS: "1" });
+    assert.equal(s.log().match(/can't remove u2's mailed reports: linux.sh outbox-done/g)?.length, 1, s.log());
+    assert.doesNotMatch(s.log(), /reading u2 again/);
+    s.pass();
+    assert.match(s.log(), /removing u2's mailed reports again/);
+    assert.deepEqual(s.left(), []);
   } finally { s.done(); }
 });
 
