@@ -56,6 +56,9 @@ namespace Chem
         /// <summary>A gesture by its name in the rules, or NoGesture.</summary>
         public static int GestureOf(string name) => name == null ? NoGesture : Array.IndexOf(GestureNames, name);
 
+        /// <summary>A gesture's name in the rules ("thrust"), or null for NoGesture.</summary>
+        public static string GestureName(int gesture) => gesture >= 0 && gesture < GestureNames.Length ? GestureNames[gesture] : null;
+
         /// <summary>Where a spell is in the table: what's held and the gesture; a null slot if it isn't. Every spell is there once.</summary>
         public (string slot, int gesture) Find(string spell) => spell != null && bySpell.TryGetValue(spell, out var at) ? at : (null, NoGesture);
 

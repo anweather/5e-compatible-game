@@ -264,6 +264,12 @@ public static class ProbeScenarios
         new Entry("hands", typeof(HandsProbe), 240f,
             "The Hold's hands (the-hold.md, phase 3) on a virtual pad, mouse and keyboard: attuning in the room, each hand's thrust, throw and sweep, the same gesture on both, " +
             "different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, an empty hand's acts, and the D-pad's kit."),
+        new Entry("progress", typeof(ProgressProbe), 600f,
+            "The Hold's progress on screen (the-hold.md, phase 5), F7 playing from the save: a locked hand and gesture saying so, attuning only to what's unlocked, " +
+            "the offer in words after wave 1, the d-pad picking Tough and the health it adds, the run's end and points earned, the save on disk, and a reset keeping them."),
+        new Entry("roomprogress", typeof(RoomProgressProbe), 600f,
+            "Two peers with different points in one Hold run (the-hold.md, phase 5): the host from its save (F7), a virtual player with everything; both peers' hands as the core has them, " +
+            "wave 1 beaten by Fireballs, the host's pick and the joiner's picked for it, and every checksum alike.", players: 2),
         new Entry("moments", typeof(MomentsProbe), 200f,
             "Every Hold moment by name (rules/hold.json) through HoldMoments, or just MOMENT if the environment names one: the wave, the hands, the keep's health, the wizard at the castle, and raiders coming."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,

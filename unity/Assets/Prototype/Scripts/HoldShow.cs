@@ -56,9 +56,27 @@ public class HoldShow : MonoBehaviour
     {
         var world = grid != null ? grid.World : null;
         if (world?.HoldSite == null || !world.HandsOn(player)) return "";
-        var h = world.HandsOf(player);
-        string line = $"Left: {h.Holds[HandsDef.Left] ?? "nothing"}{Cooling(world, player, HandsDef.Left)}   Right: {h.Holds[HandsDef.Right] ?? "nothing"}{Cooling(world, player, HandsDef.Right)}";
-        return world.InAttuning(player) ? line + "   (attuning: a hand's trigger changes it)" : line;
+        return $"Left: {Holding(world, player, HandsDef.Left)}   Right: {Holding(world, player, HandsDef.Right)}";
+    }
+
+    static string Holding(World world, string player, int hand) =>
+        world.HandOpen(player, hand) ? $"{world.HandsOf(player).Holds[hand] ?? "nothing"}{Cooling(world, player, hand)}" : "locked";
+
+    /// <summary>In the attuning room: the elements this wizard can hold, and the next one still to come.</summary>
+    public static string AttuningLine(World world, string player)
+    {
+        var elements = world.Rules.Combos.Elements;
+        var have = new System.Collections.Generic.List<string>();
+        foreach (var e in elements)
+            if (world.ElementOpen(player, e)) have.Add(e);
+        string line = $"Attuning: a hand's trigger changes it. Yours: {string.Join(", ", have)}";
+        foreach (var e in elements)
+            if (!world.ElementOpen(player, e) && world.UnlockGiving(u => u.Element == e) is { } row)
+            {
+                int away = world.PointsAway(player, row);
+                return line + $"; {e} in {away} {(away == 1 ? "point" : "points")}";
+            }
+        return line;
     }
 
     static string Cooling(World world, string player, int hand)
@@ -155,6 +173,8 @@ public class HoldShow : MonoBehaviour
         var caster = EventLog.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         if (caster != null) GUI.Label(new Rect(HudScale.Width / 2f - 400f, 90f, 800f, 36f), HandsLine(caster.CastPlayer), style);
+        if (caster != null && world.InAttuning(caster.CastPlayer))
+            GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{AttuningLine(world, caster.CastPlayer)}</color>", style);
         if (world.Hold == null) return;
         if (!world.HoldRunning && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
         var (hx, hy) = world.HoldSite.Heart;
