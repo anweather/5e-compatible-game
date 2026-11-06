@@ -30,8 +30,18 @@ public class Vitals : MonoBehaviour
 
     public float Health { get; private set; } = 12f;
     public float HealthMax { get; private set; } = 12f;
+    float baseHealth = 12f;
     public float Stamina { get; private set; } = StaminaMax;
     public float Magic { get; private set; } = MagicMax;
+
+    /// <summary>Health over the wizard's own, from a run's upgrades (ProgressKeeper): it comes with its maximum, and goes with it.</summary>
+    public void SetExtraHealth(int extra)
+    {
+        float before = HealthMax, maximum = baseHealth + extra;
+        if (Mathf.Approximately(before, maximum)) return;
+        HealthMax = maximum;
+        Health = Mathf.Clamp(Health + maximum - before, 1f, maximum);
+    }
 
     /// <summary>The wizard's breath under water (null until Start has read the rules).</summary>
     public Breath Breath { get; private set; }
@@ -61,7 +71,7 @@ public class Vitals : MonoBehaviour
     {
         var rules = ChemGrid.Current?.Rules;
         var wizard = rules?.Entity(EntityIds.Wizard);
-        if (wizard != null) HealthMax = Mathf.Max(1, wizard.Hp);
+        if (wizard != null) HealthMax = baseHealth = Mathf.Max(1, wizard.Hp);
         Breath = new Breath(rules?.Sim.Breath, sides => Random.Range(1, sides + 1));
         down = new Downed(rules?.Sim.Downed);
         Health = HealthMax;

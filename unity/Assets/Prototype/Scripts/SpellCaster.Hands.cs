@@ -26,6 +26,12 @@ public partial class SpellCaster
         if (controls.ThrowLeft.WasPressedThisFrame()) Send(ComboCommand.Hand(player, HandsDef.Left, bumper: true));
     }
 
+    /// <summary>Picks an upgrade from this wizard's offer (ProgressKeeper).</summary>
+    public bool PickUpgrade(string id) => grid != null && grid.World != null && Send(ComboCommand.Pick(CastPlayer, id));
+
+    /// <summary>Tells every peer this wizard's points (ProgressKeeper).</summary>
+    public bool BringPoints(int points) => grid != null && grid.World != null && Send(ComboCommand.Bring(CastPlayer, points));
+
     /// <summary>Goes into a moment, for every peer (HoldMoments).</summary>
     public bool Moment(string id) => ComboCommand.Moment(CastPlayer, id).TakenBy(HoldMoments.Offered) && grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
 

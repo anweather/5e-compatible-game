@@ -90,6 +90,8 @@ namespace Chem
                 case ComboCommandKind.Release: return ReleaseHold(c);
                 case ComboCommandKind.Hand: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust);
                 case ComboCommandKind.Moment: return StartMoment(command.Element);
+                case ComboCommandKind.Pick: return PickUpgrade(command.Player, command.Element);
+                case ComboCommandKind.Bring: return BringPoints(command.Player, command.Step);
                 case ComboCommandKind.Attune: return Attune(c.Player, command.Step, command.Element);
                 default: return false;
             }

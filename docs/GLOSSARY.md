@@ -556,6 +556,15 @@ that long, and doesn't march.
 **Barricade**
 : A small wooden block on the Hold's road, appearing at the start of a wave. Raiders break through it, and it burns.
 
+**Upgrade**
+: A row of `rules/hold.json` `upgrades` a wizard picks between waves, changing a number it already has (a cooldown, a gesture's damage or range, its health). It ends with the run.
+
+**Unlock**
+: A row of `rules/hold.json` `unlocks`, in order: a gesture, the second hand, an element or a kit spell a wizard keeps between runs. What's unlocked comes from the wizard's **points**.
+
+**Points**
+: What a player earns by waves survived, added up across runs, and all their save holds of the Hold (J-038). They travel with the player, not the world.
+
 **Moment**
 : A canned setup for playtesting the Hold: a rules row naming a wave, hand sets and the keep's state, to jump straight to in dev builds and the Editor.
 

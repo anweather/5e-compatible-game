@@ -221,12 +221,17 @@ namespace Chem
         public void Cast(CastCommand c)
         {
             castBy = c.By;
+            castPower = PowerOf(c.By, c.Spell);
             Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             castBy = null;
+            castPower = 100;
         }
 
         // The player of the cast going off now, when the batch names one: golf's turns (World.Golf.cs).
         string castBy;
+
+        // The percent of its damage the cast going off now does: a wizard's upgrades (World.Progress.cs).
+        int castPower = 100;
 
         // A cast once its spell is known: smothered by a spell zone against it, else it goes off, after delay
         // ticks under a target mark when there is one. A trigger's casts come in here too (World.Triggers.cs).

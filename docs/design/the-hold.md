@@ -174,7 +174,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 
 | Dial | Start | If you raise it |
 |---|---|---|
-| `health` | 360 | The keep takes more: longer runs, more forgiving of a leak |
+| `health` | 300 | The keep takes more: longer runs, more forgiving of a leak |
 | `growth` | 2 | Waves get big sooner: shorter runs, more crowd spells |
 | `damagePerWave` | 4 | Late raiders hit harder (%, a wave): a sharper end |
 | `hpPerWave` | 2 | Late raiders take longer to kill |
@@ -184,6 +184,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 | `adjectiveFrom`, `adjectivePercent`, `adjectivePerWave`, `adjectiveMost` | 2, 34, 6, 90 | More raiders with an adjective, sooner: your hands matter more |
 | `themeFrom`, `themePercent` | 3, 75 | Themes bite harder or sooner: a wrong hand set hurts more |
 | `boss.every`, `boss.hpPerWave` | 5, 12 | Bosses rarer, or tougher late on (and the `dread` row: hp 700, damage 200, in percent) |
+| `boss.peerHealth` | 100, 190, 270, 340 | A boss lasts longer for more wizards. Normal raiders scale by count (`peerPercent`), a boss by health, as there's only one |
 | `warmup`, `betweenWaves` | 60, 150 | More time before wave 1, and in the warning: longer to reach the keep and attune, and a longer run |
 | `spawnEvery` | 9 | Raiders come in a thinner stream |
 | `offRoadCost` | 40 | Road raiders stray less |
@@ -203,6 +204,17 @@ Progress belongs to the player, not the world (J-038).
 - **Between runs:** you start with one hand and one element. You unlock gestures, the second hand, then other elements,
   then kit spells. Discoveries stay.
 - **Later:** castle upgrades, and things worth finding on the hill.
+
+**As built.** `rules/hold.json` has the rows; `World.Progress.cs` runs them and `HoldProgress.cs` is the save. Inside a run, as a wave is beaten each wizard gets `offer` upgrades by the seed, its wave and its name, what suits its hands and gestures first; `ComboCommand.Pick` takes one, and one left open is picked for it as the next wave starts. Upgrades are percents on a number a wizard has, kept in `Hold.Wizards`, so they end with the run. A hand spell's damage goes by who cast it (`CastCommand.By`); burning and covers it leaves behind aren't scaled.
+
+Between runs, a player's save is one number, **points**: `pointsPerWave` for each wave survived, added up. What's unlocked follows from the points and the rows, in order, so a rule change can't leave a save disagreeing with them. `ComboCommand.Bring` tells every peer; `ProgressKeeper` sends it whenever the world doesn't know, so a new world, a reset or a host's world all hear it, and writes what's been earned. A wizard nobody has brought points for has everything, which keeps bots and tests whole, and so does anyone in a moment, which also earns nothing. Dev builds and the Editor bring everything; F7 plays as the save says. **A save that won't load:** it's kept beside the new one as `.broken`, the last good copy is used if there is one, the player is told, and the file is never written lower than it was. Hosts believe what a player brings: it's a friends' game.
+
+| Dial | Start | If you raise it |
+|---|---|---|
+| `offer` | 3 | More choice between waves |
+| `upgrades` rows | 12 | Bigger percents make a run longer: they're worth about half a run again in the curve |
+| `pointsPerWave` | 1 | Everything unlocks sooner |
+| `unlocks` costs | 57 in all | A longer road to everything |
 
 ### 6. Its own map
 

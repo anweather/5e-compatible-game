@@ -83,6 +83,10 @@ namespace Chem
         Hand,
         /// <summary>Straight into the moment <see cref="ComboCommand.Element"/> (dev builds and the Editor offer it).</summary>
         Moment,
+        /// <summary>Picks the upgrade <see cref="ComboCommand.Element"/> from this wizard's offer.</summary>
+        Pick,
+        /// <summary>A player brings <see cref="ComboCommand.Step"/> points, from their own save, for every peer to know.</summary>
+        Bring,
         /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>, or with none, nothing.</summary>
         Attune,
     }
@@ -116,6 +120,8 @@ namespace Chem
         public static ComboCommand Release(string player) => new ComboCommand(player, ComboCommandKind.Release);
         public static ComboCommand Hand(string player, int hand, bool bumper = false) => new ComboCommand(player, ComboCommandKind.Hand, null, hand, bumper);
         public static ComboCommand Moment(string player, string moment) => new ComboCommand(player, ComboCommandKind.Moment, moment);
+        public static ComboCommand Pick(string player, string upgrade) => new ComboCommand(player, ComboCommandKind.Pick, upgrade);
+        public static ComboCommand Bring(string player, int points) => new ComboCommand(player, ComboCommandKind.Bring, null, points);
         public static ComboCommand Attune(string player, int hand, string element) => new ComboCommand(player, ComboCommandKind.Attune, element, hand);
     }
 

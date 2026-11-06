@@ -110,6 +110,24 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ABossGrowsByHealthWithPeersAndTheRestDont()
+        {
+            (int boss, int plain) Hps(params string[] wizards)
+            {
+                var w = Field();
+                for (int i = 0; i < wizards.Length; i++) Stand(w, wizards[i], (w.HoldSite.Rise.x - 40 - i * 2, w.HoldSite.Rise.y - 30));
+                Moment(w, "first-boss");
+                Until(w, () => w.Raiders.Count >= 2, "they come");
+                return (w.Raiders[0].MaxHp, w.Raiders[1].MaxHp);
+            }
+            var one = Hps(Me);
+            var two = Hps(Me, "Bo");
+            Assert.That(two.boss, Is.EqualTo(one.boss * P.BossPeerHealth[1] / 100));
+            Assert.That(P.BossPeerHealth[1], Is.GreaterThan(100));
+            Assert.That(two.plain, Is.LessThan(two.boss / 5), "the rest stay on peerPercent");
+        }
+
+        [Test]
         public void TheWarningSaysWhatsComingLongEnoughAhead()
         {
             var w = Field();

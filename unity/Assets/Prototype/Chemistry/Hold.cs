@@ -84,14 +84,47 @@ namespace Chem
         public int BarricadeFrom, BarricadeFirst, BarricadePerWaves = 1, BarricadeMost, BarricadeRadius;
         /// <summary>A wave's size in percent, by the wizards at the run's start: the first is one wizard's.</summary>
         public IReadOnlyList<int> PeerPercent = new[] { 100 };
+        /// <summary>A boss's health in percent, by the same count: there's one of it, so numbers can't scale it.</summary>
+        public IReadOnlyList<int> BossPeerHealth = new[] { 100 };
         public IReadOnlyList<WaveThemeDef> Themes = Array.Empty<WaveThemeDef>();
         public IReadOnlyList<MomentDef> Moments = Array.Empty<MomentDef>();
+        public IReadOnlyList<UpgradeDef> Upgrades = Array.Empty<UpgradeDef>();
+        public IReadOnlyList<UnlockDef> Unlocks = Array.Empty<UnlockDef>();
+        /// <summary>How many upgrades a wizard is offered, and what a wave survived earns.</summary>
+        public int Offer, PointsPerWave = 1;
         /// <summary>How many blows a blocking terrain takes; one left out can't be battered.</summary>
         public IReadOnlyDictionary<string, int> Strength = new Dictionary<string, int>();
         /// <summary>The adjectives, in the rules' order.</summary>
         public IReadOnlyList<AdjectiveDef> Adjectives = Array.Empty<AdjectiveDef>();
         /// <summary>The hands' table and numbers.</summary>
         public HandsDef Hands = new HandsDef();
+
+        static UpgradeDef ParseUpgrade(JProperty p) => new UpgradeDef
+        {
+            Id = p.Name,
+            Name = (string)p.Value["name"] ?? p.Name,
+            Holds = (string)p.Value["holds"],
+            Gesture = HandsDef.GestureOf((string)p.Value["gesture"]),
+            Cooldown = (int?)p.Value["cooldown"] ?? 0,
+            BothCooldown = (int?)p.Value["bothCooldown"] ?? 0,
+            Damage = (int?)p.Value["damage"] ?? 0,
+            Range = (int?)p.Value["range"] ?? 0,
+            Health = (int?)p.Value["health"] ?? 0,
+        };
+
+        static UnlockDef ParseUnlock(JObject o) => new UnlockDef
+        {
+            Id = (string)o["id"],
+            Name = (string)o["name"] ?? (string)o["id"],
+            Cost = (int?)o["cost"] ?? 0,
+            Gesture = HandsDef.GestureOf((string)o["gesture"]),
+            Hand = (string)o["hand"],
+            Element = (string)o["element"],
+            Kit = (string)o["kit"],
+        };
+
+        /// <summary>The upgrade with this id, or null.</summary>
+        public UpgradeDef Upgrade(string id) => Upgrades.FirstOrDefault(u => u.Id == id);
 
         static MomentDef ParseMoment(JProperty p)
         {
@@ -137,6 +170,10 @@ namespace Chem
             h.AdjectiveFrom = Int("adjectiveFrom", h.AdjectiveFrom);
             h.AdjectivePercent = Int("adjectivePercent", h.AdjectivePercent);
             h.Hands = HandsDef.Parse(o["hands"]);
+            h.Offer = Int("offer", h.Offer);
+            h.PointsPerWave = Int("pointsPerWave", h.PointsPerWave);
+            h.Upgrades = (o["upgrades"] as JObject)?.Properties().Select(ParseUpgrade).ToList() ?? h.Upgrades;
+            h.Unlocks = (o["unlocks"] as JArray)?.OfType<JObject>().Select(ParseUnlock).ToList() ?? h.Unlocks;
             h.DamagePerWave = Int("damagePerWave", h.DamagePerWave);
             h.OffRoadCost = Math.Max(1, Int("offRoadCost", h.OffRoadCost));
             h.RouteEvery = Math.Max(1, Int("routeEvery", h.RouteEvery));
@@ -157,6 +194,7 @@ namespace Chem
             h.BossEvery = (int?)o["boss"]?["every"] ?? 0;
             h.BossHpPerWave = (int?)o["boss"]?["hpPerWave"] ?? 0;
             h.BossAdjective = (string)o["boss"]?["adjective"];
+            if (o["boss"]?["peerHealth"] is JArray bossPeers && bossPeers.Count > 0) h.BossPeerHealth = bossPeers.Select(v => (int)v).ToList();
             if (o["peerPercent"] is JArray peers && peers.Count > 0) h.PeerPercent = peers.Select(v => (int)v).ToList();
             h.Themes = (o["themes"] as JObject)?.Properties().Select(p => new WaveThemeDef
             {
@@ -287,6 +325,14 @@ namespace Chem
                     if (m.Name.Length > mostMoment) Errors.Add($"hold: moment {m.Name}: the id is too long");
                     if (m.Value["theme"] is JToken t && themes[(string)t] == null) Errors.Add($"hold: moment {m.Name}: unknown theme {Show(t)}");
                     if (!WholeFromOne(m.Value["wave"])) Errors.Add($"hold: moment {m.Name}: wave must be a whole number from 1");
+                }
+                foreach (var u in (h["upgrades"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                    if (u.Value["gesture"] is JToken g && HandsDef.GestureOf((string)g) == HandsDef.NoGesture) Errors.Add($"hold: upgrade {u.Name}: unknown gesture {Show(g)}");
+                foreach (var row in (h["unlocks"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
+                {
+                    if (!WholeFromOne(row["cost"])) Errors.Add($"hold: unlock {Show(row["id"])}: cost must be a whole number from 1");
+                    if (row["gesture"] is JToken g && HandsDef.GestureOf((string)g) == HandsDef.NoGesture) Errors.Add($"hold: unlock {Show(row["id"])}: unknown gesture {Show(g)}");
+                    if (row["kit"] is JToken k && !SpellKnown(k)) Errors.Add($"hold: unlock {Show(row["id"])}: unknown spell {Show(k)}");
                 }
                 foreach (var e in (h["raiders"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                     if (e.Value["raider"]?["route"] is JToken route && !Routes.Contains((string)route)) Errors.Add($"entity {e.Name}: unknown route {Show(route)}");

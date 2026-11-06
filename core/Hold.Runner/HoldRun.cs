@@ -29,8 +29,10 @@ namespace Chem.HoldCurve
         public int LastWave => world.Hold?.Wave ?? 0;
         public int Ticks { get; private set; }
         public World World => world;
+        /// <summary>What the first wizard's points came to.</summary>
+        public int Points => world.PointsOf(Name(0)) ?? 0;
 
-        public HoldRun(Rules rules, string worldDir, uint seed, int peers, string left, string right, string moment = null)
+        public HoldRun(Rules rules, string worldDir, uint seed, int peers, (string left, string right) holds, string moment = null, int? points = null)
         {
             this.peers = peers;
             table = rules.Sim.Hold.Hands;
@@ -46,8 +48,9 @@ namespace Chem.HoldCurve
             for (int i = 0; i < peers; i++)
             {
                 world.ApplyStrike(StrikeCommand.Stand(Name(i), room.Item1, room.Item2, 1000000));
-                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Left, left));
-                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Right, right));
+                if (points != null) world.ApplyCombo(ComboCommand.Bring(Name(i), points.Value));
+                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Left, holds.left));
+                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Right, holds.right));
             }
             if (moment != null) world.ApplyCombo(ComboCommand.Moment(Name(0), moment));
             else
@@ -111,7 +114,7 @@ namespace Chem.HoldCurve
         int GestureFor(string me, int hand, (int x, int y) post)
         {
             foreach (int gesture in new[] { HandsDef.Thrust, HandsDef.Sweep, HandsDef.Throw })
-                if (Hurts(table.One(world.HandsOf(me).Holds[hand], gesture)) && Target(post, table.RangeOf(gesture)) != null) return gesture;
+                if (world.GestureOpen(me, gesture) && Hurts(table.One(world.HandsOf(me).Holds[hand], gesture)) && Target(post, table.RangeOf(gesture)) != null) return gesture;
             return HandsDef.NoGesture;
         }
 
@@ -120,9 +123,9 @@ namespace Chem.HoldCurve
             if (world.CastOf(me)?.Casting == true || Target(post, table.RangeOf(HandsDef.Throw)) == null) return;
             bool left = world.HandCooling(me, HandsDef.Left) == 0, right = world.HandCooling(me, HandsDef.Right) == 0;
             var holds = world.HandsOf(me).Holds;
-            if (left && right && world.Raiders.Count(r => Dist(post, r) <= table.RangeOf(HandsDef.Throw)) >= CrowdForBoth)
+            if (left && right && world.HandOpen(me, HandsDef.Left) && world.Raiders.Count(r => Dist(post, r) <= table.RangeOf(HandsDef.Throw)) >= CrowdForBoth)
                 foreach (int gesture in new[] { HandsDef.Thrust, HandsDef.Throw })
-                    if (Hurts(table.Both(holds[HandsDef.Left], holds[HandsDef.Right], gesture)) && Target(post, table.RangeOf(gesture)) != null)
+                    if (world.GestureOpen(me, gesture) && Hurts(table.Both(holds[HandsDef.Left], holds[HandsDef.Right], gesture)) && Target(post, table.RangeOf(gesture)) != null)
                     {
                         Press(me, HandsDef.Right, gesture);
                         Press(me, HandsDef.Left, gesture);
@@ -130,7 +133,7 @@ namespace Chem.HoldCurve
                     }
             for (int hand = HandsDef.Right; hand >= HandsDef.Left; hand--)
             {
-                if (world.HandCooling(me, hand) > 0) continue;
+                if (world.HandCooling(me, hand) > 0 || !world.HandOpen(me, hand)) continue;
                 int gesture = GestureFor(me, hand, post);
                 if (gesture == HandsDef.NoGesture) continue;
                 Press(me, hand, gesture);
@@ -148,9 +151,9 @@ namespace Chem.HoldCurve
             var spell = world.Rules.Spell(fired.Spell);
             int aimX = target.X - me.x, aimY = target.Y - me.y;
             int dir = World.DirOf(aimX, aimY);
-            if (spell.Origin != "self") world.Cast(new CastCommand(fired.Spell, target.X, target.Y, dir));
-            else if (spell.Shape == "burst") world.Cast(new CastCommand(fired.Spell, me.x, me.y, dir));
-            else world.Cast(new CastCommand(fired.Spell, me.x + Math.Sign(aimX), me.y + Math.Sign(aimY), dir, 1, aimX, aimY));
+            if (spell.Origin != "self") world.Cast(new CastCommand(fired.Spell, target.X, target.Y, dir, by: fired.Player));
+            else if (spell.Shape == "burst") world.Cast(new CastCommand(fired.Spell, me.x, me.y, dir, by: fired.Player));
+            else world.Cast(new CastCommand(fired.Spell, me.x + Math.Sign(aimX), me.y + Math.Sign(aimY), dir, 1, aimX, aimY, fired.Player));
         }
     }
 }
