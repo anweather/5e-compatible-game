@@ -101,6 +101,21 @@ public class PlayerControls : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// The Hold's offer between waves is open (ProgressKeeper): the pad's d-pad chooses an upgrade and takes it, so the kit's
+    /// d-pad buttons are off until it closes. The keyboard's stay.
+    /// </summary>
+    public bool OfferPad
+    {
+        get => offerPad;
+        set
+        {
+            if (offerPad == value) return;
+            offerPad = value;
+            ApplyPadLayout();
+        }
+    }
+
     /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
     public bool ItemInReach { get; set; }
 
@@ -112,9 +127,9 @@ public class PlayerControls : MonoBehaviour
 
     InputAction[] all;
     InputAction swapLayout;
-    bool elementPad = true, handPad;
+    bool elementPad = true, handPad, offerPad;
     // Each layout's own bindings, by action and index.
-    (InputAction action, int binding)[] radialOnly, elementOnly, elementButtons, handsTake;
+    (InputAction action, int binding)[] radialOnly, elementOnly, elementButtons, handsTake, kitDpad;
 
     void Awake()
     {
@@ -171,6 +186,7 @@ public class PlayerControls : MonoBehaviour
         };
         elementButtons = new[] { (Elements[0], 1), (Elements[1], 1), (Elements[2], 1), (Elements[3], 1) };
         handsTake = new[] { (Cast, 0), (Throw, 1) };
+        kitDpad = new[] { (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (Grimoire, 1) };
         ApplyPadLayout();
     }
 
@@ -179,6 +195,7 @@ public class PlayerControls : MonoBehaviour
     {
         Switch(radialOnly, !elementPad && !handPad);
         Switch(elementOnly, elementPad || handPad);
+        if (offerPad) Switch(kitDpad, false);
         Switch(elementButtons, elementPad && !handPad);
         Switch(handsTake, !handPad);
     }

@@ -32,6 +32,25 @@ namespace Chem
             }
         }
 
+        /// <summary>How many more points this player needs for a row: 0 if it's theirs. Rows unlock in order, so it counts those before it.</summary>
+        public int PointsAway(string player, UnlockDef row)
+        {
+            if (AllOpen(player)) return 0;
+            int through = 0;
+            foreach (var u in Rules.Sim.Hold.Unlocks)
+            {
+                through += u.Cost;
+                if (u == row) return Math.Max(0, through - (PointsOf(player) ?? AllPoints));
+            }
+            return 0;
+        }
+
+        /// <summary>The next row this player hasn't got, or null with everything.</summary>
+        public UnlockDef NextUnlock(string player) => Rules.Sim.Hold.Unlocks.FirstOrDefault(u => PointsAway(player, u) > 0);
+
+        /// <summary>The row that gives this, or null when a wizard starts with it.</summary>
+        public UnlockDef UnlockGiving(Func<UnlockDef, bool> gives) => Rules.Sim.Hold.Unlocks.FirstOrDefault(gives);
+
         // Whether a thing a row gives is this player's. What no row gives, a wizard starts with.
         bool Has(string player, Func<UnlockDef, bool> gives) =>
             AllOpen(player) || !Rules.Sim.Hold.Unlocks.Any(gives) || UnlocksOf(player).Any(gives);

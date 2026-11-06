@@ -209,6 +209,15 @@ Progress belongs to the player, not the world (J-038).
 
 Between runs, a player's save is one number, **points**: `pointsPerWave` for each wave survived, added up. What's unlocked follows from the points and the rows, in order, so a rule change can't leave a save disagreeing with them. `ComboCommand.Bring` tells every peer; `ProgressKeeper` sends it whenever the world doesn't know, so a new world, a reset or a host's world all hear it, and writes what's been earned. A wizard nobody has brought points for has everything, which keeps bots and tests whole, and so does anyone in a moment, which also earns nothing. Dev builds and the Editor bring everything; F7 plays as the save says. **A save that won't load:** it's kept beside the new one as `.broken`, the last good copy is used if there is one, the player is told, and the file is never written lower than it was. Hosts believe what a player brings: it's a friends' game.
 
+**On screen.** `ProgressKeeper` is the player's side, in three parts. Between waves the offer is a panel of cards, each upgrade's name and what it does in words
+(`UpgradeDef.Words`, from its numbers), with the seconds until one is picked for you; 1, 2 and 3 or a click take one, and on a pad the d-pad chooses and takes
+(`PlayerControls.OfferPad` turns the kit's d-pad off while the offer is open). During a run the picks so far are listed at the side. A run's end says the wave
+reached, the points earned, anything newly unlocked and what's next. The Esc menu's Game page "The Hold: your progress" lists every unlock, yours or how many points
+away (`World.PointsAway`, `NextUnlock`), with F7's switch in dev builds. A locked hand or gesture says so when pressed, with the points to it, and the press goes
+nowhere; the attuning room steps only through the elements you have and names the next one; the HUD's hands line says "locked". Health an upgrade adds (Tough) is
+named on the health bar, which glows as it grows. F7 never writes a dev build's everything into the save: nothing is saved until the world has the points just
+brought. The probes are `progress` (one peer from a fresh save) and `roomprogress` (two peers with different points, checksums compared).
+
 | Dial | Start | If you raise it |
 |---|---|---|
 | `offer` | 3 | More choice between waves |

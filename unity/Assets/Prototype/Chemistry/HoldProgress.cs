@@ -17,6 +17,23 @@ namespace Chem
         public string Holds;
         public int Gesture = HandsDef.NoGesture;
         public int Cooldown, BothCooldown, Damage, Range, Health;
+
+        /// <summary>What it does, in words for the player: "fire spells do 30% more damage".</summary>
+        public string Words()
+        {
+            string what = (Holds != null ? Holds + " " : "") + (Gesture != HandsDef.NoGesture ? HandsDef.GestureName(Gesture) + "s" : "spells");
+            var parts = new List<string>();
+            if (Damage != 0) parts.Add($"{what} do {Percent(Damage)} {(Damage > 0 ? "more" : "less")} damage");
+            if (Range != 0) parts.Add($"{what} reach {Percent(Range)} {(Range > 0 ? "further" : "less far")}");
+            if (Cooldown != 0) parts.Add($"{(Holds == null && Gesture == HandsDef.NoGesture ? "your hands are" : what + " are")} ready {Percent(Cooldown)} {(Cooldown < 0 ? "sooner" : "later")}");
+            if (BothCooldown != 0) parts.Add($"two-handed spells are ready {Percent(BothCooldown)} {(BothCooldown < 0 ? "sooner" : "later")}");
+            if (Health != 0) parts.Add($"{Math.Abs(Health)} {(Health > 0 ? "more" : "less")} health");
+            if (parts.Count == 0) return "nothing yet";
+            string words = string.Join(", ", parts);
+            return char.ToUpperInvariant(words[0]) + words.Substring(1);
+        }
+
+        static string Percent(int value) => Math.Abs(value).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
     }
 
     /// <summary>A row of rules/hold.json "unlocks": one thing a wizard keeps, and the points it costs after the row before.</summary>
@@ -24,6 +41,18 @@ namespace Chem
     {
         public string Id, Name, Hand, Element, Kit;
         public int Cost, Gesture = HandsDef.NoGesture;
+
+        /// <summary>What kind of thing it gives, for the player: "a gesture", "a hand", "an element" or "a kit spell".</summary>
+        public string Kind
+        {
+            get
+            {
+                if (Gesture != HandsDef.NoGesture) return "a gesture";
+                if (Hand != null) return "a hand";
+                if (Element != null) return "an element";
+                return Kit != null ? "a kit spell" : "something";
+            }
+        }
     }
 
     /// <summary>One wizard's run: what it's offered now, and what it has picked. Ids only.</summary>

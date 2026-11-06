@@ -4,7 +4,7 @@ using UnityEngine;
 // The wizard's vitals on the HUD (EventLog draws it), in Andrew's layout
 // (docs/SPELL_COMBOS.md): a portrait in the top left corner (a placeholder: the
 // wizard's headwear, black face and red eyes, and robe in its look's colours) with health and magic
-// stacked to its right; and stamina as a thin green line under them, out of the
+// stacked to its right (health a run's upgrades add is named on its bar); and stamina as a thin green line under them, out of the
 // way of the aim (UX pass 4), shown only while it's in use (sprinting, swimming,
 // rolling, or not yet full again) and faded out a moment after.
 // Breath is a bar to the right of health, there only while it runs down under
@@ -18,7 +18,10 @@ public sealed class VitalsHud
     const float Inset = 2f;
     // How fast stamina fades in and out (per second), and how long it stays after the effort stops (s).
     const float FadeRate = 4f, Linger = 0.8f;
+    // How long the health bar glows after its maximum grows (s).
+    const float GrowGlow = 1.5f;
 
+    static readonly Color GrowColor = new(0.45f, 0.95f, 0.45f);
     static readonly Color HealthColor = new(0.85f, 0.25f, 0.25f), StaminaColor = new(0.3f, 0.9f, 0.35f), MagicColor = new(0.35f, 0.55f, 1f);
     static readonly Color BreathColor = new(0.75f, 0.92f, 1f), DrowningColor = new(0.3f, 0.45f, 0.9f);
     static readonly Color FaceColor = new(0.02f, 0.02f, 0.025f), EyeColor = new(1f, 0.1f, 0.06f), Frame = new(0f, 0f, 0f, 0.55f), Unknown = new(0.2f, 0.25f, 0.5f);
@@ -41,7 +44,10 @@ public sealed class VitalsHud
         text ??= new GUIStyle(style) { fontSize = 15, alignment = TextAnchor.MiddleCenter };
         Portrait(new Rect(Margin, Margin, BlockHeight, BlockHeight));
         float x = Margin + BlockHeight + Gap;
-        Bar(new Rect(x, Margin, BarWidth, BarHeight), $"<b>Health</b> {Mathf.CeilToInt(vitals.Health)}/{Mathf.CeilToInt(vitals.HealthMax)}", vitals.Health / vitals.HealthMax, HealthColor);
+        // Health that upgrades add (Tough) is named on the bar, which glows a moment as it grows.
+        string extra = vitals.ExtraHealth > 0 ? $" <color=#b8ffb0>(+{vitals.ExtraHealth})</color>" : "";
+        float grew = Mathf.Clamp01(1f - (Time.unscaledTime - vitals.HealthGrewAt) / GrowGlow);
+        Bar(new Rect(x, Margin, BarWidth, BarHeight), $"<b>Health</b> {Mathf.CeilToInt(vitals.Health)}/{Mathf.CeilToInt(vitals.HealthMax)}{extra}", vitals.Health / vitals.HealthMax, Color.Lerp(HealthColor, GrowColor, grew));
         Bar(new Rect(x, Margin + BarHeight + Gap, BarWidth, BarHeight), $"<b>Magic</b> {Mathf.CeilToInt(vitals.Magic)}/{Mathf.CeilToInt(Vitals.MagicMax)}", vitals.Magic / Vitals.MagicMax, MagicColor);
         Breath(new Rect(x + BarWidth + Gap, Margin, BarWidth, BarHeight));
         Stamina(new Rect(x, Margin + BlockHeight - StaminaHeight, BarWidth, StaminaHeight));

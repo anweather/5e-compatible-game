@@ -34,11 +34,18 @@ public class Vitals : MonoBehaviour
     public float Stamina { get; private set; } = StaminaMax;
     public float Magic { get; private set; } = MagicMax;
 
+    /// <summary>The health upgrades add now, for the HUD.</summary>
+    public int ExtraHealth { get; private set; }
+    /// <summary>When the maximum last went up (unscaled time), for the HUD's flash.</summary>
+    public float HealthGrewAt { get; private set; } = float.NegativeInfinity;
+
     /// <summary>Health over the wizard's own, from a run's upgrades (ProgressKeeper): it comes with its maximum, and goes with it.</summary>
     public void SetExtraHealth(int extra)
     {
         float before = HealthMax, maximum = baseHealth + extra;
         if (Mathf.Approximately(before, maximum)) return;
+        ExtraHealth = extra;
+        if (maximum > before) HealthGrewAt = Time.unscaledTime;
         HealthMax = maximum;
         Health = Mathf.Clamp(Health + maximum - before, 1f, maximum);
     }

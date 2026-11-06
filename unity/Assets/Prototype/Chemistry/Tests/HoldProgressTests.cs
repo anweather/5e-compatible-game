@@ -471,5 +471,38 @@ namespace Chem.Tests
             Read(folder);
             Assert.That(File.Exists(SaveIn(folder) + ".broken1"), "a second look doesn't overwrite the first");
         }
+
+        // ---------- what the player reads ----------
+
+        [Test]
+        public void EveryUpgradeSaysWhatItDoes()
+        {
+            Assert.That(P.Upgrade("fire-focus").Words(), Is.EqualTo("Fire spells do 30% more damage"));
+            Assert.That(P.Upgrade("hard-thrust").Words(), Is.EqualTo("Thrusts do 20% more damage"));
+            Assert.That(P.Upgrade("long-arm").Words(), Is.EqualTo("Throws reach 25% further"));
+            Assert.That(P.Upgrade("quick-hands").Words(), Is.EqualTo("Your hands are ready 15% sooner"));
+            Assert.That(P.Upgrade("earth-focus").Words(), Is.EqualTo("Earth spells are ready 30% sooner"));
+            Assert.That(P.Upgrade("calm-hands").Words(), Is.EqualTo("Two-handed spells are ready 25% sooner"));
+            Assert.That(P.Upgrade("tough").Words(), Is.EqualTo("6 more health"));
+            foreach (var u in P.Upgrades) Assert.That(u.Words(), Is.Not.EqualTo("nothing yet"), u.Id);
+        }
+
+        [Test]
+        public void TheNextUnlockIsSoManyPointsAway()
+        {
+            var w = Attuned(1).w;
+            var first = P.Unlocks[0];
+            Assert.That(w.NextUnlock(Me), Is.SameAs(first));
+            Assert.That(w.PointsAway(Me, first), Is.EqualTo(first.Cost - 1));
+            Assert.That(w.PointsAway(Me, P.Unlocks[1]), Is.EqualTo(CostTo(P.Unlocks[1].Id) - 1), "rows unlock in order");
+            Assert.That(w.ApplyCombo(ComboCommand.Bring(Me, CostTo("sweep"))));
+            Assert.That(w.PointsAway(Me, first), Is.Zero);
+            Assert.That(w.NextUnlock(Me).Id, Is.EqualTo("second-hand"));
+            Assert.That(w.UnlockGiving(u => u.Gesture == Sweep).Id, Is.EqualTo("sweep"));
+            Assert.That(w.UnlockGiving(u => u.Gesture == Thrust), Is.Null, "a wizard starts with the thrust");
+            Assert.That(w.ApplyCombo(ComboCommand.Bring(Me, CostTo(P.Unlocks[P.Unlocks.Count - 1].Id))));
+            Assert.That(w.NextUnlock(Me), Is.Null, "everything");
+            Assert.That(Attuned(null).w.NextUnlock(Me), Is.Null, "no points brought is everything");
+        }
     }
 }
