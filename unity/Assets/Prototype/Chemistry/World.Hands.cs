@@ -43,6 +43,9 @@ namespace Chem
         /// <summary>The first spell a hand cast under way will bring out, or null.</summary>
         public string HandSpellUnderWay(string player) => hands.TryGetValue(player, out var h) && h.Casting ? Coming(h).Select(c => c.row.Spell).FirstOrDefault(s => s != null) : null;
 
+        /// <summary>Every spell a hand cast under way will bring out: two gestures together are two.</summary>
+        public List<string> HandSpellsUnderWay(string player) => hands.TryGetValue(player, out var h) && h.Casting ? Coming(h).Select(c => c.row.Spell).Where(s => s != null).ToList() : new List<string>();
+
         // What the hands bring out as they stand: a combined row with both hands, or each hand's own.
         List<(HandRowDef row, int gesture, int hand)> Coming(PlayerHands h)
         {
