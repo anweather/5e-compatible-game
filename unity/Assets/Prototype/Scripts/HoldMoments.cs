@@ -9,9 +9,13 @@ using UnityEngine.InputSystem;
 public class HoldMoments : MonoBehaviour
 {
     const int MenuOrder = 50;
+    const string PageId = "hold-moments";
 
     ChemGrid grid;
     int seen;
+    // Picked in the menu: gone into next frame, since closing the menu while it's drawing breaks its layout.
+    string chosen;
+    bool showPage;
 
     /// <summary>Whether this build offers moments at all.</summary>
     public static bool Offered => Application.isEditor || Debug.isDebugBuild;
@@ -20,20 +24,30 @@ public class HoldMoments : MonoBehaviour
     {
         grid = GetComponent<ChemGrid>();
         if (!Offered) enabled = false;
-        else PauseMenu.AddSection(DrawInMenu, MenuOrder, PauseMenu.Submenu.Developer);
+        else
+        {
+            PauseMenu.AddSection(DrawInMenu, MenuOrder, PauseMenu.Submenu.Developer);
+            PauseMenu.AddPage(PageId, new PauseMenu.Page { Title = "The Hold's moments", Draw = DrawPage });
+        }
     }
 
+    void OnDestroy()
+    {
+        PauseMenu.RemoveSection(DrawInMenu);
+        PauseMenu.RemovePage(PageId);
+    }
+
+    // One row on the Developer page, opening a page of their own.
     void DrawInMenu()
     {
+        if (PauseMenu.Button("The Hold's moments")) showPage = true;
+    }
+
+    void DrawPage()
+    {
         var world = grid != null ? grid.World : null;
-        if (world?.HoldSite == null) return;
-        GUILayout.Label("The Hold's moments");
-        foreach (var moment in world.Rules.Sim.Hold.Moments)
-            if (PauseMenu.Button(moment.Name))
-            {
-                Enter(moment.Id);
-                PauseMenu.Instance.SetOpen(false);
-            }
+        foreach (var moment in world?.Rules.Sim.Hold.Moments ?? System.Array.Empty<MomentDef>())
+            if (PauseMenu.Button(moment.Name)) chosen = moment.Id;
     }
 
     /// <summary>Goes into a moment by its id, as the list does; false if the core refused it. The probe starts one here.</summary>
@@ -47,6 +61,17 @@ public class HoldMoments : MonoBehaviour
     {
         var world = grid.World;
         if (world?.HoldSite == null) return;
+        if (showPage)
+        {
+            showPage = false;
+            PauseMenu.Instance.ShowPage(PageId);
+        }
+        if (chosen != null)
+        {
+            Enter(chosen);
+            chosen = null;
+            PauseMenu.Instance.SetOpen(false);
+        }
         if (Keyboard.current != null && Keyboard.current.f8Key.wasPressedThisFrame) PauseMenu.Instance.SetOpen(true);
         var hold = world.Hold;
         if (hold?.Moment == null || hold.MomentTick == seen) return;
