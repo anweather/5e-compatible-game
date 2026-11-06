@@ -7,6 +7,10 @@
 //   inbox/<id>.md               a brief: a fresh session
 //   inbox/<id>.followup-<n>.md  a follow-up: resumes <id>'s session, so it keeps that context
 // A usage limit ends the run with the limit's text in the report; the brief is not retried.
+// The queue (D15): when the inbox is empty after a run, the runner claims the next brief this machine can do from
+// docs/handoffs/briefs/queue/ (queue.mjs, copied in beside this) and runs it as a fresh session. Then, idle, it looks
+// again every WORKER_QUEUE_MIN minutes (default 5; a git fetch, no Claude). Opt-in per machine: WORKER_QUEUE, or
+// ~/.worker/queue holding on or off; on for u2 only otherwise.
 // Started at logon (Windows: the "Worker Runner" task; Linux: start.cmd over SSH). One copy at a time.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -135,12 +139,31 @@ async function take(file) {
   log(`done ${id}: exit ${code}${limit ? ', usage limit' : ''}`);
 }
 
+// A claimed brief goes into the inbox like any other, with how it came and how it ends (VM_BRIEF.md).
+const queue = await import('./queue.mjs').catch(() => null); // an older start copied in runner.mjs alone
+const queueing = queue && fs.existsSync(repo) && queue.queueOn(name);
+const queueEvery = Number(process.env.WORKER_QUEUE_MIN || 5) * 60000;
+let lookedAt = 0;
+function fromQueue() {
+  lookedAt = Date.now();
+  let p; try { p = queue.claim(repo, queue.caps(), name, { log }); } catch (e) { log(`queue: ${e.message}`); return; }
+  if (!p) return;
+  const head = [`(From the brief queue: ${name} claimed it as ${p.taken}, pushed on dev.`,
+    `When your gates pass, land your branch yourself with \`bash tools/workers/land.sh here < message\`,`,
+    `deleting ${p.taken} in that landing (git rm it on your branch). If land.sh refuses, your report says so: it is not a success.)`, ''];
+  const id = `${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}-q-${p.name.replace(/\.md$/, '')}`;
+  fs.writeFileSync(path.join(inbox, `.${id}.tmp`), head.join('\n') + p.text);
+  fs.renameSync(path.join(inbox, `.${id}.tmp`), path.join(inbox, `${id}.md`));
+}
+
 let pauseUntil = 0; // after a usage limit: try again every 20 min (a refused call costs nothing)
-log(`started (pid ${process.pid}, mode ${mode})`);
+log(`started (pid ${process.pid}, mode ${mode}, queue ${queueing ? 'on' : 'off'})`);
+let ran = false;
 for (;;) {
   if (Date.now() < pauseUntil) { await new Promise(r => setTimeout(r, 30000)); continue; }
   // A file still being copied in (Copy-VMFile, scp) is left until it's been still for 3 s.
   const next = fs.readdirSync(inbox).filter(f => f.endsWith('.md') && Date.now() - fs.statSync(path.join(inbox, f)).mtimeMs > 3000).sort()[0];
-  if (next) { try { await take(path.join(inbox, next)); } catch (e) { log(`failed ${next}: ${e.stack ?? e}`); } }
+  if (next) { ran = true; try { await take(path.join(inbox, next)); } catch (e) { log(`failed ${next}: ${e.stack ?? e}`); } }
+  else if (queueing && fs.readdirSync(inbox).length === 0 && (ran || Date.now() - lookedAt > queueEvery)) { ran = false; fromQueue(); }
   else await new Promise(r => setTimeout(r, 10000));
 }

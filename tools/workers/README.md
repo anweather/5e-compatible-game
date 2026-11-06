@@ -102,12 +102,75 @@ status.cmd                             # state, CPU, assigned and demanded RAM, 
 
 Every commit made in a Windows worker ends with what its work cost, as trailers (`Worker`, `Worker-Time`, `Worker-Tokens`: new tokens apart from cache reads, which are the context re-read on every reply). `commit-cost.mjs` reads Claude Code's own logs since the VM's last commit (or its boot), so the agent spends nothing on it; `start.cmd` installs it as a `prepare-commit-msg` hook. Add them up with `git log --grep Worker-Tokens`.
 
-**One task per boot.** When a worker's branch is merged, stop the VM: that
-ends its Claude session, so the next task starts with an empty context (and
-cache reads stay small). The coordinator lands a branch with `land.sh merge
-<branch> < message`, runs the checks, then `land.sh push <branch>`: its merge
-commit carries Coordinator-* cost lines (`CLAUDE_CONFIG_DIR` set to its
-account) and the merged branch is deleted on origin.
+**One task per session.** Each brief runs as a fresh headless session
+(`runner.mjs`), so the next task starts with an empty context (and cache
+reads stay small).
+
+### Workers land their own work (D15)
+
+Once its gates pass (`bash tools/workers/gates.sh <log>`), a worker lands the
+branch it's on, from its own checkout, on any machine (Linux or Windows VM,
+the PC, the Mac):
+
+```
+bash tools/workers/land.sh here [--compiled] [--deletes] [--dry] < message
+```
+
+It pushes the branch, then runs `land.sh auto` in a landing worktree beside
+the checkout (`<checkout>-land`, or `$LAND_WORKTREE`; kept, so its build
+cache is warm next time) with **dev's** `land.sh`, so a branch can't change
+its own landing. Every refusal of `auto` stands (deletions, heavy removals, a
+conflict, a merge touching files the branch doesn't own, a failed gate), plus:
+a dirty checkout, being on `dev` or `main`, and a branch that leaves its queue
+claim on dev. `--compiled` is accepted only where
+`node tools/workers/queue.mjs caps` says `unity`: Unity C# from a machine
+without Unity stops, and goes to the mailbox for the PC to compile. Once
+landed, the checkout is switched to `dev` and the branch deleted, here and on
+origin. Deleting your own `queue/taken/` claim needs no `--deletes`.
+
+**A refusal is the only landing the PM hears about.** `land.sh here` prints
+`STOP: <why>`, exits 1, and writes the reason as a report into
+`~/.worker/outbox` (`bridge-watch.sh` mails it to `pm`), or, on a machine
+without one, sends it with `bridge.sh send pm`. A landing that worked says
+nothing beyond the run's own report.
+
+The coordinator still lands others' branches from its worktree with
+`land.sh auto <branch>` (or `land.sh merge <branch> < message`, the checks,
+then `land.sh push <branch>`): its merge commit carries Coordinator-* cost
+lines (`CLAUDE_CONFIG_DIR` set to its account) and the merged branch is
+deleted on origin.
+
+### The brief queue (D15)
+
+Briefs wait in `docs/handoffs/briefs/queue/` (its README has the head each
+starts with: `Needs:`, `Area:`, `Branch:`). When a worker's inbox is empty
+after a run, `runner.mjs` claims the next one this machine can do
+(`queue.mjs`):
+
+- **Needs:** `core` or `any` runs anywhere; `unity` where there's an Editor;
+  `mac` on the Mac. What a machine has is `WORKER_CAPS` (`unity mac`), else
+  `~/.worker/caps`, else found: `core` always, `mac` on macOS, `unity` where
+  Unity Hub has an Editor on Windows or macOS (the Linux VMs have one, but no
+  licence or GPU). A brief with no `Needs:` is taken by nobody.
+- **Area:** a brief whose area overlaps one in `queue/taken/` waits (one
+  inside the other; a glob counts as its folder). A brief naming no area
+  overlaps everything.
+- **The claim** is the brief moved to `queue/taken/` in a commit
+  (`queue: <worker> takes <f>`) pushed on dev, made from a scratch index (the
+  tree `git mv` + commit would give), so the worker's checkout isn't touched.
+  A push that loses the race fetches and picks again (5 tries).
+- The claimed brief goes into the inbox as `<time>-q-<name>.md`, headed by a
+  line saying how it came and how it ends, and runs as a fresh session. The
+  worker deletes its `taken/` file on its branch, so the claim leaves with
+  the landing.
+- **Nothing queued:** the runner stays idle and looks again every
+  `WORKER_QUEUE_MIN` minutes (default 5): a `git fetch`, no Claude.
+- **Opt-in per machine:** `WORKER_QUEUE` (`1`/`0`), else `~/.worker/queue`
+  holding `on` or `off`; otherwise on for `u2` only. `start.cmd` and
+  `linux.sh runner` copy `queue.mjs` in beside `runner.mjs`. A runner already
+  running keeps its old code until it's restarted.
+- By hand: `node tools/workers/queue.mjs pick` says what this machine would
+  take, without taking it.
 
 Inside a worker, `git fetch && git switch <branch>` before work: the clone is
 as old as the template. `remove-worker.cmd w1` deletes a worker (VM and disk;
