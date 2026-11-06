@@ -197,7 +197,7 @@ Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list i
 Progress belongs to the player, not the world (J-038).
 
 - **Inside a run:** between waves, choose one of three upgrades.
-- **Between runs:** you start with one hand and one element. You unlock the second hand, modifiers, then other elements,
+- **Between runs:** you start with one hand and one element. You unlock gestures, the second hand, then other elements,
   then kit spells. Discoveries stay.
 - **Later:** castle upgrades, and things worth finding on the hill.
 
