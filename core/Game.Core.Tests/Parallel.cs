@@ -12,4 +12,10 @@ namespace Chem.Tests
     public partial class HoldTests
     {
     }
+
+    // The same: each builds its own world, and a fixture of them is the suite's longest after HoldTests.
+    [Parallelizable(ParallelScope.Children)]
+    public partial class HoldWaveTests
+    {
+    }
 }

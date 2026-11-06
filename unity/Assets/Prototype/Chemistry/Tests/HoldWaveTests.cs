@@ -5,7 +5,7 @@ using static Chem.Tests.HoldTests;
 
 namespace Chem.Tests
 {
-    public class HoldWaveTests
+    public partial class HoldWaveTests
     {
         static Rules R => ChemistryTests.R;
         static HoldParams P => R.Sim.Hold;
