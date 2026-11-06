@@ -14,10 +14,12 @@ Brief for the Mac: the Hold, phase 4, endless and tuned. Read `docs/design/the-h
 
 **The curve:** a headless runner in core: a scripted wizard with a fixed hand set plays seeded runs with no view, and prints the wave reached, the time and the keep's health at each wave, by hand set and peer count. Say how good the scripted wizard is, as it's only a stand-in for a player. Use the cheap playtester only if it's plainly less work.
 
-**Start target:** a good run lasts about 20 minutes (a dial, and Andrew may change it). A hand set that's wrong for a wave should do clearly worse on that wave.
+**Playtest moments (Andrew, 2026-11-05):** jump straight to a wave and play it from a canned setup, instead of playing up to it. A moment is a rules row: a name, the wave, the theme if forced, each hand's element, the keep's health and any damage to the castle. Start with about six: first wave, first adjectives, each kind of theme against a right and a wrong hand set, first boss, a late wave. Going in is a command, so a moment stays lockstep and two peers can play one; it's offered only in dev builds and the Editor, never in a released player. Andrew needs a simple way to pick one in the game, and a probe needs to start any moment by name. The headless runner takes a moment too, so the curve can test one wave on its own.
+
+**Start target:** a good run lasts about 20 minutes (Andrew, 2026-11-05; a dial). A hand set that's wrong for a wave should do clearly worse on that wave.
 
 **Keep:** the same rules as `the-hold.md`: core state, commands only, seeded RNG, no golden moved, words in the glossary first ("boss", "theme" and anything else new). Raiders' existing kinds stay as they are in the sandbox. Keep the test suite fast: the runner isn't a gate, and any test of it stays under about 2 s.
 
-**Tests:** the formula, themes never repeating, peer scaling, the warning's timing, two worlds matching over several waves.
+**Tests:** the formula, a moment giving the same wave as reaching it by play, themes never repeating, peer scaling, the warning's timing, two worlds matching over several waves.
 
 **Report:** one short message: the commit, gates with exit codes, the curve as a table, the dials you'd turn first, and a numbered list for the PC: what the warning and the boss must show. Don't merge it. Ask before anything much larger than this brief.
