@@ -20,6 +20,6 @@ Brief for the Mac: the Hold, phase 4, endless and tuned. Read `docs/design/the-h
 
 **Keep:** the same rules as `the-hold.md`: core state, commands only, seeded RNG, no golden moved, words in the glossary first ("boss", "theme" and anything else new). Raiders' existing kinds stay as they are in the sandbox. Keep the test suite fast: the runner isn't a gate, and any test of it stays under about 2 s.
 
-**Tests:** the formula, a moment matching the same wave reached by playing as far as the rules say it should, themes never repeating, peer scaling, the warning's timing, two worlds matching over several waves.
+**Tests:** the formula, a moment giving the same wave as reaching it by play, themes never repeating, peer scaling, the warning's timing, two worlds matching over several waves.
 
 **Report:** one short message: the commit, gates with exit codes, the curve as a table, the dials you'd turn first, and a numbered list for the PC: what the warning and the boss must show. Don't merge it. Ask before anything much larger than this brief.

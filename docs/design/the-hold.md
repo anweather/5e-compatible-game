@@ -165,7 +165,6 @@ After maps phase 8, the Hold moves to a map of its own: the same rows on purpose
 
 ## Open
 
-- How long should a good run last?
 - Is the castle mended between runs, or does damage carry through a session?
 - Which spells make the kit?
 - What does a player in the Hold do to anyone in the sandbox? Today a run is just something happening in the shared world.
