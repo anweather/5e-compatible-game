@@ -182,6 +182,7 @@ public class HoldProbe : ProbeScenario
         {
             (x, y) = next.Value;
             steps++;
+            if (x - row.X <= 34) break;
             bool on = road.Contains((x, y));
             joined |= on;
             if (on) onIt++;

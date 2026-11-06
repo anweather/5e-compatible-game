@@ -256,7 +256,8 @@ public partial class DefenseField : ICreatureGround
         var before = GUI.color;
         foreach (var s in shown.Values)
         {
-            var screen = cam.WorldToScreenPoint(s.at + Vector3.up * (1.2f + s.state.Scale * 0.6f));
+            var body = Body(s.kind);
+            var screen = cam.WorldToScreenPoint(s.at + Vector3.up * (0.5f + (body != null ? body.StandHeight * 2f * s.state.Scale : 0.4f)));
             if (screen.z <= 0f || screen.z > hudRange) continue;
             bool boss = Boss(World, s.raider);
             float width = boss ? 150f : 46f, height = boss ? 13f : 6f;
