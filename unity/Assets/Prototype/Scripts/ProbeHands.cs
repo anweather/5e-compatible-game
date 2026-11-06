@@ -230,7 +230,7 @@ public class HandsProbe : ProbeScenario
         yield return Inputs("air", "fire");
 
         var kit = world.SelectedDpad(Me);
-        Check("the_kit_is_the_rows", world.DpadOf(Me) == Table.Kit, kit?.Name);
+        Check("the_kit_is_the_rows", world.DpadOf(Me).SequenceEqual(Table.Kit), kit?.Name);
         yield return Fires("dpad_up_casts_the_kit", kit?.Spell, () => InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadUp)));
 
         yield return Ranges("fire", grid.CellAt(wizard.transform.position));
