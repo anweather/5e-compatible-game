@@ -294,5 +294,15 @@ public class HoldProbe : ProbeScenario
         Check("the_gate_burns_through", gate.All(c => !world.IsBlocking(world.At(c.X, c.Y))), string.Join(", ", gate.Select(c => world.At(c.X, c.Y).T)));
         yield return Picture("gate-burnt", At(36, 13) + Vector3.up * 2f, At(28, 15) + Vector3.up * 3f);
         yield return PlayToALoss(cells, gate, houses);
+        yield return AfterAReset(houses);
+    }
+
+    // Going online resets the world too: what a reset takes with the grid's children has to come back.
+    IEnumerator AfterAReset(RowHouses houses)
+    {
+        grid.ResetWorld();
+        yield return Wait(1f);
+        var root = houses.Root(Row);
+        Check("the_castle_is_drawn_again_after_a_reset", root != null && root.transform.Find("Walk") != null);
     }
 }

@@ -404,6 +404,20 @@ namespace Chem.Tests
             public void Make(int x, int y, Cell cell) => cell.T = "grass";
         }
 
+        // A joining peer's view asks for the rows before the host's room arrives.
+        [Test]
+        public void APeerThatLooksBeforeItsRoomOpensStillHasTheCastle()
+        {
+            var w = Field();
+            w.KeepStart();
+            var budgets = ModBudgets.Load(ChemistryTests.RulesDir());
+            w.AwaitRoom(budgets);
+            Assert.That(w.RowsDrawn().Select(r => r.Id), Does.Contain("hold#1"), "before the room");
+            w.OpenRoom(ChangeMode.Open, "host", R, budgets);
+            Assert.That(w.RowsDrawn().Select(r => r.Id), Does.Contain("hold#1"), "after it");
+            Assert.That(w.BuildingRowOf("hold#1"), Is.Not.Null);
+        }
+
         [Test]
         public void ASaveKeepsTheRun()
         {
