@@ -16,10 +16,10 @@ namespace Chem.Tests
         static WorldHold Site => WorldHold.Load(ChemistryTests.WorldDir());
 
         // Grass round the castle and the spawners, the rows laid, and the map's Hold.
-        internal static World Field(int seed = 7)
+        internal static World Field(int seed = 7, Rules rules = null)
         {
             var s = Site;
-            var w = new World(R, 576, 576, (uint)seed);
+            var w = new World(rules ?? R, 576, 576, (uint)seed);
             var cells = s.Spawners.SelectMany(p => p.Cells).Concat(new[] { s.Heart }).ToList();
             for (int y = cells.Min(c => c.y) - 40; y < cells.Max(c => c.y) + 40; y++)
                 for (int x = cells.Min(c => c.x) - 40; x < cells.Max(c => c.x) + 40; x++) w.Paint(x, y, "grass");
