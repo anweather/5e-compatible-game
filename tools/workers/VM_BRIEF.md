@@ -4,8 +4,8 @@ You're the Workers session, on Andrew's second (Pro) Claude account, with small
 usage limits: plan before you run anything, and keep reports short. The repo is
 C:\Users\Andrew\Development\5e-compatible-game. Read COORDINATION.md (rules,
 lanes, J-017 RAM rules) and JUDGMENT_CALLS.md first. Your lane is
-tools/workers/** only. Merge into dev through the coordinator (the
-"Project Manager" session): message it, and don't merge yourself.
+tools/workers/** only. Since D15, workers land their own branches (below);
+a change to landing itself still goes to the PM, which lands it.
 
 ## Why
 On the PC (Windows 11 Pro, 31 GB RAM, one GPU), two Unity Editors starve each
@@ -62,3 +62,18 @@ performance runs stay on the host).
 - tools/workers/*.cmd scripts for create, start, sleep and stop.
 - A report to the coordinator in under 10 lines: what works, what's waiting on
   Andrew, and the RAM each VM uses idle and busy.
+
+## Landing your work (D15, every worker)
+1. Work on the brief's branch off `dev`. If the brief came from the queue
+   (`docs/handoffs/briefs/queue/taken/<f>`), `git rm` that file on your
+   branch: the claim leaves with your landing, and `land.sh` refuses a branch
+   that leaves it behind.
+2. Run the gates: `bash tools/workers/gates.sh <log>`. All must pass.
+3. Land: `bash tools/workers/land.sh here < message` (a line or two: what
+   landed). Add `--compiled` only if this machine has Unity and you compiled
+   the Unity C# in it; without Unity, a Unity C# branch stops and goes to the
+   PC through the mailbox. `--deletes` only for deletions you meant and read.
+4. Report what `land.sh` said. `STOP: ...` is a refusal, not a success: say
+   so first in your report, with the reason (`land.sh` has already sent it to
+   the PM). Don't work around a refusal (no `--deletes` you didn't read, no
+   `--compiled` you didn't do); fix the cause or leave it for the PM.

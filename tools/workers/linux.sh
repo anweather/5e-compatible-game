@@ -107,8 +107,9 @@ ssh_ true || { echo "Can't reach $w over SSH ($user@$ip, the host's key)."; exit
 case "$cmd" in
   push) push ;; pull) pull ;; hook) hook ;; wip) wip ;;
   attention) ssh_ 'cat ~/.worker/attention.json 2>/dev/null || true' ;;
-  # The mailbox runner (runner.mjs): copied in and started, detached from this SSH session.
+  # The mailbox runner (runner.mjs, with the brief queue's queue.mjs): copied in and started, detached from this SSH session.
   runner) ssh_ 'mkdir -p ~/.worker && cat > ~/.worker/runner.mjs' < "$here/runner.mjs"
+          ssh_ 'cat > ~/.worker/queue.mjs' < "$here/queue.mjs"
           ssh_ 'setsid nohup node ~/.worker/runner.mjs >/dev/null 2>&1 < /dev/null & echo "The mailbox runner is running."' ;;
   brief)  f="${4:?linux.sh brief <worker> <ip> <file>}"
           ssh_ "mkdir -p ~/.worker/inbox && cat > ~/.worker/inbox/$(basename "$f")" < "$f" ;;
