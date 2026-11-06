@@ -343,6 +343,7 @@ public static class ChemYardBuilder
         wizard.AddComponent<SwimPose>();
         wizard.AddComponent<ThrowPose>();
         wizard.AddComponent<PunchPose>();
+        wizard.AddComponent<HandPose>();
         wizard.AddComponent<SitPose>();
         wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
         wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)
