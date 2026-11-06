@@ -320,6 +320,7 @@ namespace Chem
             AddIfSet(ref sum, 'k', c.Slick);
             AddIfSet(ref sum, 's', c.Star);
             AddIfSet(ref sum, 'c', c.Cracked);
+            AddIfSet(ref sum, 'p', c.Sets);
             // A liquid other than water by its id (never its index), so a world of water hashes as it did.
             if (c.Kind != 0)
             {
@@ -351,6 +352,7 @@ namespace Chem
             if (c.Slick != 0) sb.Append(",k").Append(c.Slick.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Star != 0) sb.Append(",s").Append(c.Star.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Cracked != 0) sb.Append(",c").Append(c.Cracked.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (c.Sets != 0) sb.Append(",p").Append(c.Sets.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Kind != 0) sb.Append(",q").Append(LiquidId(c));
             sb.Append(';');
         }

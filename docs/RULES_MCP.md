@@ -416,7 +416,7 @@ live, so its chunk's `LastLive` moves; the view should redraw covers there as th
 
 ## Liquids: what a cell's water is
 
-`docs/design/primitives.md` §3 P1, step 4 (core; branch `liquids`). `Cell.Water` stays the amount; `Cell.Liquid` is the
+`docs/design/primitives.md` §3 P1, step 4 (core; branches `liquids`, and `liquids-2` for `hot`, `freezes`, `sets`). `Cell.Water` stays the amount; `Cell.Liquid` is the
 **kind**, an index into the `liquids` table where 0 is water, built in (`Rules.Liquids.cs`, `World.Liquids.cs`). The
 base rules have no table, so a world of water runs, hashes and saves exactly as before. A mod adds a row:
 
@@ -432,7 +432,21 @@ base rules have no table, so a world of water runs, hashes and saves exactly as 
   (`World.Soak`); a floating cover (oil) rides it (`World.Float`, `pushCover`); its depth counts for wading (raiders'
   rough ground), the dragon's shelter and breath (`World.DrownDepth`).
 - **`boils`** (a gas): what it boils off as on hot metal, hot ground (`boil` terrains) and by a `boil` effect. None:
-  it doesn't boil (water's is `sim.water.boils`). Only water freezes (snow, `freeze`, arctic ground) for now.
+  it doesn't boil (water's is `sim.water.boils`).
+- **`hot`** `{ "for": ticks }` (1 to 21 600): a pour of it is hot that long (`Cell.Heat`, set by `AddLiquid` and an
+  `addWater` with its `liquid`; a unit that runs on takes its cell's heat). While hot, every 4 ticks
+  (`World.HotTouchEvery`) it lays `fire` at power 1, quietly, on the cell under it and each dry cell beside it, and the
+  fire rows decide: grass catches and burns to dirt, fire spreads on from there, a creature in it burns (its heat, as
+  on hot metal), and the `hot` condition holds. Then it cools and stays the liquid it was (`World.HotLiquid`).
+- **`freezes`** (a terrain or a cover): where water would freeze, it becomes that instead and the cell is dry
+  (`World.FreezeLiquid`): a `freeze` effect (the base `cold-liquid` row, `if.freezes`, comes after `cold-water`, so a
+  cold spell freezes any liquid that freezes, naming none), freezing ground (`freeze` terrains, on the soak pass) and
+  snow on a thin pool (two units or less). Without `freezes` it doesn't freeze. A frozen syrup is a cover of candy.
+- **`sets`** `{ "into": a terrain, "after": ticks }` (1 to 21 600): a pour of it sets that long after (`Cell.Sets`,
+  counting down on the timers pass); a unit that runs onto a dry cell takes its count, onto its own kind the sooner of
+  the two. At 0 the cell's liquid is gone and its terrain is `into` (`World.TickSets`). A mod's molten rock with
+  `hot` and `sets` burns the grass it runs over, cools, and sets into rock where it lies. `Cell.Sets` is in the cell
+  hash (`,p<n>`, only when set) and in a save (after the liquid's id), so old hashes and saves are unchanged.
 - **`touch`** (an element). **Two kinds never share a cell**: a liquid runs only onto a dry cell or its own kind.
   Where the best cell it could run onto holds another kind, it lays its `touch` there at power 1 and the reactions
   decide; with no `touch` the other is a wall. A mod's molten rock with `touch: "lava"` running into a pond makes
@@ -442,7 +456,7 @@ base rules have no table, so a world of water runs, hashes and saves exactly as 
   steam and `addWater` without a liquid don't fall into another kind's cell. Rain doesn't dry or freeze another
   liquid. "Water" in a reaction (`if.water`, the `water` element's conductivity, dousing fire, rust) is kind 0.
 - **In a reaction**: the condition `liquid` (an id, `water` for kind 0, or a tag: `"sticky"`) holds on a cell of that
-  unfrozen liquid; the effect `addWater` with `liquid` pours that liquid (`{"addWater": "power", "liquid": "honey"}`).
+  unfrozen liquid; `freezes: true` on a cell holding a liquid with `freezes`; the effect `addWater` with `liquid` pours that liquid (`{"addWater": "power", "liquid": "honey"}`).
 - **Interning.** The table is rebuilt at each switch: water, then the base rows in file order, then each mod's in
   room order. At a switch every cell's kind is remapped by id (`World.RemapLiquids`), so nothing outside the core
   holds an index: the patch carries the row, the cell hash appends `,q<id>` and a save appends the id to a cell's row
@@ -452,8 +466,8 @@ base rules have no table, so a world of water runs, hashes and saves exactly as 
 - **Limits.** At most 254 liquids besides water. The still-water pass waits out the thickest liquid's `thick` before
   it skips a chunk as still, so a thick pool's turn is never missed.
 - **Tools.** `add_material` and `set_material` take kind `liquid` (its fields are those above, each one value but
-  `lapse`); `list liquids`, `describe liquids <id>`. A field the engine doesn't read (`sets`, `freezes`, `hot`) is
-  refused.
+  `hot` {for}, `sets` {into, after} and `lapse`); `list liquids`, `describe liquids <id>`. A field the engine doesn't
+  read is refused, and so is one `hot` or `sets` doesn't take.
 
 **Cost.** On a full 384 × 384 lake of water with still-water skipping off, the flow pass costs about 0.3 ms a tick
 more than before liquids (about 2.0 to 2.3 ms on `dev`, 2.25 to 2.6 ms here, a VM); a still lake with the

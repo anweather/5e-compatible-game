@@ -196,6 +196,7 @@ namespace Chem
             if (cond.Water.HasValue && IsOpenWater(c) != cond.Water.Value) return false;
             if (cond.Liquid != null && !(c.Water > 0 && !c.Frozen && Rules.LiquidIs(c.Liquid, cond.Liquid))) return false;
             if (cond.Frozen.HasValue && (c.Frozen && c.Water > 0) != cond.Frozen.Value) return false;
+            if (cond.Freezes.HasValue && (LiquidFreezes(c) != null) != cond.Freezes.Value) return false;
             if (cond.Melts.HasValue && CoverMelts(c) != cond.Melts.Value) return false;
             return !(cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas));
         }
@@ -361,7 +362,7 @@ namespace Chem
             if (eff.HasIgnite) changed = eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
             else if (eff.Boil.HasValue) changed = BoilOff(x, y, c, eff.Boil.Value);
             else if (eff.Melt) changed = MeltIce(c);
-            else if (eff.Freeze) changed = FreezeWater(c);
+            else if (eff.Freeze) changed = FreezeWater(x, y, c);
             else if (eff.Extinguish) changed = Douse(c);
             else if (eff.Condense) changed = CondenseSteam(c);
             else if (eff.HasAddWater) changed = PourWater(c, eff.AddWaterPower ? power : eff.AddWaterN, eff.Liquid);
@@ -443,10 +444,11 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A freeze effect: standing water freezes (another liquid doesn't).</summary>
-        static bool FreezeWater(Cell c)
+        /// <summary>A freeze effect: standing water freezes; another liquid freezes into its freezes, if it has one.</summary>
+        bool FreezeWater(int x, int y, Cell c)
         {
-            if (c.Water == 0 || c.Frozen || c.Liquid != 0) return false;
+            if (HoldsOther(c)) return Locate(x, y, out var ch, out _) != null && FreezeLiquid(ch, c);
+            if (c.Water == 0 || c.Frozen) return false;
             c.Frozen = true;
             return true;
         }
@@ -482,7 +484,9 @@ namespace Chem
         bool PourWater(Cell c, int n, string liquid)
         {
             int kind = liquid == null ? 0 : Rules.LiquidIndex(liquid);
-            return kind >= 0 && Pour(c, kind, n, Rules.Sim.WaterMaxLevel);
+            if (kind < 0 || !Pour(c, kind, n, Rules.Sim.WaterMaxLevel)) return false;
+            if (kind != 0) Fresh(c, Rules.Liquid(kind));
+            return true;
         }
 
         /// <summary>A setCover effect.</summary>

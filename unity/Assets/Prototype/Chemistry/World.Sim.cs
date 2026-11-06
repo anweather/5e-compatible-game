@@ -273,6 +273,11 @@ namespace Chem
             // A crack goes with its ice or terrain.
             if (c.Cracked != 0 && !c.Frozen && !TerrainOf(c).Cracks) c.Cracked = 0;
             if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+            if (c.Sets > 0)
+            {
+                TickSets(ch, c);
+                live = true;
+            }
             if (c.Heat > 0 && Cool(ch, i, c)) live = true;
             if (soak && SoakPass(ch, i, c)) live = true;
             return live;
@@ -295,6 +300,11 @@ namespace Chem
         /// </summary>
         bool Cool(Chunk ch, int i, Cell c)
         {
+            if (HoldsHot(c))
+            {
+                HotLiquid(ch, i, c);
+                return true;
+            }
             var t = TerrainOf(c);
             if (t.HotFor <= 0)
             {
@@ -411,6 +421,7 @@ namespace Chem
         {
             var t = TerrainOf(c);
             var l = LiquidOf(c);
+            if (t.FreezesWater && FreezeLiquid(ch, c)) return true;
             if (t.FreezesWater && c.Liquid == 0)
             {
                 if (c.Frozen) return false;
@@ -724,10 +735,16 @@ namespace Chem
                 Touch(ch, liquid, best, bestI);
                 return;
             }
+            var to = best.Cells[bestI];
+            if (kind != 0) Carry(c, to, liquid, to.Water == 0);
             c.Water--;
-            if (c.Water == 0) c.Liquid = 0;
-            best.Cells[bestI].Water++;
-            best.Cells[bestI].Liquid = kind;
+            if (c.Water == 0)
+            {
+                c.Liquid = 0;
+                c.Sets = 0;
+            }
+            to.Water++;
+            to.Liquid = kind;
             ch.Marks[i] |= FlowMark;
             best.Marks[bestI] |= FlowMark;
             WaterMoved(ch);
