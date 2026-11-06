@@ -1,7 +1,8 @@
 // A run of the Hold with scripted wizards and no view (docs/design/the-hold.md, phase 4). A wizard stands on the wall nearest the
-// spawners, so ground raiders can't reach it, and casts at the raider nearest the heart: a throw while the raider is out of short
-// range, a thrust inside it, and both hands' combined spell when a crowd is in range and both are ready. It never moves, dodges,
-// attunes mid-run, sweeps, or reads a wave: a stand-in for a player who keeps casting, not a good one.
+// keep's heart, so ground raiders can't reach it, and casts at the raider nearest the heart. It knows which of its hands' spells hurt:
+// the combined one if a crowd is in range and it does, else a hand's in range, else a sweep. It never moves, dodges, attunes
+// mid-run, sets up one spell for another or reads a wave: a stand-in for a player who keeps casting, and not a good one, since
+// the chemistry (water then lightning, a barricade alight) is where a player beats it.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,7 +40,7 @@ namespace Chem.HoldCurve
             world.SetHold(site);
             var wall = BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, rules.Buildings), rules.Buildings)
                 .Where(c => c.Part == BuildingPart.Wall && world.At(c.X, c.Y).T == "stone")
-                .OrderBy(c => Far(c.X, c.Y, site.Spawners[0].Cells[0])).ToList();
+                .OrderBy(c => Far(c.X, c.Y, site.Heart)).ThenBy(c => c.X).ThenBy(c => c.Y).ToList();
             for (int i = 0; i < peers; i++) posts.Add((wall[i * 3].X, wall[i * 3].Y));
             var room = ((site.AttuningFrom.x + site.AttuningTo.x) / 2, (site.AttuningFrom.y + site.AttuningTo.y) / 2);
             for (int i = 0; i < peers; i++)
@@ -94,20 +95,47 @@ namespace Chem.HoldCurve
 
         static double Dist((int x, int y) a, Raider r) => Math.Sqrt((a.x - r.X) * (double)(a.x - r.X) + (a.y - r.Y) * (double)(a.y - r.Y));
 
+        bool Hurts(HandRowDef row)
+        {
+            var spell = row?.Spell == null ? null : world.Rules.Spell(row.Spell);
+            return spell != null && (spell.Damage.Length == 2 || spell.Element == "thorns");
+        }
+
+        void Press(string me, int hand, int gesture)
+        {
+            if (gesture != HandsDef.Throw) world.ApplyCombo(ComboCommand.Hand(me, hand));
+            if (gesture != HandsDef.Thrust) world.ApplyCombo(ComboCommand.Hand(me, hand, bumper: true));
+        }
+
+        // A hand's first gesture that hurts and reaches something, by range: nearest first.
+        int GestureFor(string me, int hand, (int x, int y) post)
+        {
+            foreach (int gesture in new[] { HandsDef.Thrust, HandsDef.Sweep, HandsDef.Throw })
+                if (Hurts(table.One(world.HandsOf(me).Holds[hand], gesture)) && Target(post, table.RangeOf(gesture)) != null) return gesture;
+            return HandsDef.NoGesture;
+        }
+
         void Think(string me, (int x, int y) post)
         {
-            if (world.CastOf(me)?.Casting == true) return;
-            int shortRange = table.RangeOf(HandsDef.Thrust), longRange = table.RangeOf(HandsDef.Throw);
-            if (Target(post, longRange) == null) return;
-            bool close = Target(post, shortRange) != null, crowd = world.Raiders.Count(r => Dist(post, r) <= longRange) >= CrowdForBoth;
-            bool leftReady = world.HandCooling(me, HandsDef.Left) == 0, rightReady = world.HandCooling(me, HandsDef.Right) == 0;
-            if (crowd && leftReady && rightReady)
+            if (world.CastOf(me)?.Casting == true || Target(post, table.RangeOf(HandsDef.Throw)) == null) return;
+            bool left = world.HandCooling(me, HandsDef.Left) == 0, right = world.HandCooling(me, HandsDef.Right) == 0;
+            var holds = world.HandsOf(me).Holds;
+            if (left && right && world.Raiders.Count(r => Dist(post, r) <= table.RangeOf(HandsDef.Throw)) >= CrowdForBoth)
+                foreach (int gesture in new[] { HandsDef.Thrust, HandsDef.Throw })
+                    if (Hurts(table.Both(holds[HandsDef.Left], holds[HandsDef.Right], gesture)) && Target(post, table.RangeOf(gesture)) != null)
+                    {
+                        Press(me, HandsDef.Right, gesture);
+                        Press(me, HandsDef.Left, gesture);
+                        return;
+                    }
+            for (int hand = HandsDef.Right; hand >= HandsDef.Left; hand--)
             {
-                world.ApplyCombo(ComboCommand.Hand(me, HandsDef.Right, !close));
-                world.ApplyCombo(ComboCommand.Hand(me, HandsDef.Left, !close));
+                if (world.HandCooling(me, hand) > 0) continue;
+                int gesture = GestureFor(me, hand, post);
+                if (gesture == HandsDef.NoGesture) continue;
+                Press(me, hand, gesture);
+                return;
             }
-            else if (rightReady) world.ApplyCombo(ComboCommand.Hand(me, HandsDef.Right, !close));
-            else if (leftReady) world.ApplyCombo(ComboCommand.Hand(me, HandsDef.Left, !close));
         }
 
         void Aim(ComboFired fired)
