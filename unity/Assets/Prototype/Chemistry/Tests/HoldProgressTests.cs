@@ -141,9 +141,12 @@ namespace Chem.Tests
         [Test]
         public void AnOfferLeansIntoTheHandSet()
         {
-            var w = Offered();
-            var holds = w.HandsOf(Me).Holds;
-            Assert.That(w.RunOf(Me).Offer.Select(P.Upgrade).All(u => u.Holds == null || holds.Contains(u.Holds)));
+            for (int seed = 1; seed <= 6; seed++)
+            {
+                var w = Offered(seed);
+                var holds = w.HandsOf(Me).Holds;
+                Assert.That(w.RunOf(Me).Offer.Select(P.Upgrade).All(u => u.Holds == null || holds.Contains(u.Holds)), $"seed {seed}");
+            }
         }
 
         [Test]
@@ -337,8 +340,10 @@ namespace Chem.Tests
             Assert.That(joiner.UnlocksOf(Bo).Select(u => u.Id), Is.EqualTo(host.UnlocksOf(Bo).Select(u => u.Id)));
             Assert.That(joiner.HandsText(), Is.EqualTo(host.HandsText()));
             Assert.That(joiner.CastHash(), Is.EqualTo(host.CastHash()));
-            var without = Field(11);
-            Assert.That(without.CastHash(), Is.Not.EqualTo(host.CastHash()), "points are in the checksum");
+            var other = Field(11);
+            other.ApplyCombo(ComboCommand.Bring(Me, 9));
+            other.ApplyCombo(ComboCommand.Bring(Bo, 31));
+            Assert.That(other.CastHash(), Is.Not.EqualTo(host.CastHash()), "points are in the checksum");
         }
 
         [Test]
