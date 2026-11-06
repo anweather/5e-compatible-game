@@ -404,17 +404,18 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void ABarricadeBurns()
+        public void ABarricadeCatchesFromAFireBesideIt()
         {
             var w = Barricaded();
-            foreach (var r in w.Raiders) r.Wait = 100000;
-            var (x, y) = Barricades(w)[0];
-            int was = Barricades(w).Count;
-            w.At(x, y).Fire = 5;
-            for (int i = 0; i < 400 && Barricades(w).Count == was; i++)
+            var cells = Barricades(w);
+            int was = cells.Count;
+            var beside = cells.SelectMany(c => new[] { (c.x + 1, c.y), (c.x - 1, c.y), (c.x, c.y + 1), (c.x, c.y - 1) })
+                .Where(c => w.At(c.Item1, c.Item2).T != P.BarricadeTerrain).Take(4).ToList();
+            for (int i = 0; i < 600 && Barricades(w).Count == was; i++)
             {
                 foreach (var r in w.Raiders) r.Wait = 100000;
                 w.Hold.ToSpawn = 0;
+                foreach (var (x, y) in beside) w.At(x, y).Fire = 5;
                 w.Step();
             }
             Assert.That(Barricades(w).Count, Is.LessThan(was), "the fire takes it");

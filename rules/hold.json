@@ -364,9 +364,9 @@
   },
   "peerPercent": [
     100,
-    170,
-    230,
-    280
+    210,
+    300,
+    380
   ],
   "damagePerWave": 4,
   "kindEvery": 2,

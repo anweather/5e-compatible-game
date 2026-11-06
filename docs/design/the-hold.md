@@ -176,7 +176,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 | `damagePerWave` | 4 | Late raiders hit harder (%, a wave): a sharper end |
 | `hpPerWave` | 2 | Late raiders take longer to kill |
 | `first` | 4 | A busier opening |
-| `peerPercent` | 100, 170, 230, 280 | A wave for more wizards is bigger |
+| `peerPercent` | 100, 210, 300, 380 | A wave for more wizards is bigger |
 | `kindEvery` | 2 | New kinds come more slowly |
 | `adjectiveFrom`, `adjectivePercent`, `adjectivePerWave`, `adjectiveMost` | 2, 34, 6, 90 | More raiders with an adjective, sooner: your hands matter more |
 | `themeFrom`, `themePercent` | 3, 75 | Themes bite harder or sooner: a wrong hand set hurts more |
