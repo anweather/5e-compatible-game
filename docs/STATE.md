@@ -1,4 +1,4 @@
-# State (2026-11-05, night)
+# State (2026-11-06)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -7,7 +7,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 | Where | Account | What it's for |
 |---|---|---|
-| **PM** (this role; the `coordination` worktree, pushes to dev) | Max | Plans, briefs, merges (`tools/workers/land.sh`), GitHub issues, releases, reports. Writes no game code unless asked |
+| **PM** (this role; the `coordination` worktree, pushes to dev) | Max | Short sessions only (D15): planning with Andrew, decisions, releases, a refused landing. Writes no game code |
 | **DesktopUnity** (the PC, interactive) | Max | The only Windows GPU: host passes (looks, feel, sound), player builds, release candidates. Long passes run as fresh sub-agents per part |
 | **unity-game-macbook** (Remote Control) | Max | Compute with Unity and a GPU (EditMode, probes, profiling); the headless Windows build as a fallback. Its route doesn't confirm reading; check its branch if quiet |
 | **Windows VMs** w1 (Pro), w3 (Max); w2 and w4 are rescued and off, for Andrew to remove | | Rules plus Unity batch compile. Idle since Oct 30; w1 didn't fit beside the PC's Editor on 2026-11-02 |
@@ -17,6 +17,11 @@ The one page a new PM session reads first. Keep it short: history goes in
   `brief.cmd <vm> <file> [-FollowUp <id>]` briefs a running VM. `runner.mjs` in the VM runs it headless,
   and `bridge-watch.sh` brings the report to the PM's mailbox (`bridge.sh wait pm` as a background
   task). Briefs live in `docs/handoffs/briefs/`. Watch workers with `tools/workers/peek.sh`.
+- **Since D15 (2026-11-06) workers land their own work and take briefs from the queue**
+  (`docs/handoffs/briefs/queue/`, format in its README): `runner.mjs` claims the next brief a machine can do
+  when idle (queue on for u2 only), and the worker lands with `land.sh here`. Only a refusal reaches the PM.
+  Feature intake is `/backlog-groom intake <idea>` (Sonnet). A runner picks up new code only when restarted
+  (`linux.sh runner`; kill the old one first); the watcher too (`bridge-watch.cmd`).
 - The Pro coordinator session is closed (2026-10-30); nothing relays.
 - **Memory (31 GB):** a Windows VM needs 10 GB left beside an open Editor, a Linux one 5 GB, and with
   no Editor, 6 GB. The watcher stops the newest VM below 1.5 GB free. An online probe takes 3-4 GB, and
@@ -55,7 +60,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Today's workers:** the PC is `DesktopUnityPro`, the Mac's session is `Vivox spike branch push`. Linux VMs' account is down.
+- **Workers (2026-11-06):** the PC's `pc-worker` session (Max) is idle in `host-ux`; u2 (Max) runs the queue; the Mac is idle. u2 was stopped at 13:50 for low memory (Andrew's other-project Editor, 14 GB); `.pm/u2-wait.ps1` restarts it with `briefs/u2-resume-outbox.md` once 6.5 GB is free.
 - **0.1.11 published** 2026-11-03 at b79f537 (Windows only): `main` merged back into dev. The update hop 0.1.106 → 0.1.107 passed; the Esc menu's "Update and restart" wasn't tried.
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (#89 fixed: the watcher reads dated resets). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
@@ -75,17 +80,17 @@ The one page a new PM session reads first. Keep it short: history goes in
 2. **Cheap playtester landed** (`core/Playtest.Text`, `playtest/cheap/README.md`; text only, no view): Haiku $2.20 and Sonnet $3.68 for 20 minutes, one confirmed finding each (#90, #91), 9 of 10 false alarms from the tool. Fixed tool, Haiku: $2.78, 2 confirmed, 2 false alarms, 0 tool faults ($1.39 each; #91 comment, #92). `run.sh` is zsh, so the PC needs a port; the github sink has filed nothing real; a person judges before filing.
    **Maps as data with terrain through the MCP (Andrew, 2026-11-04, #69):** designed (`docs/design/maps-as-data.md`, nine phases, about five weeks); phase 1 landed (5638da4d; Windows with graphics checked, valley unchanged; `BuildWindowsFromCommandLine` untested on it, so watch the first release build); phase 2 landed (real two-peer run passed, no desync); questions answered (J-073). Phase 4 landed; start-up baseline on the PC 7.37 s on dev, 7.49 s with `ground/` (3 runs, not cold-disk, no real screen): phase 5 may add 2 s. Phase 3 landed (ba5a2326; PC run: no desync on three peers, worst r32 frame 30.3 ms bar one 115 ms undo, 1 m/s ease; canyon then dragon not run; four full-detail chunks under one stamp never run; #142 props; #143 and #144 fixed by `stamp-guards`, dcd1e76a, new places not yet seen against the drawn map; #145 Editor memory, maybe a leak). `land-shapes` landed (43658bcb: canyon, cliff, rough 40, rock; three peers on the new shapes and TerrainRock PSO warm-up not run; rebuild the yard). `props-follow-land` landed (1c682dc9, #142). `named-acts` landed (c81b6382) and the TerrainRock PSO (46897dfb) after the combined PC run; real Claude used `call_act` over MCP, the chat box itself untried. Open: #146 canyon refused by seed, #147 crate slide, #148 small stamps, #149 dropped rows say done, #150 rows do not share a spot; #151 stamp frame over 100 ms on the Mac (measure on the PC). `acts-honest` landed (da3184e4, #149, #146, #150; not drawn, PC owes a look: campsite at a real place, folded floor on several seeds, spot-search hitch, a real Claude on a short row). PC profiling done (#151, #153-155); playtest findings #156-159. Phase 5 landed behind its switch (9372ba25; 34be621d compiled only in core until the PC opens it); Phase 5 judged safe on the PC (#137 closed; land mode's look not judged). #151 fixed (a3824945). Maps phase 6 waits. Do not ship `Builds/PcDev` or `PcRel` (they contain `PcPerf`). Phase 8 must give a joiner's `RulesMcpServer` the host's map. Same-network Host and Join have no menu or flag: the PC needed a throwaway driver.
    Primitives: the "make a centaur" real-prompt test (#73). Strikes onto CommandChannel with #83. #87 flaky dragon budget test. Building on water (#60).
-3. **The Hold (Andrew, 2026-11-05, #152, J-074, J-075; `docs/design/the-hold.md`):** the first game loop, on the hill west of Hollowmere. Phases 1 to 4 landed (6e6b8b3b); best hand set about 19 minutes against a 20 minute target. Andrew is playing from `Builds/PcDev`; moments are on F8. PC on `castle-seat` (ground at the road's top, raiders on the switchbacks, the robe NaN, maybe #158). Mac on phase 5 (`briefs/hold-progress.md`, `hold-progress`). Verdicts owed: `docs/handoffs/pm-2026-11-05.md`.
+3. **The Hold (Andrew, 2026-11-05, #152, J-074, J-075; `docs/design/the-hold.md`):** the first game loop, on the hill west of Hollowmere. Phases 1 to 5 landed, on screen too (hold-ui 1858577c), with castle-seat and the points lockstep test (3b5fa972). Two-peer bot runs last far longer than the 20 min target (fire+fire, fire+water hit the 40 min cap). `Builds/PcDev` is rebuilt at e341d13 for Andrew's playtest, `docs/playtests/2026-11-07-human-plan.md` (V1-V3 voice, T1-T5 Hold). Queued: #165, #156 core half, #147/#148 (needs Unity).
 4. Gaits by rule (`builders.md`), after bodies (J-068).
 - Cleanup: items 1, 2 (combos; defense and room in flight), 3, 5, 7 (items, entities, reactions; spells left), 8, 9 done; 4 dropped (J-069); 6 waits on #69.
-- Tests: #162 landed (56f7a3e5): parallel core tests, gates in `tools/workers/gates.sh`. PC gates 121 s, tests 85 s; dotnet peaks at 6.8 GB, so keep other heavy work off a landing. The Linux VMs' account is down (Andrew, 2026-11-05). Tiers and slimming not needed yet. Decoupling waits until the Hold is done (Andrew, 2026-11-05).
+- Tests: #162 landed (56f7a3e5): parallel core tests, gates in `tools/workers/gates.sh`. PC gates 121 s, tests 85 s; dotnet peaks at 6.8 GB, so keep other heavy work off a landing. The Linux VMs are up (u2 on Max). Tiers and slimming not needed yet. Decoupling waits until the Hold is done (Andrew, 2026-11-05).
 - Backlog and priority: the board, https://github.com/users/anweather/projects/3 (epics, `area:` and `p1`-`p3` labels); `docs/BACKLOG.md` is the pointer and `docs/backlog-archive.md` keeps the design detail (more than one map is #69).
 
 ## Andrew's board
 
 https://claude.ai/artifact/KhW6DyMwmA1ncXCxLxbBgY: what needs his verdict, what landed, who's on what.
-He reads it on his phone instead of scrolling the chat. Update it with `tools/workers/board.mjs`, then publish
-`.pm/board.html` with `url`, whenever a verdict, a landing or an assignment changes.
+Publish it only when there's a decision for Andrew (2026-11-06; publishing after every landing cost too much
+context): bring it up to date with `tools/workers/board.mjs`, then publish `.pm/board.html` with `url`.
 
 ## Open questions for Andrew
 
@@ -95,8 +100,9 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 
 - PM cost: up to 69% of one session's context re-reads were mechanical (2026-11-02). Landing and the board are scripted (`land.sh auto`, `board.mjs`); measure the next batch before trying a cheaper main PM.
 
-- Every worker commit carries cost lines; `docs/telemetry/` holds the reports (latest 2026-11-02:
-  coordination 55% of spend, cache reads 66% of feature cost).
+- Every worker commit carries cost lines; `docs/telemetry/` holds the reports (latest 2026-11-06:
+  coordination 53% of spend, cache reads 70% of feature cost; D15 is the answer). A self-landed merge
+  also writes a Coordinator line from the worker session (e341d133: 694 min), which double-counts.
 - Skills: `agent-cost-telemetry`, `agent-cost-report` (in `~/.claude/skills`), `screenshot-budget`.
 - Known gaps: the Mac has no commit hook; merge lines double-count the host's work; Pro transcripts
   aren't on disk.
