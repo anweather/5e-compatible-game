@@ -9,6 +9,7 @@ using UnityEngine;
 public class MomentsProbe : ProbeScenario
 {
     const float MostWait = 20f;
+    const int NearRise = 3;
 
     protected override IEnumerator Run()
     {
@@ -19,7 +20,6 @@ public class MomentsProbe : ProbeScenario
         caster.enabled = true;
         string only = Environment.GetEnvironmentVariable("MOMENT");
         var site = world.HoldSite;
-        var rise = grid.CellCenter(site.Rise.x, site.Rise.y);
         foreach (var m in world.Rules.Sim.Hold.Moments.Where(m => only == null || m.Id == only))
         {
             Check(m.Id, moments.Enter(m.Id));
@@ -28,7 +28,8 @@ public class MomentsProbe : ProbeScenario
             string me = caster.CastPlayer;
             Check(m.Id + "_wave", world.Hold?.Wave == m.Wave, $"{world.Hold?.Wave}");
             Check(m.Id + "_hands", world.HandsOf(me).Holds.SequenceEqual(m.Holds), string.Join("+", world.HandsOf(me).Holds));
-            Check(m.Id + "_at_the_castle", Vector3.Distance(wizard.transform.position, rise) < 6f, grid.CellAt(wizard.transform.position).ToString());
+            var at = grid.CellAt(wizard.transform.position);
+            Check(m.Id + "_at_the_castle", Mathf.Abs(at.x - site.Rise.x) + Mathf.Abs(at.y - site.Rise.y) <= NearRise, at.ToString());
             for (float t = 0f; t < MostWait && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
             Check(m.Id + "_raiders_come", world.Raiders.Count > 0);
         }

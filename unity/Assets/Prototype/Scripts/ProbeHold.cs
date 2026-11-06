@@ -11,7 +11,7 @@ public class HoldProbe : ProbeScenario
 {
     const string Row = "hold#1";
     const float MostWalk = 40f, Frames = 4f, OnTop = 0.7f;
-    const int PictureWidth = 1280, PictureHeight = 720;
+    const int PictureWidth = 1280, PictureHeight = 720, HealthToLose = 60;
 
     BuildingRow row;
     float walkTop;
@@ -123,6 +123,7 @@ public class HoldProbe : ProbeScenario
         var marked = world.SpawnRaider(Rules.PlainKind(armoured.Kind) + Rules.AdjectiveMark + "armoured", armoured.X, armoured.Y + 2, 40);
         Check("an_adjective_raider_stands", marked != null && world.Rules.AdjectiveOf(marked.Kind) != null, marked?.Kind);
         yield return Breach(houses, cells);
+        world.Hold.Health = Mathf.Min(world.Hold.Health, HealthToLose); // a whole keep outlasts the probe
         int casts = 0;
         float took = 0f, worst = 0f;
         int frames = 0, most = 0, wave = 1, inVillage = 0, backEast = 0, westmost = int.MaxValue;
