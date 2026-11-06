@@ -19,6 +19,17 @@ public class HandsProbe : ProbeScenario
     PlayerControls controls;
     readonly FiredCastsHeard heard = new();
     BuildingRow row;
+    HandPose body;
+    int leftArm, rightArm;
+    bool together;
+
+    // What the arms played of a press: each its gesture, the two as one.
+    void Watch()
+    {
+        if (body.Playing(HandsDef.Left) != HandsDef.NoGesture) leftArm = body.Playing(HandsDef.Left);
+        if (body.Playing(HandsDef.Right) != HandsDef.NoGesture) rightArm = body.Playing(HandsDef.Right);
+        together |= body.Together;
+    }
 
     World Core => grid.World;
     string Me => caster.CastPlayer;
@@ -43,6 +54,9 @@ public class HandsProbe : ProbeScenario
     {
         heard.StartFrom(Core);
         int started = caster.CastsStarted;
+        body = wizard.GetComponent<HandPose>();
+        leftArm = rightArm = HandsDef.NoGesture;
+        together = false;
         press();
         yield return null;
         yield return null;
@@ -58,6 +72,7 @@ public class HandsProbe : ProbeScenario
         var fired = new System.Collections.Generic.List<string>();
         for (float t = 0f; t < MostWait && fired.Count == 0; t += Time.deltaTime)
         {
+            Watch();
             foreach (var f in heard.Take(Core))
                 if (f.Player == Me) fired.Add(f.Spell ?? f.Act);
             yield return null;
@@ -103,6 +118,7 @@ public class HandsProbe : ProbeScenario
             yield return Wait(0.4f);
         }
         Check($"attuned_{hand}_to_{element ?? "nothing"}", Core.HandsOf(Me).Holds[hand] == element, Core.HandsOf(Me).Holds[hand]);
+        Check($"it_shows_{hand}_{element ?? "nothing"}", wizard.GetComponent<HandPose>().Showing(hand) == element, wizard.GetComponent<HandPose>().Showing(hand));
     }
 
     IEnumerator Attune(string left, string right)
@@ -152,9 +168,11 @@ public class HandsProbe : ProbeScenario
         yield return Fires("left_trigger_and_bumper", one(left, HandsDef.Sweep), () => Pad(1f, 0f, lb));
         yield return Fires("trigger_then_bumper_a_moment_late", one(right, HandsDef.Sweep), () => Pad(0f, 1f), () => Pad(0f, 1f, rb));
         yield return Fires("both_triggers", both(HandsDef.Thrust), () => Pad(1f, 1f));
+        Check("the_same_gesture_is_two_handed", together && leftArm == HandsDef.Thrust && rightArm == HandsDef.Thrust, $"{leftArm} {rightArm} {together}");
         yield return Fires("both_bumpers", both(HandsDef.Throw), () => Pad(0f, 0f, lb, rb));
         yield return Fires("second_trigger_a_moment_late", both(HandsDef.Thrust), () => Pad(0f, 1f), () => Pad(1f, 1f));
         yield return Fires("different_gestures_are_both", new[] { one(right, HandsDef.Thrust), one(left, HandsDef.Throw) }, () => Pad(0f, 1f, lb));
+        Check("each_arm_plays_its_own", !together && leftArm == HandsDef.Throw && rightArm == HandsDef.Thrust, $"{leftArm} {rightArm} {together}");
         yield return Fires("both_sweeps_with_no_row_are_both", new[] { one(right, HandsDef.Sweep), one(left, HandsDef.Sweep) }, () => Pad(1f, 1f, lb, rb));
         yield return Fires("right_click", one(right, HandsDef.Thrust), () => Keys(false, false, rc));
         yield return Fires("left_click", one(left, HandsDef.Thrust), () => Keys(false, false, lc));

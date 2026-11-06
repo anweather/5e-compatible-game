@@ -58,6 +58,8 @@ public class RoomProbeSeen
     /// animals spells brought out (n:species, sorted), and how many of the cells the last "dressed" ask named stand dressed.
     /// </summary>
     public string placed, summons;
+    /// <summary>What each wizard's hands show here (HandLooksProbe.Shown).</summary>
+    public string hands;
     public float placedGap;
     public int cellsDressed;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
@@ -120,6 +122,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.defense = waves == null ? "-" : $"{waves.Phase} wave {waves.Wave}, gate {waves.GateX},{waves.GateY}, flag {waves.FlagX},{waves.FlagY}";
         seen.strikes = string.Join("|", grid.World.Log.Select(l => l.Text).Where(t => t.Contains("punch")).Distinct().OrderBy(t => t, StringComparer.Ordinal));
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
+        seen.hands = HandLooksProbe.Shown();
         var fauna = UnityEngine.Object.FindAnyObjectByType<ValleyFauna>();
         if (fauna != null)
         {
@@ -295,6 +298,9 @@ public class RoomProbeClient : MonoBehaviour
             case "cut":
                 film.End();
                 Destroy(film);
+                break;
+            case "attune":
+                yield return HandLooksProbe.Attune(grid, net, ask.mod);
                 break;
             case "rejoin":
                 record.Dispose();

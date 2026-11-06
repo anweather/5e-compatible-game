@@ -150,6 +150,8 @@ during a run and in the attuning room (`PlayerControls.HandPad`); in the room a 
 starts as the `dpad` spells. Hand spells aren't charged and don't join the grimoire. Keyboard: the clicks are the triggers, Q and C the bumpers. Stands in the room stay in a
 joiner's history (`StandKeeper`), since attuning reads them.
 
+`HandPose` puts the hands on the body, on every copy of a wizard, from the hands in the core: each arm winds up while its gesture is under way and goes out when the core fires it, so a thrust and a throw play on their own arms, and the same gesture on both is a two-handed version. An arm with no gesture stays down. `HandHeld` shows what each hand holds, one small particle system a hand, whenever that wizard's hands are on (`World.HandsOn`). The `handlooks` probe checks both peers show both wizards' hands.
+
 ### 4. Endless, tuned
 
 - **Waves by formula, from the rules:** count, health, kinds and adjectives grow with the wave number, per peer count.
