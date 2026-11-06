@@ -48,9 +48,9 @@ public class HoldProbe : ProbeScenario
     void LevelAcross()
     {
         float Ground(int x, int y) => grid.GroundAt(grid.CellCenter(row.X + x, row.Y + y));
-        float across = Mathf.Abs(Ground(54, 16) - Ground(56, 16));
-        float hill = Mathf.Abs(Ground(46, 16) - Ground(48, 16));
-        float bank = Mathf.Abs(Ground(50, 16) - Ground(58, 16));
+        float across = Mathf.Abs(Ground(62, 16) - Ground(64, 16));
+        float hill = Mathf.Abs(Ground(54, 16) - Ground(56, 16));
+        float bank = Mathf.Abs(Ground(58, 16) - Ground(66, 16));
         Metric("road_across_m", across);
         Metric("hill_across_m", hill);
         Metric("road_bank_m", bank);
@@ -115,6 +115,7 @@ public class HoldProbe : ProbeScenario
         if (!world.HoldRunning) yield break;
         for (float t = 0f; t < 40f && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
         Check("raiders_come", world.Raiders.Count > 0);
+        TheRoadIsTheWay(world);
         yield return Wait(0.5f);
         Check("they_are_drawn", defense != null && defense.DrawnRaiders > 0, $"{defense?.DrawnRaiders}");
         Stand(21, 3);
@@ -168,6 +169,29 @@ public class HoldProbe : ProbeScenario
         for (float t = 0f; t < 5f && houses.Ruin(Row).Down > 0; t += Time.deltaTime) yield return null;
         Check("its_look_follows", houses.Ruin(Row).Down == 0, houses.Ruins);
         Check("the_hud_says_so", show.HudLine().Contains("fell"), show.HudLine());
+    }
+
+    // A road raider's way from the foot, as the core has it: once on the road it stays on it, round every bend.
+    void TheRoadIsTheWay(World world)
+    {
+        var road = new System.Collections.Generic.HashSet<(int, int)>(world.BuildingCellsOf(row).Where(c => c.Part == BuildingPart.Road && c.Terrain == TerrainIds.Dirt).Select(c => (c.X, c.Y)));
+        var (x, y) = world.HoldSite.Spawners[0].Cells[0];
+        int steps = 0, onIt = 0, offAfter = 0;
+        bool joined = false;
+        for (var next = world.HoldNext(x, y, true); next != null && steps < 2000; next = world.HoldNext(x, y, true))
+        {
+            (x, y) = next.Value;
+            steps++;
+            if (x - row.X <= 34) break;
+            bool on = road.Contains((x, y));
+            joined |= on;
+            if (on) onIt++;
+            else if (joined && x - row.X > 34) offAfter++;
+        }
+        Metric("road_way_steps", steps);
+        Metric("road_way_on_it", onIt);
+        Metric("road_way_off_it_after_joining", offAfter);
+        Check("raiders_keep_to_the_road", joined && offAfter <= steps / 50, $"{steps} steps, {onIt} on the road, {offAfter} off it after joining");
     }
 
     // What the fight does to the castle, shown: a stretch of the north walls, a tower and the top of a stair, gone by hand

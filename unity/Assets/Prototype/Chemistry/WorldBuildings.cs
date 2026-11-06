@@ -72,12 +72,19 @@ namespace Chem
         // The graded roads' cuts, from the map's land as its file has it. A world without that land keeps its ground.
         void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells)
         {
-            if (row.Roads.All(r => !r.Graded) || folder == null) return;
+            var pad = row.Json["pad"];
+            if ((pad == null && row.Roads.All(r => !r.Graded)) || folder == null) return;
             string path = Path.Combine(folder, MapFile.LandName);
             if (!File.Exists(path)) return;
             var land = LandFile.Read(File.ReadAllText(path), world.W, world.H);
             if (land.Length == 0) return;
             var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));
+            if (pad != null)
+            {
+                var moved = RowPad.Of(building, (int)pad["margin"], (int)pad["bank"], (x, y) => land[world.Idx(x, y)], world.InBounds);
+                world.LayLand(moved);
+                foreach (var (x, y, by) in moved) land[world.Idx(x, y)] += by;
+            }
             foreach (var road in row.Roads.Where(r => r.Graded))
                 world.LayLand(RoadGrade.Of(road, row.X, row.Y, (x, y) => land[world.Idx(x, y)], building));
         }

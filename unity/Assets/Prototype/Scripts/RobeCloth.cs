@@ -168,11 +168,33 @@ public class RobeCloth : MonoBehaviour
         lastHips = lastStepHips = hips.position;
     }
 
-    bool hidden;
+    bool hidden, told;
+
+    /// <summary>How often the cloth has gone bad and been put back: for the probe.</summary>
+    public int Recoveries { get; private set; }
+
+    static bool Finite(Vector3 v) => float.IsFinite(v.x + v.y + v.z);
+
+    // One bad bone for one frame fills the cloth with NaN, and nothing else would ever clear it: the skirt would be gone for good (#37).
+    bool Sound()
+    {
+        var sum = Vector3.zero;
+        foreach (var p in pos) sum += p;
+        return Finite(sum);
+    }
+
+    void Recover()
+    {
+        Recoveries++;
+        if (!told) Debug.LogWarning($"Robe cloth went bad and was put back: hips {hips.position}, last {lastHips}, legs {string.Join(" ", legAt)}");
+        told = true;
+        Snap();
+    }
 
     void LateUpdate()
     {
-        if (!ready) return;
+        if (!ready || !Finite(hips.position)) return;
+        if (!Finite(lastHips) || !Finite(lastStepHips)) Snap();
         if (Vector3.Distance(hips.position, lastHips) > SnapDistance) Snap();
         lastHips = hips.position;
         if (!look.isVisible)
@@ -198,6 +220,7 @@ public class RobeCloth : MonoBehaviour
             }
         }
         StepSeconds += (System.Diagnostics.Stopwatch.GetTimestamp() - from) / (double)System.Diagnostics.Stopwatch.Frequency;
+        if (stepped && !Sound()) Recover();
         // Between steps the mesh rides on the wizard as it is.
         if (stepped) Draw();
     }

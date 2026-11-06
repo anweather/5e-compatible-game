@@ -186,7 +186,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 | `boss.every`, `boss.hpPerWave` | 5, 12 | Bosses rarer, or tougher late on (and the `dread` row: hp 700, damage 200, in percent) |
 | `warmup`, `betweenWaves` | 60, 150 | More time before wave 1, and in the warning: longer to reach the keep and attune, and a longer run |
 | `spawnEvery` | 9 | Raiders come in a thinner stream |
-| `offRoadCost` | 6 | Road raiders stray less |
+| `offRoadCost` | 40 | Road raiders stray less |
 | `barricades.from`, `first`, `perWaves`, `most`, `radius` | 2, 1, 3, 4, 2 | More barricades: road raiders are held up longer, and fire has something to clear |
 | `strength` | by terrain | Walls hold for more blows. A blocking terrain with no row can't be battered, so a wizard's wall needs one or it stops a run for good |
 | `targetMinutes` | 20 | What the curve aims at; nothing in the game reads it |

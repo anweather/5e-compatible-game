@@ -492,7 +492,7 @@
       "broken": 20
     }
   },
-  "offRoadCost": 6,
+  "offRoadCost": 40,
   "routeEvery": 6,
   "flying": {
     "lands": [

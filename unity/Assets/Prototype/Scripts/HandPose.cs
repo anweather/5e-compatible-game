@@ -11,7 +11,7 @@ using UnityEngine;
 public class HandPose : MonoBehaviour
 {
     const float WindSeconds = 0.22f, OutSeconds = 0.1f, HoldSeconds = 0.22f, BackSeconds = 0.32f;
-    const float FistDegrees = 70f;
+    const float FistDegrees = 70f, FlinchSeconds = 0.4f, FlinchLean = 16f, FlinchDip = 0.08f, FlinchBack = 0.12f;
 
     enum Phase { Rest, Wind, Out, Hold, Back }
 
@@ -40,6 +40,7 @@ public class HandPose : MonoBehaviour
     SpellCaster caster;
     HandHeld held;
     bool together, aimed;
+    float flinch;
 
     /// <summary>What's shown in a hand (HandsDef.Left, Right), or null: for the probe.</summary>
     public string Showing(int hand) => held.Showing(hand);
@@ -60,8 +61,20 @@ public class HandPose : MonoBehaviour
 
     void OnDestroy() => held?.Destroy();
 
+    /// <summary>This wizard took a blow: it flinches.</summary>
+    public void Flinch() => flinch = 1f;
+
+    void LayFlinch()
+    {
+        if (flinch <= 0f) return;
+        flinch = Mathf.Max(0f, flinch - Time.deltaTime / FlinchSeconds);
+        float back = Mathf.Sin(flinch * Mathf.PI);
+        pose.LayBody(FlinchDip * back, -FlinchLean * back, transform.forward, -transform.forward * (FlinchBack * back));
+    }
+
     void LateUpdate()
     {
+        LayFlinch();
         var world = caster != null && caster.grid != null ? caster.grid.World : null;
         if (world == null) return;
         if (!world.TickInProgress) Read(world);

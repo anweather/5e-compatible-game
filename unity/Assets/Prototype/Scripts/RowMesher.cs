@@ -28,6 +28,8 @@ public static class RowMesher
     const float DockAbove = 0.45f, PlankWide = 0.32f, PlankThick = 0.08f, PlankGap = 0.03f, DockBeam = 0.18f, PostEvery = 3f, PostSize = 0.24f, PostAbove = 0.8f, PostDown = 4f;
     const int DockSeed = 41;
     static readonly Color DefaultCover = new(0.32f, 0.3f, 0.32f), DoorColor = new(0.36f, 0.25f, 0.16f), Stone = new(0.45f, 0.44f, 0.42f), Timber = new(0.3f, 0.2f, 0.13f), Underside = new(0.24f, 0.18f, 0.14f);
+    static readonly Color GatePlank = new(0.42f, 0.28f, 0.15f), GatePlankDark = new(0.33f, 0.21f, 0.11f), GateIron = new(0.13f, 0.13f, 0.14f);
+    static readonly Color Flag = new(0.62f, 0.58f, 0.5f), FlagDark = new(0.52f, 0.48f, 0.42f), FlagPale = new(0.7f, 0.66f, 0.58f);
     const float RoofLift = 0.03f, DeckDepth = 0.5f, GateDepth = 0.25f, MerlonDepth = 0.45f, ParapetHeight = 0.5f, Tread = 0.4f;
 
     /// <summary>What a row's drawing needs from the rules in force.</summary>
@@ -104,6 +106,8 @@ public static class RowMesher
         public string Id;
         public Vector2 From, To, Along, Right;
         public float Length, Thickness, Height, Bottom, Past0, Past1;
+        /// <summary>The row's towers, middle and radius: a wall's top stops at their edge.</summary>
+        public List<(Vector2 middle, float radius)> Towers = new();
         /// <summary>A level row's wall: its openings stand on the ground under them, not on its foot.</summary>
         public bool Level;
         public Color Color;
@@ -206,7 +210,12 @@ public static class RowMesher
         }
         foreach (var w in walls)
             foreach (var other in walls.Where(o => o != w)) Reach(w, other);
-        foreach (var w in walls) w.Stretches = StretchesOf(w);
+        var towerRings = RowTowers.Rings(row, joins);
+        foreach (var w in walls)
+        {
+            w.Towers = towerRings;
+            w.Stretches = StretchesOf(w);
+        }
         foreach (var w in walls)
             foreach (var other in walls.Where(o => o != w && w.Stretches.Count > 0 && o.Stretches.Count > 0)) Join(w, other);
         return walls;
@@ -404,7 +413,23 @@ public static class RowMesher
         }
         var color = Finished(h.row["finish"], DoorColor);
         float depth = w.Level ? GateDepth : DoorDepth;
-        s.Door.Add(Record(kit, () => kit.Box(w.At(mid, depth, w.Bottom + h.foot + h.height / 2f), new Vector3(to - from, h.height, depth), color, w.Turn)));
+        s.Door.Add(Record(kit, () =>
+        {
+            kit.Box(w.At(mid, depth, w.Bottom + h.foot + h.height / 2f), new Vector3(to - from, h.height, depth), color, w.Turn);
+            if (w.Level) GateFace(kit, w, from, to, depth, w.Bottom + h.foot, h.height);
+        }));
+    }
+
+    // A castle gate's face: upright planks in two tones with iron bands across them.
+    static void GateFace(MeshKit kit, Wall w, float from, float to, float depth, float foot, float height)
+    {
+        const float Plank = 0.42f, Proud = 0.08f, BandHeight = 0.22f;
+        int planks = Mathf.Max(1, Mathf.RoundToInt((to - from) / Plank));
+        float wide = (to - from) / planks, face = depth / 2f - Proud;
+        for (int i = 0; i < planks; i++)
+            kit.Box(w.At(from + (i + 0.5f) * wide, face, foot + height / 2f), new Vector3(wide * 0.92f, height, Proud), i % 2 == 0 ? GatePlank : GatePlankDark, w.Turn);
+        foreach (float share in new[] { 0.22f, 0.5f, 0.78f })
+            kit.Box(w.At((from + to) / 2f, face - Proud, foot + height * share), new Vector3(to - from, BandHeight, Proud), GateIron, w.Turn);
     }
 
     // The roof's outline if it names one, else the walls' corners round their middle; both clockwise.
@@ -737,21 +762,65 @@ public static class RowMesher
         }
     }
 
-    // A low parapet along the wall's outer edge, with a merlon every so often; what stops a wizard is the parapet's full height.
+    // A low parapet along the wall's outer edge, with a merlon every so often; what stops a wizard is the parapet's full height. The
+    // wall's top between them is laid in flagstones.
     static void Battlements(MeshKit kit, MeshKit rail, Wall w, float every, float height)
     {
         float top = w.Bottom + w.Height;
         foreach (var s in w.Stretches)
         {
-            float u = (s.From + s.To) / 2f, long_ = s.To - s.From;
-            s.Whole.Add(Record(kit, () => kit.Box(w.At(u, MerlonDepth / 2f, top + ParapetHeight / 2f), new Vector3(long_, ParapetHeight, MerlonDepth), w.Color, w.Turn)));
-            s.Rail.Add(Record(rail, () => rail.Box(w.At(u, MerlonDepth / 2f, top + height / 2f), new Vector3(long_, height, MerlonDepth), Color.clear, w.Turn)));
+            s.Whole.Add(Record(kit, () => Flagstones(kit, w, s.From, s.To, top)));
+            foreach (var (from, to) in OutsideTowers(w, s.From, s.To))
+            {
+                float u = (from + to) / 2f, long_ = to - from;
+                s.Whole.Add(Record(kit, () => kit.Box(w.At(u, MerlonDepth / 2f, top + ParapetHeight / 2f), new Vector3(long_, ParapetHeight, MerlonDepth), w.Color, w.Turn)));
+                s.Rail.Add(Record(rail, () => rail.Box(w.At(u, MerlonDepth / 2f, top + height / 2f), new Vector3(long_, height, MerlonDepth), Color.clear, w.Turn)));
+            }
         }
         for (float u = every / 2f; u < w.Length; u += Mathf.Max(0.4f, every))
         {
             float along = u;
+            if (InTower(w, along, MerlonDepth / 2f, every / 2f)) continue;
             Held(kit, w, along, () => kit.Box(w.At(along, MerlonDepth / 2f, top + height / 2f), new Vector3(every / 2f, height, MerlonDepth), w.Color, w.Turn));
         }
+    }
+
+    // Whether a point along a wall, this far in from its face, is inside a tower, with some room to spare.
+    static bool InTower(Wall w, float along, float depth, float spare = 0f)
+    {
+        var at = w.At(along, depth, 0f);
+        foreach (var (middle, radius) in w.Towers)
+            if (new Vector2(at.x - middle.x, at.z - middle.y).sqrMagnitude < (radius + spare) * (radius + spare)) return true;
+        return false;
+    }
+
+    // The runs of a stretch of wall's outer edge that aren't inside a tower.
+    static List<(float from, float to)> OutsideTowers(Wall w, float from, float to)
+    {
+        const float Step = 0.25f, Shortest = 0.1f;
+        var runs = new List<(float, float)>();
+        float start = from;
+        bool open = false;
+        for (float u = from; u < to; u += Step)
+        {
+            bool clear = !InTower(w, u, MerlonDepth / 2f);
+            if (clear && !open) start = u;
+            else if (!clear && open && u - start > Shortest) runs.Add((start, u));
+            open = clear;
+        }
+        if (open && to - start > Shortest) runs.Add((start, to));
+        return runs;
+    }
+
+    static void Flagstones(MeshKit kit, Wall w, float from, float to, float top)
+    {
+        const float Stone = 0.75f, Thin = 0.05f;
+        int stones = Mathf.Max(1, Mathf.RoundToInt((to - from) / Stone));
+        float each = (to - from) / stones, across = w.Thickness * 0.5f;
+        for (int i = 0; i < stones; i++)
+            for (int row = 0; row < 2; row++)
+                if (!InTower(w, from + (i + 0.5f) * each, MerlonDepth + across * (row + 0.5f) * 0.9f, each / 2f))
+                kit.Box(w.At(from + (i + 0.5f) * each, MerlonDepth + across * (row + 0.5f) * 0.9f, top + Thin / 2f), new Vector3(each * 0.96f, Thin, across * 0.86f), (i + row) % 3 == 0 ? FlagDark : (i + row) % 3 == 1 ? Flag : FlagPale, w.Turn);
     }
 
     // Steps up the wall's inner side, from the ground at "at" to a landing a cell long at the wall's top, one cell wide. The treads are
