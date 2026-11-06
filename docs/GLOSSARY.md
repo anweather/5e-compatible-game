@@ -544,6 +544,12 @@ that long, and doesn't march.
 **Adjective**
 : A row that changes a raider in the Hold: Armoured, Burning, Soaked. Its numbers, weaknesses, and a status or cover it leaves.
 
+**Barricade**
+: A small wooden block on the Hold's road, appearing at the start of a wave. Raiders break through it, and it burns.
+
+**Moment**
+: A canned setup for playtesting the Hold: a rules row naming a wave, hand sets and the keep's state, to jump straight to in dev builds and the Editor.
+
 **Spawner**
 : A row naming where a Hold's raiders enter, which kinds and how fast.
 
