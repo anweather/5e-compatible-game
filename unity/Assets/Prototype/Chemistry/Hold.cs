@@ -105,6 +105,7 @@ namespace Chem
             Name = (string)p.Value["name"] ?? p.Name,
             Holds = (string)p.Value["holds"],
             Gesture = HandsDef.GestureOf((string)p.Value["gesture"]),
+            BothHands = (string)p.Value["hands"] == "both",
             Cooldown = (int?)p.Value["cooldown"] ?? 0,
             BothCooldown = (int?)p.Value["bothCooldown"] ?? 0,
             Damage = (int?)p.Value["damage"] ?? 0,
@@ -327,7 +328,10 @@ namespace Chem
                     if (!WholeFromOne(m.Value["wave"])) Errors.Add($"hold: moment {m.Name}: wave must be a whole number from 1");
                 }
                 foreach (var u in (h["upgrades"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                {
                     if (u.Value["gesture"] is JToken g && HandsDef.GestureOf((string)g) == HandsDef.NoGesture) Errors.Add($"hold: upgrade {u.Name}: unknown gesture {Show(g)}");
+                    if (u.Value["hands"] is JToken hands && (string)hands != "both") Errors.Add($"hold: upgrade {u.Name}: hands must be \"both\", not {Show(hands)}");
+                }
                 foreach (var row in (h["unlocks"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
                 {
                     if (!WholeFromOne(row["cost"])) Errors.Add($"hold: unlock {Show(row["id"])}: cost must be a whole number from 1");

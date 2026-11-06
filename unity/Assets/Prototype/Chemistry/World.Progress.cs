@@ -98,14 +98,17 @@ namespace Chem
             return h;
         }
 
-        // Whether a row touches what this wizard holds and can do: an offer leans into its hand set.
-        bool Suits(UpgradeDef u, string player)
+        /// <summary>Whether this wizard can use a row with what it has unlocked: what an open hand holds, a gesture it has, and both
+        /// hands if the row needs them.</summary>
+        public bool Suits(UpgradeDef u, string player)
         {
             var h = HandsOf(player);
-            return (u.Holds == null || h.Holds.Contains(u.Holds)) && (u.Gesture == HandsDef.NoGesture || GestureOpen(player, u.Gesture));
+            bool holds = u.Holds == null || Enumerable.Range(0, HandsDef.Count).Any(i => h.Holds[i] == u.Holds && HandOpen(player, i));
+            bool both = !u.BothHands || (HandOpen(player, HandsDef.Left) && HandOpen(player, HandsDef.Right));
+            return holds && both && (u.Gesture == HandsDef.NoGesture || GestureOpen(player, u.Gesture));
         }
 
-        // Each wizard's offer for the wave coming, by the seed, the wave and its name: what suits it first, then the rest.
+        // Each wizard's offer for the wave coming, by the seed, the wave and its name: only rows that suit it, so it may be fewer.
         void OfferUpgrades(HoldParams p)
         {
             const uint offer = 7;
@@ -114,7 +117,7 @@ namespace Chem
                 if (!Hold.Wizards.TryGetValue(player, out var w)) Hold.Wizards[player] = w = new RunWizard { Player = player };
                 w.Offer.Clear();
                 var rows = p.Upgrades.Select((u, i) => (u, roll: WaveRoll(Hold.Wave, i, offer) ^ NameRoll(player)))
-                    .OrderBy(x => Suits(x.u, player) ? 0 : 1).ThenBy(x => x.roll).ThenBy(x => x.u.Id, StringComparer.Ordinal);
+                    .Where(x => Suits(x.u, player)).OrderBy(x => x.roll).ThenBy(x => x.u.Id, StringComparer.Ordinal);
                 w.Offer.AddRange(rows.Take(p.Offer).Select(x => x.u.Id));
             }
         }

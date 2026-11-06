@@ -15,7 +15,7 @@ function run(fail, sandbox = "0") {
   const said = join(bin, "said");
   for (const tool of ["dotnet", "npx", "npm", "node"]) {
     const stub = join(bin, tool);
-    writeFileSync(stub, `#!/usr/bin/env bash\necho "${tool} $*" >> "${said}"\n[[ "${tool} $*" == *"${fail}"* ]] && exit 3\nexit 0\n`);
+    writeFileSync(stub, `#!/usr/bin/env bash\necho "${tool} $* (NODE_OPTIONS=$NODE_OPTIONS)" >> "${said}"\n[[ "${tool} $*" == *"${fail}"* ]] && exit 3\nexit 0\n`);
     chmodSync(stub, 0o755);
   }
   const done = spawnSync("bash", [script, join(bin, "log")], {
@@ -51,6 +51,16 @@ for (const gate of ["typecheck", "sandbox test", "run build"]) {
 test("nothing runs on a build that failed", () => {
   const { ran } = run("dotnet build");
   assert.ok(!ran.includes("dotnet test") && !ran.includes("dotnet format"));
+});
+
+test("jscpd gets the heap a 5 GB VM needs, with no NODE_OPTIONS in the shell", () => {
+  const prior = process.env.NODE_OPTIONS;
+  delete process.env.NODE_OPTIONS;
+  try {
+    assert.match(run(NOTHING).ran, /npx --yes jscpd.*\(NODE_OPTIONS=.*--max-old-space-size=3072\)/);
+  } finally {
+    if (prior !== undefined) process.env.NODE_OPTIONS = prior;
+  }
 });
 
 test("a test run reads the build it follows", () => assert.match(run(NOTHING).ran, /dotnet test core -c Release --no-build/));
