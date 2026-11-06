@@ -115,6 +115,8 @@ public static class ProbeScenarios
             "the meteor falls for its delay, the log names Player 1 and Player 2, a late joiner plays no old shows; after a long walk (a loop, a step a tick) a second late joiner fires every cast the host did " +
             "(metrics late_joiner_strike_history and long_walk_strike_history: the stands, strikes and leavings each joiner's history held, #83); nothing fires or shows once reverted, checksums equal. " +
             "With --shots, a film from behind the host's wizard.", players: 2),
+        new Entry("handlooks", typeof(HandLooksProbe), 180f,
+            "What each hand holds, shown on the other peer's wizard (HandHeld): this Editor hosts, the virtual player joins, each attunes differently, an empty hand among them, and each peer shows both wizards' hands.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("productsview", typeof(ProductsViewProbe), 300f,
