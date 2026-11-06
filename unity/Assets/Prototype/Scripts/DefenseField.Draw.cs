@@ -249,7 +249,9 @@ public partial class DefenseField : ICreatureGround
             if (screen.z <= 0f || screen.z > hudRange) continue;
             bool boss = Boss(World, s.raider);
             float width = boss ? 150f : 46f, height = boss ? 13f : 6f;
-            var back = new Rect(screen.x - width / 2f, Screen.height - screen.y, width, height);
+            // The HUD's scale is on: a screen point is in pixels, the drawing in HUD units.
+            float sx = screen.x / HudScale.Factor, sy = (Screen.height - screen.y) / HudScale.Factor;
+            var back = new Rect(sx - width / 2f, sy, width, height);
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
             GUI.DrawTexture(back, bar);
             float f = Mathf.Clamp01(s.hp / (float)s.maxHp);
@@ -258,7 +260,7 @@ public partial class DefenseField : ICreatureGround
             if (s.raider != null && World.Rules.AdjectiveOf(s.raider.Kind) != null)
             {
                 GUI.color = Color.white;
-                GUI.Label(new Rect(screen.x - 90f, back.y - 22f, 180f, 22f), World.Rules.Entity(s.raider.Kind).Name);
+                GUI.Label(new Rect(sx - 90f, back.y - 22f, 180f, 22f), World.Rules.Entity(s.raider.Kind).Name);
             }
         }
         GUI.color = before;

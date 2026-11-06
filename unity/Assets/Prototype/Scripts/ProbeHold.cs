@@ -170,6 +170,28 @@ public class HoldProbe : ProbeScenario
         Check("the_hud_says_so", show.HudLine().Contains("fell"), show.HudLine());
     }
 
+    // A road raider's way from the foot, as the core has it: once on the road it stays on it, round every bend.
+    void TheRoadIsTheWay(World world)
+    {
+        var road = new System.Collections.Generic.HashSet<(int, int)>(world.BuildingCellsOf(row).Where(c => c.Part == BuildingPart.Road && c.Terrain == TerrainIds.Dirt).Select(c => (c.X, c.Y)));
+        var (x, y) = world.HoldSite.Spawners[0].Cells[0];
+        int steps = 0, onIt = 0, offAfter = 0;
+        bool joined = false;
+        for (var next = world.HoldNext(x, y, true); next != null && steps < 2000; next = world.HoldNext(x, y, true))
+        {
+            (x, y) = next.Value;
+            steps++;
+            bool on = road.Contains((x, y));
+            joined |= on;
+            if (on) onIt++;
+            else if (joined && x - row.X > 34) offAfter++;
+        }
+        Metric("road_way_steps", steps);
+        Metric("road_way_on_it", onIt);
+        Metric("road_way_off_it_after_joining", offAfter);
+        Check("raiders_keep_to_the_road", joined && offAfter <= steps / 50, $"{steps} steps, {onIt} on the road, {offAfter} off it after joining");
+    }
+
     // What the fight does to the castle, shown: a stretch of the north walls, a tower and the top of a stair, gone by hand
     // (a raider's blows are the core's tests); the end of the run mends them.
     IEnumerator Breach(RowHouses houses, System.Collections.Generic.List<BuildingCell> cells)
@@ -216,6 +238,7 @@ public class HoldProbe : ProbeScenario
         Metric("vertices", body);
 
         LevelAcross();
+        TheRoadIsTheWay(world);
         var middle = At(16, 16);
         Stand(82, 19);
         yield return Picture("valley-floor", At(90, 19) + Vector3.up * 3f, middle + Vector3.up * 8f);

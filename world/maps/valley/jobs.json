@@ -3,8 +3,8 @@
   "spots": {
     "lane-foot": { "at": [221, 322], "facing": 180 },
     "square": { "at": [219, 304], "facing": 90 },
-    "castle-gate": { "at": [153, 369], "facing": 90 },
-    "castle-court": { "at": [140, 367], "facing": 270 },
+    "castle-gate": { "at": [145, 369], "facing": 90 },
+    "castle-court": { "at": [132, 367], "facing": 270 },
     "dock-end": { "at": [268, 374], "out": [249, 374], "facing": 90 },
     "dock-side": { "at": [260, 374], "out": [249, 374], "facing": 180 },
     "lake-house": { "at": [249, 372], "facing": 90 }
