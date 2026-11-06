@@ -191,7 +191,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 | `strength` | by terrain | Walls hold for more blows. A blocking terrain with no row can't be battered, so a wizard's wall needs one or it stops a run for good |
 | `targetMinutes` | 20 | What the curve aims at; nothing in the game reads it |
 
-Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list is F8 in dev builds and the Editor, going in is a `ComboCommand`, and `MOMENT` names one for the probe. The curve is `core/Hold.Runner`: `dotnet run --project core/Hold.Runner -c Release -- --seeds 3` or `-- --moment cinders-right,cinders-wrong`. Its wizard stands on the wall by the heart and keeps casting what hurts, and never moves or plays chemistry, so it's a stand-in: water and earth look worse in it than they should.
+Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list is F8 in dev builds and the Editor, going in is a `ComboCommand` that a host takes only in a dev build or the Editor (`NetChem.ComboChannel`), so a released player never runs one, whoever asks, and `MOMENT` names one for the probe. The curve is `core/Hold.Runner`: `dotnet run --project core/Hold.Runner -c Release -- --seeds 3` or `-- --moment cinders-right,cinders-wrong`. Its wizard stands on the wall by the heart and keeps casting what hurts, and never moves or plays chemistry, so it's a stand-in: water and earth look worse in it than they should.
 
 ### 5. Progress
 

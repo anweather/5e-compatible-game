@@ -474,4 +474,24 @@ public class CommandChannelTests
         channel.Replay(timeline);
         Assert.That(timeline[1].Combos, Is.Empty);
     }
+
+    [Test]
+    public void AHostThatIsntADevBuildStampsNoMoment()
+    {
+        var channel = NetChem.ComboChannel(new Dictionary<int, TickBatch>(), devBuild: false);
+        channel.Request(ComboIntent.From(ComboCommand.Moment("ann", "first-wave"), 0));
+        Assert.That(channel.HasPending, Is.False);
+        Assert.That(channel.Stamp(5), Is.Empty);
+        Assert.That(channel.HistoryForJoiner(), Is.Empty, "and no joiner replays it");
+        channel.Request(ComboIntent.From(ComboCommand.Load("ann", "fire"), 0));
+        Assert.That(channel.Stamp(6).Length, Is.EqualTo(1), "the rest go by as ever");
+    }
+
+    [Test]
+    public void ADevBuildHostStampsOne()
+    {
+        var channel = NetChem.ComboChannel(new Dictionary<int, TickBatch>(), devBuild: true);
+        channel.Request(ComboIntent.From(ComboCommand.Moment("ann", "first-wave"), 0));
+        Assert.That(channel.Stamp(5).Length, Is.EqualTo(1));
+    }
 }

@@ -27,7 +27,7 @@ public partial class SpellCaster
     }
 
     /// <summary>Goes into a moment, for every peer (HoldMoments).</summary>
-    public bool Moment(string id) => grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
+    public bool Moment(string id) => ComboCommand.Moment(CastPlayer, id).TakenBy(HoldMoments.Offered) && grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
 
     // Round the elements, then nothing, then the elements again.
     void AttuneNext(string player, int hand)
