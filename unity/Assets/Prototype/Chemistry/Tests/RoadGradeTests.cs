@@ -48,6 +48,14 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheLandPastItsEndsStaysAsItIs()
+        {
+            var moved = Moved();
+            Assert.That(moved.Keys.Where(c => c.y < 10), Is.Empty, "north of where it starts");
+            Assert.That(moved.Keys.Where(c => c.y > 100), Is.Empty, "south of where it ends");
+        }
+
+        [Test]
         public void ItKeepsOffWhatTheRowBuilt()
         {
             var keep = new HashSet<(int x, int y)> { (30, 50), (28, 50) };

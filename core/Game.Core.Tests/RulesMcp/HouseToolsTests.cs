@@ -110,7 +110,7 @@ namespace Chem.Tests
             var rows = JObject.Parse(kept)["patch"]["world"]["buildings"];
             Assert.That(((JObject)rows).Count, Is.EqualTo(2), "one edit by id and one new building, in one mod");
             Assert.That(rows["beach-house#1"], Is.Not.Null);
-            Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("cabin#"));
+            Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("lake-house#"), "the house by the lake");
 
             // Switched on from the kept file, it builds both; nothing but the row names anything.
             var world = bench.LiveWorld;
@@ -125,7 +125,7 @@ namespace Chem.Tests
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "stucco-wall"), Is.GreaterThan(0));
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "door"), Is.EqualTo(1));
             Assert.That(world.BuildingCellsOf(house).Count(c => c.Terrain == "rock"), Is.GreaterThan(0), "new houses are hollow");
-            string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("cabin#", StringComparison.Ordinal));
+            string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("lake-house#", StringComparison.Ordinal));
             Assert.That(world.BuildingRowOf(wing).Walls.Any(w => w.Id.StartsWith("wing1", StringComparison.Ordinal)));
             Assert.That(client.Call("find", new { kind = "building", near = "lake", within = 12 }), Does.Contain(wing));
             Assert.That(client.Call("whats_on", new { }), Does.Contain("the building beach-house#1"));

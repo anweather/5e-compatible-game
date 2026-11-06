@@ -532,6 +532,9 @@ that long, and doesn't march.
 : Anything whose presence keeps the world around it active: today every
   wizard; later perhaps raiders or villagers that matter to play.
 
+**Worker**
+: One of the folk with a job (a map's `jobs.json`): stops it goes round, walked by the quickest way on foot. View only.
+
 **Raider**
 : A core entity in the defense field's waves (`Raider`, BACKLOG §17).
 
@@ -540,6 +543,12 @@ that long, and doesn't march.
 
 **Adjective**
 : A row that changes a raider in the Hold: Armoured, Burning, Soaked. Its numbers, weaknesses, and a status or cover it leaves.
+
+**Barricade**
+: A small wooden block on the Hold's road, appearing at the start of a wave. Raiders break through it, and it burns.
+
+**Moment**
+: A canned setup for playtesting the Hold: a rules row naming a wave, hand sets and the keep's state, to jump straight to in dev builds and the Editor.
 
 **Spawner**
 : A row naming where a Hold's raiders enter, which kinds and how fast.

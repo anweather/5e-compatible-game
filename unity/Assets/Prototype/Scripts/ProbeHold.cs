@@ -54,6 +54,10 @@ public class HoldProbe : ProbeScenario
         Metric("road_across_m", across);
         Metric("hill_across_m", hill);
         Metric("road_bank_m", bank);
+        float step = 0f;
+        for (int x = 26; x < 34; x++) step = Mathf.Max(step, Mathf.Abs(Ground(x, 15) - Ground(x + 1, 15)));
+        Metric("gate_steepest_m_a_cell", step);
+        Check("the_way_to_the_gate_can_be_walked", step < 1.3f, $"{step:0.00} m in a cell");
         Check("the_road_is_level_across", across < 0.3f, $"{across:0.00} m over two cells, the hill beside it {hill:0.00} m");
     }
 
@@ -290,5 +294,15 @@ public class HoldProbe : ProbeScenario
         Check("the_gate_burns_through", gate.All(c => !world.IsBlocking(world.At(c.X, c.Y))), string.Join(", ", gate.Select(c => world.At(c.X, c.Y).T)));
         yield return Picture("gate-burnt", At(36, 13) + Vector3.up * 2f, At(28, 15) + Vector3.up * 3f);
         yield return PlayToALoss(cells, gate, houses);
+        yield return AfterAReset(houses);
+    }
+
+    // Going online resets the world too: what a reset takes with the grid's children has to come back.
+    IEnumerator AfterAReset(RowHouses houses)
+    {
+        grid.ResetWorld();
+        yield return Wait(1f);
+        var root = houses.Root(Row);
+        Check("the_castle_is_drawn_again_after_a_reset", root != null && root.transform.Find("Walk") != null);
     }
 }

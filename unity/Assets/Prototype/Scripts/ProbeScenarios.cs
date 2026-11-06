@@ -369,6 +369,8 @@ public static class ProbeScenarios
             "Andrew's playtest paper cuts of 2026-10-27, framed for before/after pictures (the same script with or without the fixes). Checks: the " +
             "signs drawn with SignText (one-sided), a villager sitting on the seat, the house roof solid and landed on, the well wall stopping you, " +
             "the beach off-limits to wild animals, the island's south pier, and a burnt-down inn's door light out at night."),
+        new Entry("jobs", typeof(JobsProbe), 120f,
+            "People with work to go to (FolkJobs, jobs.json): each job's worker stands where the clock says when a wizard comes near; a wizard walks out along the lake house's dock and stays on it. With --shots, a worker at each job, the dock and the lake house."),
         new Entry("villagers", typeof(VillagersProbe), 120f,
             "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
             "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +

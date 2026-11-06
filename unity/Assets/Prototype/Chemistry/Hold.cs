@@ -149,12 +149,18 @@ namespace Chem
 
         readonly Dictionary<string, EntityDef> holdVariants = new Dictionary<string, EntityDef>(StringComparer.Ordinal);
 
-        // "kind~adjective" as an entity, made the first time it's asked for; null for any other id.
+        // "kind~adjective" as an entity, made the first time it's asked for; null for any other id. Locked: one Rules serves
+        // every world made from it, and the core tests run side by side.
         EntityDef HoldVariant(string id)
         {
             int mark = id.IndexOf(AdjectiveMark);
             if (mark <= 0) return null;
-            if (holdVariants.TryGetValue(id, out var made)) return made;
+            lock (holdVariants)
+                return holdVariants.TryGetValue(id, out var made) ? made : MakeVariant(id, mark);
+        }
+
+        EntityDef MakeVariant(string id, int mark)
+        {
             var adjective = Sim.Hold.Adjective(id.Substring(mark + 1));
             if (adjective == null || !entities.TryGetValue(id.Substring(0, mark), out var plain) || plain.Raider == null) return null;
             var def = plain.Copy();
