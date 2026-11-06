@@ -8,6 +8,8 @@ namespace Chem.Tests
     public partial class HoldTests
     {
         internal const string Me = "Ana";
+        // What's left of a keep in a test that only needs to see it fall.
+        const int ShortKeep = 20;
         const int MostTicks = 12000;
 
         static Rules R => ChemistryTests.R;
@@ -160,6 +162,7 @@ namespace Chem.Tests
             var w = Running();
             Away(w);
             Until(w, () => w.Hold.Health < R.Sim.Hold.Health, "a raider reaches the heart");
+            w.Hold.Health = System.Math.Min(w.Hold.Health, ShortKeep);
             Until(w, () => !w.HoldRunning, "the keep falls");
             Assert.That(w.Hold.Phase, Is.EqualTo(HoldPhase.Lost));
             Assert.That(w.Hold.Wave, Is.EqualTo(1), "the score is the wave reached");
@@ -177,6 +180,7 @@ namespace Chem.Tests
             Until(w, () => gate.Any(c => w.BlowsOn(c.X, c.Y) > 0), "they batter it");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate"));
             Until(w, () => gate.Any(c => w.At(c.X, c.Y).T == "rubble"), "it gives way");
+            w.Hold.Health = ShortKeep;
             Until(w, () => !w.HoldRunning, "the keep falls");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate-open"), "mended, as the map has it");
             Assert.That(gate.All(c => w.BlowsOn(c.X, c.Y) == 0));
@@ -356,7 +360,11 @@ namespace Chem.Tests
         {
             var a = Running(11);
             var b = Running(11);
-            foreach (var w in new[] { a, b }) Away(w);
+            foreach (var w in new[] { a, b })
+            {
+                Away(w);
+                w.Hold.Health = ShortKeep;
+            }
             for (int i = 0; i < MostTicks && a.HoldRunning; i++)
             {
                 a.Step();

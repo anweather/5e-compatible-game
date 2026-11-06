@@ -165,9 +165,9 @@ joiner's history (`StandKeeper`), since attuning reads them.
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no
   view). **Done when:** a good player's run lasts about the length Andrew picks, and a wrong hand set is felt.
 
-**As built.** `World.Hold.cs` runs the rows of `rules/hold.json`. A wave comes from the rules and the world's seed alone (`HoldPlan`, `WaveRoll`), so the same seed gives the same waves however a run got there, and a moment's wave is the one play reaches. New kinds and adjectives are rows: `cliff-stalker` climbs, `ash-wing` flies, and Frosted, Molten, Rooted and Gaunt join the three adjectives.
+**As built.** `World.Hold.cs` runs the rows of `rules/hold.json`. A wave comes from the rules and the world's seed alone (`HoldPlan`, `WaveRoll`), so the same seed gives the same waves however a run got there, and a moment's wave is the one play reaches. New kinds and adjectives are rows of `rules/hold.json`, not `entities.json`, which the frozen sandbox's hash still matches: `cliff-stalker` climbs, `ash-wing` flies, and Frosted, Molten, Rooted and Gaunt join the three adjectives.
 
-**Routes.** An entity's `raider.route` says how it comes. A road raider's way costs `offRoadCost` a cell off the road (the row's road the map's `hold.json` names); `climb` is the straight way raiders always had; `fly` goes straight at the heart over everything, and reaches a wizard on the walls. A flyer is on its cell like any raider, so anything that lands on the cell hits it, covers and burning ground too. Frozen or wet (`flying.lands`) brings it down for good, and it walks on from there. Raiders on different ways who meet head on swap cells.
+**Routes.** A raider's row says how it comes (`raider.route`). A road raider's way costs `offRoadCost` a cell off the road (the row's road the map's `hold.json` names); `climb` is the straight way raiders always had; `fly` goes straight at the heart over everything, and reaches a wizard on the walls. A flyer is on its cell like any raider, so anything that lands on the cell hits it, covers and burning ground too. Frozen or wet (`flying.lands`) brings it down for good, and it walks on from there. Raiders on different ways who meet head on swap cells.
 
 **Dials,** in `rules/hold.json`. Turn the first three first.
 

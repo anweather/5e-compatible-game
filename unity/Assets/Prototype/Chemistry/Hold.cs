@@ -288,7 +288,7 @@ namespace Chem
                     if (m.Value["theme"] is JToken t && themes[(string)t] == null) Errors.Add($"hold: moment {m.Name}: unknown theme {Show(t)}");
                     if (!WholeFromOne(m.Value["wave"])) Errors.Add($"hold: moment {m.Name}: wave must be a whole number from 1");
                 }
-                foreach (var e in (r["entities"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                foreach (var e in (h["raiders"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                     if (e.Value["raider"]?["route"] is JToken route && !Routes.Contains((string)route)) Errors.Add($"entity {e.Name}: unknown route {Show(route)}");
             }
         }
@@ -297,11 +297,14 @@ namespace Chem
         public const char AdjectiveMark = '~';
 
         readonly Dictionary<string, EntityDef> holdVariants = new Dictionary<string, EntityDef>(StringComparer.Ordinal);
+        // Raider kinds only the Hold has (rules/hold.json "raiders"), kept out of the entity table the sandbox's rules match.
+        readonly Dictionary<string, EntityDef> holdKinds = new Dictionary<string, EntityDef>(StringComparer.Ordinal);
 
         // "kind~adjective" as an entity, made the first time it's asked for; null for any other id. Locked: one Rules serves
         // every world made from it, and the core tests run side by side.
         EntityDef HoldVariant(string id)
         {
+            if (holdKinds.TryGetValue(id, out var kind)) return kind;
             int mark = id.IndexOf(AdjectiveMark);
             if (mark <= 0) return null;
             lock (holdVariants)
@@ -311,7 +314,7 @@ namespace Chem
         EntityDef MakeVariant(string id, int mark)
         {
             var adjective = Sim.Hold.Adjective(id.Substring(mark + 1));
-            if (adjective == null || !entities.TryGetValue(id.Substring(0, mark), out var plain) || plain.Raider == null) return null;
+            if (adjective == null || !(entities.TryGetValue(id.Substring(0, mark), out var plain) || holdKinds.TryGetValue(id.Substring(0, mark), out plain)) || plain.Raider == null) return null;
             var def = plain.Copy();
             def.Id = id;
             def.Name = $"{adjective.Name} {plain.Name.ToLowerInvariant()}";
