@@ -223,9 +223,18 @@ public class HandsProbe : ProbeScenario
         yield return Fires("same_element_both_bumpers", Table.Both("fire", "fire", HandsDef.Throw).Spell, () => Pad(0f, 0f, GamepadButton.LeftShoulder, GamepadButton.RightShoulder));
 
         yield return Attune(null, "fire");
+        var holder = wizard.GetComponent<ItemHolder>();
+        int fists = 0;
+        System.Action<ItemHolder.PunchLanding> landed = _ => fists++;
+        holder.PunchLanded += landed;
         yield return Fires("an_empty_trigger_punches", Table.One(null, HandsDef.Thrust).Act, () => Pad(1f, 0f));
+        yield return Wait(1f);
+        Check("the_fist_lands", fists == 1, $"{fists} landed");
         yield return Fires("an_empty_bumper_throws", Table.One(null, HandsDef.Throw).Act, () => Pad(0f, 0f, GamepadButton.LeftShoulder));
         yield return Fires("an_empty_sweep_shoves", Table.One(null, HandsDef.Sweep).Act, () => Pad(1f, 0f, GamepadButton.LeftShoulder));
+        yield return Wait(1f);
+        Check("the_sweep_lands_too", fists == 2, $"{fists} landed");
+        holder.PunchLanded -= landed;
 
         caster.AimOverride = null;
         caster.enabled = false;

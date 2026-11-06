@@ -182,6 +182,7 @@ namespace Chem.Tests
             var w = Holding("water", "fire");
             Trigger(w, Right);
             Bumper(w, Left);
+            Assert.That(w.HandSpellsUnderWay(Me), Is.EquivalentTo(new[] { "burning-hands", "ray-of-frost" }), "the meter names both");
             var (fired, _) = Out(w);
             Assert.That(fired, Is.EquivalentTo(new[] { "burning-hands", "ray-of-frost" }));
             Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.HandCooldown), "each cools on its own");

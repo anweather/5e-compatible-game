@@ -56,10 +56,12 @@ public partial class ItemHolder
     public event Action<PunchLanding> PunchLanded;
 
     float punchLandsAt = -1f, nextPunch;
+    bool handsPunch;
 
-    void TryPunch()
+    void TryPunch(bool fromHand = false)
     {
-        if (Time.time < nextPunch || !MayPunchNow) return;
+        if (Time.time < nextPunch || !(fromHand ? MayPunchUnlessCasting(false) : MayPunchNow)) return;
+        handsPunch = fromHand;
         var feel = beats.feel;
         nextPunch = Time.time + feel.punchCooldown;
         punchLandsAt = Time.time + feel.punchDraw.seconds + feel.punchOut.seconds;
@@ -73,12 +75,15 @@ public partial class ItemHolder
     public void HandAct(string act)
     {
         if (act == "throw") Throw(hardThrow);
-        else TryPunch();
+        else TryPunch(fromHand: true);
     }
 
     /// <summary>Nothing stops the wizard punching right now.</summary>
-    public bool MayPunchNow => Held == null && MayPunch(
-        (TryGetComponent<SpellCaster>(out var caster) && caster.CastInProgress) || beats.HandsBusy || (radial != null && radial.BusyThisFrame),
+    public bool MayPunchNow => MayPunchUnlessCasting((TryGetComponent<SpellCaster>(out var caster) && caster.CastInProgress) || beats.HandsBusy || (radial != null && radial.BusyThisFrame));
+
+    // A hand's own act is the cast that just went off, so it isn't one the punch would cancel.
+    bool MayPunchUnlessCasting(bool cancelling) => Held == null && MayPunch(
+        cancelling,
         Animal,
         TryGetComponent<SurfaceEffects>(out var feet) && feet.Swimming,
         TryGetComponent<Sitter>(out var sitter) && sitter.Seated != null,
@@ -92,7 +97,7 @@ public partial class ItemHolder
     void PunchLands()
     {
         punchLandsAt = -1f;
-        if (!MayPunchNow) return;
+        if (!(handsPunch ? MayPunchUnlessCasting(false) : MayPunchNow)) return;
         var landing = InReachOfFist();
         if (landing.Prop != null) landing.Prop.Shove(Forces.Thrown(AwayFromMe(landing)) * (beats.feel.punchShove * Forces.ImpulsePerPush));
         else if (landing.Pane != null) ChemEffects.Strike(GetComponent<SpellCaster>().grid, landing.Pane.Value);
