@@ -71,6 +71,27 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheShoveAndTheLiftAreTheRules()
+        {
+            var mod = ModPatch.Parse("{ \"sim\": { \"shove\": { \"most\": 1, \"staggerTicks\": 2 } }, \"spells\": [{ \"id\": \"whirlwind\", \"lift\": { \"hurt\": 3 } }] }");
+            var rules = R.WithMods(new[] { mod });
+
+            var w = new World(rules, 40, 8, 5, "dirt");
+            var hound = w.SpawnRaider("bone-hound", 5, 3, 6);
+            w.Cast("gust-of-wind", 2, 3, 1);
+            Assert.That((hound.X, hound.Y), Is.EqualTo((9, 3)));
+            Assert.That(hound.StatusOf(World.ThrownStatus), Is.EqualTo(2), "shove.staggerTicks");
+            w.Cast("gust-of-wind", 8, 3, 1);
+            Assert.That((hound.X, hound.Y), Is.EqualTo((9, 3)), "shove.most 1: it braces from the second");
+
+            var lifted = new World(rules, 40, 12, 5, "dirt");
+            var other = lifted.SpawnRaider("bone-hound", 11, 5, 30);
+            lifted.Cast("whirlwind", 10, 5, 1);
+            for (int i = 0; i < 30; i++) lifted.Step();
+            Assert.That(other.Hp, Is.EqualTo(30 - R.Sim.FallDamage * 3), "lift.hurt");
+        }
+
+        [Test]
         public void FromUpOnAWallALineGoesOverItAndFromTheGroundTheWallStopsIt()
         {
             // A stone wall three cells thick (x 4 to 6). Cast from its top (the caster's cell, x 4, is the wall's), a Gust goes

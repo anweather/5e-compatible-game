@@ -419,7 +419,7 @@ namespace Chem
             if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny))) return;
             // What it holds up round its eye goes with it, the furthest along the way first.
             int dx = nx - ww.X, dy = ny - ww.Y;
-            var held = raiders.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(r.X - ww.X), System.Math.Abs(r.Y - ww.Y)) <= WhirlEye)
+            var held = raiders.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(r.X - ww.X), System.Math.Abs(r.Y - ww.Y)) <= EyeOf(ww))
                 .OrderByDescending(r => (r.X - ww.X) * dx + (r.Y - ww.Y) * dy).ThenBy(r => r.Id).ToList();
             foreach (var r in held)
             {
@@ -432,8 +432,8 @@ namespace Chem
             ww.Y = ny;
         }
 
-        // How far from its eye a whirlwind takes things on and sheds what it carries, in cells.
-        const int WhirlEye = 1;
+        // How far from its eye a whirlwind takes things on and sheds what it carries, in cells (spells.json eye).
+        int EyeOf(Whirl ww) => Rules.Spell(ww.Spell)?.Eye ?? 1;
 
         CarryDef CarriedBy(Whirl ww) =>
             ww.Carrying == null ? null : Rules.Spell(ww.Spell)?.Carries.FirstOrDefault(c => c.Id == ww.Carrying);
@@ -455,8 +455,9 @@ namespace Chem
 
         bool EyeOver(Whirl ww, CellCond cond)
         {
-            for (int dy = -WhirlEye; dy <= WhirlEye; dy++)
-                for (int dx = -WhirlEye; dx <= WhirlEye; dx++)
+            int eye = EyeOf(ww);
+            for (int dy = -eye; dy <= eye; dy++)
+                for (int dx = -eye; dx <= eye; dx++)
                     if (IsActiveAt(ww.X + dx, ww.Y + dy) && Matches(At(ww.X + dx, ww.Y + dy), cond)) return true;
             return false;
         }
@@ -497,7 +498,7 @@ namespace Chem
             WhirlCreatures(ww);
             TakeOn(ww);
             var carry = CarriedBy(ww);
-            if (carry != null) Shed(ww, carry, WhirlEye, 1);
+            if (carry != null) Shed(ww, carry, EyeOf(ww), 1);
         }
 
         void WhirlGas(Whirl ww)
@@ -522,7 +523,7 @@ namespace Chem
                 var def = Rules.Entity(r.Kind);
                 return r.Alive && Ring(r) > 0 && Ring(r) <= ww.Radius && def.Creature && def.Mass <= ww.MaxMass;
             }).OrderBy(Ring).ThenBy(r => r.Id).ToList();
-            foreach (var r in raiders.Where(r => r.Alive && Ring(r) <= WhirlEye).ToList()) LiftInTheEye(ww, r);
+            foreach (var r in raiders.Where(r => r.Alive && Ring(r) <= EyeOf(ww)).ToList()) LiftInTheEye(ww, r);
             foreach (var r in pulled)
             {
                 int dir = InwardDir(r.X - ww.X, r.Y - ww.Y);
@@ -535,28 +536,27 @@ namespace Chem
 
         /// <summary>A raider a whirlwind holds up round its eye (it can't walk, and the view lifts it); thrown out when it runs out.</summary>
         public const string LiftedStatus = "lifted";
-        // A creature in the eye or the ring round it is lifted off its feet for LiftTicks, then flung WhirlThrow cells out the way the whirlwind
-        // was cast and dropped, hurt by the fall (FallDamage times WhirlFallHurt, more off a cliff: World.Hurl).
-        const int LiftTicks = 12, WhirlThrow = 6, WhirlFallHurt = 2;
-
+        // A creature in the eye or the ring round it is lifted off its feet for its spell's lift.ticks, then flung lift.fling cells out the way
+        // the whirlwind was cast and dropped, hurt by the fall (FallDamage times lift.hurt, more off a cliff: World.Hurl).
         void LiftInTheEye(Whirl ww, Raider r)
         {
             var def = Rules.Entity(r.Kind);
-            if (!def.Creature || def.Mass > ww.MaxMass) return;
+            var s = Rules.Spell(ww.Spell);
+            if (s == null || !def.Creature || def.Mass > ww.MaxMass) return;
             int left = r.StatusOf(LiftedStatus);
             string name = def.Name.ToLowerInvariant();
             if (left == 0)
             {
-                r.Status[LiftedStatus] = LiftTicks;
-                r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), LiftTicks);
+                r.Status[LiftedStatus] = s.LiftTicks;
+                r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), s.LiftTicks);
                 LogOnce($"lifted#{r.Id}", $"The whirlwind lifts the {name} off its feet", LogKind.Notable);
                 return;
             }
             if (left > ww.Every) return;
             r.Status.Remove(LiftedStatus);
-            Hurl(r, def, ww.Dir >= 0 ? ww.Dir : 0, WhirlThrow, "whirlwind");
+            Hurl(r, def, ww.Dir >= 0 ? ww.Dir : 0, s.LiftFling, "whirlwind");
             if (!r.Alive) return;
-            DamageRaider(r, Rules.Sim.FallDamage * WhirlFallHurt, "the whirlwind", "air");
+            DamageRaider(r, Rules.Sim.FallDamage * s.LiftHurt, "the whirlwind", "air");
             if (r.Alive) r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.TicksPerSecond);
             LogOnce($"flung#{r.Id}", $"The whirlwind flings the {name} away", LogKind.Notable);
         }

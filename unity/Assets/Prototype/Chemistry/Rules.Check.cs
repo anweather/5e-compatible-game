@@ -207,8 +207,10 @@ namespace Chem
             // How a whirling spell travels, and what it can take on: known conditions and a known element.
             void Carries(JToken s)
             {
-                foreach (var key in new[] { "travelEvery", "dropPower" })
+                foreach (var key in new[] { "travelEvery", "dropPower", "eye" })
                     if (s[key] != null && !(IsWholeNumber(s[key]) && (double)s[key] >= 1)) Errors.Add($"spell {Show(s["id"])}: {key} must be a whole number from 1");
+                foreach (var (key, least) in new[] { ("ticks", 1), ("fling", 0), ("hurt", 0) })
+                    if ((s["lift"] as JObject)?[key] is JToken v && !(IsWholeNumber(v) && (double)v >= least)) Errors.Add($"spell {Show(s["id"])}: lift.{key} must be a whole number from {least}");
                 foreach (var c in (s["carries"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
                 {
                     if (!IsElement(c["sheds"])) Errors.Add($"spell {Show(s["id"])}: carries {Show(c["id"])} sheds unknown element {Show(c["sheds"])}");
