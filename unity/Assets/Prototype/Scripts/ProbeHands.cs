@@ -95,14 +95,14 @@ public class HandsProbe : ProbeScenario
         InputSystem.QueueStateEvent(pad, state);
     }
 
-    // The mouse's clicks with the keyboard's bumpers, Q and C.
+    // The mouse's clicks with the keyboard's bumpers, Q and E.
     void Keys(bool left, bool right, params MouseButton[] held)
     {
         var state = new MouseState();
         foreach (var b in held) state = state.WithButton(b);
         var keyboard = new KeyboardState();
         if (left) keyboard.Set(Key.Q, true);
-        if (right) keyboard.Set(Key.C, true);
+        if (right) keyboard.Set(Key.E, true);
         InputSystem.QueueStateEvent(keys, keyboard);
         InputSystem.QueueStateEvent(mouse, state);
     }
@@ -176,12 +176,107 @@ public class HandsProbe : ProbeScenario
         yield return Fires("both_sweeps_with_no_row_are_both", new[] { one(right, HandsDef.Sweep), one(left, HandsDef.Sweep) }, () => Pad(1f, 1f, lb, rb));
         yield return Fires("right_click", one(right, HandsDef.Thrust), () => Keys(false, false, rc));
         yield return Fires("left_click", one(left, HandsDef.Thrust), () => Keys(false, false, lc));
-        yield return Fires("c_key", one(right, HandsDef.Throw), () => Keys(false, true));
+        yield return Fires("e_key", one(right, HandsDef.Throw), () => Keys(false, true));
         yield return Fires("q_key", one(left, HandsDef.Throw), () => Keys(true, false));
-        yield return Fires("right_click_and_c", one(right, HandsDef.Sweep), () => Keys(false, true, rc));
+        yield return Fires("right_click_and_e", one(right, HandsDef.Sweep), () => Keys(false, true, rc));
         yield return Fires("left_click_and_q", one(left, HandsDef.Sweep), () => Keys(true, false, lc));
         yield return Fires("both_clicks", both(HandsDef.Thrust), () => Keys(false, false, lc, rc));
-        yield return Fires("q_and_c", both(HandsDef.Throw), () => Keys(true, true));
+        yield return Fires("q_and_e", both(HandsDef.Throw), () => Keys(true, true));
+    }
+
+    // D16's charge: a held trigger charges to the most and goes off as it's let go; both held merge, the icons meet, and the merge
+    // goes off at the lower charge; one hand tapping while the other charges fires on its own, and the held one still charges.
+    IEnumerator Charges(string left, string right)
+    {
+        var hud = EventLog.CastShown;
+        int full = World.MaxCharge;
+        float levelSeconds = (float)Core.SecondsPerLevel;
+        heard.StartFrom(Core);
+        Pad(0f, 1f);
+        yield return Wait(levelSeconds * (full + 1) + 0.6f);
+        Check("a_held_trigger_charges", Core.HandCharge(Me, HandsDef.Right) == full, $"{Core.HandCharge(Me, HandsDef.Right)} of {full}");
+        Check("its_icon_shows_the_charge", hud != null && hud.HandShown(HandsDef.Right).charge == full && hud.HandShown(HandsDef.Right).gesture == HandsDef.Thrust, $"{hud?.HandShown(HandsDef.Right)}");
+        Shot("hand-charged");
+        Let();
+        var fired = new System.Collections.Generic.List<ComboFired>();
+        for (float t = 0f; t < MostWait && fired.Count == 0; t += Time.deltaTime)
+        {
+            fired.AddRange(heard.Take(Core).Where(f => f.Player == Me));
+            yield return null;
+        }
+        Check("it_fires_on_the_release_at_full_charge", fired.Count == 1 && fired[0].Charge == full, string.Join(",", fired.Select(f => $"{f.Spell}@{f.Charge}")));
+        yield return Cooled();
+
+        // Both held: the merge, which goes off at the lower of the two charges.
+        heard.StartFrom(Core);
+        int slams = hud != null ? hud.Slams : 0;
+        Pad(0f, 1f);
+        yield return Wait(levelSeconds * 1.2f);
+        Pad(1f, 1f);
+        yield return Wait(levelSeconds * (full + 1));
+        Check("both_held_merge", Core.CastOf(Me)?.Merge == Table.Both(left, right, HandsDef.Thrust)?.Spell, Core.CastOf(Me)?.Merge);
+        Check("the_icons_slam_together", hud != null && hud.MergeShown && hud.Slams == slams + 1, $"shown {hud?.MergeShown}, slams {hud?.Slams - slams}");
+        Shot("hands-merged");
+        Let();
+        fired.Clear();
+        for (float t = 0f; t < MostWait && fired.Count == 0; t += Time.deltaTime)
+        {
+            fired.AddRange(heard.Take(Core).Where(f => f.Player == Me));
+            yield return null;
+        }
+        Check("the_merge_fires_once", fired.Count == 1 && fired[0].Spell == Table.Both(left, right, HandsDef.Thrust)?.Spell, string.Join(",", fired.Select(f => $"{f.Spell}@{f.Charge}")));
+        yield return Cooled();
+
+        // The left trigger held, the right bumper tapped (another gesture, so no merge): the right goes off alone, and the left
+        // goes on charging.
+        heard.StartFrom(Core);
+        Pad(1f, 0f);
+        yield return Wait(0.2f);
+        Pad(1f, 0f, GamepadButton.RightShoulder);
+        yield return null;
+        yield return null;
+        Pad(1f, 0f);
+        fired.Clear();
+        for (float t = 0f; t < MostWait && fired.Count == 0; t += Time.deltaTime)
+        {
+            fired.AddRange(heard.Take(Core).Where(f => f.Player == Me));
+            yield return null;
+        }
+        Check("one_hand_taps_while_the_other_charges", fired.Count == 1 && fired[0].Spell == Table.One(right, HandsDef.Throw)?.Spell && Core.HandsOf(Me).Down[HandsDef.Left],
+            string.Join(",", fired.Select(f => $"{f.Spell}@{f.Charge}")));
+        yield return Wait(levelSeconds * full);
+        Check("the_held_hand_charged_on", Core.HandCharge(Me, HandsDef.Left) > 1, $"{Core.HandCharge(Me, HandsDef.Left)}");
+        Let();
+        yield return Wait(0.5f);
+        yield return Cooled();
+    }
+
+    IEnumerator Cooled()
+    {
+        for (float t = 0f; t < MostWait && (Core.HandsOf(Me).Casting || Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0); t += Time.deltaTime) yield return null;
+        yield return Wait(0.2f);
+    }
+
+    // Attuning from the spell list, outside the Hold: it takes a moment, and one element is on both hands.
+    IEnumerator AttuneFromTheList()
+    {
+        string wasLeft = Core.HandsOf(Me).Holds[HandsDef.Left], wasRight = Core.HandsOf(Me).Holds[HandsDef.Right];
+        string why = caster.AttuneTo(HandsDef.Left, "earth");
+        Check("the_list_attunes_outside_the_hold", why == null, why);
+        Check("it_takes_a_moment", Core.HandsOf(Me).Holds[HandsDef.Left] == wasLeft, Core.HandsOf(Me).Holds[HandsDef.Left]);
+        for (float t = 0f; t < MostWait && Core.HandsOf(Me).Holds[HandsDef.Left] != "earth"; t += Time.deltaTime) yield return null;
+        Check("then_the_hand_holds_it", Core.HandsOf(Me).Holds[HandsDef.Left] == "earth", Core.HandsOf(Me).Holds[HandsDef.Left]);
+        yield return Wait(0.2f);
+        caster.AttuneTo(HandsDef.Right, null);
+        for (float t = 0f; t < MostWait && Core.HandsOf(Me).Holds[HandsDef.Right] != null; t += Time.deltaTime) yield return null;
+        Check("one_element_is_on_both", Core.HandHolds(Me, HandsDef.Right) == "earth", Core.HandHolds(Me, HandsDef.Right));
+        yield return Wait(0.2f);
+        caster.AttuneTo(HandsDef.Left, wasLeft);
+        for (float t = 0f; t < MostWait && Core.HandsOf(Me).Busy; t += Time.deltaTime) yield return null;
+        yield return Wait(0.2f);
+        caster.AttuneTo(HandsDef.Right, wasRight);
+        for (float t = 0f; t < MostWait && Core.HandsOf(Me).Busy; t += Time.deltaTime) yield return null;
+        yield return Wait(0.2f);
     }
 
     // The bumper's spell aimed past the long range, and the trigger's past the short: they land inside them.
@@ -204,6 +299,7 @@ public class HandsProbe : ProbeScenario
         row = world.BuildingRowOf(site.Castle);
         controls = caster.controls;
         controls.enabled = true;
+        EventLog.HudVisible = true; // the hands' icons are drawn by the HUD
         caster.enabled = true;
         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         pad = InputSystem.AddDevice<Gamepad>("Hands pad");
@@ -213,7 +309,10 @@ public class HandsProbe : ProbeScenario
         var aim = new Vector3(wall.x, grid.GroundAt(wall), wall.z);
         caster.AimOverride = aim;
         heard.StartFrom(world);
-        Check("off_outside_the_hold", !world.HandsOn(Me) && !controls.HandPad);
+        yield return Wait(0.3f);
+        Check("on_outside_the_hold_too", world.HandsOn(Me) && controls.HandPad);
+        yield return AttuneFromTheList();
+        yield return Charges(world.HandHolds(Me, HandsDef.Left), world.HandHolds(Me, HandsDef.Right));
 
         Stand(new Vector2Int(site.Plate.x, site.Plate.y));
         for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
@@ -240,7 +339,8 @@ public class HandsProbe : ProbeScenario
         yield return Fires("same_element_both_triggers", Table.Both("fire", "fire", HandsDef.Thrust).Spell, () => Pad(1f, 1f));
         yield return Fires("same_element_both_bumpers", Table.Both("fire", "fire", HandsDef.Throw).Spell, () => Pad(0f, 0f, GamepadButton.LeftShoulder, GamepadButton.RightShoulder));
 
-        yield return Attune(null, "fire");
+        // One element is on both hands (D16), so a hand is empty only with nothing in either.
+        yield return Attune(null, null);
         var holder = wizard.GetComponent<ItemHolder>();
         int fists = 0;
         System.Action<ItemHolder.PunchLanding> landed = _ => fists++;

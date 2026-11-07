@@ -294,6 +294,8 @@ public class NetSession : MonoBehaviour
         else if (!online && joinFailure != null) GUILayout.Label($"<color=#ff9a7a>{joinFailure}</color>", label);
     }
 
+    const string JoinField = "join-code";
+
     void OfflineControls()
     {
         GUI.enabled = !busy;
@@ -301,7 +303,10 @@ public class NetSession : MonoBehaviour
         GUILayout.Label($"<color=#ffffff99>{ModeHint(RoomMode)}</color>", label);
         if (PauseMenu.Button("Host online", PauseMenu.ButtonStyle)) _ = HostOnline();
         GUILayout.BeginHorizontal();
+        GUI.SetNextControlName(JoinField);
         joinCode = GUILayout.TextField(joinCode, 12, field, GUILayout.Width(170));
+        // Typing a code: W, S and Enter are letters to it, not the menu's keys.
+        if (GUI.GetNameOfFocusedControl() == JoinField) PauseMenu.FieldHasKeys();
         if (PauseMenu.Button("Join code", null, GUILayout.Height(32)) && joinCode.Trim().Length > 0) _ = JoinOnline(joinCode);
         GUILayout.EndHorizontal();
         // The code field needs a keyboard; with a controller, pick the code letter by letter.

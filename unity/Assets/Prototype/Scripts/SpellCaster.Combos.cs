@@ -1,18 +1,15 @@
 using Chem;
 using UnityEngine;
 
-// Casting by elements (docs/SPELL_COMBOS.md): the wizard's side of World.Combos.
-// Each button sends a ComboCommand (applied at once solo, stamped by the host
-// online, like a cast); the meter drains in the core, on every peer; when it
-// reaches zero the core reports it (FiredCastsHeard) and the player whose cast
-// it is aims it from the crosshair and sends the usual CastCommand, since where
-// a spell lands is only known as it goes off. While the meter drains the wizard
-// walks at the rules' factor and Cancel drops the cast before anything else
-// that button does. Holding the last element charges the cast: the meter runs on
-// through the charge (rules/combos.json chargeTicks, a level at a time) and the
-// core counts it, so every peer sees the same strength, and letting go (ElementHold
-// knows the button) sets it off; a tap is charge 1. The radial (SpellRadialHud)
-// stays as a debug tool.
+// The wizard's side of World.Combos: casting from the hands (SpellCaster.Hands.cs, D16), the
+// kit on the d-pad, Cancel, and the spell list's buttons. Each button sends a ComboCommand
+// (applied at once solo, stamped by the host online, like a cast); the meter drains in the
+// core, on every peer; when it reaches zero the core reports it (FiredCastsHeard) and the
+// player whose cast it is aims it from the crosshair and sends the usual CastCommand, since
+// where a spell lands is only known as it goes off. While the meter drains the wizard walks
+// at the rules' factor and Cancel drops the cast before anything else that button does. The
+// element path (LoadElement, an ordered pair of elements) has no buttons now: the playtest
+// bot and the probes still cast by it. The radial (SpellRadialHud) stays as a debug layout (F2).
 public partial class SpellCaster
 {
     /// <summary>The solo wizard's name in the core's casts.</summary>
@@ -23,7 +20,6 @@ public partial class SpellCaster
     readonly FiredCastsHeard firedCasts = new();
     // The frame a press cancelled the cast: that press is spent, even for what reads it after.
     int cancelledOnFrame = -1;
-    readonly ElementHold hold = new();
 
     /// <summary>This player's name in the core's casts: online their client's, solo a fixed one.</summary>
     public string CastPlayer => Net != null && Net.Online ? Net.LocalPlayer : SoloPlayer;
@@ -52,7 +48,7 @@ public partial class SpellCaster
         if (cast == null || !cast.Casting) return (null, 1);
         var dpad = world.DpadOf(cast.Player);
         if (cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count) return (dpad[cast.DpadCasting].Spell, 1);
-        if (world.HandSpellUnderWay(cast.Player) is { } hand) return (hand, 1);
+        if (world.HandSpellUnderWay(cast.Player) is { } hand) return (hand, HeldHandCharge(world, cast.Player));
         var combo = world.ComboOf(cast);
         int charge = Mathf.Max(1, Mathf.Max(HoldCharge, cast.Charge));
         return (combo?.SpellAt(charge, world.MaxChargeOf(combo)), charge);
@@ -79,37 +75,37 @@ public partial class SpellCaster
         var cast = world.CastOf(player);
         bool busy = (shape != null && shape.Shifted) || (radial != null && radial.IsOpen);
 
-        bool handsOn = world.HandsOn(player);
+        // The hands, unless the debug layout (F2) has the buttons for the radial.
+        bool handsOn = world.HandsOn(player) && controls.ElementPad;
         controls.HandPad = handsOn;
-        Elements(player, cast, busy || handsOn);
-        if (handsOn) Hands(player, busy);
+        Hands(player, busy || !handsOn);
         if (busy) return;
         if (controls.CancelCast.WasPressedThisFrame() && cast?.Casting == true)
         {
             cancelledOnFrame = Time.frameCount;
-            hold.Drop();
+            DropHeld();
             Send(ComboCommand.Cancel(player));
         }
         if (controls.DpadNext.WasPressedThisFrame()) Send(ComboCommand.Cycle(player, 1));
         if (controls.DpadPrevious.WasPressedThisFrame()) Send(ComboCommand.Cycle(player, -1));
         if (controls.DpadCast.WasPressedThisFrame()) Send(ComboCommand.CastSelected(player));
-        if (controls.Grimoire.WasPressedThisFrame()) GrimoireMenu.Show();
+        if (controls.OpenSpellList.WasPressedThisFrame()) SpellListMenu.Show(this, true);
     }
 
-    // The element buttons: a press loads and starts the hold, and letting go sends its charge.
-    void Elements(string player, PlayerCast cast, bool busy)
+    /// <summary>Moves the kit's selection to this slot, for every peer (the spell list).</summary>
+    public bool SelectKit(int slot)
     {
-        var elements = grid.World.Rules.Combos.Elements;
-        for (int i = 0; !busy && i < elements.Count && i < controls.Elements.Length; i++)
-            if (controls.Elements[i].WasPressedThisFrame() && cast?.TakesElement != false && Send(ComboCommand.Load(player, elements[i], true)))
-                hold.Press(i);
-        // Read from the button, not its release this frame: whatever turns the controls off lets go too,
-        // or the cast would wait for ever. Below the press, so a tap inside one frame lets go at once.
-        if (hold.Holding && !controls.Elements[hold.Button].IsPressed())
-        {
-            Send(ComboCommand.Release(player));
-            hold.Drop();
-        }
+        if (grid == null || grid.World == null) return false;
+        var dpad = grid.World.DpadOf(CastPlayer);
+        var now = grid.World.SelectedDpad(CastPlayer);
+        int at = 0;
+        for (int i = 0; i < dpad.Count; i++)
+            if (dpad[i] == now) at = i;
+        if (slot < 0 || slot >= dpad.Count) return false;
+        // A cycle is a step either way, so as many as it takes.
+        for (int step = System.Math.Sign(slot - at), left = System.Math.Abs(slot - at); left > 0; left--)
+            if (!Send(ComboCommand.Cycle(CastPlayer, step))) return false;
+        return true;
     }
 
     /// <summary>
@@ -125,7 +121,7 @@ public partial class SpellCaster
     /// <summary>Drops a cast under way, as Cancel does (WizardDown: a wizard that falls loses it).</summary>
     public void DropCast()
     {
-        hold.Drop();
+        DropHeld();
         if (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true) Send(ComboCommand.Cancel(CastPlayer));
     }
 

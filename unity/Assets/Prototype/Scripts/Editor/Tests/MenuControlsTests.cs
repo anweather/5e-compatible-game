@@ -50,6 +50,16 @@ public class MenuControlsTests
     }
 
     [Test]
+    public void EveryPageTakesTheArrowsWasdAndEnter()
+    {
+        var keys = Keyboard.current ?? InputSystem.AddDevice<Keyboard>();
+        Assert.That(Bound(controls.Up, keys.upArrowKey) && Bound(controls.Up, keys.wKey), Is.True, "up");
+        Assert.That(Bound(controls.Down, keys.downArrowKey) && Bound(controls.Down, keys.sKey), Is.True, "down");
+        Assert.That(Bound(controls.Submit, keys.enterKey), Is.True, "Enter");
+        Assert.That(Bound(controls.Up, keys.qKey) || Bound(controls.Down, keys.eKey), Is.False, "Q and E are the hands'");
+    }
+
+    [Test]
     public void LeavesTheSpellButtonsAlone()
     {
         var taken = new InputControl[] { pad.dpad.left, pad.dpad.right, pad.leftShoulder, pad.rightShoulder };

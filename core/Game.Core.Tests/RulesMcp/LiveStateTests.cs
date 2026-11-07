@@ -366,6 +366,15 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ASpellInTheHandTableSaysWhichHandsAndGesture()
+        {
+            var b = NewBench();
+            StringAssert.Contains("with the hands: attune fire in the spell list (Tab, or the d-pad's down), then a hand's throw (Q or E", b.ReachOf(null, "fire-bolt"));
+            StringAssert.Contains("attune fire (one element is on both hands) in the spell list (Tab, or the d-pad's down), then both hands' thrust at once", b.ReachOf(null, "fireball"));
+            StringAssert.Contains("which Cast casts in the F2 debug layout", b.ReachOf(null, "fireball"));
+        }
+
+        [Test]
         public void ASpellOffTheRadialSaysSo()
         {
             var b = NewBench();

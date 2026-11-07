@@ -51,7 +51,7 @@ public class HoldShow : MonoBehaviour
         return null;
     }
 
-    /// <summary>What a wizard's hands hold and whether they're ready, for the HUD and the probe; empty with its hands off.</summary>
+    /// <summary>What a wizard's hands hold and whether they're ready, for the probe (the HUD shows it as CastHud's icons); empty with its hands off.</summary>
     public string HandsLine(string player)
     {
         var world = grid != null ? grid.World : null;
@@ -172,7 +172,7 @@ public class HoldShow : MonoBehaviour
         if (!EventLog.HudVisible || world?.HoldSite == null) return;
         var caster = EventLog.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
-        if (caster != null) GUI.Label(new Rect(HudScale.Width / 2f - 400f, 90f, 800f, 36f), HandsLine(caster.CastPlayer), style);
+        // The hands' icons (CastHud) say what HandsLine says, so it isn't drawn (D16).
         if (caster != null && world.InAttuning(caster.CastPlayer))
             GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{AttuningLine(world, caster.CastPlayer)}</color>", style);
         if (world.Hold == null) return;

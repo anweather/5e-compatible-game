@@ -21,12 +21,12 @@
       "fire":  { "name": "Geyser", "spell": "geyser", "shape": "burst", "castTicks": 9 },
       "water": { "name": "Wave", "spell": "wave", "shape": "line", "castTicks": 9 },
       "earth": { "name": "Mud", "spell": "mud", "shape": "square", "castTicks": 9 },
-      "air":   { "name": "Frost", "spell": "frost", "shape": "line", "castTicks": 6, "held": "sleet-storm" }
+      "air":   { "name": "Frost", "spell": "frost", "shape": "line", "castTicks": 6 }
     },
     "earth": {
       "fire":  { "name": "Forge", "spell": "forge", "shape": "burst", "castTicks": 12 },
       "water": { "name": "Plant Growth", "spell": "plant-growth", "shape": "burst", "castTicks": 9 },
-      "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12, "held": "stone-ramp" },
+      "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12 },
       "air":   { "name": "Rolling Boulder", "spell": "rolling-boulder", "shape": "line", "castTicks": 9 }
     },
     "air": {

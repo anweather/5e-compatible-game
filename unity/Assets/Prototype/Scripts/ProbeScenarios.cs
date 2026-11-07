@@ -115,8 +115,9 @@ public static class ProbeScenarios
             "the meteor falls for its delay, the log names Player 1 and Player 2, a late joiner plays no old shows; after a long walk (a loop, a step a tick) a second late joiner fires every cast the host did " +
             "(metrics late_joiner_strike_history and long_walk_strike_history: the stands, strikes and leavings each joiner's history held, #83); nothing fires or shows once reverted, checksums equal. " +
             "With --shots, a film from behind the host's wizard.", players: 2),
-        new Entry("handlooks", typeof(HandLooksProbe), 180f,
-            "What each hand holds, shown on the other peer's wizard (HandHeld): this Editor hosts, the virtual player joins, each attunes differently, an empty hand among them, and each peer shows both wizards' hands.", players: 2),
+        new Entry("handlooks", typeof(HandLooksProbe), 240f,
+            "What each hand holds, shown on the other peer's wizard (HandHeld): this Editor hosts, the virtual player joins, each attunes differently, an empty hand among them, and each peer shows both wizards' hands. " +
+            "Between, both cast at once with their different hands (D16): a charge, a merge, one hand firing while the other charges; both heard, the same ticks run, checksums equal.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("productsview", typeof(ProductsViewProbe), 300f,
@@ -261,9 +262,13 @@ public static class ProbeScenarios
         new Entry("hold", typeof(HoldProbe), 400f,
             "The valley's laid row (the-hold.md): its cells and drawing, no tree on it, a walk through the gate into the keep and its room, " +
             "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls."),
-        new Entry("hands", typeof(HandsProbe), 240f,
-            "The Hold's hands (the-hold.md, phase 3) on a virtual pad, mouse and keyboard: attuning in the room, each hand's thrust, throw and sweep, the same gesture on both, " +
-            "different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, an empty hand's acts, and the D-pad's kit."),
+        new Entry("hands", typeof(HandsProbe), 300f,
+            "The hands (D16, unified-casting.md; the-hold.md, phase 3) on a virtual pad, mouse and keyboard: on outside the Hold, attuning from the spell list (a moment; one element on both hands), " +
+            "a held trigger charging to the most and firing on its release, both held merging on screen and firing once, one hand tapping while the other charges, attuning in the room, " +
+            "each hand's thrust, throw and sweep, the same gesture on both, different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, " +
+            "an empty hand's acts, and the D-pad's kit."),
+        new Entry("handsclip", typeof(HandsClipProbe), 90f,
+            "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("progress", typeof(ProgressProbe), 600f,
             "The Hold's progress on screen (the-hold.md, phase 5), F7 playing from the save: a locked hand and gesture saying so, attuning only to what's unlocked, " +
             "the offer in words after wave 1, the d-pad picking Tough and the health it adds, the run's end and points earned, the save on disk, and a reset keeping them."),

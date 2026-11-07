@@ -29,8 +29,12 @@ public class SpellListProbe : ProbeScenario
         try
         {
             yield return Frames(3);
+            yield return HandsTab(menu);
+
+            // The rest is the debug layout's (F2): the list picks what Cast casts there.
+            controls.ElementPad = false;
             caster.Select(SpellIds.Thunderwave);
-            yield return Frames(2);
+            yield return Frames(3);
 
             yield return Press(Key.Tab);
             Check("tab_opens_the_list", SpellListMenu.Open, $"page '{menu.CurrentPage}'");
@@ -102,6 +106,39 @@ public class SpellListProbe : ProbeScenario
             EventLog.HudVisible = hudWasOn;
             caster.Select(SpellIds.FireBolt);
         }
+    }
+
+    // With the hands (D16): Tab and the d-pad's down open the list on the hands' tab, the arrows move and Enter attunes.
+    IEnumerator HandsTab(PauseMenu menu)
+    {
+        var world = grid.World;
+        string me = caster.CastPlayer, wasLeft = world.HandsOf(me).Holds[HandsDef.Left];
+        Check("the_hands_are_on", caster.controls.HandPad);
+        yield return Press(Key.Tab);
+        Check("tab_opens_on_the_hands", SpellListMenu.Open && SpellListMenu.Tabs.Count > 0 && SpellListMenu.Tabs[SpellListMenu.Tab].Name == SpellListMenu.HandsName,
+            $"tab {SpellListMenu.Tab} of {SpellListMenu.Tabs.Count}");
+        Shot("hands-tab");
+        yield return Wait(0.2f);
+        int focus = menu.Focus;
+        yield return Press(Key.DownArrow);
+        yield return Press(Key.DownArrow);
+        Check("the_arrows_move_the_highlight", menu.Focus == focus + 2, $"{focus} -> {menu.Focus}");
+        // The left hand's row: fire, water, earth, air, nothing; the third is earth.
+        yield return Press(Key.Enter);
+        for (float t = 0f; t < 3f && world.HandsOf(me).Holds[HandsDef.Left] != "earth"; t += Time.deltaTime) yield return null;
+        Check("enter_attunes_the_left_hand", world.HandsOf(me).Holds[HandsDef.Left] == "earth", world.HandsOf(me).Holds[HandsDef.Left]);
+        yield return Press(Key.Tab);
+        Check("tab_closes_the_hands_tab", !menu.Open);
+        caster.AttuneTo(HandsDef.Left, wasLeft);
+        for (float t = 0f; t < 3f && world.HandsOf(me).Busy; t += Time.deltaTime) yield return null;
+
+        InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadDown));
+        yield return Frames(3);
+        InputSystem.QueueStateEvent(pad, new GamepadState());
+        yield return Frames(3);
+        Check("dpad_down_opens_the_same_list", SpellListMenu.Open && SpellListMenu.Tabs[SpellListMenu.Tab].Name == SpellListMenu.HandsName, $"open {SpellListMenu.Open}");
+        menu.SetOpen(false);
+        yield return Frames(3);
     }
 
     // Q moves to the next element; E stays in it, on its next spell. The hint says so.

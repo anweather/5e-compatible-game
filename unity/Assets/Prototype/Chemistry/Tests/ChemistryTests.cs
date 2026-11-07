@@ -1256,7 +1256,6 @@ namespace Chem.Tests
             var w = new World(R, 14, 8, 10, "dirt");
             for (int y = 0; y <= 7; y++)
                 for (int x = 6; x <= 7; x++) w.At(x, y).Water = 3;
-            Assert.That(R.Combos.Combo("earth+earth").Held, Is.EqualTo("stone-ramp"));
             w.Cast("wall-of-stone", 2, 3, 1);
             Assert.That(w.At(4, 3).Height, Is.EqualTo(3));
             Assert.That(w.IsBlocking(w.At(4, 3)), Is.True);

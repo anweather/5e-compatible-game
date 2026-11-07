@@ -6,17 +6,19 @@ using UnityEngine.InputSystem;
 // its keyboard/mouse and gamepad bindings in one place; Xbox and
 // PlayStation controllers both map to <Gamepad>.
 //
-//   Casting by elements (docs/SPELL_COMBOS.md), the controller's layout (ElementPad):
-//   Fire, Water  Z, X          left, right bumper
-//   Earth, Air   C, V          left, right trigger
-//   Cancel cast  B             B / Circle
-//   D-pad spells [ ]           d-pad left / right    (T / d-pad up casts; J / d-pad down: the grimoire)
-//   Dodge roll   Left Ctrl     click the right stick
-//   Punch        F             B / Circle              (empty-handed and not casting: ItemHolder.Punch.cs)
-//   Pick up/sit  E             X / Square
+//   Casting with the hands (D16, docs/design/unified-casting.md), everywhere (HandPad):
+//   Left hand    thrust, throw, sweep    left click, Q, both     LT, LB, both
+//   Right hand   thrust, throw, sweep    right click, E, both    RT, RB, both
+//                hold to charge, let go to fire; the same gesture on both hands can merge
+//   Cancel cast  B                       B / Circle
+//   Kit spells   [ ]   (T casts)         d-pad left / right   (up casts)
+//   Spell list   Tab                     d-pad down           (attune, the table, every spell)
+//   Dodge roll   Left Ctrl               click the right stick
+//   Punch        F                       B / Circle           (empty-handed and not casting: ItemHolder.Punch.cs)
+//   Pick up/sit  E (near a thing)        X / Square
 //   In an animal's shape any of the cast buttons changes back.
 //
-//   F2 swaps the controller to the debug layout below, the spell radial's:
+//   F2 swaps to the debug layout below, the spell radial's (ElementPad false):
 //
 //   Cast spell   left mouse    right trigger
 //   Spell radial hold Tab      hold left bumper (L1)   (SpellRadialHud: aim with the
@@ -37,9 +39,9 @@ using UnityEngine.InputSystem;
 //   Throw item   G or right    B / Circle      (hold to throw harder)
 //                mouse
 //
-// E is both "next spell" and "pick up": while an item is in reach or in hand
-// (ItemHolder sets ItemInReach), or a seat is (Sitter sets SeatInReach), it picks
-// up, drops, sits or stands, and the spell stays put.
+// E is the right hand's throw, "next spell" in the debug layout, and "pick up": while an
+// item is in reach or in hand (ItemHolder sets ItemInReach), or a seat is (Sitter sets
+// SeatInReach), it picks up, drops, sits or stands, and the hand and the spell stay put.
 public class PlayerControls : MonoBehaviour
 {
     /// <summary>The pad's punch shares Circle with Cancel cast, which goes first (ItemHolder.MayPunch); Square only picks up and sits.</summary>
@@ -59,22 +61,21 @@ public class PlayerControls : MonoBehaviour
     public InputAction Punch { get; private set; }
     public InputAction Throw { get; private set; }
     public InputAction Roll { get; private set; }
-    /// <summary>The elements' buttons, in the order of rules/combos.json.</summary>
-    public InputAction[] Elements { get; private set; }
     public InputAction CancelCast { get; private set; }
     public InputAction DpadNext { get; private set; }
     public InputAction DpadPrevious { get; private set; }
     public InputAction DpadCast { get; private set; }
-    public InputAction Grimoire { get; private set; }
-    /// <summary>The hands in the Hold (<see cref="HandPad"/>): each hand's two buttons, its thrust and its throw; both at once are its sweep.</summary>
+    /// <summary>The pad's way into the spell list (SpellListMenu), as Tab is the keyboard's.</summary>
+    public InputAction OpenSpellList { get; private set; }
+    /// <summary>The hands (<see cref="HandPad"/>): each hand's two buttons, its thrust and its throw; both at once are its sweep.</summary>
     public InputAction ThrustLeft { get; private set; }
     public InputAction ThrustRight { get; private set; }
     public InputAction ThrowLeft { get; private set; }
     public InputAction ThrowRight { get; private set; }
 
     /// <summary>
-    /// The controller's layout: casting by elements (the default), or with false the spell radial's,
-    /// kept as a debug tool. The two share buttons, so each turns the other's bindings off.
+    /// The layout: casting with the hands (the default), or with false the spell radial's, kept as a
+    /// debug tool (F2). The two share buttons, so each turns the other's bindings off.
     /// </summary>
     public bool ElementPad
     {
@@ -87,8 +88,8 @@ public class PlayerControls : MonoBehaviour
     }
 
     /// <summary>
-    /// The hands' layout, on during a Hold run and in its attuning room (SpellCaster): the triggers, bumpers and clicks are hands'
-    /// gestures, so what else they do is off. The d-pad and Cancel stay as the element pad has them.
+    /// The hands' layout, on wherever the rules have hands and the debug layout isn't (SpellCaster): the triggers, bumpers,
+    /// clicks, Q and E are hands' gestures, so what else they do is off. The d-pad and Cancel stay.
     /// </summary>
     public bool HandPad
     {
@@ -129,7 +130,7 @@ public class PlayerControls : MonoBehaviour
     InputAction swapLayout;
     bool elementPad = true, handPad, offerPad;
     // Each layout's own bindings, by action and index.
-    (InputAction action, int binding)[] radialOnly, elementOnly, elementButtons, handsTake, kitDpad;
+    (InputAction action, int binding)[] radialOnly, elementOnly, handsTake, kitDpad;
 
     void Awake()
     {
@@ -146,23 +147,16 @@ public class PlayerControls : MonoBehaviour
         Punch = Button("Punch", "<Keyboard>/f", PadPunch);
         Throw = Button("Throw item", "<Keyboard>/g", "<Mouse>/rightButton", "<Gamepad>/buttonEast");
         Roll = Button("Dodge roll", "<Keyboard>/leftCtrl", "<Gamepad>/leftTrigger", "<Gamepad>/rightStickPress");
-        Elements = new[]
-        {
-            Button("Fire", "<Keyboard>/z", "<Gamepad>/leftShoulder"),
-            Button("Water", "<Keyboard>/x", "<Gamepad>/rightShoulder"),
-            Button("Earth", "<Keyboard>/c", "<Gamepad>/leftTrigger"),
-            Button("Air", "<Keyboard>/v", "<Gamepad>/rightTrigger"),
-        };
         CancelCast = Button("Cancel cast", "<Keyboard>/b", "<Gamepad>/buttonEast");
         DpadNext = Button("Next d-pad spell", "<Keyboard>/rightBracket", "<Gamepad>/dpad/right");
         DpadPrevious = Button("Previous d-pad spell", "<Keyboard>/leftBracket", "<Gamepad>/dpad/left");
         DpadCast = Button("Cast d-pad spell", "<Keyboard>/t", "<Gamepad>/dpad/up");
-        Grimoire = Button("Grimoire", "<Keyboard>/j", "<Gamepad>/dpad/down");
-        swapLayout = Button("Swap the controller's layout", "<Keyboard>/f2");
+        OpenSpellList = Button("Spell list", "<Gamepad>/dpad/down");
+        swapLayout = Button("Swap the controls' layout", "<Keyboard>/f2");
         ThrustLeft = Button("Left hand's thrust", "<Mouse>/leftButton", "<Gamepad>/leftTrigger");
         ThrustRight = Button("Right hand's thrust", "<Mouse>/rightButton", "<Gamepad>/rightTrigger");
         ThrowLeft = Button("Left hand's throw", "<Keyboard>/q", "<Gamepad>/leftShoulder");
-        ThrowRight = Button("Right hand's throw", "<Keyboard>/c", "<Gamepad>/rightShoulder");
+        ThrowRight = Button("Right hand's throw", "<Keyboard>/e", "<Gamepad>/rightShoulder");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
         Zoom.AddBinding("<Mouse>/scroll/y");
@@ -173,7 +167,7 @@ public class PlayerControls : MonoBehaviour
         all = new[]
         {
             Cast, RadialHold, RadialCancel, NextSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Punch, Throw, Roll,
-            Elements[0], Elements[1], Elements[2], Elements[3], CancelCast, DpadNext, DpadPrevious, DpadCast, Grimoire, swapLayout,
+            CancelCast, DpadNext, DpadPrevious, DpadCast, OpenSpellList, swapLayout,
             ThrustLeft, ThrustRight, ThrowLeft, ThrowRight,
         };
         foreach (var a in all) a.performed += Track;
@@ -182,11 +176,15 @@ public class PlayerControls : MonoBehaviour
         radialOnly = new[] { (Cast, 1), (RadialHold, 1), (NextSpell, 1), (NextElement, 0), (PrevElement, 0), (Zoom, ZoomPadUp), (Zoom, ZoomPadDown), (Roll, 1) };
         elementOnly = new[]
         {
-            (CancelCast, 1), (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (Grimoire, 1), (Roll, 2),
+            (CancelCast, 1), (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (OpenSpellList, 0), (Roll, 2),
         };
-        elementButtons = new[] { (Elements[0], 1), (Elements[1], 1), (Elements[2], 1), (Elements[3], 1) };
-        handsTake = new[] { (Cast, 0), (Throw, 1) };
-        kitDpad = new[] { (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (Grimoire, 1) };
+        // The mouse's clicks, Q and E are the hands'; so are the radial's keyboard keys, which stay the debug layout's.
+        handsTake = new[]
+        {
+            (Cast, 0), (Throw, 1), (NextSpell, 0), (NextElement, 1),
+            (PickElement, 0), (PickElement, 1), (PickElement, 2), (PickElement, 3), (PickElement, 4), (PickElement, 5), (PickElement, 6), (PickElement, 7),
+        };
+        kitDpad = new[] { (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (OpenSpellList, 0) };
         ApplyPadLayout();
     }
 
@@ -196,7 +194,6 @@ public class PlayerControls : MonoBehaviour
         Switch(radialOnly, !elementPad && !handPad);
         Switch(elementOnly, elementPad || handPad);
         if (offerPad) Switch(kitDpad, false);
-        Switch(elementButtons, elementPad && !handPad);
         Switch(handsTake, !handPad);
     }
 
@@ -224,7 +221,7 @@ public class PlayerControls : MonoBehaviour
         if (swapLayout.WasPressedThisFrame())
         {
             ElementPad = !elementPad;
-            EventLog.Add(elementPad ? "Controller: casting by elements" : "Controller: the spell radial (debug)");
+            EventLog.Add(elementPad ? "Controls: casting with the hands" : "Controls: the spell radial (debug)");
         }
         var pad = Gamepad.current;
         if (pad != null && (pad.leftStick.ReadValue().sqrMagnitude > 0.04f || pad.rightStick.ReadValue().sqrMagnitude > 0.04f || pad.buttonSouth.wasPressedThisFrame))
@@ -237,12 +234,14 @@ public class PlayerControls : MonoBehaviour
     public bool NextSpellPressed() =>
         NextSpell.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && NextSpell.activeControl?.device is Keyboard);
 
-    /// <summary>A cast button was pressed this frame, of any way of casting: Cast, an element, a hand or the d-pad's cast.</summary>
+    /// <summary>The right hand's throw was pressed this frame, unless it was the E key and E went to an item or a seat.</summary>
+    public bool ThrowRightPressed() =>
+        ThrowRight.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && ThrowRight.activeControl?.device is Keyboard);
+
+    /// <summary>A cast button was pressed this frame, of any way of casting: Cast, a hand or the d-pad's cast.</summary>
     public bool AnyCastPressed()
     {
-        foreach (var element in Elements)
-            if (element.WasPressedThisFrame()) return true;
-        if (handPad && (ThrustLeft.WasPressedThisFrame() || ThrustRight.WasPressedThisFrame() || ThrowLeft.WasPressedThisFrame() || ThrowRight.WasPressedThisFrame())) return true;
+        if (handPad && (ThrustLeft.WasPressedThisFrame() || ThrustRight.WasPressedThisFrame() || ThrowLeft.WasPressedThisFrame() || ThrowRightPressed())) return true;
         return Cast.WasPressedThisFrame() || DpadCast.WasPressedThisFrame();
     }
 

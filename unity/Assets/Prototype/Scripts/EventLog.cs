@@ -44,6 +44,9 @@ public class EventLog : MonoBehaviour
     /// <summary>How full the cast bar was drawn last, 0 to 1, for the probe.</summary>
     public static float CastBarShare => instance != null ? instance.castHud.Share : 0f;
 
+    /// <summary>The cast's HUD, the hands' icons and all, for the probe; null with no log.</summary>
+    public static CastHud CastShown => instance != null ? instance.castHud : null;
+
     public static void Track(SpellCaster c)
     {
         if (instance != null) instance.caster = c;
@@ -173,14 +176,15 @@ public class EventLog : MonoBehaviour
         float vitalsHeight = vitalsHud.Draw(caster.gameObject, style);
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
         castHud.Draw(caster, style);
-        // The spell the radial picked: what the mouse casts, and the controller in its debug layout.
-        bool radialPad = pad && caster.controls != null && !caster.controls.ElementPad;
+        // The spell the radial picked: what Cast casts, only in the debug layout. With the hands (D16), in the world and the
+        // Hold, the hands' icons say what goes off, so there's no spell selector.
+        bool hands = caster.controls != null && caster.controls.HandPad;
         chipStyle ??= new GUIStyle(style) { fontSize = 15 };
-        if (!pad || radialPad) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 6f, 1400, 26), SpellChip(pad), chipStyle);
+        if (!hands) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 6f, 1400, 26), SpellChip(pad), chipStyle);
     }
 
     /// <summary>The keyboard's spell keys, on the chip.</summary>
-    public const string KeyHints = "Tab: spells  ·  Q element  ·  E spell  ·  Z X C V elements";
+    public const string KeyHints = "Tab: spells  ·  Q element  ·  E spell  ·  1-8 an element's spells  ·  F2 the hands";
 
     string SpellChip(bool pad)
     {

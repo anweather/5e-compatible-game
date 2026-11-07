@@ -4,9 +4,9 @@ using UnityEngine;
 
 // The grimoire (docs/SPELL_COMBOS.md): a page of the Esc menu listing the combos
 // this player has found, each with its elements in order, its name and shape.
-// Combos start hidden; casting one adds it (World.KnowsCombo). Opened with the
-// d-pad's down (SpellCaster), when Back goes straight back to play, or from the
-// menu, when Back returns to the menu.
+// Combos start hidden; casting one adds it (World.KnowsCombo). Opened from the
+// menu, when Back returns to the menu; the spell list (SpellListMenu: Tab, or the
+// d-pad's down) shows the same discoveries on its hands' tab.
 public class GrimoireMenu : MonoBehaviour
 {
     const string PageId = "grimoire";
@@ -88,12 +88,12 @@ public class GrimoireMenu : MonoBehaviour
         var all = world.Rules.Combos.All;
         var found = all.Where(c => world.KnowsCombo(caster.CastPlayer, c.Id)).ToList();
         GUILayout.Label($"<b>{found.Count} of {all.Count} found</b>", head);
-        if (found.Count == 0) GUILayout.Label("Nothing yet. Load an element, then perhaps a second, and see what it casts.", row);
+        if (found.Count == 0) GUILayout.Label("Nothing yet.", row);
         scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(HudScale.Height - 340f, 200f, 520f), () =>
         {
             foreach (var combo in found) Row(combo);
         });
-        GUILayout.Label("<color=#ffffff99>Q changes element, E changes spell in it.</color>", row);
+        GUILayout.Label("<color=#ffffff99>Attune your hands in the spell list: Tab, or the d-pad's down.</color>", row);
     }
 
     void Row(ComboDef combo)
