@@ -35,8 +35,9 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   and `airpeers` (two peers, 0 of 9 checksums differ with Lightning, Gust, Whirlwind). `air-tuning-rules` (u2)
   landed too (cacf1b54): Gust and Whirlwind numbers are in `rules/` (`eye`, `lift`, `fall`, `shove`), no golden moved.
   `wip/u2-air-tuning-rules` (23f01af3) is not in dev (its WIP commit was redone); deleting it is Andrew's.
-- **The Mac has `hold-lockstep-fast`** (6f9ab0ed, Andrew's pick): make the slow Hold lockstep test fit the 180 s
-  EditMode timeout without weakening it. Briefs the lead lands must `git rm` their own claim on the branch.
+- **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
+  (as in the game), same 3500 ticks and per-tick checksums; EditMode 49.8 s (was past 180 s), core suite 3.5 -> 2.4 min.
+  EditMode can now be fully green on the PC; on the Mac 8 ApiKeyTests still fail (Windows-only vault). Briefs the lead lands must `git rm` their own claim on the branch.
 - **Lost 1.5 h on u2 (2026-11-07):** the watcher stopped it for low memory at 13:10; `start.cmd u2 <brief>` at
   13:21 said "the mailbox runner is running", but no runner was alive and the brief sat in the inbox until
   `linux.sh runner u2 <ip>` at 14:50. Unproven guess: `runner.mjs`'s lock holds the old pid, a new process reuses it
@@ -106,7 +107,7 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
 
 ## In flight
 
-- **Workers (2026-11-07, afternoon):** the PC is free (stamp-looks landed); u2 is idle (queue empty). The Mac is offline until about 3 pm (Andrew), then it can take Unity briefs beside the PC.
+- **Workers (2026-11-07, afternoon):** the PC is free (stamp-looks landed); u2 is idle (queue empty). The Mac is offline until about 3 pm (Andrew), then it can take Unity briefs beside the PC. (Back and idle since 16:00.)
 - **0.1.11 published** 2026-11-03 at b79f537 (Windows only): `main` merged back into dev. The update hop 0.1.106 → 0.1.107 passed; the Esc menu's "Update and restart" wasn't tried.
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (#89 fixed: the watcher reads dated resets). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
