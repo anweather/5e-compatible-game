@@ -126,7 +126,8 @@ public sealed class LandRocks
     static Kind KindAt(World world, int x, int y)
     {
         int drop = world.LandDrop(x, y);
-        if (drop == 0) return Kind.None;
+        // A short face is a bump's bank, not a crag: no boulders on it, nor at its foot (#148).
+        if (drop == 0 || world.LandFace(x, y) < World.LandCrag) return Kind.None;
         uint roll = Hash(x, y, 2);
         if (drop >= FaceDrop)
         {
