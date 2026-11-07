@@ -9,12 +9,12 @@ using UnityEngine;
 public class LandShapesProbe : ProbeScenario
 {
     // Open ground the size of a full stamp, clear of what stamps keep off.
-    const int X = 110, Y = 450, Reach = 32, Wall = 36;
+    protected const int X = 110, Y = 450, Reach = 32, Wall = 36;
     const float EaseSeconds = 40f;
 
-    string said;
+    protected string said;
 
-    IEnumerator Say(string tool, string args)
+    protected IEnumerator Say(string tool, string args)
     {
         var call = RoomMcpProbe.Post(RoomMcpProbe.Tool(tool, args));
         yield return RoomMcpProbe.Until(call);

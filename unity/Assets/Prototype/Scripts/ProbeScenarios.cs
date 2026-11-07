@@ -238,6 +238,9 @@ public static class ProbeScenarios
             "What GroundSwitch put on the terrains (unity/Temp/ground-builder says on or land; no file is off) and what the ground's Bind took: compare runs. Checks: the chunks are built or baked as switched, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
             "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
+        new Entry("stamplooks", typeof(StampLooksProbe), 480f,
+            "Land stamps seen small and with crates on them (#147, #148): a radius 3 dome is a bump (no rock paint, no boulders), then ten crates on a 15 m dome as it rises, against the same crates set on the still dome. " +
+            "Checks: none buried, none flung, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors."),
         new Entry("act", typeof(ActProbe), 60f,
             "Acts through the real MCP server in a running game (docs/design/world-acts.md): 20 trees near the wizard twice leave the mod list as it was, three deer come out, undo_act takes the second trees back and refuses animals, and set_species turns the turkeys blue. Checks: each of those, no console errors."),
         new Entry("chat", typeof(ChatProbe), 40f,

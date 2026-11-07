@@ -47,6 +47,9 @@ public partial class ChemGrid
     readonly Collider[] landHits = new Collider[1024];
     float landQuiet;
 
+    /// <summary>The last frame a stamp's area was carried: that frame, its cost in milliseconds, the colliders its query found and the bodies it carried. For the probe.</summary>
+    public (int frame, double ms, int found, int carried) LandCarryCost { get; private set; }
+
     /// <summary>True while any reshaped ground is still easing to a new height.</summary>
     public bool IsShaping => shaping.Count > 0 || landAreas.Count > 0;
 
@@ -98,8 +101,10 @@ public partial class ChemGrid
     void CarryOverLand()
     {
         if (landAreas.Count == 0) return;
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
         riders.Clear();
-        foreach (var area in landAreas) FindOnLand(area);
+        int found = 0;
+        foreach (var area in landAreas) found += FindOnLand(area);
         foreach (var (body, bottom) in riders)
         {
             float now = valley.GroundAt(body.position);
@@ -109,14 +114,15 @@ public partial class ChemGrid
         }
         (landGround, landGroundNext) = (landGroundNext, landGround);
         landGroundNext.Clear();
+        LandCarryCost = (Time.frameCount, (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0 / System.Diagnostics.Stopwatch.Frequency, found, riders.Count);
         landQuiet = valley.GroundMoving ? 0f : landQuiet + Time.deltaTime;
         if (landQuiet < LandQuietSeconds) return;
         landAreas.Clear();
         landGround.Clear();
     }
 
-    // Into riders: the free bodies on an area, and a body asleep with its chunk, which nothing else will move.
-    void FindOnLand((int x, int y, int reach) area)
+    // Into riders: the free bodies on an area, and a body asleep with its chunk, which nothing else will move. Returns the colliders found.
+    int FindOnLand((int x, int y, int reach) area)
     {
         float unit = stepHeight / World.Rules.Sim.WaterUnitsPerStep;
         float low = World.LandRange.low * unit - LandHeadroom, high = World.LandRange.high * unit + LandHeadroom;
@@ -133,6 +139,7 @@ public partial class ChemGrid
             float bottom = hit.bounds.min.y;
             riders[body] = riders.TryGetValue(body, out var lowest) ? Mathf.Min(lowest, bottom) : bottom;
         }
+        return n;
     }
 
     static void SetY(GameObject go, float y)
