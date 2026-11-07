@@ -965,7 +965,8 @@ namespace Chem.Tests
             string mid = $"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {hound.X},{hound.Y}";
             Run(w, 30);
             Assert.That(w.Whirls, Is.Empty, "gone after its duration");
-            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("62e2a56e 3068262754 7,0 7,1 | ab58829b 901838356"), "the golden");
+            Assert.That(hound.Alive, Is.False, "the hound, lifted in the eye and flung out, dies of the fall (World.LiftInTheEye)");
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("62e2a56e 3068262754 7,0 7,0 | ab58829b 901838356"), "the golden");
         }
 
         [Test]

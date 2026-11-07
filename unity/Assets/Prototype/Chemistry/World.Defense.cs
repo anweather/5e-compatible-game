@@ -322,6 +322,8 @@ namespace Chem
                 if (r.StatusOf(ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(ThrownStatus).ToString(inv));
                 // Downed by the dragon's breath, the same.
                 if (r.StatusOf(DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(DownedStatus).ToString(inv));
+                // Shoved by casts (World.CastShove), the same.
+                if (r.StatusOf(ShovedStatus) > 0) sb.Append(",s").Append(r.StatusOf(ShovedStatus).ToString(inv));
                 sb.Append(';');
             }
             return sb.ToString();

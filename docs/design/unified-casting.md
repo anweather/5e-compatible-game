@@ -11,6 +11,14 @@ the hit. Dust Storm and Sand Blast are out of the table, fire and air are swappe
 ordered `pairs` path (`LoadElement`) stays until the view half lands. The view still sends taps and attunes only in the
 room, so until then free roam casts with the start hands (water and fire).
 
+**Aimed spells built (2026-11-07, `aimed-spells`).** Lock-on and pitch are the view's (`SpellCaster.LockOn.cs`): aimed above
+everything, the crosshair lands under where the camera looks; Lightning locks onto the raider nearest the crosshair within
+14 degrees, the other aimed spells that hurt or shove within 5, aimed where the raider will be when the spell lands. In the
+core: a line cast from up on a wall goes over it, and a line reaches flyers over what stops it (Lightning arcs to one a cell
+beside its way); a tapped Gust knocks a raider 4 cells back (8 held), half that the second time, never a third, staggers it
+a second and can throw it over a drop of 2 m or more (`World.CastShove`); Whirlwind lifts a creature in its eye for two
+seconds, carries it, then flings it 6 cells and drops it (`World.LiftInTheEye`). Probe: `aimed` (`aimedclip` films it).
+
 ## Why
 
 Andrew, after the 2026-11-06 playtest (`docs/playtests/2026-11-06-human-results.md`): keep the best of both.

@@ -179,11 +179,15 @@ public partial class SpellCaster
             crosshair.point = transform.position + transform.forward * (AheadCells * grid.cellSize);
             crosshair.normal = Vector3.up;
         }
+        LockOnto(grid.World.Rules.Spell(spellId));
+        if (range > 0) LastLocked = LockedOn;
         var me = grid.CellAt(transform.position);
         var (toX, toY) = HandsDef.Within(me.x, me.y, CrosshairCell.x, CrosshairCell.y, range);
         var aim = Aim(spellId, new Vector2Int(toX, toY), out var error);
         if (error != null) EventLog.Add(error);
         if (range > 0 && aim.HasValue) LastHandAim = new Vector2Int(aim.Value.x, aim.Value.y);
+        if (range > 0 && aim.HasValue) LastHandCast = new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY);
+        StrikeAtLocked();
         if (aim.HasValue) Cast(new CastCommand(spellId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY, range > 0 ? CastPlayer : null));
     }
 
