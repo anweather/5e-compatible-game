@@ -30,6 +30,10 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   (core `World.LandFace`, `LandCrag`; view only, no hash moves). The 15 m dome still reads as a crag (kept). Owed:
   `stamplooks` probe's new "carried vs still" check never run; the clip shows the small stamp and dome stills, not
   crates (the probe stalled under the recorder). Issues stay open until a release ships them.
+- **`mac-checks` landed** (a1640984): the owed checks pass. stamplooks 16/16; crate clip
+  `stamp-looks-crates.mp4` (a 4 m dome; ClipFilm, so the Recorder stall is not root-caused); new probes `stampclip`
+  and `airpeers` (two peers, 0 of 9 checksums differ with Lightning, Gust, Whirlwind). `air-tuning-rules` (u2,
+  8febae88) is being compiled on the PC, then lands.
 - **Lost 1.5 h on u2 (2026-11-07):** the watcher stopped it for low memory at 13:10; `start.cmd u2 <brief>` at
   13:21 said "the mailbox runner is running", but no runner was alive and the brief sat in the inbox until
   `linux.sh runner u2 <ip>` at 14:50. Unproven guess: `runner.mjs`'s lock holds the old pid, a new process reuses it
