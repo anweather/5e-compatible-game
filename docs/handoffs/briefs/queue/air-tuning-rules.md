@@ -21,5 +21,5 @@ Rules:
 - Don't port to the sandbox (frozen). Don't touch the view (`Scripts/`): the PC compiles Unity.
 
 Before landing: `dotnet build core -c Release -warnaserror`, `dotnet format core --verify-no-changes`,
-`dotnet test core`. Land with `land.sh here` (no `--compiled`: the core files are linked into Unity, so say
-in the landing message that the PC owes an EditMode run).
+`dotnet test core`. Push the branch. `land.sh here` will refuse it (the core files are Unity C# nobody
+has compiled); that is expected: report, and the PC compiles it in Unity and lands it.
