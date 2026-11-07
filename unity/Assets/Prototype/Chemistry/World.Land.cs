@@ -305,7 +305,7 @@ namespace Chem
             var (low, high) = s.Extent;
             foreach (var (x, y, _) in Reach(s))
             {
-                int now = land?[Idx(x, y)] ?? 0;
+                int now = LandNow(x, y);
                 if (now == NoLand) return Wet;
                 if (now + low < LandRange.low || now + high > LandRange.high) return PastTheLand;
             }
@@ -324,6 +324,15 @@ namespace Chem
                 if (then < LandRange.low || then > LandRange.high) return PastTheLand;
             }
             return null;
+        }
+
+        // A cell's land in land units, NoLand on water: before the first stamp sets the land, read as SetLand would mark it,
+        // so a stamp asked of a dry world is refused on the lake as it would be after (#156: a spot search took one there).
+        int LandNow(int x, int y)
+        {
+            int i = Idx(x, y);
+            if (land != null) return land[i];
+            return IsWaterBody(At(x, y)) ? NoLand : landMoved?[i] ?? 0;
         }
 
         const string Wet = "that would cross water, and land stamps keep off it for now";

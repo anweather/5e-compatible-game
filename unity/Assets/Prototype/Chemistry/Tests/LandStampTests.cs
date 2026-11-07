@@ -292,6 +292,18 @@ namespace Chem.Tests
             Assert.That(w.ApplyRoom(Stamp(64, 40, 10, 80)).Done, "clear of it");
         }
 
+        // #156: the act tool asks LandRefusal before any land is set; it saw no water then, and a spot search took the lake.
+        [Test]
+        public void WaterIsSeenBeforeTheLandIsSet()
+        {
+            var w = new World(ChemistryTests.R, Size, Size, 7);
+            for (int y = 0; y < Size; y++)
+                for (int x = 0; x < Size; x++) w.Paint(x, y, "grass");
+            w.At(70, 64).Water = 4;
+            Assert.That(w.LandRefusal(LandStamp.Make(64, 64, 10, 80, LandStamp.Dome, 0, 0, 0, 3)), Does.Contain("cross water"));
+            Assert.That(w.LandRefusal(LandStamp.Make(64, 40, 10, 80, LandStamp.Dome, 0, 0, 0, 3)), Is.Null, "clear of it");
+        }
+
         [Test]
         public void PastWhatCanBeDrawnIsRefusedNeverClamped()
         {
