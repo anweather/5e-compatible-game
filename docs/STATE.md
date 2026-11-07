@@ -13,10 +13,13 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   reports about 7,000 times; they're killed and pid 818996 remains. The single-start guard in `bridge-watch.cmd` doesn't
   work yet (not filed).
 - **D16 unified casting (accepted, `docs/design/unified-casting.md`):**
-  - `unified-casting-core` (u2, 9e5cf105, pushed): needs a Unity compile. **Held off dev until the view half lands with it**
-    (JUDGMENT_CALLS, Andrew), because alone it leaves free roam stuck on the start hands. A compile request for it waits in the
-    `pc` mailbox; a `unity-task` can do it instead.
-  - `unified-casting-view`: claimed by the PC at 07:53. It builds on `origin/unified-casting-core` and lands both as one.
+  - **Core and view landed together** (3e62bee1, 2026-11-07): core 1719/1719, EditMode 1638/1640, two-peer `handlooks`
+    6/6 checksums equal, clip `unity/Builds/demo-videos/unified-casting-hands.mp4`. Not Andrew-judged yet.
+    Pre-existing, not from this branch: `HoldLockstepTests.TwoPeersWithDifferentPoints…` passes the 180 s Unity timeout
+    (3.5-4 min); the `menu` probe's GUILayout "control 14" error (not yet confirmed on dev). Left: E is both right throw and
+    pick-up (pick-up wins in reach); the merged icon is a generic two-tone disc, not a glyph per pair; core's `LoadElement`
+    path still there for the bot and old probes. `origin/unified-casting-core` is fully in dev; deleting it needs Andrew's OK
+    (the auto-mode classifier refused). The stale compile request in the `pc` mailbox can be dropped.
   - `aimed-spells`: free to claim (mcp-controls-text is in).
 
 ## Who runs where
