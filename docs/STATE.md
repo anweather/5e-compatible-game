@@ -30,6 +30,13 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   (core `World.LandFace`, `LandCrag`; view only, no hash moves). The 15 m dome still reads as a crag (kept). Owed:
   `stamplooks` probe's new "carried vs still" check never run; the clip shows the small stamp and dome stills, not
   crates (the probe stalled under the recorder). Issues stay open until a release ships them.
+- **Lost 1.5 h on u2 (2026-11-07):** the watcher stopped it for low memory at 13:10; `start.cmd u2 <brief>` at
+  13:21 said "the mailbox runner is running", but no runner was alive and the brief sat in the inbox until
+  `linux.sh runner u2 <ip>` at 14:50. Unproven guess: `runner.mjs`'s lock holds the old pid, a new process reuses it
+  after the boot, and the runner exits as "already running". Check `pgrep -af runner.mjs` after every start.
+  The watcher also went to 0 at about 14:40, when the morning's idle PC worker session (pid 38652) was stopped.
+  It's restarted, but now runs under the lead's session.
+- Stale `Unity.exe` pid 22552 (since Oct 29, 9 MB) makes `status` say "no Editor answers"; not proven ours, left.
 - **Work log (ed5f0c40):** `tools/workers/note.sh <who> <phase> <what>` appends to `~/.agent-bridge/work.log`;
   `status` shows each worker's latest line and when each claimed branch was last pushed. `unity-task` logs per
   phase. Not yet: u2's `runner.mjs` and the Mac don't write to it (u2's progress shows through its branch push).
