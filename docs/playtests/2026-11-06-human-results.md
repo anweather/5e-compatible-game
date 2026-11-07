@@ -31,7 +31,7 @@ stereo panning, and a visible speaker at the voice.
 
 | Id | Verdict | What he said |
 |---|---|---|
-| T1, T2 | not yet | |
+| T1, T2 | PASS | Cinders and Roots "seem fine"; he didn't notice the wrong hand being punished either way. No tuning asked for |
 | T3 | not yet | |
 | T4 | not yet | Wants **timed waves**: the next wave comes at a fixed time, so pushing raiders back doesn't buy time |
 | T5 | partly | Health bars sit over the enemies (good). Raiders climb the road's slope now (good). The whole ground by the raider spawn was on fire: "this is kind of cool". The little crabs are hard to hit, which he reads as a good sign |
@@ -113,3 +113,15 @@ The castle:
   towers, one element per tower, so you have to use the whole castle.
 - **The ground to the left** (looking at the castle from the town) is empty.
   Keep it in mind for something later.
+
+## Part three: Cinders, Roots, and how casting should work
+
+- **T1, T2:** Cinders and Roots "seem fine". He didn't notice anything special
+  about them. Neither asks for tuning.
+- **Merge the Hold's casting with free roam's charging.** He likes the Hold's
+  fixed element per hand with the direction key as a modifier. He also really
+  likes charging in free roam: holding a spell longer and watching it grow is
+  "really neat and satisfying", and gives a reason to hold longer. He wants one
+  scheme with both: an element per hand, the direction modifier, and a charge.
+  He doesn't know how yet. This is a design question, and it goes with part
+  one's ask to bring the Hold's controls into the main game.
