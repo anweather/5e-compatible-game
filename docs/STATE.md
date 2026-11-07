@@ -20,7 +20,16 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
     pick-up (pick-up wins in reach); the merged icon is a generic two-tone disc, not a glyph per pair; core's `LoadElement`
     path still there for the bot and old probes. `origin/unified-casting-core` is fully in dev; deleting it needs Andrew's OK
     (the auto-mode classifier refused). The stale compile request in the `pc` mailbox can be dropped.
-  - `aimed-spells`: free to claim (mcp-controls-text is in).
+  - **`aimed-spells` landed** (a83b608b): lock-on and pitch (view only, `SpellCaster.LockOn.cs`); lines pass the
+    caster's own wall, flyers hit over line blockers; Gust 4 cells tapped / 8 held, half then none, four directions
+    only; Whirlwind kept (lifts 2 s, flings 6 cells). Core 1724/1724, EditMode 1644/1645, probe `aimed`, clip
+    `aimed-spells.mp4`. Not Andrew-judged. Owed: Gust/Whirlwind numbers are core constants, not `rules/` (the rules
+    MCP was down); probe `aimed` not in FAST_LOOP (World's doc).
+- **Work log (ed5f0c40):** `tools/workers/note.sh <who> <phase> <what>` appends to `~/.agent-bridge/work.log`;
+  `status` shows each worker's latest line and when each claimed branch was last pushed. `unity-task` logs per
+  phase. Not yet: u2's `runner.mjs` and the Mac don't write to it (u2's progress shows through its branch push).
+- `status` said nothing about Unity on 2026-11-07: a `Unity.exe` was running but no Editor answered the CLI. It
+  now says so.
 
 ## Who runs where
 
