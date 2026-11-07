@@ -22,9 +22,9 @@ if [[ -d "$host" ]]; then
 fi
 
 if tasklist //FI "IMAGENAME eq Unity.exe" 2>/dev/null | grep -qi unity.exe; then
-  unity command console status --result-only 2>/dev/null | tr -d ' \n' |
-    sed -nE 's/.*"compilationFailed":([a-z]+),"compiling":([a-z]+),"consoleErrors":([0-9]+).*/Unity: open, compiling \2, compile failed \1, console errors \3/p'
-  echo
+  line="$(unity command console status --result-only 2>/dev/null | tr -d ' \n' |
+    sed -nE 's/.*"compilationFailed":([a-z]+),"compiling":([a-z]+),"consoleErrors":([0-9]+).*/Unity: open, compiling \2, compile failed \1, console errors \3/p')"
+  echo "${line:-Unity: a Unity.exe runs, but no Editor answers the CLI}"
 else
   echo "Unity: not running"
 fi
@@ -32,6 +32,24 @@ fi
 q="$repo/docs/handoffs/briefs/queue"
 echo "queue: $(ls "$q"/*.md 2>/dev/null | grep -v README | xargs -r -n1 basename | tr '\n' ' ')"
 echo "taken: $(ls "$q"/taken/*.md 2>/dev/null | xargs -r -n1 basename | tr '\n' ' ')"
+for f in "$q"/taken/*.md; do # a claimed brief's branch, and when its worker last pushed it (u2 and the Mac show up here)
+  [[ -f "$f" ]] || continue
+  b="$(sed -nE 's/^Branch: *([^ ]+).*/\1/p' "$f" | head -1)"
+  [[ -n "$b" ]] || continue
+  if git -C "$repo" rev-parse -q --verify "origin/$b" >/dev/null; then
+    echo "  $b: pushed $(git -C "$repo" log -1 --format='%h %cr' "origin/$b")"
+  else
+    echo "  $b: not pushed yet"
+  fi
+done
+
+# The work log (tools/workers/note.sh): each worker's latest line from the last 12 hours.
+log="${BRIDGE:-$HOME/.agent-bridge}/work.log"
+if [[ -f "$log" ]]; then
+  since="$(date -u -d '12 hours ago' +%Y-%m-%dT%H:%M:%SZ)"
+  tail -500 "$log" | awk -v s="$since" '$1 >= s { last[$2] = $0 } END { for (w in last) print "  " last[w] }' |
+    sort | cut -c1-110 | sed '1i work log:'
+fi
 
 inbox="${BRIDGE:-$HOME/.agent-bridge}/pm"
 echo "mailbox: $(ls "$inbox"/*.md 2>/dev/null | wc -l) unread, $(ls "$inbox"/taken/*.md 2>/dev/null | wc -l) taken not acked"
