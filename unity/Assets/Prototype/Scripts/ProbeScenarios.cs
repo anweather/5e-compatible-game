@@ -118,6 +118,9 @@ public static class ProbeScenarios
         new Entry("handlooks", typeof(HandLooksProbe), 240f,
             "What each hand holds, shown on the other peer's wizard (HandHeld): this Editor hosts, the virtual player joins, each attunes differently, an empty hand among them, and each peer shows both wizards' hands. " +
             "Between, both cast at once with their different hands (D16): a charge, a merge, one hand firing while the other charges; both heard, the same ticks run, checksums equal.", players: 2),
+        new Entry("airpeers", typeof(AirPeersProbe), 240f,
+            "The air spells on two peers (D16, aimed-spells): this Editor hosts, the virtual player joins and starts the waves, and both put the same flyer and two raiders down after the same net tick. " +
+            "Lightning from the host at the flyer; Gust of Wind on a raider tapped from the host, held from the client, then a third shove it braces against; a Whirlwind from the client on the other. Checks: each lands, the checksums from the raiders on are equal, no desync.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("productsview", typeof(ProductsViewProbe), 300f,
@@ -240,7 +243,9 @@ public static class ProbeScenarios
             "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,
             "Land stamps seen small and with crates on them (#147, #148): a radius 3 dome is a bump (no rock paint, no boulders), then ten crates on a 15 m dome as it rises, against the same crates set on the still dome. " +
-            "Checks: none buried, none flung, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors."),
+            "Checks: none buried, the carried crates go no higher or much further than on the still dome, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors."),
+        new Entry("stampclip", typeof(StampClipProbe), 120f,
+            "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up."),
         new Entry("act", typeof(ActProbe), 60f,
             "Acts through the real MCP server in a running game (docs/design/world-acts.md): 20 trees near the wizard twice leave the mod list as it was, three deer come out, undo_act takes the second trees back and refuses animals, and set_species turns the turkeys blue. Checks: each of those, no console errors."),
         new Entry("chat", typeof(ChatProbe), 40f,
