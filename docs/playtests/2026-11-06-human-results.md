@@ -5,7 +5,7 @@ Builds: `PcDev` at `e341d13` (dev, castle-seat and hold-progress landed) and
 `PcVoice` at `bf845c0` (`vivox-spike`), started with
 `tools/vivox/voice-in-the-woods.ps1`. Voice logs: `%TEMP%\voice-in-the-woods`.
 His notes were spoken, then sorted here; his words are kept where they decide
-something. Part one: he was still playing when this was written.
+something. Written in two parts while he played; part two is at the end.
 
 ## Proximity voice
 
@@ -76,3 +76,40 @@ Asks:
   face from there to the castle. The tree valley there would become a
   valley or canyon running up, with a switchback climbing the mountain beside
   the cliff, and the cliff going a bit further.
+
+## Part two: the Hold up to the first boss (T3, T5)
+
+Balance:
+
+- **Fireball is too strong.** It hits for about 56, and he sees no reason to
+  use anything else.
+- **Meteor is "completely broken"**, and he loved it ("that was great, I like
+  that a lot"). Read as overpowered and fun: keep how it feels, check it
+  against fireball.
+- **Whirlwind, dust storm and "flaw"** (as dictated; probably a spell name)
+  look like they do nothing. Make them worth casting.
+- **The keep's health is too high.** He could run around and let raiders hit
+  the keep, and nothing much happened. (He mentions the keep falling around
+  wave seven, so wave seven is where to check.)
+
+Aiming and flyers (T5):
+
+- **The first flyers seem impossible to hit**, with fire or by switching to
+  fire and air.
+- **Lightning has no pitch.** It always points the same way, so he can't aim
+  up or down or look high enough. Together with part one's lock-on ask: the
+  aimed spells' targeting is "a little bit off" in general.
+
+The castle:
+
+- **Collision at the foot of the walls and the small towers.** Where the
+  ground has been eaten away from them, he can walk through the bottom of
+  their meshes. He should have to jump over that.
+- **Walls float when the ground under them is gone.** They stay standing,
+  charred. Walls should fall as they're damaged or undermined, which would
+  also be a reason not to cast fireball everywhere.
+- **The keep looks good, and the wall tops look much better**, but nothing
+  takes you up there. His idea: move attuning out of the keep and into the
+  towers, one element per tower, so you have to use the whole castle.
+- **The ground to the left** (looking at the castle from the town) is empty.
+  Keep it in mind for something later.
