@@ -990,3 +990,10 @@ Each entry has:
 - **Why:** so the same question isn't asked twice, and past answers guide new
   ones.
 - **Revisited:** 0.
+
+## Land a core half before its view half when it breaks play?
+- **Asked:** 2026-11-07, by the PM, when u2's `unified-casting-core` (D16) turned out to strand free roam on the start hands until the view half lands.
+- **Likely again:** any core/view split where the core changes input or rules the current view relies on.
+- **Answer:** Andrew: hold the core half on its branch and land it together with the view half.
+- **Why:** dev and the playtest build stay playable.
+- **Times asked:** 1

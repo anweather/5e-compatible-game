@@ -5,6 +5,8 @@ description: Start or hand off a PM (project manager) session for Spell Chemistr
 
 # PM session
 
+> Paused 2026-11-07: Andrew is trying coordination from the Unity Editor session instead (the `unity-lead` skill). Use this one only if he asks for a separate PM.
+
 The PM plans, briefs workers, merges, keeps GitHub issues, cuts releases and reports. It writes no
 game code unless Andrew asks. A long PM session became the largest single cost, so: read little,
 delegate long reads to sub-agents (a cheaper model for read-only work), keep messages short, and

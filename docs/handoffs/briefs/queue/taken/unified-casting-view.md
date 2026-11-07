@@ -1,7 +1,7 @@
 Needs: unity
 Area: unity/Assets/Prototype/Scripts/SpellCaster.Hands.cs, unity/Assets/Prototype/Scripts/SpellCaster.Combos.cs, unity/Assets/Prototype/Scripts/PlayerControls.cs, unity/Assets/Prototype/Scripts/CastHud.cs, unity/Assets/Prototype/Scripts/SpellListMenu.cs, unity/Assets/Prototype/Scripts/MenuControls.cs, unity/Assets/Prototype/Scripts/ControlsMenu.cs, unity/Assets/Prototype/Scripts/CastBeats.cs
 Branch: unified-casting-view
-After: `unified-casting-core` and `hold-ui` have landed (both touch the hands' input and HUD). Don't claim this before.
+After: `hold-ui` has landed. Branch off `origin/unified-casting-core` (the core half, held off dev until this lands with it; Andrew, 2026-11-07), not dev. Land both together: merge `unified-casting-core` into your branch, and the PM lands it as one. Don't claim this before hold-ui is in.
 
 # Unified casting, the view half (D16)
 
