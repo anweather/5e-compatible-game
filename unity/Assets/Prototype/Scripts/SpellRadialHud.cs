@@ -3,7 +3,8 @@ using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The spell radial (docs/SPELL_RADIAL.md): hold LB, aim at an element with
+// The spell radial (docs/SPELL_RADIAL.md), in a pad's F2 layout only (LB is Fire
+// otherwise): hold LB, aim at an element with
 // the right stick (the mouse, from a number key), rest on it or push further out to open
 // its spells as an arc, release to pick. A quick tap swaps back to the
 // previous spell; B cancels (with the mouse, releasing in the centre does).
