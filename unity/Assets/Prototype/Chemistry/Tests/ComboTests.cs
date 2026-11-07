@@ -143,7 +143,6 @@ namespace Chem.Tests
             Assert.That(c.Combo("fire+air").Name, Is.EqualTo("Falling Star"));
             Assert.That(c.Combo("earth+fire").Name, Is.EqualTo("Forge"));
             Assert.That(c.Combo("air+fire").Name, Is.EqualTo("Lightning"));
-            Assert.That(c.Combo("fire+fire").Held, Is.Null, "Meteor stays for showers");
         }
 
         [Test]
@@ -406,7 +405,7 @@ namespace Chem.Tests
                 "combo fire: unknown spell nope",
                 "combo fire: unknown shape blob",
                 "combo fire: castTicks must be a whole number from 1",
-                "combo fire: held spell nada unknown",
+                "combo fire: held is gone: charge only makes a spell stronger, so give the stronger form a row of its own",
                 "combo fire: castTicks must be at least the window",
             }));
             Assert.That(Patched("{ 'elements': ['fire', 'void'], 'pairs': { 'fire': { 'void': { 'name': 'V', 'spell': 'fireball', 'shape': 'burst', 'castTicks': 3 } } } }"), Is.EqualTo(new[]

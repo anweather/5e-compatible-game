@@ -105,18 +105,25 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void TheHeldVariantIsOnlyAtFullCharge()
+        public void ChargeNeverSwapsTheSpell()
         {
-            var wall = Base.Combos.Combo("earth+earth");
-            Assert.That(wall.SpellAt(1, 3), Is.EqualTo("wall-of-stone"));
-            Assert.That(wall.SpellAt(2, 3), Is.EqualTo("wall-of-stone"));
-            Assert.That(wall.SpellAt(3, 3), Is.EqualTo("stone-ramp"));
-            Assert.That(wall.SpellAt(1, 1), Is.EqualTo("wall-of-stone"), "a spell that can't charge has no held form");
-            var frost = Base.Combos.Combo("water+air");
-            Assert.That(frost.SpellAt(2, 3), Is.EqualTo("frost"));
-            Assert.That(frost.SpellAt(3, 3), Is.EqualTo("sleet-storm"));
-            var fireball = Base.Combos.Combo("fire+fire");
-            Assert.That(fireball.SpellAt(3, 3), Is.EqualTo("fireball"), "and most combos have none");
+            // D16: Stone Ramp and Sleet Storm are rows of their own now, and charge only makes a spell stronger.
+            foreach (var combo in new[] { "earth+earth", "water+air", "fire+fire" })
+                for (int charge = 1; charge <= World.MaxCharge; charge++)
+                    Assert.That(Base.Combos.Combo(combo).SpellAt(charge, World.MaxCharge), Is.EqualTo(Base.Combos.Combo(combo).Spell), combo);
+            var w = new World(Base, 24, 12, 7, "dirt");
+            Assert.That(Charged(w, "earth+earth", World.MaxCharge).Spell, Is.EqualTo("wall-of-stone"));
+        }
+
+        [Test]
+        public void AHeldVariantIsRefused()
+        {
+            var files = System.IO.Directory.GetFiles(ChemistryTests.RulesDir(), "*.json").ToDictionary(System.IO.Path.GetFileName, System.IO.File.ReadAllText);
+            var combos = Newtonsoft.Json.Linq.JObject.Parse(files["combos.json"]);
+            combos["pairs"]["earth"]["earth"]["held"] = "stone-ramp";
+            files["combos.json"] = combos.ToString();
+            var errors = Assert.Throws<ModException>(() => Rules.FromJson(files).WithMods(new[] { ModPatch.Parse("{ 'id': 'check' }") })).Errors;
+            Assert.That(errors, Has.Some.StartsWith("combo earth+earth: held is gone"));
         }
 
         [Test]
@@ -258,7 +265,7 @@ namespace Chem.Tests
                 batch.RunOn(live, set, out _);
                 if (live.CombosFired.Count > 0) fired = live.CombosFired[0].Spell;
             }
-            Assert.That(fired, Is.EqualTo("stone-ramp"));
+            Assert.That(fired, Is.EqualTo("wall-of-stone"), "held to the full, it's still the wall: charge never swaps the spell");
             var replay = new World(Base, 8, 8, 7);
             var timeline = TickBatch.Timeline(null, null, 24);
             TickBatch.AddCombos(timeline, commands);
@@ -267,19 +274,14 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void HeldToTheMaxWallOfStoneIsTheRamp()
+        public void AChargedStoneRampClimbs()
         {
+            // Stone Ramp was Wall of Stone held to the full; now it's earth and earth thrown (D16), and charge still lengthens it.
             var w = new World(Base, 24, 12, 7, "dirt");
-            var fired = Charged(w, "earth+earth", World.MaxCharge);
-            Assert.That((fired.Spell, fired.Shape, fired.Name, fired.Charge), Is.EqualTo(("stone-ramp", "line", "Wall of Stone", 3)));
-            Assert.That(w.KnowsCombo("ann", "earth+earth"), "the grimoire keeps the combo");
-            w.Cast(fired.Spell, 4, 6, 1, fired.Charge);
+            w.Cast("stone-ramp", 4, 6, 1, World.MaxCharge);
             var heights = Enumerable.Range(4, 12).Select(x => w.At(x, 6).Height).ToList();
             Assert.That(heights, Is.Ordered, "it climbs away from the caster");
             Assert.That(heights.Max(), Is.GreaterThan(new World(Base, 24, 12, 7, "dirt").At(4, 6).Height + 1));
-
-            var short1 = new World(Base, 24, 12, 7, "dirt");
-            Assert.That(Charged(short1, "earth+earth", World.MaxCharge - 1).Spell, Is.EqualTo("wall-of-stone"));
         }
 
         [Test]
@@ -290,7 +292,6 @@ namespace Chem.Tests
             Assert.That(fired.Spell, Is.EqualTo("mold-earth-heap"));
             w.Cast(fired.Spell, 5, 5, 1, fired.Charge);
             Assert.That(w.At(5, 5).Height, Is.EqualTo(3), "as high as a wall");
-            Assert.That(Base.Combos.All.Where(c => c.Held != null).Select(c => c.Id), Is.EqualTo(new[] { "water+air", "earth+earth" }), "Lower Earth is nothing's held form");
         }
 
         // Plant Growth by elements on burnt ground and meadow: what a tap can't reach.
@@ -340,34 +341,19 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void GoldenHeldStoneRamp()
+        public void GoldenFrostHeldStaysFrost()
         {
-            var w = new World(Base, 24, 12, 7);
-            var fired = Charged(w, "earth+earth", 3);
-            Assert.That(fired.Spell, Is.EqualTo("stone-ramp"));
-            w.Cast(fired.Spell, 4, 6, 1, fired.Charge);
-            Run(w, 2);
-            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("cdeed8e1 9aa186c6 7"));
-        }
-
-        [Test]
-        public void GoldenHeldSleetStorm()
-        {
-            // Frost held to full charge glazes the field Sleet Storm does (ChemistryTests.SleetField's ground).
+            // Frost held to full charge was Sleet Storm; now it's a stronger Frost (D16), and Sleet Storm is water's sweep.
             var w = new World(Base, 20, 20, 7);
             for (int y = 3; y <= 6; y++) w.At(5, y).T = "grass";
             w.At(7, 8).Water = 8;
             w.At(9, 9).Fire = 3;
             w.At(9, 9).Fuel = 4;
             var fired = Charged(w, "water+air", 3);
-            Assert.That((fired.Spell, fired.Name), Is.EqualTo(("sleet-storm", "Frost")));
+            Assert.That((fired.Spell, fired.Name, fired.Charge), Is.EqualTo(("frost", "Frost", 3)));
             w.Cast(fired.Spell, 8, 8, 1, fired.Charge);
-            Assert.That(w.Cells.Count(c => c.Cover == "frost"), Is.GreaterThan(200), "glazed, wider than a tap's");
-            Assert.That(w.At(7, 8).Frozen);
-            Assert.That(w.At(9, 9).Fire, Is.EqualTo(0));
-            Assert.That(Charged(new World(Base, 20, 20, 7), "water+air", World.MaxCharge - 1).Spell, Is.EqualTo("frost"), "a part charge stays Frost");
             Run(w, 4);
-            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("bdd3d4c6 20520162 1511859835"));
+            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("bdd3d4c6 92b63383 1511859835"));
         }
 
         [Test]

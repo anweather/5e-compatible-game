@@ -182,13 +182,14 @@ namespace Chem
             return null;
         }
 
-        // A spell is allowed by id, or when a combo of only the zone's elements casts it (or holds into it).
+        // A spell is allowed by id, or when a combo or a hand row of only the zone's elements casts it.
         bool Allows(SpellZone z, string spell)
         {
             if (z.Spells.Contains(spell)) return true;
             foreach (var c in Rules.Combos.All)
-                if ((c.Spell == spell || c.Held == spell) && c.Id.Split('+').All(e => z.Elements.Contains(e))) return true;
-            return false;
+                if (c.Spell == spell && c.Id.Split('+').All(e => z.Elements.Contains(e))) return true;
+            var (slot, _) = HandRules.Find(spell);
+            return slot != null && slot != HandsDef.Empty && slot.Split('+').All(e => z.Elements.Contains(e));
         }
 
         /// <summary>

@@ -19,15 +19,13 @@ namespace Chem
         /// <summary>The spell it casts, which may stand in for one not made yet.</summary>
         public string Spell;
         public string Shape;
-        /// <summary>The spell it casts when held to its full charge instead, or null.</summary>
-        public string Held;
         /// <summary>Ticks the cast meter takes to drain.</summary>
         public int CastTicks;
         /// <summary>What's still to make, when <see cref="Spell"/> is a stand-in; null otherwise.</summary>
         public string Todo;
 
-        /// <summary>The spell a cast of this charge goes off as: <see cref="Held"/> at <paramref name="maxCharge"/>, if it has one.</summary>
-        public string SpellAt(int charge, int maxCharge) => Held != null && maxCharge > 1 && charge >= maxCharge ? Held : Spell;
+        /// <summary>The spell a cast of any charge goes off as: its own, since charge only makes a spell stronger (D16). The view still asks.</summary>
+        public string SpellAt(int charge, int maxCharge) => Spell;
     }
 
     /// <summary>A slot on the d-pad's list. With no <see cref="Spell"/> it shows but can't be cast.</summary>
@@ -79,7 +77,7 @@ namespace Chem
         CastSelected,
         /// <summary>Lets go of a held element: the cast goes off at the charge its meter has reached.</summary>
         Release,
-        /// <summary>During a run: a hand's button, <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> its bumper rather than its trigger.</summary>
+        /// <summary>A hand's button tapped: <see cref="ComboCommand.Step"/> the hand, <see cref="ComboCommand.Hold"/> its bumper rather than its trigger. It goes off at charge 1.</summary>
         Hand,
         /// <summary>Straight into the moment <see cref="ComboCommand.Element"/> (dev builds and the Editor offer it).</summary>
         Moment,
@@ -87,8 +85,12 @@ namespace Chem
         Pick,
         /// <summary>A player brings <see cref="ComboCommand.Step"/> points, from their own save, for every peer to know.</summary>
         Bring,
-        /// <summary>In the attuning room: <see cref="ComboCommand.Step"/>'s hand now holds <see cref="ComboCommand.Element"/>, or with none, nothing.</summary>
+        /// <summary><see cref="ComboCommand.Step"/>'s hand will hold <see cref="ComboCommand.Element"/>, or with none, nothing: at once in the attuning room, after a short moment anywhere while the Hold isn't running.</summary>
         Attune,
+        /// <summary>A hand's button held down: as <see cref="Hand"/>, but it charges until a <see cref="HandUp"/>.</summary>
+        HandDown,
+        /// <summary>Lets go of <see cref="ComboCommand.Step"/>'s hand: it goes off at the charge it has reached, or with the other hand if they've merged.</summary>
+        HandUp,
     }
 
     /// <summary>A player's cast input: what goes into the core for the button, stamped like a cast.</summary>
@@ -122,6 +124,8 @@ namespace Chem
         public static ComboCommand Moment(string player, string moment) => new ComboCommand(player, ComboCommandKind.Moment, moment);
         public static ComboCommand Pick(string player, string upgrade) => new ComboCommand(player, ComboCommandKind.Pick, upgrade);
         public static ComboCommand Bring(string player, int points) => new ComboCommand(player, ComboCommandKind.Bring, null, points);
+        public static ComboCommand HandDown(string player, int hand, bool bumper = false) => new ComboCommand(player, ComboCommandKind.HandDown, null, hand, bumper);
+        public static ComboCommand HandUp(string player, int hand) => new ComboCommand(player, ComboCommandKind.HandUp, null, hand);
         public static ComboCommand Attune(string player, int hand, string element) => new ComboCommand(player, ComboCommandKind.Attune, element, hand);
     }
 
@@ -220,6 +224,8 @@ namespace Chem
         public int Extra;
         /// <summary>The charge the Release gave; 1 until then.</summary>
         public int Charge = 1;
+        /// <summary>The spell the hands make together while both hold the same gesture and the table has a row for them, or null: one cast, not two (World.Hands.cs).</summary>
+        public string Merge;
         /// <summary>The ids of the combos this player has cast: the grimoire.</summary>
         public SortedSet<string> Known { get; } = new SortedSet<string>(StringComparer.Ordinal);
 
@@ -269,7 +275,6 @@ namespace Chem
             Name = Str(o["name"]),
             Spell = Str(o["spell"]),
             Shape = Str(o["shape"]),
-            Held = Str(o["held"]),
             CastTicks = Int(o["castTicks"]) ?? 0,
             Todo = Str(o["todo"]),
         };
@@ -328,7 +333,7 @@ namespace Chem
                 if (!SpellKnown(e["spell"])) Errors.Add($"combo {id}: unknown spell {Show(e["spell"])}");
                 if (!Shapes.Contains(Text(e["shape"]) ?? "")) Errors.Add($"combo {id}: unknown shape {Show(e["shape"])}");
                 if (!WholeFromOne(e["castTicks"])) Errors.Add($"combo {id}: castTicks must be a whole number from 1");
-                if (e["held"] != null && !SpellKnown(e["held"])) Errors.Add($"combo {id}: held spell {Show(e["held"])} unknown");
+                if (e["held"] != null) Errors.Add($"combo {id}: held is gone: charge only makes a spell stronger, so give the stronger form a row of its own");
             }
 
             bool SpellKnown(JToken id) => r["spells"].Any(s => Text(s["id"]) == Text(id));

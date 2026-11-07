@@ -1,4 +1,5 @@
-// The hands (docs/design/the-hold.md, phase 3), on the map's own rows: where the attuning room is comes from them and hold.json.
+// The hands (D16, docs/design/unified-casting.md; the Hold's side in the-hold.md, phase 3), on the map's own rows: where the
+// attuning room is comes from them and hold.json.
 using System.Linq;
 using NUnit.Framework;
 using static Chem.HandsDef;
@@ -53,7 +54,7 @@ namespace Chem.Tests
         public void TheTableIsAndrewsAndEverySpellIsUnique()
         {
             var spells = T.All.Where(r => r.Spell != null).Select(r => r.Spell).ToList();
-            Assert.That(spells.Count, Is.EqualTo(12 + 16 + 4));
+            Assert.That(spells.Count, Is.EqualTo(12 + 18), "the twelve singles and the pairs, Dust Storm and Sand Blast cut");
             Assert.That(spells.Distinct().Count(), Is.EqualTo(spells.Count), "never a re-skin");
             Assert.That(spells.All(s => R.Spell(s) != null));
             string[][] rows =
@@ -67,16 +68,40 @@ namespace Chem.Tests
                 for (int g = 0; g < 3; g++) Assert.That(T.One(row[0], g).Spell, Is.EqualTo(row[1 + g]));
         }
 
-        [Test]
-        public void TheSixteenPairsAreThere()
+        // unified-casting.md's pair table: thrust, then throw; null for a cut row.
+        [TestCase("fire", "fire", "fireball", "meteor")]
+        [TestCase("water", "water", "wave", "flood")]
+        [TestCase("earth", "earth", "wall-of-stone", "stone-ramp")]
+        [TestCase("air", "air", "whirlwind", null)]
+        [TestCase("fire", "water", "scalding-steam", "geyser")]
+        [TestCase("fire", "earth", "forge", "lava-pool")]
+        [TestCase("fire", "air", "falling-star", "lightning-bolt")]
+        [TestCase("water", "earth", "mud", "plant-growth")]
+        [TestCase("water", "air", "frost", "rain-cloud")]
+        [TestCase("earth", "air", null, "rolling-boulder")]
+        public void ThePairsAreTheDocs(string a, string b, string thrust, string thrown)
         {
-            var combos = R.Combos.All.Where(c => c.Id.Contains('+')).Select(c => c.Spell).ToList();
-            var table = R.Combos.Elements.SelectMany(a => R.Combos.Elements.SelectMany(b => new[] { T.Both(a, b, Thrust).Spell, T.Both(a, b, Throw).Spell })).Distinct().ToList();
-            Assert.That(combos.Count, Is.EqualTo(16));
-            Assert.That(combos.All(table.Contains), string.Join(",", combos.Where(c => !table.Contains(c))));
-            Assert.That(table.Count, Is.EqualTo(20), "and four same-element extras");
-            Assert.That(R.Combos.Elements.All(a => R.Combos.Elements.All(b => T.Both(a, b, Sweep) == null)), "sweep and sweep is empty for now");
+            Assert.That(T.Both(a, b, Thrust)?.Spell, Is.EqualTo(thrust));
+            Assert.That(T.Both(b, a, Throw)?.Spell, Is.EqualTo(thrown), "in either order");
+            Assert.That(T.Both(a, b, Sweep), Is.Null, "sweep and sweep is empty for now");
         }
+
+        [Test]
+        public void NoRowIsADustSpell()
+        {
+            Assert.That(T.Find("dust-storm").slot, Is.Null);
+            Assert.That(T.Find("sand-blast").slot, Is.Null);
+            Assert.That(R.Spell("dust-storm"), Is.Not.Null, "the spells stay, for mods and the chemistry");
+        }
+
+        // A hand's button held down from now, as the view sends it.
+        static void Down(World w, int hand, bool bumper = false, bool taken = true) =>
+            Assert.That(w.ApplyCombo(ComboCommand.HandDown(Me, hand, bumper)), Is.EqualTo(taken), $"down {hand}");
+
+        static void Up(World w, int hand, bool taken = true) =>
+            Assert.That(w.ApplyCombo(ComboCommand.HandUp(Me, hand)), Is.EqualTo(taken), $"up {hand}");
+
+        static int PerLevel => R.Combos.ChargeTicks;
 
         [Test]
         public void TheTriggerThrustsAndTheBumperThrows()
@@ -145,8 +170,8 @@ namespace Chem.Tests
             Assert.That(Out(w).ticks, Is.EqualTo(T.One("fire", Thrust).CastTicks));
         }
 
-        [TestCase(false, "lightning-bolt")]
-        [TestCase(true, "falling-star")]
+        [TestCase(false, "falling-star")]
+        [TestCase(true, "lightning-bolt")]
         public void TheSameGestureOnBothIsTheTables(bool bumpers, string spell)
         {
             var w = Holding("air", "fire");
@@ -167,7 +192,7 @@ namespace Chem.Tests
 
         [TestCase("fire", Thrust, "fireball")]
         [TestCase("fire", Throw, "meteor")]
-        [TestCase("air", Throw, "dust-storm")]
+        [TestCase("earth", Throw, "stone-ramp")]
         public void TheSameElementHasItsOwn(string element, int gesture, string spell)
         {
             var w = Holding(element, element);
@@ -190,15 +215,17 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void ASweepAndAThrustAreBoth()
+        public void ASweepAndAThrustGoOffEachOnItsOwn()
         {
             var w = Holding("water", "fire");
             Trigger(w, Right);
             Bumper(w, Right);
             Trigger(w, Left);
-            var (fired, ticks) = Out(w);
-            Assert.That(fired, Is.EquivalentTo(new[] { "flame-wave", "create-water" }));
-            Assert.That(ticks, Is.EqualTo(T.One("fire", Sweep).CastTicks), "together, when the longer is done");
+            var (first, ticks) = Out(w);
+            Assert.That((first, ticks), Is.EqualTo((new[] { "create-water" }, T.One("water", Thrust).CastTicks)), "the thrust doesn't wait for the sweep");
+            var (second, more) = Out(w);
+            Assert.That(second, Is.EqualTo(new[] { "flame-wave" }));
+            Assert.That(ticks + more, Is.EqualTo(T.One("fire", Sweep).CastTicks));
         }
 
         [Test]
@@ -218,9 +245,9 @@ namespace Chem.Tests
         [TestCase(Thrust, "punch")]
         [TestCase(Throw, "throw")]
         [TestCase(Sweep, "shove")]
-        public void AnEmptyHandActs(int gesture, string act)
+        public void EmptyHandsAct(int gesture, string act)
         {
-            var w = Holding(null, "fire");
+            var w = Holding(null, null);
             if (gesture != Throw) Trigger(w, Left);
             if (gesture != Thrust) Bumper(w, Left);
             var (fired, _) = Out(w);
@@ -229,12 +256,17 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void AnEmptyHandAndASpellByTheSameGestureAreBoth()
+        public void OneElementIsOnBothHands()
         {
             var w = Holding(null, "fire");
+            Assert.That(w.HandHolds(Me, Left), Is.EqualTo("fire"));
+            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "what's attuned stays as it is");
+            Trigger(w, Left);
+            Assert.That(Fired(w), Is.EqualTo("burning-hands"));
+            Ticks(w, T.HandCooldown);
             Trigger(w, Left);
             Trigger(w, Right);
-            Assert.That(Out(w).out_, Is.EquivalentTo(new[] { "punch", "burning-hands" }));
+            Assert.That(Fired(w), Is.EqualTo("fireball"), "fire alone makes both triggers a fire pair");
         }
 
         [Test]
@@ -316,7 +348,7 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void AttuningWorksOnlyInTheRoom()
+        public void AttuningInTheRoomIsAtOnce()
         {
             var w = Field();
             var room = Room(w);
@@ -327,12 +359,58 @@ namespace Chem.Tests
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, 2, "air")), Is.False);
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, null)), "a hand can hold nothing");
             Assert.That(w.HandsOf(Me).Holds[Left], Is.Null);
-            Away(w);
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "out of the room");
-            Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo("earth"));
             Stand(w, Me, room, 0);
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "down in it");
-            Assert.That(w.ApplyCombo(ComboCommand.Attune("nobody", Right, "air")), Is.False, "no stand at all");
+        }
+
+        [Test]
+        public void OutsideTheHoldAttuningTakesAMoment()
+        {
+            var w = Field();
+            Away(w);
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), "anywhere, while the Hold isn't running");
+            Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo(T.Start[Right]), "not yet");
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "earth")), Is.False, "one at a time");
+            Trigger(w, Left, taken: false);
+            Ticks(w, T.AttuneTicks - 1);
+            Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo(T.Start[Right]));
+            Ticks(w, 1);
+            Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo("air"));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune("nobody", Right, "air")), "a wizard with no stand is in the world too");
+            Stand(w, Me, (1, 1), 0);
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "air")), Is.False, "not while down");
+        }
+
+        [Test]
+        public void ARunKeepsTheRoomRule()
+        {
+            var w = Holding("water", "fire");
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "out of the room in a run");
+            Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo("fire"));
+        }
+
+        [Test]
+        public void GoldenAttuningIsRefusedMidCast()
+        {
+            var w = Field();
+            Away(w);
+            w.ApplyCombo(ComboCommand.HandDown(Me, Right));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "air")), Is.False, "a hand charging");
+            Ticks(w, 2);
+            w.ApplyCombo(ComboCommand.HandUp(Me, Right));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "air")), Is.False, "a hand let go but not gone off");
+            Assert.That(Fired(w), Is.EqualTo("burning-hands"));
+            Assert.That(w.ApplyCombo(ComboCommand.Load(Me, "earth")));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "air")), Is.False, "an element cast");
+            Out(w);
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "air")), "once nothing's under way");
+            Assert.That(w.CastOf(Me).Casting, "the moment shows as a meter");
+            Assert.That(w.ApplyCombo(ComboCommand.Cancel(Me)), "and can be dropped");
+            Assert.That(w.HandsOf(Me).Busy, Is.False);
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "air")));
+            Ticks(w, T.AttuneTicks);
+            Assert.That(w.HandsOf(Me).Holds[Left], Is.EqualTo("air"));
+            Assert.That(w.CastHash(), Is.EqualTo("f8c9fb76"));
         }
 
         [Test]
@@ -348,25 +426,29 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void OutsideARunTheHandsAreOff()
+        public void OutsideARunTheHandsAreOnAndTheElementPadStays()
         {
             var w = Field();
             Away(w);
-            Assert.That(w.HandsOn(Me), Is.False);
+            Assert.That(w.HandsOn(Me));
+            Assert.That(w.DpadOf(Me), Is.SameAs(R.Combos.Dpad), "the kit is the Hold's");
+            Assert.That(w.ApplyCombo(ComboCommand.Load(Me, "fire")), "the element pad stays until the view's on hands");
             Trigger(w, Right, taken: false);
-            Assert.That(w.ApplyCombo(ComboCommand.Load(Me, "fire")), "the element pad stays");
-            Assert.That(w.DpadOf(Me), Is.SameAs(R.Combos.Dpad));
+            Out(w);
+            Trigger(w, Right);
+            Assert.That(w.ApplyCombo(ComboCommand.Load(Me, "fire")), Is.False, "nor the pad over a hand");
         }
 
         [Test]
-        public void AWorldWithNoHoldHasNoHands()
+        public void AWorldWithNoHoldHasHandsToo()
         {
             var w = new World(R, 64, 64, 7);
-            Assert.That(w.HandsOn(Me), Is.False);
-            Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, Right)), Is.False);
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False);
+            Assert.That(w.HandsText(), Is.Empty, "hands nobody's used hash as they did");
+            Assert.That(w.HandsOn(Me));
+            Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, Right)));
+            Assert.That(Fired(w), Is.EqualTo("burning-hands"));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")));
             Assert.That(w.HoldReadsStand(1, 1), Is.False);
-            Assert.That(w.HandsText(), Is.Empty);
         }
 
         [Test]
@@ -387,6 +469,163 @@ namespace Chem.Tests
             Assert.That(w.HoldReadsStand(room.x, room.y));
             Assert.That(w.HoldReadsStand(w.HoldSite.Plate.x, w.HoldSite.Plate.y));
             Assert.That(w.HoldReadsStand(w.HoldSite.Rise.x, w.HoldSite.Rise.y), Is.False);
+        }
+
+        [TestCase(0, 1)]
+        [TestCase(1, 2)]
+        [TestCase(2, 3)]
+        [TestCase(9, 3)]
+        public void GoldenAChargedHandCast(int levels, int charge)
+        {
+            var w = Holding("water", "fire");
+            Down(w, Right);
+            int cast = T.One("fire", Thrust).CastTicks;
+            Ticks(w, cast - 1 + levels * PerLevel);
+            Assert.That(w.HandCharge(Me, Right), Is.EqualTo(charge));
+            Assert.That(w.CastOf(Me).Holding);
+            Assert.That(w.CombosFired, Is.Empty, "held, it waits for the release");
+            Up(w, Right);
+            Up(w, Right, taken: false);
+            w.Step();
+            var fired = w.CombosFired.Single();
+            Assert.That((fired.Spell, fired.Charge), Is.EqualTo(("burning-hands", charge)));
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown), "the cooldown starts as it goes off");
+            Assert.That(w.CastHash(), Is.EqualTo(new[] { "fc6f40e0", "8e71669b", "ecc39b7d", "1a85cd66" }[System.Math.Min(levels, 3)]));
+        }
+
+        [Test]
+        public void ATapIsChargeOneAndAnEarlyReleaseStillTakesATapsTime()
+        {
+            var w = Holding("water", "fire");
+            Down(w, Right);
+            Ticks(w, 2);
+            Up(w, Right);
+            var (fired, ticks) = Out(w);
+            Assert.That(fired, Is.EqualTo(new[] { "burning-hands" }));
+            Assert.That(ticks + 2, Is.EqualTo(T.One("fire", Thrust).CastTicks));
+            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GoldenAMergeGoesOffAtTheLowerCharge()
+        {
+            var w = Holding("fire", "fire");
+            Down(w, Left);
+            Ticks(w, 2 * PerLevel);
+            Down(w, Right);
+            Assert.That(w.CastOf(Me).Merge, Is.EqualTo("fireball"), "the view shows the merge while the hands are held");
+            Assert.That(w.HandSpellsUnderWay(Me), Is.EqualTo(new[] { "fireball" }), "one cast, not two");
+            Ticks(w, T.Both("fire", "fire", Thrust).CastTicks - 1 + PerLevel);
+            Assert.That(w.HandCharge(Me, Left), Is.EqualTo(3));
+            Assert.That(w.HandCharge(Me, Right), Is.EqualTo(2));
+            Up(w, Left);
+            Assert.That(w.HandsOf(Me).Down, Is.EqualTo(new[] { false, false }), "a release of either lets go of both");
+            var (fired, _) = Out(w);
+            Assert.That(fired, Is.EqualTo(new[] { "fireball" }));
+            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(2), "the lower of the two");
+            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.BothCooldown));
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.BothCooldown));
+            Assert.That(w.CastOf(Me).Merge, Is.Null);
+            Assert.That(w.CastHash(), Is.EqualTo("28c76308"));
+        }
+
+        [Test]
+        public void ATapJoiningAChargingHandFiresTheMergeAtOne()
+        {
+            var w = Holding("air", "fire");
+            Down(w, Right, bumper: true);
+            Ticks(w, 12);
+            Bumper(w, Left);
+            Assert.That(w.HandsOf(Me).Down, Is.EqualTo(new[] { false, false }), "a tap is a release");
+            var (fired, ticks) = Out(w);
+            Assert.That(fired, Is.EqualTo(new[] { "lightning-bolt" }));
+            Assert.That(ticks, Is.EqualTo(T.Both("fire", "air", Throw).CastTicks));
+            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GoldenOneHandFiresWhileTheOtherCharges()
+        {
+            var w = Holding("water", "fire");
+            Down(w, Left, bumper: true);
+            Trigger(w, Right);
+            Assert.That(w.CastOf(Me).Merge, Is.Null, "different gestures don't merge");
+            var (first, _) = Out(w);
+            Assert.That(first, Is.EqualTo(new[] { "burning-hands" }));
+            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(1));
+            Assert.That(w.HandsOf(Me).Gesture[Left], Is.EqualTo(Throw), "the left hand charges on");
+            Ticks(w, T.HandCooldown);
+            Trigger(w, Right);
+            Assert.That(Out(w).out_, Is.EqualTo(new[] { "burning-hands" }), "and the right rapid-fires");
+            Ticks(w, 3 * PerLevel);
+            Assert.That(w.HandCharge(Me, Left), Is.EqualTo(World.MaxCharge));
+            Up(w, Left);
+            w.Step();
+            Assert.That((w.CombosFired.Single().Spell, w.CombosFired.Single().Charge), Is.EqualTo(("ray-of-frost", World.MaxCharge)));
+            Assert.That(w.CastHash(), Is.EqualTo("3798243e"));
+        }
+
+        [Test]
+        public void GoldenTwoPeersWithDifferentHandsStayInLockstep()
+        {
+            // Two peers' copies of one world, each given the same stamped commands: Ana's hands and Bo's differ.
+            const string bo = "Bo";
+            var commands = new (int tick, ComboCommand command)[]
+            {
+                (1, ComboCommand.Attune(Me, Left, "earth")),
+                (1, ComboCommand.Attune(bo, Right, "air")),
+                (8, ComboCommand.HandDown(Me, Left)),
+                (8, ComboCommand.HandDown(Me, Right)),
+                (9, ComboCommand.HandDown(bo, Right, true)),
+                (10, ComboCommand.Hand(bo, Left)),
+                (20, ComboCommand.HandUp(bo, Right)),
+                (27, ComboCommand.HandUp(Me, Right)),
+                (40, ComboCommand.HandDown(Me, Left, true)), // refused: the merge cooled both hands
+                (60, ComboCommand.HandDown(Me, Left, true)),
+                (64, ComboCommand.HandUp(Me, Left)),
+            };
+            string Run(World w)
+            {
+                var set = RuleSet.Plain(R);
+                var timeline = TickBatch.Timeline(null, null, 80);
+                TickBatch.AddCombos(timeline, commands);
+                var said = new System.Collections.Generic.List<string>();
+                for (int t = 1; t <= 80; t++)
+                {
+                    timeline[t].RunOn(w, set, out _);
+                    foreach (var f in w.CombosFired)
+                    {
+                        said.Add($"{t}:{f.Player}:{f.Spell}:{f.Charge}");
+                        if (f.Spell != null) w.Cast(f.Spell, f.Player == Me ? 20 : 40, 30, 1, f.Charge);
+                    }
+                }
+                return string.Join(" ", said) + " " + w.CastHash() + " " + w.CellHash();
+            }
+            string one = Run(new World(R, 64, 64, 7, "dirt")), other = Run(new World(R, 64, 64, 7, "dirt"));
+            Assert.That(other, Is.EqualTo(one));
+            Assert.That(one, Is.EqualTo("15:Bo:create-water:1 20:Bo:gust-of-wind:3 27:Ana:forge:3 65:Ana:earthen-trench:1 cb1fffb9 3d94a395"));
+        }
+
+        [Test]
+        public void ASaveKeepsAHandCharging()
+        {
+            var source = new Grass();
+            var w = new World(R, 64, 64, 7);
+            w.MakeFrom(source);
+            w.ApplyCombo(ComboCommand.HandDown(Me, Left));
+            Ticks(w, 3);
+            Trigger(w, Right);
+            Ticks(w, 1);
+            var loaded = World.Load(w.Save(source), R, source);
+            Assert.That(loaded.HandsText(), Is.EqualTo(w.HandsText()));
+            Assert.That(loaded.CastState(), Is.EqualTo(w.CastState()));
+            foreach (var x in new[] { w, loaded })
+            {
+                Ticks(x, 12);
+                x.ApplyCombo(ComboCommand.HandUp(Me, Left));
+                x.Step();
+            }
+            Assert.That(loaded.CastHash(), Is.EqualTo(w.CastHash()));
         }
 
         [Test]
@@ -460,6 +699,7 @@ namespace Chem.Tests
             Assert.That(Errors(h => ((Newtonsoft.Json.Linq.JObject)h["range"]).Remove("long")), Does.Contain("hands: throw has no range"));
             Assert.That(Errors(h => h["kit"][0]["spell"] = "nope"), Does.Contain("hands: kit: unknown spell nope"));
             Assert.That(Errors(h => h["start"]["left"] = "nope"), Does.Contain("hands: start left must be in the table"));
+            Assert.That(Errors(h => h["attuneTicks"] = 0), Does.Contain("hands: attuneTicks must be a whole number from 1"));
         }
     }
 }

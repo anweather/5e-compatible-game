@@ -209,8 +209,8 @@ namespace Chem.Mcp
                 string note = Str(spell?["group"]) != radial.Groups[wedge].Id ? $" (it names no group the radial has, so it goes in the last wedge)" : "";
                 ways.Add($"in the spell list: Tab, the {radial.Groups[wedge].Name} tab{note}, then {name} (on a pad, only in the F2 layout's radial: hold LB, the {radial.Groups[wedge].Name} wedge)");
             }
-            foreach (var c in rules.Combos.All.Where(c => c.Spell == id || c.Held == id))
-                ways.Add($"by the combo {c.Name} ({c.Id.Replace("+", " then ", System.StringComparison.Ordinal)}){(c.Spell == id ? "" : ", held to full charge")}");
+            foreach (var c in rules.Combos.All.Where(c => c.Spell == id))
+                ways.Add($"by the combo {c.Name} ({c.Id.Replace("+", " then ", System.StringComparison.Ordinal)})");
             foreach (var d in rules.Combos.Dpad.Where(d => d.Spell == id))
                 ways.Add($"on the d-pad's list as {d.Name}");
             return ways.Count == 0

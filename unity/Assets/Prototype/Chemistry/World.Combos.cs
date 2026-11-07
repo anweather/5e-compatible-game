@@ -49,7 +49,10 @@ namespace Chem
         /// The charge a held cast has reached: 1 for the meter's own length (a tap's), then a level for
         /// each chargeTicks more. The meter is the clock, so the charge only grows while it runs.
         /// </summary>
-        public int HeldCharge(PlayerCast c) => c?.Holding == true ? 1 + Math.Max(0, c.Extra + 1 - c.Meter) / Rules.Combos.ChargeTicks : 1;
+        public int HeldCharge(PlayerCast c) => c?.Holding == true ? ChargeOn(c.Extra, c.Meter) : 1;
+
+        // A held meter's charge: the extra ticks it has used, a level each chargeTicks (a hand's too, World.Hands.cs).
+        int ChargeOn(int extra, int meter) => 1 + Math.Max(0, extra + 1 - meter) / Rules.Combos.ChargeTicks;
 
         /// <summary>Seconds of holding for each level of charge.</summary>
         public double SecondsPerLevel => Rules.Combos.ChargeTicks / (double)Rules.Sim.TicksPerSecond;
@@ -88,11 +91,13 @@ namespace Chem
                 case ComboCommandKind.Cycle: return CycleDpad(c, command.Step);
                 case ComboCommandKind.CastSelected: return CastSelected(c);
                 case ComboCommandKind.Release: return ReleaseHold(c);
-                case ComboCommandKind.Hand: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust);
+                case ComboCommandKind.Hand: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, false);
+                case ComboCommandKind.HandDown: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, true);
+                case ComboCommandKind.HandUp: return ReleaseHand(c, command.Step);
                 case ComboCommandKind.Moment: return StartMoment(command.Element);
                 case ComboCommandKind.Pick: return PickUpgrade(command.Player, command.Element);
                 case ComboCommandKind.Bring: return BringPoints(command.Player, command.Step);
-                case ComboCommandKind.Attune: return Attune(c.Player, command.Step, command.Element);
+                case ComboCommandKind.Attune: return Attune(c, command.Step, command.Element);
                 default: return false;
             }
         }
@@ -184,6 +189,7 @@ namespace Chem
             c.DpadCasting = -1;
             c.Holding = false;
             c.Charge = 1;
+            c.Merge = null;
         }
 
         // Drains every meter, in player order, and sets off those that reach zero. A cast held to its
@@ -192,6 +198,11 @@ namespace Chem
         {
             foreach (var c in casts.Values)
             {
+                if (hands.TryGetValue(c.Player, out var h) && h.Busy)
+                {
+                    TickHands(c, h);
+                    continue;
+                }
                 if (!c.Casting) continue;
                 if (c.Window > 0) c.Window--;
                 if (c.Holding && c.Meter == 1) continue;
@@ -202,11 +213,6 @@ namespace Chem
         // What a mod took away since the cast began just doesn't go off.
         void FireCast(PlayerCast c)
         {
-            if (FireHands(c))
-            {
-                ClearCast(c);
-                return;
-            }
             var dpad = DpadOf(c.Player);
             if (c.DpadCasting >= 0)
             {
@@ -218,9 +224,7 @@ namespace Chem
                 var def = ComboOf(c);
                 if (def != null)
                 {
-                    string spell = def.SpellAt(c.Charge, MaxChargeOf(def));
-                    string shape = spell == def.Spell ? def.Shape : Rules.Spell(spell)?.Shape;
-                    NoteFired(new ComboFired(c.Player, def.Id, def.Name, spell, shape, c.Known.Add(def.Id), c.Charge));
+                    NoteFired(new ComboFired(c.Player, def.Id, def.Name, def.Spell, def.Shape, c.Known.Add(def.Id), c.Charge));
                 }
             }
             ClearCast(c);

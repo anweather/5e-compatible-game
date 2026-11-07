@@ -1,5 +1,5 @@
-// A wizard's hands in the Hold (docs/design/the-hold.md, phase 3): rules/hold.json "hands". A hand is a slot, and the button is
-// the gesture: what comes out is the table's row for what the hand holds. An empty hand is a row like any other, and nothing
+// A wizard's hands, in the world and the Hold (D16, docs/design/unified-casting.md): rules/hold.json "hands". A hand is a slot,
+// and the button is the gesture: what comes out is the table's row for what the hand holds. An empty hand is a row like any other, and nothing
 // here knows what a slot can hold, so a later weapon is rows too. Nothing in code names a spell. World.Hands.cs runs it.
 using System;
 using System.Collections.Generic;
@@ -36,6 +36,10 @@ namespace Chem
         /// <summary>A spell's cooldown on its hand, and a combined spell's on both.</summary>
         public int HandCooldown { get; private set; }
         public int BothCooldown { get; private set; }
+        /// <summary>Ticks attuning a hand takes outside the Hold.</summary>
+        public int AttuneTicks { get; private set; }
+        /// <summary>Whether there is a table at all: rules with none have no hands.</summary>
+        public bool Any => rows.Count > 0;
         /// <summary>The D-pad's list during a run.</summary>
         public IReadOnlyList<DpadSpellDef> Kit { get; private set; } = Array.Empty<DpadSpellDef>();
         /// <summary>Every row of the table.</summary>
@@ -82,6 +86,7 @@ namespace Chem
             h.Window = (int?)o["window"] ?? 0;
             h.HandCooldown = (int?)o["handCooldown"] ?? 0;
             h.BothCooldown = (int?)o["bothCooldown"] ?? 0;
+            h.AttuneTicks = (int?)o["attuneTicks"] ?? 0;
             h.Kit = (o["kit"] as JArray ?? new JArray()).OfType<JObject>().Select(k => new DpadSpellDef { Name = (string)k["name"], Spell = (string)k["spell"], CastTicks = (int?)k["castTicks"] ?? 0 }).ToList();
             for (int g = 0; g < GestureNames.Length; g++)
                 h.range[g] = (int?)o["range"]?[(string)o["rangeOf"]?[GestureNames[g]] ?? ""] ?? 0;
@@ -102,7 +107,7 @@ namespace Chem
         internal static IReadOnlyList<string> Gestures => GestureNames;
     }
 
-    /// <summary>One wizard's hands: what each holds, when it casts again, and its gesture under way. Integers and ids only.</summary>
+    /// <summary>One wizard's hands: what each holds, when it casts again, and its gesture under way with its own meter. Integers and ids only.</summary>
     public sealed class PlayerHands
     {
         public string Player;
@@ -110,8 +115,25 @@ namespace Chem
         public readonly string[] Holds = new string[HandsDef.Count];
         public readonly int[] Ready = new int[HandsDef.Count];
         public readonly int[] Gesture = { HandsDef.NoGesture, HandsDef.NoGesture };
+        /// <summary>By hand, while a gesture is under way: ticks until it goes off, and the meter's full length.</summary>
+        public readonly int[] Meter = new int[HandsDef.Count];
+        public readonly int[] Total = new int[HandsDef.Count];
+        /// <summary>By hand: the ticks a full charge adds to its meter while its button is down; 0 otherwise.</summary>
+        public readonly int[] Extra = new int[HandsDef.Count];
+        /// <summary>By hand: its button is down, so it charges and waits at its meter's last tick for a release.</summary>
+        public readonly bool[] Down = new bool[HandsDef.Count];
+        /// <summary>By hand: the charge its release gave; 1 until then.</summary>
+        public readonly int[] Charge = { 1, 1 };
+        /// <summary>By hand: the tick its gesture began, for the window its other button has to make a sweep.</summary>
+        public readonly int[] Since = new int[HandsDef.Count];
+        /// <summary>Attuning outside the Hold: the hand, what it will hold, and the ticks still to go (0: not attuning).</summary>
+        public int AttuneHand;
+        public string AttuneTo;
+        public int AttuneLeft;
 
         public bool Casting => Gesture[HandsDef.Left] != HandsDef.NoGesture || Gesture[HandsDef.Right] != HandsDef.NoGesture;
+        /// <summary>A gesture under way, or a hand being attuned.</summary>
+        public bool Busy => Casting || AttuneLeft > 0;
     }
 
     public sealed partial class Rules
@@ -127,7 +149,7 @@ namespace Chem
                 var slots = spells.Properties().Select(p => p.Name).Where(n => !n.Contains('+')).ToList();
                 foreach (var side in new[] { "left", "right" })
                     if (!slots.Contains((string)h["start"]?[side] ?? "")) Errors.Add($"hands: start {side} must be in the table");
-                foreach (var key in new[] { "window", "handCooldown", "bothCooldown" })
+                foreach (var key in new[] { "window", "handCooldown", "bothCooldown", "attuneTicks" })
                     if (!WholeFromOne(h[key])) Errors.Add($"hands: {key} must be a whole number from 1");
                 foreach (var g in HandsDef.Gestures)
                     if (!WholeFromOne(h["range"]?[(string)h["rangeOf"]?[g] ?? ""])) Errors.Add($"hands: {g} has no range");

@@ -4,6 +4,13 @@ Status: **accepted** (Andrew, 2026-11-07: "Lgtm. Let's do it"), as D16. The buil
 `unified-casting-core` (core and rules), `unified-casting-view` (the controls, icons and spell list, after the core half
 and `hold-ui` land) and `aimed-spells` (lock-on, pitch, Gust and Whirlwind).
 
+**Core half built (2026-11-07).** Each hand has its own meter (`PlayerHands`): `ComboCommand.Hand` is a tap, `HandDown`
+charges and `HandUp` lets go. A merge is `PlayerCast.Merge` while the hands hold it, and the hands are on everywhere
+(`World.HandsOn`). Attuning outside the Hold takes `attuneTicks` (4, under a second). Fireball went from 8d6 to 4d6, half
+the hit. Dust Storm and Sand Blast are out of the table, fire and air are swapped, and the `held` variants are gone. The
+ordered `pairs` path (`LoadElement`) stays until the view half lands. The view still sends taps and attunes only in the
+room, so until then free roam casts with the start hands (water and fire).
+
 ## Why
 
 Andrew, after the 2026-11-06 playtest (`docs/playtests/2026-11-06-human-results.md`): keep the best of both.
