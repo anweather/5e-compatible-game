@@ -1,7 +1,8 @@
 # Unified casting: one way to cast in the world and the Hold
 
-Status: **proposal, waiting on Andrew's OK** (2026-11-06). When it's approved it becomes an ADR, and the PM puts the build
-in a lane. It touches the same HUD and inputs as the `hold-ui` job, so it lands after that.
+Status: **accepted** (Andrew, 2026-11-07: "Lgtm. Let's do it"), as D16. The build is three queued briefs:
+`unified-casting-core` (core and rules), `unified-casting-view` (the controls, icons and spell list, after the core half
+and `hold-ui` land) and `aimed-spells` (lock-on, pitch, Gust and Whirlwind).
 
 ## Why
 

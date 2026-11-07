@@ -22,6 +22,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D13 | [Rule changes go through a checked MCP server](adr/0013-rule-changes-through-an-mcp-server.md) | Accepted (2026-10-31) |
 | D14 | [Creatures are data](adr/0014-creatures-are-data.md) | Proposed (2026-11-02) |
 | D15 | [Workers land and pull their own work](adr/0015-workers-land-and-pull-their-own-work.md) | Accepted (2026-11-06) |
+| D16 | [One way to cast: two hands, with a charge](adr/0016-one-way-to-cast-hands-with-a-charge.md) | Accepted (2026-11-07) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 

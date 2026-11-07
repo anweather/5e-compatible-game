@@ -587,7 +587,7 @@ that long, and doesn't march.
 : The room of the keep where a hand is attuned, named by two of the row's joins in the map's `hold.json`.
 
 **Merge**
-: Two hands' spells becoming one: both hands charging the same gesture, with a row in the hand table for their two elements. Their icons slam into the pair's. Proposed in `docs/design/unified-casting.md`, not built.
+: Two hands' spells becoming one: both hands charging the same gesture, with a row in the hand table for their two elements. Their icons slam into the pair's. D16, `docs/design/unified-casting.md`; not built yet.
 
 **Hand spell**
 : A spell in the table of `rules/hold.json` `hands`: by what a hand holds and its gesture, or by what both hold when both make the same gesture. An empty hand's row is an action instead (a punch, a throw, a shove).
