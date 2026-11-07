@@ -222,7 +222,9 @@ namespace Chem.Tests
             Bumper(w, Right);
             Trigger(w, Left);
             var (first, ticks) = Out(w);
-            Assert.That((first, ticks), Is.EqualTo((new[] { "create-water" }, T.One("water", Thrust).CastTicks)), "the thrust doesn't wait for the sweep");
+            // Apart: Unity's NUnit compares a tuple's array by reference.
+            Assert.That(first, Is.EqualTo(new[] { "create-water" }), "the thrust doesn't wait for the sweep");
+            Assert.That(ticks, Is.EqualTo(T.One("water", Thrust).CastTicks), "the thrust doesn't wait for the sweep");
             var (second, more) = Out(w);
             Assert.That(second, Is.EqualTo(new[] { "flame-wave" }));
             Assert.That(ticks + more, Is.EqualTo(T.One("fire", Sweep).CastTicks));

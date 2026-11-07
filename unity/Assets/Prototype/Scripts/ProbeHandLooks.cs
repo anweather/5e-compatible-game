@@ -58,7 +58,67 @@ public class HandLooksProbe : RoomProbe
     {
         yield return Both("fire,earth", "water,air", "each_element");
         if (Theirs == null) yield break;
+        yield return Casting("different_hands_cast");
+        if (Theirs == null) yield break;
         yield return Both("air,water", "-,earth", "with_an_empty_hand");
+    }
+
+    /// <summary>
+    /// This peer's hands cast as D16 has them, through the host: a held charge let go, both hands held into a merge, then one hand
+    /// held while the other's throw fires twice. Both peers at once, with different hands, and the checksums must stay alike.
+    /// </summary>
+    public static IEnumerator HandCasts(NetChem net)
+    {
+        net.RequestCombo(ComboCommand.HandDown("", HandsDef.Right));
+        yield return new WaitForSecondsRealtime(1.8f);
+        net.RequestCombo(ComboCommand.HandUp("", HandsDef.Right));
+        yield return new WaitForSecondsRealtime(2.6f);
+        net.RequestCombo(ComboCommand.HandDown("", HandsDef.Right));
+        yield return new WaitForSecondsRealtime(0.3f);
+        net.RequestCombo(ComboCommand.HandDown("", HandsDef.Left));
+        yield return new WaitForSecondsRealtime(1.5f);
+        net.RequestCombo(ComboCommand.HandUp("", HandsDef.Left));
+        net.RequestCombo(ComboCommand.HandUp("", HandsDef.Right));
+        yield return new WaitForSecondsRealtime(6f);
+        net.RequestCombo(ComboCommand.HandDown("", HandsDef.Left));
+        for (int i = 0; i < 2; i++)
+        {
+            yield return new WaitForSecondsRealtime(0.3f);
+            net.RequestCombo(ComboCommand.HandDown("", HandsDef.Right, bumper: true));
+            yield return new WaitForSecondsRealtime(0.2f);
+            net.RequestCombo(ComboCommand.HandUp("", HandsDef.Right));
+            yield return new WaitForSecondsRealtime(2.2f);
+        }
+        net.RequestCombo(ComboCommand.HandUp("", HandsDef.Left));
+        yield return new WaitForSecondsRealtime(2f);
+    }
+
+    // Both peers cast at once with different hands; the host hears each one's casts, and both run the same ticks.
+    IEnumerator Casting(string name)
+    {
+        var heard = new FiredCastsHeard();
+        heard.StartFrom(grid.World);
+        var fired = new System.Collections.Generic.Dictionary<string, int>();
+        bool done = false;
+        IEnumerator Mine()
+        {
+            yield return HandCasts(Net);
+            done = true;
+        }
+        StartCoroutine(Mine());
+        var asking = Ask("handcasts", null, 20f);
+        while (asking.MoveNext())
+        {
+            foreach (var f in heard.Take(grid.World)) fired[f.Player] = (fired.TryGetValue(f.Player, out int n) ? n : 0) + 1;
+            yield return asking.Current;
+        }
+        for (float t = 0f; t < MostWait && !done; t += Time.unscaledDeltaTime) yield return null;
+        yield return Wait(Settle);
+        foreach (var f in heard.Take(grid.World)) fired[f.Player] = (fired.TryGetValue(f.Player, out int n) ? n : 0) + 1;
+        Metric(name + "_players_casting", fired.Count);
+        Check(name + "_both_cast", fired.Count == 2 && fired.Values.All(n => n >= 4), string.Join(", ", fired.Select(p => $"{p.Key}: {p.Value}")));
+        if (Theirs == null) yield break;
+        yield return Reach(name, Net.NetTick);
     }
 
     IEnumerator Both(string mine, string theirs, string name)

@@ -12,9 +12,10 @@ using UnityEngine;
 // elements in the hands (CastOrbs). After CastPose, whose gesture stands aside
 // while a beat is playing, and before the robe and outfit.
 //
-// For what reacts to a cast (camera, rumble, sound): BeatChanged says when each
-// beat starts, Struck when the hands land a slam or a thrust, ChargeLevel each
-// level reached; IsLocal, Charge, AimPoint, Spell and Elements say whose, how
+// For what reacts to a cast (camera, rumble, sound, the hands' charge rings in
+// CastHud): BeatChanged says when each beat starts, Struck when the hands land a
+// slam or a thrust, ChargeLevel each level reached (a hand's own, or a merge's
+// lower one: SpellCaster.HeldHandCharge); IsLocal, Charge, AimPoint, Spell and Elements say whose, how
 // strong, where and what. This machine's own wizard tells CastImpact, whose
 // hit-stop (HitStop) stands this body's clock and Animator still for a few frames:
 // the game's clock isn't touched, and another player's copy never stops, so a
@@ -280,7 +281,8 @@ public class CastBeats : MonoBehaviour
         string spell = caster.SpellOf(cast);
         firstTint = caster.OrbTint(first, spell);
         secondTint = caster.OrbTint(second, spell);
-        if (firedSpell == null) Level(world.HeldCharge(cast));
+        // The hands' own charges: the cast's mirror shows the longest meter, which a tapping hand can be while the other charges.
+        if (firedSpell == null) Level(world.HandsOf(Player).Casting ? SpellCaster.HeldHandCharge(world, Player) : world.HeldCharge(cast));
     }
 
     void Level(int level)

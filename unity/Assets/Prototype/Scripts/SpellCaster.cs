@@ -9,9 +9,10 @@ using UnityEngine;
 // targeted cell. A marker on the ground shows where (AimMarker). Shapeshift aims at
 // an animal instead; in an animal's shape, Cast only changes back.
 //
-// The spell to cast is picked in the spell list (SpellListMenu: Tab), on a
-// pad's F2 layout with the spell radial (SpellRadialHud: hold LB, element then
-// spell), or Select(id) from anywhere else (demos, the probe). Every spell in rules/spells.json can be picked; nothing to set up.
+// The hands cast what they hold (SpellCaster.Hands.cs). In the debug layout (F2) Cast
+// casts the spell picked in the spell list (SpellListMenu: Tab) or with the spell radial
+// (SpellRadialHud: hold LB on a pad, element then spell), or Select(id) from anywhere else
+// (demos, the probe). Every spell in rules/spells.json can be picked; nothing to set up.
 //
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
 // world when the show lands, and its shove to whatever moves (SpellForces);
@@ -489,7 +490,7 @@ public partial class SpellCaster : MonoBehaviour
     static readonly Unity.Profiling.ProfilerMarker ShowAimMarker = new("SpellCaster.ShowAim");
 
     // The marker follows what will go off: the cast under way at its charge so far, else what Cast would
-    // cast. On the controller's element layout Cast isn't there, so with nothing under way there's no marker.
+    // cast. With the hands Cast isn't there, so with nothing under way there's no marker.
     void ShowAim(Vector2Int target, SpellDef spell, (int x, int y, int dir, int aimX, int aimY)? aim)
     {
         using var marked = ShowAimMarker.Auto();
@@ -502,7 +503,7 @@ public partial class SpellCaster : MonoBehaviour
             charge = heldCharge;
             aim = Aim(held, target, out _);
         }
-        else if (controls.UsingGamepad && controls.ElementPad) aim = null;
+        else if (controls.ElementPad && (controls.HandPad || controls.UsingGamepad)) aim = null;
         if (spell == null || !aim.HasValue)
         {
             marker.Hide();

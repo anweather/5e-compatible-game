@@ -198,16 +198,17 @@ namespace Chem.Mcp
             {
                 bool listed = !(spell?["radial"]?.Type == JTokenType.Boolean && !(bool)spell["radial"]);
                 return listed
-                    ? $"Once this draft fits together (validate says what's left), a player reaches {name} in the spell list: Tab, the {Str(Raw["groups"][Str(spell?["group"]) ?? ""]?["name"]) ?? "last"} tab, then {name} (on a pad, only in the F2 layout's radial: hold LB, the same wedge)."
+                    ? $"Once this draft fits together (validate says what's left), a player reaches {name} in the spell list: Tab, the {Str(Raw["groups"][Str(spell?["group"]) ?? ""]?["name"]) ?? "last"} tab, then {name}, which Cast casts in the F2 debug layout (on a pad, that layout's radial: hold LB, the same wedge). The hands cast only what the hand table (hold.json hands) has."
                     : $"{name} has radial false, so no player can reach it from the radial; set_spell {id} radial true puts it there.";
             }
             var ways = new List<string>();
+            if (HandsWay(rules.Sim.Hold.Hands, id) is { } hands) ways.Add(hands);
             var radial = RadialLayout.From(rules);
             int wedge = radial.GroupOfSpell(id);
             if (wedge >= 0)
             {
                 string note = Str(spell?["group"]) != radial.Groups[wedge].Id ? $" (it names no group the radial has, so it goes in the last wedge)" : "";
-                ways.Add($"in the spell list: Tab, the {radial.Groups[wedge].Name} tab{note}, then {name} (on a pad, only in the F2 layout's radial: hold LB, the {radial.Groups[wedge].Name} wedge)");
+                ways.Add($"in the spell list: Tab, the {radial.Groups[wedge].Name} tab{note}, then {name}, which Cast casts in the F2 debug layout (on a pad, that layout's radial: hold LB, the {radial.Groups[wedge].Name} wedge)");
             }
             foreach (var c in rules.Combos.All.Where(c => c.Spell == id))
                 ways.Add($"by the combo {c.Name} ({c.Id.Replace("+", " then ", System.StringComparison.Ordinal)})");
@@ -216,6 +217,20 @@ namespace Chem.Mcp
             return ways.Count == 0
                 ? $"No player can reach {name} yet: it isn't on the radial (radial false) and no combo casts it. set_spell {id} radial true puts it on the radial."
                 : $"A player reaches {name} {string.Join("; or ", ways)}.";
+        }
+
+        // Where the hand table (D16) puts a spell: which elements to attune in the spell list, and which gesture, on one hand or both.
+        static string HandsWay(HandsDef table, string id)
+        {
+            var (slot, gesture) = table.Find(id);
+            if (slot == null) return null;
+            string[] one = { "a hand's thrust (a click; a trigger on a pad)", "a hand's throw (Q or E; a bumper on a pad)", "a hand's sweep (a click and its key together; a trigger and its bumper)" };
+            string[] both = { "both hands' thrust at once (both clicks; both triggers)", "both hands' throw at once (Q and E; both bumpers)", "both hands' sweep at once" };
+            var held = slot.Split('+');
+            if (held.Length == 1)
+                return slot == HandsDef.Empty ? $"with an empty hand: {one[gesture]}" : $"with the hands: attune {slot} in the spell list (Tab, or the d-pad's down), then {one[gesture]}";
+            string attune = held[0] == held[1] ? $"attune {held[0]} (one element is on both hands)" : $"attune {held[0]} on one hand and {held[1]} on the other";
+            return $"with the hands: {attune} in the spell list (Tab, or the d-pad's down), then {both[gesture]}, which merges them";
         }
 
         // ---------- sim ----------

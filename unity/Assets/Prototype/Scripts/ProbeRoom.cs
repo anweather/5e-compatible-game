@@ -302,6 +302,9 @@ public class RoomProbeClient : MonoBehaviour
             case "attune":
                 yield return HandLooksProbe.Attune(grid, net, ask.mod);
                 break;
+            case "handcasts":
+                yield return HandLooksProbe.HandCasts(net);
+                break;
             case "rejoin":
                 record.Dispose();
                 record = null;

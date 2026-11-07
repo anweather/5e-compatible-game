@@ -33,18 +33,23 @@ public static class HudDraw
     static void End() => GL.PopMatrix();
 
     /// <summary>A ring from the top clockwise, <paramref name="share"/> of the way round (1 for all of it).</summary>
-    public static void Ring(Vector2 centre, float inner, float outer, float share, Color color)
+    public static void Ring(Vector2 centre, float inner, float outer, float share, Color color) => Arc(centre, inner, outer, 0f, share, color);
+
+    /// <summary>A piece of a ring, from <paramref name="from"/> to <paramref name="to"/> of the way round, clockwise from the top (0 to 1).</summary>
+    public static void Arc(Vector2 centre, float inner, float outer, float from, float to, Color color)
     {
-        if (share <= 0f || !Begin()) return;
+        from = Mathf.Clamp01(from);
+        to = Mathf.Clamp01(to);
+        if (to <= from || !Begin()) return;
         float s = HudScale.Factor;
         var c = centre * s;
         var (rIn, rOut) = (inner * s, outer * s);
         var clear = new Color(color.r, color.g, color.b, 0f);
-        int n = Mathf.Max(1, Mathf.CeilToInt(Segments * Mathf.Clamp01(share)));
+        int n = Mathf.Max(1, Mathf.CeilToInt(Segments * (to - from)));
         GL.Begin(GL.QUADS);
         for (int i = 0; i < n; i++)
         {
-            float a = Mathf.Clamp01(share) * i / n * Mathf.PI * 2f, b = Mathf.Clamp01(share) * (i + 1) / n * Mathf.PI * 2f;
+            float a = (from + (to - from) * i / n) * Mathf.PI * 2f, b = (from + (to - from) * (i + 1) / n) * Mathf.PI * 2f;
             if (rIn > 0f)
             {
                 Band(c, a, b, rIn - Feather, rIn, clear, color);
