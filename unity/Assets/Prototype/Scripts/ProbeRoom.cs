@@ -305,6 +305,16 @@ public class RoomProbeClient : MonoBehaviour
             case "handcasts":
                 yield return HandLooksProbe.HandCasts(net);
                 break;
+            case "stand":
+                var stand = ask.mod.Split(',').Select(int.Parse).ToArray();
+                AirPeersProbe.StandAt(grid, stand[0], stand[1]);
+                break;
+            case "airspawn":
+                yield return AirPeersProbe.SpawnAfter(grid, net, int.Parse(ask.mod, CultureInfo.InvariantCulture));
+                break;
+            case "aircast":
+                AirPeersProbe.CastFrom(ask.mod);
+                break;
             case "rejoin":
                 record.Dispose();
                 record = null;
