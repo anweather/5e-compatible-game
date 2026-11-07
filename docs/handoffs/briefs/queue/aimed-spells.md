@@ -1,4 +1,5 @@
 Needs: unity
+After: `mcp-controls-text` has landed (it touches SpellCaster.cs). Don't claim this before.
 Area: unity/Assets/Prototype/Scripts/AimMarker.cs, unity/Assets/Prototype/Scripts/SpellCaster.cs, unity/Assets/Prototype/Scripts/SpellForces.cs
 Branch: aimed-spells
 

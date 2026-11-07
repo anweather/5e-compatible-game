@@ -1,4 +1,5 @@
 Needs: core
+After: `hold-offer-suits` has landed (it changes rules/hold.json, Hold.cs and HoldProgress.cs). Don't claim this before.
 Area: unity/Assets/Prototype/Chemistry/World.Hands.cs, unity/Assets/Prototype/Chemistry/World.Combos.cs, unity/Assets/Prototype/Chemistry/Hands.cs, unity/Assets/Prototype/Chemistry/Combos.cs, rules/hold.json `hands`, rules/combos.json
 Branch: unified-casting-core
 
