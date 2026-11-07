@@ -174,6 +174,24 @@ touch them.
   `spells.json`): a fire tornado, a waterspout, a sandstorm, a smoke column
   or a snow flurry. One at a time per whirlwind.
 
+**Eye**
+: The middle of a whirling spell and the ring round it (`eye` in
+  `spells.json`, in cells: Whirlwind's is 1). What it carries sheds there,
+  and a creature there is lifted.
+
+**Lift**
+: A whirling spell holding a creature up in its eye (`lift` in
+  `spells.json`): `ticks` held, then flung `fling` cells the way it was cast
+  and hurt `hurt` times `fallDamage`. The creature's status is `lifted`.
+
+**Shove**
+: A charged cast's knock-back of a creature (`force.push` cells for each
+  charge level and one more; `World.CastShove`). The second goes half as
+  far; after `sim.json` `shove.most` the creature **braces** and doesn't
+  move. Each staggers it `shove.staggerTicks`. Thrown along the ground, it
+  goes over a drop of `fall.cliffSteps` height steps and takes
+  `fallDamage` for every `fall.stepsPerHurt` it fell.
+
 **Flash**
 : A gas going up all at once when fire meets it (`burn.flash`: dust). The
   whole joined cloud is used up: the dust explosion.

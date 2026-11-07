@@ -269,15 +269,14 @@ namespace Chem
         /// <summary>The status counting the casts that have knocked a raider back (CastShove); it never counts down.</summary>
         public const string ShovedStatus = "shoved";
         // A cast's shove: force.push cells for each charge level and one more (a tapped Gust 4, held to the most 8); a raider
-        // that's been shoved goes half as far the second time and braces from the third (diminishing returns, D16). It
-        // staggers a second before it walks on. A drop of CliffSteps or more in one cell takes it over the edge: it falls,
-        // hurt FallDamage for every FallStepsPerHurt steps it drops, and the shove ends there.
-        const int CliffSteps = 4, FallStepsPerHurt = 2, MostShoves = 2;
+        // that's been shoved goes half as far the second time and braces once it's had sim shove.most (diminishing returns,
+        // D16). It staggers shove.staggerTicks before it walks on. A drop of fall.cliffSteps or more in one cell takes it over
+        // the edge: it falls, hurt FallDamage for every fall.stepsPerHurt steps it drops, and the shove ends there.
 
         void CastShove(SpellDef s, Raider r, EntityDef def, int dir, int charge, string by)
         {
             int shoved = r.StatusOf(ShovedStatus);
-            if (shoved >= MostShoves)
+            if (shoved >= Rules.Sim.MostShoves)
             {
                 LogOnce($"braced#{r.Id}", $"The {def.Name.ToLowerInvariant()} braces against the {by}", LogKind.Notable);
                 return;
@@ -286,12 +285,12 @@ namespace Chem
             int cells = s.ForcePush * (ClampCharge(charge) + 1);
             if (shoved > 0) cells = (cells + 1) / 2;
             Hurl(r, def, dir, cells, by);
-            if (r.Alive) r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.TicksPerSecond);
+            if (r.Alive) r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.ShoveStaggerTicks);
             LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
         }
 
         // Moves a raider up to `cells` along dir, stopping short of a wall, an inactive chunk or another raider; over a drop of
-        // CliffSteps or more in one cell it goes over the edge, falls (FallDamage for every FallStepsPerHurt steps down from
+        // fall.cliffSteps or more in one cell it goes over the edge, falls (FallDamage for every fall.stepsPerHurt steps down from
         // where it started) and stops there.
         void Hurl(Raider r, EntityDef def, int dir, int cells, string by)
         {
@@ -300,13 +299,13 @@ namespace Chem
             {
                 int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                 if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
-                bool over = GroundUnits(r.X, r.Y) - GroundUnits(nx, ny) >= CliffSteps * step;
+                bool over = GroundUnits(r.X, r.Y) - GroundUnits(nx, ny) >= Rules.Sim.CliffSteps * step;
                 r.X = nx;
                 r.Y = ny;
                 if (!over) continue;
                 int dropped = (from - GroundUnits(nx, ny)) / step;
                 AddLog($"The {by} throws {def.Name} over the edge", LogKind.Notable);
-                DamageRaider(r, Rules.Sim.FallDamage * Math.Max(1, dropped / FallStepsPerHurt), "the fall", null);
+                DamageRaider(r, Rules.Sim.FallDamage * Math.Max(1, dropped / Rules.Sim.FallStepsPerHurt), "the fall", null);
                 return;
             }
         }

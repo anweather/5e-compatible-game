@@ -7,6 +7,8 @@
   "status": { "burnDamageEvery": 3, "scaldEvery": 6, "shatter": { "when": "frozen", "notBy": "cold" } },
   "push": { "slideCells": 3, "collisionDamage": 2 },
   "fallDamage": 4,
+  "fall": { "cliffSteps": 4, "stepsPerHurt": 2 },
+  "shove": { "most": 2, "staggerTicks": 6 },
   "zapDamage": 3,
   "conductLimit": 80,
   "defense": {

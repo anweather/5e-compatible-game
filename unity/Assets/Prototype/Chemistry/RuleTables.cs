@@ -297,6 +297,13 @@ namespace Chem
         public string Core;
         /// <summary>A whirling spell moves a cell every this many ticks (World.Travel), 0 never; it drops what it carries at DropPower.</summary>
         public int TravelEvery, DropPower = 1;
+        /// <summary>How far from a whirling spell's eye it takes things on, sheds what it carries and lifts creatures, in cells (spells.json eye).</summary>
+        public int Eye = 1;
+        /// <summary>
+        /// A whirling spell's lift (spells.json lift): a creature in its eye is held up for LiftTicks, then flung LiftFling cells
+        /// the way it was cast and hurt FallDamage times LiftHurt (World.LiftInTheEye).
+        /// </summary>
+        public int LiftTicks = 12, LiftFling = 6, LiftHurt = 2;
         /// <summary>A spell that acts on what's already there (Geyser on water): it lands only on the cells matching this, and with none fizzles (Fizzle logged); null lands everywhere.</summary>
         public CellCond Needs;
         /// <summary>The line logged when a spell with Needs finds no cell to act on, or null for "{Name} fizzles".</summary>
@@ -544,6 +551,16 @@ namespace Chem
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
+        /// <summary>
+        /// A creature thrown along the ground (World.Hurl) goes over the edge at a drop of CliffSteps height steps or more in one
+        /// cell, hurt FallDamage for every FallStepsPerHurt steps it fell (sim.json fall).
+        /// </summary>
+        public int CliffSteps = 4, FallStepsPerHurt = 2;
+        /// <summary>
+        /// A cast's shove (World.CastShove): a creature shoved this many times braces against the next, and staggers
+        /// ShoveStaggerTicks after each (sim.json shove most, staggerTicks).
+        /// </summary>
+        public int MostShoves = 2, ShoveStaggerTicks = 6;
         /// <summary>A burning entity takes 1 damage on every tick divisible by this (sim.json status).</summary>
         public int BurnDamageEvery = 3;
         /// <summary>A creature in thick steam is scalded on every tick divisible by this (sim.json status).</summary>
@@ -1054,6 +1071,10 @@ namespace Chem
             Core = Str(o["core"]),
             TravelEvery = Int(o["travelEvery"]) ?? 0,
             DropPower = Int(o["dropPower"]) ?? 1,
+            Eye = Int(o["eye"]) ?? 1,
+            LiftTicks = Int(o["lift"]?["ticks"]) ?? 12,
+            LiftFling = Int(o["lift"]?["fling"]) ?? 6,
+            LiftHurt = Int(o["lift"]?["hurt"]) ?? 2,
             Needs = o["needs"] is JObject nd ? ParseCond(nd) : null,
             Fizzle = Str(o["fizzle"]),
             Leaves = Str(o["leaves"]),
@@ -1279,6 +1300,10 @@ namespace Chem
             s.ConductLimit = Int(o["conductLimit"]) ?? s.ConductLimit;
             s.FallDamage = Int(o["fallDamage"]) ?? s.FallDamage;
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
+            s.CliffSteps = Int(o["fall"]?["cliffSteps"]) ?? s.CliffSteps;
+            s.FallStepsPerHurt = Int(o["fall"]?["stepsPerHurt"]) ?? s.FallStepsPerHurt;
+            s.MostShoves = Int(o["shove"]?["most"]) ?? s.MostShoves;
+            s.ShoveStaggerTicks = Int(o["shove"]?["staggerTicks"]) ?? s.ShoveStaggerTicks;
             if (o["status"] is JObject st) ParseStatus(s, st);
             s.Defense = ParseDefense(o["defense"]);
             s.Golf = GolfParams.Parse(o["golf"]);
