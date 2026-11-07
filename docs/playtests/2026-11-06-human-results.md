@@ -133,3 +133,9 @@ The castle:
   the waves closer together, spawning them at fixed intervals instead of when
   the last wave dies (the same as part one's timed waves). He didn't answer
   whether 1.8 hours to unlock everything is too short.
+
+## Also said that night (on issue #163, found 2026-11-07)
+
+- **Punch sound:** "The sound for punch is not right at all. Or the sound for breaking a window." Filed on #18 (J4).
+- **Burnt house:** "after house burns down, the windows stay and the collision boxes stay where they were." Filed on
+  #54 (J6).
