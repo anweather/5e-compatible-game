@@ -208,6 +208,12 @@ namespace Chem
         /// <summary>A stamp's slope this steep, in land units across a cell, is bare rock: about 30 degrees.</summary>
         public const int LandSteep = 7;
 
+        /// <summary>A steep face this tall, in land units (5 m), is a crag: bare rock with boulders. A shorter one is a bank of earth, so a small stamp reads as a bump (#148).</summary>
+        public const int LandCrag = 40;
+
+        /// <summary>How far round a cell, in cells, its face is measured (LandFace).</summary>
+        public const int LandFaceReach = 3;
+
         /// <summary>The valley's drawable range: how low and high land can be stamped, in land units, inside what a chunk's terrain can draw with room for a cell's own height.</summary>
         public const int LandLowest = -136, LandHighest = 2176;
 
@@ -253,6 +259,17 @@ namespace Chem
             if (landMoved == null || !InBounds(x, y)) return 0;
             int here = Stamped(Idx(x, y));
             return Math.Max(Math.Max(Beside(x + 1, y, here), Beside(x - 1, y, here)), Math.Max(Beside(x, y + 1, here), Beside(x, y - 1, here)));
+        }
+
+        /// <summary>How tall the face a cell is on: the most the stamps put between it and any cell within LandFaceReach, in land units; 0 until land is stamped.</summary>
+        public int LandFace(int x, int y)
+        {
+            if (landMoved == null || !InBounds(x, y)) return 0;
+            int here = Stamped(Idx(x, y)), most = 0;
+            for (int v = y - LandFaceReach; v <= y + LandFaceReach; v++)
+                for (int u = x - LandFaceReach; u <= x + LandFaceReach; u++)
+                    most = Math.Max(most, Beside(u, v, here));
+            return most;
         }
 
         int Beside(int x, int y, int here) => InBounds(x, y) ? Math.Abs(Stamped(Idx(x, y)) - here) : 0;

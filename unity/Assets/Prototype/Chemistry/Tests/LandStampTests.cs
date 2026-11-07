@@ -202,19 +202,36 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void WhatAStampMakesSteepPaintsAsBareRock()
+        public void WhatAStampMakesSteepAndTallPaintsAsBareRock()
         {
             var w = Flat();
             Assert.That(CellPaint.Mix(w, 64, 64), Is.SameAs(CellPaint.Mix(w, w.At(64, 64))), "nothing until land is stamped");
             w.ApplyRoom(Formed(LandStamp.Cliff, 240));
             int rock = 0;
             for (int y = 40; y < 90; y++)
-                if (w.LandDrop(64, y) >= World.LandSteep)
+                if (w.LandDrop(64, y) >= World.LandSteep && w.LandFace(64, y) >= World.LandCrag)
                 {
                     rock++;
                     Assert.That(CellPaint.Mix(w, 64, y)[CellPaint.Layers.ToList().IndexOf(CellPaint.Rock)], Is.GreaterThan(0.9f));
                 }
-            Assert.That(rock, Is.GreaterThan(0), "the face is steep");
+            Assert.That(rock, Is.GreaterThan(0), "the face is steep and tall");
+        }
+
+        [Test]
+        public void ASmallStampIsABumpOfEarthNotRock()
+        {
+            var w = Flat();
+            w.ApplyRoom(Stamp(64, 64, 3, 32));
+            int rock = CellPaint.Layers.ToList().IndexOf(CellPaint.Rock), earth = CellPaint.Layers.ToList().IndexOf(CellPaint.Earth), steep = 0;
+            for (int y = 60; y <= 68; y++)
+                for (int x = 60; x <= 68; x++)
+                {
+                    Assert.That(CellPaint.Mix(w, x, y)[rock], Is.LessThan(0.1f), $"no rock at [{x}, {y}]: a 4 m face is a bank");
+                    if (w.LandDrop(x, y) < World.LandSteep) continue;
+                    steep++;
+                    Assert.That(CellPaint.Mix(w, x, y)[earth], Is.GreaterThan(0.5f), $"its steep sides are earth at [{x}, {y}]");
+                }
+            Assert.That(steep, Is.GreaterThan(0), "a 4 m bump three cells wide is steep");
         }
 
         static int[] Moved(World w) => Enumerable.Range(0, Size * Size).Select(i => w.LandMovedAt(i % Size, i / Size)).ToArray();
