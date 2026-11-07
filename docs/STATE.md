@@ -32,8 +32,11 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   crates (the probe stalled under the recorder). Issues stay open until a release ships them.
 - **`mac-checks` landed** (a1640984): the owed checks pass. stamplooks 16/16; crate clip
   `stamp-looks-crates.mp4` (a 4 m dome; ClipFilm, so the Recorder stall is not root-caused); new probes `stampclip`
-  and `airpeers` (two peers, 0 of 9 checksums differ with Lightning, Gust, Whirlwind). `air-tuning-rules` (u2,
-  8febae88) is being compiled on the PC, then lands.
+  and `airpeers` (two peers, 0 of 9 checksums differ with Lightning, Gust, Whirlwind). `air-tuning-rules` (u2)
+  landed too (cacf1b54): Gust and Whirlwind numbers are in `rules/` (`eye`, `lift`, `fall`, `shove`), no golden moved.
+  `wip/u2-air-tuning-rules` (23f01af3) is not in dev (its WIP commit was redone); deleting it is Andrew's.
+- **The Mac has `hold-lockstep-fast`** (6f9ab0ed, Andrew's pick): make the slow Hold lockstep test fit the 180 s
+  EditMode timeout without weakening it. Briefs the lead lands must `git rm` their own claim on the branch.
 - **Lost 1.5 h on u2 (2026-11-07):** the watcher stopped it for low memory at 13:10; `start.cmd u2 <brief>` at
   13:21 said "the mailbox runner is running", but no runner was alive and the brief sat in the inbox until
   `linux.sh runner u2 <ip>` at 14:50. Unproven guess: `runner.mjs`'s lock holds the old pid, a new process reuses it
@@ -103,7 +106,7 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
 
 ## In flight
 
-- **Workers (2026-11-07, afternoon):** the PC is free (stamp-looks landed); u2 has `air-tuning-rules` queued (Gust and Whirlwind numbers into `rules/`, goldens unchanged; it pushes, the PC compiles and lands). The Mac is offline until about 3 pm (Andrew), then it can take Unity briefs beside the PC.
+- **Workers (2026-11-07, afternoon):** the PC is free (stamp-looks landed); u2 is idle (queue empty). The Mac is offline until about 3 pm (Andrew), then it can take Unity briefs beside the PC.
 - **0.1.11 published** 2026-11-03 at b79f537 (Windows only): `main` merged back into dev. The update hop 0.1.106 → 0.1.107 passed; the Esc menu's "Update and restart" wasn't tried.
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (#89 fixed: the watcher reads dated resets). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
