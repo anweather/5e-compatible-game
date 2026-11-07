@@ -16,6 +16,8 @@ namespace Chem
         /// <summary>What it touches: a hand holding this, and this gesture; null and NoGesture for anything.</summary>
         public string Holds;
         public int Gesture = HandsDef.NoGesture;
+        /// <summary>Whether it needs both hands ("hands": "both"), so a one-handed wizard can't use it.</summary>
+        public bool BothHands;
         public int Cooldown, BothCooldown, Damage, Range, Health;
 
         /// <summary>What it does, in words for the player: "fire spells do 30% more damage".</summary>

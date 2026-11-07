@@ -25,7 +25,8 @@ gate() {
   fi
 }
 
-alongside "duplicates" npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
+# jscpd runs out of Node's default heap on a 5 GB VM.
+alongside "duplicates" env NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=3072" npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
 alongside "chat-report" node --test tools/chat-report.test.mjs
 alongside "chat-strict" node --test tools/chat-strict.test.mjs
 alongside "workers" node --test tools/workers/gates.test.mjs tools/workers/queue.test.mjs tools/workers/land.test.mjs tools/workers/bridge-watch.test.mjs

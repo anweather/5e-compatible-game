@@ -24,30 +24,37 @@ namespace Chem.Tests
             Stand(w, Me, Far(w));
             w.ApplyCombo(ComboCommand.Moment(Me, "first-wave"));
             w.Hold.Moment = null;
+            return Beaten(w);
+        }
+
+        // The wave on now, beaten: the offers are out.
+        static World Beaten(World w)
+        {
+            int next = w.Hold.Wave + 1;
             Until(w, () => w.Hold.ToSpawn == 0, "they come");
             Until(w, () =>
             {
                 foreach (var r in w.Raiders) r.Hp = 1;
                 foreach (var r in w.Raiders) r.Status["burning"] = 30;
-                return w.Hold.Wave == 2;
+                return w.Hold.Wave == next;
             }, "the wave is beaten");
             return w;
         }
 
         static void ToTheWave(World w) => Until(w, () => w.Hold.InWave > 0, "the wave starts");
 
-        static (World w, string left, string right) Attuned(int? points)
+        static (World w, string left, string right) Attuned(int? points, int seed = 7)
         {
-            var w = Field();
+            var w = Field(seed);
             var room = ((w.HoldSite.AttuningFrom.x + w.HoldSite.AttuningTo.x) / 2, (w.HoldSite.AttuningFrom.y + w.HoldSite.AttuningTo.y) / 2);
             Stand(w, Me, room);
             if (points != null) Assert.That(w.ApplyCombo(ComboCommand.Bring(Me, points.Value)));
             return (w, w.HandsOf(Me).Holds[Left], w.HandsOf(Me).Holds[Right]);
         }
 
-        static World RunningWith(int points)
+        static World RunningWith(int points, int seed = 7)
         {
-            var w = Attuned(points).w;
+            var w = Attuned(points, seed).w;
             Stand(w, Me, w.HoldSite.Plate);
             Ticks(w, P.PlateTicks + 1);
             Away(w);
@@ -147,6 +154,48 @@ namespace Chem.Tests
                 var holds = w.HandsOf(Me).Holds;
                 Assert.That(w.RunOf(Me).Offer.Select(P.Upgrade).All(u => u.Holds == null || holds.Contains(u.Holds)), $"seed {seed}");
             }
+        }
+
+        [Test]
+        public void AOneHandedWizardIsNeverOfferedATwoHandedUpgrade()
+        {
+            for (int seed = 1; seed <= 6; seed++)
+            {
+                var w = Beaten(RunningWith(0, seed));
+                var offer = w.RunOf(Me).Offer.Select(P.Upgrade).ToList();
+                Assert.That(offer, Is.Not.Empty, $"seed {seed}");
+                Assert.That(offer.All(u => w.Suits(u, Me)), $"seed {seed}: {string.Join(",", offer.Select(u => u.Id))}");
+                Assert.That(offer.Any(u => u.BothHands), Is.False, $"seed {seed}");
+            }
+        }
+
+        [Test]
+        public void ATwoHandedUpgradeSuitsOnlyAWizardWithBothHands()
+        {
+            var calm = P.Upgrade("calm-hands");
+            Assert.That(calm.BothHands);
+            Assert.That(P.Upgrades.Count(u => u.BothHands), Is.EqualTo(1), "the one row that needs both hands");
+            Assert.That(RunningWith(0).Suits(calm, Me), Is.False, "one hand");
+            Assert.That(RunningWith(CostTo("second-hand")).Suits(calm, Me), "the second hand");
+            Assert.That(Offered().Suits(calm, Me), "everything open");
+        }
+
+        [Test]
+        public void ATwoHandedWizardIsStillOfferedATwoHandedUpgrade()
+        {
+            int offered = 0;
+            for (int seed = 1; seed <= 12 && offered == 0; seed++)
+                if (Offered(seed).RunOf(Me).Offer.Contains("calm-hands")) offered++;
+            Assert.That(offered, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void AOneHandedWizardsOfferIsTheSameOnEveryPeer()
+        {
+            var one = Beaten(RunningWith(0, 11));
+            var other = Beaten(RunningWith(0, 11));
+            Assert.That(other.RunOf(Me).Offer, Is.EqualTo(one.RunOf(Me).Offer));
+            Assert.That(other.CastHash(), Is.EqualTo(one.CastHash()));
         }
 
         [Test]
