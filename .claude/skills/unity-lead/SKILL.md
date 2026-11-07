@@ -76,5 +76,4 @@ it in your closing message too, since he often answers from his phone. Log the a
 
 ## Before a clear
 
-Update `docs/STATE.md` in place (one page): what's waiting to merge, who's on what, what's next,
-open questions. Commit on `coordination` and push to dev. No separate handoff file is needed.
+Use the `lead-handoff` skill. It updates `docs/STATE.md`, pushes it, and tells Andrew how to restart.

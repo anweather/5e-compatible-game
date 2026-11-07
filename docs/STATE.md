@@ -1,14 +1,29 @@
-# State (2026-11-06)
+# State (2026-11-07)
 
-The one page a new PM session reads first. Keep it short: history goes in
+The one page the lead reads first (`unity-lead` skill). Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
+
+## Now (2026-11-07, the lead's handoff)
+
+- **No separate PM since 2026-11-07 (Andrew).** DesktopUnity is the lead (`unity-lead`), with Unity jobs going to
+  `unity-task` subagents one at a time and long reads to `reader`. Before a clear: `lead-handoff`. `pm-session` is paused.
+- **Landed today:** `bridge-outbox-repeats` (74105c32), `mcp-controls-text` (e77f8e3e), `stamp-steepness` (#156 core half,
+  1cd07b70), `hold-offer-suits` (#165, efc7b6fe). `hold-ui` was already in (1858577c).
+- **Watcher:** only one may run. On 2026-11-07 two old ones (from Nov 4 and Nov 6) were still alive and re-mailed u2's
+  reports about 7,000 times; they're killed and pid 818996 remains. The single-start guard in `bridge-watch.cmd` doesn't
+  work yet (not filed).
+- **D16 unified casting (accepted, `docs/design/unified-casting.md`):**
+  - `unified-casting-core` (u2, 9e5cf105, pushed): needs a Unity compile. **Held off dev until the view half lands with it**
+    (JUDGMENT_CALLS, Andrew), because alone it leaves free roam stuck on the start hands. A compile request for it waits in the
+    `pc` mailbox; a `unity-task` can do it instead.
+  - `unified-casting-view`: claimed by the PC at 07:53. It builds on `origin/unified-casting-core` and lands both as one.
+  - `aimed-spells`: free to claim (mcp-controls-text is in).
 
 ## Who runs where
 
 | Where | Account | What it's for |
 |---|---|---|
-| **PM** (this role; the `coordination` worktree, pushes to dev) | Max | Short sessions only (D15): planning with Andrew, decisions, releases, a refused landing. Writes no game code |
-| **DesktopUnity** (the PC, interactive) | Max | The only Windows GPU: host passes (looks, feel, sound), player builds, release candidates. Long passes run as fresh sub-agents per part |
+| **DesktopUnity, the lead** (the PC, interactive; commits docs and lands from the `coordination` worktree) | Max | Coordination (`unity-lead`), plus the only Windows GPU: host passes, player builds, release candidates, all through `unity-task` subagents |
 | **unity-game-macbook** (Remote Control) | Max | Compute with Unity and a GPU (EditMode, probes, profiling); the headless Windows build as a fallback. Its route doesn't confirm reading; check its branch if quiet |
 | **Windows VMs** w1 (Pro), w3 (Max); w2 and w4 are rescued and off, for Andrew to remove | | Rules plus Unity batch compile. Idle since Oct 30; w1 didn't fit beside the PC's Editor on 2026-11-02 |
 | **Linux VMs** u1 (Pro), u2 (Max) | | Core and sandbox only, about 10x cheaper for rules work. 1 GB start |
@@ -60,7 +75,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Workers (2026-11-06):** the PC's `pc-worker` session (Max) is idle in `host-ux`; u2 (Max) runs the queue; the Mac is idle. u2 was stopped at 13:50 for low memory (Andrew's other-project Editor, 14 GB); `.pm/u2-wait.ps1` restarts it with `briefs/u2-resume-outbox.md` once 6.5 GB is free.
+- **Workers (2026-11-07):** see "Now" above. u2 runs the queue (it took and pushed unified-casting-core); the Mac is idle.
 - **0.1.11 published** 2026-11-03 at b79f537 (Windows only): `main` merged back into dev. The update hop 0.1.106 → 0.1.107 passed; the Esc menu's "Update and restart" wasn't tried.
 - **Single thread on the PC (Andrew, 2026-11-03):** frugal, one Unity job at a time, no clips to or from sessions. **DesktopUnityPro** (Andrew's session) drives the Editor in `host-ux`; the `DesktopUnity` session the PM started on `~/.claude-account3` stays idle, so two never share the Editor. Max's weekly limit resets Nov 5, 4pm Phoenix (#89 fixed: the watcher reads dated resets). The PM's account can't see the board.
 - **Landed:** `glow` (P4), `dependents-all` (#88), `liquids` (P1 core, 1df0614c), `liquids-view` (88b1a277; every liquid shares water's calmness, opacity and ripple speed, and differs only in colour). Also `channels-3` (787b0bde; #83 reduced, not gone) and `liquids-2` (hot, freezes, sets; base rules' fingerprint changed; no view of magma or syrup yet).
