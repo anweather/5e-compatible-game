@@ -29,6 +29,13 @@ message, so the work stays here and only the result goes back.
 - Screenshots: keep them few and small (the `screenshot-budget` skill). Don't paste images into your report;
   give their paths.
 
+## Say where you are
+
+The lead can't see your transcript, so log one line at each phase: start, switched, compiled, tests,
+probe, clip, pushed, blocked, done. Run
+`bash tools/workers/note.sh pc-task <phase> "<branch> <commit or N/N, a few words>"`. Keep it to one
+call per phase, never a loop. The lead's `status` shows your latest line.
+
 ## Your report (the last message, five lines at most)
 
 1. The branch and commit, or "nothing committed".
