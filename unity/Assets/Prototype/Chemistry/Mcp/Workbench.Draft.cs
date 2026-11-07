@@ -198,7 +198,7 @@ namespace Chem.Mcp
             {
                 bool listed = !(spell?["radial"]?.Type == JTokenType.Boolean && !(bool)spell["radial"]);
                 return listed
-                    ? $"Once this draft fits together (validate says what's left), a player reaches {name} on the spell radial: hold Tab (LB on a pad), the {Str(Raw["groups"][Str(spell?["group"]) ?? ""]?["name"]) ?? "last"} wedge, then {name}."
+                    ? $"Once this draft fits together (validate says what's left), a player reaches {name} in the spell list: Tab, the {Str(Raw["groups"][Str(spell?["group"]) ?? ""]?["name"]) ?? "last"} tab, then {name} (on a pad, only in the F2 layout's radial: hold LB, the same wedge)."
                     : $"{name} has radial false, so no player can reach it from the radial; set_spell {id} radial true puts it there.";
             }
             var ways = new List<string>();
@@ -207,7 +207,7 @@ namespace Chem.Mcp
             if (wedge >= 0)
             {
                 string note = Str(spell?["group"]) != radial.Groups[wedge].Id ? $" (it names no group the radial has, so it goes in the last wedge)" : "";
-                ways.Add($"on the spell radial: hold Tab (LB on a pad), the {radial.Groups[wedge].Name} wedge{note}, then {name}");
+                ways.Add($"in the spell list: Tab, the {radial.Groups[wedge].Name} tab{note}, then {name} (on a pad, only in the F2 layout's radial: hold LB, the {radial.Groups[wedge].Name} wedge)");
             }
             foreach (var c in rules.Combos.All.Where(c => c.Spell == id || c.Held == id))
                 ways.Add($"by the combo {c.Name} ({c.Id.Replace("+", " then ", System.StringComparison.Ordinal)}){(c.Spell == id ? "" : ", held to full charge")}");

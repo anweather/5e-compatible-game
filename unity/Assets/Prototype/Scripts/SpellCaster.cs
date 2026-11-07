@@ -9,9 +9,9 @@ using UnityEngine;
 // targeted cell. A marker on the ground shows where (AimMarker). Shapeshift aims at
 // an animal instead; in an animal's shape, Cast only changes back.
 //
-// The spell to cast is picked with the spell radial (SpellRadialHud: hold Tab
-// or LB, element then spell), or Select(id) from anywhere else (demos, the
-// probe). Every spell in rules/spells.json can be picked; nothing to set up.
+// The spell to cast is picked in the spell list (SpellListMenu: Tab), on a
+// pad's F2 layout with the spell radial (SpellRadialHud: hold LB, element then
+// spell), or Select(id) from anywhere else (demos, the probe). Every spell in rules/spells.json can be picked; nothing to set up.
 //
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
 // world when the show lands, and its shove to whatever moves (SpellForces);

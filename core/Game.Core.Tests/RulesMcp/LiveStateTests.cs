@@ -360,7 +360,7 @@ namespace Chem.Tests
         {
             var b = NewBench();
             var d = b.AddSpell(null, Deluge("{\"look\": {\"family\": \"blast\", \"color\": [1, 0.4, 0.1]}}"));
-            StringAssert.Contains("on the spell radial: hold Tab (LB on a pad), the Fire wedge, then Oil Deluge", b.ReachOf(d, "oil-deluge"));
+            StringAssert.Contains("in the spell list: Tab, the Fire tab, then Oil Deluge", b.ReachOf(d, "oil-deluge"));
             StringAssert.Contains("A player reaches Oil Deluge", b.Apply(d.Id, "Ana", "Oil Deluge"));
             StringAssert.Contains("the Fire wedge", b.Describe("spells", "oil-deluge"));
         }

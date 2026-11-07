@@ -11,6 +11,10 @@ with every spell by element, then all spells, then the ones not on the wheel.
 Click a spell, or use the arrows and Enter; Tab or Esc closes it. Number keys
 still open the wheel on an element. Andrew: "the wheel is super super clunky".
 
+On a pad the wheel is only in the F2 layout now: in the default layout LB is
+Fire (element casting, `docs/SPELL_COMBOS.md`). Where this page says "hold
+LB" or "hold Tab", read it as the F2 layout's wheel.
+
 ## How it plays
 
 - **Hold Tab** (gamepad: hold **LB**) to open it. The game keeps running
