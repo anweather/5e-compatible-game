@@ -125,3 +125,11 @@ The castle:
   scheme with both: an element per hand, the direction modifier, and a charge.
   He doesn't know how yet. This is a design question, and it goes with part
   one's ask to bring the Hold's controls into the main game.
+
+## Part four: the boss and a run's length
+
+- **T3: PASS.** The first boss "seemed fine". No issues.
+- **T4: too long.** Target a run of about **10 minutes**. His way there: bring
+  the waves closer together, spawning them at fixed intervals instead of when
+  the last wave dies (the same as part one's timed waves). He didn't answer
+  whether 1.8 hours to unlock everything is too short.
