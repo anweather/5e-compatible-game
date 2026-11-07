@@ -241,7 +241,7 @@ namespace Chem
         /// ticks (a geyser's jet, a boulder), so it can't walk. A cast forces each raider once (<paramref name="once"/>
         /// holds those it has), so one pushed along a gust's line isn't pushed again on the cells it lands on.
         /// </summary>
-        void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null)
+        void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null, int charge = 0)
         {
             if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
             HitBall(s, x, y, dir);
@@ -249,7 +249,8 @@ namespace Chem
             if (r == null || !r.Alive || (once != null && !once.Add(r.Id))) return;
             var def = Rules.Entity(r.Kind);
             string by = s.Name.ToLowerInvariant();
-            if (s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass)
+            if (charge > 0 && s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass) CastShove(s, r, def, dir, charge, by);
+            else if (s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass)
             {
                 for (int k = 0; k < s.ForcePush; k++)
                 {
@@ -263,6 +264,51 @@ namespace Chem
             if (s.ForceThrow <= 0) return;
             r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), s.ForceThrow);
             LogOnce($"thrown#{r.Id}", $"The {by} throws {def.Name} off its feet", LogKind.Notable);
+        }
+
+        /// <summary>The status counting the casts that have knocked a raider back (CastShove); it never counts down.</summary>
+        public const string ShovedStatus = "shoved";
+        // A cast's shove: force.push cells for each charge level and one more (a tapped Gust 4, held to the most 8); a raider
+        // that's been shoved goes half as far the second time and braces from the third (diminishing returns, D16). It
+        // staggers a second before it walks on. A drop of CliffSteps or more in one cell takes it over the edge: it falls,
+        // hurt FallDamage for every FallStepsPerHurt steps it drops, and the shove ends there.
+        const int CliffSteps = 4, FallStepsPerHurt = 2, MostShoves = 2;
+
+        void CastShove(SpellDef s, Raider r, EntityDef def, int dir, int charge, string by)
+        {
+            int shoved = r.StatusOf(ShovedStatus);
+            if (shoved >= MostShoves)
+            {
+                LogOnce($"braced#{r.Id}", $"The {def.Name.ToLowerInvariant()} braces against the {by}", LogKind.Notable);
+                return;
+            }
+            r.Status[ShovedStatus] = shoved + 1;
+            int cells = s.ForcePush * (ClampCharge(charge) + 1);
+            if (shoved > 0) cells = (cells + 1) / 2;
+            Hurl(r, def, dir, cells, by);
+            if (r.Alive) r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.TicksPerSecond);
+            LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
+        }
+
+        // Moves a raider up to `cells` along dir, stopping short of a wall, an inactive chunk or another raider; over a drop of
+        // CliffSteps or more in one cell it goes over the edge, falls (FallDamage for every FallStepsPerHurt steps down from
+        // where it started) and stops there.
+        void Hurl(Raider r, EntityDef def, int dir, int cells, string by)
+        {
+            int from = GroundUnits(r.X, r.Y), step = Rules.Sim.WaterUnitsPerStep;
+            for (int k = 0; k < cells; k++)
+            {
+                int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
+                if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
+                bool over = GroundUnits(r.X, r.Y) - GroundUnits(nx, ny) >= CliffSteps * step;
+                r.X = nx;
+                r.Y = ny;
+                if (!over) continue;
+                int dropped = (from - GroundUnits(nx, ny)) / step;
+                AddLog($"The {by} throws {def.Name} over the edge", LogKind.Notable);
+                DamageRaider(r, Rules.Sim.FallDamage * Math.Max(1, dropped / FallStepsPerHurt), "the fall", null);
+                return;
+            }
         }
 
         /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
@@ -366,7 +412,7 @@ namespace Chem
             }
         }
 
-        // Every status but a fall ticks down and goes at 0 (in name order: the order only matters to the log).
+        // Every status but a fall and the shoves felt ticks down and goes at 0 (in name order: the order only matters to the log).
         void CountDown(Raider r)
         {
             statusScratch.Clear();
@@ -374,7 +420,7 @@ namespace Chem
             statusScratch.Sort(StringComparer.Ordinal);
             foreach (var k in statusScratch)
             {
-                if (k == "fallen") continue;
+                if (k == "fallen" || k == ShovedStatus) continue;
                 int left = r.Status[k] - 1;
                 if (left <= 0) r.Status.Remove(k);
                 else r.Status[k] = left;

@@ -9,7 +9,10 @@ using UnityEngine;
 // boss is only bigger here: it holds one cell like any raider. Only the show: the core decides everything.
 public partial class DefenseField
 {
-    const float FlyHeight = 11f, LiftRate = 2.6f, FlapRate = 9f, FlapReach = 0.55f, Hover = 0.35f;
+    /// <summary>How high a flyer is drawn (SpellCaster's lock-on aims there).</summary>
+    public const float FlyHeight = 11f;
+    const float WhirlLift = 2.5f;
+    const float LiftRate = 2.6f, FlapRate = 9f, FlapReach = 0.55f, Hover = 0.35f;
     const float WingSpan = 0.62f, BodyLength = 0.8f, ShadowSize = 2.2f, ShadowFade = 0.55f;
     const float BossSize = 1.9f, MostCreaturePitch = 0.45f;
     static readonly float4 Ash = new(0.2f, 0.19f, 0.2f, 1f);
@@ -56,8 +59,12 @@ public partial class DefenseField
     // How high this raider should be: eased, so one the core brings down falls out of the air.
     void Lift(Shown s, World world)
     {
-        float wanted = s.raider != null && world.Flying(s.raider) ? FlyHeight : 0f;
-        s.lift = Mathf.MoveTowards(s.lift, wanted, wanted > s.lift ? FlyHeight : FlyHeight * LiftRate * Time.deltaTime);
+        // A flyer flies; one a whirlwind holds in its eye is lifted off its feet (World.LiftInTheEye).
+        float wanted = 0f;
+        if (s.raider != null && world.Flying(s.raider)) wanted = FlyHeight;
+        else if (s.raider != null && s.raider.StatusOf(World.LiftedStatus) > 0) wanted = WhirlLift;
+        float rise = wanted >= FlyHeight ? FlyHeight : WhirlLift * 3f * Time.deltaTime;
+        s.lift = Mathf.MoveTowards(s.lift, wanted, wanted > s.lift ? rise : FlyHeight * LiftRate * Time.deltaTime);
     }
 
     void Shadow(Shown s)

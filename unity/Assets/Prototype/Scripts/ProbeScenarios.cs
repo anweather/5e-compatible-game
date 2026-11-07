@@ -267,6 +267,12 @@ public static class ProbeScenarios
             "a held trigger charging to the most and firing on its release, both held merging on screen and firing once, one hand tapping while the other charges, attuning in the room, " +
             "each hand's thrust, throw and sweep, the same gesture on both, different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, " +
             "an empty hand's acts, and the D-pad's kit."),
+        new Entry("aimed", typeof(AimedProbe), 240f,
+            "Aimed spells (D16, unified-casting.md) in a Hold run on the north wall, the hands on a virtual pad: Lightning at a flyer a little off the crosshair, " +
+            "missing with lock-on and pitch off as the game was, then locking on and hitting with them on; Gust of Wind knocking a raider below back; a Whirlwind lifting one and flinging it. " +
+            "With --shots, the before and after pictures."),
+        new Entry("aimedclip", typeof(AimedClipProbe), 240f,
+            "The aimed scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg."),
         new Entry("handsclip", typeof(HandsClipProbe), 90f,
             "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("progress", typeof(ProgressProbe), 600f,

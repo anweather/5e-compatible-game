@@ -23,7 +23,7 @@ public partial class SpellCaster
         var look = LookOf(cast.Spell);
         var landing = Landing(command);
         GameSounds.Play(GameSounds.CastOf(def), Hand);
-        if (look is { fromSky: true }) Unleash(def, look, landing, command, null, seconds);
+        if (look is { fromSky: true }) Unleash(def, look, landing, command, null, fall: seconds);
         else if (seconds > 0f) StartCoroutine(AtRelease(seconds, () => Unleash(def, look, landing, command, null)));
         else Unleash(def, look, landing, command, null);
     }

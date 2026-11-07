@@ -123,13 +123,50 @@ namespace Chem
             }
         }
 
+        // While set, a line runs its whole length, through what would stop it (OverheadFlyers).
+        bool overhead;
+
+        /// <summary>
+        /// Flyers are above what stops a line (a wall, a tree): a line's spell still reaches the flyers along its whole length,
+        /// its element and its hit, as it reaches a raider in its cells; Lightning reaches those a cell beside it too.
+        /// </summary>
+        void OverheadFlyers(SpellDef s, List<(int x, int y)> cells, CastCommand c)
+        {
+            if (s.Shape != "line" || !raiders.Exists(Flying)) return;
+            overhead = true;
+            var whole = ShapeCells(s, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
+            overhead = false;
+            var reached = new HashSet<(int x, int y)>(cells);
+            // Lightning arcs to a flyer beside its way too, as it leaps to metal and water (it auto-targets, D16).
+            int arc = s.Element == "lightning" ? 1 : 0;
+            foreach (var (lx, ly) in whole)
+                for (int dy = -arc; dy <= arc; dy++)
+                    for (int dx = -arc; dx <= arc; dx++)
+                    {
+                        int cx = lx + dx, cy = ly + dy;
+                        var r = !IsActiveAt(cx, cy) || !reached.Add((cx, cy)) ? null : RaiderAt(cx, cy);
+                        if (r == null || !r.Alive || !Flying(r)) continue;
+                        if (s.Element != "lightning") ApplyRaiderElement(r, s.Element, true);
+                        LandOnRaider(s, cx, cy);
+                    }
+        }
+
+        /// <summary>
+        /// Whether a line from the caster is cast from up on a wall (the caster's cell, behind (x, y), is blocking: a castle's
+        /// wall walk), so it goes out over the wall's top: the blocking cells it starts on don't stop it, and it doesn't touch
+        /// them. Not a trench, which cuts into what's under it.
+        /// </summary>
+        bool FromAWall(SpellDef s, int x, int y, int dir) =>
+            s.Origin == "self" && s.Effect != "terraform" && dir >= 0 && At(x - DirX(dir), y - DirY(dir)) is { } under && IsBlocking(under);
+
         /// <summary>
         /// A line from (x, y) up to its first blocking cell. A terraform line from the caster
         /// (Earthen Trench) starts under their feet, one square behind the aim, so a trench cut
-        /// from a pond's bank opens into the pond.
+        /// from a pond's bank opens into the pond. Cast from a wall, it passes over the wall first (FromAWall).
         /// </summary>
         void LineCells(SpellDef s, int x, int y, int dir, int length, List<(int x, int y)> output)
         {
+            bool overWall = FromAWall(s, x, y, dir);
             int from = s.Effect == "terraform" && s.Origin == "self" ? -1 : 0;
             for (int k = from; k < from + length; k++)
             {
@@ -137,18 +174,23 @@ namespace Chem
                 var c = At(cx, cy);
                 if (c == null && k < 0) continue;
                 if (c == null) break;
+                if (overWall && IsBlocking(c)) continue;
+                overWall = false;
                 output.Add((cx, cy));
-                if (IsBlocking(c)) break;
+                if (IsBlocking(c) && !overhead) break;
             }
         }
 
         // A slanted line's next cell: added to output if it is in the world; true while the line goes on (it isn't blocking).
-        bool VisitSlant(int cx, int cy, List<(int x, int y)> output)
+        // Still over the wall it was cast from (overWall), a blocking cell is passed over, and the line goes on.
+        bool VisitSlant(int cx, int cy, List<(int x, int y)> output, ref bool overWall)
         {
             var c = At(cx, cy);
             if (c == null) return false;
+            if (overWall && IsBlocking(c)) return true;
+            overWall = false;
             output.Add((cx, cy));
-            return !IsBlocking(c);
+            return overhead || !IsBlocking(c);
         }
 
         /// <summary>
@@ -160,7 +202,8 @@ namespace Chem
         /// </summary>
         void SlantCells(SpellDef s, int x, int y, int dir, int length, (int x, int y) aim, List<(int x, int y)> output)
         {
-            if (s.Effect == "terraform" && s.Origin == "self" && At(x - DirX(dir), y - DirY(dir)) != null && !VisitSlant(x - DirX(dir), y - DirY(dir), output)) return;
+            bool overWall = FromAWall(s, x, y, dir);
+            if (s.Effect == "terraform" && s.Origin == "self" && At(x - DirX(dir), y - DirY(dir)) != null && !VisitSlant(x - DirX(dir), y - DirY(dir), output, ref overWall)) return;
             var (aimX, aimY) = aim;
             bool alongX = System.Math.Abs(aimX) >= System.Math.Abs(aimY);
             int major = System.Math.Max(System.Math.Abs(aimX), System.Math.Abs(aimY));
@@ -169,8 +212,8 @@ namespace Chem
             for (int k = 0; (long)k * k * size < reach; k++)
             {
                 int cx = x + RoundDiv(k * aimX, major), cy = y + RoundDiv(k * aimY, major);
-                if (k > 0 && cx != px && cy != py && !VisitSlant(alongX ? cx : px, alongX ? py : cy, output)) return;
-                if (!VisitSlant(cx, cy, output)) return;
+                if (k > 0 && cx != px && cy != py && !VisitSlant(alongX ? cx : px, alongX ? py : cy, output, ref overWall)) return;
+                if (!VisitSlant(cx, cy, output, ref overWall)) return;
                 (px, py) = (cx, cy);
             }
         }
@@ -374,6 +417,17 @@ namespace Chem
             if (dir < 0) return;
             int nx = ww.X + DirX(dir), ny = ww.Y + DirY(dir);
             if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny))) return;
+            // What it holds up round its eye goes with it, the furthest along the way first.
+            int dx = nx - ww.X, dy = ny - ww.Y;
+            var held = raiders.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(r.X - ww.X), System.Math.Abs(r.Y - ww.Y)) <= WhirlEye)
+                .OrderByDescending(r => (r.X - ww.X) * dx + (r.Y - ww.Y) * dy).ThenBy(r => r.Id).ToList();
+            foreach (var r in held)
+            {
+                int hx = r.X + dx, hy = r.Y + dy;
+                if (!IsActiveAt(hx, hy) || IsBlocking(At(hx, hy)) || RaiderAt(hx, hy) != null) continue;
+                r.X = hx;
+                r.Y = hy;
+            }
             ww.X = nx;
             ww.Y = ny;
         }
@@ -468,6 +522,7 @@ namespace Chem
                 var def = Rules.Entity(r.Kind);
                 return r.Alive && Ring(r) > 0 && Ring(r) <= ww.Radius && def.Creature && def.Mass <= ww.MaxMass;
             }).OrderBy(Ring).ThenBy(r => r.Id).ToList();
+            foreach (var r in raiders.Where(r => r.Alive && Ring(r) <= WhirlEye).ToList()) LiftInTheEye(ww, r);
             foreach (var r in pulled)
             {
                 int dir = InwardDir(r.X - ww.X, r.Y - ww.Y);
@@ -476,6 +531,34 @@ namespace Chem
                 r.X = nx;
                 r.Y = ny;
             }
+        }
+
+        /// <summary>A raider a whirlwind holds up round its eye (it can't walk, and the view lifts it); thrown out when it runs out.</summary>
+        public const string LiftedStatus = "lifted";
+        // A creature in the eye or the ring round it is lifted off its feet for LiftTicks, then flung WhirlThrow cells out the way the whirlwind
+        // was cast and dropped, hurt by the fall (FallDamage times WhirlFallHurt, more off a cliff: World.Hurl).
+        const int LiftTicks = 12, WhirlThrow = 6, WhirlFallHurt = 2;
+
+        void LiftInTheEye(Whirl ww, Raider r)
+        {
+            var def = Rules.Entity(r.Kind);
+            if (!def.Creature || def.Mass > ww.MaxMass) return;
+            int left = r.StatusOf(LiftedStatus);
+            string name = def.Name.ToLowerInvariant();
+            if (left == 0)
+            {
+                r.Status[LiftedStatus] = LiftTicks;
+                r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), LiftTicks);
+                LogOnce($"lifted#{r.Id}", $"The whirlwind lifts the {name} off its feet", LogKind.Notable);
+                return;
+            }
+            if (left > ww.Every) return;
+            r.Status.Remove(LiftedStatus);
+            Hurl(r, def, ww.Dir >= 0 ? ww.Dir : 0, WhirlThrow, "whirlwind");
+            if (!r.Alive) return;
+            DamageRaider(r, Rules.Sim.FallDamage * WhirlFallHurt, "the whirlwind", "air");
+            if (r.Alive) r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.TicksPerSecond);
+            LogOnce($"flung#{r.Id}", $"The whirlwind flings the {name} away", LogKind.Notable);
         }
 
         /// <summary>
@@ -539,10 +622,11 @@ namespace Chem
             foreach (var (cx, cy) in cells)
             {
                 Apply(cx, cy, s.Element, s.Power * charge, s.Inward ? InwardDir(cx - x, cy - y) : dir, true);
-                Force(s, cx, cy, dir, forced);
+                Force(s, cx, cy, dir, forced, charge);
                 LandOnRaider(s, cx, cy);
             }
             waveFrom = null;
+            OverheadFlyers(s, cells, new CastCommand(s.Id, x, y, dir, charge, aimX, aimY));
             Scatter(s.Scatter, x, y);
             if (s.Core != null) Apply(x, y, s.Core, 1, -1, true);
             Place(s, cells, x, y);

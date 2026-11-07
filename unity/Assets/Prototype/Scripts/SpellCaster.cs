@@ -74,7 +74,7 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     /// <summary>The cell under the aim, or null when it's on nothing: here() says what the player looks at.</summary>
-    public Vector2Int? LookingAt => hasCrosshair && grid != null ? CrosshairCell : null;
+    public Vector2Int? LookingAt => hasCrosshair && !skyAim && grid != null ? CrosshairCell : null;
 
     /// <summary>How many casts have started here, for timing them (PerfStage).</summary>
     public int CastsStarted { get; private set; }
@@ -103,9 +103,10 @@ public partial class SpellCaster : MonoBehaviour
             chargeStart = -1f;
             return;
         }
+        var spell = grid.World.Rules.Spell(SelectedId);
+        LockOnto(AimingFor(spell));
         var target = CrosshairCell;
         var aim = Aim(SelectedId, target, out var error);
-        var spell = grid.World.Rules.Spell(SelectedId);
         ShowAim(target, spell, aim);
 
         if (!CastNow(spell)) return;
@@ -121,6 +122,7 @@ public partial class SpellCaster : MonoBehaviour
             Cast(SelectedId, at.x, at.y, 1, charge);
             return;
         }
+        StrikeAtLocked();
         Cast(new CastCommand(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
     }
 
@@ -153,6 +155,7 @@ public partial class SpellCaster : MonoBehaviour
     // Three pips under the crosshair fill as the held Cast charges.
     void OnGUI()
     {
+        DrawLock();
         if (chargeStart < 0f || !EventLog.HudVisible) return;
         HudScale.Apply();
         pips ??= new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
@@ -162,9 +165,11 @@ public partial class SpellCaster : MonoBehaviour
         GUI.Label(new Rect(HudScale.Width / 2f - 60f, HudScale.Height / 2f + 18f, 120f, 30f), text.ToString(), pips);
     }
 
-    // What the crosshair is on, or where AimOverride puts it.
+    // What the crosshair is on, or where AimOverride puts it; aimed above everything, the ground under its heading (RayCrosshair).
     bool FindCrosshair()
     {
+        skyAim = false;
+        hasAimRay = false;
         if (AimOverride.HasValue)
         {
             crosshair = default;
@@ -172,7 +177,7 @@ public partial class SpellCaster : MonoBehaviour
             crosshair.normal = Vector3.up;
             return true;
         }
-        return controls != null && Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
+        return RayCrosshair();
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
@@ -229,6 +234,8 @@ public partial class SpellCaster : MonoBehaviour
         var landing = Landing(cast);
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         var gesture = CastGestures.For(def, look);
+        var strike = strikeAt;
+        strikeAt = null;
         if (pose != null) pose.Play(gesture, landing, look?.glow ?? Color.white);
         // A cast by elements sounds as the hands thrust (CastSounds); this is for the rest.
         if (beats == null || !beats.InHands(spellId)) GameSounds.Play(GameSounds.CastOf(def), Hand);
@@ -240,8 +247,8 @@ public partial class SpellCaster : MonoBehaviour
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
         if (beats != null) beats.Announce(spellId, landing, release);
-        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast, onArrive)));
-        else Unleash(def, look, landing, cast, onArrive);
+        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast, onArrive, strike)));
+        else Unleash(def, look, landing, cast, onArrive, strike);
     }
 
     static IEnumerator AtRelease(float seconds, System.Action then)
@@ -291,7 +298,8 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands. A meteor falls for <paramref name="fall"/> seconds.
-    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive, float fall = MeteorFall.Seconds)
+    // Locked onto a raider, a bolt, beam or projectile strikes it where it's drawn (<paramref name="strike"/>).
+    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive, Vector3? strike = null, float fall = MeteorFall.Seconds)
     {
         int charge = cast.Charge;
         void Land()
@@ -304,7 +312,7 @@ public partial class SpellCaster : MonoBehaviour
             onArrive?.Invoke();
         }
 
-        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing, look?.glow);
+        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(strike ?? landing, look?.glow);
         if (look == null) Land();
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
@@ -313,15 +321,15 @@ public partial class SpellCaster : MonoBehaviour
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
             }, this, fall, blastScale: look.ScaleFor(def, charge));
-        else Travel(look, def, charge, landing, Land);
+        else Travel(look, def, charge, landing, Land, strike);
     }
 
     // How a show that doesn't fall from the sky gets where it lands: a storm, a beam, a projectile, or at once.
-    void Travel(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land)
+    void Travel(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land, Vector3? strike)
     {
         if (look.storm) Storm(look, def, charge, landing, land);
-        else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this, look.Tint);
-        else if (look.projectile != null) SpellProjectile.Launch(look, Hand, landing, land, this, look.ScaleFor(def, 1));
+        else if (look.beam) FrostBeam.Launch(Hand, strike ?? landing + Vector3.up * BeamLift, look.glow, land, this, look.Tint);
+        else if (look.projectile != null) SpellProjectile.Launch(look, Hand, strike ?? landing, land, this, look.ScaleFor(def, 1));
         else land();
     }
 
@@ -426,6 +434,8 @@ public partial class SpellCaster : MonoBehaviour
         if (spell.Shape == SpellShapes.Burst) return (me.x, me.y, dir ?? 1, 0, 0);
         if (dir == null) { error = $"Click away from the wizard to point {spell.Name} that way."; return null; }
         var (dx, dy) = Step(dir.Value);
+        // Locked on, a line is aimed from the cell it starts in, so it runs through the raider's cell, not a cell beside it.
+        if (LockedOn != null && spell.Shape == SpellShapes.Line) (aimX, aimY) = AimOf(spell, grid.CellCenter(me.x + dx, me.y + dy));
         return (me.x + dx, me.y + dy, dir.Value, aimX, aimY);
     }
 
@@ -454,10 +464,12 @@ public partial class SpellCaster : MonoBehaviour
 
     // From the caster to the crosshair, in sixteenths of a square on the grid (x east, y south),
     // snapped to the grid's four ways near them (World.SnapAim); (0, 0) for other shapes.
-    (int, int) AimOf(SpellDef spell)
+    (int, int) AimOf(SpellDef spell) => AimOf(spell, transform.position);
+
+    (int, int) AimOf(SpellDef spell, Vector3 from)
     {
         if (spell.Shape != SpellShapes.Line && spell.Shape != SpellShapes.Cone) return (0, 0);
-        var d = crosshair.point - transform.position;
+        var d = crosshair.point - from;
         return World.SnapAim(Mathf.RoundToInt(d.x / grid.cellSize * AimSteps), Mathf.RoundToInt(-d.z / grid.cellSize * AimSteps));
     }
 

@@ -116,12 +116,12 @@ namespace Chem.Tests
             var hound = w.SpawnRaider("bone-hound", 5, 3, 6);
             var crab = w.SpawnRaider("ash-crab", 10, 6, 9);
             w.Cast("gust-of-wind", 2, 3, 1);
-            Assert.That((hound.X, hound.Y), Is.EqualTo((7, 3)), "force.push 2, once: not again on the cells it's knocked onto");
+            Assert.That((hound.X, hound.Y), Is.EqualTo((9, 3)), "a tapped cast: force.push 2 a charge level and one more (World.CastShove), once: not again on the cells it's knocked onto");
             w.Cast("mold-earth-heap", 10, 6, 0);
             Assert.That((crab.X, crab.Y, crab.StatusOf(World.ThrownStatus)), Is.EqualTo((10, 6, 2)), "force.throw 2");
             Assert.That(w.At(10, 6).Height, Is.EqualTo(1));
             Run(w, 3);
-            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {crab.StatusOf(World.ThrownStatus)}", Is.EqualTo("65a33bbd 5 7,3 0"), "the golden");
+            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {crab.StatusOf(World.ThrownStatus)}", Is.EqualTo("65a33bbd 5 9,3 0"), "the golden");
         }
 
         sealed class Blank : IChunkSource
