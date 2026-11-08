@@ -1,0 +1,19 @@
+{
+  "about": "A flat, empty test map of 3 x 3 valley squares (1728 x 1728 cells, 27 x 27 chunks; map-size, J-080): grass at one height, for measuring what a world this big costs to hold, load and rebuild. Not a map to play: nothing stands on it.",
+  "id": "flat-1728",
+  "name": "Flat 1728 (test)",
+  "size": [
+    1728,
+    1728
+  ],
+  "seaLevel": -4,
+  "spawn": [
+    864,
+    864
+  ],
+  "expects": {
+    "landShare": 100,
+    "highest": 16,
+    "lowest": 16
+  }
+}

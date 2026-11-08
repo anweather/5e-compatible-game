@@ -38,11 +38,21 @@ namespace Chem.Tests
         void LandBecomes(Func<int, int> move)
         {
             string path = Path.Combine(map, MapFile.LandName);
-            var land = LandFile.Read(File.ReadAllText(path), MapCheck.Size, MapCheck.Size).Select(move).ToArray();
-            File.WriteAllText(path, LandFile.Write(land, MapCheck.Size, MapCheck.Size, 0.125));
+            var land = LandFile.Read(File.ReadAllText(path), Side, Side).Select(move).ToArray();
+            File.WriteAllText(path, LandFile.Write(land, Side, Side, 0.125));
         }
 
+        // The copied map's side, as its map.json says.
+        int Side => MapFile.Load(map).W;
+
         string Errors => string.Join("\n", MapCheck.Errors(map));
+
+        [Test]
+        public void ASizeOffTheChunksIsSaid()
+        {
+            Change(o => o["size"] = new JArray(600, 576));
+            Assert.That(Errors, Does.Contain("whole number of 64-cell chunks"));
+        }
 
         [Test]
         public void EveryMapPassesItsChecks()
@@ -73,9 +83,9 @@ namespace Chem.Tests
         [Test]
         public void ASpawnInTheSeaOrOffItsMarkIsSaid()
         {
-            var land = LandFile.Read(File.ReadAllText(Path.Combine(map, MapFile.LandName)), MapCheck.Size, MapCheck.Size);
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(map, MapFile.LandName)), Side, Side);
             int sea = Array.FindIndex(land, u => u < -4);
-            Change(o => o["spawn"] = new JArray(sea % MapCheck.Size, sea / MapCheck.Size));
+            Change(o => o["spawn"] = new JArray(sea % Side, sea / Side));
             Assert.That(Errors, Does.Contain("@ of cells.txt"));
             Assert.That(Errors, Does.Contain("under the sea"));
         }
@@ -146,10 +156,12 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void AnotherSizeIsRefusedByName()
+        public void AnotherSizeIsTakenAndItsFilesHeldToIt()
         {
+            // Any whole number of chunks is a size (map-size); the valley's cells and land then don't fit it, and say so.
             Change(o => o["size"] = new JArray(640, 640));
-            Assert.That(Errors, Does.Contain("only 576 x 576"));
+            Assert.That(Errors, Does.Not.Contain("chunks each way"));
+            Assert.That(Errors, Does.Contain("cells.txt isn't 640 x 640").And.Contain("land.json isn't for a 640 x 640 map"));
         }
 
         [Test]
