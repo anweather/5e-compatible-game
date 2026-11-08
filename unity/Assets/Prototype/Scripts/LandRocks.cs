@@ -12,7 +12,8 @@ using UnityEngine;
 public sealed class LandRocks
 {
     const int FaceDrop = 12, FootReach = 2, ClumpCells = 5;
-    const int PlacedPerFrame = 6, MostRocks = 700;
+    // Room for a map's own stamps' rocks (the valley's cliff and canyon take about 600) and as many again for acts.
+    const int PlacedPerFrame = 6, MostRocks = 1400;
     const float StillSeconds = 1f, StillMetres = 0.001f;
 
     enum Kind
@@ -57,6 +58,15 @@ public sealed class LandRocks
                 if (r.Kind != Kind.Laid) n++;
             return n;
         }
+    }
+
+    /// <summary>How many of the land's own rocks stand within a square this far round a cell (a map's stamps have theirs elsewhere).</summary>
+    public int Near(int x, int y, int reach)
+    {
+        int w = grid.World.W, n = 0;
+        foreach (var kv in rocks)
+            if (kv.Value.Kind != Kind.Laid && System.Math.Abs(kv.Key % w - x) <= reach && System.Math.Abs(kv.Key / w - y) <= reach) n++;
+        return n;
     }
 
     /// <summary>The rocks a map's folder lays, each [x, y, metres across]: none without a rocks.json.</summary>

@@ -100,6 +100,12 @@ public static class ValleyBuilder
         WireChemistry(grid, yardRows, valleyTrees);
         var world = ChemGrid.MapWorld(grid.LoadBaseRules(), ChemGrid.CellMap(), grid.seed, out _);
         ValleyTerrain.BakeCells(world, grid.stepHeight);
+        // The map's own stamps (stamps.json): no tree on a crag's face or a canyon's floor.
+        valleyTrees.RemoveAll(t =>
+        {
+            var c = cellAt(t.at);
+            return world.InBounds(c.x, c.y) && world.IsStampedRock(c.x, c.y);
+        });
 
         // The cells painted as they are: the old yard's, the ball court's dirt floor (CellKind), and the
         // villages' squares, lanes and walls.
@@ -109,6 +115,9 @@ public static class ValleyBuilder
         paintedCells.AddRange(DefenseFieldBuilder.PathCells());
         foreach (var plan in ValleyShape.Villages)
             foreach (var (vx, vy, _) in plan.Cells()) paintedCells.Add((vx, vy));
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+                if (world.LandStampedAt(x, y) != 0) paintedCells.Add((x, y));
         ValleyTerrain.PlantTrees(assets.trees, AllTrees(valleyTrees, grid, world));
         ValleyTerrain.Paint(assets.layers, world, paintedCells);
         ValleyTerrain.PaintDetails(assets.details, world, paintedCells);

@@ -109,10 +109,10 @@ public class StampLooksProbe : LandShapesProbe
         yield return Stamp(SmallRadius, SmallRise);
         yield return Wait(12f);
         Metric("small_rock_cells", RockCells(world, SmallRadius + 1));
-        Metric("small_rocks", valley.Rocks.Count);
+        Metric("small_rocks", valley.Rocks.Near(X, Y, SmallRadius + 4));
         Metric("small_top_m", valley.Ground.ShownGround(X, Y) - valley.GroundAt(centre + new Vector3(8f, 0f, 8f)));
-        Check("a_small_stamp_is_a_bump_not_rock", RockCells(world, SmallRadius + 1) == 0 && valley.Rocks.Count == 0,
-            $"{RockCells(world, SmallRadius + 1)} rock cells, {valley.Rocks.Count} rocks");
+        Check("a_small_stamp_is_a_bump_not_rock", RockCells(world, SmallRadius + 1) == 0 && valley.Rocks.Near(X, Y, SmallRadius + 4) == 0,
+            $"{RockCells(world, SmallRadius + 1)} rock cells, {valley.Rocks.Near(X, Y, SmallRadius + 4)} rocks");
         Shot("small-stamp");
         yield return Say("undo_act", "{}");
         yield return Wait(10f);

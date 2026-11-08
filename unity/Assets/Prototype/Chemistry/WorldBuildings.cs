@@ -81,12 +81,31 @@ namespace Chem
             var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));
             if (pad != null)
             {
-                var moved = RowPad.Of(building, (int)pad["margin"], (int)pad["bank"], (x, y) => land[world.Idx(x, y)], world.InBounds);
+                var (moved, crag) = RowPad.Of(building, (int)pad["margin"], (int)pad["bank"], (x, y) => land[world.Idx(x, y)], world.InBounds, PadAreas(row));
                 world.LayLand(moved);
-                foreach (var (x, y, by) in moved) land[world.Idx(x, y)] += by;
+                world.LayCrag(crag);
+                foreach (var (x, y, by) in moved.Concat(crag)) land[world.Idx(x, y)] += by;
             }
             foreach (var road in row.Roads.Where(r => r.Graded))
                 world.LayLand(RoadGrade.Of(road, row.X, row.Y, (x, y) => land[world.Idx(x, y)], building));
+        }
+
+        /// <summary>
+        /// A row's pad's "more": each {area: [x0, y0, x1, y1] in half cells from the row's "at", as its joins are, corners
+        /// inclusive; bank in cells (the pad's if none); face: "crag", or earth; clear: true for no trees on it}. None without.
+        /// </summary>
+        public static List<PadArea> PadAreas(BuildingRow row)
+        {
+            var areas = new List<PadArea>();
+            var pad = row.Json["pad"];
+            if (pad == null) return areas;
+            foreach (var o in (pad["more"] as JArray ?? new JArray()).OfType<JObject>())
+            {
+                if (!(o["area"] is JArray a) || a.Count != 4) continue;
+                areas.Add(new PadArea(row.X + ((int)a[0] >> 1), row.Y + ((int)a[1] >> 1), row.X + ((int)a[2] >> 1), row.Y + ((int)a[3] >> 1),
+                    (int?)o["bank"] ?? (int?)pad["bank"] ?? 0, (string)o["face"] == "crag", (bool?)o["clear"] ?? false));
+            }
+            return areas;
         }
 
         /// <summary>

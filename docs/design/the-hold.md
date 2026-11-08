@@ -25,6 +25,15 @@ South-west of Hollowmere (centred 222, 300), the land climbs from 0 m at about x
 - **The road:** cut into the hill, not laid on it. A road marked `graded` is level across and climbs evenly, with the land leaning back
   to where it was over three cells either side (`RoadGrade`). The cut comes from `buildings.json` and `land.json` at load, so every peer has
   the same one, a save carries it to a late joiner, and it lies under the stamps, so the dragon's reset keeps it. Its banks are bare earth.
+- **The castle cliff:** the castle stands on it (Andrew, 2026-11-07). The castle's pad reaches north of it at the castle's own
+  height (`pad.more` in `buildings.json`: areas in half cells from `at`, each with its own `bank`) to x 106 to 150, y 302 to 349, so
+  the ground from the gate to the lip is one height: out of the gate, north along the east wall, east to the lip. An area whose
+  `face` is `crag` drops off over its bank as rock (`World.LayCrag`: moved as a stamp's land is, so it paints rock, grows
+  `LandRocks` and loses its trees, but no reset takes it), 20 to 30 m down to the east and the north; on the west it meets the
+  hill. A `clear` area loses the map's trees. The road leaves the gate on a landing at the gate's height (`flat`: 12 half cells
+  before it starts down, `RoadGrade`), so the step out of the gate is level too. On the pad, outside the walls, stands the
+  castle's stable (`stable#1`, stone in the castle's coursed finish, a slate roof, three stalls facing the castle, and a fenced
+  paddock with its barrels and crates beside it in `things.json`). The canyon below the pad's north face is the map's stamp.
 - **Rocks on the hill:** `rocks.json`, drawn only, as `LandRocks` draws a crag's.
 - **The clearing:** wide grass roads and a few stumps in the castle's own row, along the line from Hollowmere to the castle (Andrew,
   2026-11-05). It takes 45 of the map's 3,473 tree cells, keeps the ground the bake drew, and lies under the castle's road. It's ground, so it

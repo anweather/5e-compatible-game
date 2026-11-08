@@ -48,7 +48,21 @@ namespace Chem
             CheckThings(worldDir, map, errors);
             CheckRows(worldDir, map, errors);
             CheckHold(worldDir, errors);
+            CheckStamps(worldDir, errors);
             return errors;
+        }
+
+        // A map's own land stamps read as stamps (where they land is the world's to say, World.LayMapStamps).
+        static void CheckStamps(string worldDir, List<string> errors)
+        {
+            try
+            {
+                MapStamps.Load(worldDir);
+            }
+            catch (Exception e) when (e is FormatException || e is IOException)
+            {
+                errors.Add(e.Message);
+            }
         }
 
         // A map's Hold names a row, its joins and places that are there.

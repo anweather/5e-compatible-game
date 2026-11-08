@@ -207,6 +207,7 @@ public partial class ValleyChemistry : MonoBehaviour
                 buildingCells[k].Add(world.Idx(x, y));
             }
         ClearLaidRows(world);
+        BindStampedLand(world);
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
         panesByCell.Clear();
         foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
@@ -217,12 +218,36 @@ public partial class ValleyChemistry : MonoBehaviour
     void ClearLaidRows(World world)
     {
         foreach (var row in world.RowsDrawn().Where(r => world.IsBaseBuilding(r.Id)))
+        {
             foreach (var c in world.BuildingCellsOf(row))
             {
                 BurnTrees(c.X, c.Y);
                 // A clearing keeps the ground the bake drew, grass and all: only what's laid on it is painted.
                 if (c.Terrain != TerrainIds.Grass) ground.PaintAnew(c.X, c.Y);
             }
+            // The open ground its pad reaches over (WorldBuildings.PadAreas), as far as its bank's foot.
+            foreach (var a in WorldBuildings.PadAreas(row).Where(a => a.Clear))
+                for (int y = a.Y0 - a.Bank; y <= a.Y1 + a.Bank; y++)
+                    for (int x = a.X0 - a.Bank; x <= a.X1 + a.Bank; x++)
+                        if (world.InBounds(x, y)) BurnTrees(x, y);
+        }
+    }
+
+    // Land stamped before the first tick (the map's own stamps, World.LayMapStamps, or a save's): painted as it stands, a
+    // crag's face or a deep floor whose cell isn't a tree has no tree standing on it, and the rocks dress it.
+    void BindStampedLand(World world)
+    {
+        if (!world.LandHasMoved) return;
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+            {
+                if (world.LandStampedAt(x, y) == 0) continue;
+                ground.Repaint(x, y);
+                if (world.At(x, y).T != TerrainIds.Tree && world.IsStampedRock(x, y)) BurnTrees(x, y);
+            }
+        foreach (var s in world.MapStampsLaid) rocks?.Moved(s.X, s.Y, s.Bound);
+        // A pad's crag (World.LayCrag): its face, its lip and its foot.
+        foreach (var (x, y) in world.LandCragCells()) rocks?.Moved(x, y, 2);
     }
 
     void IndexTrees()

@@ -18,7 +18,7 @@ namespace Chem
         public static List<(int x, int y, int by)> Of(BuildingRoad road, int rowX, int rowY, Func<int, int, int> land, ISet<(int x, int y)> keepOff)
         {
             var line = Line(road, rowX, rowY);
-            var surface = Surface(line.Select(p => land(p.x / 2, p.y / 2)).ToArray());
+            var surface = Surface(line.Select(p => land(p.x / 2, p.y / 2)).ToArray(), road.Flat);
             int inner = road.Width + 1, outer = inner + Bank;
             var nearest = new Dictionary<(int x, int y), (long d2, int at)>();
             for (int k = 0; k < line.Count; k++)
@@ -49,8 +49,9 @@ namespace Chem
             return line;
         }
 
-        // The height along the line: evened, never turning back on its climb, and meeting the land at both ends.
-        static int[] Surface(int[] ground)
+        // The height along the line: evened, never turning back on its climb, and meeting the land at both ends, after a
+        // landing this many half cells long at its start's height (a gate's).
+        static int[] Surface(int[] ground, int flat)
         {
             int n = ground.Length;
             var even = new int[n];
@@ -69,6 +70,16 @@ namespace Chem
                 even[k] = ground[0] + (even[k] - ground[0]) * k / Pinned;
                 int last = n - 1 - k;
                 even[last] = ground[n - 1] + (even[last] - ground[n - 1]) * k / Pinned;
+            }
+            if (flat <= 0) return even;
+            // The landing, then the road leaving it over as far again, to meet the evened height.
+            flat = Math.Min(flat, n / 2);
+            int ease = Math.Min(flat, n - 1 - flat);
+            for (int k = 0; k < flat; k++) even[k] = ground[0];
+            for (int k = 0; k < ease; k++)
+            {
+                int at = flat + k;
+                even[at] = ground[0] + (even[at] - ground[0]) * k / ease;
             }
             return even;
         }

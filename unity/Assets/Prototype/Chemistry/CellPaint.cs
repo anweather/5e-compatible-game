@@ -169,12 +169,18 @@ namespace Chem
             return c.Height < 0 && IsGrassy(mix) ? DugMix : mix;
         }
 
-        /// <summary>Weights at a cell, as the world and the land stamps shape it: what a stamp has made steep is bare rock where its face is tall (a crag) and bare earth where it's short (a bump's bank), under anything lying on it.</summary>
+        /// <summary>Weights at a cell, as the world and the land stamps shape it: what a stamp has made steep is bare rock where its face is tall (a crag) and bare earth where it's short (a bump's bank), and a floor it cut a crag deep is rock, under anything lying on it.</summary>
         public static IReadOnlyList<float> Mix(World world, int x, int y, bool scorched = false)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
             var c = world.At(x, y);
             if (scorched || c.Cover != null) return Mix(world, c, scorched);
+            // A floor a stamp cut a crag deep, a canyon's, is bare rock where it would grow grass, however rough: a trail on it keeps its earth.
+            if (world.LandStampedAt(x, y) <= -World.LandCrag)
+            {
+                var floor = Mix(world, c, scorched);
+                return IsGrassy(floor) ? WallMix : floor;
+            }
             if (world.LandDrop(x, y) >= World.LandSteep) return world.LandFace(x, y) >= World.LandCrag ? WallMix : EarthMix;
             return world.LandBank(x, y) ? EarthMix : Mix(world, c, scorched);
         }
