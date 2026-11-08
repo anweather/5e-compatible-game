@@ -62,7 +62,7 @@ namespace Chem.Tests
         public void TheTableIsAndrewsAndEverySpellIsUnique()
         {
             var spells = T.All.Where(r => r.Spell != null).Select(r => r.Spell).ToList();
-            Assert.That(spells.Count, Is.EqualTo(12 + 18), "the twelve singles and the pairs, Dust Storm and Sand Blast cut");
+            Assert.That(spells.Count, Is.EqualTo(12 + 19), "the twelve singles and the pairs, Sand Blast cut (Tornado took Dust Storm's throw)");
             Assert.That(spells.Distinct().Count(), Is.EqualTo(spells.Count), "never a re-skin");
             Assert.That(spells.All(s => R.Spell(s) != null));
             string[][] rows =
@@ -336,7 +336,8 @@ namespace Chem.Tests
         [Test]
         public void ACombinedSpellLocksBoth()
         {
-            var w = Holding("air", "fire");
+            // Water and fire: Scalding Steam has no rest of its own (Thunder Strike, on air and fire, has Meteor's).
+            var w = Holding("water", "fire");
             Trigger(w, Right);
             Trigger(w, Left);
             Out(w);
