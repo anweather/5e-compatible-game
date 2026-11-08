@@ -59,6 +59,11 @@ public class WizardOutfit : MonoBehaviour
     void Awake()
     {
         animator = GetComponent<Animator>();
+        // The solo wizard too, not only the online ones (NetWizard.KeepAnimating): unseen for a moment (the camera turned
+        // away, swimming, shapeshifted), the rig stopped writing its bones and the poses laid over it piled up, carrying
+        // the hips metres above the body (50 m after a shapeshift and a swim), and the legs and robe with them: the pants
+        // that disappeared (playtest 2026-11-08 B2; the pants probe).
+        if (animator != null) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         HideCovered();
     }
 

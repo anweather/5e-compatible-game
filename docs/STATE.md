@@ -82,7 +82,30 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   `started` line; if not, `linux.sh runner u2 <ip>` with the IP from `(Get-VMNetworkAdapter -VMName u2).IPAddresses`.
 - Landed overnight too: `probe-cleanup` (fcb67af7: the pause menu IMGUI fix; menu, shapeshift, combo, aimlooks pass;
   #166 closed). alpha 0.1.12 draft: Windows uploaded and install-tested (Andrew's PC is now on 0.1.12), notes on it,
-  NET CONFIG 10564187343791070933; the Mac's half pending. PC now on `hitch-hunt` (L3).
+  NET CONFIG 10564187343791070933. The Mac's half is on the draft too (osx Setup.pkg, Portable zip, full nupkg; no
+  osx delta, as no earlier osx release is in the feed; same NET CONFIG); the Linux zip was building at 12:40 UTC.
+- Landed: `hitch-hunt` (d9a08cdb: rebuild 1590 -> 1050 ms, blocker boxes reused, lighter mod checks) and
+  `hold-east-path` (b070d569: a south gate and an east road, waves split; the west brook is dry: true; wading 0.92 to
+  0.78 by depth). PC on `holdeast-fall` (merged dev compiled together, holdeast x5 for a 61 km fall seen once on the
+  Mac). u2 back on `punchy-sync` at 172.26.218.171. **For Andrew:** threading the heightfield Reset across chunks would
+  cut the ~1 s rebuild further, but it would be the core's first threading (D4, D9): his call. Chat applies still cost
+  70-95 ms; reusing composed rules is a lockstep risk, so it's left. Run u2 only between heavy Unity jobs: three
+  watcher stops overnight.
+- Merged dev (hitch-hunt + hold-east-path) compiled together on the PC: EditMode 1703/1703, yard rebuild clean,
+  holdeast 5/5 with no fall; the Mac's 61 km fall is not reproduced. The fell check watches only the wizard, so if it
+  comes back, log the wizard's y and phase when `FallWatch` first trips. The hitch probe's compose budget (150 ms)
+  failed once at 3 GB free with u2 running and passed on the rerun. alpha 0.1.12 is at 3321b336, before these.
+- **alpha 0.1.12 draft complete:** ten files (Windows 5, Mac 4, Linux zip), NET CONFIG 10564187343791070933 on all
+  three; the Windows Setup.exe and the Mac portable app tested from the draft (version lines right, no start-up
+  exceptions). Not yet run: a PC join to a Mac host on 0.1.12. Publishing is Andrew's.
+- `pants-and-colours` landed (274db74c): the solo wizard's Animator culled when unseen, like peer-vanish, so the hips
+  drifted 6.7-50 m; AlwaysAnimate on both. Likely the Mac's 61 km holdeast "fall" too (the fell check watches the
+  wizard). #167 closed (the game was right).
+- Waiting: `punchy-sync` (u2: the tool, 26 species and 13 parts in, 35 left out needing flight, tunnelling and so on;
+  the PC must look at the creatures) and `chat-new-request` (u2: notes cut mid-word ran into the player's words; one
+  prompt builder; the PC compiles, tests with Haiku, and chases shapeshift `key_ends_shape`, broken after fcb67af7).
+  The lead's mailbox listener was killed by Claude Code for low memory and is not restarted without Andrew's word:
+  read `~/.agent-bridge/pm/` by hand.
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
