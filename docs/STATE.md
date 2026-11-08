@@ -55,6 +55,15 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
 - **Assigned (Andrew: "give Mac and u2 more work"):** u2 `spell-balance` (fireball down, meteor kept big but costly,
   Dust Storm and "flaw" worth casting, the LookScope flake). The Mac `hold-bodies` (three more raider kinds from the
   animal bodies, villagers off the road during a Hold run).
+- **`hold-bodies` landed** (42e25f49, the Mac). **`spell-balance`** (u2, 8ec64687 after the lead fixed a tuple assert
+  Unity's NUnit can't pass) is not landed: EditMode 1665/1666 before the fix; hold/aimed/crystal probes failed or timed
+  out while Andrew ran another game, and the dev comparison was stopped for his play. Rerun them on branch and dev.
+  Release alpha 0.1.12 (Andrew asked, the go to merge dev into main) waits on it. Andrew's friend has the PlayTonight
+  zip (`host-ux/unity/Builds/SpellChemistryValley-PlayTonight-c68b8df.zip`).
+- **Playtest 2026-11-08** (`docs/playtests/2026-11-08-human-results.md`). Assigned: PC `peer-vanish` (B1 the other
+  player vanishes, L1 LandRocks NRE, B3 punch feedback); Mac `pad-hands-menu` (M1, M2, no always-on element icons);
+  u2 `player-mods`. Queued: `hold-east-path`. Owed to Andrew: option sheets for casting pace and big spells (C1, C2)
+  and the nine-valley world, biomes, rivers, desert Hold, Punchy creature sync (W1-W4).
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
