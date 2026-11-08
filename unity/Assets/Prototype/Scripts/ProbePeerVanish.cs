@@ -176,7 +176,14 @@ public class PeerVanishProbe : RoomProbe
         for (float t = 0f; t < 20f && !putHere; t += Time.unscaledDeltaTime) yield return null;
         for (float t = 0f; t < MostToLose && World.Hold.Phase == HoldPhase.Running; t += Time.unscaledDeltaTime) yield return null;
         Check("run_lost", World.Hold.Phase == HoldPhase.Lost, World.Hold.Phase.ToString());
+        // In front of the host's camera, for the film.
+        var seen = Behind(-InFront);
+        yield return Ask("stand", $"{seen.x},{seen.y}");
+        if (Theirs == null) yield break;
+        Roll();
+        Keep(true);
         yield return Wait(3f);
+        Keep(false);
         yield return Look("after_the_loss");
 
         // The host's reset, for everyone (as holding R or Back does).
@@ -184,7 +191,10 @@ public class PeerVanishProbe : RoomProbe
         EventLog.RebuildYard();
         for (float t = 0f; t < 15f && Net.LastResetTick == lastReset; t += Time.unscaledDeltaTime) yield return null;
         Check("reset_happened", Net.LastResetTick > lastReset, $"last reset at {Net.LastResetTick}");
-        yield return Wait(4f);
+        yield return Wait(1f);
+        Keep(true);
+        yield return Wait(3f);
+        Keep(false);
         yield return Look("after_the_reset");
 
         // The client walks off and back, and the two go on a while.
@@ -198,6 +208,12 @@ public class PeerVanishProbe : RoomProbe
 
         yield return OutOfSight("late");
         yield return Punches();
+        if (film != null)
+        {
+            yield return film.Stop();
+            Metric("film_seconds", film.Seconds);
+            Check("film_saved", film.Saved > 100, $"{film.Saved} of {film.Frames} frames");
+        }
         HashesFrom = 0;
     }
 
@@ -205,10 +221,16 @@ public class PeerVanishProbe : RoomProbe
     IEnumerator Punches()
     {
         var me = Local;
-        var at = grid.CellAt(me.transform.position);
-        yield return Ask("stand", $"{at.x + 1},{at.y}");
+        // Beside the host, square to its camera, so the film sees the fist land.
+        var right = Camera.main.transform.right;
+        right.y = 0f;
+        var front = grid.CellAt(me.transform.position + right.normalized * PunchAhead);
+        yield return Ask("stand", $"{front.x},{front.y}");
         if (Theirs == null) yield break;
+        var target = grid.CellCenter(front.x, front.y);
+        new WizardPuppet(me).Face(target);
         yield return Wait(Settle);
+        Keep(true);
         var strike = me.GetComponent<WizardStrike>();
         var hands = me.GetComponent<ItemHolder>();
         string player = me.GetComponent<SpellCaster>().CastPlayer;
@@ -220,13 +242,13 @@ public class PeerVanishProbe : RoomProbe
             else misses++;
         }
         strike.Struck += On;
-        var way = grid.CellCenter(at.x + 1, at.y) - grid.CellCenter(at.x, at.y);
-        way.y = 0f;
+        // Real punches, the arm and all (ItemHolder.HandAct), each sent as a strike when the fist gets there.
         for (int i = 0; i < 8 && hits < 2; i++)
         {
-            strike.Strike(way.normalized);
-            yield return Wait(0.8f);
+            hands.HandAct("punch");
+            yield return Wait(0.9f);
         }
+        yield return Wait(1f);
         strike.Struck -= On;
         felt = hands.FistHits - felt;
         Metric("punch_hits", hits);
@@ -258,14 +280,33 @@ public class PeerVanishProbe : RoomProbe
         // Unseen, the Animator used to stop writing the bones and the poses laid over them each frame piled up.
         Check($"{name}_unseen_body_stays_whole", mostOff < 0.6f, $"hips up to {mostOff:0.00} m from where they belong over {watched} frames, {unseen} unseen");
         var front = Behind(-InFront);
+        Keep(true);
         yield return Ask("stand", $"{front.x},{front.y}");
         if (Theirs == null) yield break;
-        yield return Wait(Settle);
+        yield return Wait(Settle + 1f);
+        Keep(false);
         yield return Look($"{name}_back_in_sight");
     }
 
     int unseen, watched;
     float mostOff;
+
+    // With --shots, a film from the host's camera of the moments worth seeing (the clip): after the loss, after the reset,
+    // the client back in sight, the punches.
+    ClipFilm film;
+    const float PunchAhead = 1.5f;
+
+    void Roll()
+    {
+        if (string.IsNullOrEmpty(ScreenshotDir)) return;
+        film = new ClipFilm(this, ScreenshotDir) { Keeping = false };
+        Check("film_sound_renders", film.Roll(), "AudioRenderer.Start");
+    }
+
+    void Keep(bool on)
+    {
+        if (film != null) film.Keeping = on;
+    }
 
     // Each frame while the client is out of sight: whether its body is seen, and how far its hips are from where they belong.
     IEnumerator WatchHips()
@@ -296,7 +337,7 @@ public class PeerVanishProbe : RoomProbe
         back.y = 0f;
         back.Normalize();
         var best = grid.CellAt(Local.transform.position);
-        for (float m = metres; Mathf.Abs(m) > 4f; m *= 0.8f)
+        for (float m = metres; Mathf.Abs(m) > 1.5f; m *= 0.8f)
             for (int turn = 0; turn < 12; turn++)
             {
                 var way = Quaternion.AngleAxis(turn * 10f * (turn % 2 == 0 ? 1 : -1), Vector3.up) * back;
