@@ -366,7 +366,7 @@ namespace Chem
             {
                 var wholeKeys = WholeKeys(baseDoc);
                 // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own; a creature's are the view's.
-                var checkedHere = new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key && !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value)));
+                var checkedHere = WithoutPlayer(new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key && !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value))));
                 Walk(checkedHere, "", (key, path, value) =>
                 {
                     if (RandomKeys.Contains(key.ToLowerInvariant()))
@@ -387,7 +387,7 @@ namespace Chem
                 // A group's order only sorts the spell radial (MODDING.md slots Frost in at 2.5).
                 var fraction = new HashSet<string> { "order" };
                 // The creature tables' numbers are the view's: their radius says nothing of a spell's.
-                var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value)));
+                var shared = WithoutPlayer(new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value))));
                 Walk(shared, "", (key, path, value) =>
                 {
                     if (!IsNumber(value)) return;
@@ -395,6 +395,18 @@ namespace Chem
                 });
                 whole.ExceptWith(fraction);
                 return whole;
+            }
+
+            // The player's stats are the view's (PlayerStats.cs), not integer state, and their names (size, speed) mustn't
+            // loosen a spell's size or the dragon's speed: sim player is left out of the walk, on a copy.
+            static JObject WithoutPlayer(JObject o)
+            {
+                if (!(o["sim"] is JObject sim) || sim["player"] == null) return o;
+                var copy = new JObject(o.Properties().Where(p => p.Name != "sim"));
+                var simCopy = (JObject)sim.DeepClone();
+                simCopy.Remove("player");
+                copy["sim"] = simCopy;
+                return copy;
             }
 
             /// <summary>Calls back with (key, path, value) for every property below; list items take their id (or index) into the path.</summary>
@@ -573,6 +585,39 @@ namespace Chem
                     if (IsNumber(v) && ((double)v < min || (double)v > max))
                         Add(ModCheck.Budget, $"sim {path} is {Num((double)v)}; a mod may set it from {Num(min)} to {Num(max)}.");
                 }
+                if (sim["player"] is JObject player) PlayerBudget(player);
+            }
+
+            // A player's stats (PlayerStats.cs): everyone's bounds hold for a slot's own too, and jumps are whole.
+            void PlayerBudget(JObject player)
+            {
+                var rows = new List<(string where, JObject row)> { ("sim player", player) };
+                if (player[PlayerParams.ByKey] is JObject by)
+                    foreach (var slot in by.Properties())
+                    {
+                        if (!uint.TryParse(slot.Name, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                            Add(ModCheck.Shape, $"sim player.by {slot.Name} isn't a player's slot: a whole number, 0 the host, then each in join order.");
+                        else if (slot.Value is JObject own) rows.Add(($"sim player.by.{slot.Name}", own));
+                        else if (slot.Value.Type != JTokenType.Null) Add(ModCheck.Shape, $"sim player.by.{slot.Name} is the stats of the player in that slot, an object such as {{\"jumps\": 4}}.");
+                    }
+                var bounds = budgets.SimBounds.Where(b => b.path.StartsWith("player.", StringComparison.Ordinal)).ToList();
+                foreach (var (where, row) in rows)
+                    PlayerRowBudget(where, row, where == "sim player" ? new List<(string, double, double)>() : bounds);
+            }
+
+            void PlayerRowBudget(string where, JObject row, List<(string path, double min, double max)> bounds)
+            {
+                foreach (var (path, min, max) in bounds)
+                {
+                    string stat = path.Substring("player.".Length);
+                    if (IsNumber(row[stat]) && ((double)row[stat] < min || (double)row[stat] > max))
+                        Add(ModCheck.Budget, $"{where}.{stat} is {Num((double)row[stat])}; a mod may set it from {Num(min)} to {Num(max)}.");
+                }
+                var jumps = row["jumps"];
+                if (jumps != null && jumps.Type != JTokenType.Null && jumps.Type != JTokenType.Integer)
+                    Add(ModCheck.Shape, $"{where}.jumps is how many jumps before landing, a whole number.");
+                foreach (var f in row.Properties().Where(f => f.Name != PlayerParams.ByKey && !PlayerParams.Stats.Contains(f.Name)))
+                    Add(ModCheck.Shape, $"{where} has no stat {f.Name}; a player has {string.Join(", ", PlayerParams.Stats)}.");
             }
 
             // What one building may be (builders.md section 4), and how many a mod may bring.
@@ -613,6 +658,15 @@ namespace Chem
                     Add(ModCheck.Budget, $"Species {id} has a scale of {row["scale"]}; a species is at most {Num(max)} times the one it's built on.");
                 if (row["size"] is JArray size && size.Count == 2 && size.All(IsNumber) && Oversized(size, baseDoc[FaunaTables.SpeciesKey]?[id]?["size"] as JArray, max))
                     Add(ModCheck.Budget, $"Species {id} has a size of {size.ToString(Newtonsoft.Json.Formatting.None)}, more than {Num(max)} times its normal size.");
+                double fastest = budgets.Number("fauna.maxSpeed", 5);
+                foreach (var (gait, normal) in new[] { ("walk", 1.4), ("run", 6.0) })
+                {
+                    var v = row["move"]?[gait];
+                    var under = baseDoc[FaunaTables.SpeciesKey]?[id]?["move"]?[gait];
+                    double usual = IsNumber(under) ? (double)under : normal;
+                    if (IsNumber(v) && (double)v > usual * fastest + 1e-9)
+                        Add(ModCheck.Budget, $"Species {id} {gait}s at {Num((double)v)} m/s, more than {Num(fastest)} times its normal {Num(usual)}.");
+                }
             }
 
             // Either end of a size past max times the base row's (the reader's default 1.1 for a new row).

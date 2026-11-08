@@ -93,6 +93,7 @@ namespace Chem
             TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
+            Ticked();
             tickRows = Spans;
             tickChunks = activeChunks;
             CollectBurning(tickRows);

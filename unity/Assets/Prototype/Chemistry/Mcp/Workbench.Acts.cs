@@ -237,7 +237,12 @@ namespace Chem.Mcp
         {
             int radius = ask.Radius ?? 8, rise = Math.Abs(ask.Rise ?? 0), most = SteepestRise(radius);
             if (rise <= most) return "";
-            return FormattableString.Invariant($" {rise} m is too steep for a radius of {radius}, so it rises {most} m: at most {Budgets.Number("land.steepest", 1.5)} m a cell of radius. A wider radius rises higher.");
+            double steepest = Budgets.Number("land.steepest", 1.5);
+            int widest = (int)Budgets.Number("land.maxRadius", 32), needs = (int)Math.Ceiling(rise / steepest);
+            string wider = needs <= widest
+                ? $"radius {needs} rises the {rise} m asked"
+                : $"{rise} m needs radius {needs}, past the {widest} a stamp may have, so the tallest one stamp rises is {SteepestRise(widest)} m, at radius {widest}";
+            return FormattableString.Invariant($" {rise} m is too steep for a radius of {radius}, so it rises {most} m: at most {steepest} m a cell of radius, so its sides stay climbable. A wider radius rises higher: {wider}. Tell the player what they got.");
         }
 
         // How uneven land is when nobody says: nothing the land makes is a smooth slab, and a flat is asked for as flat.
