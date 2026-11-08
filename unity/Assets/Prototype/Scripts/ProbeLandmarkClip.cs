@@ -97,15 +97,15 @@ public abstract partial class LandmarkClipProbe
     }
 }
 
-// The Greatbough by Elmscot: up to the tree from the east, then up over it and its village.
+// The Old Mother by Elmscot (west of the castle): up to the great tree from the east, then out to see it over the forest.
 public sealed class LandmarkForestClipProbe : LandmarkClipProbe
 {
-    protected override Vector2Int From => new(536, 236);
-    protected override Vector2Int To => new(494, 230);
-    protected override Vector2Int Landmark => new(470, 226);
+    protected override Vector2Int From => new(146, 250);
+    protected override Vector2Int To => new(106, 247);
+    protected override Vector2Int Landmark => new(88, 246);
     protected override float LandmarkUp => 20f;
-    protected override Vector3Int RiseFrom => new(560, 262, 28);
-    protected override Vector2Int RiseAt => new(470, 226);
+    protected override Vector3Int RiseFrom => new(160, 290, 28);
+    protected override Vector2Int RiseAt => new(88, 246);
     protected override float RiseLookUp => 28f;
 }
 

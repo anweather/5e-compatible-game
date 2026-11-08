@@ -64,22 +64,22 @@
     {
       "name": "Elmscot",
       "at": [
-        470,
-        262
+        87,
+        284
       ],
-      "seed": 25086,
+      "seed": 95680,
       "square": [
         12,
         13
       ],
-      "houses": 10,
+      "houses": 6,
       "lanes": 2,
       "laneLength": [
-        10,
-        14
+        11,
+        15
       ],
       "stoneInTen": 1,
-      "note": "a forest village by a great tree: village-with-landmark (temperate), by the Greatbough"
+      "note": "a forest village by a great tree: village-with-landmark (temperate), by the Old Mother"
     }
   ]
 }

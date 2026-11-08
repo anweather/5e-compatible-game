@@ -4,7 +4,7 @@
   "places": [
     {"id":"hollowmere","name":"Hollowmere","kind":"village","from":"villages.json","generated":true,"area":[198,287,234,324]},
     {"id":"sunward-key","name":"Sunward Key","kind":"village","from":"villages.json","generated":true,"area":[501,509,523,532]},
-    {"id":"elmscot","name":"Elmscot","kind":"village","from":"villages.json","generated":true,"area":[450,244,481,274]},
+    {"id":"elmscot","name":"Elmscot","kind":"village","from":"villages.json","generated":true,"area":[74,270,105,303]},
     {"id":"the-gauntlet","name":"The Gauntlet","kind":"course","from":"gauntlet.json","generated":true,"area":[258,428,314,438]},
     {"id":"golf","name":"golf","kind":"course","from":"golf.json","generated":true,"line":[[246,240],[306,240]],"width":3},
     {"id":"the-meadow-coil","name":"The meadow coil","kind":"puzzle","from":"puzzles.json","generated":true,"area":[326,231,338,245]},
@@ -349,7 +349,7 @@
     {"id":"castle-stable","name":"the castle stable","kind":"landmark","from":"buildings.json: stable#1 and its paddock, on the pad north of the castle (castle-cliff-wing, 2026-11-07)","area":[114,318,134,340]},
     {"id":"the-canyon","name":"the canyon","kind":"landmark","from":"stamps.json: the dry canyon beside the river north of the castle cliff, a path along its floor round a dog-leg (castle-cliff-canyon, 2026-11-07)","line":[[188,270],[160,272],[146,262],[128,276]],"width":5},
     {"id":"scree-ramp","name":"the scree ramp","kind":"landmark","from":"ValleyShape.Falls, RampFoot and RampTop: the rocks either side of the way up","line":[[395,145],[387,113]],"width":7},
-    {"id":"the-greatbough","name":"the Greatbough","kind":"landmark","from":"landmarks/village-with-landmark.json","note":"a forest village by a great tree, temperate, by Elmscot","circle":{"at":[470,226],"radius":28}},
+    {"id":"the-old-mother","name":"the Old Mother","kind":"landmark","from":"landmarks/village-with-landmark.json","note":"a forest village by a great tree, temperate, by Elmscot","circle":{"at":[88,246],"radius":26}},
     {"id":"mount-hearth","name":"Mount Hearth","kind":"landmark","from":"landmarks/village-with-landmark.json","note":"a village at a volcano's foot, mountains, by Emberhold","circle":{"at":[160,106],"radius":64}},
     {"id":"emberhold","name":"Emberhold","kind":"village","from":"landmarks/village-with-landmark.json","note":"Emberhold's houses, laid by village-with-landmark (mountains)","rows": [
       [113,137,142],

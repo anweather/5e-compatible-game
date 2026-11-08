@@ -21,7 +21,7 @@ namespace Chem.Tests
             Assert.That(folder, Is.Not.Null.And.Not.Empty);
             Directory.CreateDirectory(folder);
             var open = Open();
-            foreach (var (biome, x, y, name) in new[] { ("temperate", 470, 226, "forest"), ("mountains", 160, 170, "volcano"), ("foggy-marsh", LakeX + 48, LakeY, "fishing") })
+            foreach (var (biome, x, y, name) in new[] { ("temperate", 88, 246, "forest"), ("mountains", 160, 170, "volcano"), ("foggy-marsh", LakeX + 48, LakeY, "fishing") })
             {
                 for (int seed = 1; seed < 500; seed++)
                 {

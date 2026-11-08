@@ -257,18 +257,27 @@
     },
     {
       "chunk": [
-        7,
+        1,
         3
       ],
       "things": [
         {
           "kind": "crate",
-          "rot": 34,
+          "rot": 128,
           "cell": [
-            39,
-            33
+            25,
+            38
           ],
-          "note": "by the Greatbough"
+          "note": "by the Old Mother"
+        },
+        {
+          "kind": "crate",
+          "rot": 190,
+          "cell": [
+            12,
+            46
+          ],
+          "note": "by the Old Mother"
         }
       ]
     },

@@ -34,17 +34,17 @@
       ]
     },
     {
-      "id": "the-greatbough-1",
-      "name": "the Greatbough",
+      "id": "the-old-mother-1",
+      "name": "the Old Mother",
       "at": [
-        470,
-        226
+        88,
+        246
       ],
       "profile": "dome",
-      "radius": 28,
-      "rise": 12,
+      "radius": 26,
+      "rise": 19,
       "rough": 30,
-      "seed": 43516
+      "seed": 67514
     },
     {
       "id": "mount-hearth-1",
