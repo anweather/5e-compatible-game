@@ -146,6 +146,22 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheValleyDressesItsPlaces()
+        {
+            Assert.That(MapFile.Load(map).Dresses, Is.EquivalentTo(new[] { "lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline" }));
+            Change(o => o.Remove("dresses"));
+            Assert.That(MapFile.Load(map).Dresses, Is.Empty, "left out, none");
+            Assert.That(Errors, Is.Empty);
+        }
+
+        [Test]
+        public void APlaceDressedTwiceOrMisnamedIsSaid()
+        {
+            Change(o => o["dresses"] = new JArray("court", "court", "Ball court"));
+            Assert.That(Errors, Does.Contain("dresses court more than once").And.Contain("\"Ball court\", which isn't a place's name"));
+        }
+
+        [Test]
         public void AnotherSizeIsRefusedByName()
         {
             Change(o => o["size"] = new JArray(640, 640));

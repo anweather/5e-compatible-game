@@ -37,6 +37,7 @@ namespace Chem
             string folder = Path.GetFileName(Path.GetFullPath(worldDir).TrimEnd('/', '\\'));
             if (map.Id != folder) errors.Add($"{MapFile.FileName} says its id is \"{map.Id}\", in the folder \"{folder}\"");
             if (map.W != Size || map.H != Size) errors.Add($"the map is {map.W} x {map.H}, and only {Size} x {Size} is laid out");
+            CheckDresses(map, errors);
             CheckCells(worldDir, map, errors);
             int[] land = ReadLand(worldDir, map, errors);
             CheckRange(map, land, errors);
@@ -50,6 +51,17 @@ namespace Chem
             CheckHold(worldDir, errors);
             CheckStamps(worldDir, errors);
             return errors;
+        }
+
+        // The places a map dresses are named once each, in the place names' form (lower case, words joined by '-').
+        static void CheckDresses(MapFile map, List<string> errors)
+        {
+            foreach (var place in map.Dresses.Distinct())
+            {
+                if (string.IsNullOrEmpty(place) || !place.All(c => c == '-' || char.IsDigit(c) || (c >= 'a' && c <= 'z')))
+                    errors.Add($"{MapFile.FileName} dresses \"{place}\", which isn't a place's name (lower case, words joined by '-')");
+                else if (map.Dresses.Count(p => p == place) > 1) errors.Add($"{MapFile.FileName} dresses {place} more than once");
+            }
         }
 
         // A map's own land stamps read as stamps (where they land is the world's to say, World.LayMapStamps).

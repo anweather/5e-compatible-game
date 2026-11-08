@@ -36,11 +36,29 @@ public static class ValleyBuilder
         try
         {
             DressGround(grid, terrains);
+            MarkPlaces();
         }
         finally
         {
             EditorGround.Close();
         }
+    }
+
+    // The places that stay code (docs/design/maps-as-data.md, section 4), by their roots' names: each root keeps its place's
+    // name, and a map that doesn't dress it (map.json's dresses) has it switched off as the scene starts (PlaceRoot).
+    static readonly (string root, string place)[] Places =
+    {
+        ("Lake", "lake"), ("Rocks", "rocks"), ("River rocks", "river-rocks"), ("Ball court", "court"), ("Landmarks", "landmarks"),
+        ("Falls", "falls"), ("Bridge", "bridge"), ("Tower", "tower"), ("Defense field", "defense-field"), ("Coast", "coast"),
+        ("SkyboxMountains", "skyline"),
+    };
+
+    static void MarkPlaces()
+    {
+        var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+        foreach (var (name, place) in Places)
+            foreach (var root in roots.Where(r => r.name == name))
+                root.AddComponent<PlaceRoot>().place = place;
     }
 
     // What stands on the ground, built while EditorGround has it.

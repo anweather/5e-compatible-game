@@ -1,9 +1,10 @@
 {
-  "about": "What this map is, read with the rest of its folder (docs/design/maps-as-data.md). Sea level and expects are in land units of 0.125 m; landShare is the percent of cells at or above the sea level. MapCheck holds the folder to them.",
+  "about": "What this map is, read with the rest of its folder (docs/design/maps-as-data.md). Sea level and expects are in land units of 0.125 m; landShare is the percent of cells at or above the sea level. MapCheck holds the folder to them. dresses: the places that stay code which this map wants built (PlaceRoot).",
   "id": "valley",
   "name": "The Valley",
   "size": [576, 576],
   "seaLevel": -4,
   "spawn": [292, 328],
-  "expects": { "landShare": 87, "highest": 1319, "lowest": -174 }
+  "expects": { "landShare": 87, "highest": 1319, "lowest": -174 },
+  "dresses": ["lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline"]
 }
