@@ -121,6 +121,10 @@ public static class ProbeScenarios
         new Entry("airpeers", typeof(AirPeersProbe), 240f,
             "The air spells on two peers (D16, aimed-spells): this Editor hosts, the virtual player joins and starts the waves, and both put the same flyer and two raiders down after the same net tick. " +
             "Lightning from the host at the flyer; Gust of Wind on a raider tapped from the host, held from the client, then a third shove it braces against; a Whirlwind from the client on the other. Checks: each lands, the checksums from the raiders on are equal, no desync.", players: 2),
+        new Entry("peervanish", typeof(PeerVanishProbe), 360f,
+            "The other player's wizard stays drawn (playtest 2026-11-08 B1): this Editor hosts, the virtual player joins beside the host, a Hold run starts (the first-wave moment), " +
+            "the keep is put on its last point at one net tick on both and the raiders take it, the host resets the world, and the client walks off and back. " +
+            "Checks at each step: each peer draws the other's wizard (its body's renderers on, not forced off or shadows only, on a drawn layer, its bounds round it) where its owner has it; checksums equal.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("productsview", typeof(ProductsViewProbe), 300f,
