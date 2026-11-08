@@ -59,14 +59,14 @@ namespace Chem.Mcp
         }
 
         /// <summary>A species' size, against its normal size, and its behaviour, keeping the rest of its row.</summary>
-        public Draft SetSpecies(string draftId, string id, double? scale, string behave, string from = null, string color = null, string accent = null, double? glow = null, double? density = null)
+        public Draft SetSpecies(string draftId, string id, double? scale, string behave, string from = null, string color = null, string accent = null, double? glow = null, double? density = null, double? speed = null)
         {
             id = Required(id, "id");
             var draft = DraftOf(draftId);
             if (!(Current(draft, FaunaTable, id) is JObject now)) throw new RulesToolException($"There is no species {id}; list fauna shows them.");
             bool grafting = !string.IsNullOrWhiteSpace(from);
             bool recoloured = !string.IsNullOrWhiteSpace(color) || !string.IsNullOrWhiteSpace(accent) || glow.HasValue;
-            if (!scale.HasValue && string.IsNullOrWhiteSpace(behave) && !grafting && !recoloured && !density.HasValue) throw new RulesToolException("set_species changes scale, behave, from, color, accent, glow, density or some of them; give one.");
+            if (!scale.HasValue && string.IsNullOrWhiteSpace(behave) && !grafting && !recoloured && !density.HasValue && !speed.HasValue) throw new RulesToolException("set_species changes scale, speed, behave, from, color, accent, glow, density or some of them; give one.");
             var entry = Section(draft, FaunaTable)[id] as JObject ?? new JObject();
             if (grafting)
             {
@@ -82,6 +82,7 @@ namespace Chem.Mcp
                 else entry["size"] = new JArray(((normal["size"] as JArray)?.Select(s => (double)s) ?? new[] { 0.9, 1.1 }).Select(s => Rounded(s * times)));
             }
             if (!string.IsNullOrWhiteSpace(behave)) entry["behave"] = Rules.MergedEntry(entry["behave"], Behave(id, behave, Str(now["variantOf"]) != null));
+            if (speed.HasValue) entry["move"] = Rules.MergedEntry(entry["move"], Gait(id, now, speed.Value));
             if (recoloured) Recolour(entry, now, color, accent, glow);
             if (density.HasValue)
             {
@@ -91,6 +92,26 @@ namespace Chem.Mcp
             Section(draft, FaunaTable)[id] = entry;
             draft.Changed.Add($"{FaunaTable} {id}");
             return draft;
+        }
+
+        // A species' walk and run at speed times its normal gait (the base rules' row, or the row as whoever added it wrote it), within the caps.
+        JObject Gait(string id, JObject now, double speed)
+        {
+            if (Str(now["variantOf"]) != null)
+                throw new RulesToolException($"{id} is built on {Str(now["variantOf"])} and moves at its gait, so its speed is that one's: set_species {Str(now["variantOf"])} speed changes both, or add_species with from makes one that moves on its own.");
+            double times = Math.Max(Budgets.Number("fauna.minSpeed", 0.2), Math.Min(Budgets.Number("fauna.maxSpeed", 5), Positive(speed, "speed")));
+            var gait = (FaunaGraft.Flatten(baseRaw[FaunaTable] as JObject, id) ?? FaunaGraft.Flatten(Raw[FaunaTable] as JObject, id) ?? now)["move"];
+            double walk = (double?)gait?["walk"] ?? 1.4, run = (double?)gait?["run"] ?? 6;
+            return new JObject { ["walk"] = Rounded(walk * times), ["run"] = Rounded(run * times) };
+        }
+
+        /// <summary>What set_species says of a speed: cut to the caps, how fast that is, and that the player should hear it.</summary>
+        public string SpeedNote(double speed)
+        {
+            double least = Budgets.Number("fauna.minSpeed", 0.2), most = Budgets.Number("fauna.maxSpeed", 5);
+            double times = Math.Max(least, Math.Min(most, speed));
+            string cut = Math.Abs(times - speed) > 1e-9 ? $" {Num(speed)} times is past what an animal may have, so it's {Num(times)} times: {Num(least)} to {Num(most)} times its normal speed. Tell the player." : "";
+            return $"\nIt walks and runs at {Num(times)} times its normal speed (its normal: the base rules' row), once it's applied.{cut}";
         }
 
         // A graft's row: its donors' slots, and its first donor's body, gait, habits, colours and a share of its number.

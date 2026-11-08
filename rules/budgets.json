@@ -1,5 +1,5 @@
 {
-  "about": "What one mod may ask of the engine (ModValidator.cs, docs/RULES_MCP.md). Read from the base rules only: a mod can't raise its own budget. Each cap sits at or just past the biggest value the base rules or an example in mods/ already use, but for things.maxScale: a look's scale is drawn only, so it costs the core nothing, and 20 lets a giant creature through (Andrew, #61).",
+  "about": "What one mod may ask of the engine (ModValidator.cs, docs/RULES_MCP.md). Read from the base rules only: a mod can't raise its own budget. Each cap sits at or just past the biggest value the base rules or an example in mods/ already use, but for things.maxScale: a look's scale is drawn only, so it costs the core nothing, and 20 lets a giant creature through (Andrew, #61). The player stats (sim player.*, PlayerStats.cs) are the view's too, a body on its own peer: 3 times the speed is a 21 m/s sprint, still inside what streaming keeps up with, 2 times the size a wizard about 3.6 m tall, 4 times the jump about 5 m a jump, and 8 jumps before landing (Andrew asked for a quadruple jump, 2026-11-08).",
   "mod": { "maxNewEntries": 12, "maxNewElements": 1 },
   "spells": { "maxLevel": 9, "diceSides": [4, 6, 8, 10, 12], "maxDice": 20, "maxPower": 6, "maxRadius": 6, "maxLength": 24, "maxSize": 5, "maxPush": 6, "maxRaise": 4, "maxDig": 4 },
   "effects": { "ignite": 3, "boil": 4, "n": 6, "spreadCover": 3, "conduct": 3, "wave": 4, "addWater": 2 },
@@ -12,7 +12,7 @@
   "lay": { "maxCells": 256, "maxWithin": 32 },
   "land": { "maxRadius": 32, "maxRise": 100, "steepest": 1.5, "maxMove": 4 },
   "place": { "maxCount": 8, "maxWithin": 8, "maxLasts": 21600, "maxLive": 64, "maxSummoned": 24 },
-  "fauna": { "maxPerMod": 4, "maxDonors": 3, "maxSlots": 40, "minScale": 0.25, "maxScale": 4 },
+  "fauna": { "maxPerMod": 4, "maxDonors": 3, "maxSlots": 40, "minScale": 0.25, "maxScale": 4, "minSpeed": 0.2, "maxSpeed": 5 },
   "triggers": { "maxPerMod": 4, "maxActions": 2, "maxActs": 8, "maxLevel": 7, "maxPerTick": 4 },
   "sim": {
     "ticksPerSecond": [6, 6],
@@ -48,7 +48,7 @@
     "strike.reach": [1, 2],
     "strike.knockBack": [0, 3],
     "strike.cooldownTicks": [0, 60],
-    "strike.proficiency": [2, 6]
+    "strike.proficiency": [2, 6], "player.speed": [0.5, 3], "player.size": [0.5, 2], "player.jump": [0.5, 4], "player.jumps": [1, 8]
   },
   "simulate": { "defaultTicks": 300, "maxTicks": 1200, "minTicksPerSecond": 300, "maxSlowdown": 2 }
 }

@@ -32,7 +32,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 **Read**
 - `list(table)`: ids and one-line summaries for materials, elements, reactions, spells, groups,
   sim parameters; `list looks` gives the look families, the parameters each takes, and what
-  takes no colour; `list fauna` each species' name, slot count (or what it's a variant of) and
+  takes no colour; `list players` each player's stats that aren't as made and their bounds; `list fauna` each species' name, slot count (or what it's a variant of) and
   where it comes out; `list parts` each part's role, segments, length and who wears it.
 - `describe(table, id, draft?)`: the full entry in force, which mods on changed which of its values,
   what refers to it, for a spell, material or element its look (its mix and scoped looks too) and what
@@ -79,8 +79,11 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
   a new kind of thing with the look that draws it; `add_thing(kind, at, chance?, rot?)` puts one in the world (see "Things")
-- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?, color?, accent?, glow?, density?)`:
-  a kind of animal that moves, built on one or grafted from others' slots, and a change to one's size, habits or donors (see "Animals")
+- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?, color?, accent?, glow?, density?, speed?)`:
+  a kind of animal that moves, built on one or grafted from others' slots, and a change to one's size, habits or donors (see "Animals");
+  `speed` is times its normal walk and run (the base rules' row), 0.2 to `fauna.maxSpeed` (5): past that it's cut and the
+  reply says so ("rabbits 20 times faster" gets 5). A variant moves at its base's gait, so its speed is refused with
+  where to set it. The validator holds a mod's `move.walk` and `move.run` to the same cap
 - `set_look(id, param, value, table?, where?, by?, spells?)`: one parameter of the look of a spell, terrain,
   cover, gas, element, entity or item, a `mix` of colours, with `where` a colour or mix that holds only
   round a place, a cell or the player asking, and with `by` one that colours only what a
@@ -88,6 +91,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare. The dragon's fields are sim
   (`dragon.*`, `World.Dragon.cs`), each bounded in `budgets.json`; `dragon.budget` is 0 (or `never`) by default, so it comes only
   when summoned; a number brings it by itself past that many changed cells. `list dragon` and `describe dragon` say what each field does (`Workbench.Dragon.cs`, #77)
+- `set_player(stat, value, who?)`: a player's own speed, size, jump or jumps (see "Player stats")
 - `remove(table, id)`, only for things the draft itself added
 - `add_building(at, width, depth, style?, front?, id?, fill?)`, or a whole `row`; `add_wing(building, width?, depth?, side?)`;
   `set_building(id, field, value)`; `add_building_part(table, id, row)` for a style, opening, floor, roof shape or detail
@@ -760,6 +764,37 @@ element:
 only trees the land baked or that grew (`IsGrownTree`): it must dress any `tree` cell the land didn't bake as one of its
 chunk's valley trees, and `brush` as a bush, redrawing on `ChunkFreshened`.
 
+## Player stats
+
+Andrew, 2026-11-08: "move faster, bigger, jump higher, double jump into quadruple jump". A player's
+**stats** are rules like any other (`PlayerStats.cs`), so a mod changes them and every peer switches at
+the same tick. `sim.json` `player` holds everyone's: `speed`, `size` and `jump` times the wizard's own,
+and `jumps` before landing (2, the double jump). `player.by.<slot>` holds one player's own, field by field
+over everyone's, by the slot a look by player uses (0 the host, then each in join order); a null gives
+one back to everyone's, so it undoes a mod under it too.
+
+- **Bounds** (`budgets.json` sim, the same for a slot's own): speed 0.5 to 3 (a 21 m/s sprint at most,
+  still inside what streaming keeps up with), size 0.5 to 2 (a wizard about 3.6 m tall), jump 0.5 to 4
+  (about 5 m a jump), jumps 1 to 8, whole. `ModValidator` checks every slot's row, refuses a stat it doesn't
+  know and a slot that isn't a whole number, and leaves `sim.player` out of the integer-state walk (they're
+  the view's numbers, and their names mustn't loosen a spell's `size` or the dragon's `speed`).
+- **Tool.** `set_player(stat, value, who?)`: who is `me` (the asker's slot, from `here()`; when left out),
+  a slot, or `everyone`; `normal` takes it back. A value past its bounds is cut to them and the reply says so,
+  so the player hears it in the same turn, not after a refusal and a retry. `list players` says what each
+  has, and `whats_on` adds a line for each that isn't as made.
+- **The core** keeps them only for the view: a wizard's body is its own peer's (D4), so nothing shared moves.
+  The fingerprint takes `sim.player` as it takes all of sim, so peers agree on them.
+
+**In the view (`player-mods-view`, the PC's part).** At each rule switch, each wizard reads
+`Rules.Sim.Player.Of(slot)` for its own slot (`PlayerSpot.Slot`; solo is slot 0) and:
+- **speed**: `SurfaceEffects.SetBaseSpeeds(wizardMove * speed, wizardSprint * speed)` (and `RestoreBaseSpeeds` back
+  to that, not the bare wizard's, so wading and Shapeshift scale on top);
+- **size**: the wizard's transform scale (its model, `CharacterController` height, radius, centre and step offset, and
+  the camera root's height, as `Shapeshift.Body` scales them), checking there's room to stand before it grows;
+- **jump**: the Starter Assets `JumpHeight` and `DoubleJump.height`, each times `jump`;
+- **jumps**: `DoubleJump` lets `jumps - 1` air jumps before landing (now one, `used`); 1 is no air jump.
+A remote wizard's body draws at its slot's `size` too. Nothing else reads them.
+
 ## Triggers: rules that react to a step
 
 `docs/design/events-and-placing.md` 2c, J-067. A mod's **`triggers`** section holds rows by id (`rules/triggers.json`
@@ -770,7 +805,13 @@ is the table, empty in the base rules; a `null` takes a row out):
                                 "do": [{ "cast": "meteor", "at": "ahead", "by": 2, "delay": 6 }] } }
 ```
 
-- **`on`**: the event; only `step` so far (a `Stand` on another cell: not the first stand, not while downed).
+- **`on`**: the event: `step` (a `Stand` on another cell: not the first stand, not while downed), `holed`, `called`
+  (a named act), or `tick`, a **shower**: as each tick begins (`World.Ticked`, after the weather, before the tick's
+  stages, as a cast between ticks lands), every `every` ticks round each standing player it's for, in table order then
+  the stands' ordinal order, facing south. Its `every` is at least `TriggerDef.MinTickEvery` (12 ticks, 2 seconds), the
+  checks refuse less, and the room's `triggers.maxPerTick` holds. It falls until the mod is reverted. "Constant meteors"
+  is `add_trigger(on: tick, who: each, every: 12, do: [{"cast": "meteor", "at": "around", "within": 12, "delay": 6}])`;
+  `simulate` stands the walker for it. `ShowerTriggerGolden` pins it.
 - **`who`**: the player whose steps fire it, or `"each"`. `add_trigger` fills in the asker's name from `here()` when
   it's left out (J-067): their peer name, "Player 1". A stand's name is "solo" alone and "p0" online, so a trigger
   matches a stand by its own name or by its peer name (`TriggerDef.PeerOf`: "solo" and "p<n>" to "Player <n+1>").

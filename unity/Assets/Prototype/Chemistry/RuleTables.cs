@@ -585,6 +585,8 @@ namespace Chem
         public DragonParams Dragon = new DragonParams();
         /// <summary>The unarmed strike's reach, knock-back, cooldown and proficiency (sim.json strike, World.Strike.cs).</summary>
         public StrikeParams Strike = new StrikeParams();
+        /// <summary>Each player's speed, size, jump and jumps, for the view (sim.json player, PlayerStats.cs).</summary>
+        public PlayerParams Player = new PlayerParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -1311,6 +1313,7 @@ namespace Chem
             s.Downed = DownedParams.Parse(o["downed"]);
             s.Dragon = DragonParams.Parse(o["dragon"]);
             s.Strike = StrikeParams.Parse(o["strike"]);
+            s.Player = PlayerParams.Parse(o["player"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;

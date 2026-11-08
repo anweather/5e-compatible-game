@@ -327,11 +327,17 @@ touch them.
 **Trigger / event**
 : A **trigger** is a `rules/triggers.json` row (`TriggerDef`, `Rules.Triggers.cs`) that reacts to an **event** with
   one or two actions, fired inside the command that raised the event (`World.Triggers.cs`). The base rules have none;
-  a mod adds them (`add_trigger`). The one event so far is a **step**.
+  a mod adds them (`add_trigger`). The events are a **step**, a golf ball **holed**, a **called** named act, and a
+  **tick** (a shower).
 
 **Step**
 : A player's stand moving to another cell: a `Stand` command whose cell differs from the one the core has, not the
   first stand and not while downed. The event a trigger on `step` reacts to.
+
+**Shower**
+: A trigger on `tick`: as a tick begins, every `every` ticks (12 at least, 2 seconds), its actions fall round each
+  standing player it's for, until its mod is reverted ("constant meteors"). Capped by that floor and the room's
+  `triggers.maxPerTick`.
 
 **Place / placed thing**
 : A spell's `place` field: a thing, an animal, a terrain or a cover put on cells picked by `Placement.Pick`
@@ -545,6 +551,12 @@ that long, and doesn't march.
 
 **Wizard**
 : A player's character (the solo wizard, the `NetWizard` prefab).
+
+**Player stats**
+: A player's **speed**, **size** and **jump** (each times the wizard's own) and **jumps** (how many before landing:
+  2 is the double jump), as rules: `sim.json` `player` for everyone, `player.by.<slot>` for one player (the slot of
+  a look by player), within `budgets.json`. Changed by `set_player`; the core keeps them for the view, which moves
+  and draws its own wizard by them (`PlayerStats.cs`).
 
 **Character** *(proposed, for the chunk work)*
 : Anything whose presence keeps the world around it active: today every

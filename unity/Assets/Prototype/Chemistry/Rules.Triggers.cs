@@ -23,6 +23,8 @@ namespace Chem
         Holed,
         /// <summary>A player calls it by name (call_act): a named act, each action an act's ask, at the place they name.</summary>
         Called,
+        /// <summary>Time passing: every Every ticks (at least TriggerDef.MinTickEvery), round each player it's for, as each tick begins. A shower.</summary>
+        Tick,
     }
 
     /// <summary>Where an action lands, from the player whose event it was.</summary>
@@ -59,6 +61,8 @@ namespace Chem
     {
         /// <summary>The fewest ticks between two firings of one trigger for one player (J-067): a meteor at every step of a run is already two a second.</summary>
         public const int MinEvery = 3;
+        /// <summary>The fewest ticks between two firings of a tick trigger for one player: one every 2 seconds, so "constant meteors" is a shower, not a wall.</summary>
+        public const int MinTickEvery = 12;
         /// <summary>A trigger's who for every player's events.</summary>
         public const string Each = "each";
 
@@ -102,7 +106,7 @@ namespace Chem
         /// <summary>Where the rule document keeps the triggers (rules/triggers.json), rows by id.</summary>
         public const string TriggersKey = "triggers";
 
-        internal static readonly string[] TriggerEvents = { "step", "holed", "called" };
+        internal static readonly string[] TriggerEvents = { "step", "holed", "called", "tick" };
         internal static readonly string[] TriggerAts = { "here", "ahead", "behind", "around" };
         static readonly string[] TriggerFields = { "on", "who", "every", "chance", "do" };
         static readonly string[] ActionFields = { "cast", "place", "at", "by", "within", "delay" };
@@ -131,7 +135,7 @@ namespace Chem
             Id = id,
             On = (TriggerEvent)Math.Max(0, Array.IndexOf(TriggerEvents, Str(o["on"]))),
             Who = Str(o["who"]),
-            Every = Math.Max(TriggerDef.MinEvery, Int(o["every"]) ?? TriggerDef.MinEvery),
+            Every = Math.Max(Str(o["on"]) == "tick" ? TriggerDef.MinTickEvery : TriggerDef.MinEvery, Int(o["every"]) ?? TriggerDef.MinEvery),
             Chance = Num(o["chance"]) ?? 1,
             Do = (o["do"] as JArray)?.OfType<JObject>().Select(ParseAction).ToList() ?? (IReadOnlyList<TriggerAction>)Array.Empty<TriggerAction>(),
         };
@@ -180,6 +184,8 @@ namespace Chem
                 if (t["every"] != null && !(IsWholeNumber(t["every"]) && (double)t["every"] >= TriggerDef.MinEvery))
                     Errors.Add($"{who}: every is the ticks between firings, a whole number from {TriggerDef.MinEvery}");
                 if (t["chance"] != null && !(IsNumber(t["chance"]) && (double)t["chance"] > 0 && (double)t["chance"] <= 1)) Errors.Add($"{who}: chance is above 0 and at most 1");
+                if (Text(t["on"]) == "tick" && t["every"] != null && IsWholeNumber(t["every"]) && (double)t["every"] < TriggerDef.MinTickEvery)
+                    Errors.Add($"{who}: a tick trigger fires at most every {TriggerDef.MinTickEvery} ticks (2 seconds) for a player, so every is {TriggerDef.MinTickEvery} or more");
                 bool called = Text(t["on"]) == "called";
                 if (called && (t["every"] != null || t["chance"] != null)) Errors.Add($"{who}: a called trigger fires when it's called, so it takes no every or chance");
                 TriggerActions(who, t["do"], called);
