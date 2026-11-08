@@ -20,7 +20,10 @@ folders on disk as a cache, `sight` 4 and `know` 7.
    **Rivers and roads** (Andrew; the plan's "Rivers and roads must make sense"): rivers only flow from high to low
    bands and end at the sea or a lake; roads are routes between two destinations spanning at least three world squares
    (no one-square stubs), preferring flat or gentle ground with at most one band step at a time (passes at a range's
-   lowest slot), and each route gets seeded scenic outcrops within sight of it.
+   lowest slot), and each route gets seeded scenic outcrops within sight of it. **Roads have a reason** (the plan's
+   section of that name): points of interest and natural crossings (one or two bridges per canyon, fords on big
+   rivers, passes) are placed first; then at most ~6 long main roads between major destinations that keep apart, with
+   fences, marker stones and waystations; then lesser roads and trails branching to caves, ruins and lone villages.
 3. **`Chem.WorldPlan`:** solve a W × H grid of squares from a seed, the valley pinned at the south-west (its edges read
    from its land at the borders): bands, then templates wave-function style with backtracking and fillers so it never
    fails, edges matched. Repeats weighted down (÷4 each time) and never within 3 squares (Chebyshev), none in a 3 × 3.
