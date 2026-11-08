@@ -116,8 +116,8 @@ public sealed class LandmarkVolcanoClipProbe : LandmarkClipProbe
     protected override Vector2Int To => new(109, 130);
     protected override Vector2Int Landmark => new(160, 106);
     protected override float LandmarkUp => 4f;
-    protected override Vector3Int RiseFrom => new(60, 150, 70);
-    protected override Vector2Int RiseAt => new(150, 110);
+    protected override Vector3Int RiseFrom => new(52, 150, 45);
+    protected override Vector2Int RiseAt => new(124, 136);
     protected override float EyeHeight => 7f;
     protected override Vector2Int[] Path => new Vector2Int[] { new(166, 196), new(159, 183), new(146, 178), new(133, 171), new(125, 162), new(117, 152), new(111, 141), new(109, 130) };
 }

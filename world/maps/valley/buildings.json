@@ -1663,8 +1663,8 @@
       },
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
@@ -1808,7 +1808,8 @@
             "way11"
           ],
           "terrain": "dirt",
-          "width": 2
+          "width": 2,
+          "graded": true
         }
       }
     },
@@ -1826,8 +1827,8 @@
       },
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
@@ -1918,8 +1919,8 @@
       "note": "Emberhold's house, by Mount Hearth",
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
@@ -2013,8 +2014,8 @@
       },
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
@@ -2108,8 +2109,8 @@
       },
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
@@ -2203,8 +2204,8 @@
       },
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
@@ -2295,8 +2296,8 @@
       "note": "Emberhold's house, by Mount Hearth",
       "level": true,
       "pad": {
-        "margin": 1,
-        "bank": 3
+        "margin": 2,
+        "bank": 4
       },
       "joins": {
         "nw": [
