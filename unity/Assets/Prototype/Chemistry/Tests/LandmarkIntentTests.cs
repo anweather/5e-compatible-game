@@ -142,6 +142,10 @@ namespace Chem.Tests
             Assert.That(far.Max() - far.Min(), Is.LessThan(10), "on one arc");
             int across = Math.Max(shoreHouses.Max(b => (int)b["at"][0]) - shoreHouses.Min(b => (int)b["at"][0]), shoreHouses.Max(b => (int)b["at"][1]) - shoreHouses.Min(b => (int)b["at"][1]));
             Assert.That(across, Is.GreaterThan(60), "spread round the shore, not bunched");
+            // Its place is its houses, not the block they stand round: the lake's middle isn't in it.
+            var village = WorldPlaces.FromJson(fishing.PlacesJson).All.Single(p => p.Kind == "village");
+            Assert.That(village.Contains(lake.Item1, lake.Item2), Is.False, "the lake isn't the village");
+            Assert.That(shoreHouses.All(b => village.Contains((int)b["at"][0], (int)b["at"][1])));
             // Each boathouse's front wall, where its dock goes, stands on the lake's shore: water just past it.
             var land = LandmarkPicture.Land(fishing, SiteX - 128, SiteY - 128, 256);
             foreach (var b in boathouses)
@@ -203,8 +207,8 @@ namespace Chem.Tests
 
         // The goldens, to compare between machines: the five files' texts, per form and seed.
         [TestCase("temperate", 1, 0x062df67cu), TestCase("temperate", 2, 0x89080d44u)]
-        [TestCase("mountains", 1, 0x5a02d45au), TestCase("mountains", 2, 0xae1fb36bu)]
-        [TestCase("foggy-marsh", 1, 0xc611aa0cu), TestCase("foggy-marsh", 2, 0xf389b3a6u)]
+        [TestCase("mountains", 1, 0xaea79652u), TestCase("mountains", 2, 0x3b6a7c85u)]
+        [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]
         public void Golden(string biome, int seed, uint expected)
         {
             uint hash = Village.Make(biome, SiteX, SiteY, seed).Hash();
