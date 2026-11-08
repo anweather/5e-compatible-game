@@ -164,15 +164,49 @@ namespace Chem.Tests
                     w.Paint(x, y, "grass");
                     if ("wr*~".Contains(rows[y][x])) w.At(x, y).Water = 4;
                 }
-            WorldBuildings.Load(dir).LayInto(w);
+            // In ChemGrid's order: the stamps, then the rows.
             var stamps = MapStamps.Load(dir);
             Assert.That(stamps.All.Select(s => s.Id), Is.EquivalentTo(new[] { "the-canyon" }));
             Assert.That(stamps.LayInto(w), Is.Empty);
+            WorldBuildings.Load(dir).LayInto(w);
             Assert.That(w.LandLaidCells().All(c => w.LandStampedAt(c.x, c.y) == 0), "the pad and the road as they were");
             var trail = stamps.All.Single(s => s.Trail != null).Stamp.Trail().ToList();
             Assert.That(trail.Count(c => w.At(c.x, c.y).T == "dirt" && w.LandStampedAt(c.x, c.y) < 0), Is.GreaterThan(100), "the canyon's dirt path, cut into");
             var places = File.ReadAllText(Path.Combine(dir, "places.json"));
             Assert.That(stamps.All.All(s => places.Contains($"\"id\":\"{s.Id}\"", StringComparison.Ordinal)), "each is a named place");
+        }
+
+        // A map stamp under a row's site (a village up a volcano's slope, J-080 1b): laid first, it's laid, and the row's pad is
+        // cut level on the stamped slope. (Laid after the row, the stamp was refused wherever the pad had moved the land.)
+        [Test]
+        public void AStampUnderARowsSiteIsLaidAndItsPadIsCutLevelOnIt()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "map-stamp-pad-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                File.WriteAllText(Path.Combine(dir, MapFile.LandName), LandFile.Write(new int[Size * Size], Size, Size, 0.125));
+                var row = BuildingRow.Box(5, 5, Side.South, "door", "window");
+                row["at"] = new Newtonsoft.Json.Linq.JArray(60, 90);
+                row["style"] = "village";
+                row["level"] = true;
+                row["pad"] = new Newtonsoft.Json.Linq.JObject { ["margin"] = 1, ["bank"] = 3 };
+                row["id"] = "slope#1";
+                File.WriteAllText(Path.Combine(dir, WorldBuildings.FileName), new Newtonsoft.Json.Linq.JObject { ["buildings"] = new Newtonsoft.Json.Linq.JArray(row) }.ToString());
+                var cone = LandStamp.Make(80, 80, 40, 200, LandStamp.Cone, 0, 0, 0, 3);
+
+                var w = Flat();
+                Assert.That(w.LayMapStamps(new[] { cone }), Is.Empty, "the stamp first");
+                WorldBuildings.Load(dir).LayInto(w);
+                var site = Enumerable.Range(0, 25).Select(k => (x: 60 + k % 5, y: 90 + k / 5)).ToList();
+                Assert.That(site.All(c => w.LandStampedAt(c.x, c.y) > 20), "the house stands on the cone's slope");
+                Assert.That(site.Select(c => w.LandMovedAt(c.x, c.y)).Distinct().Count(), Is.EqualTo(1), "its pad is level");
+                Assert.That(w.LandLaidCells(), Is.Not.Empty, "the pad was cut");
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
 
         // The castle cliff (castle-cliff-wing): the Hold's pad reaches north of the castle at its own height and drops off as a

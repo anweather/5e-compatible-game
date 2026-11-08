@@ -406,10 +406,11 @@ namespace Chem
         public IReadOnlyList<LandStamp> MapStampsLaid => mapStamps;
 
         /// <summary>
-        /// The map's own land stamps (its stamps.json), laid when the world is made, after its rows: stamped land like any
-        /// stamp's, rock where it's a crag, but part of the map, so no undo or reset takes them. A tree they leave on a crag's
-        /// face or a deep cut's floor goes, so the forest stands on the tops and not on the walls. Each refused says why,
-        /// and is left off; one that would move a row's or a road's laid land is refused, as is one on water.
+        /// The map's own land stamps (its stamps.json), laid when the world is made, before its rows (whose pads are cut on
+        /// the stamped land): stamped land like any stamp's, rock where it's a crag, but part of the map, so no undo or reset
+        /// takes them. A tree they leave on a crag's face or a deep cut's floor goes, so the forest stands on the tops and not
+        /// on the walls. Each refused says why, and is left off; one that would move a row's or a road's laid land is
+        /// refused (none is laid yet when the map's go down), as is one on water.
         /// </summary>
         public List<string> LayMapStamps(IEnumerable<LandStamp> stamps)
         {

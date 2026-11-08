@@ -142,7 +142,7 @@ namespace Chem
     {
         const int SaltTurn = 1, SaltName = 2, SaltVillage = 3, SaltRange = 4, SaltDirection = 5, SaltSeed = 6;
         const int Unit = 1024;
-        const string Square = "square", Climb = "climb", Shore = "shore";
+        const string Square = "square", Climb = "climb", Shore = "shore", Wind = "wind";
 
         readonly string intent, form;
         readonly JObject row;
@@ -294,6 +294,11 @@ namespace Chem
             if (layout == Shore)
             {
                 OnTheShore(v, x, y);
+                return;
+            }
+            if (layout == Wind)
+            {
+                Winding(v, x, y);
                 return;
             }
             int square = Pick(v["square"]), lane = Pick(v["laneLength"]);
@@ -473,6 +478,39 @@ namespace Chem
                 HouseAt(v, (tx + ux * up / Unit, ty + uy * up / Unit), (tx, ty), top, (string)top["what"] ?? "house", out _);
             }
             Way(first, way, (int?)v["width"] ?? 2);
+        }
+
+        // A way that winds part-way round the landmark from the village's foot, closing in on it slowly (a gentle grade up
+        // its lower slopes, never its top), with houses either side: one above the way on the up slope, the next below it.
+        void Winding(JObject v, int x, int y)
+        {
+            var (cx, cy) = rows.Centre;
+            var (bx, by) = Toward(cx, cy, x, y);
+            long dx = x - cx, dy = y - cy;
+            int start = (int)BiomeMath.Sqrt(dx * dx + dy * dy), end = Math.Max(4, rows.Reach + ((int?)v["to"] ?? -20));
+            int span = Pick(v["span"]), sense = Roll(SaltDirection) % 2 == 0 ? 1 : -1;
+            int houses = Math.Max(2, Pick(v["houses"])), steps = Math.Max(4, span / 10);
+            var way = new List<(int x, int y)>();
+            for (int k = 0; k <= steps; k++) way.Add(OnTheWinding((cx, cy), (bx, by), (start, end), sense * span, k, steps));
+            JObject first = null;
+            for (int k = 0; k < houses; k++)
+            {
+                // Halfway between the way's points, so a house never sits on a bend.
+                var (wx, wy) = OnTheWinding((cx, cy), (bx, by), (start, end), sense * span, 2 * k + 1, 2 * houses);
+                var (ux, uy) = Toward(cx, cy, wx, wy);
+                int back = Pick(v["setback"]) * (k % 2 == 0 ? -1 : 1);
+                if (HouseAt(v, (wx + ux * back / Unit, wy + uy * back / Unit), (wx, wy), null, "house", out var house)) first ??= house;
+            }
+            Way(first, way, (int?)v["width"] ?? 2);
+        }
+
+        // The point k of n along the winding: turned from the start's bearing, its distance from the middle eased from start
+        // to end.
+        static (int x, int y) OnTheWinding((int x, int y) centre, (int x, int y) bearing, (int start, int end) reach, int degrees, int k, int n)
+        {
+            var (ox, oy) = Rotated(bearing.x, bearing.y, degrees * k / n);
+            int r = reach.start + (reach.end - reach.start) * k / n;
+            return (centre.x + ox * r / Unit, centre.y + oy * r / Unit);
         }
 
         // Houses on an arc round the lake, back from its shore, facing the water, with a way along the arc between them
