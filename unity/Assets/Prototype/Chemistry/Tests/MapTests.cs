@@ -63,6 +63,13 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheBigTestMapPassesItsChecks()
+        {
+            Assert.That(MapCheck.Errors(MapSizeBench.BigMap), Is.Empty);
+            Assert.That(MapFile.Load(MapSizeBench.BigMap).W, Is.EqualTo(1728));
+        }
+
+        [Test]
         public void TheValleysCellsAreTheShapeTheyAlwaysWere()
         {
             var rows = MapFile.ReadCells(ChemistryTests.WorldDir()).Split('\n');

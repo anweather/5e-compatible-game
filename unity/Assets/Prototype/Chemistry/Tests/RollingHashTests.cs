@@ -31,6 +31,54 @@ namespace Chem.Tests
             return closed;
         }
 
+        // A window's length is the world's size alone, so peers agree: the valley's 30 ticks, longer for a world of more than
+        // two valleys' cells, so a tick still hashes about two valleys' worth (chunk-hash; the 3 x 3's 6 ms a tick under Mono).
+        [Test]
+        public void AWindowIsLongerOnlyForABigWorldAndBySizeAlone()
+        {
+            Assert.That(RollingHash.WindowFor(576 * 576), Is.EqualTo(RollingHash.Every), "the valley's stays 30 ticks");
+            Assert.That(RollingHash.WindowFor(Side * Side), Is.EqualTo(RollingHash.Every), "a small world's too");
+            Assert.That(RollingHash.WindowFor(2 * 576 * 576), Is.EqualTo(RollingHash.Every), "two valleys' fits a window");
+            Assert.That(RollingHash.WindowFor(2 * 576 * 576 + 1), Is.EqualTo(RollingHash.Every + 1), "one cell more and it grows");
+            Assert.That(RollingHash.WindowFor(1728 * 1728), Is.EqualTo(135), "a 3 x 3: 135 ticks, about 22 s");
+            Assert.That(RollingHash.WindowFor(new World(ChemistryTests.R, 1152, 64, 1)), Is.EqualTo(RollingHash.WindowFor(1152 * 64)), "a world's is its size's");
+        }
+
+        // A big world's window covers every cell once, so on a world nobody changes it closes on the full hash, on the same
+        // tick for two peers with the same size and edits.
+        [Test]
+        public void ABigWorldsWindowClosesOnTheFullHash()
+        {
+            const int big = 1152;
+            int window = RollingHash.WindowFor(big * big);
+            Assert.That(window, Is.EqualTo(60));
+            World Made(uint seed)
+            {
+                var w = new World(ChemistryTests.R, big, big, seed, "grass");
+                for (int k = 0; k < 400; k++)
+                {
+                    int x = (int)(WorldHash.Hash4(3, 1, k, 0) % big), y = (int)(WorldHash.Hash4(3, 2, k, 0) % big);
+                    w.At(x, y).Water = 1 + k % 4;
+                    w.At((x + 7) % big, y).Fuel = k % 9;
+                }
+                return w;
+            }
+            var a = Made(7);
+            var b = Made(7);
+            var ra = new RollingHash();
+            var rb = new RollingHash();
+            string closedA = null, closedB = null;
+            for (int tick = 1; tick <= window; tick++)
+            {
+                string ha = ra.Add(a, tick), hb = rb.Add(b, tick);
+                Assert.That(ha == null, Is.EqualTo(tick < window), $"only the window's last tick closes it ({tick})");
+                closedA ??= ha;
+                closedB ??= hb;
+            }
+            Assert.That(closedA, Is.EqualTo(a.CellHash()), "every cell once, as the full hash has them");
+            Assert.That(closedB, Is.EqualTo(closedA), "the same on both peers");
+        }
+
         [Test]
         public void TheRunningHashAgreesWithTheTextEvenWithACrackedThing()
         {

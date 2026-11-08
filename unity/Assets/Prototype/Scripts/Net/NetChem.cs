@@ -666,6 +666,8 @@ public partial class NetChem : NetworkBehaviour
         grid.NoteTickDone();
         if (IsServer) standKeeper.Ran(tick, grid.World.TriggerFirings);
         HashTick(tick);
+        // The whole checksum, for the probes that listen: `?.` builds it only when one does, so a game hashes its cells only
+        // a slice a tick (HashTick).
         TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
     }
 
@@ -687,15 +689,16 @@ public partial class NetChem : NetworkBehaviour
             return;
         }
         ownHashes[tick] = hash;
-        DropOldHashes(ownHashes, tick);
-        DropOldHashes(hostHashes, tick);
+        int window = RollingHash.WindowFor(grid.World);
+        DropOldHashes(ownHashes, tick, window);
+        DropOldHashes(hostHashes, tick, window);
         CheckHash(tick);
     }
 
     // A window the other side never had (it joined midway) would otherwise wait for ever.
-    static void DropOldHashes(Dictionary<int, string> hashes, int tick)
+    static void DropOldHashes(Dictionary<int, string> hashes, int tick, int window)
     {
-        hashes.Keys.Where(t => t < tick - HashEvery * HashesKept).ToList().ForEach(t => hashes.Remove(t));
+        hashes.Keys.Where(t => t < tick - window * HashesKept).ToList().ForEach(t => hashes.Remove(t));
     }
 
     // The physical side of the casts just applied: the host moves the props (its physics is the
