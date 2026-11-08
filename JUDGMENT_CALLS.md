@@ -63,6 +63,9 @@ Each entry has:
     configurable size, "for now let's say 12 of those wide" (12 valley-sized squares, by the lead's reading).
 - **Why:** his; the on-demand, far-ring and torus parts change the plan from baking to solving deterministically on
   every peer as the world is explored.
+- **The revised plan's three calls (same page, same day):** the whole world plan solved at load on every peer (not in
+  blocks); the square folders on disk as a cache in the player's data folder; generated at `sight` 4 chunks and known
+  at `know` 7 (about 670 m of haze). All three as recommended.
 - **Revisited:** 0.
 
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)
