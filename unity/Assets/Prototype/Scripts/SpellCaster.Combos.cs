@@ -1,5 +1,6 @@
 using Chem;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 // The wizard's side of World.Combos: casting from the hands (SpellCaster.Hands.cs, D16), the
 // kit on the d-pad, Cancel, and the spell list's buttons. Each button sends a ComboCommand
@@ -76,9 +77,14 @@ public partial class SpellCaster
         var cast = world.CastOf(player);
         bool busy = (shape != null && shape.Shifted) || (radial != null && radial.IsOpen);
 
-        // The hands, unless the debug layout (F2) has the buttons for the radial.
+        // The hands, unless the debug layout (F2) has the buttons for the radial. The d-pad's down holds their menu open
+        // (HandsMenu), and while it is the hands cast nothing.
         bool handsOn = world.HandsOn(player) && controls.ElementPad;
         controls.HandPad = handsOn;
+        bool menuWasOpen = HandsMenu.OpenFor(this); // the frame that shuts it, its buttons were the menu's too
+        if (handsOn && !busy) HandsMenu.Feed(this, controls.OpenSpellList.IsPressed(), controls.OpenSpellList.activeControl?.device as Gamepad);
+        else if (HandsMenu.OpenFor(this)) HandsMenu.Close();
+        busy |= menuWasOpen || HandsMenu.OpenFor(this);
         Hands(player, busy || !handsOn);
         if (busy) return;
         if (controls.CancelCast.WasPressedThisFrame() && cast?.Casting == true)
@@ -90,7 +96,8 @@ public partial class SpellCaster
         if (controls.DpadNext.WasPressedThisFrame()) Send(ComboCommand.Cycle(player, 1));
         if (controls.DpadPrevious.WasPressedThisFrame()) Send(ComboCommand.Cycle(player, -1));
         if (controls.DpadCast.WasPressedThisFrame()) Send(ComboCommand.CastSelected(player));
-        if (controls.OpenSpellList.WasPressedThisFrame()) SpellListMenu.Show(this, true);
+        // Without the hands the d-pad's down opens the spell list, every spell.
+        if (!handsOn && controls.OpenSpellList.WasPressedThisFrame()) SpellListMenu.Show(this, true);
     }
 
     /// <summary>Moves the kit's selection to this slot, for every peer (the spell list).</summary>

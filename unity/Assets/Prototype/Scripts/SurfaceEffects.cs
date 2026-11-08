@@ -231,7 +231,6 @@ public class SurfaceEffects : MonoBehaviour
             wasSlipping = false;
             return;
         }
-        if (!wasSlipping && momentum.sqrMagnitude > 1f) EventLog.Add("You skid across the slick ground");
         wasSlipping = true;
         momentum = Glide(momentum, Wanted(moved), slipperyGrip, dt);
         transform.position = settled;
@@ -341,7 +340,6 @@ public class SurfaceEffects : MonoBehaviour
     void SetSpeed(bool wading)
     {
         if (moveSpeed == null) return;
-        if (wading && wasWading != wading) EventLog.Add("You wade into the water");
         wasWading = wading;
         float k = Slowed ? slowFactor : 1f;
         if (swimming) k *= HeadUnder ? underwaterSpeed : swimmingSpeed;
@@ -373,7 +371,6 @@ public class SurfaceEffects : MonoBehaviour
         bool iced = c != null && c.Frozen;
         float depth = c != null && c.Water > 0 && (!iced || swimming) ? grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y : 0f;
         bool afloat = Time.time >= kickedUntil && depth > (swimming ? StopSwimming : swimDepth);
-        if (afloat && !swimming) EventLog.Add("You swim");
         SetAfloat(afloat);
         if (afloat && iced && !UnderIce) EventLog.Add("Ice closes over you: break it or swim out from under it");
         UnderIce = afloat && iced;

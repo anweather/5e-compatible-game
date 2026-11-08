@@ -4,11 +4,13 @@ using UnityEngine;
 
 // The cast on the HUD (EventLog draws it): about two thirds of the way down the screen,
 // and, bottom left and sized like the portrait's block, the d-pad cross of the kit: the
-// selected spell on top, arrows either side, the spell list's book below. Reads the core
+// selected spell on top, arrows either side, and below the hands menu's two
+// hands (HandsMenu), or without the hands the spell list's book. Reads the core
 // (World.CastOf, World.HandsOf); sends nothing but the merge's rumble.
 //
-// With the hands (D16, docs/design/unified-casting.md) each hand has an icon, left on the
-// left: its element's glyph, and from the moment a gesture starts the gesture's mark on it
+// With the hands (D16, docs/design/unified-casting.md) each hand has a small icon, left on the
+// left, only while its buttons are held or its gesture is under way (the wizard's own hands show
+// what they hold the rest of the time, and the d-pad's hands menu, HandsMenu): its element's glyph, and from the moment a gesture starts the gesture's mark on it
 // (the thrust a short burst at the hand, the throw a streak with an arrowhead, the sweep a
 // ring of points). A held gesture's charge ring fills in steps, one a level, as the core's
 // charge and CastBeats' rumble beats reach them. When both hands' charges merge the icons
@@ -26,7 +28,7 @@ public sealed class CastHud
     // The cross's three by three cells: a block about the size of VitalsHud's.
     const float Cell = 56f;
     // A hand's icon: its radius, how far each sits from the middle, its charge ring, and the merge's flight and slam (s).
-    const float HandRadius = 32f, HandApart = 74f, RingIn = HandRadius + 11f, RingOut = HandRadius + 16f, RingGap = 0.025f;
+    const float HandRadius = 20f, HandApart = 46f, RingIn = HandRadius + 11f, RingOut = HandRadius + 16f, RingGap = 0.025f;
     const float MergeSeconds = 0.14f, SlamSeconds = 0.3f, LockShakeSeconds = 0.45f;
 
     static readonly Color Shade = new(0f, 0f, 0f, 0.55f), Meter = new(1f, 0.82f, 0.3f), Edge = new(1f, 0.96f, 0.8f), Glyph = new(1f, 1f, 1f, 0.9f);
@@ -37,6 +39,11 @@ public sealed class CastHud
 
     /// <summary>A hand's icon as drawn last, for the probe: its element, gesture (or NoGesture), lit charge steps, cooling, locked.</summary>
     public (string element, int gesture, int charge, bool cooling, bool locked) HandShown(int hand) => shown[hand];
+
+    /// <summary>Whether a hand's icon was drawn last frame: only while the hand is at work (the probe).</summary>
+    public bool HandDrawn(int hand) => drawn[hand];
+
+    readonly bool[] drawn = new bool[HandsDef.Count];
 
     /// <summary>The hands' icons have met in the pair's icon (the merge), and how many slams there have been, for the probe.</summary>
     public bool MergeShown => merge >= 1f && mergedSpell != null;
@@ -86,12 +93,12 @@ public sealed class CastHud
             else HudDraw.Ring(new Vector2(cx + x, y), OrbRadius - 3f, OrbRadius, 1f, new Color(1f, 1f, 1f, 0.45f));
         }
         else if (cast.First != null) HudDraw.ElementOrb(new Vector2(cx, y), OrbRadius, cast.First);
-        var meter = Bar(world, cast, caster, cx, y + OrbRadius + 12f);
+        var meter = Bar(world, cast, cx, y + OrbRadius + 12f);
         Steps(world, cast, caster, meter, y - OrbRadius - 36f);
     }
 
-    // The cast bar at this height, its cancel hint under it.
-    Rect Bar(World world, PlayerCast cast, SpellCaster caster, float cx, float top)
+    // The cast bar at this height (cancelling is on the Controls page, not spelled out here).
+    Rect Bar(World world, PlayerCast cast, float cx, float top)
     {
         var meter = new Rect(cx - MeterWidth / 2f, top, MeterWidth, MeterHeight);
         Fill(meter, Shade);
@@ -99,8 +106,6 @@ public sealed class CastHud
         float fill = (meter.width - 4f) * Share;
         Fill(new Rect(meter.x + 2f, meter.y + 2f, fill, meter.height - 4f), Meter);
         Fill(new Rect(meter.x + 2f + Mathf.Max(0f, fill - EdgeWidth), meter.y + 2f, Mathf.Min(fill, EdgeWidth), meter.height - 4f), Edge);
-        bool pad = caster.controls != null && caster.controls.UsingGamepad;
-        GUI.Label(new Rect(cx - 150f, meter.yMax + StepHeight + 6f, 300f, 22f), pad ? PadGlyphs.Text("{East} cancel") : "B cancel", hint);
         return meter;
     }
 
@@ -112,13 +117,14 @@ public sealed class CastHud
         string player = caster.CastPlayer;
         bool casting = cast != null && cast.Casting;
         var dpad = world.DpadOf(player);
+        System.Array.Clear(drawn, 0, drawn.Length);
         if (casting && cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count)
         {
             GUI.Label(new Rect(cx - 200f, y - 22f, 400f, 44f), $"<b>{dpad[cast.DpadCasting].Name}</b>", small);
-            Bar(world, cast, caster, cx, y + HandRadius + 12f);
+            Bar(world, cast, cx, y + HandRadius + 12f);
             return;
         }
-        if (casting) Bar(world, cast, caster, cx, y + HandRadius + 40f);
+        if (casting) Bar(world, cast, cx, y + HandRadius + 40f);
         else NoteTick(world);
 
         var h = world.HandsOf(player);
@@ -167,6 +173,15 @@ public sealed class CastHud
             alpha = 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime * 3f, 1f);
         }
         else if (cooling > 0 || locked) alpha = 0.4f;
+        // Only while the hand is at work, or just refused as locked.
+        float since = Time.unscaledTime - caster.LockedAt(hand);
+        shown[hand] = (element, gesture, h.Down[hand] ? world.HandCharge(player, hand) : 0, cooling > 0, locked);
+        if (!h.Down[hand] && gesture == HandsDef.NoGesture && since >= LockShakeSeconds)
+        {
+            System.Array.Clear(handSteps[hand], 0, handSteps[hand].Length);
+            return;
+        }
+        drawn[hand] = true;
         var colour = HudDraw.ElementColor(element);
         if (gesture != HandsDef.NoGesture) Mark(at, gesture, Color.Lerp(colour, Color.white, 0.45f));
         HudDraw.ElementOrb(at, HandRadius, element, alpha);
@@ -182,7 +197,6 @@ public sealed class CastHud
         var row = gesture != HandsDef.NoGesture ? world.Rules.Sim.Hold.Hands.One(element, gesture) : null;
         int lit = h.Down[hand] ? world.HandCharge(player, hand) : 0;
         ChargeRing(world, at, row, lit, handSteps[hand]);
-        float since = Time.unscaledTime - caster.LockedAt(hand);
         if (locked || since < LockShakeSeconds) Lock(at + new Vector2(HandRadius * 0.62f + Shake(since), -HandRadius * 0.62f));
         if (row?.Spell != null) Name(world.Rules.Spell(row.Spell)?.Name ?? row.Spell, at.x, at.y + HandRadius + 6f);
         shown[hand] = (element, gesture, lit, cooling > 0, locked);
@@ -204,6 +218,7 @@ public sealed class CastHud
         int lit = h.Down[HandsDef.Left] || h.Down[HandsDef.Right] ? SpellCaster.HeldHandCharge(world, player) : 0;
         ChargeRing(world, at, row, lit, handSteps[2], r - HandRadius);
         Name(name, at.x, at.y + r + 6f);
+        drawn[HandsDef.Left] = drawn[HandsDef.Right] = true;
         shown[HandsDef.Left] = (left, gesture, lit, false, false);
         shown[HandsDef.Right] = (right, gesture, lit, false, false);
     }
@@ -365,7 +380,8 @@ public sealed class CastHud
         float r = Cell * 0.3f;
         HudDraw.Triangle(left + new Vector2(r * 0.7f, -r), left + new Vector2(r * 0.7f, r), left + new Vector2(-r, 0f), Glyph);
         HudDraw.Triangle(right + new Vector2(-r * 0.7f, -r), right + new Vector2(-r * 0.7f, r), right + new Vector2(r, 0f), Glyph);
-        Book(book);
+        if (caster.controls != null && caster.controls.HandPad) TwoHands(book);
+        else Book(book);
 
         var spell = world.SelectedDpad(caster.CastPlayer);
         if (spell == null) return;
@@ -376,6 +392,17 @@ public sealed class CastHud
     }
 
     static Vector2 Middle(float x, float y, int column, int row) => new(x + Cell * (column + 0.5f), y + Cell * (row + 0.5f));
+
+    // The hands menu: two hands side by side, plain (their elements show only in the menu and while a hand is at work).
+    static void TwoHands(Vector2 at)
+    {
+        for (int hand = 0; hand < HandsDef.Count; hand++)
+        {
+            var palm = at + new Vector2(hand == HandsDef.Left ? -Cell * 0.18f : Cell * 0.18f, Cell * 0.05f);
+            HudDraw.Disc(palm, Cell * 0.13f, Glyph);
+            for (int f = -1; f <= 1; f++) HudDraw.Disc(palm + new Vector2(f * Cell * 0.07f, -Cell * 0.16f), Cell * 0.04f, Glyph);
+        }
+    }
 
     // The spell list: covers and a spine.
     static void Book(Vector2 at)

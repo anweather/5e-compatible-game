@@ -39,9 +39,9 @@ public class HoldShow : MonoBehaviour
         string of = last > 0 ? $" of {last}" : "";
         return h.Phase switch
         {
-            HoldPhase.Running => $"Wave {h.Wave}{of}: {world.HoldLeft} left, the keep {Mathf.Max(0, h.Health)}/{world.Rules.Sim.Hold.Health}",
-            HoldPhase.Won => $"The keep held: all {h.Wave} waves beaten. Stand on the plate to play again",
-            _ => $"The keep fell in wave {h.Wave}{of}. Stand on the plate to try again",
+            HoldPhase.Running => $"Wave {h.Wave}{of} · {world.HoldLeft} left · keep {Mathf.Max(0, h.Health)}",
+            HoldPhase.Won => "The keep held. The plate starts again",
+            _ => $"The keep fell in wave {h.Wave}. The plate starts again",
         };
     }
 
@@ -94,7 +94,7 @@ public class HoldShow : MonoBehaviour
     {
         var tower = world.TowerOf(player);
         if (tower == null) return "";
-        string line = $"The {tower.Element} tower: a hand's trigger attunes it to {tower.Element}";
+        string line = $"The {tower.Element} tower";
         if (!world.ElementOpen(player, tower.Element) && world.UnlockGiving(u => u.Element == tower.Element) is { } row)
         {
             int away = world.PointsAway(player, row);
