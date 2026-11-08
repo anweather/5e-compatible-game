@@ -59,7 +59,7 @@ files players will get, tested before anyone can see it.
    download each release.
 
    Each builds its player, packs it with Velopack (a delta from the last
-   release on its channel) and uploads only its own files (`releases.osx.json`
+   *published* release on its channel, never the draft) and uploads only its own files (`releases.osx.json`
    and the `osx` packages, or `releases.win.json` and the `win` ones) into
    the one **draft** `alpha-X.Y.Z` (see "Updates in place" below). Start one
    machine first and the other once it prints "Release alpha-X.Y.Z is ready":
@@ -67,6 +67,8 @@ files players will get, tested before anyone can see it.
    refuses a draft that targets another commit, and stops if both made one
    (two releases with the tag: delete the extra, then `--skip-build`). Both
    halves must log the same `NET CONFIG` hash (`-host-online`).
+   Rebuilding a half at a new commit replaces all its files on the draft (the
+   old delta too). `--dry-run` says which release each delta would come from.
    One machine can still build both: `tools/ship-update.sh X.Y.Z` on the Mac.
 5. **Notes:** player-facing, from the merges since the last release
    (`git log origin/main@{1}..origin/main --first-parent`, or
@@ -203,13 +205,18 @@ tree, it:
 
 1. builds a macOS app and a Windows folder at that version
    (`UpdateBuild.Players`; Player Settings' version is put back after);
-2. fetches the last update on each channel from GitHub, so it can make the
-   delta (`vpk download github`);
+2. fetches, per channel, the full package of the newest *published* release
+   before this version that has the channel's feed, so it can make the delta.
+   Not `vpk download github --pre`: signed in, that sees drafts too, and for
+   the 0.1.12 re-cut it took the draft's own 0.1.12 as the base and made no
+   delta. With no such release the channel ships a full package only;
 3. packs each with `vpk` (the Windows one cross-packed with `[win]`), giving
    a full package, a delta, `Setup.exe` / `Setup.pkg`, a portable zip and
    the channel's feed, `releases.<channel>.json`;
 4. uploads both channels into one GitHub release with `gh` (`vpk upload
-   github` can't find a draft by its tag).
+   github` can't find a draft by its tag). If the release already held this
+   version's files for a channel (a rebuild), whatever the new pack didn't
+   make is deleted, so the release never mixes two builds.
 
 Without `--test` that's the draft `alpha-X.Y.Z` (test it, then publish as in
 step 6 above). With `--test` it's `update-test-X.Y.Z`, published at once, on
