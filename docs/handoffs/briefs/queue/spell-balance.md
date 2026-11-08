@@ -27,3 +27,7 @@ core tests so the numbers are pinned. The Hold's bot runs (`hold` lockstep test)
 
 Before landing: `dotnet build core -c Release -warnaserror`, `dotnet test core` twice in full, `dotnet format`. Push
 the branch only. Remove this claim file on the branch in the last commit. The PC compiles it and the lead lands it.
+
+After (2026-11-07, try 1): the runner ended the session while both full test runs waited in the background, so
+nothing was pushed. Run tests in the foreground; the runner closes a session that only waits. If your worktree still
+holds the first try's changes, continue from them.
