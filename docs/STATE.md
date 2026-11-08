@@ -47,7 +47,8 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   brief said to leave. The canyon is dry, beside the valley's river (stamps can't cross water, J-073). It adds path
   stamps and the map's own `stamps.json`, and raises the rock cap 700 -> 1400 (frame cost not measured). EditMode not
   rerun after `ground/` was re-exported. Clip `castle-cliff-canyon.mp4`, sent to Andrew.
-- **Waiting on a PC compile:** `mcp-blue-fire` (u2, 2cfb276a, #167: probes misread the MCP's short draft reply).
+- **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
+  element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
   (as in the game), same 3500 ticks and per-tick checksums; EditMode 49.8 s (was past 180 s), core suite 3.5 -> 2.4 min.
   EditMode can now be fully green on the PC; on the Mac 8 ApiKeyTests still fail (Windows-only vault). Briefs the lead lands must `git rm` their own claim on the branch.
