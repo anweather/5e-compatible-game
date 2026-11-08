@@ -32,7 +32,7 @@ namespace Chem.Mcp
             "read what's on now (whats_on, then list, describe, explain), build a new draft, check it with validate, run simulate if validate says to, then apply it with a short title the players will read. " +
             "Each tool's description says what it needs: colours are always set_look. Before you try or refuse what may not be in the rules, read outside_rules, so you can say what's nearest. " +
             "After apply, tell the player what changed, from its answer, and claim nothing it doesn't list. Don't save unless the player asks. " +
-            "A mod is a rule that keeps holding; something that happens once (20 trees here, three centaurs near me, a meteor there, a golf ball and a cup to play with) is act, with no draft and no mod. A player's own speed, size, jump and jumps are set_player; something that keeps falling (constant meteors) is add_trigger on tick, a shower with a floor on how often.";
+            "A mod is a rule that keeps holding; something that happens once (20 trees here, three centaurs near me, a meteor there, a golf ball and a cup to play with) is act, with no draft and no mod. A player's own speed, size and jumps are set_player; constant meteors, add_trigger on tick.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
         const string ValueHelp = "The new value as JSON (0.5, true, \"ash\", [8, 6], {\"catch\": 0.4}); null removes the field.";
