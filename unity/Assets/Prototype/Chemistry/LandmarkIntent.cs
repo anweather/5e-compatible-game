@@ -350,9 +350,17 @@ namespace Chem
                 ["joins"] = joins,
                 ["walls"] = walls,
                 ["roads"] = roads,
-                ["parts"] = new JArray(new JObject { ["kind"] = "great-tree", ["join"] = "c", ["scale"] = scale }),
+                ["parts"] = new JArray(GreatTreePart(t, scale)),
             });
             rows.Reach = Math.Max(rows.Reach, trunk + Pick(t["root"]) + 4);
+        }
+
+        // The detail the view draws as the tree: at the trunk's middle, its size, and the kind of tree when the form names one.
+        static JObject GreatTreePart(JObject t, int scale)
+        {
+            var part = new JObject { ["kind"] = "great-tree", ["join"] = "c", ["scale"] = scale };
+            if (t["tree"] != null) part["tree"] = (string)t["tree"];
+            return part;
         }
 
         // A Unit vector turned by whole degrees, by tables of tens of degrees and of single ones, in integers.

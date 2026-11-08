@@ -110,7 +110,8 @@ namespace Chem.Tests
             var tables = R.Buildings;
             var cells = BuildingRaster.Cells(BuildingRow.Read((string)row["id"], row, tables), tables);
             Assert.That(row["parts"].Single()["kind"].ToString(), Is.EqualTo("great-tree"), "the view's own tree, scaled up");
-            Assert.That((int)row["parts"][0]["scale"], Is.InRange(7, 9));
+            Assert.That((int)row["parts"][0]["scale"], Is.InRange(3, 4));
+            Assert.That((string)row["parts"][0]["tree"], Is.EqualTo("Cypress"), "a broad-crowned kind");
             Assert.That(cells.Count(c => c.Terrain == "logwall"), Is.GreaterThan(12), "a trunk");
             Assert.That(cells.Count(c => c.Terrain == "deadfall"), Is.GreaterThan(40), "roots");
             Assert.That(cells.Any(c => c.X == SiteX && c.Y == SiteY && c.Terrain == "logwall"), "the trunk stands on the site");
@@ -230,8 +231,8 @@ namespace Chem.Tests
         }
 
         // The goldens, to compare between machines: the five files' texts, per form and seed.
-        [TestCase("temperate", 1, 0x062df67cu), TestCase("temperate", 2, 0x89080d44u)]
-        [TestCase("mountains", 1, 0xaea79652u), TestCase("mountains", 2, 0x3b6a7c85u)]
+        [TestCase("temperate", 1, 0x2f446555u), TestCase("temperate", 2, 0xf6215265u)]
+        [TestCase("mountains", 1, 0xcc8c716eu), TestCase("mountains", 2, 0x0c8a4196u)]
         [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]
         public void Golden(string biome, int seed, uint expected)
         {

@@ -439,6 +439,18 @@ namespace Chem
             return refused;
         }
 
+        // The cells a bare map stamp painted (MapStamps' "bare"), null until one does: map data, the same on every peer.
+        bool[] bareCells;
+
+        internal void MarkBare(int x, int y)
+        {
+            bareCells ??= new bool[W * H];
+            bareCells[Idx(x, y)] = true;
+        }
+
+        /// <summary>Whether a bare map stamp left this cell bare (a volcano's rock): no tree is drawn on it.</summary>
+        public bool IsStampedBare(int x, int y) => bareCells != null && InBounds(x, y) && bareCells[Idx(x, y)];
+
         /// <summary>Whether the stamps left a cell bare rock: a crag's face, or a floor cut a crag deep (CellPaint paints them so).</summary>
         public bool IsStampedRock(int x, int y) =>
             landMoved != null && (LandStampedAt(x, y) <= -LandCrag || (LandDrop(x, y) >= LandSteep && LandFace(x, y) >= LandCrag));

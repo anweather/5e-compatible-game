@@ -100,11 +100,11 @@ public static class ValleyBuilder
         WireChemistry(grid, yardRows, valleyTrees);
         var world = ChemGrid.MapWorld(grid.LoadBaseRules(), ChemGrid.CellMap(), grid.seed, out _);
         ValleyTerrain.BakeCells(world, grid.stepHeight);
-        // The map's own stamps (stamps.json): no tree on a crag's face or a canyon's floor.
+        // The map's own stamps (stamps.json): no tree on a crag's face, a canyon's floor or a bare stamp (a volcano).
         valleyTrees.RemoveAll(t =>
         {
             var c = cellAt(t.at);
-            return world.InBounds(c.x, c.y) && world.IsStampedRock(c.x, c.y);
+            return world.InBounds(c.x, c.y) && (world.IsStampedRock(c.x, c.y) || world.IsStampedBare(c.x, c.y));
         });
 
         // The cells painted as they are: the old yard's, the ball court's dirt floor (CellKind), and the

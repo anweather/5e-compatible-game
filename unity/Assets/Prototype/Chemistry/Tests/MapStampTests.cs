@@ -57,6 +57,8 @@ namespace Chem.Tests
             Assert.That(w.At(90, 75).T, Is.EqualTo("rock"), "a tree on its side");
             Assert.That(w.At(85, 90).T, Is.EqualTo("rock"), "its grass");
             Assert.That(w.At(70, 82).T, Is.EqualTo("stone"), "a wall stays");
+            Assert.That(w.IsStampedBare(85, 90) && w.IsStampedBare(80, 80), "the view draws no tree on them");
+            Assert.That(w.IsStampedBare(70, 82) || w.IsStampedBare(120, 80), Is.False);
             Assert.That(w.At(80, 130).T, Is.EqualTo("tree"), "past its reach");
             Assert.That(w.At(120, 80).T, Is.EqualTo("grass"));
             var odd = MapStamps.FromJson("{ \"stamps\": [ { \"id\": \"odd\", \"at\": [40, 120], \"profile\": \"dome\", \"radius\": 10, \"rise\": 20, \"bare\": \"nope\" } ] }");
