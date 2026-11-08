@@ -69,6 +69,12 @@ namespace Chem
     public sealed class HoldParams
     {
         public int Health = 100, PlateTicks = 6, First = 4, Growth = 2, HpPerWave = 2, Warmup = 60, SpawnEvery = 9, BetweenWaves = 90;
+        /// <summary>
+        /// Ticks from one wave's start (its first raider) to the next's, whoever is still standing; 0 for the old way, the next
+        /// wave once the last is beaten. The last BetweenWaves of them are the next wave's warning. And the last wave, whose
+        /// beating wins the run; 0 for endless waves.
+        /// </summary>
+        public int WaveTicks, Waves;
         public int BatterTicks = 12, BatterCost = 12, Margin = 14, AdjectiveFrom = 2, AdjectivePercent = 34;
         public int DamagePerWave, KindEvery = 1, AdjectivePerWave, AdjectiveMost = 100, ThemeFrom = 1, ThemePercent, BossEvery, BossHpPerWave, TargetMinutes = 20;
         /// <summary>The adjective a boss wears, or null for no bosses.</summary>
@@ -165,6 +171,8 @@ namespace Chem
             h.Warmup = Int("warmup", h.Warmup);
             h.SpawnEvery = Int("spawnEvery", h.SpawnEvery);
             h.BetweenWaves = Int("betweenWaves", h.BetweenWaves);
+            h.WaveTicks = Math.Max(0, Int("waveTicks", h.WaveTicks));
+            h.Waves = Math.Max(0, Int("waves", h.Waves));
             h.BatterTicks = Int("batterTicks", h.BatterTicks);
             h.BatterCost = Int("batterCost", h.BatterCost);
             h.Margin = Int("margin", h.Margin);

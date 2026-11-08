@@ -349,7 +349,9 @@ namespace Chem.Tests
             w.Hold.Wave = 3;
             w.Hold.Health = 1;
             Until(w, () => !w.HoldRunning, "the keep falls");
-            Assert.That(w.PointsOf(Me), Is.EqualTo(4 + 2 * P.PointsPerWave));
+            // Waves are timed: the clock may bring more before it falls. Every wave before the one it fell in earns.
+            Assert.That(w.Hold.Wave, Is.GreaterThanOrEqualTo(3));
+            Assert.That(w.PointsOf(Me), Is.EqualTo(4 + (w.Hold.Wave - 1) * P.PointsPerWave));
         }
 
         [Test]

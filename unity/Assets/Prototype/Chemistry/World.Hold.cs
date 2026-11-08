@@ -16,6 +16,8 @@ namespace Chem
     {
         Running,
         Lost,
+        /// <summary>The last wave beaten (HoldParams.Waves).</summary>
+        Won,
     }
 
     /// <summary>A run: how it stands.</summary>
@@ -26,6 +28,8 @@ namespace Chem
         public int Wave, Health, ToSpawn, NextSpawn, Spawned;
         /// <summary>The wizards at the run's start, which scale its waves; raiders of this wave out so far.</summary>
         public int Peers = 1, InWave;
+        /// <summary>With timed waves (HoldParams.WaveTicks), the tick the next wave starts on, whoever is still standing; 0 without.</summary>
+        public int NextWave;
         /// <summary>This wave's theme, or null.</summary>
         public string Theme;
         /// <summary>The moment this run came from, or null; and the tick it was gone into.</summary>
@@ -136,6 +140,7 @@ namespace Chem
             ClearRaiders();
             int peers = stands.Values.Count(s => !s.Down);
             Hold = new HoldState { Phase = HoldPhase.Running, Wave = 1, Health = p.Health, Peers = peers, ToSpawn = HoldWaveSize(p, 1, peers), NextSpawn = Tick + p.Warmup, Theme = ThemeOfWave(1) };
+            Hold.NextWave = p.WaveTicks > 0 ? Hold.NextSpawn + p.WaveTicks : 0;
             AddLog("Wave 1 is coming! Hold the keep", LogKind.Notable);
         }
 
@@ -173,6 +178,7 @@ namespace Chem
                 }
                 DropHands(h);
             }
+            Hold.NextWave = p.WaveTicks > 0 ? Hold.NextSpawn + p.WaveTicks : 0;
             BreakCastle(p, m.Broken);
             AddLog($"{m.Name}: wave {m.Wave}", LogKind.Notable);
             return true;
@@ -267,18 +273,31 @@ namespace Chem
             return themes.Count == 0 ? last : themes[(int)(WaveRoll(wave, 0, pick) % (uint)themes.Count)].Id;
         }
 
+        // The next wave: on the timer with timed waves (its warning BetweenWaves before it starts, so beating a wave buys no time,
+        // and one still coming in holds the next back), else once this one's beaten. Beating the last wave wins the run.
         void NextHoldWave(HoldParams p)
         {
             var h = Hold;
-            if (h.ToSpawn > 0 || raiders.Count > 0) return;
+            if (h.ToSpawn > 0) return;
+            if (p.Waves > 0 && h.Wave >= p.Waves)
+            {
+                if (raiders.Count == 0) WinRun();
+                return;
+            }
+            if (p.WaveTicks > 0 ? Tick < h.NextWave - p.BetweenWaves : raiders.Count > 0) return;
             h.Wave++;
             h.Theme = NextTheme(p, h.Wave, h.Theme);
             h.InWave = 0;
             h.ToSpawn = HoldWaveSize(p, h.Wave, h.Peers);
-            h.NextSpawn = Tick + p.BetweenWaves;
+            h.NextSpawn = p.WaveTicks > 0 ? Math.Max(h.NextWave, Tick + p.BetweenWaves) : Tick + p.BetweenWaves;
+            if (p.WaveTicks > 0) h.NextWave = h.NextSpawn + p.WaveTicks;
             OfferUpgrades(p);
-            AddLog($"Wave {h.Wave} is coming!", LogKind.Notable);
+            AddLog(p.Waves > 0 && h.Wave == p.Waves ? $"The last wave, {h.Wave}, is coming!" : $"Wave {h.Wave} is coming!", LogKind.Notable);
         }
+
+        /// <summary>With timed waves, ticks until the next wave starts (its warning shows for the last BetweenWaves); null without, or on the last.</summary>
+        public int? HoldNextWaveIn =>
+            HoldRunning && Hold.NextWave > 0 && (Rules.Sim.Hold.Waves == 0 || Hold.Wave < Rules.Sim.Hold.Waves) ? Math.Max(0, Hold.NextWave - Tick) : (int?)null;
 
         // ---------- barricades ----------
 
@@ -458,9 +477,19 @@ namespace Chem
 
         // ---------- the end ----------
 
+        // The last wave beaten: the run is won, the points for every wave, and the castle mended for the next.
+        void WinRun()
+        {
+            EarnPoints(Rules.Sim.Hold, Hold.Wave);
+            Hold.Phase = HoldPhase.Won;
+            Hold.ToSpawn = 0;
+            AddLog($"The keep holds! All {Hold.Wave} waves beaten", LogKind.Notable);
+            MendCastle();
+        }
+
         void EndRun()
         {
-            EarnPoints(Rules.Sim.Hold);
+            EarnPoints(Rules.Sim.Hold, Hold.Wave - 1);
             Hold.Phase = HoldPhase.Lost;
             Hold.Health = 0;
             Hold.ToSpawn = 0;
@@ -576,6 +605,8 @@ namespace Chem
             var inv = CultureInfo.InvariantCulture;
             var sb = new System.Text.StringBuilder("|H").Append(holdPlate.ToString(inv));
             if (Hold != null) sb.Append(':').Append((int)Hold.Phase).Append(':').Append(Hold.Wave).Append(':').Append(Hold.Health).Append(':').Append(Hold.ToSpawn).Append(':').Append(Hold.NextSpawn).Append(':').Append(Hold.Spawned).Append(':').Append(Hold.Peers).Append(':').Append(Hold.InWave).Append(':').Append(Hold.Theme).Append(':').Append(Hold.Moment);
+            // Timed waves only, so a run without hashes as it did.
+            if (Hold != null && Hold.NextWave != 0) sb.Append(":n").Append(Hold.NextWave);
             foreach (var b in battered) sb.Append("|b").Append(b.Key).Append(':').Append(b.Value);
             foreach (var r in raiders) sb.Append("|r").Append(r.Id).Append(':').Append(r.Kind).Append(':').Append(r.X).Append(':').Append(r.Y).Append(':').Append(r.Hp).Append(':').Append(r.Wait).Append(':').Append(r.StatusOf(LandedStatus));
             return sb.ToString();
@@ -584,7 +615,7 @@ namespace Chem
         JObject SaveHold()
         {
             var save = new JObject { ["plate"] = holdPlate, ["battered"] = new JArray(battered.Select(b => new JArray(b.Key, b.Value))) };
-            if (Hold != null) save["at"] = new JArray((int)Hold.Phase, Hold.Wave, Hold.Health, Hold.ToSpawn, Hold.NextSpawn, Hold.Spawned, Hold.Peers, Hold.InWave, Hold.Theme, Hold.Moment, Hold.MomentTick);
+            if (Hold != null) save["at"] = new JArray((int)Hold.Phase, Hold.Wave, Hold.Health, Hold.ToSpawn, Hold.NextSpawn, Hold.Spawned, Hold.Peers, Hold.InWave, Hold.Theme, Hold.Moment, Hold.MomentTick, Hold.NextWave);
             if (Hold != null && Hold.Wizards.Count > 0) save["wizards"] = SaveWizards(Hold);
             return save;
         }
@@ -593,7 +624,7 @@ namespace Chem
         {
             if (!(s is JObject o)) return;
             holdPlate = (int)o["plate"];
-            if (o["at"] is JArray at) Hold = new HoldState { Phase = (HoldPhase)(int)at[0], Wave = (int)at[1], Health = (int)at[2], ToSpawn = (int)at[3], NextSpawn = (int)at[4], Spawned = (int)at[5], Peers = (int)at[6], InWave = (int)at[7], Theme = (string)at[8], Moment = (string)at[9], MomentTick = (int)at[10] };
+            if (o["at"] is JArray at) Hold = new HoldState { Phase = (HoldPhase)(int)at[0], Wave = (int)at[1], Health = (int)at[2], ToSpawn = (int)at[3], NextSpawn = (int)at[4], Spawned = (int)at[5], Peers = (int)at[6], InWave = (int)at[7], Theme = (string)at[8], Moment = (string)at[9], MomentTick = (int)at[10], NextWave = at.Count > 11 ? (int)at[11] : 0 };
             if (Hold != null) LoadWizards(Hold, o["wizards"]);
             foreach (var b in o["battered"] ?? new JArray()) battered[(int)b[0]] = (int)b[1];
         }

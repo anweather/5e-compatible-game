@@ -76,11 +76,12 @@ namespace Chem
         }
 
         // The run's end: each wizard keeps what it earned, but a moment earns nothing.
-        void EarnPoints(HoldParams p)
+        // Points for the waves survived: those before the one the keep fell in, or every wave of a run won.
+        void EarnPoints(HoldParams p, int survived)
         {
             if (Hold.Moment != null) return;
             foreach (var player in progress.Keys.ToList())
-                progress[player] = (int)Math.Min(AllPoints, (long)progress[player] + (long)(Hold.Wave - 1) * p.PointsPerWave);
+                progress[player] = (int)Math.Min(AllPoints, (long)progress[player] + (long)survived * p.PointsPerWave);
         }
 
         // ---------- upgrades ----------

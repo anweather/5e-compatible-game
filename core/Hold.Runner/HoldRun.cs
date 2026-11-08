@@ -29,6 +29,10 @@ namespace Chem.HoldCurve
         public int LastWave => world.Hold?.Wave ?? 0;
         public int Ticks { get; private set; }
         public World World => world;
+        /// <summary>The wizards stand on their posts and never cast: the keep left to itself (--idle).</summary>
+        public bool Idle { get; set; }
+        /// <summary>The wave reached, "W" after it for a run won (every wave beaten).</summary>
+        public string Outcome => LastWave + (world.Hold?.Phase == HoldPhase.Won ? "W" : "");
         /// <summary>What the first wizard's points came to.</summary>
         public int Points => world.PointsOf(Name(0)) ?? 0;
 
@@ -83,7 +87,7 @@ namespace Chem.HoldCurve
             int tps = world.Rules.Sim.TicksPerSecond, seen = world.Hold.Wave;
             for (; Ticks < mostSeconds * tps && world.HoldRunning && world.Hold.Wave <= untilWave; Ticks++)
             {
-                for (int i = 0; i < peers; i++) Think(Name(i), posts[i]);
+                for (int i = 0; i < peers && !Idle; i++) Think(Name(i), posts[i]);
                 world.Step();
                 foreach (var fired in world.CombosFired) Aim(fired);
                 if (world.Hold.Wave == seen) continue;

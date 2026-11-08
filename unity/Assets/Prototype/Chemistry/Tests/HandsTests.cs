@@ -492,7 +492,7 @@ namespace Chem.Tests
             var fired = w.CombosFired.Single();
             Assert.That((fired.Spell, fired.Charge), Is.EqualTo(("burning-hands", charge)));
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown), "the cooldown starts as it goes off");
-            Assert.That(w.CastHash(), Is.EqualTo(new[] { "fc6f40e0", "8e71669b", "ecc39b7d", "1a85cd66" }[System.Math.Min(levels, 3)]));
+            Assert.That(w.CastHash(), Is.EqualTo(new[] { "2683f1dc", "bafe9a9f", "7fcb6591", "a5d65932" }[System.Math.Min(levels, 3)]));
         }
 
         [Test]
@@ -528,7 +528,7 @@ namespace Chem.Tests
             Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.BothCooldown));
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.BothCooldown));
             Assert.That(w.CastOf(Me).Merge, Is.Null);
-            Assert.That(w.CastHash(), Is.EqualTo("28c76308"));
+            Assert.That(w.CastHash(), Is.EqualTo("5ed020e4"));
         }
 
         [Test]
@@ -564,7 +564,7 @@ namespace Chem.Tests
             Up(w, Left);
             w.Step();
             Assert.That((w.CombosFired.Single().Spell, w.CombosFired.Single().Charge), Is.EqualTo(("ray-of-frost", World.MaxCharge)));
-            Assert.That(w.CastHash(), Is.EqualTo("3798243e"));
+            Assert.That(w.CastHash(), Is.EqualTo("d1bb758a"));
         }
 
         [Test]

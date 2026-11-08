@@ -165,8 +165,51 @@ namespace Chem.Tests
             w.Hold.Health = System.Math.Min(w.Hold.Health, ShortKeep);
             Until(w, () => !w.HoldRunning, "the keep falls");
             Assert.That(w.Hold.Phase, Is.EqualTo(HoldPhase.Lost));
-            Assert.That(w.Hold.Wave, Is.EqualTo(1), "the score is the wave reached");
+            // Waves are timed, so more may have come while the first walked up: the score is the wave it fell in.
+            Assert.That(w.Log.Last(l => l.Text.StartsWith("The keep falls", System.StringComparison.Ordinal)).Text, Is.EqualTo($"The keep falls in wave {w.Hold.Wave}"), "the score is the wave reached");
             Assert.That(w.Raiders, Is.Empty, "raiders are cleared");
+        }
+
+        // The next wave comes on the clock, waveTicks after the last one's first raider, with the last still standing:
+        // beating a wave buys no time, and leaving one standing doesn't hold the next back. Its warning shows betweenWaves before.
+        [Test]
+        public void WavesComeOnTheClockWhoeverIsStillStanding()
+        {
+            var p = R.Sim.Hold;
+            Assert.That(p.WaveTicks, Is.GreaterThan(p.BetweenWaves), "the rules time their waves");
+            var w = Running();
+            Away(w);
+            w.Hold.Health = int.MaxValue / 2;
+            Until(w, () => w.Hold.InWave > 0, "wave 1 starts");
+            int first = w.Tick;
+            Assert.That(w.HoldNextWaveIn, Is.EqualTo(p.WaveTicks - 1).Or.EqualTo(p.WaveTicks), "the countdown");
+            Until(w, () => w.Hold.Wave == 2, "wave 2 is announced");
+            Assert.That(w.HoldWarning?.ticks, Is.EqualTo(p.BetweenWaves), "its warning");
+            Assert.That(w.Raiders, Is.Not.Empty, "wave 1 still stands");
+            Until(w, () => w.Hold.InWave > 0, "wave 2 starts");
+            Assert.That(w.Tick - first, Is.EqualTo(p.WaveTicks));
+        }
+
+        // Beating the last wave wins the run: every wave's points, and the castle mended.
+        [Test]
+        public void BeatingTheLastWaveWinsTheRun()
+        {
+            var p = R.Sim.Hold;
+            Assert.That(p.Waves, Is.GreaterThan(0), "the rules have a last wave");
+            var w = Running();
+            Away(w);
+            w.Hold.Health = int.MaxValue / 2;
+            w.Hold.Wave = p.Waves;
+            Until(w, () => w.Hold.ToSpawn == 0, "they come");
+            Until(w, () =>
+            {
+                foreach (var r in w.Raiders) r.Hp = 1;
+                foreach (var r in w.Raiders) r.Status["burning"] = 30;
+                return !w.HoldRunning;
+            }, "the last wave is beaten");
+            Assert.That(w.Hold.Phase, Is.EqualTo(HoldPhase.Won));
+            Assert.That(w.Hold.Wave, Is.EqualTo(p.Waves));
+            Assert.That(w.HoldNextWaveIn, Is.Null);
         }
 
         [Test]
