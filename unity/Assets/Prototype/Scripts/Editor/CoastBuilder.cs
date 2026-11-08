@@ -291,7 +291,7 @@ public static class CoastBuilder
         return prop;
     }
 
-    static float Ground(Vector2 at) => ValleyTerrain.GroundAt(new Vector3(at.x, 0f, at.y));
+    static float Ground(Vector2 at) => EditorGround.GroundAt(new Vector3(at.x, 0f, at.y));
 
     // Inside the world's edge walls.
     static bool Inside(Vector2 p) => p.x < 438f && p.y > -362f;

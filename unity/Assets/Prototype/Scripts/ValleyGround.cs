@@ -13,11 +13,11 @@ using UnityEngine;
 // gully), so a burnt patch fades into whatever was there before.
 //
 // Works on runtime copies of the chunks, made when a world starts (Bind), so
-// playing never changes the saved valley: copies of the scene's baked chunks, or with
-// GroundSwitch on, chunks built from arrays (GroundBuilder). They are made up front, not when a
+// playing never changes the saved valley: chunks built from the map's arrays (GroundBuilder; the
+// scene's start built the first, MapTerrains), or in tests copies of chunks given to it. They are made up front, not when a
 // chunk first changes: swapping a terrain's collider under a prop resting on it
 // drops the contact, and the prop falls through the ground. The baked heights already hold the starting cells' offsets
-// (ValleyBuilder bakes them with the same CellHeightfield), so the base under
+// (the ground pack was baked with the same CellHeightfield), so the base under
 // each sample is what was baked minus that offset.
 public sealed class ValleyGround
 {
@@ -27,7 +27,10 @@ public sealed class ValleyGround
         public Terrain terrain;
         // How far it drew details (grass, small plants) as built.
         public float detailDistance;
+        // original: the chunk's data as the scene had it (null when the terrain was built from the builder's arrays);
+        // data: its runtime copy. fresh: data is as built and nothing has changed it yet (the first Bind takes it as is).
         public TerrainData original, data;
+        public bool fresh;
         // Heights in metres above the terrain's position, before the cells' offsets: [z, x].
         public float[,] baseHeights;
         // CellPaint.Layers as indices into the terrain's layers (-1: the terrain lacks it).
@@ -54,7 +57,11 @@ public sealed class ValleyGround
 
     readonly GroundBuilder builder;
 
-    public ValleyGround(TerrainGrid layout, Terrain[] terrains, GroundBuilder builder = null)
+    /// <summary>
+    /// The ground of <paramref name="terrains"/>; <paramref name="built"/>: they already carry <paramref name="builder"/>'s
+    /// chunks (MapTerrains built them as the scene started), so the first Bind builds them no second time.
+    /// </summary>
+    public ValleyGround(TerrainGrid layout, Terrain[] terrains, GroundBuilder builder = null, bool built = false)
     {
         this.layout = layout;
         this.builder = builder;
@@ -62,7 +69,16 @@ public sealed class ValleyGround
         {
             var terrain = terrains[j * layout.ChunksX + i];
             if (terrain == null) continue;
-            chunks[(i, j)] = new Chunk { at = (i, j), terrain = terrain, original = terrain.terrainData, detailDistance = terrain.detailObjectDistance };
+            bool own = built && builder != null;
+            chunks[(i, j)] = new Chunk
+            {
+                at = (i, j),
+                terrain = terrain,
+                original = own ? null : terrain.terrainData,
+                data = own ? terrain.terrainData : null,
+                fresh = own,
+                detailDistance = terrain.detailObjectDistance,
+            };
             if (builder == null) continue;
             var p = terrain.transform.position;
             terrain.transform.position = new Vector3(p.x, builder.Bottom, p.z);
@@ -120,7 +136,7 @@ public sealed class ValleyGround
     static void Restore(Chunk ch)
     {
         if (ch.data == null) return;
-        if (ch.terrain != null) Use(ch, ch.original);
+        if (ch.terrain != null && ch.original != null) Use(ch, ch.original);
         if (Application.isPlaying) Object.Destroy(ch.data);
         else Object.DestroyImmediate(ch.data);
         ch.data = null;
@@ -179,7 +195,8 @@ public sealed class ValleyGround
 
     void Recover((int i, int j) at, Chunk ch)
     {
-        Restore(ch);
+        if (ch.fresh) ch.fresh = false;
+        else Restore(ch);
         var data = Writable(ch);
         int res = data.heightmapResolution;
         var heights = data.GetHeights(0, 0, res, res);

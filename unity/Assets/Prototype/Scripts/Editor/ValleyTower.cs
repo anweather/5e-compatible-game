@@ -106,7 +106,7 @@ public static class ValleyTower
         return new Vector3(Site.x + distance * Mathf.Cos(a), y, Site.y + distance * Mathf.Sin(a));
     }
 
-    static float Ground(Vector2 p) => ValleyTerrain.GroundAt(new Vector3(p.x, 0f, p.y));
+    static float Ground(Vector2 p) => EditorGround.GroundAt(new Vector3(p.x, 0f, p.y));
 
     // One platform, its top at the point: the box the wizard stands on, facing out from the column
     // (local z outward, x along the ring), and its drawn block.
@@ -166,11 +166,11 @@ public static class ValleyTower
     static Vector3 StartPad(Transform root, Looks looks)
     {
         var at = Around(StartBearing, PadOut, 0f);
-        at.y = ValleyTerrain.GroundAt(at) + 0.25f;
+        at.y = EditorGround.GroundAt(at) + 0.25f;
         Solid(root, "Tower start pad", at + Vector3.down * 0.2f, new Vector3(PadRadius * 2f, 0.2f, PadRadius * 2f), looks.start);
 
         var sign = Around(StartBearing - 14f, PadOut + 0.4f, 0f);
-        sign.y = ValleyTerrain.GroundAt(sign);
+        sign.y = EditorGround.GroundAt(sign);
         var facing = Quaternion.LookRotation(new Vector3(Site.x - sign.x, 0f, Site.y - sign.z));
         var board = new GameObject("Tower sign").transform;
         board.SetParent(root, true);
@@ -201,7 +201,7 @@ public static class ValleyTower
         {
             float bearing = i * 360f / count;
             var at = Around(bearing, middle, 0f);
-            at.y = ValleyTerrain.GroundAt(at) + 0.04f;
+            at.y = EditorGround.GroundAt(at) + 0.04f;
             var outward = at - new Vector3(Site.x, at.y, Site.y);
             var mat = Piece(root, PrimitiveType.Cube, "Tower mat", at, new Vector3(2 * Mathf.PI * middle / count - 0.15f, 0.1f, length), straw);
             mat.transform.rotation = Quaternion.LookRotation(outward.normalized);

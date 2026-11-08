@@ -133,7 +133,7 @@ public static class ValleyBridge
         {
             var top = new Vector3(side * (DeckWidth / 2f - 0.4f), surface - 0.4f, z);
             var world = root.TransformPoint(top);
-            float length = world.y - (ValleyTerrain.GroundAt(world) - 0.3f);
+            float length = world.y - (EditorGround.GroundAt(world) - 0.3f);
             if (length < 0.2f) continue;
             Piece(root, PrimitiveType.Cylinder, "Bridge leg", top + Vector3.down * (length / 2f), Quaternion.identity, new Vector3(0.28f, length / 2f, 0.28f), wood);
         }
@@ -160,7 +160,7 @@ public static class ValleyBridge
 
     static Vector3 Grounded(Vector3 p)
     {
-        p.y = ValleyTerrain.GroundAt(p);
+        p.y = EditorGround.GroundAt(p);
         return p;
     }
 

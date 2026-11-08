@@ -12,7 +12,7 @@ public class GroundBuilderTests
 {
     const float Unit = 0.125f, Step = 0.5f;
 
-    static TerrainData Template() => AssetDatabase.LoadAssetAtPath<TerrainData>("Assets/Prototype/Generated/Valley/Chunk_0_0.asset");
+    static TerrainData Template() => AssetDatabase.LoadAssetAtPath<TerrainData>("Assets/Prototype/Generated/Ground/Template.asset");
 
     static readonly TerrainGrid Small = new TerrainGrid(1.5f, (0f, 0f), (2, 2), (0, 127), (128, 128), (0, 0, 0, 0));
 
@@ -198,8 +198,9 @@ public class GroundBuilderTests
     [TestCase(new[] { "-ground-builder", "land" }, "on", null, "land")]
     [TestCase(new string[0], "land", null, "land")]
     [TestCase(new string[0], null, "on\n", "on")]
-    [TestCase(new string[0], null, null, "off")]
-    [TestCase(new[] { "-ground-builder", "maybe" }, null, null, "off")]
-    public void TheSwitchIsOffUnlessAsked(string[] args, string env, string file, string mode) =>
+    [TestCase(new string[0], null, null, "on")]
+    [TestCase(new[] { "-ground-builder", "maybe" }, null, null, "on")]
+    [TestCase(new[] { "-ground-builder", "off" }, null, null, "on")]
+    public void TheSwitchIsOnUnlessLandIsAsked(string[] args, string env, string file, string mode) =>
         Assert.That(GroundSwitch.Read(args, env, file), Is.EqualTo(mode));
 }

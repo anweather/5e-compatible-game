@@ -21,7 +21,7 @@ public static class ThemePreview
     [MenuItem("Prototype/Preview World Theme")]
     public static string Render()
     {
-        var layout = ValleyTerrain.Layout;
+        var layout = EditorGround.Layout;
         var rows = ChemYardBuilder.Map.Split('\n');
         ValleyShape.Plan(rows[0].Length, rows.Length, layout.CellSize);
         int n = layout.GridW;

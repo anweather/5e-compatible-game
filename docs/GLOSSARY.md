@@ -99,7 +99,7 @@ touch them.
 
 **Ground pack**
 : The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
-  Prototype > Export Valley Ground; `docs/design/maps-as-data.md`). The valley has one, not yet read: the terrains are still baked. A map without one will be drawn from its land and cells.
+  `docs/design/maps-as-data.md`). The valley's is what the game draws (`MapTerrains`, phase 6): the bake that exported it is retired. A map without one is drawn from its land and cells.
 
 **Laid row**
 : A row of a map's `buildings.json` with walls and no `built` cells: its cells are laid over `cells.txt` at the start, on

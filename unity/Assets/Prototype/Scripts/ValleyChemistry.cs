@@ -18,16 +18,12 @@ using UnityEngine;
 public partial class ValleyChemistry : MonoBehaviour
 {
     public ChemGrid grid;
-    [Tooltip("The chunk terrains, chunk (i, j) at j * 9 + i (TerrainGrid.Valley()).")]
-    public Terrain[] chunks;
+    [Tooltip("The chunk terrains, made from the map's folder as the scene starts (the scene holds none).")]
+    public MapTerrains terrains;
     [Tooltip("The cabins and village buildings; a wall cell belongs to the one whose box holds it, else a log wall to the nearest.")]
     public Transform[] cabins;
     [Tooltip("Height of the lake's surface; lake cells' effects sit on it.")]
     public float lakeLevel = -0.6f;
-    [Tooltip("The river's squares (world cell indices) whose ground is cut deep below their water: the river's channel.")]
-    public int[] channelCells = System.Array.Empty<int>();
-    [Tooltip("How far each of channelCells' ground is cut below the banks (metres); its water stands at the banks' level, over the cut.")]
-    public float[] channelDepths = System.Array.Empty<float>();
 
     readonly TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
@@ -126,27 +122,26 @@ public partial class ValleyChemistry : MonoBehaviour
 
     GroundBuilder builder;
 
-    // The run-time builder when GroundSwitch says so, from the map's folder; the scene's first chunk is the prototypes' template.
+    // The builder the terrains were made with (the map's ground/), or in land mode, or for a map with none, one from the
+    // map's land and this world's cells.
     GroundBuilder BuiltGround(World world)
     {
-        var template = chunks.First(c => c != null).terrainData;
-        return GroundBuilder.For(GroundSwitch.Mode, ChemGrid.Folders.World, template, () =>
+        if (terrains.Builder != null) return terrains.Builder;
+        var template = terrains.template;
+        var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
+        return new GroundBuilder(GroundFromLand.Build(new GroundFromLand.Source
         {
-            var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
-            return GroundFromLand.Build(new GroundFromLand.Source
-            {
-                World = world,
-                Land = land,
-                Layout = layout,
-                StepHeight = grid.stepHeight,
-                Unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep,
-                Lowest = land.Min(),
-                Layers = template.terrainLayers.Select(l => l.name).ToArray(),
-                Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
-                TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
-                DetailResolution = template.detailResolution,
-            });
-        }, layout.ChunkSize);
+            World = world,
+            Land = land,
+            Layout = layout,
+            StepHeight = grid.stepHeight,
+            Unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep,
+            Lowest = land.Min(),
+            Layers = template.terrainLayers.Select(l => l.name).ToArray(),
+            Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
+            TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
+            DetailResolution = template.detailResolution,
+        }), template, layout.ChunkSize);
     }
 
     /// <summary>The rocks on stamped land; null until the ground is bound.</summary>
@@ -164,8 +159,8 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             builder = BuiltGround(world);
-            if (builder != null) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays ready in {timer.Elapsed.TotalMilliseconds:0} ms");
-            ground = new ValleyGround(layout, chunks, builder);
+            if (builder != terrains.Builder) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land ready in {timer.Elapsed.TotalMilliseconds:0} ms");
+            ground = new ValleyGround(layout, terrains.Chunks, builder, built: builder == terrains.Builder);
             rocks = new LandRocks(grid);
             rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).
@@ -178,8 +173,8 @@ public partial class ValleyChemistry : MonoBehaviour
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
-        var channel = builder != null ? builder.Channel : (channelCells, channelDepths);
-        ground.RaiseBase(channel.Item1, channel.Item2);
+        var (channelCells, channelDepths) = builder.Channel;
+        ground.RaiseBase(channelCells, channelDepths);
         SetLand(world);
         CheckGround(world);
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.

@@ -237,13 +237,13 @@ one prefab per prop and item kind (`Generated/Things/`, registered as network
 prefabs through `Generated/ThingNetworkPrefabs.asset`); where they stand is
 data (`world/things.json`), spawned at runtime by `ThingSpawner`, so nothing
 is placed in the scene. `ValleyShape.cs` is the valley's shape as functions of a point;
-`ValleyTerrain.cs` builds the chunk terrains from it (`TerrainGrid.Valley()`:
-257 heightmaps on the 3×3 chunks around the play area, 65 elsewhere; seam
-corners rounded to stored height steps so a 257 edge meets a 65 edge
-exactly) and bakes the starting cells into them with the runtime's own
-`CellHeightfield` and `CellPaint`, from `ChemGrid.MapWorld`. Full-detail
-and coarse chunks are separate terrain groups, since Unity only stitches
-LOD between neighbours of one resolution. `EditorAssets.cs` has the shared helpers and the Asset
+the scene holds no ground: `MapTerrains` makes the chunk terrains as the scene
+starts (`TerrainGrid.Valley()`: 257 heightmaps on the 3×3 chunks around the play
+area, 65 elsewhere) from the map's `ground/` through `GroundBuilder`, with a
+template `TerrainData` for the prototypes and the `TerrainRock` material that the
+yard build makes; the builders stand things on the same chunks, built for the
+build's length (`EditorGround`). Full-detail and coarse chunks are separate
+terrain groups, since Unity only stitches LOD between neighbours of one resolution. `EditorAssets.cs` has the shared helpers and the Asset
 Store pack paths. `DemoRecorder.cs` records clips, `PrototypeBuild.cs`
 makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
 
@@ -335,7 +335,7 @@ What this clean-up left alone, roughly in order of value.
 - **The two demo directors** (`DemoDirector`, `NetDemoDirector`) script
   similar tours in two formats (a coroutine and a step table).
 - **The valley builders keep their layout in static fields**
-  (`ValleyShape.Plan`, `ValleyTerrain`'s chunk list). Fine for one-shot editor tools, but a small "valley
+  (`ValleyShape.Plan`, `EditorGround`'s chunks). Fine for one-shot editor tools, but a small "valley
   plan" object would make their steps independent.
 - **Starter Assets via reflection** (`WizardRig`) breaks silently if the
   pack renames a field. A tiny interface asmdef next to the pack would
