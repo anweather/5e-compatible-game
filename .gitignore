@@ -27,3 +27,7 @@ __pycache__/
 # default, which it uses when the file is missing; the rest is this Editor's own Run In Background
 # bookkeeping, which editor.playmode set_run_in_background rewrites on every call (#81).
 unity/ProjectSettings/Packages/com.unity.pipeline/EditorPipelineConfig.json
+
+# punchy-sync build output
+tools/punchy-sync/bin/
+tools/punchy-sync/obj/

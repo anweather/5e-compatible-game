@@ -43,26 +43,21 @@ namespace Chem.Tests
         {
             Assert.That(Problems(Centaur), Does.StartWith("No problems"));
             var r = Patched(Centaur);
-            Assert.That(Slots(r, "centaur"), Is.EqualTo(string.Join("\n",
+            // The human's hair options aren't pinned here: they come from Punchy (tools/punchy-sync) and change with it.
+            var lines = Slots(r, "centaur").Split('\n');
+            Assert.That(lines.Take(5), Is.EqualTo(new[]
+            {
                 "hind=hoof-hindleg at [0.55,-0.35,-0.75] dir [90,0,0] mirror",
                 "fore=hoof-foreleg at [0.55,-0.45,0.72] dir [90,0,0] mirror",
                 "tail=stub-tail at [0,0.55,-1] dir [-40,180,0]",
                 "human-torso=human-torso at [0,0.45,0.8] dir [-90,0,0] x1.1 coat human",
                 "head=human-head on human-torso at [0,0,0.022] dir [0,0,0] x1.1 coat human",
-                "hair-none=hair-none on head at [0,0,0] dir [0,0,0] x1.1 style 9 coat human",
-                "eyes=human-eye on head at [0.042,-0.105,-0.11] dir [90,0,0] mirror x1.1 coat human",
-                "arms=human-arm on human-torso at [0.209,0.011,-0.099] dir [180,0,0] mirror x1.1 coat human",
-                "human-hair=human-hair on head at [0,0.009,-0.031] dir [0,0,0] x1.1 style 1 coat human",
-                "human-hair-2=human-hair on head at [0,0.009,-0.031] dir [0,0,0] x1.1 style 1 coat human",
-                "hair-long=hair-long on head at [0,0.066,-0.066] dir [200,0,0] x1.1 style 1 coat human",
-                "hair-bun=hair-bun on head at [0,0.077,0.022] dir [0,0,0] x1.1 style 1 coat human",
-                "human-tail=hair-ponytail on head at [0,0.11,0] dir [210,0,0] x1.1 style 1 coat human",
-                "hair-none-2=hair-none on head at [0,0,0] dir [0,0,0] x1.1 style 1 coat human",
-                "hair-none-3=hair-none on head at [0,0,0] dir [0,0,0] x1.1 style 2 coat human",
-                "hair-none-4=hair-none on head at [0,0,0] dir [0,0,0] x1.1 style 2 coat human",
-                "hair-none-5=hair-none on head at [0,0,0] dir [0,0,0] x1.1 style 2 coat human",
-                "beard-short=beard-short on head at [0,-0.094,-0.165] dir [0,180,0] x1.1 style 2 coat human")),
-                "the deer's legs and tail keep their places; the torso brings head, eyes, hair and arms; the ponytail's id clashes with the deer's tail");
+            }), "the deer's legs and tail keep their places; the torso goes where at says, its head on it");
+            var human = Bench.Base.Fauna.Species("human").Slots;
+            Assert.That(lines.Length, Is.EqualTo(3 + human.Count - 1), "the deer's three slots, and all the human's but its legs");
+            Assert.That(lines, Has.Some.StartsWith("arms=human-arm on human-torso").And.Some.StartsWith("eyes=human-eye on head"),
+                "the torso brings what hangs on it");
+            Assert.That(lines, Has.Some.StartsWith("human-tail=hair-ponytail on "), "the ponytail's id clashes with the deer's tail");
             var centaur = r.Fauna.Species("centaur");
             var deer = r.Fauna.Species("deer");
             Assert.That((centaur.Length, centaur.Radius, centaur.Walk, centaur.Run, centaur.Wander, centaur.Flee), Is.EqualTo((deer.Length, deer.Radius, deer.Walk, deer.Run, deer.Wander, 8.0)),
@@ -84,7 +79,7 @@ namespace Chem.Tests
             var faun = With(d).Fauna.Species("faun");
             Assert.That(faun.Slots.Select(s => s.Id), Does.Not.Contain("legs"));
             Assert.That(Line(faun.Slots[faun.Slots.Count - 1]), Is.EqualTo("hind=hoof-hindleg at [0.55,-0.3,0] dir [90,0,0] mirror"), "the pair keeps its spread across, and goes where at says");
-            Assert.That(faun.Slots.Count, Is.EqualTo(16), "the human's 16 slots less its legs, and the deer's hind pair");
+            Assert.That(faun.Slots.Count, Is.EqualTo(With(d).Fauna.Species("human").Slots.Count), "the human's slots less its legs, and the deer's hind pair");
             Assert.That((faun.Upright, faun.Walk), Is.EqualTo((With(d).Fauna.Species("human").Upright, With(d).Fauna.Species("human").Walk)), "add_species moves it as its first donor");
             string described = Bench.Describe("fauna", "faun", d.Id);
             TestContext.WriteLine(described);
@@ -144,7 +139,12 @@ namespace Chem.Tests
             string four = @"[{ ""species"": ""deer"" }, { ""species"": ""deer"", ""take"": [""tail""] }, { ""species"": ""deer"", ""take"": [""tail""] }, { ""species"": ""deer"", ""take"": [""tail""] }]";
             Assert.That(Problems("{ \"fauna\": { " + Graft("x", four) + " } }"), Does.Contain("grafts from 4 donors; a graft has at most 3"));
             string many = @"[{ ""species"": ""human"" }, { ""species"": ""human"" }, { ""species"": ""human"" }]";
-            Assert.That(Problems("{ \"fauna\": { " + Graft("x", many) + " } }"), Does.Contain("48 slots once flattened; a body has at most 40"));
+            Assert.That(Problems("{ \"fauna\": { " + Graft("x", many) + " } }"), Does.Not.Contain("slots once flattened"),
+                "an animal draws one of each style group's options (a human's hairstyles), so only those count");
+            string eyes = string.Join(", ", Enumerable.Range(1, 25).Select(i => $@"""e{i}"": {{ ""part"": ""eye"" }}"));
+            Assert.That(Problems(@"{ ""fauna"": { ""x"": { ""name"": ""X"", ""parts"": { " + eyes + @" }, ""from"": " + many + " } } }"),
+                Does.Contain("draws 44 slots once flattened; a body draws at most 40"),
+                "25 of its own and 19 from three humans: 5 each outside a style group, and one of each group's options");
             Assert.That(Problems("{ \"fauna\": { " + Graft("x", @"[{ ""species"": ""deer"", ""scale"": 5 }]") + " } }"), Does.Contain("at a scale of 5; a donor's scale is 0.25 to 4"));
             Assert.That(Problems("{ \"fauna\": { " + Graft("x", @"[{ ""species"": ""deer"", ""scale"": 0.2 }]") + " } }"), Does.Contain("at a scale of 0.2"));
             Assert.That(Problems("{ \"fauna\": { " + Graft("x", @"[{ ""species"": ""deer"", ""scale"": 4 }, { ""species"": ""human"" }]") + " } }"), Does.StartWith("No problems"), "at the caps is fine");

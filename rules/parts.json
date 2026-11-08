@@ -56,7 +56,7 @@
   "beak": {
     "role": "horn",
     "segments": [
-      { "length": 0.06, "radii": [0.012, 0.001], "colour": [0.2, 0.18, 0.16] }
+      { "length": 0.05, "radii": [0.014, 0.001], "colour": [0.62, 0.55, 0.42] }
     ],
     "poses": {
       "idle": [[0, 0, 0]],
@@ -848,8 +848,8 @@
       "idle": [[4, 0, 0], [-8, 0, 0], [0, 0, 0]],
       "walkReach": [[-22, 0, 0], [-22, 0, 0], [0, 0, 0]],
       "walkPush": [[24, 0, 0], [-8, 0, 0], [0, 0, 0]],
-      "runReach": [[-40, 0, 0], [-80, 0, 0], [0, 0, 0]],
-      "runPush": [[40, 0, 0], [-70, 0, 0], [0, 0, 0]]
+      "runReach": [[-40, 0, 0], [-95, 0, 0], [0, 0, 0]],
+      "runPush": [[40, 0, 0], [-85, 0, 0], [0, 0, 0]]
     }
   },
   "human-eye": {
@@ -904,9 +904,9 @@
       "walkReach": [[-24, 0, 0], [4, 0, 0], [-70, 0, 0]],
       "walkPush": [[20, 0, 0], [4, 0, 0], [-112, 0, 0]],
       "walkLift": [[-12, 0, 0], [55, 0, 0], [-25, 0, 0]],
-      "runReach": [[-38, 0, 0], [12, 0, 0], [-64, 0, 0]],
-      "runPush": [[32, 0, 0], [8, 0, 0], [-128, 0, 0]],
-      "runLift": [[-28, 0, 0], [100, 0, 0], [-45, 0, 0]]
+      "runReach": [[-60, 0, 0], [14, 0, 0], [-60, 0, 0]],
+      "runPush": [[32, 0, 0], [10, 0, 0], [-135, 0, 0]],
+      "runLift": [[-32, 0, 0], [115, 0, 0], [-45, 0, 0]]
     }
   },
   "human-torso": {
@@ -1357,5 +1357,160 @@
       { "length": 0.6, "radii": [0.012, 0.01] },
       { "length": 0.2, "radii": [0.028, 0.022], "accent": 1 }
     ]
+  },
+  "bird-skull": {
+    "role": "head",
+    "segments": [
+      { "length": 0.022, "radii": [0.03, 0.027], "flatten": 0.95 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
+  "cat-iris": {
+    "role": "eye",
+    "segments": [
+      { "length": 0, "radii": [0.014, 0.014], "colour": [0.72, 0.62, 0.2] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
+  "chicken-leg": {
+    "role": "leg",
+    "segments": [
+      { "length": 0.07, "radii": [0.042, 0.03] },
+      { "length": 0.11, "radii": [0.011, 0.009], "colour": [0.86, 0.62, 0.22] },
+      { "length": 0.09, "radii": [0.009, 0.008], "colour": [0.86, 0.62, 0.22] },
+      { "length": 0.045, "radii": [0.008, 0.004], "flatten": 0.5, "colour": [0.86, 0.62, 0.22] }
+    ],
+    "poses": {
+      "idle": [[-35, 0, 0], [70, 0, 0], [-40, 0, 0], [-80, 0, 0]],
+      "walkReach": [[-60, 0, 0], [70, 0, 0], [-40, 0, 0], [-80, 0, 0]],
+      "walkPush": [[0, 0, 0], [65, 0, 0], [-40, 0, 0], [-70, 0, 0]],
+      "walkLift": [[-10, 0, 0], [40, 0, 0], [-60, 0, 0], [30, 0, 0]],
+      "runReach": [[-75, 0, 0], [60, 0, 0], [-30, 0, 0], [-80, 0, 0]],
+      "runPush": [[20, 0, 0], [60, 0, 0], [-45, 0, 0], [-60, 0, 0]],
+      "runLift": [[-15, 0, 0], [60, 0, 0], [-80, 0, 0], [40, 0, 0]]
+    }
+  },
+  "comb": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.022, "radii": [0.017, 0.013], "flatten": 0.3, "colour": [0.78, 0.1, 0.08] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]]
+    }
+  },
+  "dog-skull": {
+    "role": "head",
+    "segments": [
+      { "length": 0.07, "radii": [0.058, 0.058] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[-3, 0, 0]],
+      "walkPush": [[3, 0, 0]],
+      "runReach": [[-3, 0, 0]],
+      "runPush": [[3, 0, 0]]
+    }
+  },
+  "ember-beam": {
+    "role": "horn",
+    "segments": [
+      { "length": 0.3, "radii": [0.022, 0.016], "colour": [0.72, 0.65, 0.52] },
+      { "length": 0.28, "radii": [0.016, 0.007], "accent": 1 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0], [-40, 0, 0]],
+      "walkReach": [[0, 0, 0], [-40, 0, 0]],
+      "walkPush": [[0, 0, 0], [-40, 0, 0]],
+      "runReach": [[0, 0, 0], [-40, 0, 0]],
+      "runPush": [[0, 0, 0], [-40, 0, 0]]
+    }
+  },
+  "ember-tine": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.16, "radii": [0.012, 0.003], "accent": 1 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
+  "eye-rim": {
+    "role": "eye",
+    "segments": [
+      { "length": 0, "radii": [0.014, 0.014], "colour": [0.6, 0.5, 0.4] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
+  "moustache": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.04, "radii": [0.014, 0.006], "flatten": 0.6, "hair": true }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]]
+    }
+  },
+  "short-cat-head": {
+    "role": "head",
+    "segments": [
+      { "length": 0.095, "radii": [0.09, 0.058] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[-3, 0, 0]],
+      "walkPush": [[3, 0, 0]],
+      "runReach": [[-3, 0, 0]],
+      "runPush": [[3, 0, 0]]
+    }
+  },
+  "snout": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.085, "radii": [0.033, 0.033], "flatten": 0.85, "accent": 0.15 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]]
+    }
+  },
+  "toe": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.045, "radii": [0.007, 0.004], "flatten": 0.6, "colour": [0.86, 0.62, 0.22] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]]
+    }
+  },
+  "wattle": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.018, "radii": [0.008, 0.007], "flatten": 0.6, "colour": [0.78, 0.1, 0.08] }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]]
+    }
   }
 }

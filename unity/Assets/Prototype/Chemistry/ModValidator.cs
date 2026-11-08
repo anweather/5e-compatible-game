@@ -603,9 +603,33 @@ namespace Chem
                 if (donors.Count > maxDonors) Add(ModCheck.Budget, $"Species {id} grafts from {donors.Count} donors; a graft has at most {Num(maxDonors)}.");
                 foreach (var d in donors.Where(d => IsNumber(d["scale"]) && ((double)d["scale"] < minScale || (double)d["scale"] > maxScale)))
                     Add(ModCheck.Budget, $"Species {id} grafts {Text(d["species"]) ?? "a donor"} at a scale of {d["scale"]}; a donor's scale is {Num(minScale)} to {Num(maxScale)}.");
-                int slots = (FaunaGraft.Flatten(species, id)?["parts"] as JObject)?.Count ?? 0;
-                if (slots > maxSlots) Add(ModCheck.Budget, $"Species {id} has {slots} slots once flattened; a body has at most {Num(maxSlots)} (each is drawn for every animal out).");
+                int slots = DrawnSlots(FaunaGraft.Flatten(species, id)?["parts"] as JObject);
+                if (slots > maxSlots) Add(ModCheck.Budget, $"Species {id} draws {slots} slots once flattened; a body draws at most {Num(maxSlots)} (each is drawn for every animal out).");
             }
+
+            // The most slots one animal draws: every slot outside a style group, and of each group its biggest
+            // option (a slot of that style and all hung on it), as an animal shows one option a group (hairstyles).
+            static int DrawnSlots(JObject slots)
+            {
+                if (slots == null) return 0;
+                int always = 0;
+                var options = new Dictionary<(int group, string option), int>();
+                foreach (var p in slots.Properties())
+                {
+                    string at = p.Name;
+                    for (int depth = 0; at != null && depth <= slots.Count && Style(slots[at]) == 0; depth++)
+                        at = (string)slots[at]?["on"];
+                    if (at == null || Style(slots[at]) == 0) always++;
+                    else
+                    {
+                        var key = (Style(slots[at]), at);
+                        options[key] = options.TryGetValue(key, out int n) ? n + 1 : 1;
+                    }
+                }
+                return always + options.GroupBy(o => o.Key.group).Sum(g => g.Max(o => o.Value));
+            }
+
+            static int Style(JToken slot) => slot is JObject o && IsNumber(o["style"]) && (double)o["style"] > 0 ? (int)(double)o["style"] : 0;
 
             void SpeciesBudget(string id, JObject row, double max)
             {

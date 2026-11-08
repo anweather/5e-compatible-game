@@ -110,6 +110,8 @@ valley square (about 860 m).
   2. Read the species and limb `.asset` YAML, resolving GUIDs through their `.meta` files.
   3. Write candidate rows, and print a diff against our files: new species, changed numbers.
   4. Never overwrite our own rows (lily pads, reeds, raider sizes).
+- **Built** (2026-11-08): `tools/punchy-sync` synced to Punchy `4601262`, 94 species now; what waits on code is listed
+  in `ThirdParty/Punchy/README.md`.
 - Code changes upstream (`CreatureAnimator`, `CreatureBrain`) stay hand-ported, listed in
   `ThirdParty/Punchy/README.md`.
 - Credit is already in `Credits.cs`.

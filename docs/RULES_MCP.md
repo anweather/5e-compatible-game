@@ -697,8 +697,9 @@ rows stay out of `Rules.Fingerprint` and off the cells, so no golden moves and t
   writes such a row moving and behaving as its first donor, `size` its first donor's × `scale`; `set_species` with `from`
   replaces a row's donors, keeping its own slots (not on a variant). `Rules.CheckFauna` checks the donors as written, then
   the flattened slots (every part exists, `on` resolves), and refuses a loop of donors; `validate`'s budget
-  (`budgets.json` `fauna`) refuses more than 4 new species a mod, 3 donors a graft, 40 slots once flattened, or a donor's
-  `scale` outside 0.25 to 4. Gaits aren't by rule yet (Andrew, 2026-11-03), so a graft's legs move by their own poses.
+  (`budgets.json` `fauna`) refuses more than 4 new species a mod, 3 donors a graft, 40 slots drawn once flattened
+  (an animal draws one option of each style group, so a human's hairstyles count as one), or a donor's `scale` outside
+  0.25 to 4. Gaits aren't by rule yet (Andrew, 2026-11-03), so a graft's legs move by their own poses.
 
 ## Spells that place
 
