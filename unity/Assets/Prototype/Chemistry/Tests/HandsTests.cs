@@ -1,5 +1,5 @@
 // The hands (D16, docs/design/unified-casting.md; the Hold's side in the-hold.md, phase 3), on the map's own rows: where the
-// attuning room is comes from them and hold.json.
+// towers a hand attunes at are comes from them and hold.json (hold-batch).
 using System.Linq;
 using NUnit.Framework;
 using static Chem.HandsDef;
@@ -12,7 +12,15 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
         static HandsDef Table => R.Sim.Hold.Hands;
 
-        static (int x, int y) Room(World w) => ((w.HoldSite.AttuningFrom.x + w.HoldSite.AttuningTo.x) / 2, (w.HoldSite.AttuningFrom.y + w.HoldSite.AttuningTo.y) / 2);
+        // Open ground at the tower that gives this element, where a wizard stands to attune.
+        static (int x, int y) TowerOf(World w, string element) => w.TowerGround(w.HoldSite.Towers.First(t => t.Element == element))[0];
+
+        // A hand attuned, away from the castle while no run is on, and its moment waited out.
+        static void AttuneAway(World w, int hand, string element)
+        {
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, hand, element)), $"attune {hand} to {element ?? "nothing"}");
+            Ticks(w, T.AttuneTicks);
+        }
 
         // A hand's trigger, or its bumper.
         static void Trigger(World w, int hand, bool taken = true) =>
@@ -21,13 +29,13 @@ namespace Chem.Tests
         static void Bumper(World w, int hand, bool taken = true) =>
             Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, hand, bumper: true)), Is.EqualTo(taken), $"bumper {hand}");
 
-        // Attuned in the room (null: nothing), then out of it, with a run going.
+        // Attuned before the run (null: nothing), then away, with a run going.
         static World Holding(string left, string right, int seed = 7)
         {
             var w = Field(seed);
-            Stand(w, Me, Room(w));
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, left)));
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, right)));
+            Away(w);
+            AttuneAway(w, Left, left);
+            AttuneAway(w, Right, right);
             Stand(w, Me, w.HoldSite.Plate);
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);
@@ -349,20 +357,23 @@ namespace Chem.Tests
             Assert.That(Fired(w), Is.EqualTo(T.Kit[0].Spell));
         }
 
+        // At a tower a hand takes the tower's element and nothing else, in its moment, in a run too.
         [Test]
-        public void AttuningInTheRoomIsAtOnce()
+        public void ATowerAttunesAHandToItsElementOnly()
         {
-            var w = Field();
-            var room = Room(w);
-            Stand(w, Me, (room.x, room.y));
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "earth")));
+            var w = Holding("water", "fire");
+            var earth = TowerOf(w, "earth");
+            Stand(w, Me, earth);
+            Assert.That(w.TowerOf(Me)?.Element, Is.EqualTo("earth"));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "another element");
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, null)), Is.False, "nothing");
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, 2, "earth")), Is.False);
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "earth")), "its own, in a run");
+            Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo("fire"), "not yet");
+            Ticks(w, T.AttuneTicks);
             Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo("earth"));
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "no-such")), Is.False);
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, 2, "air")), Is.False);
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, null)), "a hand can hold nothing");
-            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null);
-            Stand(w, Me, room, 0);
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "down in it");
+            Stand(w, Me, earth, 0);
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "earth")), Is.False, "down at it");
         }
 
         [Test]
@@ -384,11 +395,13 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void ARunKeepsTheRoomRule()
+        public void InARunOnlyATowerAttunes()
         {
             var w = Holding("water", "fire");
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "out of the room in a run");
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), Is.False, "away from the towers in a run");
             Assert.That(w.HandsOf(Me).Holds[Right], Is.EqualTo("fire"));
+            Stand(w, Me, TowerOf(w, "air"));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")), "at the air tower");
         }
 
         [Test]
@@ -415,16 +428,38 @@ namespace Chem.Tests
             Assert.That(w.CastHash(), Is.EqualTo("f8c9fb76"));
         }
 
+        // Each tower has open ground in its reach to stand on and attune: the courtyard's corner beside it.
         [Test]
-        public void TheRoomComesFromTheRow()
+        public void EachTowerHasGroundToStandOn()
+        {
+            var w = Field();
+            foreach (var t in w.HoldSite.Towers)
+            {
+                var ground = w.TowerGround(t);
+                Assert.That(ground, Is.Not.Empty, t.Element);
+                Stand(w, Me, ground[0]);
+                Assert.That(w.TowerOf(Me)?.Element, Is.EqualTo(t.Element), $"{ground[0]} at the {t.Element} tower");
+            }
+        }
+
+        // Four towers, one element each, at the row's corner towers; the plate, the heart and the rise aren't at one.
+        [Test]
+        public void TheTowersComeFromTheRow()
         {
             var s = WorldHold.Load(ChemistryTests.WorldDir());
+            Assert.That(s.Towers.Select(t => t.Element).OrderBy(e => e, System.StringComparer.Ordinal), Is.EqualTo(R.Combos.Elements.OrderBy(e => e, System.StringComparer.Ordinal)));
             var at = s.Row["at"];
-            var from = s.Row["joins"]["k1"];
-            Assert.That(s.AttuningFrom, Is.EqualTo(((int)at[0] + (int)from[0] / 2, (int)at[1] + (int)from[1] / 2)));
-            Assert.That(s.InAttuning(s.Plate.x, s.Plate.y), "the plate is in it");
-            Assert.That(s.InAttuning(s.Heart.x, s.Heart.y), Is.False, "the heart isn't");
-            Assert.That(s.InAttuning(s.Rise.x, s.Rise.y), Is.False);
+            foreach (var t in s.Towers)
+            {
+                var join = s.Row["joins"][t.At];
+                Assert.That((t.X, t.Y), Is.EqualTo(((int)at[0] + (int)join[0] / 2, (int)at[1] + (int)join[1] / 2)), t.At);
+                Assert.That(s.Row["towers"].Children<Newtonsoft.Json.Linq.JProperty>().Any(p => (string)p.Value["at"] == t.At), $"{t.At} is a tower of the row");
+            }
+            int reach = R.Sim.Hold.TowerReach;
+            Assert.That(s.TowerAt(s.Plate.x, s.Plate.y, reach), Is.Null, "the plate");
+            Assert.That(s.TowerAt(s.Heart.x, s.Heart.y, reach), Is.Null, "the heart");
+            Assert.That(s.TowerAt(s.Rise.x, s.Rise.y, reach), Is.Null, "the rise");
+            Assert.That(s.Check(R), Is.Empty);
         }
 
         [Test]
@@ -464,11 +499,11 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void AStandInTheRoomIsOneTheHoldReads()
+        public void AStandAtATowerIsOneTheHoldReads()
         {
             var w = Field();
-            var room = Room(w);
-            Assert.That(w.HoldReadsStand(room.x, room.y));
+            var tower = TowerOf(w, "fire");
+            Assert.That(w.HoldReadsStand(tower.x, tower.y));
             Assert.That(w.HoldReadsStand(w.HoldSite.Plate.x, w.HoldSite.Plate.y));
             Assert.That(w.HoldReadsStand(w.HoldSite.Rise.x, w.HoldSite.Rise.y), Is.False);
         }
@@ -492,7 +527,7 @@ namespace Chem.Tests
             var fired = w.CombosFired.Single();
             Assert.That((fired.Spell, fired.Charge), Is.EqualTo(("burning-hands", charge)));
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown), "the cooldown starts as it goes off");
-            Assert.That(w.CastHash(), Is.EqualTo(new[] { "8b13816a", "ba3ab38d", "527b78bf", "ac075ed8" }[System.Math.Min(levels, 3)]));
+            Assert.That(w.CastHash(), Is.EqualTo(new[] { "593bf5f", "1140a2b4", "1db53f1d", "6df13877" }[System.Math.Min(levels, 3)]));
         }
 
         [Test]
@@ -528,7 +563,7 @@ namespace Chem.Tests
             Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.BothCooldown));
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.BothCooldown));
             Assert.That(w.CastOf(Me).Merge, Is.Null);
-            Assert.That(w.CastHash(), Is.EqualTo("cfbf44ae"));
+            Assert.That(w.CastHash(), Is.EqualTo("6a4c147e"));
         }
 
         [Test]
@@ -564,7 +599,7 @@ namespace Chem.Tests
             Up(w, Left);
             w.Step();
             Assert.That((w.CombosFired.Single().Spell, w.CombosFired.Single().Charge), Is.EqualTo(("ray-of-frost", World.MaxCharge)));
-            Assert.That(w.CastHash(), Is.EqualTo("57dbf080"));
+            Assert.That(w.CastHash(), Is.EqualTo("bd04dc16"));
         }
 
         [Test]
@@ -666,8 +701,8 @@ namespace Chem.Tests
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(WorldHold.Load(ChemistryTests.WorldDir()));
-            Stand(w, Me, Room(w));
-            w.ApplyCombo(ComboCommand.Attune(Me, Left, "air"));
+            Away(w);
+            AttuneAway(w, Left, "air");
             Stand(w, Me, w.HoldSite.Plate);
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);

@@ -35,12 +35,9 @@ public partial class SpellCaster
             }
         if (off) return;
         bool thrustLeft = controls.ThrustLeft.WasPressedThisFrame(), thrustRight = controls.ThrustRight.WasPressedThisFrame();
-        if (grid.World.InAttuning(player))
-        {
-            if (thrustLeft) AttuneNext(player, HandsDef.Left);
-            if (thrustRight) AttuneNext(player, HandsDef.Right);
-            return;
-        }
+        var tower = grid.World.TowerOf(player);
+        if (AttuneAtTower(player, tower, HandsDef.Left, thrustLeft)) thrustLeft = false;
+        if (AttuneAtTower(player, tower, HandsDef.Right, thrustRight)) thrustRight = false;
         Press(player, HandsDef.Right, thrustRight, controls.ThrowRightPressed());
         Press(player, HandsDef.Left, thrustLeft, controls.ThrowLeft.WasPressedThisFrame());
     }
@@ -122,7 +119,7 @@ public partial class SpellCaster
 
     /// <summary>
     /// Attunes a hand to an element (null: nothing, so the other hand's element is on both), from the spell list. It takes a short
-    /// moment outside the attuning room. Null if it went to the core; else why it can't, which the player hears too.
+    /// moment; in a Hold run only at a tower, to its element (hold-batch). Null if it went to the core; else why it can't, which the player hears too.
     /// </summary>
     public string AttuneTo(int hand, string element)
     {
@@ -131,7 +128,8 @@ public partial class SpellCaster
         string player = CastPlayer, why = null;
         if (!world.HandOpen(player, hand)) why = Locked($"Your {Side(hand)} hand", world, player, u => u.Hand == Side(hand));
         else if (!world.ElementOpen(player, element)) why = Locked(element, world, player, u => u.Element == element);
-        else if (world.HoldRunning && !world.InAttuning(player)) why = "Not during a Hold run: attune in the keep's attuning room";
+        else if (world.TowerOf(player) is { } tower && tower.Element != element) why = $"This tower gives {tower.Element} only";
+        else if (world.HoldRunning && world.TowerOf(player) == null) why = "Not during a Hold run away from the towers: each tower gives its element";
         else if (world.HandsOf(player).AttuneLeft > 0) why = "One hand at a time: the other is still attuning";
         else if (world.CastOf(player)?.Casting == true) why = "Not mid-cast: let the hands finish first";
         else if (world.HandsOf(player).Holds[hand] == element) return null;
@@ -141,25 +139,18 @@ public partial class SpellCaster
             EventLog.Add(why);
             return why;
         }
-        EventLog.Add(world.InAttuning(player) ? $"Your {Side(hand)} hand holds {element ?? "nothing"}" : $"Your {Side(hand)} hand attunes to {element ?? "nothing"}");
+        EventLog.Add($"Your {Side(hand)} hand attunes to {element ?? "nothing"}");
         return null;
     }
 
-    // Round the elements this wizard has, then nothing, then the elements again; a locked hand says so.
-    void AttuneNext(string player, int hand)
+    // At a tower, a hand's trigger on a hand that holds something else attunes it to the tower's element, which takes its moment
+    // (AttuneTo says why not, a locked one too); on a hand that already holds it, the trigger casts as anywhere. True if it attuned.
+    bool AttuneAtTower(string player, HoldTower tower, int hand, bool pressed)
     {
-        var world = grid.World;
-        if (!Open(player, hand, HandsDef.Thrust)) return;
-        var elements = world.Rules.Combos.Elements;
-        string holds = world.HandsOf(player).Holds[hand];
-        int at = -1;
-        for (int i = 0; i < elements.Count; i++)
-            if (elements[i] == holds) at = i;
-        string next = null;
-        for (int i = at + 1; i < elements.Count && next == null; i++)
-            if (world.ElementOpen(player, elements[i])) next = elements[i];
-        if (next == holds) return;
-        if (Send(ComboCommand.Attune(player, hand, next))) EventLog.Add($"Your {Side(hand)} hand holds {next ?? "nothing"}");
+        if (!pressed || tower == null || grid.World.HandsOf(player).Holds[hand] == tower.Element) return false;
+        // A locked hand buzzes and says so, as any press of it does.
+        if (Open(player, hand, HandsDef.Thrust)) AttuneTo(hand, tower.Element);
+        return true;
     }
 
     // A hand's fired spell or act, for this wizard.

@@ -19,6 +19,10 @@ public class HoldShow : MonoBehaviour
 
     /// <summary>The keep's crystal at the heart, or null with no Hold here: for the probe.</summary>
     public HoldCrystal Crystal => crystal;
+    HoldTowers towers;
+
+    /// <summary>The towers' looks, or null with no Hold here: for the probe.</summary>
+    public HoldTowers Towers => towers;
     TextMesh banner;
     string bannerText;
     GUIStyle style;
@@ -85,20 +89,17 @@ public class HoldShow : MonoBehaviour
     static string Holding(World world, string player, int hand) =>
         world.HandOpen(player, hand) ? $"{world.HandsOf(player).Holds[hand] ?? "nothing"}{Cooling(world, player, hand)}" : "locked";
 
-    /// <summary>In the attuning room: the elements this wizard can hold, and the next one still to come.</summary>
-    public static string AttuningLine(World world, string player)
+    /// <summary>At a tower: its element, and how a hand takes it (or what unlocks it).</summary>
+    public static string TowerLine(World world, string player)
     {
-        var elements = world.Rules.Combos.Elements;
-        var have = new System.Collections.Generic.List<string>();
-        foreach (var e in elements)
-            if (world.ElementOpen(player, e)) have.Add(e);
-        string line = $"Attuning: a hand's trigger changes it. Yours: {string.Join(", ", have)}";
-        foreach (var e in elements)
-            if (!world.ElementOpen(player, e) && world.UnlockGiving(u => u.Element == e) is { } row)
-            {
-                int away = world.PointsAway(player, row);
-                return line + $"; {e} in {away} {(away == 1 ? "point" : "points")}";
-            }
+        var tower = world.TowerOf(player);
+        if (tower == null) return "";
+        string line = $"The {tower.Element} tower: a hand's trigger attunes it to {tower.Element}";
+        if (!world.ElementOpen(player, tower.Element) && world.UnlockGiving(u => u.Element == tower.Element) is { } row)
+        {
+            int away = world.PointsAway(player, row);
+            return $"The {tower.Element} tower: {tower.Element} in {away} {(away == 1 ? "point" : "points")}";
+        }
         return line;
     }
 
@@ -161,6 +162,9 @@ public class HoldShow : MonoBehaviour
         heart.y = grid.GroundAt(heart);
         crystal = HoldCrystal.At(transform, heart);
         crystal.Follow(world);
+        if (towers == null) towers = new GameObject("Hold towers").AddComponent<HoldTowers>();
+        towers.transform.SetParent(transform, false);
+        towers.Show(grid, world);
         var top = grid.CellCenter(hx, hy);
         top.y = grid.GroundAt(top) + BannerRise;
         var go = new GameObject("Hold banner");
@@ -210,8 +214,8 @@ public class HoldShow : MonoBehaviour
         var caster = EventLog.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         // The hands' icons (CastHud) say what HandsLine says, so it isn't drawn (D16).
-        if (caster != null && world.InAttuning(caster.CastPlayer))
-            GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{AttuningLine(world, caster.CastPlayer)}</color>", style);
+        if (caster != null && world.TowerOf(caster.CastPlayer) != null)
+            GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{TowerLine(world, caster.CastPlayer)}</color>", style);
         if (world.Hold == null) return;
         if (!world.HoldRunning && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
         var (hx, hy) = world.HoldSite.Heart;

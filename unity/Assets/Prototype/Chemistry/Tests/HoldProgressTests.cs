@@ -46,8 +46,7 @@ namespace Chem.Tests
         static (World w, string left, string right) Attuned(int? points, int seed = 7)
         {
             var w = Field(seed);
-            var room = ((w.HoldSite.AttuningFrom.x + w.HoldSite.AttuningTo.x) / 2, (w.HoldSite.AttuningFrom.y + w.HoldSite.AttuningTo.y) / 2);
-            Stand(w, Me, room);
+            Away(w);
             if (points != null) Assert.That(w.ApplyCombo(ComboCommand.Bring(Me, points.Value)));
             return (w, w.HandsOf(Me).Holds[Left], w.HandsOf(Me).Holds[Right]);
         }

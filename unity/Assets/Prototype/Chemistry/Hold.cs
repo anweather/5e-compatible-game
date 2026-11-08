@@ -75,6 +75,8 @@ namespace Chem
         /// beating wins the run; 0 for endless waves.
         /// </summary>
         public int WaveTicks, Waves;
+        /// <summary>How far from a tower's middle, in cells, a wizard stands at it to attune (WorldHold.Towers).</summary>
+        public int TowerReach = 3;
         public int BatterTicks = 12, BatterCost = 12, Margin = 14, AdjectiveFrom = 2, AdjectivePercent = 34;
         public int DamagePerWave, KindEvery = 1, AdjectivePerWave, AdjectiveMost = 100, ThemeFrom = 1, ThemePercent, BossEvery, BossHpPerWave, TargetMinutes = 20;
         /// <summary>The adjective a boss wears, or null for no bosses.</summary>
@@ -173,6 +175,7 @@ namespace Chem
             h.BetweenWaves = Int("betweenWaves", h.BetweenWaves);
             h.WaveTicks = Math.Max(0, Int("waveTicks", h.WaveTicks));
             h.Waves = Math.Max(0, Int("waves", h.Waves));
+            h.TowerReach = Math.Max(0, Int("towerReach", h.TowerReach));
             h.BatterTicks = Int("batterTicks", h.BatterTicks);
             h.BatterCost = Int("batterCost", h.BatterCost);
             h.Margin = Int("margin", h.Margin);
@@ -243,6 +246,13 @@ namespace Chem
     }
 
     /// <summary>A map's hold.json, read with the row it names: what's fought over, in world cells.</summary>
+    /// <summary>A tower of the castle where a wizard attunes a hand to its one element: its join and its middle cell.</summary>
+    public sealed class HoldTower
+    {
+        public string At, Element;
+        public int X, Y;
+    }
+
     public sealed class WorldHold
     {
         public const string FileName = "hold.json";
@@ -251,9 +261,8 @@ namespace Chem
         public (int x, int y) Heart { get; private set; }
         public (int x, int y) Plate { get; private set; }
         public (int x, int y) Rise { get; private set; }
-        /// <summary>Two corners of the attuning room, as cells; (-1, -1) if the map has none.</summary>
-        public (int x, int y) AttuningFrom { get; private set; } = (-1, -1);
-        public (int x, int y) AttuningTo { get; private set; } = (-1, -1);
+        /// <summary>The towers a wizard attunes at, each to one element (hold-batch); none if the map has none.</summary>
+        public IReadOnlyList<HoldTower> Towers { get; private set; } = Array.Empty<HoldTower>();
         /// <summary>The road raiders take: the terrain of the row's road the map names, or null for none.</summary>
         public string RoadTerrain { get; private set; }
         /// <summary>Where barricades can stand, as cells.</summary>
@@ -285,19 +294,22 @@ namespace Chem
                 Heart = Mark(row, (string)o["heart"]),
                 Plate = Mark(row, (string)o["plate"]),
                 Rise = Mark(row, (string)o["rise"]),
-                AttuningFrom = Corner(row, o["attuning"], 0),
-                AttuningTo = Corner(row, o["attuning"], 1),
+                Towers = o["towers"]?.OfType<JObject>().Select(t => Tower(row, t)).ToList() ?? new List<HoldTower>(),
                 RoadTerrain = (string)row["roads"]?[(string)o["road"] ?? ""]?["terrain"],
                 Barricades = o["barricades"]?.Select(j => Mark(row, (string)j)).ToList() ?? new List<(int, int)>(),
                 Spawners = spawners,
             };
         }
 
-        static (int x, int y) Corner(JObject row, JToken corners, int i) => corners is JArray c && c.Count == 2 ? Mark(row, (string)c[i]) : (-1, -1);
+        static HoldTower Tower(JObject row, JObject t)
+        {
+            var (x, y) = Mark(row, (string)t["at"]);
+            return new HoldTower { At = (string)t["at"], X = x, Y = y, Element = (string)t["element"] };
+        }
 
-        /// <summary>Whether a cell is in the attuning room: the box of its two corners.</summary>
-        public bool InAttuning(int x, int y) =>
-            x >= AttuningFrom.x && x <= AttuningTo.x && y >= AttuningFrom.y && y <= AttuningTo.y && AttuningFrom.x >= 0;
+        /// <summary>The tower whose cells, within <paramref name="reach"/> of its middle, take in this one; null if none does.</summary>
+        public HoldTower TowerAt(int x, int y, int reach) =>
+            Towers.FirstOrDefault(t => Math.Max(Math.Abs(x - t.X), Math.Abs(y - t.Y)) <= reach);
 
         // A join of the row as a world cell: the cell whose north-west corner it is, or whose middle.
         static (int x, int y) Mark(JObject row, string join)
@@ -308,7 +320,8 @@ namespace Chem
 
         /// <summary>What's wrong with it under these rules: a kind that isn't a raider.</summary>
         public IEnumerable<string> Check(Rules rules) =>
-            Spawners.SelectMany(s => s.Kinds).Distinct().Where(k => rules.Entity(k)?.Raider == null).Select(k => $"{FileName}: {k} isn't a raider");
+            Spawners.SelectMany(s => s.Kinds).Distinct().Where(k => rules.Entity(k)?.Raider == null).Select(k => $"{FileName}: {k} isn't a raider")
+                .Concat(Towers.Where(t => !rules.Combos.Elements.Contains(t.Element)).Select(t => $"{FileName}: the tower at {t.At} gives {t.Element ?? "nothing"}, which isn't an element"));
     }
 
     public sealed partial class Rules

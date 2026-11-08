@@ -267,6 +267,8 @@ public static class ProbeScenarios
             "--only microphone opens and closes the default microphone instead (on a Mac that open once blocked the Editor for minutes). No model, no recording kept, no Claude."),
         new Entry("rowlight", typeof(RowLightProbe), 240f,
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
+        new Entry("towers", typeof(TowersProbe), 150f,
+            "Attuning at the castle's towers (hold-batch), on a virtual pad in a run: away from them the trigger attunes nothing; at each tower whose element the wizard has, the right trigger attunes the hand to it in its moment, the HUD names the tower, then the same trigger casts. Each tower shows its element. With --shots, each tower."),
         new Entry("crystal", typeof(CrystalProbe), 120f,
             "The keep's crystal at the Hold's heart (hold-batch): raiders beside the heart strike it, and as the keep's health is stepped down it cracks in stages, shatters at 0 and comes back whole for the next run. With --shots, pictures from up on the walls at each stage."),
         new Entry("hold", typeof(HoldProbe), 400f,

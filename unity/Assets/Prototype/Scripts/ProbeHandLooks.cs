@@ -21,27 +21,18 @@ public class HandLooksProbe : RoomProbe
         .Select(h => $"{h.GetComponent<CastBeats>().Player}:{h.Showing(HandsDef.Left) ?? Nothing}:{h.Showing(HandsDef.Right) ?? Nothing}")
         .OrderBy(s => s, StringComparer.Ordinal));
 
-    /// <summary>This peer's wizard onto the plate, in the attuning room, and its hands to "left,right", "-" for nothing.</summary>
+    /// <summary>This peer's hands to "left,right", "-" for nothing: from where it stands, outside a run, a hand at a time with its moment (hold-batch: the keep's room went).</summary>
     public static IEnumerator Attune(ChemGrid grid, NetChem net, string hands)
     {
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
-        var plate = grid.World.HoldSite.Plate;
-        var at = grid.CellCenter(plate.x, plate.y);
-        at.y = grid.GroundAt(at) + 0.05f;
-        var body = wizard.GetComponent<CharacterController>();
-        body.enabled = false;
-        wizard.transform.position = at;
-        body.enabled = true;
         string me = wizard.GetComponent<CastBeats>().Player;
-        for (float t = 0f; t < MostWait && !grid.World.InAttuning(me); t += Time.unscaledDeltaTime) yield return null;
         var wanted = hands.Split(',').Select(h => h == Nothing ? null : h).ToArray();
-        net.RequestCombo(ComboCommand.Attune("", HandsDef.Left, wanted[0]));
-        net.RequestCombo(ComboCommand.Attune("", HandsDef.Right, wanted[1]));
-        for (float t = 0f; t < MostWait; t += Time.unscaledDeltaTime)
+        foreach (int hand in new[] { HandsDef.Left, HandsDef.Right })
         {
-            var held = grid.World.HandsOf(me).Holds;
-            if (held[HandsDef.Left] == wanted[0] && held[HandsDef.Right] == wanted[1]) break;
-            yield return null;
+            if (grid.World.HandsOf(me).Holds[hand] == wanted[hand]) continue;
+            net.RequestCombo(ComboCommand.Attune("", hand, wanted[hand]));
+            for (float t = 0f; t < MostWait && (grid.World.HandsOf(me).Holds[hand] != wanted[hand] || grid.World.HandsOf(me).AttuneLeft > 0); t += Time.unscaledDeltaTime)
+                yield return null;
         }
     }
 

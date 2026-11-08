@@ -48,13 +48,16 @@ namespace Chem.HoldCurve
                 .Where(c => c.Part == BuildingPart.Wall && world.At(c.X, c.Y).T == "stone")
                 .OrderBy(c => Far(c.X, c.Y, site.Heart)).ThenBy(c => c.X).ThenBy(c => c.Y).ToList();
             for (int i = 0; i < peers; i++) posts.Add((wall[i * 3].X, wall[i * 3].Y));
-            var room = ((site.AttuningFrom.x + site.AttuningTo.x) / 2, (site.AttuningFrom.y + site.AttuningTo.y) / 2);
+            // Attuned before the run, by the rise, one hand at a time with its moment (no tower: a tower gives one element).
             for (int i = 0; i < peers; i++)
             {
-                world.ApplyStrike(StrikeCommand.Stand(Name(i), room.Item1, room.Item2, 1000000));
+                world.ApplyStrike(StrikeCommand.Stand(Name(i), site.Rise.x, site.Rise.y + i, 1000000));
                 if (points != null) world.ApplyCombo(ComboCommand.Bring(Name(i), points.Value));
-                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Left, holds.left));
-                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Right, holds.right));
+            }
+            foreach (int hand in new[] { HandsDef.Left, HandsDef.Right })
+            {
+                for (int i = 0; i < peers; i++) world.ApplyCombo(ComboCommand.Attune(Name(i), hand, hand == HandsDef.Left ? holds.left : holds.right));
+                for (int t = 0; t < rules.Sim.Hold.Hands.AttuneTicks; t++) world.Step();
             }
             if (moment != null) world.ApplyCombo(ComboCommand.Moment(Name(0), moment));
             else
