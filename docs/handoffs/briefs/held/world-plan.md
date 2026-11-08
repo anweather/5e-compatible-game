@@ -17,6 +17,10 @@ folders on disk as a cache, `sight` 4 and `know` 7.
    (which slots are sea and the shoreline's offset; Andrew: "make sure the coastlines are consistent"; see the plan's
    "Coasts are part of the puzzle"), `ends`, and `rotate`. Include a filler per band. Coasts must match across sides and
    at corners, like bands; the picture draws the shoreline.
+   **Rivers and roads** (Andrew; the plan's "Rivers and roads must make sense"): rivers only flow from high to low
+   bands and end at the sea or a lake; roads are routes between two destinations spanning at least three world squares
+   (no one-square stubs), preferring flat or gentle ground with at most one band step at a time (passes at a range's
+   lowest slot), and each route gets seeded scenic outcrops within sight of it.
 3. **`Chem.WorldPlan`:** solve a W × H grid of squares from a seed, the valley pinned at the south-west (its edges read
    from its land at the borders): bands, then templates wave-function style with backtracking and fillers so it never
    fails, edges matched. Repeats weighted down (÷4 each time) and never within 3 squares (Chebyshev), none in a 3 × 3.

@@ -71,6 +71,10 @@ Each entry has:
   landmark form gets its own layout ("the layouts should be unique": the forest keeps its clustered square, the
   mountain village climbs the mountain in a line, the lake village curves round the shore; the Mac's
   `landmark-intent-fixes`).
+- **Solver rules for rivers and roads (to the lead, same evening):** rivers flow from high to low elevation; roads lead
+  somewhere and span at least three world squares ("a road that starts in one section and ends in the next isn't
+  really that useful"); roads avoid big height changes ("no roads going up"); and roads get scenic outcrops along them
+  ("something interesting if you're walking out there").
 - **Revisited:** 0.
 
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)
