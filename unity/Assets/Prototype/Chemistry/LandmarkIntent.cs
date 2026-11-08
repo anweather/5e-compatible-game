@@ -446,7 +446,7 @@ namespace Chem
         }
 
         // The village's way, laid as a road on its first house's row through these cells.
-        static void Way(JObject first, IList<(int x, int y)> points, int width)
+        static void Way(JObject first, IList<(int x, int y)> points, int width, bool graded = false)
         {
             if (first == null || points.Count < 2) return;
             int ax = (int)first["at"][0], ay = (int)first["at"][1];
@@ -457,7 +457,10 @@ namespace Chem
                 joins[$"way{k}"] = new JArray(2 * (points[k].x - ax) + 1, 2 * (points[k].y - ay) + 1);
                 through.Add($"way{k}");
             }
-            first["roads"] = new JObject { ["way"] = new JObject { ["through"] = through, ["terrain"] = "dirt", ["width"] = width } };
+            var way = new JObject { ["through"] = through, ["terrain"] = "dirt", ["width"] = width };
+            // Cut into the slope it crosses (RoadGrade), a terrace of its own between the houses' pads.
+            if (graded) way["graded"] = true;
+            first["roads"] = new JObject { ["way"] = way };
         }
 
         // Houses either side of a way that climbs from the foot towards the landmark, wandering a little, with the top house
@@ -509,7 +512,7 @@ namespace Chem
                 int back = Pick(v["setback"]) * (k % 2 == 0 ? -1 : 1);
                 if (HouseAt(v, (wx + ux * back / Unit, wy + uy * back / Unit), (wx, wy), null, "house", out var house)) first ??= house;
             }
-            Way(first, way, (int?)v["width"] ?? 2);
+            Way(first, way, (int?)v["width"] ?? 2, (bool?)v["graded"] ?? false);
         }
 
         // The point k of n along the winding: turned from the start's bearing, its distance from the middle eased from start

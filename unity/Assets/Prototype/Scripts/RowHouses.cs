@@ -239,6 +239,7 @@ public class RowHouses : MonoBehaviour
             at.y = TerrainY(at) ?? grid.GroundAt(at);
             var tree = Instantiate(prefab, at, Quaternion.Euler(0f, (cx * 37 + cy * 11) % 360, 0f), root.transform);
             tree.name = "Great tree";
+            tree.AddComponent<GroundedTree>();
             // Its scale is times the valley's tallest tree there, however tall its own kind is drawn.
             float own = Height(tree), tallest = valley.TreeKinds(cx, cy).Select(Measured).DefaultIfEmpty(own).Max();
             tree.transform.localScale = size * ((float?)part["scale"] ?? 3f) * tallest / Mathf.Max(0.1f, own);

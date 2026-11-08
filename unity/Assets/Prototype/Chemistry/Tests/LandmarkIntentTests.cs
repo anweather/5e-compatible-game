@@ -148,6 +148,7 @@ namespace Chem.Tests
             Assert.That(below, Is.GreaterThan(1), "and on the down slope");
             Assert.That(houses.Count(h => (string)h.b["wall"]?["material"] == "stone"), Is.GreaterThan(houses.Count / 2), "mostly stone");
             Assert.That(houses.All(h => h.b["pad"] != null && (bool)h.b["level"]), "each on a flat pad");
+            Assert.That((bool)volcano.Buildings.OfType<JObject>().First(b => b["roads"] != null)["roads"]["way"]["graded"], "its way cut into the slope");
 
             var fishing = Village.Make("foggy-marsh", SiteX, SiteY, 1);
             Assert.That((int)fishing.Stamps[0]["rise"], Is.LessThan(0), "a lake's hollow");
@@ -232,7 +233,7 @@ namespace Chem.Tests
 
         // The goldens, to compare between machines: the five files' texts, per form and seed.
         [TestCase("temperate", 1, 0x2f446555u), TestCase("temperate", 2, 0xf6215265u)]
-        [TestCase("mountains", 1, 0xcc8c716eu), TestCase("mountains", 2, 0x0c8a4196u)]
+        [TestCase("mountains", 1, 0x05a68d71u), TestCase("mountains", 2, 0xa66c3297u)]
         [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]
         public void Golden(string biome, int seed, uint expected)
         {
