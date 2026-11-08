@@ -164,10 +164,9 @@ public class SpellLookFxProbe : LooksModProbe
         var written = RoomMcpProbe.Post(RoomMcpProbe.Tool(tool, change));
         yield return RoomMcpProbe.Until(written);
         string body = written.Result.body;
-        int at = body.IndexOf("Draft ", System.StringComparison.Ordinal);
-        Check($"mcp_draft_{title.Replace(' ', '_')}", at >= 0, body);
-        if (at < 0) yield break;
-        string draft = body.Substring(at + 6).Split(':')[0];
+        string draft = RoomMcpProbe.DraftIn(body);
+        Check($"mcp_draft_{title.Replace(' ', '_')}", draft != null, body);
+        if (draft == null) yield break;
         var applied = RoomMcpProbe.Post(RoomMcpProbe.Tool("apply", $"{{\"mod\":\"{draft}\",\"title\":\"{title}\"}}"));
         yield return RoomMcpProbe.Until(applied);
         Check($"mcp_applied_{title.Replace(' ', '_')}", applied.Result.body.Contains("switched on"), applied.Result.body);

@@ -52,8 +52,7 @@ public class ActProbe : ProbeScenario
         Check("undo_takes_the_second_trees", TreeCells - trees == Trees, $"{TreeCells - trees} more trees");
 
         yield return Say("set_species", $"{{\"id\":\"turkey\",\"color\":\"{Blue}\"}}");
-        int at = said.IndexOf("Draft ", System.StringComparison.Ordinal);
-        string draft = at >= 0 ? new string(said.Skip(at + 6).TakeWhile(char.IsLetterOrDigit).ToArray()) : "";
+        string draft = RoomMcpProbe.DraftIn(said) ?? "";
         yield return Say("apply", $"{{\"mod\":\"{draft}\",\"title\":\"Blue turkeys\"}}");
         yield return Wait(Settle);
         Check("only_the_turkey_is_built_again", fauna != null && fauna.Rebuilt == 1, $"{(fauna != null ? fauna.Rebuilt : 0)} bodies built at the switch");

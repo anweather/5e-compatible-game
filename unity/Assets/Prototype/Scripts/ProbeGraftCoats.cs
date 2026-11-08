@@ -241,9 +241,8 @@ public class GraftCoatsProbe : RoomProbe
         var added = RoomMcpProbe.Post(RoomMcpProbe.Tool("add_species", $"{{\"id\":\"{id}\",\"name\":\"{name}\",\"density\":0,\"from\":{Quoted(from)}{into}}}"));
         yield return RoomMcpProbe.Until(added);
         string body = added.Result.body ?? "";
-        int at = body.IndexOf("Draft ", StringComparison.Ordinal);
-        Check($"add_species_{id}", at >= 0, body.Length > 400 ? body.Substring(0, 400) : body);
-        draft = at >= 0 ? body.Substring(at + 6).Split(':')[0] : null;
+        draft = RoomMcpProbe.DraftIn(body);
+        Check($"add_species_{id}", draft != null, body.Length > 400 ? body.Substring(0, 400) : body);
     }
 
     void CheckCoats(List<Worn> mine)
