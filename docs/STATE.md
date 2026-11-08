@@ -82,7 +82,15 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   `started` line; if not, `linux.sh runner u2 <ip>` with the IP from `(Get-VMNetworkAdapter -VMName u2).IPAddresses`.
 - Landed overnight too: `probe-cleanup` (fcb67af7: the pause menu IMGUI fix; menu, shapeshift, combo, aimlooks pass;
   #166 closed). alpha 0.1.12 draft: Windows uploaded and install-tested (Andrew's PC is now on 0.1.12), notes on it,
-  NET CONFIG 10564187343791070933; the Mac's half pending. PC now on `hitch-hunt` (L3).
+  NET CONFIG 10564187343791070933. The Mac's half is on the draft too (osx Setup.pkg, Portable zip, full nupkg; no
+  osx delta, as no earlier osx release is in the feed; same NET CONFIG); the Linux zip was building at 12:40 UTC.
+- Landed: `hitch-hunt` (d9a08cdb: rebuild 1590 -> 1050 ms, blocker boxes reused, lighter mod checks) and
+  `hold-east-path` (b070d569: a south gate and an east road, waves split; the west brook is dry: true; wading 0.92 to
+  0.78 by depth). PC on `holdeast-fall` (merged dev compiled together, holdeast x5 for a 61 km fall seen once on the
+  Mac). u2 back on `punchy-sync` at 172.26.218.171. **For Andrew:** threading the heightfield Reset across chunks would
+  cut the ~1 s rebuild further, but it would be the core's first threading (D4, D9): his call. Chat applies still cost
+  70-95 ms; reusing composed rules is a lockstep risk, so it's left. Run u2 only between heavy Unity jobs: three
+  watcher stops overnight.
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
