@@ -110,7 +110,9 @@ world shape (one island with ocean all round, a few continents, an archipelago) 
 world wraps east-west only** (a cylinder): north and south are firm edges of **impassable ice mountains**, a band no
 road, river or character crosses. **Climate follows latitude:** desert and salt flats near the middle, temperate either
 side, then tundra and mountains toward the poles, then the ice wall; the square templates' anchors work on top of that.
-The valley stays pinned at a temperate latitude. The full torus stays possible as an option (the earlier "torus,
+Or **half that**, Andrew's preferred start: ice mountains along the north, blending south through tundra and temperate
+to desert along the south edge (a firm boundary there too: an impassable deep dune sea or salt waste), east-west
+wrapping. The valley stays pinned at a temperate latitude. The full torus stays possible as an option (the earlier "torus,
 keep in mind" still holds for it), but the default is the east-west wrap.
 
 **Inland seas** (Andrew, 2026-11-08). A large body of sea water inside the world, not touching its edge: one or more
