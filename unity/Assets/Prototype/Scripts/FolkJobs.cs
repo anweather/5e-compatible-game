@@ -140,6 +140,31 @@ public sealed class FolkJobs
         public bool NightShift;
         internal readonly List<Leg> legs = new();
         internal float period, start;
+        // The stop it keeps to while a Hold run is on (a job's "inARun"), as a leg of its round, and the cell its walk there ends on.
+        internal int homeLeg = -1;
+        internal (int x, int y) homeCell;
+
+        /// <summary>Whether it has a stop to keep to while a Hold run is on (a job's "inARun").</summary>
+        public bool HasHome => homeLeg >= 0;
+
+        /// <summary>Standing at that stop, at its work.</summary>
+        public Now Home => Stand(legs[homeLeg]);
+
+        /// <summary>Whether its round has it at that stop now: where it rejoins the round after a run.</summary>
+        public bool AtHome(double seconds) => homeLeg >= 0 && LegAt(seconds) == homeLeg;
+
+        int LegAt(double seconds)
+        {
+            double t = (seconds + start) % period;
+            for (int i = 0; i < legs.Count; i++)
+            {
+                if (t < legs[i].Seconds) return i;
+                t -= legs[i].Seconds;
+            }
+            return 0;
+        }
+
+        static Now Stand(Leg leg) => new Now { At = leg.Points[0], Yaw = leg.Yaw, Task = leg.Task, OnDeck = leg.Deck };
 
         public Now At(double seconds)
         {
@@ -151,12 +176,12 @@ public sealed class FolkJobs
                     t -= leg.Seconds;
                     continue;
                 }
-                return leg.Walk ? Walking(leg, (float)t) : new Now { At = leg.Points[0], Yaw = leg.Yaw, Task = leg.Task, OnDeck = leg.Deck };
+                return leg.Walk ? Walking(leg, (float)t) : Stand(leg);
             }
-            return new Now { At = legs[0].Points[0], Yaw = legs[0].Yaw, Task = legs[0].Task, OnDeck = legs[0].Deck };
+            return Stand(legs[0]);
         }
 
-        static Now Walking(Leg leg, float t)
+        internal static Now Walking(Leg leg, float t)
         {
             int k = Array.BinarySearch(leg.Times, t);
             if (k < 0) k = ~k;
@@ -175,12 +200,39 @@ public sealed class FolkJobs
         }
     }
 
+    /// <summary>A walk off the round: to a worker's stop for a Hold run, from wherever it was.</summary>
+    public sealed class Trip
+    {
+        internal Leg leg;
+        internal Now end;
+
+        public float Seconds => leg.Seconds;
+
+        /// <summary>Where it is this long after setting off; at the stop once there.</summary>
+        public Now At(float seconds) => seconds >= leg.Seconds || leg.Points.Length < 2 ? end : Worker.Walking(leg, seconds);
+    }
+
     public readonly List<Worker> Workers = new();
+    Land land;
+    Func<int, int, float2> centre;
+    float walkSpeed;
+
+    /// <summary>The walk from a cell to a worker's stop for a Hold run, over the land; null if it has none or there's no way.</summary>
+    public Trip HomeFrom(Worker worker, (int x, int y) from)
+    {
+        if (!worker.HasHome || land == null) return null;
+        var way = Way(land, OnLand(from), worker.homeCell);
+        if (way.Count == 0) return null;
+        var points = Smoothed(way, centre).ToList();
+        if (way[0] != from) points.Insert(0, centre(from.x, from.y)); // off the dock first
+        points.Add(worker.Home.At);
+        return new Trip { leg = Timed(points, way, land, walkSpeed), end = worker.Home };
+    }
 
     /// <summary>The jobs of a map's folder, walked over its land; none without a jobs.json.</summary>
     public static FolkJobs Load(string worldDir, Land land, Func<int, int, float2> centre, float walkSpeed)
     {
-        var jobs = new FolkJobs();
+        var jobs = new FolkJobs { land = land, centre = centre, walkSpeed = walkSpeed };
         string path = Path.Combine(worldDir, FileName);
         if (!File.Exists(path)) return jobs;
         var file = JObject.Parse(File.ReadAllText(path));
@@ -208,6 +260,13 @@ public sealed class FolkJobs
             float seconds = math.lerp((float)stay[0], (float)stay[1], CreatureBody.Unit(individual, 20 + k));
             worker.legs.Add(new Leg { Seconds = seconds, Points = new[] { there }, Yaw = math.radians((float?)spot["facing"] ?? 0f), Task = TaskOf((string)stop["do"]), Deck = spot["out"] != null });
             worker.legs.Add(Walk(Spot(spots, stop), Spot(spots, next), ways, land, centre, walkSpeed));
+        }
+        if (job["inARun"] is JToken home)
+        {
+            int k = stops.FindIndex(st => (string)st["at"] == (string)home);
+            if (k < 0) throw new InvalidDataException($"{FileName}: job {id}'s inARun {home} is none of its stops");
+            worker.homeLeg = k * 2;
+            worker.homeCell = Foot((JObject)spots[(string)home]);
         }
         worker.period = worker.legs.Sum(l => l.Seconds);
         worker.start = CreatureBody.Unit(individual, 30) * worker.period;
@@ -237,6 +296,18 @@ public sealed class FolkJobs
         return ((int)at[0], (int)at[1]);
     }
 
+    // The nearest cell a walk can start on: off a dock it's the shore.
+    (int x, int y) OnLand((int x, int y) at)
+    {
+        const int Most = 24;
+        for (int r = 0; r <= Most; r++)
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                    if ((System.Math.Abs(dx) == r || System.Math.Abs(dy) == r) && land.Inside(at.x + dx, at.y + dy) && land.Open(at.x + dx, at.y + dy))
+                        return (at.x + dx, at.y + dy);
+        return at;
+    }
+
     static Leg Walk((string id, JObject row) from, (string id, JObject row) to, Dictionary<(string, string), List<(int x, int y)>> ways, Land land, Func<int, int, float2> centre, float walkSpeed)
     {
         if (!ways.TryGetValue((from.id, to.id), out var way)) ways[(from.id, to.id)] = way = Way(land, Foot(from.row), Foot(to.row));
@@ -245,6 +316,12 @@ public sealed class FolkJobs
         if (from.row["out"] != null) points.Add(centre((int)from.row["at"][0], (int)from.row["at"][1]));
         points.AddRange(Smoothed(way, centre));
         if (to.row["out"] != null) points.Add(centre((int)to.row["at"][0], (int)to.row["at"][1]));
+        return Timed(points, way, land, walkSpeed);
+    }
+
+    // When a walk reaches each of its points, at the walker's pace over the land under it.
+    static Leg Timed(List<float2> points, List<(int x, int y)> way, Land land, float walkSpeed)
+    {
         var times = new float[points.Count];
         for (int k = 1; k < points.Count; k++)
         {
