@@ -255,10 +255,12 @@ for channel in ${channels[@]+"${channels[@]}"}; do
     echo "$channel: no delta was made from $(cat "$dir/base"): nothing uploaded" >&2
     exit 1
   fi
-  files+=("$dir/releases.$channel.json") # the feed last, once what it lists is up
   held="$(draft_files "$channel")"
-  echo "$channel: ${files[*]##*/}"
+  echo "$channel: ${files[*]##*/} releases.$channel.json"
+  # The feed in its own upload, after what it lists (gh uploads a list's files at once).
   gh release upload "$tag" -R "$REPO" --clobber "${files[@]}"
+  gh release upload "$tag" -R "$REPO" --clobber "$dir/releases.$channel.json"
+  files+=("$dir/releases.$channel.json")
   # An earlier build's files this pack didn't make (a delta from another base, say) go.
   # shellcheck disable=SC2086 # one name a line, none with spaces
   for f in $held; do
