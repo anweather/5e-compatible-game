@@ -91,6 +91,10 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   cut the ~1 s rebuild further, but it would be the core's first threading (D4, D9): his call. Chat applies still cost
   70-95 ms; reusing composed rules is a lockstep risk, so it's left. Run u2 only between heavy Unity jobs: three
   watcher stops overnight.
+- Merged dev (hitch-hunt + hold-east-path) compiled together on the PC: EditMode 1703/1703, yard rebuild clean,
+  holdeast 5/5 with no fall; the Mac's 61 km fall is not reproduced. The fell check watches only the wizard, so if it
+  comes back, log the wizard's y and phase when `FallWatch` first trips. The hitch probe's compose budget (150 ms)
+  failed once at 3 GB free with u2 running and passed on the rerun. alpha 0.1.12 is at 3321b336, before these.
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
