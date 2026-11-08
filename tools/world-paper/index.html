@@ -4,9 +4,9 @@
 :root{
   --bg:#f5f2ea; --fg:#1f2328; --muted:#5d646d; --panel:#fffdf8; --border:#d8d1c3; --accent:#2c66d0; --accent-fg:#ffffff;
   --btn:#ece6d9; --btn-on:#2c66d0; --btn-on-fg:#ffffff;
-  --band-sea:#6c9fc6; --band-low:#9fc77c; --band-hills:#cbc27b; --band-high:#b9967a; --band-peaks:#ece8e2;
+  --band-sea:#6c9fc6; --band-low:#9fc77c; --band-hills:#cbc27b; --band-high:#b9967a; --band-peaks:#ece8e2; --band-wall:#dfe9f0;
   --bio-temperate:#5e9b50; --bio-grassland:#acc95f; --bio-mountains:#8c857a; --bio-tundra:#c6d5d4; --bio-salt-flat:#e9e0cb;
-  --bio-foggy-marsh:#6e8f7b; --bio-ashlands:#6c5a54; --bio-ocean:#4f86b8;
+  --bio-foggy-marsh:#6e8f7b; --bio-ashlands:#6c5a54; --bio-ocean:#4f86b8; --bio-ice-wall:#eef4f8; --bio-dune-sea:#e2c27c;
   --sea:#4f86b8; --sand:#e8d49a; --river:#1f74d1; --road:#b5824f; --main-road:#9a5f2c; --fence:#4a3524; --stone:#f4f1ea; --range:#6b6762; --ridge:#e9e6e1; --canyon:#3d2a20;
   --fog:rgba(30,34,42,.5); --haze:rgba(245,242,234,.45); --void:#c9c3b6;
   --ring-active:#ff7a00; --ring-gen:#159a5c; --ring-known:#6b5fd0; --bad:#e0302b; --char:#ffffff; --char-edge:#1f2328;
@@ -16,9 +16,9 @@
   :root:not([data-theme="light"]){
     --bg:#14171c; --fg:#e7e5e0; --muted:#9aa1ab; --panel:#1c2026; --border:#333a44; --accent:#6c9dff; --accent-fg:#0d1117;
     --btn:#262b33; --btn-on:#6c9dff; --btn-on-fg:#0d1117;
-    --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad;
+    --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad; --band-wall:#9fb2c0;
     --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
-    --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83;
+    --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83; --bio-ice-wall:#b9c9d4; --bio-dune-sea:#a8874a;
     --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
     --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
     --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
@@ -29,9 +29,9 @@
 :root[data-theme="dark"]{
   --bg:#14171c; --fg:#e7e5e0; --muted:#9aa1ab; --panel:#1c2026; --border:#333a44; --accent:#6c9dff; --accent-fg:#0d1117;
   --btn:#262b33; --btn-on:#6c9dff; --btn-on-fg:#0d1117;
-  --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad;
+  --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad; --band-wall:#9fb2c0;
   --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
-  --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83;
+  --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83; --bio-ice-wall:#b9c9d4; --bio-dune-sea:#a8874a;
   --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
   --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
   --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
@@ -135,8 +135,8 @@ details summary{cursor:pointer;min-height:32px;line-height:32px;font-size:14px}
 'use strict';
 // ---------- constants (docs/design/world-squares.md) ----------
 const S = 576, CH = 64, K = 9;                 // cells per world square, cells per chunk, chunks per side
-const BANDS = ['sea','low','hills','high','peaks'];
-const BAND_H = [-40, 20, 120, 300, 700];       // world/bands.json
+const BANDS = ['sea','low','hills','high','peaks','wall'];
+const BAND_H = [-40, 20, 120, 300, 700, 900];  // world/bands.json; 'wall' is the paper's hard edge (ice, or a dune sea)
 const DX = [0,1,0,-1], DY = [-1,0,1,0];        // n e s w
 const SIDE = ['N','E','S','W'];
 const CORNER_SIDES = [[0,3],[0,1],[1,2],[2,3]]; // NW NE SE SW
@@ -146,13 +146,67 @@ const DEPTHS = [48, 112];                      // shoreline offset classes, cell
 const REACH = 2, SIGHT = 4, KNOW = 7;          // rules/sim.json streaming
 const KIND = { r:'river', d:'road', g:'range', c:'canyon' };
 const MB_PER_CHUNK = 60/81;
+const GEN_VERSION = 'paper-1';
+const SEA_NAMES = ['the Inner Sea','the Still Sea','the Grey Water','the Sunken Sea','the Salt Heart','the Quiet Deep'];
+
+// ---------- plan inputs: one constraints object ----------
+const CURATED = ['temperate','grassland','mountains','tundra','salt-flat','foggy-marsh','ashlands'];
+const MUSTS = [
+  { id:'volcano', test:W=>W.landmarks.some(L=>L.icon==='volcano') },
+  { id:'great tree', test:W=>W.landmarks.some(L=>L.icon==='tree') },
+  { id:'lake village', test:W=>W.landmarks.some(L=>L.icon==='boat'&&!L.port) },
+  { id:'canyon with one bridge', test:W=>{ const g={}; for(const C of W.crossings) if(C.over==='canyon') g[C.comp]=(g[C.comp]||0)+1; return Object.values(g).some(v=>v===1); } },
+  { id:'inland sea', test:W=>W.inlandRegions.length>0 },
+  { id:'sea spire', test:W=>W.landmarks.some(L=>L.kind==='spire') },
+  { id:'port town', test:W=>W.landmarks.some(L=>L.port) },
+  { id:'cave', test:W=>W.landmarks.some(L=>L.kind==='cave') },
+  { id:'mountain pass', test:W=>W.opt.some(o=>o.tpl.pass) }
+];
+const MUST_IDS = MUSTS.map(m=>m.id);
+const LIMITS = { sea:[0,0.7], mountains:[0,0.6], towns:[0.1,0.8], mainRoads:[1,8], inlandSeas:[0,3], inlandSize:[1,12], biome:[0,3] };
+const mainRoadCap = N => Math.max(1, Math.min(6, Math.round(N/2)));   // about six on a 12 x 12, two on a 3 x 3
+const SHAPES = ['current','island','continents','archipelago'];
+const SHAPE_SEA = { current:0.12, island:0.4, continents:0.4, archipelago:0.55 };
+const WRAPS = ['ew','torus','none'], PROFILES = ['half','full'];
+// a 3 x 3 that wraps is its own neighbour's neighbour, so wrapping is a 12 x 12 setting
+function defaultConstraints(N, wrap, lib){
+  N = N===12?12:3; wrap = N===3?'none':(WRAPS.includes(wrap)?wrap:'ew');
+  const biomes={}; for(const b of CURATED) biomes[b]=1;
+  return { size:N, wrap, shape:'current', profile:'half', latitude:0.6, library:lib===13||lib===26?lib:(N===3?13:26), biomes, sea:0.12,
+    inlandSeas:0, inlandSize:N===3?1:4, mountains:0.3, towns:0.35, mainRoads:mainRoadCap(N), must:[] };
+}
+// untrusted input (a described world, a saved archetype): keep known fields, clamp numbers, drop the rest
+function cleanConstraints(raw){
+  if(!raw || typeof raw!=='object' || Array.isArray(raw)) throw new Error('not an object');
+  const num=(v,[lo,hi],d)=>{ const x=Number(v); return Number.isFinite(x)?Math.max(lo,Math.min(hi,x)):d; };
+  let size=Number(raw.size); size = Number.isFinite(size)&&size>7?12:3;
+  const pick=(v,list,d)=>{ const s=typeof v==='string'?v.toLowerCase().trim():''; return list.includes(s)?s:d; };
+  let wrap = pick(raw.wrap, WRAPS, raw.torus===true?'torus':null);
+  if(wrap && wrap!=='none') size=12;
+  const D=defaultConstraints(size, wrap||'ew', Number(raw.library));
+  const C=Object.assign({},D,{ biomes:Object.assign({},D.biomes) });
+  C.shape=pick(raw.shape, SHAPES, 'current'); C.profile=pick(raw.profile, PROFILES, 'half');
+  C.latitude=num(raw.latitude,[0,1],D.latitude);
+  D.sea=SHAPE_SEA[C.shape];
+  if(raw.biomes && typeof raw.biomes==='object') for(const b of CURATED) if(b in raw.biomes) C.biomes[b]=Math.round(num(raw.biomes[b],LIMITS.biome,1)*2)/2;
+  C.sea=num(raw.sea,LIMITS.sea,D.sea); C.mountains=num(raw.mountains,LIMITS.mountains,D.mountains); C.towns=num(raw.towns,LIMITS.towns,D.towns);
+  C.mainRoads=Math.round(num(raw.mainRoads,LIMITS.mainRoads,D.mainRoads));
+  C.inlandSeas=Math.round(num(raw.inlandSeas,LIMITS.inlandSeas,D.inlandSeas)); C.inlandSize=Math.round(num(raw.inlandSize,LIMITS.inlandSize,D.inlandSize));
+  const must=new Set();
+  if(Array.isArray(raw.must)) for(const m of raw.must.slice(0,20)){ if(typeof m!=='string') continue; const s=m.toLowerCase().trim();
+    const hit=MUST_IDS.find(id=>id===s) || MUST_IDS.find(id=>s.includes(id.split(' ').slice(-1)[0])||s.includes(id.split(' ')[0])); if(hit) must.add(hit); }
+  C.must=MUST_IDS.filter(id=>must.has(id));
+  if((must.has('inland sea')||must.has('port town')) && !C.inlandSeas) C.inlandSeas=1;
+  return C;
+}
 
 // curated 7 + ocean, from world/biomes.json
 const BIOMES = {
   'temperate':{name:'Temperate',base:22,relief:70}, 'grassland':{name:'Grassland',base:14,relief:12},
   'mountains':{name:'Mountains',base:45,relief:260}, 'tundra':{name:'Tundra',base:105,relief:14},
   'salt-flat':{name:'Salt Flat',base:6,relief:1.5}, 'foggy-marsh':{name:'Foggy Marsh',base:0.9,relief:3},
-  'ashlands':{name:'Ashlands',base:12,relief:20}, 'ocean':{name:'Ocean',base:-38,relief:4}
+  'ashlands':{name:'Ashlands',base:12,relief:20}, 'ocean':{name:'Ocean',base:-38,relief:4},
+  'ice-wall':{name:'Ice Wall',base:200,relief:120}, 'dune-sea':{name:'Dune Sea',base:10,relief:30}
 };
 const BIOME_IDS = Object.keys(BIOMES);
 
@@ -200,8 +254,10 @@ const SIBLINGS = { 'lakeland':['mere-shore','temperate'], 'meadow-cross':['cross
   'high-pass':['saddle','mountains'], 'summit':['twin-peaks','mountains'], 'ice-crown':['glacier-cap','tundra'] };
 for(const t of TEMPLATES.slice()){ const sb=SIBLINGS[t.id]; if(sb) TEMPLATES.push(Object.assign({},t,{id:sb[0],biome:sb[1],lib2:true})); }
 const VALLEY = { id:'valley', bands:[1], biome:'temperate', w:1, lm:'castle', e:[['d4!'],['r4i!'],['r4o!'],[]], rotate:false, exempt:true, ends:{} };
+// the hard edge rows: nothing crosses into them (their sides carry no features, so rivers and roads stop short)
+const WALLS = [ { id:'ice-wall', biome:'ice-wall', w:0, lm:null, exempt:true, wall:1, ends:{} }, { id:'dune-sea', biome:'dune-sea', w:0, lm:null, exempt:true, wall:2, ends:{} } ];
 const FILLER_BIOME = ['ocean','grassland','temperate','tundra','mountains'];
-const FILLERS = BANDS.map((b,i)=>({ id:'filler-'+b, band:i, biome:FILLER_BIOME[i], w:0, lm:null, filler:true, exempt:true, ends:{river:'lake',range:'fade',canyon:'close'} }));
+const FILLERS = BANDS.slice(0,5).map((b,i)=>({ id:'filler-'+b, band:i, biome:FILLER_BIOME[i], w:0, lm:null, filler:true, exempt:true, ends:{river:'lake',range:'fade',canyon:'close'} }));
 
 // ---------- hashing, rng, noise ----------
 function mod(a,n){ return ((a%n)+n)%n; }
@@ -233,7 +289,7 @@ function validInternal(t, feats, band){
   if(c===1 && ends.canyon!=='close') return false;
   return true;
 }
-const OPTS = []; const OPTS_BY_BAND = [[],[],[],[],[]]; const OPTS_BY_BAND_SMALL = [[],[],[],[],[]]; let VALLEY_OPT = -1; const FILLER_OPT = [];
+const OPTS = []; const OPTS_BY_BAND = [[],[],[],[],[]]; const OPTS_BY_BAND_SMALL = [[],[],[],[],[]]; let VALLEY_OPT = -1; const FILLER_OPT = []; const WALL_OPT = [];
 function addOpt(o){ o.idx=OPTS.length; OPTS.push(o); return o.idx; }
 (function buildOptions(){
   const seen = new Set();
@@ -262,6 +318,8 @@ function addOpt(o){ o.idx=OPTS.length; OPTS.push(o); return o.idx; }
   }
   const vf=[[],[],[],[]], vo=[[],[],[],[]]; VALLEY.e.forEach((L,s)=>L.forEach(tok=>{const f=parseTok(tok); if(f.k==='d') vo[s].push(f.slot); else vf[s].push({k:f.k,slot:f.slot,f:f.f});}));
   VALLEY_OPT=addOpt({ tpl:VALLEY, rot:0, feats:vf, sig:vf.map(sigOf), coast:[true,true,true,true], offer:vo, w:1 });
+  WALL_OPT[1]=addOpt({ tpl:WALLS[0], rot:0, feats:[[],[],[],[]], sig:['','','',''], coast:[true,true,true,true], offer:[[],[],[],[]], w:0 });
+  WALL_OPT[2]=addOpt({ tpl:WALLS[1], rot:0, feats:[[],[],[],[]], sig:['','','',''], coast:[true,true,true,true], offer:[[],[],[],[]], w:0 });
   FILLERS.forEach((t,b)=>{ FILLER_OPT[b]=addOpt({ tpl:t, rot:0, feats:[[],[],[],[]], sig:['*','*','*','*'], coast:[true,true,true,true], offer:[[],[],[],[]], w:0, filler:true, sea:b===0 }); });
 })();
 
@@ -278,33 +336,117 @@ function compat(sx,sy,bx,by){
 }
 
 // ---------- the world: grid, bands, coasts ----------
-function buildWorld(seedStr, N, torus, lib){
-  const seed=strHash(seedStr+'|'+N+'|'+(torus?'t':'r'));
-  const libSmall = lib===13;
-  const w = torus?N:N+1, h = torus?N:N+1, n=w*h;
-  const W = { seedStr, seed, N, torus, w, h, n, libSmall };
-  W.vx = torus?0:1; W.vy = N-1; W.valley = W.vy*w+W.vx;
-  W.idx=(x,y)=>{ if(torus){x=mod(x,w);y=mod(y,h);} else if(x<0||y<0||x>=w||y>=h) return -1; return y*w+x; };
+// ---------- the world: grid, bands, coasts ----------
+// wrap 'ew' is a cylinder: east and west join, north and south end in a wall row (ice; or a dune sea in the south on
+// the half profile). 'torus' wraps both ways, 'none' is the old rectangle with sea west and south.
+// Each row has a coldness, 0 desert to 1 ice: 'full' runs ice, temperate, desert, temperate, ice; 'half' ice to desert.
+function clamp01(v){ return v<0?0:v>1?1:v; }
+function buildWorld(seedStr, C){
+  const N=C.size, wrap=C.wrap, wx=wrap!=='none', wy=wrap==='torus';
+  const seed=strHash(seedStr+'|'+N+'|'+(wrap==='torus'?'t':wrap==='ew'?'c':'r'));
+  const libSmall = C.library===13;
+  const w = wrap==='none'?N+1:N, h = wrap==='none'?N+1:wrap==='ew'?N+2:N, n=w*h;
+  const half = C.profile==='half' && wrap!=='torus';
+  const W = { seedStr, seed, N, wrap, wx, wy, torus:wy, half, w, h, n, libSmall, C };
+  // the valley stays pinned at a temperate row (coldness about 0.4)
+  const eq=(h-1)/2;
+  const vy = wrap==='none' ? N-1 : half ? Math.round((h-1)*0.6) : Math.round(eq+0.42*eq);
+  W.vx = wrap==='none'?1:0; W.vy=vy; W.valley=vy*w+W.vx;
+  W.coldRow=new Float32Array(h);
+  for(let y=0;y<h;y++) W.coldRow[y] = wrap==='none'
+    ? (half ? clamp01(0.4+(vy-y)/(h-1)) : clamp01(Math.abs(y-(vy-0.4*eq))/eq))
+    : (half ? (h-1-y)/(h-1) : Math.abs(y-eq)/eq);
+  W.cold=i=>W.coldRow[(i/w)|0];
+  W.wall=new Uint8Array(n);                            // 1 ice wall, 2 dune sea
+  if(wrap==='ew') for(let x=0;x<w;x++){ W.wall[x]=1; W.wall[(h-1)*w+x]=half?2:1; }
+  W.idx=(x,y)=>{ if(wx) x=mod(x,w); else if(x<0||x>=w) return -1; if(wy) y=mod(y,h); else if(y<0||y>=h) return -1; return y*w+x; };
   W.nb=[]; W.diag=[];
   for(let i=0;i<n;i++){ const x=i%w,y=(i/w)|0; W.nb.push([0,1,2,3].map(s=>W.idx(x+DX[s],y+DY[s]))); W.diag.push([0,1,2,3].map(c=>W.idx(x+CDX[c],y+CDY[c]))); }
-  W.dist=(a,b)=>{ let dx=Math.abs(a%w-b%w), dy=Math.abs(((a/w)|0)-((b/w)|0)); if(torus){dx=Math.min(dx,w-dx);dy=Math.min(dy,h-dy);} return Math.max(dx,dy); };
-  // raw band from a low-frequency field (period divides the world on the torus)
-  const raw=new Int8Array(n), L=torus?Math.max(1,Math.round(N/3)):0;
-  for(let i=0;i<n;i++){
-    const x=i%w,y=(i/w)|0;
-    if(!torus && (x===0||y===h-1)){ raw[i]=0; continue; }
-    const v = 0.72*vnoise(seed^0xb00b, x/3, y/3, L, L) + 0.28*h01(seed^0x51, x, y);
-    raw[i] = v<0.16?0 : v<0.40?1 : v<0.60?2 : v<0.78?3 : 4;
-  }
-  raw[W.valley]=1;
-  for(const i of [W.nb[W.valley][0],W.nb[W.valley][1],W.diag[W.valley][1]]) if(i>=0) raw[i]=Math.max(raw[i],1);
-  if(torus) for(const i of [W.nb[W.valley][2],W.nb[W.valley][3],W.diag[W.valley][3]]) raw[i]=0;
-  // envelope: band(s) = min over t of raw(t) + distance(s,t); neighbours differ by at most one
+  const dX=(a,b)=>{ const d=Math.abs(a-b); return wx?Math.min(d,w-d):d; }, dY=(a,b)=>{ const d=Math.abs(a-b); return wy?Math.min(d,h-d):d; };
+  W.dist=(a,b)=>Math.max(dX(a%w,b%w), dY((a/w)|0,(b/w)|0));
+  // the raw field: low-frequency noise (its period divides a wrapped axis), shaped by the world shape and the latitude
+  const raw=new Int8Array(n), L=Math.max(1,Math.round(N/3)), vs=new Float64Array(n);
+  const y0=wrap==='ew'?1:0, y1=wrap==='ew'?h-2:h-1, rows=y1-y0+1;
+  const border=i=>wrap==='none' && (i%w===0 || ((i/w)|0)===h-1);
+  const forcedSea=new Uint8Array(n);
+  const shape=C.shape, r0=rng(seed^0x5a9e);
+  const blob=(cx,cy,rx,ry)=>(x,y)=>1-Math.hypot(dX(x,cx)/rx, dY(y,cy)/ry);
+  let mask=null, a=0;
+  const clampY=v=>Math.max(y0+rows*0.3, Math.min(y0+rows*0.7, v));
+  if(shape==='island'){ const cx=wx?mod(W.vx+0.3*w,w):W.vx+0.3*w; mask=blob(cx, clampY(vy-0.22*h), 0.48*w, 0.5*rows); a=0.65; }
+  else if(shape==='continents'){ const k=2+(seed%3), B=[];
+    for(let c=0;c<k;c++){ const cx = wx ? mod(W.vx+0.15*w+c*w/k,w) : 0.15*w+c*(0.75*w/Math.max(1,k-1));
+      const cy = c===0 ? clampY(vy-0.2*rows) : y0+rows*(0.3+0.4*r0()); B.push(blob(cx,cy,(wx?0.42:0.5)*w/k*1.25,0.38*rows)); }
+    mask=(x,y)=>Math.max(...B.map(f=>f(x,y))); a=0.6; W.landmasses=k; }
+  else if(shape==='archipelago'){ const P=wx?Math.round(w/1.5):0, Q=wy?Math.round(h/1.5):0;
+    mask=(x,y)=>vnoise(seed^0xa4c, x/1.5, y/1.5, P, Q); a=0.55; }
+  const s=C.latitude;
+  for(let i=0;i<n;i++){ const x=i%w,y=(i/w)|0, c=W.coldRow[y];
+    let v = 0.72*vnoise(seed^0xb00b, x/3, y/3, wx?L:0, wy?L:0) + 0.28*h01(seed^0x51, x, y);
+    if(mask) v=(1-a)*v + a*mask(x,y);
+    v += s*0.3*Math.max(0,c-0.55)/0.45 - s*0.1*Math.max(0,0.25-c)/0.25;     // mountains toward the cold, low desert
+    vs[i]=v;
+    if(border(i)) forcedSea[i]=1;
+    if((shape==='island'||shape==='archipelago') && !W.wall[i] && ((!wx&&(x===0||x===w-1)) || (!wy&&(y===y0||y===y1)))) forcedSea[i]=1;
+    if(shape==='island' && mask(x,y)<-0.04) forcedSea[i]=1; }
+  const V=W.valley;
+  const vLand=[V,W.nb[V][0],W.nb[V][1],W.diag[V][1]].filter(i=>i>=0), vSea=wx?[W.nb[V][2],W.nb[V][3],W.diag[V][3]]:[];
+  for(const i of vLand) forcedSea[i]=0; for(const i of vSea) forcedSea[i]=1;
+  const inner=[]; for(let i=0;i<n;i++) if(!W.wall[i]&&!forcedSea[i]) inner.push(vs[i]);
+  inner.sort((p,q)=>p-q);
+  const q=p=>inner[Math.max(0,Math.min(inner.length-1,Math.floor(p*inner.length)))];
+  // the band thresholds are quantiles, so the sea share and the mountain cover are what the constraints ask
+  const sea=C.sea, mt=C.mountains;
+  const t0=sea>0?q(sea):-1e9, t2=q(sea+(1-sea)*(1-mt)*0.5), t3=mt>0?q(1-(1-sea)*mt):1e9, t4=mt>0?q(1-(1-sea)*mt*0.4):1e9;
+  for(let i=0;i<n;i++){ if(forcedSea[i]){ raw[i]=0; continue; } const v=vs[i];
+    raw[i] = v<t0?0 : v<t2?1 : v<t3?2 : v<t4?3 : 4; }
+  raw[V]=1; for(const i of vLand) raw[i]=Math.max(raw[i],1);
+  W.forcedSea=forcedSea;
+  placeInlandSeas(W, raw, i=>border(i)||!!W.wall[i]||!!forcedSea[i]);
+  // envelope: band(s) = min over t of raw(t) + distance(s,t); neighbours differ by at most one. Walls are band 5.
   const band=new Int8Array(n);
-  for(let i=0;i<n;i++){ let m=raw[i]; for(let j=0;j<n;j++){ const v=raw[j]+W.dist(i,j); if(v<m) m=v; } band[i]=m; }
+  for(let i=0;i<n;i++){ if(W.wall[i]){ band[i]=5; continue; } let m=raw[i]; for(let j=0;j<n;j++){ if(W.wall[j]) continue; const v=raw[j]+W.dist(i,j); if(v<m) m=v; } band[i]=m; }
   W.raw=raw; W.band=band;
   buildCoasts(W);
   return W;
+}
+
+// inland seas: a region of sea squares with land on all eight sides of each (so never the world's edge, a wall or the
+// outer sea); its ring is raised to land, and the coasts are then solved like any other
+function placeInlandSeas(W, raw, edge){
+  const {n,C}=W; W.inland=new Int8Array(n); W.inlandRegions=[];
+  const want=Math.max(C.inlandSeas, (C.must.includes('inland sea')||C.must.includes('port town'))?1:0); if(!want) return;
+  const r=rng(W.seed^0x1a7d), V=W.valley;
+  const keepLand=new Set([V, W.nb[V][0], W.nb[V][1]]);
+  const ring=i=>W.nb[i].concat(W.diag[i]);
+  const allowed=i=>{ if(edge(i)||keepLand.has(i)) return false;
+    for(const j of ring(i)) if(j<0||edge(j)) return false; return true; };
+  const owner=new Int8Array(n);                         // region id+1
+  const free=(i,id)=>allowed(i) && !owner[i] && ring(i).every(j=>!owner[j]||owner[j]===id);
+  for(let k=0;k<want;k++){ const id=k+1;
+    const cand=[]; for(let i=0;i<n;i++) if(free(i,id) && W.dist(i,V)>=2) cand.push(i);
+    if(!cand.length) for(let i=0;i<n;i++) if(free(i,id)) cand.push(i);
+    if(!cand.length) break;
+    let start=cand[(r()*cand.length)|0];
+    if(W.inlandRegions.length){ let bs=-1; for(const c of cand){ const d=Math.min(...W.inlandRegions.flat().map(j=>W.dist(c,j)))+r()*1.5; if(d>bs){ bs=d; start=c; } } }
+    const reg=[start]; owner[start]=id;
+    while(reg.length<C.inlandSize){ const fr=[];
+      for(const i of reg) for(const j of W.nb[i]) if(j>=0 && !fr.includes(j) && free(j,id)) fr.push(j);
+      if(!fr.length) break; fr.sort((p,q)=>p-q);
+      const ws=fr.map(j=>1+W.nb[j].filter(x=>x>=0&&owner[x]===id).length*2); let t=r()*ws.reduce((p,q)=>p+q,0), pick=fr[0];
+      for(let q=0;q<fr.length;q++){ t-=ws[q]; if(t<=0){ pick=fr[q]; break; } }
+      owner[pick]=id; reg.push(pick); }
+    reg.sort((p,q)=>p-q); W.inlandRegions.push(reg); }
+  for(let i=0;i<n;i++) if(owner[i]){ raw[i]=0; W.inland[i]=owner[i]; }
+  for(let i=0;i<n;i++) if(owner[i]) for(const j of ring(i)) if(j>=0&&!owner[j]) raw[j]=Math.max(raw[j],1);
+}
+function inlandViolations(W){
+  const bad=[];
+  W.inlandRegions.forEach((reg,k)=>{ for(const i of reg){
+    if(W.band[i]!==0) bad.push([i,'is not sea']);
+    for(const j of W.nb[i].concat(W.diag[i])){ if(j<0||W.wall[j]){ bad.push([i,'touches the edge']); continue; }
+      if(W.band[j]===0 && W.inland[j]!==k+1) bad.push([i,'joins other sea']); } } });
+  return bad;
 }
 
 // a coast is solved with the bands: open sides face sea, corner notches where only the diagonal is sea,
@@ -338,6 +480,10 @@ function buildCoasts(W){
   W.endOff=(i,side,e)=>{ const c=coast[i]; const k=SIDE_CORNERS[side][e]; const other=CORNER_SIDES[k][0]===side?CORNER_SIDES[k][1]:CORNER_SIDES[k][0]; if(c.open[other]) return c.depth[other]; return c.notch[k]; };
 }
 
+// latitude: each anchor biome likes a coldness (0 desert to 1 ice); strength 0 turns it off
+const LAT_PEAK = { 'salt-flat':0, 'grassland':0.3, 'ashlands':0.4, 'temperate':0.45, 'foggy-marsh':0.45, 'mountains':0.78, 'tundra':0.88 };
+function latFit(b,c,s){ const p=LAT_PEAK[b]; if(p===undefined||!s) return 1; const d=(c-p)/0.24; return 1-s+s*(0.05+Math.exp(-d*d)); }
+
 // ---------- the solve, wave-function style ----------
 class Solver{
   constructor(W, budget, local){
@@ -349,6 +495,7 @@ class Solver{
     for(let i=0;i<n;i++){
       const b=W.band[i];
       if(i===W.valley){ this.dom[i]=[VALLEY_OPT]; continue; }
+      if(W.wall[i]){ this.dom[i]=[WALL_OPT[W.wall[i]]]; this.col[i]=1; continue; }
       const c=W.coast[i];
       this.dom[i]=(W.libSmall?OPTS_BY_BAND_SMALL:OPTS_BY_BAND)[b].filter(id=>{ const o=OPTS[id]; if(o.sea) return true;
         for(let s=0;s<4;s++){ const f=o.feats[s];
@@ -385,7 +532,11 @@ class Solver{
   snap(){ return { dom:this.dom.slice(), col:this.col.slice(), used:Object.assign({},this.used), fl:this.fillers.length }; }
   restore(s){ this.dom=s.dom; this.col=s.col; this.used=s.used; this.fillers.length=s.fl; }
   pick(x){
-    const d=this.dom[x]; let tot=0; const ws=d.map(o=>{ const op=OPTS[o]; const t=op.tpl; let w=op.w||1e-6; if(!t.exempt) w/=Math.pow(4,this.used[t.id]||0); tot+=w; return w; });
+    const d=this.dom[x], W=this.W, C=W.C, c=W.cold(x); let tot=0;
+    const ws=d.map(o=>{ const op=OPTS[o]; const t=op.tpl; let w=op.w||1e-6; if(!t.exempt) w/=Math.pow(4,this.used[t.id]||0);
+      if(t.biome in C.biomes){ const bw=C.biomes[t.biome]; w*=bw>0?bw:0.002; w*=latFit(t.biome,c,C.latitude); }
+      if(t.id==='open-sea' && W.inland[x]) w*=2;
+      tot+=w; return w; });
     let r=this.r()*tot; for(let k=0;k<d.length;k++){ r-=ws[k]; if(r<=0) return d[k]; } return d[d.length-1];
   }
   collapse(x,o){
@@ -529,7 +680,6 @@ const ROAD = { step:10, band:30, high:30, river:4, range:20, offer:3, jitter:3, 
 const SLOT_ORDER = [4,3,5,2,6,1,7,0,8];
 const CAVE_NAMES = ['the Black Mouth','Wyrm Hollow','the Echo Cave','Bat Deep','the Lantern Grotto','Old Delve','the Whispering Hole','Glimmer Cave','the Dripping Halls','Fox Earth'];
 const TOWN_ODDS = 0.35;                                    // a landmark square keeps its village this often
-const mainRoadCap = N => Math.max(1, Math.min(6, Math.round(N/2)));   // about six on a 12 x 12, two on a 3 x 3
 const WAY = { 'inn':{icon:'inn',seenFrom:KNOW+1}, 'shop':{icon:'shop',seenFrom:KNOW+1} };
 const CROSS_SEEN = KNOW+1;
 function chunkOf(W,i,site){ return [ (i%W.w)*K+Math.floor(site[0]/CH), ((i/W.w)|0)*K+Math.floor(site[1]/CH) ]; }
@@ -778,7 +928,7 @@ function biomeAt(W,x,y){
 function heightAt(W,x,y){
   if(seaAt(W,x,y)) return -40;
   const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=fx-ix, ty=fy-iy;
-  const B=(a,b)=>BAND_H[W.band[squareAt(W,(a+0.5)*S,(b+0.5)*S)]];
+  const B=(a,b)=>{ const j=squareAt(W,(a+0.5)*S,(b+0.5)*S); return W.wall[j]===2?60:BAND_H[W.band[j]]; };
   const hb=B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty;
   const bio=BIOMES[W.opt[squareAt(W,x,y)].tpl.biome]; const P=W.torus?W.w*3:0, Q=W.torus?W.h*3:0;
   return hb + bio.base + (vnoise(W.seed^0x7e1,x/192,y/192,P,Q)-0.5)*2*bio.relief;

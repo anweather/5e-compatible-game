@@ -93,6 +93,8 @@ Each entry has:
   corridor", a road winding round the mountain with houses on its upslope and downslope sides, "but they shouldn't be
   so steep". The Mac's "wind" layout: a gently rising road part-way round the cone's lower slopes, houses alternating
   sides, nothing above about a third of the cone's height (landmark-look-pass).
+  Then: "the hill is too steep to put houses on ... ground leveling before we put houses in ... part of the village
+  stamp ... terraces on the steep mountain." The Mac grades each house's pad and the winding way into terraces.
 - **The big spells:** "way better now ... good enough for us to move ahead with" (wow-looks, 44a8103a).
 - **Revisited:** 0.
 
