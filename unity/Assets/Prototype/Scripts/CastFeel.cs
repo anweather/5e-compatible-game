@@ -109,6 +109,8 @@ public class CastFeel : ScriptableObject
         rightHand = new Vector3(0.05f, 1.34f, 0.41f), leftHand = new Vector3(-0.05f, 1.34f, 0.41f), seconds = 0.15f, curve = Snap(),
         fingers = new Vector3(0f, 1f, 0.3f), palm = Vector3.forward, lean = -10f, recoil = 0.45f, merge = 1f,
     };
+    [Min(0f), Tooltip("A hand's tap (hold.json hands.tapTicks) goes off two ticks after its press, leaving about a tick for the wind-up: it plays the windUp pose in this long instead (s), so the arms are up before the slam. 0: windUp's own seconds.")]
+    public float handTapWindUpSeconds = 0.1f;
     [Min(1), Tooltip("A tap's wind-up starts with this many ticks of the meter left (a tick is 1/6 s). With slamTicks or fewer left it's skipped, for a cast on the heels of the last.")]
     public int windUpTicks = 3;
     [Tooltip("Like thrustLead and thrustHold, for a tap.")]

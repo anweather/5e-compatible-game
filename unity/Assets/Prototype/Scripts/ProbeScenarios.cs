@@ -310,7 +310,9 @@ public static class ProbeScenarios
             "The bigspells scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg."),
         new Entry("mergeclip", typeof(MergeClipProbe), 120f,
             "Films three different merges with the HUD on a virtual pad (D16, \"The merge\"): each pair's icons slam into its own glyph as both hands charge, then it goes off. Scalding Steam, Lightning, Wall of Stone; the attuning between is cut. Into --shots: frames, sound.wav and timeline.txt."),
-        new Entry("pairglyphs", typeof(PairGlyphsProbe), 30f,
+        new Entry("tapsclip", typeof(TapsClipProbe), 120f,
+            "Films the hands' taps (J-078, casting-taps) with the HUD on a virtual pad: triggers and bumpers tapped as fast as the hands take them, then a held charge, then a merge. Into --shots: frames, sound.wav and timeline.txt."),
+        new Entry("pairglyphs",typeof(PairGlyphsProbe), 30f,
             "Every merged pair's icon (D16, \"The merge\") on one sheet, as the HUD draws it, with the spell's name: --shots for a before and after."),
         new Entry("playermods", typeof(PlayerModsProbe), 120f,
             "A player's stats (docs/RULES_MCP.md \"Player stats\", WizardStats) through set_player as mods in a meadow by the yard: as made the wizard walks, jumps and takes one air jump; " +

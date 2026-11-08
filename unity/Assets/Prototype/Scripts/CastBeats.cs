@@ -22,7 +22,9 @@ using UnityEngine;
 // beat can run a frame or three behind on its owner's screen but never adds up.
 // A hold keeps the same tuning it always had; a tap, known from the core's cast (not
 // held as its meter runs out), has a wind-up and its own slam and thrust (CastFeel), all
-// before the core fires or by the gesture's release, so game time isn't touched.
+// before the core fires or by the gesture's release, so game time isn't touched. A hand's tap
+// (hands.tapTicks, J-078) goes off two ticks after its press, so its wind-up plays at
+// CastFeel.handTapWindUpSeconds to be up before the slam; a held or merged hand keeps the long beats.
 [DefaultExecutionOrder(205)]
 [RequireComponent(typeof(Animator), typeof(CastPose))]
 public class CastBeats : MonoBehaviour
@@ -53,6 +55,8 @@ public class CastBeats : MonoBehaviour
     public (string first, string second) Elements => (first, second);
     /// <summary>This cast is uncharged, so far as anyone can know: its slam and thrust are the tap's. A hold, a slam on the way to a charge and anything after one never are.</summary>
     public bool Tap => tap;
+    /// <summary>This cast is a hand's tap (World.Hands: let go inside tapTicks), so its wind-up is played quick.</summary>
+    public bool HandTap => handTap;
     /// <summary>The pose of the beat now.</summary>
     public CastFeel.BeatPose Pose => feel.Of(Now, tap);
     /// <summary>A beat is posing the body; CastPose stands aside.</summary>
@@ -118,7 +122,7 @@ public class CastBeats : MonoBehaviour
     // go on from this, as a peer catching up can be mid-tick at the end of every frame.
     CastFacts whole;
     float firedAt, announcedAt, thrustAt, kick;
-    bool struck, standing, tap;
+    bool struck, standing, tap, handTap;
     float stopLeft, speedWas = 1f;
     Action afterStop;
 
@@ -234,7 +238,7 @@ public class CastBeats : MonoBehaviour
         Listen(grid);
         if (grid == null || grid.World == null) return;
         float time = BeatTime();
-        InBeat += time;
+        InBeat += time * Rate;
         Strike();
         Step(grid.World);
         var p = Pose;
@@ -270,12 +274,27 @@ public class CastBeats : MonoBehaviour
         if (next != Now) Enter(next);
     }
 
+    // How fast the beat's clock runs: a hand tap's wind-up has only the tick before its slam.
+    float Rate => handTap && Now == Beat.WindUp && feel.handTapWindUpSeconds > 0f ? Mathf.Max(1f, feel.windUp.seconds / feel.handTapWindUpSeconds) : 1f;
+
+    /// <summary>A hand's tap under way: one of the hands let go inside tapTicks and the cast's meter is the tap's (a charging other hand's is longer).</summary>
+    public static bool IsHandTap(World world, string player, PlayerCast cast)
+    {
+        int tapTicks = world.Rules.Sim.Hold.Hands.TapTicks;
+        if (tapTicks <= 0 || cast == null || !cast.Casting || cast.Total != tapTicks || cast.Merge != null) return false;
+        var h = world.HandsOf(player);
+        for (int i = 0; i < HandsDef.Count; i++)
+            if (h.Gesture[i] != HandsDef.NoGesture && h.Tap[i]) return true;
+        return false;
+    }
+
     // Only between ticks.
     void Read(World world)
     {
         var cast = caster.Replaying ? null : world.CastOf(Player);
         whole = CastFacts.Of(cast, feel.slamTicks, feel.windUpTicks, false, false);
         if (cast?.Casting != true) return;
+        handTap = IsHandTap(world, Player, cast);
         first = cast.First;
         second = cast.Second;
         string spell = caster.SpellOf(cast);
@@ -304,7 +323,7 @@ public class CastBeats : MonoBehaviour
         switch (beat)
         {
             case Beat.First or Beat.Second or Beat.Charge or Beat.Neutral:
-                tap = false;
+                tap = handTap = false;
                 break;
             case Beat.WindUp:
                 tap = true;

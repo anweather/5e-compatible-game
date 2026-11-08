@@ -12,6 +12,8 @@ public class HandsProbe : ProbeScenario
 {
     const int WallX = 21, WallY = 3, AimNorth = 6, AimFar = 60;
     const float MostWait = 8f;
+    // Long enough for a big spell's own cooldown (a merge's Thunder Strike rests 90 ticks, 15 s).
+    const float CoolWait = 20f;
 
     Gamepad pad;
     Mouse mouse;
@@ -83,7 +85,7 @@ public class HandsProbe : ProbeScenario
         yield return Wait(0.3f);
         int spells = wanted.Count(w => Core.Rules.Spell(w) != null);
         Check(name + "_cast", caster.CastsStarted - started == spells, $"{caster.CastsStarted - started} casts of {spells}");
-        for (float t = 0f; t < MostWait && (Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0); t += Time.deltaTime) yield return null;
+        for (float t = 0f; t < CoolWait && (Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0); t += Time.deltaTime) yield return null;
     }
 
     IEnumerator Fires(string name, string wanted, System.Action press, System.Action second = null) => Fires(name, new[] { wanted }, press, second);
@@ -266,7 +268,7 @@ public class HandsProbe : ProbeScenario
 
     IEnumerator Cooled()
     {
-        for (float t = 0f; t < MostWait && (Core.HandsOf(Me).Casting || Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0); t += Time.deltaTime) yield return null;
+        for (float t = 0f; t < CoolWait && (Core.HandsOf(Me).Casting || Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0); t += Time.deltaTime) yield return null;
         yield return Wait(0.2f);
     }
 
