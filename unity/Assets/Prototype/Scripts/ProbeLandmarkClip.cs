@@ -104,9 +104,9 @@ public sealed class LandmarkForestClipProbe : LandmarkClipProbe
     protected override Vector2Int To => new(106, 247);
     protected override Vector2Int Landmark => new(88, 246);
     protected override float LandmarkUp => 20f;
-    protected override Vector3Int RiseFrom => new(160, 290, 28);
+    protected override Vector3Int RiseFrom => new(92, 318, 34);
     protected override Vector2Int RiseAt => new(88, 246);
-    protected override float RiseLookUp => 28f;
+    protected override float RiseLookUp => 34f;
 }
 
 // Mount Hearth by Emberhold: out of the village on its shelf at the cone's foot and up the trail's switchbacks to the lookout.
@@ -116,9 +116,9 @@ public sealed class LandmarkVolcanoClipProbe : LandmarkClipProbe
     protected override Vector2Int To => new(143, 119);
     protected override Vector2Int Landmark => new(160, 106);
     protected override float LandmarkUp => 4f;
-    protected override float EyeHeight => 6f;
-    protected override Vector3Int RiseFrom => new(190, 228, 55);
-    protected override Vector2Int RiseAt => new(150, 165);
+    protected override float EyeHeight => 10f;
+    protected override Vector3Int RiseFrom => new(176, 118, 30);
+    protected override Vector2Int RiseAt => new(152, 175);
     protected override Vector2Int[] Path => new Vector2Int[]
     {
         new(156, 196), new(159, 178), new(136, 170), new(117, 155), new(106, 135), new(122, 150), new(141, 157), new(159, 158),
@@ -133,7 +133,7 @@ public sealed class LandmarkFishingClipProbe : LandmarkClipProbe
     protected override Vector2Int To => new(358, 419);
     protected override Vector2Int Landmark => new(300, 385);
     protected override float LandmarkUp => 1f;
-    protected override Vector3Int RiseFrom => new(405, 440, 35);
-    protected override Vector2Int RiseAt => new(362, 385);
+    protected override Vector3Int RiseFrom => new(398, 452, 62);
+    protected override Vector2Int RiseAt => new(360, 385);
     protected override Vector2Int[] Path => new Vector2Int[] { new(361, 353), new(367, 361), new(371, 369), new(374, 378), new(374, 386), new(373, 396), new(370, 404), new(365, 412), new(358, 419) };
 }
