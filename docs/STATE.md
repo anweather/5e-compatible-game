@@ -95,6 +95,17 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   holdeast 5/5 with no fall; the Mac's 61 km fall is not reproduced. The fell check watches only the wizard, so if it
   comes back, log the wizard's y and phase when `FallWatch` first trips. The hitch probe's compose budget (150 ms)
   failed once at 3 GB free with u2 running and passed on the rerun. alpha 0.1.12 is at 3321b336, before these.
+- **alpha 0.1.12 draft complete:** ten files (Windows 5, Mac 4, Linux zip), NET CONFIG 10564187343791070933 on all
+  three; the Windows Setup.exe and the Mac portable app tested from the draft (version lines right, no start-up
+  exceptions). Not yet run: a PC join to a Mac host on 0.1.12. Publishing is Andrew's.
+- `pants-and-colours` landed (274db74c): the solo wizard's Animator culled when unseen, like peer-vanish, so the hips
+  drifted 6.7-50 m; AlwaysAnimate on both. Likely the Mac's 61 km holdeast "fall" too (the fell check watches the
+  wizard). #167 closed (the game was right).
+- Waiting: `punchy-sync` (u2: the tool, 26 species and 13 parts in, 35 left out needing flight, tunnelling and so on;
+  the PC must look at the creatures) and `chat-new-request` (u2: notes cut mid-word ran into the player's words; one
+  prompt builder; the PC compiles, tests with Haiku, and chases shapeshift `key_ends_shape`, broken after fcb67af7).
+  The lead's mailbox listener was killed by Claude Code for low memory and is not restarted without Andrew's word:
+  read `~/.agent-bridge/pm/` by hand.
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
