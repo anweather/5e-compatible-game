@@ -46,8 +46,7 @@ namespace Chem.Tests
         static (World w, string left, string right) Attuned(int? points, int seed = 7)
         {
             var w = Field(seed);
-            var room = ((w.HoldSite.AttuningFrom.x + w.HoldSite.AttuningTo.x) / 2, (w.HoldSite.AttuningFrom.y + w.HoldSite.AttuningTo.y) / 2);
-            Stand(w, Me, room);
+            Away(w);
             if (points != null) Assert.That(w.ApplyCombo(ComboCommand.Bring(Me, points.Value)));
             return (w, w.HandsOf(Me).Holds[Left], w.HandsOf(Me).Holds[Right]);
         }
@@ -349,7 +348,9 @@ namespace Chem.Tests
             w.Hold.Wave = 3;
             w.Hold.Health = 1;
             Until(w, () => !w.HoldRunning, "the keep falls");
-            Assert.That(w.PointsOf(Me), Is.EqualTo(4 + 2 * P.PointsPerWave));
+            // Waves are timed: the clock may bring more before it falls. Every wave before the one it fell in earns.
+            Assert.That(w.Hold.Wave, Is.GreaterThanOrEqualTo(3));
+            Assert.That(w.PointsOf(Me), Is.EqualTo(4 + (w.Hold.Wave - 1) * P.PointsPerWave));
         }
 
         [Test]

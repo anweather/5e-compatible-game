@@ -99,7 +99,7 @@ public partial class CastFeelProbe
         var animator = wizard.GetComponent<Animator>();
         void Struck(Beat beat) => CastImpact.Felt(wizard.transform.position, 1f); // a shake going on must not move a held camera
         beats.Struck += Struck;
-        Check("tap_loads", caster.LoadElement(ElementIds.Fire));
+        Check("tap_loads", LoadElement(ElementIds.Fire));
         yield return Wait(0.2f);
         float stopped = 0f, held = 0f;
         int heldFrames = 0;
@@ -137,11 +137,11 @@ public partial class CastFeelProbe
     IEnumerator Scaling()
     {
         // A tap against a full charge, by what the release asks of the camera.
-        caster.LoadElement(ElementIds.Fire);
+        LoadElement(ElementIds.Fire);
         yield return UntilReleaseKick();
         float small = CastImpact.LastKick;
         yield return AtBeat(Beat.Neutral, 0.6f);
-        caster.LoadElement(ElementIds.Earth, held: true);
+        LoadElement(ElementIds.Earth, held: true);
         while (World.HeldCharge(World.CastOf(caster.CastPlayer)) < World.MaxCharge) yield return null;
         yield return Wait(0.2f);
         caster.LetGo();
@@ -230,7 +230,7 @@ public partial class CastFeelProbe
         view = live != null ? live.GetComponent<CastCamera>() : null;
         Check("camera_has_cast_camera", view != null, live != null ? live.name : "no live camera");
         if (view == null) yield break;
-        caster.LoadElement(ElementIds.Water, held: true);
+        LoadElement(ElementIds.Water, held: true);
         var levels = new float[World.MaxCharge + 1];
         float tightest = 0f;
         var rest = Offset;
@@ -269,7 +269,7 @@ public partial class CastFeelProbe
         int kicks = CastImpact.Kicks;
         yield return Watch(0.8f, null);
         Metric("idle_camera_m", peak);
-        yield return Watch(0.8f, () => caster.LoadElement(ElementIds.Fire));
+        yield return Watch(0.8f, () => LoadElement(ElementIds.Fire));
         Metric("off_tap_camera_m", peak);
         float worst = peak;
         var motors = pad.PeakLow + pad.PeakHigh;
@@ -278,7 +278,7 @@ public partial class CastFeelProbe
         Metric("off_landing_camera_m", peak);
         worst = Mathf.Max(worst, peak);
         motors += pad.PeakLow + pad.PeakHigh;
-        caster.LoadElement(ElementIds.Earth, held: true);
+        LoadElement(ElementIds.Earth, held: true);
         var rest = Offset;
         pad.ClearPeaks();
         for (float waited = 0f; waited < 2.4f; waited += Time.deltaTime)
@@ -304,7 +304,7 @@ public partial class CastFeelProbe
         var longest = new CastFeel.Thump(0.7f, 0.7f, 30f);
         var motors = GameObject.Find("Pad rumble");
 
-        Check("cancel_loads", caster.LoadElement(ElementIds.Fire));
+        Check("cancel_loads", LoadElement(ElementIds.Fire));
         yield return Wait(0.1f);
         PadRumble.Play(longest, 1f);
         yield return null;
@@ -394,7 +394,7 @@ public partial class CastFeelProbe
             if (loaded || World.Tick < start) return;
             loaded = true;
             start = World.Tick;
-            caster.LoadElement(ElementIds.Earth, held);
+            LoadElement(ElementIds.Earth, held);
         }
         grid.TickDone += OnTick;
         while (!loaded) yield return null;

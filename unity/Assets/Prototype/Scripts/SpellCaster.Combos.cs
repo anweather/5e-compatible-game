@@ -8,8 +8,9 @@ using UnityEngine;
 // player whose cast it is aims it from the crosshair and sends the usual CastCommand, since
 // where a spell lands is only known as it goes off. While the meter drains the wizard walks
 // at the rules' factor and Cancel drops the cast before anything else that button does. The
-// element path (LoadElement, an ordered pair of elements) has no buttons now: the playtest
-// bot and the probes still cast by it. The radial (SpellRadialHud) stays as a debug layout (F2).
+// element path (World.Combos' Load, an ordered pair of elements) has no buttons now, and nothing here sends it: the
+// bot casts with the hands (CastByHands), and only the probes that test the element path's own beats and looks load
+// elements (ProbeScenario.LoadElement). The radial (SpellRadialHud) stays as a debug layout (F2).
 public partial class SpellCaster
 {
     /// <summary>The solo wizard's name in the core's casts.</summary>
@@ -107,13 +108,6 @@ public partial class SpellCaster
             if (!Send(ComboCommand.Cycle(CastPlayer, step))) return false;
         return true;
     }
-
-    /// <summary>
-    /// Loads an element as its button does, through the same ComboCommand (the playtest bot presses
-    /// here: it drives no real device), held until <see cref="LetGo"/> if <paramref name="held"/>.
-    /// False if the core refused it; online, true once it's sent.
-    /// </summary>
-    public bool LoadElement(string element, bool held = false) => grid != null && grid.World != null && Send(ComboCommand.Load(CastPlayer, element, held));
 
     /// <summary>Lets go of an element loaded held, at the charge its meter has reached.</summary>
     public bool LetGo() => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer));

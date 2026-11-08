@@ -79,6 +79,22 @@ public static class HudDraw
         End();
     }
 
+    /// <summary>A filled four-sided shape, corners in order round it.</summary>
+    public static void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color color)
+    {
+        Triangle(a, b, c, color);
+        Triangle(a, c, d, color);
+    }
+
+    /// <summary>A straight bar from one point to another, <paramref name="width"/> across.</summary>
+    public static void Bar(Vector2 from, Vector2 to, float width, Color color)
+    {
+        var along = to - from;
+        if (along.sqrMagnitude < 1e-6f) return;
+        var side = Vector2.Perpendicular(along).normalized * (width / 2f);
+        Quad(from + side, to + side, to - side, from - side, color);
+    }
+
     // One quad of a ring, between two angles (clockwise from the top) and two radii.
     static void Band(Vector2 c, float a, float b, float from, float to, Color inner, Color outer)
     {

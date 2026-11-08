@@ -29,6 +29,10 @@ namespace Chem.HoldCurve
         public int LastWave => world.Hold?.Wave ?? 0;
         public int Ticks { get; private set; }
         public World World => world;
+        /// <summary>The wizards stand on their posts and never cast: the keep left to itself (--idle).</summary>
+        public bool Idle { get; set; }
+        /// <summary>The wave reached, "W" after it for a run won (every wave beaten).</summary>
+        public string Outcome => LastWave + (world.Hold?.Phase == HoldPhase.Won ? "W" : "");
         /// <summary>What the first wizard's points came to.</summary>
         public int Points => world.PointsOf(Name(0)) ?? 0;
 
@@ -44,13 +48,16 @@ namespace Chem.HoldCurve
                 .Where(c => c.Part == BuildingPart.Wall && world.At(c.X, c.Y).T == "stone")
                 .OrderBy(c => Far(c.X, c.Y, site.Heart)).ThenBy(c => c.X).ThenBy(c => c.Y).ToList();
             for (int i = 0; i < peers; i++) posts.Add((wall[i * 3].X, wall[i * 3].Y));
-            var room = ((site.AttuningFrom.x + site.AttuningTo.x) / 2, (site.AttuningFrom.y + site.AttuningTo.y) / 2);
+            // Attuned before the run, by the rise, one hand at a time with its moment (no tower: a tower gives one element).
             for (int i = 0; i < peers; i++)
             {
-                world.ApplyStrike(StrikeCommand.Stand(Name(i), room.Item1, room.Item2, 1000000));
+                world.ApplyStrike(StrikeCommand.Stand(Name(i), site.Rise.x, site.Rise.y + i, 1000000));
                 if (points != null) world.ApplyCombo(ComboCommand.Bring(Name(i), points.Value));
-                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Left, holds.left));
-                world.ApplyCombo(ComboCommand.Attune(Name(i), HandsDef.Right, holds.right));
+            }
+            foreach (int hand in new[] { HandsDef.Left, HandsDef.Right })
+            {
+                for (int i = 0; i < peers; i++) world.ApplyCombo(ComboCommand.Attune(Name(i), hand, hand == HandsDef.Left ? holds.left : holds.right));
+                for (int t = 0; t < rules.Sim.Hold.Hands.AttuneTicks; t++) world.Step();
             }
             if (moment != null) world.ApplyCombo(ComboCommand.Moment(Name(0), moment));
             else
@@ -83,7 +90,7 @@ namespace Chem.HoldCurve
             int tps = world.Rules.Sim.TicksPerSecond, seen = world.Hold.Wave;
             for (; Ticks < mostSeconds * tps && world.HoldRunning && world.Hold.Wave <= untilWave; Ticks++)
             {
-                for (int i = 0; i < peers; i++) Think(Name(i), posts[i]);
+                for (int i = 0; i < peers && !Idle; i++) Think(Name(i), posts[i]);
                 world.Step();
                 foreach (var fired in world.CombosFired) Aim(fired);
                 if (world.Hold.Wave == seen) continue;
