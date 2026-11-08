@@ -104,10 +104,12 @@ public class SpellLookFxProbe : LooksModProbe
     }
 
     // Only the element's colour moves: a spell that chose none follows it, one that chose keeps its own (J-052).
+    // set_look on an element also colours each of its spells with a colour of their own unless spells is false (the
+    // chat-model finding, docs/telemetry/chat-model-2026-11-02.md): the probe asks for the element alone, as J-052 is about.
     IEnumerator FollowsTheElement(Vector2Int at, Vector2Int other)
     {
         string fingerprint = grid.CurrentRules.Effective.Fingerprint;
-        yield return ThroughMcp("{\"id\":\"fire\",\"param\":\"color\",\"value\":\"" + Blue + "\",\"table\":\"element\"}", FireTitle, "set_look");
+        yield return ThroughMcp("{\"id\":\"fire\",\"param\":\"color\",\"value\":\"" + Blue + "\",\"table\":\"element\",\"spells\":false}", FireTitle, "set_look");
         yield return Calm();
         Check("element_in_force", grid.FireElementTint.Any, $"turned {grid.FireElementTint.Turn:0.00}");
         Check("element_keeps_the_fingerprint", grid.CurrentRules.Effective.Fingerprint == fingerprint, grid.CurrentRules.Effective.Fingerprint);
