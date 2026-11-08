@@ -13,8 +13,10 @@ folders on disk as a cache, `sight` 4 and `know` 7.
    `docs/GLOSSARY.md` ("square" alone is a spell shape).
 2. **`world/bands.json`** (sea, low, hills, high, peaks; touching squares differ by at most one band) and **12 square
    templates** in `world/squares/` with bands, anchor biomes, one or two landmark intents with `where` rules, edge
-   offers per side (road, river, range, canyon at one of 9 slots, `must` or `may`), `ends`, and `rotate`. Include a
-   filler per band.
+   offers per side (road, river, range, canyon at one of 9 slots, `must` or `may`), a **coast** profile per side
+   (which slots are sea and the shoreline's offset; Andrew: "make sure the coastlines are consistent"; see the plan's
+   "Coasts are part of the puzzle"), `ends`, and `rotate`. Include a filler per band. Coasts must match across sides and
+   at corners, like bands; the picture draws the shoreline.
 3. **`Chem.WorldPlan`:** solve a W × H grid of squares from a seed, the valley pinned at the south-west (its edges read
    from its land at the borders): bands, then templates wave-function style with backtracking and fillers so it never
    fails, edges matched. Repeats weighted down (÷4 each time) and never within 3 squares (Chebyshev), none in a 3 × 3.

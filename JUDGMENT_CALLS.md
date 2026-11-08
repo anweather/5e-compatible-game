@@ -66,6 +66,11 @@ Each entry has:
 - **The revised plan's three calls (same page, same day):** the whole world plan solved at load on every peer (not in
   blocks); the square folders on disk as a cache in the player's data folder; generated at `sight` 4 chunks and known
   at `know` 7 (about 670 m of haze). All three as recommended.
+- **Later the same evening, to the Mac:** coastlines are part of the edge puzzle with rivers, roads, ranges and canyons
+  ("make sure the coastlines are consistent": a coast profile per side, matched across sides and corners); and each
+  landmark form gets its own layout ("the layouts should be unique": the forest keeps its clustered square, the
+  mountain village climbs the mountain in a line, the lake village curves round the shore; the Mac's
+  `landmark-intent-fixes`).
 - **Revisited:** 0.
 
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)

@@ -59,6 +59,14 @@ An **edge interface** is one feature at one slot along a side, 9 slots a side, o
 equal, widths agree within a class, and a river leaving one enters the next. The **bands** (`world/bands.json`: sea
 -40, low 20, hills 120, high 300, peaks 700): sides differ by at most one band; hills are the foothills between.
 
+**Coasts are part of the puzzle** (Andrew, 2026-11-08: "the coastline as part of the puzzle to solve for the tiling
+... we also need to make sure the coastlines are consistent"). A side carries a **coast** profile beside its feature
+slots: which of its 9 slots are sea, and the shoreline's offset into the square at each slot
+(`{ "side": "s", "kind": "coast", "sea": [0, 1, 2, 3], "offset": [40, 40, 52, 70] }`). Two sides match when the same
+slots are sea and the offsets agree within a class, so a shore runs on across a side; at a corner the four squares'
+coasts must agree on the corner slot, as bands do. A square with no sea on a side offers an empty coast. Rivers end at
+a coast slot or a lake; roads stop or turn at a coast. The valley's coast is read from its land like its other edges.
+
 ## 3. Rings: known, generated, active
 
 Per character, in chunks (Chebyshev, from the chunk it stands in), all in `rules/sim.json` `streaming`:
