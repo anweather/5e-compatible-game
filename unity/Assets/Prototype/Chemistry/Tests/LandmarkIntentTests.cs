@@ -136,6 +136,7 @@ namespace Chem.Tests
             Assert.That(houses.All(b => Dist(Middle(b), volcano.VillageAt) <= 16), "clustered on the shelf");
             Assert.That(houses.All(b => Dist(Middle(b), cone) > coneRadius * 0.75), "none up the steep cone");
             var shelf = houses.Single(b => b["pad"]?["more"] != null);
+            Assert.That(((string)shelf["note"]).Contains("well house") && Dist(Middle(shelf), volcano.VillageAt) < 3, "the shelf's height is its middle's, where its well house stands");
             Assert.That((bool)shelf["level"] && (bool)shelf["pad"]["more"][0]["clear"], "one pad levels the whole shelf");
             var trail = WayCells(lookout);
             Assert.That((bool)lookout["roads"]["way"]["graded"], "the trail is cut into the slope");
@@ -227,7 +228,7 @@ namespace Chem.Tests
 
         // The goldens, to compare between machines: the five files' texts, per form and seed.
         [TestCase("temperate", 1, 0x2f446555u), TestCase("temperate", 2, 0xf6215265u)]
-        [TestCase("mountains", 1, 0xa7a6e9c2u), TestCase("mountains", 2, 0x2d40b479u)]
+        [TestCase("mountains", 1, 0x3634a466u), TestCase("mountains", 2, 0xcca4426eu)]
         [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]
         public void Golden(string biome, int seed, uint expected)
         {

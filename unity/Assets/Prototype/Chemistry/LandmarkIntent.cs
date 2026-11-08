@@ -520,13 +520,15 @@ namespace Chem
             Way(first, way, (int?)v["width"] ?? 2, (bool?)v["graded"] ?? false);
         }
 
-        // Houses round a shelf levelled into the landmark's lower slope (one pad, on the first house, reaching over the whole
-        // shelf), their doors to its middle; and the village's way out, a trail switchbacking up to the landmark (Trail).
+        // Houses round a shelf levelled into the landmark's lower slope, their doors to its middle, where a well house stands
+        // whose pad reaches over the whole shelf at the height of its middle; and the village's way out, a trail switchbacking
+        // up to the landmark (Trail).
         void OnAShelf(JObject v, int x, int y)
         {
             int shelf = (int?)v["shelf"] ?? 14, houses = Math.Max(2, Pick(v["houses"]));
             var (ux, uy) = Direction();
-            JObject first = null;
+            var well = new JObject { ["width"] = 3, ["depth"] = 3, ["wall"] = "stone" };
+            HouseAt(v, (x, y), (x, y + 1), well, "well house", out var first);
             for (int k = 0; k < houses; k++)
             {
                 var (ox, oy) = Rotated(ux, uy, k * 360 / houses);
