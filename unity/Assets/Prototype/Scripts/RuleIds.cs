@@ -42,6 +42,8 @@ public static class SpellIds
     public const string Light = "light";
     public const string Geyser = "geyser";
     public const string Wave = "wave";
+    public const string Flood = "flood";
+    public const string Mud = "mud";
     public const string Frost = "frost";
     public const string RollingBoulder = "rolling-boulder";
     public const string StoneRamp = "stone-ramp";

@@ -198,12 +198,8 @@ public sealed class CastHud
         if (age < SlamSeconds) HudDraw.Ring(at, r + 10f + age * 160f, r + 14f + age * 160f, 1f, new Color(1f, 1f, 1f, 0.8f * (1f - age / SlamSeconds)));
         int gesture = h.Gesture[HandsDef.Left];
         if (gesture != HandsDef.NoGesture) Mark(at, gesture, Color.Lerp(Color.Lerp(HudDraw.ElementColor(left), HudDraw.ElementColor(right), 0.5f), Color.white, 0.45f), r);
-        HudDraw.Disc(at, r + 3f, new Color(0f, 0f, 0f, 0.6f));
-        HudDraw.Disc(at, r, HudDraw.ElementColor(left));
-        HudDraw.Arc(at, 0f, r, 0f, 0.5f, HudDraw.ElementColor(right));
-        var spell = world.Rules.Spell(mergedSpell);
-        string name = spell?.Name ?? mergedSpell;
-        GUI.Label(new Rect(at.x - r, at.y - r, r * 2f, r * 2f), $"<size=24><b>{Initials(name)}</b></size>", small);
+        string name = world.Rules.Spell(mergedSpell)?.Name ?? mergedSpell;
+        PairIcon(left, right, mergedSpell, name, at, r, small);
         var row = gesture != HandsDef.NoGesture ? world.Rules.Sim.Hold.Hands.Both(left, right, gesture) : null;
         int lit = h.Down[HandsDef.Left] || h.Down[HandsDef.Right] ? SpellCaster.HeldHandCharge(world, player) : 0;
         ChargeRing(world, at, row, lit, handSteps[2], r - HandRadius);
@@ -211,6 +207,26 @@ public sealed class CastHud
         shown[HandsDef.Left] = (left, gesture, lit, false, false);
         shown[HandsDef.Right] = (right, gesture, lit, false, false);
     }
+
+    /// <summary>
+    /// A merged pair's icon, without its charge ring or slam: the pair's own glyph (PairGlyphs) on the two colours mixed and
+    /// darkened, so a white glyph reads even on air's pale blue, in a rim of each hand's colour, its own side. The spell's
+    /// initials stand in for a spell with no glyph. For the HUD, and the probe's sheet of every pair.
+    /// </summary>
+    public static void PairIcon(string left, string right, string spell, string name, Vector2 at, float r, GUIStyle style)
+    {
+        Color a = HudDraw.ElementColor(left), b = HudDraw.ElementColor(right);
+        HudDraw.Disc(at, r + 3f, new Color(0f, 0f, 0f, 0.6f));
+        HudDraw.Arc(at, r - RimWidth, r, 0.5f, 1f, a);
+        HudDraw.Arc(at, r - RimWidth, r, 0f, 0.5f, b);
+        var middle = Color.Lerp(Color.Lerp(a, b, 0.5f), Color.black, 0.45f);
+        middle.a = 1f;
+        HudDraw.Disc(at, r - RimWidth, middle);
+        if (!PairGlyphs.Draw(spell, at, r - RimWidth, Glyph))
+            GUI.Label(new Rect(at.x - r, at.y - r, r * 2f, r * 2f), $"<size=24><b>{Initials(name)}</b></size>", style);
+    }
+
+    const float RimWidth = 5f;
 
     // The ring a held gesture charges round its icon, one step a level; none for a spell that doesn't charge, or a tap.
     void ChargeRing(World world, Vector2 at, HandRowDef row, int lit, float[] steps, float grow = 0f)

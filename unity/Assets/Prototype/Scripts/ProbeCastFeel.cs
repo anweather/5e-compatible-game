@@ -158,7 +158,7 @@ public partial class CastFeelProbe : ProbeScenario
         for (int i = 0; i < Casts; i++)
         {
             while (World.CastOf(me)?.Casting == true || World.TickInProgress) yield return null;
-            caster.LoadElement(i % 2 == 0 ? ElementIds.Earth : ElementIds.Air);
+            LoadElement(i % 2 == 0 ? ElementIds.Earth : ElementIds.Air);
             for (float waited = 0f; World.CastOf(me)?.Casting != true && waited < 0.5f; waited += Time.deltaTime) yield return null;
         }
         while (World.CastOf(me)?.Casting == true) yield return null;
@@ -192,7 +192,7 @@ public partial class CastFeelProbe : ProbeScenario
         bool loaded = false;
         void OnTick()
         {
-            if (!loaded) loaded = caster.LoadElement(ElementIds.Earth, held);
+            if (!loaded) loaded = LoadElement(ElementIds.Earth, held);
         }
         beatFrames.Clear();
         grid.TickDone += OnTick;
@@ -215,11 +215,11 @@ public partial class CastFeelProbe : ProbeScenario
     {
         seen.Clear();
         worstHand.Clear();
-        Check($"{name}_loads", caster.LoadElement(elements[0], held));
+        Check($"{name}_loads", LoadElement(elements[0], held));
         for (int i = 1; i < elements.Length; i++)
         {
             yield return Wait(0.35f);
-            Check($"{name}_second_loads", caster.LoadElement(elements[i], held));
+            Check($"{name}_second_loads", LoadElement(elements[i], held));
         }
         yield return Follow(expected, name);
     }
@@ -278,7 +278,7 @@ public partial class CastFeelProbe : ProbeScenario
         seen.Clear();
         worstHand.Clear();
         pulses = 0;
-        Check("charged_loads", caster.LoadElement(ElementIds.Earth, held: true));
+        Check("charged_loads", LoadElement(ElementIds.Earth, held: true));
         var start = wizard.transform.position;
         string me = caster.CastPlayer;
         double slowest = 1d;
@@ -323,7 +323,7 @@ public partial class CastFeelProbe : ProbeScenario
     {
         seen.Clear();
         worstHand.Clear();
-        Check("cancelled_loads", caster.LoadElement(ElementIds.Fire));
+        Check("cancelled_loads", LoadElement(ElementIds.Fire));
         yield return Wait(0.35f);
         caster.DropCast();
         yield return Follow(new[] { Beat.First, Beat.Fizzle, Beat.Neutral }, "cancelled");
@@ -332,11 +332,11 @@ public partial class CastFeelProbe : ProbeScenario
     // The same moments, with the pose on or off: a pair gathering and going, a charge held, a cancel.
     IEnumerator Pictures(string set)
     {
-        caster.LoadElement(ElementIds.Fire);
+        LoadElement(ElementIds.Fire);
         yield return Wait(0.33f);
         Picture(set, "1-first");
         yield return Wait(0.06f);
-        caster.LoadElement(ElementIds.Air);
+        LoadElement(ElementIds.Air);
         yield return Wait(0.33f);
         Picture(set, "2-second");
         yield return AtBeat(Beat.Slam, 0.1f);
@@ -346,13 +346,13 @@ public partial class CastFeelProbe : ProbeScenario
         yield return AtBeat(Beat.Recovery, 0.05f);
         Picture(set, "6-recovery");
         yield return AtBeat(Beat.Neutral, 0.6f);
-        caster.LoadElement(ElementIds.Water, held: true);
+        LoadElement(ElementIds.Water, held: true);
         yield return Wait(2.4f);
         Picture(set, "4-charge");
         yield return null;
         caster.LetGo();
         yield return AtBeat(Beat.Neutral, 0.6f);
-        caster.LoadElement(ElementIds.Fire);
+        LoadElement(ElementIds.Fire);
         yield return Wait(0.33f);
         caster.DropCast();
         yield return Wait(0.06f);

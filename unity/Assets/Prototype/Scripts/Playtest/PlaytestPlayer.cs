@@ -262,7 +262,7 @@ public sealed class PlaytestPlayer
         var world = grid.World;
         var cast = world.Rules.Combos.Combo(combo);
         int charge = Chains.ChargeFor(dice);
-        var def = world.Rules.Spell(cast?.SpellAt(charge, world.MaxChargeOf(cast)));
+        var def = world.Rules.Spell(cast?.Spell); // on the hands a charge makes the same spell bigger
         var watched = Watched(def?.Id, cell, Dir(wizard.transform.forward));
         string before = HashIfActive(watched);
         bool went = false;
@@ -275,47 +275,52 @@ public sealed class PlaytestPlayer
                 $"{combo} ({def.Id}) at cell {cell.x},{cell.y} changed nothing there", lowConfidence: true));
     }
 
-    // Presses a combo's elements through the caster (the same ComboCommand as the pad and the keys),
-    // a frame apart so the second lands inside the window, with the cast aimed at a point; holds the
-    // last to the charge asked for, and waits for the meter to run out. Tells whether it went off
-    // (it's in the grimoire and nothing is loaded).
+    // Casts a combo's spell with the hands (SpellCaster.CastByHands: the same commands as the pad and the keys), aimed at a
+    // point, held to the charge asked for. The combos are still named by their elements (fire+air), as the goals and chains
+    // name them; what goes off is that combo's spell, wherever it sits on the hands (D16). Tells whether it went off. A
+    // spell no gesture of the hands brings out is skipped, not reported: the hands' table left it out on purpose.
     IEnumerator Press(string combo, Vector3 at, Action<bool> went, int charge = 1)
     {
         var world = grid.World;
         string player = caster.CastPlayer;
-        // A cast still draining would take the press as its second element.
-        float until = Time.time + MeterSeconds;
-        while (world.CastOf(player)?.Casting == true && Time.time < until) yield return null;
+        string spell = world.Rules.Combos.Combo(combo)?.Spell;
         var cell = grid.CellAt(at);
-        trace("elements", F("{0} at {1},{2} charge {3}", combo, cell.x, cell.y, charge));
-        caster.AimOverride = at;
-        var elements = Chains.ElementsOf(combo);
-        for (int i = 0; i < elements.Length; i++)
+        if (spell == null || SpellCaster.HandsFor(world, spell) == null)
         {
-            if (i > 0) yield return null;
-            if (caster.LoadElement(elements[i], charge > 1 && i == elements.Length - 1)) continue;
-            report(new Candidate("element-refused", combo, Category.Gameplay, Frame, $"loading {elements[i]} for {combo} was refused"));
-            caster.AimOverride = null;
+            trace("elements", F("{0} ({1}) isn't on the hands: skipped", combo, spell ?? "no spell"));
             went(false);
             yield break;
         }
-        if (charge > 1) yield return HoldTo(charge, player);
-        until = Time.time + MeterSeconds;
-        while (world.CastOf(player)?.Casting == true && Time.time < until) yield return null;
-        // The caster aims and casts in the tick the meter ran out; give it the frame.
+        trace("elements", F("{0} ({1}) at {2},{3} charge {4}", combo, spell, cell.x, cell.y, charge));
+        caster.AimOverride = at;
+        var heard = new FiredCastsHeard();
+        heard.StartFrom(world);
+        bool fired = false, pressed = false;
+        IEnumerator Watch()
+        {
+            while (!fired)
+            {
+                fired = heard.Take(world).Any(f => f.Player == player && f.Spell == spell);
+                yield return null;
+            }
+        }
+        var watching = caster.StartCoroutine(Watch()); // the bot is no MonoBehaviour: the wizard runs it
+        yield return caster.CastByHands(spell, charge, ok => pressed = ok);
+        if (!pressed)
+        {
+            caster.StopCoroutine(watching);
+            caster.AimOverride = null;
+            report(new Candidate("element-refused", combo, Category.Gameplay, Frame, $"the hands couldn't cast {spell} for {combo}"));
+            went(false);
+            yield break;
+        }
+        for (float until = Time.time + MeterSeconds; !fired && Time.time < until;) yield return null;
+        caster.StopCoroutine(watching);
+        // The caster aims and casts in the tick the spell went off; give it the frame.
         yield return null;
         caster.AimOverride = null;
-        bool ok = world.CastOf(player)?.Casting != true && world.KnowsCombo(player, combo);
-        if (!ok) report(new Candidate("elements-didnt-cast", combo, Category.Gameplay, Frame, $"{combo} was loaded but never went off"));
-        went(ok);
-    }
-
-    // Lets go once the meter has reached this charge (or it's taken too long).
-    IEnumerator HoldTo(int charge, string player)
-    {
-        float until = Time.time + MeterSeconds;
-        while (grid.World.HeldCharge(grid.World.CastOf(player)) < charge && Time.time < until) yield return null;
-        caster.LetGo();
+        if (!fired) report(new Candidate("elements-didnt-cast", combo, Category.Gameplay, Frame, $"{combo} ({spell}) was pressed on the hands but never went off"));
+        went(fired);
     }
 
     // A chain: the setup cast by elements, then the trigger aimed at what it left, and the cells

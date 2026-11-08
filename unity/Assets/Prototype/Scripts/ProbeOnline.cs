@@ -810,14 +810,14 @@ public class OnlineProbe : ProbeScenario
         aim.y = grid.GroundAt(aim);
         caster.AimOverride = aim;
         caster.enabled = true;
-        caster.LoadElement(ElementIds.Water);
+        LoadElement(ElementIds.Water);
         yield return Wait(0.4f);
-        caster.LoadElement(ElementIds.Earth);
+        LoadElement(ElementIds.Earth);
         yield return UntilNeutral(beats);
         // A new cast cuts Recovery short by design, so one on the heels of Neutral could land before
         // that beat on the other side; this compares the beats, not that race.
         yield return Wait(0.3f);
-        caster.LoadElement(ElementIds.Fire, held: true);
+        LoadElement(ElementIds.Fire, held: true);
         yield return Wait(1.6f);
         caster.LetGo();
         yield return UntilNeutral(beats);

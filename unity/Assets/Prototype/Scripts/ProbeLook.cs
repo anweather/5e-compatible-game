@@ -61,8 +61,8 @@ public class LookProbe : ProbeScenario
                 yield return null;
             }
             caster.enabled = true;
-            caster.LoadElement(ElementIds.Fire, true);
-            caster.LoadElement(ElementIds.Water, true);
+            LoadElement(ElementIds.Fire, true);
+            LoadElement(ElementIds.Water, true);
             yield return Wait(0.3f);
             Cut(w.position + (w.forward - w.right * 0.4f).normalized * 2.2f + Vector3.up * 1.4f, w.position + Vector3.up * 1.05f);
             yield return Wait(0.2f);

@@ -14,19 +14,19 @@ using UnityEngine.InputSystem.LowLevel;
 // timeline.txt, what fired when. Nothing here is in the game.
 public class HandsClipProbe : ProbeScenario
 {
-    Gamepad pad;
-    ClipFilm film;
+    protected Gamepad pad;
+    protected ClipFilm film;
     readonly FiredCastsHeard heard = new();
     readonly List<string> timeline = new();
 
-    World Core => grid.World;
-    string Me => caster.CastPlayer;
+    protected World Core => grid.World;
+    protected string Me => caster.CastPlayer;
 
     protected override IEnumerator Run()
     {
         if (string.IsNullOrEmpty(ScreenshotDir))
         {
-            Check("needs_shots", false, "handsclip films into --shots <folder>");
+            Check("needs_shots", false, $"{Result.Scenario} films into --shots <folder>");
             yield break;
         }
         var controls = caster.controls;
@@ -68,7 +68,8 @@ public class HandsClipProbe : ProbeScenario
         }
     }
 
-    IEnumerator Takes()
+    /// <summary>What the take films, between rolling and stopping.</summary>
+    protected virtual IEnumerator Takes()
     {
         float level = (float)Core.SecondsPerLevel;
         var hud = EventLog.CastShown;
@@ -121,7 +122,7 @@ public class HandsClipProbe : ProbeScenario
         InputSystem.QueueStateEvent(pad, state);
     }
 
-    IEnumerator Hold(float seconds)
+    protected IEnumerator Hold(float seconds)
     {
         for (float s = 0f; s < seconds; s += Time.deltaTime)
         {
@@ -142,5 +143,5 @@ public class HandsClipProbe : ProbeScenario
         return count;
     }
 
-    void Note(string what) => timeline.Add(string.Format(CultureInfo.InvariantCulture, "{0:0.000} {1}", film != null ? film.Seconds : 0f, what));
+    protected void Note(string what) => timeline.Add(string.Format(CultureInfo.InvariantCulture, "{0:0.000} {1}", film != null ? film.Seconds : 0f, what));
 }

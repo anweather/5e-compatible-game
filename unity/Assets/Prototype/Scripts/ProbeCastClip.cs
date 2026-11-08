@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using Chem;
 using UnityEngine;
 
 // The probe's castclip scenario: one take from the side, as the game is now, for
@@ -59,19 +60,16 @@ public class CastClipProbe : ProbeScenario
 
     IEnumerator Casts()
     {
+        // By the hands (D16): air alone, water and air merged, air held to its full charge.
         Note("load single");
-        caster.LoadElement(ElementIds.Air);
+        yield return caster.CastByHands(SpellIds.GustOfWind);
         yield return Neutral(1f);
         Note("load pair");
-        caster.LoadElement(ElementIds.Water);
-        yield return Wait(0.35f);
-        caster.LoadElement(ElementIds.Air);
+        yield return caster.CastByHands(SpellIds.Frost);
         yield return Neutral(1f);
         Note("load charged");
-        caster.LoadElement(ElementIds.Air, held: true);
-        yield return Wait(2.6f);
+        yield return caster.CastByHands(SpellIds.GustOfWind, World.MaxCharge);
         Note("letgo");
-        caster.LetGo();
         yield return Neutral(1f);
     }
 

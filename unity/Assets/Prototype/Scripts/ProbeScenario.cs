@@ -128,6 +128,21 @@ public abstract class ProbeScenario : ShowcaseScript
 
     protected void Metric(string name, double value) => Result.Metrics[name] = System.Math.Round(value, 3);
 
+    /// <summary>
+    /// Loads an element on the element path (World.Combos' Load: an ordered pair of elements), solo or through the host. Nothing
+    /// in the game casts this way since D16 (the hands do); the probes that test what the element path itself shows (castfeel's
+    /// beats, look's orbs, spelllookfx's first orb, the marker following the cast, online's beats on both peers) keep it alive
+    /// till they're rewritten on the hands. Held until SpellCaster.LetGo if <paramref name="held"/>. False if the core refused it.
+    /// </summary>
+    protected bool LoadElement(string element, bool held = false)
+    {
+        var command = ComboCommand.Load(caster.CastPlayer, element, held);
+        var net = grid.GetComponent<NetChem>();
+        if (net == null || !net.Online) return World.ApplyCombo(command);
+        net.RequestCombo(command);
+        return true;
+    }
+
     /// <summary>Saves a screenshot of the Game view as &lt;ScreenshotDir&gt;/&lt;scenario&gt;-&lt;label&gt;.png, if asked for, and a small copy beside it as .480.png.</summary>
     protected void Shot(string label)
     {
