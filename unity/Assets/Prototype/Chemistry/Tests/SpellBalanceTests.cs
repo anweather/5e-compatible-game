@@ -15,7 +15,7 @@ namespace Chem.Tests
         const int Size = 31, Middle = 15, Hp = 900;
 
         // What one cast at the room's middle, eastward, does to each raider over 90 ticks (15 s), its burning included.
-        static int[] Dealt(string spell, string kind = "giant-spider", int charge = 1)
+        internal static int[] Dealt(string spell, string kind = "giant-spider", int charge = 1)
         {
             var w = ChemistryTests.Room(Size, Size, 7, R);
             bool self = R.Spell(spell).Origin == "self";

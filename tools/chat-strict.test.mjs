@@ -98,7 +98,7 @@ test("all of an element reads every colour from the world's own record", () => {
   const world = (spells, element = GREEN) => ({ ...on(), elementColours: { lightning: element }, spellColours: Object.fromEntries(spells.map(id => [id, GREEN])) });
   const must = { spellsOf: { element: "lightning", hue: "green" } };
   assert.deepEqual(says(must, { world: world(ids) }), []);
-  assert.match(says(must, { world: world(ids.slice(1)) })[0], /1 of 2 lightning spells/);
+  assert.match(says(must, { world: world(ids.slice(1)) })[0], new RegExp(`1 of ${ids.length} lightning spells`));
   assert.match(says(must, { world: world(ids, BLUE) })[0], /lightning element/);
   assert.equal(isHue([0.9, 0.15, 0.1], "red"), true);
 });

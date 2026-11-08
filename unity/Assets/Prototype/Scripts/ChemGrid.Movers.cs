@@ -94,7 +94,10 @@ public partial class ChemGrid
             show.root.transform.position = MoverGround(wave.X, wave.Y);
             var shape = show.foam.shape;
             shape.scale = new Vector3((wave.Width * 2 + 1) * cellSize, 0.2f, 0.3f);
-            show.root.transform.GetChild(0).localScale = new Vector3((wave.Width * 2 + 1) * cellSize, WaveTall, WaveDeep);
+            // A wider wave stands taller (Iceberg's 2 cells each side to Wave's 1): two thirds again for each cell more.
+            float tall = WaveTall * (1f + Mathf.Max(0, wave.Width - 1) / 3f * 2f);
+            show.root.transform.GetChild(0).localScale = new Vector3((wave.Width * 2 + 1) * cellSize, tall, WaveDeep * tall / WaveTall);
+            show.foam.transform.localPosition = new Vector3(0f, tall * 0.95f, WaveDeep * 0.3f);
             show.root.transform.rotation = Quaternion.LookRotation(WaveStep(wave));
             WaveLook(show, wave);
             show.foam.Play(true);
@@ -139,6 +142,9 @@ public partial class ChemGrid
         var show = waveShows[wave];
         waveShows.Remove(wave);
         BurstFx.Play(BurstFx.Kind.Splash, MoverGround(wave.X, wave.Y), 0.7f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
+        // One with a second element on its front (spells.json then: Iceberg's cold) breaks in chips of it too.
+        if (World.Rules.Spell(wave.Spell)?.Then != null)
+            BurstFx.Play(BurstFx.Kind.Chips, MoverGround(wave.X, wave.Y), 0.8f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
         GameSounds.Play(SoundIds.Splash, show.root.transform.position);
         show.foam.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         show.x = int.MinValue;

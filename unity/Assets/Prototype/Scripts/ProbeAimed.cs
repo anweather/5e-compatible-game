@@ -13,37 +13,37 @@ using UnityEngine.InputSystem.LowLevel;
 public class AimedProbe : ProbeScenario
 {
     const int WallX = 21, WallY = 3;
-    const float MostWait = 8f, OffAim = 6f;
+    protected const float MostWait = 8f, OffAim = 6f;
 
-    Gamepad pad;
-    BuildingRow row;
+    protected Gamepad pad;
+    protected BuildingRow row;
     readonly FiredCastsHeard heard = new();
     protected ClipFilm film;
 
-    World Core => grid.World;
-    string Me => caster.CastPlayer;
+    protected World Core => grid.World;
+    protected string Me => caster.CastPlayer;
 
     /// <summary>Whether this run films its takes (aimedclip).</summary>
     protected virtual bool Filming => false;
 
-    void Stand(Vector2Int cell)
+    protected void Stand(Vector2Int cell)
     {
         var p = grid.CellCenter(cell.x, cell.y);
         p.y = grid.GroundAt(p);
         Teleport(p + Vector3.up * 0.05f);
     }
 
-    void Pad(float left, float right, params GamepadButton[] held)
+    protected void Pad(float left, float right, params GamepadButton[] held)
     {
         var state = new GamepadState { leftTrigger = left, rightTrigger = right };
         foreach (var b in held) state = state.WithButton(b);
         InputSystem.QueueStateEvent(pad, state);
     }
 
-    void Let() => InputSystem.QueueStateEvent(pad, new GamepadState());
+    protected void Let() => InputSystem.QueueStateEvent(pad, new GamepadState());
 
     // From the spell list before the run (the keep's room went, hold-batch): a moment each.
-    IEnumerator AttuneTo(string element, int hand)
+    protected IEnumerator AttuneTo(string element, int hand)
     {
         caster.AttuneTo(hand, element);
         for (float t = 0f; t < MostWait && (Core.HandsOf(Me).Holds[hand] != element || Core.HandsOf(Me).AttuneLeft > 0); t += Time.deltaTime) yield return null;
@@ -52,7 +52,7 @@ public class AimedProbe : ProbeScenario
 
     // A tap of these buttons, and the spell it set off (null if none did in time), the aim kept on the raider as a player
     // keeps it while the spell goes off.
-    IEnumerator Tap(System.Action press, string[] fired, Raider on, float off)
+    protected IEnumerator Tap(System.Action press, string[] fired, Raider on, float off)
     {
         heard.StartFrom(Core);
         press();
@@ -69,21 +69,21 @@ public class AimedProbe : ProbeScenario
         }
     }
 
-    IEnumerator Cooled()
+    protected IEnumerator Cooled()
     {
         for (float t = 0f; t < MostWait && (Core.HandsOf(Me).Casting || Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0); t += Time.deltaTime) yield return null;
         yield return Wait(0.2f);
     }
 
     // Where a raider is drawn: up in the air for a flyer.
-    Vector3 Drawn(Raider r)
+    protected Vector3 Drawn(Raider r)
     {
         var c = grid.CellCenter(r.X, r.Y);
         return new Vector3(c.x, grid.GroundAt(c) + (Core.Flying(r) ? DefenseField.FlyHeight : 1f), c.z);
     }
 
     // The camera over the wizard's shoulder, looking at a raider; the aim a few degrees to its side, as a player's thumb leaves it.
-    void LookAt(Raider r, float off)
+    protected void LookAt(Raider r, float off)
     {
         var at = Drawn(r);
         var t = wizard.transform;
@@ -96,7 +96,7 @@ public class AimedProbe : ProbeScenario
     }
 
     // A raider of a kind the run's waves won't crowd, where it's asked for (or the nearest open cell north of there).
-    Raider Put(string kind, Vector2Int at, int hp)
+    protected Raider Put(string kind, Vector2Int at, int hp)
     {
         for (int k = 0; k < 6; k++)
             if (Core.SpawnRaider(kind, at.x, at.y - k, hp) is { } r) return r;
@@ -148,7 +148,7 @@ public class AimedProbe : ProbeScenario
         }
     }
 
-    IEnumerator Setup(WorldHold site)
+    protected IEnumerator Setup(WorldHold site)
     {
         yield return AttuneTo("fire", HandsDef.Left);
         yield return AttuneTo("air", HandsDef.Right);

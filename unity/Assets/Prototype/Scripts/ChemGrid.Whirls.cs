@@ -5,7 +5,8 @@ using UnityEngine;
 // Whirlwinds, falling stars and gas flashes, drawn from what the core says
 // (World.Whirls, World.Stars, World.FlashesSince). A whirlwind is one reused
 // particle funnel that eases after its cell, tinted by what it carries; a star
-// is a small MeteorFall that lands when the core does; a flash is a pooled burst
+// is a small MeteorFall that lands when the core does (a lightning one, Thunder Strike,
+// bolts down out of the sky instead); a flash is a pooled burst
 // (BurstFx) over the cloud that went up, and a shove from the middle of it. What
 // a spell makes here takes its look (LookTint), through whichever wizard shows casts.
 // GPU-first: a handful of particle systems however long the game runs.
@@ -13,10 +14,15 @@ public partial class ChemGrid
 {
     const float ColumnEase = 4f; // m/s: a whirlwind's cell steps; its column glides between them
     const float ColumnHeight = 7f;
+    const float ColumnRate = 280f; // puffs a second in a whirlwind's column (radius 2)
     // A falling star's size, as a share of a meteor's.
     const float StarSize = 0.3f;
     // The biggest a flash is drawn: past this its sparks fly off before they're seen.
     const float FlashMost = 2.6f;
+    // A lightning star's bolt: the element that makes one, how high it comes from and how many forks round its edge.
+    const string StrikeElement = "lightning";
+    const float StrikeHeight = 22f;
+    const int StrikeForks = 5;
 
     readonly List<ParticleSystem> columns = new();
     readonly List<(int x, int y, int push, int tick)> flashing = new();
@@ -54,7 +60,13 @@ public partial class ChemGrid
         at.y = GroundTop(ww.X, ww.Y, World.At(ww.X, ww.Y));
         bool starting = !ps.isEmitting;
         ps.transform.position = starting ? at : Vector3.MoveTowards(ps.transform.position, at, ColumnEase * Time.deltaTime);
-        ps.transform.localScale = new Vector3(ww.Radius, 1f, ww.Radius) * cellSize;
+        // A bigger one (Tornado's 3 to Whirlwind's 2) stands taller too, and as thick with dust as a small one.
+        ps.transform.localScale = new Vector3(ww.Radius, Mathf.Max(1f, ww.Radius / 2f), ww.Radius) * cellSize;
+        if (starting)
+        {
+            var emission = ps.emission;
+            emission.rateOverTime = ColumnRate * Mathf.Max(1f, ww.Radius * ww.Radius / 4f);
+        }
         var main = ps.main;
         var tint = ColumnTint(ww.Carrying);
         tint = LookTint.Between(tint, SpellLookColor(ww.Spell) ?? Color.white, 1f).Of(tint);
@@ -76,9 +88,9 @@ public partial class ChemGrid
         main.startSize = new ParticleSystem.MinMaxCurve(0.25f, 0.8f);
         main.scalingMode = ParticleSystemScalingMode.Hierarchy;
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
-        main.maxParticles = 420;
+        main.maxParticles = 1000;
         var emission = ps.emission;
-        emission.rateOverTime = 280f;
+        emission.rateOverTime = ColumnRate;
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Circle;
         shape.radius = 0.28f;
@@ -137,10 +149,15 @@ public partial class ChemGrid
         foreach (var star in World.Stars)
         {
             if (!starsFalling.Add(star)) continue;
-            var look = Showman != null ? Showman.LookOf(SpellIds.Meteor) : null;
             var at = CellCenter(star.X, star.Y);
             at.y = GroundTop(star.X, star.Y, World.At(star.X, star.Y));
             float seconds = (star.Lands - World.Tick) / (float)Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
+            if (World.Rules.Spell(star.Spell)?.Element == StrikeElement)
+            {
+                SkyStrike(star, at, seconds);
+                continue;
+            }
+            var look = Showman != null ? Showman.LookOf(SpellIds.Meteor) : null;
             var viewer = Camera.main != null ? Camera.main.transform.position : at + Vector3.back;
             MeteorFall.Launch(at, viewer, look, null, null, seconds, StarSize);
         }
@@ -149,6 +166,31 @@ public partial class ChemGrid
         foreach (var star in starsFalling)
             if (star.Lands < World.Tick) starsGone.Add(star);
         foreach (var star in starsGone) starsFalling.Remove(star);
+    }
+
+    // A lightning star (Thunder Strike) comes down out of the sky rather than falling as a rock: a thick bolt onto
+    // its middle and thinner ones round its edge, the moment the core lands it, with a flash the burst's width.
+    void SkyStrike(World.Star star, Vector3 at, float seconds)
+    {
+        var glow = SpellLookColor(star.Spell);
+        float reach = (star.Radius + 0.5f) * cellSize;
+        var sky = at + Vector3.up * StrikeHeight;
+        ArcFx.Play(sky, at, 0.5f, seconds, 0.6f, glow);
+        ArcFx.Play(sky + Vector3.right * 1.5f, at, 0.22f, seconds + 0.05f, 0.5f, glow);
+        for (int i = 0; i < StrikeForks; i++)
+        {
+            float a = (i + 0.5f) * Mathf.PI * 2f / StrikeForks;
+            var edge = at + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * reach * 0.8f;
+            ArcFx.Play(sky + (edge - at) * 0.3f, edge, 0.16f, seconds + 0.04f * i, 0.4f, glow);
+        }
+        StartCoroutine(StrikeFlash(at, reach, seconds));
+    }
+
+    System.Collections.IEnumerator StrikeFlash(Vector3 at, float reach, float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        BurstFx.Play(BurstFx.Kind.Flash, at + Vector3.up * 0.3f, Mathf.Min(reach + cellSize, FlashMost));
+        BurstFx.Play(BurstFx.Kind.Debris, at, reach * 0.6f);
     }
 
     // Each tick's flash since the last frame, as one burst and one shove over the cells that went up.

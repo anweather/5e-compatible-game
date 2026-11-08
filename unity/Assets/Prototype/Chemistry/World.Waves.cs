@@ -88,13 +88,19 @@ namespace Chem
             return cells;
         }
 
-        // The wave's element lands on its front (water at power 1: it douses fires, soaks what it meets and leaves
-        // shallow water behind, which soaks in or runs off), then its force knocks each creature there light enough
-        // on ahead of it, where that's open (Force).
+        // A wave with damage (Iceberg) hits the creatures on its front first, before anything there freezes; then its element
+        // lands on the front (water at power 1: it douses fires, soaks what it meets and leaves shallow water behind, which
+        // soaks in or runs off), and its then after it (Iceberg's cold freezes the water it laid into walkable ice); then its
+        // force knocks each creature there light enough on ahead of it, where that's open (Force).
         void Wash(Wave wv, SpellDef s)
         {
             var front = WaveFront(wv);
-            foreach (var (cx, cy) in front) Apply(cx, cy, s.Element, wv.Power, wv.Dir, true);
+            foreach (var (cx, cy) in front) LandOnRaider(s, cx, cy);
+            foreach (var (cx, cy) in front)
+            {
+                Apply(cx, cy, s.Element, wv.Power, wv.Dir, true);
+                if (s.Then != null) Apply(cx, cy, s.Then, wv.Power, wv.Dir, true);
+            }
             foreach (var (cx, cy) in front) Force(s, cx, cy, wv.Dir);
         }
 

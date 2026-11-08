@@ -79,9 +79,11 @@ namespace Chem
                     break;
                 case "line" when slant:
                     SlantCells(s, x, y, dir, ChargedLength(s.Length, charge), (aimX, aimY), output);
+                    Jag(s, dir, aimX, aimY, output);
                     break;
                 case "line":
                     LineCells(s, x, y, dir, ChargedLength(s.Length, charge), output);
+                    Jag(s, dir, aimX, aimY, output);
                     break;
                 case "cone" when slant:
                     SlantCone(x, y, ChargedLength(s.Length, charge), aimX, aimY, Add);
@@ -111,6 +113,29 @@ namespace Chem
                 }
             }
             return output;
+        }
+
+        /// <summary>
+        /// A jagged line (spells.json jagged: Earth Spires): its second cell and every fourth after steps Jagged cells off to
+        /// one side, across the aim's longer part, its fourth and every fourth after to the other, so the line zigzags; the
+        /// rest stay on it. A step off the world is dropped. A straight line is left as it is.
+        /// </summary>
+        void Jag(SpellDef s, int dir, int aimX, int aimY, List<(int x, int y)> cells)
+        {
+            if (s.Jagged <= 0) return;
+            bool alongX = aimX != 0 || aimY != 0 ? System.Math.Abs(aimX) >= System.Math.Abs(aimY) : DirX(dir) != 0;
+            int px = alongX ? 0 : 1, py = alongX ? 1 : 0;
+            var jagged = new List<(int x, int y)>(cells.Count);
+            for (int k = 0; k < cells.Count; k++)
+            {
+                int side = 0;
+                if (k % 4 == 1) side = 1;
+                else if (k % 4 == 3) side = -1;
+                int cx = cells[k].x + px * side * s.Jagged, cy = cells[k].y + py * side * s.Jagged;
+                if (InBounds(cx, cy)) jagged.Add((cx, cy));
+            }
+            cells.Clear();
+            cells.AddRange(jagged);
         }
 
         /// <summary>A spot and every square within <paramref name="r"/> steps of it (a diamond), row by row: a charged bolt.</summary>
@@ -621,7 +646,9 @@ namespace Chem
             waveFrom = (x, y);
             foreach (var (cx, cy) in cells)
             {
-                Apply(cx, cy, s.Element, s.Power * charge, s.Inward ? InwardDir(cx - x, cy - y) : dir, true);
+                int way = s.Inward ? InwardDir(cx - x, cy - y) : dir;
+                Apply(cx, cy, s.Element, s.Power * charge, way, true);
+                if (s.Then != null) Apply(cx, cy, s.Then, s.Power * charge, way, true);
                 Force(s, cx, cy, dir, forced, charge);
                 LandOnRaider(s, cx, cy);
             }
