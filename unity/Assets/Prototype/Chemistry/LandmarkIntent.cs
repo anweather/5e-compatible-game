@@ -97,17 +97,22 @@ namespace Chem
         public int Reach { get; internal set; }
 
         public JArray Stamps { get; } = new JArray();
+        /// <summary>The villages.json recipe of a village laid as a square; null for one laid out here as rows (a climb, a shore).</summary>
         public JObject Village { get; internal set; }
         public JArray Buildings { get; } = new JArray();
         /// <summary>things.json's chunks: {chunk, things}, by chunk row then column.</summary>
         public JArray Things { get; } = new JArray();
         public JObject Place { get; internal set; }
+        /// <summary>The village's own place when it's laid as rows (a square village's comes from villages.json); else null.</summary>
+        public JObject VillagePlace { get; internal set; }
+        /// <summary>Where the village starts: a square's middle, a climb's foot, the middle of a shore's arc.</summary>
+        public (int x, int y) VillageAt { get; internal set; }
 
         public string StampsJson => File("stamps", Stamps);
-        public string VillagesJson => File("villages", new JArray(Village));
+        public string VillagesJson => File("villages", Village == null ? new JArray() : new JArray(Village));
         public string BuildingsJson => File("buildings", Buildings);
         public string ThingsJson => File("chunks", Things);
-        public string PlacesJson => File("places", new JArray(Place));
+        public string PlacesJson => File("places", VillagePlace == null ? new JArray(Place) : new JArray(Place, VillagePlace));
 
         static string File(string key, JArray rows) => new JObject { [key] = rows.DeepClone() }.ToString(Formatting.None);
 
@@ -133,6 +138,7 @@ namespace Chem
     {
         const int SaltTurn = 1, SaltName = 2, SaltVillage = 3, SaltRange = 4, SaltDirection = 5, SaltSeed = 6;
         const int Unit = 1024;
+        const string Square = "square", Climb = "climb", Shore = "shore";
 
         readonly string intent, form;
         readonly JObject row;
@@ -216,6 +222,7 @@ namespace Chem
             foreach (var t in (row["things"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>()) Things(t);
             ThingChunks();
             Place();
+            VillagePlaceOf();
             return rows;
         }
 
@@ -270,6 +277,18 @@ namespace Chem
             int jitter = (int?)v["jitter"] ?? 0;
             x += Pick(new JArray(-jitter, jitter));
             y += Pick(new JArray(-jitter, jitter));
+            rows.VillageAt = (x, y);
+            string layout = (string)v["layout"] ?? Square;
+            if (layout == Climb)
+            {
+                Climbing(v, x, y);
+                return;
+            }
+            if (layout == Shore)
+            {
+                OnTheShore(v, x, y);
+                return;
+            }
             int square = Pick(v["square"]), lane = Pick(v["laneLength"]);
             var village = new JObject
             {
@@ -339,14 +358,17 @@ namespace Chem
             return (vx * r / Unit, vy * r / Unit);
         }
 
-        // A Unit vector turned by whole degrees, by a table of tenths of a turn and small steps, in integers.
+        // A Unit vector turned by whole degrees, by tables of tens of degrees and of single ones, in integers.
         static (int x, int y) Rotated(int x, int y, int degrees)
         {
             // cos and sin of 0..350 in steps of 10, times Unit.
             int[] cos = { 1024, 1008, 962, 887, 784, 658, 512, 350, 178, 0, -178, -350, -512, -658, -784, -887, -962, -1008, -1024, -1008, -962, -887, -784, -658, -512, -350, -178, 0, 178, 350, 512, 658, 784, 887, 962, 1008 };
-            int step = ((degrees % 360) + 360) % 360 / 10;
+            // and of 0..9 degrees, for what's left over.
+            int[] fineCos = { 1024, 1024, 1023, 1023, 1022, 1020, 1018, 1016, 1014, 1011 }, fineSin = { 0, 18, 36, 54, 71, 89, 107, 125, 143, 160 };
+            int whole = ((degrees % 360) + 360) % 360, step = whole / 10, left = whole % 10;
             int c = cos[step], s = cos[(step + 27) % 36];
-            return ((x * c - y * s) / Unit, (x * s + y * c) / Unit);
+            int rx = (x * c - y * s) / Unit, ry = (x * s + y * c) / Unit;
+            return ((rx * fineCos[left] - ry * fineSin[left]) / Unit, (rx * fineSin[left] + ry * fineCos[left]) / Unit);
         }
 
         void Root(JObject t, JObject joins, JObject roads, int k, int n, int trunk)
@@ -363,16 +385,122 @@ namespace Chem
             roads[$"root-{k}"] = new JObject { ["through"] = new JArray($"r{k}a", $"r{k}b", $"r{k}c"), ["terrain"] = "deadfall", ["width"] = 1 };
         }
 
+        // ---------- villages laid out as rows: a climb up the landmark, an arc round a shore ----------
+
+        // A unit vector from one cell towards another (east when they're the same).
+        static (int x, int y) Toward(int fx, int fy, int tx, int ty)
+        {
+            long dx = tx - fx, dy = ty - fy, length = BiomeMath.Sqrt(dx * dx + dy * dy);
+            return length == 0 ? (Unit, 0) : ((int)(dx * Unit / length), (int)(dy * Unit / length));
+        }
+
+        static Side Facing(int fx, int fy, int tx, int ty)
+        {
+            int dx = tx - fx, dy = ty - fy;
+            if (Math.Abs(dy) >= Math.Abs(dx)) return dy < 0 ? Side.North : Side.South;
+            return dx < 0 ? Side.West : Side.East;
+        }
+
+        // A house of the village style centred on a cell, its door facing a point; stone or log by the village's stoneInTen.
+        JObject HouseAt(JObject v, int cx, int cy, int fx, int fy, JObject size, string what)
+        {
+            var dims = (size ?? v)["house"] as JArray;
+            int w = Pick(size?["width"] ?? dims?[0] ?? 4), d = Pick(size?["depth"] ?? dims?[1] ?? 4);
+            var front = Facing(cx, cy, fx, fy);
+            if (front == Side.East || front == Side.West) (w, d) = (d, w);
+            bool stone = size?["wall"] != null ? (string)size["wall"] == "stone" : Roll(SaltVillage) % 10 < (uint)((int?)v["stoneInTen"] ?? 0);
+            var building = new JObject
+            {
+                ["id"] = $"{Slug(rows.VillageName)}#{rows.Buildings.Count(b => ((string)b["id"]).StartsWith(Slug(rows.VillageName) + "#", StringComparison.Ordinal)) + 1}",
+                ["at"] = new JArray(cx - w / 2, cy - d / 2),
+                ["style"] = "village",
+                ["seed"] = (int)(Roll(SaltSeed) % 100000),
+                ["note"] = $"{rows.VillageName}'s {what}, by {rows.Name}",
+            };
+            if (stone) building["wall"] = new JObject { ["material"] = "stone" };
+            var roof = new JObject { ["shape"] = "gable", ["pitch"] = new JArray(8, 12), ["overhang"] = 0.4, ["cover"] = stone ? "slate" : "thatch" };
+            foreach (var p in BuildingRow.Box(w, d, front, "door", "window", roof).Properties()) building[p.Name] = p.Value;
+            rows.Buildings.Add(building);
+            return building;
+        }
+
+        // The village's way, laid as a road on its first house's row through these cells.
+        static void Way(JObject first, IList<(int x, int y)> points, int width)
+        {
+            if (first == null || points.Count < 2) return;
+            int ax = (int)first["at"][0], ay = (int)first["at"][1];
+            var joins = (JObject)first["joins"];
+            var through = new JArray();
+            for (int k = 0; k < points.Count; k++)
+            {
+                joins[$"way{k}"] = new JArray(2 * (points[k].x - ax) + 1, 2 * (points[k].y - ay) + 1);
+                through.Add($"way{k}");
+            }
+            first["roads"] = new JObject { ["way"] = new JObject { ["through"] = through, ["terrain"] = "dirt", ["width"] = width } };
+        }
+
+        // Houses either side of a way that climbs from the foot towards the landmark, wandering a little, with the top house
+        // (a watch house) where it ends.
+        void Climbing(JObject v, int x, int y)
+        {
+            var (ux, uy) = Toward(x, y, rows.Centre.x, rows.Centre.y);
+            int px = -uy, py = ux;
+            int length = Pick(v["climb"]), houses = Math.Max(2, Pick(v["houses"])), step = Math.Max(6, length / houses), wander = 0;
+            var way = new List<(int x, int y)> { (x, y) };
+            JObject first = null;
+            for (int k = 0; k < houses; k++)
+            {
+                int along = step * k + step / 2, side = k % 2 == 0 ? 1 : -1, back = Pick(v["setback"]);
+                wander = Math.Max(-4, Math.Min(4, wander + Pick(new JArray(-2, 2))));
+                int cx = x + (ux * along + px * wander) / Unit, cy = y + (uy * along + py * wander) / Unit;
+                way.Add((cx, cy));
+                var house = HouseAt(v, cx + px * side * back / Unit, cy + py * side * back / Unit, cx, cy, null, "house");
+                first ??= house;
+            }
+            int end = step * houses + step / 2;
+            var (tx, ty) = (x + (ux * end + px * wander) / Unit, y + (uy * end + py * wander) / Unit);
+            way.Add((tx, ty));
+            if (v["top"] is JObject top)
+            {
+                int up = Pick(top["depth"]) / 2 + 3;
+                HouseAt(v, tx + ux * up / Unit, ty + uy * up / Unit, tx, ty, top, (string)top["what"] ?? "house");
+            }
+            Way(first, way, (int?)v["width"] ?? 2);
+        }
+
+        // Houses on an arc round the lake, back from its shore, facing the water, with a way along the arc between them
+        // and the shore.
+        void OnTheShore(JObject v, int x, int y)
+        {
+            var (lx, ly) = At(v["around"]);
+            int shore = ShoreOf(lx, ly), houses = Math.Max(2, Pick(v["houses"])), span = (int?)v["span"] ?? 140;
+            var (bx, by) = Toward(lx, ly, x, y);
+            int wayRadius = shore + ((int?)v["way"] ?? 7);
+            var way = new List<(int x, int y)>();
+            JObject first = null;
+            for (int k = 0; k < houses; k++)
+            {
+                int angle = -span / 2 + span * k / (houses - 1) + Pick(new JArray(-4, 4));
+                var (ox, oy) = Rotated(bx, by, angle);
+                int r = shore + Pick(v["setback"]);
+                var house = HouseAt(v, lx + ox * r / Unit, ly + oy * r / Unit, lx, ly, null, "house");
+                first ??= house;
+            }
+            for (int angle = -span / 2 - 6; angle <= span / 2 + 6; angle += 12)
+            {
+                var (ox, oy) = Rotated(bx, by, angle);
+                way.Add((lx + ox * wayRadius / Unit, ly + oy * wayRadius / Unit));
+            }
+            Way(first, way, (int?)v["width"] ?? 2);
+        }
+
         // ---------- the docks: boathouses on the lake's shore, each with a dock out over the water ----------
 
         void Docks(JObject d)
         {
             var (lx, ly) = At(d["lake"]);
             int count = Pick(d["count"]), spread = (int?)d["spread"] ?? 60;
-            // The lake's water: where the hollow is deeper than the lake's level (Places' water, 4 land units).
-            var lake = rows.Stamps.OfType<JObject>().FirstOrDefault(s => (int)s["at"][0] == lx && (int)s["at"][1] == ly);
-            int radius = lake == null ? 40 : (int)lake["radius"], deep = lake == null ? 40 : -(int)lake["rise"];
-            int shore = deep <= 4 ? radius : (int)BiomeMath.Sqrt((long)radius * radius * (deep - 4) / deep);
+            int shore = ShoreOf(lx, ly);
             for (int k = 0; k < count; k++)
             {
                 int u = -spread / 2 + spread * (2 * k + 1) / (2 * count) + Pick(new JArray(-4, 4));
@@ -381,6 +509,15 @@ namespace Chem
                 var (ox, oy) = Turned(u, v);
                 Boathouse(d, k, lx, ly, lx + ox, ly + oy);
             }
+        }
+
+        // How far the lake's water reaches from its middle: where the hollow is deeper than the lake's level (Places' water,
+        // 4 land units).
+        int ShoreOf(int lx, int ly)
+        {
+            var lake = rows.Stamps.OfType<JObject>().FirstOrDefault(s => (int)s["at"][0] == lx && (int)s["at"][1] == ly);
+            int radius = lake == null ? 40 : (int)lake["radius"], deep = lake == null ? 40 : -(int)lake["rise"];
+            return deep <= 4 ? radius : (int)BiomeMath.Sqrt((long)radius * radius * (deep - 4) / deep);
         }
 
         // A box whose front faces the lake, its front wall on the shore cell, the rest of it on dry land.
@@ -497,6 +634,26 @@ namespace Chem
         }
 
         // ---------- the place ----------
+
+        // A village laid as rows names its own place: the block its houses stand in.
+        void VillagePlaceOf()
+        {
+            if (rows.Village != null) return;
+            string id = Slug(rows.VillageName);
+            var mine = rows.Buildings.OfType<JObject>().Where(b => ((string)b["id"]).StartsWith(id + "#", StringComparison.Ordinal)).ToList();
+            if (mine.Count == 0) return;
+            int x0 = mine.Min(b => (int)b["at"][0]), y0 = mine.Min(b => (int)b["at"][1]);
+            int x1 = mine.Max(b => (int)b["at"][0] + (int)b["joins"]["ne"][0] / 2), y1 = mine.Max(b => (int)b["at"][1] + (int)b["joins"]["se"][1] / 2);
+            rows.VillagePlace = new JObject
+            {
+                ["id"] = id,
+                ["name"] = rows.VillageName,
+                ["kind"] = "village",
+                ["from"] = $"{LandmarkIntent.Folder}/{intent}.json",
+                ["note"] = string.Format(CultureInfo.InvariantCulture, "{0}'s houses, laid by {1} ({2})", rows.VillageName, intent, form),
+                ["area"] = new JArray(x0, y0, x1, y1),
+            };
+        }
 
         void Place()
         {

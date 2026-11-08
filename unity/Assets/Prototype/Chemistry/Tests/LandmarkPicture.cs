@@ -93,8 +93,7 @@ namespace Chem.Tests
         /// <summary>The picture, framed on the middle of the landmark and its village.</summary>
         internal static Picture Draw(LandmarkRows rows, Rules rules)
         {
-            var at = rows.Village["at"];
-            int x0 = (rows.Centre.x + (int)at[0]) / 2 - Cells / 2, y0 = (rows.Centre.y + (int)at[1]) / 2 - Cells / 2;
+            int x0 = (rows.Centre.x + rows.VillageAt.x) / 2 - Cells / 2, y0 = (rows.Centre.y + rows.VillageAt.y) / 2 - Cells / 2;
             var land = Land(rows, x0, y0, Cells);
             var colour = new (double r, double g, double b)[Cells * Cells];
             var ground = Grounds.TryGetValue(rows.Form, out var g) ? g : Grounds["temperate"];
@@ -117,7 +116,7 @@ namespace Chem.Tests
                 for (int y = dy0; y <= dy1; y++)
                     for (int x = dx0; x <= dx1; x++) Put(x, y, Dock);
             }
-            int houses = Village(rows, land, x0, y0, taken, Put);
+            int houses = rows.Buildings.Count(b => (string)b["style"] == "village") + Village(rows, land, x0, y0, taken, Put);
             var pixels = Scaled(colour);
             foreach (var chunk in rows.Things.OfType<JObject>())
                 foreach (var t in chunk["things"].OfType<JObject>())
@@ -130,7 +129,8 @@ namespace Chem.Tests
         // Lays the village where it can stand: dry, gentle, inside the patch and off the landmark's cells.
         static int Village(LandmarkRows rows, int[] land, int x0, int y0, HashSet<(int x, int y)> taken, Action<int, int, (double, double, double)> put)
         {
-            var spec = VillageLayout.FromJson(rows.VillagesJson).Single();
+            var spec = VillageLayout.FromJson(rows.VillagesJson).SingleOrDefault();
+            if (spec == null) return 0;
             bool Buildable(int wx, int wy)
             {
                 int x = wx - x0, y = wy - y0;
