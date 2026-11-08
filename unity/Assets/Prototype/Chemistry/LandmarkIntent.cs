@@ -74,11 +74,15 @@ namespace Chem
             throw new FormatException($"landmark {Id}: the forms' uses go round in a circle from {biome}");
         }
 
-        /// <summary>The rows of this intent in <paramref name="biome"/>, at a site (a world cell), from a seed.</summary>
-        public LandmarkRows Make(string biome, int siteX, int siteY, int seed)
+        /// <summary>
+        /// The rows of this intent in <paramref name="biome"/>, at a site (a world cell), from a seed. A village's house laid
+        /// out here (a climb's, a shore's) goes only where <paramref name="buildable"/> takes every cell of it; without one,
+        /// anywhere.
+        /// </summary>
+        public LandmarkRows Make(string biome, int siteX, int siteY, int seed, Func<int, int, bool> buildable = null)
         {
             string form = FormFor(biome);
-            return new LandmarkMaker(Id, form, (JObject)by[form], siteX, siteY, seed).Run();
+            return new LandmarkMaker(Id, form, (JObject)by[form], siteX, siteY, seed, buildable).Run();
         }
     }
 
@@ -144,13 +148,15 @@ namespace Chem
         readonly JObject row;
         readonly int siteX, siteY, key, turn;
         readonly LandmarkRows rows;
+        readonly Func<int, int, bool> buildable;
         readonly List<(int x, int y, int w, int h)> docks = new List<(int, int, int, int)>();
         readonly List<(int x, int y, JObject thing)> things = new List<(int, int, JObject)>();
         int rolls;
         string placeId;
 
-        public LandmarkMaker(string intent, string form, JObject row, int siteX, int siteY, int seed)
+        public LandmarkMaker(string intent, string form, JObject row, int siteX, int siteY, int seed, Func<int, int, bool> buildable)
         {
+            this.buildable = buildable;
             this.intent = intent;
             this.form = form;
             this.row = row;
@@ -258,6 +264,7 @@ namespace Chem
                     ["rough"] = (int?)s["rough"] ?? 40,
                     ["seed"] = (int)(Roll(SaltSeed) % 100000),
                 });
+                if (s["bare"] != null) ((JObject)rows.Stamps[rows.Stamps.Count - 1])["bare"] = (string)s["bare"];
                 if (n == 1)
                 {
                     centre = (x, y);
@@ -309,24 +316,16 @@ namespace Chem
 
         // ---------- the great tree: a stand-in from rows we have ----------
 
-        // A trunk of log wall (an octagon of walls under a round tower), a crown of tree towers round it, and roots of
-        // fallen tree laid out from it as roads. Joins are half cells from the site's cell, (1, 1) its middle.
+        // A trunk of log wall (an octagon of walls, drawn low as the root flare), the view's own tree scaled up over it (the
+        // "great-tree" detail, rules/buildings.json), and roots of fallen tree laid out from it as roads. Joins are half
+        // cells from the site's cell, (1, 1) its middle.
         void GreatTree(JObject t)
         {
-            int trunk = Pick(t["trunk"]), crown = Pick(t["crown"]), lobes = Pick(t["lobes"]), roots = Pick(t["roots"]);
+            int trunk = Pick(t["trunk"]), roots = Pick(t["roots"]);
             var joins = new JObject { ["c"] = new JArray(1, 1) };
-            var towers = new JObject();
-            var start = Direction();
-            for (int k = 0; k < lobes; k++)
-            {
-                var (dx, dy) = Around(start, k, lobes, crown * 2);
-                joins[$"l{k}"] = new JArray(1 + dx, 1 + dy);
-                towers[$"crown-{k}"] = new JObject { ["at"] = $"l{k}", ["radius"] = Pick(t["lobe"]), ["material"] = "tree" };
-            }
-            towers["trunk"] = new JObject { ["at"] = "c", ["radius"] = trunk * 2 };
             var roads = new JObject();
             for (int k = 0; k < roots; k++) Root(t, joins, roads, k, roots, trunk);
-            int a = 2 * (trunk - 1), b = a * 29 / 70;
+            int a = 2 * trunk, b = a * 29 / 70;
             var corners = new[] { (b, -a), (a, -b), (a, b), (b, a), (-b, a), (-a, b), (-a, -b), (-b, -a) };
             var walls = new JObject();
             for (int k = 0; k < corners.Length; k++)
@@ -334,28 +333,21 @@ namespace Chem
                 joins[$"o{k}"] = new JArray(1 + corners[k].Item1, 1 + corners[k].Item2);
                 walls[$"w{k}"] = new JObject { ["from"] = $"o{k}", ["to"] = $"o{(k + 1) % corners.Length}" };
             }
+            int scale = Pick(t["scale"]);
             rows.Buildings.Add(new JObject
             {
                 ["id"] = $"{placeId}#1",
                 ["at"] = new JArray(siteX, siteY),
                 ["fill"] = "solid",
                 ["seed"] = (int)(Roll(SaltSeed) % 100000),
-                ["note"] = $"{rows.Name}: the great tree's stand-in, a trunk of log wall {(int?)t["height"] ?? 14} m high under a crown of trees, with roots",
-                ["wall"] = new JObject { ["material"] = "logwall", ["height"] = (int?)t["height"] ?? 14, ["thickness"] = 0.45 },
+                ["note"] = $"{rows.Name}: the great tree's stand-in, a tree {scale} times its size over a log trunk, with roots",
+                ["wall"] = new JObject { ["material"] = "logwall", ["height"] = (double?)t["flare"] ?? 1.5, ["thickness"] = 0.45 },
                 ["joins"] = joins,
                 ["walls"] = walls,
-                ["towers"] = towers,
                 ["roads"] = roads,
+                ["parts"] = new JArray(new JObject { ["kind"] = "great-tree", ["join"] = "c", ["scale"] = scale }),
             });
-            rows.Reach = Math.Max(rows.Reach, crown + 8);
-        }
-
-        // The k-th of n points round a circle of this radius, starting from a seeded direction, with a little give.
-        (int x, int y) Around((int x, int y) start, int k, int n, int radius)
-        {
-            var (vx, vy) = Rotated(start.x, start.y, k * 360 / n);
-            int r = radius + Pick(new JArray(-radius / 6, radius / 6));
-            return (vx * r / Unit, vy * r / Unit);
+            rows.Reach = Math.Max(rows.Reach, trunk + Pick(t["root"]) + 4);
         }
 
         // A Unit vector turned by whole degrees, by tables of tens of degrees and of single ones, in integers.
@@ -402,26 +394,42 @@ namespace Chem
         }
 
         // A house of the village style centred on a cell, its door facing a point; stone or log by the village's stoneInTen.
-        JObject HouseAt(JObject v, int cx, int cy, int fx, int fy, JObject size, string what)
+        bool HouseAt(JObject v, (int x, int y) at, (int x, int y) facing, JObject size, string what, out JObject building)
         {
+            var (cx, cy) = at;
+            building = null;
             var dims = (size ?? v)["house"] as JArray;
             int w = Pick(size?["width"] ?? dims?[0] ?? 4), d = Pick(size?["depth"] ?? dims?[1] ?? 4);
-            var front = Facing(cx, cy, fx, fy);
+            var front = Facing(cx, cy, facing.x, facing.y);
             if (front == Side.East || front == Side.West) (w, d) = (d, w);
+            int ax = cx - w / 2, ay = cy - d / 2;
+            if (buildable != null && !Cells(ax, ay, w, d).All(c => buildable(c.x, c.y))) return false;
             bool stone = size?["wall"] != null ? (string)size["wall"] == "stone" : Roll(SaltVillage) % 10 < (uint)((int?)v["stoneInTen"] ?? 0);
-            var building = new JObject
+            building = new JObject
             {
                 ["id"] = $"{Slug(rows.VillageName)}#{rows.Buildings.Count(b => ((string)b["id"]).StartsWith(Slug(rows.VillageName) + "#", StringComparison.Ordinal)) + 1}",
-                ["at"] = new JArray(cx - w / 2, cy - d / 2),
+                ["at"] = new JArray(ax, ay),
                 ["style"] = "village",
                 ["seed"] = (int)(Roll(SaltSeed) % 100000),
                 ["note"] = $"{rows.VillageName}'s {what}, by {rows.Name}",
             };
             if (stone) building["wall"] = new JObject { ["material"] = "stone" };
+            // On a slope, a flat pad cut for it, its walls one height (a climb's houses).
+            if (v["pad"] is JObject pad)
+            {
+                building["level"] = true;
+                building["pad"] = pad.DeepClone();
+            }
             var roof = new JObject { ["shape"] = "gable", ["pitch"] = new JArray(8, 12), ["overhang"] = 0.4, ["cover"] = stone ? "slate" : "thatch" };
             foreach (var p in BuildingRow.Box(w, d, front, "door", "window", roof).Properties()) building[p.Name] = p.Value;
             rows.Buildings.Add(building);
-            return building;
+            return true;
+        }
+
+        static IEnumerable<(int x, int y)> Cells(int x, int y, int w, int h)
+        {
+            for (int j = 0; j < h; j++)
+                for (int i = 0; i < w; i++) yield return (x + i, y + j);
         }
 
         // The village's way, laid as a road on its first house's row through these cells.
@@ -454,8 +462,7 @@ namespace Chem
                 wander = Math.Max(-4, Math.Min(4, wander + Pick(new JArray(-2, 2))));
                 int cx = x + (ux * along + px * wander) / Unit, cy = y + (uy * along + py * wander) / Unit;
                 way.Add((cx, cy));
-                var house = HouseAt(v, cx + px * side * back / Unit, cy + py * side * back / Unit, cx, cy, null, "house");
-                first ??= house;
+                if (HouseAt(v, (cx + px * side * back / Unit, cy + py * side * back / Unit), (cx, cy), null, "house", out var house)) first ??= house;
             }
             int end = step * houses + step / 2;
             var (tx, ty) = (x + (ux * end + px * wander) / Unit, y + (uy * end + py * wander) / Unit);
@@ -463,7 +470,7 @@ namespace Chem
             if (v["top"] is JObject top)
             {
                 int up = Pick(top["depth"]) / 2 + 3;
-                HouseAt(v, tx + ux * up / Unit, ty + uy * up / Unit, tx, ty, top, (string)top["what"] ?? "house");
+                HouseAt(v, (tx + ux * up / Unit, ty + uy * up / Unit), (tx, ty), top, (string)top["what"] ?? "house", out _);
             }
             Way(first, way, (int?)v["width"] ?? 2);
         }
@@ -483,8 +490,7 @@ namespace Chem
                 int angle = -span / 2 + span * k / (houses - 1) + Pick(new JArray(-4, 4));
                 var (ox, oy) = Rotated(bx, by, angle);
                 int r = shore + Pick(v["setback"]);
-                var house = HouseAt(v, lx + ox * r / Unit, ly + oy * r / Unit, lx, ly, null, "house");
-                first ??= house;
+                if (HouseAt(v, (lx + ox * r / Unit, ly + oy * r / Unit), (lx, ly), null, "house", out var house)) first ??= house;
             }
             for (int angle = -span / 2 - 6; angle <= span / 2 + 6; angle += 12)
             {
@@ -594,9 +600,39 @@ namespace Chem
             int count = Pick(t["count"]);
             for (int k = 0; k < count; k++)
             {
-                var (x, y) = (string)t["near"] == "docks" && docks.Count > 0 ? ByADock() : OnARing(t);
-                things.Add((x, y, new JObject { ["kind"] = (string)t["kind"], ["rot"] = (int)(Roll(SaltDirection) % 360) }));
+                // A few tries for a cell clear of every row, and of the things already put down; none, and it isn't put.
+                for (int tries = 0; tries < 12; tries++)
+                {
+                    var (x, y) = (string)t["near"] == "docks" && docks.Count > 0 ? ByADock() : OnARing(t);
+                    if (!Clear(x, y)) continue;
+                    things.Add((x, y, new JObject { ["kind"] = (string)t["kind"], ["rot"] = (int)(Roll(SaltDirection) % 360) }));
+                    break;
+                }
             }
+        }
+
+        // Off every row's block (the cells its joins span) and every thing put down.
+        bool Clear(int x, int y)
+        {
+            if (things.Any(t => t.x == x && t.y == y)) return false;
+            foreach (var b in rows.Buildings.OfType<JObject>())
+            {
+                int ax = (int)b["at"][0], ay = (int)b["at"][1];
+                var js = ((JObject)b["joins"]).Properties().Select(p => ((int)p.Value[0], (int)p.Value[1])).ToList();
+                int x0 = ax + (int)BiomeMath.FloorDiv(js.Min(j => j.Item1), 2), x1 = ax + (int)BiomeMath.FloorDiv(js.Max(j => j.Item1) - 1, 2);
+                int y0 = ay + (int)BiomeMath.FloorDiv(js.Min(j => j.Item2), 2), y1 = ay + (int)BiomeMath.FloorDiv(js.Max(j => j.Item2) - 1, 2);
+                if (x >= x0 && x <= x1 && y >= y0 && y <= y1 && Near(b, x, y)) return false;
+            }
+            return true;
+        }
+
+        // Inside a row's block: for one with a way or roots (a long road), only near a house's own corners or the road's points.
+        static bool Near(JObject b, int x, int y)
+        {
+            if (b["roads"] == null) return true;
+            int ax = (int)b["at"][0], ay = (int)b["at"][1];
+            return ((JObject)b["joins"]).Properties().Any(p => Math.Abs(ax + (int)BiomeMath.FloorDiv((int)p.Value[0], 2) - x) <= 5 && Math.Abs(ay + (int)BiomeMath.FloorDiv((int)p.Value[1], 2) - y) <= 5)
+                || (b["joins"]["ne"] != null && x >= ax - 1 && y >= ay - 1 && x <= ax + (int)b["joins"]["ne"][0] / 2 + 1 && y <= ay + (int)b["joins"]["se"][1] / 2 + 1);
         }
 
         (int x, int y) OnARing(JObject t)

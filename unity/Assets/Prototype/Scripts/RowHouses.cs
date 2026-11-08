@@ -199,6 +199,7 @@ public class RowHouses : MonoBehaviour
         var walls = laid.Where(c => c.Part != BuildingPart.Built && c.Part != BuildingPart.Road).Select(c => new Vector2Int(c.X, c.Y)).ToList();
         float tall = (float?)row.Json["wall"]?["height"] ?? DefaultWall;
         foreach (var c in walls) grid.BuiltWall(c.x, c.y, level ? TopOver(made, row, c, rootY) : tall);
+        GreatTrees(root, row, corner);
         return new Drawn
         {
             json = json,
@@ -220,6 +221,29 @@ public class RowHouses : MonoBehaviour
             walls = walls,
         };
     }
+
+    // A row's great trees (its "great-tree" details, rules/buildings.json): the valley's own tree for that cell, scaled up and
+    // stood at a join, a stand-in until a great tree is modelled. The row's cells (its trunk, its roots) are what blocks.
+    void GreatTrees(GameObject root, BuildingRow row, Vector3 corner)
+    {
+        if (!(row.Json["parts"] is JArray parts) || !(row.Json["joins"] is JObject joins)) return;
+        var valley = FindAnyObjectByType<ValleyChemistry>();
+        foreach (var part in parts.OfType<JObject>().Where(p => (string)p["kind"] == GreatTree))
+        {
+            if (valley == null || !(joins[(string)part["join"] ?? ""] is JArray j)) continue;
+            int jx = (int)j[0], jy = (int)j[1];
+            int cx = row.X + Mathf.FloorToInt(jx / 2f), cy = row.Y + Mathf.FloorToInt(jy / 2f);
+            if (!valley.TreeModel(cx, cy, out var prefab, out var size)) continue;
+            float half = grid.cellSize / 2f;
+            var at = corner + new Vector3(jx * half, 0f, -jy * half);
+            at.y = grid.GroundAt(at);
+            var tree = Instantiate(prefab, at, Quaternion.Euler(0f, (cx * 37 + cy * 11) % 360, 0f), root.transform);
+            tree.name = "Great tree";
+            tree.transform.localScale = size * ((float?)part["scale"] ?? 7f);
+        }
+    }
+
+    const string GreatTree = "great-tree";
 
     // A chimney smokes as a village's does: the same puff, copied from one, at each chimney's top.
     static ParticleSystem[] Smoke(GameObject root, Vector3[] chimneys)

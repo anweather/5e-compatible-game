@@ -47,7 +47,8 @@
     "planter": { "look": { "takes": ["on", "at"] } },
     "battlements": { "look": { "takes": ["on", "every", "height"] } },
     "stair": { "look": { "takes": ["on", "at", "length"] } },
-    "dock": { "look": { "takes": ["on", "at", "length", "width"] } }
+    "dock": { "look": { "takes": ["on", "at", "length", "width"] } },
+    "great-tree": { "look": { "takes": ["join", "scale"] } }
   },
   "styles": {
     "plain": { "fill": "hollow", "floor": { "kind": "slab", "height": 0.15 },
