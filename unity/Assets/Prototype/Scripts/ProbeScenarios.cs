@@ -498,6 +498,11 @@ public static class ProbeScenarios
             "Checks: the ray finds the deer (and the sky fizzles), the wizard's model is hidden and a deer's body drawn where it stands, the controller " +
             "has the deer's speeds, walking moves it with a gait, Fire Bolt is refused, the near deer doesn't bolt, changing back restores the model " +
             "and speeds, the blow changes it back, no console errors. `--shots` saves the wizard as a deer."),
+        new Entry("pants", typeof(PantsProbe), 90f,
+            "The wizard's pants (playtest 2026-11-08 B2: the robot's legs under the robe stopped being drawn): it walks, casts Fire Bolt with the camera " +
+            "looking away, swims, shifts into a deer and walks and swims as one with the camera away, changes back, and the world is reset. After each, " +
+            "the camera in front of it. Checks: the legs (the body's skinned mesh with its legs material) and the robe's cloth are on, not hidden, seen, " +
+            "with bounds round the hips, and the shins keep their length under the hips; no console errors. `--shots` saves each."),
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),
