@@ -247,8 +247,9 @@ public partial class ChemGrid : MonoBehaviour
             }
         }
         LayPuzzles(world);
-        LayRows(world);
+        // The map's stamps before its rows: a row's pad is cut level on the stamped land (a village up a volcano's slope).
         LayStamps(world);
+        LayRows(world);
         LayGolf(world);
         SetHold(world);
         return world;
@@ -296,7 +297,7 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // The map's own land stamps (stamps.json), after its rows, whose laid land they keep off: only on the map's whole world.
+    // The map's own land stamps (stamps.json), before its rows, which are laid on the stamped land: only on the map's whole world.
     static void LayStamps(World world)
     {
         if (world.W != MapCheck.Size || world.H != MapCheck.Size) return;
