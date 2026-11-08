@@ -105,7 +105,7 @@ public partial class SpellCaster
     {
         var row = world.UnlockGiving(gives);
         int away = row != null ? world.PointsAway(player, row) : 0;
-        return $"{what} is locked: {away} more {(away == 1 ? "point" : "points")} to unlock it in the Hold";
+        return $"{what} is locked: {away} more {(away == 1 ? "point" : "points")}";
     }
 
     /// <summary>Picks an upgrade from this wizard's offer (ProgressKeeper).</summary>
@@ -128,10 +128,10 @@ public partial class SpellCaster
         string player = CastPlayer, why = null;
         if (!world.HandOpen(player, hand)) why = Locked($"Your {Side(hand)} hand", world, player, u => u.Hand == Side(hand));
         else if (!world.ElementOpen(player, element)) why = Locked(element, world, player, u => u.Element == element);
-        else if (world.TowerOf(player) is { } tower && tower.Element != element) why = $"This tower gives {tower.Element} only";
-        else if (world.HoldRunning && world.TowerOf(player) == null) why = "Not during a Hold run away from the towers: each tower gives its element";
-        else if (world.HandsOf(player).AttuneLeft > 0) why = "One hand at a time: the other is still attuning";
-        else if (world.CastOf(player)?.Casting == true) why = "Not mid-cast: let the hands finish first";
+        else if (world.TowerOf(player) is { } tower && tower.Element != element) why = $"Only {tower.Element} here";
+        else if (world.HoldRunning && world.TowerOf(player) == null) why = "Attune at a tower";
+        else if (world.HandsOf(player).AttuneLeft > 0) why = "One hand at a time";
+        else if (world.CastOf(player)?.Casting == true) why = "Not mid-cast";
         else if (world.HandsOf(player).Holds[hand] == element) return null;
         else if (!Send(ComboCommand.Attune(player, hand, element))) why = "The hands can't attune now";
         if (why != null)
@@ -139,8 +139,7 @@ public partial class SpellCaster
             EventLog.Add(why);
             return why;
         }
-        EventLog.Add($"Your {Side(hand)} hand attunes to {element ?? "nothing"}");
-        return null;
+        return null; // the hand shows it: no line for it
     }
 
     // At a tower, a hand's trigger on a hand that holds something else attunes it to the tower's element, which takes its moment

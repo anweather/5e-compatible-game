@@ -131,7 +131,7 @@ public partial class ProgressKeeper
             if (GUI.Button(rect, $"{mark}<b>{row?.Name ?? run.Offer[i]}</b>   {row?.Words()}", card)) Take(caster, run, i);
             GUI.color = before;
         }
-        string hint = pad ? "D-pad left and right to choose, up to take it" : "1, 2 or 3, or click one";
+        string hint = pad ? "◀ ▶  ▲" : "1 2 3";
         GUI.Label(new Rect(x, back.yMax - 34f, OfferWidth, 28f), $"<color=#cccccc>{hint}</color>", title);
     }
 

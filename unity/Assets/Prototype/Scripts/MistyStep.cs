@@ -121,7 +121,6 @@ public static class MistyStep
         if (wizard.TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
         else wizard.position = to;
         if (hasBody) body.enabled = true;
-        EventLog.Add("You reappear in a swirl of silver mist");
         return true;
     }
 

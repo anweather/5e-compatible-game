@@ -108,7 +108,7 @@ public class SpellListProbe : ProbeScenario
         }
     }
 
-    // With the hands (D16): Tab and the d-pad's down open the list on the hands' tab, the arrows move and Enter attunes.
+    // With the hands (D16): Tab opens the list on the hands' tab, the arrows move and Enter attunes.
     IEnumerator HandsTab(PauseMenu menu)
     {
         var world = grid.World;
@@ -132,12 +132,14 @@ public class SpellListProbe : ProbeScenario
         caster.AttuneTo(HandsDef.Left, wasLeft);
         for (float t = 0f; t < 3f && world.HandsOf(me).Busy; t += Time.deltaTime) yield return null;
 
+        // The pad's d-pad down is the hands menu now (HandsMenu, the handsmenu scenario), not this list.
         InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadDown));
         yield return Frames(3);
+        bool handsMenu = HandsMenu.IsOpen, list = SpellListMenu.Open;
         InputSystem.QueueStateEvent(pad, new GamepadState());
         yield return Frames(3);
-        Check("dpad_down_opens_the_same_list", SpellListMenu.Open && SpellListMenu.Tabs[SpellListMenu.Tab].Name == SpellListMenu.HandsName, $"open {SpellListMenu.Open}");
-        menu.SetOpen(false);
+        Check("dpad_down_is_the_hands_menu", handsMenu && !list && !HandsMenu.IsOpen, $"hands menu {handsMenu}, list {list}");
+        if (menu.Open) menu.SetOpen(false);
         yield return Frames(3);
     }
 

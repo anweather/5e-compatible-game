@@ -45,7 +45,7 @@ public class PauseMenu : MonoBehaviour
         pages.Clear();
     }
 
-    GUIStyle box, title, button, hint;
+    GUIStyle box, title, button;
     Texture2D gold, goldTint;
 
     readonly MenuNavigator nav = new();
@@ -436,7 +436,6 @@ public class PauseMenu : MonoBehaviour
         DrawSections(Submenu.Main);
         GUILayout.Space(12);
         if (Button("Quit", button)) Quit();
-        if (Highlight) GUILayout.Label(PadGlyphs.Text("<color=#ffffff99>{South} choose  ·  {East} close</color>"), hint);
     }
 
     static void DrawSections(Submenu submenu)
@@ -466,7 +465,6 @@ public class PauseMenu : MonoBehaviour
         box.normal.background = Solid(new Color(0.06f, 0.07f, 0.09f, 0.9f));
         title = new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
         button = new GUIStyle(GUI.skin.button) { fontSize = 19, richText = true, fixedHeight = 44 };
-        hint = new GUIStyle(GUI.skin.label) { fontSize = 14, richText = true, alignment = TextAnchor.MiddleCenter };
         gold = Solid(new Color(1f, 0.82f, 0.29f, 1f));
         goldTint = Solid(new Color(1f, 0.82f, 0.29f, 0.18f));
     }

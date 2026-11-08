@@ -4,8 +4,9 @@ using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The spell list (D16, docs/design/unified-casting.md): Tab on the keyboard and the d-pad's
-// down on a pad open it, a page of the Esc menu. With the hands its first tab is the hands:
+// The spell list (D16, docs/design/unified-casting.md): Tab on the keyboard opens it, and on a
+// pad the Esc menu's Game > Spells (the d-pad's down is the hands menu, HandsMenu, and opens this
+// only without the hands), a page of the Esc menu. With the hands its first tab is the hands:
 // the two of them, where you attune each (a short moment, not mid-cast, and in a Hold run only
 // in the keep's attuning room), then the hand table for what they hold, then the kit on the
 // d-pad and the grimoire's discoveries. Then every spell by element, all of them, and the
@@ -31,7 +32,9 @@ public class SpellListMenu : MonoBehaviour
     Vector2 scroll;
     int tab;
     int openedFrame = -1;
+    bool openedInPlay;
     string said;
+    const int SectionOrder = 40; // the Game sub menu, before the Grimoire
 
     /// <summary>The tabs showing, for the probe.</summary>
     public static IReadOnlyList<SpellTab> Tabs => instance != null ? instance.tabs : new List<SpellTab>();
@@ -61,6 +64,7 @@ public class SpellListMenu : MonoBehaviour
         instance.caster = caster;
         instance.openedFrame = Time.frameCount;
         instance.said = null;
+        instance.openedInPlay = true;
         instance.Fill();
         bool hands = instance.HandsShown;
         instance.tab = hands ? 0 : SpellList.TabOf(instance.tabs, caster.SelectedId);
@@ -73,10 +77,27 @@ public class SpellListMenu : MonoBehaviour
     void OnEnable()
     {
         page ??= new PauseMenu.Page { Title = "Spells", Width = Width, Draw = DrawPage, Back = BackToPlay, ForKeys = true };
+        PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Game);
         PauseMenu.AddPage(PageId, page);
     }
 
-    void OnDisable() => PauseMenu.RemovePage(PageId);
+    void OnDisable()
+    {
+        PauseMenu.RemoveSection(DrawEntry);
+        PauseMenu.RemovePage(PageId);
+    }
+
+    // The Esc menu's way in, the pad's now the d-pad's down is the hands menu.
+    void DrawEntry()
+    {
+        if (EventLog.TrackedCaster == null || !PauseMenu.Button("Spells", PauseMenu.ButtonStyle)) return;
+        caster = EventLog.TrackedCaster;
+        openedInPlay = false;
+        said = null;
+        Fill();
+        tab = 0;
+        PauseMenu.Instance.ShowPage(PageId);
+    }
     void OnDestroy() { if (instance == this) instance = null; }
 
     // Up, down and Enter are the menu's own (MenuControls); the tabs turn here.
@@ -90,9 +111,10 @@ public class SpellListMenu : MonoBehaviour
         else if ((keys != null && (keys.rightArrowKey.wasPressedThisFrame || keys.dKey.wasPressedThisFrame)) || (pad != null && pad.dpad.right.wasPressedThisFrame)) Turn(1);
     }
 
-    // Back from the page goes to play: it was opened from there.
+    // Back from the page goes to play if it was opened from there; else to the menu it came from.
     bool BackToPlay()
     {
+        if (!openedInPlay) return false;
         PauseMenu.Instance.SetOpen(false);
         return true;
     }
@@ -180,11 +202,11 @@ public class SpellListMenu : MonoBehaviour
         var world = World;
         string player = caster.CastPlayer;
         var hands = world.HandsOf(player);
-        GUILayout.Label("<b>Attune your hands</b>   <color=#ffffff99>one element is on both hands until you attune a second</color>", head);
+        GUILayout.Label("<b>Your hands</b>", head);
         for (int hand = 0; hand < HandsDef.Count; hand++) HandRow(world, player, hands, hand);
         if (hands.AttuneLeft > 0) GUILayout.Label($"<color=#bfe3ff>Attuning your {(hands.AttuneHand == HandsDef.Left ? "left" : "right")} hand to {hands.AttuneTo ?? "nothing"}…</color>", cell);
         else if (said != null) GUILayout.Label($"<color=#ffb38a>{said}</color>", cell);
-        else if (world.HoldRunning && world.TowerOf(player) == null) GUILayout.Label("<color=#ffffff99>In a Hold run, attune at a tower: each gives its own element.</color>", cell);
+        else if (world.HoldRunning && world.TowerOf(player) == null) GUILayout.Label("<color=#ffffff99>Attune at a tower</color>", cell);
         GUILayout.Space(10);
         Table(world, player);
         GUILayout.Space(10);
@@ -200,7 +222,7 @@ public class SpellListMenu : MonoBehaviour
         if (!world.HandOpen(player, hand))
         {
             GUILayout.Label($"<b>{side}</b>", cell, GUILayout.Width(HandLabel), GUILayout.Height(40));
-            GUILayout.Label("<color=#ffffff88>locked: unlock it in the Hold</color>", cell, GUILayout.Height(40));
+            GUILayout.Label("<color=#ffffff88>locked</color>", cell, GUILayout.Height(40));
             GUILayout.EndHorizontal();
             return;
         }
@@ -228,7 +250,7 @@ public class SpellListMenu : MonoBehaviour
         var table = world.Rules.Sim.Hold.Hands;
         string left = world.HandHolds(player, HandsDef.Left), right = world.HandHolds(player, HandsDef.Right);
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
-        GUILayout.Label("<b>What they cast</b>   <color=#ffffff99>hold to charge, let go to fire; the same gesture on both hands merges</color>", head);
+        GUILayout.Label("<b>What they cast</b>", head);
         string[] keys = pad
             ? new[] { PadGlyphs.Text("{LT} / {RT}"), PadGlyphs.Text("{LB} / {RB}"), "trigger + bumper" }
             : new[] { "left / right click", "Q / E", "click + Q / E" };

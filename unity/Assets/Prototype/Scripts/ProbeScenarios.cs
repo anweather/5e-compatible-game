@@ -296,6 +296,8 @@ public static class ProbeScenarios
             "Films three different merges with the HUD on a virtual pad (D16, \"The merge\"): each pair's icons slam into its own glyph as both hands charge, then it goes off. Scalding Steam, Lightning, Wall of Stone; the attuning between is cut. Into --shots: frames, sound.wav and timeline.txt."),
         new Entry("pairglyphs", typeof(PairGlyphsProbe), 30f,
             "Every merged pair's icon (D16, \"The merge\") on one sheet, as the HUD draws it, with the spell's name: --shots for a before and after."),
+        new Entry("handsmenu", typeof(HandsMenuProbe), 150f,
+            "The pad's hands menu (pad-hands-menu) on a virtual pad: hold the d-pad's down, each stick points its hand at an element, letting go attunes both (the second after the first), B lets go without; the hands' icons show only while a hand is at work; in a Hold run nothing picks away from the towers and the tower's element does at one, then casts. With --shots, films the free-roam part."),
         new Entry("handsclip", typeof(HandsClipProbe), 90f,
             "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("progress", typeof(ProgressProbe), 600f,
