@@ -85,10 +85,9 @@ public class TriggerViewProbe : RoomProbe
         var bolt = RoomMcpProbe.Post(RoomMcpProbe.Tool("add_trigger", $"{{\"id\":\"bolt-steps\",\"who\":\"each\",\"every\":6,\"do\":\"{Bolts}\"}}"));
         yield return RoomMcpProbe.Until(bolt);
         string body = bolt.Result.body ?? "";
-        int at = body.IndexOf("Draft ", StringComparison.Ordinal);
-        Check("add_trigger_drafts", at >= 0, body);
-        if (at < 0) yield break;
-        string draft = body.Substring(at + 6).Split(':')[0];
+        string draft = RoomMcpProbe.DraftIn(body);
+        Check("add_trigger_drafts", draft != null, body);
+        if (draft == null) yield break;
         var meteor = RoomMcpProbe.Post(RoomMcpProbe.Tool("add_trigger", $"{{\"id\":\"meteor-steps\",\"who\":\"each\",\"every\":12,\"do\":\"{Meteors}\",\"draft\":\"{draft}\"}}"));
         yield return RoomMcpProbe.Until(meteor);
         Check("second_trigger_in_the_draft", (meteor.Result.body ?? "").Contains("meteor-steps fires"), meteor.Result.body);

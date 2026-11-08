@@ -791,6 +791,13 @@ public class RoomMcpProbe : ProbeScenario
     public static string Tool(string name, string arguments) =>
         $"{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{name}\",\"arguments\":{arguments}}}}}";
 
+    // The draft a reply names, or null: "Draft d1:" before a short draft, "Draft d1 holds ..." before a long one (#167).
+    public static string DraftIn(string body)
+    {
+        int at = body?.IndexOf("Draft ", StringComparison.Ordinal) ?? -1;
+        return at < 0 ? null : new string(body.Skip(at + 6).TakeWhile(char.IsLetterOrDigit).ToArray());
+    }
+
     protected override IEnumerator Run()
     {
         Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
@@ -819,7 +826,7 @@ public class RoomMcpProbe : ProbeScenario
         Check("fireball_bigger_in_the_game", World.Rules.Spell(SpellIds.Fireball).Radius > radius, $"radius {radius} to {World.Rules.Spell(SpellIds.Fireball).Radius}");
         var written = Post(Tool("set_spell", "{\"id\":\"fire-bolt\",\"field\":\"power\",\"value\":\"2\"}"));
         yield return Until(written);
-        string draft = written.Result.body.Substring(written.Result.body.IndexOf("Draft ", StringComparison.Ordinal) + 6).Split(':')[0];
+        string draft = DraftIn(written.Result.body);
         var titled = Post(Tool("apply", $"{{\"mod\":\"{draft}\",\"title\":\"Probe's bolt\"}}"));
         yield return Until(titled);
         yield return Wait(0.5f);
@@ -855,7 +862,7 @@ public class RoomMcpProbe : ProbeScenario
             yield return null;
             var draft = Post(Tool("tune", "{\"param\":\"fire.spreadChance\",\"value\":\"0.4\"}"));
             yield return Until(draft);
-            string id = draft.Result.body.Substring(draft.Result.body.IndexOf("Draft ", StringComparison.Ordinal) + 6).Split(':')[0];
+            string id = DraftIn(draft.Result.body);
             var saved = Post(Tool("save", $"{{\"draft\":\"{id}\",\"title\":\"Probe mod\",\"idea\":\"Fire spreads a little.\",\"name\":\"{name}\"}}"));
             yield return Until(saved);
             Check("a_save_lands_in_the_players_folder", File.Exists(file), saved.Result.body);
