@@ -678,8 +678,37 @@ namespace Chem
             string id = Slug(rows.VillageName);
             var mine = rows.Buildings.OfType<JObject>().Where(b => ((string)b["id"]).StartsWith(id + "#", StringComparison.Ordinal)).ToList();
             if (mine.Count == 0) return;
-            int x0 = mine.Min(b => (int)b["at"][0]), y0 = mine.Min(b => (int)b["at"][1]);
-            int x1 = mine.Max(b => (int)b["at"][0] + (int)b["joins"]["ne"][0] / 2), y1 = mine.Max(b => (int)b["at"][1] + (int)b["joins"]["se"][1] / 2);
+            // Its houses' own cells and a cell round each, row by row: a shore's arc has its lake inside its block.
+            var cells = new SortedDictionary<int, SortedSet<int>>();
+            foreach (var b in mine)
+            {
+                int ax = (int)b["at"][0], ay = (int)b["at"][1], w = (int)b["joins"]["ne"][0] / 2, h = (int)b["joins"]["se"][1] / 2;
+                foreach (var (x, y) in Cells(ax - 1, ay - 1, w + 2, h + 2))
+                {
+                    if (!cells.TryGetValue(y, out var xs)) cells[y] = xs = new SortedSet<int>();
+                    xs.Add(x);
+                }
+            }
+            var spans = new JArray();
+            foreach (var line in cells)
+            {
+                var span = new JArray(line.Key);
+                int start = line.Value.Min, last = start;
+                foreach (int x in line.Value.Skip(1))
+                {
+                    if (x == last + 1)
+                    {
+                        last = x;
+                        continue;
+                    }
+                    span.Add(start);
+                    span.Add(last);
+                    start = last = x;
+                }
+                span.Add(start);
+                span.Add(last);
+                spans.Add(span);
+            }
             rows.VillagePlace = new JObject
             {
                 ["id"] = id,
@@ -687,7 +716,7 @@ namespace Chem
                 ["kind"] = "village",
                 ["from"] = $"{LandmarkIntent.Folder}/{intent}.json",
                 ["note"] = string.Format(CultureInfo.InvariantCulture, "{0}'s houses, laid by {1} ({2})", rows.VillageName, intent, form),
-                ["area"] = new JArray(x0, y0, x1, y1),
+                ["rows"] = spans,
             };
         }
 
