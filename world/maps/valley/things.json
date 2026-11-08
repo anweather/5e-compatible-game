@@ -274,33 +274,16 @@
     },
     {
       "chunk": [
-        1,
-        1
-      ],
-      "things": [
-        {
-          "kind": "boulder",
-          "rot": 328,
-          "cell": [
-            33,
-            61
-          ],
-          "note": "by Mount Hearth"
-        }
-      ]
-    },
-    {
-      "chunk": [
         3,
         1
       ],
       "things": [
         {
           "kind": "boulder",
-          "rot": 283,
+          "rot": 106,
           "cell": [
-            23,
-            52
+            38,
+            51
           ],
           "note": "by Mount Hearth"
         }
@@ -314,19 +297,10 @@
       "things": [
         {
           "kind": "boulder",
-          "rot": 210,
+          "rot": 290,
           "cell": [
-            28,
-            3
-          ],
-          "note": "by Mount Hearth"
-        },
-        {
-          "kind": "boulder",
-          "rot": 2,
-          "cell": [
-            38,
-            15
+            49,
+            7
           ],
           "note": "by Mount Hearth"
         }
@@ -346,6 +320,33 @@
             27
           ],
           "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 248,
+          "cell": [
+            27,
+            42
+          ],
+          "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 258,
+          "cell": [
+            59,
+            38
+          ],
+          "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 82,
+          "cell": [
+            45,
+            43
+          ],
+          "note": "by Mount Hearth"
         }
       ]
     },
@@ -357,28 +358,28 @@
       "things": [
         {
           "kind": "boulder",
-          "rot": 354,
+          "rot": 115,
           "cell": [
-            37,
-            0
+            3,
+            25
           ],
           "note": "by Mount Hearth"
         },
         {
           "kind": "boulder",
-          "rot": 10,
+          "rot": 334,
           "cell": [
-            9,
-            20
+            31,
+            16
           ],
           "note": "by Mount Hearth"
         },
         {
           "kind": "boulder",
-          "rot": 248,
+          "rot": 172,
           "cell": [
-            13,
-            10
+            25,
+            3
           ],
           "note": "by Mount Hearth"
         }

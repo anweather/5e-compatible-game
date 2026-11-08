@@ -112,17 +112,17 @@ public sealed class LandmarkForestClipProbe : LandmarkClipProbe
 // Mount Hearth by Emberhold: out of the village on its shelf at the cone's foot and up the trail's switchbacks to the lookout.
 public sealed class LandmarkVolcanoClipProbe : LandmarkClipProbe
 {
-    protected override Vector2Int From => new(156, 187);
+    protected override Vector2Int From => new(156, 196);
     protected override Vector2Int To => new(143, 119);
     protected override Vector2Int Landmark => new(160, 106);
     protected override float LandmarkUp => 4f;
     protected override float EyeHeight => 6f;
-    protected override Vector3Int RiseFrom => new(185, 222, 55);
-    protected override Vector2Int RiseAt => new(152, 160);
+    protected override Vector3Int RiseFrom => new(190, 228, 55);
+    protected override Vector2Int RiseAt => new(150, 165);
     protected override Vector2Int[] Path => new Vector2Int[]
     {
-        new(156, 187), new(159, 170), new(138, 163), new(121, 150), new(111, 132), new(125, 145), new(142, 152), new(159, 153),
-        new(144, 146), new(133, 136), new(127, 124), new(137, 132), new(149, 135), new(160, 135), new(151, 130), new(145, 123), new(143, 119),
+        new(156, 196), new(159, 178), new(136, 170), new(117, 155), new(106, 135), new(122, 150), new(141, 157), new(159, 158),
+        new(143, 150), new(131, 139), new(125, 125), new(135, 134), new(148, 137), new(160, 137), new(151, 131), new(145, 124), new(143, 119),
     };
 }
 

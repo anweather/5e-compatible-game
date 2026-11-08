@@ -1652,12 +1652,12 @@
     {
       "id": "emberhold#1",
       "at": [
-        162,
-        191
+        157,
+        192
       ],
       "style": "village",
-      "seed": 27371,
-      "note": "Emberhold's house, by Mount Hearth",
+      "seed": 31308,
+      "note": "Emberhold's well house, by Mount Hearth",
       "wall": {
         "material": "stone"
       },
@@ -1667,16 +1667,16 @@
           0
         ],
         "ne": [
-          10,
+          6,
           0
         ],
         "se": [
-          10,
-          10
+          6,
+          6
         ],
         "sw": [
           0,
-          10
+          6
         ]
       },
       "walls": {
@@ -1685,8 +1685,8 @@
           "to": "ne",
           "openings": [
             {
-              "kind": "door",
-              "at": 4
+              "kind": "window",
+              "at": 2
             }
           ]
         },
@@ -1696,7 +1696,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 4
+              "at": 2
             }
           ]
         },
@@ -1705,8 +1705,8 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "window",
-              "at": 4
+              "kind": "door",
+              "at": 2
             }
           ]
         },
@@ -1716,7 +1716,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 4
+              "at": 2
             }
           ]
         }
@@ -1745,10 +1745,10 @@
         "more": [
           {
             "area": [
-              -38,
-              -42,
-              22,
-              18
+              -28,
+              -28,
+              32,
+              32
             ],
             "bank": 6,
             "clear": true
@@ -1759,15 +1759,12 @@
     {
       "id": "emberhold#2",
       "at": [
-        152,
-        193
+        160,
+        197
       ],
       "style": "village",
-      "seed": 91250,
+      "seed": 97671,
       "note": "Emberhold's house, by Mount Hearth",
-      "wall": {
-        "material": "stone"
-      },
       "joins": {
         "nw": [
           0,
@@ -1814,93 +1811,6 @@
             {
               "kind": "window",
               "at": 4
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "slate",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      }
-    },
-    {
-      "id": "emberhold#3",
-      "at": [
-        147,
-        183
-      ],
-      "style": "village",
-      "seed": 97190,
-      "note": "Emberhold's house, by Mount Hearth",
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          8,
-          0
-        ],
-        "se": [
-          8,
-          12
-        ],
-        "sw": [
-          0,
-          12
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 4
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
             }
           ]
         },
@@ -1934,13 +1844,13 @@
       }
     },
     {
-      "id": "emberhold#4",
+      "id": "emberhold#3",
       "at": [
-        150,
-        177
+        153,
+        200
       ],
       "style": "village",
-      "seed": 13548,
+      "seed": 87289,
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
@@ -1951,11 +1861,101 @@
           0
         ],
         "ne": [
-          12,
+          8,
           0
         ],
         "se": [
-          12,
+          8,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#4",
+      "at": [
+        147,
+        192
+      ],
+      "style": "village",
+      "seed": 99514,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
           10
         ],
         "sw": [
@@ -1979,7 +1979,7 @@
           "to": "se",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 4
             }
           ]
@@ -1989,7 +1989,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 4
             }
           ]
@@ -2026,11 +2026,11 @@
     {
       "id": "emberhold#5",
       "at": [
-        158,
-        176
+        149,
+        184
       ],
       "style": "village",
-      "seed": 16450,
+      "seed": 26515,
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
@@ -2041,11 +2041,11 @@
           0
         ],
         "ne": [
-          8,
+          12,
           0
         ],
         "se": [
-          8,
+          12,
           8
         ],
         "sw": [
@@ -2060,7 +2060,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 2
+              "at": 4
             }
           ]
         },
@@ -2080,7 +2080,7 @@
           "openings": [
             {
               "kind": "door",
-              "at": 2
+              "at": 4
             }
           ]
         },
@@ -2116,15 +2116,12 @@
     {
       "id": "emberhold#6",
       "at": [
-        163,
-        182
+        159,
+        181
       ],
       "style": "village",
-      "seed": 14542,
+      "seed": 80817,
       "note": "Emberhold's house, by Mount Hearth",
-      "wall": {
-        "material": "stone"
-      },
       "joins": {
         "nw": [
           0,
@@ -2169,7 +2166,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 2
             }
           ]
@@ -2179,8 +2176,98 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#7",
+      "at": [
+        164,
+        189
+      ],
+      "style": "village",
+      "seed": 7539,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          12
+        ],
+        "sw": [
+          0,
+          12
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
             }
           ]
         }
@@ -2204,13 +2291,13 @@
       }
     },
     {
-      "id": "emberhold#7",
+      "id": "emberhold#8",
       "at": [
         138,
         114
       ],
       "style": "village",
-      "seed": 96505,
+      "seed": 31076,
       "note": "Emberhold's lookout, by Mount Hearth",
       "wall": {
         "material": "stone"
@@ -2239,119 +2326,119 @@
         ],
         "way0": [
           43,
-          113
+          129
         ],
         "way1": [
-          21,
-          107
+          19,
+          123
         ],
         "way2": [
-          1,
-          99
+          -3,
+          113
         ],
         "way3": [
-          -17,
-          87
+          -23,
+          99
         ],
         "way4": [
-          -33,
-          73
+          -41,
+          83
         ],
         "way5": [
-          -43,
-          55
+          -53,
+          65
         ],
         "way6": [
-          -53,
-          37
+          -63,
+          43
         ],
         "way7": [
-          -39,
-          51
+          -47,
+          59
         ],
         "way8": [
-          -25,
-          63
+          -31,
+          73
         ],
         "way9": [
-          -7,
-          71
+          -13,
+          81
         ],
         "way10": [
-          9,
-          77
+          7,
+          87
         ],
         "way11": [
-          27,
-          79
+          25,
+          87
         ],
         "way12": [
           43,
-          79
+          89
         ],
         "way13": [
-          29,
-          73
+          27,
+          83
         ],
         "way14": [
-          13,
-          65
+          11,
+          73
         ],
         "way15": [
-          3,
-          55
+          -1,
+          63
         ],
         "way16": [
-          -9,
-          45
+          -13,
+          51
         ],
         "way17": [
-          -17,
-          33
-        ],
-        "way18": [
           -21,
-          21
-        ],
-        "way19": [
-          -11,
-          31
-        ],
-        "way20": [
-          -1,
           37
         ],
+        "way18": [
+          -25,
+          23
+        ],
+        "way19": [
+          -17,
+          35
+        ],
+        "way20": [
+          -5,
+          41
+        ],
         "way21": [
-          11,
-          43
+          9,
+          45
         ],
         "way22": [
-          23,
-          43
+          21,
+          47
         ],
         "way23": [
           33,
-          45
+          49
         ],
         "way24": [
           45,
-          43
+          47
         ],
         "way25": [
           35,
-          39
+          41
         ],
         "way26": [
           27,
-          33
+          35
         ],
         "way27": [
           19,
-          27
+          29
         ],
         "way28": [
           15,
-          19
+          21
         ],
         "way29": [
           11,
