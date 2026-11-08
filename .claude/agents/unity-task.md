@@ -31,6 +31,9 @@ message, so the work stays here and only the result goes back.
 
 ## Go fast: the PC is the bottleneck (2026-11-08)
 
+You are layer 2 of `docs/TESTING_LAYERS.md`: compile, the Unity-side tests and the probes your change reaches. The
+landing gates run the core suite and a daily sweep runs everything else, so don't repeat them.
+
 Tonight's PC jobs spent about half their time testing: full EditMode runs (~14 min each, longer than the CLI's
 600 s timeout) and long probe lists. So:
 
