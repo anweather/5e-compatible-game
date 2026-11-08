@@ -630,6 +630,13 @@ public partial class ValleyChemistry : MonoBehaviour
         return prefab != null || TreeModel(x, y, out prefab, out scale);
     }
 
+    /// <summary>The valley's tree kinds drawn in a cell's chunk: what a great tree is measured against.</summary>
+    public IEnumerable<GameObject> TreeKinds(int x, int y)
+    {
+        var at = layout.ChunkOfCell(x, y);
+        return ground.HasChunk(at) ? ground.Data(at).treePrototypes.Select(p => p.prefab).Where(p => p != null) : Enumerable.Empty<GameObject>();
+    }
+
     // Terrain edits are batched once per frame.
     readonly System.Diagnostics.Stopwatch timer = new();
 
