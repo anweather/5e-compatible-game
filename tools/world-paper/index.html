@@ -482,7 +482,7 @@ function buildCoasts(W){
 
 // latitude: each anchor biome likes a coldness (0 desert to 1 ice); strength 0 turns it off
 const LAT_PEAK = { 'salt-flat':0, 'grassland':0.3, 'ashlands':0.4, 'temperate':0.45, 'foggy-marsh':0.45, 'mountains':0.78, 'tundra':0.88 };
-function latFit(b,c,s){ const p=LAT_PEAK[b]; if(p===undefined||!s) return 1; const d=(c-p)/0.24; return 1-s+s*(0.05+Math.exp(-d*d)); }
+function latFit(b,c,s){ const p=LAT_PEAK[b]; if(p===undefined||!s) return 1; const d=(c-p)/0.3; return 1-s+s*(0.2+Math.exp(-d*d)); }
 
 // ---------- the solve, wave-function style ----------
 class Solver{
@@ -577,7 +577,7 @@ class Solver{
 }
 
 // ---------- the plan once solved: features to draw, landmarks, hash, checks ----------
-function finishPlan(W, sv){
+function finishPlan(W, sv, light){
   const n=W.n; W.opt=new Array(n); for(let i=0;i<n;i++) W.opt[i]=OPTS[sv.dom[i][0]];
   W.fillers=sv.fillers.slice();
   W.feats=new Array(n);
@@ -595,12 +595,12 @@ function finishPlan(W, sv){
     W.lake.push((ri>0&&ro===0) || (W.opt[i].filler && !W.opt[i].sea && ro>0 && ri===0)); }
   // landmarks
   W.landmarks=[];
-  // not every square has a village: a landmark square keeps one TOWN_ODDS of the time (at least one in the world)
+  // not every square has a village: a landmark square keeps one C.towns of the time (at least one in the world)
   const usedNames=new Set();
   const townRoll=i=>h01(W.seed^0x70a1,i,5); let firstTown=-1, fr0=2;
   for(let i=0;i<n;i++){ const lm=W.opt[i].tpl.lm; if((lm==='land'||lm==='water')&&townRoll(i)<fr0){ fr0=townRoll(i); firstTown=i; } }
   for(let i=0;i<n;i++){ const o=W.opt[i], t=o.tpl, x=i%W.w, y=(i/W.w)|0, r=rng(h3(W.seed,i,77));
-    if((t.lm==='land'||t.lm==='water') && townRoll(i)>=TOWN_ODDS && i!==firstTown) continue;
+    if((t.lm==='land'||t.lm==='water') && townRoll(i)>=W.C.towns && i!==firstTown) continue;
     const c=W.coast[i]; const coastal=c.open.some(Boolean);
     let site=[150+r()*276, 150+r()*276];
     if(t.lm==='castle'){ W.landmarks.push({ i, kind:'castle', icon:'castle', title:'the castle', place:'the Hold', form:'the valley (pinned)', seenFrom:CASTLE.seenFrom, site:[300,250] }); continue; }
@@ -616,13 +616,20 @@ function finishPlan(W, sv){
     W.landmarks.push({ i, kind:key, icon:form.icon, title:form.name, place:form.villageNames[vi]+' by '+form.landmarkNames[(r()*6)|0],
       form:key+(fallback?' (fallback "*")':'')+' from '+why, seenFrom:form.seenFrom, site });
   }
+  placePorts(W, usedNames);
   for(const L of W.landmarks){ const x=L.i%W.w, y=(L.i/W.w)|0; L.cx=x*K+Math.floor(L.site[0]/CH); L.cy=y*K+Math.floor(L.site[1]/CH); }
   W.riverBad=riverViolations(W);
   solveRoads(W);
-  placeOutcrops(W);
-  // plan hash over the plan in fixed order
+  if(!light) placeOutcrops(W); else W.outcrops=[];
+  // plan hash over the plan in fixed order: squares, then landmarks, then roads
   const parts=[]; for(let i=0;i<n;i++){ const o=W.opt[i]; parts.push(W.band[i], strHash(o.tpl.id), o.rot, strHash(W.feats[i].map(sigOf).join('/'))); }
+  for(const L of W.landmarks) parts.push(L.i, strHash(L.kind), L.port?1:0);
+  for(const R of W.roads) parts.push(strHash(R.kind), ...R.path);
   W.planHash=fnv(parts);
+  W.inlandBad=inlandViolations(W);
+  // the walls: no river or road ever enters one
+  W.wallBad=[]; for(let i=0;i<n;i++){ if(W.wall[i]) continue; for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j>=0&&W.wall[j]&&W.feats[i][s].length) W.wallBad.push([i,'a '+KIND[W.feats[i][s][0].k]+' runs into the wall']); } }
+  for(const R of W.roads) for(const p of R.path) if(W.wall[p]) W.wallBad.push([p,'a road on the wall']);
   // checks: every shared side and corner
   W.mismatch=[]; W.cornerBad=[];
   for(let i=0;i<n;i++) for(const s of [1,2]){ const j=W.nb[i][s]; if(j<0) continue; const os=(s+2)%4;
@@ -638,7 +645,65 @@ function finishPlan(W, sv){
     const v=[cornerSea(i,2), cornerSea(e,3), cornerSea(s,1), cornerSea(se,0)];
     if(!(v.every(Boolean)||v.every(x=>!x))) W.cornerBad.push(i); }
   W.solved=true;
-  buildChunkCaches(W);
+  if(!light) buildChunkCaches(W);
+}
+// ---------- scoring a solved plan against its constraints (numbers only; a judge picks from the top few) ----------
+function planShares(W){
+  let inner=0, sea=0, land=0, high=0; const bio={};
+  for(let i=0;i<W.n;i++){ if(W.wall[i]||W.forcedSea[i]) continue; inner++;
+    if(!W.band[i]){ if(!W.inland[i]) sea++; continue; }
+    land++; if(W.band[i]>=3) high++; const b=W.opt[i].tpl.biome; if(!W.opt[i].filler && b in W.C.biomes) bio[b]=(bio[b]||0)+1; }
+  return { sea:sea/Math.max(1,inner), mountains:high/Math.max(1,land), bio, land };
+}
+function scoreWorld(W){
+  const C=W.C, big=W.N>=12, P={}, met=[];
+  for(const id of C.must){ const m=MUSTS.find(x=>x.id===id); if(m && m.test(W)) met.push(id); }
+  P.must = C.must.length ? 30*met.length/C.must.length : 30;
+  const sh=planShares(W);
+  let tw=0; for(const b of CURATED) tw+=C.biomes[b]; let tb=0; for(const b in sh.bio) tb+=sh.bio[b];
+  let tv=0; if(tw>0&&tb>0) for(const b of CURATED) tv+=Math.abs((sh.bio[b]||0)/tb - C.biomes[b]/tw); tv/=2;
+  const regs=W.inlandRegions, wantIn=Math.max(C.inlandSeas,(C.must.includes('inland sea')||C.must.includes('port town'))?1:0);
+  const dIn = wantIn ? Math.abs(regs.length-wantIn)/wantIn*0.5 + (regs.length?Math.abs(regs.reduce((a,r)=>a+r.length,0)/regs.length-C.inlandSize)/C.inlandSize*0.5:0.5) : 0;
+  P.shares = 20*Math.max(0, 1-2*(Math.abs(sh.sea-C.sea)+Math.abs(sh.mountains-C.mountains)) - 0.5*tv - 0.5*Math.min(1,dIn));
+  P.fillers = 10*Math.max(0, 1-W.fillers.length/3);
+  const mains=W.roads.filter(R=>R.kind==='main road');
+  const avg=mains.length?mains.reduce((a,R)=>a+R.path.length,0)/mains.length:0;
+  P.roads = 10*Math.min(1, avg/(big?9:4))*Math.min(1, mains.length/Math.max(1,C.mainRoads));
+  const Ls=W.landmarks; let nn=0;
+  for(const A of Ls){ let m=1e9; for(const B of Ls) if(A!==B) m=Math.min(m,W.cdist(A.cx,A.cy,B.cx,B.cy)); nn+=m; }
+  P.spacing = Ls.length>1 ? 10*Math.min(1, nn/Ls.length/(big?12:7)) : 5;
+  const on=new Set(); for(const R of W.roads) for(const p of R.path) on.add(p);
+  const D=[...W.roadDest.keys()], reached=D.filter(d=>on.has(d)).length;
+  P.castle = on.has(W.valley) ? 10*reached/Math.max(1,D.length) : 0;
+  const tpl=new Set(); let landSq=0; for(let i=0;i<W.n;i++){ const t=W.opt[i].tpl; if(!W.band[i]||W.wall[i]||W.opt[i].filler) continue; landSq++; if(!t.exempt) tpl.add(t.id); }
+  P.variety = 10*Math.min(1, tpl.size/Math.max(1,Math.min(landSq,(W.libSmall?13:26)*0.7)));
+  let total=0; for(const k in P){ P[k]=Math.round(P[k]*10)/10; total+=P[k]; }
+  return { total:Math.round(total*10)/10, parts:P, met, shares:sh };
+}
+// the solved plan in compact form, per square: band, template, turn, the features on each side, the coast
+function compactPlan(W){
+  const sq=[]; for(let i=0;i<W.n;i++){ const o=W.opt[i], c=W.coast[i];
+    sq.push([W.band[i], o.tpl.id, o.rot, W.feats[i].map(sigOf).join('/'), c.open.map((x,s)=>x?c.depth[s]:0).concat(c.notch)]); }
+  return { w:W.w, h:W.h, wrap:W.wrap, squares:sq };
+}
+
+// ports: one town on each inland sea's shore, an existing town if one stands there, else a new one
+function placePorts(W, usedNames){
+  const n=W.n; W.seaNames=[];
+  W.inlandRegions.forEach((reg,k)=>{ const id=k+1, name=SEA_NAMES[h3(W.seed,k,0x5ea)%SEA_NAMES.length]; W.seaNames[k]=name;
+    const shore=[]; for(let i=0;i<n;i++){ if(!W.band[i]||W.band[i]>3||W.wall[i]||W.opt[i].sea) continue;
+      const s=W.nb[i].findIndex(j=>j>=0&&W.inland[j]===id); if(s>=0) shore.push([i,s]); }
+    if(!shore.length) return;
+    let L=W.landmarks.find(M=>M.kind!=='castle'&&M.kind!=='spire'&&!M.port&&shore.some(([i])=>i===M.i)), s;
+    if(L) s=shore.find(([i])=>i===L.i)[1];
+    else { const empty=shore.filter(([i])=>!W.landmarks.some(M=>M.i===i)); const pool=empty.filter(([i])=>!W.opt[i].filler); const from=pool.length?pool:empty;
+      if(!from.length) return;
+      const [i,s2]=from[h3(W.seed,k,0x9a7)%from.length]; s=s2; const form=INTENT.by['foggy-marsh'];
+      let vi=h3(W.seed,i,0x70)%8; for(let t=0;t<8&&usedNames.has(form.villageNames[vi]);t++) vi=(vi+1)%8; usedNames.add(form.villageNames[vi]);
+      L={ i, kind:'foggy-marsh', icon:'port', title:'', place:form.villageNames[vi]+' by '+name, form:'a port on an inland sea', seenFrom:form.seenFrom, site:[S/2,S/2] };
+      W.landmarks.push(L); }
+    L.port=true; L.icon='port'; L.title='a port on '+name; L.seaName=name;
+    const d=W.coast[L.i].depth[s]+60, m=S/2; L.site = s===0?[m,d]: s===1?[S-d,m]: s===2?[m,S-d]:[d,m]; });
 }
 
 function slotPoint(s,slot){ const p=(slot+0.5)*CH; return s===0?[p,0]: s===1?[S,p]: s===2?[p,S]:[0,p]; }
@@ -660,10 +725,11 @@ function settleFillerRivers(W){
 // or a lake, and ends at the sea or a lake
 function riverViolations(W){
   const bad=[];
-  for(let i=0;i<W.n;i++){ if(!W.band[i]||W.opt[i].sea) continue; const F=W.feats[i]; let ri=0,ro=0;
+  for(let i=0;i<W.n;i++){ if(!W.band[i]||W.opt[i].sea||W.wall[i]) continue; const F=W.feats[i]; let ri=0,ro=0;
     for(let s=0;s<4;s++) for(const f of F[s]){ if(f.k!=='r') continue; if(f.f==='i') ri++; else ro++;
       const j=W.nb[i][s];
       if(j<0){ bad.push([i,'runs off the map']); continue; }
+      if(W.wall[j]){ bad.push([i,'runs into the wall']); continue; }
       if(!W.band[j]||W.opt[j].sea){ if(f.f!=='o') bad.push([i,'comes out of the sea']); continue; }
       const m=W.feats[j][(s+2)%4].find(g=>g.k==='r'&&g.slot===f.slot);
       if(!m||m.f===f.f){ bad.push([i,'broken at '+SIDE[s]]); continue; }
@@ -679,7 +745,6 @@ function riverViolations(W){
 const ROAD = { step:10, band:30, high:30, river:4, range:20, offer:3, jitter:3, cross:6, beside:35, overlap:30, lesserBand:18, lesserHigh:12 };
 const SLOT_ORDER = [4,3,5,2,6,1,7,0,8];
 const CAVE_NAMES = ['the Black Mouth','Wyrm Hollow','the Echo Cave','Bat Deep','the Lantern Grotto','Old Delve','the Whispering Hole','Glimmer Cave','the Dripping Halls','Fox Earth'];
-const TOWN_ODDS = 0.35;                                    // a landmark square keeps its village this often
 const WAY = { 'inn':{icon:'inn',seenFrom:KNOW+1}, 'shop':{icon:'shop',seenFrom:KNOW+1} };
 const CROSS_SEEN = KNOW+1;
 function chunkOf(W,i,site){ return [ (i%W.w)*K+Math.floor(site[0]/CH), ((i/W.w)|0)*K+Math.floor(site[1]/CH) ]; }
@@ -688,7 +753,7 @@ function chunkOf(W,i,site){ return [ (i%W.w)*K+Math.floor(site[0]/CH), ((i/W.w)|
 function placeCaves(W, ok, bar){
   const n=W.n, band=W.band, lmSq=new Set(W.landmarks.map(L=>L.i));
   let land=0; const cand=[];
-  for(let i=0;i<n;i++){ if(!band[i]||W.opt[i].sea) continue; land++;
+  for(let i=0;i<n;i++){ if(!band[i]||W.opt[i].sea||W.wall[i]) continue; land++;
     if(!ok(i)||lmSq.has(i)||bar.r[i]||bar.c[i]) continue;
     cand.push({ i, key:h01(W.seed^0xca7e,i,3)*(band[i]>=2?1:3.5) }); }
   cand.sort((a,b)=>a.key-b.key||a.i-b.i);
@@ -723,9 +788,10 @@ function solveRoads(W){
   const D=[...dest.keys()].sort((a,b)=>a-b);
   // the crossings nature allows: one or two bridges a canyon, one to three fords or bridges a river; a range only at a pass
   const cross={ r:new Uint8Array(n), c:new Uint8Array(n) }; W.crossings=[];
+  let compId=0;
   for(const k of ['c','r']){ const seen=new Uint8Array(n);
     for(let i0=0;i0<n;i0++){ if(!bar[k][i0]||seen[i0]) continue;
-      const comp=[i0]; seen[i0]=1;
+      const comp=[i0]; seen[i0]=1; compId++;
       for(let q=0;q<comp.length;q++){ const i=comp[q];
         for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0||seen[j]||!bar[k][j]) continue; if(!W.feats[i][s].some(f=>f.k===k)) continue; seen[j]=1; comp.push(j); } }
       comp.sort((a,b)=>a-b);
@@ -742,7 +808,7 @@ function solveRoads(W){
         const kind = k==='c' || band[i]>1 || W.lake[i] ? 'bridge' : 'ford';
         const off = W.crossings.some(x=>x.i===i) ? 46 : 0;
         const site=[W.hub[i][0]+off, W.hub[i][1]-off*0.4];
-        const C={ i, kind, over:k==='c'?'canyon':'river', icon:kind, seenFrom:CROSS_SEEN, site, size:comp.length, used:false };
+        const C={ i, kind, over:k==='c'?'canyon':'river', icon:kind, seenFrom:CROSS_SEEN, site, size:comp.length, comp:compId, used:false };
         [C.cx,C.cy]=chunkOf(W,i,site); W.crossings.push(C); } } }
   const passable=i=> !(bar.r[i]&&!cross.r[i]) && !(bar.c[i]&&!cross.c[i]);
   W.passable=passable;
@@ -773,7 +839,7 @@ function solveRoads(W){
   W.roads=[];
   // 2. main roads: few and long, between the major places far apart, longest first; they keep apart
   const majors=D.filter(d=>{ const k=dest.get(d).kind; return k==='castle'||k==='village'; });
-  const big=W.N>=12, cap=mainRoadCap(W.N), minLen=big?5:3;
+  const big=W.N>=12, cap=W.C.mainRoads, minLen=big?5:3;
   const par=new Map(D.map(d=>[d,d])); const find=x=>{ while(par.get(x)!==x){ par.set(x,par.get(par.get(x))); x=par.get(x); } return x; };
   const deg=new Map();
   const mains=[];
@@ -784,7 +850,8 @@ function solveRoads(W){
     const pairs=[];
     for(let a=0;a<pool.length;a++) for(let b=a+1;b<pool.length;b++){ const A=pool[a], B=pool[b], d=W.dist(A,B); if(d<minFar) continue;
       const castle=dest.get(A).kind==='castle'||dest.get(B).kind==='castle';
-      pairs.push({a:A,b:B,v:d+(castle?1.5:0)+h01(W.seed^0x3a1,A,B)*0.5}); }
+      const port=W.landmarks.some(L=>L.port&&(L.i===A||L.i===B));
+      pairs.push({a:A,b:B,v:d+(castle?1.5:0)+(port?1:0)+h01(W.seed^0x3a1,A,B)*0.5}); }
     pairs.sort((x,y)=>y.v-x.v||x.a-y.a||x.b-y.b);
     for(const p of pairs){ if(mains.length>=cap) break;
       if(find(p.a)===find(p.b) || (deg.get(p.a)||0)>=3 || (deg.get(p.b)||0)>=3) continue;
@@ -903,8 +970,8 @@ function outcropAt(W,R,i,p,dir,r,marks){
 function edgeD(W,i,s,t){ const c=W.coast[i]; const d=c.depth[s]; return d + d*0.42*Math.sin(Math.PI*t/S)*Math.sin(2*Math.PI*t/S*1.5+c.phase[s]); }
 function seaAt(W,x,y){
   let sx=Math.floor(x/S), sy=Math.floor(y/S);
-  if(W.torus){ sx=mod(sx,W.w); sy=mod(sy,W.h); x=mod(x,W.w*S); y=mod(y,W.h*S); }
-  else if(sx<0||sy<0||sx>=W.w||sy>=W.h) return false;
+  if(W.wx){ sx=mod(sx,W.w); x=mod(x,W.w*S); } if(W.wy){ sy=mod(sy,W.h); y=mod(y,W.h*S); }
+  if(sx<0||sy<0||sx>=W.w||sy>=W.h) return false;
   const i=sy*W.w+sx; if(!W.band[i]) return true;
   const lx=x-sx*S, ly=y-sy*S, c=W.coast[i];
   if(c.open[0] && ly<edgeD(W,i,0,lx)) return true;
@@ -915,14 +982,14 @@ function seaAt(W,x,y){
   return false;
 }
 function squareAt(W,x,y){ let sx=Math.floor(x/S), sy=Math.floor(y/S);
-  if(W.torus){ sx=mod(sx,W.w); sy=mod(sy,W.h); } else { sx=Math.max(0,Math.min(W.w-1,sx)); sy=Math.max(0,Math.min(W.h-1,sy)); }
+  sx=W.wx?mod(sx,W.w):Math.max(0,Math.min(W.w-1,sx)); sy=W.wy?mod(sy,W.h):Math.max(0,Math.min(W.h-1,sy));
   return sy*W.w+sx; }
 // the climate draws the borders: a warped sample picks the square whose anchor biome wins
 function biomeAt(W,x,y){
   if(seaAt(W,x,y)) return 'ocean';
-  const P=W.torus?W.w*4:0, Q=W.torus?W.h*4:0;
+  const P=W.wx?W.w*4:0, Q=W.wy?W.h*4:0;
   const wx=x+(vnoise(W.seed^0xa1,x/144,y/144,P,Q)-0.5)*300, wy=y+(vnoise(W.seed^0xa2,x/144,y/144,P,Q)-0.5)*300;
-  let j=squareAt(W,wx,wy); if(!W.band[j]||W.opt[j].filler) j=squareAt(W,x,y);
+  const own=squareAt(W,x,y); let j=squareAt(W,wx,wy); if(!W.band[j]||W.opt[j].filler||W.wall[j]||W.wall[own]) j=own;
   return W.opt[j].tpl.biome==='ocean' ? W.opt[squareAt(W,x,y)].tpl.biome : W.opt[j].tpl.biome;
 }
 function heightAt(W,x,y){
@@ -930,7 +997,7 @@ function heightAt(W,x,y){
   const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=fx-ix, ty=fy-iy;
   const B=(a,b)=>{ const j=squareAt(W,(a+0.5)*S,(b+0.5)*S); return W.wall[j]===2?60:BAND_H[W.band[j]]; };
   const hb=B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty;
-  const bio=BIOMES[W.opt[squareAt(W,x,y)].tpl.biome]; const P=W.torus?W.w*3:0, Q=W.torus?W.h*3:0;
+  const bio=BIOMES[W.opt[squareAt(W,x,y)].tpl.biome]; const P=W.wx?W.w*3:0, Q=W.wy?W.h*3:0;
   return hb + bio.base + (vnoise(W.seed^0x7e1,x/192,y/192,P,Q)-0.5)*2*bio.relief;
 }
 function chunkGen(W,cx,cy){ // reads only W.seed, the plan and (cx,cy): never a neighbour's cells
@@ -950,13 +1017,16 @@ function buildChunkCaches(W){
     W.knowable[k]=near; }
 }
 function chunkIndexer(W){ const cw=W.w*K, chh=W.h*K;
-  W.cidx=(x,y)=>{ if(W.torus){x=mod(x,cw);y=mod(y,chh);} else if(x<0||y<0||x>=cw||y>=chh) return -1; return y*cw+x; };
-  W.cdist=(ax,ay,bx,by)=>{ let dx=Math.abs(ax-bx), dy=Math.abs(ay-by); if(W.torus){dx=Math.min(dx,cw-dx);dy=Math.min(dy,chh-dy);} return Math.max(dx,dy); }; }
+  W.cidx=(x,y)=>{ if(W.wx) x=mod(x,cw); if(W.wy) y=mod(y,chh); if(x<0||y<0||x>=cw||y>=chh) return -1; return y*cw+x; };
+  W.cdist=(ax,ay,bx,by)=>{ let dx=Math.abs(ax-bx), dy=Math.abs(ay-by); if(W.wx) dx=Math.min(dx,cw-dx); if(W.wy) dy=Math.min(dy,chh-dy); return Math.max(dx,dy); }; }
 
-function makeWorld(seedStr,N,torus,lib,budget){ const W=buildWorld(seedStr,N,torus,lib); chunkIndexer(W); const sv=new Solver(W,budget); return {W,sv}; }
+// makeWorld(seed, constraints) or the old makeWorld(seed, N, torus, lib)
+function makeWorld(seedStr,C,torus,lib,budget){
+  if(typeof C!=='object') C=defaultConstraints(C, torus?'torus':'none', lib);
+  const W=buildWorld(seedStr,C); chunkIndexer(W); const sv=new Solver(W,budget); return {W,sv}; }
 
 // exposed for a headless check
-const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, riverViolations };
+const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, riverViolations, defaultConstraints, cleanConstraints, scoreWorld, compactPlan, MUSTS, GEN_VERSION };
 if(typeof globalThis!=='undefined') globalThis.WorldPaper=API;
 if(typeof document==='undefined') return;
 

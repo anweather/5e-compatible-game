@@ -95,6 +95,9 @@ Each entry has:
   sides, nothing above about a third of the cone's height (landmark-look-pass).
   Then: "the hill is too steep to put houses on ... ground leveling before we put houses in ... part of the village
   stamp ... terraces on the steep mountain." The Mac grades each house's pad and the winding way into terraces.
+  Or, his alternative, taken: "like Kakariko Village in Ocarina of Time ... a village at the base of the mountain, and
+  the path out of the village is the road leading up the mountain." A levelled shelf at the foot with the houses on
+  it, one winding, graded trail out of the village up toward the crater, no houses on the steep cone.
 - **The big spells:** "way better now ... good enough for us to move ahead with" (wow-looks, 44a8103a).
 - **Revisited:** 0.
 
