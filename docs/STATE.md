@@ -113,6 +113,16 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   draft is complete; publishing is Andrew's. main is merged back into dev (f1f1a9d3).
 - Andrew's decision page: https://claude.ai/artifact/3gArUafzNLv9yAdMjJyZu3 (eight calls; picks land in its db
   `picks` collection: read with ArtifactData list).
+- **Andrew's picks** are J-078 (casting C built as A first, tiny tap cooldown, wow spells on the same-element throws,
+  ice = his Iceberg) and J-079 (anchors, curated 7, threading yes, generate-ahead-or-on-demand open; his aim:
+  curated and organic, with surprise that isn't stamped out).
+- Landed since: `biome-field` (4d5bd860, the Mac: integer BiomeField, anchors, 19 Punchy rows with 7 on, seed 1337;
+  one chunk 3.2 ms, so biomes and land can be made on demand, rivers still bake), `rebuild-threading` (ee56c7b2: Reset
+  3.1x faster, byte-identical under .NET and Mono), and u2 self-landed `ship-update-delta` (3e2dc715: the delta base is
+  the last published release; `--dry-run`; untested with a real vpk pack). Open: the 0.1.12 osx half has no delta
+  (Mac copies on 0.1.7 take the full package); a `--mac-only` rerun with the fix would add one.
+- In flight: u2 `wow-spells` (try 2, resuming its uncommitted rows), then `casting-taps`; the Mac
+  `ground-cell-mismatch` (cell 56,366 drawn 20 cm off its land since hold-east-path; hitch and online log it).
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
