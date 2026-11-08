@@ -29,3 +29,6 @@ folders on disk as a cache, `sight` 4 and `know` 7.
 Before landing: `dotnet build core -c Release -warnaserror`, `dotnet test core` twice in full in the foreground (the
 runner closes a session that only waits), `dotnet format`. Push the branch only, remove this claim on the branch in the
 last commit. The lead lands it.
+
+Held (2026-11-08): Andrew asked for a paper prototype of the world squares first. Queue this again after he has
+tried it, with what he changes.
