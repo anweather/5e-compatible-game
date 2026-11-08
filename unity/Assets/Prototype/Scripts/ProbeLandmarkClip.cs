@@ -6,7 +6,9 @@ using UnityEngine;
 // the valley for J-080 phase 1b, then a rise over it. Needs --shots <folder>: ClipFilm's frames, for ffmpeg.
 public abstract partial class LandmarkClipProbe : CastleCliffProbe
 {
-    const float WalkSeconds = 17f, RiseSeconds = 10f, EyeHeight = 1.8f;
+    const float WalkSeconds = 17f, RiseSeconds = 10f;
+    // How high the walk's eye is over the ground: a wizard's, or a little over the roofs for a village up a slope.
+    protected virtual float EyeHeight => 1.8f;
 
     protected abstract Vector2Int From { get; }
     protected abstract Vector2Int To { get; }
@@ -54,6 +56,16 @@ public abstract partial class LandmarkClipProbe : CastleCliffProbe
             yield return null;
         }
         yield return film.Stop();
+        var great = GameObject.Find("Great tree");
+        Metric("great_tree", great != null ? 1 : 0);
+        if (great != null)
+        {
+            var bounds = great.GetComponentsInChildren<Renderer>().Select(r => r.bounds).Aggregate((x, y) => { x.Encapsulate(y); return x; });
+            Metric("great_tree_height_m", bounds.size.y);
+            Metric("great_tree_width_m", bounds.size.x);
+            Metric("great_tree_x", great.transform.position.x);
+            Metric("great_tree_z", great.transform.position.z);
+        }
         Metric("frames", film.Frames);
         Metric("seconds", film.Seconds);
         Check("filmed", film.Saved >= film.Frames - 2 && film.Seconds >= WalkSeconds + RiseSeconds - 1f, $"{film.Saved}/{film.Frames} frames, {film.Seconds:0.0} s");
@@ -95,6 +107,7 @@ public sealed class LandmarkVolcanoClipProbe : LandmarkClipProbe
     protected override float LandmarkUp => 4f;
     protected override Vector3Int RiseFrom => new(60, 150, 70);
     protected override Vector2Int RiseAt => new(150, 110);
+    protected override float EyeHeight => 7f;
     protected override Vector2Int[] Path => new Vector2Int[] { new(166, 196), new(159, 183), new(146, 178), new(133, 171), new(125, 162), new(117, 152), new(111, 141), new(109, 130) };
 }
 
