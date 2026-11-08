@@ -6,7 +6,8 @@
   --btn:#ece6d9; --btn-on:#2c66d0; --btn-on-fg:#ffffff;
   --band-sea:#6c9fc6; --band-low:#9fc77c; --band-hills:#cbc27b; --band-high:#b9967a; --band-peaks:#ece8e2; --band-wall:#dfe9f0;
   --bio-temperate:#5e9b50; --bio-grassland:#acc95f; --bio-mountains:#8c857a; --bio-tundra:#c6d5d4; --bio-salt-flat:#e9e0cb;
-  --bio-foggy-marsh:#6e8f7b; --bio-ashlands:#6c5a54; --bio-ocean:#4f86b8; --bio-ice-wall:#eef4f8; --bio-dune-sea:#e2c27c;
+  --bio-foggy-marsh:#6e8f7b; --bio-ashlands:#6c5a54; --bio-ocean:#4f86b8; --bio-ice-wall:#eef4f8; --bio-dune-sea:#e2c27c; --bio-snowfield:#e1e9ea; --bio-dunes:#e9cf92;
+  --ice-cliff:#7d9fb8; --ice-floe:#f7fbfd; --storm:#b98d4a; --storm-haze:rgba(226,190,120,.32);
   --sea:#4f86b8; --sand:#e8d49a; --river:#1f74d1; --road:#b5824f; --main-road:#9a5f2c; --fence:#4a3524; --stone:#f4f1ea; --range:#6b6762; --ridge:#e9e6e1; --canyon:#3d2a20;
   --fog:rgba(30,34,42,.5); --haze:rgba(245,242,234,.45); --void:#c9c3b6;
   --ring-active:#ff7a00; --ring-gen:#159a5c; --ring-known:#6b5fd0; --bad:#e0302b; --char:#ffffff; --char-edge:#1f2328;
@@ -18,7 +19,8 @@
     --btn:#262b33; --btn-on:#6c9dff; --btn-on-fg:#0d1117;
     --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad; --band-wall:#9fb2c0;
     --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
-    --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83; --bio-ice-wall:#b9c9d4; --bio-dune-sea:#a8874a;
+    --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83; --bio-ice-wall:#b9c9d4; --bio-dune-sea:#a8874a; --bio-snowfield:#a9b9bd; --bio-dunes:#b8995a;
+    --ice-cliff:#d6e6f2; --ice-floe:#c9d8e2; --storm:#e8c78a; --storm-haze:rgba(168,135,74,.36);
     --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
     --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
     --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
@@ -31,7 +33,8 @@
   --btn:#262b33; --btn-on:#6c9dff; --btn-on-fg:#0d1117;
   --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad; --band-wall:#9fb2c0;
   --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
-  --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83; --bio-ice-wall:#b9c9d4; --bio-dune-sea:#a8874a;
+  --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83; --bio-ice-wall:#b9c9d4; --bio-dune-sea:#a8874a; --bio-snowfield:#a9b9bd; --bio-dunes:#b8995a;
+  --ice-cliff:#d6e6f2; --ice-floe:#c9d8e2; --storm:#e8c78a; --storm-haze:rgba(168,135,74,.36);
   --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
   --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
   --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
@@ -90,7 +93,7 @@ input[type=range]{width:100%;min-height:32px;accent-color:var(--accent)}
 
 <main class="wrap">
   <h1>World squares, on paper</h1>
-  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, ridges, canyons, coast), rivers only run downhill, and then roads are routed between the landmarks. Watch it solve, then walk: chunks near you go from fog to known to generated. East and west wrap; north and south end in walls. Describe a world, find the best seeds for it, and keep the ones you like.</p>
+  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, ridges, canyons, coast), rivers only run downhill, and then roads are routed between the landmarks. Watch it solve, then walk: chunks near you go from fog to known to generated. East and west wrap; north and south end in an ice wall and a sandstorm. Describe a world, find the best seeds for it, and keep the ones you like.</p>
 
   <div class="row">
     <label class="sm" for="seed">Seed</label>
@@ -246,7 +249,8 @@ const BIOMES = {
   'mountains':{name:'Mountains',base:45,relief:260}, 'tundra':{name:'Tundra',base:105,relief:14},
   'salt-flat':{name:'Salt Flat',base:6,relief:1.5}, 'foggy-marsh':{name:'Foggy Marsh',base:0.9,relief:3},
   'ashlands':{name:'Ashlands',base:12,relief:20}, 'ocean':{name:'Ocean',base:-38,relief:4},
-  'ice-wall':{name:'Ice Wall',base:200,relief:120}, 'dune-sea':{name:'Dune Sea',base:10,relief:30}
+  'ice-wall':{name:'Ice Wall',base:200,relief:120}, 'dune-sea':{name:'Dune Sea',base:10,relief:30},
+  'snowfield':{name:'Snowfield',base:120,relief:20}, 'dunes':{name:'Dunes',base:8,relief:18}   // the passable fringes of the edges
 };
 const BIOME_IDS = Object.keys(BIOMES);
 
@@ -1008,12 +1012,39 @@ function outcropAt(W,R,i,p,dir,r,marks){
 
 // ---------- chunks: a pure function of seed, plan and chunk coords ----------
 function edgeD(W,i,s,t){ const c=W.coast[i]; const d=c.depth[s]; return d + d*0.42*Math.sin(Math.PI*t/S)*Math.sin(2*Math.PI*t/S*1.5+c.phase[s]); }
+// the world's edges (wrap E-W): in each wall row a ragged line splits the impassable part (ice, or a sandstorm over the
+// dune sea) from a passable fringe on the land side. m is the fringe's depth in cells from the row's inner side: broad
+// bays, then a zigzag with notches for ice, a soft ripple for dunes. It stays inside the wall row, so the square-level
+// rule (no road or river enters a wall square) still keeps everything out of the impassable part.
+const EDGE_MIN = 24, EDGE_MAX = 330;
+function edgeM(W,top,x){
+  const kind=W.wall[top?0:(W.h-1)*W.w], sd=(W.seed^(top?0x1ce5:0x5a4d))>>>0;
+  let m=60+180*vnoise(sd,x/144,0.5,W.w*4,0);
+  if(kind===1){ const K=W.w*24, q=x/24, i0=Math.floor(q), f=q-i0;
+    const a=h01(sd^0x77,mod(i0,K),1), b=h01(sd^0x77,mod(i0+1,K),1); m+=(a+(b-a)*f-0.5)*80;
+    if(h01(sd^0x99,mod(i0,K),2)<0.14) m+=70*(1-Math.abs(2*f-1)); }
+  else m+=(vnoise(sd^0x77,x/48,0.5,W.w*12,0)-0.5)*40;
+  return Math.max(EDGE_MIN, Math.min(EDGE_MAX, m));
+}
+function beachW(W,x){ return 34+34*vnoise(W.seed^0xbea,x/96,0.5,W.w*6,0); }
+// 0, or the wall kind (1 ice, 2 dune sea) when (x,y) is in the impassable part
+function edgeAt(W,x,y){
+  if(W.wrap!=='ew') return 0;
+  if(y<S) return S-y>edgeM(W,true,x)?W.wall[0]:0;
+  const yb=(W.h-1)*S; if(y>=yb) return y-yb>edgeM(W,false,x)?W.wall[(W.h-1)*W.w]:0;
+  return 0; }
+// the walker can't step into a chunk whose centre is in the impassable part
+function walkBlocked(W,cx,cy){ return !!edgeAt(W,cx*CH+32,cy*CH+32); }
 function seaAt(W,x,y){
   let sx=Math.floor(x/S), sy=Math.floor(y/S);
   if(W.wx){ sx=mod(sx,W.w); x=mod(x,W.w*S); } if(W.wy){ sy=mod(sy,W.h); y=mod(y,W.h*S); }
   if(sx<0||sy<0||sx>=W.w||sy>=W.h) return false;
   const i=sy*W.w+sx; if(!W.band[i]) return true;
   const lx=x-sx*S, ly=y-sy*S, c=W.coast[i];
+  if(W.wall[i]){ // the fringe takes the coast of the row next to it; ice meets the sea in a cliff, dunes on a beach
+    const top=sy===0, d=top?S-ly:ly, m=edgeM(W,top,x); if(d>m) return false;
+    if(!seaAt(W,x,top?S+0.5:(W.h-1)*S-0.5)) return false;
+    return W.wall[i]!==2 || d<m-beachW(W,x); }
   if(c.open[0] && ly<edgeD(W,i,0,lx)) return true;
   if(c.open[1] && S-lx<edgeD(W,i,1,ly)) return true;
   if(c.open[2] && S-ly<edgeD(W,i,2,lx)) return true;
@@ -1025,11 +1056,18 @@ function squareAt(W,x,y){ let sx=Math.floor(x/S), sy=Math.floor(y/S);
   sx=W.wx?mod(sx,W.w):Math.max(0,Math.min(W.w-1,sx)); sy=W.wy?mod(sy,W.h):Math.max(0,Math.min(W.h-1,sy));
   return sy*W.w+sx; }
 // the climate draws the borders: a warped sample picks the square whose anchor biome wins
+// The world's edges blend the same way: a sample warped into a wall row takes the edge's fringe biome (snowfield or
+// dunes if it lands in the impassable part, tundra or salt flat if in the fringe), and a fringe point warped onto the
+// land takes that square's biome.
 function biomeAt(W,x,y){
   if(seaAt(W,x,y)) return 'ocean';
+  const ed=edgeAt(W,x,y); if(ed) return ed===1?'ice-wall':'dune-sea';
   const P=W.wx?W.w*4:0, Q=W.wy?W.h*4:0;
   const wx=x+(vnoise(W.seed^0xa1,x/144,y/144,P,Q)-0.5)*300, wy=y+(vnoise(W.seed^0xa2,x/144,y/144,P,Q)-0.5)*300;
-  const own=squareAt(W,x,y); let j=squareAt(W,wx,wy); if(!W.band[j]||W.opt[j].filler||W.wall[j]||W.wall[own]) j=own;
+  const own=squareAt(W,x,y); let j=squareAt(W,wx,wy);
+  if(W.wall[j]){ const k=W.wall[j], e=edgeAt(W,wx,wy); return k===1?(e?'snowfield':'tundra'):(e?'dunes':'salt-flat'); }
+  if(W.wall[own]){ if(!W.band[j]||W.opt[j].filler||W.opt[j].tpl.biome==='ocean') return W.wall[own]===1?'tundra':'dunes'; return W.opt[j].tpl.biome; }
+  if(!W.band[j]||W.opt[j].filler) j=own;
   return W.opt[j].tpl.biome==='ocean' ? W.opt[squareAt(W,x,y)].tpl.biome : W.opt[j].tpl.biome;
 }
 function heightAt(W,x,y){
@@ -1095,7 +1133,7 @@ function readReply(v){
 }
 
 // exposed for a headless check
-const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, riverViolations, defaultConstraints, cleanConstraints, scoreWorld, compactPlan, MUSTS, GEN_VERSION, readReply, describePrompt };
+const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, edgeAt, edgeM, walkBlocked, biomeAt, EDGE_MAX, riverViolations, defaultConstraints, cleanConstraints, scoreWorld, compactPlan, MUSTS, GEN_VERSION, readReply, describePrompt };
 if(typeof globalThis!=='undefined') globalThis.WorldPaper=API;
 if(typeof document==='undefined') return;
 
@@ -1110,7 +1148,7 @@ let walk=null; // { cx, cy, state:Uint8Array, order:[], hashes:Map }
 let COL={};
 
 function readColors(){ const cs=getComputedStyle(document.documentElement); const g=k=>cs.getPropertyValue(k).trim();
-  COL={}; for(const k of ['bg','fg','muted','sea','sand','river','road','main-road','fence','stone','range','ridge','canyon','fog','haze','void','ring-active','ring-gen','ring-known','bad','char','char-edge','undecided','ink','label-bg','flash','seam','accent','panel'])
+  COL={}; for(const k of ['bg','fg','muted','sea','sand','river','road','main-road','fence','stone','range','ridge','canyon','fog','haze','void','ring-active','ring-gen','ring-known','bad','char','char-edge','undecided','ink','label-bg','flash','seam','accent','panel','ice-cliff','ice-floe','storm','storm-haze'])
     COL[k]=g('--'+k);
   COL.band=BANDS.map(b=>g('--band-'+b)); COL.bio={}; for(const b of BIOME_IDS) COL.bio[b]=g('--bio-'+b); }
 
@@ -1154,7 +1192,7 @@ function moveBy(dx,dy){
   finishIfNeeded(); if(!walk) return;
   let nx=walk.cx+dx, ny=walk.cy+dy;
   nx=W.wx?mod(nx,W.cw):Math.max(0,Math.min(W.cw-1,nx)); ny=W.wy?mod(ny,W.chh):Math.max(0,Math.min(W.chh-1,ny));
-  if(W.wall[Math.floor(ny/K)*W.w+Math.floor(nx/K)]){ if(walk.path) walk.path=null; return; }   // the walls can't be walked
+  if(walkBlocked(W,nx,ny)){ if(walk.path) walk.path=null; return; }   // the ice and the sandstorm can't be walked
   walk.cx=nx; walk.cy=ny; updateRings(); draw(); updateHud();
 }
 function walkTo(tx,ty){
@@ -1201,7 +1239,8 @@ function draw(){
   if(W.solved && st.layers.biomes && !st.layers.bands){
     const cs=CH*sc; const cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH), n=Math.ceil(v.span/CH)+1;
     for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0||W.cSea[k]) continue;
-      ctx.fillStyle=COL.bio[BIOME_IDS[W.cBio[k]]]; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); }
+      const b=BIOME_IDS[W.cBio[k]];   // the impassable part is drawn exactly below; its chunks show the fringe under it
+      ctx.fillStyle=COL.bio[b==='ice-wall'?'snowfield':b==='dune-sea'?'dunes':b]; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); }
     // generated chunks show relief from their own heights
     if(walk && st.view==='close'){ ctx.save(); for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0||walk.state[k]<2) continue;
       const g=walk.hashes.get(k); if(!g) continue; const sub=cs/3;
@@ -1212,6 +1251,7 @@ function draw(){
   // 3. coasts: a sand stroke under every sea shape, then the sea on top, so shores run on across sides
   const seaPaths=[];
   for(const T of tiles){ const i=T.i; const c=W.coast[i];
+    if(W.wall[i]) continue;                            // the edges draw their own shore below
     if(!W.band[i]){ const p=new Path2D(); p.rect(X(T.x0),Y(T.y0),tpx+0.5,tpx+0.5); seaPaths.push(p); continue; }
     for(let s=0;s<4;s++) if(c.open[s]){ const p=new Path2D(); const N=24;
       for(let k=0;k<=N;k++){ const t=k/N*S, d=edgeD(W,i,s,t); let x,y;
@@ -1223,6 +1263,8 @@ function draw(){
   }
   ctx.strokeStyle=COL.sand; ctx.lineWidth=Math.max(2,22*sc); ctx.lineJoin='round'; for(const p of seaPaths) ctx.stroke(p);
   ctx.fillStyle=COL.sea; for(const p of seaPaths) ctx.fill(p);
+  // 3b. the world's edges: a jagged ice cliff or a beach where they meet the sea, the ice or the sandstorm beyond
+  drawWorldEdges(tiles,X,Y,sc);
   // 4. edge features
   if(st.layers.edges){ for(const T of tiles){ const i=T.i; let feats=null;
       if(W.solved) feats=W.feats[i]; else if(sv.col[i] && !OPTS[sv.dom[i][0]].filler) feats=OPTS[sv.dom[i][0]].feats;
@@ -1270,6 +1312,59 @@ function drawRoadPiece(f,lw,sc,a,q,e){
   path(); ctx.strokeStyle=COL.road; ctx.lineWidth=Math.max(1.5,7*sc);
   if(f.trail) ctx.setLineDash([Math.max(3,14*sc),Math.max(2.5,9*sc)]);
   ctx.stroke(); ctx.setLineDash([]);
+}
+// a wall row's ragged line, sampled every 6 cells (the ice zigzag's knots fall on samples); the fringe takes the next
+// row's coast, so a sea column gets sea right up to the line: a broken ice cliff with floes, or a beach before the storm
+function drawWorldEdges(tiles,X,Y,sc){
+  if(W.wrap!=='ew') return;
+  const STEP=6, NS=S/STEP;
+  for(const T of tiles){ const i=T.i; if(!W.wall[i]) continue;
+    const top=((i/W.w)|0)===0, ice=W.wall[i]===1, dir=top?-1:1, yIn=top?T.y0+S:T.y0, yOut=top?T.y0:T.y0+S;
+    const xs=[], ms=[], sea=[]; for(let k=0;k<=NS;k++){ const x=T.x0+k*STEP; xs.push(x); ms.push(edgeM(W,top,x)); sea.push(seaAt(W,x,top?S+0.5:(W.h-1)*S-0.5)); }
+    const P=(k,off)=>[X(xs[k]),Y(yIn+dir*(ms[k]+(off||0)))];
+    const band=(k0,k1,off0,off1)=>{ const p=new Path2D(); for(let k=k0;k<=k1;k++){ const [a,b]=P(k,off0); k===k0?p.moveTo(a,b):p.lineTo(a,b); }
+      for(let k=k1;k>=k0;k--){ const [a,b]=off1===null?[X(xs[k]),Y(yIn)]:P(k,off1); p.lineTo(a,b); } p.closePath(); return p; };
+    const spans=[]; for(let k=0;k<=NS;k++) if(sea[k]){ let e=k; while(e<NS&&sea[e+1]) e++; spans.push([k,e]); k=e; }
+    const beach=[]; if(!ice) for(let k=0;k<=NS;k++) beach.push(beachW(W,xs[k]));
+    ctx.save(); ctx.beginPath(); ctx.rect(X(T.x0),Y(T.y0),S*sc+0.5,S*sc+0.5); ctx.clip();
+    // the shore
+    for(const [k0,k1] of spans){
+      if(ice){ ctx.fillStyle=COL.sea; ctx.fill(band(k0,k1,0,null)); }
+      else { ctx.fillStyle=COL.sand; ctx.fill(band(k0,k1,0,null));
+        const p=new Path2D(); for(let k=k0;k<=k1;k++){ const [a,b]=P(k,-beach[k]); k===k0?p.moveTo(a,b):p.lineTo(a,b); }
+        p.lineTo(X(xs[k1]),Y(yIn)); p.lineTo(X(xs[k0]),Y(yIn)); p.closePath(); ctx.fillStyle=COL.sea; ctx.fill(p); } }
+    // the impassable part
+    const imp=new Path2D(); for(let k=0;k<=NS;k++){ const [a,b]=P(k,0); k?imp.lineTo(a,b):imp.moveTo(a,b); }
+    imp.lineTo(X(xs[NS]),Y(yOut)); imp.lineTo(X(xs[0]),Y(yOut)); imp.closePath();
+    ctx.fillStyle=COL.bio[ice?'ice-wall':'dune-sea']; ctx.fill(imp);
+    const r=rng(h3(W.seed,i,ice?0xf10e:0x57a));
+    if(ice){
+      const line=(k0,k1)=>{ ctx.beginPath(); for(let k=k0;k<=k1;k++){ const [a,b]=P(k,0); k===k0?ctx.moveTo(a,b):ctx.lineTo(a,b); } };
+      ctx.lineJoin='miter'; ctx.strokeStyle=COL['ice-cliff'];
+      ctx.lineWidth=Math.max(1,4*sc); line(0,NS); ctx.stroke();
+      ctx.lineWidth=Math.max(2,12*sc); for(const [k0,k1] of spans){ line(k0,k1); ctx.stroke(); }
+      // crevasses at the knots, deeper where the cliff meets the sea
+      ctx.lineWidth=Math.max(1,3*sc); ctx.beginPath();
+      for(let k=0;k<=NS;k+=4){ const L=(sea[k]?18:8)+h01(W.seed^0xc4e,i,k)*(sea[k]?42:20); const [a,b]=P(k,0), [c,d]=P(k,L); ctx.moveTo(a,b); ctx.lineTo(c+(h01(W.seed,i,k)-0.5)*8*sc,d); }
+      ctx.stroke();
+      // floes off the cliff (unclipped: they drift out over the next row's sea)
+      ctx.restore(); ctx.save(); ctx.strokeStyle=COL['ice-cliff'];
+      if(spans.length) for(let q=0;q<18;q++){ const k=(r()*NS)|0, dd=10+r()*170, rr=6+r()*16, a0=r()*6.283, nv=5+((r()*3)|0); if(!sea[k]) continue;
+        const fx=xs[k]+(r()-0.5)*STEP, fy=yIn+dir*(ms[k]-dd-rr); if(!seaAt(W,fx,fy)||!seaAt(W,fx,fy-dir*rr)||!seaAt(W,fx,fy+dir*rr)) continue;
+        ctx.beginPath(); for(let v=0;v<nv;v++){ const a=a0+v/nv*6.283, rv=Math.max(1.5,rr*sc)*(0.6+0.5*r()); const px=X(fx)+Math.cos(a)*rv, py=Y(fy)+Math.sin(a)*rv; v?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+        ctx.closePath(); ctx.fillStyle=COL['ice-floe']; ctx.fill(); ctx.lineWidth=1; ctx.stroke(); }
+    } else {
+      // the sandstorm: a hazy front over the beach, then wind streaks and swirls
+      ctx.fillStyle=COL['storm-haze']; for(const off of [-14,-30,-48]) ctx.fill(band(0,NS,off,EDGE_MAX+S));
+      ctx.strokeStyle=COL.storm; ctx.lineCap='round';
+      for(let q=0;q<150;q++){ const k=(r()*NS)|0, dd=-36+Math.pow(r(),0.8)*(S+36), len=10+r()*26, al=0.2+r()*0.55;
+        if(ms[k]+dd>S) continue; const x=xs[k]+r()*STEP, y=yIn+dir*(ms[k]+dd);
+        ctx.globalAlpha=al; ctx.lineWidth=Math.max(0.8,(2+r()*4)*sc); ctx.beginPath(); ctx.moveTo(X(x),Y(y)); ctx.lineTo(X(x+len),Y(y-len*0.32)); ctx.stroke(); }
+      ctx.lineWidth=Math.max(0.8,3*sc);
+      for(let q=0;q<5;q++){ const k=(r()*NS)|0, dd=20+r()*(S-ms[k]-40), rr=18+r()*40; if(dd<0) continue; const a0=r()*6.283;
+        ctx.globalAlpha=0.3+r()*0.25; ctx.beginPath(); ctx.arc(X(xs[k]),Y(yIn+dir*(ms[k]+dd)),Math.max(2,rr*sc),a0,a0+3.6); ctx.stroke(); }
+      ctx.globalAlpha=1; }
+    ctx.restore(); }
 }
 function fr(x0,y0,x1,y1){ const a=Math.round(x0), b=Math.round(y0); ctx.fillRect(a,b,Math.round(x1)-a,Math.round(y1)-b); }
 function drawFeatures(T,feats,i,X,Y,sc){
@@ -1402,7 +1497,9 @@ function updateHud(){
   let gx=walk.cx-W.vx*K, gy=walk.cy-W.vy*K; if(W.wx) gx=mod(gx+W.cw/2,W.cw)-W.cw/2; if(W.wy) gy=mod(gy+W.chh/2,W.chh)-W.chh/2;
   let side=''; for(let s=0;s<4;s++){ const cs=c.open[s]?' <span class="k">(coast '+c.depth[s]+')</span>':''; side+='<div><b>'+SIDE[s]+'</b> '+(o.sea?'sea':featText(W.feats[i][s]))+cs+'</div>'; }
   $('planNote').textContent=valleyNote();
-  if(W.wall[i]){ $('here').innerHTML='<div><b>'+BIOMES[o.tpl.biome].name+'</b> <span class="k">· the world’s '+(sy===0?'north':'south')+' edge: no road, river or walker goes in.</span></div>'; }
+  if(W.wall[i]){ const b=biomeAt(W,walk.cx*CH+32,walk.cy*CH+32), ice=W.wall[i]===1;
+    $('here').innerHTML='<div><b>'+BIOMES[b].name+'</b> <span class="k">· chunk ('+gx+', '+gy+') · the fringe of the world’s '+(sy===0?'north':'south')+' edge. Past the ragged line '
+      +(ice?'the ice wall (a broken ice cliff where it meets the sea)':'a sandstorm over the dune sea (a beach first where it meets the sea)')+': no road, river or walker goes in.</span></div>'; }
   else $('here').innerHTML='<div><b>'+o.tpl.id+'</b>'+(o.rot?' turned '+o.rot*90+'°':'')+' · '+BANDS[W.band[i]]+' · '+BIOMES[o.tpl.biome].name+(o.filler?' · <span class="badc">filler</span>':'')
     +' <span class="k">· chunk ('+gx+', '+gy+')</span></div>'
     +(lm.length?lm.map(L=>'<div>'+L.place+' <span class="k">— '+L.title+'; form '+L.form+'</span></div>').join(''):'<div class="k">No landmark here.</div>')
@@ -1427,13 +1524,13 @@ function buildLegend(){
   let h='';
   BANDS.forEach(b=>h+=sw('--band-'+b,'band: '+b+' ('+BAND_H[BANDS.indexOf(b)]+')'));
   BIOME_IDS.forEach(b=>h+=sw('--bio-'+b,BIOMES[b].name));
-  h+=ln('--river','river (arrow = flow, always downhill)')+ln('--main-road','main road (fenced, marker stones)')+ln('--road','lesser road (dashed: a trail)')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline');
+  h+=ln('--river','river (arrow = flow, always downhill)')+ln('--main-road','main road (fenced, marker stones)')+ln('--road','lesser road (dashed: a trail)')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline')+ln('--ice-cliff','ice edge (thick: an ice cliff over the sea)')+sw('--ice-floe','ice floe')+sw('--storm','sandstorm');
   h+=ln('--ring-active','active: reach 2')+ln('--ring-gen','generated: sight 4')+ln('--ring-known','known: know 7')+sw('--fog','unknown (plan only)');
   h+='<div>13 templates: each has a sibling in the 26 with the same edges, another name and biome. With the 3-square rule a 3 × 3 window of one band needs 9 different templates, so 13 runs short at 12 × 12.</div>';
   h+='<div>Roads have a reason. Points of interest come first: villages (about one square in three), the castle, caves (mostly in the hills), passes, a spire’s shore, and the crossings nature allows: one or two bridges a canyon, one to three fords or bridges a river, a range only at a pass. Then a few main roads (up to 6 on 12 × 12, 2 on 3 × 3) join far-apart towns and the castle, longest first, kept apart, with an inn or shop every 2–3 squares. Lesser roads and trails branch off to everything else. Roads go round peaks, climb the high band only at a cost, and pass a river or canyon only at a crossing.</div>';
   h+='<div>Small icons: waystations (inn, shop), bridges and fords, and outcrops along the roads (rock spire, crag, waterfall where a river drops a band, lone great tree, ruin, sea view).</div>';
   h+='<div>A river enters from an equal or higher band and leaves to an equal or lower one; it starts at a spring (hills and up) or a lake and ends at the sea or a lake. Red ring: a river violation.</div>';
-  h+='<div>Wrap E–W (the default): east and west join; the north edge is an ice wall, the south an ice wall (full latitude) or a dune sea (half). Nothing enters a wall. Rows run from cold to hot, and each anchor biome is weighted toward its latitude (tundra and mountains cold, temperate in between, salt flat hot). The valley is pinned on a temperate row.</div>';
+  h+='<div>Wrap E–W (the default): east and west join; the north edge is an ice wall, the south an ice wall (full latitude) or a dune sea under a sandstorm (half). Each edge row has a ragged line: beyond it nothing enters (no road, river or walker); before it a passable fringe where the land shades into snowfield and tundra, or dunes and salt flat, with the same warped borders as between any two biomes. Where the edge meets the sea, the ice breaks off in a jagged cliff with floes, and the desert runs down to a beach with the storm just beyond. Rows run from cold to hot, and each anchor biome is weighted toward its latitude (tundra and mountains cold, temperate in between, salt flat hot). The valley is pinned on a temperate row.</div>';
   h+='<div>Inland seas: sea squares with land on all eight sides, so never at an edge; each gets a port town on its shore. Shapes: an island, 2–4 continents, or an archipelago, with ocean between.</div>';
   h+='<div>red edge or dot: a mismatch</div><div>dashed red box: a filler</div><div>number: options left in the solve</div><div>dashed ring on a landmark: seen through the fog</div>';
   $('legend').innerHTML=h;
