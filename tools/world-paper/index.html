@@ -75,7 +75,7 @@ details summary{cursor:pointer;min-height:32px;line-height:32px;font-size:14px}
 
 <main class="wrap">
   <h1>World squares, on paper</h1>
-  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, roads, ridges, canyons, coast). Watch it solve, then walk: chunks near you go from fog to known to generated. Reroll for a new world, or turn on Torus and walk off an edge.</p>
+  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, ridges, canyons, coast), rivers only run downhill, and then roads are routed between the landmarks. Watch it solve, then walk: chunks near you go from fog to known to generated. Reroll for a new world, or turn on Torus and walk off an edge.</p>
 
   <div class="row">
     <label class="sm" for="seed">Seed</label>
@@ -174,6 +174,8 @@ const CASTLE = { name:'the castle', icon:'castle', seenFrom:6 };
 
 // ---------- square templates (invented from the plan; features as kind+slot+flow+must/may) ----------
 // edges: [n, e, s, w], canonical (N,S slots run west->east; E,W north->south), 9 slots a side.
+// Road tokens (d) are offers, not edges: roads are solved as routes after the templates, and an offer only
+// picks the slot when a route happens to cross that side. Offers no route uses are dropped.
 const TEMPLATES = [
   { id:'lakeland',        bands:[1], biome:'foggy-marsh', w:1, lm:'water', e:[['r4i?'],['d4!'],[],['r6i?']], coast:'nsw', ends:{river:'lake'} },
   { id:'meadow-cross',    bands:[1,2], biome:'grassland',   w:1, lm:'land',  e:[['d4!'],['r2o?'],['d4!'],['r2i?']], coast:'ew' },
@@ -185,7 +187,7 @@ const TEMPLATES = [
   { id:'ash-fields',      bands:[2,3], biome:'ashlands',    w:1, lm:'land',  e:[['c4?'],['d6?'],['c4?'],[]], ends:{canyon:'close'} },
   { id:'tundra-plateau',  bands:[3,2], biome:'tundra',      w:1, lm:'land',  e:[['g2?'],['r4o?'],['g2?'],['d4?']], ends:{range:'fade'} },
   { id:'crater-rim',      bands:[3,4], biome:'ashlands',    w:1, lm:'land',  e:[[],['c4?'],['r6o?'],['c4?']], ends:{canyon:'close'} },
-  { id:'high-pass',       bands:[3,4], biome:'mountains',   w:1, lm:'land',  e:[['g4?'],['d4!'],['g4?'],['d4!']], ends:{range:'fade'} },
+  { id:'high-pass',       bands:[3,4], biome:'mountains',   w:1, lm:'land',  e:[['g4?'],['d4!'],['g4?'],['d4!']], ends:{range:'fade'}, pass:true },
   { id:'summit',          bands:[4], biome:'mountains',   w:1, lm:null,    e:[['r2o?'],['g4?'],['r4o?'],['g4?']], ends:{range:'fade'} },
   { id:'ice-crown',       bands:[4,3], biome:'tundra',      w:1, lm:null,    e:[['g6?'],['r4o?'],['g6?'],[]], ends:{range:'fade'} },
   { id:'open-sea',        bands:[0], biome:'ocean',       w:0.7, lm:'spire', e:[[],[],[],[]], rotate:false },
@@ -236,10 +238,11 @@ function addOpt(o){ o.idx=OPTS.length; OPTS.push(o); return o.idx; }
 (function buildOptions(){
   const seen = new Set();
   for(const t of TEMPLATES){
-    const base=[]; t.e.forEach((L,side)=>L.forEach(tok=>base.push(Object.assign({side},parseTok(tok)))));
+    const base=[], roads=[]; t.e.forEach((L,side)=>L.forEach(tok=>{ const f=Object.assign({side},parseTok(tok)); (f.k==='d'?roads:base).push(f); }));
     const mays=base.filter(f=>!f.must).length;
     const rots = t.rotate===false ? [0] : [0,1,2,3];
     for(const band of t.bands) for(const r of rots){
+      const offer=[[],[],[],[]]; for(const f of roads){ const [s2,sl2]=rotFeat(f.side,f.slot,r); offer[s2].push(sl2); }
       for(let mask=0; mask<(1<<mays); mask++){
         const feats=[[],[],[],[]]; let mi=0, on=0;
         for(const f of base){
@@ -252,14 +255,14 @@ function addOpt(o){ o.idx=OPTS.length; OPTS.push(o); return o.idx; }
         const coast=[false,false,false,false]; for(const ch of (t.coast||'')){ coast[('nesw'.indexOf(ch)+r)%4]=true; }
         const key=t.id+'|'+band+'|'+sig.join('/')+'|'+coast.join('');
         if(seen.has(key)) continue; seen.add(key);
-        const id=addOpt({ tpl:t, band, rot:r, feats, sig, coast, w:t.w*(1+0.6*on), sea:band===0 });
+        const id=addOpt({ tpl:t, band, rot:r, feats, sig, coast, offer, w:t.w*(1+0.6*on), sea:band===0 });
         OPTS_BY_BAND[band].push(id); if(!t.lib2) OPTS_BY_BAND_SMALL[band].push(id);
       }
     }
   }
-  const vf=[[],[],[],[]]; VALLEY.e.forEach((L,s)=>L.forEach(tok=>{const f=parseTok(tok); vf[s].push({k:f.k,slot:f.slot,f:f.f});}));
-  VALLEY_OPT=addOpt({ tpl:VALLEY, rot:0, feats:vf, sig:vf.map(sigOf), coast:[true,true,true,true], w:1 });
-  FILLERS.forEach((t,b)=>{ FILLER_OPT[b]=addOpt({ tpl:t, rot:0, feats:[[],[],[],[]], sig:['*','*','*','*'], coast:[true,true,true,true], w:0, filler:true, sea:b===0 }); });
+  const vf=[[],[],[],[]], vo=[[],[],[],[]]; VALLEY.e.forEach((L,s)=>L.forEach(tok=>{const f=parseTok(tok); if(f.k==='d') vo[s].push(f.slot); else vf[s].push({k:f.k,slot:f.slot,f:f.f});}));
+  VALLEY_OPT=addOpt({ tpl:VALLEY, rot:0, feats:vf, sig:vf.map(sigOf), coast:[true,true,true,true], offer:vo, w:1 });
+  FILLERS.forEach((t,b)=>{ FILLER_OPT[b]=addOpt({ tpl:t, rot:0, feats:[[],[],[],[]], sig:['*','*','*','*'], coast:[true,true,true,true], offer:[[],[],[],[]], w:0, filler:true, sea:b===0 }); });
 })();
 
 // two sides meet: same slots and kinds; a river leaving one enters the other, and never uphill
@@ -428,16 +431,17 @@ function finishPlan(W, sv){
   W.fillers=sv.fillers.slice();
   W.feats=new Array(n);
   for(let i=0;i<n;i++){ const o=W.opt[i];
-    if(!o.filler){ W.feats[i]=o.feats; continue; }
+    if(!o.filler){ W.feats[i]=o.feats.map(L=>L.slice()); continue; }
     const f=[[],[],[],[]];
     if(!o.sea) for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0) continue; const oj=W.opt[j]; if(oj.filler||oj.sea) continue;
       for(const x of oj.feats[(s+2)%4]) f[s].push({k:x.k,slot:x.slot,f:x.f==='o'?'i':x.f==='i'?'o':''}); }
     W.feats[i]=f; }
-  // hubs and lakes
+  settleFillerRivers(W);
+  // hubs and lakes (a lake ends a river; a filler's lake can also start one)
   W.hub=[]; W.lake=[];
   for(let i=0;i<n;i++){ W.hub.push([S/2+(h01(W.seed,i,91)-0.5)*140, S/2+(h01(W.seed,i,92)-0.5)*140]);
     let ri=0,ro=0; for(const L of W.feats[i]) for(const f of L) if(f.k==='r'){ if(f.f==='i') ri++; else ro++; }
-    W.lake.push(ri>0&&ro===0); }
+    W.lake.push((ri>0&&ro===0) || (W.opt[i].filler && !W.opt[i].sea && ro>0 && ri===0)); }
   // landmarks
   W.landmarks=[];
   for(let i=0;i<n;i++){ const o=W.opt[i], t=o.tpl, x=i%W.w, y=(i/W.w)|0, r=rng(h3(W.seed,i,77));
@@ -456,6 +460,9 @@ function finishPlan(W, sv){
       form:key+(fallback?' (fallback "*")':'')+' from '+why, seenFrom:form.seenFrom, site });
   }
   for(const L of W.landmarks){ const x=L.i%W.w, y=(L.i/W.w)|0; L.cx=x*K+Math.floor(L.site[0]/CH); L.cy=y*K+Math.floor(L.site[1]/CH); }
+  W.riverBad=riverViolations(W);
+  solveRoads(W);
+  placeOutcrops(W);
   // plan hash over the plan in fixed order
   const parts=[]; for(let i=0;i<n;i++){ const o=W.opt[i]; parts.push(W.band[i], strHash(o.tpl.id), o.rot, strHash(W.feats[i].map(sigOf).join('/'))); }
   W.planHash=fnv(parts);
@@ -475,6 +482,129 @@ function finishPlan(W, sv){
     if(!(v.every(Boolean)||v.every(x=>!x))) W.cornerBad.push(i); }
   W.solved=true;
   buildChunkCaches(W);
+}
+
+function slotPoint(s,slot){ const p=(slot+0.5)*CH; return s===0?[p,0]: s===1?[S,p]: s===2?[p,S]:[0,p]; }
+function inward(s){ return s===0?[0,1]: s===1?[-1,0]: s===2?[0,-1]:[1,0]; }
+
+// ---------- rivers run downhill ----------
+// A filler copies its neighbours' sides, so a river can reach it from below. Where it would, the crossing is
+// dropped on both sides, as long as the neighbour's template stays whole without it.
+function settleFillerRivers(W){
+  for(const i of W.fillers){ if(!W.band[i]) continue;
+    for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0) continue; const oj=W.opt[j]; if(oj.filler||oj.sea) continue; const os=(s+2)%4;
+      for(const f of W.feats[i][s].slice()){ if(f.k!=='r') continue;
+        const uphill = f.f==='o' ? W.band[j]>W.band[i] : W.band[i]>W.band[j];
+        if(!uphill) continue;
+        const nf=W.feats[j].map((L,t)=>t===os?L.filter(g=>g.slot!==f.slot):L);
+        if(validInternal(oj.tpl,nf,W.band[j])){ W.feats[j]=nf; W.feats[i][s]=W.feats[i][s].filter(g=>g!==f); } } } }
+}
+// every river crossing leaves the higher (or equal) band for the lower; it starts at a spring (hills and up)
+// or a lake, and ends at the sea or a lake
+function riverViolations(W){
+  const bad=[];
+  for(let i=0;i<W.n;i++){ if(!W.band[i]||W.opt[i].sea) continue; const F=W.feats[i]; let ri=0,ro=0;
+    for(let s=0;s<4;s++) for(const f of F[s]){ if(f.k!=='r') continue; if(f.f==='i') ri++; else ro++;
+      const j=W.nb[i][s];
+      if(j<0){ bad.push([i,'runs off the map']); continue; }
+      if(!W.band[j]||W.opt[j].sea){ if(f.f!=='o') bad.push([i,'comes out of the sea']); continue; }
+      const m=W.feats[j][(s+2)%4].find(g=>g.k==='r'&&g.slot===f.slot);
+      if(!m||m.f===f.f){ bad.push([i,'broken at '+SIDE[s]]); continue; }
+      if(f.f==='o'&&W.band[j]>W.band[i]) bad.push([i,'flows uphill '+SIDE[s]]); }
+    const lakeOk=W.opt[i].filler||(W.opt[i].tpl.ends||{}).river==='lake';
+    if(ri>0&&ro===0&&!lakeOk) bad.push([i,'ends on dry land']);
+    if(ro>0&&ri===0&&W.band[i]<2&&!W.lake[i]) bad.push([i,'springs too low']); }
+  return bad;
+}
+
+// ---------- roads: routes between destinations, least cost over the squares ----------
+const ROAD = { step:10, band:30, river:4, range:20, offer:3, jitter:3, minSquares:3 };
+const SLOT_ORDER = [4,3,5,2,6,1,7,0,8];
+function solveRoads(W){
+  const n=W.n, band=W.band;
+  const ranges=new Uint8Array(n); for(let i=0;i<n;i++) for(const L of W.feats[i]) for(const f of L) if(f.k==='g') ranges[i]++;
+  // a range running through a square blocks it, unless the square is a pass; peaks and sea never take a road
+  const ok=i=> i>=0 && band[i]>=1 && band[i]<=3 && !W.opt[i].sea && (ranges[i]<2 || !!W.opt[i].tpl.pass);
+  W.roadOk=ok;
+  const dest=new Map();
+  const addDest=(i,name,site,kind)=>{ if(!ok(i)||dest.has(i)) return; dest.set(i,{i,name,site,kind}); };
+  for(const L of W.landmarks){
+    if(L.kind==='spire'){ let best=-1,bb=9; for(const j of W.nb[L.i].concat(W.diag[L.i])) if(ok(j)&&band[j]<bb){ bb=band[j]; best=j; }
+      if(best>=0) addDest(best, L.place+"'s shore", null, 'shore'); continue; }
+    addDest(L.i, L.kind==='castle'?'the Hold':L.place.split(' by ')[0], L.site, L.kind==='castle'?'castle':'village'); }
+  for(let i=0;i<n;i++) if(W.opt[i].tpl.pass) addDest(i,'the '+W.opt[i].tpl.id.replace('-',' '),null,'pass');
+  const D=[...dest.keys()].sort((a,b)=>a-b);
+  const edgeCost=(i,s)=>{ const j=W.nb[i][s]; if(!ok(j)) return -1; const db=Math.abs(band[i]-band[j]); if(db>1) return -1;
+    const os=(s+2)%4; let c=ROAD.step+ROAD.band*db; const F=W.feats[i][s];
+    if(F.some(f=>f.k==='r')) c+=ROAD.river; if(F.some(f=>f.k==='g')) c+=ROAD.range;
+    if(W.opt[i].offer[s].length||W.opt[j].offer[os].length) c-=ROAD.offer;
+    const a=(s===1||s===2)?i:j, b=(s===1||s===2)?s:os; return c+h3(W.seed^0x70ad,a,b)%ROAD.jitter; };
+  const cands=[];
+  for(let a=0;a<D.length;a++){
+    const src=D[a], dist=new Float64Array(n).fill(Infinity), prev=new Int32Array(n).fill(-1), done=new Uint8Array(n);
+    dist[src]=0;
+    for(;;){ let u=-1, bd=Infinity; for(let k=0;k<n;k++) if(!done[k]&&dist[k]<bd){ bd=dist[k]; u=k; } if(u<0) break; done[u]=1;
+      for(let s=0;s<4;s++){ const c=edgeCost(u,s); if(c<0) continue; const v=W.nb[u][s]; if(bd+c<dist[v]){ dist[v]=bd+c; prev[v]=u; } } }
+    for(let b=a+1;b<D.length;b++){ const t=D[b]; if(dist[t]===Infinity) continue;
+      const path=[t]; while(path[path.length-1]!==src) path.push(prev[path[path.length-1]]); path.reverse();
+      if(path.length>=ROAD.minSquares) cands.push({a:src,b:t,cost:dist[t],path}); } }
+  cands.sort((x,y)=>x.cost-y.cost||x.a-y.a||x.b-y.b);
+  // a spanning network: the cheapest route joining two unconnected destinations, until none is left
+  const par=new Map(D.map(d=>[d,d])); const find=x=>{ while(par.get(x)!==x){ par.set(x,par.get(par.get(x))); x=par.get(x); } return x; };
+  const join=(x,y)=>{ const rx=find(x), ry=find(y); if(rx!==ry) par.set(Math.max(rx,ry),Math.min(rx,ry)); };
+  W.roads=[];
+  for(const c of cands){ if(find(c.a)===find(c.b)) continue;
+    for(const p of c.path) if(dest.has(p)) join(c.a,p);
+    W.roads.push({ from:dest.get(c.a), to:dest.get(c.b), path:c.path, cost:c.cost }); }
+  // the edge slots a road uses come from its route
+  const slotOf=new Map();
+  for(const R of W.roads){ R.sides=[]; R.slots=[];
+    for(let k=0;k+1<R.path.length;k++){ const i=R.path[k], j=R.path[k+1]; const s=W.nb[i].indexOf(j), os=(s+2)%4;
+      const key=(s===1||s===2)?i*4+s:j*4+os; let slot=slotOf.get(key);
+      if(slot===undefined){ const taken=new Set(W.feats[i][s].map(f=>f.slot));
+        const pref=W.opt[i].offer[s].concat(W.opt[j].offer[os], SLOT_ORDER); slot=pref.find(q=>!taken.has(q));
+        slotOf.set(key,slot); W.feats[i][s].push({k:'d',slot,f:''}); W.feats[j][os].push({k:'d',slot,f:''}); }
+      R.sides.push(s); R.slots.push(slot); } }
+  W.roadEnd=new Array(n).fill(null);
+  for(const R of W.roads) for(const d of [R.from,R.to]) W.roadEnd[d.i]=d.site||W.hub[d.i];
+  W.roadDest=dest;
+}
+
+// ---------- outcrops: a small seeded sight every few chunks within view of a road ----------
+const OUTCROPS = { 'rock spire':{icon:'needle',seenFrom:KNOW+2}, 'crag':{icon:'crag',seenFrom:KNOW+1}, 'waterfall':{icon:'falls',seenFrom:KNOW+2},
+  'lone great tree':{icon:'lonetree',seenFrom:KNOW+1}, 'ruin':{icon:'ruin',seenFrom:KNOW+1}, 'sea view':{icon:'seaview',seenFrom:KNOW+1} };
+const OUT_EVERY = 6, OUT_SPACING = 3;
+function placeOutcrops(W){
+  W.outcrops=[]; const marks=W.landmarks.map(L=>[L.cx,L.cy]);
+  W.roads.forEach((R,ri)=>{ const r=rng(h3(W.seed^0x0c40,ri,R.path[0]));
+    const last=R.path.length-1; let acc=0, next=(2+r()*2)*CH;
+    for(let k=0;k<=last;k++){ const i=R.path[k];
+      const mid=W.roadEnd[i]&&(k===0||k===last||W.roadDest.has(i))?W.roadEnd[i]:W.hub[i];
+      const pts=[]; if(k>0){ const s=(R.sides[k-1]+2)%4; pts.push(slotPoint(s,R.slots[k-1])); } pts.push(mid); if(k<last) pts.push(slotPoint(R.sides[k],R.slots[k]));
+      for(let q=0;q+1<pts.length;q++){ const [x0,y0]=pts[q], [x1,y1]=pts[q+1]; const len=Math.hypot(x1-x0,y1-y0); if(!len) continue;
+        while(acc+len>=next){ const t=(next-acc)/len; outcropAt(W,R,i,[x0+(x1-x0)*t,y0+(y1-y0)*t],[(x1-x0)/len,(y1-y0)/len],r,marks); next+=OUT_EVERY*CH*(0.8+0.4*r()); }
+        acc+=len; } } });
+}
+function outcropAt(W,R,i,p,dir,r,marks){
+  const side=r()<0.5?-1:1, off=70+r()*70, cl=v=>Math.max(28,Math.min(S-28,v));
+  let site=[cl(p[0]-dir[1]*off*side), cl(p[1]+dir[0]*off*side)];
+  const near=q=>Math.hypot(q[0]-p[0],q[1]-p[1])<=SIGHT*CH;
+  const falls=[], views=[];
+  for(let s=0;s<4;s++){ const j=W.nb[i][s], [ix,iy]=inward(s);
+    for(const f of W.feats[i][s]) if(f.k==='r'&&j>=0&&W.band[j]&&W.band[j]!==W.band[i]){ const q=slotPoint(s,f.slot); const pt=[q[0]+ix*30,q[1]+iy*30]; if(near(pt)) falls.push(pt); }
+    if(W.coast[i].open[s]){ const d=W.coast[i].depth[s]*1.45+24; const pt=s===0?[cl(p[0]),d]: s===1?[S-d,cl(p[1])]: s===2?[cl(p[0]),S-d]:[d,cl(p[1])]; if(near(pt)) views.push(pt); } }
+  const biome=W.opt[i].tpl.biome; let kind;
+  if(falls.length&&r()<0.75){ kind='waterfall'; site=falls[(r()*falls.length)|0]; }
+  else if(views.length&&r()<0.6){ kind='sea view'; site=views[(r()*views.length)|0]; }
+  else { const pool=['ruin']; if(W.band[i]>=2) pool.push('rock spire','crag'); if((biome==='temperate'||biome==='grassland')&&W.band[i]<=2) pool.push('lone great tree');
+    kind=pool[(r()*pool.length)|0]; }
+  const sx=i%W.w, sy=(i/W.w)|0;
+  if(seaAt(W,sx*S+site[0],sy*S+site[1])) return;
+  const cx=sx*K+Math.floor(site[0]/CH), cy=sy*K+Math.floor(site[1]/CH);
+  for(const [mx,my] of marks) if(W.cdist(cx,cy,mx,my)<OUT_SPACING) return;
+  marks.push([cx,cy]);
+  const O=OUTCROPS[kind];
+  W.outcrops.push({ i, kind, icon:O.icon, seenFrom:O.seenFrom, site, cx, cy, road:R.from.name+' to '+R.to.name });
 }
 
 // ---------- chunks: a pure function of seed, plan and chunk coords ----------
@@ -534,7 +664,7 @@ function chunkIndexer(W){ const cw=W.w*K, chh=W.h*K;
 function makeWorld(seedStr,N,torus,lib,budget){ const W=buildWorld(seedStr,N,torus,lib); chunkIndexer(W); const sv=new Solver(W,budget); return {W,sv}; }
 
 // exposed for a headless check
-const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt };
+const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, riverViolations };
 if(typeof globalThis!=='undefined') globalThis.WorldPaper=API;
 if(typeof document==='undefined') return;
 
@@ -674,7 +804,8 @@ function draw(){
     for(let k=Math.floor(v.oy/ws);k<=Math.ceil((v.oy+v.span)/ws);k++){ ctx.beginPath(); ctx.moveTo(0,Y(k*ws)); ctx.lineTo(cssW,Y(k*ws)); ctx.stroke(); }
     ctx.restore(); }
   if(W.solved){ ctx.strokeStyle=COL.bad; ctx.lineWidth=4; for(const [i,s] of W.mismatch){ for(const T of tiles) if(T.i===i){ const a=s===1?[S,0,S,S]:[0,S,S,S]; ctx.beginPath(); ctx.moveTo(X(T.x0+a[0]),Y(T.y0+a[1])); ctx.lineTo(X(T.x0+a[2]),Y(T.y0+a[3])); ctx.stroke(); } }
-    ctx.fillStyle=COL.bad; for(const i of W.cornerBad) for(const T of tiles) if(T.i===i){ ctx.beginPath(); ctx.arc(X(T.x0+S),Y(T.y0+S),6,0,7); ctx.fill(); } }
+    ctx.fillStyle=COL.bad; for(const i of W.cornerBad) for(const T of tiles) if(T.i===i){ ctx.beginPath(); ctx.arc(X(T.x0+S),Y(T.y0+S),6,0,7); ctx.fill(); }
+    ctx.strokeStyle=COL.bad; ctx.lineWidth=3; for(const [i] of W.riverBad) for(const T of tiles) if(T.i===i){ ctx.beginPath(); ctx.arc(X(T.x0+W.hub[i][0]),Y(T.y0+W.hub[i][1]),Math.max(8,90*sc),0,7); ctx.stroke(); } }
   // 6. the solve in progress
   if(!W.solved){ ctx.font='600 '+Math.max(10,Math.min(18,tpx/5))+'px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
     for(const T of tiles){ const i=T.i; if(!sv.col[i] && tpx>=18){ ctx.fillStyle=COL.ink; ctx.fillText(String(sv.dom[i].length),X(T.x0+S/2),Y(T.y0+S/2)); } }
@@ -693,8 +824,6 @@ function draw(){
       ctx.beginPath(); ctx.arc(x,y,r*0.35,0,7); ctx.fillStyle=COL['ring-active']; ctx.fill(); } }
 }
 function fr(x0,y0,x1,y1){ const a=Math.round(x0), b=Math.round(y0); ctx.fillRect(a,b,Math.round(x1)-a,Math.round(y1)-b); }
-function slotPoint(s,slot){ const p=(slot+0.5)*CH; return s===0?[p,0]: s===1?[S,p]: s===2?[p,S]:[0,p]; }
-function inward(s){ return s===0?[0,1]: s===1?[-1,0]: s===2?[0,-1]:[1,0]; }
 function drawFeatures(T,feats,i,X,Y,sc){
   const hub=W.solved?W.hub[i]:[S/2,S/2]; const kinds=['c','g','d','r'];
   const style={ r:{c:COL.river,w:14}, d:{c:COL.road,w:9}, g:{c:COL.range,w:26}, c:{c:COL.canyon,w:16} };
@@ -704,12 +833,13 @@ function drawFeatures(T,feats,i,X,Y,sc){
     const fade = list.length===1 && (k==='g'||k==='c');
     for(const {s,f} of list){ const [px,py]=slotPoint(s,f.slot), [ix,iy]=inward(s);
       const qx=px+ix*110, qy=py+iy*110; let ex=hub[0], ey=hub[1];
+      if(k==='d' && W.solved && W.roadEnd[i]){ ex=W.roadEnd[i][0]; ey=W.roadEnd[i][1]; }
       if(fade){ ex=px+(hub[0]-px)*0.62; ey=py+(hub[1]-py)*0.62; }
       ctx.beginPath(); ctx.moveTo(X(T.x0+px),Y(T.y0+py)); ctx.quadraticCurveTo(X(T.x0+qx),Y(T.y0+qy),X(T.x0+ex),Y(T.y0+ey));
       ctx.strokeStyle=st2.c; ctx.lineCap='round'; ctx.lineWidth=lw; ctx.setLineDash([]); ctx.stroke();
       if(k==='g'){ ctx.strokeStyle=COL.ridge; ctx.lineWidth=Math.max(1,lw*0.25); ctx.setLineDash([Math.max(2,lw*0.5),Math.max(2,lw*0.5)]); ctx.stroke(); ctx.setLineDash([]); }
       if(k==='c'){ ctx.strokeStyle=COL.fg; ctx.globalAlpha=0.35; ctx.lineWidth=Math.max(1,lw*0.25); ctx.stroke(); ctx.globalAlpha=1; }
-      if(k==='r' && S*sc>60){ // flow arrow at the crossing
+      if(k==='r' && S*sc>36){ // flow arrow at the crossing: always downhill, since flow only goes to an equal or lower band
         const dir=f.f==='o'?-1:1; const ax=X(T.x0+px+ix*40), ay=Y(T.y0+py+iy*40); const ux=ix*dir, uy=iy*dir; const a=Math.max(4,lw*0.9);
         ctx.beginPath(); ctx.moveTo(ax+ux*a,ay+uy*a); ctx.lineTo(ax-ux*a*0.6-uy*a*0.8,ay-uy*a*0.6+ux*a*0.8); ctx.lineTo(ax-ux*a*0.6+uy*a*0.8,ay-uy*a*0.6-ux*a*0.8); ctx.closePath(); ctx.fillStyle=COL.ridge; ctx.fill(); }
     }
@@ -732,6 +862,17 @@ function drawIcon(icon,x,y,s){
   else if(icon==='spire'){ ctx.beginPath(); ctx.moveTo(x-s*0.3,y+s*0.5); ctx.lineTo(x-s*0.05,y-s*0.8); ctx.lineTo(x+s*0.08,y-s*0.65); ctx.lineTo(x+s*0.3,y+s*0.5); ctx.closePath(); ctx.fillStyle='#8d8a86'; ctx.fill(); ctx.stroke(); }
   else if(icon==='castle'){ ctx.fillStyle='#bdb6aa'; ctx.beginPath(); const L=x-s*0.5,R=x+s*0.5,T=y-s*0.35,B=y+s*0.45,m=s*0.2;
     ctx.moveTo(L,B); ctx.lineTo(L,T-m); ctx.lineTo(L+m,T-m); ctx.lineTo(L+m,T); ctx.lineTo(x-m/2,T); ctx.lineTo(x-m/2,T-m); ctx.lineTo(x+m/2,T-m); ctx.lineTo(x+m/2,T); ctx.lineTo(R-m,T); ctx.lineTo(R-m,T-m); ctx.lineTo(R,T-m); ctx.lineTo(R,B); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  // outcrops
+  else if(icon==='needle'){ ctx.beginPath(); ctx.moveTo(x-s*0.22,y+s*0.5); ctx.lineTo(x-s*0.04,y-s*0.7); ctx.lineTo(x+s*0.1,y-s*0.55); ctx.lineTo(x+s*0.22,y+s*0.5); ctx.closePath(); ctx.fillStyle='#a39d94'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='crag'){ ctx.beginPath(); ctx.moveTo(x-s*0.55,y+s*0.45); ctx.lineTo(x-s*0.35,y-s*0.1); ctx.lineTo(x-s*0.15,y+s*0.05); ctx.lineTo(x+s*0.05,y-s*0.5); ctx.lineTo(x+s*0.3,y-s*0.05); ctx.lineTo(x+s*0.55,y+s*0.45); ctx.closePath(); ctx.fillStyle='#6f675d'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='falls'){ ctx.fillStyle='#8a8278'; ctx.fillRect(x-s*0.5,y-s*0.5,s*0.25,s); ctx.fillRect(x+s*0.25,y-s*0.5,s*0.25,s); ctx.fillStyle='#4aa3ff'; ctx.fillRect(x-s*0.25,y-s*0.5,s*0.5,s); ctx.strokeRect(x-s*0.5,y-s*0.5,s,s);
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(1,s*0.07); ctx.beginPath(); for(const k of [-0.12,0.08]){ ctx.moveTo(x+k*s,y-s*0.4); ctx.lineTo(x+k*s,y+s*0.4); } ctx.stroke(); }
+  else if(icon==='lonetree'){ ctx.fillStyle='#6b4527'; ctx.fillRect(x-s*0.09,y-s*0.05,s*0.18,s*0.55); ctx.beginPath(); ctx.ellipse(x,y-s*0.25,s*0.5,s*0.32,0,0,7); ctx.fillStyle='#4f9a3a'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='ruin'){ ctx.fillStyle='#d8cfbf'; ctx.fillRect(x-s*0.5,y+s*0.3,s,s*0.18); ctx.strokeRect(x-s*0.5,y+s*0.3,s,s*0.18);
+    ctx.beginPath(); ctx.moveTo(x-s*0.38,y+s*0.3); ctx.lineTo(x-s*0.38,y-s*0.5); ctx.lineTo(x-s*0.14,y-s*0.35); ctx.lineTo(x-s*0.14,y+s*0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+s*0.14,y+s*0.3); ctx.lineTo(x+s*0.14,y-s*0.1); ctx.lineTo(x+s*0.38,y-s*0.2); ctx.lineTo(x+s*0.38,y+s*0.3); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(icon==='seaview'){ ctx.beginPath(); ctx.arc(x,y,s*0.48,0,7); ctx.fillStyle='#4f86b8'; ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.moveTo(x-s*0.32,y+s*0.08); ctx.quadraticCurveTo(x-s*0.16,y-s*0.1,x,y+s*0.08); ctx.quadraticCurveTo(x+s*0.16,y+s*0.26,x+s*0.32,y+s*0.08); ctx.stroke(); }
   ctx.restore();
 }
 function drawLandmarks(tiles,X,Y,sc,tpx){
@@ -743,7 +884,15 @@ function drawLandmarks(tiles,X,Y,sc,tpx){
     ctx.globalAlpha = vis===1?0.75:1; drawIcon(L.icon,x,y,size); ctx.globalAlpha=1;
     if(showNames && vis===2){ const txt = L.kind==='castle'?'the Hold':L.place.split(' by ')[0]; const sub=L.icon==='tree'?'great tree':L.icon==='volcano'?'volcano':L.icon==='boat'?'fishing village':L.icon==='spire'?'sea spire':'castle';
       const line=txt+' · '+sub; const tw=ctx.measureText(line).width+8; ctx.fillStyle=COL['label-bg']; ctx.fillRect(x-tw/2,y+size*0.6,tw,15); ctx.fillStyle=COL.ink; ctx.fillText(line,x,y+size*0.6+2); }
-  } }
+  }
+    // outcrops along the roads: smaller, and seen through the fog the same way
+    const os=Math.max(7,size*0.55);
+    for(const O of W.outcrops){ if(O.i!==T.i) continue; const vis=lmVisible(O); if(!vis) continue;
+      const x=X(T.x0+O.site[0]), y=Y(T.y0+O.site[1]);
+      if(vis===1){ ctx.beginPath(); ctx.arc(x,y,os*0.95,0,7); ctx.strokeStyle=COL['ring-known']; ctx.lineWidth=1.5; ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.globalAlpha = vis===1?0.75:1; drawIcon(O.icon,x,y,os); ctx.globalAlpha=1;
+      if(st.view==='close' && vis===2){ const tw=ctx.measureText(O.kind).width+8; ctx.fillStyle=COL['label-bg']; ctx.fillRect(x-tw/2,y+os*0.6,tw,15); ctx.fillStyle=COL.ink; ctx.fillText(O.kind,x,y+os*0.6+2); } }
+  }
 }
 function drawRings(v,X,Y,sc,cssW){
   const cs=CH*sc, cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH), n=Math.ceil(v.span/CH)+1;
@@ -768,7 +917,10 @@ function updateHud(){
   const fl=(W.solved?W.fillers:sv.fillers).length;
   const mm=W.solved?(W.mismatch.length+W.cornerBad.length):0;
   $('solveStats').innerHTML = (W.solved?'Solved':'Solving')+' · steps '+sv.steps+' · backtracks '+sv.backtracks+' · fillers <b class="'+(fl?'badc':'ok')+'">'+fl+'</b>'
-    +(W.solved?' · mismatches <b class="'+(mm?'badc':'ok')+'">'+mm+'</b> · plan '+hex(W.planHash):'')+' · full solve '+solveMs.toFixed(1)+' ms';
+    +(W.solved?' · mismatches <b class="'+(mm?'badc':'ok')+'">'+mm+'</b>':'')
+    +(W.solved?' · roads '+W.roads.length+', shortest '+(W.roads.length?Math.min(...W.roads.map(R=>R.path.length))+' squares':'—')
+      +', river violations <b class="'+(W.riverBad.length?'badc':'ok')+'">'+W.riverBad.length+'</b> · outcrops '+W.outcrops.length+' · plan '+hex(W.planHash):'')
+    +' · full solve '+solveMs.toFixed(1)+' ms';
   if(!W.solved||!walk){ $('here').innerHTML='<span class="k">Press Solve, or tap the map to finish and start walking.</span>'; $('cost').innerHTML=''; return; }
   const sx=Math.floor(walk.cx/K), sy=Math.floor(walk.cy/K), i=sy*W.w+sx, o=W.opt[i];
   const c=W.coast[i]; const lm=W.landmarks.filter(L=>L.i===i);
@@ -777,6 +929,9 @@ function updateHud(){
   $('here').innerHTML='<div><b>'+o.tpl.id+'</b>'+(o.rot?' turned '+o.rot*90+'°':'')+' · '+BANDS[W.band[i]]+' · '+BIOMES[o.tpl.biome].name+(o.filler?' · <span class="badc">filler</span>':'')
     +' <span class="k">· chunk ('+gx+', '+gy+')</span></div>'
     +(lm.length?lm.map(L=>'<div>'+L.place+' <span class="k">— '+L.title+'; form '+L.form+'</span></div>').join(''):'<div class="k">No landmark here.</div>')
+    +W.roads.filter(R=>R.path.includes(i)).map(R=>'<div><span class="k">Road</span> '+R.from.name+' to '+R.to.name+' <span class="k">· '+R.path.length+' squares, bands '+R.path.map(p=>W.band[p]).join('→')+'</span></div>').join('')
+    +W.outcrops.filter(O=>O.i===i).map(O=>'<div><span class="k">Outcrop</span> '+O.kind+' <span class="k">· on the road '+O.road+'</span></div>').join('')
+    +W.riverBad.filter(([b])=>b===i).map(([,why])=>'<div class="badc">River '+why+'</div>').join('')
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px">'+side+'</div>';
   let active=0; for(let dy=-REACH;dy<=REACH;dy++) for(let dx=-REACH;dx<=REACH;dx++) if(W.cidx(walk.cx+dx,walk.cy+dy)>=0) active++;
   const g=walk.gen, k=walk.known;
@@ -790,9 +945,11 @@ function buildLegend(){
   let h='';
   BANDS.forEach(b=>h+=sw('--band-'+b,'band: '+b+' ('+BAND_H[BANDS.indexOf(b)]+')'));
   BIOME_IDS.forEach(b=>h+=sw('--bio-'+b,BIOMES[b].name));
-  h+=ln('--river','river (arrow = flow)')+ln('--road','road')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline');
+  h+=ln('--river','river (arrow = flow, always downhill)')+ln('--road','road')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline');
   h+=ln('--ring-active','active: reach 2')+ln('--ring-gen','generated: sight 4')+ln('--ring-known','known: know 7')+sw('--fog','unknown (plan only)');
   h+='<div>13 templates: each has a sibling in the 26 with the same edges, another name and biome. With the 3-square rule a 3 × 3 window of one band needs 9 different templates, so 13 runs short at 12 × 12.</div>';
+  h+='<div>Roads are routes between destinations (villages, the castle, a spire’s shore, a pass), solved after the squares at least cost: 3 squares or more, one band step at a time, never into the peaks, through a range only at a pass. Small icons along them are outcrops (rock spire, crag, waterfall where a river drops a band, lone great tree, ruin, sea view).</div>';
+  h+='<div>A river enters from an equal or higher band and leaves to an equal or lower one; it starts at a spring (hills and up) or a lake and ends at the sea or a lake. Red ring: a river violation.</div>';
   h+='<div>red edge or dot: a mismatch</div><div>dashed red box: a filler</div><div>number: options left in the solve</div><div>dashed ring on a landmark: seen through the fog</div>';
   $('legend').innerHTML=h;
 }
