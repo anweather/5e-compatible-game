@@ -20,7 +20,8 @@ public class ChatProbe : ProbeScenario
 
     /// <summary>What claude 2.1.316 really says of a model it can't use: a line of no model's, then the result.</summary>
     const string Refusal = "There's an issue with the selected model (claude-haiku-5-5). It may not exist or you may not have access to it. Run --model to pick a different model.";
-    const string Rain = "make it rain", RunsFile = "runs.txt", OnlyBlock = "End of notes. The player's message:";
+    const string Rain = "make it rain", RunsFile = "runs.txt";
+    const string OnlyBlock = ClaudeRun.NotesClose;
 
     string folder, logged, otherRecords;
 
