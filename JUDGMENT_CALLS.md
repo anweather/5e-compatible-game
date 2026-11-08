@@ -41,6 +41,30 @@ Each entry has:
 
 ## Decided
 
+### J-080: The world squares (playtest 2026-11-08 follow-up, `docs/design/world-squares.md`)
+
+- **Asked:** 2026-11-08, by the lead; answered on https://claude.ai/artifact/SU4mkw9cWLdtgzjz5iDApQ (`picks`).
+- **Also comes up when:** the world generator, map folders, saves and thing ids, streaming, landmarks, the view's far
+  distance.
+- **Answer:** Andrew:
+  - **Nine folders, generated at load:** "Let's try at load first. If too slow, we'll look into other options.
+    Ideally it happens not all at once, but only when needed."
+  - **North of the valley takes negative chunk rows,** so the valley keeps its ids and saves.
+  - **One curated world now, a library next,** "but want to make dynamic later with a seed at the start to load".
+  - **Repeats allowed, weighted down,** "but make sure they are at least 3 squares away". No repeats in the 3 × 3.
+  - **A stand-in great tree** now; the face is art later.
+  - **The 3 × 3 is a proof of concept.** The goal is "this modular puzzle solve that's building and dynamic at the same
+    time": generate a new chunk on demand when someone comes within line of sight of an existing one.
+  - **See big landmarks far away** (Punchy does this well): pre-select about **five chunks out** from the active area
+    (not past a hard edge such as the ocean): which biome, its height and elevation profile, and its landmarks. Draw
+    that far ring at low detail behind a light fog, and solve each chunk fully as you get closer.
+  - **The ocean can hold landmarks:** an ocean biome might be nothing but a great rock spire you can travel to.
+  - **Stretch goal, keep in mind:** the world wraps around as a torus (a doughnut, so top and bottom wrap too), with a
+    configurable size, "for now let's say 12 of those wide" (12 valley-sized squares, by the lead's reading).
+- **Why:** his; the on-demand, far-ring and torus parts change the plan from baking to solving deterministically on
+  every peer as the world is explored.
+- **Revisited:** 0.
+
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)
 
 - **Asked:** 2026-11-08, by the lead, from `docs/design/casting-pace-options.md`; answered on the decision page
