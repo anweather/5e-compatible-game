@@ -188,6 +188,10 @@ public class ShapeshiftProbe : ProbeScenario
         bool wasOn = controls.enabled, casterWasOn = caster.enabled;
         controls.enabled = true;
         caster.enabled = true;
+        // Keys count with the Game view unfocused (a probe run from the CLI, the PC locked) and the Editor behind, as the hands probe's.
+        var editorKeys = InputSystem.settings.editorInputBehaviorInPlayMode;
+        InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+        InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
         var device = InputSystem.AddDevice<T>(name);
         yield return null;
         press(device);
@@ -197,6 +201,7 @@ public class ShapeshiftProbe : ProbeScenario
         yield return null;
         yield return null;
         InputSystem.RemoveDevice(device);
+        InputSystem.settings.editorInputBehaviorInPlayMode = editorKeys;
         controls.enabled = wasOn;
         caster.enabled = casterWasOn;
     }
