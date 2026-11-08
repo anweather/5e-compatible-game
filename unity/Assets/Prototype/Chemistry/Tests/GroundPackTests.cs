@@ -51,6 +51,8 @@ namespace Chem.Tests
                 Assert.That(GroundPack.In(dir), Is.False);
                 pack.Save(dir);
                 Assert.That(GroundPack.In(dir));
+                Assert.That(File.ReadAllText(Path.Combine(dir, GroundPack.FolderName, GroundPack.FileName)), Does.Not.Contain("\r"),
+                    "ground.json is LF on every machine, or a Windows peer's map hash differs from a Mac's");
 
                 var back = GroundPack.Load(dir);
                 Assert.That((back.Bottom, back.Top), Is.EqualTo((-22.5, 277.5)));

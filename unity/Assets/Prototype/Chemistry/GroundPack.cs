@@ -71,7 +71,8 @@ namespace Chem
                 ["chunks"] = new JArray(Chunks.Select(c => (object)new JArray(c.I, c.J, c.Resolution, c.Texels, c.DetailResolution, c.Trees.Length)).ToArray()),
                 ["channelCells"] = ChannelCells.Length,
             };
-            File.WriteAllText(Path.Combine(dir, FileName), head.ToString(Formatting.Indented) + "\n");
+            // LF on every machine: a map's hash is over its bytes, and peers on other systems must agree (MapIdentity).
+            File.WriteAllText(Path.Combine(dir, FileName), head.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
             Pack(dir, HeightsFile, w => Chunks.ForEach(c => WriteHeights(w, c)));
             Pack(dir, PaintFile, w => Chunks.ForEach(c => w.Write(c.Paint)));
             Pack(dir, DetailsFile, w => Chunks.ForEach(c => w.Write(c.Details)));
