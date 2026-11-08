@@ -46,11 +46,15 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   keep 240 (idle wizards lose in wave 6 at 4.7 min, fire+water wins in about 12 min); the keep is roofless and raiders
   strike a crystal at the heart that cracks in three stages; four corner towers attune fire, water, earth, air. Six
   HandsTests goldens moved on purpose. Not Andrew-judged; the clip is on the Mac (asked to send it to him).
-- **Waiting on Andrew's look:** `castle-cliff-canyon` (06ad830a, pushed, not landed). The cliff is just north of the
-  castle pad's bank (x170 y296-327, 37 m, boulders jut at the lip as the overhang), not in place of the bank, which the
-  brief said to leave. The canyon is dry, beside the valley's river (stamps can't cross water, J-073). It adds path
-  stamps and the map's own `stamps.json`, and raises the rock cap 700 -> 1400 (frame cost not measured). EditMode not
-  rerun after `ground/` was re-exported. Clip `castle-cliff-canyon.mp4`, sent to Andrew.
+- **`castle-cliff-canyon` landed** (65a80e90, the PC). Andrew: the canyon is great; the castle stays put (no wing), the
+  land level from its door to the cliff edge, a training place outside. `pad.more` in buildings.json, `World.LayCrag`
+  drops of 20-30 m east and north, `stable#1` with a paddock, a road option `flat` at the gate (moves the raiders'
+  route start; Hold probes pass). Core 1739/1739, EditMode 1660/1660, castlecliff 18/18 with a flat-walk check. 455
+  rocks, no measurable frame cost. Weak: the canyon-floor "looking up" shot, trees on the hill behind the cliff top.
+  Clip sent to Andrew; not judged. `LookScopeTests.AtAllocatesNothing` flaked once in a landing (in `spell-balance`).
+- **Assigned (Andrew: "give Mac and u2 more work"):** u2 `spell-balance` (fireball down, meteor kept big but costly,
+  Dust Storm and "flaw" worth casting, the LookScope flake). The Mac `hold-bodies` (three more raider kinds from the
+  animal bodies, villagers off the road during a Hold run).
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
