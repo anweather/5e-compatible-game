@@ -161,6 +161,8 @@ namespace Chem
                 if (s["delay"] != null && !(IsWholeNumber(s["delay"]) && (double)s["delay"] >= 1)) Errors.Add($"spell {Show(s["id"])}: delay must be a whole number from 1");
                 if (s["scatter"] != null && !IsScatter(s["scatter"])) Errors.Add($"spell {Show(s["id"])}: scatter needs a known cover and a whole count and reach from 1");
                 if (s["core"] != null && !IsElement(s["core"])) Errors.Add($"spell {Show(s["id"])}: unknown core {Show(s["core"])}");
+                if (s["then"] != null && !IsElement(s["then"])) Errors.Add($"spell {Show(s["id"])}: unknown then {Show(s["then"])}");
+                if (s["jagged"] != null && !(IsWholeNumber(s["jagged"]) && (double)s["jagged"] >= 1 && Text(s["shape"]) == "line")) Errors.Add($"spell {Show(s["id"])}: jagged must be a whole number from 1, on a line");
                 if (s["leaves"] != null && !IsElement(s["leaves"])) Errors.Add($"spell {Show(s["id"])}: unknown leaves {Show(s["leaves"])}");
                 if (s["trail"] != null && !IsIn(gases, s["trail"])) Errors.Add($"spell {Show(s["id"])}: trail {Show(s["trail"])} is not a gas");
                 foreach (var k in Keys(s["needs"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: needs has unknown condition \"{k}\"");

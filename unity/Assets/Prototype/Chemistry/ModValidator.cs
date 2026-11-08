@@ -353,7 +353,7 @@ namespace Chem
                 {
                     if (!composed["cellRules"].Any(r => Text(r["element"]) == e))
                         Add(ModCheck.Design, $"The new element {e} has no reactions, so it does nothing when it reaches a cell; add rules for it or use an existing element.");
-                    var users = composed["spells"].Where(s => Text(s["element"]) == e || Text(s["core"]) == e || Text(s["leaves"]) == e).Select(s => "spell " + Text(s["id"]))
+                    var users = composed["spells"].Where(s => Text(s["element"]) == e || Text(s["core"]) == e || Text(s["then"]) == e || Text(s["leaves"]) == e).Select(s => "spell " + Text(s["id"]))
                         .Concat(composed["critters"].Where(c => Text(c["element"]) == e).Select(c => "critter " + Text(c["id"]))).ToList();
                     if (users.Count < 2)
                         Add(ModCheck.Design, $"The new element {e} is made for {(users.Count == 0 ? "nothing" : users[0])}; an element must serve more than one spell or critter, so use an existing element instead.");

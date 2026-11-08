@@ -259,8 +259,9 @@
           "castTicks": 9
         },
         "throw": {
-          "spell": "flood",
-          "castTicks": 12
+          "spell": "iceberg",
+          "castTicks": 24,
+          "cooldown": 90
         }
       },
       "earth+earth": {
@@ -269,14 +270,20 @@
           "castTicks": 12
         },
         "throw": {
-          "spell": "stone-ramp",
-          "castTicks": 12
+          "spell": "earth-spires",
+          "castTicks": 24,
+          "cooldown": 90
         }
       },
       "air+air": {
         "thrust": {
           "spell": "whirlwind",
           "castTicks": 9
+        },
+        "throw": {
+          "spell": "tornado",
+          "castTicks": 24,
+          "cooldown": 90
         }
       },
       "fire+water": {
@@ -301,8 +308,9 @@
       },
       "fire+air": {
         "thrust": {
-          "spell": "falling-star",
-          "castTicks": 9
+          "spell": "thunder-strike",
+          "castTicks": 24,
+          "cooldown": 90
         },
         "throw": {
           "spell": "lightning-bolt",

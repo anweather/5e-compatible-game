@@ -78,12 +78,12 @@ namespace Chem.Tests
 
         // unified-casting.md's pair table: thrust, then throw; null for a cut row.
         [TestCase("fire", "fire", "fireball", "meteor")]
-        [TestCase("water", "water", "wave", "flood")]
-        [TestCase("earth", "earth", "wall-of-stone", "stone-ramp")]
-        [TestCase("air", "air", "whirlwind", null)]
+        [TestCase("water", "water", "wave", "iceberg")]
+        [TestCase("earth", "earth", "wall-of-stone", "earth-spires")]
+        [TestCase("air", "air", "whirlwind", "tornado")]
         [TestCase("fire", "water", "scalding-steam", "geyser")]
         [TestCase("fire", "earth", "forge", "lava-pool")]
-        [TestCase("fire", "air", "falling-star", "lightning-bolt")]
+        [TestCase("fire", "air", "thunder-strike", "lightning-bolt")]
         [TestCase("water", "earth", "mud", "plant-growth")]
         [TestCase("water", "air", "frost", "rain-cloud")]
         [TestCase("earth", "air", null, "rolling-boulder")]
@@ -178,7 +178,7 @@ namespace Chem.Tests
             Assert.That(Out(w).ticks, Is.EqualTo(T.One("fire", Thrust).CastTicks));
         }
 
-        [TestCase(false, "falling-star")]
+        [TestCase(false, "thunder-strike")]
         [TestCase(true, "lightning-bolt")]
         public void TheSameGestureOnBothIsTheTables(bool bumpers, string spell)
         {
@@ -200,7 +200,7 @@ namespace Chem.Tests
 
         [TestCase("fire", Thrust, "fireball")]
         [TestCase("fire", Throw, "meteor")]
-        [TestCase("earth", Throw, "stone-ramp")]
+        [TestCase("earth", Throw, "earth-spires")]
         public void TheSameElementHasItsOwn(string element, int gesture, string spell)
         {
             var w = Holding(element, element);

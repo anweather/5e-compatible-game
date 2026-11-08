@@ -91,6 +91,12 @@ things around, holding for the big ones.
 
 ## A Meteor for every element (C2)
 
+**Built (2026-11-08, `wow-spells`, J-078):** Tornado (air+air throw), Thunder Strike (fire+air thrust), Earth Spires
+(earth+earth throw) and Iceberg (water+water throw, the Frozen Tide idea as Andrew's Iceberg), each with Meteor's 24-tick
+cast and 90-tick rest. Falling Star, Stone Ramp and Flood leave the hands and stay in `spells.json`. Two new spell
+fields: `then` (a second element on the same cells: thunder after lightning, cold after water) and `jagged` (the
+spires' zigzag). `BigSpellTests` balances them against Meteor on spell-balance's packed field.
+
 The pattern: **each element's same-element throw is its wow spell.** Fire+fire throw is Meteor already. Each one would
 cost what Meteor does, in mana or cooldown, so Meteor becomes one of four rather than weaker.
 

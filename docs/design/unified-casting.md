@@ -108,12 +108,12 @@ growth, light).
 | Pair | Thrust | Throw | Change |
 |---|---|---|---|
 | Fire + fire | Fireball | Meteor | Fireball tuned down (about 56 a hit, nothing else gets used): 3d6, 15 ticks. Meteor 24 ticks and its own 90-tick cooldown |
-| Water + water | Wave | Flood | |
-| Earth + earth | Wall of Stone | Stone Ramp | |
-| Air + air | Whirlwind | ~~Dust Storm~~ | **Cut** Dust Storm. Whirlwind must lift and throw, or it's cut too |
+| Water + water | Wave | Iceberg | **Wow spell** (J-078): Iceberg takes the throw from Flood, at Meteor's cost |
+| Earth + earth | Wall of Stone | Earth Spires | **Wow spell** (J-078): Earth Spires takes the throw from Stone Ramp, at Meteor's cost |
+| Air + air | Whirlwind | Tornado | **Cut** Dust Storm. Whirlwind must lift and throw, or it's cut too. **Wow spell** (J-078): Tornado, at Meteor's cost |
 | Fire + water | Scalding Steam | Geyser | |
 | Fire + earth | Forge | Lava Pool | |
-| Fire + air | Falling Star | Lightning | **Swapped** so Lightning is the long one: a lock-on spell with pitch |
+| Fire + air | Thunder Strike | Lightning | **Swapped** so Lightning is the long one: a lock-on spell with pitch. **Wow spell** (J-078): Thunder Strike takes the thrust from Falling Star, at Meteor's cost |
 | Water + earth | Mud | Plant Growth | |
 | Water + air | Frost | Rain Cloud | |
 | Earth + air | ~~Sand Blast~~ | Rolling Boulder | **Cut** Sand Blast (dust) |

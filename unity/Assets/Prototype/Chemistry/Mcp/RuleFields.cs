@@ -78,6 +78,8 @@ namespace Chem.Mcp
             ["pullEvery"] = null,
             ["delay"] = null,
             ["core"] = null,
+            ["then"] = null,
+            ["jagged"] = null,
             ["travelEvery"] = null,
             ["dropPower"] = null,
             ["eye"] = null,

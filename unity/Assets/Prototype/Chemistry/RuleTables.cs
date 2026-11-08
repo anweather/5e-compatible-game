@@ -295,6 +295,13 @@ namespace Chem
         public ScatterDef Scatter;
         /// <summary>An element that lands on its middle cell last of all (Falling Star's lava), or null.</summary>
         public string Core;
+        /// <summary>
+        /// A second element that lands on each of the spell's cells right after its own, at the same power (spells.json then):
+        /// Thunder Strike's thunder after its lightning, Iceberg's cold freezing the water it lays. Null for none.
+        /// </summary>
+        public string Then;
+        /// <summary>A line whose odd cells step this many cells off it, to one side and then the other (Earth Spires' zigzag); 0 straight.</summary>
+        public int Jagged;
         /// <summary>A whirling spell moves a cell every this many ticks (World.Travel), 0 never; it drops what it carries at DropPower.</summary>
         public int TravelEvery, DropPower = 1;
         /// <summary>How far from a whirling spell's eye it takes things on, sheds what it carries and lifts creatures, in cells (spells.json eye).</summary>
@@ -1071,6 +1078,8 @@ namespace Chem
             Delay = Int(o["delay"]) ?? 0,
             Scatter = o["scatter"] is JObject sc ? new ScatterDef { Cover = Str(sc["cover"]), Count = Int(sc["count"]) ?? 0, Reach = Int(sc["reach"]) ?? 0 } : null,
             Core = Str(o["core"]),
+            Then = Str(o["then"]),
+            Jagged = Int(o["jagged"]) ?? 0,
             TravelEvery = Int(o["travelEvery"]) ?? 0,
             DropPower = Int(o["dropPower"]) ?? 1,
             Eye = Int(o["eye"]) ?? 1,
