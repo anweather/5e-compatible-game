@@ -46,8 +46,17 @@ public class WizardStrike : MonoBehaviour
         TryGetComponent(out shove);
         TryGetComponent(out net);
         TryGetComponent(out beats);
-        GetComponent<ItemHolder>().PunchLanded += landing => Strike(landing.Way);
+        hands = GetComponent<ItemHolder>();
+        hands.PunchLanded += landing =>
+        {
+            fist = landing;
+            Strike(landing.Way);
+        };
     }
+
+    ItemHolder hands;
+    // The last punch that got there: where the fist is when the core says it hit someone.
+    ItemHolder.PunchLanding fist;
 
     /// <summary>Strikes from the wizard's cell along this level way.</summary>
     public void Strike(Vector3 way)
@@ -67,6 +76,8 @@ public class WizardStrike : MonoBehaviour
         foreach (var hit in world.TakeStrikeHits())
         {
             if (hit.Hit && hit.TargetPlayer == caster.CastPlayer) Take(hit, grid);
+            // This wizard's own punch hit a wizard or a raider: the puncher feels it too (a thing it knocked was felt already).
+            else if (hit.Hit && hit.Attacker == caster.CastPlayer && !fist.Hit) hands.FistLanded(Fist(), fist.Way.sqrMagnitude > 0f ? fist.Way : transform.forward);
             Struck?.Invoke(hit);
         }
         var at = grid.CellAt(transform.position);
@@ -99,6 +110,9 @@ public class WizardStrike : MonoBehaviour
         shove.Shunt(there, feel.punchKnockSeconds);
         tellAt += feel.punchKnockSeconds;
     }
+
+    // Where the fist met them: the last landing's point, or just ahead at chest height before any.
+    Vector3 Fist() => fist.Puncher != null ? fist.Point : transform.position + transform.forward * 0.9f + Vector3.up;
 
     static void Send(ChemGrid grid, StrikeCommand command)
     {
