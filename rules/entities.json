@@ -4,7 +4,7 @@
   "crate":   { "name": "Crate", "material": "timber", "hp": 6, "mass": 1 },
   "barrel":  { "name": "Oil barrel", "material": "timber", "hp": 3, "mass": 1, "explodes": { "cover": "oil", "radius": 1, "fire": 3, "push": 2, "damage": [2, 6], "crater": { "radius": 1, "depth": 1 } } },
   "boulder": { "name": "Boulder", "material": "rock", "hp": 999, "mass": 3, "components": ["heavy"] },
-  "bone-hound":   { "name": "Bone hound", "material": "bone", "hp": 6, "str": 12, "ac": 12, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 3, "attack": { "dice": [1, 4], "every": 9 }, "weak": ["fire"] } },
-  "ash-crab":     { "name": "Ash crab", "material": "chitin", "hp": 9, "str": 14, "ac": 14, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 4, "attack": { "dice": [1, 6], "every": 12 }, "weak": ["cold", "lightning"], "resist": ["fire"] } },
-  "giant-spider": { "name": "Giant spider", "material": "chitin", "hp": 12, "str": 14, "ac": 14, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 5, "attack": { "dice": [1, 8], "every": 15 }, "weak": ["lightning"] } }
+  "bone-hound":   { "name": "Bone hound", "material": "bone", "hp": 6, "str": 12, "ac": 12, "mass": 1, "components": ["creature"], "raider": { "body": "bone-hound", "size": 120, "ticksPerSquare": 3, "attack": { "dice": [1, 4], "every": 9 }, "weak": ["fire"] } },
+  "ash-crab":     { "name": "Ash crab", "material": "chitin", "hp": 9, "str": 14, "ac": 14, "mass": 1, "components": ["creature"], "raider": { "body": "ash-crab", "size": 160, "ticksPerSquare": 4, "attack": { "dice": [1, 6], "every": 12 }, "weak": ["cold", "lightning"], "resist": ["fire"] } },
+  "giant-spider": { "name": "Giant spider", "material": "chitin", "hp": 12, "str": 14, "ac": 14, "mass": 1, "components": ["creature"], "raider": { "body": "giant-spider", "size": 140, "ticksPerSquare": 5, "attack": { "dice": [1, 8], "every": 15 }, "weak": ["lightning"] } }
 }

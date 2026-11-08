@@ -78,4 +78,49 @@ public class FolkJobsTests
             Assert.That(moments.Any(m => m.Pace <= 0f), $"{w.Job} stops");
         }
     }
+
+    // The raiders' road up to the castle (the map's hold.json road), as cells.
+    static HashSet<(int x, int y)> RaidersRoad()
+    {
+        var rules = Rules.Load(ChemGrid.Folders.Rules);
+        var site = WorldHold.Load(ChemGrid.Folders.World);
+        return BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, rules.Buildings), rules.Buildings)
+            .Where(c => c.Part == BuildingPart.Road && c.Terrain == site.RoadTerrain).Select(c => (c.X, c.Y)).ToHashSet();
+    }
+
+    static int Apart((int x, int y) a, HashSet<(int x, int y)> cells) => cells.Min(c => System.Math.Max(System.Math.Abs(c.x - a.x), System.Math.Abs(c.y - a.y)));
+
+    static (int x, int y) CellOf(float2 at) => ((int)math.round(at.x / CellMetres), (int)math.round(at.y / CellMetres));
+
+    // In a Hold run the folk keep off the raiders' road (hold-bodies, Andrew's 2026-11-06 playtest): a worker whose round
+    // goes up it walks off it to its stop for a run and stays, and every other's round never comes near it.
+    [Test]
+    public void InAHoldRunNoWorkerIsOnTheRaidersRoad()
+    {
+        const int Clear = 6;
+        var (land, _) = Valley();
+        var road = RaidersRoad();
+        Assert.That(road, Is.Not.Empty);
+        var jobs = FolkJobs.Load(ChemGrid.Folders.World, land, Centre, Walk);
+        Assert.That(jobs.Workers.Where(w => w.HasHome).Select(w => w.Job).Distinct(), Is.EquivalentTo(new[] { "guard", "porter", "fisher" }));
+        foreach (var w in jobs.Workers)
+        {
+            if (!w.HasHome)
+            {
+                for (double t = 0; t < 3000; t += 2)
+                    Assert.That(Apart(CellOf(w.At(t).At), road), Is.GreaterThanOrEqualTo(Clear), $"{w.Job} at {t} s, with no stop for a run");
+                continue;
+            }
+            Assert.That(Apart(CellOf(w.Home.At), road), Is.GreaterThanOrEqualTo(Clear), $"{w.Job}'s stop for a run");
+            // Wherever on its round the run catches it, it gets off the road and stays off.
+            for (double t = 0; t < 1500; t += 25)
+            {
+                var trip = jobs.HomeFrom(w, CellOf(w.At(t).At));
+                Assert.That(trip, Is.Not.Null, $"{w.Job} has a way to its stop from {t} s");
+                Assert.That(trip.At(trip.Seconds + 1f).At, Is.EqualTo(w.Home.At), "it ends at its stop");
+                Assert.That(trip.Seconds, Is.LessThan(240f), $"{w.Job} gets there in good time from {t} s");
+            }
+            Assert.That(w.AtHome(Enumerable.Range(0, 3000).Select(k => k * 2.0).First(w.AtHome)), "its round comes back to that stop, where it rejoins it");
+        }
+    }
 }

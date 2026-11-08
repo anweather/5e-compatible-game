@@ -69,8 +69,6 @@ public static class DefenseFieldBuilder
         field.banner = FlagPole(root, looks);
         field.startPlate = StartPlate(root, looks);
         field.plateRadius = PlateRadius;
-        field.kinds = new[] { RaiderIds.BoneHound, RaiderIds.AshCrab, RaiderIds.GiantSpider, RaiderIds.CliffStalker, RaiderIds.AshWing };
-        field.sizes = new[] { 1.2f, 1.6f, 1.4f, 3f, 1.5f };
         var shader = Shader.Find("Punchy/Creature");
         field.creatureMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Creature.mat", () => new Material(shader) { name = "Creature" });
         return field;

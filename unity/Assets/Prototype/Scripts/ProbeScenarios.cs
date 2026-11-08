@@ -274,6 +274,8 @@ public static class ProbeScenarios
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
         new Entry("holdclip", typeof(HoldClipProbe), 150f,
             "The hold-batch clip, with the HUD, on a virtual pad: in a run at the water tower the right trigger attunes the hand, then casts, the wave timer counting down; then high in the open keep raiders strike the crystal as it cracks and shatters. Into --shots: frames, sound.wav and timeline.txt."),
+        new Entry("holdbodies", typeof(HoldBodiesProbe), 480f,
+            "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt."),
         new Entry("towers", typeof(TowersProbe), 150f,
             "Attuning at the castle's towers (hold-batch), on a virtual pad in a run: away from them the trigger attunes nothing; at each tower whose element the wizard has, the right trigger attunes the hand to it in its moment, the HUD names the tower, then the same trigger casts. Each tower shows its element. With --shots, each tower."),
         new Entry("crystal", typeof(CrystalProbe), 120f,
