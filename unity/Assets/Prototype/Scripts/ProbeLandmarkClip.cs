@@ -109,17 +109,21 @@ public sealed class LandmarkForestClipProbe : LandmarkClipProbe
     protected override float RiseLookUp => 28f;
 }
 
-// Mount Hearth by Emberhold: up the climbing way from the foot towards the crater.
+// Mount Hearth by Emberhold: out of the village on its shelf at the cone's foot and up the trail's switchbacks to the lookout.
 public sealed class LandmarkVolcanoClipProbe : LandmarkClipProbe
 {
-    protected override Vector2Int From => new(166, 196);
-    protected override Vector2Int To => new(109, 130);
+    protected override Vector2Int From => new(156, 187);
+    protected override Vector2Int To => new(143, 119);
     protected override Vector2Int Landmark => new(160, 106);
     protected override float LandmarkUp => 4f;
-    protected override Vector3Int RiseFrom => new(52, 150, 45);
-    protected override Vector2Int RiseAt => new(124, 136);
-    protected override float EyeHeight => 7f;
-    protected override Vector2Int[] Path => new Vector2Int[] { new(166, 196), new(159, 183), new(146, 178), new(133, 171), new(125, 162), new(117, 152), new(111, 141), new(109, 130) };
+    protected override float EyeHeight => 6f;
+    protected override Vector3Int RiseFrom => new(185, 222, 55);
+    protected override Vector2Int RiseAt => new(152, 160);
+    protected override Vector2Int[] Path => new Vector2Int[]
+    {
+        new(156, 187), new(159, 170), new(138, 163), new(121, 150), new(111, 132), new(125, 145), new(142, 152), new(159, 153),
+        new(144, 146), new(133, 136), new(127, 124), new(137, 132), new(149, 135), new(160, 135), new(151, 130), new(145, 123), new(143, 119),
+    };
 }
 
 // The Drowned Glass by Pikestead, on the lake's east shore: from the east between the houses down to the boathouses.
