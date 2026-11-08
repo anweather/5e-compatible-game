@@ -1,19 +1,24 @@
 using System.Collections;
 using System.Linq;
-using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
-// The probe's combo scenario (docs/SPELL_COMBOS.md): casting by elements on a
-// virtual gamepad, through the wizard's own controls: an element loaded, then a
-// second in the window; the meter draining and the wizard slowed under it; the
-// cast going off from the crosshair and joining the grimoire; cancelling with an
-// item in hand, which must not throw it; the d-pad's spells; the grimoire page.
-// With the HUD on, it takes a picture of the whole of it (--shots).
+// The probe's combo scenario (docs/SPELL_COMBOS.md): the d-pad's spells on a
+// virtual gamepad, through the wizard's own controls, with the HUD on: right
+// cycles them, up casts the selected one, B cancels it with an item in hand and
+// doesn't throw it, and the cast bar runs smoothly between the core's ticks; then
+// Back from the menu's grimoire and the stamina line. With --shots, pictures of
+// each and of the whole HUD.
+//
+// Since the hands (D16) the shoulders and triggers are hands' gestures, so what
+// this probe did with them went to the probes made for them: loading elements
+// and their pair (hands, castfeel), the slower walk while casting (castfeel's
+// charging_walks_slower), d-pad down (now the hands menu: handsmenu), the orbs and
+// the slam (castfeel, handsclip), and a held element's steps (hands' charge).
 public class ComboProbe : ProbeScenario
 {
-    // Most of the bar a frame may gain past the time it took (one tick of the 6-tick cast is 0.17).
+    // Most of the bar a frame may gain past the time it took (one tick of Light's 6-tick cast is 0.17).
     const float MostBarJump = 0.07f;
     // The casts of BarRunsEven: how far between two ticks each is pressed, in ticks (the later, the sooner the first one), and held, in seconds.
     static readonly (float late, float held)[] PressesBetweenTicks = { (0.55f, 0f), (0.7f, 0f), (0.85f, 0f), (0.7f, 0.2f) };
@@ -38,15 +43,11 @@ public class ComboProbe : ProbeScenario
             at.y = grid.GroundAt(at);
             Cut(wizard.transform.position + V(-3f, 4f, 0f), at);
             yield return Wait(0.5f);
-            yield return Pair(at);
-            yield return Slowed();
-            yield return Cancel();
             yield return Dpad();
+            yield return Cancel();
             yield return Grimoire();
-            yield return Hands();
             yield return BarFills();
             yield return BarRunsEven();
-            yield return HeldSteps();
             yield return WholeHud();
         }
         finally
@@ -57,80 +58,23 @@ public class ComboProbe : ProbeScenario
         }
     }
 
-    // Water then earth: both loaded in the window, the meter drains, and it goes off where the crosshair is.
-    IEnumerator Pair(Vector3 at)
+    // Right cycles the d-pad's spells; on to Light (a cast that changes nothing the rest needs), up casts it.
+    IEnumerator Dpad()
     {
-        int wetBefore = WetNear(at);
-        yield return Press(GamepadButton.RightShoulder);
-        var cast = World.CastOf(me);
-        Check("first_element_loads", cast?.First == ElementIds.Water && cast.Casting, $"first {cast?.First}, meter {cast?.Meter}");
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftTrigger = 1f });
+        var combos = World.Rules.Combos;
+        int slot = World.CastOf(me).Slot;
+        yield return Press(GamepadButton.DpadRight);
+        Check("dpad_right_cycles", World.CastOf(me).Slot == (slot + 1) % combos.Dpad.Count, $"slot {slot} -> {World.CastOf(me).Slot}");
+        for (int i = 0; i < combos.Dpad.Count && World.SelectedDpad(me)?.Spell != SpellIds.Light; i++) yield return Press(GamepadButton.DpadRight);
+        var spell = World.SelectedDpad(me);
+        Check("dpad_reaches_light", spell?.Spell == SpellIds.Light, spell?.Name ?? "none");
+        yield return Press(GamepadButton.DpadUp);
+        Check("dpad_up_casts", World.CastOf(me).DpadCasting >= 0 && World.CastOf(me).Casting, $"{spell?.Name}: casting slot {World.CastOf(me).DpadCasting}");
+        Shot("dpad");
         yield return null;
-        yield return null;
-        InputSystem.QueueStateEvent(pad, new GamepadState());
-        yield return null;
-        yield return null;
-        Check("second_element_loads", cast?.Second == ElementIds.Earth, $"second {cast?.Second}");
-        Shot("loaded");
-        yield return null;
-        float waited = 0f;
-        while (World.CastOf(me).Casting && waited < 4f)
-        {
-            waited += Time.deltaTime;
-            yield return null;
-        }
-        yield return Wait(1f);
-        Check("pair_joins_grimoire", World.KnowsCombo(me, "water+earth"), $"known: {string.Join(", ", World.CastOf(me).Known)}");
-        Metric("wet_cells_before", wetBefore);
-        Metric("wet_cells_after", WetNear(at));
-        Check("cast_lands_at_the_crosshair", WetNear(at) > wetBefore, $"{wetBefore} wet cells near the aim, then {WetNear(at)}");
-    }
-
-    int WetNear(Vector3 at)
-    {
-        var c = grid.CellAt(at);
-        int wet = 0;
-        for (int y = -6; y <= 6; y++)
-            for (int x = -6; x <= 6; x++)
-                if (World.InBounds(c.x + x, c.y + y) && World.At(c.x + x, c.y + y).Water > 0) wet++;
-        return wet;
-    }
-
-    // Walking at the rules' factor while the meter drains.
-    IEnumerator Slowed()
-    {
-        // The first cast left mud (water then earth), which would slow the walk too.
-        var here = grid.CellAt(wizard.transform.position);
-        const int Walked = 14;
-        for (int y = here.y - Walked; y <= here.y + Walked; y++)
-            for (int x = here.x - Walked; x <= here.x + Walked; x++)
-                if (World.InBounds(x, y) && World.At(x, y).T == TerrainIds.Mud) World.Paint(x, y, TerrainIds.Dirt);
-        var from = wizard.transform.position;
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
-        yield return Wait(0.8f);
-        var start = wizard.transform.position;
-        yield return Wait(0.6f);
-        float free = Vector3.Distance(start, wizard.transform.position) / 0.6f;
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.LeftShoulder));
-        yield return null;
-        yield return null;
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
-        yield return Wait(0.1f);
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.LeftShoulder));
-        yield return null;
-        yield return null;
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
-        yield return Wait(0.4f);
-        start = wizard.transform.position;
-        yield return Wait(0.6f);
-        float casting = Vector3.Distance(start, wizard.transform.position) / 0.6f;
-        Metric("walk_speed_free", free);
-        Metric("walk_speed_casting", casting);
-        double factor = World.Rules.Combos.MoveFactor;
-        Check("casting_slows_walking", World.CastOf(me).Casting && Mathf.Abs(casting / free - (float)factor) < 0.12f, $"{free:0.00} m/s, then {casting:0.00} m/s, the factor {factor}");
-        InputSystem.QueueStateEvent(pad, new GamepadState());
-        Teleport(from);
-        yield return Wait(2.5f);
+        yield return Wait(spell != null ? spell.CastTicks / (float)World.Rules.Sim.TicksPerSecond + 0.5f : 1f);
+        Check("dpad_cast_finishes", !World.CastOf(me).Casting);
+        yield return Wait(0.5f);
     }
 
     // B drops the cast and leaves what's in the hand there: nothing is thrown and nothing casts.
@@ -139,7 +83,7 @@ public class ComboProbe : ProbeScenario
         var item = FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID).FirstOrDefault(c => c.Holder == null);
         if (item != null) hands.Grant(item);
         yield return null;
-        yield return Press(GamepadButton.RightShoulder);
+        yield return Press(GamepadButton.DpadUp);
         Check("cast_started", World.CastOf(me).Casting);
         yield return Press(GamepadButton.East);
         Check("b_cancels", !World.CastOf(me).Casting, $"meter {World.CastOf(me).Meter}");
@@ -150,69 +94,33 @@ public class ComboProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
-    IEnumerator Dpad()
-    {
-        var combos = World.Rules.Combos;
-        int slot = World.CastOf(me).Slot;
-        yield return Press(GamepadButton.DpadRight);
-        Check("dpad_right_cycles", World.CastOf(me).Slot == (slot + 1) % combos.Dpad.Count, $"slot {slot} -> {World.CastOf(me).Slot}");
-        // On to one with a spell: a slot without one only shows.
-        for (int i = 0; i < combos.Dpad.Count && World.SelectedDpad(me)?.Spell == null; i++) yield return Press(GamepadButton.DpadRight);
-        var spell = World.SelectedDpad(me);
-        yield return Press(GamepadButton.DpadUp);
-        Check("dpad_up_casts", World.CastOf(me).DpadCasting >= 0 && World.CastOf(me).Casting, $"{spell?.Name}: casting slot {World.CastOf(me).DpadCasting}");
-        Shot("dpad");
-        yield return null;
-        yield return Wait(spell != null ? spell.CastTicks / (float)World.Rules.Sim.TicksPerSecond + 0.5f : 1f);
-        Check("dpad_cast_finishes", !World.CastOf(me).Casting);
-    }
-
+    // From the menu's own button, Back from the grimoire goes back to the menu (#10).
     IEnumerator Grimoire()
     {
-        yield return Press(GamepadButton.DpadDown);
-        yield return Wait(0.2f);
         var menu = PauseMenu.Instance;
-        Check("dpad_down_opens_grimoire", menu != null && menu.Open && menu.CurrentPage == "grimoire", menu != null ? $"page {menu.CurrentPage}" : "no menu");
-        Shot("grimoire");
-        yield return null;
-        yield return null;
-        // Back from the d-pad's grimoire is straight back to play, not to the menu (#10).
-        yield return Press(GamepadButton.East);
-        Check("back_closes_grimoire", menu != null && !menu.Open, menu != null ? $"open {menu.Open}, page {menu.CurrentPage}" : "no menu");
-        Check("back_to_play", controls.enabled, "the wizard's controls are back");
-        // From the menu's own button, Back still goes back to the menu.
-        if (menu != null)
+        if (menu == null)
         {
-            menu.SetOpen(true);
-            menu.ShowPage("grimoire");
-            menu.Back();
-            Check("back_from_menu_stays_in_menu", menu.Open && menu.CurrentPage != "grimoire", $"open {menu.Open}, page {menu.CurrentPage}");
-            menu.SetOpen(false);
+            Check("back_from_menu_stays_in_menu", false, "no menu");
+            yield break;
         }
-        yield return Wait(0.3f);
-    }
-
-    // The orbs in the hands, seen from the front, and the slam as they go off.
-    IEnumerator Hands()
-    {
-        var t = wizard.transform;
-        Cut(t.position + t.forward * 2.6f + Vector3.up * 1.5f, t.position + Vector3.up * 1.2f);
-        yield return Press(GamepadButton.RightShoulder);
-        yield return Press(GamepadButton.LeftShoulder);
-        yield return Wait(0.3f);
-        Shot("hands");
+        menu.SetOpen(true);
+        menu.ShowPage("grimoire");
         yield return null;
-        while (World.CastOf(me).Casting) yield return null;
-        yield return Wait(0.09f);
-        Shot("slam");
         yield return null;
-        yield return Wait(1.5f);
+        bool shown = menu.Open && menu.CurrentPage == "grimoire";
+        Shot("grimoire");
+        menu.Back();
+        Check("back_from_menu_stays_in_menu", shown && menu.Open && menu.CurrentPage != "grimoire", $"shown {shown}, open {menu.Open}, page {menu.CurrentPage}");
+        menu.SetOpen(false);
+        yield return null;
+        Check("back_to_play", controls.enabled, "the wizard's controls are back");
+        yield return Wait(0.3f);
     }
 
     // The cast bar runs on between the core's ticks: many more steps than ticks, and only ever up (#9).
     IEnumerator BarFills()
     {
-        yield return Press(GamepadButton.RightShoulder);
+        yield return Press(GamepadButton.DpadUp);
         var cast = World.CastOf(me);
         int ticks = cast.Total, steps = 0;
         float last = 0f, lowest = 1f, highest = 0f;
@@ -239,20 +147,22 @@ public class ComboProbe : ProbeScenario
     }
 
     // Pressed at any moment between two ticks and tapped short or long, the bar runs at the pace of the time
-    // left and doesn't leap when the core's first tick comes, however soon that is, or when the tap ends and
-    // the hold's ticks come off (#9). What it gains in a frame, past that frame's share of the cast.
+    // left and doesn't leap when the core's first tick comes, however soon that is, or when the press ends (#9).
+    // What it gains in a frame, past that frame's share of the cast.
     IEnumerator BarRunsEven()
     {
         var end = new WaitForEndOfFrame();
         int perSecond = World.Rules.Sim.TicksPerSecond;
         float worst = 0f;
+        bool allCast = true;
         foreach (var (late, held) in PressesBetweenTicks)
         {
             int tick = World.Tick;
             while (World.Tick == tick) yield return null;
             yield return Wait(late / perSecond);
-            InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.RightShoulder));
-            while (!World.CastOf(me).Casting) yield return null;
+            InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadUp));
+            for (float t = 0f; !World.CastOf(me).Casting && t < 2f; t += Time.deltaTime) yield return null;
+            allCast &= World.CastOf(me).Casting;
             float last = 0f, lastAt = Time.time, letGoAt = Time.time + held;
             bool down = true;
             while (World.CastOf(me).Casting)
@@ -267,30 +177,14 @@ public class ComboProbe : ProbeScenario
                 worst = Mathf.Max(worst, share - last - (Time.time - lastAt) / seconds);
                 (last, lastAt) = (share, Time.time);
             }
+            InputSystem.QueueStateEvent(pad, new GamepadState());
             yield return Wait(1f);
         }
         Metric("bar_worst_jump", worst);
-        Check("bar_runs_even", worst < MostBarJump, $"gained {worst:0.00} of the bar past the time gone, in one frame");
+        Check("bar_runs_even", allCast && worst < MostBarJump, $"each press cast {allCast}, gained {worst:0.00} of the bar past the time gone, in one frame");
     }
 
-    // Earth held: the steps light under the bar, and the held spell's name shows at the top step (#7, #9).
-    IEnumerator HeldSteps()
-    {
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftTrigger = 1f });
-        yield return null;
-        yield return null;
-        yield return Wait(World.CastOf(me).Total / (float)World.Rules.Sim.TicksPerSecond + 0.3f);
-        Check("held_steps_lit", caster.HoldCharge == World.MaxChargeOf(World.ComboOf(World.CastOf(me))), $"charge {caster.HoldCharge}");
-        Check("marker_on_the_held_spell", caster.Marker != null && caster.Marker.Kind == AimKind.Rising, $"{caster.Marker?.Kind}");
-        Check("bar_full_while_held", EventLog.CastBarShare > 0.99f, $"the bar at {EventLog.CastBarShare:0.00}");
-        Shot("held");
-        yield return null;
-        yield return null;
-        InputSystem.QueueStateEvent(pad, new GamepadState());
-        yield return Wait(1.5f);
-    }
-
-    // Everything on the screen at once: sprinting for the stamina line, a pair loaded for the cast.
+    // Everything on the screen at once: sprinting for the stamina line, a d-pad cast under way.
     IEnumerator WholeHud()
     {
         var sprint = new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.LeftStick);
@@ -298,12 +192,7 @@ public class ComboProbe : ProbeScenario
         yield return Wait(0.1f);
         InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
         yield return Wait(1.2f);
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.LeftShoulder));
-        yield return null;
-        yield return null;
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
-        yield return Wait(0.1f);
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.RightShoulder));
+        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.DpadUp));
         yield return null;
         yield return null;
         InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
