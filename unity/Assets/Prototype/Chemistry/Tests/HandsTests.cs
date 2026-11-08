@@ -210,6 +210,19 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void MeteorRestsBothHandsLongerThanAnyOtherMerge()
+        {
+            var w = Holding("fire", "fire");
+            Bumper(w, Left);
+            Bumper(w, Right);
+            Assert.That(Fired(w), Is.EqualTo("meteor"));
+            int rest = T.Both("fire", "fire", Throw).Cooldown;
+            Assert.That(rest, Is.GreaterThan(T.BothCooldown * 2), "big and rare (the 2026-11-06 playtest)");
+            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(rest));
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(rest));
+        }
+
+        [Test]
         public void DifferentGesturesAreBothAtOnce()
         {
             var w = Holding("water", "fire");
@@ -563,7 +576,7 @@ namespace Chem.Tests
             Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.BothCooldown));
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.BothCooldown));
             Assert.That(w.CastOf(Me).Merge, Is.Null);
-            Assert.That(w.CastHash(), Is.EqualTo("6a4c147e"));
+            Assert.That(w.CastHash(), Is.EqualTo("e722d8d4")); // Fireball's 15 ticks (2026-11-06 playtest)
         }
 
         [Test]
@@ -737,6 +750,7 @@ namespace Chem.Tests
             Assert.That(Errors(h => h["kit"][0]["spell"] = "nope"), Does.Contain("hands: kit: unknown spell nope"));
             Assert.That(Errors(h => h["start"]["left"] = "nope"), Does.Contain("hands: start left must be in the table"));
             Assert.That(Errors(h => h["attuneTicks"] = 0), Does.Contain("hands: attuneTicks must be a whole number from 1"));
+            Assert.That(Errors(h => h["spells"]["fire+fire"]["throw"]["cooldown"] = 0), Does.Contain("hands: fire+fire throw: cooldown must be a whole number from 1"));
         }
     }
 }

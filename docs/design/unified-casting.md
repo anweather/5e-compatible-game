@@ -7,7 +7,7 @@ and `hold-ui` land) and `aimed-spells` (lock-on, pitch, Gust and Whirlwind).
 **Core half built (2026-11-07).** Each hand has its own meter (`PlayerHands`): `ComboCommand.Hand` is a tap, `HandDown`
 charges and `HandUp` lets go. A merge is `PlayerCast.Merge` while the hands hold it, and the hands are on everywhere
 (`World.HandsOn`). Attuning outside the Hold takes `attuneTicks` (4, under a second). Fireball went from 8d6 to 4d6, half
-the hit. Dust Storm and Sand Blast are out of the table, fire and air are swapped, and the `held` variants are gone. The
+the hit, then to 3d6 and 15 ticks, with Meteor resting both hands 90 ticks (`spell-balance`, 2026-11-08). Dust Storm and Sand Blast are out of the table, fire and air are swapped, and the `held` variants are gone. The
 ordered `pairs` path (`LoadElement`) stays until the view half lands. The view still sends taps and attunes only in the
 room, so until then free roam casts with the start hands (water and fire).
 
@@ -107,7 +107,7 @@ growth, light).
 
 | Pair | Thrust | Throw | Change |
 |---|---|---|---|
-| Fire + fire | Fireball | Meteor | Fireball tuned down (about 56 a hit, nothing else gets used) |
+| Fire + fire | Fireball | Meteor | Fireball tuned down (about 56 a hit, nothing else gets used): 3d6, 15 ticks. Meteor 24 ticks and its own 90-tick cooldown |
 | Water + water | Wave | Flood | |
 | Earth + earth | Wall of Stone | Stone Ramp | |
 | Air + air | Whirlwind | ~~Dust Storm~~ | **Cut** Dust Storm. Whirlwind must lift and throw, or it's cut too |

@@ -227,7 +227,7 @@ namespace Chem
                 NoteFired(new ComboFired(c.Player, null, spell?.Name ?? row.Act, row.Spell, spell?.Shape, false, charge).FromHand(row.Act, RangeOf(c.Player, holds, gesture)));
                 if (row.Spell != null)
                 {
-                    int ready = Tick + CooldownOf(c.Player, holds, gesture, both);
+                    int ready = Tick + CooldownOf(c.Player, holds, gesture, both, row.Cooldown);
                     if (both) h.Ready[HandsDef.Left] = h.Ready[HandsDef.Right] = ready;
                     else h.Ready[hand] = ready;
                 }
