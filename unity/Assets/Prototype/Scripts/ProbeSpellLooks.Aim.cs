@@ -28,6 +28,10 @@ public class AimLooksProbe : SpellLooksProbe
         try
         {
             EverySpellHasAKind();
+            // A selected spell is marked only where Cast casts it, the radial layout: with the hands (D16) there is
+            // no marker until a hand is at work (SpellCaster.ShowAim; #166).
+            RadialPad();
+            yield return null;
             yield return Lanes(Spot(16, 11));
             yield return Rings(Spot(11, 9));
             yield return Rising(Spot(11, 9));
@@ -112,7 +116,6 @@ public class AimLooksProbe : SpellLooksProbe
         yield return Aimed(SpellIds.Thunderwave, mid, AimKind.Ring, "thunderwave");
         yield return Aimed(SpellIds.Fireball, mid, AimKind.Ring, "fireball-tap");
         // Cast held on the pad's radial layout: the ring grows a level at a time.
-        RadialPad();
         InputSystem.QueueStateEvent(pad, new GamepadState { rightTrigger = 1f });
         yield return Wait(0.2f);
         float tap = RingRadius();

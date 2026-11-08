@@ -94,6 +94,8 @@ namespace Chem
             }
             foreach (var r in bp.Rivers)
             {
+                // A dry course fills nothing and has no bank: what's along it still follows it (the blueprint's influences).
+                if (r.Dry) continue;
                 if (r.Path.Points.Length < 2 || !ThemeGeometry.Bounds(r.Path, RiverBank + 1).Meets(box)) continue;
                 var segs = ThemeGeometry.SegmentsIn(r.Path, box, RiverBank + 1);
                 if (segs.Count > 0) rivers.Add(new LiveRiver { R = r, Segs = segs });

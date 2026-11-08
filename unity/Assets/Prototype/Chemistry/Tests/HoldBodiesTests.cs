@@ -93,7 +93,8 @@ namespace Chem.Tests
             Until(w, () => w.Hold.Health < full, $"the {kind} strikes the keep");
         }
 
-        // The mixed waves on the valley's own rows, pinned: the kinds, their stats and their spawns are core state (D4).
+        // The mixed waves on the valley's own rows, pinned: the kinds, their stats and their spawns are core state (D4). Moved for
+        // hold-east-path: the wave comes from two spawners now, by two roads.
         [Test]
         public void AMixedWaveHashesAsItDid()
         {
@@ -105,7 +106,7 @@ namespace Chem.Tests
             w.Hold.ToSpawn = World.HoldWaveSize(R.Sim.Hold, 8);
             Ticks(w, 600);
             Assert.That(w.Raiders.Select(r => Rules.PlainKind(r.Kind)).Distinct().Count(), Is.GreaterThanOrEqualTo(6), "a mixed wave is out");
-            Assert.That(w.CastHash(), Is.EqualTo("2653b46f"));
+            Assert.That(w.CastHash(), Is.EqualTo("36029f4d"));
         }
     }
 }

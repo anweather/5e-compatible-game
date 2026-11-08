@@ -11,7 +11,8 @@ namespace Chem.Tests
     public class MapTests
     {
         // The FNV-1a of the cell map taken from the baked scene when it moved to cells.txt.
-        const uint ValleyCells = 3225049811u;
+        // Moved for hold-east-path: the west brook is dry, its cells grass (and the trees its draws moved).
+        const uint ValleyCells = 307482015u;
 
         string map;
 
@@ -88,9 +89,10 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void ALaidRowOnTheBrookIsSaid()
+        public void ALaidRowInTheLakeIsSaid()
         {
-            RowMovesTo(50, 367);
+            // The brook behind the castle that this used is dry since hold-east-path: the lake east of the castle.
+            RowMovesTo(270, 365);
             Assert.That(Errors, Does.Contain("stands on water at"));
         }
 

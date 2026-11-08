@@ -184,9 +184,9 @@ public static class ProbeScenarios
             "Films what plain shots can't show, with the HUD, into a folder each under --shots (frames for ffmpeg): grimoire/ (d-pad down, Back, then the menu's button and Back), " +
             "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest."),
         new Entry("combo", typeof(ComboProbe), 85f,
-            "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
-            "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
-            "grimoire. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),
+            "The d-pad's spells on a virtual gamepad, with the HUD on: right cycles them, up casts Light, B cancels it with an item in hand and doesn't throw it, the cast bar fills " +
+            "smoothly and evenly between ticks (#9), Back from the menu's grimoire stays in the menu (#10), the stamina line drains. Element loading, the slower walk and d-pad down " +
+            "moved to hands, castfeel and handsmenu with the hands. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),
         new Entry("frost", typeof(FrostProbe), 40f,
             "Ray of Frost from the lake's shore (the dry square outside the yard nearest it with lake water two squares south) " +
             "out over the water. Checks: the shore was found, while it plays one frost beam (FrostBeam) runs from the wizard to the end " +
@@ -241,6 +241,9 @@ public static class ProbeScenarios
         new Entry("apikey", typeof(ApiKeyProbe), 60f,
             "A player's own key against ApiStandIn, no real key or call: no key stays on Claude Code, a good key turns the chat to ApiChat, a message runs through the server and the loop, the spend cap stops the next one. " +
             "Checks: the check doesn't block, the key is in no record, console, environment or save, Remove goes back to Claude Code, no console errors."),
+        new Entry("hitch", typeof(HitchProbe), 90f,
+            "The stalls of Andrew's 2026-11-08 play log: the world rebuilt from the map three times (start-up, hosting and an online reset each do it) and a chat-style mod (Pink fire) switched on. " +
+            "Checks: a rebuild's median under the Editor's budget, the blocker boxes kept across rebuilds, the mod on, its checks and compose under budget, no console errors. Metrics: rebuild_ms_best, rebuild_ms_median, switch_compose_ms_median, switch_worst_frame_ms."),
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
             "What GroundSwitch put on the terrains (unity/Temp/ground-builder says on or land; no file is off) and what the ground's Bind took: compare runs. Checks: the chunks are built or baked as switched, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
@@ -280,6 +283,8 @@ public static class ProbeScenarios
             "The hold-batch clip, with the HUD, on a virtual pad: in a run at the water tower the right trigger attunes the hand, then casts, the wave timer counting down; then high in the open keep raiders strike the crystal as it cracks and shatters. Into --shots: frames, sound.wav and timeline.txt."),
         new Entry("holdbodies", typeof(HoldBodiesProbe), 480f,
             "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt."),
+        new Entry("holdeast", typeof(HoldEastProbe), 600f,
+            "The Hold's second road (hold-east-path): a run's wave comes from both spawners and in at both gates, the east and the south; the brook behind the castle is dry; wading at the lake's edge slows the wizard a little. With --shots, films the clip (both roads, the south gate, a wade) and writes castle-map.png."),
         new Entry("towers", typeof(TowersProbe), 150f,
             "Attuning at the castle's towers (hold-batch), on a virtual pad in a run: away from them the trigger attunes nothing; at each tower whose element the wizard has, the right trigger attunes the hand to it in its moment, the HUD names the tower, then the same trigger casts. Each tower shows its element. With --shots, each tower."),
         new Entry("crystal", typeof(CrystalProbe), 120f,

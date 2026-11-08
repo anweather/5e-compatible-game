@@ -50,6 +50,8 @@ namespace Chem
     public sealed class BpRiver
     {
         public string Id, Material;
+        /// <summary>A course with nothing in it ("dry"): it lays out as a river does (and what's along it), but fills no cell and cuts no channel.</summary>
+        public bool Dry;
         public GeoPath Path;
         /// <summary>The in-core anchors (source, lakes passed through, mouth).</summary>
         public List<Pt> Anchors;
@@ -467,7 +469,7 @@ namespace Chem
                 Half = halves.Skip(lo).Take(hi - lo + 1).ToArray(),
             };
             string rid = (string)f["id"];
-            d.Bp.Rivers.Add(new BpRiver { Id = rid, Material = material, Path = path, Anchors = anchors });
+            d.Bp.Rivers.Add(new BpRiver { Id = rid, Material = material, Dry = (bool?)f["dry"] ?? false, Path = path, Anchors = anchors });
             d.Bp.Centres[rid] = ToFrac(d, anchors[anchors.Count / 2]);
         }
 

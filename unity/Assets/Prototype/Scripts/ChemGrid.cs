@@ -95,6 +95,11 @@ public partial class ChemGrid : MonoBehaviour
     static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render"),
         ChunkPlanMarker = new("ChemGrid.ChunkPlan"), ChunkApplyMarker = new("ChemGrid.ChunkApply"), ChunkEventMarker = new("ChemGrid.ChunkEvent"),
         DetailChunksMarker = new("ChemGrid.DetailChunks");
+
+    // A world built (start-up, hosting, a reset): its parts, which the play log names when a rebuild stalls a frame.
+    static readonly Unity.Profiling.ProfilerMarker BuildMarker = new("ChemGrid.BuildWorld"), BuildRulesMarker = new("ChemGrid.BuildWorld.Rules"),
+        BuildCellsMarker = new("ChemGrid.BuildWorld.Cells"), BuildValleyMarker = new("ChemGrid.BuildWorld.Valley"),
+        BuildDrawMarker = new("ChemGrid.BuildWorld.Draw"), BuildListenersMarker = new("ChemGrid.BuildWorld.Listeners");
     public double LightsMs { get; private set; }
 
     // The chunks the dragon's breath has reset since the last frame (World.ChunkFreshened).
@@ -155,7 +160,9 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
     public void ResetWorld()
     {
-        foreach (Transform child in transform) Destroy(child.gameObject);
+        // The blockers stay, for the new world to take again (CellBlockers.ReleaseAll).
+        foreach (Transform child in transform)
+            if (blockers == null || child != blockers.Parent) Destroy(child.gameObject);
         freshChunks.Clear();
         lastLog = null;
         tickTimer = 0f;
@@ -164,12 +171,15 @@ public partial class ChemGrid : MonoBehaviour
 
     void BuildWorld()
     {
-        var rules = StartRules();
+        using var built = BuildMarker.Auto();
+        Rules rules;
+        using (BuildRulesMarker.Auto()) rules = StartRules();
         var roomWas = World?.Room;
 
         CheckMap();
-        World = StartWorld(rules, CellMap(), seed, out var start);
-        OpenRoom(roomWas);
+        Vector2Int start;
+        using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
+        using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
         World.ChunkSwitched += OnChunkSwitched;
         World.LandMoved += (x, y, reach) =>
         {
@@ -180,11 +190,15 @@ public partial class ChemGrid : MonoBehaviour
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
-        if (valley != null) valley.Bind(World);
+        if (valley != null)
+            using (BuildValleyMarker.Auto()) valley.Bind(World);
 
-        InitVisuals();
-        RenderAll();
-        WorldReset?.Invoke();
+        using (BuildDrawMarker.Auto())
+        {
+            InitVisuals();
+            RenderAll();
+        }
+        using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
     }
 
     void OnChunkSwitched(ChunkSwitch s)

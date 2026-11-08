@@ -8,7 +8,8 @@ using UnityEngine;
 // drawn, and a row house's wall, door or pane, which no scene model's box covers.
 // The ground itself is the chunk terrain; these only stand where a cell blocks.
 // Boxes are pooled: a cell that stops blocking (a tree burnt to a stump)
-// hands its box back for the next one.
+// hands its box back for the next one, and a new world takes the old one's
+// boxes rather than making its 3800 again (ReleaseAll; 130 ms of a rebuild).
 public sealed class CellBlockers
 {
     // A raised wall's blocker reaches its top as drawn (a 1.5 m wall is out of a jump's
@@ -38,6 +39,27 @@ public sealed class CellBlockers
         c != null && c.transform.parent != null && c.transform.parent.name == ParentName;
 
     public int Count => used.Count;
+
+    /// <summary>Where the boxes are kept: a world rebuilt (ChemGrid.ResetWorld) keeps it, and them.</summary>
+    public Transform Parent => parent;
+
+    /// <summary>
+    /// A new world: every box goes back to the pool, still standing, for Place to take again where the new world's
+    /// cells block (most where the old one's did); HideSpare then puts away the ones no cell took.
+    /// </summary>
+    public void ReleaseAll()
+    {
+        foreach (var box in used.Values) spare.Push(box);
+        used.Clear();
+        built.Clear();
+    }
+
+    /// <summary>After ReleaseAll and a whole world placed: the boxes left in the pool stop blocking.</summary>
+    public void HideSpare()
+    {
+        foreach (var box in spare)
+            if (box.gameObject.activeSelf) box.gameObject.SetActive(false);
+    }
 
     /// <summary>How high a cell's blocker stands above its ground; 0 when it doesn't block.</summary>
     public float Reach(Cell c)
@@ -99,7 +121,7 @@ public sealed class CellBlockers
         if (spare.Count > 0)
         {
             var box = spare.Pop();
-            box.gameObject.SetActive(true);
+            if (!box.gameObject.activeSelf) box.gameObject.SetActive(true);
             return box;
         }
         var go = new GameObject("Blocker");

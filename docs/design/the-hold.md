@@ -44,7 +44,7 @@ South-west of Hollowmere (centred 222, 300), the land climbs from 0 m at about x
 - **Spawners:** along the foot of the slope, from about (184, 340) to (206, 390), so raiders do not walk through the village (`hold-foot` in `places.json`).
 - **Slope:** about 40 m over 46 cells along the road. Raiders ignore height today (J-073: a mountain doesn't stop them, sight or
   spells), so they can climb it, but nothing slows them or blocks a spell on the way.
-- **The brook behind the castle:** `west-brook` of the `home-valley` theme, 2 to 4 cells wide and cut 0.5 to 2 m into the plateau, from about
+- **The brook behind the castle (dry since hold-east-path):** `west-brook` of the `home-valley` theme, 2 to 4 cells wide and cut 0.5 to 2 m into the plateau, from about
   (105, 260) south past x 57 to 68 to the map's edge. It runs about 50 cells behind the west wall.
 - **Reach:** 2 chunks from a wizard at the castle should cover the foot of the slope. Phase 2 checks raiders at the far
   spawners still tick when everyone is on the walls.
@@ -218,6 +218,26 @@ Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list i
 
 - **Raiders from the valley's animals.** Four more kinds in `rules/hold.json` `raiders`, each a role: the **blight deer** (a deer: as fast and frail as any), the **gloom wolf** (a wolf: bites the most often), the **barrow bear** (a black bear: the slowest and toughest, resists cold and earth) and the **storm bison** (a bison: comes fast and hits hardest, seldom). A raider row says how it looks: `raider.body`, the `fauna.json` species drawn for it, and `raider.size`, a percent of that species' size, so `DefenseField` reads bodies from the rules, not a list in code (the ash wing has none: it has its own wings). The map's spawner sends nine kinds now, a new one each wave (`kindEvery` 1), round and round, so the waves are mixed from wave 2 and the last has them all. `holdcurve` moved little: idle wizards still fall in wave 6 or 7, about 4.7 minutes in; fire+water wins two seeds of three.
 - **The folk off the road in a run.** A job in `jobs.json` can name `inARun`, the stop its people keep to while a Hold run is on: the guards and porters to the square, the fishers to the lake house. When a run starts each walks there from wherever it is, off the raiders' road (`FolkJobs.HomeFrom`), and stays; after the run it takes its round up again when the round next brings it to that stop, so no one jumps. View only, like the rest of the jobs. The village's own folk never come near the road. The probe is `holdbodies` (and its clip).
+
+**As built, hold-east-path (2026-11-08, from the 2026-11-08 playtest C3, B4 and W1).**
+
+- **A second road, from the south-east.** The castle has a south gate now, opposite the stable: a timber gate in the outer
+  south wall, a passage in the inner one, and two gate towers (`hold#1` in `buildings.json`). Its road (`east`, joins
+  `s0`-`s5`, graded dirt like `down`) runs from it south-east toward the lake to the second spawner, `hold-east-foot` in
+  `places.json` (about (212, 438) to (226, 458)). `hold.json` lists two spawners with the same kinds; the core takes them in
+  turn, so every wave comes half by the foot's road to the east gate and half by the east road to the south gate. Raiders
+  keep to roads (`offRoadCost`), so each half uses its own. `HoldEastTests` holds it; `AMixedWaveHashesAsItDid` moved.
+- **The brook behind the castle is dry.** It was the `home-valley` theme's `west-brook` (see Where): 2 to 4 cells of river
+  water in a 1.5 m channel, never reaching the lake, with its ground climbing as it ran south. A theme river can now be
+  `"dry": true` (`ThemeSchema`, `BpRiver.Dry`): it lays out as before, so the land and its draws don't move, but fills no
+  cell and cuts no channel. Taking the feature out instead reshaped a third of the map (the theme's draws shift). The yard
+  build rewrote `cells.txt` (the brook's cells grass, a few by the tarn lake, about 90 trees elsewhere moved with the
+  draws); `land.json` was re-baked along the old course only (within 6 cells, up to 2.5 m: the channel filled; a bake of the
+  whole land on the Mac also takes in the castle cliff's and the canyon's stamps, which the land doesn't hold), and the
+  ground pack (`ground/`) exported again, with 42 cells of the land north of the castle cliff set to it, so
+  `GroundLandTests` holds on every cell. The better river comes with the world plan (W1).
+- **Wading slows a little.** `SurfaceEffects` scales wading by depth: 0.92 at the water's edge to 0.78 nearly
+  swimming-deep (was 0.55 at any depth). The `holdeast` probe measures 83% of walking speed on a wade into the lake.
 
 ### 5. Progress
 

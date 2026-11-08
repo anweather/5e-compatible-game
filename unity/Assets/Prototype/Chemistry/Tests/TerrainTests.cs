@@ -281,6 +281,27 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ResetFromItsCacheEqualsTheCellsRead([Values(6, 7)] int seed, [Values(false, true)] bool flatUnderWalls)
+        {
+            // Reset reads each cell's numbers once (its cache); Compute reads the cells themselves, as Update does.
+            var w = Rugged(seed);
+            var rng = new Random(seed);
+            foreach (var c in w.Cells)
+            {
+                if (rng.Next(8) == 0) c.Cover = World.BankCover;
+                else if (rng.Next(12) == 0) c.Height = R.Sim.Height.BlockAt;
+            }
+            var field = new CellHeightfield(G, Step) { FlatUnderWalls = flatUnderWalls };
+            field.Reset(w);
+            foreach (var (i, j) in field.Chunks)
+            {
+                var full = field.Compute(w, i, j);
+                AssertSame(full, field.Target(i, j), $"target ({i}, {j})");
+                AssertSame(full, field.Current(i, j), $"current ({i}, {j})");
+            }
+        }
+
+        [Test]
         public void UpdateFillsOnlyRoundTheCellsAndMatchesAFullRecompute([Values(1, 2, 3)] int seed)
         {
             // Snow's shape: banks scattered over several chunks, some on their edges (RandomCells),

@@ -142,6 +142,7 @@ public sealed class ValleyGround
     /// <summary>Starts over on a world: the saved chunks again (copied when first changed), their base heights recovered.</summary>
     public void Bind(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls = false)
     {
+        using var bound = BindMarker.Auto();
         world = w;
         landUnit = stepHeight / w.Rules.Sim.WaterUnitsPerStep;
         heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
@@ -169,6 +170,8 @@ public sealed class ValleyGround
         }
         paintedMix = (IReadOnlyList<float>[])bakedPaint.Clone();
     }
+
+    static readonly Unity.Profiling.ProfilerMarker BindMarker = new("ValleyGround.Bind");
 
     // Each cell's mix as its texels were last composed (the baked one at first): a cell asked to
     // repaint that would paint the same mix again changes nothing.

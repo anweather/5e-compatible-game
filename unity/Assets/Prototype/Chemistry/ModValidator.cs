@@ -104,13 +104,13 @@ namespace Chem
                 problems.AddRange(e.Errors.Select(m => new ModProblem(ModCheck.Shape, Sentence(m))));
                 return problems;
             }
-            var baseDoc = JObject.Parse(baseRules.ToJson());
+            var baseDoc = baseRules.CopyDoc();
             var v = new Pass(baseDoc, mod.Json, budgets, problems);
             v.Shape();
             JObject composed = null;
             try
             {
-                composed = JObject.Parse(baseRules.WithMods(new[] { mod }).ToJson());
+                composed = baseRules.WithMods(new[] { mod }).CopyDoc();
             }
             catch (ModException e)
             {

@@ -115,8 +115,8 @@ namespace Chem.Tests
         public void GoldenHomeValley()
         {
             // Pins the port's output: a change that moves it reshapes worlds made with this theme
-            // (bump the theme's revision, D11).
-            Assert.That(Digest(ThemeBlueprint.Solve(1, Home, RegionCells)), Is.EqualTo("c3c8448e"));
+            // (bump the theme's revision, D11). Moved for hold-east-path: the west brook is dry (revision 2).
+            Assert.That(Digest(ThemeBlueprint.Solve(1, Home, RegionCells)), Is.EqualTo("9c8fed91"));
         }
 
         // A hash of what the field says over the core, every 6 cells.

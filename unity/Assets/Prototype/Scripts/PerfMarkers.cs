@@ -48,6 +48,8 @@ public sealed class PerfMarkers : IDisposable
             "ValleyFauna.Update", "ValleyFauna.Think", "ValleyFauna.Draw",
             "RobeCloth.Step", "PlaytestBot.LateUpdate", BotShot,
             "ChemGrid.ChunkPlan", "ChemGrid.ChunkApply", "ChemGrid.ChunkEvent", "ChemGrid.DetailChunks",
+            "ChemGrid.BuildWorld", "ChemGrid.BuildWorld.Rules", "ChemGrid.BuildWorld.Cells", "ChemGrid.BuildWorld.Valley",
+            "ChemGrid.BuildWorld.Draw", "ChemGrid.BuildWorld.Listeners", "ValleyGround.Bind",
             "ThingSpawner.SpawnChunk", "ThingSpawner.UnloadChunk", "ValleyGround.DrawDetails",
             "ValleyGround.HeightUpdate", "ValleyGround.HeightQueue", "ValleyGround.HeightEase", "ValleyGround.HeightWrite", "ValleyGround.SyncHeightmap", "ValleyGround.TreeCollider",
             "ValleyGround.Paint.Block", "ValleyGround.Paint.Compose", "ValleyGround.UploadPaint.Apply",

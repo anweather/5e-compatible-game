@@ -35,8 +35,12 @@ public class SurfaceEffects : MonoBehaviour
     public ChemGrid grid;
     [Tooltip("How quickly the wizard regains control on slippery ground (higher = less slide).")]
     public float slipperyGrip = 1.2f;
-    [Tooltip("Speed multiplier in water at least this many units deep.")]
-    public float wadingSpeed = 0.55f;
+    // Wading slows a little at the water's edge and more the deeper it gets, never as much as swimming: 0.55 everywhere
+    // was far too slow in the shallows (playtest 2026-11-08, B4).
+    [Tooltip("Speed multiplier wading at the water's edge (in water at least wadingDepth units deep).")]
+    public float shallowWadingSpeed = 0.92f;
+    [Tooltip("Speed multiplier wading in water nearly deep enough to swim (swimDepth over the feet).")]
+    public float wadingSpeed = 0.78f;
     public int wadingDepth = 2;
     [Tooltip("Highest ledge the wizard steps up without jumping: a little over one step of the grid.")]
     public float climbStep = 0.55f;
@@ -222,6 +226,7 @@ public class SurfaceEffects : MonoBehaviour
         bool above = transform.position.y > surface + AboveSurface;
         bool slippery = c != null && !above && body.isGrounded && grid.World.IsSlippery(c);
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth && surface > transform.position.y;
+        WadeDepth = wading ? surface - transform.position.y : 0f;
 
         Swim(c, cell);
         Breathe(surface);
@@ -358,6 +363,12 @@ public class SurfaceEffects : MonoBehaviour
         return total;
     }
 
+    /// <summary>How deep the water over the wizard's feet is while wading (metres), 0 out of it (the probe).</summary>
+    public float WadeDepth { get; private set; }
+
+    /// <summary>The speed multiplier wading this deep: a little at the edge, more toward swimming depth.</summary>
+    public float WadingFactor(float depth) => Mathf.Lerp(shallowWadingSpeed, wadingSpeed, Mathf.InverseLerp(0f, swimDepth, depth));
+
     // Wading, thorns, heavy ground, a spell's slow and casting, together.
     void SetSpeed(bool wading)
     {
@@ -365,7 +376,7 @@ public class SurfaceEffects : MonoBehaviour
         wasWading = wading;
         float k = Slowed ? slowFactor : 1f;
         if (swimming) k *= HeadUnder ? underwaterSpeed : swimmingSpeed;
-        else if (wading) k *= wadingSpeed;
+        else if (wading) k *= WadingFactor(WadeDepth);
         else k *= Mathf.Min(InThorns ? thornSpeed : 1f, groundSpeed);
         k *= CastFactor;
         if (Mathf.Approximately(k, appliedSpeed)) return;

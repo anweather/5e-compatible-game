@@ -178,8 +178,11 @@ namespace Chem
         float LandAt(World world, int u, int v)
         {
             var (x, y) = grid.GridCell(u, v);
-            return LaidLandDrawn ? world.LandMovedAt(x, y) : world.LandStampedAt(x, y);
+            if (cache != null) return grid.InGrid(x, y) ? cache.Land[y * grid.GridW + x] : 0f;
+            return LandOf(world, x, y);
         }
+
+        int LandOf(World world, int x, int y) => LaidLandDrawn ? world.LandMovedAt(x, y) : world.LandStampedAt(x, y);
 
         float CellsOffset(World world, int i, int j, int sx, int sz)
         {
@@ -191,9 +194,7 @@ namespace Chem
             {
                 for (int u = u0; u <= u1; u++)
                 {
-                    var c = CellAt(world, u, v);
-                    bool raised = c != null && world.IsRaisedWall(c);
-                    float o = Offset(world, c);
+                    Read(world, u, v, out float o, out bool raised, out _);
                     sum += o;
                     if (raised && !FlatUnderWalls) wall = Math.Max(wall, o);
                 }
@@ -202,7 +203,8 @@ namespace Chem
             float fu = i * TerrainGrid.ChunkCells + (float)sx / p - 0.5f, fv = j * TerrainGrid.ChunkCells + (float)sz / p - 0.5f;
             float mound = BankAt(world, fu, fv);
             if (p == 1) return sum / ((u1 - u0 + 1) * (v1 - v0 + 1)) + mound;
-            return Blended(world, i, j, sx, sz, p, Offset(world, CellAt(world, u1, v1))) + mound;
+            Read(world, u1, v1, out float own, out _, out _);
+            return Blended(world, i, j, sx, sz, p, own) + mound;
         }
 
         // ---------- snow banks as mounds ----------
@@ -218,11 +220,11 @@ namespace Chem
         float BankAt(World world, float fu, float fv)
         {
             float best = 0f;
+            if (cache != null && !cache.AnyBank) return best;
             for (int v = (int)Math.Floor(fv - MoundReach); v <= (int)Math.Ceiling(fv + MoundReach); v++)
                 for (int u = (int)Math.Floor(fu - MoundReach); u <= (int)Math.Ceiling(fu + MoundReach); u++)
                 {
-                    var c = CellAt(world, u, v);
-                    if (c == null || !CellPaint.IsBank(c.Cover, world.Rules)) continue;
+                    if (!Read(world, u, v, out _, out _, out bool bank) || !bank) continue;
                     float du = fu - u, dv = fv - v;
                     float d = (float)Math.Sqrt(du * du + dv * dv);
                     if (d >= MoundReach) continue;
@@ -261,9 +263,8 @@ namespace Chem
             float tu = fu - u, tv = fv - v;
             float Corner(int du, int dv)
             {
-                var c = CellAt(world, u + du, v + dv);
-                if (c == null) return 0f;
-                return !FlatUnderWalls && world.IsRaisedWall(c) ? own : Offset(world, c);
+                if (!Read(world, u + du, v + dv, out float o, out bool raised, out _)) return 0f;
+                return !FlatUnderWalls && raised ? own : o;
             }
             float near = Corner(0, 0) + (Corner(1, 0) - Corner(0, 0)) * tu;
             float far = Corner(0, 1) + (Corner(1, 1) - Corner(0, 1)) * tu;
@@ -277,10 +278,62 @@ namespace Chem
             return s % p != 0 ? (c, c) : (c - 1, c);
         }
 
-        Cell CellAt(World world, int u, int v)
+        // What the samples read of a cell: its drawn offset (Offset), whether it's a raised wall and whether a snow bank
+        // lies on it. False, with nothing, off the grid. From the cache during a Reset, else from the cell.
+        bool Read(World world, int u, int v, out float offset, out bool raised, out bool bank)
         {
             var (x, y) = grid.GridCell(u, v);
-            return grid.InGrid(x, y) ? world.At(x, y) : null;
+            if (!grid.InGrid(x, y))
+            {
+                offset = 0f;
+                raised = bank = false;
+                return false;
+            }
+            if (cache != null)
+            {
+                int k = y * grid.GridW + x;
+                offset = cache.Offset[k];
+                raised = cache.Raised[k];
+                bank = cache.Bank[k];
+                return true;
+            }
+            var c = world.At(x, y);
+            offset = Offset(world, c);
+            raised = c != null && world.IsRaisedWall(c);
+            bank = c != null && CellPaint.IsBank(c.Cover, world.Rules);
+            return true;
+        }
+
+        // A Reset reads every cell twenty-odd times over (each high-detail sample reads its cell, its four corners and
+        // the sixteen a snow mound could reach from): the cells' numbers once each instead, for that Reset only.
+        // It was 750 ms of a world rebuilt in the player (the 2 s stalls of Andrew's 2026-11-08 log).
+        sealed class CellCache
+        {
+            public float[] Offset, Land;
+            public bool[] Raised, Bank;
+            public bool AnyBank;
+        }
+
+        CellCache cache;
+
+        CellCache Cache(World world)
+        {
+            int n = grid.GridW * grid.GridH;
+            var c = new CellCache { Offset = new float[n], Land = new float[n], Raised = new bool[n], Bank = new bool[n] };
+            for (int y = 0; y < grid.GridH; y++)
+            {
+                for (int x = 0; x < grid.GridW; x++)
+                {
+                    var cell = world.At(x, y);
+                    int k = y * grid.GridW + x;
+                    c.Offset[k] = Offset(world, cell);
+                    c.Raised[k] = cell != null && world.IsRaisedWall(cell);
+                    c.Bank[k] = cell != null && CellPaint.IsBank(cell.Cover, world.Rules);
+                    c.AnyBank |= c.Bank[k];
+                    c.Land[k] = LandOf(world, x, y);
+                }
+            }
+            return c;
         }
 
         /// <summary>A whole chunk's offsets, [z, x].</summary>
@@ -341,13 +394,21 @@ namespace Chem
         /// <summary>Computes every chunk's offsets and draws them at once (no easing).</summary>
         public void Reset(World world)
         {
-            foreach (var kv in chunks)
+            cache = Cache(world);
+            try
             {
-                var s = kv.Value;
-                s.Target = Compute(world, kv.Key.i, kv.Key.j);
-                s.Current = (float[,])s.Target.Clone();
-                s.Moving = null;
-                s.Queued = null;
+                foreach (var kv in chunks)
+                {
+                    var s = kv.Value;
+                    s.Target = Compute(world, kv.Key.i, kv.Key.j);
+                    s.Current = (float[,])s.Target.Clone();
+                    s.Moving = null;
+                    s.Queued = null;
+                }
+            }
+            finally
+            {
+                cache = null;
             }
             waiting.Clear();
         }

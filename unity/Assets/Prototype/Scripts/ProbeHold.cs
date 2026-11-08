@@ -300,7 +300,9 @@ public class HoldProbe : ProbeScenario
         Check("a_cast_from_the_walls_lands", burning > 0, $"log: {string.Join(" / ", LogSince(tick).Take(3))}");
         PutOutFires();
 
-        var gate = cells.Where(c => c.Part == BuildingPart.Opening && world.Rules.Terrain[c.Terrain].SwingsTo != null).ToList();
+        // The east gate, by the walls' stair (the south gate, hold-east-path, is the castle's other).
+        var swinging = cells.Where(c => c.Part == BuildingPart.Opening && world.Rules.Terrain[c.Terrain].SwingsTo != null).ToList();
+        var gate = swinging.Where(c => c.X >= swinging.Max(o => o.X) - 1).ToList();
         Check("the_gate_is_open_at_the_start", gate.Count == 3 && gate.All(c => !world.IsBlocking(world.At(c.X, c.Y))));
         Stand(31, 15);
         yield return Wait(0.3f);
