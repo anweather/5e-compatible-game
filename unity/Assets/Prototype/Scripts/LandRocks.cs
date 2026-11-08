@@ -34,7 +34,7 @@ public sealed class LandRocks
     }
 
     readonly ChemGrid grid;
-    readonly Transform root;
+    Transform root;
     readonly Dictionary<int, Rock> rocks = new();
     readonly Queue<(int x, int y)> waiting = new();
     readonly HashSet<int> queued = new();
@@ -44,8 +44,25 @@ public sealed class LandRocks
     public LandRocks(ChemGrid grid)
     {
         this.grid = grid;
+        MakeRoot();
+    }
+
+    void MakeRoot()
+    {
         root = new GameObject("Land rocks").transform;
         root.SetParent(grid.transform, false);
+    }
+
+    // An online reset (ChemGrid.ResetWorld) destroys everything under the grid, these rocks with it (playtest 2026-11-08
+    // L1: their bodies were still read): a new root, and every cell that had one looked at again on the new world's land.
+    void Regrow()
+    {
+        MakeRoot();
+        int w = grid.World.W;
+        foreach (int key in rocks.Keys)
+            if (queued.Add(key)) waiting.Enqueue((key % w, key / w));
+        rocks.Clear();
+        still = 0f;
     }
 
     /// <summary>How many rocks the land's faces have now; a map's own aren't counted.</summary>
@@ -96,6 +113,7 @@ public sealed class LandRocks
     public void Tick(float dt)
     {
         var world = grid.World;
+        if (root == null) Regrow();
         for (int placed = 0; placed < PlacedPerFrame && waiting.Count > 0;)
         {
             var (x, y) = waiting.Dequeue();
@@ -106,7 +124,7 @@ public sealed class LandRocks
             if ((was?.Kind ?? Kind.None) == kind) continue;
             if (was != null)
             {
-                Object.Destroy(was.Body.gameObject);
+                if (was.Body != null) Object.Destroy(was.Body.gameObject);
                 rocks.Remove(key);
             }
             if (kind == Kind.None || rocks.Count >= MostRocks) continue;
@@ -217,7 +235,11 @@ public sealed class LandRocks
         var foot = new Vector3(spot.x + outward.x, ground + over, spot.z + outward.z);
         var body = models != null && models.Length > 0 ? CellDressing.Rock(root, models[rng.Next(models.Length)], foot, wide, tall, rng) : null;
         var made = body != null ? body : Lump(foot, wide, tall);
-        foreach (var collider in made.GetComponentsInChildren<Collider>()) Object.Destroy(collider);
+        foreach (var collider in made.GetComponentsInChildren<Collider>())
+        {
+            if (Application.isPlaying) Object.Destroy(collider);
+            else Object.DestroyImmediate(collider); // an Edit mode test's
+        }
         return new Rock { Kind = kind, Body = made.transform, Spot = spot, Over = made.transform.position.y - ground, Last = ground };
     }
 

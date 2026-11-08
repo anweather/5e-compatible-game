@@ -18,9 +18,13 @@
       "place": "hold-foot",
       "kinds": [
         "bone-hound",
+        "blight-deer",
         "ash-crab",
+        "gloom-wolf",
         "cliff-stalker",
+        "barrow-bear",
         "ash-wing",
+        "storm-bison",
         "giant-spider"
       ]
     }

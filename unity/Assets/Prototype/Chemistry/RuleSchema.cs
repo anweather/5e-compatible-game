@@ -149,7 +149,9 @@ namespace Chem
             RuleField.Section("raider", new RuleSchema(
                 RuleField.Whole("ticksPerSquare", 1),
                 RuleField.References("weak", "elements"),
-                RuleField.References("resist", "elements"))),
+                RuleField.References("resist", "elements"),
+                RuleField.Text("body"),
+                RuleField.Whole("size", 1))),
             RuleField.Look("look"),
             // The wizard: one entity the game spawns for each player.
             RuleField.Flag("player").ShippedOnly());

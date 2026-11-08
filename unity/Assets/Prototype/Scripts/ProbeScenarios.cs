@@ -121,6 +121,10 @@ public static class ProbeScenarios
         new Entry("airpeers", typeof(AirPeersProbe), 240f,
             "The air spells on two peers (D16, aimed-spells): this Editor hosts, the virtual player joins and starts the waves, and both put the same flyer and two raiders down after the same net tick. " +
             "Lightning from the host at the flyer; Gust of Wind on a raider tapped from the host, held from the client, then a third shove it braces against; a Whirlwind from the client on the other. Checks: each lands, the checksums from the raiders on are equal, no desync.", players: 2),
+        new Entry("peervanish", typeof(PeerVanishProbe), 360f,
+            "The other player's wizard stays drawn (playtest 2026-11-08 B1): this Editor hosts, the virtual player joins beside the host, a Hold run starts (the first-wave moment), " +
+            "the keep is put on its last point at one net tick on both and the raiders take it, the host resets the world, and the client walks off and back. " +
+            "Checks at each step: each peer draws the other's wizard (its body's renderers on, not forced off or shadows only, on a drawn layer, its bounds round it) where its owner has it; checksums equal.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("productsview", typeof(ProductsViewProbe), 300f,
@@ -274,6 +278,8 @@ public static class ProbeScenarios
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
         new Entry("holdclip", typeof(HoldClipProbe), 150f,
             "The hold-batch clip, with the HUD, on a virtual pad: in a run at the water tower the right trigger attunes the hand, then casts, the wave timer counting down; then high in the open keep raiders strike the crystal as it cracks and shatters. Into --shots: frames, sound.wav and timeline.txt."),
+        new Entry("holdbodies", typeof(HoldBodiesProbe), 480f,
+            "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt."),
         new Entry("towers", typeof(TowersProbe), 150f,
             "Attuning at the castle's towers (hold-batch), on a virtual pad in a run: away from them the trigger attunes nothing; at each tower whose element the wizard has, the right trigger attunes the hand to it in its moment, the HUD names the tower, then the same trigger casts. Each tower shows its element. With --shots, each tower."),
         new Entry("crystal", typeof(CrystalProbe), 120f,

@@ -13,17 +13,12 @@ using UnityEngine;
 // beaten. Only the show: the core decides everything.
 public partial class DefenseField : ICreatureGround
 {
-    [Tooltip("The raider kinds (rules/entities.json ids) and the species drawn for each (rules/fauna.json ids), in the same order.")]
-    public string[] kinds = { RaiderIds.BoneHound, RaiderIds.AshCrab, RaiderIds.GiantSpider, RaiderIds.CliffStalker, RaiderIds.AshWing };
-    public string[] species = { "bone-hound", "ash-crab", "giant-spider", "gila-monster", null };
-    [Tooltip("How big each kind is drawn, times its species' size.")]
-    public float[] sizes = { 1.2f, 1.6f, 1.4f, 3f, 1.5f };
     [Tooltip("The creature material (Punchy/Creature), the valley animals' own.")]
     public Material creatureMaterial;
 
     sealed class Shown
     {
-        public int kind;
+        public string kind;
         public Vector2Int cell;
         public Vector3 from, to, at;
         public float movedAt, stepSeconds, lift, lunge;
@@ -78,7 +73,7 @@ public partial class DefenseField : ICreatureGround
             if (!shown.TryGetValue(r.Id, out var s))
             {
                 var at = Ground(cell);
-                s = new Shown { kind = System.Array.IndexOf(kinds, Rules.PlainKind(r.Kind)), cell = cell, from = at, to = at, at = at, state = NewState(at) };
+                s = new Shown { kind = Rules.PlainKind(r.Kind), cell = cell, from = at, to = at, at = at, state = NewState(at) };
                 s.raider = r;
                 SizeUp(s);
                 shown[r.Id] = s;
@@ -167,7 +162,7 @@ public partial class DefenseField : ICreatureGround
             int need = used + (b?.Segments.Length ?? 0);
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
             int end = flyer ? Wings(s, used) : used + animator.Evaluate(b, s.state, 0, this, instances, used);
-            if (route == Chem.World.ClimbRoute && s.kind == System.Array.IndexOf(kinds, RaiderIds.CliffStalker)) OntoTheSlope(s, used, end);
+            if (route == Chem.World.ClimbRoute && s.kind == RaiderIds.CliffStalker) OntoTheSlope(s, used, end);
             Shadow(s);
             if (Boss(World, s.raider)) BossesDrawn++;
             Adjective(s, used, end);
@@ -217,10 +212,13 @@ public partial class DefenseField : ICreatureGround
         }
     }
 
-    CreatureBody Body(int kind)
+    // The species its rules row draws it as (raider.body), or null for none (the ash wing has wings of its own).
+    CreatureBody Body(string kind)
     {
         if (bodies.Count == 0) ReadRows();
-        return kind >= 0 && kind < species.Length && !string.IsNullOrEmpty(species[kind]) ? bodies[bodies.IndexOf(species[kind])] : null;
+        var species = kind != null ? World.Rules.Entity(kind)?.Raider?.Body : null;
+        int at = string.IsNullOrEmpty(species) ? -1 : bodies.IndexOf(species);
+        return at >= 0 ? bodies[at] : null;
     }
 
     static CreatureState NewState(Vector3 at) => new CreatureState
@@ -239,11 +237,11 @@ public partial class DefenseField : ICreatureGround
         return at;
     }
 
-    // Sizes the creature from its kind's body: the species' own size, times the kind's.
+    // Sizes the creature from its kind's body: the species' own size, times the kind's (raider.size, a percent).
     void SizeUp(Shown s)
     {
         var b = Body(s.kind);
-        float size = s.kind >= 0 && s.kind < sizes.Length ? sizes[s.kind] : 1f;
+        float size = (World.Rules.Entity(s.kind)?.Raider?.Size ?? 100) / 100f;
         s.state.Scale = (b != null ? (b.Size.x + b.Size.y) * 0.5f : 1f) * size * (Boss(World, s.raider) ? BossSize : 1f);
     }
 

@@ -170,4 +170,8 @@ public static class RaiderIds
     public const string GiantSpider = "giant-spider";
     public const string CliffStalker = "cliff-stalker";
     public const string AshWing = "ash-wing";
+    public const string BlightDeer = "blight-deer";
+    public const string GloomWolf = "gloom-wolf";
+    public const string BarrowBear = "barrow-bear";
+    public const string StormBison = "storm-bison";
 }
