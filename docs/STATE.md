@@ -245,3 +245,15 @@ context): bring it up to date with `tools/workers/board.mjs`, then publish `.pm/
 - Known gaps: the Mac has no commit hook; merge lines double-count the host's work; Pro transcripts
   aren't on disk.
 - **alpha 0.1.12 published** 2026-11-08 19:08 UTC on Andrew's go: https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.12 (tag d1d142c7; Windows, macOS with an osx delta from 0.1.7, Linux). Everything landed on dev after 3321b336 waits for the next release.
+- **2026-11-08 later:** landed `wow-spells` (73dd5531) and `wow-looks` (44a8103a: jagged spires, an iceberg in sleet,
+  real thunder; Andrew: "good enough to move ahead"), `landmark-intent` (133a3692) and its fixes (c479db76, 728ab672),
+  `casting-taps` (14ddbaf4: a tap fires in 0.33 s and spams; mana comes after Andrew plays it).
+- **World squares:** plan `docs/design/world-squares.md` (on demand on every peer; known/generated rings; coasts,
+  rivers downhill, roads with a reason, inland seas, world shape, east-west wrap with an ice-wall north and dune-sea
+  south, archetypes from a described world). Calls in J-080. Paper prototype `tools/world-paper/`, published at
+  https://claude.ai/artifact/GCENSUd3S5a2SbCQtY6X54 (Describe uses the sample capability). `world-plan` is held in
+  `docs/handoffs/briefs/held/` until Andrew has tried the prototype. Decision pages:
+  https://claude.ai/artifact/3gArUafzNLv9yAdMjJyZu3, https://claude.ai/artifact/SU4mkw9cWLdtgzjz5iDApQ.
+- **In flight:** the PC `maps-phase-6` (the scene lets go; phase 7, the sea from land, next: lakes and coves wait on
+  it); the Mac `landmark-look-pass` (Kakariko volcano village, great tree as a Cypress kept on its ground, bare stamps
+  drop trees, stamps before rows). u2 idle (nothing queued). Release: alpha 0.1.12 published; dev is well past it.
