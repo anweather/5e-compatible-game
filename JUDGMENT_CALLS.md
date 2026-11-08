@@ -79,6 +79,10 @@ Each entry has:
   per world, long, apart from each other, fenced and marked, with waystation shops; lesser roads and trails off them to
   caves or between small towns; mountains are gone round; a canyon has only one or two bridges and roads route to them.
   "Dynamic but intentional", with the tiles keeping the road interface.
+- **The volcano village (to the Mac):** no houses up at the peak. Houses start at the mountain's base and go up "like a
+  corridor", a road winding round the mountain with houses on its upslope and downslope sides, "but they shouldn't be
+  so steep". The Mac's "wind" layout: a gently rising road part-way round the cone's lower slopes, houses alternating
+  sides, nothing above about a third of the cone's height (landmark-look-pass).
 - **The big spells:** "way better now ... good enough for us to move ahead with" (wow-looks, 44a8103a).
 - **Revisited:** 0.
 
