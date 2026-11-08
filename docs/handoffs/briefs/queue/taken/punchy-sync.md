@@ -24,3 +24,6 @@ procedural bodies. Ours are rows in `rules/fauna.json` (68 species) and `rules/p
 Before landing: `dotnet build core -c Release -warnaserror`, `dotnet test core` twice in full in the foreground (the
 runner closes a session that only waits), `dotnet format`. Push the branch only, remove this claim on the branch in the
 last commit. The PC compiles it and looks at the new creatures; the lead lands it.
+
+After (2026-11-08, try 1): the watcher stopped u2 at 1.09 GB free on the PC (the lead's landing gates ran beside the
+Editor). The work in progress is on `wip/u2-punchy-sync`. Continue from it, on branch `punchy-sync`.
