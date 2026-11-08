@@ -1660,11 +1660,6 @@
       "wall": {
         "material": "stone"
       },
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -1813,11 +1808,6 @@
       "wall": {
         "material": "stone"
       },
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -1905,11 +1895,6 @@
       "style": "village",
       "seed": 62087,
       "note": "Emberhold's house, by Mount Hearth",
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -2000,11 +1985,6 @@
       "wall": {
         "material": "stone"
       },
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -2092,11 +2072,6 @@
       "style": "village",
       "seed": 66162,
       "note": "Emberhold's house, by Mount Hearth",
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -2184,11 +2159,6 @@
       "style": "village",
       "seed": 5129,
       "note": "Emberhold's house, by Mount Hearth",
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -2278,11 +2248,6 @@
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
-      },
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
       },
       "joins": {
         "nw": [
@@ -2374,11 +2339,6 @@
       "wall": {
         "material": "stone"
       },
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
-      },
       "joins": {
         "nw": [
           0,
@@ -2468,11 +2428,6 @@
       "note": "Emberhold's watch house, by Mount Hearth",
       "wall": {
         "material": "stone"
-      },
-      "level": true,
-      "pad": {
-        "margin": 1,
-        "bank": 3
       },
       "joins": {
         "nw": [
@@ -3242,7 +3197,7 @@
     {
       "id": "the-drowned-glass#1",
       "at": [
-        360,
+        362,
         398
       ],
       "style": "plain",
@@ -3342,7 +3297,7 @@
     {
       "id": "the-drowned-glass#2",
       "at": [
-        355,
+        357,
         364
       ],
       "style": "plain",
