@@ -4,14 +4,73 @@
     {
       "id": "the-canyon",
       "name": "the canyon",
-      "at": [160, 272],
+      "at": [
+        160,
+        272
+      ],
       "profile": "canyon",
       "radius": 18,
       "rise": 240,
       "rough": 40,
       "seed": 23,
       "trail": "dirt",
-      "path": [[28, -2], [0, 0], [-14, -10], [-32, 4]]
+      "path": [
+        [
+          28,
+          -2
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          -14,
+          -10
+        ],
+        [
+          -32,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "the-greatbough-1",
+      "name": "the Greatbough",
+      "at": [
+        470,
+        226
+      ],
+      "profile": "dome",
+      "radius": 28,
+      "rise": 12,
+      "rough": 30,
+      "seed": 43516
+    },
+    {
+      "id": "mount-hearth-1",
+      "name": "Mount Hearth",
+      "at": [
+        160,
+        106
+      ],
+      "profile": "cone",
+      "radius": 64,
+      "rise": 450,
+      "rough": 8,
+      "seed": 31312
+    },
+    {
+      "id": "mount-hearth-2",
+      "name": "Mount Hearth (2)",
+      "at": [
+        160,
+        106
+      ],
+      "profile": "dome",
+      "radius": 13,
+      "rise": -185,
+      "rough": 5,
+      "seed": 44179
     }
   ]
 }

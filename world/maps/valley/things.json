@@ -2,48 +2,414 @@
   "about": "The valley's props and items, per 64x64-cell chunk (docs/WORLD_STREAMING.md). kind is an id in rules/entities.json or rules/items.json; cell is the cell inside the chunk (world cell = chunk * 64 + cell; y grows south); rot turns it about the vertical, in degrees; things with the same link are a pair (sending stones). A thing's id is its chunk and its place in the chunk's list, so add new things at the end of a chunk's list.",
   "chunks": [
     {
-      "chunk": [4, 4],
+      "chunk": [
+        4,
+        4
+      ],
       "things": [
-        { "kind": "barrel", "cell": [41, 62], "note": "in the oil spill: light the oil and it goes up" },
-        { "kind": "barrel", "cell": [43, 62], "note": "in the oil spill" },
-        { "kind": "barrel", "cell": [40, 61], "note": "beside the oil spill" },
-        { "kind": "crate", "cell": [34, 61], "note": "by the brambles" },
-        { "kind": "crate", "cell": [34, 62], "note": "by the brambles" },
-        { "kind": "sending-stone", "cell": [25, 60], "link": "stones", "note": "the yard's far north-west corner" }
+        {
+          "kind": "barrel",
+          "cell": [
+            41,
+            62
+          ],
+          "note": "in the oil spill: light the oil and it goes up"
+        },
+        {
+          "kind": "barrel",
+          "cell": [
+            43,
+            62
+          ],
+          "note": "in the oil spill"
+        },
+        {
+          "kind": "barrel",
+          "cell": [
+            40,
+            61
+          ],
+          "note": "beside the oil spill"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            34,
+            61
+          ],
+          "note": "by the brambles"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            34,
+            62
+          ],
+          "note": "by the brambles"
+        },
+        {
+          "kind": "sending-stone",
+          "cell": [
+            25,
+            60
+          ],
+          "link": "stones",
+          "note": "the yard's far north-west corner"
+        }
       ]
     },
     {
-      "chunk": [4, 5],
+      "chunk": [
+        4,
+        5
+      ],
       "things": [
-        { "kind": "crate", "cell": [42, 0], "note": "on the pond" },
-        { "kind": "crate", "cell": [44, 1], "note": "on the pond" },
-        { "kind": "crate", "cell": [39, 1], "note": "at the pond's west edge: the online probe's Thunderwave throws it" },
-        { "kind": "boulder", "cell": [46, 0], "note": "beside the pond" },
-        { "kind": "crate", "cell": [33, 6] },
-        { "kind": "glow-ball-amber", "cell": [34, 7] },
-        { "kind": "glow-ball-azure", "cell": [38, 7] },
-        { "kind": "glow-ball-rose", "cell": [37, 9] },
-        { "kind": "bullseye-lantern", "cell": [35, 10] },
-        { "kind": "spyglass", "cell": [39, 9] },
-        { "kind": "dancing-lights", "cell": [33, 9] },
-        { "kind": "sending-stone", "cell": [36, 6], "link": "stones", "note": "by the start" },
-        { "kind": "pick", "cell": [37, 11], "note": "by the start: digs rock" }
+        {
+          "kind": "crate",
+          "cell": [
+            42,
+            0
+          ],
+          "note": "on the pond"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            44,
+            1
+          ],
+          "note": "on the pond"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            39,
+            1
+          ],
+          "note": "at the pond's west edge: the online probe's Thunderwave throws it"
+        },
+        {
+          "kind": "boulder",
+          "cell": [
+            46,
+            0
+          ],
+          "note": "beside the pond"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            33,
+            6
+          ]
+        },
+        {
+          "kind": "glow-ball-amber",
+          "cell": [
+            34,
+            7
+          ]
+        },
+        {
+          "kind": "glow-ball-azure",
+          "cell": [
+            38,
+            7
+          ]
+        },
+        {
+          "kind": "glow-ball-rose",
+          "cell": [
+            37,
+            9
+          ]
+        },
+        {
+          "kind": "bullseye-lantern",
+          "cell": [
+            35,
+            10
+          ]
+        },
+        {
+          "kind": "spyglass",
+          "cell": [
+            39,
+            9
+          ]
+        },
+        {
+          "kind": "dancing-lights",
+          "cell": [
+            33,
+            9
+          ]
+        },
+        {
+          "kind": "sending-stone",
+          "cell": [
+            36,
+            6
+          ],
+          "link": "stones",
+          "note": "by the start"
+        },
+        {
+          "kind": "pick",
+          "cell": [
+            37,
+            11
+          ],
+          "note": "by the start: digs rock"
+        }
       ]
     },
     {
-      "chunk": [5, 5],
+      "chunk": [
+        5,
+        5
+      ],
       "things": [
-        { "kind": "ball", "cell": [4, 7], "note": "the middle of the court east of the yard" }
+        {
+          "kind": "ball",
+          "cell": [
+            4,
+            7
+          ],
+          "note": "the middle of the court east of the yard"
+        }
       ]
     },
     {
-      "chunk": [2, 5],
+      "chunk": [
+        2,
+        5
+      ],
       "things": [
-        { "kind": "barrel", "cell": [8, 9], "note": "by the castle stable's paddock: water for the horses" },
-        { "kind": "barrel", "cell": [8, 10], "note": "by the castle stable's paddock" },
-        { "kind": "crate", "cell": [8, 15], "note": "by the castle stable's paddock: feed" },
-        { "kind": "crate", "cell": [9, 15], "note": "by the castle stable's paddock: feed" },
-        { "kind": "crate", "cell": [8, 16], "note": "by the castle stable's paddock: tack" }
+        {
+          "kind": "barrel",
+          "cell": [
+            8,
+            9
+          ],
+          "note": "by the castle stable's paddock: water for the horses"
+        },
+        {
+          "kind": "barrel",
+          "cell": [
+            8,
+            10
+          ],
+          "note": "by the castle stable's paddock"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            8,
+            15
+          ],
+          "note": "by the castle stable's paddock: feed"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            9,
+            15
+          ],
+          "note": "by the castle stable's paddock: feed"
+        },
+        {
+          "kind": "crate",
+          "cell": [
+            8,
+            16
+          ],
+          "note": "by the castle stable's paddock: tack"
+        }
+      ]
+    },
+    {
+      "chunk": [
+        7,
+        3
+      ],
+      "things": [
+        {
+          "kind": "crate",
+          "rot": 337,
+          "cell": [
+            62,
+            40
+          ],
+          "note": "by the Greatbough (moved for phase 1b)"
+        },
+        {
+          "kind": "crate",
+          "rot": 162,
+          "cell": [
+            26,
+            53
+          ],
+          "note": "by the Greatbough"
+        }
+      ]
+    },
+    {
+      "chunk": [
+        3,
+        1
+      ],
+      "things": [
+        {
+          "kind": "boulder",
+          "rot": 90,
+          "cell": [
+            27,
+            49
+          ],
+          "note": "by Mount Hearth"
+        }
+      ]
+    },
+    {
+      "chunk": [
+        1,
+        2
+      ],
+      "things": [
+        {
+          "kind": "boulder",
+          "rot": 196,
+          "cell": [
+            63,
+            39
+          ],
+          "note": "by Mount Hearth"
+        }
+      ]
+    },
+    {
+      "chunk": [
+        2,
+        2
+      ],
+      "things": [
+        {
+          "kind": "boulder",
+          "rot": 203,
+          "cell": [
+            47,
+            48
+          ],
+          "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 8,
+          "cell": [
+            44,
+            44
+          ],
+          "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 87,
+          "cell": [
+            29,
+            51
+          ],
+          "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 82,
+          "cell": [
+            30,
+            50
+          ],
+          "note": "by Mount Hearth (moved for phase 1b)"
+        },
+        {
+          "kind": "boulder",
+          "rot": 107,
+          "cell": [
+            9,
+            36
+          ],
+          "note": "by Mount Hearth"
+        }
+      ]
+    },
+    {
+      "chunk": [
+        5,
+        7
+      ],
+      "things": [
+        {
+          "kind": "barrel",
+          "rot": 285,
+          "cell": [
+            61,
+            18
+          ],
+          "note": "by the Grey Mere"
+        },
+        {
+          "kind": "barrel",
+          "rot": 220,
+          "cell": [
+            62,
+            20
+          ],
+          "note": "by the Grey Mere"
+        },
+        {
+          "kind": "barrel",
+          "rot": 157,
+          "cell": [
+            40,
+            13
+          ],
+          "note": "by the Grey Mere"
+        },
+        {
+          "kind": "crate",
+          "rot": 306,
+          "cell": [
+            39,
+            13
+          ],
+          "note": "by the Grey Mere"
+        },
+        {
+          "kind": "crate",
+          "rot": 226,
+          "cell": [
+            61,
+            21
+          ],
+          "note": "by the Grey Mere"
+        },
+        {
+          "kind": "crate",
+          "rot": 255,
+          "cell": [
+            40,
+            15
+          ],
+          "note": "by the Grey Mere"
+        },
+        {
+          "kind": "crate",
+          "rot": 192,
+          "cell": [
+            40,
+            12
+          ],
+          "note": "by the Grey Mere"
+        }
       ]
     }
   ]

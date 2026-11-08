@@ -1,12 +1,3311 @@
 {
   "about": "The buildings that aren't in a village: the cabins, by id, in the rows a mod edits (docs/design/builders.md section 4; Buildings.cs). Their cells stand as the valley was baked, in \"built\" (spans [y, x0, x1, ...] from \"at\", by terrain), and \"site\" is where ValleyShape puts each in metres, with the way its door faces. Village buildings are read from world/villages.json and the cells, with ids like Hollowmere#4. A row with walls and no \"built\" is laid over the cells at the start (WorldBuildings.LayInto) and drawn from its row, so cells.txt and things.json stay as they are. Append, never insert: an id is its place in this list.",
   "buildings": [
-    {"id": "cabin#1", "at": [267, 318], "style": "cabin", "fill": "solid", "seed": 1, "site": {"metres": [-16.75, 15.25], "door": [1.0, 0.0]}, "built": {"logwall": [[0, 0, 2], [1, 0, 2], [2, 0, 2], [3, 0, 1], [4, 0, 2]], "pane": [[3, 2, 2]]}},
-    {"id": "cabin#2", "at": [257, 355], "style": "cabin", "fill": "solid", "seed": 2, "site": {"metres": [-30, -40], "door": [0.7071, -0.7071]}, "built": {"logwall": [[0, 2, 3], [1, 1, 4], [2, 0, 4], [3, 1, 3]], "pane": [[4, 2, 2]]}},
-    {"id": "cabin#3", "at": [381, 287], "style": "cabin", "fill": "solid", "seed": 3, "site": {"metres": [155, 62], "door": [-1.0, 0.0]}, "built": {"logwall": [[0, 0, 3], [1, 1, 3], [2, 0, 3], [3, 0, 3]], "pane": [[1, 0, 0]]}},
-    {"id": "cabin#4", "at": [214, 235], "style": "cabin", "fill": "solid", "seed": 4, "site": {"metres": [-95, 140], "door": [0.6, -0.8]}, "built": {"logwall": [[0, 2, 3], [1, 0, 3], [2, 0, 4], [3, 0, 2], [4, 1, 1]], "pane": [[4, 2, 2]]}},
-    {"id":"hold#1","at":[112,352],"style":"stronghold","level":true,"pad":{"margin":3,"bank":8,"more":[{"area":[-12,-100,76,-6],"bank":3,"face":"crag","clear":true}]},"seed":5,"wall":{"finish":{"color":"#8d8a84","pattern":"coursed"}},"joins":{"heart":[24,37],"plate":[26,26],"rise":[44,31],"a":[6,6],"b":[58,6],"c":[58,58],"d":[6,58],"e":[8,8],"f":[56,8],"g":[56,56],"h":[8,56],"k1":[14,20],"k2":[34,20],"k3":[34,44],"k4":[14,44],"k5":[14,32],"k6":[34,32],"g1":[59,22],"g2":[59,40],"r0":[60,31],"r0b":[76,31],"r1":[82,40],"r2":[92,60],"r3":[104,88],"r4":[114,90],"r5":[118,80],"r6":[112,56],"r7":[102,12],"r8":[102,0],"r9":[110,-2],"r10":[116,8],"r11":[136,56],"r12":[148,72],"r13":[154,64],"r14":[150,52],"r15":[140,24],"r16":[128,-14],"v0":[220,-52],"v1":[184,-50],"cp0":[187,-41],"cp1":[171,-37],"cp2":[161,-24],"cp3":[152,-20],"cp4":[136,-6],"cp5":[191,-60],"cp6":[174,-44],"cp7":[157,-31],"cp8":[139,-23],"cp9":[115,-5],"cp10":[193,-79],"cp11":[168,-57],"cp12":[151,-43],"cp13":[122,-26],"cp14":[108,-9],"cp15":[181,-80],"cp16":[165,-69],"cp17":[142,-53],"cp18":[117,-33],"cp19":[100,-16],"cp20":[164,-91],"cp21":[148,-71],"cp22":[131,-64],"cp23":[118,-44],"cp24":[103,-31],"cs0":[136,-32],"cs1":[140,-26],"cs2":[157,-49],"cs3":[137,-68],"cs4":[166,-31],"cs5":[174,-45],"cs6":[150,-18],"cs7":[167,-49],"cs8":[160,-39],"cs9":[126,-29],"cs10":[132,-58],"cs11":[132,-48],"cs12":[176,-74],"cs13":[149,-49],"s0":[40,62],"s1":[40,80],"s2":[76,106],"s3":[120,132],"s4":[166,156],"s5":[206,186],"gs1":[32,59],"gs2":[50,59],"p0":[-8,-8],"p1":[72,-8],"p2":[72,72],"p3":[-8,72]},"walls":{"n-out":{"from":"a","to":"b"},"e-out":{"from":"b","to":"c","openings":[{"kind":"timber-gate","at":22,"shape":"round"}]},"s-out":{"from":"c","to":"d","openings":[{"kind":"timber-gate","at":14,"shape":"round"}]},"w-out":{"from":"d","to":"a"},"n-in":{"from":"e","to":"f"},"e-in":{"from":"f","to":"g","openings":[{"kind":"passage","at":20,"shape":"round"}]},"s-in":{"from":"g","to":"h","openings":[{"kind":"passage","at":12,"shape":"round"}]},"w-in":{"from":"h","to":"e"},"keep-n":{"from":"k1","to":"k2","height":16,"openings":[{"kind":"slit","at":6},{"kind":"slit","at":12}]},"keep-e":{"from":"k2","to":"k3","height":16,"openings":[{"kind":"slit","at":4},{"kind":"doorway","at":16,"shape":"round"},{"kind":"slit","at":20}]},"keep-s":{"from":"k3","to":"k4","height":16,"openings":[{"kind":"slit","at":6},{"kind":"slit","at":12}]},"keep-w":{"from":"k4","to":"k1","height":16,"openings":[{"kind":"slit","at":6},{"kind":"slit","at":16}]}},"towers":{"ne":{"at":"b","radius":6,"height":14,"roof":"cone"},"nw":{"at":"a","radius":6,"height":14,"roof":"cone"},"se":{"at":"c","radius":6,"height":14,"roof":"cone"},"sw":{"at":"d","radius":6,"height":14,"roof":"cone"},"gate-n":{"at":"g1","radius":5,"height":13},"gate-s":{"at":"g2","radius":5,"height":13},"gate-sw":{"at":"gs1","radius":5,"height":13},"gate-se":{"at":"gs2","radius":5,"height":13}},"roads":{"down":{"through":["r0","r0b","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","r13","r14","r15","r16"],"width":4,"terrain":"dirt","graded":true,"flat":12},"out":{"through":["v0","v1","r16"],"width":4,"terrain":"dirt"},"east":{"through":["s0","s1","s2","s3","s4","s5"],"width":4,"terrain":"dirt","graded":true},"zglade-g86":{"through":["cp0","cp1","cp2","cp3","cp4"],"width":8,"terrain":"grass"},"zglade-g92":{"through":["cp5","cp6","cp7","cp8","cp9"],"width":8,"terrain":"grass"},"zglade-g98":{"through":["cp10","cp11","cp12","cp13","cp14"],"width":8,"terrain":"grass"},"zglade-g104":{"through":["cp15","cp16","cp17","cp18","cp19"],"width":8,"terrain":"grass"},"zglade-g110":{"through":["cp20","cp21","cp22","cp23","cp24"],"width":8,"terrain":"grass"},"stump-t100":{"through":["cs0","cs0"],"width":1,"terrain":"stump"},"stump-t101":{"through":["cs1","cs1"],"width":1,"terrain":"stump"},"stump-t102":{"through":["cs2","cs2"],"width":1,"terrain":"stump"},"stump-t103":{"through":["cs3","cs3"],"width":1,"terrain":"stump"},"stump-t104":{"through":["cs4","cs4"],"width":1,"terrain":"stump"},"stump-t105":{"through":["cs5","cs5"],"width":1,"terrain":"stump"},"stump-t106":{"through":["cs6","cs6"],"width":1,"terrain":"stump"},"stump-t107":{"through":["cs7","cs7"],"width":1,"terrain":"stump"},"stump-t108":{"through":["cs8","cs8"],"width":1,"terrain":"stump"},"stump-t109":{"through":["cs9","cs9"],"width":1,"terrain":"stump"},"stump-t110":{"through":["cs10","cs10"],"width":1,"terrain":"stump"},"stump-t111":{"through":["cs11","cs11"],"width":1,"terrain":"stump"},"stump-t112":{"through":["cs12","cs12"],"width":1,"terrain":"stump"},"stump-t113":{"through":["cs13","cs13"],"width":1,"terrain":"stump"},"zring":{"through":["p0","p1","p2","p3","p0"],"width":8,"terrain":"grass"}},"parts":[{"kind":"battlements","on":"n-out","every":1.8,"height":1.3},{"kind":"battlements","on":"e-out","every":1.8,"height":1.3},{"kind":"battlements","on":"s-out","every":1.8,"height":1.3},{"kind":"battlements","on":"w-out","every":1.8,"height":1.3},{"kind":"battlements","on":"keep-n","every":1.8,"height":1.3},{"kind":"battlements","on":"keep-e","every":1.8,"height":1.3},{"kind":"battlements","on":"keep-s","every":1.8,"height":1.3},{"kind":"battlements","on":"keep-w","every":1.8,"height":1.3},{"kind":"stair","on":"n-in","at":10,"length":26},{"kind":"stair","on":"s-in","at":10,"length":26}]},
-    {"id":"lake-house#1","at":[240,371],"style":"plain","seed":9,"fill":"hollow","floor":{"kind":"court","height":0},"wall":{"material":"logwall","height":2.8,"thickness":0.3},"joins":{"a":[0,0],"b":[16,0],"c":[16,12],"d":[0,12]},"walls":{"n":{"from":"a","to":"b","openings":[{"kind":"window","at":6}]},"e":{"from":"b","to":"c","openings":[{"kind":"door","at":6}]},"s":{"from":"c","to":"d","openings":[{"kind":"window","at":8}]},"w":{"from":"d","to":"a"}},"roofs":{"main":{"over":["a","b","c","d"],"shape":"gable","pitch":[8,12],"overhang":0.5,"cover":"shingle"}},"parts":[{"kind":"chimney","on":"w","at":6},{"kind":"dock","on":"e","at":6,"length":46,"width":6},{"kind":"beam","on":"e","every":1.6},{"kind":"beam","on":"n","every":1.6}]},
-    {"id":"stable#1","at":[114,318],"style":"plain","seed":13,"fill":"hollow","floor":{"kind":"slab","height":0.15},"wall":{"material":"stone","height":3.2,"thickness":0.45,"finish":{"color":"#8d8a84","pattern":"coursed"}},"joins":{"a":[0,0],"b":[40,0],"c":[40,16],"d":[0,16],"e":[40,44],"f":[0,44]},"walls":{"n":{"from":"a","to":"b","openings":[{"kind":"window","at":8},{"kind":"window","at":20},{"kind":"window","at":32}]},"e":{"from":"b","to":"c","openings":[{"kind":"double-door","at":8}]},"s":{"from":"c","to":"d","openings":[{"kind":"double-garage","at":8},{"kind":"double-garage","at":20},{"kind":"double-garage","at":32}]},"w":{"from":"d","to":"a"},"pen-e":{"from":"c","to":"e","material":"logwall","height":1.2},"pen-s":{"from":"e","to":"f","material":"logwall","height":1.2,"openings":[{"kind":"arch","at":16,"width":4.5}]},"pen-w":{"from":"f","to":"d","material":"logwall","height":1.2}},"roofs":{"main":{"over":["a","b","c","d"],"shape":"gable","pitch":[7,12],"overhang":0.5,"cover":"slate"}},"parts":[{"kind":"beam","on":"s","every":1.6},{"kind":"beam","on":"n","every":1.6}]}
+    {
+      "id": "cabin#1",
+      "at": [
+        267,
+        318
+      ],
+      "style": "cabin",
+      "fill": "solid",
+      "seed": 1,
+      "site": {
+        "metres": [
+          -16.75,
+          15.25
+        ],
+        "door": [
+          1.0,
+          0.0
+        ]
+      },
+      "built": {
+        "logwall": [
+          [
+            0,
+            0,
+            2
+          ],
+          [
+            1,
+            0,
+            2
+          ],
+          [
+            2,
+            0,
+            2
+          ],
+          [
+            3,
+            0,
+            1
+          ],
+          [
+            4,
+            0,
+            2
+          ]
+        ],
+        "pane": [
+          [
+            3,
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "id": "cabin#2",
+      "at": [
+        257,
+        355
+      ],
+      "style": "cabin",
+      "fill": "solid",
+      "seed": 2,
+      "site": {
+        "metres": [
+          -30,
+          -40
+        ],
+        "door": [
+          0.7071,
+          -0.7071
+        ]
+      },
+      "built": {
+        "logwall": [
+          [
+            0,
+            2,
+            3
+          ],
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            2,
+            0,
+            4
+          ],
+          [
+            3,
+            1,
+            3
+          ]
+        ],
+        "pane": [
+          [
+            4,
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "id": "cabin#3",
+      "at": [
+        381,
+        287
+      ],
+      "style": "cabin",
+      "fill": "solid",
+      "seed": 3,
+      "site": {
+        "metres": [
+          155,
+          62
+        ],
+        "door": [
+          -1.0,
+          0.0
+        ]
+      },
+      "built": {
+        "logwall": [
+          [
+            0,
+            0,
+            3
+          ],
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            2,
+            0,
+            3
+          ],
+          [
+            3,
+            0,
+            3
+          ]
+        ],
+        "pane": [
+          [
+            1,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "cabin#4",
+      "at": [
+        214,
+        235
+      ],
+      "style": "cabin",
+      "fill": "solid",
+      "seed": 4,
+      "site": {
+        "metres": [
+          -95,
+          140
+        ],
+        "door": [
+          0.6,
+          -0.8
+        ]
+      },
+      "built": {
+        "logwall": [
+          [
+            0,
+            2,
+            3
+          ],
+          [
+            1,
+            0,
+            3
+          ],
+          [
+            2,
+            0,
+            4
+          ],
+          [
+            3,
+            0,
+            2
+          ],
+          [
+            4,
+            1,
+            1
+          ]
+        ],
+        "pane": [
+          [
+            4,
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "id": "hold#1",
+      "at": [
+        112,
+        352
+      ],
+      "style": "stronghold",
+      "level": true,
+      "pad": {
+        "margin": 3,
+        "bank": 8,
+        "more": [
+          {
+            "area": [
+              -12,
+              -100,
+              76,
+              -6
+            ],
+            "bank": 3,
+            "face": "crag",
+            "clear": true
+          }
+        ]
+      },
+      "seed": 5,
+      "wall": {
+        "finish": {
+          "color": "#8d8a84",
+          "pattern": "coursed"
+        }
+      },
+      "joins": {
+        "heart": [
+          24,
+          37
+        ],
+        "plate": [
+          26,
+          26
+        ],
+        "rise": [
+          44,
+          31
+        ],
+        "a": [
+          6,
+          6
+        ],
+        "b": [
+          58,
+          6
+        ],
+        "c": [
+          58,
+          58
+        ],
+        "d": [
+          6,
+          58
+        ],
+        "e": [
+          8,
+          8
+        ],
+        "f": [
+          56,
+          8
+        ],
+        "g": [
+          56,
+          56
+        ],
+        "h": [
+          8,
+          56
+        ],
+        "k1": [
+          14,
+          20
+        ],
+        "k2": [
+          34,
+          20
+        ],
+        "k3": [
+          34,
+          44
+        ],
+        "k4": [
+          14,
+          44
+        ],
+        "k5": [
+          14,
+          32
+        ],
+        "k6": [
+          34,
+          32
+        ],
+        "g1": [
+          59,
+          22
+        ],
+        "g2": [
+          59,
+          40
+        ],
+        "r0": [
+          60,
+          31
+        ],
+        "r0b": [
+          76,
+          31
+        ],
+        "r1": [
+          82,
+          40
+        ],
+        "r2": [
+          92,
+          60
+        ],
+        "r3": [
+          104,
+          88
+        ],
+        "r4": [
+          114,
+          90
+        ],
+        "r5": [
+          118,
+          80
+        ],
+        "r6": [
+          112,
+          56
+        ],
+        "r7": [
+          102,
+          12
+        ],
+        "r8": [
+          102,
+          0
+        ],
+        "r9": [
+          110,
+          -2
+        ],
+        "r10": [
+          116,
+          8
+        ],
+        "r11": [
+          136,
+          56
+        ],
+        "r12": [
+          148,
+          72
+        ],
+        "r13": [
+          154,
+          64
+        ],
+        "r14": [
+          150,
+          52
+        ],
+        "r15": [
+          140,
+          24
+        ],
+        "r16": [
+          128,
+          -14
+        ],
+        "v0": [
+          220,
+          -52
+        ],
+        "v1": [
+          184,
+          -50
+        ],
+        "cp0": [
+          187,
+          -41
+        ],
+        "cp1": [
+          171,
+          -37
+        ],
+        "cp2": [
+          161,
+          -24
+        ],
+        "cp3": [
+          152,
+          -20
+        ],
+        "cp4": [
+          136,
+          -6
+        ],
+        "cp5": [
+          191,
+          -60
+        ],
+        "cp6": [
+          174,
+          -44
+        ],
+        "cp7": [
+          157,
+          -31
+        ],
+        "cp8": [
+          139,
+          -23
+        ],
+        "cp9": [
+          115,
+          -5
+        ],
+        "cp10": [
+          193,
+          -79
+        ],
+        "cp11": [
+          168,
+          -57
+        ],
+        "cp12": [
+          151,
+          -43
+        ],
+        "cp13": [
+          122,
+          -26
+        ],
+        "cp14": [
+          108,
+          -9
+        ],
+        "cp15": [
+          181,
+          -80
+        ],
+        "cp16": [
+          165,
+          -69
+        ],
+        "cp17": [
+          142,
+          -53
+        ],
+        "cp18": [
+          117,
+          -33
+        ],
+        "cp19": [
+          100,
+          -16
+        ],
+        "cp20": [
+          164,
+          -91
+        ],
+        "cp21": [
+          148,
+          -71
+        ],
+        "cp22": [
+          131,
+          -64
+        ],
+        "cp23": [
+          118,
+          -44
+        ],
+        "cp24": [
+          103,
+          -31
+        ],
+        "cs0": [
+          136,
+          -32
+        ],
+        "cs1": [
+          140,
+          -26
+        ],
+        "cs2": [
+          157,
+          -49
+        ],
+        "cs3": [
+          137,
+          -68
+        ],
+        "cs4": [
+          166,
+          -31
+        ],
+        "cs5": [
+          174,
+          -45
+        ],
+        "cs6": [
+          150,
+          -18
+        ],
+        "cs7": [
+          167,
+          -49
+        ],
+        "cs8": [
+          160,
+          -39
+        ],
+        "cs9": [
+          126,
+          -29
+        ],
+        "cs10": [
+          132,
+          -58
+        ],
+        "cs11": [
+          132,
+          -48
+        ],
+        "cs12": [
+          176,
+          -74
+        ],
+        "cs13": [
+          149,
+          -49
+        ],
+        "s0": [
+          40,
+          62
+        ],
+        "s1": [
+          40,
+          80
+        ],
+        "s2": [
+          76,
+          106
+        ],
+        "s3": [
+          120,
+          132
+        ],
+        "s4": [
+          166,
+          156
+        ],
+        "s5": [
+          206,
+          186
+        ],
+        "gs1": [
+          32,
+          59
+        ],
+        "gs2": [
+          50,
+          59
+        ],
+        "p0": [
+          -8,
+          -8
+        ],
+        "p1": [
+          72,
+          -8
+        ],
+        "p2": [
+          72,
+          72
+        ],
+        "p3": [
+          -8,
+          72
+        ]
+      },
+      "walls": {
+        "n-out": {
+          "from": "a",
+          "to": "b"
+        },
+        "e-out": {
+          "from": "b",
+          "to": "c",
+          "openings": [
+            {
+              "kind": "timber-gate",
+              "at": 22,
+              "shape": "round"
+            }
+          ]
+        },
+        "s-out": {
+          "from": "c",
+          "to": "d",
+          "openings": [
+            {
+              "kind": "timber-gate",
+              "at": 14,
+              "shape": "round"
+            }
+          ]
+        },
+        "w-out": {
+          "from": "d",
+          "to": "a"
+        },
+        "n-in": {
+          "from": "e",
+          "to": "f"
+        },
+        "e-in": {
+          "from": "f",
+          "to": "g",
+          "openings": [
+            {
+              "kind": "passage",
+              "at": 20,
+              "shape": "round"
+            }
+          ]
+        },
+        "s-in": {
+          "from": "g",
+          "to": "h",
+          "openings": [
+            {
+              "kind": "passage",
+              "at": 12,
+              "shape": "round"
+            }
+          ]
+        },
+        "w-in": {
+          "from": "h",
+          "to": "e"
+        },
+        "keep-n": {
+          "from": "k1",
+          "to": "k2",
+          "height": 16,
+          "openings": [
+            {
+              "kind": "slit",
+              "at": 6
+            },
+            {
+              "kind": "slit",
+              "at": 12
+            }
+          ]
+        },
+        "keep-e": {
+          "from": "k2",
+          "to": "k3",
+          "height": 16,
+          "openings": [
+            {
+              "kind": "slit",
+              "at": 4
+            },
+            {
+              "kind": "doorway",
+              "at": 16,
+              "shape": "round"
+            },
+            {
+              "kind": "slit",
+              "at": 20
+            }
+          ]
+        },
+        "keep-s": {
+          "from": "k3",
+          "to": "k4",
+          "height": 16,
+          "openings": [
+            {
+              "kind": "slit",
+              "at": 6
+            },
+            {
+              "kind": "slit",
+              "at": 12
+            }
+          ]
+        },
+        "keep-w": {
+          "from": "k4",
+          "to": "k1",
+          "height": 16,
+          "openings": [
+            {
+              "kind": "slit",
+              "at": 6
+            },
+            {
+              "kind": "slit",
+              "at": 16
+            }
+          ]
+        }
+      },
+      "towers": {
+        "ne": {
+          "at": "b",
+          "radius": 6,
+          "height": 14,
+          "roof": "cone"
+        },
+        "nw": {
+          "at": "a",
+          "radius": 6,
+          "height": 14,
+          "roof": "cone"
+        },
+        "se": {
+          "at": "c",
+          "radius": 6,
+          "height": 14,
+          "roof": "cone"
+        },
+        "sw": {
+          "at": "d",
+          "radius": 6,
+          "height": 14,
+          "roof": "cone"
+        },
+        "gate-n": {
+          "at": "g1",
+          "radius": 5,
+          "height": 13
+        },
+        "gate-s": {
+          "at": "g2",
+          "radius": 5,
+          "height": 13
+        },
+        "gate-sw": {
+          "at": "gs1",
+          "radius": 5,
+          "height": 13
+        },
+        "gate-se": {
+          "at": "gs2",
+          "radius": 5,
+          "height": 13
+        }
+      },
+      "roads": {
+        "down": {
+          "through": [
+            "r0",
+            "r0b",
+            "r1",
+            "r2",
+            "r3",
+            "r4",
+            "r5",
+            "r6",
+            "r7",
+            "r8",
+            "r9",
+            "r10",
+            "r11",
+            "r12",
+            "r13",
+            "r14",
+            "r15",
+            "r16"
+          ],
+          "width": 4,
+          "terrain": "dirt",
+          "graded": true,
+          "flat": 12
+        },
+        "out": {
+          "through": [
+            "v0",
+            "v1",
+            "r16"
+          ],
+          "width": 4,
+          "terrain": "dirt"
+        },
+        "east": {
+          "through": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5"
+          ],
+          "width": 4,
+          "terrain": "dirt",
+          "graded": true
+        },
+        "zglade-g86": {
+          "through": [
+            "cp0",
+            "cp1",
+            "cp2",
+            "cp3",
+            "cp4"
+          ],
+          "width": 8,
+          "terrain": "grass"
+        },
+        "zglade-g92": {
+          "through": [
+            "cp5",
+            "cp6",
+            "cp7",
+            "cp8",
+            "cp9"
+          ],
+          "width": 8,
+          "terrain": "grass"
+        },
+        "zglade-g98": {
+          "through": [
+            "cp10",
+            "cp11",
+            "cp12",
+            "cp13",
+            "cp14"
+          ],
+          "width": 8,
+          "terrain": "grass"
+        },
+        "zglade-g104": {
+          "through": [
+            "cp15",
+            "cp16",
+            "cp17",
+            "cp18",
+            "cp19"
+          ],
+          "width": 8,
+          "terrain": "grass"
+        },
+        "zglade-g110": {
+          "through": [
+            "cp20",
+            "cp21",
+            "cp22",
+            "cp23",
+            "cp24"
+          ],
+          "width": 8,
+          "terrain": "grass"
+        },
+        "stump-t100": {
+          "through": [
+            "cs0",
+            "cs0"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t101": {
+          "through": [
+            "cs1",
+            "cs1"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t102": {
+          "through": [
+            "cs2",
+            "cs2"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t103": {
+          "through": [
+            "cs3",
+            "cs3"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t104": {
+          "through": [
+            "cs4",
+            "cs4"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t105": {
+          "through": [
+            "cs5",
+            "cs5"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t106": {
+          "through": [
+            "cs6",
+            "cs6"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t107": {
+          "through": [
+            "cs7",
+            "cs7"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t108": {
+          "through": [
+            "cs8",
+            "cs8"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t109": {
+          "through": [
+            "cs9",
+            "cs9"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t110": {
+          "through": [
+            "cs10",
+            "cs10"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t111": {
+          "through": [
+            "cs11",
+            "cs11"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t112": {
+          "through": [
+            "cs12",
+            "cs12"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "stump-t113": {
+          "through": [
+            "cs13",
+            "cs13"
+          ],
+          "width": 1,
+          "terrain": "stump"
+        },
+        "zring": {
+          "through": [
+            "p0",
+            "p1",
+            "p2",
+            "p3",
+            "p0"
+          ],
+          "width": 8,
+          "terrain": "grass"
+        }
+      },
+      "parts": [
+        {
+          "kind": "battlements",
+          "on": "n-out",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "e-out",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "s-out",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "w-out",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "keep-n",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "keep-e",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "keep-s",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "battlements",
+          "on": "keep-w",
+          "every": 1.8,
+          "height": 1.3
+        },
+        {
+          "kind": "stair",
+          "on": "n-in",
+          "at": 10,
+          "length": 26
+        },
+        {
+          "kind": "stair",
+          "on": "s-in",
+          "at": 10,
+          "length": 26
+        }
+      ]
+    },
+    {
+      "id": "lake-house#1",
+      "at": [
+        240,
+        371
+      ],
+      "style": "plain",
+      "seed": 9,
+      "fill": "hollow",
+      "floor": {
+        "kind": "court",
+        "height": 0
+      },
+      "wall": {
+        "material": "logwall",
+        "height": 2.8,
+        "thickness": 0.3
+      },
+      "joins": {
+        "a": [
+          0,
+          0
+        ],
+        "b": [
+          16,
+          0
+        ],
+        "c": [
+          16,
+          12
+        ],
+        "d": [
+          0,
+          12
+        ]
+      },
+      "walls": {
+        "n": {
+          "from": "a",
+          "to": "b",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 6
+            }
+          ]
+        },
+        "e": {
+          "from": "b",
+          "to": "c",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 6
+            }
+          ]
+        },
+        "s": {
+          "from": "c",
+          "to": "d",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 8
+            }
+          ]
+        },
+        "w": {
+          "from": "d",
+          "to": "a"
+        }
+      },
+      "roofs": {
+        "main": {
+          "over": [
+            "a",
+            "b",
+            "c",
+            "d"
+          ],
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.5,
+          "cover": "shingle"
+        }
+      },
+      "parts": [
+        {
+          "kind": "chimney",
+          "on": "w",
+          "at": 6
+        },
+        {
+          "kind": "dock",
+          "on": "e",
+          "at": 6,
+          "length": 46,
+          "width": 6
+        },
+        {
+          "kind": "beam",
+          "on": "e",
+          "every": 1.6
+        },
+        {
+          "kind": "beam",
+          "on": "n",
+          "every": 1.6
+        }
+      ]
+    },
+    {
+      "id": "stable#1",
+      "at": [
+        114,
+        318
+      ],
+      "style": "plain",
+      "seed": 13,
+      "fill": "hollow",
+      "floor": {
+        "kind": "slab",
+        "height": 0.15
+      },
+      "wall": {
+        "material": "stone",
+        "height": 3.2,
+        "thickness": 0.45,
+        "finish": {
+          "color": "#8d8a84",
+          "pattern": "coursed"
+        }
+      },
+      "joins": {
+        "a": [
+          0,
+          0
+        ],
+        "b": [
+          40,
+          0
+        ],
+        "c": [
+          40,
+          16
+        ],
+        "d": [
+          0,
+          16
+        ],
+        "e": [
+          40,
+          44
+        ],
+        "f": [
+          0,
+          44
+        ]
+      },
+      "walls": {
+        "n": {
+          "from": "a",
+          "to": "b",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 8
+            },
+            {
+              "kind": "window",
+              "at": 20
+            },
+            {
+              "kind": "window",
+              "at": 32
+            }
+          ]
+        },
+        "e": {
+          "from": "b",
+          "to": "c",
+          "openings": [
+            {
+              "kind": "double-door",
+              "at": 8
+            }
+          ]
+        },
+        "s": {
+          "from": "c",
+          "to": "d",
+          "openings": [
+            {
+              "kind": "double-garage",
+              "at": 8
+            },
+            {
+              "kind": "double-garage",
+              "at": 20
+            },
+            {
+              "kind": "double-garage",
+              "at": 32
+            }
+          ]
+        },
+        "w": {
+          "from": "d",
+          "to": "a"
+        },
+        "pen-e": {
+          "from": "c",
+          "to": "e",
+          "material": "logwall",
+          "height": 1.2
+        },
+        "pen-s": {
+          "from": "e",
+          "to": "f",
+          "material": "logwall",
+          "height": 1.2,
+          "openings": [
+            {
+              "kind": "arch",
+              "at": 16,
+              "width": 4.5
+            }
+          ]
+        },
+        "pen-w": {
+          "from": "f",
+          "to": "d",
+          "material": "logwall",
+          "height": 1.2
+        }
+      },
+      "roofs": {
+        "main": {
+          "over": [
+            "a",
+            "b",
+            "c",
+            "d"
+          ],
+          "shape": "gable",
+          "pitch": [
+            7,
+            12
+          ],
+          "overhang": 0.5,
+          "cover": "slate"
+        }
+      },
+      "parts": [
+        {
+          "kind": "beam",
+          "on": "s",
+          "every": 1.6
+        },
+        {
+          "kind": "beam",
+          "on": "n",
+          "every": 1.6
+        }
+      ]
+    },
+    {
+      "id": "the-greatbough#1",
+      "at": [
+        470,
+        226
+      ],
+      "fill": "solid",
+      "seed": 41047,
+      "note": "the Greatbough: the great tree's stand-in, a trunk of log wall 14 m high under a crown of trees, with roots",
+      "wall": {
+        "material": "logwall",
+        "height": 14,
+        "thickness": 0.45
+      },
+      "joins": {
+        "c": [
+          1,
+          1
+        ],
+        "l0": [
+          -20,
+          3
+        ],
+        "l1": [
+          -8,
+          -12
+        ],
+        "l2": [
+          8,
+          -16
+        ],
+        "l3": [
+          23,
+          -1
+        ],
+        "l4": [
+          13,
+          18
+        ],
+        "l5": [
+          -6,
+          17
+        ],
+        "r0a": [
+          10,
+          3
+        ],
+        "r0b": [
+          30,
+          10
+        ],
+        "r0c": [
+          49,
+          11
+        ],
+        "r1a": [
+          6,
+          9
+        ],
+        "r1b": [
+          20,
+          19
+        ],
+        "r1c": [
+          23,
+          36
+        ],
+        "r2a": [
+          -1,
+          10
+        ],
+        "r2b": [
+          -8,
+          21
+        ],
+        "r2c": [
+          -6,
+          34
+        ],
+        "r3a": [
+          -8,
+          3
+        ],
+        "r3b": [
+          -20,
+          6
+        ],
+        "r3c": [
+          -31,
+          9
+        ],
+        "r4a": [
+          -8,
+          -3
+        ],
+        "r4b": [
+          -16,
+          -13
+        ],
+        "r4c": [
+          -31,
+          -14
+        ],
+        "r5a": [
+          1,
+          -8
+        ],
+        "r5b": [
+          -2,
+          -24
+        ],
+        "r5c": [
+          4,
+          -42
+        ],
+        "r6a": [
+          8,
+          -5
+        ],
+        "r6b": [
+          22,
+          -13
+        ],
+        "r6c": [
+          34,
+          -24
+        ],
+        "o0": [
+          4,
+          -7
+        ],
+        "o1": [
+          9,
+          -2
+        ],
+        "o2": [
+          9,
+          4
+        ],
+        "o3": [
+          4,
+          9
+        ],
+        "o4": [
+          -2,
+          9
+        ],
+        "o5": [
+          -7,
+          4
+        ],
+        "o6": [
+          -7,
+          -2
+        ],
+        "o7": [
+          -2,
+          -7
+        ]
+      },
+      "walls": {
+        "w0": {
+          "from": "o0",
+          "to": "o1"
+        },
+        "w1": {
+          "from": "o1",
+          "to": "o2"
+        },
+        "w2": {
+          "from": "o2",
+          "to": "o3"
+        },
+        "w3": {
+          "from": "o3",
+          "to": "o4"
+        },
+        "w4": {
+          "from": "o4",
+          "to": "o5"
+        },
+        "w5": {
+          "from": "o5",
+          "to": "o6"
+        },
+        "w6": {
+          "from": "o6",
+          "to": "o7"
+        },
+        "w7": {
+          "from": "o7",
+          "to": "o0"
+        }
+      },
+      "towers": {
+        "crown-0": {
+          "at": "l0",
+          "radius": 13,
+          "material": "tree"
+        },
+        "crown-1": {
+          "at": "l1",
+          "radius": 14,
+          "material": "tree"
+        },
+        "crown-2": {
+          "at": "l2",
+          "radius": 13,
+          "material": "tree"
+        },
+        "crown-3": {
+          "at": "l3",
+          "radius": 13,
+          "material": "tree"
+        },
+        "crown-4": {
+          "at": "l4",
+          "radius": 14,
+          "material": "tree"
+        },
+        "crown-5": {
+          "at": "l5",
+          "radius": 14,
+          "material": "tree"
+        },
+        "trunk": {
+          "at": "c",
+          "radius": 10
+        }
+      },
+      "roads": {
+        "root-0": {
+          "through": [
+            "r0a",
+            "r0b",
+            "r0c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-1": {
+          "through": [
+            "r1a",
+            "r1b",
+            "r1c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-2": {
+          "through": [
+            "r2a",
+            "r2b",
+            "r2c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-3": {
+          "through": [
+            "r3a",
+            "r3b",
+            "r3c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-4": {
+          "through": [
+            "r4a",
+            "r4b",
+            "r4c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-5": {
+          "through": [
+            "r5a",
+            "r5b",
+            "r5c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-6": {
+          "through": [
+            "r6a",
+            "r6b",
+            "r6c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        }
+      }
+    },
+    {
+      "id": "emberhold#1",
+      "at": [
+        162,
+        178
+      ],
+      "style": "village",
+      "seed": 27371,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ],
+        "way0": [
+          -7,
+          11
+        ],
+        "way1": [
+          -7,
+          5
+        ],
+        "way2": [
+          -9,
+          -7
+        ],
+        "way3": [
+          -13,
+          -19
+        ],
+        "way4": [
+          -13,
+          -31
+        ],
+        "way5": [
+          -13,
+          -43
+        ],
+        "way6": [
+          -13,
+          -55
+        ],
+        "way7": [
+          -13,
+          -67
+        ],
+        "way8": [
+          -9,
+          -79
+        ],
+        "way9": [
+          -9,
+          -91
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      },
+      "roads": {
+        "way": {
+          "through": [
+            "way0",
+            "way1",
+            "way2",
+            "way3",
+            "way4",
+            "way5",
+            "way6",
+            "way7",
+            "way8",
+            "way9"
+          ],
+          "terrain": "dirt",
+          "width": 2
+        }
+      }
+    },
+    {
+      "id": "emberhold#2",
+      "at": [
+        149,
+        172
+      ],
+      "style": "village",
+      "seed": 87289,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#3",
+      "at": [
+        158,
+        166
+      ],
+      "style": "village",
+      "seed": 62087,
+      "note": "Emberhold's house, by Mount Hearth",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#4",
+      "at": [
+        147,
+        160
+      ],
+      "style": "village",
+      "seed": 76739,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#5",
+      "at": [
+        158,
+        154
+      ],
+      "style": "village",
+      "seed": 66162,
+      "note": "Emberhold's house, by Mount Hearth",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#6",
+      "at": [
+        147,
+        147
+      ],
+      "style": "village",
+      "seed": 5129,
+      "note": "Emberhold's house, by Mount Hearth",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          12
+        ],
+        "sw": [
+          0,
+          12
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#7",
+      "at": [
+        159,
+        142
+      ],
+      "style": "village",
+      "seed": 96505,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#8",
+      "at": [
+        150,
+        136
+      ],
+      "style": "village",
+      "seed": 18663,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#9",
+      "at": [
+        154,
+        124
+      ],
+      "style": "village",
+      "seed": 84126,
+      "note": "Emberhold's watch house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          12,
+          0
+        ],
+        "se": [
+          12,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fogwater#1",
+      "at": [
+        300,
+        488
+      ],
+      "style": "village",
+      "seed": 98086,
+      "note": "Fogwater's house, by the Grey Mere",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ],
+        "way0": [
+          15,
+          21
+        ],
+        "way1": [
+          21,
+          1
+        ],
+        "way2": [
+          31,
+          -17
+        ],
+        "way3": [
+          45,
+          -33
+        ],
+        "way4": [
+          61,
+          -47
+        ],
+        "way5": [
+          79,
+          -55
+        ],
+        "way6": [
+          99,
+          -61
+        ],
+        "way7": [
+          119,
+          -61
+        ],
+        "way8": [
+          139,
+          -59
+        ],
+        "way9": [
+          159,
+          -51
+        ],
+        "way10": [
+          175,
+          -39
+        ],
+        "way11": [
+          191,
+          -23
+        ],
+        "way12": [
+          201,
+          -7
+        ],
+        "way13": [
+          209,
+          13
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      },
+      "roads": {
+        "way": {
+          "through": [
+            "way0",
+            "way1",
+            "way2",
+            "way3",
+            "way4",
+            "way5",
+            "way6",
+            "way7",
+            "way8",
+            "way9",
+            "way10"
+          ],
+          "terrain": "dirt",
+          "width": 2
+        }
+      }
+    },
+    {
+      "id": "fogwater#2",
+      "at": [
+        308,
+        470
+      ],
+      "style": "village",
+      "seed": 96792,
+      "note": "Fogwater's house, by the Grey Mere",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fogwater#3",
+      "at": [
+        334,
+        450
+      ],
+      "style": "village",
+      "seed": 44702,
+      "note": "Fogwater's house, by the Grey Mere",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fogwater#4",
+      "at": [
+        356,
+        448
+      ],
+      "style": "village",
+      "seed": 62339,
+      "note": "Fogwater's house, by the Grey Mere",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fogwater#5",
+      "at": [
+        377,
+        451
+      ],
+      "style": "village",
+      "seed": 58037,
+      "note": "Fogwater's house, by the Grey Mere",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "the-grey-mere#1",
+      "at": [
+        377,
+        466
+      ],
+      "style": "plain",
+      "fill": "hollow",
+      "seed": 23145,
+      "note": "Fogwater's boathouse 1, its dock out over the Grey Mere",
+      "wall": {
+        "material": "logwall"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      },
+      "parts": [
+        {
+          "kind": "dock",
+          "on": "south",
+          "at": 4,
+          "length": 25,
+          "width": 4
+        }
+      ]
+    },
+    {
+      "id": "the-grey-mere#2",
+      "at": [
+        356,
+        459
+      ],
+      "style": "plain",
+      "fill": "hollow",
+      "seed": 90355,
+      "note": "Fogwater's boathouse 2, its dock out over the Grey Mere",
+      "wall": {
+        "material": "logwall"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          6,
+          0
+        ],
+        "se": [
+          6,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      },
+      "parts": [
+        {
+          "kind": "dock",
+          "on": "south",
+          "at": 3,
+          "length": 17,
+          "width": 4
+        }
+      ]
+    },
+    {
+      "id": "the-grey-mere#3",
+      "at": [
+        328,
+        468
+      ],
+      "style": "plain",
+      "fill": "hollow",
+      "seed": 83652,
+      "note": "Fogwater's boathouse 3, its dock out over the Grey Mere",
+      "wall": {
+        "material": "logwall"
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          6,
+          0
+        ],
+        "se": [
+          6,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      },
+      "parts": [
+        {
+          "kind": "dock",
+          "on": "south",
+          "at": 3,
+          "length": 22,
+          "width": 4
+        }
+      ]
+    }
   ]
 }
