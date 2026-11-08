@@ -35,8 +35,9 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   and `airpeers` (two peers, 0 of 9 checksums differ with Lightning, Gust, Whirlwind). `air-tuning-rules` (u2)
   landed too (cacf1b54): Gust and Whirlwind numbers are in `rules/` (`eye`, `lift`, `fall`, `shove`), no golden moved.
   `wip/u2-air-tuning-rules` (23f01af3) is not in dev (its WIP commit was redone); deleting it is Andrew's.
-- **Assigned (Andrew, 2026-11-07 evening):** the Mac does `casting-leftovers` (glyph per pair; callers off `LoadElement`,
-  the core path and `castfeel` stay since retiring them moves 6 goldens; keys untouched), then `hold-batch` (timed waves
+- **Assigned (Andrew, 2026-11-07 evening):** `casting-leftovers` landed (cc47375c: a glyph per merged spell, `PairGlyphs`;
+  callers off `LoadElement`, the core Load path and `castfeel` stay since retiring them moves 6 goldens; keys untouched;
+  `aimlooks` and `lookfx` probes fail on plain dev too, not filed yet). The Mac now does `hold-batch` (timed waves
   for a 10 min run, keep health, raiders strike a cracking crystal at the heart, attuning in the towers). The PC does
   `castle-cliff-canyon` (sheer cliff right of the road below the castle, a winding canyon beyond). **Controller first
   (Andrew, 2026-11-07):** the keyboard layout is on the back burner; design and judge controls on the pad. The
