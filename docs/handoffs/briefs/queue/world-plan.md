@@ -1,6 +1,6 @@
 Needs: core
-Area: unity/Assets/Prototype/Chemistry (a new WorldPlan solver and its tests), world/squares/ and world/bands.json
-(new), docs/GLOSSARY.md (the new words first); no valley map files change
+Area: unity/Assets/Prototype/Chemistry/WorldPlan*.cs, unity/Assets/Prototype/Chemistry/Tests/WorldPlanTests.cs,
+world/squares/ and world/bands.json (new), docs/GLOSSARY.md (the new words first); no valley map files change
 Branch: world-plan
 
 # The world plan: bands, templates, matched edges (world squares phase 2; given to u2)

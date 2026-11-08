@@ -1,7 +1,7 @@
 Needs: core
-Area: unity/Assets/Prototype/Chemistry (a new LandmarkIntent and its materializer, with tests), world/landmarks/
-(new), a small core tool or test that renders top-down PNGs; reads stamps, villages and buildings rows; no valley map
-files change
+Area: unity/Assets/Prototype/Chemistry/LandmarkIntent*.cs, unity/Assets/Prototype/Chemistry/Tests/LandmarkIntentTests.cs,
+world/landmarks/ (new), a core tool or test that renders top-down PNGs; reads stamps, villages and buildings rows; no
+valley map files change
 Branch: landmark-intent
 
 # The first slice of the world squares: one landmark intent, three ways (J-080, phase 1; given to the Mac)
