@@ -7,6 +7,7 @@
   "terrain": {
     "ground": { "about": "Flat ground, painted by the land; nothing stands on the cell. A glow (0 to 1) shines over it in its colour after dark.", "params": ["color", "height", "glow"] },
     "block": { "about": "A solid block of its own height: stone, a pillar.", "params": ["color", "height", "glow", "roughness"] },
+    "spire": { "about": "A cluster of jagged rock spires bursting up out of the cell: one tall and crooked, lower ones leaning out round it. Height is how high the cell stands; the tallest point reaches two to three times that.", "params": ["color", "height"] },
     "plant": { "about": "Something growing on the cell, on its own ground.", "forms": ["bush", "tree", "sapling", "stump"], "params": ["color", "height", "baked"], "notes": "A tree or sapling is the valley's own tree model, so it takes no colour there." },
     "debris": { "about": "What's left lying on the cell.", "forms": ["rubble", "deadfall"], "params": ["color", "height"] },
     "deck": { "about": "A plank deck on two beams.", "params": ["color"] },
