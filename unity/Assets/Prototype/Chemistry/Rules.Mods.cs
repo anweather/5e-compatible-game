@@ -57,6 +57,9 @@ namespace Chem
         /// <summary>The effective rules as JSON, in the shape of the sandbox's Rules object (for tools and tests).</summary>
         public string ToJson() => doc.ToString(Formatting.Indented);
 
+        /// <summary>The effective rules as a copy of their document: what ToJson writes, without the text and its parsing (ModValidator's 75 ms of a chat apply).</summary>
+        internal JObject CopyDoc() => (JObject)doc.DeepClone();
+
         /// <summary>The rules as mods compose over them (their materials still in groups): what ModAdds reads ids from. Never modified.</summary>
         internal JObject Written => written ?? doc;
 

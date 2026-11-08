@@ -79,7 +79,8 @@ public partial class ChemGrid
         views = new View[World.W * World.H];
         for (int i = 0; i < views.Length; i++) views[i] = new View();
         dressings ??= new CellDressing(this, materials);
-        blockers = new CellBlockers(this);
+        if (blockers == null) blockers = new CellBlockers(this);
+        else blockers.ReleaseAll();
         waterSurface?.Destroy();
         waterSurface = new CellWaterMesh(this, waterMaterial != null ? waterMaterial : materials.Water(),
             materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
@@ -123,6 +124,7 @@ public partial class ChemGrid
         {
             for (int x = 0; x < World.W; x++) RenderCell(x, y);
         }
+        blockers.HideSpare();
         FinishRender();
     }
 
