@@ -42,6 +42,27 @@ namespace Chem.Tests
             Assert.That(LandStamp.Make(1, 2, 3, 4, LandStamp.Cliff, 0, 0, 40, 3).Along(new[] { (0, 0) }).Known, Is.False, "two points or more");
         }
 
+        // A bare stamp (a volcano's cone, J-080 phase 1b): every tree and open ground it moved goes to its terrain; walls,
+        // what it didn't move and an unknown terrain's stamp are left, and the last says so.
+        [Test]
+        public void ABareStampLeavesItsTerrainWhereItMovedTheLand()
+        {
+            var w = Flat();
+            foreach (var (x, y) in new[] { (80, 80), (90, 75), (80, 130) }) w.Paint(x, y, "tree");
+            w.Paint(70, 82, "stone");
+            var stamps = MapStamps.FromJson("{ \"stamps\": [ { \"id\": \"cone\", \"at\": [80, 80], \"profile\": \"cone\", \"radius\": 30, \"rise\": 200, \"rough\": 0, \"bare\": \"rock\" } ] }");
+            Assert.That(stamps.All.Single().Bare, Is.EqualTo("rock"));
+            Assert.That(stamps.LayInto(w), Is.Empty);
+            Assert.That(w.At(80, 80).T, Is.EqualTo("rock"), "the tree on its top");
+            Assert.That(w.At(90, 75).T, Is.EqualTo("rock"), "a tree on its side");
+            Assert.That(w.At(85, 90).T, Is.EqualTo("rock"), "its grass");
+            Assert.That(w.At(70, 82).T, Is.EqualTo("stone"), "a wall stays");
+            Assert.That(w.At(80, 130).T, Is.EqualTo("tree"), "past its reach");
+            Assert.That(w.At(120, 80).T, Is.EqualTo("grass"));
+            var odd = MapStamps.FromJson("{ \"stamps\": [ { \"id\": \"odd\", \"at\": [40, 120], \"profile\": \"dome\", \"radius\": 10, \"rise\": 20, \"bare\": \"nope\" } ] }");
+            Assert.That(odd.LayInto(w).Single(), Does.Contain("nope, which isn't a terrain"));
+        }
+
         [Test]
         public void ACanyonAlongAPathIsCutRoundItsBendAndClimbsOutAtItsEnds()
         {
