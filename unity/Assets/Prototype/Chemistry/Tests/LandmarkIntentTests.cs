@@ -108,9 +108,10 @@ namespace Chem.Tests
             var row = (JObject)tree.Buildings[0];
             var tables = R.Buildings;
             var cells = BuildingRaster.Cells(BuildingRow.Read((string)row["id"], row, tables), tables);
-            Assert.That(cells.Count(c => c.Terrain == "tree"), Is.GreaterThan(200), "a crown of trees");
-            Assert.That(cells.Count(c => c.Terrain == "logwall"), Is.GreaterThan(60), "a trunk");
-            Assert.That(cells.Count(c => c.Terrain == "deadfall"), Is.GreaterThan(20), "roots");
+            Assert.That(row["parts"].Single()["kind"].ToString(), Is.EqualTo("great-tree"), "the view's own tree, scaled up");
+            Assert.That((int)row["parts"][0]["scale"], Is.InRange(7, 9));
+            Assert.That(cells.Count(c => c.Terrain == "logwall"), Is.GreaterThan(12), "a trunk");
+            Assert.That(cells.Count(c => c.Terrain == "deadfall"), Is.GreaterThan(40), "roots");
             Assert.That(cells.Any(c => c.X == SiteX && c.Y == SiteY && c.Terrain == "logwall"), "the trunk stands on the site");
 
             var volcano = Village.Make("mountains", SiteX, SiteY, 1);
@@ -118,6 +119,8 @@ namespace Chem.Tests
             Assert.That((int)volcano.Stamps[0]["rise"], Is.GreaterThan(400), "a high cone");
             Assert.That((int)volcano.Stamps[1]["rise"], Is.LessThan(0), "a crater in its top");
             Assert.That(volcano.Stamps[1]["at"], Is.EqualTo(volcano.Stamps[0]["at"]));
+            Assert.That(volcano.Stamps.Select(t => (string)t["bare"]), Is.EqualTo(new[] { "rock", "lava-crust" }), "a bare cone and a crusted crater");
+            Assert.That(MapStamps.FromJson(volcano.StampsJson).All.Select(t => t.Bare), Is.EqualTo(new[] { "rock", "lava-crust" }), "as stamps.json reads it");
             // Its village climbs: houses either side of a way up towards the cone, nearer the top the further along, most of stone.
             var cone = ((int)volcano.Stamps[0]["at"][0], (int)volcano.Stamps[0]["at"][1]);
             var climb = volcano.Buildings.OfType<JObject>().Select(b => (b, d: Distance(b, cone))).ToList();
@@ -139,6 +142,10 @@ namespace Chem.Tests
             Assert.That(far.Max() - far.Min(), Is.LessThan(10), "on one arc");
             int across = Math.Max(shoreHouses.Max(b => (int)b["at"][0]) - shoreHouses.Min(b => (int)b["at"][0]), shoreHouses.Max(b => (int)b["at"][1]) - shoreHouses.Min(b => (int)b["at"][1]));
             Assert.That(across, Is.GreaterThan(60), "spread round the shore, not bunched");
+            // Its place is its houses, not the block they stand round: the lake's middle isn't in it.
+            var village = WorldPlaces.FromJson(fishing.PlacesJson).All.Single(p => p.Kind == "village");
+            Assert.That(village.Contains(lake.Item1, lake.Item2), Is.False, "the lake isn't the village");
+            Assert.That(shoreHouses.All(b => village.Contains((int)b["at"][0], (int)b["at"][1])));
             // Each boathouse's front wall, where its dock goes, stands on the lake's shore: water just past it.
             var land = LandmarkPicture.Land(fishing, SiteX - 128, SiteY - 128, 256);
             foreach (var b in boathouses)
@@ -146,6 +153,49 @@ namespace Chem.Tests
                 var (wx, wy) = LandmarkPicture.DockEnd(b);
                 Assert.That(land[(wy - (SiteY - 128)) * 256 + wx - (SiteX - 128)], Is.LessThan(LandmarkPicture.WaterBelow), $"{b["id"]}'s dock ends over water");
             }
+        }
+
+        [Test]
+        public void ThingsKeepOffEveryRow()
+        {
+            foreach (string form in Village.Forms)
+                foreach (int seed in new[] { 1, 2, 3, 4, 5 })
+                {
+                    var rows = Village.Make(form, SiteX, SiteY, seed);
+                    var taken = new System.Collections.Generic.HashSet<(int, int)>();
+                    foreach (var b in rows.Buildings.OfType<JObject>())
+                        foreach (var c in BuildingRaster.Cells(BuildingRow.Read((string)b["id"], b, R.Buildings), R.Buildings)) taken.Add((c.X, c.Y));
+                    var on = WorldThings.FromJson(rows.ThingsJson).All.Where(t => taken.Contains((t.CellX, t.CellY))).ToList();
+                    Assert.That(on, Is.Empty, $"{form} seed {seed}: {string.Join(", ", on.Select(t => $"{t.Kind} at {t.CellX},{t.CellY}"))}");
+                }
+        }
+
+        [Test]
+        public void AVillageLaidAsRowsSkipsPlotsTheCallerRefuses()
+        {
+            foreach (string form in new[] { "mountains", "foggy-marsh" })
+            {
+                var all = Village.Make(form, SiteX, SiteY, 1);
+                Assert.That(Village.Make(form, SiteX, SiteY, 1, (x, y) => true).Hash(), Is.EqualTo(all.Hash()), $"{form}: taking every cell is the same as no predicate");
+                var west = Village.Make(form, SiteX, SiteY, 1, (x, y) => x < SiteX);
+                var houses = west.Buildings.OfType<JObject>().Where(b => (string)b["style"] == "village").ToList();
+                Assert.That(houses.Count, Is.LessThan(all.Buildings.Count(b => (string)b["style"] == "village")), $"{form}: some refused");
+                Assert.That(houses.All(b => (int)b["at"][0] + (int)b["joins"]["ne"][0] / 2 <= SiteX), $"{form}: none on a refused cell");
+                Assert.That(Village.Make(form, SiteX, SiteY, 1, (x, y) => false).Buildings.Count(b => (string)b["style"] == "village"), Is.Zero);
+            }
+        }
+
+        // A village's "pad" goes on each house it lays as rows, its walls level: a flat terrace cut for it on a slope.
+        // (The mountains form has none: a map stamp is refused where a row's pad moved the land, J-080 1b.)
+        [Test]
+        public void AClimbsPadGoesOnEachOfItsHouses()
+        {
+            string text = File.ReadAllText(Path.Combine(GameWorldDir(), LandmarkIntent.Folder, "village-with-landmark.json"));
+            var padded = LandmarkIntent.Parse(text.Replace("\"stoneInTen\": 8,", "\"stoneInTen\": 8, \"pad\": { \"margin\": 1, \"bank\": 3 },"));
+            var houses = padded.Make("mountains", SiteX, SiteY, 1).Buildings.OfType<JObject>().Where(b => (string)b["style"] == "village").ToList();
+            Assert.That(houses, Is.Not.Empty);
+            Assert.That(houses.All(b => (int)b["pad"]["bank"] == 3 && (bool)b["level"]));
+            Assert.That(Village.Make("mountains", SiteX, SiteY, 1).Buildings.All(b => b["pad"] == null));
         }
 
         // How far a building's middle is from a cell.
@@ -156,9 +206,9 @@ namespace Chem.Tests
         }
 
         // The goldens, to compare between machines: the five files' texts, per form and seed.
-        [TestCase("temperate", 1, 0x8674f4f7u), TestCase("temperate", 2, 0xff75bd7eu)]
-        [TestCase("mountains", 1, 0x809b1e01u), TestCase("mountains", 2, 0xec11852cu)]
-        [TestCase("foggy-marsh", 1, 0xff38f27cu), TestCase("foggy-marsh", 2, 0x23425061u)]
+        [TestCase("temperate", 1, 0x062df67cu), TestCase("temperate", 2, 0x89080d44u)]
+        [TestCase("mountains", 1, 0xaea79652u), TestCase("mountains", 2, 0x3b6a7c85u)]
+        [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]
         public void Golden(string biome, int seed, uint expected)
         {
             uint hash = Village.Make(biome, SiteX, SiteY, seed).Hash();

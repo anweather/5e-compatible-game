@@ -20,12 +20,19 @@ namespace Chem
         /// <summary>A canyon's trail along its floor: the terrain it lays (dirt), or null for none.</summary>
         public string Trail { get; }
 
-        public MapStamp(string id, string name, LandStamp stamp, string trail = null)
+        /// <summary>
+        /// The terrain the stamp leaves bare where it moved the land (a volcano's rock, its crater's crust): every dry cell
+        /// of open ground or standing tree it moved is painted so, its trees gone; null for none.
+        /// </summary>
+        public string Bare { get; }
+
+        public MapStamp(string id, string name, LandStamp stamp, string trail = null, string bare = null)
         {
             Id = id;
             Name = name;
             Stamp = stamp;
             Trail = trail;
+            Bare = bare;
         }
     }
 
@@ -49,7 +56,8 @@ namespace Chem
 
         /// <summary>
         /// The stamps in the file's text, each {id, name, at: [x, y], profile, radius, rise (land units), rough, seed}, and
-        /// along: [x, y] or path: [[x, y], ...] from at for a line, and for a canyon a trail: the terrain laid along its floor. Throws <see cref="FormatException"/> for one that can't be read.
+        /// along: [x, y] or path: [[x, y], ...] from at for a line, and for a canyon a trail: the terrain laid along its floor; bare: the
+        /// terrain it leaves where it moved the land. Throws <see cref="FormatException"/> for one that can't be read.
         /// </summary>
         public static MapStamps FromJson(string json)
         {
@@ -80,10 +88,13 @@ namespace Chem
             if (!stamp.Known) throw new FormatException($"{FileName}: {id} isn't a land stamp (a profile, a radius, rough 0 to 100, and a line or a path of two points or more for a canyon or cliff)");
             string trail = (string)o["trail"];
             if (trail != null && stamp.Profile != LandStamp.Canyon) throw new FormatException($"{FileName}: {id} has a trail, and only a canyon's floor takes one");
-            return new MapStamp(id, (string)o["name"] ?? id, stamp, trail);
+            return new MapStamp(id, (string)o["name"] ?? id, stamp, trail, (string)o["bare"]);
         }
 
-        /// <summary>Lays them on a world as it's made, and a canyon's trail on its floor's dry cells; why any was refused, by id.</summary>
+        /// <summary>
+        /// Lays them on a world as it's made, a canyon's trail on its floor's dry cells and a bare stamp's terrain where it
+        /// moved the land; why any was refused, by id, and a trail or bare terrain the rules haven't got.
+        /// </summary>
         public List<string> LayInto(World world)
         {
             var refused = new List<string>();
@@ -91,11 +102,29 @@ namespace Chem
             {
                 var why = world.LayMapStamps(new[] { s.Stamp });
                 refused.AddRange(why.Select(w => $"{FileName}: {s.Id} isn't laid, {w}"));
-                if (why.Count > 0 || s.Trail == null) continue;
-                foreach (var (x, y) in s.Stamp.Trail())
-                    if (world.InBounds(x, y) && world.At(x, y).Water == 0) world.Paint(x, y, s.Trail);
+                if (why.Count > 0) continue;
+                foreach (var terrain in new[] { s.Trail, s.Bare }.Where(t => t != null && !world.Rules.Terrain.ContainsKey(t)))
+                    refused.Add($"{FileName}: {s.Id} lays {terrain}, which isn't a terrain");
+                if (s.Trail != null && world.Rules.Terrain.ContainsKey(s.Trail))
+                    foreach (var (x, y) in s.Stamp.Trail())
+                        if (world.InBounds(x, y) && world.At(x, y).Water == 0) world.Paint(x, y, s.Trail);
+                if (s.Bare != null && world.Rules.Terrain.ContainsKey(s.Bare)) Bare(world, s);
             }
             return refused;
+        }
+
+        // Every dry cell of open ground or standing tree the stamp moved, row by row, painted its bare terrain.
+        static void Bare(World world, MapStamp s)
+        {
+            var stamp = s.Stamp;
+            int reach = stamp.Bound;
+            for (int y = Math.Max(0, stamp.Y - reach); y <= Math.Min(world.H - 1, stamp.Y + reach); y++)
+                for (int x = Math.Max(0, stamp.X - reach); x <= Math.Min(world.W - 1, stamp.X + reach); x++)
+                {
+                    var c = world.At(x, y);
+                    if (stamp.At(x - stamp.X, y - stamp.Y) == 0 || c.Water != 0) continue;
+                    if (c.T == "tree" || (world.HasTag(c, "ground") && !world.IsBlocking(c))) world.Paint(x, y, s.Bare);
+                }
         }
     }
 }
