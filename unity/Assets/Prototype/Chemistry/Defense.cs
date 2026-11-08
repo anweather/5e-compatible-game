@@ -25,6 +25,10 @@ namespace Chem
         public int AttackEvery = 12;
         /// <summary>How it comes in the Hold (entities.json raider.route): by the road, unless it's "climb" or "fly".</summary>
         public string Route;
+        /// <summary>How it looks (entities.json raider.body, raider.size): a rules/fauna.json species drawn for it, and how big, a percent of
+        /// the species' own size. Only the show reads them; null body for one the view draws its own way (the ash wing's wings).</summary>
+        public string Body;
+        public int Size = 100;
     }
 
     /// <summary>sim.json's "defense": the waves, the lives and how raiders find their way.</summary>
@@ -124,6 +128,8 @@ namespace Chem
                     AttackDice = (o["attack"]?["dice"] as JArray)?.Select(v => (int)v).ToArray() ?? Array.Empty<int>(),
                     AttackEvery = Math.Max(1, Int(o["attack"]?["every"]) ?? 12),
                     Route = Str(o["route"]),
+                    Body = Str(o["body"]),
+                    Size = Math.Max(1, Int(o["size"]) ?? 100),
                 }
                 : null;
 

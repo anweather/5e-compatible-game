@@ -101,12 +101,28 @@ public partial class ItemHolder
         var landing = InReachOfFist();
         if (landing.Prop != null) landing.Prop.Shove(Forces.Thrown(AwayFromMe(landing)) * (beats.feel.punchShove * Forces.ImpulsePerPush));
         else if (landing.Pane != null) ChemEffects.Strike(GetComponent<SpellCaster>().grid, landing.Pane.Value);
-        if (landing.Hit)
-        {
-            GameSounds.Play(SoundIds.Earth, landing.Point);
-            CastImpact.Punched(beats, landing.Way);
-        }
+        if (landing.Hit) FistLanded(landing.Point, landing.Way);
         PunchLanded?.Invoke(landing);
+    }
+
+    // The puncher's flash at the fist: small, warm white, quick.
+    const float FistFlash = 0.22f;
+    static readonly Color FistFlashTint = new(1f, 0.93f, 0.75f, 1f);
+
+    /// <summary>How many of this wizard's punches have landed, as its puncher feels them (FistLanded), for the probe.</summary>
+    public int FistHits { get; private set; }
+
+    /// <summary>
+    /// The puncher's own feel of a fist that lands, on its machine: on a thing or a pane here, on a wizard or a raider when the
+    /// core says the strike hit (WizardStrike; playtest 2026-11-08 B3, the puncher had nothing). The thud the one struck hears,
+    /// a small flash at the fist, and the stop, camera kick and pad rumble (CastImpact.Punched).
+    /// </summary>
+    public void FistLanded(Vector3 at, Vector3 way)
+    {
+        FistHits++;
+        GameSounds.Play(SoundIds.Earth, at);
+        BurstFx.Play(BurstFx.Kind.Flash, at, FistFlash, tint: FistFlashTint);
+        if (beats != null) CastImpact.Punched(beats, way);
     }
 
     // A thing flies on from the fist, away from the wizard: the aim can be 70 degrees off where it stands.

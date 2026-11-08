@@ -60,6 +60,8 @@ public class RoomProbeSeen
     public string placed, summons;
     /// <summary>What each wizard's hands show here (HandLooksProbe.Shown).</summary>
     public string hands;
+    /// <summary>peervanish: every other player's wizard as this peer draws it (PeerVanishProbe.Others), and its own wizard's feet.</summary>
+    public string others, self;
     public float placedGap;
     public int cellsDressed;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
@@ -123,6 +125,8 @@ public sealed class RoomProbeRecord : IDisposable
         seen.strikes = string.Join("|", grid.World.Log.Select(l => l.Text).Where(t => t.Contains("punch")).Distinct().OrderBy(t => t, StringComparer.Ordinal));
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
         seen.hands = HandLooksProbe.Shown();
+        seen.others = PeerVanishProbe.Others();
+        seen.self = PeerVanishProbe.Self();
         var fauna = UnityEngine.Object.FindAnyObjectByType<ValleyFauna>();
         if (fauna != null)
         {
@@ -311,6 +315,9 @@ public class RoomProbeClient : MonoBehaviour
                 break;
             case "airspawn":
                 yield return AirPeersProbe.SpawnAfter(grid, net, int.Parse(ask.mod, CultureInfo.InvariantCulture));
+                break;
+            case "lastpoint":
+                yield return PeerVanishProbe.LastPointAfter(net, int.Parse(ask.mod, CultureInfo.InvariantCulture));
                 break;
             case "aircast":
                 AirPeersProbe.CastFrom(ask.mod);
