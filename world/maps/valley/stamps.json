@@ -68,8 +68,8 @@
         106
       ],
       "profile": "dome",
-      "radius": 13,
-      "rise": -185,
+      "radius": 16,
+      "rise": -206,
       "rough": 5,
       "seed": 44179,
       "bare": "lava-crust"

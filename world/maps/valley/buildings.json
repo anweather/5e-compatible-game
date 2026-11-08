@@ -1350,7 +1350,7 @@
       ],
       "fill": "solid",
       "seed": 32872,
-      "note": "the Greatbough: the great tree's stand-in, a tree 9 times its size over a log trunk, with roots",
+      "note": "the Greatbough: the great tree's stand-in, a tree 3 times its size over a log trunk, with roots",
       "wall": {
         "material": "logwall",
         "height": 1.5,
@@ -1644,21 +1644,27 @@
         {
           "kind": "great-tree",
           "join": "c",
-          "scale": 9
+          "scale": 3,
+          "tree": "Cypress"
         }
       ]
     },
     {
       "id": "emberhold#1",
       "at": [
-        162,
-        178
+        146,
+        171
       ],
       "style": "village",
       "seed": 27371,
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
       },
       "joins": {
         "nw": [
@@ -1678,44 +1684,52 @@
           10
         ],
         "way0": [
-          -7,
-          11
+          27,
+          25
         ],
         "way1": [
-          -7,
-          5
+          1,
+          15
         ],
         "way2": [
-          -9,
-          -7
+          -25,
+          1
         ],
         "way3": [
-          -13,
-          -19
+          -41,
+          -17
         ],
         "way4": [
-          -13,
-          -31
+          -57,
+          -37
         ],
         "way5": [
-          -13,
-          -43
+          -69,
+          -59
         ],
         "way6": [
-          -13,
-          -55
+          -73,
+          -81
         ],
         "way7": [
-          -13,
-          -67
+          -75,
+          -103
         ],
         "way8": [
-          -9,
-          -79
+          -71,
+          -123
         ],
         "way9": [
-          -9,
-          -91
+          -63,
+          -139
+        ],
+        "way10": [
+          -53,
+          -155
+        ],
+        "way11": [
+          -41,
+          -167
         ]
       },
       "walls": {
@@ -1744,7 +1758,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 4
             }
           ]
@@ -1754,7 +1768,7 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 4
             }
           ]
@@ -1789,7 +1803,9 @@
             "way6",
             "way7",
             "way8",
-            "way9"
+            "way9",
+            "way10",
+            "way11"
           ],
           "terrain": "dirt",
           "width": 2
@@ -1799,14 +1815,19 @@
     {
       "id": "emberhold#2",
       "at": [
-        149,
-        172
+        124,
+        171
       ],
       "style": "village",
-      "seed": 87289,
+      "seed": 91250,
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
       },
       "joins": {
         "nw": [
@@ -1814,16 +1835,16 @@
           0
         ],
         "ne": [
-          10,
+          12,
           0
         ],
         "se": [
-          10,
-          8
+          12,
+          10
         ],
         "sw": [
           0,
-          8
+          10
         ]
       },
       "walls": {
@@ -1832,7 +1853,7 @@
           "to": "ne",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 4
             }
           ]
@@ -1842,8 +1863,8 @@
           "to": "se",
           "openings": [
             {
-              "kind": "door",
-              "at": 2
+              "kind": "window",
+              "at": 4
             }
           ]
         },
@@ -1863,7 +1884,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 2
+              "at": 4
             }
           ]
         }
@@ -1889,23 +1910,28 @@
     {
       "id": "emberhold#3",
       "at": [
-        158,
-        166
+        117,
+        148
       ],
       "style": "village",
-      "seed": 62087,
+      "seed": 97190,
       "note": "Emberhold's house, by Mount Hearth",
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
           0
         ],
         "ne": [
-          8,
+          12,
           0
         ],
         "se": [
-          8,
+          12,
           8
         ],
         "sw": [
@@ -1920,7 +1946,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 2
+              "at": 4
             }
           ]
         },
@@ -1939,8 +1965,8 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "window",
-              "at": 2
+              "kind": "door",
+              "at": 4
             }
           ]
         },
@@ -1949,7 +1975,7 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 2
             }
           ]
@@ -1976,14 +2002,19 @@
     {
       "id": "emberhold#4",
       "at": [
-        147,
-        160
+        104,
+        134
       ],
       "style": "village",
-      "seed": 76739,
+      "seed": 13548,
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
       },
       "joins": {
         "nw": [
@@ -1991,16 +2022,16 @@
           0
         ],
         "ne": [
-          8,
+          10,
           0
         ],
         "se": [
-          8,
-          10
+          10,
+          12
         ],
         "sw": [
           0,
-          10
+          12
         ]
       },
       "walls": {
@@ -2010,7 +2041,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 2
+              "at": 4
             }
           ]
         },
@@ -2030,7 +2061,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 2
+              "at": 4
             }
           ]
         },
@@ -2066,28 +2097,36 @@
     {
       "id": "emberhold#5",
       "at": [
-        158,
-        154
+        110,
+        115
       ],
       "style": "village",
-      "seed": 66162,
+      "seed": 16450,
       "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
           0
         ],
         "ne": [
-          10,
+          8,
           0
         ],
         "se": [
-          10,
-          10
+          8,
+          8
         ],
         "sw": [
           0,
-          10
+          8
         ]
       },
       "walls": {
@@ -2097,7 +2136,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 4
+              "at": 2
             }
           ]
         },
@@ -2107,7 +2146,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 4
+              "at": 2
             }
           ]
         },
@@ -2117,7 +2156,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 4
+              "at": 2
             }
           ]
         },
@@ -2127,7 +2166,7 @@
           "openings": [
             {
               "kind": "door",
-              "at": 4
+              "at": 2
             }
           ]
         }
@@ -2140,7 +2179,7 @@
             12
           ],
           "overhang": 0.4,
-          "cover": "thatch",
+          "cover": "slate",
           "over": [
             "nw",
             "ne",
@@ -2153,12 +2192,112 @@
     {
       "id": "emberhold#6",
       "at": [
-        147,
-        147
+        106,
+        102
+      ],
+      "style": "village",
+      "seed": 14542,
+      "note": "Emberhold's house, by Mount Hearth",
+      "wall": {
+        "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "slate",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "emberhold#7",
+      "at": [
+        123,
+        90
       ],
       "style": "village",
       "seed": 5129,
       "note": "Emberhold's house, by Mount Hearth",
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -2193,7 +2332,7 @@
           "to": "se",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 4
             }
           ]
@@ -2213,7 +2352,7 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 4
             }
           ]
@@ -2228,276 +2367,6 @@
           ],
           "overhang": 0.4,
           "cover": "thatch",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      }
-    },
-    {
-      "id": "emberhold#7",
-      "at": [
-        159,
-        142
-      ],
-      "style": "village",
-      "seed": 96505,
-      "note": "Emberhold's house, by Mount Hearth",
-      "wall": {
-        "material": "stone"
-      },
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          8,
-          0
-        ],
-        "se": [
-          8,
-          8
-        ],
-        "sw": [
-          0,
-          8
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 2
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "slate",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      }
-    },
-    {
-      "id": "emberhold#8",
-      "at": [
-        150,
-        136
-      ],
-      "style": "village",
-      "seed": 18663,
-      "note": "Emberhold's house, by Mount Hearth",
-      "wall": {
-        "material": "stone"
-      },
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          10,
-          0
-        ],
-        "se": [
-          10,
-          10
-        ],
-        "sw": [
-          0,
-          10
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 4
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "slate",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      }
-    },
-    {
-      "id": "emberhold#9",
-      "at": [
-        154,
-        124
-      ],
-      "style": "village",
-      "seed": 84126,
-      "note": "Emberhold's watch house, by Mount Hearth",
-      "wall": {
-        "material": "stone"
-      },
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          12,
-          0
-        ],
-        "se": [
-          12,
-          10
-        ],
-        "sw": [
-          0,
-          10
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 4
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "slate",
           "over": [
             "nw",
             "ne",
