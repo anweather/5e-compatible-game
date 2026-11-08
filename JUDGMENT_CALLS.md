@@ -84,6 +84,11 @@ Each entry has:
   archetype for that description, to regenerate easily. The lead's additions (plan, "World archetypes"): Claude sets
   constraints, never the world; score on numbers first, a judge picks, Andrew decides; save the solved plan and the
   generator version with the seed, since a seed alone drifts when the generator changes.
+- **Oceans, continents and latitude (to the lead):** oceans are a feature too, large ones on the edges, so the whole
+  world can be an island, or several continents wrapped round. The world wraps east-west only; north and south are firm
+  edges of impassable ice mountains. Temperate and desert in the middle latitudes, blending north from the desert to the
+  northern mountains and south to the southern mountains. (This replaces the torus as the default; the torus stays an
+  option.)
 - **The volcano village (to the Mac):** no houses up at the peak. Houses start at the mountain's base and go up "like a
   corridor", a road winding round the mountain with houses on its upslope and downslope sides, "but they shouldn't be
   so steep". The Mac's "wind" layout: a gently rising road part-way round the cone's lower slopes, houses alternating

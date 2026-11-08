@@ -105,6 +105,14 @@ and stop ... I want the roads to be able to be sort of dynamic but intentional")
    world square's sides still carry road slots, now filled from the routes, so `ChunkGen` draws a road through a chunk
    from the plan alone. Dynamic (any seed, any world size) and intentional (every road joins two reasons).
 
+**World shape, oceans and latitude** (Andrew, 2026-11-08). Oceans are a feature, not only an edge: the plan takes a
+world shape (one island with ocean all round, a few continents, an archipelago) and lays ocean squares to suit. **The
+world wraps east-west only** (a cylinder): north and south are firm edges of **impassable ice mountains**, a band no
+road, river or character crosses. **Climate follows latitude:** desert and salt flats near the middle, temperate either
+side, then tundra and mountains toward the poles, then the ice wall; the square templates' anchors work on top of that.
+The valley stays pinned at a temperate latitude. The full torus stays possible as an option (the earlier "torus,
+keep in mind" still holds for it), but the default is the east-west wrap.
+
 **Inland seas** (Andrew, 2026-11-08). A large body of sea water inside the world, not touching its edge: one or more
 sea-band world squares (and coast profiles on their neighbours) placed by the plan as a region, so the coast rules
 apply all round it. Rivers may end in it; the known ring stops at its shore unless a landmark's `seenFrom` reaches
