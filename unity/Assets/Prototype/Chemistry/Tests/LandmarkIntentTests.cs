@@ -55,11 +55,17 @@ namespace Chem.Tests
                 Assert.That(stamps.All, Is.Not.Empty);
                 Assert.That(stamps.All.All(s => s.Stamp.Known), $"{biome} {seed}: every stamp is a land stamp");
                 var villages = VillageLayout.FromJson(rows.VillagesJson);
-                Assert.That(villages.Single().Name, Is.EqualTo(rows.VillageName));
+                var places = WorldPlaces.FromJson(rows.PlacesJson).All;
+                if (rows.Village != null) Assert.That(villages.Single().Name, Is.EqualTo(rows.VillageName));
+                else
+                {
+                    Assert.That(villages, Is.Empty, "a village laid as rows has no recipe");
+                    Assert.That(places.Single(p => p.Kind == "village").Name, Is.EqualTo(rows.VillageName), "and names its own place");
+                }
                 var things = WorldThings.FromJson(rows.ThingsJson);
                 Assert.That(things.Check(R), Is.Empty, $"{biome} {seed}: the things' kinds are the rules'");
                 Assert.That(things.All, Is.Not.Empty);
-                var place = WorldPlaces.FromJson(rows.PlacesJson).All.Single();
+                var place = places.Single(p => p.Kind == "landmark");
                 Assert.That(place.Name, Is.EqualTo(rows.Name));
                 Assert.That(place.Kind, Is.EqualTo("landmark"));
                 Assert.That(rows.Buildings, Is.Not.Empty);
@@ -112,24 +118,47 @@ namespace Chem.Tests
             Assert.That((int)volcano.Stamps[0]["rise"], Is.GreaterThan(400), "a high cone");
             Assert.That((int)volcano.Stamps[1]["rise"], Is.LessThan(0), "a crater in its top");
             Assert.That(volcano.Stamps[1]["at"], Is.EqualTo(volcano.Stamps[0]["at"]));
-            Assert.That((int)volcano.Village["stoneInTen"], Is.EqualTo(8), "stone houses");
+            // Its village climbs: houses either side of a way up towards the cone, nearer the top the further along, most of stone.
+            var cone = ((int)volcano.Stamps[0]["at"][0], (int)volcano.Stamps[0]["at"][1]);
+            var climb = volcano.Buildings.OfType<JObject>().Select(b => (b, d: Distance(b, cone))).ToList();
+            Assert.That(volcano.Village, Is.Null, "laid as rows, not a square");
+            Assert.That(climb.Count, Is.GreaterThanOrEqualTo(7), "six houses or more and the watch house");
+            Assert.That(climb[climb.Count - 1].d, Is.LessThan(climb[0].d - 40), "the watch house is well up from the foot");
+            Assert.That(climb.Count(c => (string)c.b["wall"]?["material"] == "stone"), Is.GreaterThan(climb.Count / 2), "mostly stone");
+            Assert.That(volcano.Buildings[0]["roads"]?["way"], Is.Not.Null, "a way up between them");
 
             var fishing = Village.Make("foggy-marsh", SiteX, SiteY, 1);
             Assert.That((int)fishing.Stamps[0]["rise"], Is.LessThan(0), "a lake's hollow");
-            Assert.That(fishing.Buildings.All(b => b["parts"].Any(p => (string)p["kind"] == "dock")), "every boathouse has its dock");
+            var boathouses = fishing.Buildings.OfType<JObject>().Where(b => b["parts"]?.Any(p => (string)p["kind"] == "dock") == true).ToList();
+            Assert.That(boathouses.Count, Is.GreaterThanOrEqualTo(2), "boathouses with docks");
+            // Its village curves round the lake: every house about as far from the water's middle, spread round it.
+            var lake = ((int)fishing.Stamps[0]["at"][0], (int)fishing.Stamps[0]["at"][1]);
+            var shoreHouses = fishing.Buildings.OfType<JObject>().Where(b => (string)b["style"] == "village").ToList();
+            Assert.That(shoreHouses.Count, Is.GreaterThanOrEqualTo(6));
+            var far = shoreHouses.Select(b => Distance(b, lake)).ToList();
+            Assert.That(far.Max() - far.Min(), Is.LessThan(10), "on one arc");
+            int across = Math.Max(shoreHouses.Max(b => (int)b["at"][0]) - shoreHouses.Min(b => (int)b["at"][0]), shoreHouses.Max(b => (int)b["at"][1]) - shoreHouses.Min(b => (int)b["at"][1]));
+            Assert.That(across, Is.GreaterThan(60), "spread round the shore, not bunched");
             // Each boathouse's front wall, where its dock goes, stands on the lake's shore: water just past it.
             var land = LandmarkPicture.Land(fishing, SiteX - 128, SiteY - 128, 256);
-            foreach (var b in fishing.Buildings.OfType<JObject>())
+            foreach (var b in boathouses)
             {
                 var (wx, wy) = LandmarkPicture.DockEnd(b);
                 Assert.That(land[(wy - (SiteY - 128)) * 256 + wx - (SiteX - 128)], Is.LessThan(LandmarkPicture.WaterBelow), $"{b["id"]}'s dock ends over water");
             }
         }
 
+        // How far a building's middle is from a cell.
+        static double Distance(JObject b, (int x, int y) to)
+        {
+            double mx = (int)b["at"][0] + (int)b["joins"]["ne"][0] / 4.0, my = (int)b["at"][1] + (int)b["joins"]["se"][1] / 4.0;
+            return Math.Sqrt((mx - to.x) * (mx - to.x) + (my - to.y) * (my - to.y));
+        }
+
         // The goldens, to compare between machines: the five files' texts, per form and seed.
-        [TestCase("temperate", 1, 0x0575bcf0u), TestCase("temperate", 2, 0xc5ded8abu)]
-        [TestCase("mountains", 1, 0xd849d256u), TestCase("mountains", 2, 0x12b5f056u)]
-        [TestCase("foggy-marsh", 1, 0xf3e8983bu), TestCase("foggy-marsh", 2, 0xb42805a4u)]
+        [TestCase("temperate", 1, 0x8674f4f7u), TestCase("temperate", 2, 0xff75bd7eu)]
+        [TestCase("mountains", 1, 0x809b1e01u), TestCase("mountains", 2, 0xec11852cu)]
+        [TestCase("foggy-marsh", 1, 0xff38f27cu), TestCase("foggy-marsh", 2, 0x23425061u)]
         public void Golden(string biome, int seed, uint expected)
         {
             uint hash = Village.Make(biome, SiteX, SiteY, seed).Hash();

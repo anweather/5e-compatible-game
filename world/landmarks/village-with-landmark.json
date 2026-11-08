@@ -1,5 +1,5 @@
 {
-  "about": "A landmark intent (docs/design/world-squares.md section 2; Chem.LandmarkIntent): what a world square asks for, never where it goes. Each form under \"by\" is how it comes out in a biome (an id in world/biomes.json; \"use\" borrows another form, \"*\" is any biome not named). LandmarkIntent.Make turns (intent, biome, site, seed) into rows the map files already read: stamps.json stamps, a villages.json village, buildings.json rows, things.json things per chunk and a places.json place. Offsets are cells from the site, y grows south; the seed turns the whole form a quarter turn or not, and picks the names, the village's seed and every spread. \"houses\" are buildings.json rows of a style, a box width by depth cells at an offset, its door facing the landmark. A range [a, b] is a seeded pick, both ends included. Land is in land units (0.125 m).",
+  "about": "A landmark intent (docs/design/world-squares.md section 2; Chem.LandmarkIntent): what a world square asks for, never where it goes. Each form under \"by\" is how it comes out in a biome (an id in world/biomes.json; \"use\" borrows another form, \"*\" is any biome not named). LandmarkIntent.Make turns (intent, biome, site, seed) into rows the map files already read: stamps.json stamps, a villages.json village, buildings.json rows, things.json things per chunk and a places.json place. Offsets are cells from the site, y grows south; the seed turns the whole form a quarter turn or not, and picks the names, the village's seed and every spread. A village is laid one of three ways: \"square\" (the default), a villages.json recipe laid by VillageLayout; \"climb\", houses either side of a way climbing from its foot towards the landmark, ending at a \"top\" house; \"shore\", houses on an arc \"span\" degrees round the lake \"around\", facing the water, with a way between them and the shore. A climb's or a shore's houses are buildings.json rows of the village style, stone by \"stoneInTen\", with a place of their own. A range [a, b] is a seeded pick, both ends included. Land is in land units (0.125 m).",
   "id": "village-with-landmark",
   "footprint": 160,
   "by": {
@@ -20,8 +20,8 @@
         { "profile": "cone", "radius": [64, 76], "rise": [440, 520], "rough": 8, "at": [0, -64] },
         { "profile": "dome", "radius": [12, 15], "rise": [-200, -160], "rough": 5, "at": [0, -64] }
       ],
-      "village": { "at": [0, 30], "jitter": 5, "square": [8, 11], "houses": [5, 8], "lanes": 2, "laneLength": [8, 14], "stoneInTen": 8 },
-      "houses": [ { "what": "the watch house", "style": "plain", "wall": "stone", "width": [4, 5], "depth": [5, 6], "at": [0, 12], "facing": "landmark" } ],
+      "village": { "layout": "climb", "at": [0, 14], "jitter": 3, "houses": [6, 9], "climb": [48, 60], "setback": [5, 6], "house": [[4, 6], [4, 5]], "stoneInTen": 8,
+                   "top": { "what": "watch house", "wall": "stone", "width": [5, 6], "depth": [5, 6] } },
       "things": [ { "kind": "boulder", "count": [6, 9], "ring": [56, 74], "at": [0, -64], "half": "near" } ],
       "villageNames": ["Cinderfoot", "Emberhold", "Slagford", "Basalt Rest", "Pumice End", "Ashmoor", "Kilnside", "Smokeholm"],
       "landmarkNames": ["Mount Hearth", "the Smoking Crown", "Old Grumbler", "Emberpeak", "the Ash Mother", "the Red Throat"]
@@ -30,7 +30,7 @@
       "name": "a fishing village on the lake",
       "landmark": "lake",
       "stamps": [ { "profile": "dome", "radius": [38, 46], "rise": [-48, -36], "rough": 20, "at": [0, -48] } ],
-      "village": { "at": [0, 20], "jitter": 4, "square": [8, 10], "houses": [5, 9], "lanes": 2, "laneLength": [8, 12], "stoneInTen": 0, "inn": true, "shop": false },
+      "village": { "layout": "shore", "around": [0, -48], "at": [0, 20], "jitter": 4, "houses": [6, 9], "span": 150, "setback": [13, 15], "way": 7, "house": [[4, 5], [4, 6]], "stoneInTen": 0 },
       "docks": { "count": [2, 4], "lake": [0, -48], "spread": 70, "house": [[3, 4], [4, 5]], "length": [16, 26], "width": 4, "wall": "logwall" },
       "things": [ { "kind": "barrel", "count": [3, 5], "near": "docks" }, { "kind": "crate", "count": [2, 4], "near": "docks" } ],
       "villageNames": ["Netherwade", "Reedmouth", "Fogwater", "Eelby", "Mistmere", "Gullhythe", "Pikestead", "Dunmere"],

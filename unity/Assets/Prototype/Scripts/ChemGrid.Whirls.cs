@@ -23,6 +23,9 @@ public partial class ChemGrid
     const string StrikeElement = "lightning";
     const float StrikeHeight = 22f;
     const int StrikeForks = 5;
+    // How much of a strike's thunder is placed where it struck: little, so it's as loud across the field as beside it.
+    const float ClapSpread = 0.35f;
+    readonly System.Random thunderSeeds = new();
 
     readonly List<ParticleSystem> columns = new();
     readonly List<(int x, int y, int push, int tick)> flashing = new();
@@ -180,17 +183,22 @@ public partial class ChemGrid
         for (int i = 0; i < StrikeForks; i++)
         {
             float a = (i + 0.5f) * Mathf.PI * 2f / StrikeForks;
-            var edge = at + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * reach * 0.8f;
+            var edge = at + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (reach * 0.8f);
             ArcFx.Play(sky + (edge - at) * 0.3f, edge, 0.16f, seconds + 0.04f * i, 0.4f, glow);
         }
-        StartCoroutine(StrikeFlash(at, reach, seconds));
+        int clapSeed = thunderSeeds.Next();
+        var clap = System.Threading.Tasks.Task.Run(() => ThunderClap.Generate(clapSeed));
+        StartCoroutine(StrikeFlash(at, reach, seconds, clap));
     }
 
-    System.Collections.IEnumerator StrikeFlash(Vector3 at, float reach, float seconds)
+    // The bolt lands: a flash, rock thrown up, and its thunder (made while the bolt came down) right on it.
+    System.Collections.IEnumerator StrikeFlash(Vector3 at, float reach, float seconds, System.Threading.Tasks.Task<float[]> clap)
     {
         yield return new WaitForSeconds(seconds);
         BurstFx.Play(BurstFx.Kind.Flash, at + Vector3.up * 0.3f, Mathf.Min(reach + cellSize, FlashMost));
         BurstFx.Play(BurstFx.Kind.Debris, at, reach * 0.6f);
+        while (!clap.IsCompleted) yield return null;
+        if (!clap.IsFaulted) GameSounds.PlayMade(SoundIds.ThunderClap, ThunderClap.ToClip(clap.Result), at, 1f, ClapSpread);
     }
 
     // Each tick's flash since the last frame, as one burst and one shove over the cells that went up.

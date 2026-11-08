@@ -12,6 +12,8 @@ public static class SoundIds
     public const string Zap = "zap";
     public const string Gust = "gust";
     public const string Thunder = "thunder";
+    /// <summary>A strike right overhead (ThunderClap): made new for each one, not in the bank.</summary>
+    public const string ThunderClap = "thunderclap";
     public const string Earth = "earth";
     public const string Arcane = "arcane";
     public const string Blink = "blink";
@@ -45,6 +47,10 @@ public static class GameSounds
     public static string LandingOf(SpellDef spell)
     {
         if (spell == null) return null;
+        // A strike from the sky (Thunder Strike) is silent as the sky marks it: its thunder comes with the bolt (ThunderClap).
+        if (spell.Delay > 0 && spell.Then == "thunder") return null;
+        // Earth Spires rumble as they come up out of the ground (SpireRise).
+        if (spell.Jagged > 0) return SoundIds.Earth;
         switch (spell.Element)
         {
             case "fire": return spell.Shape == SpellShapes.Burst ? SoundIds.Explosion : SoundIds.Fire;
@@ -124,6 +130,26 @@ public static class GameSounds
         source.pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
         source.Play();
         Object.Destroy(go, clip.length / Mathf.Max(0.5f, source.pitch) + 0.1f);
+    }
+
+    /// <summary>
+    /// A clip made for this one moment (a ThunderClap) played at a point, loud: it carries far and is mostly heard as
+    /// if close, <paramref name="spread"/> of it placed in the world.
+    /// </summary>
+    public static void PlayMade(string sound, AudioClip clip, Vector3 at, float volume, float spread)
+    {
+        if (clip == null) return;
+        Played?.Invoke(sound, at);
+        var go = new GameObject("Sound " + sound);
+        go.transform.position = at;
+        var source = go.AddComponent<AudioSource>();
+        Configure(source, clip, volume * GameVolume.Effects);
+        source.spatialBlend = spread;
+        source.maxDistance = 400f;
+        source.priority = 0;
+        source.Play();
+        Object.Destroy(go, clip.length + 0.1f);
+        Object.Destroy(clip, clip.length + 1f);
     }
 
     /// <summary>A looping 3D source (a fire burning), stopped until it's played.</summary>

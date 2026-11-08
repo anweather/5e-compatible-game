@@ -59,6 +59,30 @@ An **edge interface** is one feature at one slot along a side, 9 slots a side, o
 equal, widths agree within a class, and a river leaving one enters the next. The **bands** (`world/bands.json`: sea
 -40, low 20, hills 120, high 300, peaks 700): sides differ by at most one band; hills are the foothills between.
 
+**Coasts are part of the puzzle** (Andrew, 2026-11-08: "the coastline as part of the puzzle to solve for the tiling
+... we also need to make sure the coastlines are consistent"). A side carries a **coast** profile beside its feature
+slots: which of its 9 slots are sea, and the shoreline's offset into the square at each slot
+(`{ "side": "s", "kind": "coast", "sea": [0, 1, 2, 3], "offset": [40, 40, 52, 70] }`). Two sides match when the same
+slots are sea and the offsets agree within a class, so a shore runs on across a side; at a corner the four squares'
+coasts must agree on the corner slot, as bands do. A square with no sea on a side offers an empty coast. Rivers end at
+a coast slot or a lake; roads stop or turn at a coast. The valley's coast is read from its land like its other edges.
+
+**Rivers and roads must make sense** (Andrew, 2026-11-08):
+
+- **Rivers flow from high to low,** always: a river enters a square from a band at or above it and leaves to one at or
+  below it, and inside a square its bed only goes down. A river starts high (a spring in the hills, high or peaks, or a
+  lake) and ends at the sea or a lake.
+- **Roads lead somewhere.** A road joins two destinations (landmarks: villages, the castle, a spire's shore, a pass)
+  and spans **at least three world squares** end to end; a stub that starts in one square and ends in the next is
+  refused. So roads are solved as routes across the plan, not per side: the edge slots a road uses come from its route.
+- **Roads avoid big height changes.** A route prefers squares in the same band and crosses at most one band step at a
+  time, with a gentle grade inside a square (switchbacks where it must climb). No roads up the peaks; a pass crosses a
+  range at its lowest slot.
+- **Roads are scenic.** Along a route, place **outcrops** to look at: a seeded feature every so often within sight of
+  the road (a rock spire, a crag, a waterfall where a river meets a band step, a lone great tree, a ruin, a view over
+  the sea), so walking a road always has something on the skyline. Outcrops are a new small landmark intent, cheap,
+  with `seenFrom` sized for the known ring.
+
 ## 3. Rings: known, generated, active
 
 Per character, in chunks (Chebyshev, from the chunk it stands in), all in `rules/sim.json` `streaming`:

@@ -13,8 +13,14 @@ folders on disk as a cache, `sight` 4 and `know` 7.
    `docs/GLOSSARY.md` ("square" alone is a spell shape).
 2. **`world/bands.json`** (sea, low, hills, high, peaks; touching squares differ by at most one band) and **12 square
    templates** in `world/squares/` with bands, anchor biomes, one or two landmark intents with `where` rules, edge
-   offers per side (road, river, range, canyon at one of 9 slots, `must` or `may`), `ends`, and `rotate`. Include a
-   filler per band.
+   offers per side (road, river, range, canyon at one of 9 slots, `must` or `may`), a **coast** profile per side
+   (which slots are sea and the shoreline's offset; Andrew: "make sure the coastlines are consistent"; see the plan's
+   "Coasts are part of the puzzle"), `ends`, and `rotate`. Include a filler per band. Coasts must match across sides and
+   at corners, like bands; the picture draws the shoreline.
+   **Rivers and roads** (Andrew; the plan's "Rivers and roads must make sense"): rivers only flow from high to low
+   bands and end at the sea or a lake; roads are routes between two destinations spanning at least three world squares
+   (no one-square stubs), preferring flat or gentle ground with at most one band step at a time (passes at a range's
+   lowest slot), and each route gets seeded scenic outcrops within sight of it.
 3. **`Chem.WorldPlan`:** solve a W × H grid of squares from a seed, the valley pinned at the south-west (its edges read
    from its land at the borders): bands, then templates wave-function style with backtracking and fillers so it never
    fails, edges matched. Repeats weighted down (÷4 each time) and never within 3 squares (Chebyshev), none in a 3 × 3.
@@ -27,3 +33,6 @@ folders on disk as a cache, `sight` 4 and `know` 7.
 Before landing: `dotnet build core -c Release -warnaserror`, `dotnet test core` twice in full in the foreground (the
 runner closes a session that only waits), `dotnet format`. Push the branch only, remove this claim on the branch in the
 last commit. The lead lands it.
+
+Held (2026-11-08): Andrew asked for a paper prototype of the world squares first. Queue this again after he has
+tried it, with what he changes.
