@@ -41,6 +41,39 @@ Each entry has:
 
 ## Decided
 
+### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)
+
+- **Asked:** 2026-11-08, by the lead, from `docs/design/casting-pace-options.md`; answered on the decision page
+  (https://claude.ai/artifact/3gArUafzNLv9yAdMjJyZu3, its `picks` collection).
+- **Also comes up when:** any cast timing, cooldown, mana or upgrade change; a new spell; balance passes; the HUD.
+- **Answer:** Andrew:
+  - Option **C**: free taps, and mana pays for charging and merging, built as A (tap is quick, hold is the charge) first.
+  - A tapped spell keeps a **tiny** cooldown, just enough that one button can't machine-gun.
+  - The wow spells take the **same-element throws**: Stone Ramp and Falling Star go. Tornado (air+air throw), Thunder
+    Strike (fire+air thrust), Earth Spires (earth+earth throw), Meteor kept.
+  - Ice: **"Iceberg. Similar to frozen tide."** (his own idea, beside Frozen Tide).
+- **Why:** the recommendation, except the ice spell, which is his.
+- **Revisited:** 0.
+
+### J-079: The nine-valley world (playtest 2026-11-08, W1-W4)
+
+- **Asked:** 2026-11-08, by the lead, from `docs/design/world-nine-options.md`; answered on the decision page.
+- **Also comes up when:** maps phases 6-9, the biome port, start-up time, a second map, the desert Hold.
+- **Answer:** Andrew:
+  - **Anchors:** he names an anchor biome per square and the climate draws the borders and the variety inside.
+  - **A curated 7 biomes** (Temperate, Grassland, Mountains, Tundra, Salt Flat or Sonoran, Foggy Marsh, Ashlands or
+    Volcano); the other rows stay in the file, off.
+  - **Generate at start-up or ahead of time: not picked.** His note: "How quickly can we generate on demand? I'd love to
+    explore that." So measure on-demand generation per chunk before deciding.
+  - **Thread the world rebuild: yes**, with a determinism test on the PC and the Mac (the core's first threading).
+- **Why:** the recommendations; the generate question stays open until on-demand speed is measured.
+- **The aim, in his words (later the same day):** on-demand loading isn't required, "but it will be interesting to
+  see". The balance he's after: "something that looks curated and organic" and something "more dynamically loaded
+  [that] drives joy when you go to it because it's unexpected without being something that [is] all stamped out." Read
+  every world choice against that: curated anchors and landmarks, organic climate between them, and surprises that
+  don't repeat like a stamp.
+- **Revisited:** 0.
+
 ### J-077: Who coordinates the workers?
 
 - **Asked:** 2026-11-06, by Andrew, after the cost report showed coordination at half of all spend.
