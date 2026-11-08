@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the game for macOS and Windows at a version, packs both with Velopack
-# (a full package, a delta from the last published update, installers) and
+# (a full package, a delta from the last published release, installers) and
 # uploads them to one GitHub release. Installed copies find it on their next
 # launch, download the delta and restart into it (SelfUpdate.cs).
 # docs/RELEASING.md, "Updates in place", has the whole story.
@@ -11,11 +11,18 @@
 #   tools/ship-update.sh 0.1.3 --windows-only # no macOS (the PC's half of a release)
 #   tools/ship-update.sh 0.1.3 --mac-only     # no Windows (the Mac's half of a release)
 #   tools/ship-update.sh 0.1.3 --linux-only   # the Linux zip for the same release (J-051)
+#   tools/ship-update.sh 0.1.3 --dry-run      # say what each delta would be made from; change nothing
 #
 # A release can be built in two halves on two machines from the same commit
 # (J-025): each uploads only its own platform's files into the one draft. The
 # first to upload creates the draft; the other refuses if that draft targets a
 # different commit, or if a race left two releases with the same tag.
+#
+# Each delta is made from the full package of the newest *published* release
+# before this version that has that channel's feed, never from a draft (this
+# version's own included). Rebuilding a version the draft already holds replaces
+# all of that channel's files: what the new pack didn't make is deleted, so the
+# draft never mixes two builds.
 #
 # --test uses the channels osx-test and win-test and the app id
 # SpellChemistryValleyTest, which only test installs have, so trying the update
@@ -45,15 +52,16 @@ TITLE="Spell Chemistry Valley"
 
 version="${1:-}"
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--windows-only | --mac-only | --linux-only]" >&2
+  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--dry-run] [--windows-only | --mac-only | --linux-only]" >&2
   exit 2
 fi
 shift
-test=0; build=1; mac=1; win=1; linux=0
+test=0; build=1; mac=1; win=1; linux=0; dry=0
 for arg in "$@"; do
   case "$arg" in
     --test) test=1 ;;
     --skip-build) build=0 ;;
+    --dry-run) dry=1 ;;
     --windows-only) mac=0 ;;
     --mac-only) win=0 ;;
     --linux-only) mac=0; win=0; linux=1 ;;
@@ -78,9 +86,55 @@ if [ -z "$(git -C "$here" branch -r --contains "$commit" 2>/dev/null)" ]; then
   echo "commit ${commit:0:7} isn't on GitHub yet: push it first (the release is tagged at it)" >&2
   exit 1
 fi
-token="${GITHUB_TOKEN:-$(gh auth token)}" # for vpk download
 out="$here/unity/Builds/Update"
 step() { echo; echo "== $*"; }
+channels=(); [ $mac = 0 ] || channels+=("osx$suffix"); [ $win = 0 ] || channels+=("win$suffix")
+
+# The version in a tag (alpha-0.1.11, update-test-0.1.107), or nothing.
+tag_version() { local v="${1##*-}"; [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && echo "$v"; }
+# Whether version $1 comes before version $2.
+older() {
+  local a b i
+  IFS=. read -r -a a <<<"$1"; IFS=. read -r -a b <<<"$2"
+  for i in 0 1 2; do
+    [ "${a[i]}" -lt "${b[i]}" ] && return 0
+    [ "${a[i]}" -gt "${b[i]}" ] && return 1
+  done
+  return 1
+}
+# The release a channel's delta is made from: the newest published one before this
+# version with that channel's feed. Not `vpk download --pre`: signed in, that sees
+# drafts too, and took this version's own draft as the base (0.1.12, no delta made).
+base_tag() { # channel
+  local best="" bestv="" tags t v
+  # (A failure here must stop the script, not ship a full package only.)
+  tags="$(gh api "repos/${REPO#https://github.com/}/releases" --paginate \
+    --jq ".[] | select(.draft | not) | select(any(.assets[]; .name == \"releases.$1.json\")) | .tag_name")" || return 1
+  while IFS= read -r t; do
+    v="$(tag_version "$t")" || continue
+    older "$v" "$version" || continue
+    if [ -z "$bestv" ] || older "$bestv" "$v"; then best="$t"; bestv="$v"; fi
+  done <<<"$tags"
+  echo "$best"
+}
+# The files a feed (on stdin) lists for a version. vpk writes it on one line.
+feed_files() { # version
+  grep -o '{[^{}]*}' | grep "\"Version\":\"$1\"" | sed -n 's/.*"FileName":"\([^"]*\)".*/\1/p' || true
+}
+# What this version's release already holds for a channel (from an earlier build).
+draft_files() { # channel
+  { gh release download "$tag" -R "$REPO" -p "releases.$1.json" -O - 2>/dev/null || true; } | feed_files "$version"
+}
+
+if [ $dry = 1 ]; then
+  for channel in ${channels[@]+"${channels[@]}"}; do
+    base="$(base_tag "$channel")"
+    echo "$channel: $version's delta from ${base:-nothing (no published release before $version has releases.$channel.json: full package only)}"
+    held="$(draft_files "$channel")"
+    [ -z "$held" ] || echo "$channel: $tag already holds $(echo "$held" | tr '\n' ' ')for $version: all replaced"
+  done
+  exit 0
+fi
 
 # The release the halves upload into. Made (or checked) before the build, so a second
 # machine started a little later finds it, and checked again before uploading.
@@ -158,9 +212,25 @@ pack() { # channel, extra vpk args...
   local channel="$1"; shift
   local dir="$out/releases-$channel"
   rm -rf "$dir"
-  step "Fetching the last $channel update (for the delta)"
-  "$VPK" download github --repoUrl "$REPO" --token "$token" --pre -c "$channel" -o "$dir" \
-    || echo "(none yet: this one ships as a full package only)"
+  mkdir -p "$dir"
+  step "Fetching the last published $channel release (for the delta)"
+  local base bv entry file
+  # (pack runs after ||, where set -e doesn't stop it: hence each || exit.)
+  base="$(base_tag "$channel")" || exit 1
+  if [ -z "$base" ]; then
+    echo "(no published release before $version has releases.$channel.json: this one ships as a full package only)"
+  else
+    # Lay it out as vpk download would: a feed of the base's full package, and the package.
+    bv="$(tag_version "$base")"
+    entry="$(gh release download "$base" -R "$REPO" -p "releases.$channel.json" -O - \
+      | grep -o '{[^{}]*}' | grep '"Type":"Full"' | grep "\"Version\":\"$bv\"" | head -n 1 || true)"
+    file="$(echo "$entry" | sed -n 's/.*"FileName":"\([^"]*\)".*/\1/p')"
+    [ -n "$file" ] || { echo "$base's releases.$channel.json lists no full package for $bv" >&2; exit 1; }
+    echo "$base: $file"
+    gh release download "$base" -R "$REPO" -p "$file" -D "$dir" || exit 1
+    echo "{\"Assets\":[$entry]}" > "$dir/releases.$channel.json"
+    echo "$base" > "$dir/base"
+  fi
   step "Packing $version for $channel"
   "$VPK" "$@" -u "$APP_ID" -v "$version" --packTitle "$TITLE" --packAuthors anweather -c "$channel" -o "$dir" --yes
 }
@@ -172,7 +242,6 @@ pack() { # channel, extra vpk args...
 # which GitHub doesn't do for drafts, and a real update is a draft until it's tested.
 step "Uploading to $tag"
 check_draft
-channels=(); [ $mac = 0 ] || channels+=("osx$suffix"); [ $win = 0 ] || channels+=("win$suffix")
 # (The odd expansion: bash 3.2 on macOS calls an empty array unbound under set -u.)
 for channel in ${channels[@]+"${channels[@]}"}; do
   dir="$out/releases-$channel"
@@ -180,10 +249,26 @@ for channel in ${channels[@]+"${channels[@]}"}; do
   # delta packages, the installer, the portable zip). Package names differ by
   # channel, so read them rather than guess; the folder also holds the previous
   # full package, fetched only to make the delta.
-  files=("$dir/releases.$channel.json")
+  files=()
   while IFS= read -r f; do files+=("$dir/$f"); done < <(grep -o '"RelativeFileName":"[^"]*"' "$dir/assets.$channel.json" | cut -d'"' -f4)
-  echo "$channel: ${files[*]##*/}"
+  if [ -f "$dir/base" ] && ! printf '%s\n' "${files[@]}" | grep -q -- '-delta\.nupkg$'; then
+    echo "$channel: no delta was made from $(cat "$dir/base"): nothing uploaded" >&2
+    exit 1
+  fi
+  held="$(draft_files "$channel")"
+  echo "$channel: ${files[*]##*/} releases.$channel.json"
+  # The feed in its own upload, after what it lists (gh uploads a list's files at once).
   gh release upload "$tag" -R "$REPO" --clobber "${files[@]}"
+  gh release upload "$tag" -R "$REPO" --clobber "$dir/releases.$channel.json"
+  files+=("$dir/releases.$channel.json")
+  # An earlier build's files this pack didn't make (a delta from another base, say) go.
+  # shellcheck disable=SC2086 # one name a line, none with spaces
+  for f in $held; do
+    case " ${files[*]##*/} " in
+      *" $f "*) ;;
+      *) echo "$channel: deleting $f (an earlier build of $version)"; gh release delete-asset "$tag" "$f" -R "$REPO" --yes ;;
+    esac
+  done
 done
 
 if [ $linux = 1 ]; then

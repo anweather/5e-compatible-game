@@ -34,7 +34,11 @@ releases page, or `gh release list`).
    `tools/ship-update.sh X.Y.Z --test` (vpk is in `~/.dotnet/tools`).
 3. It ends with the release URL. Check the release lists, per channel:
    `releases.<channel>.json`, the full `.nupkg`, a `-delta.nupkg` (except the
-   very first one on a channel), the Setup and the portable zip.
+   very first one on a channel), the Setup and the portable zip. The delta
+   is always from the last *published* release on the channel (the log's
+   "Fetching" step names it); `--dry-run` shows it beforehand without
+   building or uploading. Rebuilding into a draft that already has this
+   version replaces all of that channel's files.
 4. Prove it on a machine with an older install from that channel: launch it,
    watch "Updating to alpha X.Y.Z..." then the restart, and check `Player.log`
    for `Self update: installed by Velopack as SpellChemistryValley X.Y.Z`. The
