@@ -17,6 +17,11 @@ Also **cut the text** on screen (M2): the game explains too much. In the menu, s
 and colours, and at most one short word each. Go through the HUD and help prompts and cut what a player learns by
 playing; keep anything they can't find out otherwise. List what you cut.
 
+**No big element icons on screen (Andrew, 2026-11-08, after the brief):** the animated wizard hands already show each
+hand's element, so the giant element icons that stay on screen all the time are "just weird". Take them off the HUD.
+Show a hand's element on screen only while that hand's trigger is held (casting or charging), and keep even that small;
+the hands themselves do the job. The new menu is the only other place icons appear.
+
 Keep the Hold's casting (an element per hand, the direction modifier, charging) working with the new menu. Free roam
 and the Hold use the same menu.
 
