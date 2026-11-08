@@ -105,6 +105,29 @@ and stop ... I want the roads to be able to be sort of dynamic but intentional")
    world square's sides still carry road slots, now filled from the routes, so `ChunkGen` draws a road through a chunk
    from the plan alone. Dynamic (any seed, any world size) and intentional (every road joins two reasons).
 
+**Inland seas** (Andrew, 2026-11-08). A large body of sea water inside the world, not touching its edge: one or more
+sea-band world squares (and coast profiles on their neighbours) placed by the plan as a region, so the coast rules
+apply all round it. Rivers may end in it; the known ring stops at its shore unless a landmark's `seenFrom` reaches
+across; main roads go round it or end at a port town on it; a crossing by boat is a later idea. A rock spire or an
+island landmark may stand in it. Drawing it in the game needs maps phase 7 (the sea from `land`), like coves.
+
+**World archetypes: describe a world, keep the best** (Andrew, 2026-11-08). A prompt such as "a cold northern
+archipelago with one great inland sea and a volcano" becomes a world anyone can regenerate:
+
+1. **Claude turns the words into constraints,** never into the world: anchor biomes, sea and inland-sea share,
+   mountain cover, the number of towns and main roads, must-haves ("a volcano", "a canyon with one bridge"). These are
+   plan inputs, so the solver stays deterministic and every peer gets the same world (D4).
+2. **Many candidates, scored.** The plan solves in about 0.1 s, so hundreds of seeds per prompt cost seconds. Each is
+   scored on numbers first: how well it meets the constraints, fillers, road lengths, landmark spacing, the castle
+   reachable, variety. A judge (Claude looking at the plan picture, or Andrew) picks from the top few; Andrew decides.
+3. **An archetype keeps more than the seed:** the description, the constraints, the seed, the generator version, and
+   the solved world plan itself (a few KB), in `world/archetypes/<name>.json`. A seed alone stops giving the same world
+   when the generator changes; the saved plan doesn't. A test re-solves each archetype and flags when a generator change
+   would alter it, so the change is made on purpose (a new version) or the archetype is re-picked.
+4. **In a game,** the host picks an archetype (or a fresh seed later, per J-080); peers load the same plan, and the map
+   hash covers it. This is J-080's "one curated world, then a library, then a seed at start", with the library made by
+   describing worlds.
+
 ## 3. Rings: known, generated, active
 
 Per character, in chunks (Chebyshev, from the chunk it stands in), all in `rules/sim.json` `streaming`:

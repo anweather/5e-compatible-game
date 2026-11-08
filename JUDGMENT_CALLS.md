@@ -79,6 +79,11 @@ Each entry has:
   per world, long, apart from each other, fenced and marked, with waystation shops; lesser roads and trails off them to
   caves or between small towns; mountains are gone round; a canyon has only one or two bridges and roads route to them.
   "Dynamic but intentional", with the tiles keeping the road interface.
+- **Inland seas and world archetypes (to the lead):** add large inland seas; then "generate a world based on an [LLM]
+  prompt with different constraints", let a few rounds pick the best on some criteria, and save its seed as the
+  archetype for that description, to regenerate easily. The lead's additions (plan, "World archetypes"): Claude sets
+  constraints, never the world; score on numbers first, a judge picks, Andrew decides; save the solved plan and the
+  generator version with the seed, since a seed alone drifts when the generator changes.
 - **The volcano village (to the Mac):** no houses up at the peak. Houses start at the mountain's base and go up "like a
   corridor", a road winding round the mountain with houses on its upslope and downslope sides, "but they shouldn't be
   so steep". The Mac's "wind" layout: a gently rising road part-way round the cone's lower slopes, houses alternating
