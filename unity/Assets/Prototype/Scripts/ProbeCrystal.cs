@@ -13,18 +13,11 @@ public class CrystalProbe : ProbeScenario
 
     World Core => grid.World;
 
-    void Stand((int x, int y) cell)
-    {
-        var p = grid.CellCenter(cell.x, cell.y);
-        p.y = grid.GroundAt(p);
-        Teleport(p + Vector3.up * 0.05f);
-    }
-
     IEnumerator StartRun()
     {
-        Stand(Core.HoldSite.Plate);
+        StandOn(Core.HoldSite.Plate);
         for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
-        Stand(Core.HoldSite.Rise);
+        StandOn(Core.HoldSite.Rise);
         yield return Wait(0.5f);
     }
 

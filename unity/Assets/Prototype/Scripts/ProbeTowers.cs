@@ -17,13 +17,6 @@ public class TowersProbe : ProbeScenario
     World Core => grid.World;
     string Me => caster.CastPlayer;
 
-    void Stand((int x, int y) cell)
-    {
-        var p = grid.CellCenter(cell.x, cell.y);
-        p.y = grid.GroundAt(p);
-        Teleport(p + Vector3.up * 0.05f);
-    }
-
     IEnumerator Trigger(int hand)
     {
         InputSystem.QueueStateEvent(pad, hand == HandsDef.Left ? new GamepadState { leftTrigger = 1f } : new GamepadState { rightTrigger = 1f });
@@ -49,7 +42,7 @@ public class TowersProbe : ProbeScenario
         pad = InputSystem.AddDevice<Gamepad>("Towers pad");
         try
         {
-            Stand(site.Plate);
+            StandOn(site.Plate);
             for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
             Check("a_run_starts", Core.HoldRunning);
             if (!Core.HoldRunning) yield break;
@@ -57,7 +50,7 @@ public class TowersProbe : ProbeScenario
             Core.Hold.ToSpawn = 0;
 
             // Away from the towers a run attunes nothing: the trigger casts.
-            Stand(site.Rise);
+            StandOn(site.Rise);
             yield return Wait(0.5f);
             string before = Core.HandsOf(Me).Holds[HandsDef.Right];
             yield return Trigger(HandsDef.Right);
@@ -79,7 +72,7 @@ public class TowersProbe : ProbeScenario
     {
         yield return Wait(1f); // any cast under way ends
         var ground = Core.TowerGround(tower)[0];
-        Stand(ground);
+        StandOn(ground);
         var spot = grid.CellCenter(ground.x, ground.y);
         spot.y = grid.GroundAt(spot);
         // From the courtyard side, up a little, with the tower behind the wizard.

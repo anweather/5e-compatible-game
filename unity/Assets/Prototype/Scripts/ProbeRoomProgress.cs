@@ -34,6 +34,14 @@ public class RoomProgressProbe : RoomProbe
         Check("the_joiner_has_everything", joiner != null && world.PointsOf(joiner) == World.AllPoints, $"{joiner}: {(joiner != null ? world.PointsOf(joiner) : null)}");
         Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left));
 
+        // The host onto the plate, which starts the run (hold-batch: attuning no longer happens in a room round it).
+        var plate = world.HoldSite.Plate;
+        var at = grid.CellCenter(plate.x, plate.y);
+        at.y = grid.GroundAt(at) + 0.05f;
+        var body = me.GetComponent<CharacterController>();
+        body.enabled = false;
+        me.transform.position = at;
+        body.enabled = true;
         for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.unscaledDeltaTime) yield return null;
         Check("a_run_starts", world.HoldRunning);
         if (!world.HoldRunning) yield break;
