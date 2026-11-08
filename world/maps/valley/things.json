@@ -177,6 +177,33 @@
             7
           ],
           "note": "the middle of the court east of the yard"
+        },
+        {
+          "kind": "crate",
+          "rot": 182,
+          "cell": [
+            41,
+            44
+          ],
+          "note": "by the Drowned Glass"
+        },
+        {
+          "kind": "crate",
+          "rot": 53,
+          "cell": [
+            41,
+            46
+          ],
+          "note": "by the Drowned Glass"
+        },
+        {
+          "kind": "crate",
+          "rot": 105,
+          "cell": [
+            41,
+            45
+          ],
+          "note": "by the Drowned Glass"
         }
       ]
     },
@@ -236,19 +263,10 @@
       "things": [
         {
           "kind": "crate",
-          "rot": 337,
+          "rot": 34,
           "cell": [
-            62,
-            40
-          ],
-          "note": "by the Greatbough (moved for phase 1b)"
-        },
-        {
-          "kind": "crate",
-          "rot": 162,
-          "cell": [
-            26,
-            53
+            39,
+            33
           ],
           "note": "by the Greatbough"
         }
@@ -262,10 +280,10 @@
       "things": [
         {
           "kind": "boulder",
-          "rot": 90,
+          "rot": 106,
           "cell": [
-            27,
-            49
+            25,
+            50
           ],
           "note": "by Mount Hearth"
         }
@@ -283,6 +301,15 @@
           "cell": [
             63,
             39
+          ],
+          "note": "by Mount Hearth"
+        },
+        {
+          "kind": "boulder",
+          "rot": 157,
+          "cell": [
+            30,
+            5
           ],
           "note": "by Mount Hearth"
         }
@@ -311,31 +338,30 @@
             44
           ],
           "note": "by Mount Hearth"
-        },
+        }
+      ]
+    },
+    {
+      "chunk": [
+        3,
+        2
+      ],
+      "things": [
         {
           "kind": "boulder",
-          "rot": 87,
+          "rot": 249,
           "cell": [
-            29,
-            51
+            26,
+            1
           ],
           "note": "by Mount Hearth"
         },
         {
           "kind": "boulder",
-          "rot": 82,
+          "rot": 183,
           "cell": [
-            30,
-            50
-          ],
-          "note": "by Mount Hearth (moved for phase 1b)"
-        },
-        {
-          "kind": "boulder",
-          "rot": 107,
-          "cell": [
-            9,
-            36
+            18,
+            1
           ],
           "note": "by Mount Hearth"
         }
@@ -344,71 +370,35 @@
     {
       "chunk": [
         5,
-        7
+        6
       ],
       "things": [
         {
           "kind": "barrel",
-          "rot": 285,
+          "rot": 307,
           "cell": [
-            61,
-            18
+            44,
+            16
           ],
-          "note": "by the Grey Mere"
+          "note": "by the Drowned Glass"
         },
         {
           "kind": "barrel",
-          "rot": 220,
+          "rot": 298,
           "cell": [
-            62,
-            20
-          ],
-          "note": "by the Grey Mere"
-        },
-        {
-          "kind": "barrel",
-          "rot": 157,
-          "cell": [
-            40,
-            13
-          ],
-          "note": "by the Grey Mere"
-        },
-        {
-          "kind": "crate",
-          "rot": 306,
-          "cell": [
-            39,
-            13
-          ],
-          "note": "by the Grey Mere"
-        },
-        {
-          "kind": "crate",
-          "rot": 226,
-          "cell": [
-            61,
-            21
-          ],
-          "note": "by the Grey Mere"
-        },
-        {
-          "kind": "crate",
-          "rot": 255,
-          "cell": [
-            40,
+            44,
             15
           ],
-          "note": "by the Grey Mere"
+          "note": "by the Drowned Glass"
         },
         {
-          "kind": "crate",
-          "rot": 192,
+          "kind": "barrel",
+          "rot": 284,
           "cell": [
-            40,
-            12
+            44,
+            14
           ],
-          "note": "by the Grey Mere"
+          "note": "by the Drowned Glass"
         }
       ]
     }

@@ -57,7 +57,8 @@
       "radius": 64,
       "rise": 450,
       "rough": 8,
-      "seed": 31312
+      "seed": 31312,
+      "bare": "rock"
     },
     {
       "id": "mount-hearth-2",
@@ -70,7 +71,8 @@
       "radius": 13,
       "rise": -185,
       "rough": 5,
-      "seed": 44179
+      "seed": 44179,
+      "bare": "lava-crust"
     }
   ]
 }

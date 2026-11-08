@@ -55,15 +55,15 @@ public abstract class LandmarkClipProbe : CastleCliffProbe
     }
 }
 
-// The Greatbough by Elmscot: up through the village from the south to the tree.
+// The Greatbough by Elmscot: up to the tree from the east, then up over it and its village.
 public sealed class LandmarkForestClipProbe : LandmarkClipProbe
 {
-    protected override Vector2Int From => new(472, 318);
-    protected override Vector2Int To => new(470, 246);
+    protected override Vector2Int From => new(536, 236);
+    protected override Vector2Int To => new(494, 230);
     protected override Vector2Int Landmark => new(470, 226);
-    protected override float LandmarkUp => 10f;
-    protected override Vector3Int RiseFrom => new(500, 290, 55);
-    protected override Vector2Int RiseAt => new(470, 240);
+    protected override float LandmarkUp => 20f;
+    protected override Vector3Int RiseFrom => new(520, 300, 60);
+    protected override Vector2Int RiseAt => new(470, 245);
 }
 
 // Mount Hearth by Emberhold: up the climbing way from the foot towards the crater.
@@ -73,17 +73,17 @@ public sealed class LandmarkVolcanoClipProbe : LandmarkClipProbe
     protected override Vector2Int To => new(157, 132);
     protected override Vector2Int Landmark => new(160, 106);
     protected override float LandmarkUp => 40f;
-    protected override Vector3Int RiseFrom => new(230, 215, 90);
-    protected override Vector2Int RiseAt => new(160, 130);
+    protected override Vector3Int RiseFrom => new(215, 200, 110);
+    protected override Vector2Int RiseAt => new(160, 112);
 }
 
-// The Grey Mere by Fogwater: down from the gauntlet's side through the shore houses to the boathouses and the cove.
+// The Drowned Glass by Pikestead, on the lake's east shore: from the east between the houses down to the boathouses.
 public sealed class LandmarkFishingClipProbe : LandmarkClipProbe
 {
-    protected override Vector2Int From => new(345, 420);
-    protected override Vector2Int To => new(356, 466);
-    protected override Vector2Int Landmark => new(356, 506);
+    protected override Vector2Int From => new(408, 383);
+    protected override Vector2Int To => new(368, 382);
+    protected override Vector2Int Landmark => new(320, 385);
     protected override float LandmarkUp => 0f;
-    protected override Vector3Int RiseFrom => new(330, 430, 60);
-    protected override Vector2Int RiseAt => new(356, 485);
+    protected override Vector3Int RiseFrom => new(410, 410, 45);
+    protected override Vector2Int RiseAt => new(360, 385);
 }

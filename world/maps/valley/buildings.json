@@ -1349,11 +1349,11 @@
         226
       ],
       "fill": "solid",
-      "seed": 41047,
-      "note": "the Greatbough: the great tree's stand-in, a trunk of log wall 14 m high under a crown of trees, with roots",
+      "seed": 32872,
+      "note": "the Greatbough: the great tree's stand-in, a tree 9 times its size over a log trunk, with roots",
       "wall": {
         "material": "logwall",
-        "height": 14,
+        "height": 1.5,
         "thickness": 0.45
       },
       "joins": {
@@ -1361,145 +1361,157 @@
           1,
           1
         ],
-        "l0": [
-          -20,
-          3
-        ],
-        "l1": [
-          -8,
-          -12
-        ],
-        "l2": [
-          8,
-          -16
-        ],
-        "l3": [
-          23,
-          -1
-        ],
-        "l4": [
-          13,
-          18
-        ],
-        "l5": [
-          -6,
-          17
-        ],
         "r0a": [
-          10,
-          3
+          4,
+          1
         ],
         "r0b": [
-          30,
-          10
+          18,
+          1
         ],
         "r0c": [
-          49,
-          11
+          34,
+          2
         ],
         "r1a": [
-          6,
-          9
+          3,
+          4
         ],
         "r1b": [
-          20,
-          19
+          13,
+          13
         ],
         "r1c": [
-          23,
-          36
+          22,
+          27
         ],
         "r2a": [
-          -1,
-          10
+          1,
+          4
         ],
         "r2b": [
-          -8,
-          21
+          3,
+          14
         ],
         "r2c": [
-          -6,
-          34
+          3,
+          24
         ],
         "r3a": [
-          -8,
-          3
+          0,
+          4
         ],
         "r3b": [
-          -20,
-          6
+          -9,
+          18
         ],
         "r3c": [
-          -31,
-          9
+          -15,
+          32
         ],
         "r4a": [
-          -8,
-          -3
+          -2,
+          2
         ],
         "r4b": [
-          -16,
-          -13
+          -15,
+          13
         ],
         "r4c": [
-          -31,
-          -14
+          -30,
+          17
         ],
         "r5a": [
-          1,
-          -8
+          -2,
+          1
         ],
         "r5b": [
-          -2,
-          -24
+          -12,
+          0
         ],
         "r5c": [
-          4,
-          -42
+          -24,
+          -4
         ],
         "r6a": [
-          8,
-          -5
+          -2,
+          -1
         ],
         "r6b": [
-          22,
+          -13,
           -13
         ],
         "r6c": [
+          -28,
+          -20
+        ],
+        "r7a": [
+          1,
+          -2
+        ],
+        "r7b": [
+          0,
+          -18
+        ],
+        "r7c": [
+          0,
+          -34
+        ],
+        "r8a": [
+          3,
+          -2
+        ],
+        "r8b": [
+          6,
+          -14
+        ],
+        "r8c": [
+          15,
+          -22
+        ],
+        "r9a": [
+          4,
+          0
+        ],
+        "r9b": [
+          19,
+          -5
+        ],
+        "r9c": [
           34,
-          -24
+          -11
         ],
         "o0": [
-          4,
-          -7
+          2,
+          -3
         ],
         "o1": [
-          9,
-          -2
+          5,
+          0
         ],
         "o2": [
-          9,
-          4
+          5,
+          2
         ],
         "o3": [
-          4,
-          9
+          2,
+          5
         ],
         "o4": [
-          -2,
-          9
+          0,
+          5
         ],
         "o5": [
-          -7,
-          4
+          -3,
+          2
         ],
         "o6": [
-          -7,
-          -2
+          -3,
+          0
         ],
         "o7": [
-          -2,
-          -7
+          0,
+          -3
         ]
       },
       "walls": {
@@ -1534,42 +1546,6 @@
         "w7": {
           "from": "o7",
           "to": "o0"
-        }
-      },
-      "towers": {
-        "crown-0": {
-          "at": "l0",
-          "radius": 13,
-          "material": "tree"
-        },
-        "crown-1": {
-          "at": "l1",
-          "radius": 14,
-          "material": "tree"
-        },
-        "crown-2": {
-          "at": "l2",
-          "radius": 13,
-          "material": "tree"
-        },
-        "crown-3": {
-          "at": "l3",
-          "radius": 13,
-          "material": "tree"
-        },
-        "crown-4": {
-          "at": "l4",
-          "radius": 14,
-          "material": "tree"
-        },
-        "crown-5": {
-          "at": "l5",
-          "radius": 14,
-          "material": "tree"
-        },
-        "trunk": {
-          "at": "c",
-          "radius": 10
         }
       },
       "roads": {
@@ -1635,8 +1611,42 @@
           ],
           "terrain": "deadfall",
           "width": 1
+        },
+        "root-7": {
+          "through": [
+            "r7a",
+            "r7b",
+            "r7c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-8": {
+          "through": [
+            "r8a",
+            "r8b",
+            "r8c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
+        },
+        "root-9": {
+          "through": [
+            "r9a",
+            "r9b",
+            "r9c"
+          ],
+          "terrain": "deadfall",
+          "width": 1
         }
-      }
+      },
+      "parts": [
+        {
+          "kind": "great-tree",
+          "join": "c",
+          "scale": 9
+        }
+      ]
     },
     {
       "id": "emberhold#1",
@@ -1649,6 +1659,11 @@
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
       },
       "joins": {
         "nw": [
@@ -1798,6 +1813,11 @@
       "wall": {
         "material": "stone"
       },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -1885,6 +1905,11 @@
       "style": "village",
       "seed": 62087,
       "note": "Emberhold's house, by Mount Hearth",
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -1975,6 +2000,11 @@
       "wall": {
         "material": "stone"
       },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -2062,6 +2092,11 @@
       "style": "village",
       "seed": 66162,
       "note": "Emberhold's house, by Mount Hearth",
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -2149,6 +2184,11 @@
       "style": "village",
       "seed": 5129,
       "note": "Emberhold's house, by Mount Hearth",
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -2238,6 +2278,11 @@
       "note": "Emberhold's house, by Mount Hearth",
       "wall": {
         "material": "stone"
+      },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
       },
       "joins": {
         "nw": [
@@ -2329,6 +2374,11 @@
       "wall": {
         "material": "stone"
       },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -2419,6 +2469,11 @@
       "wall": {
         "material": "stone"
       },
+      "level": true,
+      "pad": {
+        "margin": 1,
+        "bank": 3
+      },
       "joins": {
         "nw": [
           0,
@@ -2498,14 +2553,14 @@
       }
     },
     {
-      "id": "fogwater#1",
+      "id": "pikestead#1",
       "at": [
-        300,
-        488
+        357,
+        342
       ],
       "style": "village",
-      "seed": 98086,
-      "note": "Fogwater's house, by the Grey Mere",
+      "seed": 11346,
+      "note": "Pikestead's house, by the Drowned Glass",
       "joins": {
         "nw": [
           0,
@@ -2524,60 +2579,60 @@
           10
         ],
         "way0": [
-          15,
-          21
+          -41,
+          -1
         ],
         "way1": [
-          21,
-          1
+          -23,
+          3
         ],
         "way2": [
-          31,
-          -17
+          -7,
+          11
         ],
         "way3": [
-          45,
-          -33
+          9,
+          23
         ],
         "way4": [
-          61,
-          -47
+          21,
+          39
         ],
         "way5": [
-          79,
-          -55
+          29,
+          55
         ],
         "way6": [
-          99,
-          -61
+          35,
+          73
         ],
         "way7": [
-          119,
-          -61
+          35,
+          89
         ],
         "way8": [
-          139,
-          -59
+          33,
+          109
         ],
         "way9": [
-          159,
-          -51
+          27,
+          125
         ],
         "way10": [
-          175,
-          -39
+          17,
+          141
         ],
         "way11": [
-          191,
-          -23
+          3,
+          155
         ],
         "way12": [
-          201,
-          -7
+          -13,
+          165
         ],
         "way13": [
-          209,
-          13
+          -29,
+          173
         ]
       },
       "walls": {
@@ -2596,7 +2651,7 @@
           "to": "se",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 4
             }
           ]
@@ -2606,7 +2661,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 4
             }
           ]
@@ -2652,7 +2707,10 @@
             "way7",
             "way8",
             "way9",
-            "way10"
+            "way10",
+            "way11",
+            "way12",
+            "way13"
           ],
           "terrain": "dirt",
           "width": 2
@@ -2660,188 +2718,14 @@
       }
     },
     {
-      "id": "fogwater#2",
+      "id": "pikestead#2",
       "at": [
-        308,
-        470
+        371,
+        357
       ],
       "style": "village",
-      "seed": 96792,
-      "note": "Fogwater's house, by the Grey Mere",
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          10,
-          0
-        ],
-        "se": [
-          10,
-          8
-        ],
-        "sw": [
-          0,
-          8
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 2
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "thatch",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      }
-    },
-    {
-      "id": "fogwater#3",
-      "at": [
-        334,
-        450
-      ],
-      "style": "village",
-      "seed": 44702,
-      "note": "Fogwater's house, by the Grey Mere",
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          10,
-          0
-        ],
-        "se": [
-          10,
-          10
-        ],
-        "sw": [
-          0,
-          10
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 4
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "thatch",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      }
-    },
-    {
-      "id": "fogwater#4",
-      "at": [
-        356,
-        448
-      ],
-      "style": "village",
-      "seed": 62339,
-      "note": "Fogwater's house, by the Grey Mere",
+      "seed": 78509,
+      "note": "Pikestead's house, by the Drowned Glass",
       "joins": {
         "nw": [
           0,
@@ -2886,7 +2770,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 2
             }
           ]
@@ -2896,7 +2780,7 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 4
             }
           ]
@@ -2921,25 +2805,199 @@
       }
     },
     {
-      "id": "fogwater#5",
+      "id": "pikestead#3",
       "at": [
-        377,
-        451
+        378,
+        375
       ],
       "style": "village",
-      "seed": 58037,
-      "note": "Fogwater's house, by the Grey Mere",
+      "seed": 17739,
+      "note": "Pikestead's house, by the Drowned Glass",
       "joins": {
         "nw": [
           0,
           0
         ],
         "ne": [
-          10,
+          12,
           0
         ],
         "se": [
-          10,
+          12,
+          8
+        ],
+        "sw": [
+          0,
+          8
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 2
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pikestead#4",
+      "at": [
+        379,
+        390
+      ],
+      "style": "village",
+      "seed": 81516,
+      "note": "Pikestead's house, by the Drowned Glass",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          8,
+          0
+        ],
+        "se": [
+          8,
+          10
+        ],
+        "sw": [
+          0,
+          10
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 2
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pikestead#5",
+      "at": [
+        370,
+        412
+      ],
+      "style": "village",
+      "seed": 76620,
+      "note": "Pikestead's house, by the Drowned Glass",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          12,
+          0
+        ],
+        "se": [
+          12,
           10
         ],
         "sw": [
@@ -2973,7 +3031,94 @@
           "to": "sw",
           "openings": [
             {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
               "kind": "door",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pikestead#6",
+      "at": [
+        360,
+        421
+      ],
+      "style": "village",
+      "seed": 10787,
+      "note": "Pikestead's house, by the Drowned Glass",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          12
+        ],
+        "sw": [
+          0,
+          12
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
               "at": 4
             }
           ]
@@ -3008,15 +3153,102 @@
       }
     },
     {
-      "id": "the-grey-mere#1",
+      "id": "pikestead#7",
       "at": [
-        377,
-        466
+        345,
+        429
+      ],
+      "style": "village",
+      "seed": 30903,
+      "note": "Pikestead's house, by the Drowned Glass",
+      "joins": {
+        "nw": [
+          0,
+          0
+        ],
+        "ne": [
+          10,
+          0
+        ],
+        "se": [
+          10,
+          12
+        ],
+        "sw": [
+          0,
+          12
+        ]
+      },
+      "walls": {
+        "north": {
+          "from": "nw",
+          "to": "ne",
+          "openings": [
+            {
+              "kind": "door",
+              "at": 4
+            }
+          ]
+        },
+        "east": {
+          "from": "ne",
+          "to": "se",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "south": {
+          "from": "se",
+          "to": "sw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        },
+        "west": {
+          "from": "sw",
+          "to": "nw",
+          "openings": [
+            {
+              "kind": "window",
+              "at": 4
+            }
+          ]
+        }
+      },
+      "roofs": {
+        "main": {
+          "shape": "gable",
+          "pitch": [
+            8,
+            12
+          ],
+          "overhang": 0.4,
+          "cover": "thatch",
+          "over": [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ]
+        }
+      }
+    },
+    {
+      "id": "the-drowned-glass#1",
+      "at": [
+        360,
+        398
       ],
       "style": "plain",
       "fill": "hollow",
-      "seed": 23145,
-      "note": "Fogwater's boathouse 1, its dock out over the Grey Mere",
+      "seed": 30898,
+      "note": "Pikestead's boathouse 1, its dock out over the Drowned Glass",
       "wall": {
         "material": "logwall"
       },
@@ -3031,11 +3263,11 @@
         ],
         "se": [
           8,
-          8
+          6
         ],
         "sw": [
           0,
-          8
+          6
         ]
       },
       "walls": {
@@ -3064,7 +3296,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 2
             }
           ]
@@ -3074,7 +3306,7 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "window",
+              "kind": "door",
               "at": 2
             }
           ]
@@ -3100,23 +3332,23 @@
       "parts": [
         {
           "kind": "dock",
-          "on": "south",
-          "at": 4,
-          "length": 25,
+          "on": "west",
+          "at": 3,
+          "length": 26,
           "width": 4
         }
       ]
     },
     {
-      "id": "the-grey-mere#2",
+      "id": "the-drowned-glass#2",
       "at": [
-        356,
-        459
+        355,
+        364
       ],
       "style": "plain",
       "fill": "hollow",
-      "seed": 90355,
-      "note": "Fogwater's boathouse 2, its dock out over the Grey Mere",
+      "seed": 62659,
+      "note": "Pikestead's boathouse 2, its dock out over the Drowned Glass",
       "wall": {
         "material": "logwall"
       },
@@ -3126,16 +3358,16 @@
           0
         ],
         "ne": [
-          6,
+          8,
           0
         ],
         "se": [
-          6,
-          10
+          8,
+          6
         ],
         "sw": [
           0,
-          10
+          6
         ]
       },
       "walls": {
@@ -3155,7 +3387,7 @@
           "openings": [
             {
               "kind": "window",
-              "at": 4
+              "at": 2
             }
           ]
         },
@@ -3164,7 +3396,7 @@
           "to": "sw",
           "openings": [
             {
-              "kind": "door",
+              "kind": "window",
               "at": 2
             }
           ]
@@ -3174,8 +3406,8 @@
           "to": "nw",
           "openings": [
             {
-              "kind": "window",
-              "at": 4
+              "kind": "door",
+              "at": 2
             }
           ]
         }
@@ -3200,109 +3432,9 @@
       "parts": [
         {
           "kind": "dock",
-          "on": "south",
+          "on": "west",
           "at": 3,
-          "length": 17,
-          "width": 4
-        }
-      ]
-    },
-    {
-      "id": "the-grey-mere#3",
-      "at": [
-        328,
-        468
-      ],
-      "style": "plain",
-      "fill": "hollow",
-      "seed": 83652,
-      "note": "Fogwater's boathouse 3, its dock out over the Grey Mere",
-      "wall": {
-        "material": "logwall"
-      },
-      "joins": {
-        "nw": [
-          0,
-          0
-        ],
-        "ne": [
-          6,
-          0
-        ],
-        "se": [
-          6,
-          10
-        ],
-        "sw": [
-          0,
-          10
-        ]
-      },
-      "walls": {
-        "north": {
-          "from": "nw",
-          "to": "ne",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 2
-            }
-          ]
-        },
-        "east": {
-          "from": "ne",
-          "to": "se",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        },
-        "south": {
-          "from": "se",
-          "to": "sw",
-          "openings": [
-            {
-              "kind": "door",
-              "at": 2
-            }
-          ]
-        },
-        "west": {
-          "from": "sw",
-          "to": "nw",
-          "openings": [
-            {
-              "kind": "window",
-              "at": 4
-            }
-          ]
-        }
-      },
-      "roofs": {
-        "main": {
-          "shape": "gable",
-          "pitch": [
-            8,
-            12
-          ],
-          "overhang": 0.4,
-          "cover": "thatch",
-          "over": [
-            "nw",
-            "ne",
-            "se",
-            "sw"
-          ]
-        }
-      },
-      "parts": [
-        {
-          "kind": "dock",
-          "on": "south",
-          "at": 3,
-          "length": 22,
+          "length": 26,
           "width": 4
         }
       ]
