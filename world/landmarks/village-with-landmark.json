@@ -20,7 +20,7 @@
         { "profile": "cone", "radius": [64, 76], "rise": [440, 520], "rough": 8, "at": [0, -64], "bare": "rock" },
         { "profile": "dome", "radius": [12, 15], "rise": [-200, -160], "rough": 5, "at": [0, -64], "bare": "lava-crust" }
       ],
-      "village": { "layout": "climb", "at": [0, 14], "jitter": 3, "houses": [6, 9], "climb": [48, 60], "setback": [5, 6], "house": [[4, 6], [4, 5]], "stoneInTen": 8, "pad": { "margin": 1, "bank": 3 },
+      "village": { "layout": "climb", "at": [0, 14], "jitter": 3, "houses": [6, 9], "climb": [48, 60], "setback": [5, 6], "house": [[4, 6], [4, 5]], "stoneInTen": 8,
                    "top": { "what": "watch house", "wall": "stone", "width": [5, 6], "depth": [5, 6] } },
       "things": [ { "kind": "boulder", "count": [6, 9], "ring": [56, 74], "at": [0, -64], "half": "near" } ],
       "villageNames": ["Cinderfoot", "Emberhold", "Slagford", "Basalt Rest", "Pumice End", "Ashmoor", "Kilnside", "Smokeholm"],
