@@ -129,7 +129,6 @@ namespace Chem.Tests
             Assert.That(climb[climb.Count - 1].d, Is.LessThan(climb[0].d - 40), "the watch house is well up from the foot");
             Assert.That(climb.Count(c => (string)c.b["wall"]?["material"] == "stone"), Is.GreaterThan(climb.Count / 2), "mostly stone");
             Assert.That(volcano.Buildings[0]["roads"]?["way"], Is.Not.Null, "a way up between them");
-            Assert.That(climb.Where(c => (string)c.b["style"] == "village").All(c => c.b["pad"] != null && (bool)c.b["level"]), "each on a flat pad");
 
             var fishing = Village.Make("foggy-marsh", SiteX, SiteY, 1);
             Assert.That((int)fishing.Stamps[0]["rise"], Is.LessThan(0), "a lake's hollow");
@@ -182,6 +181,19 @@ namespace Chem.Tests
             }
         }
 
+        // A village's "pad" goes on each house it lays as rows, its walls level: a flat terrace cut for it on a slope.
+        // (The mountains form has none: a map stamp is refused where a row's pad moved the land, J-080 1b.)
+        [Test]
+        public void AClimbsPadGoesOnEachOfItsHouses()
+        {
+            string text = File.ReadAllText(Path.Combine(GameWorldDir(), LandmarkIntent.Folder, "village-with-landmark.json"));
+            var padded = LandmarkIntent.Parse(text.Replace("\"stoneInTen\": 8,", "\"stoneInTen\": 8, \"pad\": { \"margin\": 1, \"bank\": 3 },"));
+            var houses = padded.Make("mountains", SiteX, SiteY, 1).Buildings.OfType<JObject>().Where(b => (string)b["style"] == "village").ToList();
+            Assert.That(houses, Is.Not.Empty);
+            Assert.That(houses.All(b => (int)b["pad"]["bank"] == 3 && (bool)b["level"]));
+            Assert.That(Village.Make("mountains", SiteX, SiteY, 1).Buildings.All(b => b["pad"] == null));
+        }
+
         // How far a building's middle is from a cell.
         static double Distance(JObject b, (int x, int y) to)
         {
@@ -191,7 +203,7 @@ namespace Chem.Tests
 
         // The goldens, to compare between machines: the five files' texts, per form and seed.
         [TestCase("temperate", 1, 0x062df67cu), TestCase("temperate", 2, 0x89080d44u)]
-        [TestCase("mountains", 1, 0xcacf7347u), TestCase("mountains", 2, 0xbfcddae6u)]
+        [TestCase("mountains", 1, 0x5a02d45au), TestCase("mountains", 2, 0xae1fb36bu)]
         [TestCase("foggy-marsh", 1, 0xc611aa0cu), TestCase("foggy-marsh", 2, 0xf389b3a6u)]
         public void Golden(string biome, int seed, uint expected)
         {
