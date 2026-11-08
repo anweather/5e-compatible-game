@@ -64,6 +64,11 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   player vanishes, L1 LandRocks NRE, B3 punch feedback); Mac `pad-hands-menu` (M1, M2, no always-on element icons);
   u2 `player-mods`. Queued: `hold-east-path`. Owed to Andrew: option sheets for casting pace and big spells (C1, C2)
   and the nine-valley world, biomes, rivers, desert Hold, Punchy creature sync (W1-W4).
+- **Overnight 2026-11-08 (Andrew: "keep working through these all night"):** the order is: land `peer-vanish`;
+  restart u2 on `wip/u2-player-mods` once the PC's two-peer run is over (the watcher stopped it at 1.22 GB free);
+  rerun spell-balance's probes on the branch and dev, then land it; PC `hold-east-path`; land the Mac's
+  `pad-hands-menu` and u2's `player-mods` (PC compiles). Then cut alpha 0.1.12 from main (the PC Windows, the Mac
+  `--mac-only` into the same draft, after its job). Option sheets go to Andrew in the morning, not acted on.
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
