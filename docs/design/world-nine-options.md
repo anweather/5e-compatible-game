@@ -150,3 +150,43 @@ valley square (about 860 m).
   - Phase 0 touches the valley's `stamps.json` and `places.json`, so it needs one owner with `castle-cliff-canyon` and
     `hold-east-path` (C3).
 - **Raiders and mountains:** raiders still walk over mountains (J-073). In a bigger world that shows more.
+
+## As built: phase 2, the biome field (biome-field, the Mac, 2026-11-08)
+
+- **`Chem.BiomeField`** (`Chemistry/BiomeField.cs`, maths in `BiomeMath.cs`) ports Punchy's `BiomeSampling` at
+  `4601262`: warped Voronoi regions of 576 cells (one valley square), warped 144 cells; the four climate channels at
+  each region's centre; the race pick, Frequency × e^-misfit²; and the top-4 blend (80 cells for the surface, 300 for the
+  shape). It is all integers (Q16, value noise on `WorldHash`, integer e^-x, log2 and square root). `BiomeFieldTests`
+  has goldens for seeds 1337, 7 and 1, and they pass under .NET 8 and under Unity's Mono on the Mac.
+- **`world/biomes.json`** holds Punchy's rows. Punchy now has 19, not 13. The curated seven are on: Temperate,
+  Grassland, Mountains, Tundra, SaltFlat (for the Hold) and FoggyMarsh, plus Ashlands as the far square, with Volcano
+  off. Sonoran and Volcano are a flag each away. The field's settings and the 3 × 3 layout are in the same file.
+- **Anchors.** The region nearest each square's centre takes the square's anchor. Every other region whose centre lies
+  in the square weighs the anchor ×4 in its race. With the file's seed (1337), each anchor leads its square, with 56-87%
+  of the square. The valley's square is 81% Temperate, and the rest of it is Grassland. Seed 7 gave the valley only 43%,
+  which is why the file's seed is 1337. The valley's square will be pinned in phase 3 anyway.
+- **On demand (Apple M2 Pro, core Release, one thread):** one 64 × 64 chunk's weights take a median of **3.2 ms**
+  (p95 3.4). A rough relief pass on top (each present biome's 5-octave noise per cell) takes about 0.4 ms.
+  - A character crosses a chunk (96 m) in about 15 s at a run. Even a whole new row of chunks at the edge of its reach
+    is a few tens of milliseconds, which fits easily on a worker thread and almost fits inside one frame.
+  - So the biome field and land shapes can be made on demand.
+  - What can't be made per chunk is the river drainage (phase 4). It is global: a river's flow depends on everything
+    uphill. It would have to be baked, or solved a whole square at a time.
+  - Building the Unity terrain and meshes will cost more than the core does.
+  - If the weights need to be cheaper, sampling every 4th cell and blending between the samples cuts them about 16×.
+- **Curated and organic, but unexpected.** The knobs that give curation, and the ones that give surprise:
+  - *Curation:* the layout's anchors, `anchorBias` (how hard an anchor holds its square), the hand-made valley pinned,
+    and later, pinned landmarks per square (the Hold, a lake).
+  - *Surprise:*
+    - the seed;
+    - `climateInfluence` (1 means climate alone decides, lower lets frequency roll freely);
+    - the warp, which makes borders ragged and mixed;
+    - and the regions that aren't anchors, each picked by its own climate. One square shares a corner with a second
+      biome; another gets a tongue of tundra.
+  - *Next, so that nothing repeats:*
+    - seeded rare features, one roll per region from its name hash: a hotspot, a salt lake, a lone grove, never on a
+      grid;
+    - per-region variation in a biome's rows: a seeded nudge to its relief, feature size or rainfall, so two grassland
+      squares differ;
+    - mixed borders: the blend width varying along a border with noise, so some edges are a sharp cliff and others a
+      long mingling.

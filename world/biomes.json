@@ -1,0 +1,479 @@
+{
+  "about": "The biomes of the bigger world and where they lie (J-079, docs/design/world-nine-options.md phase 2; Chem.BiomeField reads this). The rows are Punchy's BiomeDefinitions (https://github.com/Skeleman/Punchy, Assets/Game/Biomes/*.asset at 4601262, with Zachary Franklin's permission): frequency, climate ranges (0..1: altitude, temperature, humidity, volcanism) and the land shape numbers in metres for phase 3. 'on' is the curated seven; the rest stay here, off. Sizes in the field are cells (1.5 m).",
+  "field": {
+    "seed": 1337,
+    "regionCells": 576,
+    "warpCells": 144,
+    "climateCells": 1234,
+    "blendCells": 80,
+    "shapeBlendCells": 300,
+    "squareCells": 576,
+    "climateInfluence": 1,
+    "anchorBias": 4
+  },
+  "layoutAbout": "The anchor biome of each valley-sized square, north row first as on a map; the south-west square is the valley.",
+  "layout": [
+    ["tundra", "mountains", "ashlands"],
+    ["foggy-marsh", "grassland", "mountains"],
+    ["temperate", "grassland", "salt-flat"]
+  ],
+  "biomes": [
+    {
+      "id": "temperate",
+      "name": "Temperate",
+      "on": true,
+      "frequency": 1,
+      "family": 5,
+      "climate": {
+        "altitude": [0.25, 0.68],
+        "temperature": [0.3, 0.6],
+        "humidity": [0.45, 0.85],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 22,
+        "kind": "hills",
+        "relief": 70,
+        "featureSize": 450,
+        "octaves": 5,
+        "sharpness": 1.6,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.7
+    },
+    {
+      "id": "grassland",
+      "name": "Grassland",
+      "on": true,
+      "frequency": 1.1,
+      "family": 5,
+      "climate": {
+        "altitude": [0, 0.5],
+        "temperature": [0.4, 0.75],
+        "humidity": [0.3, 0.55],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 14,
+        "kind": "hills",
+        "relief": 12,
+        "featureSize": 700,
+        "octaves": 4,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.55
+    },
+    {
+      "id": "mountains",
+      "name": "Mountains",
+      "on": true,
+      "frequency": 0.8,
+      "family": 3,
+      "climate": {
+        "altitude": [0.68, 1],
+        "temperature": [0, 1],
+        "humidity": [0, 1],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 45,
+        "kind": "ridged",
+        "relief": 260,
+        "featureSize": 1100,
+        "octaves": 6,
+        "sharpness": 1.3,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.9
+    },
+    {
+      "id": "tundra",
+      "name": "Tundra",
+      "on": true,
+      "frequency": 0.8,
+      "family": 3,
+      "climate": {
+        "altitude": [0, 0.75],
+        "temperature": [0, 0.16],
+        "humidity": [0, 1],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 105,
+        "kind": "hills",
+        "relief": 14,
+        "featureSize": 600,
+        "octaves": 4,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.35
+    },
+    {
+      "id": "salt-flat",
+      "name": "Salt Flat",
+      "on": true,
+      "frequency": 1.2,
+      "family": 1,
+      "climate": {
+        "altitude": [0, 0.3],
+        "temperature": [0.5, 1],
+        "humidity": [0, 0.33],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 6,
+        "kind": "hills",
+        "relief": 1.5,
+        "featureSize": 600,
+        "octaves": 2,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.02
+    },
+    {
+      "id": "foggy-marsh",
+      "name": "Foggy Marsh",
+      "on": true,
+      "frequency": 0.8,
+      "family": 2,
+      "climate": {
+        "altitude": [0, 0.4],
+        "temperature": [0.2, 0.55],
+        "humidity": [0.62, 1],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 0.9,
+        "kind": "hills",
+        "relief": 3,
+        "featureSize": 120,
+        "octaves": 4,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.9
+    },
+    {
+      "id": "ashlands",
+      "name": "Ashlands",
+      "on": true,
+      "frequency": 0.8,
+      "family": 4,
+      "climate": {
+        "altitude": [0, 1],
+        "temperature": [0, 1],
+        "humidity": [0, 1],
+        "volcanism": [0.12, 0.5]
+      },
+      "shape": {
+        "baseElevation": 12,
+        "kind": "dunes",
+        "relief": 20,
+        "featureSize": 180,
+        "octaves": 3,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 140
+      },
+      "rainfall": 0.02
+    },
+    {
+      "id": "dunes",
+      "name": "Dunes",
+      "on": false,
+      "frequency": 0.9,
+      "family": 1,
+      "climate": {
+        "altitude": [0.2, 0.55],
+        "temperature": [0.55, 1],
+        "humidity": [0, 0.33],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 6,
+        "kind": "dunes",
+        "relief": 14,
+        "featureSize": 150,
+        "octaves": 3,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.08
+    },
+    {
+      "id": "electric-wastelands",
+      "name": "Electric Wastelands",
+      "on": false,
+      "frequency": 1.2,
+      "family": 4,
+      "climate": {
+        "altitude": [0.2, 1],
+        "temperature": [0.45, 1],
+        "humidity": [0, 0.4],
+        "volcanism": [0.02, 0.3]
+      },
+      "shape": {
+        "baseElevation": 12,
+        "kind": "dunes",
+        "relief": 20,
+        "featureSize": 180,
+        "octaves": 3,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 140
+      },
+      "rainfall": 0.02
+    },
+    {
+      "id": "ember-forest",
+      "name": "Ember Forest",
+      "on": false,
+      "frequency": 0.8,
+      "family": 4,
+      "climate": {
+        "altitude": [0, 1],
+        "temperature": [0, 1],
+        "humidity": [0, 1],
+        "volcanism": [0.12, 0.5]
+      },
+      "shape": {
+        "baseElevation": 12,
+        "kind": "dunes",
+        "relief": 20,
+        "featureSize": 180,
+        "octaves": 3,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 140
+      },
+      "rainfall": 0.02
+    },
+    {
+      "id": "fungal-forest",
+      "name": "Fungal Forest",
+      "on": false,
+      "frequency": 0.8,
+      "family": 2,
+      "climate": {
+        "altitude": [0, 0.4],
+        "temperature": [0.2, 0.55],
+        "humidity": [0.62, 1],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 0.9,
+        "kind": "hills",
+        "relief": 3,
+        "featureSize": 120,
+        "octaves": 4,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.9
+    },
+    {
+      "id": "glacier",
+      "name": "Glacier",
+      "on": false,
+      "frequency": 1.2,
+      "family": 3,
+      "climate": {
+        "altitude": [0.72, 1],
+        "temperature": [0, 0.12],
+        "humidity": [0.3, 1],
+        "volcanism": [0, 0.1]
+      },
+      "shape": {
+        "baseElevation": 120,
+        "kind": "hills",
+        "relief": 90,
+        "featureSize": 700,
+        "octaves": 4,
+        "sharpness": 0.8,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.25
+    },
+    {
+      "id": "glass-desert",
+      "name": "Glass Desert",
+      "on": false,
+      "frequency": 0.8,
+      "family": 1,
+      "climate": {
+        "altitude": [0.15, 0.5],
+        "temperature": [0.65, 1],
+        "humidity": [0, 0.25],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 6,
+        "kind": "dunes",
+        "relief": 14,
+        "featureSize": 150,
+        "octaves": 3,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.08
+    },
+    {
+      "id": "mesa-canyonlands",
+      "name": "Mesa Canyonlands",
+      "on": false,
+      "frequency": 0.8,
+      "family": 1,
+      "climate": {
+        "altitude": [0.4, 0.8],
+        "temperature": [0.5, 1],
+        "humidity": [0.12, 0.38],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 18,
+        "kind": "ridged",
+        "relief": 110,
+        "featureSize": 220,
+        "octaves": 5,
+        "sharpness": 0.7,
+        "terraces": 3,
+        "wind": 60
+      },
+      "rainfall": 0.15
+    },
+    {
+      "id": "ocean",
+      "name": "Ocean",
+      "on": false,
+      "ocean": true,
+      "frequency": 0,
+      "family": 0,
+      "climate": {
+        "altitude": [0, 1],
+        "temperature": [0, 1],
+        "humidity": [0, 1],
+        "volcanism": [0, 0.3]
+      },
+      "shape": {
+        "baseElevation": -38,
+        "kind": "hills",
+        "relief": 18,
+        "featureSize": 600,
+        "octaves": 4,
+        "sharpness": 1.2,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0
+    },
+    {
+      "id": "poison-swamp",
+      "name": "Poison Swamp",
+      "on": false,
+      "frequency": 0.7,
+      "family": 2,
+      "climate": {
+        "altitude": [0, 0.4],
+        "temperature": [0.55, 1],
+        "humidity": [0.62, 1],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 0.6,
+        "kind": "hills",
+        "relief": 2.5,
+        "featureSize": 80,
+        "octaves": 4,
+        "sharpness": 1,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.9
+    },
+    {
+      "id": "sonoran",
+      "name": "Sonoran",
+      "on": false,
+      "frequency": 0.9,
+      "family": 1,
+      "climate": {
+        "altitude": [0.35, 0.7],
+        "temperature": [0.5, 1],
+        "humidity": [0.2, 0.42],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 14,
+        "kind": "ridged",
+        "relief": 70,
+        "featureSize": 520,
+        "octaves": 5,
+        "sharpness": 2.4,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.15
+    },
+    {
+      "id": "sparkling-forest",
+      "name": "Sparkling Forest",
+      "on": false,
+      "frequency": 0.8,
+      "family": 2,
+      "climate": {
+        "altitude": [0.4, 0.68],
+        "temperature": [0.35, 0.7],
+        "humidity": [0.5, 0.8],
+        "volcanism": [0, 0.2]
+      },
+      "shape": {
+        "baseElevation": 24,
+        "kind": "hills",
+        "relief": 50,
+        "featureSize": 420,
+        "octaves": 5,
+        "sharpness": 1.5,
+        "terraces": 0,
+        "wind": 60
+      },
+      "rainfall": 0.7
+    },
+    {
+      "id": "volcano",
+      "name": "Volcano",
+      "on": false,
+      "frequency": 1,
+      "family": 0,
+      "climate": {
+        "altitude": [0, 1],
+        "temperature": [0, 1],
+        "humidity": [0, 1],
+        "volcanism": [0.5, 1]
+      },
+      "shape": {
+        "baseElevation": 70,
+        "kind": "ridged",
+        "relief": 60,
+        "featureSize": 450,
+        "octaves": 5,
+        "sharpness": 1.6,
+        "terraces": 0,
+        "wind": 140
+      },
+      "rainfall": 0.15
+    }
+  ]
+}
