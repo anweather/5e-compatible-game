@@ -33,6 +33,7 @@ public class NetWizard : NetworkBehaviour
         caster.grid = grid;
         form.OnValueChanged += FormChanged;
         look.OnValueChanged += LookChanged;
+        KeepAnimating(gameObject);
 
         if (!IsOwner)
         {
@@ -66,6 +67,19 @@ public class NetWizard : NetworkBehaviour
         startGrid = grid;
         chem = grid != null ? grid.GetComponent<NetChem>() : null;
         if (grid != null) grid.WorldReset += BackToStart;
+    }
+
+    /// <summary>
+    /// Keeps a wizard's Animator writing its bones while no camera sees it (playtest 2026-11-08 B1). The rig culls its
+    /// transforms when unseen, but the poses laid over the animation each LateUpdate (CastBeats' dip and recoil, CastPose,
+    /// SwimPose, DownedPose, RollPose, SitPose) move the bones from where the Animator left them, so with nothing writing
+    /// them back they piled up frame on frame: another player casting out of sight had its hips carried tens of metres
+    /// under the ground, its bounds with them (the body's bounds follow the hips), so it was never seen again and never
+    /// animated again. A few wizards animating unseen cost little.
+    /// </summary>
+    public static void KeepAnimating(GameObject wizard)
+    {
+        if (wizard.TryGetComponent<Animator>(out var animator)) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
     }
 
     /// <summary>This wizard's player in the core's casts, on every machine (CastBeats reads their cast).</summary>
