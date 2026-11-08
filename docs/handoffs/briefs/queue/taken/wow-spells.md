@@ -25,3 +25,8 @@ Balance them against Meteor with a test like spell-balance's (damage per raider 
 for any new core behaviour. Before landing: `dotnet build core -c Release -warnaserror`, `dotnet test core` twice in
 full, `dotnet format`. Push the branch only, remove this claim on the branch in the last commit. The PC does the looks
 and compiles it; the lead lands it.
+
+After (2026-11-08, try 1): the runner ended the session while the full test run waited in the background; nothing
+was pushed. The four rows (Tornado, Thunder Strike, Earth Spires, Iceberg) should still be in your worktree: continue
+from them. Run the tests in the foreground (the runner closes a session that only waits), commit as you go, and push
+the branch. Do this before casting-taps; casting-taps then merges this branch's hold.json.
