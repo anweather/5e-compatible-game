@@ -142,7 +142,7 @@ namespace Chem
     {
         const int SaltTurn = 1, SaltName = 2, SaltVillage = 3, SaltRange = 4, SaltDirection = 5, SaltSeed = 6;
         const int Unit = 1024;
-        const string Square = "square", Climb = "climb", Shore = "shore", Wind = "wind";
+        const string Square = "square", Climb = "climb", Shore = "shore", Wind = "wind", Shelf = "shelf";
 
         readonly string intent, form;
         readonly JObject row;
@@ -299,6 +299,11 @@ namespace Chem
             if (layout == Wind)
             {
                 Winding(v, x, y);
+                return;
+            }
+            if (layout == Shelf)
+            {
+                OnAShelf(v, x, y);
                 return;
             }
             int square = Pick(v["square"]), lane = Pick(v["laneLength"]);
@@ -513,6 +518,74 @@ namespace Chem
                 if (HouseAt(v, (wx + ux * back / Unit, wy + uy * back / Unit), (wx, wy), null, "house", out var house)) first ??= house;
             }
             Way(first, way, (int?)v["width"] ?? 2, (bool?)v["graded"] ?? false);
+        }
+
+        // Houses round a shelf levelled into the landmark's lower slope (one pad, on the first house, reaching over the whole
+        // shelf), their doors to its middle; and the village's way out, a trail switchbacking up to the landmark (Trail).
+        void OnAShelf(JObject v, int x, int y)
+        {
+            int shelf = (int?)v["shelf"] ?? 14, houses = Math.Max(2, Pick(v["houses"]));
+            var (ux, uy) = Direction();
+            JObject first = null;
+            for (int k = 0; k < houses; k++)
+            {
+                var (ox, oy) = Rotated(ux, uy, k * 360 / houses);
+                int r = Pick(v["ring"]);
+                if (HouseAt(v, (x + ox * r / Unit, y + oy * r / Unit), (x, y), null, "house", out var house)) first ??= house;
+            }
+            if (first != null)
+            {
+                int ax = (int)first["at"][0], ay = (int)first["at"][1], bank = (int?)v["bank"] ?? 6;
+                first["level"] = true;
+                first["pad"] = new JObject
+                {
+                    ["margin"] = 1,
+                    ["bank"] = bank,
+                    ["more"] = new JArray(new JObject
+                    {
+                        ["area"] = new JArray(2 * (x - shelf - ax), 2 * (y - shelf - ay), 2 * (x + shelf - ax), 2 * (y + shelf - ay)),
+                        ["bank"] = bank,
+                        ["clear"] = true,
+                    }),
+                };
+            }
+            if (row["trail"] is JObject trail) Trail(trail, (x, y), shelf, first);
+        }
+
+        // The village's way out: from the shelf's edge, switchbacking up towards the landmark's middle in legs that turn one
+        // way and then the other round it, cut into the slope, to a lookout just short of its crater's rim.
+        void Trail(JObject t, (int x, int y) from, int shelf, JObject village)
+        {
+            var (cx, cy) = rows.Centre;
+            var (bx, by) = Toward(cx, cy, from.x, from.y);
+            long dx = from.x - cx, dy = from.y - cy;
+            int start = (int)BiomeMath.Sqrt(dx * dx + dy * dy) - shelf;
+            int rim = rows.Stamps.Count > 1 ? (int)rows.Stamps[1]["radius"] : 6;
+            int end = rim + ((int?)t["rim"] ?? 4), legs = Math.Max(1, Pick(t["legs"])), sense = Roll(SaltDirection) % 2 == 0 ? 1 : -1;
+            var points = new List<(int x, int y)>();
+            int angle = 0, steps = 0;
+            var turns = new List<(int angle, int leg)>();
+            for (int k = 0; k < legs; k++) turns.Add((sense * (k % 2 == 0 ? 1 : -1), Pick(t["leg"])));
+            int total = turns.Sum(l => Math.Max(1, l.leg / 10));
+            points.Add(OnTheWinding((cx, cy), (bx, by), (start, end), 0, 0, 1));
+            foreach (var (way, leg) in turns)
+                for (int k = 0; k < Math.Max(1, leg / 10); k++)
+                {
+                    angle += way * 10;
+                    steps++;
+                    var (ox, oy) = Rotated(bx, by, angle);
+                    int r = start + (end - start) * steps / total;
+                    points.Add((cx + ox * r / Unit, cy + oy * r / Unit));
+                }
+            var top = points[points.Count - 1];
+            var (tx, ty) = Toward(cx, cy, top.x, top.y);
+            JObject lookout = null;
+            if (t["lookout"] is JObject l)
+            {
+                int up = Pick(l["depth"]) / 2 + 2;
+                HouseAt(t, (top.x + tx * up / Unit, top.y + ty * up / Unit), top, l, (string)l["what"] ?? "lookout", out lookout);
+            }
+            Way(lookout ?? village, points, (int?)t["width"] ?? 2, (bool?)t["graded"] ?? false);
         }
 
         // The point k of n along the winding: turned from the start's bearing, its distance from the middle eased from start
