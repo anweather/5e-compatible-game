@@ -91,10 +91,9 @@ public class FaunaResizeProbe : RoomProbe
         var drafted = RoomMcpProbe.Post(RoomMcpProbe.Tool("set_species", $"{{\"id\":\"deer\",\"scale\":{Times.ToString(CultureInfo.InvariantCulture)}}}"));
         yield return RoomMcpProbe.Until(drafted);
         string body = drafted.Result.body ?? "";
-        int at = body.IndexOf("Draft ", StringComparison.Ordinal);
-        Check("set_species_drafts", at >= 0, body);
-        if (at < 0) yield break;
-        string draft = body.Substring(at + 6).Split(':')[0];
+        string draft = RoomMcpProbe.DraftIn(body);
+        Check("set_species_drafts", draft != null, body);
+        if (draft == null) yield break;
         var on = RoomMcpProbe.Post(RoomMcpProbe.Tool("apply", $"{{\"mod\":\"{draft}\",\"title\":\"{Title}\"}}"));
         yield return RoomMcpProbe.Until(on);
         yield return Agree("giant", $"Player 1 switched on {Title}");

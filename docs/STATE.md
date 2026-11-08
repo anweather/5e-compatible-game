@@ -35,12 +35,20 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   and `airpeers` (two peers, 0 of 9 checksums differ with Lightning, Gust, Whirlwind). `air-tuning-rules` (u2)
   landed too (cacf1b54): Gust and Whirlwind numbers are in `rules/` (`eye`, `lift`, `fall`, `shove`), no golden moved.
   `wip/u2-air-tuning-rules` (23f01af3) is not in dev (its WIP commit was redone); deleting it is Andrew's.
-- **Assigned (Andrew, 2026-11-07 evening):** the Mac does `casting-leftovers` (glyph per pair; callers off `LoadElement`,
-  the core path and `castfeel` stay since retiring them moves 6 goldens; keys untouched), then `hold-batch` (timed waves
+- **Assigned (Andrew, 2026-11-07 evening):** `casting-leftovers` landed (cc47375c: a glyph per merged spell, `PairGlyphs`;
+  callers off `LoadElement`, the core Load path and `castfeel` stay since retiring them moves 6 goldens; keys untouched;
+  `aimlooks` and `lookfx` probes fail on plain dev too, not filed yet). The Mac now does `hold-batch` (timed waves
   for a 10 min run, keep health, raiders strike a cracking crystal at the heart, attuning in the towers). The PC does
   `castle-cliff-canyon` (sheer cliff right of the road below the castle, a winding canyon beyond). **Controller first
   (Andrew, 2026-11-07):** the keyboard layout is on the back burner; design and judge controls on the pad. The
   lead's keyboard proposal, for later: one key per pad button, F interact, R use, V punch, 1-4 kit, T talk.
+- **Waiting on Andrew's look:** `castle-cliff-canyon` (06ad830a, pushed, not landed). The cliff is just north of the
+  castle pad's bank (x170 y296-327, 37 m, boulders jut at the lip as the overhang), not in place of the bank, which the
+  brief said to leave. The canyon is dry, beside the valley's river (stamps can't cross water, J-073). It adds path
+  stamps and the map's own `stamps.json`, and raises the rock cap 700 -> 1400 (frame cost not measured). EditMode not
+  rerun after `ground/` was re-exported. Clip `castle-cliff-canyon.mp4`, sent to Andrew.
+- **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
+  element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
   (as in the game), same 3500 ticks and per-tick checksums; EditMode 49.8 s (was past 180 s), core suite 3.5 -> 2.4 min.
   EditMode can now be fully green on the PC; on the Mac 8 ApiKeyTests still fail (Windows-only vault). Briefs the lead lands must `git rm` their own claim on the branch.
