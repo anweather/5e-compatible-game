@@ -3,7 +3,7 @@ using UnityEngine;
 
 // What stands on a cell, on top of the chunk terrain (the terrain itself is the
 // ground: CellHeightfield shapes it, CellPaint colours it): bramble bushes, a
-// charred stump, rubble, a stone block here; the planks of a bridge, an iron
+// charred stump, rubble, a stone block here; Earth Spires' rock spires in CellDressing.Spires.cs; the planks of a bridge, an iron
 // plate and the crags along a raised wall in CellDressing.Built.cs; a boulder, a coil, a gate and a worn
 // log wall in CellDressing.Machines.cs; Plant Growth's saplings and the trees they grow into in CellDressing.Growth.cs. Otherwise trees are the terrain's own trees
 // (ValleyChemistry burns them); grass is the terrain's detail grass. Each
@@ -51,7 +51,7 @@ public sealed partial class CellDressing
     public static bool IsDressed(Rules rules, string terrain) => Of(rules, terrain) is { Family: Plant or Debris };
 
     /// <summary>Whether Dress draws a terrain family: the check that rules/looks.json and this file agree.</summary>
-    public static bool Draws(string family) => family is Ground or Block or Plant or Debris or Deck or PlateFamily or Machine or Wall;
+    public static bool Draws(string family) => family is Ground or Block or SpireFamily or Plant or Debris or Deck or PlateFamily or Machine or Wall;
 
     float CellSize => grid.cellSize;
 
@@ -108,8 +108,11 @@ public sealed partial class CellDressing
             case Wall:
                 DressWornLogs(root, surface, color, rng, x, y);
                 break;
-            case Block when grid.BoulderRestsAt(x, y):
+            case Block or SpireFamily when grid.BoulderRestsAt(x, y):
                 DressBoulder(root, surface, rng);
+                break;
+            case SpireFamily:
+                DressSpires(root, look, color, surface, x, y);
                 break;
             default:
                 DressBlock(root, look, color, surface, x, y);

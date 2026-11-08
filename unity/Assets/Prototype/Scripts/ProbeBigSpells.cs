@@ -8,8 +8,9 @@ using UnityEngine.InputSystem.LowLevel;
 // north wall, the hands on a virtual pad, each of the four big spells cast from its hand pair at a raider out in front: Thunder
 // Strike (fire + air, both triggers) marks it and strikes it, Tornado (air + air, both bumpers) lifts it and flings it, Earth
 // Spires (earth + earth, both bumpers) throws it up and leaves its spires standing, Iceberg (water + water, both bumpers) crushes
-// it and leaves walkable ice. Each merges on screen as its own spell before it goes off. With --shots, a picture of each;
-// bigspellsclip films the lot. Nothing here is in the game.
+// it and leaves walkable ice. The looks too: the thunderclap heard with the bolt, the spires bursting up and a raider riding
+// one up, the pack ice the Iceberg leaves. Each merges on screen as its own spell before it goes off. With --shots, a picture of each;
+// bigspellsclip films all but the Tornado. Nothing here is in the game.
 public class BigSpellsProbe : AimedProbe
 {
     protected override IEnumerator Run()
@@ -38,7 +39,8 @@ public class BigSpellsProbe : AimedProbe
                 film.Roll();
             }
             yield return ThunderStrike();
-            yield return Tornado();
+            // The clip leaves the Tornado out to stay under 30 s: its look is as the last clip (wow-spells) showed it.
+            if (!Filming) yield return Tornado();
             yield return Spires();
             yield return Iceberg();
             if (film != null)
@@ -153,6 +155,9 @@ public class BigSpellsProbe : AimedProbe
         if (r == null) yield break;
         int hp = r.Hp;
         var fired = new string[1];
+        bool clapped = false;
+        void Heard(string sound, Vector3 at) => clapped |= sound == SoundIds.ThunderClap;
+        GameSounds.Played += Heard;
         yield return Cast(ElementIds.Fire, ElementIds.Air, HandsDef.Thrust, SpellIds.ThunderStrike, r, fired);
         bool marked = false, bolted = false;
         for (float t = 0f; t < 4f && r.Hp == hp && r.Alive; t += Time.deltaTime)
@@ -168,7 +173,10 @@ public class BigSpellsProbe : AimedProbe
         Check("thunder_marks_first", marked);
         Check("thunder_bolts_from_the_sky", bolted, $"{ArcFx.Playing} arcs");
         Check("thunder_strikes_it", !r.Alive || r.Hp < hp, $"{hp - r.Hp} hurt");
-        yield return Wait(1f);
+        // Its thunder rolls on a while: the clip keeps the boom and some of its tail.
+        for (float t = 0f; t < 2.5f; t += Time.deltaTime) yield return null;
+        GameSounds.Played -= Heard;
+        Check("thunder_claps", clapped, "a thunderclap with the bolt");
     }
 
     // Air and air on the bumpers: the funnel lifts the raider in its eye and flings it.
@@ -211,18 +219,33 @@ public class BigSpellsProbe : AimedProbe
     {
         var me = Me2;
         var r = Still(new Vector2Int(me.x, me.y - 5)); // on the line: the zigzag steps off it at its second cell and every other after
+        var far = Still(new Vector2Int(me.x, me.y - 9)); // and another further along it, on the line again
         Check("spires_raider_comes", r != null);
         if (r == null) yield break;
         int hp = r.Hp, before = BlockingTo(me, r);
         var fired = new string[1];
         yield return Cast(ElementIds.Earth, ElementIds.Earth, HandsDef.Throw, SpellIds.EarthSpires, r, fired);
-        bool thrown = false;
-        for (float t = 0f; t < 2f; t += Time.deltaTime)
+        bool thrown = false, shot = false;
+        float rode = 0f;
+        int rising = 0;
+        for (float t = 0f; t < 2.6f; t += Time.deltaTime)
         {
             thrown |= r.StatusOf(World.ThrownStatus) > 0;
+            float high = Mathf.Max(grid.SpireRide(r.Id) ?? 0f, far != null ? grid.SpireRide(far.Id) ?? 0f : 0f);
+            rode = Mathf.Max(rode, high);
+            rising = Mathf.Max(rising, FindObjectsByType<SpireRise>(FindObjectsSortMode.None).Length);
+            if (!shot && high > 2f)
+            {
+                Shot("earth-spires-ride");
+                shot = true;
+            }
             yield return null;
         }
         Shot("earth-spires");
+        Metric("spires_rode_metres", rode);
+        Metric("spires_rising_most", rising);
+        Check("spires_burst_up", rising >= 4, $"{rising} rising at once at most");
+        Check("spires_lift_the_raider", rode > 2f, $"{rode:0.0} m up on a spire");
         int standing = BlockingTo(me, r) - before;
         Metric("spires_standing", standing);
         Check("spires_hit_it", thrown || r.Hp < hp, $"thrown {thrown}, {hp - r.Hp} hurt");
@@ -242,12 +265,20 @@ public class BigSpellsProbe : AimedProbe
         var fired = new string[1];
         yield return Cast(ElementIds.Water, ElementIds.Water, HandsDef.Throw, SpellIds.Iceberg, r, fired);
         int drawn = 0;
+        bool shot = false;
         for (float t = 0f; t < 4f; t += Time.deltaTime)
         {
             drawn = Mathf.Max(drawn, grid.MoversShown);
+            if (!shot && t > 0.8f && grid.MoversShown > 0)
+            {
+                Shot("iceberg-rolling");
+                shot = true;
+            }
             yield return null;
         }
         Shot("iceberg");
+        Metric("iceberg_pack_ice_cells", grid.PackIceShown);
+        Check("iceberg_leaves_pack_ice", grid.PackIceShown >= 5, $"{grid.PackIceShown} cells of pack ice drawn");
         int ice = IceRound(from) - iceBefore;
         Metric("iceberg_ice_cells", ice);
         Check("iceberg_rolls_on_screen", drawn > 0, $"{drawn} movers");

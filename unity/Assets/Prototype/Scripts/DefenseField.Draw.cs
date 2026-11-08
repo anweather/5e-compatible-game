@@ -100,8 +100,9 @@ public partial class DefenseField : ICreatureGround
     void Forget(Vector2Int flagCell)
     {
         gone.Clear();
+        // One a spire killed rides it up all the same, and puffs when it comes down.
         foreach (var kv in shown)
-            if (kv.Value.hp < 0) gone.Add(kv.Key);
+            if (kv.Value.hp < 0 && !grid.SpireRide(kv.Key).HasValue) gone.Add(kv.Key);
         foreach (int id in gone)
         {
             var s = shown[id];
