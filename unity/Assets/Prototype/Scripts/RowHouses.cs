@@ -239,11 +239,32 @@ public class RowHouses : MonoBehaviour
             at.y = grid.GroundAt(at);
             var tree = Instantiate(prefab, at, Quaternion.Euler(0f, (cx * 37 + cy * 11) % 360, 0f), root.transform);
             tree.name = "Great tree";
-            tree.transform.localScale = size * ((float?)part["scale"] ?? 7f);
+            // Its scale is times the valley's tallest tree there, however tall its own kind is drawn.
+            float own = Height(tree), tallest = valley.TreeKinds(cx, cy).Select(Measured).DefaultIfEmpty(own).Max();
+            tree.transform.localScale = size * ((float?)part["scale"] ?? 3f) * tallest / Mathf.Max(0.1f, own);
         }
     }
 
     const string GreatTree = "great-tree";
+
+    // How tall a tree is drawn, from its renderers.
+    static float Height(GameObject tree)
+    {
+        var all = tree.GetComponentsInChildren<Renderer>();
+        if (all.Length == 0) return 0f;
+        var bounds = all[0].bounds;
+        foreach (var r in all) bounds.Encapsulate(r.bounds);
+        return bounds.size.y;
+    }
+
+    // A tree kind's height, from a copy made and dropped.
+    static float Measured(GameObject prefab)
+    {
+        var copy = Instantiate(prefab, new Vector3(0f, -10000f, 0f), Quaternion.identity);
+        float h = Height(copy);
+        Destroy(copy);
+        return h;
+    }
 
     // A chimney smokes as a village's does: the same puff, copied from one, at each chimney's top.
     static ParticleSystem[] Smoke(GameObject root, Vector3[] chimneys)

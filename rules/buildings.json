@@ -48,7 +48,7 @@
     "battlements": { "look": { "takes": ["on", "every", "height"] } },
     "stair": { "look": { "takes": ["on", "at", "length"] } },
     "dock": { "look": { "takes": ["on", "at", "length", "width"] } },
-    "great-tree": { "look": { "takes": ["join", "scale", "tree"] } }
+    "great-tree": { "about": "A great tree (LandmarkIntent): the valley's tree of kind tree (a terrain tree prototype, Cypress or Conifer; the cell's own when none) stood at the join, scale times as tall as the valley's tallest tree there. A stand-in until one is modelled.", "look": { "takes": ["join", "scale", "tree"] } }
   },
   "styles": {
     "plain": { "fill": "hollow", "floor": { "kind": "slab", "height": 0.15 },
