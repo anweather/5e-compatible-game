@@ -154,8 +154,8 @@ namespace Chem.Tests
             wire.Reply(Events(Start("m2"), Words(0, "Done."), Stop("end_turn")));
             Run(wire);
             var first = (JArray)JObject.Parse(wire.Bodies[0])["messages"][0]["content"];
-            Assert.That((string)first[0]["text"], Is.EqualTo("Notes from earlier messages:\n- Blue fire is on."), "the loop's request stays as it was");
-            Assert.That((string)first[1]["text"], Is.EqualTo("make it rain"));
+            Assert.That(first.Count, Is.EqualTo(1), "one block: two side by side reach the model as one run of text");
+            Assert.That((string)first[0]["text"], Is.EqualTo(ClaudeRun.Message("- Blue fire is on.", "make it rain")), "built as Claude Code's is");
             Assert.That(File.ReadAllText(notes), Is.EqualTo("- Blue fire is on.\n- Green now.\n"), "one line, on the end");
             Assert.That(File.Exists(elsewhere), Is.False, "the tool has no path to take");
             Assert.That(wire.Called, Is.Empty, "and it isn't a server tool");
@@ -168,7 +168,38 @@ namespace Chem.Tests
             wire.Reply(Events(Start(), Tool(0, ApiLoop.NoteTool, "t1", new JObject { ["note"] = new string('x', 5000) }.ToString()), Stop("tool_use")));
             wire.Reply(Events(Start("m2"), Words(0, "Done."), Stop("end_turn")));
             Run(wire);
-            Assert.That(File.ReadAllText(Path.Combine(folder, ClaudeRun.NotesFile)).Trim().Length, Is.EqualTo(ApiLoop.MostNoteChars + 2));
+            Assert.That(File.ReadAllText(Path.Combine(folder, ClaudeRun.NotesFile)), Is.EqualTo("- " + new string('x', ApiLoop.MostNoteChars) + "…\n"));
+        }
+
+        [Test]
+        public void ANoteCutShortEndsAtAWordAndSaysSo()
+        {
+            string note = string.Concat(Enumerable.Repeat("Reverted the night sky. ", 12)) + "Say undo to bring it back.";
+            var wire = new Wire();
+            wire.Reply(Events(Start(), Tool(0, ApiLoop.NoteTool, "t1", new JObject { ["note"] = note }.ToString()), Stop("tool_use")));
+            wire.Reply(Events(Start("m2"), Words(0, "Done."), Stop("end_turn")));
+            Run(wire);
+            string kept = File.ReadAllText(Path.Combine(folder, ClaudeRun.NotesFile)).TrimEnd('\n');
+            Assert.That(kept, Does.EndWith("…"), "it says it was cut");
+            string body = kept.Substring(2).TrimEnd('…');
+            Assert.That(note, Does.StartWith(body));
+            Assert.That(note[body.Length], Is.EqualTo(' '), "and the cut falls between words");
+        }
+
+        // Playtest 2026-11-08: after an undo, a note cut mid-word ran into "Make it daytime." and Claude read "UnMake it daytime" as a note.
+        [Test]
+        public void TheNewRequestArrivesWholeAfterAnUndo()
+        {
+            File.WriteAllText(Path.Combine(folder, ClaudeRun.NotesFile), "- Night sky mod on.\n- Undid the night sky mod. Say Un\n");
+            var wire = new Wire();
+            wire.Reply(Events(Start(), Words(0, "It's day."), Stop("end_turn")));
+            Run(wire, "Make it daytime.");
+            var first = (JArray)JObject.Parse(wire.Bodies[0])["messages"][0]["content"];
+            var lines = ((string)first.Last["text"]).Split('\n');
+            Assert.That(lines[^1], Is.EqualTo("Make it daytime."), "whole, and on a line of its own");
+            Assert.That(lines[^2], Is.Empty);
+            Assert.That(lines[^3], Is.EqualTo(ClaudeRun.NotesClose), "marked as what the player says now");
+            Assert.That(lines[^4], Is.EqualTo("> - Undid the night sky mod. Say Un"), "the last note stays a quoted note");
         }
 
         [Test]
