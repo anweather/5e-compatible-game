@@ -11,6 +11,12 @@ the hit, then to 3d6 and 15 ticks, with Meteor resting both hands 90 ticks (`spe
 ordered `pairs` path (`LoadElement`) stays until the view half lands. The view still sends taps and attunes only in the
 room, so until then free roam casts with the start hands (water and fire).
 
+**Taps fire at once (2026-11-08, `casting-taps`, J-078 step 1).** A button let go within `hands.tapTicks` (2) of its press
+is a tap: it goes off `tapTicks` after the press at charge 1, with no wind-up, and rests `tapCooldown` (3) on its hand.
+Held to `tapTicks`, it charges as before, from its row's `castTicks`, and rests `handCooldown`. A merge keeps its row's
+`castTicks`, tapped or held. A tap goes off before the window closes, so two taps sweep or merge only inside `tapTicks`;
+a button held down still leaves the other the whole window.
+
 **Aimed spells built (2026-11-07, `aimed-spells`).** Lock-on and pitch are the view's (`SpellCaster.LockOn.cs`): aimed above
 everything, the crosshair lands under where the camera looks; Lightning locks onto the raider nearest the crosshair within
 14 degrees, the other aimed spells that hurt or shove within 5, aimed where the raider will be when the spell lands. In the
@@ -35,7 +41,8 @@ gestures, and no charge (`docs/design/the-hold.md` section 3).
 
 1. **The Hold's buttons, with a charge.** On each hand the trigger is the **thrust** (short range) and the bumper is the
    **throw** (long range). Both on one hand is the **sweep** (an area spell). Holding a gesture charges it, using the
-   world's charge (three levels, `chargeTicks` each, rumble on each level). **Releasing fires it.** A tap fires at charge 1.
+   world's charge (three levels, `chargeTicks` each, rumble on each level). **Releasing fires it.** A tap fires at charge 1
+   (since `casting-taps`, at once: `tapTicks`).
 2. **Hands merge while both charge.** If both hands are charging the same gesture, and the hand table has a row for their
    two elements, their icons **slam together** into the pair's icon while you hold. Letting go of either hand fires the
    merged spell, at the lower of the two charges. If they don't merge (a different gesture, or no row), each hand fires on
@@ -163,8 +170,8 @@ with different hands staying in lockstep.
 
 - **What's attuned in free roam to start,** and whether the Hold's unlocks (elements, the second hand, gestures) apply in
   the world too, or the world has all four elements from the start.
-- **Cooldowns:** today 12 ticks a hand and 30 for a pair. With charge, should a tap's cooldown be shorter than a full
-  charge's?
+- **Cooldowns:** 12 ticks a hand and 30 for a pair. ~~With charge, should a tap's cooldown be shorter than a full
+  charge's?~~ Yes, tiny: `tapCooldown` 3 (J-078, `casting-taps`).
 - **Charge levels per gesture:** does a thrust charge as far as a throw?
 - **The grimoire:** world-only spells (Hasten Time and the like) stay in the kit. Does anything else need a home outside
   the hand table?

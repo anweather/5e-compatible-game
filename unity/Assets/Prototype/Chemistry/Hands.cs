@@ -36,6 +36,9 @@ namespace Chem
         /// <summary>A spell's cooldown on its hand, and a combined spell's on both.</summary>
         public int HandCooldown { get; private set; }
         public int BothCooldown { get; private set; }
+        /// <summary>A tap: a hand's button let go within TapTicks of its press goes off that many ticks after it, and rests TapCooldown. 0: no taps, a tap takes its row's castTicks.</summary>
+        public int TapTicks { get; private set; }
+        public int TapCooldown { get; private set; }
         /// <summary>Ticks attuning a hand takes outside the Hold.</summary>
         public int AttuneTicks { get; private set; }
         /// <summary>Whether there is a table at all: rules with none have no hands.</summary>
@@ -86,6 +89,8 @@ namespace Chem
             h.Window = (int?)o["window"] ?? 0;
             h.HandCooldown = (int?)o["handCooldown"] ?? 0;
             h.BothCooldown = (int?)o["bothCooldown"] ?? 0;
+            h.TapTicks = (int?)o["tapTicks"] ?? 0;
+            h.TapCooldown = (int?)o["tapCooldown"] ?? 0;
             h.AttuneTicks = (int?)o["attuneTicks"] ?? 0;
             h.Kit = (o["kit"] as JArray ?? new JArray()).OfType<JObject>().Select(k => new DpadSpellDef { Name = (string)k["name"], Spell = (string)k["spell"], CastTicks = (int?)k["castTicks"] ?? 0 }).ToList();
             for (int g = 0; g < GestureNames.Length; g++)
@@ -124,6 +129,8 @@ namespace Chem
         public readonly bool[] Down = new bool[HandsDef.Count];
         /// <summary>By hand: the charge its release gave; 1 until then.</summary>
         public readonly int[] Charge = { 1, 1 };
+        /// <summary>By hand: its gesture is a tap, let go before it charged, so it goes off on its tap's short meter and rests a tap's cooldown.</summary>
+        public readonly bool[] Tap = new bool[HandsDef.Count];
         /// <summary>By hand: the tick its gesture began, for the window its other button has to make a sweep.</summary>
         public readonly int[] Since = new int[HandsDef.Count];
         /// <summary>Attuning outside the Hold: the hand, what it will hold, and the ticks still to go (0: not attuning).</summary>
@@ -149,7 +156,7 @@ namespace Chem
                 var slots = spells.Properties().Select(p => p.Name).Where(n => !n.Contains('+')).ToList();
                 foreach (var side in new[] { "left", "right" })
                     if (!slots.Contains((string)h["start"]?[side] ?? "")) Errors.Add($"hands: start {side} must be in the table");
-                foreach (var key in new[] { "window", "handCooldown", "bothCooldown", "attuneTicks" })
+                foreach (var key in new[] { "window", "handCooldown", "bothCooldown", "tapTicks", "tapCooldown", "attuneTicks" })
                     if (!WholeFromOne(h[key])) Errors.Add($"hands: {key} must be a whole number from 1");
                 foreach (var g in HandsDef.Gestures)
                     if (!WholeFromOne(h["range"]?[(string)h["rangeOf"]?[g] ?? ""])) Errors.Add($"hands: {g} has no range");

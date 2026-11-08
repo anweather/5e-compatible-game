@@ -126,6 +126,7 @@ namespace Chem.Tests
             Assert.That(Fired(w), Is.EqualTo("ray-of-frost"));
         }
 
+        // Two taps on one hand sweep if the second comes before the first has gone off, and the sweep is a tap too.
         [TestCase(false)]
         [TestCase(true)]
         public void TriggerAndBumperOnOneHandSweep(bool bumperFirst)
@@ -133,9 +134,24 @@ namespace Chem.Tests
             var w = Holding("water", "fire");
             if (bumperFirst) Bumper(w, Right);
             else Trigger(w, Right);
-            Ticks(w, T.Window - 1);
+            Ticks(w, T.TapTicks - 1);
             if (bumperFirst) Trigger(w, Right);
             else Bumper(w, Right);
+            var (fired, ticks) = Out(w);
+            Assert.That(fired, Is.EqualTo(new[] { "flame-wave" }));
+            Assert.That(ticks, Is.EqualTo(T.TapTicks));
+        }
+
+        // A button held down leaves the other the whole window, and the sweep it makes takes its row's time.
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AHeldButtonSweepsInsideTheWindow(bool bumperFirst)
+        {
+            var w = Holding("water", "fire");
+            Down(w, Right, bumper: bumperFirst);
+            Ticks(w, T.Window - 1);
+            Down(w, Right, bumper: !bumperFirst);
+            Up(w, Right);
             var (fired, ticks) = Out(w);
             Assert.That(fired, Is.EqualTo(new[] { "flame-wave" }));
             Assert.That(ticks, Is.EqualTo(T.One("fire", Sweep).CastTicks));
@@ -145,9 +161,10 @@ namespace Chem.Tests
         public void TheOtherButtonIsTooLateAfterTheWindow()
         {
             var w = Holding("water", "fire");
-            Trigger(w, Right);
+            Down(w, Right);
             Ticks(w, T.Window);
             Bumper(w, Right, taken: false);
+            Up(w, Right);
             Assert.That(Fired(w), Is.EqualTo("burning-hands"));
         }
 
@@ -175,7 +192,7 @@ namespace Chem.Tests
         {
             var w = Holding("water", "fire");
             Trigger(w, Right);
-            Assert.That(Out(w).ticks, Is.EqualTo(T.One("fire", Thrust).CastTicks));
+            Assert.That(Out(w).ticks, Is.EqualTo(T.TapTicks));
         }
 
         [TestCase(false, "thunder-strike")]
@@ -231,21 +248,22 @@ namespace Chem.Tests
             Assert.That(w.HandSpellsUnderWay(Me), Is.EquivalentTo(new[] { "burning-hands", "ray-of-frost" }), "the meter names both");
             var (fired, _) = Out(w);
             Assert.That(fired, Is.EquivalentTo(new[] { "burning-hands", "ray-of-frost" }));
-            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.HandCooldown), "each cools on its own");
-            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown));
+            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.TapCooldown), "each cools on its own");
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.TapCooldown));
         }
 
         [Test]
         public void ASweepAndAThrustGoOffEachOnItsOwn()
         {
             var w = Holding("water", "fire");
-            Trigger(w, Right);
-            Bumper(w, Right);
+            Down(w, Right);
+            Down(w, Right, bumper: true);
             Trigger(w, Left);
             var (first, ticks) = Out(w);
             // Apart: Unity's NUnit compares a tuple's array by reference.
             Assert.That(first, Is.EqualTo(new[] { "create-water" }), "the thrust doesn't wait for the sweep");
-            Assert.That(ticks, Is.EqualTo(T.One("water", Thrust).CastTicks), "the thrust doesn't wait for the sweep");
+            Assert.That(ticks, Is.EqualTo(T.TapTicks), "the thrust doesn't wait for the sweep");
+            Up(w, Right);
             var (second, more) = Out(w);
             Assert.That(second, Is.EqualTo(new[] { "flame-wave" }));
             Assert.That(ticks + more, Is.EqualTo(T.One("fire", Sweep).CastTicks));
@@ -261,8 +279,8 @@ namespace Chem.Tests
             Bumper(w, Left);
             var (fired, ticks) = Out(w);
             Assert.That(fired, Is.EquivalentTo(new[] { "flame-wave", "sleet-storm" }));
-            Assert.That(ticks, Is.EqualTo(9));
-            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.HandCooldown), "no row, no lock on both");
+            Assert.That(ticks, Is.EqualTo(T.TapTicks));
+            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.TapCooldown), "no row, no lock on both");
         }
 
         [TestCase(Thrust, "punch")]
@@ -286,7 +304,7 @@ namespace Chem.Tests
             Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "what's attuned stays as it is");
             Trigger(w, Left);
             Assert.That(Fired(w), Is.EqualTo("burning-hands"));
-            Ticks(w, T.HandCooldown);
+            Ticks(w, T.TapCooldown);
             Trigger(w, Left);
             Trigger(w, Right);
             Assert.That(Fired(w), Is.EqualTo("fireball"), "fire alone makes both triggers a fire pair");
@@ -323,7 +341,7 @@ namespace Chem.Tests
             var w = Holding("water", "fire");
             Trigger(w, Right);
             Out(w);
-            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown));
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.TapCooldown), "a tap's is tiny, but one button can't machine-gun");
             Trigger(w, Right, taken: false);
             Trigger(w, Left);
             Out(w);
@@ -544,17 +562,65 @@ namespace Chem.Tests
             Assert.That(w.CastHash(), Is.EqualTo(new[] { "593bf5f", "1140a2b4", "1db53f1d", "6df13877" }[System.Math.Min(levels, 3)]));
         }
 
+        // Let go within tapTicks, a button is a tap: it goes off tapTicks after its press, at charge 1, and rests a tap's cooldown.
+        [TestCase(0)]
+        [TestCase(1)]
+        public void ATapGoesOffAtOnce(int held)
+        {
+            Assert.That(T.TapTicks, Is.LessThan(T.One("fire", Thrust).CastTicks), "no wind-up");
+            var w = Holding("water", "fire");
+            Down(w, Right);
+            Ticks(w, held);
+            Up(w, Right);
+            Assert.That(w.HandsOf(Me).Tap[Right]);
+            Assert.That(w.CastOf(Me).Total, Is.EqualTo(T.TapTicks), "the view's meter is the tap's");
+            var (fired, ticks) = Out(w);
+            Assert.That(fired, Is.EqualTo(new[] { "burning-hands" }));
+            Assert.That(held + ticks, Is.EqualTo(T.TapTicks));
+            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(1));
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.TapCooldown));
+        }
+
+        // Held to tapTicks, the charge has begun: a release that soon still takes the row's castTicks and rests handCooldown.
         [Test]
-        public void ATapIsChargeOneAndAnEarlyReleaseStillTakesATapsTime()
+        public void HoldingPastATapIsTheChargeAndTakesItsRowsTime()
         {
             var w = Holding("water", "fire");
             Down(w, Right);
-            Ticks(w, 2);
+            Ticks(w, T.TapTicks);
             Up(w, Right);
+            Assert.That(w.HandsOf(Me).Tap[Right], Is.False);
             var (fired, ticks) = Out(w);
             Assert.That(fired, Is.EqualTo(new[] { "burning-hands" }));
-            Assert.That(ticks + 2, Is.EqualTo(T.One("fire", Thrust).CastTicks));
+            Assert.That(ticks + T.TapTicks, Is.EqualTo(T.One("fire", Thrust).CastTicks));
             Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(1));
+            Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown));
+        }
+
+        // Both hands tapped together merge, and a merge keeps its row's castTicks and both hands' cooldown.
+        [Test]
+        public void TappedHandsMergeOnTheirRowsTime()
+        {
+            var w = Holding("water", "fire");
+            Down(w, Right);
+            Down(w, Left);
+            Up(w, Right);
+            Assert.That(w.HandsOf(Me).Tap, Is.EqualTo(new[] { false, false }));
+            var (fired, ticks) = Out(w);
+            Assert.That(fired, Is.EqualTo(new[] { "scalding-steam" }));
+            Assert.That(ticks, Is.EqualTo(T.Both("water", "fire", Thrust).CastTicks));
+            Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.BothCooldown));
+        }
+
+        [Test]
+        public void GoldenATap()
+        {
+            var w = Holding("water", "fire");
+            Down(w, Right, bumper: true);
+            Up(w, Right);
+            Assert.That(w.HandsText(), Does.Contain($":{T.TapTicks}/{T.TapTicks}/0/0/1/").And.Contain("/t:a"), "a tap's meter is marked in the checksum");
+            Assert.That(Fired(w), Is.EqualTo("fire-bolt"));
+            Assert.That(w.CastHash(), Is.EqualTo("55835c3b"));
         }
 
         [Test]
@@ -605,7 +671,7 @@ namespace Chem.Tests
             Assert.That(first, Is.EqualTo(new[] { "burning-hands" }));
             Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(1));
             Assert.That(w.HandsOf(Me).Gesture[Left], Is.EqualTo(Throw), "the left hand charges on");
-            Ticks(w, T.HandCooldown);
+            Ticks(w, T.TapCooldown);
             Trigger(w, Right);
             Assert.That(Out(w).out_, Is.EqualTo(new[] { "burning-hands" }), "and the right rapid-fires");
             Ticks(w, 3 * PerLevel);
@@ -613,7 +679,7 @@ namespace Chem.Tests
             Up(w, Left);
             w.Step();
             Assert.That((w.CombosFired.Single().Spell, w.CombosFired.Single().Charge), Is.EqualTo(("ray-of-frost", World.MaxCharge)));
-            Assert.That(w.CastHash(), Is.EqualTo("bd04dc16"));
+            Assert.That(w.CastHash(), Is.EqualTo("ef2d3d2e"));
         }
 
         [Test]
@@ -628,7 +694,7 @@ namespace Chem.Tests
                 (8, ComboCommand.HandDown(Me, Left)),
                 (8, ComboCommand.HandDown(Me, Right)),
                 (9, ComboCommand.HandDown(bo, Right, true)),
-                (10, ComboCommand.Hand(bo, Left)),
+                (10, ComboCommand.Hand(bo, Left)), // a tap: it goes off at 11, not 15, since casting-taps
                 (20, ComboCommand.HandUp(bo, Right)),
                 (27, ComboCommand.HandUp(Me, Right)),
                 (40, ComboCommand.HandDown(Me, Left, true)), // refused: the merge cooled both hands
@@ -654,7 +720,7 @@ namespace Chem.Tests
             }
             string one = Run(new World(R, 64, 64, 7, "dirt")), other = Run(new World(R, 64, 64, 7, "dirt"));
             Assert.That(other, Is.EqualTo(one));
-            Assert.That(one, Is.EqualTo("15:Bo:create-water:1 20:Bo:gust-of-wind:3 27:Ana:forge:3 65:Ana:earthen-trench:1 cb1fffb9 3d94a395"));
+            Assert.That(one, Is.EqualTo("11:Bo:create-water:1 20:Bo:gust-of-wind:3 27:Ana:forge:3 65:Ana:earthen-trench:1 436ffc8b eb868582"));
         }
 
         [Test]
@@ -721,9 +787,10 @@ namespace Chem.Tests
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);
             Bumper(w, Right);
-            Ticks(w, 2);
+            Ticks(w, T.TapTicks - 1);
             var loaded = World.Load(w.Save(source), R, source);
             loaded.SetHold(w.HoldSite);
+            Assert.That(loaded.HandsOf(Me).Tap[Right], "a tap under way stays one");
             Assert.That(loaded.HandsText(), Is.EqualTo(w.HandsText()));
             Assert.That(loaded.CastState(), Is.EqualTo(w.CastState()));
             Assert.That(Fired(loaded), Is.EqualTo("fire-bolt"));
@@ -751,6 +818,8 @@ namespace Chem.Tests
             Assert.That(Errors(h => h["kit"][0]["spell"] = "nope"), Does.Contain("hands: kit: unknown spell nope"));
             Assert.That(Errors(h => h["start"]["left"] = "nope"), Does.Contain("hands: start left must be in the table"));
             Assert.That(Errors(h => h["attuneTicks"] = 0), Does.Contain("hands: attuneTicks must be a whole number from 1"));
+            Assert.That(Errors(h => h["tapTicks"] = 0), Does.Contain("hands: tapTicks must be a whole number from 1"));
+            Assert.That(Errors(h => h.Remove("tapCooldown")), Does.Contain("hands: tapCooldown must be a whole number from 1"));
             Assert.That(Errors(h => h["spells"]["fire+fire"]["throw"]["cooldown"] = 0), Does.Contain("hands: fire+fire throw: cooldown must be a whole number from 1"));
         }
     }

@@ -607,6 +607,9 @@ that long, and doesn't march.
 **Gesture**
 : What a hand's buttons do in the Hold: thrust (trigger, short range), throw (bumper, long range), sweep (both, area). The same gesture on both hands makes something new; different gestures each do their own. Not `CastGestures`, the view's animation of a cast.
 
+**Tap**
+: A hand's button let go within `hands.tapTicks` of its press: it goes off at once, at charge 1, and rests `tapCooldown`. Held longer, the button charges instead.
+
 **Range**
 : How far from the wizard a hand's spell can land, in cells: short or long, by its gesture (`rules/hold.json`).
 
@@ -623,7 +626,7 @@ that long, and doesn't march.
 : A spell in the table of `rules/hold.json` `hands`: by what a hand holds and its gesture, or by what both hold when both make the same gesture. An empty hand's row is an action instead (a punch, a throw, a shove).
 
 **Cooldown**
-: The ticks after a hand spell goes off before that hand casts again; a two-hand spell locks both, for longer. A row may have its own, longer one: Meteor is big and rare.
+: The ticks after a hand spell goes off before that hand casts again: tiny after a **tap**, longer after a charge; a two-hand spell locks both, for longer. A row may have its own, longer one: Meteor is big and rare.
 
 **Kit**
 : The spells every wizard has in the Hold, on the D-pad, whatever the hands hold.

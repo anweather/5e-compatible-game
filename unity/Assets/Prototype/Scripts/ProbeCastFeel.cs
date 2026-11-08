@@ -57,6 +57,7 @@ public partial class CastFeelProbe : ProbeScenario
             yield return Cast("pair", new[] { ElementIds.Water, ElementIds.Earth }, false, new[] { Beat.First, Beat.Second, Beat.WindUp, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
             yield return Charged();
             yield return Timings();
+            yield return Taps();
             yield return Cancelled();
             yield return MidTick();
             if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Pictures("after");
