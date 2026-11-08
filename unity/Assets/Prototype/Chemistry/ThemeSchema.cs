@@ -52,7 +52,7 @@ namespace Chem
             ["zone"] = PlacedKeys.Concat(new[] { "biome" }).ToArray(),
             ["mountains"] = PlacedKeys.Concat(new[] { "peaks" }).ToArray(),
             ["lake"] = PlacedKeys.Concat(new[] { "material", "island" }).ToArray(),
-            ["river"] = new[] { "id", "kind", "from", "to", "meander", "width", "material", "through" },
+            ["river"] = new[] { "id", "kind", "from", "to", "meander", "width", "material", "through", "dry" },
             ["road"] = new[] { "id", "kind", "from", "to", "rank", "via", "branches" },
             ["city"] = PlacedKeys.Concat(new[] { "count", "on", "minSpacing" }).ToArray(),
             ["town"] = PlacedKeys.Concat(new[] { "count", "on", "minSpacing" }).ToArray(),
@@ -279,6 +279,7 @@ namespace Chem
             if (f["width"] != null && !OneOf(Widths, f["width"])) errors.Add($"{p}.width must be {string.Join("/", Widths)}");
             if (f["material"] != null && !OneOf(Materials, f["material"])) errors.Add($"{p}.material must be {string.Join("/", Materials)}");
             if (f["through"] != null && !IsStringList(f["through"])) errors.Add($"{p}.through must be a list of lake ids");
+            if (f["dry"] != null && f["dry"].Type != JTokenType.Boolean) errors.Add($"{p}.dry must be true or false");
         }
 
         static void CheckSettlement(JObject f, string p, List<string> errors)

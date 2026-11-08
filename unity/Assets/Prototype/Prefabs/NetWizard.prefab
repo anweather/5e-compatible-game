@@ -378,7 +378,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceEffects
   grid: {fileID: 0}
   slipperyGrip: 1.2
-  wadingSpeed: 0.55
+  shallowWadingSpeed: 0.92
+  wadingSpeed: 0.78
   wadingDepth: 2
   climbStep: 0.55
   swimmingSpeed: 0.65

@@ -1,5 +1,6 @@
 // The Hold's run (docs/design/the-hold.md, phase 2), on the map's own rows: nothing here reads where the castle stands
 // but those rows and hold.json, so the site can move.
+using System;
 using System.Linq;
 using NUnit.Framework;
 
@@ -219,7 +220,10 @@ namespace Chem.Tests
             Away(w);
             var row = BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings);
             var gate = BuildingRaster.Cells(row, R.Buildings).Where(c => c.Terrain == "timber-gate-open").ToList();
+            // Both gates shut (the east and the south, hold-east-path): one of them must be battered down.
+            var south = gate.First(c => Math.Abs(c.X - gate[0].X) + Math.Abs(c.Y - gate[0].Y) > 4);
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, gate[0].X, gate[0].Y, null));
+            w.ApplyEffect(new EffectCommand(EffectKind.Swing, south.X, south.Y, null));
             Until(w, () => gate.Any(c => w.BlowsOn(c.X, c.Y) > 0), "they batter it");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate"));
             Until(w, () => gate.Any(c => w.At(c.X, c.Y).T == "rubble"), "it gives way");
