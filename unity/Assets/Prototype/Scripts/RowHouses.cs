@@ -236,7 +236,7 @@ public class RowHouses : MonoBehaviour
             if (!valley.TreeModel(cx, cy, (string)part["tree"], out var prefab, out var size)) continue;
             float half = grid.cellSize / 2f;
             var at = corner + new Vector3(jx * half, 0f, -jy * half);
-            at.y = grid.GroundAt(at);
+            at.y = TerrainY(at) ?? grid.GroundAt(at);
             var tree = Instantiate(prefab, at, Quaternion.Euler(0f, (cx * 37 + cy * 11) % 360, 0f), root.transform);
             tree.name = "Great tree";
             // Its scale is times the valley's tallest tree there, however tall its own kind is drawn.
@@ -246,6 +246,19 @@ public class RowHouses : MonoBehaviour
     }
 
     const string GreatTree = "great-tree";
+
+    // The drawn terrain's height under a point, or null off every terrain: a great tree stands on the ground drawn, which the
+    // grid only reports once the valley has bound it (a row is drawn before that).
+    static float? TerrainY(Vector3 p)
+    {
+        foreach (var t in Terrain.activeTerrains)
+        {
+            var o = t.transform.position;
+            var size = t.terrainData.size;
+            if (p.x >= o.x && p.x <= o.x + size.x && p.z >= o.z && p.z <= o.z + size.z) return o.y + t.SampleHeight(p);
+        }
+        return null;
+    }
 
     // How tall a tree is drawn, from its renderers.
     static float Height(GameObject tree)
