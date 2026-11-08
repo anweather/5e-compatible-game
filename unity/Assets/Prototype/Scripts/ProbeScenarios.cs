@@ -243,7 +243,7 @@ public static class ProbeScenarios
             "Checks: the check doesn't block, the key is in no record, console, environment or save, Remove goes back to Claude Code, no console errors."),
         new Entry("hitch", typeof(HitchProbe), 90f,
             "The stalls of Andrew's 2026-11-08 play log: the world rebuilt from the map three times (start-up, hosting and an online reset each do it) and a chat-style mod (Pink fire) switched on. " +
-            "Checks: a rebuild's median under the Editor's budget, the blocker boxes kept across rebuilds, the mod on, its checks and compose under budget, no console errors. Metrics: rebuild_ms_best, rebuild_ms_median, switch_compose_ms, switch_worst_frame_ms."),
+            "Checks: a rebuild's median under the Editor's budget, the blocker boxes kept across rebuilds, the mod on, its checks and compose under budget, no console errors. Metrics: rebuild_ms_best, rebuild_ms_median, switch_compose_ms_median, switch_worst_frame_ms."),
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
             "What GroundSwitch put on the terrains (unity/Temp/ground-builder says on or land; no file is off) and what the ground's Bind took: compare runs. Checks: the chunks are built or baked as switched, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
