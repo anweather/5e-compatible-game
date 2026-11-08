@@ -73,11 +73,11 @@ public partial class CastFeelProbe
     IEnumerator Heard(string name, string[] elements, string[] expected)
     {
         heard.Clear();
-        caster.LoadElement(elements[0]);
+        LoadElement(elements[0]);
         for (int i = 1; i < elements.Length; i++)
         {
             yield return Wait(0.35f);
-            caster.LoadElement(elements[i]);
+            LoadElement(elements[i]);
         }
         yield return Wait(0.3f);
         for (float t = 0f; beats.Now != Beat.Neutral && t < WaitLimit; t += Time.deltaTime) yield return null;
@@ -87,7 +87,7 @@ public partial class CastFeelProbe
 
     IEnumerator HoldToCharge(string element, int level)
     {
-        caster.LoadElement(element, held: true);
+        LoadElement(element, held: true);
         for (float t = 0f; (beats.Now != Beat.Charge || World.HeldCharge(World.CastOf(caster.CastPlayer)) < level) && t < WaitLimit; t += Time.deltaTime)
             yield return null;
     }
@@ -123,7 +123,7 @@ public partial class CastFeelProbe
     // Holds an element to the top level and a little past it, noting the hum's volume just before each step up.
     IEnumerator ClimbToTheTop(List<float> volumes)
     {
-        caster.LoadElement(ElementIds.Earth, held: true);
+        LoadElement(ElementIds.Earth, held: true);
         int lastLevel = 0;
         float atLevelStart = 0f, volume = 0f;
         for (float t = 0f; t < WaitLimit; t += Time.deltaTime)
@@ -236,7 +236,7 @@ public partial class CastFeelProbe
         yield return Wait(0.5f);
         for (int i = 0; i < 12; i++)
         {
-            caster.LoadElement(i % 2 == 0 ? ElementIds.Fire : ElementIds.Air);
+            LoadElement(i % 2 == 0 ? ElementIds.Fire : ElementIds.Air);
             for (int f = 0; f < 4; f++)
             {
                 most = Mathf.Max(most, SoundVoices.Sounding.all);

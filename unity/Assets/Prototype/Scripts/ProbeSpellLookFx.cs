@@ -217,10 +217,10 @@ public class SpellLookFxProbe : LooksModProbe
         var point = grid.CellCenter(at.x, at.y);
         point.y = grid.GroundAt(point);
         caster.AimOverride = point;
-        caster.LoadElement(ElementIds.Fire);
+        LoadElement(ElementIds.Fire);
         yield return Wait(0.2f);
         firstOrb = wizard.GetComponent<CastBeats>().OrbColor(0);
-        caster.LoadElement(ElementIds.Fire);
+        LoadElement(ElementIds.Fire);
         yield return Wait(0.35f);
     }
 

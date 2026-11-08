@@ -83,7 +83,7 @@ public class AimLooksProbe : SpellLooksProbe
         yield return Frame(o, 11, 9, V(-7f, 8f, -9f), 6f);
         caster.Select(SpellIds.Fireball);
         caster.AimOverride = Mid(o, 11, 9);
-        caster.LoadElement(ElementIds.Earth, true);
+        LoadElement(ElementIds.Earth, true);
         yield return Wait(0.2f);
         Check("marker_follows_the_element_cast", caster.Marker?.Kind == AimKind.Rising, $"{caster.Marker?.Kind} for Raise Earth, Fireball selected");
         yield return Picture("element-raise-earth");
