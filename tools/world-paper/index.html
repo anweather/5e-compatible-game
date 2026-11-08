@@ -7,7 +7,7 @@
   --band-sea:#6c9fc6; --band-low:#9fc77c; --band-hills:#cbc27b; --band-high:#b9967a; --band-peaks:#ece8e2;
   --bio-temperate:#5e9b50; --bio-grassland:#acc95f; --bio-mountains:#8c857a; --bio-tundra:#c6d5d4; --bio-salt-flat:#e9e0cb;
   --bio-foggy-marsh:#6e8f7b; --bio-ashlands:#6c5a54; --bio-ocean:#4f86b8;
-  --sea:#4f86b8; --sand:#e8d49a; --river:#1f74d1; --road:#b5824f; --range:#6b6762; --ridge:#e9e6e1; --canyon:#3d2a20;
+  --sea:#4f86b8; --sand:#e8d49a; --river:#1f74d1; --road:#b5824f; --main-road:#9a5f2c; --fence:#4a3524; --stone:#f4f1ea; --range:#6b6762; --ridge:#e9e6e1; --canyon:#3d2a20;
   --fog:rgba(30,34,42,.5); --haze:rgba(245,242,234,.45); --void:#c9c3b6;
   --ring-active:#ff7a00; --ring-gen:#159a5c; --ring-known:#6b5fd0; --bad:#e0302b; --char:#ffffff; --char-edge:#1f2328;
   --undecided:#ddd6c8; --ink:#1f2328; --label-bg:rgba(255,253,248,.85); --flash:rgba(255,200,0,.55); --seam:rgba(31,35,40,.35);
@@ -19,7 +19,7 @@
     --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad;
     --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
     --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83;
-    --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
+    --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
     --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
     --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
     --undecided:#2a2f37; --ink:#e7e5e0; --label-bg:rgba(20,23,28,.85); --flash:rgba(255,210,60,.55); --seam:rgba(231,229,224,.35);
@@ -32,7 +32,7 @@
   --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad;
   --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
   --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83;
-  --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
+  --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
   --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
   --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
   --undecided:#2a2f37; --ink:#e7e5e0; --label-bg:rgba(20,23,28,.85); --flash:rgba(255,210,60,.55); --seam:rgba(231,229,224,.35);
@@ -444,7 +444,12 @@ function finishPlan(W, sv){
     W.lake.push((ri>0&&ro===0) || (W.opt[i].filler && !W.opt[i].sea && ro>0 && ri===0)); }
   // landmarks
   W.landmarks=[];
+  // not every square has a village: a landmark square keeps one TOWN_ODDS of the time (at least one in the world)
+  const usedNames=new Set();
+  const townRoll=i=>h01(W.seed^0x70a1,i,5); let firstTown=-1, fr0=2;
+  for(let i=0;i<n;i++){ const lm=W.opt[i].tpl.lm; if((lm==='land'||lm==='water')&&townRoll(i)<fr0){ fr0=townRoll(i); firstTown=i; } }
   for(let i=0;i<n;i++){ const o=W.opt[i], t=o.tpl, x=i%W.w, y=(i/W.w)|0, r=rng(h3(W.seed,i,77));
+    if((t.lm==='land'||t.lm==='water') && townRoll(i)>=TOWN_ODDS && i!==firstTown) continue;
     const c=W.coast[i]; const coastal=c.open.some(Boolean);
     let site=[150+r()*276, 150+r()*276];
     if(t.lm==='castle'){ W.landmarks.push({ i, kind:'castle', icon:'castle', title:'the castle', place:'the Hold', form:'the valley (pinned)', seenFrom:CASTLE.seenFrom, site:[300,250] }); continue; }
@@ -456,7 +461,8 @@ function finishPlan(W, sv){
       site = s===0?[site[0],d]: s===1?[S-d,site[1]]: s===2?[site[0],S-d]:[d,site[1]]; }
     let key = INTENT.by[biome]?biome:'*'; const fallback=key==='*'; while(INTENT.by[key].use) key=INTENT.by[key].use;
     const form=INTENT.by[key];
-    W.landmarks.push({ i, kind:key, icon:form.icon, title:form.name, place:form.villageNames[(r()*8)|0]+' by '+form.landmarkNames[(r()*6)|0],
+    let vi=(r()*8)|0; for(let t2=0;t2<8&&usedNames.has(form.villageNames[vi]);t2++) vi=(vi+1)%8; usedNames.add(form.villageNames[vi]);
+    W.landmarks.push({ i, kind:key, icon:form.icon, title:form.name, place:form.villageNames[vi]+' by '+form.landmarkNames[(r()*6)|0],
       form:key+(fallback?' (fallback "*")':'')+' from '+why, seenFrom:form.seenFrom, site });
   }
   for(const L of W.landmarks){ const x=L.i%W.w, y=(L.i/W.w)|0; L.cx=x*K+Math.floor(L.site[0]/CH); L.cy=y*K+Math.floor(L.site[1]/CH); }
@@ -517,57 +523,193 @@ function riverViolations(W){
   return bad;
 }
 
-// ---------- roads: routes between destinations, least cost over the squares ----------
-const ROAD = { step:10, band:30, river:4, range:20, offer:3, jitter:3, minSquares:3 };
+// ---------- roads have a reason: points of interest first, then a few long main roads, then lesser roads and trails ----------
+// costs per square stepped into; peaks and sea are never entered, a band step costs a lot, the high band more
+const ROAD = { step:10, band:30, high:30, river:4, range:20, offer:3, jitter:3, cross:6, beside:35, overlap:30, lesserBand:18, lesserHigh:12 };
 const SLOT_ORDER = [4,3,5,2,6,1,7,0,8];
+const CAVE_NAMES = ['the Black Mouth','Wyrm Hollow','the Echo Cave','Bat Deep','the Lantern Grotto','Old Delve','the Whispering Hole','Glimmer Cave','the Dripping Halls','Fox Earth'];
+const TOWN_ODDS = 0.35;                                    // a landmark square keeps its village this often
+const mainRoadCap = N => Math.max(1, Math.min(6, Math.round(N/2)));   // about six on a 12 x 12, two on a 3 x 3
+const WAY = { 'inn':{icon:'inn',seenFrom:KNOW+1}, 'shop':{icon:'shop',seenFrom:KNOW+1} };
+const CROSS_SEEN = KNOW+1;
+function chunkOf(W,i,site){ return [ (i%W.w)*K+Math.floor(site[0]/CH), ((i/W.w)|0)*K+Math.floor(site[1]/CH) ]; }
+
+// caves: a small destination, most often in the hills or high ground, spaced apart
+function placeCaves(W, ok, bar){
+  const n=W.n, band=W.band, lmSq=new Set(W.landmarks.map(L=>L.i));
+  let land=0; const cand=[];
+  for(let i=0;i<n;i++){ if(!band[i]||W.opt[i].sea) continue; land++;
+    if(!ok(i)||lmSq.has(i)||bar.r[i]||bar.c[i]) continue;
+    cand.push({ i, key:h01(W.seed^0xca7e,i,3)*(band[i]>=2?1:3.5) }); }
+  cand.sort((a,b)=>a.key-b.key||a.i-b.i);
+  const want=Math.max(1,Math.round(land/14)), gap=W.N>=12?3:2, caves=[];
+  for(const c of cand){ if(caves.length>=want) break; if(caves.some(j=>W.dist(j,c.i)<gap)) continue; caves.push(c.i);
+    const r=rng(h3(W.seed,c.i,0xcafe)); const site=[150+r()*276,150+r()*276];
+    const L={ i:c.i, kind:'cave', icon:'cave', title:'a cave', place:CAVE_NAMES[(r()*CAVE_NAMES.length)|0], form:'cave in the '+BANDS[band[c.i]], seenFrom:3, site };
+    [L.cx,L.cy]=chunkOf(W,c.i,site); W.landmarks.push(L); }
+}
+
 function solveRoads(W){
   const n=W.n, band=W.band;
   const ranges=new Uint8Array(n); for(let i=0;i<n;i++) for(const L of W.feats[i]) for(const f of L) if(f.k==='g') ranges[i]++;
   // a range running through a square blocks it, unless the square is a pass; peaks and sea never take a road
   const ok=i=> i>=0 && band[i]>=1 && band[i]<=3 && !W.opt[i].sea && (ranges[i]<2 || !!W.opt[i].tpl.pass);
   W.roadOk=ok;
+  // barriers: a square a river or a canyon runs through (in on one side, out on another)
+  const bar={ r:new Uint8Array(n), c:new Uint8Array(n) };
+  for(let i=0;i<n;i++){ if(!band[i]||W.opt[i].sea) continue; let r=0,c=0;
+    for(const L of W.feats[i]) for(const f of L){ if(f.k==='r') r++; else if(f.k==='c') c++; }
+    if(r>=2) bar.r[i]=1; if(c>=2) bar.c[i]=1; }
+  W.barrier=bar;
+  // 1. points of interest
+  placeCaves(W, ok, bar);
   const dest=new Map();
   const addDest=(i,name,site,kind)=>{ if(!ok(i)||dest.has(i)) return; dest.set(i,{i,name,site,kind}); };
   for(const L of W.landmarks){
-    if(L.kind==='spire'){ let best=-1,bb=9; for(const j of W.nb[L.i].concat(W.diag[L.i])) if(ok(j)&&band[j]<bb){ bb=band[j]; best=j; }
+    if(L.kind==='spire'){ let best=-1,bb=9; for(const j of W.nb[L.i].concat(W.diag[L.i])) if(ok(j)&&band[j]<bb&&!bar.r[j]&&!bar.c[j]){ bb=band[j]; best=j; }
       if(best>=0) addDest(best, L.place+"'s shore", null, 'shore'); continue; }
-    addDest(L.i, L.kind==='castle'?'the Hold':L.place.split(' by ')[0], L.site, L.kind==='castle'?'castle':'village'); }
+    addDest(L.i, L.kind==='castle'?'the Hold':L.place.split(' by ')[0], L.site, L.kind==='castle'?'castle':L.kind==='cave'?'cave':'village'); }
   for(let i=0;i<n;i++) if(W.opt[i].tpl.pass) addDest(i,'the '+W.opt[i].tpl.id.replace('-',' '),null,'pass');
   const D=[...dest.keys()].sort((a,b)=>a-b);
-  const edgeCost=(i,s)=>{ const j=W.nb[i][s]; if(!ok(j)) return -1; const db=Math.abs(band[i]-band[j]); if(db>1) return -1;
-    const os=(s+2)%4; let c=ROAD.step+ROAD.band*db; const F=W.feats[i][s];
+  // the crossings nature allows: one or two bridges a canyon, one to three fords or bridges a river; a range only at a pass
+  const cross={ r:new Uint8Array(n), c:new Uint8Array(n) }; W.crossings=[];
+  for(const k of ['c','r']){ const seen=new Uint8Array(n);
+    for(let i0=0;i0<n;i0++){ if(!bar[k][i0]||seen[i0]) continue;
+      const comp=[i0]; seen[i0]=1;
+      for(let q=0;q<comp.length;q++){ const i=comp[q];
+        for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0||seen[j]||!bar[k][j]) continue; if(!W.feats[i][s].some(f=>f.k===k)) continue; seen[j]=1; comp.push(j); } }
+      comp.sort((a,b)=>a-b);
+      const cands=comp.filter(ok); if(!cands.length) continue;
+      const want=Math.min(cands.length, k==='c' ? (comp.length>=5?2:1) : (comp.length<=3?1:comp.length<=7?2:3));
+      const chosen=[];
+      while(chosen.length<want){ let best=-1, bs=-1;
+        for(const i of cands){ if(chosen.includes(i)) continue;
+          const md=chosen.length?Math.min(...chosen.map(j=>W.dist(i,j))):0; if(chosen.length&&md<2) continue;
+          const sc=md+(dest.has(i)?(dest.get(i).kind==='castle'?3:1.5):0)+(band[i]===1?0.5:0)+h01(W.seed^0xb41d,i,k.charCodeAt(0))*0.5;
+          if(sc>bs){ bs=sc; best=i; } }
+        if(best<0) break; chosen.push(best); }
+      for(const i of chosen){ cross[k][i]=1;
+        const kind = k==='c' || band[i]>1 || W.lake[i] ? 'bridge' : 'ford';
+        const off = W.crossings.some(x=>x.i===i) ? 46 : 0;
+        const site=[W.hub[i][0]+off, W.hub[i][1]-off*0.4];
+        const C={ i, kind, over:k==='c'?'canyon':'river', icon:kind, seenFrom:CROSS_SEEN, site, size:comp.length, used:false };
+        [C.cx,C.cy]=chunkOf(W,i,site); W.crossings.push(C); } } }
+  const passable=i=> !(bar.r[i]&&!cross.r[i]) && !(bar.c[i]&&!cross.c[i]);
+  W.passable=passable;
+  // a square a river or canyon runs through, with no crossing, is a dead end: roads may end there, from one bank only
+  const entry=new Int32Array(n).fill(-1);
+  const mainSq=new Uint8Array(n), net=new Uint8Array(n);
+  const stepCost=(u,s,mode)=>{ const v=W.nb[u][s]; if(!ok(v)) return -1; const db=Math.abs(band[u]-band[v]); if(db>1) return -1;
+    if(!passable(v) && entry[v]>=0 && entry[v]!==u) return -1;
+    const os=(s+2)%4; const lesser=mode!=='main';
+    let c=ROAD.step+(lesser?ROAD.lesserBand:ROAD.band)*db+(band[v]===3?(lesser?ROAD.lesserHigh:ROAD.high):0); const F=W.feats[u][s];
     if(F.some(f=>f.k==='r')) c+=ROAD.river; if(F.some(f=>f.k==='g')) c+=ROAD.range;
-    if(W.opt[i].offer[s].length||W.opt[j].offer[os].length) c-=ROAD.offer;
-    const a=(s===1||s===2)?i:j, b=(s===1||s===2)?s:os; return c+h3(W.seed^0x70ad,a,b)%ROAD.jitter; };
-  const cands=[];
-  for(let a=0;a<D.length;a++){
-    const src=D[a], dist=new Float64Array(n).fill(Infinity), prev=new Int32Array(n).fill(-1), done=new Uint8Array(n);
-    dist[src]=0;
+    if(W.opt[u].offer[s].length||W.opt[v].offer[os].length) c-=ROAD.offer;
+    if(cross.r[v]||cross.c[v]) c-=ROAD.cross;                   // crossings draw roads to them
+    if(mode==='main'){ if(mainSq[v]&&!dest.has(v)) c+=ROAD.overlap; else if(W.nb[v].some(x=>x>=0&&mainSq[x])) c+=ROAD.beside; }
+    else if(net[v]) c=Math.min(c,4);                             // a lesser road may follow the network
+    const a=(s===1||s===2)?u:v, b=(s===1||s===2)?s:os; return c+h3(W.seed^0x70ad,a,b)%ROAD.jitter; };
+  const dijkstra=(srcs,mode)=>{ const dist=new Float64Array(n).fill(Infinity), prev=new Int32Array(n).fill(-1), done=new Uint8Array(n), isSrc=new Uint8Array(n);
+    for(const s of srcs){ dist[s]=0; isSrc[s]=1; }
     for(;;){ let u=-1, bd=Infinity; for(let k=0;k<n;k++) if(!done[k]&&dist[k]<bd){ bd=dist[k]; u=k; } if(u<0) break; done[u]=1;
-      for(let s=0;s<4;s++){ const c=edgeCost(u,s); if(c<0) continue; const v=W.nb[u][s]; if(bd+c<dist[v]){ dist[v]=bd+c; prev[v]=u; } } }
-    for(let b=a+1;b<D.length;b++){ const t=D[b]; if(dist[t]===Infinity) continue;
-      const path=[t]; while(path[path.length-1]!==src) path.push(prev[path[path.length-1]]); path.reverse();
-      if(path.length>=ROAD.minSquares) cands.push({a:src,b:t,cost:dist[t],path}); } }
-  cands.sort((x,y)=>x.cost-y.cost||x.a-y.a||x.b-y.b);
-  // a spanning network: the cheapest route joining two unconnected destinations, until none is left
-  const par=new Map(D.map(d=>[d,d])); const find=x=>{ while(par.get(x)!==x){ par.set(x,par.get(par.get(x))); x=par.get(x); } return x; };
-  const join=(x,y)=>{ const rx=find(x), ry=find(y); if(rx!==ry) par.set(Math.max(rx,ry),Math.min(rx,ry)); };
+      if(!passable(u) && !isSrc[u]) continue;                    // a dead end: reached, never passed through
+      for(let s=0;s<4;s++){ const v=W.nb[u][s];
+        if(isSrc[u] && !passable(u) && entry[u]>=0 && v!==entry[u]) continue;
+        const c=stepCost(u,s,mode); if(c<0) continue; if(bd+c<dist[v]){ dist[v]=bd+c; prev[v]=u; } } }
+    return {dist,prev}; };
+  const trace=(prev,t,isSrc)=>{ const p=[t]; while(!isSrc(p[p.length-1])) p.push(prev[p[p.length-1]]); return p.reverse(); };
+  const addRoad=R=>{ W.roads.push(R); const P=R.path; for(const i of P) net[i]=1; if(R.kind==='main road') for(const i of P) mainSq[i]=1;
+    for(const e of [0,P.length-1]){ const i=P[e]; if(!passable(i)&&P.length>1) entry[i]=P[e===0?1:P.length-2]; } };
   W.roads=[];
-  for(const c of cands){ if(find(c.a)===find(c.b)) continue;
-    for(const p of c.path) if(dest.has(p)) join(c.a,p);
-    W.roads.push({ from:dest.get(c.a), to:dest.get(c.b), path:c.path, cost:c.cost }); }
-  // the edge slots a road uses come from its route
+  // 2. main roads: few and long, between the major places far apart, longest first; they keep apart
+  const majors=D.filter(d=>{ const k=dest.get(d).kind; return k==='castle'||k==='village'; });
+  const big=W.N>=12, cap=mainRoadCap(W.N), minLen=big?5:3;
+  const par=new Map(D.map(d=>[d,d])); const find=x=>{ while(par.get(x)!==x){ par.set(x,par.get(par.get(x))); x=par.get(x); } return x; };
+  const deg=new Map();
+  const mains=[];
+  const besideRun=(P,B)=>{ const A=new Set(P); let run=0,max=0;
+    for(const p of P){ if(B.has(p)){ run=0; continue; } const bes=W.nb[p].some(x=>x>=0&&B.has(x)&&!A.has(x)); run=bes?run+1:0; if(run>max) max=run; } return max; };
+  const overlapRun=(P,B)=>{ let run=0,max=0; for(const p of P){ run=(B.has(p)&&!dest.has(p))?run+1:0; if(run>max) max=run; } return max; };
+  const tryMains=(pool,minFar)=>{
+    const pairs=[];
+    for(let a=0;a<pool.length;a++) for(let b=a+1;b<pool.length;b++){ const A=pool[a], B=pool[b], d=W.dist(A,B); if(d<minFar) continue;
+      const castle=dest.get(A).kind==='castle'||dest.get(B).kind==='castle';
+      pairs.push({a:A,b:B,v:d+(castle?1.5:0)+h01(W.seed^0x3a1,A,B)*0.5}); }
+    pairs.sort((x,y)=>y.v-x.v||x.a-y.a||x.b-y.b);
+    for(const p of pairs){ if(mains.length>=cap) break;
+      if(find(p.a)===find(p.b) || (deg.get(p.a)||0)>=3 || (deg.get(p.b)||0)>=3) continue;
+      const {dist,prev}=dijkstra([p.a],'main'); if(dist[p.b]===Infinity) continue;
+      const path=trace(prev,p.b,x=>x===p.a); if(path.length<minLen) continue;
+      const set=new Set(path);
+      if(mains.some(M=>besideRun(path,M.set)>1||besideRun(M.path,set)>1||overlapRun(path,M.set)>1)) continue;
+      const R={ kind:'main road', from:dest.get(p.a), to:dest.get(p.b), path, cost:dist[p.b], set };
+      mains.push(R); addRoad(R); deg.set(p.a,(deg.get(p.a)||0)+1); deg.set(p.b,(deg.get(p.b)||0)+1);
+      for(const q of path) if(par.has(q)){ const r1=find(q), r2=find(p.a); if(r1!==r2) par.set(Math.max(r1,r2),Math.min(r1,r2)); } } };
+  tryMains(majors, big?4:2);
+  if(!mains.length) tryMains(D, 2);
+  if(!mains.length) tryMains(D, 1);     // a small world with its towns close in: the main road runs to the farthest place there is
+  // 3. lesser roads and trails: from the network out to every place not on it yet, nearest first
+  if(!W.roads.length){ const seed0=D.find(d=>dest.get(d).kind==='castle')??majors[0]??D[0]; if(seed0!==undefined) net[seed0]=1; }
+  const seeded=new Set();
+  for(let guard=0; guard<D.length+4; guard++){
+    const left=D.filter(d=>!net[d]); if(!left.length) break;
+    const srcs=[]; for(let i=0;i<n;i++) if(net[i]&&passable(i)) srcs.push(i);
+    const {dist,prev}=dijkstra(srcs,'lesser');
+    let t=-1, bd=Infinity; for(const d of left) if(dist[d]<bd){ bd=dist[d]; t=d; }
+    if(t<0){ // nothing left is reachable from this network: a village that can't be reached starts its own
+      const v=left.find(d=>dest.get(d).kind==='village'&&!seeded.has(d)&&passable(d)); if(v===undefined) break; seeded.add(v); net[v]=1; continue; }
+    const isSrc=new Set(srcs); const path=trace(prev,t,x=>isSrc.has(x));
+    const to=dest.get(t), start=path[0];
+    const from=dest.get(start) || { i:start, name:'a junction', site:null, kind:'junction' };
+    const trail = to.kind==='cave'||to.kind==='shore'||to.kind==='pass';
+    // a road that only goes on from where another lesser road ends is the same road, longer
+    const prevR=W.roads.find(R=>R.kind!=='main road'&&R.path[R.path.length-1]===start);
+    if(prevR && W.roads.filter(R=>R.path.includes(start)).length===1){
+      prevR.path=prevR.path.concat(path.slice(1)); prevR.to=to; prevR.cost+=dist[t]; prevR.stops.push(to.name);
+      if(!trail) prevR.kind='lesser road';
+      for(const i of path) net[i]=1; if(!passable(t)) entry[t]=path[path.length-2]; continue; }
+    addRoad({ kind:trail?'trail':'lesser road', from, to, path, cost:dist[t], stops:[to.name] }); }
+  // 5. the edge slots a road uses come from its route
   const slotOf=new Map();
-  for(const R of W.roads){ R.sides=[]; R.slots=[];
+  for(const R of W.roads){ R.sides=[]; R.slots=[]; const main=R.kind==='main road', trail=R.kind==='trail';
     for(let k=0;k+1<R.path.length;k++){ const i=R.path[k], j=R.path[k+1]; const s=W.nb[i].indexOf(j), os=(s+2)%4;
-      const key=(s===1||s===2)?i*4+s:j*4+os; let slot=slotOf.get(key);
-      if(slot===undefined){ const taken=new Set(W.feats[i][s].map(f=>f.slot));
-        const pref=W.opt[i].offer[s].concat(W.opt[j].offer[os], SLOT_ORDER); slot=pref.find(q=>!taken.has(q));
-        slotOf.set(key,slot); W.feats[i][s].push({k:'d',slot,f:''}); W.feats[j][os].push({k:'d',slot,f:''}); }
-      R.sides.push(s); R.slots.push(slot); } }
+      const key=(s===1||s===2)?i*4+s:j*4+os; let e=slotOf.get(key);
+      if(e===undefined){ const taken=new Set(W.feats[i][s].map(f=>f.slot));
+        const pref=W.opt[i].offer[s].concat(W.opt[j].offer[os], SLOT_ORDER); const slot=pref.find(q=>!taken.has(q));
+        const fa={k:'d',slot,f:'',main,trail}, fb={k:'d',slot,f:'',main,trail};
+        e={slot,fa,fb}; slotOf.set(key,e); W.feats[i][s].push(fa); W.feats[j][os].push(fb); }
+      else { if(main){ e.fa.main=e.fb.main=true; } if(!trail){ e.fa.trail=e.fb.trail=false; } }
+      R.sides.push(s); R.slots.push(e.slot); } }
   W.roadEnd=new Array(n).fill(null);
-  for(const R of W.roads) for(const d of [R.from,R.to]) W.roadEnd[d.i]=d.site||W.hub[d.i];
+  for(const R of W.roads) for(const d of [R.from,R.to]) if(dest.has(d.i)) W.roadEnd[d.i]=d.site||W.hub[d.i];
   W.roadDest=dest;
+  for(const C of W.crossings) C.used=W.roads.some(R=>R.path.includes(C.i));
+  // waystations: an inn or a shop every two or three squares along each main road
+  W.waystations=[]; const wayAt=new Set();
+  mains.forEach((R,ri)=>{ const r=rng(h3(W.seed^0x3a7,ri,R.path[0])); let next=2+(r()<0.5?0:1);
+    for(let k=1;k<R.path.length-1;k++){ if(k<next) continue; const i=R.path[k];
+      if(dest.has(i)||wayAt.has(i)||W.crossings.some(C=>C.i===i)){ next=k+1; continue; }
+      wayAt.add(i); const kind=r()<0.5?'inn':'shop', a=r()*6.283;
+      const site=[W.hub[i][0]+Math.cos(a)*55, W.hub[i][1]+Math.sin(a)*55];
+      const Wy={ i, kind, icon:WAY[kind].icon, seenFrom:WAY[kind].seenFrom, site, road:R.from.name+' to '+R.to.name };
+      [Wy.cx,Wy.cy]=chunkOf(W,i,site); W.waystations.push(Wy); next=k+2+(r()<0.5?0:1); } });
+  W.roadCheck=checkRoads(W);
+}
+// no road passes through a river or canyon except at a crossing (a dead-end square is reached from one bank only),
+// and no main road runs beside another for more than one square
+function checkRoads(W){
+  const n=W.n, illegal=[], bank=new Map(); let beside=0;
+  for(const R of W.roads){ const P=R.path;
+    for(let q=0;q<P.length;q++){ const i=P[q]; if(W.passable(i)) continue;
+      const end=q===0||q===P.length-1; if(!end){ illegal.push([i,R]); continue; }
+      const nb=P[q===0?1:q-1]; if(!bank.has(i)) bank.set(i,new Set()); bank.get(i).add(nb); } }
+  for(const [i,S2] of bank) if(S2.size>1) illegal.push([i,null]);
+  const mains=W.roads.filter(R=>R.kind==='main road');
+  for(let a=0;a<mains.length;a++) for(let b=0;b<mains.length;b++){ if(a===b) continue;
+    const A=new Set(mains[a].path), B=new Set(mains[b].path); let run=0,max=0;
+    for(const p of mains[a].path){ if(B.has(p)){ run=0; continue; } run=W.nb[p].some(x=>x>=0&&B.has(x)&&!A.has(x))?run+1:0; if(run>max) max=run; }
+    if(max>1) beside++; }
+  return { illegal, beside };
 }
 
 // ---------- outcrops: a small seeded sight every few chunks within view of a road ----------
@@ -575,7 +717,7 @@ const OUTCROPS = { 'rock spire':{icon:'needle',seenFrom:KNOW+2}, 'crag':{icon:'c
   'lone great tree':{icon:'lonetree',seenFrom:KNOW+1}, 'ruin':{icon:'ruin',seenFrom:KNOW+1}, 'sea view':{icon:'seaview',seenFrom:KNOW+1} };
 const OUT_EVERY = 6, OUT_SPACING = 3;
 function placeOutcrops(W){
-  W.outcrops=[]; const marks=W.landmarks.map(L=>[L.cx,L.cy]);
+  W.outcrops=[]; const marks=W.landmarks.concat(W.waystations, W.crossings.filter(C=>C.used)).map(L=>[L.cx,L.cy]);
   W.roads.forEach((R,ri)=>{ const r=rng(h3(W.seed^0x0c40,ri,R.path[0]));
     const last=R.path.length-1; let acc=0, next=(2+r()*2)*CH;
     for(let k=0;k<=last;k++){ const i=R.path[k];
@@ -679,7 +821,7 @@ let walk=null; // { cx, cy, state:Uint8Array, order:[], hashes:Map }
 let COL={};
 
 function readColors(){ const cs=getComputedStyle(document.documentElement); const g=k=>cs.getPropertyValue(k).trim();
-  COL={}; for(const k of ['bg','fg','muted','sea','sand','river','road','range','ridge','canyon','fog','haze','void','ring-active','ring-gen','ring-known','bad','char','char-edge','undecided','ink','label-bg','flash','seam','accent','panel'])
+  COL={}; for(const k of ['bg','fg','muted','sea','sand','river','road','main-road','fence','stone','range','ridge','canyon','fog','haze','void','ring-active','ring-gen','ring-known','bad','char','char-edge','undecided','ink','label-bg','flash','seam','accent','panel'])
     COL[k]=g('--'+k);
   COL.band=BANDS.map(b=>g('--band-'+b)); COL.bio={}; for(const b of BIOME_IDS) COL.bio[b]=g('--bio-'+b); }
 
@@ -823,6 +965,21 @@ function draw(){
       ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fillStyle=COL.char; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=COL['char-edge']; ctx.stroke();
       ctx.beginPath(); ctx.arc(x,y,r*0.35,0,7); ctx.fillStyle=COL['ring-active']; ctx.fill(); } }
 }
+// a main road is wide, fenced (ticks either side) with a marker stone; a lesser road is narrow; a trail is dashed
+function drawRoadPiece(f,lw,sc,a,q,e){
+  const path=()=>{ ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.quadraticCurveTo(q[0],q[1],e[0],e[1]); };
+  ctx.lineCap='round'; ctx.setLineDash([]);
+  if(f.main){ const w=Math.max(3.5,15*sc);
+    path(); ctx.strokeStyle=COL.fence; ctx.lineCap='butt'; ctx.lineWidth=w+Math.max(5,13*sc); ctx.setLineDash([Math.max(1.5,4*sc),Math.max(4,22*sc)]); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineCap='round'; path(); ctx.strokeStyle=COL['main-road']; ctx.lineWidth=w; ctx.stroke();
+    if(sc*S>40){ const t=0.5, mx=(1-t)*(1-t)*a[0]+2*(1-t)*t*q[0]+t*t*e[0], my=(1-t)*(1-t)*a[1]+2*(1-t)*t*q[1]+t*t*e[1];
+      let dx=e[0]-a[0], dy=e[1]-a[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L; const o=w*0.5+Math.max(4,12*sc), r=Math.max(2,5*sc);
+      ctx.beginPath(); ctx.rect(mx-dy*o-r,my+dx*o-r,2*r,2*r); ctx.fillStyle=COL.stone; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=COL.fence; ctx.stroke(); }
+    return; }
+  path(); ctx.strokeStyle=COL.road; ctx.lineWidth=Math.max(1.5,7*sc);
+  if(f.trail) ctx.setLineDash([Math.max(3,14*sc),Math.max(2.5,9*sc)]);
+  ctx.stroke(); ctx.setLineDash([]);
+}
 function fr(x0,y0,x1,y1){ const a=Math.round(x0), b=Math.round(y0); ctx.fillRect(a,b,Math.round(x1)-a,Math.round(y1)-b); }
 function drawFeatures(T,feats,i,X,Y,sc){
   const hub=W.solved?W.hub[i]:[S/2,S/2]; const kinds=['c','g','d','r'];
@@ -836,6 +993,7 @@ function drawFeatures(T,feats,i,X,Y,sc){
       if(k==='d' && W.solved && W.roadEnd[i]){ ex=W.roadEnd[i][0]; ey=W.roadEnd[i][1]; }
       if(fade){ ex=px+(hub[0]-px)*0.62; ey=py+(hub[1]-py)*0.62; }
       ctx.beginPath(); ctx.moveTo(X(T.x0+px),Y(T.y0+py)); ctx.quadraticCurveTo(X(T.x0+qx),Y(T.y0+qy),X(T.x0+ex),Y(T.y0+ey));
+      if(k==='d'){ drawRoadPiece(f,lw,sc,[X(T.x0+px),Y(T.y0+py)],[X(T.x0+qx),Y(T.y0+qy)],[X(T.x0+ex),Y(T.y0+ey)]); continue; }
       ctx.strokeStyle=st2.c; ctx.lineCap='round'; ctx.lineWidth=lw; ctx.setLineDash([]); ctx.stroke();
       if(k==='g'){ ctx.strokeStyle=COL.ridge; ctx.lineWidth=Math.max(1,lw*0.25); ctx.setLineDash([Math.max(2,lw*0.5),Math.max(2,lw*0.5)]); ctx.stroke(); ctx.setLineDash([]); }
       if(k==='c'){ ctx.strokeStyle=COL.fg; ctx.globalAlpha=0.35; ctx.lineWidth=Math.max(1,lw*0.25); ctx.stroke(); ctx.globalAlpha=1; }
@@ -871,6 +1029,15 @@ function drawIcon(icon,x,y,s){
   else if(icon==='ruin'){ ctx.fillStyle='#d8cfbf'; ctx.fillRect(x-s*0.5,y+s*0.3,s,s*0.18); ctx.strokeRect(x-s*0.5,y+s*0.3,s,s*0.18);
     ctx.beginPath(); ctx.moveTo(x-s*0.38,y+s*0.3); ctx.lineTo(x-s*0.38,y-s*0.5); ctx.lineTo(x-s*0.14,y-s*0.35); ctx.lineTo(x-s*0.14,y+s*0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x+s*0.14,y+s*0.3); ctx.lineTo(x+s*0.14,y-s*0.1); ctx.lineTo(x+s*0.38,y-s*0.2); ctx.lineTo(x+s*0.38,y+s*0.3); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(icon==='cave'){ ctx.beginPath(); ctx.moveTo(x-s*0.6,y+s*0.45); ctx.quadraticCurveTo(x-s*0.45,y-s*0.55,x,y-s*0.55); ctx.quadraticCurveTo(x+s*0.45,y-s*0.55,x+s*0.6,y+s*0.45); ctx.closePath(); ctx.fillStyle='#8a8070'; ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x-s*0.25,y+s*0.45); ctx.quadraticCurveTo(x-s*0.25,y-s*0.15,x,y-s*0.15); ctx.quadraticCurveTo(x+s*0.25,y-s*0.15,x+s*0.25,y+s*0.45); ctx.closePath(); ctx.fillStyle='#1b1714'; ctx.fill(); }
+  else if(icon==='inn'||icon==='shop'){ ctx.fillStyle='#e9dcc3'; ctx.fillRect(x-s*0.4,y-s*0.05,s*0.8,s*0.5); ctx.strokeRect(x-s*0.4,y-s*0.05,s*0.8,s*0.5);
+    ctx.beginPath(); ctx.moveTo(x-s*0.52,y-s*0.02); ctx.lineTo(x,y-s*0.5); ctx.lineTo(x+s*0.52,y-s*0.02); ctx.closePath(); ctx.fillStyle=icon==='inn'?'#a8462f':'#2f6aa8'; ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5a3a22'; ctx.fillRect(x-s*0.1,y+s*0.15,s*0.2,s*0.3);
+    if(icon==='inn'){ ctx.beginPath(); ctx.moveTo(x+s*0.4,y+s*0.05); ctx.lineTo(x+s*0.62,y+s*0.05); ctx.stroke(); ctx.fillStyle='#e8b33a'; ctx.fillRect(x+s*0.52,y+s*0.08,s*0.14,s*0.14); } }
+  else if(icon==='bridge'){ ctx.fillStyle='#b9ad9a'; ctx.beginPath(); ctx.moveTo(x-s*0.6,y-s*0.1); ctx.lineTo(x+s*0.6,y-s*0.1); ctx.lineTo(x+s*0.6,y+s*0.35); ctx.lineTo(x+s*0.38,y+s*0.35);
+    ctx.quadraticCurveTo(x,y-s*0.15,x-s*0.38,y+s*0.35); ctx.lineTo(x-s*0.6,y+s*0.35); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(icon==='ford'){ ctx.fillStyle='#d6cfc2'; for(const [ox,oy] of [[-0.38,0.12],[0,-0.08],[0.38,0.12]]){ ctx.beginPath(); ctx.ellipse(x+ox*s,y+oy*s,s*0.17,s*0.12,0,0,7); ctx.fill(); ctx.stroke(); } }
   else if(icon==='seaview'){ ctx.beginPath(); ctx.arc(x,y,s*0.48,0,7); ctx.fillStyle='#4f86b8'; ctx.fill(); ctx.stroke();
     ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.moveTo(x-s*0.32,y+s*0.08); ctx.quadraticCurveTo(x-s*0.16,y-s*0.1,x,y+s*0.08); ctx.quadraticCurveTo(x+s*0.16,y+s*0.26,x+s*0.32,y+s*0.08); ctx.stroke(); }
   ctx.restore();
@@ -882,12 +1049,12 @@ function drawLandmarks(tiles,X,Y,sc,tpx){
     const x=X(T.x0+L.site[0]), y=Y(T.y0+L.site[1]);
     if(vis===1){ ctx.beginPath(); ctx.arc(x,y,size*0.95,0,7); ctx.strokeStyle=COL['ring-known']; ctx.lineWidth=2; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]); }
     ctx.globalAlpha = vis===1?0.75:1; drawIcon(L.icon,x,y,size); ctx.globalAlpha=1;
-    if(showNames && vis===2){ const txt = L.kind==='castle'?'the Hold':L.place.split(' by ')[0]; const sub=L.icon==='tree'?'great tree':L.icon==='volcano'?'volcano':L.icon==='boat'?'fishing village':L.icon==='spire'?'sea spire':'castle';
+    if(showNames && vis===2){ const txt = L.kind==='castle'?'the Hold':L.place.split(' by ')[0]; const sub=L.icon==='tree'?'great tree':L.icon==='volcano'?'volcano':L.icon==='boat'?'fishing village':L.icon==='spire'?'sea spire':L.icon==='cave'?'cave':'castle';
       const line=txt+' · '+sub; const tw=ctx.measureText(line).width+8; ctx.fillStyle=COL['label-bg']; ctx.fillRect(x-tw/2,y+size*0.6,tw,15); ctx.fillStyle=COL.ink; ctx.fillText(line,x,y+size*0.6+2); }
   }
     // outcrops along the roads: smaller, and seen through the fog the same way
     const os=Math.max(7,size*0.55);
-    for(const O of W.outcrops){ if(O.i!==T.i) continue; const vis=lmVisible(O); if(!vis) continue;
+    for(const O of W.outcrops.concat(W.waystations, W.crossings.filter(C=>C.used))){ if(O.i!==T.i) continue; const vis=lmVisible(O); if(!vis) continue;
       const x=X(T.x0+O.site[0]), y=Y(T.y0+O.site[1]);
       if(vis===1){ ctx.beginPath(); ctx.arc(x,y,os*0.95,0,7); ctx.strokeStyle=COL['ring-known']; ctx.lineWidth=1.5; ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]); }
       ctx.globalAlpha = vis===1?0.75:1; drawIcon(O.icon,x,y,os); ctx.globalAlpha=1;
@@ -912,14 +1079,21 @@ function drawRings(v,X,Y,sc,cssW){
 
 // ---- text ----
 function featText(L){ if(!L.length) return '—'; return L.map(f=>KIND[f.k]+' '+f.slot+(f.f==='i'?' in':f.f==='o'?' out':'')).join(', '); }
+function roadStats(){
+  const M=W.roads.filter(R=>R.kind==='main road'), Ls=W.roads.filter(R=>R.kind==='lesser road'), Tr=W.roads.filter(R=>R.kind==='trail');
+  const used=W.crossings.filter(C=>C.used), br=used.filter(C=>C.kind==='bridge').length, fo=used.length-br;
+  const ill=W.roadCheck.illegal.length, bes=W.roadCheck.beside;
+  return ' · main roads '+M.length+' (longest '+(M.length?Math.max(...M.map(R=>R.path.length)):0)+' squares) · lesser roads '+Ls.length+', trails '+Tr.length
+    +' · waystations '+W.waystations.length+' · bridges '+br+', fords '+fo+' <span class="k">(of '+W.crossings.length+' planned)</span>'
+    +' · illegal crossings <b class="'+(ill?'badc':'ok')+'">'+ill+'</b> · mains side by side <b class="'+(bes?'badc':'ok')+'">'+bes+'</b>';
+}
 function updateHud(){
   if(!W) return;
   const fl=(W.solved?W.fillers:sv.fillers).length;
   const mm=W.solved?(W.mismatch.length+W.cornerBad.length):0;
   $('solveStats').innerHTML = (W.solved?'Solved':'Solving')+' · steps '+sv.steps+' · backtracks '+sv.backtracks+' · fillers <b class="'+(fl?'badc':'ok')+'">'+fl+'</b>'
     +(W.solved?' · mismatches <b class="'+(mm?'badc':'ok')+'">'+mm+'</b>':'')
-    +(W.solved?' · roads '+W.roads.length+', shortest '+(W.roads.length?Math.min(...W.roads.map(R=>R.path.length))+' squares':'—')
-      +', river violations <b class="'+(W.riverBad.length?'badc':'ok')+'">'+W.riverBad.length+'</b> · outcrops '+W.outcrops.length+' · plan '+hex(W.planHash):'')
+    +(W.solved?roadStats()+', river violations <b class="'+(W.riverBad.length?'badc':'ok')+'">'+W.riverBad.length+'</b> · outcrops '+W.outcrops.length+' · plan '+hex(W.planHash):'')
     +' · full solve '+solveMs.toFixed(1)+' ms';
   if(!W.solved||!walk){ $('here').innerHTML='<span class="k">Press Solve, or tap the map to finish and start walking.</span>'; $('cost').innerHTML=''; return; }
   const sx=Math.floor(walk.cx/K), sy=Math.floor(walk.cy/K), i=sy*W.w+sx, o=W.opt[i];
@@ -929,7 +1103,11 @@ function updateHud(){
   $('here').innerHTML='<div><b>'+o.tpl.id+'</b>'+(o.rot?' turned '+o.rot*90+'°':'')+' · '+BANDS[W.band[i]]+' · '+BIOMES[o.tpl.biome].name+(o.filler?' · <span class="badc">filler</span>':'')
     +' <span class="k">· chunk ('+gx+', '+gy+')</span></div>'
     +(lm.length?lm.map(L=>'<div>'+L.place+' <span class="k">— '+L.title+'; form '+L.form+'</span></div>').join(''):'<div class="k">No landmark here.</div>')
-    +W.roads.filter(R=>R.path.includes(i)).map(R=>'<div><span class="k">Road</span> '+R.from.name+' to '+R.to.name+' <span class="k">· '+R.path.length+' squares, bands '+R.path.map(p=>W.band[p]).join('→')+'</span></div>').join('')
+    +W.roads.filter(R=>R.path.includes(i)).map(R=>'<div><span class="k">'+R.kind[0].toUpperCase()+R.kind.slice(1)+'</span> '+R.from.name+' to '+(R.stops&&R.stops.length>1?R.stops.join(', '):R.to.name)+' <span class="k">· '+R.path.length+' squares, bands '+R.path.map(p=>W.band[p]).join('→')+'</span></div>').join('')
+    +W.waystations.filter(O=>O.i===i).map(O=>'<div><span class="k">Waystation</span> '+(O.kind==='inn'?'an inn':'a shop')+' <span class="k">· on the main road '+O.road+'</span></div>').join('')
+    +W.crossings.filter(C=>C.i===i).map(C=>'<div><span class="k">Crossing</span> '+(C.kind==='bridge'?'a bridge':'a ford')+' over the '+C.over+' <span class="k">· one of the few on a '+C.size+'-square '+C.over+(C.used?'':'; no road uses it yet')+'</span></div>').join('')
+    +(W.barrier.r[i]&&!W.passable(i)?'<div class="k">A river runs through here with no crossing: roads end on one bank.</div>':'')
+    +(W.barrier.c[i]&&!W.passable(i)?'<div class="k">A canyon runs through here with no bridge: roads end on one side.</div>':'')
     +W.outcrops.filter(O=>O.i===i).map(O=>'<div><span class="k">Outcrop</span> '+O.kind+' <span class="k">· on the road '+O.road+'</span></div>').join('')
     +W.riverBad.filter(([b])=>b===i).map(([,why])=>'<div class="badc">River '+why+'</div>').join('')
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px">'+side+'</div>';
@@ -945,10 +1123,11 @@ function buildLegend(){
   let h='';
   BANDS.forEach(b=>h+=sw('--band-'+b,'band: '+b+' ('+BAND_H[BANDS.indexOf(b)]+')'));
   BIOME_IDS.forEach(b=>h+=sw('--bio-'+b,BIOMES[b].name));
-  h+=ln('--river','river (arrow = flow, always downhill)')+ln('--road','road')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline');
+  h+=ln('--river','river (arrow = flow, always downhill)')+ln('--main-road','main road (fenced, marker stones)')+ln('--road','lesser road (dashed: a trail)')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline');
   h+=ln('--ring-active','active: reach 2')+ln('--ring-gen','generated: sight 4')+ln('--ring-known','known: know 7')+sw('--fog','unknown (plan only)');
   h+='<div>13 templates: each has a sibling in the 26 with the same edges, another name and biome. With the 3-square rule a 3 × 3 window of one band needs 9 different templates, so 13 runs short at 12 × 12.</div>';
-  h+='<div>Roads are routes between destinations (villages, the castle, a spire’s shore, a pass), solved after the squares at least cost: 3 squares or more, one band step at a time, never into the peaks, through a range only at a pass. Small icons along them are outcrops (rock spire, crag, waterfall where a river drops a band, lone great tree, ruin, sea view).</div>';
+  h+='<div>Roads have a reason. Points of interest come first: villages (about one square in three), the castle, caves (mostly in the hills), passes, a spire’s shore, and the crossings nature allows: one or two bridges a canyon, one to three fords or bridges a river, a range only at a pass. Then a few main roads (up to 6 on 12 × 12, 2 on 3 × 3) join far-apart towns and the castle, longest first, kept apart, with an inn or shop every 2–3 squares. Lesser roads and trails branch off to everything else. Roads go round peaks, climb the high band only at a cost, and pass a river or canyon only at a crossing.</div>';
+  h+='<div>Small icons: waystations (inn, shop), bridges and fords, and outcrops along the roads (rock spire, crag, waterfall where a river drops a band, lone great tree, ruin, sea view).</div>';
   h+='<div>A river enters from an equal or higher band and leaves to an equal or lower one; it starts at a spring (hills and up) or a lake and ends at the sea or a lake. Red ring: a river violation.</div>';
   h+='<div>red edge or dot: a mismatch</div><div>dashed red box: a filler</div><div>number: options left in the solve</div><div>dashed ring on a landmark: seen through the fog</div>';
   $('legend').innerHTML=h;
