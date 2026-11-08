@@ -38,8 +38,9 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
 - **Assigned (Andrew, 2026-11-07 evening):** the Mac does `casting-leftovers` (glyph per pair; callers off `LoadElement`,
   the core path and `castfeel` stay since retiring them moves 6 goldens; keys untouched), then `hold-batch` (timed waves
   for a 10 min run, keep health, raiders strike a cracking crystal at the heart, attuning in the towers). The PC does
-  `castle-cliff-canyon` (sheer cliff right of the road below the castle, a winding canyon beyond). The keyboard layout
-  waits on Andrew (the lead's proposal: one key per pad button, F interact, R use, V punch, 1-4 kit, T talk).
+  `castle-cliff-canyon` (sheer cliff right of the road below the castle, a winding canyon beyond). **Controller first
+  (Andrew, 2026-11-07):** the keyboard layout is on the back burner; design and judge controls on the pad. The
+  lead's keyboard proposal, for later: one key per pad button, F interact, R use, V punch, 1-4 kit, T talk.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
   (as in the game), same 3500 ticks and per-tick checksums; EditMode 49.8 s (was past 180 s), core suite 3.5 -> 2.4 min.
   EditMode can now be fully green on the PC; on the Mac 8 ApiKeyTests still fail (Windows-only vault). Briefs the lead lands must `git rm` their own claim on the branch.
@@ -94,6 +95,7 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   Andrew's.
 - Screenshot budget (`.claude/skills/screenshot-budget`): sessions check their own shots at 480 px;
   the PM opens an 800 px final only for something it vouches for, or sends it to Andrew unopened.
+- Controls are designed and judged on the controller first; the keyboard follows later (2026-11-07).
 - Ask Andrew one question at a time. Never type a sign-in, password or token for him.
 - Caves are deferred permanently. Restart the PM after each big batch, with a handoff; clear DesktopUnity and the Mac the same way.
 - The world is built from primitives as data (J-055, J-057, J-058): examples are tests of the tools, never features.
