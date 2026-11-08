@@ -42,6 +42,10 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   `castle-cliff-canyon` (sheer cliff right of the road below the castle, a winding canyon beyond). **Controller first
   (Andrew, 2026-11-07):** the keyboard layout is on the back burner; design and judge controls on the pad. The
   lead's keyboard proposal, for later: one key per pad button, F interact, R use, V punch, 1-4 kit, T talk.
+- **`hold-batch` landed** (584e7693, the Mac): a wave every 50 s (15 s warning, 10 waves, the last beaten wins);
+  keep 240 (idle wizards lose in wave 6 at 4.7 min, fire+water wins in about 12 min); the keep is roofless and raiders
+  strike a crystal at the heart that cracks in three stages; four corner towers attune fire, water, earth, air. Six
+  HandsTests goldens moved on purpose. Not Andrew-judged; the clip is on the Mac (asked to send it to him).
 - **Waiting on Andrew's look:** `castle-cliff-canyon` (06ad830a, pushed, not landed). The cliff is just north of the
   castle pad's bank (x170 y296-327, 37 m, boulders jut at the lip as the overhang), not in place of the bank, which the
   brief said to leave. The canyon is dry, beside the valley's river (stamps can't cross water, J-073). It adds path
