@@ -67,6 +67,11 @@ Each entry has:
     explore that." So measure on-demand generation per chunk before deciding.
   - **Thread the world rebuild: yes**, with a determinism test on the PC and the Mac (the core's first threading).
 - **Why:** the recommendations; the generate question stays open until on-demand speed is measured.
+- **The aim, in his words (later the same day):** on-demand loading isn't required, "but it will be interesting to
+  see". The balance he's after: "something that looks curated and organic" and something "more dynamically loaded
+  [that] drives joy when you go to it because it's unexpected without being something that [is] all stamped out." Read
+  every world choice against that: curated anchors and landmarks, organic climate between them, and surprises that
+  don't repeat like a stamp.
 - **Revisited:** 0.
 
 ### J-077: Who coordinates the workers?
