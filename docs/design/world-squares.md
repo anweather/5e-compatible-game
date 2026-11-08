@@ -112,7 +112,11 @@ road, river or character crosses. **Climate follows latitude:** desert and salt 
 side, then tundra and mountains toward the poles, then the ice wall; the square templates' anchors work on top of that.
 Or **half that**, Andrew's preferred start: ice mountains along the north, blending south through tundra and temperate
 to desert along the south edge (a firm boundary there too: an impassable deep dune sea or salt waste), east-west
-wrapping. The valley stays pinned at a temperate latitude. The full torus stays possible as an option (the earlier "torus,
+wrapping. **The edges blend, they aren't walls** (Andrew, after the prototype): the polar ice and the southern desert
+edge blend into the biomes beside them with the same warped borders used everywhere else. Where the ice edge meets
+sea, it's a **jagged ice cliff**, broken and uneven, not a smooth wall. Where the desert edge meets sea, it's a **sandy
+beach**, with a **sandstorm** just beyond it to the south as the impassable edge. The valley stays pinned at a
+temperate latitude. The full torus stays possible as an option (the earlier "torus,
 keep in mind" still holds for it), but the default is the east-west wrap.
 
 **Inland seas** (Andrew, 2026-11-08). A large body of sea water inside the world, not touching its edge: one or more

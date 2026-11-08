@@ -222,8 +222,8 @@ public class RowHouses : MonoBehaviour
         };
     }
 
-    // A row's great trees (its "great-tree" details, rules/buildings.json): the valley's own tree for that cell, scaled up and
-    // stood at a join, a stand-in until a great tree is modelled. The row's cells (its trunk, its roots) are what blocks.
+    // A row's great trees (its "great-tree" details, rules/buildings.json): the valley's own tree of the detail's kind (or the
+    // cell's), scaled up and stood at a join, a stand-in until a great tree is modelled. The row's cells (its trunk, its roots) are what blocks.
     void GreatTrees(GameObject root, BuildingRow row, Vector3 corner)
     {
         if (!(row.Json["parts"] is JArray parts) || !(row.Json["joins"] is JObject joins)) return;
@@ -233,17 +233,52 @@ public class RowHouses : MonoBehaviour
             if (valley == null || !(joins[(string)part["join"] ?? ""] is JArray j)) continue;
             int jx = (int)j[0], jy = (int)j[1];
             int cx = row.X + Mathf.FloorToInt(jx / 2f), cy = row.Y + Mathf.FloorToInt(jy / 2f);
-            if (!valley.TreeModel(cx, cy, out var prefab, out var size)) continue;
+            if (!valley.TreeModel(cx, cy, (string)part["tree"], out var prefab, out var size)) continue;
             float half = grid.cellSize / 2f;
             var at = corner + new Vector3(jx * half, 0f, -jy * half);
-            at.y = grid.GroundAt(at);
+            at.y = TerrainY(at) ?? grid.GroundAt(at);
             var tree = Instantiate(prefab, at, Quaternion.Euler(0f, (cx * 37 + cy * 11) % 360, 0f), root.transform);
             tree.name = "Great tree";
-            tree.transform.localScale = size * ((float?)part["scale"] ?? 7f);
+            tree.AddComponent<GroundedTree>();
+            // Its scale is times the valley's tallest tree there, however tall its own kind is drawn.
+            float own = Height(tree), tallest = valley.TreeKinds(cx, cy).Select(Measured).DefaultIfEmpty(own).Max();
+            tree.transform.localScale = size * ((float?)part["scale"] ?? 3f) * tallest / Mathf.Max(0.1f, own);
         }
     }
 
     const string GreatTree = "great-tree";
+
+    // The drawn terrain's height under a point, or null off every terrain: a great tree stands on the ground drawn, which the
+    // grid only reports once the valley has bound it (a row is drawn before that).
+    static float? TerrainY(Vector3 p)
+    {
+        foreach (var t in Terrain.activeTerrains)
+        {
+            var o = t.transform.position;
+            var size = t.terrainData.size;
+            if (p.x >= o.x && p.x <= o.x + size.x && p.z >= o.z && p.z <= o.z + size.z) return o.y + t.SampleHeight(p);
+        }
+        return null;
+    }
+
+    // How tall a tree is drawn, from its renderers.
+    static float Height(GameObject tree)
+    {
+        var all = tree.GetComponentsInChildren<Renderer>();
+        if (all.Length == 0) return 0f;
+        var bounds = all[0].bounds;
+        foreach (var r in all) bounds.Encapsulate(r.bounds);
+        return bounds.size.y;
+    }
+
+    // A tree kind's height, from a copy made and dropped.
+    static float Measured(GameObject prefab)
+    {
+        var copy = Instantiate(prefab, new Vector3(0f, -10000f, 0f), Quaternion.identity);
+        float h = Height(copy);
+        Destroy(copy);
+        return h;
+    }
 
     // A chimney smokes as a village's does: the same puff, copied from one, at each chimney's top.
     static ParticleSystem[] Smoke(GameObject root, Vector3[] chimneys)

@@ -89,6 +89,9 @@ Each entry has:
   edges of impassable ice mountains. Temperate and desert in the middle latitudes, blending north from the desert to the
   northern mountains and south to the southern mountains. (This replaces the torus as the default; the torus stays an
   option.)
+  Then, after the prototype: the polar regions blend into the biomes beside them, with the same blending rules as
+  elsewhere; where ice meets sea, a jagged ice cliff, not a smooth wall; where the desert edge meets sea, a sandy beach
+  with a sandstorm just beyond it to the south.
 - **The volcano village (to the Mac):** no houses up at the peak. Houses start at the mountain's base and go up "like a
   corridor", a road winding round the mountain with houses on its upslope and downslope sides, "but they shouldn't be
   so steep". The Mac's "wind" layout: a gently rising road part-way round the cone's lower slopes, houses alternating

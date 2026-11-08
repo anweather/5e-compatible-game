@@ -39,3 +39,11 @@ last commit. The lead lands it.
 
 Held (2026-11-08): Andrew asked for a paper prototype of the world squares first. Queue this again after he has
 tried it, with what he changes.
+
+Released (2026-11-08): the paper prototype went through five rounds with Andrew. **It is the spec:**
+`tools/world-paper/index.html` (its solver, constraints, wrap modes, edges, roads and checks; its check*.mjs ideas
+become core tests). Port its rules, not its floats: integers and WorldHash only (D4). Start from a 3 x 3 with the
+valley pinned in the temperate band.
+
+After (2026-11-08, try 1): the watcher stopped u2 for low memory (the old stop; it pauses now). The work in
+progress is on `wip/u2-world-plan`. Continue from it on branch `world-plan`, tests in the foreground.

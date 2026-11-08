@@ -123,7 +123,9 @@ namespace Chem
                 {
                     var c = world.At(x, y);
                     if (stamp.At(x - stamp.X, y - stamp.Y) == 0 || c.Water != 0) continue;
-                    if (c.T == "tree" || (world.HasTag(c, "ground") && !world.IsBlocking(c))) world.Paint(x, y, s.Bare);
+                    if (c.T != "tree" && (!world.HasTag(c, "ground") || world.IsBlocking(c))) continue;
+                    world.Paint(x, y, s.Bare);
+                    world.MarkBare(x, y);
                 }
         }
     }
