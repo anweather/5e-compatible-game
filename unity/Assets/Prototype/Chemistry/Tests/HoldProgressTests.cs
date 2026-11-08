@@ -197,15 +197,19 @@ namespace Chem.Tests
             Assert.That(other.CastHash(), Is.EqualTo(one.CastHash()));
         }
 
-        [Test]
-        public void ACooldownUpgradeShortensThatWizardsCooldown()
+        // A tap's tiny cooldown and a charged cast's both (casting-taps).
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ACooldownUpgradeShortensThatWizardsCooldown(bool charged)
         {
             var w = Offered();
             w.RunOf(Me).Picks.Add("quick-hands");
             w.Hold.NextSpawn = w.Tick + 200;
-            w.ApplyCombo(ComboCommand.Hand(Me, Right));
-            w.ApplyCombo(ComboCommand.Hand(Bo, Right));
-            Ticks(w, 8);
+            foreach (var who in new[] { Me, Bo }) w.ApplyCombo(ComboCommand.HandDown(who, Right));
+            if (charged) Ticks(w, P.Hands.TapTicks);
+            foreach (var who in new[] { Me, Bo }) w.ApplyCombo(ComboCommand.HandUp(who, Right));
+            while (w.HandsOf(Me).Casting) w.Step();
+            Assert.That(w.HandCooling(Bo, Right), Is.EqualTo(charged ? P.Hands.HandCooldown : P.Hands.TapCooldown));
             Assert.That(w.HandCooling(Me, Right), Is.LessThan(w.HandCooling(Bo, Right)));
         }
 

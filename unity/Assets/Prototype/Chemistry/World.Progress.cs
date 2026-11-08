@@ -152,11 +152,14 @@ namespace Chem
         // A number with a wizard's percents on it; a cooldown stops at a tick.
         static int WithPercent(int value, int percent) => Math.Max(1, value * Math.Max(0, 100 + percent) / 100);
 
-        // A row's own cooldown (a big spell's, Meteor's) stands in for the table's.
-        int CooldownOf(string player, string holds, int gesture, bool both, int own)
+        // A row's own cooldown (a big spell's, Meteor's) stands in for the table's, and a tapped single rests the tap's; the
+        // upgrades trim each alike.
+        int CooldownOf(string player, string holds, int gesture, bool both, bool tap, int own)
         {
             int percent = UpgradesOf(player).Where(u => Touches(u, holds, gesture)).Sum(u => u.Cooldown + (both ? u.BothCooldown : 0));
-            int table = both ? HandRules.BothCooldown : HandRules.HandCooldown;
+            int table = HandRules.HandCooldown;
+            if (both) table = HandRules.BothCooldown;
+            else if (tap && HandRules.TapCooldown > 0) table = HandRules.TapCooldown;
             return WithPercent(own > 0 ? own : table, percent);
         }
 

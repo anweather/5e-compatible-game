@@ -153,7 +153,7 @@
     }
   },
   "hands": {
-    "about": "A wizard's hands, in the world and the Hold (D16, unified-casting.md; the-hold.md, phase 3; World.Hands.cs). A hand is a slot: start says what each holds at first, an element or empty, and one element attuned is on both hands. The button is the gesture, thrust or throw, and both on one hand a sweep, and what the hand holds is what comes out. A tap goes off at charge 1; a button held down charges by combos.json's chargeTicks, and its release sets it off. spells is by what a hand holds, and by what both hold (either order) when both make the same gesture: then the hands merge into that one spell, which a release of either sets off at the lower of their charges. A gesture with no such row, like every sweep today, leaves each hand to its own, as different gestures do. A row is a spell, or an act for a hand with no spell. A hand's other button makes a sweep inside window ticks of its first press. range is how far a gesture's spell lands, in cells, by rangeOf. A spell's cooldown is handCooldown ticks on its hand, bothCooldown on both for a merged one, from when it goes off; a row's own cooldown stands in for those (a big spell's, Meteor's). attuneTicks is how long attuning a hand takes outside the Hold (in the attuning room it's at once). kit is the D-pad's list in the Hold.",
+    "about": "A wizard's hands, in the world and the Hold (D16, unified-casting.md; the-hold.md, phase 3; World.Hands.cs). A hand is a slot: start says what each holds at first, an element or empty, and one element attuned is on both hands. The button is the gesture, thrust or throw, and both on one hand a sweep, and what the hand holds is what comes out. A tap, a button let go within tapTicks of its press, goes off tapTicks after the press at charge 1, with no wind-up; a button held down past that charges by combos.json's chargeTicks from its row's castTicks, and its release sets it off. A merge keeps its row's castTicks, tapped or held. spells is by what a hand holds, and by what both hold (either order) when both make the same gesture: then the hands merge into that one spell, which a release of either sets off at the lower of their charges. A gesture with no such row, like every sweep today, leaves each hand to its own, as different gestures do. A row is a spell, or an act for a hand with no spell. A hand's other button makes a sweep inside window ticks of its first press. range is how far a gesture's spell lands, in cells, by rangeOf. A spell's cooldown is tapCooldown ticks on its hand for a tapped single (just enough that one button can't machine-gun), handCooldown for a charged one, bothCooldown on both for a merged one, from when it goes off; a row's own cooldown stands in for those (a big spell's, Meteor's). attuneTicks is how long attuning a hand takes outside the Hold (in the attuning room it's at once). kit is the D-pad's list in the Hold.",
     "start": {
       "left": "water",
       "right": "fire"
@@ -161,6 +161,8 @@
     "window": 4,
     "handCooldown": 12,
     "bothCooldown": 30,
+    "tapTicks": 2,
+    "tapCooldown": 3,
     "attuneTicks": 4,
     "range": {
       "short": 8,
