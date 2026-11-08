@@ -1,0 +1,17 @@
+{
+  "id": "high-pass",
+  "about": "A pass where an east-west road crosses a north-south range at its lowest point.",
+  "bands": ["high", "peaks"],
+  "biome": "mountains",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "land"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "range", "slot": 4, "may": true}]},
+    "e": {"offers": [{"kind": "road", "slot": 4, "must": true}]},
+    "s": {"offers": [{"kind": "range", "slot": 4, "may": true}]},
+    "w": {"offers": [{"kind": "road", "slot": 4, "must": true}]}
+  },
+  "ends": {"range": "fade"},
+  "pass": true,
+  "rotate": true
+}

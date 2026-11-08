@@ -1,0 +1,16 @@
+{
+  "id": "ice-crown",
+  "about": "An icy crest on a range, meltwater running east.",
+  "bands": ["peaks", "high"],
+  "biome": "tundra",
+  "weight": 1,
+  "landmarks": [],
+  "edges": {
+    "n": {"offers": [{"kind": "range", "slot": 6, "may": true}]},
+    "e": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "may": true}]},
+    "s": {"offers": [{"kind": "range", "slot": 6, "may": true}]},
+    "w": {}
+  },
+  "ends": {"range": "fade"},
+  "rotate": true
+}

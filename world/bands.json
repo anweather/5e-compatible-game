@@ -1,0 +1,14 @@
+{
+  "about": "The world plan's height classes (docs/design/world-squares.md section 2; Chem.WorldPlan reads this and world/squares/). Each world square takes one band; touching world squares differ by at most \"step\" bands. A band's height is the land it stands at in metres, before its biome's own base and relief. \"slots\" is how many places a feature may cross a side (one a chunk). \"shore\" is the shoreline's offset classes in cells from a side that faces the sea: two sides of one shore take the same class where they meet, so a coast runs on. \"wall\" is the band of an east-west world's north and south edge rows, which nothing crosses. A square template (world/squares/<id>.json) names its bands, its anchor biome (world/biomes.json), its weight in the solver's roll, its landmark intents (world/landmarks/) with \"where\" rules, and per side (n, e, s, w as it lies unturned; slots run west to east on n and s, north to south on e and w) the features it offers, each a road, river (flowing in or out), range or canyon at a slot, a \"must\" or a \"may\", and \"coast\" if that side may face the sea. \"ends\" says how a feature may stop inside it (a river in a lake, a range fading, a canyon closing). \"rotate\" lets the solver turn it a quarter at a time; \"repeats\" frees it from the rule that copies stand at least 3 world squares apart; \"filler\" marks a band's template that fits anything; \"pinned\" is the valley's; \"pass\" a range crossing.",
+  "bands": [
+    { "id": "sea", "height": -40 },
+    { "id": "low", "height": 20 },
+    { "id": "hills", "height": 120 },
+    { "id": "high", "height": 300 },
+    { "id": "peaks", "height": 700 }
+  ],
+  "wall": { "id": "wall", "height": 900 },
+  "step": 1,
+  "slots": 9,
+  "shore": [48, 112]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "dune-sea",
+  "about": "The south edge of an east-west world: a deep dune sea under a sandstorm. Nothing crosses into it.",
+  "bands": ["wall"],
+  "biome": "dune-sea",
+  "weight": 0,
+  "wall": "south",
+  "repeats": true,
+  "landmarks": [],
+  "edges": {
+    "n": {},
+    "e": {},
+    "s": {},
+    "w": {}
+  },
+  "rotate": false
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ice-wall",
+  "about": "The north edge of an east-west world: impassable ice mountains. Nothing crosses into it.",
+  "bands": ["wall"],
+  "biome": "ice-wall",
+  "weight": 0,
+  "wall": "north",
+  "repeats": true,
+  "landmarks": [],
+  "edges": {
+    "n": {},
+    "e": {},
+    "s": {},
+    "w": {}
+  },
+  "rotate": false
+}
