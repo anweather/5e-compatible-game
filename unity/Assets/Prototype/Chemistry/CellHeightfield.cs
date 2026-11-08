@@ -391,26 +391,41 @@ namespace Chem
         /// <summary>False while the baked ground is read: it knows the stamps a save brings, and not the map's laid land.</summary>
         public bool LaidLandDrawn { get; set; } = true;
 
+        /// <summary>
+        /// Whether Reset works the chunks out side by side (J-079, the core's first threading; on by default). Off, one
+        /// after another as before, for comparison: both give the same bits (HeightfieldThreadingTests).
+        /// </summary>
+        public bool Threaded { get; set; } = true;
+
         /// <summary>Computes every chunk's offsets and draws them at once (no easing).</summary>
+        /// <remarks>
+        /// Threaded, each chunk is one work item that reads the cell cache (made before, then only read) and the grid
+        /// (fixed), and writes only its own ChunkState's arrays. A sample's value is a function of its position alone,
+        /// so the order the chunks run in changes nothing.
+        /// </remarks>
         public void Reset(World world)
         {
             cache = Cache(world);
             try
             {
-                foreach (var kv in chunks)
-                {
-                    var s = kv.Value;
-                    s.Target = Compute(world, kv.Key.i, kv.Key.j);
-                    s.Current = (float[,])s.Target.Clone();
-                    s.Moving = null;
-                    s.Queued = null;
-                }
+                var keys = new List<(int i, int j)>(chunks.Keys);
+                var states = new List<ChunkState>(chunks.Values);
+                if (Threaded) System.Threading.Tasks.Parallel.For(0, keys.Count, k => ResetChunk(world, keys[k], states[k]));
+                else for (int k = 0; k < keys.Count; k++) ResetChunk(world, keys[k], states[k]);
             }
             finally
             {
                 cache = null;
             }
             waiting.Clear();
+        }
+
+        void ResetChunk(World world, (int i, int j) key, ChunkState s)
+        {
+            s.Target = Compute(world, key.i, key.j);
+            s.Current = (float[,])s.Target.Clone();
+            s.Moving = null;
+            s.Queued = null;
         }
 
         /// <summary>

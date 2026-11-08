@@ -36,6 +36,7 @@ so they can stay close to Punchy's code.
 | `Precipitation.shader` | `Assets/Game/Shaders/Precipitation.shader` | Header only (rain streaks and snowflakes for `WeatherFx`) |
 | `ThunderSynth.cs` | `Assets/Game/Scripts/Weather/ThunderSynth.cs` | Header only (a new thunderclap for every strike) |
 | `Terrain/Editor/BiomeTerrain.cs` | `Assets/Game/Scripts/Terrain/Biomes/BiomeData.cs` (BiomeSampling), `BiomeBaking.cs`, `TerrainSource.ShapeHeight` | Blobs made plain classes; surface stacks give per-surface weights for Unity terrain layers; a regional bias on biome picks. Editor-only (`ValleySurroundings.cs` bakes the land around the valley with it) |
+| `Chemistry/BiomeField.cs`, `BiomeMath.cs`; `world/biomes.json` (repo root) | `Assets/Game/Scripts/Terrain/Biomes/BiomeData.cs` (BiomeSampling: regions, climate, the race pick, top-4 weights) and `Assets/Game/Biomes/*.asset` (the 19 rows), at `4601262` | Rewritten in integers for lockstep (Q16, value noise on `WorldHash`, integer e^-x and log2), sizes in cells with a region about one valley square, anchors per square in place of the spawn cell, no realms or cell tables. The rows' numbers are as Punchy's; `on` marks the curated seven (J-079). Not in a Punchy folder because the core can't reference one |
 
 ## Creatures waiting on code
 
