@@ -32,13 +32,17 @@ namespace Chem.Tests
         public void TheNumbersArePinned()
         {
             var fireball = R.Spell("fireball");
-            Assert.That((fireball.Damage, fireball.Radius), Is.EqualTo((new[] { 3, 6 }, 2)), "Fireball: 3d6, 25 ft across");
+            Assert.That(fireball.Damage, Is.EqualTo(new[] { 3, 6 }), "Fireball: 3d6, 25 ft across");
+            Assert.That(fireball.Radius, Is.EqualTo(2), "Fireball: 3d6, 25 ft across");
             var meteor = R.Spell("meteor");
-            Assert.That((meteor.Damage, meteor.Radius), Is.EqualTo((new[] { 10, 6 }, 4)), "Meteor: as it was");
+            Assert.That(meteor.Damage, Is.EqualTo(new[] { 10, 6 }), "Meteor: as it was");
+            Assert.That(meteor.Radius, Is.EqualTo(4), "Meteor: as it was");
             var dust = R.Spell("dust-storm");
-            Assert.That((dust.Damage, dust.ForceThrow), Is.EqualTo((new[] { 1, 6 }, 18)), "Dust Storm stings and staggers");
+            Assert.That(dust.Damage, Is.EqualTo(new[] { 1, 6 }), "Dust Storm stings and staggers");
+            Assert.That(dust.ForceThrow, Is.EqualTo(18), "Dust Storm stings and staggers");
             var flood = R.Spell("flood");
-            Assert.That((flood.Damage, flood.ForcePush), Is.EqualTo((new[] { 2, 8 }, 1)), "Flood slams and knocks back");
+            Assert.That(flood.Damage, Is.EqualTo(new[] { 2, 8 }), "Flood slams and knocks back");
+            Assert.That(flood.ForcePush, Is.EqualTo(1), "Flood slams and knocks back");
 
             var hands = R.Sim.Hold.Hands;
             Assert.That(hands.Both("fire", "fire", Thrust).CastTicks, Is.EqualTo(15));
