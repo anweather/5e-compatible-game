@@ -12,7 +12,10 @@ namespace Chem
     /// <summary>The checks on a map's folder.</summary>
     public static class MapCheck
     {
-        /// <summary>The one size the chunks and terrains are laid out for.</summary>
+        /// <summary>
+        /// The valley's size, which the scene's terrains are laid out for (TerrainGrid.Valley) until maps phase 6 lets the
+        /// scene take a map's own: the view's, not the core's. A map's size is in its map.json, any whole number of chunks.
+        /// </summary>
         public const int Size = 576;
 
         // How far the land's share may stray from what map.json says, in percentage points.
@@ -36,7 +39,8 @@ namespace Chem
             }
             string folder = Path.GetFileName(Path.GetFullPath(worldDir).TrimEnd('/', '\\'));
             if (map.Id != folder) errors.Add($"{MapFile.FileName} says its id is \"{map.Id}\", in the folder \"{folder}\"");
-            if (map.W != Size || map.H != Size) errors.Add($"the map is {map.W} x {map.H}, and only {Size} x {Size} is laid out");
+            if (map.W <= 0 || map.H <= 0 || map.W % Chunks.Size != 0 || map.H % Chunks.Size != 0)
+                errors.Add($"the map is {map.W} x {map.H}, and a map is a whole number of {Chunks.Size}-cell chunks each way");
             CheckCells(worldDir, map, errors);
             int[] land = ReadLand(worldDir, map, errors);
             CheckRange(map, land, errors);
