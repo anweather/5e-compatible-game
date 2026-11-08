@@ -9,7 +9,8 @@ using UnityEngine;
 // draws that one as the boulder). Both are reused, not made per cell. As a wave's
 // front rolls a cell it brings what's light there up to its own speed, so props
 // ride it to where it breaks (the host's, D4), and it knocks the local wizard back.
-// A wave takes its spell's look: its crest, foam and break. The boulder doesn't: it
+// A wave takes its spell's look: its crest, foam and break; a cold one (the Iceberg)
+// carries ice and sleet too (ChemGrid.Ice.cs). The boulder doesn't: it
 // is rock, and the pillar it comes to rest as is the cell's.
 public partial class ChemGrid
 {
@@ -24,6 +25,7 @@ public partial class ChemGrid
     {
         public GameObject root;
         public ParticleSystem foam;
+        public IceRide ice;
         public int x = int.MinValue, y;
     }
 
@@ -72,6 +74,7 @@ public partial class ChemGrid
     {
         if (golf == null && World.Golf != null) golf = GolfCourse.On(this);
         RenderWaves();
+        RenderPackIce();
         RenderBoulders();
     }
 
@@ -94,20 +97,29 @@ public partial class ChemGrid
             show.root.transform.position = MoverGround(wave.X, wave.Y);
             var shape = show.foam.shape;
             shape.scale = new Vector3((wave.Width * 2 + 1) * cellSize, 0.2f, 0.3f);
-            // A wider wave stands taller (Iceberg's 2 cells each side to Wave's 1): two thirds again for each cell more.
-            float tall = WaveTall * (1f + Mathf.Max(0, wave.Width - 1) / 3f * 2f);
-            show.root.transform.GetChild(0).localScale = new Vector3((wave.Width * 2 + 1) * cellSize, tall, WaveDeep * tall / WaveTall);
+            var (tall, deep) = WaveSize(wave);
+            show.root.transform.GetChild(0).localScale = new Vector3((wave.Width * 2 + 1) * cellSize, tall, deep);
             show.foam.transform.localPosition = new Vector3(0f, tall * 0.95f, WaveDeep * 0.3f);
             show.root.transform.rotation = Quaternion.LookRotation(WaveStep(wave));
             WaveLook(show, wave);
+            IceLook(show, wave, tall, deep);
             show.foam.Play(true);
         }
+        var (high, thick) = WaveSize(wave);
+        RollIce(show, high, thick);
         var root = show.root.transform;
         root.position = Vector3.MoveTowards(root.position, MoverGround(wave.X, wave.Y), MoverSpeed(wave.Every) * WaveStride(wave) * Time.deltaTime);
         if (show.x == wave.X && show.y == wave.Y) return;
         show.x = wave.X;
         show.y = wave.Y;
         ShoveOnFront(wave);
+    }
+
+    // A wider wave stands taller (Iceberg's 2 cells each side to Wave's 1): two thirds again for each cell more.
+    static (float tall, float deep) WaveSize(World.Wave wave)
+    {
+        float tall = WaveTall * (1f + Mathf.Max(0, wave.Width - 1) / 3f * 2f);
+        return (tall, WaveDeep * tall / WaveTall);
     }
 
     // A spare show may have been another look's.
@@ -126,6 +138,7 @@ public partial class ChemGrid
         if (spell == null) return;
         frontCells.Clear();
         frontCells.AddRange(World.WaveFront(wave));
+        PackIceBehind(wave);
         bool hosting = !TryGetComponent<NetChem>(out var net) || !net.Online || net.IsServer;
         var wizard = WizardRig.FindLocal();
         var way = WaveStep(wave);
@@ -146,6 +159,7 @@ public partial class ChemGrid
         if (World.Rules.Spell(wave.Spell)?.Then != null)
             BurstFx.Play(BurstFx.Kind.Chips, MoverGround(wave.X, wave.Y), 0.8f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
         GameSounds.Play(SoundIds.Splash, show.root.transform.position);
+        BreakIce(show);
         show.foam.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         show.x = int.MinValue;
         show.root.SetActive(false);
@@ -261,6 +275,7 @@ public partial class ChemGrid
 
     void DestroyMovers()
     {
+        DestroyIce();
         foreach (var crest in crestLooks.Values)
         {
             Destroy(crest.GetTexture("_BaseMap"));

@@ -22,3 +22,6 @@ the view must change (CastFeel's tap beat, the hand icons' meter) so the PC can 
 Before landing: `dotnet build core -c Release -warnaserror`, `dotnet test core` twice in full, `dotnet format`, and the
 Hold lockstep tests. Push the branch only, remove this claim on the branch in the last commit. The PC does the view half
 on this branch; the lead lands both together.
+
+After (2026-11-08, try 1): the watcher stopped u2 for low memory on the PC; the work in progress is on
+`wip/u2-casting-taps` (380f3684). Continue from it on branch `casting-taps`, tests in the foreground.

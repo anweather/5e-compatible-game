@@ -74,6 +74,13 @@ public partial class DefenseField
     // How high this raider should be: eased, so one the core brings down falls out of the air.
     void Lift(Shown s, World world)
     {
+        // One riding up on an Earth Spire goes where its point is (ChemGrid.SpireRide).
+        float? ride = s.raider != null ? grid.SpireRide(s.raider.Id) : null;
+        if (ride.HasValue)
+        {
+            s.lift = ride.Value;
+            return;
+        }
         // A flyer flies; one a whirlwind holds in its eye is lifted off its feet (World.LiftInTheEye).
         float wanted = 0f;
         if (s.raider != null && world.Flying(s.raider)) wanted = FlyHeight;
