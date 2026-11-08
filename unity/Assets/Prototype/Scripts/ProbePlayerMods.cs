@@ -106,6 +106,7 @@ public class PlayerModsProbe : LooksModProbe
     // One stat for the asker's slot by set_player, into the room as a mod on top of the others; "normal" sets each back.
     IEnumerator Set(string stat, string value)
     {
+        if (Filming) Metric("film_at_" + stat, FilmedSeconds);
         var draft = bench.DraftOf(null);
         string said = "";
         if (stat == "normal")
