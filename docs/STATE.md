@@ -244,3 +244,4 @@ context): bring it up to date with `tools/workers/board.mjs`, then publish `.pm/
 - Skills: `agent-cost-telemetry`, `agent-cost-report` (in `~/.claude/skills`), `screenshot-budget`.
 - Known gaps: the Mac has no commit hook; merge lines double-count the host's work; Pro transcripts
   aren't on disk.
+- **alpha 0.1.12 published** 2026-11-08 19:08 UTC on Andrew's go: https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.12 (tag d1d142c7; Windows, macOS with an osx delta from 0.1.7, Linux). Everything landed on dev after 3321b336 waits for the next release.
