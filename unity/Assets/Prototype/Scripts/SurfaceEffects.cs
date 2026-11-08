@@ -140,8 +140,30 @@ public class SurfaceEffects : MonoBehaviour
         if (moveSpeed == null) return;
         baseMove = move;
         baseSprint = sprint;
-        moveSpeed.SetValue(controller, baseMove * appliedSpeed);
-        sprintSpeed.SetValue(controller, baseSprint * appliedSpeed);
+        ApplySpeed();
+    }
+
+    /// <summary>
+    /// The player's speed stat (PlayerStats.Speed, WizardStats sets it): times every base speed, the wizard's own
+    /// and an animal's, with wading, slows and casting on top.
+    /// </summary>
+    public float SpeedStat
+    {
+        get => speedStat;
+        set
+        {
+            speedStat = Mathf.Max(0.05f, value);
+            ApplySpeed();
+        }
+    }
+
+    float speedStat = 1f;
+
+    void ApplySpeed()
+    {
+        if (moveSpeed == null) return;
+        moveSpeed.SetValue(controller, baseMove * speedStat * appliedSpeed);
+        sprintSpeed.SetValue(controller, baseSprint * speedStat * appliedSpeed);
     }
 
     /// <summary>Back to the wizard's own speeds.</summary>
@@ -348,8 +370,7 @@ public class SurfaceEffects : MonoBehaviour
         k *= CastFactor;
         if (Mathf.Approximately(k, appliedSpeed)) return;
         appliedSpeed = k;
-        moveSpeed.SetValue(controller, baseMove * k);
-        sprintSpeed.SetValue(controller, baseSprint * k);
+        ApplySpeed();
     }
 
     // Afloat in water deeper than the wizard's chest (unfrozen): held at the surface with a
@@ -398,7 +419,7 @@ public class SurfaceEffects : MonoBehaviour
     {
         float y = transform.position.y;
         float target = y + depth + Swell(cell) - floatDepth + BobHeight * Mathf.Sin(Time.time * 2.4f);
-        if (UnderIce) target = Mathf.Min(target, y + depth - body.height - IceGap);
+        if (UnderIce) target = Mathf.Min(target, y + depth - body.height * transform.lossyScale.y - IceGap);
         fall.SetValue(controller, Diving ? -diveSpeed : Mathf.Min((target - y) * Buoyancy, riseSpeed));
         if (animator == null) return;
         animator.SetBool(GroundedId, true);
@@ -410,7 +431,7 @@ public class SurfaceEffects : MonoBehaviour
     // the wizard holds its breath, and drowns once it runs out (Vitals).
     void Breathe(float surface)
     {
-        var head = transform.position + Vector3.up * (body.center.y + body.height * (HeadAt - 0.5f));
+        var head = transform.position + Vector3.up * ((body.center.y + body.height * (HeadAt - 0.5f)) * transform.lossyScale.y);
         HeadUnder = head.y < UnderwaterView.WaterTop(grid, head) || (UnderIce && head.y < surface);
         if (vitals != null) vitals.Breathe(HeadUnder, Time.deltaTime);
     }
