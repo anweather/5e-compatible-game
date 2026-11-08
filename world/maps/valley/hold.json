@@ -1,5 +1,5 @@
 {
-  "about": "The Hold on this map (docs/design/the-hold.md, WorldHold): the row it's fought over, joins of that row (the keep's heart raiders go for, the plate that starts a run, where a downed wizard gets up, the towers a wizard attunes at, each a corner tower of the row and the one element it gives, and where barricades can stand on the road it names), and the spawners: each a place in places.json and the raider kinds it sends, round and round. Wave numbers are in rules/hold.json.",
+  "about": "The Hold on this map (docs/design/the-hold.md, WorldHold): the row it's fought over, joins of that row (the keep's heart raiders go for, the plate that starts a run, where a downed wizard gets up, the towers a wizard attunes at, each a corner tower of the row and the one element it gives, and where barricades can stand on the road it names), and the spawners: each a place in places.json and the raider kinds it sends, round and round; with more than one, a wave's raiders come from each in turn (the foot's road down the hill to the east gate, the east road from the lake to the south gate). Wave numbers are in rules/hold.json.",
   "castle": "hold#1",
   "heart": "heart",
   "plate": "plate",
@@ -16,6 +16,21 @@
     {
       "id": "foot",
       "place": "hold-foot",
+      "kinds": [
+        "bone-hound",
+        "blight-deer",
+        "ash-crab",
+        "gloom-wolf",
+        "cliff-stalker",
+        "barrow-bear",
+        "ash-wing",
+        "storm-bison",
+        "giant-spider"
+      ]
+    },
+    {
+      "id": "east",
+      "place": "hold-east-foot",
       "kinds": [
         "bone-hound",
         "blight-deer",

@@ -75,6 +75,13 @@ public sealed class RowRuin
         Write(true);
     }
 
+    /// <summary>The cells under the stretches that are down now (the probe).</summary>
+    public IEnumerable<Vector2Int> DownPlaces()
+    {
+        for (int i = 0; i < stretches.Length; i++)
+            if (states[i] == State.Down) yield return stretches[i].Place;
+    }
+
     /// <summary>Whether a window in this stretch has gone dark: its wall fell, fire reached it or its neighbours, or the house fell (half its stretches down).</summary>
     public bool Out(RowMesher.Stretch s) => s != null && index.TryGetValue(s, out int i) && (states[i] == State.Down || sooted[i] || Down * 2 >= stretches.Length);
 

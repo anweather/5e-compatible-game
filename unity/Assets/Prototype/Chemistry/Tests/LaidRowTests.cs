@@ -59,7 +59,7 @@ namespace Chem.Tests
             Assert.That(cells.Where(c => c.Part != BuildingPart.Road).Max(c => c.Y) - row.Y, Is.EqualTo(Footprint - 1));
             foreach (var c in cells) Assert.That(w.At(c.X, c.Y).T, Is.EqualTo(c.Terrain), $"({c.X}, {c.Y})");
             Assert.That(cells.Count(c => c.Terrain == "stone"), Is.GreaterThan(300));
-            Assert.That(cells.Count(c => c.Terrain == Open), Is.EqualTo(3));
+            Assert.That(cells.Count(c => c.Terrain == Open), Is.EqualTo(6), "two gates, the east and the south (hold-east-path), three cells each");
         }
 
         [Test]
@@ -97,7 +97,7 @@ namespace Chem.Tests
         public void TheGateSwingsAsOneByCommandBothWays()
         {
             var w = Laid(out var row);
-            var gate = Cells(row, w).Where(c => c.Terrain == Open).ToList();
+            var gate = EastGate(row, w);
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, gate[1].X, gate[1].Y, null));
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == Shut));
             Assert.That(gate.All(c => w.IsBlocking(w.At(c.X, c.Y))));
@@ -133,7 +133,7 @@ namespace Chem.Tests
         public void TheGateBurnsAndTheStoneDoesnt()
         {
             var w = Laid(out var row);
-            var gate = Cells(row, w).Where(c => c.Terrain == Open).ToList();
+            var gate = EastGate(row, w);
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, gate[0].X, gate[0].Y, null));
             Assert.That(w.Rules.Terrain[Shut].Burns);
             Assert.That(w.Rules.Terrain[Open].Burns, "an open gate burns as well as a shut one");
@@ -145,6 +145,14 @@ namespace Chem.Tests
             }
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "rubble"), string.Join(", ", gate.Select(c => w.At(c.X, c.Y).T)));
             Assert.That(gate.All(c => !w.IsBlocking(w.At(c.X, c.Y))), "burnt through, it's a way in");
+        }
+
+        // The east gate's cells: the open gate furthest east (the south gate is the other, since hold-east-path).
+        static List<BuildingCell> EastGate(BuildingRow row, World w)
+        {
+            var open = Cells(row, w).Where(c => c.Terrain == Open).ToList();
+            int east = open.Max(c => c.X);
+            return open.Where(c => c.X >= east - 1).OrderBy(c => c.Y).ToList();
         }
 
         [Test]
@@ -161,9 +169,12 @@ namespace Chem.Tests
             Assert.That(walked.Contains((row.X + 12, row.Y + 19)), "the keep's hall");
             Assert.That(walked.Contains((row.X + 22, row.Y + 8)), "the foot of the north stair");
             Assert.That(walked.Contains((row.X + 22, row.Y + 26)), "the foot of the south stair");
+            // Both gates shut (the south one since hold-east-path) keep the court shut.
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, row.X + 28, row.Y + 15, null));
+            var south = cells.Where(c => c.Terrain == Open).OrderByDescending(c => c.Y).First();
+            w.ApplyEffect(new EffectCommand(EffectKind.Swing, south.X, south.Y, null));
             var shut = Walked(w, (foot.X, foot.Y), 80, 318, 229, 409);
-            Assert.That(shut.Contains((row.X + 12, row.Y + 19)), Is.False, "a shut gate keeps the court shut");
+            Assert.That(shut.Contains((row.X + 12, row.Y + 19)), Is.False, "shut gates keep the court shut");
         }
 
         [Test]
