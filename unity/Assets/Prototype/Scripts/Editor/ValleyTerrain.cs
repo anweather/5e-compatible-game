@@ -196,8 +196,8 @@ public static class ValleyTerrain
         var indices = ValleyGround.LayerIndices(layers);
         var bare = new HashSet<(int x, int y)>();
         foreach (var (x, y) in cells)
-            if (!CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y)))) bare.Add((x, y));
-        System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => bare.Contains((x, y)) ? CellPaint.Mix(world, world.At(x, y)) : null;
+            if (!CellPaint.IsGrassy(CellPaint.Mix(world, x, y))) bare.Add((x, y));
+        System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => bare.Contains((x, y)) ? CellPaint.Mix(world, x, y) : null;
         foreach (var r in CellPaint.DirtyRects(Layout, CellPaint.Around(Layout, bare)))
         {
             var map = maps[Index(r.I, r.J)];
@@ -291,7 +291,7 @@ public static class ValleyTerrain
         }
         foreach (var (x, y) in cells)
         {
-            if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y)))) continue;
+            if (CellPaint.IsGrassy(CellPaint.Mix(world, x, y))) continue;
             var r = Layout.TexelRect(x, y);
             ValleyGround.ClearDetail(datas[Index(r.I, r.J)], r);
         }

@@ -244,6 +244,11 @@ public static class ProbeScenarios
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,
             "Land stamps seen small and with crates on them (#147, #148): a radius 3 dome is a bump (no rock paint, no boulders), then ten crates on a 15 m dome as it rises, against the same crates set on the still dome. " +
             "Checks: none buried, the carried crates go no higher or much further than on the still dome, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors."),
+        new Entry("castlecliff", typeof(CastleCliffProbe), 240f,
+            "The castle cliff below the Hold and the canyon beside the river north of it, the map's own land stamps (world/maps/valley/stamps.json), seen from the town, the cliff's foot and the canyon's floor. " +
+            "Checks: both laid, the pad and road unmoved, no tree on rock, the cliff a wall the wizard can't walk up, rocks on its faces, the canyon deep with a rock floor and a dirt path, no console errors."),
+        new Entry("cliffclip", typeof(CastleCliffClipProbe), 120f,
+            "Films the castle cliff from the town, then an eye-height walk down the canyon's path round its dog-leg, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed."),
         new Entry("stampclip", typeof(StampClipProbe), 120f,
             "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up."),
         new Entry("act", typeof(ActProbe), 60f,

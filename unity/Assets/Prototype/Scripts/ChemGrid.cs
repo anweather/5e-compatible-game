@@ -234,6 +234,7 @@ public partial class ChemGrid : MonoBehaviour
         }
         LayPuzzles(world);
         LayRows(world);
+        LayStamps(world);
         LayGolf(world);
         SetHold(world);
         return world;
@@ -278,6 +279,20 @@ public partial class ChemGrid : MonoBehaviour
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {
             Debug.LogError($"world/{WorldBuildings.FileName} can't be read, so its laid rows aren't: {e.Message}");
+        }
+    }
+
+    // The map's own land stamps (stamps.json), after its rows, whose laid land they keep off: only on the map's whole world.
+    static void LayStamps(World world)
+    {
+        if (world.W != MapCheck.Size || world.H != MapCheck.Size) return;
+        try
+        {
+            foreach (var why in MapStamps.Load(Folders.World).LayInto(world)) Debug.LogError(why);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{MapStamps.FileName} can't be read, so its land stamps aren't laid: {e.Message}");
         }
     }
 

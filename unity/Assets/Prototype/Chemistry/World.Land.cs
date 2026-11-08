@@ -38,34 +38,67 @@ namespace Chem
         public int Rough { get; private set; }
         public int Seed { get; private set; }
 
+        /// <summary>
+        /// A canyon's or cliff's line as a path of points from its middle, in cells, in place of one straight line: empty for a
+        /// straight one. Its face follows the path round its bends, Radius either side of it, and its ends taper over
+        /// three tenths of Radius past the first and last points.
+        /// </summary>
+        public IReadOnlyList<(int x, int y)> Path { get; private set; } = Array.Empty<(int x, int y)>();
+
 #pragma warning disable S107 // a stamp's row is its nine fields
         public static LandStamp Make(int x, int y, int radius, int rise, string profile, int alongX, int alongY, int rough, int seed) =>
             new LandStamp { X = x, Y = y, Radius = radius, Rise = rise, Profile = profile, AlongX = alongX, AlongY = alongY, Rough = rough, Seed = seed };
 #pragma warning restore S107
 
-        /// <summary>A stamp in a command or a save, or null if it isn't one.</summary>
+        /// <summary>The same stamp along a path of points from its middle (Path).</summary>
+        public LandStamp Along(IEnumerable<(int x, int y)> path)
+        {
+            var copy = (LandStamp)MemberwiseClone();
+            copy.Path = path.ToArray();
+            return copy;
+        }
+
+        /// <summary>A stamp in a command or a save, or null if it isn't one: nine fields, and a path as a tenth.</summary>
         public static LandStamp Read(JToken row)
         {
-            if (!(row is JArray a) || a.Count != 9) return null;
-            return Make((int)a[0], (int)a[1], (int)a[2], (int)a[3], (string)a[4], (int)a[5], (int)a[6], (int)a[7], (int)a[8]);
+            if (!(row is JArray a) || (a.Count != 9 && a.Count != 10)) return null;
+            var stamp = Make((int)a[0], (int)a[1], (int)a[2], (int)a[3], (string)a[4], (int)a[5], (int)a[6], (int)a[7], (int)a[8]);
+            if (a.Count == 9) return stamp;
+            if (!(a[9] is JArray points) || points.Any(p => !(p is JArray xy) || xy.Count != 2)) return null;
+            return stamp.Along(points.Select(p => ((int)p[0], (int)p[1])));
         }
 
         /// <summary>The row, for a command or a save.</summary>
-        public JArray Row => new JArray(X, Y, Radius, Rise, Profile, AlongX, AlongY, Rough, Seed);
+        public JArray Row
+        {
+            get
+            {
+                var row = new JArray(X, Y, Radius, Rise, Profile, AlongX, AlongY, Rough, Seed);
+                if (Path.Count > 0) row.Add(new JArray(Path.Select(p => (object)new JArray(p.x, p.y)).ToArray()));
+                return row;
+            }
+        }
 
         /// <summary>The row as text, for the checksum.</summary>
         public string Text => Row.ToString(Newtonsoft.Json.Formatting.None);
 
         public bool Known =>
             Radius > 0 && Rough >= 0 && Rough <= 100
-            && (Profile == Flat || Profile == Dome || Profile == Cone || (NeedsLine(Profile) && (AlongX != 0 || AlongY != 0)));
+            && (Path.Count == 0 ? Profile == Flat || Profile == Dome || Profile == Cone || (NeedsLine(Profile) && (AlongX != 0 || AlongY != 0)) : PathKnown);
+
+        // A path is a canyon's or a cliff's, two points or more, each a step from the last.
+        bool PathKnown => (Profile == Canyon || Profile == Cliff) && Path.Count >= 2 && Enumerable.Range(1, Path.Count - 1).All(k => Path[k] != Path[k - 1]);
 
         /// <summary>Whether a profile runs along a line.</summary>
         public static bool NeedsLine(string profile) => profile == Ridge || profile == Canyon || profile == Cliff;
 
+        /// <summary>How far from its middle, in cells, it can reach: Radius, or for a path its furthest point and Radius past it.</summary>
+        public int Bound => Path.Count == 0 ? Radius : (int)Root(Path.Max(p => (long)p.x * p.x + (long)p.y * p.y)) + 1 + Radius;
+
         /// <summary>What it adds at a cell this far from its middle, in land units.</summary>
         public int At(int dx, int dy)
         {
+            if (Path.Count > 0) return (int)FormedOnPath(dx, dy);
             long r2 = (long)Radius * Radius, d2 = (long)dx * dx + (long)dy * dy;
             if (d2 > r2) return 0;
             if (Profile == Canyon || Profile == Cliff) return (int)Formed(dx, dy, d2);
@@ -143,20 +176,110 @@ namespace Chem
             long length = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
             long across = ((long)dx * AlongY - (long)dy * AlongX) * One * One / length;
             long along = Math.Abs((long)dx * AlongX + (long)dy * AlongY) * One * One / length;
-            int x = X + dx, y = Y + dy;
+            long reach = Radius * One;
+            // A canyon's floor climbs to the land at both ends, gently enough to walk out.
+            long ramp = Math.Min(One, (reach - along) * One / (reach * 3 / 4));
+            // Nothing at the rim of the stamp, so it meets the land round it.
+            return FormedAt(X + dx, Y + dy, across, ramp, Smooth((reach - Root(d2 * One * One)) * One / (reach * 3 / 10)));
+        }
+
+        // A face across a line at a cell this far across it (fixed point, signed), its floor this far down its ramp, tapered.
+        long FormedAt(int x, int y, long across, long ramp, long taper)
+        {
             long reach = Radius * One, wall = Math.Abs((long)Rise);
             long off = across + Lattice(x, y, 24, 2) * Radius / 5 + Fractal(x, y, 3) * 3;
             long face = Math.Max(3, wall / FaceSlope) * One;
             long side = Rise < 0 ? -off : off;
-            // A canyon's floor climbs to the land at both ends, gently enough to walk out.
-            long ramp = Math.Min(One, (reach - along) * One / (reach * 3 / 4));
             long height = Profile == Canyon ? CanyonAt(Math.Abs(off), reach, face, wall, ramp, x, y) : CliffAt(side, reach, face, wall, x, y);
             height += wall * Fractal(x, y, 4) * Rough / (100 * One * 3);
             // A canyon's floor is as deep as it's asked, on any seed: noise past it folds back up, so the floor keeps its grain.
             long deepest = CanyonDepth(wall);
             if (Profile == Canyon && height < -deepest) height = -2 * deepest - height;
-            // Nothing at the rim of the stamp, so it meets the land round it.
-            return height * Smooth((reach - Root(d2 * One * One)) * One / (reach * 3 / 10)) / One;
+            return height * taper / One;
+        }
+
+        // Along a path: across is from the nearest point on it, signed as a straight line's (the high side of a cliff on
+        // the same hand all the way), and the ends are where the floor climbs out and the stamp tapers away.
+        long FormedOnPath(int dx, int dy)
+        {
+            long reach = Radius * One, cap = reach * 3 / 10;
+            var (across, at, length) = NearestOnPath(dx, dy);
+            long inward = Math.Min(at, length - at);
+            if (Math.Abs(across) > reach || inward < -cap) return 0;
+            long ramp = Math.Max(0, Math.Min(One, (inward + cap) * One / (reach * 3 / 4)));
+            long taper = Smooth((reach - Math.Abs(across)) * One / (reach * 3 / 10)) * Smooth((inward + cap) * One / cap) / One;
+            return FormedAt(X + dx, Y + dy, across, ramp, taper);
+        }
+
+        /// <summary>
+        /// The middle of a canyon's floor, cell by cell from the first point of its line or path to the last, two cells
+        /// wide: where it wanders off the line, this follows it, for a trail along the bottom. Empty for any other profile.
+        /// </summary>
+        public IEnumerable<(int x, int y)> Trail()
+        {
+            if (Profile != Canyon) yield break;
+            var points = Path.Count > 0 ? Path : StraightEnds();
+            var seen = new HashSet<(int x, int y)>();
+            for (int k = 0; k + 1 < points.Count; k++)
+            {
+                long ax = points[k].Item1, ay = points[k].Item2, vx = points[k + 1].Item1 - ax, vy = points[k + 1].Item2 - ay;
+                long length = Root((vx * vx + vy * vy) * One * One), steps = 2 * Math.Max(Math.Abs(vx), Math.Abs(vy));
+                for (long n = 0; n <= steps; n++)
+                {
+                    long px = ax * One + vx * One * n / steps, py = ay * One + vy * One * n / steps;
+                    int cx = X + (int)Div(px, One), cy = Y + (int)Div(py, One);
+                    // Where CanyonAt's off is 0: the line, less how far the floor wanders from it here.
+                    long wander = Lattice(cx, cy, 24, 2) * Radius / 5;
+                    foreach (long side in new[] { -One / 2, One / 2 })
+                    {
+                        long across = side - wander;
+                        var cell = (X + (int)Div(px + vy * One * across / length, One), Y + (int)Div(py - vx * One * across / length, One));
+                        if (seen.Add(cell)) yield return cell;
+                    }
+                }
+            }
+        }
+
+        // A straight canyon's line as a path: its radius either way of the middle.
+        (int x, int y)[] StraightEnds()
+        {
+            long l = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
+            int ex = (int)(AlongX * Radius * One / l), ey = (int)(AlongY * Radius * One / l);
+            return new[] { (-ex, -ey), (ex, ey) };
+        }
+
+        // Rounded to the nearest whole, halves up, the same way for either sign.
+        static long Div(long v, long by)
+        {
+            long t = v + by / 2;
+            return t >= 0 ? t / by : -((-t + by - 1) / by);
+        }
+
+        // The nearest point of the path to a cell: how far across (fixed point, signed), how far along from its start (past
+        // either end the first and last steps run on), and the path's whole length.
+        (long across, long at, long length) NearestOnPath(int dx, int dy)
+        {
+            long best = long.MaxValue, across = 0, at = 0, walked = 0;
+            int last = Path.Count - 2;
+            for (int k = 0; k <= last; k++)
+            {
+                long ax = Path[k].x, ay = Path[k].y, vx = Path[k + 1].x - ax, vy = Path[k + 1].y - ay;
+                long len2 = vx * vx + vy * vy, step = Root(len2 * One * One);
+                long t = ((dx - ax) * vx + (dy - ay) * vy) * One / len2;
+                if (k > 0) t = Math.Max(0, t);
+                if (k < last) t = Math.Min(One, t);
+                long ex = (dx - ax) * One - vx * t, ey = (dy - ay) * One - vy * t;
+                long d2 = ex * ex + ey * ey;
+                if (d2 < best)
+                {
+                    best = d2;
+                    long cross = ex * vy - ey * vx;
+                    across = cross == 0 ? 0 : Math.Sign(cross) * Root(d2);
+                    at = walked + step * t / One;
+                }
+                walked += step;
+            }
+            return (across, at, walked);
         }
 
         static long CanyonDepth(long wall) => Math.Min(wall * 2 / 5, CanyonDeepest);
@@ -241,6 +364,53 @@ namespace Chem
             }
         }
 
+        readonly List<LandStamp> mapStamps = new List<LandStamp>();
+        // A map stamp's crags and deep floors lose their trees to grass.
+        const string StandingTree = "tree", ClearedGround = "grass";
+
+        /// <summary>The map's own stamps (MapStamps), in the order they were laid.</summary>
+        public IReadOnlyList<LandStamp> MapStampsLaid => mapStamps;
+
+        /// <summary>
+        /// The map's own land stamps (its stamps.json), laid when the world is made, after its rows: stamped land like any
+        /// stamp's, rock where it's a crag, but part of the map, so no undo or reset takes them. A tree they leave on a crag's
+        /// face or a deep cut's floor goes, so the forest stands on the tops and not on the walls. Each refused says why,
+        /// and is left off; one that would move a row's or a road's laid land is refused, as is one on water.
+        /// </summary>
+        public List<string> LayMapStamps(IEnumerable<LandStamp> stamps)
+        {
+            var refused = new List<string>();
+            var laid = new List<LandStamp>();
+            foreach (var s in stamps)
+            {
+                string why = s == null || !s.Known ? "that isn't a land stamp" : LandRefusal(s) ?? LaidRefusal(s);
+                if (why != null)
+                {
+                    refused.Add(s == null ? why : $"{s.Text}: {why}");
+                    continue;
+                }
+                Press(s, 1);
+                mapStamps.Add(s);
+                laid.Add(s);
+            }
+            // Round each, to as far as a face is measured past what it moved.
+            foreach (var s in laid)
+            {
+                int reach = s.Bound + LandFaceReach + 1;
+                for (int y = Math.Max(0, s.Y - reach); y <= Math.Min(H - 1, s.Y + reach); y++)
+                    for (int x = Math.Max(0, s.X - reach); x <= Math.Min(W - 1, s.X + reach); x++)
+                        if (At(x, y).T == StandingTree && IsStampedRock(x, y)) Paint(x, y, ClearedGround);
+            }
+            return refused;
+        }
+
+        /// <summary>Whether the stamps left a cell bare rock: a crag's face, or a floor cut a crag deep (CellPaint paints them so).</summary>
+        public bool IsStampedRock(int x, int y) =>
+            landMoved != null && (LandStampedAt(x, y) <= -LandCrag || (LandDrop(x, y) >= LandSteep && LandFace(x, y) >= LandCrag));
+
+        string LaidRefusal(LandStamp s) =>
+            landLaid != null && Reach(s).Any(c => landLaid[Idx(c.x, c.y)] != 0) ? "that would move a row's or a road's laid land" : null;
+
         /// <summary>A stamp moved the land, or one was taken back: the middle and the reach of the cells to draw again.</summary>
         public event Action<int, int, int> LandMoved;
 
@@ -310,7 +480,7 @@ namespace Chem
             Press(stamp, 1);
             landStamps.Add(stamp);
             act.Land = stamp;
-            LandMoved?.Invoke(stamp.X, stamp.Y, stamp.Radius);
+            LandMoved?.Invoke(stamp.X, stamp.Y, stamp.Bound);
             return null;
         }
 
@@ -357,6 +527,25 @@ namespace Chem
         // The cells a stamp reaches, on the world, row by row, and what it adds at each.
         IEnumerable<(int x, int y, int by)> Reach(LandStamp s)
         {
+            if (s.Path.Count > 0) return ReachAlong(s);
+            return ReachRound(s);
+        }
+
+        // Along a path: the box round it, the cells it moves.
+        IEnumerable<(int x, int y, int by)> ReachAlong(LandStamp s)
+        {
+            int x0 = s.X + s.Path.Min(p => p.x) - s.Radius, x1 = s.X + s.Path.Max(p => p.x) + s.Radius;
+            int y0 = s.Y + s.Path.Min(p => p.y) - s.Radius, y1 = s.Y + s.Path.Max(p => p.y) + s.Radius;
+            for (int y = Math.Max(0, y0); y <= Math.Min(H - 1, y1); y++)
+                for (int x = Math.Max(0, x0); x <= Math.Min(W - 1, x1); x++)
+                {
+                    int by = s.At(x - s.X, y - s.Y);
+                    if (by != 0) yield return (x, y, by);
+                }
+        }
+
+        IEnumerable<(int x, int y, int by)> ReachRound(LandStamp s)
+        {
             for (int y = Math.Max(0, s.Y - s.Radius); y <= Math.Min(H - 1, s.Y + s.Radius); y++)
                 for (int x = Math.Max(0, s.X - s.Radius); x <= Math.Min(W - 1, s.X + s.Radius); x++)
                     if ((long)(x - s.X) * (x - s.X) + (long)(y - s.Y) * (y - s.Y) <= (long)s.Radius * s.Radius)
@@ -387,8 +576,8 @@ namespace Chem
         {
             Press(s, -1);
             landStamps.RemoveAt(landStamps.FindLastIndex(k => k.Text == s.Text));
-            if (landStamps.Count == 0 && landLaid == null) landMoved = null;
-            LandMoved?.Invoke(s.X, s.Y, s.Radius);
+            if (landStamps.Count == 0 && landLaid == null && mapStamps.Count == 0) landMoved = null;
+            LandMoved?.Invoke(s.X, s.Y, s.Bound);
         }
 
         // The dragon's reset: the land as the map has it. Acts that stamped it have nothing left to take back.
@@ -411,6 +600,7 @@ namespace Chem
         void SaveLand(JObject save)
         {
             if (landStamps.Count > 0) save["land"] = new JArray(landStamps.Select(s => (object)s.Row).ToArray());
+            if (mapStamps.Count > 0) save["mapStamps"] = new JArray(mapStamps.Select(s => (object)s.Row).ToArray());
             if (landLaid != null) save["landLaid"] = new JArray(LandLaidCells().SelectMany(c => new object[] { c.x, c.y, landLaid[Idx(c.x, c.y)] }).ToArray());
         }
 
@@ -418,6 +608,13 @@ namespace Chem
         {
             if (s["landLaid"] is JArray laid)
                 LayLand(Enumerable.Range(0, laid.Count / 3).Select(k => ((int)laid[3 * k], (int)laid[3 * k + 1], (int)laid[3 * k + 2])));
+            // The map's own stamps, as they were laid: the save's cells already have what they cleared.
+            foreach (var row in s["mapStamps"] as JArray ?? new JArray())
+            {
+                var stamp = LandStamp.Read(row);
+                mapStamps.Add(stamp);
+                Press(stamp, 1);
+            }
             foreach (var row in s["land"] as JArray ?? new JArray())
             {
                 var stamp = LandStamp.Read(row);

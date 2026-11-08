@@ -95,6 +95,19 @@ the land. Land a stamp makes steep paints as rock, and `TerrainRock.shader` maps
 so a wall doesn't smear and a mountain doesn't show the tile. Known gaps: forest trees stay on a face, and a canyon cut
 beside a lake leaves the lake's surface ending in a straight edge above the floor.
 
+**Paths and the map's own stamps (2026-11-07).** A canyon's or cliff's line can be a **path**, points from its middle as a
+tenth field of the row: the face follows it round its bends, `radius` either side, the high side of a cliff on the same hand
+all the way, and its ends taper (and a canyon's floor climbs out) over three tenths of `radius` past the first and last
+points. That's how a canyon gets a dog-leg without stamps summing where they meet. A map shapes itself past its `land.json`
+with **map stamps**, `stamps.json` (`MapStamps`): laid as the world is made, after the rows and off their laid land and off
+water, the same on every peer and in the map hash. They're stamped land, so they paint rock, grow `LandRocks` and draw as
+any stamp does, but no undo or dragon's reset takes them, `LandHash` stays the acts' alone, and a save keeps them as
+`mapStamps`. A tree on a crag's face or a deep floor they make goes to grass (`World.IsStampedRock`), and the yard's bake
+leaves it out, so the forest stands on the tops. A floor a stamp cut a crag deep paints as rock where it would be grass, so
+a canyon's floor is stone, and a canyon's `trail` (a terrain, dirt) is laid along the middle of its floor, where it wanders off its line, and stays earth. The trail is laid with the stamp, not in `cells.txt`, which the yard's build still writes. The valley's first two: the castle cliff north of the
+Hold's road and the canyon beside the river north of it. After changing them, rebuild the yard (the bake draws them) and
+export the ground pack again (Prototype > Export Valley Ground), whose heights carry them as the bake does.
+
 **Live:** `act` gains `what: "land"` with the row, through `RoomChange.Act` and the room's change mode. `World.Acts.cs` keeps
 it. **`undo_act`** subtracts the same integers, so unlike laid ground it always works in any order; a stamp that would leave
 the terrain's range is refused, never clamped, or undo would break. The save keeps stamps (as `ActText`), and a late joiner

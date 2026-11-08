@@ -33,7 +33,7 @@ public class LandShapesProbe : ProbeScenario
     {
         yield return Say("undo_act", "{}");
         yield return Wait(EaseSeconds);
-        Check($"{name}_rocks_go_with_it", rocks.Count == 0, $"{rocks.Count} rocks left");
+        Check($"{name}_rocks_go_with_it", rocks.Near(X, Y, Reach + 20) == 0, $"{rocks.Near(X, Y, Reach + 20)} rocks left");
     }
 
     int Steepest(World w) =>
@@ -55,10 +55,10 @@ public class LandShapesProbe : ProbeScenario
         yield return Land(LandStamp.Canyon, Wall);
         Metric("canyon_floor_m", valley.Ground.ShownGround(X, Y));
         Metric("canyon_steepest_m_a_cell", Steepest(world) / 8f);
-        Metric("canyon_rocks", valley.Rocks.Count);
+        Metric("canyon_rocks", valley.Rocks.Near(X, Y, Reach + 20));
         Check("the_floor_is_down", valley.Ground.ShownGround(X, Y) < before - 10f, $"{valley.Ground.ShownGround(X, Y):0.0} m, from {before:0.0} m");
         Check("the_walls_are_walls", Steepest(world) >= 40, $"{Steepest(world) / 8f:0.0} m in a cell");
-        Check("rocks_grow_on_the_faces", valley.Rocks.Count > 100, $"{valley.Rocks.Count} rocks");
+        Check("rocks_grow_on_the_faces", valley.Rocks.Near(X, Y, Reach + 20) > 100, $"{valley.Rocks.Near(X, Y, Reach + 20)} rocks");
         Shot("canyon");
         yield return Undone("canyon", valley.Rocks);
 
@@ -66,8 +66,8 @@ public class LandShapesProbe : ProbeScenario
         PlaceCell(X, Y + 16);
         yield return Wait(1f);
         yield return Land(LandStamp.Cliff, Wall - 6);
-        Metric("cliff_rocks", valley.Rocks.Count);
-        Check("the_cliff_grows_rocks", valley.Rocks.Count > 50, $"{valley.Rocks.Count} rocks");
+        Metric("cliff_rocks", valley.Rocks.Near(X, Y, Reach + 20));
+        Check("the_cliff_grows_rocks", valley.Rocks.Near(X, Y, Reach + 20) > 50, $"{valley.Rocks.Near(X, Y, Reach + 20)} rocks");
         Shot("cliff");
         yield return Undone("cliff", valley.Rocks);
         Check("the_land_is_back", world.LandHash() == "", world.LandHash());
