@@ -42,17 +42,11 @@ public class AimedProbe : ProbeScenario
 
     void Let() => InputSystem.QueueStateEvent(pad, new GamepadState());
 
+    // From the spell list before the run (the keep's room went, hold-batch): a moment each.
     IEnumerator AttuneTo(string element, int hand)
     {
-        for (int i = 0; i <= Core.Rules.Combos.Elements.Count && Core.HandsOf(Me).Holds[hand] != element; i++)
-        {
-            if (hand == HandsDef.Left) Pad(1f, 0f);
-            else Pad(0f, 1f);
-            yield return null;
-            yield return null;
-            Let();
-            yield return Wait(0.4f);
-        }
+        caster.AttuneTo(hand, element);
+        for (float t = 0f; t < MostWait && (Core.HandsOf(Me).Holds[hand] != element || Core.HandsOf(Me).AttuneLeft > 0); t += Time.deltaTime) yield return null;
         Check($"attuned_{hand}_to_{element}", Core.HandsOf(Me).Holds[hand] == element, Core.HandsOf(Me).Holds[hand]);
     }
 
@@ -156,17 +150,14 @@ public class AimedProbe : ProbeScenario
 
     IEnumerator Setup(WorldHold site)
     {
+        yield return AttuneTo("fire", HandsDef.Left);
+        yield return AttuneTo("air", HandsDef.Right);
         Stand(new Vector2Int(site.Plate.x, site.Plate.y));
         for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
         Check("a_run_starts", Core.HoldRunning);
         if (!Core.HoldRunning) yield break;
         Core.Hold.Health = int.MaxValue / 2; // the run outlasts the probe
-        for (float t = 0f; t < MostWait && !Core.InAttuning(Me); t += Time.deltaTime) yield return null;
-        yield return Wait(0.3f);
-        yield return AttuneTo("fire", HandsDef.Left);
-        yield return AttuneTo("air", HandsDef.Right);
         Stand(new Vector2Int(row.X + WallX, row.Y + WallY));
-        for (float t = 0f; t < MostWait && Core.InAttuning(Me); t += Time.deltaTime) yield return null;
         yield return Wait(0.5f);
     }
 

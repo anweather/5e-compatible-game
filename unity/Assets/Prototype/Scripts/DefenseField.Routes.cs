@@ -43,9 +43,24 @@ public partial class DefenseField
     {
         int wait = s.raider?.Wait ?? 0;
         int every = s.raider != null ? World.Rules.Entity(s.raider.Kind)?.Raider?.AttackEvery ?? 0 : 0;
-        if (every > 0 && wait >= every && s.waitWas < every) s.lunge = 1f;
+        if (every > 0 && wait >= every && s.waitWas < every)
+        {
+            s.lunge = 1f;
+            FaceTheHeart(s);
+        }
         s.waitWas = wait;
         s.lunge = Mathf.Max(0f, s.lunge - Time.deltaTime / LungeSeconds);
+    }
+
+    // A raider striking beside the Hold's heart turns to it: it's the crystal it's hitting (HoldCrystal), not the way it came.
+    void FaceTheHeart(Shown s)
+    {
+        var world = World;
+        if (s.raider == null || world.HoldSite == null || !world.HoldRunning) return;
+        var (hx, hy) = world.HoldSite.Heart;
+        if (Mathf.Max(Mathf.Abs(s.raider.X - hx), Mathf.Abs(s.raider.Y - hy)) > 1) return;
+        var to = grid.CellCenter(hx, hy) - s.at;
+        if (to.x * to.x + to.z * to.z > 1e-4f) s.state.Yaw = Mathf.Atan2(to.x, to.z);
     }
 
     Mesh shadowMesh;

@@ -64,33 +64,15 @@ public class ProgressProbe : ProbeScenario
         bool fresh = saved < first.Cost;
 
         Stand(site.Plate);
-        for (float t = 0f; t < MostWait && !world.InAttuning(Me); t += Time.deltaTime) yield return null;
-        Check("in_the_attuning_room", world.InAttuning(Me));
-        string line = HoldShow.AttuningLine(world, Me);
-        var locked = world.Rules.Combos.Elements.Where(e => !world.ElementOpen(Me, e)).ToList();
-        string yours = line.Substring(line.IndexOf("Yours: ", System.StringComparison.Ordinal) + "Yours: ".Length).Split(';')[0];
-        Check("the_room_shows_only_whats_yours", locked.All(e => !yours.Split(',').Select(s => s.Trim()).Contains(e)), line);
-        for (int i = 0; i < 3; i++)
-        {
-            yield return Press(new GamepadState { rightTrigger = 1f });
-            Check($"attuning_never_holds_a_locked_element_{i}", world.ElementOpen(Me, world.HandsOf(Me).Holds[HandsDef.Right]), world.HandsOf(Me).Holds[HandsDef.Right]);
-        }
-        for (int i = 0; i < 3 && world.HandsOf(Me).Holds[HandsDef.Right] == null; i++) yield return Press(new GamepadState { rightTrigger = 1f });
-        if (fresh)
-        {
-            yield return Press(new GamepadState { leftTrigger = 1f });
-            Check("a_locked_hand_says_so", caster.LockedLine?.Contains("left hand is locked") == true, caster.LockedLine);
-            Check("the_hud_says_locked", grid.GetComponent<HoldShow>().HandsLine(Me).Contains("Left: locked"), grid.GetComponent<HoldShow>().HandsLine(Me));
-        }
-        Shot("attuning");
-        yield return Wait(0.3f);
-
         for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
         Check("a_run_starts", world.HoldRunning);
         if (!world.HoldRunning) yield break;
+
+        yield return AtALockedTower(world, site, fresh);
+        yield return Wait(0.3f);
         var row = world.BuildingRowOf(site.Castle);
-        Stand((row.X + WallX, row.Y + WallY)); // the hands probe's cell on the wall, out of the room
-        for (float t = 0f; t < MostWait && world.InAttuning(Me); t += Time.deltaTime) yield return null;
+        Stand((row.X + WallX, row.Y + WallY)); // the hands probe's cell on the wall
+        for (float t = 0f; t < MostWait && world.TowerOf(Me) != null; t += Time.deltaTime) yield return null;
         yield return Wait(0.5f);
         if (fresh)
         {
@@ -118,7 +100,10 @@ public class ProgressProbe : ProbeScenario
         Shot("offer");
         yield return Wait(0.3f);
         if (run == null || run.Offer.Count < 2) yield break;
-        if (!run.Offer.Contains("tough")) run.Offer[1] = "tough"; // the probe's hand: Tough is the one to see
+        // The probe's hand: Tough is the one to see, second, wherever the seed put it.
+        int toughAt = run.Offer.IndexOf("tough");
+        if (toughAt < 0) run.Offer[1] = "tough";
+        else if (toughAt != 1) (run.Offer[toughAt], run.Offer[1]) = (run.Offer[1], run.Offer[toughAt]);
         var vitals = wizard.GetComponent<Vitals>();
         float before = vitals.HealthMax;
         yield return Press(new GamepadState().WithButton(GamepadButton.DpadRight));
@@ -153,5 +138,29 @@ public class ProgressProbe : ProbeScenario
         Check("f7_again_is_everything", grid.World?.PointsOf(Me) == World.AllPoints);
         InputSystem.RemoveDevice(pad);
         caster.enabled = false;
+    }
+
+    // At a tower whose element isn't unlocked (water, for a fresh player; else the first locked one): the HUD says what unlocks
+    // it, and the triggers never attune a locked element or a locked hand (hold-batch: the room went).
+    IEnumerator AtALockedTower(World world, WorldHold site, bool fresh)
+    {
+        var lockedTower = site.Towers.FirstOrDefault(t => !world.ElementOpen(Me, t.Element));
+        if (lockedTower == null) yield break;
+        Stand(world.TowerGround(lockedTower)[0]);
+        for (float t = 0f; t < MostWait && world.TowerOf(Me) == null; t += Time.deltaTime) yield return null;
+        string line = HoldShow.TowerLine(world, Me);
+        Check("the_tower_shows_what_unlocks_it", line.Contains(lockedTower.Element) && line.Contains("point"), line);
+        for (int i = 0; i < 2; i++)
+        {
+            yield return Press(new GamepadState { rightTrigger = 1f });
+            Check($"attuning_never_holds_a_locked_element_{i}", world.ElementOpen(Me, world.HandsOf(Me).Holds[HandsDef.Right]), world.HandsOf(Me).Holds[HandsDef.Right]);
+        }
+        if (fresh)
+        {
+            yield return Press(new GamepadState { leftTrigger = 1f });
+            Check("a_locked_hand_says_so", caster.LockedLine?.Contains("left hand is locked") == true, caster.LockedLine);
+            Check("the_hud_says_locked", grid.GetComponent<HoldShow>().HandsLine(Me).Contains("Left: locked"), grid.GetComponent<HoldShow>().HandsLine(Me));
+        }
+        Shot("attuning");
     }
 }

@@ -161,7 +161,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 - **Routes:** raiders take the road by default. Some climb the cliff and some fly, ignoring it (Andrew, 2026-11-05).
 - **Barricades:** small wooden ones appear on the road at the start of a wave. Raiders break through them, and they burn.
 - **Playtest moments:** canned setups as rows (a wave, a theme, hand sets, the keep's health) to jump straight to and play, in dev builds and the Editor (Andrew, 2026-11-05).
-- **Run length:** a good run lasts about 20 minutes (Andrew, 2026-11-05), a dial.
+- **Run length:** a good run lasts about 10 minutes (Andrew, 2026-11-07; it was 20), a dial.
 - **More players:** raiders scale by count, a boss by health (Andrew, 2026-11-05).
 - **Tuning:** a difficulty curve we can read: wave reached across test runs, the cheap playtester if it can drive this (it has no
   view). **Done when:** a good player's run lasts about the length Andrew picks, and a wrong hand set is felt.
@@ -174,7 +174,7 @@ joiner's history (`StandKeeper`), since attuning reads them.
 
 | Dial | Start | If you raise it |
 |---|---|---|
-| `health` | 300 | The keep takes more: longer runs, more forgiving of a leak |
+| `health` | 240 | The keep takes more: longer runs, more forgiving of a leak (left alone it falls in wave 6) |
 | `growth` | 2 | Waves get big sooner: shorter runs, more crowd spells |
 | `damagePerWave` | 4 | Late raiders hit harder (%, a wave): a sharper end |
 | `hpPerWave` | 2 | Late raiders take longer to kill |
@@ -185,16 +185,25 @@ joiner's history (`StandKeeper`), since attuning reads them.
 | `themeFrom`, `themePercent` | 3, 75 | Themes bite harder or sooner: a wrong hand set hurts more |
 | `boss.every`, `boss.hpPerWave` | 5, 12 | Bosses rarer, or tougher late on (and the `dread` row: hp 700, damage 200, in percent) |
 | `boss.peerHealth` | 100, 190, 270, 340 | A boss lasts longer for more wizards. Normal raiders scale by count (`peerPercent`), a boss by health, as there's only one |
-| `warmup`, `betweenWaves` | 60, 150 | More time before wave 1, and in the warning: longer to reach the keep and attune, and a longer run |
+| `warmup`, `betweenWaves` | 60, 90 | More time before wave 1, and in the next wave's warning (part of `waveTicks`): longer to reach a tower and attune |
+| `waveTicks`, `waves` | 300, 10 | A wave every so many ticks, whoever is still standing, and the last wave, which wins the run when beaten: a longer run (0, 0: the old way, endless waves that come when the last is beaten) |
+| `towerReach` | 3 | More of the ground round a tower attunes |
 | `spawnEvery` | 9 | Raiders come in a thinner stream |
 | `offRoadCost` | 40 | Road raiders stray less |
 | `barricades.from`, `first`, `perWaves`, `most`, `radius` | 2, 1, 3, 4, 2 | More barricades: road raiders are held up longer, and fire has something to clear |
 | `strength` | by terrain | Walls hold for more blows. A blocking terrain with no row can't be battered, so a wizard's wall needs one or it stops a run for good |
-| `targetMinutes` | 20 | What the curve aims at; nothing in the game reads it |
+| `targetMinutes` | 10 | What the curve aims at; nothing in the game reads it |
 
 Numbers for a tick are 6 a second. **Moments** are rows of `moments`; the list is F8 in dev builds and the Editor, going in is a `ComboCommand` that a host takes only in a dev build or the Editor (`NetChem.ComboChannel`), so a released player never runs one, whoever asks, and `MOMENT` names one for the probe. The curve is `core/Hold.Runner`: `dotnet run --project core/Hold.Runner -c Release -- --seeds 3` or `-- --moment cinders-right,cinders-wrong`. Its wizard stands on the wall by the heart and keeps casting what hurts, and never moves or plays chemistry, so it's a stand-in: water and earth look worse in it than they should.
 
 **What waves look like.** `HoldShow` puts the warning on the HUD and the keep's banner, and a boss's name and long bar on the HUD; a boss is drawn bigger, on one cell like any raider. `HoldBarricades` draws crossed stakes on barricade cells, charred while they burn, and stops a wizard as a built wall does. `DefenseField.Routes.cs` draws a flyer's wings, height and shadow, drops it when the core lands it, and lays a climber flat on the slope. A cliff stalker is a large gila monster and an ash wing has its own few segments until there are models.
+
+**As built, the hold-batch (2026-11-07, from the 2026-11-06 playtest).**
+
+- **Timed waves.** A wave comes `waveTicks` (300, 50 s) after the last one's first raider, whoever is still standing, so pushing raiders back buys no time and leaving them up doesn't hold the next back; one still coming in does. The last `betweenWaves` (90, 15 s) of that is its warning, as before. `waves` (10) is the last wave, and beating it wins the run (`HoldPhase.Won`, the points for every wave, the castle mended). The HUD and the keep's banner show "Next wave in 0:42" (`World.HoldNextWaveIn`), and "Wave 3 of 10".
+- **The keep at 240.** Measured with `holdcurve` (3 seeds a set): wizards that never cast (`--idle`) lose the keep in wave 6, about 4.5 minutes in, alone or two; the bots reach the last wave in 9 to 12 minutes with fire+water or fire+air and sometimes beat it, and fall in waves 7 and 8 with earth+air or water+air. Before, the two-peer bot runs went to the 40-minute cap.
+- **The crystal.** The keep has no roof and no attuning room now, so from the walls you see the heart. `HoldCrystal` stands on it, a tall crystal drawn from code: a raider striking beside the heart turns to it (`DefenseField.FaceTheHeart`), each blow flashes it, and as the keep's health falls it cracks in three stages (a quarter, a half, three quarters gone), each with dark cracks, shards and the break sound, dimming and reddening; at 0 it shatters, and a new run brings it back. The probe is `crystal`.
+- **Attuning at the towers.** The map's `hold.json` names four `towers`, the castle's corner towers, each with one element: fire, water, earth, air. A wizard on a tower's ground (`World.TowerGround`: the open cells within `towerReach` of it, the courtyard's corner beside it first) attunes a hand to that element only, in its moment (`attuneTicks`), in a run or not; in a run nowhere else; outside a run, anything anywhere, as D16 has it. On the pad, a hand's trigger at a tower attunes that hand if it holds something else, and casts if it already holds the tower's element. `HoldTowers` lays the ground in the element: tiles of its colour, embers rising, puddles and drips, stones and dust, leaves blown round. The probe is `towers`.
 
 ### 5. Progress
 
@@ -214,7 +223,7 @@ Between runs, a player's save is one number, **points**: `pointsPerWave` for eac
 (`PlayerControls.OfferPad` turns the kit's d-pad off while the offer is open). During a run the picks so far are listed at the side. A run's end says the wave
 reached, the points earned, anything newly unlocked and what's next. The Esc menu's Game page "The Hold: your progress" lists every unlock, yours or how many points
 away (`World.PointsAway`, `NextUnlock`), with F7's switch in dev builds. A locked hand or gesture says so when pressed, with the points to it, and the press goes
-nowhere; the attuning room steps only through the elements you have and names the next one; the HUD's hands line says "locked". Health an upgrade adds (Tough) is
+nowhere; at a tower whose element you haven't unlocked the HUD names the points to it (the attuning room did this before the hold-batch); the HUD's hands line says "locked". Health an upgrade adds (Tough) is
 named on the health bar, which glows as it grows. F7 never writes a dev build's everything into the save: nothing is saved until the world has the points just
 brought. The probes are `progress` (one peer from a fresh save) and `roomprogress` (two peers with different points, checksums compared).
 

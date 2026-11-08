@@ -107,33 +107,46 @@ public class HandsProbe : ProbeScenario
         InputSystem.QueueStateEvent(mouse, state);
     }
 
+    // At the element's tower (hold-batch): a press of the hand's trigger attunes it, in its moment.
     IEnumerator AttuneTo(string element, int hand, System.Action press)
     {
-        for (int i = 0; i <= Core.Rules.Combos.Elements.Count && Core.HandsOf(Me).Holds[hand] != element; i++)
+        if (Core.HandsOf(Me).Holds[hand] != element)
         {
+            var ground = Core.TowerGround(Core.HoldSite.Towers.First(t => t.Element == element))[0];
+            Stand(new Vector2Int(ground.x, ground.y));
+            yield return Wait(0.3f);
+            Check($"at_the_{element}_tower", Core.TowerOf(Me)?.Element == element, grid.CellAt(wizard.transform.position).ToString());
             press();
             yield return null;
             yield return null;
             Let();
-            yield return Wait(0.4f);
+            for (float t = 0f; t < MostWait && Core.HandsOf(Me).Holds[hand] != element; t += Time.deltaTime) yield return null;
+            yield return Wait(0.2f);
         }
         Check($"attuned_{hand}_to_{element ?? "nothing"}", Core.HandsOf(Me).Holds[hand] == element, Core.HandsOf(Me).Holds[hand]);
         Check($"it_shows_{hand}_{element ?? "nothing"}", wizard.GetComponent<HandPose>().Showing(hand) == element, wizard.GetComponent<HandPose>().Showing(hand));
     }
 
+    // Each hand at its element's tower, with the pad's triggers (the room went, hold-batch), then back on the wall.
     IEnumerator Attune(string left, string right)
     {
-        var plate = Core.HoldSite.Plate;
-        Stand(new Vector2Int(plate.x, plate.y));
-        for (float t = 0f; t < MostWait && !Core.InAttuning(Me); t += Time.deltaTime) yield return null;
-        yield return Wait(0.3f);
-        Check("in_the_attuning_room", Core.InAttuning(Me), grid.CellAt(wizard.transform.position).ToString());
         Check("the_hands_layout_is_on", controls.HandPad);
         yield return AttuneTo(left, HandsDef.Left, () => Pad(1f, 0f));
-        yield return AttuneTo(right, HandsDef.Right, () => Keys(false, false, MouseButton.Right));
+        yield return AttuneTo(right, HandsDef.Right, () => Pad(0f, 1f));
         Stand(new Vector2Int(row.X + WallX, row.Y + WallY));
-        for (float t = 0f; t < MostWait && Core.InAttuning(Me); t += Time.deltaTime) yield return null;
+        for (float t = 0f; t < MostWait && Core.TowerOf(Me) != null; t += Time.deltaTime) yield return null;
         yield return Wait(0.3f);
+    }
+
+    // Both hands to nothing from the spell list, before a run: a tower gives only its element.
+    IEnumerator EmptyHands()
+    {
+        foreach (int hand in new[] { HandsDef.Left, HandsDef.Right })
+        {
+            caster.AttuneTo(hand, null);
+            for (float t = 0f; t < MostWait && (Core.HandsOf(Me).Holds[hand] != null || Core.HandsOf(Me).AttuneLeft > 0); t += Time.deltaTime) yield return null;
+        }
+        Check("both_hands_empty", Core.HandsOf(Me).Holds.All(h => h == null), string.Join(",", Core.HandsOf(Me).Holds));
     }
 
     IEnumerator Cooling()
@@ -314,33 +327,8 @@ public class HandsProbe : ProbeScenario
         yield return AttuneFromTheList();
         yield return Charges(world.HandHolds(Me, HandsDef.Left), world.HandHolds(Me, HandsDef.Right));
 
-        Stand(new Vector2Int(site.Plate.x, site.Plate.y));
-        for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("a_run_starts", world.HoldRunning);
-        if (!world.HoldRunning) yield break;
-        world.Hold.Health = int.MaxValue / 2; // the run outlasts the probe
-
-        var hud = grid.GetComponent<HoldShow>();
-        yield return Attune("air", "fire");
-        Check("the_hud_says_the_hands", hud.HandsLine(Me).Contains("air") && hud.HandsLine(Me).Contains("fire"), hud.HandsLine(Me));
-        var held = world.HandsOf(Me).Holds[HandsDef.Right];
-        yield return Cooling();
-        Check("off_the_room_a_press_attunes_nothing", world.HandsOf(Me).Holds[HandsDef.Right] == held);
-        yield return Inputs("air", "fire");
-
-        var kit = world.SelectedDpad(Me);
-        Check("the_kit_is_the_rows", world.DpadOf(Me).SequenceEqual(Table.Kit), kit?.Name);
-        yield return Fires("dpad_up_casts_the_kit", kit?.Spell, () => InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadUp)));
-
-        yield return Ranges("fire", grid.CellAt(wizard.transform.position));
-        caster.AimOverride = aim;
-
-        yield return Attune("fire", "fire");
-        yield return Fires("same_element_both_triggers", Table.Both("fire", "fire", HandsDef.Thrust).Spell, () => Pad(1f, 1f));
-        yield return Fires("same_element_both_bumpers", Table.Both("fire", "fire", HandsDef.Throw).Spell, () => Pad(0f, 0f, GamepadButton.LeftShoulder, GamepadButton.RightShoulder));
-
         // One element is on both hands (D16), so a hand is empty only with nothing in either.
-        yield return Attune(null, null);
+        yield return EmptyHands();
         var holder = wizard.GetComponent<ItemHolder>();
         int fists = 0;
         System.Action<ItemHolder.PunchLanding> landed = _ => fists++;
@@ -353,6 +341,31 @@ public class HandsProbe : ProbeScenario
         yield return Wait(1f);
         Check("the_sweep_lands_too", fists == 2, $"{fists} landed");
         holder.PunchLanded -= landed;
+
+        Stand(new Vector2Int(site.Plate.x, site.Plate.y));
+        for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
+        Check("a_run_starts", world.HoldRunning);
+        if (!world.HoldRunning) yield break;
+        world.Hold.Health = int.MaxValue / 2; // the run outlasts the probe
+
+        var hud = grid.GetComponent<HoldShow>();
+        yield return Attune("air", "fire");
+        Check("the_hud_says_the_hands", hud.HandsLine(Me).Contains("air") && hud.HandsLine(Me).Contains("fire"), hud.HandsLine(Me));
+        var held = world.HandsOf(Me).Holds[HandsDef.Right];
+        yield return Cooling();
+        Check("off_a_tower_a_press_attunes_nothing", world.HandsOf(Me).Holds[HandsDef.Right] == held);
+        yield return Inputs("air", "fire");
+
+        var kit = world.SelectedDpad(Me);
+        Check("the_kit_is_the_rows", world.DpadOf(Me).SequenceEqual(Table.Kit), kit?.Name);
+        yield return Fires("dpad_up_casts_the_kit", kit?.Spell, () => InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadUp)));
+
+        yield return Ranges("fire", grid.CellAt(wizard.transform.position));
+        caster.AimOverride = aim;
+
+        yield return Attune("fire", "fire");
+        yield return Fires("same_element_both_triggers", Table.Both("fire", "fire", HandsDef.Thrust).Spell, () => Pad(1f, 1f));
+        yield return Fires("same_element_both_bumpers", Table.Both("fire", "fire", HandsDef.Throw).Spell, () => Pad(0f, 0f, GamepadButton.LeftShoulder, GamepadButton.RightShoulder));
 
         caster.AimOverride = null;
         caster.enabled = false;

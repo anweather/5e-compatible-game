@@ -128,6 +128,14 @@ public abstract class ProbeScenario : ShowcaseScript
 
     protected void Metric(string name, double value) => Result.Metrics[name] = System.Math.Round(value, 3);
 
+    /// <summary>Puts the wizard on a cell, on the ground (or the wall top) the grid has there.</summary>
+    protected void StandOn((int x, int y) cell)
+    {
+        var p = grid.CellCenter(cell.x, cell.y);
+        p.y = grid.GroundAt(p);
+        Teleport(p + Vector3.up * 0.05f);
+    }
+
     /// <summary>
     /// Loads an element on the element path (World.Combos' Load: an ordered pair of elements), solo or through the host. Nothing
     /// in the game casts this way since D16 (the hands do); the probes that test what the element path itself shows (castfeel's

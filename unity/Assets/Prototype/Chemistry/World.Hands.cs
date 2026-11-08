@@ -27,17 +27,30 @@ namespace Chem
             return h;
         }
 
-        /// <summary>Whether this wizard stands up in the attuning room.</summary>
-        public bool InAttuning(string player) => HoldSite != null && stands.TryGetValue(player, out var s) && !s.Down && HoldSite.InAttuning(s.X, s.Y);
+        /// <summary>The ground a wizard stands on to attune at this tower: the open cells within its reach, nearest the keep's heart first (inside the walls), then in row order. The view decks them out.</summary>
+        public List<(int x, int y)> TowerGround(HoldTower tower)
+        {
+            int reach = Rules.Sim.Hold.TowerReach;
+            var cells = new List<(int x, int y)>();
+            for (int y = tower.Y - reach; y <= tower.Y + reach; y++)
+                for (int x = tower.X - reach; x <= tower.X + reach; x++)
+                    if (At(x, y) is { } c && !IsBlocking(c)) cells.Add((x, y));
+            var (hx, hy) = HoldSite.Heart;
+            return cells.OrderBy(c => System.Math.Abs(c.x - hx) + System.Math.Abs(c.y - hy)).ThenBy(c => c.y).ThenBy(c => c.x).ToList();
+        }
+
+        /// <summary>The tower this wizard stands up at, whose element its hands may attune to; null at none (hold-batch).</summary>
+        public HoldTower TowerOf(string player) =>
+            HoldSite != null && stands.TryGetValue(player, out var s) && !s.Down ? HoldSite.TowerAt(s.X, s.Y, Rules.Sim.Hold.TowerReach) : null;
 
         /// <summary>Whether this wizard's buttons are its hands: everywhere the rules have a hand table (D16).</summary>
         public bool HandsOn(string player) => HandRules.Any;
 
-        // In a run or the attuning room, where the Hold's own rules (its kit, its room) hold.
-        bool InHold(string player) => HoldRunning || InAttuning(player);
+        // In a run or at a tower, where the Hold's own rules (its kit, its towers) hold.
+        bool InHold(string player) => HoldRunning || TowerOf(player) != null;
 
         /// <summary>Whether a stand on this cell, now, is one the Hold reads, so a late joiner's history must keep it.</summary>
-        public bool HoldReadsStand(int x, int y) => HoldSite != null && (HoldRunning || HoldSite.Plate == (x, y) || HoldSite.InAttuning(x, y));
+        public bool HoldReadsStand(int x, int y) => HoldSite != null && (HoldRunning || HoldSite.Plate == (x, y) || HoldSite.TowerAt(x, y, Rules.Sim.Hold.TowerReach) != null);
 
         /// <summary>The D-pad's list for this wizard: the kit in the Hold, else the combo table's.</summary>
         public IReadOnlyList<DpadSpellDef> DpadOf(string player)
@@ -93,18 +106,16 @@ namespace Chem
             return h;
         }
 
-        // A null element empties the hand. In the Hold only the attuning room attunes, at once; elsewhere it takes a moment.
+        // A null element empties the hand. It always takes a moment (attuneTicks). At a tower a hand takes only the tower's element,
+        // run or not; in a run only a tower attunes; elsewhere, anything, anywhere.
         bool Attune(PlayerCast c, int hand, string element)
         {
             string player = c.Player;
             if (hand < 0 || hand >= HandsDef.Count || (element != null && !Rules.Combos.Elements.Contains(element)) || !HandOpen(player, hand) || !ElementOpen(player, element)) return false;
             if (HandsOf(player).Busy || c.Casting) return false;
-            if (InAttuning(player))
-            {
-                OwnHands(player).Holds[hand] = element;
-                return true;
-            }
-            if (HoldRunning || (stands.TryGetValue(player, out var s) && s.Down)) return false;
+            var tower = TowerOf(player);
+            if (tower != null ? element != tower.Element : HoldRunning) return false;
+            if (stands.TryGetValue(player, out var s) && s.Down) return false;
             var h = OwnHands(player);
             h.AttuneHand = hand;
             h.AttuneTo = element;

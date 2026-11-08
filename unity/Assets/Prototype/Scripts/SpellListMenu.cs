@@ -184,7 +184,7 @@ public class SpellListMenu : MonoBehaviour
         for (int hand = 0; hand < HandsDef.Count; hand++) HandRow(world, player, hands, hand);
         if (hands.AttuneLeft > 0) GUILayout.Label($"<color=#bfe3ff>Attuning your {(hands.AttuneHand == HandsDef.Left ? "left" : "right")} hand to {hands.AttuneTo ?? "nothing"}…</color>", cell);
         else if (said != null) GUILayout.Label($"<color=#ffb38a>{said}</color>", cell);
-        else if (world.HoldRunning && !world.InAttuning(player)) GUILayout.Label("<color=#ffffff99>In a Hold run, attune in the keep's attuning room.</color>", cell);
+        else if (world.HoldRunning && world.TowerOf(player) == null) GUILayout.Label("<color=#ffffff99>In a Hold run, attune at a tower: each gives its own element.</color>", cell);
         GUILayout.Space(10);
         Table(world, player);
         GUILayout.Space(10);

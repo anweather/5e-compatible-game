@@ -15,6 +15,14 @@ public class HoldShow : MonoBehaviour
     ChemGrid grid;
     World shownFor;
     GameObject plate;
+    HoldCrystal crystal;
+
+    /// <summary>The keep's crystal at the heart, or null with no Hold here: for the probe.</summary>
+    public HoldCrystal Crystal => crystal;
+    HoldTowers towers;
+
+    /// <summary>The towers' looks, or null with no Hold here: for the probe.</summary>
+    public HoldTowers Towers => towers;
     TextMesh banner;
     string bannerText;
     GUIStyle style;
@@ -27,9 +35,28 @@ public class HoldShow : MonoBehaviour
         var world = grid != null ? grid.World : null;
         var h = world?.Hold;
         if (world?.HoldSite == null || h == null) return "";
-        return h.Phase == HoldPhase.Running
-            ? $"Wave {h.Wave}: {world.HoldLeft} left, the keep {Mathf.Max(0, h.Health)}/{world.Rules.Sim.Hold.Health}"
-            : $"The keep fell in wave {h.Wave}. Stand on the plate to try again";
+        int last = world.Rules.Sim.Hold.Waves;
+        string of = last > 0 ? $" of {last}" : "";
+        return h.Phase switch
+        {
+            HoldPhase.Running => $"Wave {h.Wave}{of}: {world.HoldLeft} left, the keep {Mathf.Max(0, h.Health)}/{world.Rules.Sim.Hold.Health}",
+            HoldPhase.Won => $"The keep held: all {h.Wave} waves beaten. Stand on the plate to play again",
+            _ => $"The keep fell in wave {h.Wave}{of}. Stand on the plate to try again",
+        };
+    }
+
+    /// <summary>The timer to the next wave while one's under way (timed waves), "Next wave in 0:42"; empty during its warning, on the last, or untimed. For the probe too.</summary>
+    public string TimerLine()
+    {
+        var world = grid != null ? grid.World : null;
+        if (world?.HoldSite == null || world.HoldWarning != null || world.HoldNextWaveIn is not { } ticks) return "";
+        return $"Next wave in {Clock(ticks, world)}";
+    }
+
+    static string Clock(int ticks, World world)
+    {
+        int seconds = (ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond;
+        return $"{seconds / 60}:{seconds % 60:00}";
     }
 
     /// <summary>What's coming while a wave waits: its number, theme, boss and how long; empty with a wave under way. For the probe too.</summary>
@@ -62,20 +89,17 @@ public class HoldShow : MonoBehaviour
     static string Holding(World world, string player, int hand) =>
         world.HandOpen(player, hand) ? $"{world.HandsOf(player).Holds[hand] ?? "nothing"}{Cooling(world, player, hand)}" : "locked";
 
-    /// <summary>In the attuning room: the elements this wizard can hold, and the next one still to come.</summary>
-    public static string AttuningLine(World world, string player)
+    /// <summary>At a tower: its element, and how a hand takes it (or what unlocks it).</summary>
+    public static string TowerLine(World world, string player)
     {
-        var elements = world.Rules.Combos.Elements;
-        var have = new System.Collections.Generic.List<string>();
-        foreach (var e in elements)
-            if (world.ElementOpen(player, e)) have.Add(e);
-        string line = $"Attuning: a hand's trigger changes it. Yours: {string.Join(", ", have)}";
-        foreach (var e in elements)
-            if (!world.ElementOpen(player, e) && world.UnlockGiving(u => u.Element == e) is { } row)
-            {
-                int away = world.PointsAway(player, row);
-                return line + $"; {e} in {away} {(away == 1 ? "point" : "points")}";
-            }
+        var tower = world.TowerOf(player);
+        if (tower == null) return "";
+        string line = $"The {tower.Element} tower: a hand's trigger attunes it to {tower.Element}";
+        if (!world.ElementOpen(player, tower.Element) && world.UnlockGiving(u => u.Element == tower.Element) is { } row)
+        {
+            int away = world.PointsAway(player, row);
+            return $"The {tower.Element} tower: {tower.Element} in {away} {(away == 1 ? "point" : "points")}";
+        }
         return line;
     }
 
@@ -94,7 +118,8 @@ public class HoldShow : MonoBehaviour
         if (world != shownFor) Show(world);
         if (world.HoldSite == null) return;
         string warning = WarningLine();
-        string text = world.Hold == null ? "" : warning.Length > 0 ? $"THE KEEP {Mathf.Max(0, world.Hold.Health)}\n{warning.ToUpperInvariant()}" : $"THE KEEP {Mathf.Max(0, world.Hold.Health)}\nWAVE {world.Hold.Wave}";
+        string timer = TimerLine();
+        string text = world.Hold == null ? "" : BannerText(world.Hold, warning, timer);
         if (banner != null && text != bannerText) banner.text = bannerText = text;
         if (banner != null && Camera.main != null) banner.transform.rotation = Camera.main.transform.rotation;
         if (world.HoldRunning) sawRun = true;
@@ -105,11 +130,20 @@ public class HoldShow : MonoBehaviour
         }
     }
 
+    // Over the keep: its health, then what's coming, or the wave and the timer to the next.
+    static string BannerText(HoldState hold, string warning, string timer)
+    {
+        string keep = $"THE KEEP {Mathf.Max(0, hold.Health)}";
+        if (warning.Length > 0) return $"{keep}\n{warning.ToUpperInvariant()}";
+        return timer.Length > 0 ? $"{keep}\nWAVE {hold.Wave}  {timer.ToUpperInvariant()}" : $"{keep}\nWAVE {hold.Wave}";
+    }
+
     void Show(World world)
     {
         shownFor = world;
         if (plate != null) Destroy(plate);
         if (banner != null) Destroy(banner.gameObject);
+        if (crystal != null) Destroy(crystal.gameObject);
         bannerText = null;
         if (world.HoldSite == null) return;
         var (px, py) = world.HoldSite.Plate;
@@ -124,6 +158,13 @@ public class HoldShow : MonoBehaviour
         var renderer = plate.GetComponent<MeshRenderer>();
         renderer.material = UrpMaterials.NewLit("Hold plate", PlateColor, 0.3f);
         var (hx, hy) = world.HoldSite.Heart;
+        var heart = grid.CellCenter(hx, hy);
+        heart.y = grid.GroundAt(heart);
+        crystal = HoldCrystal.At(transform, heart);
+        crystal.Follow(world);
+        if (towers == null) towers = new GameObject("Hold towers").AddComponent<HoldTowers>();
+        towers.transform.SetParent(transform, false);
+        towers.Show(grid, world);
         var top = grid.CellCenter(hx, hy);
         top.y = grid.GroundAt(top) + BannerRise;
         var go = new GameObject("Hold banner");
@@ -173,8 +214,8 @@ public class HoldShow : MonoBehaviour
         var caster = EventLog.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         // The hands' icons (CastHud) say what HandsLine says, so it isn't drawn (D16).
-        if (caster != null && world.InAttuning(caster.CastPlayer))
-            GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{AttuningLine(world, caster.CastPlayer)}</color>", style);
+        if (caster != null && world.TowerOf(caster.CastPlayer) != null)
+            GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{TowerLine(world, caster.CastPlayer)}</color>", style);
         if (world.Hold == null) return;
         if (!world.HoldRunning && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
         var (hx, hy) = world.HoldSite.Heart;
@@ -182,6 +223,7 @@ public class HoldShow : MonoBehaviour
         GUI.Label(new Rect(HudScale.Width / 2f - 400f, 54f, 800f, 36f), $"<b>{HudLine()}</b>", style);
         string warning = WarningLine();
         if (warning.Length > 0) GUI.Label(new Rect(HudScale.Width / 2f - 400f, 124f, 800f, 36f), $"<color=#ffd27a><b>{warning}</b></color>", style);
+        else if (TimerLine() is { Length: > 0 } timer) GUI.Label(new Rect(HudScale.Width / 2f - 400f, 90f, 800f, 36f), $"<color=#e8e2cf><b>{timer}</b></color>", style);
         BossBar(world);
     }
 }

@@ -1,6 +1,6 @@
 // holdcurve: dotnet run --project core/Hold.Runner -c Release -- [--sets fire+water,air+air] [--peers 1,2] [--seeds 3] [--minutes 40]
 //   [--moment name[,name]] prints, per hand set and peer count, the wave reached, the run's time and the keep's health at each wave.
-//   --no-upgrades plays with none offered, --points N as a player with that many points (0: a fresh one), and --journey as a new
+//   --idle has the wizards stand on their posts and never cast (the keep left to itself), --no-upgrades plays with none offered, --points N as a player with that many points (0: a fresh one), and --journey as a new
 //   player from nothing, run after run, until everything's unlocked.
 //   With --moment it plays just that wave, from the moment's own hands unless --sets says otherwise, and prints how it went.
 using System;
@@ -14,6 +14,7 @@ namespace Chem.HoldCurve
     static class Program
     {
         static int? points;
+        static bool idle;
 
         // A new player: fire in the right hand, then whatever the unlocks give, spending each run's points on the next.
         static int Journey(Rules rules, string worldDir, int minutes)
@@ -58,6 +59,7 @@ namespace Chem.HoldCurve
             int seeds = int.Parse(Arg("--seeds", "3"), CultureInfo.InvariantCulture), minutes = int.Parse(Arg("--minutes", "40"), CultureInfo.InvariantCulture);
             string moments = Arg("--moment", null);
             if (args.Contains("--no-upgrades")) rules.Sim.Hold.Offer = 0;
+            idle = args.Contains("--idle");
             if (args.Contains("--journey")) return Journey(rules, folders.World, minutes);
             string given = Arg("--points", null);
             points = given == null ? (int?)null : int.Parse(given, CultureInfo.InvariantCulture);
@@ -66,7 +68,7 @@ namespace Chem.HoldCurve
 
         static int Curve(Rules rules, string worldDir, List<string[]> sets, List<int> peers, int seeds, int minutes)
         {
-            Console.WriteLine($"target {rules.Sim.Hold.TargetMinutes} min; {seeds} seeds each");
+            Console.WriteLine($"target {rules.Sim.Hold.TargetMinutes} min, {rules.Sim.Hold.Waves} waves (W: all beaten); {seeds} seeds each{(idle ? "; idle wizards" : "")}");
             Console.WriteLine("hands         peers  wave reached (each seed)  minutes (each seed)  mean min");
             var jobs = (from set in sets from p in peers select (set, p)).ToList();
             var lines = new string[jobs.Count];
@@ -75,13 +77,13 @@ namespace Chem.HoldCurve
                 var (set, p) = jobs[j];
                 var runs = Enumerable.Range(1, seeds).AsParallel().AsOrdered().Select(seed =>
                 {
-                    var run = new HoldRun(rules, worldDir, (uint)seed, p, (set[0], set[1]), null, points);
+                    var run = new HoldRun(rules, worldDir, (uint)seed, p, (set[0], set[1]), null, points) { Idle = idle };
                     run.Play(minutes * 60);
                     if (run.World.HoldRunning) Console.Error.WriteLine($"still going: {set[0]}+{set[1]} seed {seed} wave {run.LastWave}, by the heart {string.Join(" ", Around(run.World))}; {string.Join(" ", run.World.Raiders.Take(6).Select(r => $"{r.Kind}@{r.X},{r.Y} hp {r.Hp}"))}");
                     return run;
                 }).ToList();
                 double tps = rules.Sim.TicksPerSecond * 60.0;
-                lines[j] = $"{set[0]}+{set[1],-12} {p,-5}  {string.Join(" ", runs.Select(r => r.LastWave)),-24}  {string.Join(" ", runs.Select(r => (r.Ticks / tps).ToString("0.0", CultureInfo.InvariantCulture))),-19}  {runs.Average(r => r.Ticks / tps):0.0}";
+                lines[j] = $"{set[0]}+{set[1],-12} {p,-5}  {string.Join(" ", runs.Select(r => r.Outcome)),-24}  {string.Join(" ", runs.Select(r => (r.Ticks / tps).ToString("0.0", CultureInfo.InvariantCulture))),-19}  {runs.Average(r => r.Ticks / tps):0.0}";
                 Console.WriteLine(lines[j]);
             });
             return 0;

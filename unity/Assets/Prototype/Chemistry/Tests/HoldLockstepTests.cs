@@ -76,7 +76,9 @@ namespace Chem.Tests
                 {
                     brought = true;
                     var s = W.HoldSite;
-                    yield return StrikeCommand.Stand(Me, (s.AttuningFrom.x + s.AttuningTo.x) / 2, (s.AttuningFrom.y + s.AttuningTo.y) / 2, 1000000);
+                    var water = s.Towers.First(t => t.Element == "water");
+                    var at = W.TowerGround(water)[0];
+                    yield return StrikeCommand.Stand(Me, at.x, at.y, 1000000);
                     yield return ComboCommand.Bring(Me, Points);
                     yield return ComboCommand.Attune(Me, Left, "water");
                 }
@@ -164,7 +166,7 @@ namespace Chem.Tests
             }
         }
 
-        // The cells round the Hold that a run reaches: its castle, heart, plate, attuning room, barricades and spawners, and the
+        // The cells round the Hold that a run reaches: its castle, heart, plate, towers, barricades and spawners, and the
         // painted ground round them (HoldTests.Field's 40 cells).
         const int Around = 40;
 
@@ -176,7 +178,7 @@ namespace Chem.Tests
             var s = w.HoldSite;
             var cells = BuildingRaster.Cells(BuildingRow.Read(s.Castle, s.Row, R.Buildings), R.Buildings).Select(c => (c.X, c.Y))
                 .Concat(s.Spawners.SelectMany(p => p.Cells)).Concat(s.Barricades)
-                .Concat(new[] { s.Heart, s.Plate, s.Rise, s.AttuningFrom, s.AttuningTo }).ToList();
+                .Concat(new[] { s.Heart, s.Plate, s.Rise }).Concat(s.Towers.Select(t => (t.X, t.Y))).ToList();
             const int size = 64; // a chunk's side, in cells
             int fromX = Math.Max(0, cells.Min(c => c.Item1) - Around) / size, toX = Math.Min(w.W - 1, cells.Max(c => c.Item1) + Around) / size;
             int fromY = Math.Max(0, cells.Min(c => c.Item2) - Around) / size, toY = Math.Min(w.H - 1, cells.Max(c => c.Item2) + Around) / size;
@@ -201,6 +203,8 @@ namespace Chem.Tests
             room.Peers.Add(fresh);
             room.Peers.Add(all);
             room.Tick();
+            // Attuning at the water tower takes its moment.
+            for (int i = 0; i < R.Sim.Hold.Hands.AttuneTicks; i++) room.Tick();
 
             var w = fresh.W;
             Assert.That(w.PointsOf(Me), Is.Zero);
