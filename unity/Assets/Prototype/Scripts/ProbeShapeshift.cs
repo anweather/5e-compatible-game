@@ -161,11 +161,11 @@ public class ShapeshiftProbe : ProbeScenario
         Shot("deer");
     }
 
-    // Cast changes back: its own model and speeds.
+    // A hand's button changes back (Q, the left hand's throw; Z was the Fire key before the hands): its own model and speeds.
     IEnumerator ChangeBack()
     {
-        yield return EndOnThe<Keyboard>("Shift keys", d => InputSystem.QueueStateEvent(d, new KeyboardState(Key.Z)), d => InputSystem.QueueStateEvent(d, new KeyboardState()));
-        Check("key_ends_shape", !shape.Shifted, $"{shape.FormName ?? "the wizard"} after Z");
+        yield return EndOnThe<Keyboard>("Shift keys", d => InputSystem.QueueStateEvent(d, new KeyboardState(Key.Q)), d => InputSystem.QueueStateEvent(d, new KeyboardState()));
+        Check("key_ends_shape", !shape.Shifted, $"{shape.FormName ?? "the wizard"} after Q");
         if (shape.Shifted) shape.ChangeBackByChoice();
         yield return null;
         yield return ShiftIntoTheDeer();

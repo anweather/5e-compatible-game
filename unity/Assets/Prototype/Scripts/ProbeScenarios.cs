@@ -184,9 +184,9 @@ public static class ProbeScenarios
             "Films what plain shots can't show, with the HUD, into a folder each under --shots (frames for ffmpeg): grimoire/ (d-pad down, Back, then the menu's button and Back), " +
             "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest."),
         new Entry("combo", typeof(ComboProbe), 85f,
-            "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
-            "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
-            "grimoire. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),
+            "The d-pad's spells on a virtual gamepad, with the HUD on: right cycles them, up casts Light, B cancels it with an item in hand and doesn't throw it, the cast bar fills " +
+            "smoothly and evenly between ticks (#9), Back from the menu's grimoire stays in the menu (#10), the stamina line drains. Element loading, the slower walk and d-pad down " +
+            "moved to hands, castfeel and handsmenu with the hands. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),
         new Entry("frost", typeof(FrostProbe), 40f,
             "Ray of Frost from the lake's shore (the dry square outside the yard nearest it with lake water two squares south) " +
             "out over the water. Checks: the shore was found, while it plays one frost beam (FrostBeam) runs from the wizard to the end " +
@@ -304,6 +304,11 @@ public static class ProbeScenarios
             "Films three different merges with the HUD on a virtual pad (D16, \"The merge\"): each pair's icons slam into its own glyph as both hands charge, then it goes off. Scalding Steam, Lightning, Wall of Stone; the attuning between is cut. Into --shots: frames, sound.wav and timeline.txt."),
         new Entry("pairglyphs", typeof(PairGlyphsProbe), 30f,
             "Every merged pair's icon (D16, \"The merge\") on one sheet, as the HUD draws it, with the spell's name: --shots for a before and after."),
+        new Entry("playermods", typeof(PlayerModsProbe), 120f,
+            "A player's stats (docs/RULES_MCP.md \"Player stats\", WizardStats) through set_player as mods in a meadow by the yard: as made the wizard walks, jumps and takes one air jump; " +
+            "speed 2 walks faster, size 2 stands twice as tall on the ground, jump 2 jumps higher, jumps 4 takes three air jumps and refuses a fourth; normal puts each back. With --shots, a film from the follow camera."),
+        new Entry("handsmenu", typeof(HandsMenuProbe), 150f,
+            "The pad's hands menu (pad-hands-menu) on a virtual pad: hold the d-pad's down, each stick points its hand at an element, letting go attunes both (the second after the first), B lets go without; the hands' icons show only while a hand is at work; in a Hold run nothing picks away from the towers and the tower's element does at one, then casts. With --shots, films the free-roam part."),
         new Entry("handsclip", typeof(HandsClipProbe), 90f,
             "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("progress", typeof(ProgressProbe), 600f,

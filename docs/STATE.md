@@ -69,6 +69,20 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   rerun spell-balance's probes on the branch and dev, then land it; PC `hold-east-path`; land the Mac's
   `pad-hands-menu` and u2's `player-mods` (PC compiles). Then cut alpha 0.1.12 from main (the PC Windows, the Mac
   `--mac-only` into the same draft, after its job). Option sheets go to Andrew in the morning, not acted on.
+- **Overnight progress:** landed `peer-vanish` (dafa11a6), `spell-balance` (dd9c09f1, probes pass on a quiet PC),
+  `pad-hands-menu` (1f9088fb), `player-mods` (9b2dfacb, u2 core + PC view). Option sheets on dev:
+  `docs/design/casting-pace-options.md`, `docs/design/world-nine-options.md` (Andrew decides). **alpha 0.1.12:** main =
+  dev at 3321b336 (version bump); the PC builds `--windows-only` into the draft; the Mac does `--mac-only` and Linux
+  after `hold-east-path`. Draft only: publishing waits for Andrew. u2 on `punchy-sync` (resumed from its wip; the
+  watcher stopped it twice when landing gates ran beside the Editor: don't land while u2 and an Editor both run).
+  The 28 empty chat records are `of` follow-ups, not a bug; "I don't see a new request" is Claude misjudging real
+  prompts (open).
+- **u2's IP changes when the watcher restarts it** (172.26.211.206 -> 172.26.215.195 on 2026-11-08); `start.cmd`
+  said "Briefed u2" but no runner started, an hour lost. After any u2 restart, check `peek.sh u2` shows a runner
+  `started` line; if not, `linux.sh runner u2 <ip>` with the IP from `(Get-VMNetworkAdapter -VMName u2).IPAddresses`.
+- Landed overnight too: `probe-cleanup` (fcb67af7: the pause menu IMGUI fix; menu, shapeshift, combo, aimlooks pass;
+  #166 closed). alpha 0.1.12 draft: Windows uploaded and install-tested (Andrew's PC is now on 0.1.12), notes on it,
+  NET CONFIG 10564187343791070933; the Mac's half pending. PC now on `hitch-hunt` (L3).
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold

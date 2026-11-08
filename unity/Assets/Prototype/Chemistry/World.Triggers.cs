@@ -1,7 +1,7 @@
 // Triggers firing (docs/design/events-and-placing.md 2c, J-067): rules/triggers.json rows
 // reacting to an event: a step, a player's Stand command whose cell differs from the one the
-// core has (ApplyStrike; not a first stand, not while downed), or a golf ball holed, in the
-// ball's tick, at the cup. A trigger fires inside that, in order, so every peer fires the same ones, and
+// core has (ApplyStrike; not a first stand, not while downed), a golf ball holed, in the
+// ball's tick, at the cup, or a tick beginning (a shower round each standing player it's for). A trigger fires inside that, in order, so every peer fires the same ones, and
 // its actions run there as a cast does: a cast of a spell (through Release, a delay giving it
 // a target mark as Falling Star has) or a place (PlaceOn, as a spell's). The cell is the
 // player's own input, as a cast's is: physics decides nothing shared (D4).
@@ -90,6 +90,18 @@ namespace Chem
                 if (t.IsFor(me.Player, peer) && Due(t, me.Player)) Fire(t, me, dx, dy);
         }
 
+        // A tick begins: each tick trigger fires round each standing player it's for, when due, in table order then the
+        // players' (ordinal) order, facing south as nobody stepped. Before the tick's stages, as a cast between ticks lands.
+        void Ticked()
+        {
+            var list = Rules.TriggersOn(TriggerEvent.Tick);
+            if (list.Count == 0 || stands.Count == 0) return;
+            var standing = stands.Values.Where(s => !s.Down).ToList();
+            foreach (var t in list)
+                foreach (var me in standing)
+                    if (t.IsFor(me.Player, TriggerDef.PeerOf(me.Player)) && Due(t, me.Player)) Fire(t, me, 0, 1);
+        }
+
         // The ball went in: the holed triggers of who hit it fire at the cup, facing south as nobody stepped.
         void BallHoled(GolfState g)
         {
@@ -130,11 +142,18 @@ namespace Chem
             if (s == null) return;
             int dir = DirOf(dx, dy), delay = a.Delay > 0 ? a.Delay : s.Delay;
             // The log names the player as the room does ("Player 1"), not their stand ("solo", "p0").
-            if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{TriggerDef.PeerOf(me.Player)}'s {(t.On == TriggerEvent.Holed ? "shot" : "step")} calls down {s.Name}")) return;
+            if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{TriggerDef.PeerOf(me.Player)}'s {EventWord(t.On)} calls down {s.Name}")) return;
             var cast = new TriggeredCast { N = ++triggeredCasts, Trigger = t.Id, Player = me.Player, Spell = s.Id, X = x, Y = y, Dir = dir, Tick = Tick, Lands = Tick + delay };
             triggered.Add(cast);
             triggeredHistory.Add(cast);
         }
+
+        static string EventWord(TriggerEvent on) => on switch
+        {
+            TriggerEvent.Holed => "shot",
+            TriggerEvent.Tick => "shower",
+            _ => "step",
+        };
 
         // The cell an action lands on: the player's, along the step by By, or one picked within Within. False off the world.
         bool ActionCell(TriggerAction a, WizardStand me, int dx, int dy, out int x, out int y)

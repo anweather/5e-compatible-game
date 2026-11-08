@@ -45,7 +45,7 @@ public class PauseMenu : MonoBehaviour
         pages.Clear();
     }
 
-    GUIStyle box, title, button, hint;
+    GUIStyle box, title, button;
     Texture2D gold, goldTint;
 
     readonly MenuNavigator nav = new();
@@ -380,11 +380,20 @@ public class PauseMenu : MonoBehaviour
 
     // --- drawing -----------------------------------------------------------------
 
+    // Activation passes run so far, and how many had run at the menu's last Layout.
+    int activations, activationsAtLayout;
+
     void OnGUI()
     {
         HudScale.Apply();
         if (!Open) return;
         GUI.depth = -100; // over the rest of the HUD (lower draws on top)
+        // Unity lays out every OnGUI before it sends any the event, so MenuActivator's pass can fall
+        // between this one's Layout and Repaint. What its button changed (a new page) would then be
+        // drawn into the old page's layout ("Getting control N's position in a group with only N
+        // controls"), so this event is skipped and the next frame lays out what is there now.
+        if (Event.current.type == EventType.Layout) activationsAtLayout = activations;
+        else if (activations != activationsAtLayout) return;
         MakeStyles();
         nav.BeginPass();
         DrawMenu();
@@ -396,6 +405,7 @@ public class PauseMenu : MonoBehaviour
     {
         if (!Open || !nav.ActivationPending) return;
         MakeStyles();
+        activations++;
         activating = true;
         nav.BeginPass();
         try { DrawMenu(); }
@@ -436,7 +446,6 @@ public class PauseMenu : MonoBehaviour
         DrawSections(Submenu.Main);
         GUILayout.Space(12);
         if (Button("Quit", button)) Quit();
-        if (Highlight) GUILayout.Label(PadGlyphs.Text("<color=#ffffff99>{South} choose  ·  {East} close</color>"), hint);
     }
 
     static void DrawSections(Submenu submenu)
@@ -466,7 +475,6 @@ public class PauseMenu : MonoBehaviour
         box.normal.background = Solid(new Color(0.06f, 0.07f, 0.09f, 0.9f));
         title = new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
         button = new GUIStyle(GUI.skin.button) { fontSize = 19, richText = true, fixedHeight = 44 };
-        hint = new GUIStyle(GUI.skin.label) { fontSize = 14, richText = true, alignment = TextAnchor.MiddleCenter };
         gold = Solid(new Color(1f, 0.82f, 0.29f, 1f));
         goldTint = Solid(new Color(1f, 0.82f, 0.29f, 0.18f));
     }

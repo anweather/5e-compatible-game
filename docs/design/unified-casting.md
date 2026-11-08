@@ -7,7 +7,7 @@ and `hold-ui` land) and `aimed-spells` (lock-on, pitch, Gust and Whirlwind).
 **Core half built (2026-11-07).** Each hand has its own meter (`PlayerHands`): `ComboCommand.Hand` is a tap, `HandDown`
 charges and `HandUp` lets go. A merge is `PlayerCast.Merge` while the hands hold it, and the hands are on everywhere
 (`World.HandsOn`). Attuning outside the Hold takes `attuneTicks` (4, under a second). Fireball went from 8d6 to 4d6, half
-the hit. Dust Storm and Sand Blast are out of the table, fire and air are swapped, and the `held` variants are gone. The
+the hit, then to 3d6 and 15 ticks, with Meteor resting both hands 90 ticks (`spell-balance`, 2026-11-08). Dust Storm and Sand Blast are out of the table, fire and air are swapped, and the `held` variants are gone. The
 ordered `pairs` path (`LoadElement`) stays until the view half lands. The view still sends taps and attunes only in the
 room, so until then free roam casts with the start hands (water and fire).
 
@@ -56,7 +56,8 @@ gestures, and no charge (`docs/design/the-hold.md` section 3).
 | Fire | Release | Release |
 | Cancel | B / Circle | B (today's element keys Z X C V go) |
 | Kit (Hasten Time, Shapeshift, Light, Control Weather) | D-pad ← → pick, ↑ cast | [ ] pick, T cast |
-| Spell list (attune, grimoire, every spell) | D-pad ↓ | Tab |
+| Hands menu (attune: each stick its hand's element, let go) | Hold D-pad ↓ | Tab (the spell list's hands tab) |
+| Spell list (attune, grimoire, every spell) | Esc menu: Game, Spells | Tab |
 | Menu | Menu button | Esc, then arrow keys or WASD and Enter on every page |
 
 Today's keyboard throw on **C** clashes with Earth. With element keys gone, **E** is free for the right throw. The **4-tick
@@ -106,7 +107,7 @@ growth, light).
 
 | Pair | Thrust | Throw | Change |
 |---|---|---|---|
-| Fire + fire | Fireball | Meteor | Fireball tuned down (about 56 a hit, nothing else gets used) |
+| Fire + fire | Fireball | Meteor | Fireball tuned down (about 56 a hit, nothing else gets used): 3d6, 15 ticks. Meteor 24 ticks and its own 90-tick cooldown |
 | Water + water | Wave | Flood | |
 | Earth + earth | Wall of Stone | Stone Ramp | |
 | Air + air | Whirlwind | ~~Dust Storm~~ | **Cut** Dust Storm. Whirlwind must lift and throw, or it's cut too |
@@ -167,3 +168,21 @@ with different hands staying in lockstep.
 - **Charge levels per gesture:** does a thrust charge as far as a throw?
 - **The grimoire:** world-only spells (Hasten Time and the like) stay in the kit. Does anything else need a home outside
   the hand table?
+
+## As built, pad-hands-menu (2026-11-08)
+
+The playtest called the d-pad-down spell list "completely bonkers" (M1) and the screen too wordy (M2). Now:
+
+- **Hold d-pad ↓ for the hands menu** (`HandsMenu.cs`, choosing in `Chemistry/HandsPick.cs`): two hands, the rules'
+  elements round each clockwise from up; the left stick points the left hand, the right stick the right; letting go
+  attunes the hands that changed, the second once the first is done (the core attunes one at a time); B shuts it without
+  attuning. The wizard stands and the camera stays while it's open. In a Hold run an element a hand can't take there is
+  dimmed: away from the towers nothing changes, at a tower only its element. Free roam and the Hold use the same menu.
+- **The spell list moved** to the Esc menu (Game, Spells) on a pad; Tab still opens it on the keyboard. The hand table,
+  the kit's list and the discoveries live there only. Without the hands (no hands in the rules) d-pad ↓ still opens it.
+- **The HUD's element icons** show only while a hand is at work (its buttons held or its gesture under way), and smaller;
+  the wizard's own hands show what they hold the rest of the time. The kit cross's book is two plain hands.
+- **Text cut:** the cast bar's cancel hint; the "You cast …" lines on screen (the console keeps them); the log's swim,
+  wade, skid, Misty Step and wall-nudge lines and the attuned line; the shapeshift's change-back key; the Esc menu's
+  button hints; the spell list's explanations. Shortened: the Hold's wave line, the tower line, the offer's hint, the
+  attune refusals and the locked lines.

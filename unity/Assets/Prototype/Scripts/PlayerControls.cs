@@ -12,7 +12,8 @@ using UnityEngine.InputSystem;
 //                hold to charge, let go to fire; the same gesture on both hands can merge
 //   Cancel cast  B                       B / Circle
 //   Kit spells   [ ]   (T casts)         d-pad left / right   (up casts)
-//   Spell list   Tab                     d-pad down           (attune, the table, every spell)
+//   Hands menu                           hold d-pad down      (each stick points its hand at an element, let go attunes: HandsMenu)
+//   Spell list   Tab                     (the Esc menu's Spells) (attune, the table, every spell)
 //   Dodge roll   Left Ctrl               click the right stick
 //   Punch        F                       B / Circle           (empty-handed and not casting: ItemHolder.Punch.cs)
 //   Pick up/sit  E (near a thing)        X / Square
@@ -65,7 +66,7 @@ public class PlayerControls : MonoBehaviour
     public InputAction DpadNext { get; private set; }
     public InputAction DpadPrevious { get; private set; }
     public InputAction DpadCast { get; private set; }
-    /// <summary>The pad's way into the spell list (SpellListMenu), as Tab is the keyboard's.</summary>
+    /// <summary>The d-pad's down: held, the hands menu (HandsMenu); without the hands, the spell list (SpellListMenu).</summary>
     public InputAction OpenSpellList { get; private set; }
     /// <summary>The hands (<see cref="HandPad"/>): each hand's two buttons, its thrust and its throw; both at once are its sweep.</summary>
     public InputAction ThrustLeft { get; private set; }

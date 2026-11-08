@@ -362,6 +362,5 @@ public class RowHouses : MonoBehaviour
         if (wizard.TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
         else wizard.position = to;
         if (hasBody) body.enabled = true;
-        EventLog.Add("A new wall nudges you aside");
     }
 }

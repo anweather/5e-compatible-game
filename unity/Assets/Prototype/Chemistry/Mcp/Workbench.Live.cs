@@ -220,6 +220,7 @@ namespace Chem.Mcp
                 var changes = LayerChanges(i).ToList();
                 sb.Append($"\n{i}. {layers[i].Mod.Title}: {(changes.Count == 0 ? "nothing that differs from what was under it" : string.Join("; ", changes))}.");
             }
+            foreach (var line in InForce.Sim.Player.Lines()) sb.Append('\n').Append(line).Append('.');
             return sb.Append('\n').Append(TimeWords(now)).Append('\n').Append(WeatherWords(now)).ToString();
         }
 

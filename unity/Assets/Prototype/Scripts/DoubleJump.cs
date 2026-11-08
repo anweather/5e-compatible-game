@@ -8,7 +8,9 @@ using UnityEngine.InputSystem;
 // stays untouched: it reads the controller's Grounded flag and sets its
 // vertical speed (_verticalVelocity) by reflection (WizardRig), the way the
 // swim kick does. Works everywhere (the climbing tower is laid out for it).
-// Not while swimming: there jump is the swim kick.
+// Not while swimming: there jump is the swim kick. The player's jumps stat
+// (PlayerStats.Jumps, set by WizardStats) gives it more than one in the air: a
+// quadruple jump is three air jumps.
 [DefaultExecutionOrder(101)]
 [RequireComponent(typeof(CharacterController))]
 public class DoubleJump : MonoBehaviour
@@ -25,11 +27,17 @@ public class DoubleJump : MonoBehaviour
     FieldInfo grounded, fall, gravity;
     SurfaceEffects surface;
     Animator animator;
-    bool used;
-    float airborneSince = -1f;
+    int used;
+    float airborneSince = -1f, lastJump = -1f;
 
-    /// <summary>Whether the second jump has been used since the wizard last stood on something.</summary>
-    public bool Used => used;
+    /// <summary>Jumps in the air before landing: 1 is the double jump, 0 none (the jumps stat less the ground's).</summary>
+    public int AirJumps { get; set; } = 1;
+
+    /// <summary>Whether every air jump has been used since the wizard last stood on something.</summary>
+    public bool Used => used >= AirJumps;
+
+    /// <summary>Air jumps used since the wizard last stood on something.</summary>
+    public int UsedJumps => used;
 
     void Awake()
     {
@@ -55,19 +63,20 @@ public class DoubleJump : MonoBehaviour
             if (airborneSince < 0f) airborneSince = Time.time;
             return;
         }
-        used = false;
+        used = 0;
         airborneSince = -1f;
     }
 
     bool OnGround() => grounded == null || (bool)grounded.GetValue(controller);
 
-    /// <summary>The second jump, if the wizard is in the air and hasn't used it yet; returns whether it jumped.</summary>
+    /// <summary>An air jump, if the wizard is in the air and has one left; returns whether it jumped.</summary>
     public bool AirJump()
     {
         if (controller == null || !controller.enabled || !body.enabled || fall == null || gravity == null) return false;
-        if (used || OnGround() || airborneSince < 0f || Time.time - airborneSince < after) return false;
+        if (Used || OnGround() || airborneSince < 0f || Time.time - airborneSince < after || Time.time - lastJump < after) return false;
         if (surface != null && surface.Swimming) return false;
-        used = true;
+        used++;
+        lastJump = Time.time;
         float g = (float)gravity.GetValue(controller);
         fall.SetValue(controller, Mathf.Sqrt(height * -2f * g));
         if (animator != null) animator.SetBool(JumpId, true);

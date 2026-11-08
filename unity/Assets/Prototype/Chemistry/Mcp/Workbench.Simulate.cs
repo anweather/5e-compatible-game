@@ -60,7 +60,7 @@ namespace Chem.Mcp
             if (n < 1 || n > max) throw new RulesToolException($"Simulate runs 1 to {max} ticks, not {n}.");
             var rules = RulesWith(PatchJson(draftOrMod));
             // Without it first, so warming up the runtime doesn't count against the mod.
-            string walker = !walking ? null : rules.TriggersOn(TriggerEvent.Step).Select(t => t.Who).FirstOrDefault(p => p != TriggerDef.Each) ?? "Walker";
+            string walker = !walking ? null : rules.TriggersOn(TriggerEvent.Step).Concat(rules.TriggersOn(TriggerEvent.Tick)).Select(t => t.Who).FirstOrDefault(p => p != TriggerDef.Each) ?? "Walker";
             var without = Simulator.Run(InForce, scenario, n, walker);
             return (Simulator.Run(rules, scenario, n, walker), without);
         }

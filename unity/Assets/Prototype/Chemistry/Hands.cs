@@ -8,11 +8,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>What a gesture brings out: a spell, or an act for a hand with no spell; and the ticks it takes.</summary>
+    /// <summary>What a gesture brings out: a spell, or an act for a hand with no spell; the ticks it takes, and its own cooldown (0: the table's).</summary>
     public sealed class HandRowDef
     {
         public string Spell, Act;
-        public int CastTicks;
+        public int CastTicks, Cooldown;
     }
 
     /// <summary>rules/hold.json "hands".</summary>
@@ -101,7 +101,7 @@ namespace Chem
 
         static string Holds(JToken t) => (string)t == Empty ? null : (string)t;
 
-        static HandRowDef Row(JToken t) => t == null ? null : new HandRowDef { Spell = (string)t["spell"], Act = (string)t["act"], CastTicks = (int?)t["castTicks"] ?? 0 };
+        static HandRowDef Row(JToken t) => t == null ? null : new HandRowDef { Spell = (string)t["spell"], Act = (string)t["act"], CastTicks = (int?)t["castTicks"] ?? 0, Cooldown = (int?)t["cooldown"] ?? 0 };
 
         /// <summary>The gestures, as rules/hold.json spells them, for the rule check.</summary>
         internal static IReadOnlyList<string> Gestures => GestureNames;
@@ -171,6 +171,7 @@ namespace Chem
                 if (row["act"] == null && !SpellKnown(row["spell"])) Errors.Add($"hands: {id}: unknown spell {Show(row["spell"])}");
                 if (!WholeFromOne(row["castTicks"])) Errors.Add($"hands: {id}: castTicks must be a whole number from 1");
                 else if ((int)row["castTicks"] < leastTicks) Errors.Add($"hands: {id}: castTicks must be at least the window");
+                if (row["cooldown"] != null && !WholeFromOne(row["cooldown"])) Errors.Add($"hands: {id}: cooldown must be a whole number from 1");
             }
         }
     }
