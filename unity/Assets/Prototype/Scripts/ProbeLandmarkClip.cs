@@ -9,6 +9,8 @@ public abstract partial class LandmarkClipProbe : CastleCliffProbe
     const float WalkSeconds = 17f, RiseSeconds = 10f;
     // How high the walk's eye is over the ground: a wizard's, or a little over the roofs for a village up a slope.
     protected virtual float EyeHeight => 1.8f;
+    // How high over its ground the rise ends looking.
+    protected virtual float RiseLookUp => 0f;
 
     protected abstract Vector2Int From { get; }
     protected abstract Vector2Int To { get; }
@@ -48,7 +50,7 @@ public abstract partial class LandmarkClipProbe : CastleCliffProbe
         var high = grid.CellCenter(RiseFrom.x, RiseFrom.y);
         high.y = grid.GroundAt(high) + RiseFrom.z;
         var look = grid.CellCenter(RiseAt.x, RiseAt.y);
-        look.y = grid.GroundAt(look);
+        look.y = grid.GroundAt(look) + RiseLookUp;
         for (float t = 0f; t < RiseSeconds; t += Time.deltaTime)
         {
             float k = Mathf.SmoothStep(0f, 1f, t / RiseSeconds);
@@ -65,6 +67,14 @@ public abstract partial class LandmarkClipProbe : CastleCliffProbe
             Metric("great_tree_width_m", bounds.size.x);
             Metric("great_tree_x", great.transform.position.x);
             Metric("great_tree_z", great.transform.position.z);
+            var rs = great.GetComponentsInChildren<Renderer>(true);
+            Metric("great_tree_active", great.activeInHierarchy ? 1 : 0);
+            Metric("great_tree_renderers", rs.Length);
+            Metric("great_tree_renderers_on", rs.Count(r => r.enabled && r.gameObject.activeInHierarchy));
+            Metric("great_tree_lod", great.GetComponentInChildren<LODGroup>() != null ? 1 : 0);
+            Metric("great_tree_y", great.transform.position.y);
+            Metric("great_tree_scale", great.transform.lossyScale.y);
+            Debug.Log("GREAT TREE " + string.Join(", ", rs.Select(r => r.name + ":" + r.GetType().Name + ":" + (r.sharedMaterial != null ? r.sharedMaterial.shader.name : "none") + ":" + r.isVisible)));
         }
         Metric("frames", film.Frames);
         Metric("seconds", film.Seconds);
@@ -94,8 +104,9 @@ public sealed class LandmarkForestClipProbe : LandmarkClipProbe
     protected override Vector2Int To => new(494, 230);
     protected override Vector2Int Landmark => new(470, 226);
     protected override float LandmarkUp => 20f;
-    protected override Vector3Int RiseFrom => new(525, 275, 40);
-    protected override Vector2Int RiseAt => new(470, 228);
+    protected override Vector3Int RiseFrom => new(560, 262, 28);
+    protected override Vector2Int RiseAt => new(470, 226);
+    protected override float RiseLookUp => 28f;
 }
 
 // Mount Hearth by Emberhold: up the climbing way from the foot towards the crater.
