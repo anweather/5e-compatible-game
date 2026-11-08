@@ -380,11 +380,20 @@ public class PauseMenu : MonoBehaviour
 
     // --- drawing -----------------------------------------------------------------
 
+    // Activation passes run so far, and how many had run at the menu's last Layout.
+    int activations, activationsAtLayout;
+
     void OnGUI()
     {
         HudScale.Apply();
         if (!Open) return;
         GUI.depth = -100; // over the rest of the HUD (lower draws on top)
+        // Unity lays out every OnGUI before it sends any the event, so MenuActivator's pass can fall
+        // between this one's Layout and Repaint. What its button changed (a new page) would then be
+        // drawn into the old page's layout ("Getting control N's position in a group with only N
+        // controls"), so this event is skipped and the next frame lays out what is there now.
+        if (Event.current.type == EventType.Layout) activationsAtLayout = activations;
+        else if (activations != activationsAtLayout) return;
         MakeStyles();
         nav.BeginPass();
         DrawMenu();
@@ -396,6 +405,7 @@ public class PauseMenu : MonoBehaviour
     {
         if (!Open || !nav.ActivationPending) return;
         MakeStyles();
+        activations++;
         activating = true;
         nav.BeginPass();
         try { DrawMenu(); }

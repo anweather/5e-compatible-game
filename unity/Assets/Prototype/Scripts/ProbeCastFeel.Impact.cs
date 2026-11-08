@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -44,6 +45,10 @@ public partial class CastFeelProbe
         float shakeWas = GameFeel.Shake;
         var padWas = Gamepad.current;
         InputSystem.RegisterLayout<MotorPad>();
+        // A real pad plugged in (a DualSense sends reports all the time) would take Gamepad.current, and
+        // the rumble with it, from the probe's pad: they're off while it runs.
+        var others = Gamepad.all.Where(g => g.enabled).ToArray();
+        foreach (var other in others) InputSystem.DisableDevice(other);
         pad = InputSystem.AddDevice<MotorPad>("Rumble pad");
         pad.MakeCurrent();
         PadRumble.Testing = true;
@@ -70,6 +75,7 @@ public partial class CastFeelProbe
             PadRumble.Testing = false;
             GameFeel.Shake = shakeWas;
             InputSystem.RemoveDevice(pad);
+            foreach (var other in others) InputSystem.EnableDevice(other);
             padWas?.MakeCurrent();
         }
     }

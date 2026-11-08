@@ -5,8 +5,9 @@ using UnityEngine;
 // menu's current page once in its own layout pass, where PauseMenu.Button
 // returns true for the highlighted button and its code runs. It lives beside
 // the menu (PauseMenu adds it) so that whatever the button changes happens
-// outside the menu's own layout and repaint passes, which therefore always
-// agree. Nothing it draws is ever shown: it only takes part in layout passes.
+// outside the menu's own layout and repaint passes; the menu skips an event its
+// layout came before (PauseMenu.OnGUI), so the two passes always agree. Nothing
+// it draws is ever shown: it only takes part in layout passes.
 [RequireComponent(typeof(PauseMenu))]
 public class MenuActivator : MonoBehaviour
 {
