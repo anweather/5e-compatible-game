@@ -261,6 +261,7 @@ namespace Chem.Tests
         }
 
         [Test]
+        [NonParallelizable] // with fixtures beside it, the runtime's own work on this thread (its JIT) once landed in a measured loop: 6560 bytes
         public void AtAllocatesNothing()
         {
             var fire = Fire(FireLook("[{ 'where': { 'place': 'box', 'within': 3 }, 'mix': [[0, 1, 0], [0, 1, 1]] }, { 'where': { 'around': 'host', 'within': 5 }, 'color': [0.2, 0.9, 0.3] }, { 'by': 'each', 'mix': [[1, 0, 0], [0, 0, 1]] }, { 'by': 1, 'color': [0, 1, 0] }]", "[[1, 0, 0], [0, 0, 1]]"));
@@ -272,9 +273,10 @@ namespace Chem.Tests
                     for (int x = 0; x < 64; x++) sum += fire.At(x, y, players, y == 0 ? Red : (LookColour?)null, x % 3 == 0 ? (int?)null : x % 3 - 1).G;
                 return sum;
             }
-            for (int warm = 0; warm < 3; warm++) Sweep();
-            // The runtime may allocate a little once around a measured loop (its JIT), so what's checked is
-            // that the bytes don't grow with the calls: 4096 calls and 12288 allocate the same.
+            // Past the runtime's 30 calls before it recompiles a method (tiered JIT), so that work is done before the measuring.
+            for (int warm = 0; warm < 32; warm++) Sweep();
+            // The runtime may still allocate a little once around a measured loop, so what's checked is
+            // that the bytes on this thread don't grow with the calls: 4096 calls and 12288 allocate the same.
             long Measure(int sweeps)
             {
                 long before = GC.GetAllocatedBytesForCurrentThread();

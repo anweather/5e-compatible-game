@@ -55,10 +55,13 @@ public class EventLog : MonoBehaviour
 
     // A line that starts with the same text as the last one replaces it, so
     // "The oil ignites (×3)" updates "The oil ignites (×2)" in place.
+    const string CastLine = "You cast ";
+
     public static void Add(string line, string sameAs = null)
     {
         Debug.Log(line);
-        if (instance == null) return;
+        // What the player just did and sees happen isn't news on screen (playtest 2026-11-08, M2): the console keeps it.
+        if (instance == null || line.StartsWith(CastLine, StringComparison.Ordinal)) return;
         var list = instance.lines;
         if (list.Count > 0 && list[list.Count - 1].StartsWith(sameAs ?? line, StringComparison.Ordinal))
         {

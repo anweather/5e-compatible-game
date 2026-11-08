@@ -21,12 +21,12 @@ namespace Chem.Mcp
         {
             id = Required(id, "id");
             on = string.IsNullOrEmpty(on) ? "step" : on.ToLowerInvariant();
-            if (!Rules.TriggerEvents.Contains(on)) throw new RulesToolException($"A trigger reacts to step (a player stepping onto another cell) or holed (a golf ball going in the cup), not {on}.");
+            if (!Rules.TriggerEvents.Contains(on)) throw new RulesToolException($"A trigger reacts to step (a player stepping onto another cell), holed (a golf ball going in the cup), tick (time passing: a shower) or called (a named act), not {on}.");
             // Whoever sinks it, unless a player is named: a ball is everyone's.
-            if (string.IsNullOrEmpty(who) && on != "step") who = TriggerDef.Each;
+            if (string.IsNullOrEmpty(who) && on != "step" && on != "tick") who = TriggerDef.Each;
             who = string.IsNullOrEmpty(who) || who == "me" ? AskerForTrigger() : who;
             var list = TriggerActions(does, on == "called");
-            CheckTriggerOdds(every, chance);
+            CheckTriggerOdds(on, every, chance);
             var draft = DraftOf(draftId);
             var row = new JObject { ["on"] = on, ["who"] = who };
             if (every.HasValue) row["every"] = every.Value;
@@ -48,6 +48,7 @@ namespace Chem.Mcp
             }
             draft.Changed.Add($"{TriggersTable} {id}");
             if (on == "called") return draft.Show() + $"\n{id} is a named act: once this mod is on, call_act fires it at a place, each row as act would do it.";
+            if (on == "tick") return draft.Show() + "\n" + TickWords(id, who, every, chance);
             if (on != "step") return draft.Show() + $"\n{id} fires when a golf ball goes in the cup, at the cup's cell. act places a ball and a cup; simulate can't play a round.";
             int gap = Math.Max(TriggerDef.MinEvery, every ?? TriggerDef.MinEvery);
             double perSecond = InForce.Sim.TicksPerSecond / (double)gap;
@@ -71,8 +72,20 @@ namespace Chem.Mcp
             return list;
         }
 
-        static void CheckTriggerOdds(int? every, double? chance)
+        // What a shower comes to: how often round whom, and that it goes on until it's reverted.
+        string TickWords(string id, string who, int? every, double? chance)
         {
+            int gap = Math.Max(TriggerDef.MinTickEvery, every ?? TriggerDef.MinTickEvery);
+            double perMinute = InForce.Sim.TicksPerSecond * 60.0 / gap * (chance ?? 1);
+            return string.Format(CultureInfo.InvariantCulture,
+                "{0} fires round {1} every {2} ticks ({3:0.#} seconds; about {4:0} a minute each), at most {5} triggers a tick in the room, for as long as the mod is on: revert it to stop. Run simulate on it: it counts what fired.",
+                id, who == TriggerDef.Each ? "every player" : who, gap, gap / (double)InForce.Sim.TicksPerSecond, perMinute, (int)Budgets.Number("triggers.maxPerTick", World.DefaultMaxFiringsPerTick));
+        }
+
+        static void CheckTriggerOdds(string on, int? every, double? chance)
+        {
+            if (on == "tick" && every.HasValue && every.Value < TriggerDef.MinTickEvery)
+                throw new RulesToolException($"A tick trigger's every is at least {TriggerDef.MinTickEvery} ticks (2 seconds) for a player: a meteor every 2 seconds is already a shower, and a room fires at most 4 triggers a tick.");
             if (every.HasValue && every.Value < TriggerDef.MinEvery)
                 throw new RulesToolException($"every is at least {TriggerDef.MinEvery} ticks: a trigger fires at most twice a second for a player, so a meteor at every step of a run is already two a second.");
             if (chance.HasValue && !(chance.Value > 0 && chance.Value <= 1)) throw new RulesToolException("chance is above 0 and at most 1; leave it out for every time.");
@@ -88,6 +101,9 @@ namespace Chem.Mcp
             var does = (t["do"] as JArray ?? new JArray()).Select(ActionWords);
             if (Str(t["on"]) == "called") return $"a named act, for {(Str(t["who"]) == TriggerDef.Each ? "anyone" : Str(t["who"]))} to call: {string.Join(", then ", does)}";
             string chance = t["chance"] == null ? "" : $", at a chance of {Num((double)t["chance"])}";
+            if (Str(t["on"]) == "tick")
+                return string.Format(CultureInfo.InvariantCulture, "a shower round {0}, every {1} ticks{2}: {3}",
+                    Str(t["who"]) == TriggerDef.Each ? "every player" : Str(t["who"]), Math.Max(TriggerDef.MinTickEvery, (int?)t["every"] ?? TriggerDef.MinTickEvery), chance, string.Join(", then ", does));
             return string.Format(CultureInfo.InvariantCulture, "on {0} {1}, at most every {2} ticks{3}: {4}",
                 who, Str(t["on"]) ?? "step", (int?)t["every"] ?? TriggerDef.MinEvery, chance, string.Join(", then ", does));
         }
@@ -116,8 +132,8 @@ namespace Chem.Mcp
             return row is JObject ? $"a trigger, {id}: {TriggerWords(row)}" : $"the trigger {id} taken out";
         }
 
-        /// <summary>Whether a patch has a step trigger, so simulate walks a loop.</summary>
+        /// <summary>Whether a patch has a step or tick trigger, so simulate walks a loop (a shower needs a player standing).</summary>
         static bool HasStepTrigger(JObject patch) =>
-            (patch[TriggersTable] as JObject)?.PropertyValues().Any(t => t is JObject && (Str(t["on"]) ?? "step") == "step") == true;
+            (patch[TriggersTable] as JObject)?.PropertyValues().Any(t => t is JObject && ((Str(t["on"]) ?? "step") == "step" || Str(t["on"]) == "tick")) == true;
     }
 }

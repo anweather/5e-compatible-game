@@ -244,14 +244,13 @@ public partial class Shapeshift : MonoBehaviour
 
     static string Article(string noun) => (noun[0] is 'a' or 'e' or 'i' or 'o' or 'u' ? "an " : "a ") + noun;
 
-    // How long is left, and how to change back, under the crosshair.
+    // How long is left, under the crosshair (the log said how to change back).
     void OnGUI()
     {
         HudScale.Apply();
         if (!local || !Shifted || !EventLog.HudVisible) return;
         hud ??= new GUIStyle(GUI.skin.label) { fontSize = 16, richText = true, alignment = TextAnchor.MiddleCenter };
-        string key = controls != null && controls.UsingGamepad ? "Any element button" : "Z X C V or left click";
-        string text = $"<b>{FormName}</b>  {Mathf.CeilToInt(SecondsLeft)} s   <color=#ffffffaa>{key}: change back</color>";
+        string text = $"<b>{FormName}</b>  {Mathf.CeilToInt(SecondsLeft)} s";
         GUI.Label(new Rect(HudScale.Width / 2f - 200f, HudScale.Height - 90f, 400f, 30f), text, hud);
     }
 }

@@ -121,7 +121,6 @@ public static class MistyStep
         if (wizard.TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
         else wizard.position = to;
         if (hasBody) body.enabled = true;
-        EventLog.Add("You reappear in a swirl of silver mist");
         return true;
     }
 
@@ -202,8 +201,9 @@ public static class MistyStep
         float radius = 0.3f, height = 1.8f;
         if (wizard.TryGetComponent<CharacterController>(out var body))
         {
-            radius = body.radius;
-            height = body.height;
+            // The capsule scales with the wizard (WizardStats' size).
+            radius = body.radius * wizard.lossyScale.y;
+            height = body.height * wizard.lossyScale.y;
         }
         float r = radius * 0.9f;
         // A sphere touches a slope of this normal when its centre is less than r / normal.y over the spot.
