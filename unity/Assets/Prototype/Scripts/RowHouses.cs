@@ -222,8 +222,8 @@ public class RowHouses : MonoBehaviour
         };
     }
 
-    // A row's great trees (its "great-tree" details, rules/buildings.json): the valley's own tree for that cell, scaled up and
-    // stood at a join, a stand-in until a great tree is modelled. The row's cells (its trunk, its roots) are what blocks.
+    // A row's great trees (its "great-tree" details, rules/buildings.json): the valley's own tree of the detail's kind (or the
+    // cell's), scaled up and stood at a join, a stand-in until a great tree is modelled. The row's cells (its trunk, its roots) are what blocks.
     void GreatTrees(GameObject root, BuildingRow row, Vector3 corner)
     {
         if (!(row.Json["parts"] is JArray parts) || !(row.Json["joins"] is JObject joins)) return;
@@ -233,7 +233,7 @@ public class RowHouses : MonoBehaviour
             if (valley == null || !(joins[(string)part["join"] ?? ""] is JArray j)) continue;
             int jx = (int)j[0], jy = (int)j[1];
             int cx = row.X + Mathf.FloorToInt(jx / 2f), cy = row.Y + Mathf.FloorToInt(jy / 2f);
-            if (!valley.TreeModel(cx, cy, out var prefab, out var size)) continue;
+            if (!valley.TreeModel(cx, cy, (string)part["tree"], out var prefab, out var size)) continue;
             float half = grid.cellSize / 2f;
             var at = corner + new Vector3(jx * half, 0f, -jy * half);
             at.y = grid.GroundAt(at);

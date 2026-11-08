@@ -69,7 +69,9 @@ namespace Chem
             }
         }
 
-        // The graded roads' cuts, from the map's land as its file has it. A world without that land keeps its ground.
+        // The graded roads' cuts and the pads, from the map's land as its file has it with what's been stamped on it: the
+        // map's own stamps go down first (ChemGrid), so a pad on a stamp's slope is cut level on that slope.
+        // A world without that land keeps its ground.
         void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells)
         {
             var pad = row.Json["pad"];
@@ -78,6 +80,9 @@ namespace Chem
             if (!File.Exists(path)) return;
             var land = LandFile.Read(File.ReadAllText(path), world.W, world.H);
             if (land.Length == 0) return;
+            if (world.LandHasMoved)
+                for (int y = 0; y < world.H; y++)
+                    for (int x = 0; x < world.W; x++) land[world.Idx(x, y)] += world.LandStampedAt(x, y);
             var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));
             if (pad != null)
             {

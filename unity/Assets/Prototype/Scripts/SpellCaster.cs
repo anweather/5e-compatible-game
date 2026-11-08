@@ -280,20 +280,23 @@ public partial class SpellCaster : MonoBehaviour
         if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size, look: color);
     }
 
-    // A jagged line (Earth Spires) bursts up one spire after another away from the caster, each in a spray of rock and dust.
-    IEnumerator Spires(SpellDef def, CastCommand cast, Color? look)
+    // A jagged line (Earth Spires) bursts up one spire after another away from the caster (ChemGrid.Spires.cs), each
+    // in a spray of rock and dust; a raider where one comes up rides up on it. Said before the core lands it, so the
+    // pillars it raises know when to rise.
+    void Spires(SpellDef def, CastCommand cast)
     {
         var cells = grid.World.SpellCells(def, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY);
+        float when = Time.time;
         foreach (var (x, y) in cells)
         {
-            var at = grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y);
-            BurstFx.Play(BurstFx.Kind.Debris, at, SpireBurst, look: look);
-            BurstFx.Play(BurstFx.Kind.Chips, at, SpireBurst * 0.8f);
-            yield return new WaitForSeconds(SpireEvery);
+            grid.SpiresRiseAt(x, y, when);
+            var raider = grid.World.RaiderAt(x, y);
+            if (raider != null && raider.Alive) grid.SpireUnder(raider, x, y, when);
+            when += SpireEvery;
         }
     }
 
-    const float SpireBurst = 1.4f, SpireEvery = 0.05f;
+    const float SpireEvery = 0.06f;
 
     // A Geyser's jet out of the water; on dry ground, only a little puff.
     void Jet(Vector3 landing, float size, Color? look)
@@ -321,7 +324,7 @@ public partial class SpellCaster : MonoBehaviour
         {
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)), look.ScaleFor(def, charge));
             ElementBurst(def, look, landing, charge);
-            if (def != null && def.Jagged > 0) StartCoroutine(Spires(def, cast, look?.glow));
+            if (def != null && def.Jagged > 0) Spires(def, cast);
             grid.LightInLook(this, def, look, cast);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             CastImpact.Landed(def, landing, charge);

@@ -1,0 +1,1201 @@
+<title>World Squares Paper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{
+  --bg:#f5f2ea; --fg:#1f2328; --muted:#5d646d; --panel:#fffdf8; --border:#d8d1c3; --accent:#2c66d0; --accent-fg:#ffffff;
+  --btn:#ece6d9; --btn-on:#2c66d0; --btn-on-fg:#ffffff;
+  --band-sea:#6c9fc6; --band-low:#9fc77c; --band-hills:#cbc27b; --band-high:#b9967a; --band-peaks:#ece8e2;
+  --bio-temperate:#5e9b50; --bio-grassland:#acc95f; --bio-mountains:#8c857a; --bio-tundra:#c6d5d4; --bio-salt-flat:#e9e0cb;
+  --bio-foggy-marsh:#6e8f7b; --bio-ashlands:#6c5a54; --bio-ocean:#4f86b8;
+  --sea:#4f86b8; --sand:#e8d49a; --river:#1f74d1; --road:#b5824f; --main-road:#9a5f2c; --fence:#4a3524; --stone:#f4f1ea; --range:#6b6762; --ridge:#e9e6e1; --canyon:#3d2a20;
+  --fog:rgba(30,34,42,.5); --haze:rgba(245,242,234,.45); --void:#c9c3b6;
+  --ring-active:#ff7a00; --ring-gen:#159a5c; --ring-known:#6b5fd0; --bad:#e0302b; --char:#ffffff; --char-edge:#1f2328;
+  --undecided:#ddd6c8; --ink:#1f2328; --label-bg:rgba(255,253,248,.85); --flash:rgba(255,200,0,.55); --seam:rgba(31,35,40,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171c; --fg:#e7e5e0; --muted:#9aa1ab; --panel:#1c2026; --border:#333a44; --accent:#6c9dff; --accent-fg:#0d1117;
+    --btn:#262b33; --btn-on:#6c9dff; --btn-on-fg:#0d1117;
+    --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad;
+    --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
+    --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83;
+    --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
+    --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
+    --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
+    --undecided:#2a2f37; --ink:#e7e5e0; --label-bg:rgba(20,23,28,.85); --flash:rgba(255,210,60,.55); --seam:rgba(231,229,224,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171c; --fg:#e7e5e0; --muted:#9aa1ab; --panel:#1c2026; --border:#333a44; --accent:#6c9dff; --accent-fg:#0d1117;
+  --btn:#262b33; --btn-on:#6c9dff; --btn-on-fg:#0d1117;
+  --band-sea:#2f5d82; --band-low:#5f8a4a; --band-hills:#8c8547; --band-high:#7b6250; --band-peaks:#b8b4ad;
+  --bio-temperate:#3f7336; --bio-grassland:#7c9641; --bio-mountains:#69635b; --bio-tundra:#8fa3a2; --bio-salt-flat:#a99f8a;
+  --bio-foggy-marsh:#4b6656; --bio-ashlands:#4a3d39; --bio-ocean:#2d5a83;
+  --sea:#2d5a83; --sand:#a8955f; --river:#5aa6ff; --road:#c99a68; --main-road:#e0ad72; --fence:#d8c3a5; --stone:#f4f1ea; --range:#9a958e; --ridge:#3a3734; --canyon:#120c09;
+  --fog:rgba(4,5,8,.58); --haze:rgba(20,23,28,.5); --void:#0c0e11;
+  --ring-active:#ff9a3c; --ring-gen:#3fd18c; --ring-known:#a399ff; --bad:#ff5a52; --char:#ffffff; --char-edge:#0d1117;
+  --undecided:#2a2f37; --ink:#e7e5e0; --label-bg:rgba(20,23,28,.85); --flash:rgba(255,210,60,.55); --seam:rgba(231,229,224,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding-top:14px;padding-bottom:40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+h1{font-size:20px;margin:0 0 6px}
+.lede{margin:0 0 12px;color:var(--muted);font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px}
+button,.seg button{min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:var(--btn);color:var(--fg);font:inherit;font-size:14px;cursor:pointer;touch-action:manipulation}
+button[aria-pressed="true"]{background:var(--btn-on);color:var(--btn-on-fg);border-color:var(--btn-on)}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+input#seed{min-height:40px;width:9.5em;max-width:40vw;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--fg);font:inherit}
+label.sm{font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;gap:0}
+.seg button{border-radius:0}
+.seg button:first-child{border-radius:10px 0 0 10px}
+.seg button:last-child{border-radius:0 10px 10px 0;border-left:none}
+.stage{position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--void)}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.stats{font-size:13px;color:var(--muted);margin:6px 0 2px;min-height:1.4em}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14px}
+.panel b{color:var(--fg)}
+.panel .k{color:var(--muted)}
+.walk{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.dpad{display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px 48px;gap:4px}
+.dpad button{padding:0;font-size:18px;min-height:48px}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .r{grid-column:3;grid-row:2}.dpad .d{grid-column:2;grid-row:3}
+.walkbtns{display:flex;flex-direction:column;gap:8px;flex:1;min-width:150px}
+.msg{font-size:13px;margin:4px 0;min-height:1.2em}
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;font-size:13px;margin-top:6px}
+.legend span.sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px;border:1px solid var(--border)}
+.legend span.ln{display:inline-block;width:22px;height:0;border-top-width:4px;border-top-style:solid;vertical-align:3px;margin-right:6px}
+details summary{cursor:pointer;min-height:32px;line-height:32px;font-size:14px}
+.ok{color:var(--ring-gen)} .badc{color:var(--bad)}
+</style>
+
+<main class="wrap">
+  <h1>World squares, on paper</h1>
+  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, ridges, canyons, coast), rivers only run downhill, and then roads are routed between the landmarks. Watch it solve, then walk: chunks near you go from fog to known to generated. Reroll for a new world, or turn on Torus and walk off an edge.</p>
+
+  <div class="row">
+    <label class="sm" for="seed">Seed</label>
+    <input id="seed" value="valley-1" autocomplete="off" spellcheck="false">
+    <button id="reroll">Reroll</button>
+    <span class="seg" role="group" aria-label="World size">
+      <button id="sz3" aria-pressed="true">3 × 3</button><button id="sz12" aria-pressed="false">12 × 12</button>
+    </span>
+    <button id="torus" aria-pressed="false">Torus</button>
+    <span class="seg" role="group" aria-label="Templates">
+      <button id="lib13" aria-pressed="true">13 templates</button><button id="lib26" aria-pressed="false">26</button>
+    </span>
+  </div>
+  <div class="row">
+    <button id="step">Step</button>
+    <button id="solve" class="primary">Solve</button>
+    <span class="seg" role="group" aria-label="View">
+      <button id="vWorld" aria-pressed="true">World</button><button id="vClose" aria-pressed="false">Close up</button>
+    </span>
+  </div>
+  <div class="row" role="group" aria-label="Layers">
+    <button data-layer="bands" aria-pressed="false">Bands</button>
+    <button data-layer="biomes" aria-pressed="true">Biomes</button>
+    <button data-layer="edges" aria-pressed="true">Edges</button>
+    <button data-layer="landmarks" aria-pressed="true">Landmarks</button>
+    <button data-layer="rings" aria-pressed="true">Rings</button>
+  </div>
+
+  <div class="stats" id="solveStats"></div>
+  <div class="stage"><canvas id="cv" width="700" height="700" aria-label="World map"></canvas></div>
+
+  <div class="walk">
+    <div class="dpad" aria-label="Walk">
+      <button class="u" data-d="0,-1" aria-label="North">▲</button>
+      <button class="l" data-d="-1,0" aria-label="West">◀</button>
+      <button class="r" data-d="1,0" aria-label="East">▶</button>
+      <button class="d" data-d="0,1" aria-label="South">▼</button>
+    </div>
+    <div class="walkbtns">
+      <button id="otherWay">Walk a different way</button>
+      <button id="resetWalk">Back to the valley</button>
+    </div>
+  </div>
+  <div class="msg" id="orderMsg"></div>
+
+  <div class="panel" id="here"></div>
+  <div class="panel" id="cost"></div>
+
+  <details>
+    <summary>Legend</summary>
+    <div class="legend" id="legend"></div>
+  </details>
+</main>
+
+<script>
+(function(){
+'use strict';
+// ---------- constants (docs/design/world-squares.md) ----------
+const S = 576, CH = 64, K = 9;                 // cells per world square, cells per chunk, chunks per side
+const BANDS = ['sea','low','hills','high','peaks'];
+const BAND_H = [-40, 20, 120, 300, 700];       // world/bands.json
+const DX = [0,1,0,-1], DY = [-1,0,1,0];        // n e s w
+const SIDE = ['N','E','S','W'];
+const CORNER_SIDES = [[0,3],[0,1],[1,2],[2,3]]; // NW NE SE SW
+const CDX = [-1,1,1,-1], CDY = [-1,-1,1,1];
+const SIDE_CORNERS = [[0,1],[1,2],[3,2],[0,3]]; // start,end corner per side (N,S run W->E; E,W run N->S)
+const DEPTHS = [48, 112];                      // shoreline offset classes, cells
+const REACH = 2, SIGHT = 4, KNOW = 7;          // rules/sim.json streaming
+const KIND = { r:'river', d:'road', g:'range', c:'canyon' };
+const MB_PER_CHUNK = 60/81;
+
+// curated 7 + ocean, from world/biomes.json
+const BIOMES = {
+  'temperate':{name:'Temperate',base:22,relief:70}, 'grassland':{name:'Grassland',base:14,relief:12},
+  'mountains':{name:'Mountains',base:45,relief:260}, 'tundra':{name:'Tundra',base:105,relief:14},
+  'salt-flat':{name:'Salt Flat',base:6,relief:1.5}, 'foggy-marsh':{name:'Foggy Marsh',base:0.9,relief:3},
+  'ashlands':{name:'Ashlands',base:12,relief:20}, 'ocean':{name:'Ocean',base:-38,relief:4}
+};
+const BIOME_IDS = Object.keys(BIOMES);
+
+// world/landmarks/village-with-landmark.json (names and forms); seenFrom invented for the paper
+const INTENT = { id:'village-with-landmark', by:{
+  'temperate':{ name:"a forest village by a great tree", landmark:'great tree', icon:'tree', seenFrom:5,
+    villageNames:["Thornwick","Oakhollow","Mossbridge","Fernlea","Rootstead","Ashgrove","Elmscot","Barkwell"],
+    landmarkNames:["the Old Mother","the Elder Oak","the Grandfather Tree","the Crowned Oak","the Hollow King","the Greatbough"] },
+  'mountains':{ name:"a village at a volcano's foot", landmark:'volcano', icon:'volcano', seenFrom:10,
+    villageNames:["Cinderfoot","Emberhold","Slagford","Basalt Rest","Pumice End","Ashmoor","Kilnside","Smokeholm"],
+    landmarkNames:["Mount Hearth","the Smoking Crown","Old Grumbler","Emberpeak","the Ash Mother","the Red Throat"] },
+  'foggy-marsh':{ name:"a fishing village on the lake", landmark:'lake', icon:'boat', seenFrom:3,
+    villageNames:["Netherwade","Reedmouth","Fogwater","Eelby","Mistmere","Gullhythe","Pikestead","Dunmere"],
+    landmarkNames:["Stillwater","the Grey Mere","Fogmere","the Drowned Glass","Heronwater","the Long Pool"] },
+  'grassland':{use:'temperate'}, 'ashlands':{use:'mountains'}, 'volcano':{use:'mountains'},
+  'poison-swamp':{use:'foggy-marsh'}, 'ocean':{use:'foggy-marsh'}, '*':{use:'temperate'} } };
+const SPIRE = { name:'a sea spire', icon:'spire', seenFrom:12, names:['the Needle','Gull Spire','the Grey Tooth','Saltpillar','the Lonely Horn'] };
+const CASTLE = { name:'the castle', icon:'castle', seenFrom:6 };
+
+// ---------- square templates (invented from the plan; features as kind+slot+flow+must/may) ----------
+// edges: [n, e, s, w], canonical (N,S slots run west->east; E,W north->south), 9 slots a side.
+// Road tokens (d) are offers, not edges: roads are solved as routes after the templates, and an offer only
+// picks the slot when a route happens to cross that side. Offers no route uses are dropped.
+const TEMPLATES = [
+  { id:'lakeland',        bands:[1], biome:'foggy-marsh', w:1, lm:'water', e:[['r4i?'],['d4!'],[],['r6i?']], coast:'nsw', ends:{river:'lake'} },
+  { id:'meadow-cross',    bands:[1,2], biome:'grassland',   w:1, lm:'land',  e:[['d4!'],['r2o?'],['d4!'],['r2i?']], coast:'ew' },
+  { id:'saltpan',         bands:[1], biome:'salt-flat',   w:1, lm:'water', e:[['c6?'],['d4?'],['r2i?'],['d4?']], coast:'nesw', ends:{river:'lake',canyon:'close'} },
+  { id:'riverbend',       bands:[1,2], biome:'temperate',   w:1, lm:'water', e:[['r4i?'],['r6o?'],['r4o?'],['d4?']], coast:'esw' },
+  { id:'reedbeds',        bands:[1], biome:'foggy-marsh', w:1, lm:null,    e:[['d2?'],['r4i?'],['r4o?'],['r4i?']], coast:'nesw', ends:{river:'lake'} },
+  { id:'foothill-forest', bands:[2,3], biome:'temperate',   w:1, lm:'land',  e:[['g4?'],['d4?'],['r4o?'],['r6i?']], ends:{range:'fade'} },
+  { id:'downs',           bands:[1,2], biome:'grassland',   w:1, lm:'land',  e:[['r6o?'],['d2?'],['r4o?'],['d2?']] },
+  { id:'ash-fields',      bands:[2,3], biome:'ashlands',    w:1, lm:'land',  e:[['c4?'],['d6?'],['c4?'],[]], ends:{canyon:'close'} },
+  { id:'tundra-plateau',  bands:[3,2], biome:'tundra',      w:1, lm:'land',  e:[['g2?'],['r4o?'],['g2?'],['d4?']], ends:{range:'fade'} },
+  { id:'crater-rim',      bands:[3,4], biome:'ashlands',    w:1, lm:'land',  e:[[],['c4?'],['r6o?'],['c4?']], ends:{canyon:'close'} },
+  { id:'high-pass',       bands:[3,4], biome:'mountains',   w:1, lm:'land',  e:[['g4?'],['d4!'],['g4?'],['d4!']], ends:{range:'fade'}, pass:true },
+  { id:'summit',          bands:[4], biome:'mountains',   w:1, lm:null,    e:[['r2o?'],['g4?'],['r4o?'],['g4?']], ends:{range:'fade'} },
+  { id:'ice-crown',       bands:[4,3], biome:'tundra',      w:1, lm:null,    e:[['g6?'],['r4o?'],['g6?'],[]], ends:{range:'fade'} },
+  { id:'open-sea',        bands:[0], biome:'ocean',       w:0.7, lm:'spire', e:[[],[],[],[]], rotate:false },
+  { id:'open-water',      bands:[0], biome:'ocean',       w:3, lm:null, e:[[],[],[],[]], rotate:false, exempt:true }
+];
+// the library's second half: same edge offers, another name and anchor ("two lakelands share a story, not a shape")
+const SIBLINGS = { 'lakeland':['mere-shore','temperate'], 'meadow-cross':['crossroads','grassland'], 'saltpan':['white-flats','grassland'],
+  'riverbend':['twin-fords','grassland'], 'reedbeds':['fen','foggy-marsh'], 'downs':['barrows','temperate'], 'foothill-forest':['pine-slopes','temperate'],
+  'ash-fields':['cinder-hills','ashlands'], 'tundra-plateau':['frost-shelf','tundra'], 'crater-rim':['smoke-vents','mountains'],
+  'high-pass':['saddle','mountains'], 'summit':['twin-peaks','mountains'], 'ice-crown':['glacier-cap','tundra'] };
+for(const t of TEMPLATES.slice()){ const sb=SIBLINGS[t.id]; if(sb) TEMPLATES.push(Object.assign({},t,{id:sb[0],biome:sb[1],lib2:true})); }
+const VALLEY = { id:'valley', bands:[1], biome:'temperate', w:1, lm:'castle', e:[['d4!'],['r4i!'],['r4o!'],[]], rotate:false, exempt:true, ends:{} };
+const FILLER_BIOME = ['ocean','grassland','temperate','tundra','mountains'];
+const FILLERS = BANDS.map((b,i)=>({ id:'filler-'+b, band:i, biome:FILLER_BIOME[i], w:0, lm:null, filler:true, exempt:true, ends:{river:'lake',range:'fade',canyon:'close'} }));
+
+// ---------- hashing, rng, noise ----------
+function mod(a,n){ return ((a%n)+n)%n; }
+function strHash(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+function mix(h){ h^=h>>>16; h=Math.imul(h,0x85ebca6b); h^=h>>>13; h=Math.imul(h,0xc2b2ae35); h^=h>>>16; return h>>>0; }
+function h3(a,b,c){ return mix((a ^ Math.imul(b|0,0x27d4eb2d) ^ Math.imul((c|0)+0x9e37,0x165667b1))>>>0); }
+function h01(a,b,c){ return h3(a,b,c)/4294967296; }
+function rng(seed){ let t=seed>>>0; return function(){ t=(t+0x6D2B79F5)>>>0; let r=Math.imul(t^(t>>>15),1|t); r=(r+Math.imul(r^(r>>>7),61|r))^r; return ((r^(r>>>14))>>>0)/4294967296; }; }
+function vnoise(seed,x,y,px,py){
+  const ix=Math.floor(x), iy=Math.floor(y), fx=x-ix, fy=y-iy, u=fx*fx*(3-2*fx), v=fy*fy*(3-2*fy);
+  const X=a=>px?mod(a,px):a, Y=a=>py?mod(a,py):a;
+  const a=h01(seed,X(ix),Y(iy)), b=h01(seed,X(ix+1),Y(iy)), c=h01(seed,X(ix),Y(iy+1)), d=h01(seed,X(ix+1),Y(iy+1));
+  return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;
+}
+function fnv(arr){ let h=2166136261>>>0; for(const n of arr){ let v=n|0; for(let k=0;k<4;k++){ h^=(v>>>(k*8))&255; h=Math.imul(h,16777619);} } return h>>>0; }
+function hex(h){ return ('00000000'+(h>>>0).toString(16)).slice(-8); }
+
+// ---------- options: template x turn x may-variant ----------
+function parseTok(t){ const m=/^([rdgc])(\d)([io])?([!?])$/.exec(t); return { k:m[1], slot:+m[2], f:m[3]||'', must:m[4]==='!' }; }
+function rotFeat(side,slot,r){ for(let i=0;i<r;i++){ if(side===1||side===3) slot=8-slot; side=(side+1)%4; } return [side,slot]; }
+function sigOf(list){ return list.map(f=>f.k+f.slot+f.f).sort().join(','); }
+function validInternal(t, feats, band){
+  let ri=0,ro=0,g=0,c=0;
+  for(const L of feats) for(const f of L){ if(f.k==='r'){ if(f.f==='i') ri++; else ro++; } else if(f.k==='g') g++; else if(f.k==='c') c++; }
+  const ends=t.ends||{};
+  if(ri>0 && ro===0 && ends.river!=='lake') return false;
+  if(ro>0 && ri===0 && band<2) return false;           // springs only in the hills and up
+  if(g===1 && ends.range!=='fade') return false;
+  if(c===1 && ends.canyon!=='close') return false;
+  return true;
+}
+const OPTS = []; const OPTS_BY_BAND = [[],[],[],[],[]]; const OPTS_BY_BAND_SMALL = [[],[],[],[],[]]; let VALLEY_OPT = -1; const FILLER_OPT = [];
+function addOpt(o){ o.idx=OPTS.length; OPTS.push(o); return o.idx; }
+(function buildOptions(){
+  const seen = new Set();
+  for(const t of TEMPLATES){
+    const base=[], roads=[]; t.e.forEach((L,side)=>L.forEach(tok=>{ const f=Object.assign({side},parseTok(tok)); (f.k==='d'?roads:base).push(f); }));
+    const mays=base.filter(f=>!f.must).length;
+    const rots = t.rotate===false ? [0] : [0,1,2,3];
+    for(const band of t.bands) for(const r of rots){
+      const offer=[[],[],[],[]]; for(const f of roads){ const [s2,sl2]=rotFeat(f.side,f.slot,r); offer[s2].push(sl2); }
+      for(let mask=0; mask<(1<<mays); mask++){
+        const feats=[[],[],[],[]]; let mi=0, on=0;
+        for(const f of base){
+          let keep=f.must; if(!f.must){ keep=!!(mask&(1<<mi)); mi++; if(keep) on++; }
+          if(!keep) continue;
+          const [s2,sl2]=rotFeat(f.side,f.slot,r); feats[s2].push({k:f.k,slot:sl2,f:f.f});
+        }
+        if(!validInternal(t,feats,band)) continue;
+        const sig=feats.map(sigOf);
+        const coast=[false,false,false,false]; for(const ch of (t.coast||'')){ coast[('nesw'.indexOf(ch)+r)%4]=true; }
+        const key=t.id+'|'+band+'|'+sig.join('/')+'|'+coast.join('');
+        if(seen.has(key)) continue; seen.add(key);
+        const id=addOpt({ tpl:t, band, rot:r, feats, sig, coast, offer, w:t.w*(1+0.6*on), sea:band===0 });
+        OPTS_BY_BAND[band].push(id); if(!t.lib2) OPTS_BY_BAND_SMALL[band].push(id);
+      }
+    }
+  }
+  const vf=[[],[],[],[]], vo=[[],[],[],[]]; VALLEY.e.forEach((L,s)=>L.forEach(tok=>{const f=parseTok(tok); if(f.k==='d') vo[s].push(f.slot); else vf[s].push({k:f.k,slot:f.slot,f:f.f});}));
+  VALLEY_OPT=addOpt({ tpl:VALLEY, rot:0, feats:vf, sig:vf.map(sigOf), coast:[true,true,true,true], offer:vo, w:1 });
+  FILLERS.forEach((t,b)=>{ FILLER_OPT[b]=addOpt({ tpl:t, rot:0, feats:[[],[],[],[]], sig:['*','*','*','*'], coast:[true,true,true,true], offer:[[],[],[],[]], w:0, filler:true, sea:b===0 }); });
+})();
+
+// two sides meet: same slots and kinds; a river leaving one enters the other, and never uphill
+const COMPAT = new Map();
+function parseSig(s){ const m=new Map(); if(s) for(const t of s.split(',')) m.set(+t[1], t[0]+(t[2]||'')); return m; }
+function compat(sx,sy,bx,by){
+  if(sx==='*'||sy==='*'||sx==='SEA'||sy==='SEA') return true;
+  const key=sx+'|'+sy+'|'+Math.sign(bx-by); let v=COMPAT.get(key); if(v!==undefined) return v;
+  const a=parseSig(sx), b=parseSig(sy); v = a.size===b.size;
+  if(v) for(const [slot,fa] of a){ const fb=b.get(slot); if(!fb||fa[0]!==fb[0]){v=false;break;}
+    if(fa[0]==='r'){ const ok=(fa[1]==='o'&&fb[1]==='i'&&bx>=by)||(fa[1]==='i'&&fb[1]==='o'&&by>=bx); if(!ok){v=false;break;} } }
+  COMPAT.set(key,v); return v;
+}
+
+// ---------- the world: grid, bands, coasts ----------
+function buildWorld(seedStr, N, torus, lib){
+  const seed=strHash(seedStr+'|'+N+'|'+(torus?'t':'r'));
+  const libSmall = lib===13;
+  const w = torus?N:N+1, h = torus?N:N+1, n=w*h;
+  const W = { seedStr, seed, N, torus, w, h, n, libSmall };
+  W.vx = torus?0:1; W.vy = N-1; W.valley = W.vy*w+W.vx;
+  W.idx=(x,y)=>{ if(torus){x=mod(x,w);y=mod(y,h);} else if(x<0||y<0||x>=w||y>=h) return -1; return y*w+x; };
+  W.nb=[]; W.diag=[];
+  for(let i=0;i<n;i++){ const x=i%w,y=(i/w)|0; W.nb.push([0,1,2,3].map(s=>W.idx(x+DX[s],y+DY[s]))); W.diag.push([0,1,2,3].map(c=>W.idx(x+CDX[c],y+CDY[c]))); }
+  W.dist=(a,b)=>{ let dx=Math.abs(a%w-b%w), dy=Math.abs(((a/w)|0)-((b/w)|0)); if(torus){dx=Math.min(dx,w-dx);dy=Math.min(dy,h-dy);} return Math.max(dx,dy); };
+  // raw band from a low-frequency field (period divides the world on the torus)
+  const raw=new Int8Array(n), L=torus?Math.max(1,Math.round(N/3)):0;
+  for(let i=0;i<n;i++){
+    const x=i%w,y=(i/w)|0;
+    if(!torus && (x===0||y===h-1)){ raw[i]=0; continue; }
+    const v = 0.72*vnoise(seed^0xb00b, x/3, y/3, L, L) + 0.28*h01(seed^0x51, x, y);
+    raw[i] = v<0.16?0 : v<0.40?1 : v<0.60?2 : v<0.78?3 : 4;
+  }
+  raw[W.valley]=1;
+  for(const i of [W.nb[W.valley][0],W.nb[W.valley][1],W.diag[W.valley][1]]) if(i>=0) raw[i]=Math.max(raw[i],1);
+  if(torus) for(const i of [W.nb[W.valley][2],W.nb[W.valley][3],W.diag[W.valley][3]]) raw[i]=0;
+  // envelope: band(s) = min over t of raw(t) + distance(s,t); neighbours differ by at most one
+  const band=new Int8Array(n);
+  for(let i=0;i<n;i++){ let m=raw[i]; for(let j=0;j<n;j++){ const v=raw[j]+W.dist(i,j); if(v<m) m=v; } band[i]=m; }
+  W.raw=raw; W.band=band;
+  buildCoasts(W);
+  return W;
+}
+
+// a coast is solved with the bands: open sides face sea, corner notches where only the diagonal is sea,
+// and offsets must agree where a shore crosses a side (union-find over equal ends)
+function buildCoasts(W){
+  const {n,band}=W, r=rng(W.seed^0xc0a57);
+  const parent=[], vars=[];
+  const coast=[];
+  for(let i=0;i<n;i++){
+    const c={ open:[false,false,false,false], notch:[0,0,0,0], depth:[0,0,0,0], phase:[0,0,0,0], dv:[-1,-1,-1,-1], nv:[-1,-1,-1,-1] };
+    if(band[i]>0){
+      for(let s=0;s<4;s++){ const j=W.nb[i][s]; c.open[s] = j>=0 && band[j]===0; }
+      for(let k=0;k<4;k++){ const [a,b]=CORNER_SIDES[k]; const d=W.diag[i][k]; if(!c.open[a]&&!c.open[b]&&d>=0&&band[d]===0) c.nv[k]=-2; }
+      for(let s=0;s<4;s++) if(c.open[s]){ c.dv[s]=vars.length; vars.push(i); parent.push(parent.length); c.phase[s]=h01(W.seed,i,s)*6.283; }
+      for(let k=0;k<4;k++) if(c.nv[k]===-2){ c.nv[k]=vars.length; vars.push(i); parent.push(parent.length); }
+    }
+    coast.push(c);
+  }
+  const find=a=>{ while(parent[a]!==a){ parent[a]=parent[parent[a]]; a=parent[a]; } return a; };
+  const endVar=(i,side,k)=>{ const c=coast[i]; const other=CORNER_SIDES[k][0]===side?CORNER_SIDES[k][1]:CORNER_SIDES[k][0]; if(c.open[other]) return c.dv[other]; if(c.nv[k]>=0) return c.nv[k]; return -1; };
+  W.endVar=endVar;
+  for(let i=0;i<n;i++){ if(!band[i]) continue;
+    for(const s of [1,2]){ const j=W.nb[i][s]; if(j<0||!band[j]) continue; const o=(s+2)%4;
+      for(let e=0;e<2;e++){ const a=endVar(i,s,SIDE_CORNERS[s][e]), b=endVar(j,o,SIDE_CORNERS[o][e]); if(a>=0&&b>=0){ const ra=find(a), rb=find(b); if(ra!==rb) parent[Math.max(ra,rb)]=Math.min(ra,rb); } } } }
+  const cls=new Map();
+  for(let v=0;v<vars.length;v++){ const root=find(v); if(!cls.has(root)) cls.set(root, DEPTHS[r()<0.55?0:1]); }
+  for(let i=0;i<n;i++){ const c=coast[i];
+    for(let s=0;s<4;s++) if(c.dv[s]>=0) c.depth[s]=cls.get(find(c.dv[s]));
+    for(let k=0;k<4;k++) if(c.nv[k]>=0) c.notch[k]=cls.get(find(c.nv[k])); }
+  W.coast=coast;
+  W.endOff=(i,side,e)=>{ const c=coast[i]; const k=SIDE_CORNERS[side][e]; const other=CORNER_SIDES[k][0]===side?CORNER_SIDES[k][1]:CORNER_SIDES[k][0]; if(c.open[other]) return c.depth[other]; return c.notch[k]; };
+}
+
+// ---------- the solve, wave-function style ----------
+class Solver{
+  constructor(W, budget, local){
+    this.W=W; this.budget=budget||3000; this.local=local||40; const n=W.n;
+    this.dom=new Array(n); this.col=new Uint8Array(n); this.used={}; this.stack=[];
+    this.steps=0; this.picks=0; this.backtracks=0; this.fillers=[]; this.done=false; this.last=-1;
+    this.r=rng(W.seed^0x5017e);
+    this.near=[]; for(let i=0;i<n;i++){ const L=[]; for(let j=0;j<n;j++) if(j!==i&&W.dist(i,j)<3) L.push(j); this.near.push(L); }
+    for(let i=0;i<n;i++){
+      const b=W.band[i];
+      if(i===W.valley){ this.dom[i]=[VALLEY_OPT]; continue; }
+      const c=W.coast[i];
+      this.dom[i]=(W.libSmall?OPTS_BY_BAND_SMALL:OPTS_BY_BAND)[b].filter(id=>{ const o=OPTS[id]; if(o.sea) return true;
+        for(let s=0;s<4;s++){ const f=o.feats[s];
+          if(c.open[s]){ if(!o.coast[s]) return false; if(f.some(x=>!(x.k==='r'&&x.f==='o'))) return false; }
+          else if(W.nb[i][s]<0 && f.length) return false; }
+        return true; });
+    }
+    const all=[]; for(let i=0;i<n;i++) all.push(i);
+    const bad=this.propagate(all,false); if(bad!==null) this.resolve(bad);
+  }
+  propagate(queue,allowFill){
+    const W=this.W, inQ=new Uint8Array(W.n); for(const q of queue) inQ[q]=1;
+    let qi=0;
+    while(qi<queue.length){
+      const x=queue[qi++]; inQ[x]=0;
+      if(!this.dom[x].length){ if(allowFill) this.fill(x); else return x; }
+      const dx=this.dom[x];
+      for(let s=0;s<4;s++){
+        const y=W.nb[x][s]; if(y<0) continue; const os=(s+2)%4;
+        const sigs=new Set(); for(const o of dx) sigs.add(OPTS[o].sea?'SEA':OPTS[o].sig[s]);
+        const dy=this.dom[y]; if(!dy.length) continue;
+        const bx=W.band[x], by=W.band[y];
+        const keep=dy.filter(o=>{ const sy=OPTS[o].sea?'SEA':OPTS[o].sig[os]; for(const sx of sigs) if(compat(sx,sy,bx,by)) return true; return false; });
+        if(keep.length!==dy.length){
+          if(!keep.length){ if(allowFill){ this.fill(y); } else { this.dom[y]=keep; return y; } }
+          else this.dom[y]=keep;
+          if(!inQ[y]){ queue.push(y); inQ[y]=1; }
+        }
+      }
+    }
+    return null;
+  }
+  fill(i){ this.dom[i]=[FILLER_OPT[this.W.band[i]]]; this.col[i]=1; this.fillers.push(i); }
+  snap(){ return { dom:this.dom.slice(), col:this.col.slice(), used:Object.assign({},this.used), fl:this.fillers.length }; }
+  restore(s){ this.dom=s.dom; this.col=s.col; this.used=s.used; this.fillers.length=s.fl; }
+  pick(x){
+    const d=this.dom[x]; let tot=0; const ws=d.map(o=>{ const op=OPTS[o]; const t=op.tpl; let w=op.w||1e-6; if(!t.exempt) w/=Math.pow(4,this.used[t.id]||0); tot+=w; return w; });
+    let r=this.r()*tot; for(let k=0;k<d.length;k++){ r-=ws[k]; if(r<=0) return d[k]; } return d[d.length-1];
+  }
+  collapse(x,o){
+    this.dom[x]=[o]; this.col[x]=1; const t=OPTS[o].tpl; const q=[x]; let bad=null;
+    if(!t.exempt){ this.used[t.id]=(this.used[t.id]||0)+1;
+      for(const y of this.near[x]){ const d=this.dom[y]; const k=d.filter(p=>OPTS[p].tpl!==t); if(k.length!==d.length){ this.dom[y]=k; if(!k.length&&bad===null) bad=y; q.push(y); } } }
+    if(bad!==null) return bad;
+    return this.propagate(q,false);
+  }
+  resolve(bad){
+    let local=0;   // a contradiction gets a few backtracks; past that a filler takes the square
+    while(bad!==null){
+      if(this.stack.length && this.steps<this.budget && local++<this.local){
+        this.steps++; this.backtracks++;
+        const f=this.stack.pop(); this.restore(f.snap);
+        const k=this.dom[f.x].filter(p=>p!==f.o); this.dom[f.x]=k;
+        if(!k.length){ bad=f.x; continue; }
+        bad=this.propagate([f.x],false);
+      } else {
+        const all=[]; for(let i=0;i<this.W.n;i++){ all.push(i); if(!this.dom[i].length) this.fill(i); }
+        this.propagate(all,true); bad=null;
+      }
+    }
+  }
+  step(){
+    if(this.done) return false;
+    let best=-1, bs=1e9;
+    for(let i=0;i<this.W.n;i++) if(!this.col[i]){ const L=this.dom[i].length; if(L<bs){bs=L;best=i;} }
+    if(best<0){ this.done=true; return false; }
+    const o=this.pick(best);
+    this.stack.push({ snap:this.snap(), x:best, o });
+    this.steps++; this.picks++; this.last=best;
+    const bad=this.collapse(best,o); if(bad!==null) this.resolve(bad);
+    if(this.col.every(Boolean)) this.done=true;
+    return true;
+  }
+  run(){ while(this.step()); return this; }
+}
+
+// ---------- the plan once solved: features to draw, landmarks, hash, checks ----------
+function finishPlan(W, sv){
+  const n=W.n; W.opt=new Array(n); for(let i=0;i<n;i++) W.opt[i]=OPTS[sv.dom[i][0]];
+  W.fillers=sv.fillers.slice();
+  W.feats=new Array(n);
+  for(let i=0;i<n;i++){ const o=W.opt[i];
+    if(!o.filler){ W.feats[i]=o.feats.map(L=>L.slice()); continue; }
+    const f=[[],[],[],[]];
+    if(!o.sea) for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0) continue; const oj=W.opt[j]; if(oj.filler||oj.sea) continue;
+      for(const x of oj.feats[(s+2)%4]) f[s].push({k:x.k,slot:x.slot,f:x.f==='o'?'i':x.f==='i'?'o':''}); }
+    W.feats[i]=f; }
+  settleFillerRivers(W);
+  // hubs and lakes (a lake ends a river; a filler's lake can also start one)
+  W.hub=[]; W.lake=[];
+  for(let i=0;i<n;i++){ W.hub.push([S/2+(h01(W.seed,i,91)-0.5)*140, S/2+(h01(W.seed,i,92)-0.5)*140]);
+    let ri=0,ro=0; for(const L of W.feats[i]) for(const f of L) if(f.k==='r'){ if(f.f==='i') ri++; else ro++; }
+    W.lake.push((ri>0&&ro===0) || (W.opt[i].filler && !W.opt[i].sea && ro>0 && ri===0)); }
+  // landmarks
+  W.landmarks=[];
+  // not every square has a village: a landmark square keeps one TOWN_ODDS of the time (at least one in the world)
+  const usedNames=new Set();
+  const townRoll=i=>h01(W.seed^0x70a1,i,5); let firstTown=-1, fr0=2;
+  for(let i=0;i<n;i++){ const lm=W.opt[i].tpl.lm; if((lm==='land'||lm==='water')&&townRoll(i)<fr0){ fr0=townRoll(i); firstTown=i; } }
+  for(let i=0;i<n;i++){ const o=W.opt[i], t=o.tpl, x=i%W.w, y=(i/W.w)|0, r=rng(h3(W.seed,i,77));
+    if((t.lm==='land'||t.lm==='water') && townRoll(i)>=TOWN_ODDS && i!==firstTown) continue;
+    const c=W.coast[i]; const coastal=c.open.some(Boolean);
+    let site=[150+r()*276, 150+r()*276];
+    if(t.lm==='castle'){ W.landmarks.push({ i, kind:'castle', icon:'castle', title:'the castle', place:'the Hold', form:'the valley (pinned)', seenFrom:CASTLE.seenFrom, site:[300,250] }); continue; }
+    if(t.lm==='spire'){ W.landmarks.push({ i, kind:'spire', icon:'spire', title:'a sea spire', place:SPIRE.names[(r()*SPIRE.names.length)|0], form:'open-sea: sea-spire', seenFrom:SPIRE.seenFrom, site }); continue; }
+    if(!t.lm) continue;
+    let biome=t.biome, why=BIOMES[biome].name;
+    if(t.lm==='water' && W.lake[i]){ biome='foggy-marsh'; why='lake'; site=[W.hub[i][0], W.hub[i][1]+70]; }
+    else if(t.lm==='water' && coastal){ biome='ocean'; why='ocean edge'; const s=c.open.indexOf(true), d=c.depth[s]+60;
+      site = s===0?[site[0],d]: s===1?[S-d,site[1]]: s===2?[site[0],S-d]:[d,site[1]]; }
+    let key = INTENT.by[biome]?biome:'*'; const fallback=key==='*'; while(INTENT.by[key].use) key=INTENT.by[key].use;
+    const form=INTENT.by[key];
+    let vi=(r()*8)|0; for(let t2=0;t2<8&&usedNames.has(form.villageNames[vi]);t2++) vi=(vi+1)%8; usedNames.add(form.villageNames[vi]);
+    W.landmarks.push({ i, kind:key, icon:form.icon, title:form.name, place:form.villageNames[vi]+' by '+form.landmarkNames[(r()*6)|0],
+      form:key+(fallback?' (fallback "*")':'')+' from '+why, seenFrom:form.seenFrom, site });
+  }
+  for(const L of W.landmarks){ const x=L.i%W.w, y=(L.i/W.w)|0; L.cx=x*K+Math.floor(L.site[0]/CH); L.cy=y*K+Math.floor(L.site[1]/CH); }
+  W.riverBad=riverViolations(W);
+  solveRoads(W);
+  placeOutcrops(W);
+  // plan hash over the plan in fixed order
+  const parts=[]; for(let i=0;i<n;i++){ const o=W.opt[i]; parts.push(W.band[i], strHash(o.tpl.id), o.rot, strHash(W.feats[i].map(sigOf).join('/'))); }
+  W.planHash=fnv(parts);
+  // checks: every shared side and corner
+  W.mismatch=[]; W.cornerBad=[];
+  for(let i=0;i<n;i++) for(const s of [1,2]){ const j=W.nb[i][s]; if(j<0) continue; const os=(s+2)%4;
+    const a=W.opt[i], b=W.opt[j]; let ok=true;
+    if(!a.sea && !b.sea){ ok=compat(sigOf(W.feats[i][s]), sigOf(W.feats[j][os]), W.band[i], W.band[j]);
+      if(W.endOff(i,s,0)!==W.endOff(j,os,0) || W.endOff(i,s,1)!==W.endOff(j,os,1)) ok=false; }
+    else if(a.sea!==b.sea){ const land=a.sea?j:i, ls=a.sea?os:s; if(!W.coast[land].open[ls]) ok=false;
+      if(W.feats[land][ls].some(f=>!(f.k==='r'&&f.f==='o'))) ok=false; }
+    if(!ok) W.mismatch.push([i,s]); }
+  const cornerSea=(i,k)=>{ if(!W.band[i]) return true; const c=W.coast[i]; const [a,b]=CORNER_SIDES[k]; return c.open[a]||c.open[b]||c.notch[k]>0; };
+  for(let i=0;i<n;i++){ // the corner at this square's SE
+    const e=W.nb[i][1], s=W.nb[i][2], se=W.diag[i][2]; if(e<0||s<0||se<0) continue;
+    const v=[cornerSea(i,2), cornerSea(e,3), cornerSea(s,1), cornerSea(se,0)];
+    if(!(v.every(Boolean)||v.every(x=>!x))) W.cornerBad.push(i); }
+  W.solved=true;
+  buildChunkCaches(W);
+}
+
+function slotPoint(s,slot){ const p=(slot+0.5)*CH; return s===0?[p,0]: s===1?[S,p]: s===2?[p,S]:[0,p]; }
+function inward(s){ return s===0?[0,1]: s===1?[-1,0]: s===2?[0,-1]:[1,0]; }
+
+// ---------- rivers run downhill ----------
+// A filler copies its neighbours' sides, so a river can reach it from below. Where it would, the crossing is
+// dropped on both sides, as long as the neighbour's template stays whole without it.
+function settleFillerRivers(W){
+  for(const i of W.fillers){ if(!W.band[i]) continue;
+    for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0) continue; const oj=W.opt[j]; if(oj.filler||oj.sea) continue; const os=(s+2)%4;
+      for(const f of W.feats[i][s].slice()){ if(f.k!=='r') continue;
+        const uphill = f.f==='o' ? W.band[j]>W.band[i] : W.band[i]>W.band[j];
+        if(!uphill) continue;
+        const nf=W.feats[j].map((L,t)=>t===os?L.filter(g=>g.slot!==f.slot):L);
+        if(validInternal(oj.tpl,nf,W.band[j])){ W.feats[j]=nf; W.feats[i][s]=W.feats[i][s].filter(g=>g!==f); } } } }
+}
+// every river crossing leaves the higher (or equal) band for the lower; it starts at a spring (hills and up)
+// or a lake, and ends at the sea or a lake
+function riverViolations(W){
+  const bad=[];
+  for(let i=0;i<W.n;i++){ if(!W.band[i]||W.opt[i].sea) continue; const F=W.feats[i]; let ri=0,ro=0;
+    for(let s=0;s<4;s++) for(const f of F[s]){ if(f.k!=='r') continue; if(f.f==='i') ri++; else ro++;
+      const j=W.nb[i][s];
+      if(j<0){ bad.push([i,'runs off the map']); continue; }
+      if(!W.band[j]||W.opt[j].sea){ if(f.f!=='o') bad.push([i,'comes out of the sea']); continue; }
+      const m=W.feats[j][(s+2)%4].find(g=>g.k==='r'&&g.slot===f.slot);
+      if(!m||m.f===f.f){ bad.push([i,'broken at '+SIDE[s]]); continue; }
+      if(f.f==='o'&&W.band[j]>W.band[i]) bad.push([i,'flows uphill '+SIDE[s]]); }
+    const lakeOk=W.opt[i].filler||(W.opt[i].tpl.ends||{}).river==='lake';
+    if(ri>0&&ro===0&&!lakeOk) bad.push([i,'ends on dry land']);
+    if(ro>0&&ri===0&&W.band[i]<2&&!W.lake[i]) bad.push([i,'springs too low']); }
+  return bad;
+}
+
+// ---------- roads have a reason: points of interest first, then a few long main roads, then lesser roads and trails ----------
+// costs per square stepped into; peaks and sea are never entered, a band step costs a lot, the high band more
+const ROAD = { step:10, band:30, high:30, river:4, range:20, offer:3, jitter:3, cross:6, beside:35, overlap:30, lesserBand:18, lesserHigh:12 };
+const SLOT_ORDER = [4,3,5,2,6,1,7,0,8];
+const CAVE_NAMES = ['the Black Mouth','Wyrm Hollow','the Echo Cave','Bat Deep','the Lantern Grotto','Old Delve','the Whispering Hole','Glimmer Cave','the Dripping Halls','Fox Earth'];
+const TOWN_ODDS = 0.35;                                    // a landmark square keeps its village this often
+const mainRoadCap = N => Math.max(1, Math.min(6, Math.round(N/2)));   // about six on a 12 x 12, two on a 3 x 3
+const WAY = { 'inn':{icon:'inn',seenFrom:KNOW+1}, 'shop':{icon:'shop',seenFrom:KNOW+1} };
+const CROSS_SEEN = KNOW+1;
+function chunkOf(W,i,site){ return [ (i%W.w)*K+Math.floor(site[0]/CH), ((i/W.w)|0)*K+Math.floor(site[1]/CH) ]; }
+
+// caves: a small destination, most often in the hills or high ground, spaced apart
+function placeCaves(W, ok, bar){
+  const n=W.n, band=W.band, lmSq=new Set(W.landmarks.map(L=>L.i));
+  let land=0; const cand=[];
+  for(let i=0;i<n;i++){ if(!band[i]||W.opt[i].sea) continue; land++;
+    if(!ok(i)||lmSq.has(i)||bar.r[i]||bar.c[i]) continue;
+    cand.push({ i, key:h01(W.seed^0xca7e,i,3)*(band[i]>=2?1:3.5) }); }
+  cand.sort((a,b)=>a.key-b.key||a.i-b.i);
+  const want=Math.max(1,Math.round(land/14)), gap=W.N>=12?3:2, caves=[];
+  for(const c of cand){ if(caves.length>=want) break; if(caves.some(j=>W.dist(j,c.i)<gap)) continue; caves.push(c.i);
+    const r=rng(h3(W.seed,c.i,0xcafe)); const site=[150+r()*276,150+r()*276];
+    const L={ i:c.i, kind:'cave', icon:'cave', title:'a cave', place:CAVE_NAMES[(r()*CAVE_NAMES.length)|0], form:'cave in the '+BANDS[band[c.i]], seenFrom:3, site };
+    [L.cx,L.cy]=chunkOf(W,c.i,site); W.landmarks.push(L); }
+}
+
+function solveRoads(W){
+  const n=W.n, band=W.band;
+  const ranges=new Uint8Array(n); for(let i=0;i<n;i++) for(const L of W.feats[i]) for(const f of L) if(f.k==='g') ranges[i]++;
+  // a range running through a square blocks it, unless the square is a pass; peaks and sea never take a road
+  const ok=i=> i>=0 && band[i]>=1 && band[i]<=3 && !W.opt[i].sea && (ranges[i]<2 || !!W.opt[i].tpl.pass);
+  W.roadOk=ok;
+  // barriers: a square a river or a canyon runs through (in on one side, out on another)
+  const bar={ r:new Uint8Array(n), c:new Uint8Array(n) };
+  for(let i=0;i<n;i++){ if(!band[i]||W.opt[i].sea) continue; let r=0,c=0;
+    for(const L of W.feats[i]) for(const f of L){ if(f.k==='r') r++; else if(f.k==='c') c++; }
+    if(r>=2) bar.r[i]=1; if(c>=2) bar.c[i]=1; }
+  W.barrier=bar;
+  // 1. points of interest
+  placeCaves(W, ok, bar);
+  const dest=new Map();
+  const addDest=(i,name,site,kind)=>{ if(!ok(i)||dest.has(i)) return; dest.set(i,{i,name,site,kind}); };
+  for(const L of W.landmarks){
+    if(L.kind==='spire'){ let best=-1,bb=9; for(const j of W.nb[L.i].concat(W.diag[L.i])) if(ok(j)&&band[j]<bb&&!bar.r[j]&&!bar.c[j]){ bb=band[j]; best=j; }
+      if(best>=0) addDest(best, L.place+"'s shore", null, 'shore'); continue; }
+    addDest(L.i, L.kind==='castle'?'the Hold':L.place.split(' by ')[0], L.site, L.kind==='castle'?'castle':L.kind==='cave'?'cave':'village'); }
+  for(let i=0;i<n;i++) if(W.opt[i].tpl.pass) addDest(i,'the '+W.opt[i].tpl.id.replace('-',' '),null,'pass');
+  const D=[...dest.keys()].sort((a,b)=>a-b);
+  // the crossings nature allows: one or two bridges a canyon, one to three fords or bridges a river; a range only at a pass
+  const cross={ r:new Uint8Array(n), c:new Uint8Array(n) }; W.crossings=[];
+  for(const k of ['c','r']){ const seen=new Uint8Array(n);
+    for(let i0=0;i0<n;i0++){ if(!bar[k][i0]||seen[i0]) continue;
+      const comp=[i0]; seen[i0]=1;
+      for(let q=0;q<comp.length;q++){ const i=comp[q];
+        for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0||seen[j]||!bar[k][j]) continue; if(!W.feats[i][s].some(f=>f.k===k)) continue; seen[j]=1; comp.push(j); } }
+      comp.sort((a,b)=>a-b);
+      const cands=comp.filter(ok); if(!cands.length) continue;
+      const want=Math.min(cands.length, k==='c' ? (comp.length>=5?2:1) : (comp.length<=3?1:comp.length<=7?2:3));
+      const chosen=[];
+      while(chosen.length<want){ let best=-1, bs=-1;
+        for(const i of cands){ if(chosen.includes(i)) continue;
+          const md=chosen.length?Math.min(...chosen.map(j=>W.dist(i,j))):0; if(chosen.length&&md<2) continue;
+          const sc=md+(dest.has(i)?(dest.get(i).kind==='castle'?3:1.5):0)+(band[i]===1?0.5:0)+h01(W.seed^0xb41d,i,k.charCodeAt(0))*0.5;
+          if(sc>bs){ bs=sc; best=i; } }
+        if(best<0) break; chosen.push(best); }
+      for(const i of chosen){ cross[k][i]=1;
+        const kind = k==='c' || band[i]>1 || W.lake[i] ? 'bridge' : 'ford';
+        const off = W.crossings.some(x=>x.i===i) ? 46 : 0;
+        const site=[W.hub[i][0]+off, W.hub[i][1]-off*0.4];
+        const C={ i, kind, over:k==='c'?'canyon':'river', icon:kind, seenFrom:CROSS_SEEN, site, size:comp.length, used:false };
+        [C.cx,C.cy]=chunkOf(W,i,site); W.crossings.push(C); } } }
+  const passable=i=> !(bar.r[i]&&!cross.r[i]) && !(bar.c[i]&&!cross.c[i]);
+  W.passable=passable;
+  // a square a river or canyon runs through, with no crossing, is a dead end: roads may end there, from one bank only
+  const entry=new Int32Array(n).fill(-1);
+  const mainSq=new Uint8Array(n), net=new Uint8Array(n);
+  const stepCost=(u,s,mode)=>{ const v=W.nb[u][s]; if(!ok(v)) return -1; const db=Math.abs(band[u]-band[v]); if(db>1) return -1;
+    if(!passable(v) && entry[v]>=0 && entry[v]!==u) return -1;
+    const os=(s+2)%4; const lesser=mode!=='main';
+    let c=ROAD.step+(lesser?ROAD.lesserBand:ROAD.band)*db+(band[v]===3?(lesser?ROAD.lesserHigh:ROAD.high):0); const F=W.feats[u][s];
+    if(F.some(f=>f.k==='r')) c+=ROAD.river; if(F.some(f=>f.k==='g')) c+=ROAD.range;
+    if(W.opt[u].offer[s].length||W.opt[v].offer[os].length) c-=ROAD.offer;
+    if(cross.r[v]||cross.c[v]) c-=ROAD.cross;                   // crossings draw roads to them
+    if(mode==='main'){ if(mainSq[v]&&!dest.has(v)) c+=ROAD.overlap; else if(W.nb[v].some(x=>x>=0&&mainSq[x])) c+=ROAD.beside; }
+    else if(net[v]) c=Math.min(c,4);                             // a lesser road may follow the network
+    const a=(s===1||s===2)?u:v, b=(s===1||s===2)?s:os; return c+h3(W.seed^0x70ad,a,b)%ROAD.jitter; };
+  const dijkstra=(srcs,mode)=>{ const dist=new Float64Array(n).fill(Infinity), prev=new Int32Array(n).fill(-1), done=new Uint8Array(n), isSrc=new Uint8Array(n);
+    for(const s of srcs){ dist[s]=0; isSrc[s]=1; }
+    for(;;){ let u=-1, bd=Infinity; for(let k=0;k<n;k++) if(!done[k]&&dist[k]<bd){ bd=dist[k]; u=k; } if(u<0) break; done[u]=1;
+      if(!passable(u) && !isSrc[u]) continue;                    // a dead end: reached, never passed through
+      for(let s=0;s<4;s++){ const v=W.nb[u][s];
+        if(isSrc[u] && !passable(u) && entry[u]>=0 && v!==entry[u]) continue;
+        const c=stepCost(u,s,mode); if(c<0) continue; if(bd+c<dist[v]){ dist[v]=bd+c; prev[v]=u; } } }
+    return {dist,prev}; };
+  const trace=(prev,t,isSrc)=>{ const p=[t]; while(!isSrc(p[p.length-1])) p.push(prev[p[p.length-1]]); return p.reverse(); };
+  const addRoad=R=>{ W.roads.push(R); const P=R.path; for(const i of P) net[i]=1; if(R.kind==='main road') for(const i of P) mainSq[i]=1;
+    for(const e of [0,P.length-1]){ const i=P[e]; if(!passable(i)&&P.length>1) entry[i]=P[e===0?1:P.length-2]; } };
+  W.roads=[];
+  // 2. main roads: few and long, between the major places far apart, longest first; they keep apart
+  const majors=D.filter(d=>{ const k=dest.get(d).kind; return k==='castle'||k==='village'; });
+  const big=W.N>=12, cap=mainRoadCap(W.N), minLen=big?5:3;
+  const par=new Map(D.map(d=>[d,d])); const find=x=>{ while(par.get(x)!==x){ par.set(x,par.get(par.get(x))); x=par.get(x); } return x; };
+  const deg=new Map();
+  const mains=[];
+  const besideRun=(P,B)=>{ const A=new Set(P); let run=0,max=0;
+    for(const p of P){ if(B.has(p)){ run=0; continue; } const bes=W.nb[p].some(x=>x>=0&&B.has(x)&&!A.has(x)); run=bes?run+1:0; if(run>max) max=run; } return max; };
+  const overlapRun=(P,B)=>{ let run=0,max=0; for(const p of P){ run=(B.has(p)&&!dest.has(p))?run+1:0; if(run>max) max=run; } return max; };
+  const tryMains=(pool,minFar)=>{
+    const pairs=[];
+    for(let a=0;a<pool.length;a++) for(let b=a+1;b<pool.length;b++){ const A=pool[a], B=pool[b], d=W.dist(A,B); if(d<minFar) continue;
+      const castle=dest.get(A).kind==='castle'||dest.get(B).kind==='castle';
+      pairs.push({a:A,b:B,v:d+(castle?1.5:0)+h01(W.seed^0x3a1,A,B)*0.5}); }
+    pairs.sort((x,y)=>y.v-x.v||x.a-y.a||x.b-y.b);
+    for(const p of pairs){ if(mains.length>=cap) break;
+      if(find(p.a)===find(p.b) || (deg.get(p.a)||0)>=3 || (deg.get(p.b)||0)>=3) continue;
+      const {dist,prev}=dijkstra([p.a],'main'); if(dist[p.b]===Infinity) continue;
+      const path=trace(prev,p.b,x=>x===p.a); if(path.length<minLen) continue;
+      const set=new Set(path);
+      if(mains.some(M=>besideRun(path,M.set)>1||besideRun(M.path,set)>1||overlapRun(path,M.set)>1)) continue;
+      const R={ kind:'main road', from:dest.get(p.a), to:dest.get(p.b), path, cost:dist[p.b], set };
+      mains.push(R); addRoad(R); deg.set(p.a,(deg.get(p.a)||0)+1); deg.set(p.b,(deg.get(p.b)||0)+1);
+      for(const q of path) if(par.has(q)){ const r1=find(q), r2=find(p.a); if(r1!==r2) par.set(Math.max(r1,r2),Math.min(r1,r2)); } } };
+  tryMains(majors, big?4:2);
+  if(!mains.length) tryMains(D, 2);
+  if(!mains.length) tryMains(D, 1);     // a small world with its towns close in: the main road runs to the farthest place there is
+  // 3. lesser roads and trails: from the network out to every place not on it yet, nearest first
+  if(!W.roads.length){ const seed0=D.find(d=>dest.get(d).kind==='castle')??majors[0]??D[0]; if(seed0!==undefined) net[seed0]=1; }
+  const seeded=new Set();
+  for(let guard=0; guard<D.length+4; guard++){
+    const left=D.filter(d=>!net[d]); if(!left.length) break;
+    const srcs=[]; for(let i=0;i<n;i++) if(net[i]&&passable(i)) srcs.push(i);
+    const {dist,prev}=dijkstra(srcs,'lesser');
+    let t=-1, bd=Infinity; for(const d of left) if(dist[d]<bd){ bd=dist[d]; t=d; }
+    if(t<0){ // nothing left is reachable from this network: a village that can't be reached starts its own
+      const v=left.find(d=>dest.get(d).kind==='village'&&!seeded.has(d)&&passable(d)); if(v===undefined) break; seeded.add(v); net[v]=1; continue; }
+    const isSrc=new Set(srcs); const path=trace(prev,t,x=>isSrc.has(x));
+    const to=dest.get(t), start=path[0];
+    const from=dest.get(start) || { i:start, name:'a junction', site:null, kind:'junction' };
+    const trail = to.kind==='cave'||to.kind==='shore'||to.kind==='pass';
+    // a road that only goes on from where another lesser road ends is the same road, longer
+    const prevR=W.roads.find(R=>R.kind!=='main road'&&R.path[R.path.length-1]===start);
+    if(prevR && W.roads.filter(R=>R.path.includes(start)).length===1){
+      prevR.path=prevR.path.concat(path.slice(1)); prevR.to=to; prevR.cost+=dist[t]; prevR.stops.push(to.name);
+      if(!trail) prevR.kind='lesser road';
+      for(const i of path) net[i]=1; if(!passable(t)) entry[t]=path[path.length-2]; continue; }
+    addRoad({ kind:trail?'trail':'lesser road', from, to, path, cost:dist[t], stops:[to.name] }); }
+  // 5. the edge slots a road uses come from its route
+  const slotOf=new Map();
+  for(const R of W.roads){ R.sides=[]; R.slots=[]; const main=R.kind==='main road', trail=R.kind==='trail';
+    for(let k=0;k+1<R.path.length;k++){ const i=R.path[k], j=R.path[k+1]; const s=W.nb[i].indexOf(j), os=(s+2)%4;
+      const key=(s===1||s===2)?i*4+s:j*4+os; let e=slotOf.get(key);
+      if(e===undefined){ const taken=new Set(W.feats[i][s].map(f=>f.slot));
+        const pref=W.opt[i].offer[s].concat(W.opt[j].offer[os], SLOT_ORDER); const slot=pref.find(q=>!taken.has(q));
+        const fa={k:'d',slot,f:'',main,trail}, fb={k:'d',slot,f:'',main,trail};
+        e={slot,fa,fb}; slotOf.set(key,e); W.feats[i][s].push(fa); W.feats[j][os].push(fb); }
+      else { if(main){ e.fa.main=e.fb.main=true; } if(!trail){ e.fa.trail=e.fb.trail=false; } }
+      R.sides.push(s); R.slots.push(e.slot); } }
+  W.roadEnd=new Array(n).fill(null);
+  for(const R of W.roads) for(const d of [R.from,R.to]) if(dest.has(d.i)) W.roadEnd[d.i]=d.site||W.hub[d.i];
+  W.roadDest=dest;
+  for(const C of W.crossings) C.used=W.roads.some(R=>R.path.includes(C.i));
+  // waystations: an inn or a shop every two or three squares along each main road
+  W.waystations=[]; const wayAt=new Set();
+  mains.forEach((R,ri)=>{ const r=rng(h3(W.seed^0x3a7,ri,R.path[0])); let next=2+(r()<0.5?0:1);
+    for(let k=1;k<R.path.length-1;k++){ if(k<next) continue; const i=R.path[k];
+      if(dest.has(i)||wayAt.has(i)||W.crossings.some(C=>C.i===i)){ next=k+1; continue; }
+      wayAt.add(i); const kind=r()<0.5?'inn':'shop', a=r()*6.283;
+      const site=[W.hub[i][0]+Math.cos(a)*55, W.hub[i][1]+Math.sin(a)*55];
+      const Wy={ i, kind, icon:WAY[kind].icon, seenFrom:WAY[kind].seenFrom, site, road:R.from.name+' to '+R.to.name };
+      [Wy.cx,Wy.cy]=chunkOf(W,i,site); W.waystations.push(Wy); next=k+2+(r()<0.5?0:1); } });
+  W.roadCheck=checkRoads(W);
+}
+// no road passes through a river or canyon except at a crossing (a dead-end square is reached from one bank only),
+// and no main road runs beside another for more than one square
+function checkRoads(W){
+  const n=W.n, illegal=[], bank=new Map(); let beside=0;
+  for(const R of W.roads){ const P=R.path;
+    for(let q=0;q<P.length;q++){ const i=P[q]; if(W.passable(i)) continue;
+      const end=q===0||q===P.length-1; if(!end){ illegal.push([i,R]); continue; }
+      const nb=P[q===0?1:q-1]; if(!bank.has(i)) bank.set(i,new Set()); bank.get(i).add(nb); } }
+  for(const [i,S2] of bank) if(S2.size>1) illegal.push([i,null]);
+  const mains=W.roads.filter(R=>R.kind==='main road');
+  for(let a=0;a<mains.length;a++) for(let b=0;b<mains.length;b++){ if(a===b) continue;
+    const A=new Set(mains[a].path), B=new Set(mains[b].path); let run=0,max=0;
+    for(const p of mains[a].path){ if(B.has(p)){ run=0; continue; } run=W.nb[p].some(x=>x>=0&&B.has(x)&&!A.has(x))?run+1:0; if(run>max) max=run; }
+    if(max>1) beside++; }
+  return { illegal, beside };
+}
+
+// ---------- outcrops: a small seeded sight every few chunks within view of a road ----------
+const OUTCROPS = { 'rock spire':{icon:'needle',seenFrom:KNOW+2}, 'crag':{icon:'crag',seenFrom:KNOW+1}, 'waterfall':{icon:'falls',seenFrom:KNOW+2},
+  'lone great tree':{icon:'lonetree',seenFrom:KNOW+1}, 'ruin':{icon:'ruin',seenFrom:KNOW+1}, 'sea view':{icon:'seaview',seenFrom:KNOW+1} };
+const OUT_EVERY = 6, OUT_SPACING = 3;
+function placeOutcrops(W){
+  W.outcrops=[]; const marks=W.landmarks.concat(W.waystations, W.crossings.filter(C=>C.used)).map(L=>[L.cx,L.cy]);
+  W.roads.forEach((R,ri)=>{ const r=rng(h3(W.seed^0x0c40,ri,R.path[0]));
+    const last=R.path.length-1; let acc=0, next=(2+r()*2)*CH;
+    for(let k=0;k<=last;k++){ const i=R.path[k];
+      const mid=W.roadEnd[i]&&(k===0||k===last||W.roadDest.has(i))?W.roadEnd[i]:W.hub[i];
+      const pts=[]; if(k>0){ const s=(R.sides[k-1]+2)%4; pts.push(slotPoint(s,R.slots[k-1])); } pts.push(mid); if(k<last) pts.push(slotPoint(R.sides[k],R.slots[k]));
+      for(let q=0;q+1<pts.length;q++){ const [x0,y0]=pts[q], [x1,y1]=pts[q+1]; const len=Math.hypot(x1-x0,y1-y0); if(!len) continue;
+        while(acc+len>=next){ const t=(next-acc)/len; outcropAt(W,R,i,[x0+(x1-x0)*t,y0+(y1-y0)*t],[(x1-x0)/len,(y1-y0)/len],r,marks); next+=OUT_EVERY*CH*(0.8+0.4*r()); }
+        acc+=len; } } });
+}
+function outcropAt(W,R,i,p,dir,r,marks){
+  const side=r()<0.5?-1:1, off=70+r()*70, cl=v=>Math.max(28,Math.min(S-28,v));
+  let site=[cl(p[0]-dir[1]*off*side), cl(p[1]+dir[0]*off*side)];
+  const near=q=>Math.hypot(q[0]-p[0],q[1]-p[1])<=SIGHT*CH;
+  const falls=[], views=[];
+  for(let s=0;s<4;s++){ const j=W.nb[i][s], [ix,iy]=inward(s);
+    for(const f of W.feats[i][s]) if(f.k==='r'&&j>=0&&W.band[j]&&W.band[j]!==W.band[i]){ const q=slotPoint(s,f.slot); const pt=[q[0]+ix*30,q[1]+iy*30]; if(near(pt)) falls.push(pt); }
+    if(W.coast[i].open[s]){ const d=W.coast[i].depth[s]*1.45+24; const pt=s===0?[cl(p[0]),d]: s===1?[S-d,cl(p[1])]: s===2?[cl(p[0]),S-d]:[d,cl(p[1])]; if(near(pt)) views.push(pt); } }
+  const biome=W.opt[i].tpl.biome; let kind;
+  if(falls.length&&r()<0.75){ kind='waterfall'; site=falls[(r()*falls.length)|0]; }
+  else if(views.length&&r()<0.6){ kind='sea view'; site=views[(r()*views.length)|0]; }
+  else { const pool=['ruin']; if(W.band[i]>=2) pool.push('rock spire','crag'); if((biome==='temperate'||biome==='grassland')&&W.band[i]<=2) pool.push('lone great tree');
+    kind=pool[(r()*pool.length)|0]; }
+  const sx=i%W.w, sy=(i/W.w)|0;
+  if(seaAt(W,sx*S+site[0],sy*S+site[1])) return;
+  const cx=sx*K+Math.floor(site[0]/CH), cy=sy*K+Math.floor(site[1]/CH);
+  for(const [mx,my] of marks) if(W.cdist(cx,cy,mx,my)<OUT_SPACING) return;
+  marks.push([cx,cy]);
+  const O=OUTCROPS[kind];
+  W.outcrops.push({ i, kind, icon:O.icon, seenFrom:O.seenFrom, site, cx, cy, road:R.from.name+' to '+R.to.name });
+}
+
+// ---------- chunks: a pure function of seed, plan and chunk coords ----------
+function edgeD(W,i,s,t){ const c=W.coast[i]; const d=c.depth[s]; return d + d*0.42*Math.sin(Math.PI*t/S)*Math.sin(2*Math.PI*t/S*1.5+c.phase[s]); }
+function seaAt(W,x,y){
+  let sx=Math.floor(x/S), sy=Math.floor(y/S);
+  if(W.torus){ sx=mod(sx,W.w); sy=mod(sy,W.h); x=mod(x,W.w*S); y=mod(y,W.h*S); }
+  else if(sx<0||sy<0||sx>=W.w||sy>=W.h) return false;
+  const i=sy*W.w+sx; if(!W.band[i]) return true;
+  const lx=x-sx*S, ly=y-sy*S, c=W.coast[i];
+  if(c.open[0] && ly<edgeD(W,i,0,lx)) return true;
+  if(c.open[1] && S-lx<edgeD(W,i,1,ly)) return true;
+  if(c.open[2] && S-ly<edgeD(W,i,2,lx)) return true;
+  if(c.open[3] && lx<edgeD(W,i,3,ly)) return true;
+  for(let k=0;k<4;k++) if(c.notch[k]){ const cx=(k===1||k===2)?S:0, cy=k>=2?S:0; if((lx-cx)*(lx-cx)+(ly-cy)*(ly-cy)<c.notch[k]*c.notch[k]) return true; }
+  return false;
+}
+function squareAt(W,x,y){ let sx=Math.floor(x/S), sy=Math.floor(y/S);
+  if(W.torus){ sx=mod(sx,W.w); sy=mod(sy,W.h); } else { sx=Math.max(0,Math.min(W.w-1,sx)); sy=Math.max(0,Math.min(W.h-1,sy)); }
+  return sy*W.w+sx; }
+// the climate draws the borders: a warped sample picks the square whose anchor biome wins
+function biomeAt(W,x,y){
+  if(seaAt(W,x,y)) return 'ocean';
+  const P=W.torus?W.w*4:0, Q=W.torus?W.h*4:0;
+  const wx=x+(vnoise(W.seed^0xa1,x/144,y/144,P,Q)-0.5)*300, wy=y+(vnoise(W.seed^0xa2,x/144,y/144,P,Q)-0.5)*300;
+  let j=squareAt(W,wx,wy); if(!W.band[j]||W.opt[j].filler) j=squareAt(W,x,y);
+  return W.opt[j].tpl.biome==='ocean' ? W.opt[squareAt(W,x,y)].tpl.biome : W.opt[j].tpl.biome;
+}
+function heightAt(W,x,y){
+  if(seaAt(W,x,y)) return -40;
+  const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=fx-ix, ty=fy-iy;
+  const B=(a,b)=>BAND_H[W.band[squareAt(W,(a+0.5)*S,(b+0.5)*S)]];
+  const hb=B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty;
+  const bio=BIOMES[W.opt[squareAt(W,x,y)].tpl.biome]; const P=W.torus?W.w*3:0, Q=W.torus?W.h*3:0;
+  return hb + bio.base + (vnoise(W.seed^0x7e1,x/192,y/192,P,Q)-0.5)*2*bio.relief;
+}
+function chunkGen(W,cx,cy){ // reads only W.seed, the plan and (cx,cy): never a neighbour's cells
+  const vals=[W.seed, W.planHash, cx, cy];
+  const hs=new Int16Array(81);
+  for(let j=0;j<9;j++) for(let i=0;i<9;i++){ const v=Math.round(heightAt(W,cx*CH+i*8,cy*CH+j*8)); hs[j*9+i]=v; vals.push(v); }
+  vals.push(BIOME_IDS.indexOf(biomeAt(W,cx*CH+32,cy*CH+32)));
+  return { hash:fnv(vals), hs };
+}
+function buildChunkCaches(W){
+  const cw=W.w*K, chh=W.h*K, nc=cw*chh; W.cw=cw; W.chh=chh;
+  W.cSea=new Uint8Array(nc); W.cBio=new Uint8Array(nc); W.knowable=new Uint8Array(nc);
+  for(let cy=0;cy<chh;cy++) for(let cx=0;cx<cw;cx++){ const k=cy*cw+cx; const x=cx*CH+32, y=cy*CH+32;
+    W.cSea[k]=seaAt(W,x,y)?1:0; W.cBio[k]=BIOME_IDS.indexOf(biomeAt(W,x,y)); }
+  for(let cy=0;cy<chh;cy++) for(let cx=0;cx<cw;cx++){ const k=cy*cw+cx; if(!W.cSea[k]){ W.knowable[k]=1; continue; }
+    let near=0; for(let dy=-1;dy<=1&&!near;dy++) for(let dx=-1;dx<=1;dx++){ const q=W.cidx(cx+dx,cy+dy); if(q>=0&&!W.cSea[q]){near=1;break;} }
+    W.knowable[k]=near; }
+}
+function chunkIndexer(W){ const cw=W.w*K, chh=W.h*K;
+  W.cidx=(x,y)=>{ if(W.torus){x=mod(x,cw);y=mod(y,chh);} else if(x<0||y<0||x>=cw||y>=chh) return -1; return y*cw+x; };
+  W.cdist=(ax,ay,bx,by)=>{ let dx=Math.abs(ax-bx), dy=Math.abs(ay-by); if(W.torus){dx=Math.min(dx,cw-dx);dy=Math.min(dy,chh-dy);} return Math.max(dx,dy); }; }
+
+function makeWorld(seedStr,N,torus,lib,budget){ const W=buildWorld(seedStr,N,torus,lib); chunkIndexer(W); const sv=new Solver(W,budget); return {W,sv}; }
+
+// exposed for a headless check
+const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, riverViolations };
+if(typeof globalThis!=='undefined') globalThis.WorldPaper=API;
+if(typeof document==='undefined') return;
+
+// =====================================================================
+// UI
+// =====================================================================
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+const st={ N:3, torus:false, lib:13, view:'world', layers:{bands:false,biomes:true,edges:true,landmarks:true,rings:true}, playing:false, flash:null };
+let W=null, sv=null, solveMs=0;
+let walk=null; // { cx, cy, state:Uint8Array, order:[], hashes:Map }
+let COL={};
+
+function readColors(){ const cs=getComputedStyle(document.documentElement); const g=k=>cs.getPropertyValue(k).trim();
+  COL={}; for(const k of ['bg','fg','muted','sea','sand','river','road','main-road','fence','stone','range','ridge','canyon','fog','haze','void','ring-active','ring-gen','ring-known','bad','char','char-edge','undecided','ink','label-bg','flash','seam','accent','panel'])
+    COL[k]=g('--'+k);
+  COL.band=BANDS.map(b=>g('--band-'+b)); COL.bio={}; for(const b of BIOME_IDS) COL.bio[b]=g('--bio-'+b); }
+
+function rebuild(){
+  stopPlay();
+  const seed=$('seed').value.trim()||'valley-1';
+  // time a full solve on its own copy
+  const t0=performance.now(); const m=makeWorld(seed,st.N,st.torus,st.lib); m.sv.run(); finishPlan(m.W,m.sv); solveMs=performance.now()-t0;
+  const fresh=makeWorld(seed,st.N,st.torus,st.lib); W=fresh.W; sv=fresh.sv; walk=null;
+  $('orderMsg').textContent='';
+  play();
+}
+function finishIfNeeded(){ if(!W.solved){ sv.run(); finishPlan(W,sv); startWalk(); } }
+function startWalk(){
+  const cw=W.w*K, chh=W.h*K;
+  walk={ cx:W.vx*K+4, cy:W.vy*K+4, state:new Uint8Array(cw*chh), order:[], hashes:new Map(), known:0, gen:0, path:null };
+  updateRings(); updateHud();
+}
+function play(){ st.playing=true; $('solve').textContent='Finish'; tick(); }
+function stopPlay(){ st.playing=false; $('solve').textContent='Solve'; }
+function tick(){
+  if(!st.playing) return;
+  const per=Math.max(1,Math.ceil(W.n/70));
+  for(let k=0;k<per;k++){ if(!sv.step()){ break; } }
+  if(sv.done){ stopPlay(); finishPlan(W,sv); startWalk(); }
+  draw(); updateHud();
+  if(st.playing) setTimeout(tick, 40);
+}
+
+// ---- walking and the rings ----
+function updateRings(){
+  if(!walk) return; const {cx,cy}=walk;
+  for(let dy=-KNOW;dy<=KNOW;dy++) for(let dx=-KNOW;dx<=KNOW;dx++){
+    const k=W.cidx(cx+dx,cy+dy); if(k<0) continue; const d=Math.max(Math.abs(dx),Math.abs(dy));
+    if(d<=SIGHT){ if(walk.state[k]<2){ if(walk.state[k]===1) walk.known--; walk.state[k]=2; walk.gen++; walk.order.push(k); walk.hashes.set(k, chunkGen(W,k%W.cw,(k/W.cw)|0)); } }
+    else if(W.knowable[k] && walk.state[k]===0){ walk.state[k]=1; walk.known++; }
+  }
+}
+function moveBy(dx,dy){
+  finishIfNeeded(); if(!walk) return;
+  let nx=walk.cx+dx, ny=walk.cy+dy;
+  if(W.torus){ nx=mod(nx,W.cw); ny=mod(ny,W.chh); } else { nx=Math.max(0,Math.min(W.cw-1,nx)); ny=Math.max(0,Math.min(W.chh-1,ny)); }
+  walk.cx=nx; walk.cy=ny; updateRings(); draw(); updateHud();
+}
+function walkTo(tx,ty){
+  finishIfNeeded(); if(!walk) return;
+  walk.path={tx,ty}; if(walk.timer) return;
+  const go=()=>{ if(!walk||!walk.path){ if(walk) walk.timer=null; return; }
+    let dx=walk.path.tx-walk.cx, dy=walk.path.ty-walk.cy;
+    if(W.torus){ if(Math.abs(dx)>W.cw/2) dx-=Math.sign(dx)*W.cw; if(Math.abs(dy)>W.chh/2) dy-=Math.sign(dy)*W.chh; }
+    if(!dx&&!dy){ walk.path=null; walk.timer=null; return; }
+    moveBy(Math.sign(dx),Math.sign(dy)); walk.timer=setTimeout(go, 55); };
+  go();
+}
+
+// ---- view ----
+function viewRect(){
+  const cssW=cv.clientWidth||600;
+  if(st.view==='world'){ const span=Math.max(W.w,W.h)*S; return { ox:0, oy:0, span, scale:cssW/span, cssW }; }
+  const span=27*CH; const cx=walk?walk.cx*CH+32:W.vx*S+S/2, cy=walk?walk.cy*CH+32:W.vy*S+S/2;
+  return { ox:cx-span/2, oy:cy-span/2, span, scale:cssW/span, cssW };
+}
+function tileInstances(v){ // squares overlapping the view, unwrapped positions
+  const out=[]; const gx0=Math.floor(v.ox/S), gx1=Math.floor((v.ox+v.span-1)/S), gy0=Math.floor(v.oy/S), gy1=Math.floor((v.oy+v.span-1)/S);
+  for(let gy=gy0;gy<=gy1;gy++) for(let gx=gx0;gx<=gx1;gx++){ const i=W.idx(gx,gy); if(i<0) continue; out.push({i,x0:gx*S,y0:gy*S}); }
+  return out;
+}
+function draw(){
+  if(!W) return;
+  const dpr=Math.min(window.devicePixelRatio||1,2), cssW=cv.clientWidth||600;
+  if(cv.width!==Math.round(cssW*dpr)){ cv.width=Math.round(cssW*dpr); cv.height=Math.round(cssW*dpr); }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const v=viewRect(), sc=v.scale; const X=wx=>(wx-v.ox)*sc, Y=wy=>(wy-v.oy)*sc;
+  ctx.fillStyle=COL.void; ctx.fillRect(0,0,cssW,cssW);
+  const tiles=tileInstances(v); const tpx=S*sc;
+  // 1. tile colours
+  for(const T of tiles){ const i=T.i; const decided=W.solved||sv.col[i];
+    let c = COL.undecided;
+    if(st.layers.bands || !decided) c=COL.band[W.band[i]];
+    else c=COL.bio[(W.solved?W.opt[i]:OPTS[sv.dom[i][0]]).tpl.biome];
+    ctx.fillStyle=c; ctx.fillRect(X(T.x0),Y(T.y0),tpx+0.5,tpx+0.5);
+    if(!decided){ ctx.save(); ctx.globalAlpha=0.35; ctx.strokeStyle=COL.ink; ctx.lineWidth=1; ctx.beginPath();
+      for(let k=-S;k<S;k+=S/6){ ctx.moveTo(X(T.x0+k),Y(T.y0)); ctx.lineTo(X(T.x0+k+S),Y(T.y0+S)); } ctx.save(); ctx.rect(X(T.x0),Y(T.y0),tpx,tpx); ctx.clip(); ctx.stroke(); ctx.restore(); ctx.restore(); }
+  }
+  // 2. biomes per chunk (the climate's borders)
+  if(W.solved && st.layers.biomes && !st.layers.bands){
+    const cs=CH*sc; const cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH), n=Math.ceil(v.span/CH)+1;
+    for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0||W.cSea[k]) continue;
+      ctx.fillStyle=COL.bio[BIOME_IDS[W.cBio[k]]]; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); }
+    // generated chunks show relief from their own heights
+    if(walk && st.view==='close'){ ctx.save(); for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0||walk.state[k]<2) continue;
+      const g=walk.hashes.get(k); if(!g) continue; const sub=cs/3;
+      for(let b=0;b<3;b++) for(let a=0;a<3;a++){ const hv=g.hs[(b*3+1)*9+(a*3+1)]; const t=Math.max(-1,Math.min(1,(hv-120)/400));
+        ctx.fillStyle=t>0?'rgba(255,255,255,'+(t*0.28).toFixed(3)+')':'rgba(0,0,0,'+(-t*0.18).toFixed(3)+')';
+        ctx.fillRect(X((cx0+i)*CH)+a*sub,Y((cy0+j)*CH)+b*sub,sub+0.4,sub+0.4); } } ctx.restore(); }
+  }
+  // 3. coasts: a sand stroke under every sea shape, then the sea on top, so shores run on across sides
+  const seaPaths=[];
+  for(const T of tiles){ const i=T.i; const c=W.coast[i];
+    if(!W.band[i]){ const p=new Path2D(); p.rect(X(T.x0),Y(T.y0),tpx+0.5,tpx+0.5); seaPaths.push(p); continue; }
+    for(let s=0;s<4;s++) if(c.open[s]){ const p=new Path2D(); const N=24;
+      for(let k=0;k<=N;k++){ const t=k/N*S, d=edgeD(W,i,s,t); let x,y;
+        if(s===0){x=t;y=d;} else if(s===1){x=S-d;y=t;} else if(s===2){x=t;y=S-d;} else {x=d;y=t;}
+        if(k===0) p.moveTo(X(T.x0+x),Y(T.y0+y)); else p.lineTo(X(T.x0+x),Y(T.y0+y)); }
+      const ends = s===0?[[S,0],[0,0]] : s===1?[[S,S],[S,0]] : s===2?[[S,S],[0,S]] : [[0,S],[0,0]];
+      for(const [x,y] of ends) p.lineTo(X(T.x0+x),Y(T.y0+y)); p.closePath(); seaPaths.push(p); }
+    for(let k=0;k<4;k++) if(c.notch[k]){ const cx=(k===1||k===2)?S:0, cy=k>=2?S:0; const p=new Path2D(); p.moveTo(X(T.x0+cx),Y(T.y0+cy)); p.arc(X(T.x0+cx),Y(T.y0+cy),c.notch[k]*sc,0,Math.PI*2); p.closePath(); seaPaths.push(p); }
+  }
+  ctx.strokeStyle=COL.sand; ctx.lineWidth=Math.max(2,22*sc); ctx.lineJoin='round'; for(const p of seaPaths) ctx.stroke(p);
+  ctx.fillStyle=COL.sea; for(const p of seaPaths) ctx.fill(p);
+  // 4. edge features
+  if(st.layers.edges){ for(const T of tiles){ const i=T.i; let feats=null;
+      if(W.solved) feats=W.feats[i]; else if(sv.col[i] && !OPTS[sv.dom[i][0]].filler) feats=OPTS[sv.dom[i][0]].feats;
+      if(feats) drawFeatures(T,feats,i,X,Y,sc); } }
+  // 5. square borders, seam, mismatches
+  ctx.strokeStyle=COL.seam; ctx.lineWidth=1; ctx.setLineDash([]);
+  for(const T of tiles){ ctx.strokeRect(X(T.x0)+0.5,Y(T.y0)+0.5,tpx-1,tpx-1); }
+  if(st.view==='close'){ ctx.save(); ctx.globalAlpha=0.25; ctx.beginPath(); const cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH);
+    for(let k=0;k<=28;k++){ const gx=X((cx0+k)*CH), gy=Y((cy0+k)*CH); ctx.moveTo(gx,0); ctx.lineTo(gx,cssW); ctx.moveTo(0,gy); ctx.lineTo(cssW,gy);} ctx.stroke(); ctx.restore(); }
+  if(W.torus){ ctx.save(); ctx.strokeStyle=COL.accent; ctx.globalAlpha=0.55; ctx.setLineDash([6,5]); ctx.lineWidth=2; const ws=W.w*S;
+    for(let k=Math.floor(v.ox/ws);k<=Math.ceil((v.ox+v.span)/ws);k++){ ctx.beginPath(); ctx.moveTo(X(k*ws),0); ctx.lineTo(X(k*ws),cssW); ctx.stroke(); }
+    for(let k=Math.floor(v.oy/ws);k<=Math.ceil((v.oy+v.span)/ws);k++){ ctx.beginPath(); ctx.moveTo(0,Y(k*ws)); ctx.lineTo(cssW,Y(k*ws)); ctx.stroke(); }
+    ctx.restore(); }
+  if(W.solved){ ctx.strokeStyle=COL.bad; ctx.lineWidth=4; for(const [i,s] of W.mismatch){ for(const T of tiles) if(T.i===i){ const a=s===1?[S,0,S,S]:[0,S,S,S]; ctx.beginPath(); ctx.moveTo(X(T.x0+a[0]),Y(T.y0+a[1])); ctx.lineTo(X(T.x0+a[2]),Y(T.y0+a[3])); ctx.stroke(); } }
+    ctx.fillStyle=COL.bad; for(const i of W.cornerBad) for(const T of tiles) if(T.i===i){ ctx.beginPath(); ctx.arc(X(T.x0+S),Y(T.y0+S),6,0,7); ctx.fill(); }
+    ctx.strokeStyle=COL.bad; ctx.lineWidth=3; for(const [i] of W.riverBad) for(const T of tiles) if(T.i===i){ ctx.beginPath(); ctx.arc(X(T.x0+W.hub[i][0]),Y(T.y0+W.hub[i][1]),Math.max(8,90*sc),0,7); ctx.stroke(); } }
+  // 6. the solve in progress
+  if(!W.solved){ ctx.font='600 '+Math.max(10,Math.min(18,tpx/5))+'px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(const T of tiles){ const i=T.i; if(!sv.col[i] && tpx>=18){ ctx.fillStyle=COL.ink; ctx.fillText(String(sv.dom[i].length),X(T.x0+S/2),Y(T.y0+S/2)); } }
+    if(sv.last>=0){ for(const T of tiles) if(T.i===sv.last){ ctx.strokeStyle=COL.accent; ctx.lineWidth=3; ctx.strokeRect(X(T.x0)+2,Y(T.y0)+2,tpx-4,tpx-4); } }
+    for(const f of sv.fillers) for(const T of tiles) if(T.i===f){ ctx.strokeStyle=COL.bad; ctx.setLineDash([4,4]); ctx.lineWidth=2; ctx.strokeRect(X(T.x0)+4,Y(T.y0)+4,tpx-8,tpx-8); ctx.setLineDash([]); } }
+  else for(const f of W.fillers) for(const T of tiles) if(T.i===f){ ctx.strokeStyle=COL.bad; ctx.setLineDash([4,4]); ctx.lineWidth=2; ctx.strokeRect(X(T.x0)+4,Y(T.y0)+4,tpx-8,tpx-8); ctx.setLineDash([]); }
+  // 7. rings
+  if(W.solved && walk && st.layers.rings) drawRings(v,X,Y,sc,cssW);
+  // 8. landmarks
+  if(W.solved && st.layers.landmarks) drawLandmarks(tiles,X,Y,sc,tpx);
+  // 9. the character
+  if(walk){ const ws=W.w*S, hs=W.h*S; let px=walk.cx*CH+32, py=walk.cy*CH+32;
+    const r=Math.max(6,Math.min(11,CH*sc*0.45));
+    for(const ox of (W.torus?[-ws,0,ws]:[0])) for(const oy of (W.torus?[-hs,0,hs]:[0])){ const x=X(px+ox), y=Y(py+oy); if(x<-20||y<-20||x>cssW+20||y>cssW+20) continue;
+      ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fillStyle=COL.char; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=COL['char-edge']; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,r*0.35,0,7); ctx.fillStyle=COL['ring-active']; ctx.fill(); } }
+}
+// a main road is wide, fenced (ticks either side) with a marker stone; a lesser road is narrow; a trail is dashed
+function drawRoadPiece(f,lw,sc,a,q,e){
+  const path=()=>{ ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.quadraticCurveTo(q[0],q[1],e[0],e[1]); };
+  ctx.lineCap='round'; ctx.setLineDash([]);
+  if(f.main){ const w=Math.max(3.5,15*sc);
+    path(); ctx.strokeStyle=COL.fence; ctx.lineCap='butt'; ctx.lineWidth=w+Math.max(5,13*sc); ctx.setLineDash([Math.max(1.5,4*sc),Math.max(4,22*sc)]); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineCap='round'; path(); ctx.strokeStyle=COL['main-road']; ctx.lineWidth=w; ctx.stroke();
+    if(sc*S>40){ const t=0.5, mx=(1-t)*(1-t)*a[0]+2*(1-t)*t*q[0]+t*t*e[0], my=(1-t)*(1-t)*a[1]+2*(1-t)*t*q[1]+t*t*e[1];
+      let dx=e[0]-a[0], dy=e[1]-a[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L; const o=w*0.5+Math.max(4,12*sc), r=Math.max(2,5*sc);
+      ctx.beginPath(); ctx.rect(mx-dy*o-r,my+dx*o-r,2*r,2*r); ctx.fillStyle=COL.stone; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=COL.fence; ctx.stroke(); }
+    return; }
+  path(); ctx.strokeStyle=COL.road; ctx.lineWidth=Math.max(1.5,7*sc);
+  if(f.trail) ctx.setLineDash([Math.max(3,14*sc),Math.max(2.5,9*sc)]);
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function fr(x0,y0,x1,y1){ const a=Math.round(x0), b=Math.round(y0); ctx.fillRect(a,b,Math.round(x1)-a,Math.round(y1)-b); }
+function drawFeatures(T,feats,i,X,Y,sc){
+  const hub=W.solved?W.hub[i]:[S/2,S/2]; const kinds=['c','g','d','r'];
+  const style={ r:{c:COL.river,w:14}, d:{c:COL.road,w:9}, g:{c:COL.range,w:26}, c:{c:COL.canyon,w:16} };
+  for(const k of kinds){ const list=[]; for(let s=0;s<4;s++) for(const f of feats[s]) if(f.k===k) list.push({s,f});
+    if(!list.length) continue;
+    const st2=style[k]; const lw=Math.max(k==='g'?3:2, st2.w*sc);
+    const fade = list.length===1 && (k==='g'||k==='c');
+    for(const {s,f} of list){ const [px,py]=slotPoint(s,f.slot), [ix,iy]=inward(s);
+      const qx=px+ix*110, qy=py+iy*110; let ex=hub[0], ey=hub[1];
+      if(k==='d' && W.solved && W.roadEnd[i]){ ex=W.roadEnd[i][0]; ey=W.roadEnd[i][1]; }
+      if(fade){ ex=px+(hub[0]-px)*0.62; ey=py+(hub[1]-py)*0.62; }
+      ctx.beginPath(); ctx.moveTo(X(T.x0+px),Y(T.y0+py)); ctx.quadraticCurveTo(X(T.x0+qx),Y(T.y0+qy),X(T.x0+ex),Y(T.y0+ey));
+      if(k==='d'){ drawRoadPiece(f,lw,sc,[X(T.x0+px),Y(T.y0+py)],[X(T.x0+qx),Y(T.y0+qy)],[X(T.x0+ex),Y(T.y0+ey)]); continue; }
+      ctx.strokeStyle=st2.c; ctx.lineCap='round'; ctx.lineWidth=lw; ctx.setLineDash([]); ctx.stroke();
+      if(k==='g'){ ctx.strokeStyle=COL.ridge; ctx.lineWidth=Math.max(1,lw*0.25); ctx.setLineDash([Math.max(2,lw*0.5),Math.max(2,lw*0.5)]); ctx.stroke(); ctx.setLineDash([]); }
+      if(k==='c'){ ctx.strokeStyle=COL.fg; ctx.globalAlpha=0.35; ctx.lineWidth=Math.max(1,lw*0.25); ctx.stroke(); ctx.globalAlpha=1; }
+      if(k==='r' && S*sc>36){ // flow arrow at the crossing: always downhill, since flow only goes to an equal or lower band
+        const dir=f.f==='o'?-1:1; const ax=X(T.x0+px+ix*40), ay=Y(T.y0+py+iy*40); const ux=ix*dir, uy=iy*dir; const a=Math.max(4,lw*0.9);
+        ctx.beginPath(); ctx.moveTo(ax+ux*a,ay+uy*a); ctx.lineTo(ax-ux*a*0.6-uy*a*0.8,ay-uy*a*0.6+ux*a*0.8); ctx.lineTo(ax-ux*a*0.6+uy*a*0.8,ay-uy*a*0.6-ux*a*0.8); ctx.closePath(); ctx.fillStyle=COL.ridge; ctx.fill(); }
+    }
+    if(k==='r' && W.solved && W.lake[i]){ ctx.beginPath(); ctx.ellipse(X(T.x0+hub[0]),Y(T.y0+hub[1]),Math.max(4,62*sc),Math.max(3,44*sc),0,0,7); ctx.fillStyle=COL.sea; ctx.fill(); ctx.strokeStyle=COL.sand; ctx.lineWidth=Math.max(1,6*sc); ctx.stroke(); }
+  }
+}
+function lmVisible(L){
+  if(!walk || !st.layers.rings) return 2;
+  const k=W.cidx(L.cx,L.cy); if(walk.state[k]>=1) return 2;
+  if(W.cdist(L.cx,L.cy,walk.cx,walk.cy)<=L.seenFrom) return 1; // seen through the fog
+  return 0;
+}
+function drawIcon(icon,x,y,s){
+  ctx.save(); ctx.lineJoin='round'; ctx.lineWidth=Math.max(1.5,s*0.1); ctx.strokeStyle=COL['char-edge'];
+  if(icon==='tree'){ ctx.fillStyle='#7a5230'; ctx.fillRect(x-s*0.12,y-s*0.1,s*0.24,s*0.6); ctx.beginPath(); ctx.arc(x,y-s*0.3,s*0.42,0,7); ctx.fillStyle='#2f7a35'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='volcano'){ ctx.beginPath(); ctx.moveTo(x-s*0.6,y+s*0.45); ctx.lineTo(x-s*0.15,y-s*0.45); ctx.lineTo(x+s*0.15,y-s*0.45); ctx.lineTo(x+s*0.6,y+s*0.45); ctx.closePath(); ctx.fillStyle='#5b4a44'; ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x,y-s*0.45,s*0.17,s*0.08,0,0,7); ctx.fillStyle='#ff5a1f'; ctx.fill(); ctx.beginPath(); ctx.arc(x+s*0.1,y-s*0.75,s*0.16,0,7); ctx.fillStyle='rgba(160,160,160,.8)'; ctx.fill(); }
+  else if(icon==='boat'){ ctx.beginPath(); ctx.moveTo(x-s*0.55,y); ctx.lineTo(x+s*0.55,y); ctx.lineTo(x+s*0.35,y+s*0.3); ctx.lineTo(x-s*0.35,y+s*0.3); ctx.closePath(); ctx.fillStyle='#a0522d'; ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y-s*0.6); ctx.lineTo(x+s*0.35,y-s*0.1); ctx.closePath(); ctx.fillStyle='#f3efe6'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='spire'){ ctx.beginPath(); ctx.moveTo(x-s*0.3,y+s*0.5); ctx.lineTo(x-s*0.05,y-s*0.8); ctx.lineTo(x+s*0.08,y-s*0.65); ctx.lineTo(x+s*0.3,y+s*0.5); ctx.closePath(); ctx.fillStyle='#8d8a86'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='castle'){ ctx.fillStyle='#bdb6aa'; ctx.beginPath(); const L=x-s*0.5,R=x+s*0.5,T=y-s*0.35,B=y+s*0.45,m=s*0.2;
+    ctx.moveTo(L,B); ctx.lineTo(L,T-m); ctx.lineTo(L+m,T-m); ctx.lineTo(L+m,T); ctx.lineTo(x-m/2,T); ctx.lineTo(x-m/2,T-m); ctx.lineTo(x+m/2,T-m); ctx.lineTo(x+m/2,T); ctx.lineTo(R-m,T); ctx.lineTo(R-m,T-m); ctx.lineTo(R,T-m); ctx.lineTo(R,B); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  // outcrops
+  else if(icon==='needle'){ ctx.beginPath(); ctx.moveTo(x-s*0.22,y+s*0.5); ctx.lineTo(x-s*0.04,y-s*0.7); ctx.lineTo(x+s*0.1,y-s*0.55); ctx.lineTo(x+s*0.22,y+s*0.5); ctx.closePath(); ctx.fillStyle='#a39d94'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='crag'){ ctx.beginPath(); ctx.moveTo(x-s*0.55,y+s*0.45); ctx.lineTo(x-s*0.35,y-s*0.1); ctx.lineTo(x-s*0.15,y+s*0.05); ctx.lineTo(x+s*0.05,y-s*0.5); ctx.lineTo(x+s*0.3,y-s*0.05); ctx.lineTo(x+s*0.55,y+s*0.45); ctx.closePath(); ctx.fillStyle='#6f675d'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='falls'){ ctx.fillStyle='#8a8278'; ctx.fillRect(x-s*0.5,y-s*0.5,s*0.25,s); ctx.fillRect(x+s*0.25,y-s*0.5,s*0.25,s); ctx.fillStyle='#4aa3ff'; ctx.fillRect(x-s*0.25,y-s*0.5,s*0.5,s); ctx.strokeRect(x-s*0.5,y-s*0.5,s,s);
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(1,s*0.07); ctx.beginPath(); for(const k of [-0.12,0.08]){ ctx.moveTo(x+k*s,y-s*0.4); ctx.lineTo(x+k*s,y+s*0.4); } ctx.stroke(); }
+  else if(icon==='lonetree'){ ctx.fillStyle='#6b4527'; ctx.fillRect(x-s*0.09,y-s*0.05,s*0.18,s*0.55); ctx.beginPath(); ctx.ellipse(x,y-s*0.25,s*0.5,s*0.32,0,0,7); ctx.fillStyle='#4f9a3a'; ctx.fill(); ctx.stroke(); }
+  else if(icon==='ruin'){ ctx.fillStyle='#d8cfbf'; ctx.fillRect(x-s*0.5,y+s*0.3,s,s*0.18); ctx.strokeRect(x-s*0.5,y+s*0.3,s,s*0.18);
+    ctx.beginPath(); ctx.moveTo(x-s*0.38,y+s*0.3); ctx.lineTo(x-s*0.38,y-s*0.5); ctx.lineTo(x-s*0.14,y-s*0.35); ctx.lineTo(x-s*0.14,y+s*0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+s*0.14,y+s*0.3); ctx.lineTo(x+s*0.14,y-s*0.1); ctx.lineTo(x+s*0.38,y-s*0.2); ctx.lineTo(x+s*0.38,y+s*0.3); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(icon==='cave'){ ctx.beginPath(); ctx.moveTo(x-s*0.6,y+s*0.45); ctx.quadraticCurveTo(x-s*0.45,y-s*0.55,x,y-s*0.55); ctx.quadraticCurveTo(x+s*0.45,y-s*0.55,x+s*0.6,y+s*0.45); ctx.closePath(); ctx.fillStyle='#8a8070'; ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x-s*0.25,y+s*0.45); ctx.quadraticCurveTo(x-s*0.25,y-s*0.15,x,y-s*0.15); ctx.quadraticCurveTo(x+s*0.25,y-s*0.15,x+s*0.25,y+s*0.45); ctx.closePath(); ctx.fillStyle='#1b1714'; ctx.fill(); }
+  else if(icon==='inn'||icon==='shop'){ ctx.fillStyle='#e9dcc3'; ctx.fillRect(x-s*0.4,y-s*0.05,s*0.8,s*0.5); ctx.strokeRect(x-s*0.4,y-s*0.05,s*0.8,s*0.5);
+    ctx.beginPath(); ctx.moveTo(x-s*0.52,y-s*0.02); ctx.lineTo(x,y-s*0.5); ctx.lineTo(x+s*0.52,y-s*0.02); ctx.closePath(); ctx.fillStyle=icon==='inn'?'#a8462f':'#2f6aa8'; ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5a3a22'; ctx.fillRect(x-s*0.1,y+s*0.15,s*0.2,s*0.3);
+    if(icon==='inn'){ ctx.beginPath(); ctx.moveTo(x+s*0.4,y+s*0.05); ctx.lineTo(x+s*0.62,y+s*0.05); ctx.stroke(); ctx.fillStyle='#e8b33a'; ctx.fillRect(x+s*0.52,y+s*0.08,s*0.14,s*0.14); } }
+  else if(icon==='bridge'){ ctx.fillStyle='#b9ad9a'; ctx.beginPath(); ctx.moveTo(x-s*0.6,y-s*0.1); ctx.lineTo(x+s*0.6,y-s*0.1); ctx.lineTo(x+s*0.6,y+s*0.35); ctx.lineTo(x+s*0.38,y+s*0.35);
+    ctx.quadraticCurveTo(x,y-s*0.15,x-s*0.38,y+s*0.35); ctx.lineTo(x-s*0.6,y+s*0.35); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(icon==='ford'){ ctx.fillStyle='#d6cfc2'; for(const [ox,oy] of [[-0.38,0.12],[0,-0.08],[0.38,0.12]]){ ctx.beginPath(); ctx.ellipse(x+ox*s,y+oy*s,s*0.17,s*0.12,0,0,7); ctx.fill(); ctx.stroke(); } }
+  else if(icon==='seaview'){ ctx.beginPath(); ctx.arc(x,y,s*0.48,0,7); ctx.fillStyle='#4f86b8'; ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(1,s*0.08); ctx.beginPath(); ctx.moveTo(x-s*0.32,y+s*0.08); ctx.quadraticCurveTo(x-s*0.16,y-s*0.1,x,y+s*0.08); ctx.quadraticCurveTo(x+s*0.16,y+s*0.26,x+s*0.32,y+s*0.08); ctx.stroke(); }
+  ctx.restore();
+}
+function drawLandmarks(tiles,X,Y,sc,tpx){
+  const size=Math.max(12,Math.min(26,tpx*0.16)); const showNames = st.view==='close' || tpx>=110;
+  ctx.font='600 11px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+  for(const T of tiles){ for(const L of W.landmarks){ if(L.i!==T.i) continue; const vis=lmVisible(L); if(!vis) continue;
+    const x=X(T.x0+L.site[0]), y=Y(T.y0+L.site[1]);
+    if(vis===1){ ctx.beginPath(); ctx.arc(x,y,size*0.95,0,7); ctx.strokeStyle=COL['ring-known']; ctx.lineWidth=2; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.globalAlpha = vis===1?0.75:1; drawIcon(L.icon,x,y,size); ctx.globalAlpha=1;
+    if(showNames && vis===2){ const txt = L.kind==='castle'?'the Hold':L.place.split(' by ')[0]; const sub=L.icon==='tree'?'great tree':L.icon==='volcano'?'volcano':L.icon==='boat'?'fishing village':L.icon==='spire'?'sea spire':L.icon==='cave'?'cave':'castle';
+      const line=txt+' · '+sub; const tw=ctx.measureText(line).width+8; ctx.fillStyle=COL['label-bg']; ctx.fillRect(x-tw/2,y+size*0.6,tw,15); ctx.fillStyle=COL.ink; ctx.fillText(line,x,y+size*0.6+2); }
+  }
+    // outcrops along the roads: smaller, and seen through the fog the same way
+    const os=Math.max(7,size*0.55);
+    for(const O of W.outcrops.concat(W.waystations, W.crossings.filter(C=>C.used))){ if(O.i!==T.i) continue; const vis=lmVisible(O); if(!vis) continue;
+      const x=X(T.x0+O.site[0]), y=Y(T.y0+O.site[1]);
+      if(vis===1){ ctx.beginPath(); ctx.arc(x,y,os*0.95,0,7); ctx.strokeStyle=COL['ring-known']; ctx.lineWidth=1.5; ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.globalAlpha = vis===1?0.75:1; drawIcon(O.icon,x,y,os); ctx.globalAlpha=1;
+      if(st.view==='close' && vis===2){ const tw=ctx.measureText(O.kind).width+8; ctx.fillStyle=COL['label-bg']; ctx.fillRect(x-tw/2,y+os*0.6,tw,15); ctx.fillStyle=COL.ink; ctx.fillText(O.kind,x,y+os*0.6+2); } }
+  }
+}
+function drawRings(v,X,Y,sc,cssW){
+  const cs=CH*sc, cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH), n=Math.ceil(v.span/CH)+1;
+  for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0) continue; const s=walk.state[k];
+    if(s===2) continue; ctx.fillStyle = s===1?COL.haze:COL.fog; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); }
+  if(st.flash){ const t=(performance.now()-st.flash.t0)/st.flash.dur; const upto=Math.floor(Math.min(1,t)*st.flash.order.length);
+    ctx.fillStyle=COL.flash; const cw=W.cw, chh=W.chh;
+    for(let q=Math.max(0,upto-40);q<upto;q++){ const k=st.flash.order[q]; const kx=k%cw, ky=(k/cw)|0;
+      for(const ox of (W.torus?[-cw,0,cw]:[0])) for(const oy of (W.torus?[-chh,0,chh]:[0])){ ctx.fillRect(X((kx+ox)*CH),Y((ky+oy)*CH),cs+0.6,cs+0.6); } } }
+  const ring=(r,c,dash)=>{ ctx.strokeStyle=c; ctx.lineWidth=2; ctx.setLineDash(dash);
+    const cw=W.cw*CH, chh=W.chh*CH;
+    for(const ox of (W.torus?[-cw,0,cw]:[0])) for(const oy of (W.torus?[-chh,0,chh]:[0])){
+      ctx.strokeRect(X((walk.cx-r)*CH+ox),Y((walk.cy-r)*CH+oy),(2*r+1)*cs,(2*r+1)*cs); }
+    ctx.setLineDash([]); };
+  ring(KNOW,COL['ring-known'],[5,4]); ring(SIGHT,COL['ring-gen'],[]); ring(REACH,COL['ring-active'],[]);
+}
+
+// ---- text ----
+function featText(L){ if(!L.length) return '—'; return L.map(f=>KIND[f.k]+' '+f.slot+(f.f==='i'?' in':f.f==='o'?' out':'')).join(', '); }
+function roadStats(){
+  const M=W.roads.filter(R=>R.kind==='main road'), Ls=W.roads.filter(R=>R.kind==='lesser road'), Tr=W.roads.filter(R=>R.kind==='trail');
+  const used=W.crossings.filter(C=>C.used), br=used.filter(C=>C.kind==='bridge').length, fo=used.length-br;
+  const ill=W.roadCheck.illegal.length, bes=W.roadCheck.beside;
+  return ' · main roads '+M.length+' (longest '+(M.length?Math.max(...M.map(R=>R.path.length)):0)+' squares) · lesser roads '+Ls.length+', trails '+Tr.length
+    +' · waystations '+W.waystations.length+' · bridges '+br+', fords '+fo+' <span class="k">(of '+W.crossings.length+' planned)</span>'
+    +' · illegal crossings <b class="'+(ill?'badc':'ok')+'">'+ill+'</b> · mains side by side <b class="'+(bes?'badc':'ok')+'">'+bes+'</b>';
+}
+function updateHud(){
+  if(!W) return;
+  const fl=(W.solved?W.fillers:sv.fillers).length;
+  const mm=W.solved?(W.mismatch.length+W.cornerBad.length):0;
+  $('solveStats').innerHTML = (W.solved?'Solved':'Solving')+' · steps '+sv.steps+' · backtracks '+sv.backtracks+' · fillers <b class="'+(fl?'badc':'ok')+'">'+fl+'</b>'
+    +(W.solved?' · mismatches <b class="'+(mm?'badc':'ok')+'">'+mm+'</b>':'')
+    +(W.solved?roadStats()+', river violations <b class="'+(W.riverBad.length?'badc':'ok')+'">'+W.riverBad.length+'</b> · outcrops '+W.outcrops.length+' · plan '+hex(W.planHash):'')
+    +' · full solve '+solveMs.toFixed(1)+' ms';
+  if(!W.solved||!walk){ $('here').innerHTML='<span class="k">Press Solve, or tap the map to finish and start walking.</span>'; $('cost').innerHTML=''; return; }
+  const sx=Math.floor(walk.cx/K), sy=Math.floor(walk.cy/K), i=sy*W.w+sx, o=W.opt[i];
+  const c=W.coast[i]; const lm=W.landmarks.filter(L=>L.i===i);
+  let gx=walk.cx-W.vx*K, gy=walk.cy-W.vy*K; if(W.torus){ gx=mod(gx+W.cw/2,W.cw)-W.cw/2; gy=mod(gy+W.chh/2,W.chh)-W.chh/2; }
+  let side=''; for(let s=0;s<4;s++){ const cs=c.open[s]?' <span class="k">(coast '+c.depth[s]+')</span>':''; side+='<div><b>'+SIDE[s]+'</b> '+(o.sea?'sea':featText(W.feats[i][s]))+cs+'</div>'; }
+  $('here').innerHTML='<div><b>'+o.tpl.id+'</b>'+(o.rot?' turned '+o.rot*90+'°':'')+' · '+BANDS[W.band[i]]+' · '+BIOMES[o.tpl.biome].name+(o.filler?' · <span class="badc">filler</span>':'')
+    +' <span class="k">· chunk ('+gx+', '+gy+')</span></div>'
+    +(lm.length?lm.map(L=>'<div>'+L.place+' <span class="k">— '+L.title+'; form '+L.form+'</span></div>').join(''):'<div class="k">No landmark here.</div>')
+    +W.roads.filter(R=>R.path.includes(i)).map(R=>'<div><span class="k">'+R.kind[0].toUpperCase()+R.kind.slice(1)+'</span> '+R.from.name+' to '+(R.stops&&R.stops.length>1?R.stops.join(', '):R.to.name)+' <span class="k">· '+R.path.length+' squares, bands '+R.path.map(p=>W.band[p]).join('→')+'</span></div>').join('')
+    +W.waystations.filter(O=>O.i===i).map(O=>'<div><span class="k">Waystation</span> '+(O.kind==='inn'?'an inn':'a shop')+' <span class="k">· on the main road '+O.road+'</span></div>').join('')
+    +W.crossings.filter(C=>C.i===i).map(C=>'<div><span class="k">Crossing</span> '+(C.kind==='bridge'?'a bridge':'a ford')+' over the '+C.over+' <span class="k">· one of the few on a '+C.size+'-square '+C.over+(C.used?'':'; no road uses it yet')+'</span></div>').join('')
+    +(W.barrier.r[i]&&!W.passable(i)?'<div class="k">A river runs through here with no crossing: roads end on one bank.</div>':'')
+    +(W.barrier.c[i]&&!W.passable(i)?'<div class="k">A canyon runs through here with no bridge: roads end on one side.</div>':'')
+    +W.outcrops.filter(O=>O.i===i).map(O=>'<div><span class="k">Outcrop</span> '+O.kind+' <span class="k">· on the road '+O.road+'</span></div>').join('')
+    +W.riverBad.filter(([b])=>b===i).map(([,why])=>'<div class="badc">River '+why+'</div>').join('')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px">'+side+'</div>';
+  let active=0; for(let dy=-REACH;dy<=REACH;dy++) for(let dx=-REACH;dx<=REACH;dx++) if(W.cidx(walk.cx+dx,walk.cy+dy)>=0) active++;
+  const g=walk.gen, k=walk.known;
+  $('cost').innerHTML='<div><b style="color:'+COL['ring-active']+'">Active</b> '+active+' chunks <span class="k">· 0.02–0.4 ms a tick each</span></div>'
+    +'<div><b style="color:'+COL['ring-gen']+'">Generated</b> '+g+' chunks <span class="k">· made in ~'+(g*5/1000).toFixed(1)+'–'+(g*10/1000).toFixed(1)+' s of worker time · held ~'+Math.round(g*MB_PER_CHUNK)+' MB (a lone character’s 9 × 9 ≈ 60 MB)</span></div>'
+    +'<div><b style="color:'+COL['ring-known']+'">Known</b> '+k+' chunks <span class="k">· ~'+k+' KB · ~'+(k*0.1).toFixed(1)+' ms</span></div>';
+}
+function buildLegend(){
+  const sw=(c,t)=>'<div><span class="sw" style="background:var('+c+')"></span>'+t+'</div>';
+  const ln=(c,t)=>'<div><span class="ln" style="border-top-color:var('+c+')"></span>'+t+'</div>';
+  let h='';
+  BANDS.forEach(b=>h+=sw('--band-'+b,'band: '+b+' ('+BAND_H[BANDS.indexOf(b)]+')'));
+  BIOME_IDS.forEach(b=>h+=sw('--bio-'+b,BIOMES[b].name));
+  h+=ln('--river','river (arrow = flow, always downhill)')+ln('--main-road','main road (fenced, marker stones)')+ln('--road','lesser road (dashed: a trail)')+ln('--range','range')+ln('--canyon','canyon')+ln('--sand','shoreline');
+  h+=ln('--ring-active','active: reach 2')+ln('--ring-gen','generated: sight 4')+ln('--ring-known','known: know 7')+sw('--fog','unknown (plan only)');
+  h+='<div>13 templates: each has a sibling in the 26 with the same edges, another name and biome. With the 3-square rule a 3 × 3 window of one band needs 9 different templates, so 13 runs short at 12 × 12.</div>';
+  h+='<div>Roads have a reason. Points of interest come first: villages (about one square in three), the castle, caves (mostly in the hills), passes, a spire’s shore, and the crossings nature allows: one or two bridges a canyon, one to three fords or bridges a river, a range only at a pass. Then a few main roads (up to 6 on 12 × 12, 2 on 3 × 3) join far-apart towns and the castle, longest first, kept apart, with an inn or shop every 2–3 squares. Lesser roads and trails branch off to everything else. Roads go round peaks, climb the high band only at a cost, and pass a river or canyon only at a crossing.</div>';
+  h+='<div>Small icons: waystations (inn, shop), bridges and fords, and outcrops along the roads (rock spire, crag, waterfall where a river drops a band, lone great tree, ruin, sea view).</div>';
+  h+='<div>A river enters from an equal or higher band and leaves to an equal or lower one; it starts at a spring (hills and up) or a lake and ends at the sea or a lake. Red ring: a river violation.</div>';
+  h+='<div>red edge or dot: a mismatch</div><div>dashed red box: a filler</div><div>number: options left in the solve</div><div>dashed ring on a landmark: seen through the fog</div>';
+  $('legend').innerHTML=h;
+}
+
+// ---- order independence ----
+function otherWay(){
+  finishIfNeeded(); if(!walk||!walk.order.length) return;
+  const order=walk.order.slice().reverse(); const r=rng(strHash($('seed').value+'|other'));
+  for(let k=order.length-1;k>0;k--){ const j=Math.floor(r()*(k+1)); const t=order[k]; order[k]=order[j]; order[j]=t; }
+  const t0=performance.now(); let same=0; let ex=null;
+  for(const k of order){ const g=chunkGen(W,k%W.cw,(k/W.cw)|0); if(g.hash===walk.hashes.get(k).hash) same++; if(!ex) ex={k,h:g.hash}; }
+  const ms=performance.now()-t0;
+  const ok=same===order.length;
+  const kx=ex.k%W.cw-W.vx*K, ky=((ex.k/W.cw)|0)-W.vy*K;
+  $('orderMsg').innerHTML='Made all '+order.length+' generated chunks again in a shuffled order ('+ms.toFixed(0)+' ms here): <b class="'+(ok?'ok':'badc')+'">'+same+' of '+order.length+' hashes the same</b>. e.g. chunk ('+kx+', '+ky+') = '+hex(ex.h)+'. A chunk reads only the seed, the plan and its own coordinates.';
+  st.flash={order,t0:performance.now(),dur:1400};
+  const anim=()=>{ draw(); if(performance.now()-st.flash.t0<st.flash.dur+300) requestAnimationFrame(anim); else { st.flash=null; draw(); } };
+  if(st.layers.rings) anim();
+}
+
+// ---- input ----
+function setPressed(el,on){ el.setAttribute('aria-pressed',on?'true':'false'); }
+$('reroll').onclick=()=>{ const r=Math.floor(Math.random()*1e6); $('seed').value='seed-'+r; rebuild(); };
+$('seed').addEventListener('change',rebuild);
+$('seed').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); rebuild(); } e.stopPropagation(); });
+function setLib(n){ st.lib=n; setPressed($('lib13'),n===13); setPressed($('lib26'),n===26); }
+function setSize(n){ st.N=n; setPressed($('sz3'),n===3); setPressed($('sz12'),n===12); setLib(n===3?13:26); if(n===3){ st.torus=false; setPressed($('torus'),false); } }
+$('sz3').onclick=()=>{ setSize(3); rebuild(); };
+$('sz12').onclick=()=>{ setSize(12); rebuild(); };
+// a 3 x 3 torus is its own neighbour's neighbour, so the torus is a 12 x 12 setting
+$('torus').onclick=()=>{ st.torus=!st.torus; if(st.torus&&st.N===3) setSize(12); setPressed($('torus'),st.torus); rebuild(); };
+$('lib13').onclick=()=>{ setLib(13); rebuild(); };
+$('lib26').onclick=()=>{ setLib(26); rebuild(); };
+$('step').onclick=()=>{ stopPlay(); if(!W.solved){ sv.step(); if(sv.done){ finishPlan(W,sv); startWalk(); } } draw(); updateHud(); };
+$('solve').onclick=()=>{ if(st.playing){ stopPlay(); finishIfNeeded(); draw(); updateHud(); } else if(!W.solved) play(); };
+$('vWorld').onclick=()=>{ st.view='world'; setPressed($('vWorld'),1); setPressed($('vClose'),0); draw(); };
+$('vClose').onclick=()=>{ st.view='close'; setPressed($('vWorld'),0); setPressed($('vClose'),1); finishIfNeeded(); draw(); updateHud(); };
+document.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{ const L=b.dataset.layer; st.layers[L]=!st.layers[L];
+  if(L==='bands'&&st.layers.bands){ st.layers.biomes=false; } if(L==='biomes'&&st.layers.biomes){ st.layers.bands=false; }
+  document.querySelectorAll('[data-layer]').forEach(x=>setPressed(x,st.layers[x.dataset.layer])); draw(); });
+$('otherWay').onclick=otherWay;
+$('resetWalk').onclick=()=>{ finishIfNeeded(); startWalk(); draw(); $('orderMsg').textContent=''; };
+cv.addEventListener('pointerdown',e=>{ if(!W) return; if(st.playing){ stopPlay(); }
+  finishIfNeeded(); const rc=cv.getBoundingClientRect(); const v=viewRect(); const px=(e.clientX-rc.left)/rc.width*v.cssW, py=(e.clientY-rc.top)/rc.height*v.cssW;
+  const wx=v.ox+px/v.scale, wy=v.oy+py/v.scale; let tx=Math.floor(wx/CH), ty=Math.floor(wy/CH);
+  if(W.torus){ tx=mod(tx,W.cw); ty=mod(ty,W.chh); } walkTo(tx,ty); });
+let rep=null;
+document.querySelectorAll('.dpad button').forEach(b=>{ const [dx,dy]=b.dataset.d.split(',').map(Number);
+  const stop=()=>{ if(rep){ clearTimeout(rep); rep=null; } };
+  b.addEventListener('pointerdown',e=>{ e.preventDefault(); stop(); if(walk) walk.path=null; moveBy(dx,dy); const again=()=>{ moveBy(dx,dy); rep=setTimeout(again,90); }; rep=setTimeout(again,300); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,stop)); });
+window.addEventListener('keydown',e=>{ const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
+  if(m){ e.preventDefault(); if(walk) walk.path=null; moveBy(m[0],m[1]); } });
+// controller: d-pad or left stick
+let padT=0;
+function pollPad(t){ const pads=navigator.getGamepads?navigator.getGamepads():[]; let dx=0,dy=0;
+  for(const p of pads){ if(!p) continue; const b=i=>p.buttons[i]&&p.buttons[i].pressed;
+    if(b(12)) dy=-1; if(b(13)) dy=1; if(b(14)) dx=-1; if(b(15)) dx=1;
+    if(Math.abs(p.axes[0]||0)>0.5) dx=Math.sign(p.axes[0]); if(Math.abs(p.axes[1]||0)>0.5) dy=Math.sign(p.axes[1]); }
+  if((dx||dy) && t-padT>110){ padT=t; if(walk) walk.path=null; moveBy(dx,dy); }
+  requestAnimationFrame(pollPad); }
+window.addEventListener('gamepadconnected',()=>{ if(!padT){ padT=1; requestAnimationFrame(pollPad); } });
+// theme follows the page
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); const retheme=()=>{ readColors(); draw(); updateHud(); };
+if(mq.addEventListener) mq.addEventListener('change',retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+window.addEventListener('resize',()=>draw());
+readColors(); buildLegend(); rebuild();
+})();
+</script>

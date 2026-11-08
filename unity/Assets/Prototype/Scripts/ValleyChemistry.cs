@@ -243,7 +243,7 @@ public partial class ValleyChemistry : MonoBehaviour
             {
                 if (world.LandStampedAt(x, y) == 0) continue;
                 ground.Repaint(x, y);
-                if (world.At(x, y).T != TerrainIds.Tree && world.IsStampedRock(x, y)) BurnTrees(x, y);
+                if (world.At(x, y).T != TerrainIds.Tree && (world.IsStampedRock(x, y) || world.IsStampedBare(x, y))) BurnTrees(x, y);
             }
         foreach (var s in world.MapStampsLaid) rocks?.Moved(s.X, s.Y, s.Bound);
         // A pad's crag (World.LayCrag): its face, its lip and its foot.
@@ -614,6 +614,20 @@ public partial class ValleyChemistry : MonoBehaviour
         if (protos.Length == 0) return false;
         prefab = protos[(int)((uint)(x * 73856093 ^ y * 19349663) % (uint)protos.Length)].prefab;
         return prefab != null;
+    }
+
+    /// <summary>
+    /// The valley's tree of this kind (a terrain tree prototype's name: Conifer, Cypress) as the cell's chunk draws it, for a
+    /// great tree; else the cell's own (TreeModel). False without a valley tree to copy.
+    /// </summary>
+    public bool TreeModel(int x, int y, string kind, out GameObject prefab, out Vector3 scale)
+    {
+        scale = Vector3.one;
+        prefab = null;
+        var at = layout.ChunkOfCell(x, y);
+        if (!string.IsNullOrEmpty(kind) && ground.HasChunk(at))
+            prefab = ground.Data(at).treePrototypes.Select(p => p.prefab).FirstOrDefault(p => p != null && p.name == kind);
+        return prefab != null || TreeModel(x, y, out prefab, out scale);
     }
 
     // Terrain edits are batched once per frame.
