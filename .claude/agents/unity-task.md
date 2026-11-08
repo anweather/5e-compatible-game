@@ -29,6 +29,26 @@ message, so the work stays here and only the result goes back.
 - Screenshots: keep them few and small (the `screenshot-budget` skill). Don't paste images into your report;
   give their paths.
 
+## Go fast: the PC is the bottleneck (2026-11-08)
+
+You are layer 2 of `docs/TESTING_LAYERS.md`: compile, the Unity-side tests and the probes your change reaches. The
+landing gates run the core suite and a daily sweep runs everything else, so don't repeat them.
+
+Tonight's PC jobs spent about half their time testing: full EditMode runs (~14 min each, longer than the CLI's
+600 s timeout) and long probe lists. So:
+
+- **EditMode: run the Unity-side tests, not the whole suite.** `dotnet test core` already runs the Chemistry tests in
+  3 min. In the Editor run the Unity-only tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) and the fixtures
+  for what you changed (`--filter`). Run the full EditMode suite (the Chemistry tests under Mono) **only when the
+  branch changes `Chemistry/` code**, because Mono can round differently from .NET; then run it in the background and
+  read `Library/TestResults.xml`.
+- **Probes: only the ones your change touches,** plus `smoke`. Don't rerun a probe that passed unless you changed what
+  it covers. Re-run a failure once alone before chasing it, since another heavy process may be loading the PC.
+- **Clips only when the brief asks for one.**
+- **Keep the Editor open between switches in one job.** Refresh and wait for the compile instead of reopening. Close
+  it at the end of the job.
+- **Never kill a Unity Editor.** If one hangs, report it.
+
 ## Say where you are
 
 The lead can't see your transcript, so log one line at each phase: start, switched, compiled, tests,

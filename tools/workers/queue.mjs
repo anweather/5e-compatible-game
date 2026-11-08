@@ -51,19 +51,15 @@ export function meets(needs, have) {
   return needs === 'unity' || needs === 'mac' ? have.has(needs) : false; // no Needs, or one we don't know: not ours
 }
 
-// The literal part of an area, as path segments: "tools/workers/**" and "tools/workers/*.cmd" are both tools/workers.
-const segments = a => {
-  const lit = a.split('*')[0];
-  const cut = a.includes('*') ? lit.slice(0, lit.lastIndexOf('/') + 1) : lit;
-  return cut.split('/').filter(Boolean);
-};
+// The literal part of an area as a path prefix: "tools/workers/**" and "tools/workers/*.cmd" are both "tools/workers/",
+// "Chemistry/MapCheck*.cs" is "Chemistry/MapCheck", and a plain name ends at its own boundary ("docs/x.md/").
+const prefix = a => a.includes('*') ? a.split('*')[0] : (a.endsWith('/') ? a : a + '/');
 // Two areas overlap when one is inside the other. A brief that names no area could touch anything.
 export function overlaps(a, b) {
   if (!a.length || !b.length) return true;
   return a.some(x => b.some(y => {
-    const [p, q] = [segments(x), segments(y)];
-    const n = Math.min(p.length, q.length);
-    return p.slice(0, n).every((s, i) => s === q[i]);
+    const [p, q] = [prefix(x), prefix(y)];
+    return p.startsWith(q) || q.startsWith(p);
   }));
 }
 

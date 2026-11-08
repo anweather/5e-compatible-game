@@ -117,3 +117,11 @@ test("a claim that loses the push race fetches and picks again", () => {
     assert.deepEqual(g(w1, "ls-tree", "--name-only", `origin/dev:${QUEUE}/taken`).split("\n"), ["a.md", "b.md"]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("globs keep their file-name prefix, so two files in one folder don't clash", () => {
+  assert.equal(overlaps(['unity/Assets/Prototype/Chemistry/MapCheck*.cs'], ['unity/Assets/Prototype/Chemistry/WorldPlan*.cs']), false);
+  assert.equal(overlaps(['unity/Assets/Prototype/Chemistry/'], ['unity/Assets/Prototype/Chemistry/WorldPlan*.cs']), true);
+  assert.equal(overlaps(['tools/workers/**'], ['tools/workers/*.cmd']), true);
+  assert.equal(overlaps(['docs/x.md'], ['docs/xy.md']), false);
+  assert.equal(overlaps(['world/maps/'], ['world/maps/valley/land.json']), true);
+});

@@ -257,17 +257,34 @@ check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a us
   done
 }
 
-check_memory() { # free memory under the floor: stop the newest worker VM (stop.cmd pushes its work first)
+check_memory() { # free memory under the floor: pause the newest worker VM; resume it when there's room again
   # start.cmd checks memory only at a VM's start; VMs grow after it (Linux to 6 GB, Windows to 8) and so does
   # a host Editor building a player (13.7 GB on 2026-10-31, with 0.7 GB left).
-  local floor="${BRIDGE_WATCH_MIN_FREE_GB:-1.5}" free vm
+  # Pausing (Save-VM) keeps the guest's session, its work and its address, where stopping lost all three
+  # (three stops and an hour lost to a new IP on 2026-11-08). Resume waits for resume_gb so it doesn't flap.
+  local floor="${BRIDGE_WATCH_MIN_FREE_GB:-1.5}" resume_gb="${BRIDGE_WATCH_RESUME_GB:-6}" free vm
   free="$(bounded powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB,2)" 2>/dev/null | tr -d '\r')"
-  [[ -n "$free" ]] && awk -v f="$free" -v m="$floor" 'BEGIN { exit !(f < m) }' || return 0
-  vm="$(bounded powershell -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
-  [[ -n "$vm" ]] || { log "only $free GB free, and no worker VM to stop"; return 0; }
-  log "only $free GB free (floor $floor): stopping $vm, the newest worker"
-  stop_vm "$vm"
-  mail pm "$vm stopped: memory low" "Only $free GB was free (floor $floor GB), so the watcher stopped $vm, the most recently started worker. stop.cmd pushed its work in progress as wip/$vm-<branch>. Restart it when there's room (start.cmd $vm), with a brief to resume."
+  [[ -n "$free" ]] || return 0
+  if awk -v f="$free" -v m="$floor" 'BEGIN { exit !(f < m) }'; then
+    vm="$(bounded powershell -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
+    [[ -n "$vm" ]] || { log "only $free GB free, and no worker VM to pause"; return 0; }
+    log "only $free GB free (floor $floor): pausing $vm, the newest worker"
+    if [[ -z "$dry" ]] && bounded powershell -NoProfile -Command "Save-VM -Name '$vm' -ErrorAction Stop" >/dev/null 2>&1; then
+      echo "$vm" >> "$state/paused"
+      mail pm "$vm paused: memory low" "Only $free GB was free (floor $floor GB), so the watcher paused $vm (Save-VM), the most recently started worker. Its session, work and address are kept; the watcher resumes it once $resume_gb GB are free."
+    else
+      log "  pausing $vm failed: stopping it instead"; stop_vm "$vm"
+      mail pm "$vm stopped: memory low" "Only $free GB was free (floor $floor GB) and pausing $vm failed, so the watcher stopped it. stop.cmd pushed its work in progress as wip/$vm-<branch>. Restart it when there's room (start.cmd $vm), with a brief to resume."
+    fi
+    return 0
+  fi
+  [[ -s "$state/paused" ]] || return 0
+  awk -v f="$free" -v m="$resume_gb" 'BEGIN { exit !(f >= m) }' || return 0
+  vm="$(head -1 "$state/paused")"
+  log "$free GB free: resuming $vm"
+  if [[ -n "$dry" ]] || bounded powershell -NoProfile -Command "Start-VM -Name '$vm' -ErrorAction Stop" >/dev/null 2>&1; then
+    sed -i '1d' "$state/paused"; mail pm "$vm resumed" "$free GB free, so the watcher resumed $vm where it was paused."
+  else log "  resuming $vm failed; will try again"; fi
 }
 
 log "started (pid $$${dry:+, dry run})"
