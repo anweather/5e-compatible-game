@@ -2,17 +2,6 @@
   "about": "The map's own land stamps (MapStamps, docs/design/maps-as-data.md section 3), laid on every peer when the world is made, after the rows, and kept off their laid land and water: no undo or reset takes them. Each is a land stamp: at [x, y] in cells, a profile, radius in cells, rise in land units (0.125 m), rough 0 to 100 and a seed, with a canyon's or cliff's line as along [x, y] or a path of points from at. A canyon's trail is the terrain laid along the middle of its floor. A crag's face and a deep floor are bare rock, and their trees go.",
   "stamps": [
     {
-      "id": "castle-cliff",
-      "name": "the castle cliff",
-      "at": [170, 312],
-      "profile": "cliff",
-      "radius": 40,
-      "rise": 296,
-      "rough": 40,
-      "seed": 11,
-      "path": [[0, 15], [0, 0], [2, -16]]
-    },
-    {
       "id": "the-canyon",
       "name": "the canyon",
       "at": [160, 272],

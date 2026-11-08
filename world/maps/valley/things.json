@@ -35,6 +35,16 @@
       "things": [
         { "kind": "ball", "cell": [4, 7], "note": "the middle of the court east of the yard" }
       ]
+    },
+    {
+      "chunk": [2, 5],
+      "things": [
+        { "kind": "barrel", "cell": [8, 9], "note": "by the castle stable's paddock: water for the horses" },
+        { "kind": "barrel", "cell": [8, 10], "note": "by the castle stable's paddock" },
+        { "kind": "crate", "cell": [8, 15], "note": "by the castle stable's paddock: feed" },
+        { "kind": "crate", "cell": [9, 15], "note": "by the castle stable's paddock: feed" },
+        { "kind": "crate", "cell": [8, 16], "note": "by the castle stable's paddock: tack" }
+      ]
     }
   ]
 }

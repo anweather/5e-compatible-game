@@ -1,6 +1,7 @@
 // A stamp along a path (a canyon that bends, a cliff that turns), and a map's own stamps (stamps.json, MapStamps): laid
 // when the world is made, kept by a save, never taken by an undo or the dragon, off the rows' laid land and the water.
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -129,7 +130,7 @@ namespace Chem.Tests
             Assert.That(wet.LandHasMoved, Is.False);
         }
 
-        // The valley's cliff and canyon (castle-cliff-canyon): every one laid, with the rows and the river as the map has them.
+        // The valley's canyon (castle-cliff-canyon): every one laid, with the rows and the river as the map has them.
         [Test]
         public void TheValleysStampsAreAllLaid()
         {
@@ -144,13 +145,41 @@ namespace Chem.Tests
                 }
             WorldBuildings.Load(dir).LayInto(w);
             var stamps = MapStamps.Load(dir);
-            Assert.That(stamps.All.Select(s => s.Id), Is.EquivalentTo(new[] { "castle-cliff", "the-canyon" }));
+            Assert.That(stamps.All.Select(s => s.Id), Is.EquivalentTo(new[] { "the-canyon" }));
             Assert.That(stamps.LayInto(w), Is.Empty);
             Assert.That(w.LandLaidCells().All(c => w.LandStampedAt(c.x, c.y) == 0), "the pad and the road as they were");
             var trail = stamps.All.Single(s => s.Trail != null).Stamp.Trail().ToList();
             Assert.That(trail.Count(c => w.At(c.x, c.y).T == "dirt" && w.LandStampedAt(c.x, c.y) < 0), Is.GreaterThan(100), "the canyon's dirt path, cut into");
             var places = File.ReadAllText(Path.Combine(dir, "places.json"));
             Assert.That(stamps.All.All(s => places.Contains($"\"id\":\"{s.Id}\"", StringComparison.Ordinal)), "each is a named place");
+        }
+
+        // The castle cliff (castle-cliff-wing): the Hold's pad reaches north of the castle at its own height and drops off as a
+        // crag, so the ground from the gate to the lip is one height, and the face below it is tall and rock.
+        [Test]
+        public void TheCastlePadIsFlatFromTheGateToTheCliffsLip()
+        {
+            string dir = ChemistryTests.WorldDir();
+            var w = new World(ChemistryTests.R, MapCheck.Size, MapCheck.Size, 7);
+            for (int y = 0; y < w.H; y++)
+                for (int x = 0; x < w.W; x++) w.Paint(x, y, "grass");
+            WorldBuildings.Load(dir).LayInto(w);
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), w.W, w.H);
+            int At(int x, int y) => land[w.Idx(x, y)] + w.LandMovedAt(x, y);
+            var walk = CastleWalk().ToList();
+            Assert.That(walk.Select(c => At(c.x, c.y)).Distinct().Count(), Is.EqualTo(1), "one height from the gate to the lip");
+            var (lx, ly) = walk[walk.Count - 1];
+            Assert.That(At(lx, ly) - At(lx + 6, ly), Is.GreaterThan(160), "the face below the lip drops 20 m and more");
+            Assert.That(w.LandCragCells().Any(c => c == (lx + 2, ly)), "the face is a crag");
+            Assert.That(w.IsStampedRock(lx + 3, ly), "bare rock");
+        }
+
+        /// <summary>The castle's walk: out of its gate, north along its east wall onto the pad beyond, and east to the cliff's lip.</summary>
+        public static IEnumerable<(int x, int y)> CastleWalk()
+        {
+            for (int x = 142; x <= 145; x++) yield return (x, 366);
+            for (int y = 365; y >= 330; y--) yield return (145, y);
+            for (int x = 146; x <= 149; x++) yield return (x, 330);
         }
     }
 }

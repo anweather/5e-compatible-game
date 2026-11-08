@@ -104,8 +104,9 @@ water, the same on every peer and in the map hash. They're stamped land, so they
 any stamp does, but no undo or dragon's reset takes them, `LandHash` stays the acts' alone, and a save keeps them as
 `mapStamps`. A tree on a crag's face or a deep floor they make goes to grass (`World.IsStampedRock`), and the yard's bake
 leaves it out, so the forest stands on the tops. A floor a stamp cut a crag deep paints as rock where it would be grass, so
-a canyon's floor is stone, and a canyon's `trail` (a terrain, dirt) is laid along the middle of its floor, where it wanders off its line, and stays earth. The trail is laid with the stamp, not in `cells.txt`, which the yard's build still writes. The valley's first two: the castle cliff north of the
-Hold's road and the canyon beside the river north of it. After changing them, rebuild the yard (the bake draws them) and
+a canyon's floor is stone, and a canyon's `trail` (a terrain, dirt) is laid along the middle of its floor, where it wanders off its line, and stays earth. The trail is laid with the stamp, not in `cells.txt`, which the yard's build still writes. The valley's one: the canyon beside the river north of
+the Hold. (Its castle cliff was a stamp too, a rock wall beside the castle, until castle-cliff-wing, 2026-11-07, made it the
+castle's own pad: see the-hold.md.) After changing them, rebuild the yard (the bake draws them) and
 export the ground pack again (Prototype > Export Valley Ground), whose heights carry them as the bake does.
 
 **Live:** `act` gains `what: "land"` with the row, through `RoomChange.Act` and the room's change mode. `World.Acts.cs` keeps

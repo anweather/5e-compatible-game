@@ -218,12 +218,19 @@ public partial class ValleyChemistry : MonoBehaviour
     void ClearLaidRows(World world)
     {
         foreach (var row in world.RowsDrawn().Where(r => world.IsBaseBuilding(r.Id)))
+        {
             foreach (var c in world.BuildingCellsOf(row))
             {
                 BurnTrees(c.X, c.Y);
                 // A clearing keeps the ground the bake drew, grass and all: only what's laid on it is painted.
                 if (c.Terrain != TerrainIds.Grass) ground.PaintAnew(c.X, c.Y);
             }
+            // The open ground its pad reaches over (WorldBuildings.PadAreas), as far as its bank's foot.
+            foreach (var a in WorldBuildings.PadAreas(row).Where(a => a.Clear))
+                for (int y = a.Y0 - a.Bank; y <= a.Y1 + a.Bank; y++)
+                    for (int x = a.X0 - a.Bank; x <= a.X1 + a.Bank; x++)
+                        if (world.InBounds(x, y)) BurnTrees(x, y);
+        }
     }
 
     // Land stamped before the first tick (the map's own stamps, World.LayMapStamps, or a save's): painted as it stands, a
@@ -239,6 +246,8 @@ public partial class ValleyChemistry : MonoBehaviour
                 if (world.At(x, y).T != TerrainIds.Tree && world.IsStampedRock(x, y)) BurnTrees(x, y);
             }
         foreach (var s in world.MapStampsLaid) rocks?.Moved(s.X, s.Y, s.Bound);
+        // A pad's crag (World.LayCrag): its face, its lip and its foot.
+        foreach (var (x, y) in world.LandCragCells()) rocks?.Moved(x, y, 2);
     }
 
     void IndexTrees()

@@ -343,7 +343,8 @@
     {"id":"outcrop","name":"the outcrop","kind":"landmark","from":"ValleyBuilder.OutcropAt, the pile of rocks and 2 m round it","circle":{"at":[422,257],"radius":9}},
     {"id":"falls-cliff","name":"the cliff at the falls","kind":"landmark","from":"ValleyShape.Falls and CliffNorth: the clad face, 27 m either side of the falls","line":[[353,127],[389,127]],"width":5},
     {"id":"hold-foot","name":"the foot of the hold's hill","kind":"landmark","from":"docs/design/the-hold.md: where the Hold's raiders come from, off the village's way","line":[[184,340],[206,390]],"width":1},
-    {"id":"castle-cliff","name":"the castle cliff","kind":"landmark","from":"stamps.json: the sheer face north of the Hold's road, seen from the town (castle-cliff-canyon, 2026-11-07)","line":[[170,327],[170,312],[172,296]],"width":3},
+    {"id":"castle-cliff","name":"the castle cliff","kind":"landmark","from":"buildings.json: hold#1's pad reaching north of the castle to a crag, flat from the gate to the lip, seen from the town (castle-cliff-wing, 2026-11-07)","line":[[150,349],[150,302],[106,302]],"width":3},
+    {"id":"castle-stable","name":"the castle stable","kind":"landmark","from":"buildings.json: stable#1 and its paddock, on the pad north of the castle (castle-cliff-wing, 2026-11-07)","area":[114,318,134,340]},
     {"id":"the-canyon","name":"the canyon","kind":"landmark","from":"stamps.json: the dry canyon beside the river north of the castle cliff, a path along its floor round a dog-leg (castle-cliff-canyon, 2026-11-07)","line":[[188,270],[160,272],[146,262],[128,276]],"width":5},
     {"id":"scree-ramp","name":"the scree ramp","kind":"landmark","from":"ValleyShape.Falls, RampFoot and RampTop: the rocks either side of the way up","line":[[395,145],[387,113]],"width":7}
   ]

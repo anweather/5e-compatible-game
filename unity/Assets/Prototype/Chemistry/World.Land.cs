@@ -364,6 +364,40 @@ namespace Chem
             }
         }
 
+        int[] landCrag;
+
+        /// <summary>
+        /// Land the map lays as a crag's face (a row's pad dropping off as rock, RowPad): moved as a stamp's land is, so it's
+        /// bare rock where it's steep and tall, dressed with boulders, and a tree on its face goes; but no undo or reset takes it.
+        /// </summary>
+        public void LayCrag(IEnumerable<(int x, int y, int by)> cells)
+        {
+            var list = cells.ToList();
+            if (list.Count == 0) return;
+            landMoved ??= new int[W * H];
+            landCrag ??= new int[W * H];
+            foreach (var (x, y, by) in list)
+            {
+                int i = Idx(x, y);
+                landMoved[i] += by;
+                landCrag[i] += by;
+                if (land != null && land[i] != NoLand) land[i] += by;
+            }
+            foreach (var (x, y, _) in list)
+                for (int v = y - LandFaceReach; v <= y + LandFaceReach; v++)
+                    for (int u = x - LandFaceReach; u <= x + LandFaceReach; u++)
+                        if (InBounds(u, v) && At(u, v).T == StandingTree && IsStampedRock(u, v)) Paint(u, v, ClearedGround);
+        }
+
+        /// <summary>The cells the map laid as a crag's face (LayCrag), row by row.</summary>
+        public IEnumerable<(int x, int y)> LandCragCells()
+        {
+            if (landCrag == null) yield break;
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                    if (landCrag[Idx(x, y)] != 0) yield return (x, y);
+        }
+
         readonly List<LandStamp> mapStamps = new List<LandStamp>();
         // A map stamp's crags and deep floors lose their trees to grass.
         const string StandingTree = "tree", ClearedGround = "grass";
@@ -576,7 +610,7 @@ namespace Chem
         {
             Press(s, -1);
             landStamps.RemoveAt(landStamps.FindLastIndex(k => k.Text == s.Text));
-            if (landStamps.Count == 0 && landLaid == null && mapStamps.Count == 0) landMoved = null;
+            if (landStamps.Count == 0 && landLaid == null && landCrag == null && mapStamps.Count == 0) landMoved = null;
             LandMoved?.Invoke(s.X, s.Y, s.Bound);
         }
 
@@ -602,12 +636,15 @@ namespace Chem
             if (landStamps.Count > 0) save["land"] = new JArray(landStamps.Select(s => (object)s.Row).ToArray());
             if (mapStamps.Count > 0) save["mapStamps"] = new JArray(mapStamps.Select(s => (object)s.Row).ToArray());
             if (landLaid != null) save["landLaid"] = new JArray(LandLaidCells().SelectMany(c => new object[] { c.x, c.y, landLaid[Idx(c.x, c.y)] }).ToArray());
+            if (landCrag != null) save["landCrag"] = new JArray(LandCragCells().SelectMany(c => new object[] { c.x, c.y, landCrag[Idx(c.x, c.y)] }).ToArray());
         }
 
         void LoadLand(JObject s)
         {
             if (s["landLaid"] is JArray laid)
                 LayLand(Enumerable.Range(0, laid.Count / 3).Select(k => ((int)laid[3 * k], (int)laid[3 * k + 1], (int)laid[3 * k + 2])));
+            if (s["landCrag"] is JArray crag)
+                LayCrag(Enumerable.Range(0, crag.Count / 3).Select(k => ((int)crag[3 * k], (int)crag[3 * k + 1], (int)crag[3 * k + 2])));
             // The map's own stamps, as they were laid: the save's cells already have what they cleared.
             foreach (var row in s["mapStamps"] as JArray ?? new JArray())
             {

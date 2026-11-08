@@ -99,6 +99,8 @@ namespace Chem
         public int Width;
         /// <summary>Cut into the land it crosses (RoadGrade), not laid on it.</summary>
         public bool Graded;
+        /// <summary>A graded road's landing: how far from its start, in half cells, it keeps the start's height before it climbs or falls.</summary>
+        public int Flat;
         public List<(int x, int y)> Points { get; } = new List<(int, int)>();
     }
 
@@ -182,7 +184,7 @@ namespace Chem
             var roads = new List<BuildingRoad>();
             foreach (var p in (json["roads"] as JObject)?.Properties().OrderBy(p => p.Name, StringComparer.Ordinal) ?? Enumerable.Empty<JProperty>())
             {
-                var road = new BuildingRoad { Id = p.Name, Terrain = (string)p.Value["terrain"], Width = (int?)p.Value["width"] ?? 1, Graded = (bool?)p.Value["graded"] ?? false };
+                var road = new BuildingRoad { Id = p.Name, Terrain = (string)p.Value["terrain"], Width = (int?)p.Value["width"] ?? 1, Graded = (bool?)p.Value["graded"] ?? false, Flat = Math.Max(0, (int?)p.Value["flat"] ?? 0) };
                 foreach (var name in p.Value["through"]?.OfType<JValue>() ?? Enumerable.Empty<JValue>())
                 {
                     var at = json["joins"]?[(string)name ?? ""] as JArray ?? throw new FormatException($"building {Id}: road {p.Name} goes through {name}, which it hasn't got");
