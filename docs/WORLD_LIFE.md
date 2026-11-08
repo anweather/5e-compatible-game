@@ -163,7 +163,7 @@ changes what players can do.
    gate and the square, a porter between the court and the lane's foot, a fisher between the dock, the lake house and the square. The walks are found
    over the land by what a step costs a person, and off the road a hill slows them hard (`FolkJobs.Pace`), so they take the road because it's quicker.
    Wizards aren't slowed. Where a worker is comes from the world's tick alone: nothing is saved, every peer sees the same, and someone walking up
-   finds them wherever they've got to. A worker stands in the world only while someone's near. Goblins and ogres no longer spawn in the wilds.
+   finds them wherever they've got to. A worker stands in the world only while someone's near. While a Hold run is on, a job with `inARun` keeps to that stop, off the raiders' road (hold-bodies). Goblins and ogres no longer spawn in the wilds.
    - Hollowmere's and Sunward Key's folk walk between their doors, the well and the benches, stop a while, and sit on the benches (lie on the island's loungers).
    - They run from a fire within 16 m (the creature brain flees it), and walk to the nearest door and go in once the sun is halfway down or in heavy rain or snow; they come out of the doors when it's over.
    - The beach bar's barkeep keeps to the bar (the shop's door).

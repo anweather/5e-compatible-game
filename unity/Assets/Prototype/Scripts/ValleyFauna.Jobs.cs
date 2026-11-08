@@ -7,7 +7,9 @@ using UnityEngine;
 
 // The folk who have work to go to (FolkJobs): a worker stands in the world only while someone's near, and stands wherever
 // the clock says it has got to, so it's met on the road or at its post however long nobody looked. Fire hands it to
-// the creature brain, as it does the villages' folk, and it takes up its round again once that has passed.
+// the creature brain, as it does the villages' folk, and it takes up its round again once that has passed. While a Hold run
+// is on, a worker whose job names a stop for it ("inARun") walks there off the raiders' road and stays; after the run it takes
+// up its round again when the round next brings it to that stop, so no one jumps.
 public partial class ValleyFauna
 {
     const string WorkerSpecies = "human";
@@ -17,6 +19,10 @@ public partial class ValleyFauna
     Creature[] working;
     World jobsWorld;
     double jobClock = -1;
+    // Each worker sent to its stop for a Hold run: the walk there and when it set off; null while it's on its round.
+    FolkJobs.Trip[] homeTrips;
+    double[] homeSince;
+    bool[] keptHome;
 
     /// <summary>For the probe: the workers, and where each is on its round now.</summary>
     public FolkJobs Jobs => jobs;
@@ -67,6 +73,9 @@ public partial class ValleyFauna
         {
             jobs = FolkJobs.Load(ChemGrid.Folders.World, land, Centre, bodies[human].WalkSpeed);
             working = new Creature[jobs.Workers.Count];
+            homeTrips = new FolkJobs.Trip[jobs.Workers.Count];
+            homeSince = new double[jobs.Workers.Count];
+            keptHome = new bool[jobs.Workers.Count];
         }
         catch (System.Exception e) when (e is InvalidDataException || e is Newtonsoft.Json.JsonException)
         {
@@ -92,7 +101,7 @@ public partial class ValleyFauna
         for (int i = 0; i < jobs.Workers.Count; i++)
         {
             var worker = jobs.Workers[i];
-            var now = worker.At(seconds);
+            var now = Now(i, seconds);
             bool near = math.distance(now.At, centre) <= radius;
             var c = working[i];
             if (c != null && !creatures.Contains(c)) c = working[i] = null;
@@ -109,6 +118,35 @@ public partial class ValleyFauna
             }
             Keep(c, now);
         }
+    }
+
+    /// <summary>For the probe: whether this worker is kept off the road for a Hold run.</summary>
+    public bool KeptHome(int worker) => keptHome != null && worker >= 0 && worker < keptHome.Length && keptHome[worker];
+
+    /// <summary>For the probe: where this worker is now, its round or its walk home for a run.</summary>
+    public FolkJobs.Now WorkerNow(int worker) => Now(worker, jobClock);
+
+    // Where a worker is: on its round, or while a Hold run is on (and after, until the round brings it there) at its stop for one.
+    FolkJobs.Now Now(int i, double seconds)
+    {
+        var worker = jobs.Workers[i];
+        bool run = world.HoldRunning;
+        if (worker.HasHome && run && !keptHome[i])
+        {
+            var c = working[i];
+            var from = c != null ? new Vector3(c.state.Position.x, 0f, c.state.Position.z) : new Vector3(worker.At(seconds).At.x, 0f, worker.At(seconds).At.y);
+            var cell = grid.CellAt(from);
+            keptHome[i] = true;
+            homeTrips[i] = jobs.HomeFrom(worker, (cell.x, cell.y));
+            homeSince[i] = seconds;
+        }
+        else if (keptHome[i] && !run && worker.AtHome(seconds))
+        {
+            keptHome[i] = false;
+            homeTrips[i] = null;
+        }
+        if (!keptHome[i]) return worker.At(seconds);
+        return homeTrips[i] != null ? homeTrips[i].At((float)(seconds - homeSince[i])) : worker.Home;
     }
 
     Creature Bring(FolkJobs.Worker worker, FolkJobs.Now now)
