@@ -106,6 +106,13 @@ The one page the lead reads first (`unity-lead` skill). Keep it short: history g
   prompt builder; the PC compiles, tests with Haiku, and chases shapeshift `key_ends_shape`, broken after fcb67af7).
   The lead's mailbox listener was killed by Claude Code for low memory and is not restarted without Andrew's word:
   read `~/.agent-bridge/pm/` by hand.
+- **alpha 0.1.12 re-cut at d1d142c7** (main: `ground-lf`, GroundPack.Save writes ground.json LF; a Windows build's CRLF
+  copy changed the map hash and a Mac host refused the PC). All three halves rebuilt at d1d142c7; the Windows delta was
+  repacked by hand against 0.1.11 (ship-update took the draft's own 0.1.12 as the base: `ship-update-delta` queued).
+  Map folder byte-identical to git. **PC joined the Mac host: players=2, desync=False for 3 min, 0 exceptions.** The
+  draft is complete; publishing is Andrew's. main is merged back into dev (f1f1a9d3).
+- Andrew's decision page: https://claude.ai/artifact/3gArUafzNLv9yAdMjJyZu3 (eight calls; picks land in its db
+  `picks` collection: read with ArtifactData list).
 - **`mcp-blue-fire` landed** (1701fbed, u2, #167): probes misread the MCP's short draft reply. lookfx 101/103: two
   element-colour checks (J-052) still fail, since `set_look` on an element now colours its spells too; #167 stays open.
 - **`hold-lockstep-fast` landed** (c3c8baac, the Mac): the Hold lockstep test runs only the 12 chunks round the Hold
