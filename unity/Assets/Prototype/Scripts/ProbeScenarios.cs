@@ -303,6 +303,11 @@ public static class ProbeScenarios
             "With --shots, the before and after pictures."),
         new Entry("aimedclip", typeof(AimedClipProbe), 240f,
             "The aimed scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg."),
+        new Entry("bigspells", typeof(BigSpellsProbe), 300f,
+            "The four big spells (casting-pace-options.md, \"A Meteor for every element\") in a Hold run on the north wall, the hands on a virtual pad, each merged on screen and cast at a raider: " +
+            "Thunder Strike marking it and bolting down, Tornado lifting and flinging it, Earth Spires throwing it up and leaving its spires standing, Iceberg crushing it and leaving walkable ice. With --shots, a picture of each."),
+        new Entry("bigspellsclip", typeof(BigSpellsClipProbe), 300f,
+            "The bigspells scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg."),
         new Entry("mergeclip", typeof(MergeClipProbe), 120f,
             "Films three different merges with the HUD on a virtual pad (D16, \"The merge\"): each pair's icons slam into its own glyph as both hands charge, then it goes off. Scalding Steam, Lightning, Wall of Stone; the attuning between is cut. Into --shots: frames, sound.wav and timeline.txt."),
         new Entry("pairglyphs", typeof(PairGlyphsProbe), 30f,

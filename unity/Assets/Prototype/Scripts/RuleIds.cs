@@ -49,6 +49,11 @@ public static class SpellIds
     public const string StoneRamp = "stone-ramp";
     public const string LightningBolt = "lightning-bolt";
     public const string ScaldingSteam = "scalding-steam";
+    // The four big spells (casting-pace-options.md, "A Meteor for every element").
+    public const string Tornado = "tornado";
+    public const string ThunderStrike = "thunder-strike";
+    public const string EarthSpires = "earth-spires";
+    public const string Iceberg = "iceberg";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>

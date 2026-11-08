@@ -30,6 +30,10 @@ public static class PairGlyphs
             case SpellIds.RainCloud: RainCloud(g); break;
             case SpellIds.RollingBoulder: Boulder(g); break;
             case SpellIds.Whirlwind: Funnel(g); break;
+            case SpellIds.Tornado: Tornado(g); break;
+            case SpellIds.ThunderStrike: ThunderStrike(g); break;
+            case SpellIds.EarthSpires: Spires(g); break;
+            case SpellIds.Iceberg: Iceberg(g); break;
             default: return false;
         }
         return true;
@@ -273,5 +277,47 @@ public static class PairGlyphs
             g.Bar(-widths[i] + shift, y, widths[i] + shift, y, 0.12f);
         }
         g.Disc(0.02f, 0.5f, 0.07f);
+    }
+
+    // A tall funnel, wider and in more turns than Whirlwind's, with what it flings off.
+    static void Tornado(Pen g)
+    {
+        float[] widths = { 0.68f, 0.56f, 0.44f, 0.32f, 0.2f, 0.1f };
+        for (int i = 0; i < widths.Length; i++)
+        {
+            float y = -0.6f + i * 0.21f, shift = (i % 2 == 0 ? -1f : 1f) * 0.07f;
+            g.Bar(-widths[i] + shift, y, widths[i] + shift, y, 0.1f);
+        }
+        g.Disc(-0.6f, 0.1f, 0.07f);
+        g.Disc(0.58f, 0.3f, 0.06f);
+    }
+
+    // A cloud with a bolt coming down out of it to a mark.
+    static void ThunderStrike(Pen g)
+    {
+        g.Cloud(-0.42f, -0.6f, 0.6f);
+        g.Tri(0.16f, -0.22f, -0.22f, 0.22f, 0.1f, 0.2f);
+        g.Tri(-0.06f, 0.16f, 0.2f, 0.12f, -0.12f, 0.64f);
+        g.Bar(-0.5f, 0.6f, 0.36f, 0.6f, 0.06f);
+    }
+
+    // Three jagged spires out of the ground, the middle one tallest.
+    static void Spires(Pen g)
+    {
+        g.Tri(-0.62f, 0.46f, -0.22f, 0.46f, -0.44f, -0.14f);
+        g.Tri(-0.24f, 0.46f, 0.2f, 0.46f, -0.02f, -0.66f);
+        g.Tri(0.18f, 0.46f, 0.6f, 0.46f, 0.42f, -0.3f);
+        g.Box(-0.66f, 0.46f, 0.66f, 0.58f);
+    }
+
+    // An iceberg: a peak above the water line, the water's crests either side.
+    static void Iceberg(Pen g)
+    {
+        g.Quad(new(-0.46f, 0.18f), new(-0.12f, -0.6f), new(0.16f, -0.3f), new(0.5f, 0.18f));
+        g.Tri(-0.12f, -0.6f, 0.04f, -0.6f, 0.16f, -0.3f);
+        g.Box(-0.66f, 0.26f, 0.66f, 0.34f);
+        g.Crest(-0.4f, 0.52f, 0.1f, 0.17f);
+        g.Crest(0.06f, 0.52f, 0.1f, 0.17f);
+        g.Crest(0.5f, 0.52f, 0.1f, 0.17f);
     }
 }
