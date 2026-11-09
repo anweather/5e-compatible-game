@@ -15,13 +15,15 @@ public partial class ProgressKeeper : MonoBehaviour
     ChemGrid grid;
     ProgressFile file;
     bool fromTheSave;
+    // A probe's points in place of the save's (PlayAsIf): nothing earned is saved while it's set.
+    int? asIf;
     // Whether the world has had the points this side brings since F7 last changed them.
     bool heard;
     float askedAt = float.NegativeInfinity;
     int extraHealth;
 
     /// <summary>The points this player should have here: everything in a dev build, unless asked for the save's.</summary>
-    public int Points => HoldMoments.Offered && !fromTheSave ? World.AllPoints : file.Points;
+    public int Points => asIf ?? (HoldMoments.Offered && !fromTheSave ? World.AllPoints : file.Points);
 
     /// <summary>Whether this dev build plays as the save says (F7); always so in a released player.</summary>
     public bool FromTheSave => fromTheSave || !HoldMoments.Offered;
@@ -43,10 +45,19 @@ public partial class ProgressKeeper : MonoBehaviour
     /// <summary>F7's switch, for the probe too: play as the save says, or with everything.</summary>
     public void PlayFromTheSave(bool yes)
     {
-        if (!HoldMoments.Offered || fromTheSave == yes) return;
+        if (!HoldMoments.Offered || (fromTheSave == yes && asIf == null)) return;
         fromTheSave = yes;
+        asIf = null;
         heard = false;
         EventLog.Add(fromTheSave ? $"Playing with your own unlocks: {file.Points} points" : "Playing with everything unlocked");
+        EventLog.TrackedCaster?.BringPoints(Points);
+    }
+
+    /// <summary>For a probe: play with these points, whatever the save holds, and save nothing earned meanwhile. F7 ends it.</summary>
+    public void PlayAsIf(int points)
+    {
+        asIf = points;
+        heard = false;
         EventLog.TrackedCaster?.BringPoints(Points);
     }
 
@@ -73,7 +84,7 @@ public partial class ProgressKeeper : MonoBehaviour
     }
 
     // Earned points are the save's only when they're real ones, not a dev build's everything.
-    bool Saves => !HoldMoments.Offered || fromTheSave;
+    bool Saves => asIf == null && (!HoldMoments.Offered || fromTheSave);
 
     // Health upgrades (Tough) raise the wizard's maximum, and the player hears it.
     void Health(World world, SpellCaster caster, string me)
