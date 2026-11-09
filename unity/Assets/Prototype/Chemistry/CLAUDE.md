@@ -44,3 +44,9 @@ under `dotnet test core` (via `core/Game.Core.Tests`). Run one with
 world, tens of milliseconds a test) or `[Category("Simulation")]` (a world's
 ticks, chunks, peers, generation); a test checks it. `dotnet test core --filter
 TestCategory=Unit` runs the Unit ones in seconds (docs/TESTING_LAYERS.md).
+A new fixture needs its category before it lands, or that test fails on dev.
+
+Unity's NUnit is older than the one `dotnet test` uses, so a test can pass
+under dotnet and still fail to compile in the Editor. One known case:
+`Does.Contain(x)` takes only a string there. For a member of a list, use
+`Has.Member(x)` / `Has.No.Member(x)`.
