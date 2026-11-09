@@ -47,7 +47,7 @@ Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
 
 Right now: **the PC** on `tier-dials` (three distance dials and a sweep probe on the nine; J-084). **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half), then `world-12x10-plan` (queued; J-083, J-084). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
 cast_fire-bolt, fire_started, levitate_lifted), apikey-tests-mac landed e1b442f1 (EditMode 1858 + 1 skip on the Mac);
-then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
+smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), then `things-nine` (smoke things_spawned on the nine: 5-7 things off their cells in chunks (2,23) and (4,23); no issue filed, `gh issue create` was refused), all told
 2026-11-09.
 
 - The watcher (`tools/workers/bridge-watch.sh`, one only) pauses u2 below 1.5 GB free and resumes it at 6 GB. While
