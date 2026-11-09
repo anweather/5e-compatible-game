@@ -50,11 +50,11 @@ namespace Chem
     public sealed partial class ChunkGen
     {
         /// <summary>The generator's version, in the map's input hash: a change that alters any chunk is a new version.</summary>
-        public const int Version = 1;
+        public const int Version = 3;
         public const int Size = WorldPlan.ChunkCells, Square = WorldPlan.SquareCells;
 
         // Legend characters (ChemGrid.Legend).
-        const byte MarkRoad = 1, MarkBare = 2;
+        const byte MarkRoad = 1, MarkBare = 2, MarkClear = 3;
         internal const char Grass = ',', Dirt = '.', Stone = '#', Tree = 'T', Brush = '"', Pond = 'w', Stream = 'r';
 
         public readonly WorldPlan Plan;
@@ -90,6 +90,7 @@ namespace Chem
             table = Anchored(biomes, plan);
             Field = new BiomeField(table, seed);
             SetUpLand();
+            SetUpSpawns();
             landmarkRows = new LandmarkRows[plan.Landmarks.Count];
             for (int k = 0; k < plan.Landmarks.Count; k++)
             {
@@ -183,6 +184,7 @@ namespace Chem
             var land = new int[ap * ap];
             var wet = new byte[ap * ap];
             var road = new bool[ap * ap];
+            var clear = new bool[Size * Size];
             var near = Nearby(x0 - 1, y0 - 1, x0 + Size, y0 + Size);
             var blend = new BiomeBlend[Size * Size];
             for (int j = 0; j < ap; j++)
@@ -194,7 +196,9 @@ namespace Chem
                     land[j * ap + i] = p.Land;
                     wet[j * ap + i] = p.Wet;
                     road[j * ap + i] = p.Road;
-                    if (i > 0 && j > 0 && i <= Size && j <= Size) blend[(j - 1) * Size + i - 1] = b;
+                    if (i <= 0 || j <= 0 || i > Size || j > Size) continue;
+                    blend[(j - 1) * Size + i - 1] = b;
+                    clear[(j - 1) * Size + i - 1] = p.Clear;
                 }
             // The landmarks' stamps whose footprint reaches it.
             var bare = new bool[Size * Size];
@@ -233,6 +237,7 @@ namespace Chem
                     counts[dom] = (counts.TryGetValue(dom, out long n) ? n : 0) + 1;
                     int slope = Math.Max(Math.Max(Math.Abs(land[k - 1] - h), Math.Abs(land[k + 1] - h)), Math.Max(Math.Abs(land[k - ap] - h), Math.Abs(land[k + ap] - h)));
                     byte mark = bare[j * Size + i] ? MarkBare : (byte)0;
+                    if (clear[j * Size + i]) mark = MarkClear;
                     if (road[k]) mark = MarkRoad;
                     c.Cells[j * Size + i] = CellOf(x0 + i, y0 + j, h, wet[k], mark, slope, b);
                 }
@@ -243,11 +248,12 @@ namespace Chem
                 foreach (var list in (landmarkRows[k]?.Things ?? new JArray()).OfType<JObject>())
                     if ((int)list["chunk"][0] == c.X && (int)list["chunk"][1] == c.Y)
                         foreach (var t in (JArray)list["things"]) c.Things.Add(t.DeepClone());
-            SeedThings(c, blend);
+            SeedThings(c, blend, clear);
         }
 
         // The cell's Legend character: water where the land is under the sea or a river runs, a road's dirt, a stamp's
-        // bare rock, stone on a steep face, else the biome's ground, a tree or brush by a roll per cell.
+        // bare rock, a spawn's clearing grass, stone on a steep face, else the biome's ground, a tree or brush by a roll
+        // per cell.
         char CellOf(int x, int y, int h, byte wet, byte mark, int slope, BiomeBlend b)
         {
             bool road = mark == MarkRoad, bare = mark == MarkBare;
@@ -256,6 +262,7 @@ namespace Chem
             if (wet == WetLake) return Pond;
             if (road) return Dirt;
             if (bare) return Stone;
+            if (mark == MarkClear) return Grass;
             if (slope >= SteepUnits) return Stone;
             if (wet == WetShore) return Dirt;
             long trees = 0, brush = 0, dirt = 0;
@@ -290,8 +297,9 @@ namespace Chem
         };
 
         // ap spot every 8 cells, jittered within its 8 × 8 block, with one roll: a boulder or a crate where the land
-        // allows, by the biome there. Its place in the chunk's list is its spot's order, so ids hold.
-        void SeedThings(GeneratedChunk c, BiomeBlend[] blend)
+        // allows, by the biome there, but never in a spawn's clearing. Its place in the chunk's list is its spot's order,
+        // so ids hold.
+        void SeedThings(GeneratedChunk c, BiomeBlend[] blend, bool[] clear)
         {
             const int spot = 8;
             for (int sj = 0; sj < Size / spot; sj++)
@@ -301,7 +309,7 @@ namespace Chem
                     uint h = WorldHash.Hash4(seed, SaltSpot, x, y);
                     int i = si * spot + (int)(h & 7), j = sj * spot + (int)((h >> 3) & 7);
                     char cell = c.Cells[j * Size + i];
-                    if (cell != Grass && cell != Dirt && cell != Brush) continue;
+                    if ((cell != Grass && cell != Dirt && cell != Brush) || clear[j * Size + i]) continue;
                     string biome = table.Rows[blend[j * Size + i].Dominant].Id;
                     int odds = biome switch { "mountains" => 60, "tundra" => 30, "ashlands" => 25, "salt-flat" => 4, _ => 6 };
                     if ((h >> 8) % 1000 >= (uint)odds) continue;

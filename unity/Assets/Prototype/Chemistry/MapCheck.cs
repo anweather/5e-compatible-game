@@ -192,7 +192,7 @@ namespace Chem
                 var cells = place.Cells().ToList();
                 if (cells.Any(c => c.x < 0 || c.y < 0 || c.x >= map.W || c.y >= map.H)) errors.Add($"the place {place.Id} runs off the map");
                 else if ((place.Kind == "lake" || place.Kind == "sea") && cells.Any(c => Dry(c.x, c.y))) errors.Add($"the {place.Kind} {place.Id} has dry land in it");
-                else if (place.Kind == "village" && !Dry(place.Middle.x, place.Middle.y)) errors.Add($"the village {place.Id} is under the sea");
+                else if ((place.Kind == "village" || place.Kind == "spawn") && !Dry(place.Middle.x, place.Middle.y)) errors.Add($"the {place.Kind} {place.Id} is under the sea");
             }
         }
 
