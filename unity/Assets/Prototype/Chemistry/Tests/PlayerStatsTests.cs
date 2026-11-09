@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// stacking and taking them back, the bounds in budgets.json; and a tick trigger, the shower (Rules.Triggers.cs),
     /// with ShowerTriggerGolden.
     /// </summary>
+    [Category("Simulation")]
     public class PlayerStatsTests
     {
         static Rules R => ChemistryTests.R;

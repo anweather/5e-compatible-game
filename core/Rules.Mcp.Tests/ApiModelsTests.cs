@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>A player's own key (J-071): reading the model list, the session's spend limit, and what a child process gets.</summary>
+    [Category("Unit")]
     public class ApiModelsTests
     {
         const string Listed = @"{ ""data"": [ { ""id"": ""claude-opus-5-5"" }, { ""id"": ""claude-unpriced-1"" }, { ""id"": ""claude-haiku-5-5"" } ], ""has_more"": false }";

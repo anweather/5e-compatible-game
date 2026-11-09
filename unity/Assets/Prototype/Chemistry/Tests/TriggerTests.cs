@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// count, the floor between firings, the cap a tick, chance, TriggerText in the checksum, the save, the checks and
     /// the budgets, and StepTriggerGolden.
     /// </summary>
+    [Category("Simulation")]
     public class TriggerTests
     {
         static Rules R => ChemistryTests.R;

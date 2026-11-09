@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// streaming.catchUpTicks, so a fire left behind has burned on when a wizard comes back. With
     /// quiet neighbours it ends exactly as if it had never stopped.
     /// </summary>
+    [Category("Simulation")]
     public class CatchUpTests
     {
         static Rules R => ChemistryTests.R;

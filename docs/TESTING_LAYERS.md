@@ -32,6 +32,24 @@ The holes, on purpose:
 
 A failure in the sweep goes to whoever landed the change that broke it, found by bisecting the day's landings.
 
+## The core's categories
+
+Every core fixture is one of two kinds, and a test in each project (`EveryFixtureIsUnitOrSimulation`) fails one that's
+neither:
+
+- **`Unit`**: a rule, a condition, an effect, read or applied on at most a small made-up world; tens of milliseconds a
+  test. `dotnet test core --filter TestCategory=Unit` runs them alone: 508 tests in 6 s wall on u2 (2026-11-09).
+- **`Simulation`**: a world's ticks, chunks, peers, land generation, the rules MCP's workbenches. 1411 tests, 174 s
+  wall on u2 without the `Sweep` ones.
+- **`Sweep`** stays as it was, on single tests inside Simulation fixtures: the long runs, the sweep's (layer 4).
+
+A fixture's kind was set from what it builds and its tests' mean time in a full run (under 40 ms: Unit). A new fixture
+picks one; when a Unit fixture grows a whole-world test, that test (or the fixture) becomes Simulation.
+
+What the gates run doesn't change: layer 3 still runs Unit and Simulation, all but `Sweep`, because Unit is 6 s of a
+3-minute run and the faults that reach dev are Simulation's (two branches' worlds meeting). `Unit` is the author's
+loop (layer 1): run it on every edit, and the nearest Simulation fixture by name.
+
 ## Keeping the core suite fast
 
 Measured 2026-11-09 on u2 (2 cores, 6 workers): the whole suite was 6 m 15 s wall and 11 m 54 s of CPU, the 15

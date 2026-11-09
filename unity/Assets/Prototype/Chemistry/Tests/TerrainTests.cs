@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// The chunk terrains' layout, the heights the cells give them and the paint
     /// (TerrainGrid, CellHeightfield, CellPaint; docs/WORLD_STREAMING.md, part 1).
     /// </summary>
+    [Category("Simulation")]
     public class TerrainTests
     {
         static Rules R => ChemistryTests.R;

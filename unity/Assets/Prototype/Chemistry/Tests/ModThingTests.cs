@@ -5,6 +5,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>What mods add to the world (G4 to G6): looks on things, things appended by chunk, a seeded chance, the first find.</summary>
+    [Category("Simulation")]
     public class ModThingTests
     {
         static readonly Rules R = Rules.Load(ChemistryTests.RulesDir());

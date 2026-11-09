@@ -9,6 +9,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>What the tools themselves tell a model, whichever harness it's in, and who may save (docs/telemetry/chat-context-2026-11-02.md, J-064).</summary>
+    [Category("Simulation")]
     public class ChatKnowledgeTests
     {
         const string Blue = "[0.25, 0.45, 1]";

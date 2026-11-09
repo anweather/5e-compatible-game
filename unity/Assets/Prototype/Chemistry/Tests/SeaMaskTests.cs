@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class SeaMaskTests
     {
         const int Side = 12, Level = -4;

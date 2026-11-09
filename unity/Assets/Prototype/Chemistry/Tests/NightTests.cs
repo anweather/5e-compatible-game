@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// hour, the light fires shed, snow freezing faster and ice keeping at night, and the
     /// checks. The light golden came from sandbox/test/night.test.ts (frozen 2026-10-31).
     /// </summary>
+    [Category("Simulation")]
     public class NightTests
     {
         static Rules R => ChemistryTests.R;

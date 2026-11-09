@@ -15,6 +15,7 @@ namespace Chem.Tests
     /// would make one of them unreadable must be refused by the checks, the same on every peer, and never
     /// thrown out of ApplyRoom. One that reads is switched on, and both peers agree.
     /// </summary>
+    [Category("Simulation")]
     public class RoomTablesTests
     {
         string data;

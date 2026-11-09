@@ -11,6 +11,7 @@ namespace Chem.Tests
     /// lingerTicks) bound both. The worlds are bare dirt with grass where a fire should burn, so a
     /// fire burns out where it's put.
     /// </summary>
+    [Category("Simulation")]
     public class LingerTests
     {
         static Rules R => ChemistryTests.R;

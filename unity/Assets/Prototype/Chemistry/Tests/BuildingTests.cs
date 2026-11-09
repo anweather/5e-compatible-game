@@ -10,6 +10,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class BuildingTests
     {
         internal const string TileTerrain = "{ \"name\": \"Clay tile\", \"tags\": [\"roof\"], \"look\": { \"family\": \"ground\", \"color\": [0.66, 0.3, 0.2] } }";

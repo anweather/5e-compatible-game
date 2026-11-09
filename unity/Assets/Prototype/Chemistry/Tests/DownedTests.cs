@@ -3,6 +3,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class DownedTests
     {
         static DownedParams P => Rules.Load(ChemistryTests.RulesDir()).Sim.Downed;

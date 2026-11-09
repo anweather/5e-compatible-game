@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// each draws (CellHeightfield) is the host's, whether eased in cell by cell as the cells
     /// changed (a player who watched) or computed at once after catching up (a late joiner).
     /// </summary>
+    [Category("Simulation")]
     public class OnlineValleyTests
     {
         const int HashEvery = 30, Ticks = 240, JoinAt = 150;

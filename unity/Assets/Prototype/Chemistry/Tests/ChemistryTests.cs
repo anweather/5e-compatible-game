@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// Cell-chemistry port tests. Many mirror sandbox/test/sim.test.ts; the
     /// goldens were first produced by the TS sandbox (frozen 2026-10-31).
     /// </summary>
+    [Category("Simulation")]
     public class ChemistryTests
     {
         static Rules rules;

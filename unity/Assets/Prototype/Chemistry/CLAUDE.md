@@ -39,4 +39,8 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 under `dotnet test core` (via `core/Game.Core.Tests`). Run one with
 `dotnet test core --filter "FullyQualifiedName~<Name>"`. Tests read the real
 `rules/` folder through `ChemistryTests.RulesDir()`, and some read docs
-(`docs/MODDING.md` examples must pass the checks).
+(`docs/MODDING.md` examples must pass the checks). Every fixture is
+`[Category("Unit")]` (a rule, a condition, an effect: at most a small made-up
+world, tens of milliseconds a test) or `[Category("Simulation")]` (a world's
+ticks, chunks, peers, generation); a test checks it. `dotnet test core --filter
+TestCategory=Unit` runs the Unit ones in seconds (docs/TESTING_LAYERS.md).

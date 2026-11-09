@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>Live rule changes in a room (World.Room.cs, docs/RULES_MCP.md phase 3): change modes, every peer's own checks, active mods.</summary>
+    [Category("Simulation")]
     public class RoomTests
     {
         static ModBudgets budgets;

@@ -7,6 +7,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>fauna-read (bodies-and-surfaces.md sections 1, 3 and 4; #80 parts 3 and 4): Claude reads the bodies it can't see.</summary>
+    [Category("Simulation")]
     public class FaunaReadTests
     {
         static Workbench bench;

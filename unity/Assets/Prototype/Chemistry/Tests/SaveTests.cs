@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// save, load and step equals stepping straight through; a save of a load is the save
     /// again; only changed chunks are saved; a save that doesn't fit is refused.
     /// </summary>
+    [Category("Simulation")]
     public class SaveTests
     {
         static Rules R => ChemistryTests.R;

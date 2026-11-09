@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// casts there. The core has no creatures, so what thorns do to a walker is the sandbox's
     /// test and the view's (SurfaceEffects); here only the numbers it reads.
     /// </summary>
+    [Category("Unit")]
     public class NatureTests
     {
         static Rules rules;

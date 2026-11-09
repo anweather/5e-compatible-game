@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// water moving), and is settled once nothing has been for sim.json's streaming.settleTicks.
     /// What lingers after a character walks away is decided from this.
     /// </summary>
+    [Category("Simulation")]
     public class LiveChunkTests
     {
         static Rules R => ChemistryTests.R;

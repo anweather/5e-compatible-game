@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class MapIdentityTests
     {
         string repo;

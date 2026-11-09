@@ -9,6 +9,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class VillageTests
     {
         static VillageSpec Spec(int seed) => new VillageSpec { Name = "Test", X = 200, Y = 200, Seed = seed, Houses = 12 };

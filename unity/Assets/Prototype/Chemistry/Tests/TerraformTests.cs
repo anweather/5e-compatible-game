@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// Earth shaping (terraform spells). Ported from sandbox/test/terraform.test.ts; the golden
     /// numbers first came from running the same casts there (frozen 2026-10-31).
     /// </summary>
+    [Category("Unit")]
     public class TerraformTests
     {
         static Rules rules;

@@ -10,6 +10,7 @@ using static Chem.Tests.HoldTests;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class HoldLockstepTests
     {
         const string Bo = "Bo", Cy = "Cy";

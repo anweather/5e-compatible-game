@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// flammable / creature keys, and the checks (the same wording as validateRules in
     /// sandbox/src/rules.ts; the expected list is the one in sandbox/test/components.test.ts).
     /// </summary>
+    [Category("Unit")]
     public class ComponentTests
     {
         static Rules R => ChemistryTests.R;

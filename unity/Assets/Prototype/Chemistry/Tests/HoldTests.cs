@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public partial class HoldTests
     {
         internal const string Me = "Ana";

@@ -7,6 +7,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class LaidRowTests
     {
         const string Hold = "hold#1", Shut = "timber-gate", Open = "timber-gate-open";

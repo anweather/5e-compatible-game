@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The Gauntlet's rules (docs/BACKLOG.md 25; World.Course.cs): spell zones, checkpoints, the clock, and the booths' material verbs.</summary>
+    [Category("Simulation")]
     public class CourseTests
     {
         static Rules R => ChemistryTests.R;

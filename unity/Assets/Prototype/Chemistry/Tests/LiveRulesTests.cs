@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// expected orders and messages first came from running the TS sandbox's composeRules
     /// and validateRules on the same patches (sandbox/src/rules.ts, frozen 2026-10-31).
     /// </summary>
+    [Category("Simulation")]
     public class LiveRulesTests
     {
         static Rules baseRules;

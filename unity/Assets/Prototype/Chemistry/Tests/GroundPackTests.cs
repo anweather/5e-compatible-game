@@ -7,6 +7,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class GroundPackTests
     {
         static GroundChunk Chunk(int i, int res, int texels, int detail, int layers, int grasses, Random rng)

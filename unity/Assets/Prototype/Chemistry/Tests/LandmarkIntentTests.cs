@@ -12,6 +12,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class LandmarkIntentTests
     {
         static Rules R => ChemistryTests.R;

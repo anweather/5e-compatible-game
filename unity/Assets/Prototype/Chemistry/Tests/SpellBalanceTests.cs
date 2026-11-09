@@ -7,6 +7,7 @@ using static Chem.HandsDef;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class SpellBalanceTests
     {
         static Rules R => ChemistryTests.R;

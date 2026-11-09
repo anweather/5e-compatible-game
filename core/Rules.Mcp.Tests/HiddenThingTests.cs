@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// J-055's test of the tools: "put a rare golden squirrel somewhere in the woods for us to find", from a client
     /// of the MCP, ends as one mod. The row lives here and in the mod it makes, nowhere in the code or the base rules.
     /// </summary>
+    [Category("Simulation")]
     public class HiddenThingTests
     {
         // Family creature's note (rules/looks.json), which is all a model hears of what a glow means.

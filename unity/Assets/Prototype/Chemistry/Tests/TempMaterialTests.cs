@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// cover lives while the mod is on, lapses after its ticks or goes when it's reverted, and every cell
     /// holding it is swept at that tick, the same on every peer.
     /// </summary>
+    [Category("Simulation")]
     public class TempMaterialTests
     {
         static Rules R => ChemistryTests.R;

@@ -8,6 +8,7 @@ using static Chem.HandsDef;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class BigSpellTests
     {
         static Rules R => ChemistryTests.R;

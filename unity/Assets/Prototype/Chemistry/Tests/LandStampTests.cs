@@ -7,6 +7,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class LandStampTests
     {
         const int Size = 128;

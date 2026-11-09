@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// The Dragon's rules (World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
     /// sandbox/test/dragon.test.ts (frozen 2026-10-31); the save, the inactive chunks and the timing are C# only.
     /// </summary>
+    [Category("Simulation")]
     public class DragonTests
     {
         static Rules R => ChemistryTests.R;

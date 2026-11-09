@@ -9,6 +9,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>What the first play with Claude found (docs/playtests/2026-11-01-mcp.md): the tools read what's in force, refuse at once and say their limits.</summary>
+    [Category("Simulation")]
     public class LiveStateTests
     {
         static Workbench NewBench() => new Workbench(ChemistryTests.Folders);
