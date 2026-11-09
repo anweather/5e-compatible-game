@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Chem;
@@ -9,7 +10,8 @@ using UnityEngine.InputSystem.LowLevel;
 // The probe's progress scenario (docs/design/the-hold.md, phase 5): F7 plays as the save says, and from a fresh save the locked hand
 // and gesture say so, attuning offers only what's unlocked, a wave beaten brings the offer in words, the pad picks one, Tough shows
 // on the health bar, the run's end says what was earned, the save holds it, and a reset keeps it. Wave 1 is beaten and the keep
-// falls by the probe's hand (raiders burning, the keep at 1). Run it again after leaving Play: the points are still there.
+// falls by the probe's hand (raiders burning, the keep at 1). At the end, and if it stops early, the save's files go back as they
+// were, so the Editor's save doesn't grow a wave's points every run (roomprogress and the next run start where they did).
 // Nothing here is in the game.
 public class ProgressProbe : ProbeScenario
 {
@@ -17,6 +19,8 @@ public class ProgressProbe : ProbeScenario
     const int WallX = 21, WallY = 3;
 
     Gamepad pad;
+    // The save's files as they were at the start (null where there was none), put back by PutTheSaveBack.
+    Dictionary<string, byte[]> saveAsFound;
     World Core => grid.World;
     string Me => caster.CastPlayer;
 
@@ -50,6 +54,7 @@ public class ProgressProbe : ProbeScenario
         EventLog.HudVisible = true;
         int saved = keeper.Saved;
         Metric("saved_at_start", saved);
+        saveAsFound = SaveFiles().ToDictionary(f => f, f => File.Exists(f) ? File.ReadAllBytes(f) : null);
 
         // A dev build has everything first; F7 then must bring the save's points, never write everything into it.
         for (float t = 0f; t < MostWait && world.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
@@ -136,8 +141,34 @@ public class ProgressProbe : ProbeScenario
         keeper.PlayFromTheSave(false);
         for (float t = 0f; t < MostWait && grid.World?.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
         Check("f7_again_is_everything", grid.World?.PointsOf(Me) == World.AllPoints);
+        PutTheSaveBack();
+        Check("the_save_is_put_back", keeper.Saved == saved, $"{keeper.Saved}, was {saved}");
         InputSystem.RemoveDevice(pad);
         caster.enabled = false;
+    }
+
+    // The save, its last good copy and a half-written one (ProgressFile).
+    static IEnumerable<string> SaveFiles()
+    {
+        string save = Path.Combine(ProgressKeeper.SaveFolder, ProgressFile.FileName);
+        return new[] { save, save + ".bak", save + ".new" };
+    }
+
+    void PutTheSaveBack()
+    {
+        if (saveAsFound == null) return;
+        foreach (var (file, bytes) in saveAsFound)
+            if (bytes != null) File.WriteAllBytes(file, bytes);
+            else if (File.Exists(file)) File.Delete(file);
+        saveAsFound = null;
+        var keeper = grid != null ? grid.GetComponent<ProgressKeeper>() : null;
+        if (keeper != null) keeper.ReadTheSave();
+    }
+
+    protected override void OnDestroy()
+    {
+        PutTheSaveBack();
+        base.OnDestroy();
     }
 
     // At a tower whose element isn't unlocked (water, for a fresh player; else the first locked one): the HUD says what unlocks
