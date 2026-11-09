@@ -210,6 +210,20 @@ Default layer is culled at 500 m: the cells' dressing, 32,000 brush spheres on t
 horizon); and the nine's seed `valley-1` places no spire or volcano in the game's plan (its far landmarks are the
 village's great tree, the castle, a ruin and lone great trees), so the clip glides toward the great tree.
 
+**Why, and the must-have (nine-volcano, u2, 2026-11-09).** The plan had no "every type at least once" step: a village
+stood only where a square template asks for one and the town roll (35%) or "at least one in the world" kept it, and a
+volcano only where that template's anchor biome is ashlands or mountains (ash-fields, crater-rim, high-pass: hills and
+up). For `valley-1` the bands left one square of the nine above low, its middle (map square [1, 1]) at hills, and it rolled tundra-plateau,
+whose village is the great tree. Now the world file names its must-haves (`"musts": ["volcano"]`, section 5): before
+the roll each takes a square of the map that can still hold one (seeded order), collapsed to such a template and its
+village kept. For `valley-1` that's the middle square as ash-fields, "Old Grumbler", 60 m from rim to foot, 13 chunks
+from the spawn; ash-fields' sides leave the north-east corner nothing curated, so it takes the low filler (as an
+over-budget solve does) beside the east square's, which was one already. The nine's towns are then the volcano's and Fogmere (a lake village on the
+coast), with the castle; the great tree is gone from this seed, and a sea spire stands off the south-east corner. All
+41 nines tried (seed-1..40 and valley-1) hold a volcano. `horizon.json`'s seenFrom goes to 18 for the volcano (72%
+haze at the spawn, was 94%), 22 for the spire, 12 the castle, 13 the great tree, whose far colour is now a dark
+blue-green (it read as a pale olive lens).
+
 ## 5. The solve, order-free
 
 **Level 1, the world plan, at load, for the whole world.** The world is bounded (an ocean-ringed 3 × 3 now, a torus

@@ -1,15 +1,16 @@
 {
-  "about": "The nine: the valley and the eight world squares round it, 3 x 3 (1728 x 1728 cells, 27 x 27 chunks; docs/design/world-squares.md, J-080). A world file, not a bake: \"generated\" says the seed, the size in world squares, the generator's version and the squares pinned to a map folder, and every other chunk is solved from them (Chem.WorldPlan, Chem.ChunkGen). The map's cells start at the north-west corner of its squares, so the valley, pinned at square [0, 2] (the south-west), is chunks (0..8, 18..26) and its rows lie 1152 cells further south than in its own folder. GeneratedMap.Bake writes the rest of this folder (cells.txt, land.json, things.json and the rows); those files are never committed, and the map's hash is of its inputs (GeneratedMap.InputHash). Spawn and expects are the valley's spawn moved, and what the bake makes.",
+  "about": "The nine: the valley and the eight world squares round it, 3 x 3 (1728 x 1728 cells, 27 x 27 chunks; docs/design/world-squares.md, J-080). A world file, not a bake: \"generated\" says the seed, the size in world squares, the generator's version, the squares pinned to a map folder and the far landmarks it must hold (\"musts\", WorldPlan's must-haves), and every other chunk is solved from them (Chem.WorldPlan, Chem.ChunkGen). The map's cells start at the north-west corner of its squares, so the valley, pinned at square [0, 2] (the south-west), is chunks (0..8, 18..26) and its rows lie 1152 cells further south than in its own folder. GeneratedMap.Bake writes the rest of this folder (cells.txt, land.json, things.json and the rows); those files are never committed, and the map's hash is of its inputs (GeneratedMap.InputHash). Spawn and expects are the valley's spawn moved, and what the bake makes.",
   "id": "nine",
   "name": "The Nine",
   "size": [1728, 1728],
   "seaLevel": -4,
   "spawn": [292, 1480],
-  "expects": { "landShare": 94, "highest": 1965, "lowest": -320 },
+  "expects": { "landShare": 94, "highest": 1372, "lowest": -320 },
   "generated": {
     "seed": "valley-1",
     "squares": [3, 3],
-    "generator": 4,
+    "generator": 5,
+    "musts": ["volcano"],
     "pinned": [ { "map": "valley", "square": [0, 2] } ]
   }
 }

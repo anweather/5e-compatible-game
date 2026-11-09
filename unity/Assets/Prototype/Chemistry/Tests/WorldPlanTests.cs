@@ -307,6 +307,40 @@ namespace Chem.Tests
             Assert.That(offRoad * 10, Is.LessThanOrEqualTo(spawns), "a square's spawn is by its road but for a few");
         }
 
+        // A must-have (section 5): a nine asking for a volcano holds one in a square of the map, its village kept, or says why
+        // it can't; the same seed gives the same plan, and a plan asking for nothing is as it was (the goldens below).
+        [Test]
+        public void AMustHaveVolcanoIsPlacedWhereTheLandAllows()
+        {
+            int held = 0;
+            foreach (string seed in Seeds(40).Append("valley-1"))
+            {
+                WorldPlan Asking()
+                {
+                    var inputs = PlanInputs.For(seed, 3, PlanWrap.None, Valley);
+                    inputs.Musts.Add("volcano");
+                    return WorldPlan.Solve(inputs, Lib);
+                }
+                var p = Asking();
+                Assert.That(Asking().Hash, Is.EqualTo(p.Hash), seed);
+                Assert.That(p.Problems, Is.Empty, seed);
+                int at = p.MustSquares.Single();
+                if (at < 0)
+                {
+                    Assert.That(p.MustMisses, Has.Count.EqualTo(1), seed);
+                    TestContext.Out.WriteLine($"MUST {seed}: {p.MustMisses[0]}");
+                    continue;
+                }
+                held++;
+                Assert.That(p.MustMisses, Is.Empty, seed);
+                Assert.That(p.InMap(at), Is.True, seed);
+                var l = p.Landmarks.Single(m => m.Square == at && m.Intent == WorldPlan.VillageIntent);
+                Assert.That(FarLandmarks.TypeOf(p, l), Is.EqualTo("volcano"), seed);
+            }
+            TestContext.Out.WriteLine($"MUST a volcano held in {held} of 41 nines");
+            Assert.That(held * 2, Is.GreaterThan(41), "most nines can hold one");
+        }
+
         [Test]
         public void ThePlanIsTheSameEveryTime()
         {

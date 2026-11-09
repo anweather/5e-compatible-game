@@ -119,6 +119,12 @@ touch them.
 : What a world square asks for, never where it goes (`world/landmarks/<id>.json`, `Chem.LandmarkIntent`): "a village
   with a landmark", with a form per biome. The plan picks its world square; the form comes from the biome there.
 
+**Must-have**
+: A far landmark a world must hold (a world file's `generated.musts`, `PlanInputs.Musts`: "volcano"). The plan gives
+  one world square of the map, in a seeded order among those that can take it, a square template whose village comes
+  out as that landmark, and keeps its village whatever the town roll; where no square can, the plan says why
+  (`WorldPlan.MustMisses`) rather than force one.
+
 **Known chunk / generated chunk** *(the generate switch is planned)*
 : The two states a chunk is in before it's active, by distance from a character (`sight` 4 and `know` 7 in `sim.json`
   `streaming`): a **known** chunk is decided, not built (its dominant biome and its land every 8th cell, 9 × 9, for the
