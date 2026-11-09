@@ -72,9 +72,12 @@ smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's look
 ## Next, in order
 
 (The Scripts runtime asmdef was measured 2026-11-09 and dropped: 6% faster, J-081.)
-1. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
-   there is one; the view on the PC.
-2. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
+(Maps phase 8 is done but the cast seen on both peers in a player build: blocked by a Windows Security window.)
+1. **A profile and optimisation pass for 60 fps** (16.7 ms mean and p95; Andrew 2026-11-09), once far-looks and the
+   12 x 10 plan settle. Profile the nine and the valley in a player build and the Editor (the Editor shows farringclip
+   ~31 ms, tiersweep 22-28 ms; a player build on the Chain ran 6.5-7.5 ms), find the top costs, fix them.
+2. **Biome from the world** (`biome-from-sketch`, queued for u2 after `world-12x10-plan`; J-085).
+3. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
 Also open: the world sketch in the core (paper landed 577a9533, `tools/world-paper/` World sketch panel; world-squares.md "Draw first": the sketch should drive the land's biome, ~2-3 u2 days, not briefed); a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
 of the volcano is hidden by a nearer hill (a viewpoint or landmark placement question, not briefed).
 
