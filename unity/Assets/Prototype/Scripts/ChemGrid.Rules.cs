@@ -214,7 +214,8 @@ public partial class ChemGrid
         if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
         RedrawLooks(before.Effective);
         RedrawLookFire();
-        RecolourWorld();
+        // Every colour drawn from the rules is as it was unless a look changed: most switches change none (#181).
+        if (!before.Effective.SameLooks(CurrentRules.Effective)) RecolourWorld();
         RulesChanged?.Invoke();
     }
 
