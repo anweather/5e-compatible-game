@@ -233,7 +233,7 @@ namespace Chem.Tests
         [Test]
         public void AMapWithNoYardStandsOnItsMiddle()
         {
-            var file = MapFile.Load(Path.Combine(ChemistryTests.Folders.Maps, "flat-1728"));
+            var file = MapFile.Load(MapSizeBench.BigMap);
             var layout = file.Layout();
             Assert.That((layout.ChunksX, layout.ChunksZ, layout.GridW), Is.EqualTo((27, 27, 1728)));
             var (x, z) = layout.CellCenter(864, 864);
