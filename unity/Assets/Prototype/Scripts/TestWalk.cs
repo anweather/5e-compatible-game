@@ -7,7 +7,7 @@ using UnityEngine;
 // jump when it hasn't moved for a moment. It only moves a wizard the way its controls would.
 public sealed class TestWalk
 {
-    const int Margin = 48, Ahead = 6;
+    const int Margin = 48, Ahead = 3;
     const float MostStep = 0.9f, StuckSeconds = 1.5f;
 
     readonly List<Vector2Int> path;
@@ -23,8 +23,11 @@ public sealed class TestWalk
     /// <summary>Whether the wizard has come to the end of the path.</summary>
     public bool Done => next >= path.Count - 1;
 
-    /// <summary>A walk from one cell to another, or null when no way is found inside the box round them.</summary>
-    public static TestWalk To(ChemGrid grid, Vector2Int from, Vector2Int to)
+    /// <summary>A walk from one cell to another, on dry ground if it can, or null when no way is found inside the box round them.</summary>
+    public static TestWalk To(ChemGrid grid, Vector2Int from, Vector2Int to) => Find(grid, from, to, false) ?? Find(grid, from, to, true);
+
+    // Dry ground only, or through water too (a wizard swims a river with no bridge on the way).
+    static TestWalk Find(ChemGrid grid, Vector2Int from, Vector2Int to, bool swim)
     {
         var world = grid.World;
         int x0 = Mathf.Max(0, Mathf.Min(from.x, to.x) - Margin), y0 = Mathf.Max(0, Mathf.Min(from.y, to.y) - Margin);
@@ -35,7 +38,7 @@ public sealed class TestWalk
         bool Open(int x, int y)
         {
             var c = world.At(x, y);
-            return c != null && !world.IsBlocking(c) && c.Water <= 0;
+            return c != null && !world.IsBlocking(c) && (swim || c.Water <= 0);
         }
         int Index(Vector2Int p) => (p.y - y0) * w + p.x - x0;
         var queue = new Queue<Vector2Int>();

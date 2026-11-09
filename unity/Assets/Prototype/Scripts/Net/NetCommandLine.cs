@@ -108,7 +108,8 @@ public class NetCommandLine : MonoBehaviour
         }
         walked += Time.deltaTime;
         bool on = walked < walkSeconds && !walk.Done;
-        var stick = on ? walk.Stick(grid, me.transform, Camera.main.transform, Time.deltaTime, out bool hop) : Vector2.zero;
+        bool hop = false;
+        var stick = on ? walk.Stick(grid, me.transform, Camera.main.transform, Time.deltaTime, out hop) : Vector2.zero;
         move.SetValue(inputs, stick);
         sprint?.SetValue(inputs, on);
         jump?.SetValue(inputs, on && hop);

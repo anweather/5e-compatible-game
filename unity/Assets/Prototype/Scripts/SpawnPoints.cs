@@ -39,8 +39,12 @@ public static class SpawnPoints
         {
             if (p.Kind != Kind) continue;
             var cell = new Vector2Int(p.Middle.x, p.Middle.y);
-            // A spawn place on the map's own spawn is that one (the valley's, as the plan gives it too).
-            if ((cell - start).sqrMagnitude <= ReachCells * ReachCells) continue;
+            // A spawn place on the map's own spawn is that one (the valley's, "start" in the nine's places), by its name.
+            if ((cell - start).sqrMagnitude <= ReachCells * ReachCells)
+            {
+                all[0] = new Spawn(StartId, p.Name, start);
+                continue;
+            }
             all.Add(new Spawn(p.Id, p.Name, cell));
         }
         return all;
