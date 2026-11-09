@@ -10,7 +10,7 @@ Shader "Prototype/FarLand"
     // stands _Stretch times as tall and its rim dips _Notch of its height where it faces the eye, a crater's notch.
     // The sea plane (_SkyFadeTo above 0) is drawn after the sky and goes clear between _SkyFadeFrom and _SkyFadeTo, so it
     // gives way to the sky as it's drawn there (its sun, cirrus and clouds near the horizon are brighter than the haze),
-    // not with a hard line against it. Over the map itself (vertex alpha 1) it's also clear within _SkyClearNear (m), the
+    // not with a hard line against it. Over the map itself (vertex alpha 1) it's also clear within _FarKnownMetres, the
     // known ring, where the map's own land and water draw, and there past it, where nothing else is: there the sky below
     // the horizon, paler than the haze, showed through as flat white wedges.
     Properties
@@ -24,7 +24,6 @@ Shader "Prototype/FarLand"
         _Top ("Its height (m)", Float) = 1
         _SkyFadeFrom ("Into the sky from (m)", Float) = 0
         _SkyFadeTo ("Into the sky by (m), 0 for never", Float) = 0
-        _SkyClearNear ("Over the map, clear within (m)", Float) = 0
         [HideInInspector] _SrcBlend ("", Float) = 1
         [HideInInspector] _DstBlend ("", Float) = 0
         [HideInInspector] _ZWrite ("", Float) = 1
@@ -58,14 +57,14 @@ Shader "Prototype/FarLand"
             float _Top;
             float _SkyFadeFrom;
             float _SkyFadeTo;
-            float _SkyClearNear;
             CBUFFER_END
 
             // Set by FarRing each frame: the land's haze density now and in clear weather (per metre), where the generated
-            // ring ends (m), and the sky's colours.
+            // ring ends (m), where the known ring ends (m, the view dial's), and the sky's colours.
             float _FarHazeDensity;
             float _FarHazeClear;
             float _FarSightMetres;
+            float _FarKnownMetres;
             half3 _FarSkyZenith;
             half3 _FarSkyHorizon;
             float _FarStretchFrom;
@@ -156,7 +155,7 @@ Shader "Prototype/FarLand"
                 {
                     float d = length(input.positionWS - _WorldSpaceCameraPos);
                     alpha = 1 - smoothstep(_SkyFadeFrom, _SkyFadeTo, d);
-                    if (input.color.a > 0.5) alpha *= smoothstep(_SkyClearNear * 0.85, _SkyClearNear, d);
+                    if (input.color.a > 0.5) alpha *= smoothstep(_FarKnownMetres * 0.85, _FarKnownMetres, d);
                 }
                 return half4(MixFog(color, input.fogFactor), alpha);
             }

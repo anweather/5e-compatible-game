@@ -148,6 +148,7 @@ public sealed partial class FarRing : MonoBehaviour
         Shader.SetGlobalFloat(HazeDensityId, RenderSettings.fogMode == FogMode.ExponentialSquared ? RenderSettings.fogDensity : clear);
         Shader.SetGlobalFloat(HazeClearId, clear);
         Shader.SetGlobalFloat(SightMetresId, sight * chunkMetres);
+        Shader.SetGlobalFloat(KnownMetresId, HazeMetres);
         Shader.SetGlobalFloat(StretchFromId, StretchFrom);
         Shader.SetGlobalFloat(StretchToId, StretchFrom + StretchOverChunks * chunkMetres);
         var horizon = RenderSettings.fogColor;
@@ -195,7 +196,7 @@ public sealed partial class FarRing : MonoBehaviour
     }
 
     static readonly int HazeDensityId = Shader.PropertyToID("_FarHazeDensity"), HazeClearId = Shader.PropertyToID("_FarHazeClear"), SightMetresId = Shader.PropertyToID("_FarSightMetres"),
-        SkyHorizonId = Shader.PropertyToID("_FarSkyHorizon"), SkyZenithId = Shader.PropertyToID("_FarSkyZenith"),
+        SkyHorizonId = Shader.PropertyToID("_FarSkyHorizon"), KnownMetresId = Shader.PropertyToID("_FarKnownMetres"), SkyZenithId = Shader.PropertyToID("_FarSkyZenith"),
         PunchyZenithId = Shader.PropertyToID("_PunchySkyZenith"), OwnHazeId = Shader.PropertyToID("_OwnHaze");
 
     // The chunks the characters stand in (the camera's, with none); true when they changed.
@@ -361,7 +362,6 @@ public sealed partial class FarRing : MonoBehaviour
         sea.SetFloat("_ZWrite", 0f);
         sea.SetFloat("_SkyFadeFrom", SeaClearFrom);
         sea.SetFloat("_SkyFadeTo", SeeMetres * 0.9f);
-        sea.SetFloat("_SkyClearNear", HazeMetres);
         return sea;
     }
 
