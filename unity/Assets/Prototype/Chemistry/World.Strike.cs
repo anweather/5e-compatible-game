@@ -120,6 +120,20 @@ namespace Chem
         /// <summary>The wizards the core knows of, by player.</summary>
         public IReadOnlyDictionary<string, WizardStand> Stands => stands;
 
+        int standReads;
+
+        /// <summary>
+        /// How many times a rule has read the wizards' stands as it ran (a golf turn, a run of the Hold starting, a hand
+        /// attuning, a trigger firing) since the world began: the host's StandKeeper keeps every stand standing then.
+        /// </summary>
+        public int StandReads => standReads + triggerFirings;
+
+        /// <summary>Whether a trigger in force reads every stand as it runs: a step trigger takes them as steps, a tick trigger fires round each wizard standing.</summary>
+        public bool TriggersReadStands => Rules.TriggersOn(TriggerEvent.Step).Count > 0 || Rules.TriggersOn(TriggerEvent.Tick).Count > 0;
+
+        // A rule reads the stands now (StandReads).
+        void ReadStands() => standReads++;
+
         /// <summary>The strikes since the view last took them, oldest first; taking them empties the list.</summary>
         public IReadOnlyList<StrikeHit> TakeStrikeHits()
         {
