@@ -201,6 +201,10 @@ public class SkyLight : MonoBehaviour
         float rain = Mathf.Clamp01(cloud - 0.5f) * 2f;
         RenderSettings.fogStartDistance = Mathf.Lerp(Mathf.Lerp(baseFogStart, 40f, rain), 0f, fog);
         RenderSettings.fogEndDistance = Mathf.Lerp(Mathf.Lerp(baseFogEnd, 1200f, rain), 90f, fog);
+        // A generated map's haze is exponential-squared (FarRing): ~98% at the known ring's edge, closer in rain and fog.
+        var far = FarRing.Instance;
+        if (far != null && far.HazeMetres > 0f && RenderSettings.fogMode == FogMode.ExponentialSquared)
+            RenderSettings.fogDensity = FarRing.HazeK / Mathf.Lerp(Mathf.Lerp(far.HazeMetres, far.HazeMetres * 0.6f, rain), 90f, fog);
     }
 
     // Day, time and weather at the top right, under the online status line.

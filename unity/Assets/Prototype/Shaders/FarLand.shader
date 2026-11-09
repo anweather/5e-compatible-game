@@ -1,0 +1,112 @@
+Shader "Prototype/FarLand"
+{
+    // The far ring (FarRing, docs/design/world-squares.md section 4): the known chunks' coarse land, the sea plane to the
+    // horizon and the far landmarks' stand-in meshes. The colour is in the vertices, lit softly by the main light and the
+    // ambient, no shadows. The land and the sea take URP's fog (the haze, exponential-squared on a generated map). A far
+    // landmark (_OwnHaze 1) takes its own haze instead, the land's within sight and thinner past it (about 90% at its
+    // seenFrom) so it shows through the fog, and fades into the sky's colour where it's seen (the skybox's gradient, Punchy's Sky.hlsl),
+    // not the fog's, so it never stands out against a bluer sky; over the last _FadeMetres it goes wholly into the sky.
+    Properties
+    {
+        _OwnHaze ("Own haze (a far landmark)", Float) = 0
+        _SeenMetres ("Seen from (m)", Float) = 1344
+        _HazeAtSeen ("Haze at seen from", Float) = 0.9
+        _FadeMetres ("Fade into the sky over (m)", Float) = 144
+    }
+    SubShader
+    {
+        Tags { "RenderType" = "Opaque" "Queue" = "Geometry" "RenderPipeline" = "UniversalPipeline" }
+
+        Pass
+        {
+            Name "ForwardLit"
+            Tags { "LightMode" = "UniversalForward" }
+
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma vertex Vert
+            #pragma fragment Frag
+            #pragma multi_compile_fog
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
+            CBUFFER_START(UnityPerMaterial)
+            half _OwnHaze;
+            float _SeenMetres;
+            half _HazeAtSeen;
+            float _FadeMetres;
+            CBUFFER_END
+
+            // Set by FarRing each frame: the land's haze density now and in clear weather (per metre), where the generated
+            // ring ends (m), and the sky's colours.
+            float _FarHazeDensity;
+            float _FarHazeClear;
+            float _FarSightMetres;
+            half3 _FarSkyZenith;
+            half3 _FarSkyHorizon;
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                half4 color : COLOR;
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 positionWS : TEXCOORD0;
+                half3 normalWS : TEXCOORD1;
+                half4 color : TEXCOORD2;
+                half fogFactor : TEXCOORD3;
+            };
+
+            Varyings Vert(Attributes input)
+            {
+                Varyings o;
+                o.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(o.positionWS);
+                o.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                o.color = input.color;
+                o.fogFactor = ComputeFogFactor(o.positionCS.z);
+                return o;
+            }
+
+            // How much of a far landmark the haze hides at distance d: its own, exponential-squared reaching _HazeAtSeen at
+            // _SeenMetres in clear weather (the paper's), thickened as the land's is by rain and fog; within sight the
+            // land's, blended to its own over the next two chunks (192 m), so where it gives way to the chunk terrains
+            // it's at their haze; and all of it over the last _FadeMetres.
+            half LandmarkHaze(float d)
+            {
+                float land = d * _FarHazeDensity;
+                float root = sqrt(-log(max(1e-4, 1.0 - _HazeAtSeen)));
+                float own = d * root / max(1.0, _SeenMetres) * max(1.0, _FarHazeDensity / max(1e-6, _FarHazeClear));
+                float x = lerp(land, own, smoothstep(_FarSightMetres, _FarSightMetres + 192.0, d));
+                half haze = 1.0 - exp(-x * x);
+                half fade = saturate((d - (_SeenMetres - _FadeMetres)) / max(1.0, _FadeMetres));
+                return lerp(haze, 1.0, fade);
+            }
+
+            half4 Frag(Varyings input) : SV_Target
+            {
+                half3 n = normalize(input.normalWS);
+                Light light = GetMainLight();
+                half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);
+                half3 albedo = input.color.rgb;
+                half3 color = albedo * (light.color * diffuse + SampleSH(n));
+                UNITY_BRANCH if (_OwnHaze > 0.5)
+                {
+                    // Far off, a landmark reads as a silhouette: the sun only shades it a little.
+                    color = albedo * (light.color * diffuse * 0.35 + SampleSH(n));
+                    float3 toPixel = input.positionWS - _WorldSpaceCameraPos;
+                    float d = length(toPixel);
+                    half h = toPixel.y / max(1e-3, d);
+                    half3 sky = lerp(_FarSkyHorizon, _FarSkyZenith, pow(saturate(h), 0.45));
+                    return half4(lerp(color, sky, LandmarkHaze(d)), 1);
+                }
+                return half4(MixFog(color, input.fogFactor), 1);
+            }
+            ENDHLSL
+        }
+    }
+}

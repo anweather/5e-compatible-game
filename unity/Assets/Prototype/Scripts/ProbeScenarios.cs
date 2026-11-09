@@ -270,6 +270,8 @@ public static class ProbeScenarios
             "Checks: each of those, not falling, no console errors. Shots: the land and the sea."),
         new Entry("cliffclip", typeof(CastleCliffClipProbe), 120f,
             "Films the castle on its cliff from the town, then an eye-height walk from the castle's gate past the stable to the cliff's lip and the view down its face, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed.", films: true),
+        new Entry("farringclip", typeof(FarRingClipProbe), 120f,
+            "On the nine (unity/Temp/map = nine): films the far ring from over the valley's spawn at 11 in clear weather, the eye turning from the valley to the tallest far landmark (the spire or the volcano, else the village's great tree) and gliding toward it past its seenFrom (the haze, the known chunks, the landmark coming through the fog), into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: the far ring up, a landmark to film and shown, filmed.", films: true),
         new Entry("stampclip", typeof(StampClipProbe), 120f,
             "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up.", films: true),
         new Entry("act", typeof(ActProbe), 60f,

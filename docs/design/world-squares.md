@@ -197,6 +197,19 @@ paragraph above gets wrong, to fix when the PC builds it:
 4. The known ring stops at the coast, so the view needs a sea plane to the horizon, or the unfogged skybox shows
    below it.
 
+**As built (far-ring-view, the PC, 2026-11-09).** `FarRing` (Scripts/, starts itself on a generated map) draws each
+known chunk as a mesh from its 9 × 9 heights (`FarMeshes.Known`, built on a worker: 60-144 chunks in about 3 ms there
+and 2.5 ms on the main thread to hand to Unity), painted by dominant biome, with a 10 m skirt; the chunk terrains draw
+only where no known mesh does and within `know` (`MapTerrains` asks `TerrainDraws`). The haze is exponential-squared at
+1.98 / (know × 96 m) (`SkyLight` thickens it for rain and fog); a sea frame runs from the map's edge 30 km out. Far
+landmarks (`FarRing.Landmarks.cs`, `FarLand.shader`) take the land's haze within `sight`, blend to their own over two
+chunks (90% at `seenFrom`, as on paper, thickened with the weather), and fade into the sky's gradient over their last
+chunk and a half; one gives way to what's really there where its chunk is a chunk terrain. Two things the paper didn't
+know: the follow camera's far plane was 500 m (the far ring needs the horizon, so on a generated map it's 15 km and the
+Default layer is culled at 500 m: the cells' dressing, 32,000 brush spheres on the nine, cost 45 ms a frame drawn to the
+horizon); and the nine's seed `valley-1` places no spire or volcano in the game's plan (its far landmarks are the
+village's great tree, the castle, a ruin and lone great trees), so the clip glides toward the great tree.
+
 ## 5. The solve, order-free
 
 **Level 1, the world plan, at load, for the whole world.** The world is bounded (an ocean-ringed 3 × 3 now, a torus
