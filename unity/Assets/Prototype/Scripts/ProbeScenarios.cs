@@ -272,6 +272,10 @@ public static class ProbeScenarios
             "Films the castle on its cliff from the town, then an eye-height walk from the castle's gate past the stable to the cliff's lip and the view down its face, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed.", films: true),
         new Entry("farringclip", typeof(FarRingClipProbe), 120f,
             "On the nine (unity/Temp/map = nine): films the far ring from over the valley's spawn at 11 in clear weather, the eye turning from the valley to the tallest far landmark (the spire or the volcano, else the village's great tree) and gliding toward it past its seenFrom (the haze, the known chunks, the landmark coming through the fog), into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: the far ring up, a landmark to film and shown, filmed.", films: true),
+        new Entry("tiersweep", typeof(TierSweepProbe), 1200f,
+            "On the nine (unity/Temp/map = nine): sweeps the three tier dials (docs/design/world-12x8-scope.md): active 1/2/3 (streaming reach, keep one more, as a rule switch), drawn 2/4/7 and known 4/7/12 (this peer's view, FarRing.SetView; drawn at most known), " +
+            "the eye flying a square a chunk a side round the spawn for --seconds (default 10) per setting once the known ring has settled. Metrics per setting a<A>_d<D>_k<K>_: mean_ms, p95_ms, mem_allocated_mb, mem_reserved_mb, active_chunks, terrains_drawn, known_meshes, known_settle_ms, known_worker_ms; " +
+            "the table in the log and Temp/Probe/tiersweep.md. Checks: the far ring up, every setting measured, the dials took, the rules' dials back at the end, no console errors."),
         new Entry("stampclip", typeof(StampClipProbe), 120f,
             "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up.", films: true),
         new Entry("act", typeof(ActProbe), 60f,

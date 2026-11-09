@@ -66,3 +66,50 @@ when crossing chunks, float jitter without re-centring, save size per chunk (nev
    and desert looks, paper first.
 
 Decided (J-083): 8 land rows plus an ice row north and a desert row south, 12 x 10 world squares in all.
+
+## Measured
+
+`tools/probe.sh tiersweep` on the nine (2026-11-09, the PC, Editor Play mode, 10 s a setting, clear weather at 11): the
+eye flies a square a chunk a side round the spawn, 45 m up, the wizard under it. Active is streaming `reach` (keep one
+more) as a rule switch; drawn and known are the peer's view dials (`FarRing.SetView`, a player's `-drawn N -known N`).
+Today's dials are active 2, drawn 4, known 7. (Drawn turned out to be `sight` already: the known ring starts past
+it, and a chunk drawn as a known mesh hides its Terrain, so Terrains draw within sight and known meshes beyond.) Rows run in this order, after one unrecorded warm-up lap.
+
+| Active | Drawn | Known | Mean ms | p95 ms | Allocated MB | Reserved MB | Active chunks | Terrains drawn | Known meshes | Known settle ms | Mesh worker ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | 4 | 28.6 | 40.1 | 20843 | 32814 | 16 | 25 | 47 | 536 | 1.4 |
+| 1 | 4 | 4 | 26.9 | 31.0 | 20995 | 32814 | 16 | 72 | 0 | 60 | 0.0 |
+| 1 | 2 | 7 | 27.8 | 33.4 | 21160 | 32854 | 16 | 25 | 107 | 111 | 2.9 |
+| 1 | 4 | 7 | 28.5 | 32.5 | 21327 | 32938 | 16 | 72 | 60 | 125 | 2.1 |
+| 1 | 7 | 7 | 23.3 | 27.9 | 21327 | 32938 | 16 | 132 | 0 | 56 | 0.0 |
+| 1 | 2 | 12 | 22.1 | 25.1 | 21329 | 32938 | 16 | 25 | 247 | 117 | 7.0 |
+| 1 | 4 | 12 | 22.3 | 25.5 | 21329 | 32938 | 16 | 72 | 200 | 91 | 4.9 |
+| 1 | 7 | 12 | 23.3 | 26.8 | 21332 | 32938 | 16 | 132 | 140 | 98 | 3.6 |
+| 2 | 2 | 4 | 22.8 | 28.7 | 21328 | 32954 | 36 | 25 | 47 | 87 | 1.4 |
+| 2 | 4 | 4 | 23.6 | 29.1 | 21328 | 32954 | 36 | 72 | 0 | 53 | 0.0 |
+| 2 | 2 | 7 | 23.1 | 28.8 | 21329 | 32954 | 36 | 25 | 107 | 100 | 2.9 |
+| 2 | 4 | 7 | 24.2 | 30.2 | 21329 | 32954 | 36 | 72 | 60 | 88 | 1.9 |
+| 2 | 7 | 7 | 25.0 | 31.0 | 21328 | 32954 | 36 | 132 | 0 | 58 | 0.0 |
+| 2 | 2 | 12 | 22.9 | 28.5 | 21333 | 32954 | 36 | 25 | 247 | 112 | 6.3 |
+| 2 | 4 | 12 | 23.8 | 29.6 | 21330 | 32954 | 36 | 72 | 200 | 114 | 5.1 |
+| 2 | 7 | 12 | 25.9 | 32.1 | 21328 | 32954 | 36 | 132 | 140 | 109 | 3.6 |
+| 3 | 2 | 4 | 24.8 | 30.2 | 21328 | 32954 | 64 | 25 | 47 | 100 | 1.2 |
+| 3 | 4 | 4 | 26.0 | 31.3 | 21328 | 32954 | 64 | 72 | 0 | 55 | 0.0 |
+| 3 | 2 | 7 | 26.4 | 32.0 | 21329 | 32954 | 64 | 25 | 107 | 114 | 3.0 |
+| 3 | 4 | 7 | 26.1 | 31.8 | 21325 | 32954 | 64 | 72 | 60 | 107 | 1.5 |
+| 3 | 7 | 7 | 27.2 | 33.1 | 21328 | 32954 | 64 | 132 | 0 | 66 | 0.0 |
+| 3 | 2 | 12 | 25.3 | 30.5 | 21330 | 32954 | 64 | 25 | 247 | 124 | 6.0 |
+| 3 | 4 | 12 | 25.9 | 31.5 | 21330 | 32954 | 64 | 72 | 200 | 126 | 4.9 |
+| 3 | 7 | 12 | 27.0 | 32.6 | 21329 | 32954 | 64 | 132 | 140 | 109 | 4.1 |
+
+What it says, so far:
+
+- **Frame time hardly moves with any dial on the nine** (22-29 ms mean, 25-40 ms p95, today's 24.2 / 30.2). The spread
+  is about the run's own noise: the slowest rows are the first two (warm-up, 536 ms to settle) and the same settings
+  differ by 5 ms between active 1 and active 2. The frame is bound by something the dials don't touch.
+- **Known 12 is cheap here**: 247 known meshes, the ring settles in ~120 ms and the mesh worker takes ~6-7 ms.
+- **Drawn is the terrain count** (25 at 2, 72 at 4, 132 at 7) with no clear frame cost up to 7.
+- **Memory is the Editor's**, not the game's: 20.8-21.3 GB allocated and 32.8-33.0 GB reserved throughout, so a
+  setting's own cost is lost in it. Per-setting memory wants a player build (`-perf-scenario` with `-drawn`/`-known`).
+- Active chunks are 16 / 36 / 64 at active 1 / 2 / 3 (4 x 4, 6 x 6, 8 x 8: the reach round the lap's chunks), with
+  no frame cost seen at 3 on a quiet world (no fire, no weather).
