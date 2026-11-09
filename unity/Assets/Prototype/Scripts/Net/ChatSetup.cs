@@ -20,6 +20,14 @@ public static class ChatSetup
     /// <summary>A test's or a probe's file in place of the player's.</summary>
     public static string TestFile { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        TestFile = null;
+        held = null;
+    }
+
     /// <summary>Works out the player's file. Called at the start.</summary>
     public static void FindFile() => ownFile ??= ChemGrid.Folders.ChatSetupFile;
 

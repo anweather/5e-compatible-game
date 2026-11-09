@@ -14,6 +14,13 @@ public sealed class ApiKeyCheck
     /// <summary>What asks the API: the real wire, or a stand-in in a test.</summary>
     public static Func<IKeyLister> Lister { get; set; } = () => new ApiWire();
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Lister = () => new ApiWire();
+    }
+
     KeyCheck done;
 
     /// <summary>Whether it's still waiting on the API.</summary>

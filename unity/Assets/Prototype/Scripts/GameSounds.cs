@@ -118,6 +118,13 @@ public static class GameSounds
     /// <summary>A one-shot sound played here, for a probe to hear.</summary>
     public static event System.Action<string, Vector3> Played;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Played = null;
+    }
+
     public static void Play(string sound, Vector3 at, float volume = 1f, float pitchJitter = 0.06f)
     {
         var clip = Clip(sound);

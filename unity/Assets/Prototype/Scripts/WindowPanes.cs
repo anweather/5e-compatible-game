@@ -289,6 +289,13 @@ public class WindowPanes : MonoBehaviour
     /// <summary>The hardest hit by a thing so far (N s), for the probe's measure of HeavyImpulse.</summary>
     public static float HardestHit { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        HardestHit = 0f;
+    }
+
     /// <summary>
     /// A thing hit something: if it hit hard, the pane cell nearest the hit, if one is near, shatters.
     /// Only the sideways part of the hit counts, so a thing landing on the ground beside a wall doesn't.

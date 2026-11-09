@@ -402,6 +402,14 @@ public sealed class ValleyGround
 
     static int keptChecked, keptDifferent;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetKeptNoise()
+    {
+        CheckKeptNoise = false;
+        keptChecked = keptDifferent = 0;
+    }
+
     void CheckAfresh(PaintBlock kept, ChunkRect r, System.Func<int, int, IReadOnlyList<float>> paintOf)
     {
         var fresh = CellPaint.Block(layout, r, paintOf);

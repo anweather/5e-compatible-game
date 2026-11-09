@@ -26,6 +26,16 @@ public static class PerfCounts
     /// <summary>Whether anything is counted. PerfScenario sets it.</summary>
     public static bool On { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        On = false;
+        sliceStage = 0;
+        frame.Clear();
+        sliceWatch.Reset();
+    }
+
     /// <summary>This frame's counts.</summary>
     public static IReadOnlyDictionary<string, long> Frame => frame;
 

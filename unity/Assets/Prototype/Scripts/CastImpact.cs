@@ -26,6 +26,14 @@ public static class CastImpact
     public static int Kicks { get; private set; }
     public static float LastKick { get; private set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Kicks = 0;
+        LastKick = 0f;
+    }
+
     /// <summary>A beat has started on this machine's wizard.</summary>
     public static void Began(CastBeats beats, Beat beat)
     {

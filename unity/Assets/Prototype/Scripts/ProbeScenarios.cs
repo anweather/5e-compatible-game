@@ -20,14 +20,20 @@ public static class ProbeScenarios
         public Type Type { get; }
         /// <summary>Players in the run: more than 1 means Multiplayer Play Mode virtual players (Player 2 on), started before Play mode.</summary>
         public int Players { get; }
+        /// <summary>
+        /// How much faster than real time the run plays (Time.timeScale, so the ticks, physics and Wait), for a slow scenario
+        /// whose checks hold at that speed; 1 for one that measures frames or real seconds.
+        /// </summary>
+        public float Speed { get; }
 
-        public Entry(string name, Type type, float maxSeconds, string description, int players = 1)
+        public Entry(string name, Type type, float maxSeconds, string description, int players = 1, float speed = 1f)
         {
             Name = name;
             Type = type;
             MaxSeconds = maxSeconds;
             Description = description;
             Players = players;
+            Speed = speed;
         }
     }
 
@@ -169,7 +175,7 @@ public static class ProbeScenarios
             "The punch on a virtual gamepad's Circle, being struck (open ground, a wall, water), and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,
             "The beats of a cast by elements (CastBeats): a single, a pair, one charged and one cancelled, and their sounds (CastSounds). Checks: each beat and sound in order, the thump at contact, the hum rising by level and gone after a cancel, pause, fall, Shapeshift, reset or quit, the hands at their targets once settled, " +
-            "the slam about 0.1 s, a charged cast's beats to the frame as they were, an uncharged cast's wind-up and timing, casts on each other's heels all going on time, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after."),
+            "the slam about 0.1 s, a charged cast's beats to the frame as they were, an uncharged cast's wind-up and timing, casts on each other's heels all going on time, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after.", speed: 3f),
         new Entry("castclip", typeof(CastClipProbe), 90f,
             "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("punchclip", typeof(PunchClipProbe), 60f,
@@ -247,10 +253,10 @@ public static class ProbeScenarios
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
             "The chunk terrains the scene started with (MapTerrains, from the map's folder; unity/Temp/ground-builder saying land draws the land alone) and what the ground's Bind took. Checks: all 81 chunks built, none held by the scene, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
-            "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
+            "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader.", speed: 3f),
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,
             "Land stamps seen small and with crates on them (#147, #148): a radius 3 dome is a bump (no rock paint, no boulders), then ten crates on a 15 m dome as it rises, against the same crates set on the still dome. " +
-            "Checks: none buried, the carried crates go no higher or much further than on the still dome, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors."),
+            "Checks: none buried, the carried crates go no higher or much further than on the still dome, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors.", speed: 3f),
         new Entry("castlecliff", typeof(CastleCliffProbe), 240f,
             "The castle on its cliff (the Hold's pad reaching north of the castle and dropping off as a crag, buildings.json) with its stable, and the canyon beside the river north of it (world/maps/valley/stamps.json), seen from the town, over the pad, along the walk from the gate to the lip, from the cliff's foot and from the canyon's floor. " +
             "Checks: the canyon laid, the pad and road unmoved, no tree on rock, the crag laid, one height from the gate to the lip by the ground and by the wizard walking it, a drop below the lip, the cliff a rock wall the wizard can't walk up, rocks on its faces, the stable standing, the canyon deep with a rock floor and a dirt path, no console errors."),
@@ -282,7 +288,7 @@ public static class ProbeScenarios
         new Entry("holdclip", typeof(HoldClipProbe), 150f,
             "The hold-batch clip, with the HUD, on a virtual pad: in a run at the water tower the right trigger attunes the hand, then casts, the wave timer counting down; then high in the open keep raiders strike the crystal as it cracks and shatters. Into --shots: frames, sound.wav and timeline.txt."),
         new Entry("holdbodies", typeof(HoldBodiesProbe), 480f,
-            "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt."),
+            "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt.", speed: 3f),
         new Entry("holdeast", typeof(HoldEastProbe), 600f,
             "The Hold's second road (hold-east-path): a run's wave comes from both spawners and in at both gates, the east and the south; the brook behind the castle is dry; wading at the lake's edge slows the wizard a little. With --shots, films the clip (both roads, the south gate, a wade) and writes castle-map.png."),
         new Entry("towers", typeof(TowersProbe), 150f,
@@ -291,12 +297,12 @@ public static class ProbeScenarios
             "The keep's crystal at the Hold's heart (hold-batch): raiders beside the heart strike it, and as the keep's health is stepped down it cracks in stages, shatters at 0 and comes back whole for the next run. With --shots, pictures from up on the walls at each stage."),
         new Entry("hold", typeof(HoldProbe), 400f,
             "The valley's laid row (the-hold.md): its cells and drawing, no tree on it, a walk through the gate into the keep and its room, " +
-            "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls."),
+            "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls.", speed: 3f),
         new Entry("hands", typeof(HandsProbe), 300f,
             "The hands (D16, unified-casting.md; the-hold.md, phase 3) on a virtual pad, mouse and keyboard: on outside the Hold, attuning from the spell list (a moment; one element on both hands), " +
             "a held trigger charging to the most and firing on its release, both held merging on screen and firing once, one hand tapping while the other charges, attuning in the room, " +
             "each hand's thrust, throw and sweep, the same gesture on both, different gestures together, the second button a moment late, a cooling hand refused, a spell aimed past its range, " +
-            "an empty hand's acts, and the D-pad's kit."),
+            "an empty hand's acts, and the D-pad's kit.", speed: 3f),
         new Entry("aimed", typeof(AimedProbe), 240f,
             "Aimed spells (D16, unified-casting.md) in a Hold run on the north wall, the hands on a virtual pad: Lightning at a flyer a little off the crosshair, " +
             "missing with lock-on and pitch off as the game was, then locking on and hitting with them on; Gust of Wind knocking a raider below back; a Whirlwind lifting one and flinging it. " +

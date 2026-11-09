@@ -10,6 +10,13 @@ using UnityEngine;
 // the player's -voice-check (VoiceCheck), which this runs short, with no one talking.
 public class DictationProbe : ProbeScenario
 {
+    // A run stopped before its end leaves the log hooked, and with the domain reload off the hook outlives the run.
+    protected override void OnDestroy()
+    {
+        Application.logMessageReceived -= Note;
+        base.OnDestroy();
+    }
+
     const float HoldSeconds = 3f, MostSeconds = 2f, Recover = 2f, MostPressMs = 50f, FirstPressMs = 600f, MostEnd = 12f, CheckSeconds = 2f;
     const int Holds = 3;
 

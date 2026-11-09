@@ -17,7 +17,25 @@ tools/probe.sh fire --shots /some/folder    # also save screenshots there
 tools/probe.sh perf --seconds 20            # hold the camera for 20 s
 tools/probe.sh online                       # host + one Multiplayer Play Mode virtual player
 tools/probe.sh online --keep-players true   # leave Player 2 running for faster reruns
+tools/probe.sh smoke fire court             # several, back to back: one JSON each, then the batch's
+tools/probe.sh sweep                        # every probe (layer 4, docs/TESTING_LAYERS.md)
+tools/probe.sh sweep --half 1               # every other probe by name: the PC runs half 1, the Mac half 2
 ```
+
+**Several at once.** Names in a row run as a batch: the Editor runs each in a Play session of its own (leaving Play
+mode is what puts the world back) and goes straight on to the next, so there's no CLI round trip between them. Each
+one's JSON is in `unity/Temp/Probe/results/NNN-name.json` as it finishes and is printed at the end, followed by the
+batch's own (`batch`: each scenario's state, pass and seconds; `pass` only when all did). A two-player scenario
+(`online`, ...) runs on its own; `sweep` runs those after the batch.
+
+**Faster than real time.** A slow scenario whose checks hold at speed says so in `ProbeScenarios` (`speed: 3f`): the
+runner sets `Time.timeScale` for it, so the world's ticks, physics and `Wait` run that much faster, and puts it back
+after. A run with `--shots` films at real speed. A scenario that measures frames or real seconds stays at 1.
+
+**Entering Play mode doesn't reload the domain** (Edit > Project Settings > Editor > Enter Play Mode Settings:
+domain reload off, scene reload on; since J-023, 2026-10-27), so entry takes about a second. Statics keep their values from one Play session
+to the next: a static that a session changes is set back in a `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`
+method of its class (`ResetStatics` and the like), and a cached Unity object is made again when it's null.
 
 `tools/probe.sh` exits 0 when every check passed, 1 when one failed or the
 run was aborted, 2 when the run couldn't start (unknown name, already playing,
@@ -32,11 +50,9 @@ unity command probe run --name smoke [--shots <folder>] [--seconds N] --result-o
 unity command probe result --wait true --timeout 300 --result-only
 ```
 
-Why two calls, not one: entering Play mode reloads the scripting domain (the
-project keeps domain reload on), which restarts the Editor's command server
-and drops any open request. So `probe run` saves the request and enters Play
-mode, and returns at once. After the reload, the scenario runs, its result is
-written to `unity/Temp/Probe/result.json`, and the Editor leaves Play mode.
+Why two calls, not one: a compile reloads the scripting domain, which restarts the Editor's command server and drops
+any open request, and a run can take minutes. So `probe run` saves the request and enters Play mode, and returns at
+once. The scenario runs, its result is written to `unity/Temp/Probe/result.json`, and the Editor leaves Play mode.
 `probe result --wait true` waits for that file to say `done` or `aborted`. It
 can fail to connect for a few seconds during the reload; the script retries.
 

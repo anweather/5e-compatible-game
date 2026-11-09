@@ -324,6 +324,13 @@ public partial class ValleyChemistry : MonoBehaviour
     // peer on every platform has the same (BakeLand writes it); without it the land is flat.
     static int[] landFromFile;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetLand()
+    {
+        landFromFile = null;
+    }
+
     /// <summary>The map changed: the next world reads its land afresh.</summary>
     public static void ForgetLand() => landFromFile = null;
 

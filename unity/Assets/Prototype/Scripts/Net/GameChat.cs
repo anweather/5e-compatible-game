@@ -40,6 +40,14 @@ public class GameChat : MonoBehaviour
     /// <summary>What the API harness is built on: the real wire in play, a stand-in in a probe.</summary>
     public static System.Func<IChatWire> ApiWireMaker { get; set; } = () => new ApiWire();
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        ApiWireMaker = () => new ApiWire();
+        Instance = null;
+    }
+
     // How long the loop's prompt stays cached: a player's messages can be minutes apart.
     const string PrefixTtl = "1h";
 
