@@ -128,7 +128,7 @@ public static class ValleySurroundings
 
     static void SampleLayout(ThemeRegistry registry)
     {
-        var layout = ValleyTerrain.Layout;
+        var layout = EditorGround.Layout;
         float extent = layout.ChunkSize * layout.ChunksX + 2 * ShapeBlur;
         origin = new Vector2(layout.OriginX - ShapeBlur, layout.OriginZ - ShapeBlur);
         size = Mathf.CeilToInt(extent / Step) + 1;

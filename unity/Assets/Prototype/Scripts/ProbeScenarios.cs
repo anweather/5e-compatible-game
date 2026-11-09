@@ -245,7 +245,7 @@ public static class ProbeScenarios
             "The stalls of Andrew's 2026-11-08 play log: the world rebuilt from the map three times (start-up, hosting and an online reset each do it) and a chat-style mod (Pink fire) switched on. " +
             "Checks: a rebuild's median under the Editor's budget, the blocker boxes kept across rebuilds, the mod on, its checks and compose under budget, no console errors. Metrics: rebuild_ms_best, rebuild_ms_median, switch_compose_ms_median, switch_worst_frame_ms."),
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
-            "What GroundSwitch put on the terrains (unity/Temp/ground-builder says on or land; no file is off) and what the ground's Bind took: compare runs. Checks: the chunks are built or baked as switched, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
+            "The chunk terrains the scene started with (MapTerrains, from the map's folder; unity/Temp/ground-builder saying land draws the land alone) and what the ground's Bind took. Checks: all 81 chunks built, none held by the scene, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
             "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,

@@ -93,7 +93,7 @@ public static class ValleyShape
 
     static void LayVillages()
     {
-        var layout = ValleyTerrain.Layout;
+        var layout = EditorGround.Layout;
         var specs = VillageLayout.Load(ChemGrid.Folders.World);
         Villages = new VillagePlan[specs.Count];
         villageAreas = new Rect[specs.Count];
@@ -116,14 +116,14 @@ public static class ValleyShape
     /// <summary>The centre of a world cell on the ground plane (x, z).</summary>
     public static Vector2 CellWorld(int x, int y)
     {
-        var (wx, wz) = ValleyTerrain.Layout.CellCenter(x, y);
+        var (wx, wz) = EditorGround.Layout.CellCenter(x, y);
         return new Vector2(wx, wz);
     }
 
     /// <summary>A rectangle of cells' extent on the ground plane, to the cells' outer edges.</summary>
     public static Rect AreaOf(CellRect cells)
     {
-        float half = ValleyTerrain.Layout.CellSize / 2f;
+        float half = EditorGround.Layout.CellSize / 2f;
         var a = CellWorld(cells.X, cells.Y);
         var b = CellWorld(cells.Right - 1, cells.Bottom - 1);
         return Rect.MinMaxRect(Mathf.Min(a.x, b.x) - half, Mathf.Min(a.y, b.y) - half, Mathf.Max(a.x, b.x) + half, Mathf.Max(a.y, b.y) + half);

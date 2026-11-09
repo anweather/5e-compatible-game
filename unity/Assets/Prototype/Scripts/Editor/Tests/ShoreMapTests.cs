@@ -133,7 +133,7 @@ public class ShoreMapTests
     public void TheWorldIsWellInsideTheMap()
     {
         var map = BakedMap();
-        var layout = ValleyTerrain.Layout;
+        var layout = EditorGround.Layout;
         var (x1, _) = layout.ChunkCorner(layout.ChunksX, 0);
         var (_, z0) = layout.ChunkCorner(0, 0);
         Assert.AreEqual(1f, map.At(new Vector2(x1, z0)).reach, 1e-3f, "waves at full strength at the world's south-east corner");

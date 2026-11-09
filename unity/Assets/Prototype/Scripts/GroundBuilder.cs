@@ -5,8 +5,8 @@ using System.Linq;
 using Chem;
 using UnityEngine;
 
-// Arrays into TerrainData (docs/design/maps-as-data.md, section 1): the one way a chunk's ground is built at run time,
-// behind GroundSwitch. Two levels fill the same arrays, a map's ground/ (GroundPack) or its land and cells
+// Arrays into TerrainData (docs/design/maps-as-data.md, section 1): the one way a chunk's ground is built, at run time
+// (MapTerrains) and for the yard's build to stand things on. Two levels fill the same arrays, a map's ground/ (GroundPack) or its land and cells
 // (GroundFromLand), read from the map's folder by path. What can't be data stays an asset: the prototypes (layers, trees,
 // grass) come from one template TerrainData. It builds the terrain's data only: its material and its place in the scene
 // are the Terrain's own, which is how TerrainRock carries over.
@@ -28,14 +28,6 @@ public sealed class GroundBuilder
         layerAt = pack.Layers.Select(name => Array.FindIndex(layers, l => l != null && l.name == name)).ToArray();
         int missing = Array.IndexOf(layerAt, -1);
         if (missing >= 0) throw new InvalidDataException($"The ground's layer {pack.Layers[missing]} isn't on the template terrain");
-    }
-
-    /// <summary>The builder for a map's folder and mode, or null when the switch is off.</summary>
-    public static GroundBuilder For(string mode, string worldDir, TerrainData template, Func<GroundPack> fromLand, float chunkSize)
-    {
-        if (mode == GroundSwitch.Off) return null;
-        var pack = mode == GroundSwitch.On && GroundPack.In(worldDir) ? GroundPack.Load(worldDir) : fromLand();
-        return new GroundBuilder(pack, template, chunkSize);
     }
 
     /// <summary>The height of the chunks' step 0 in metres: where the terrains stand.</summary>

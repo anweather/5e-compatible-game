@@ -42,7 +42,7 @@ public static class DefenseFieldBuilder
     /// <summary>The path's squares (world cells), painted as the dirt they are.</summary>
     public static IEnumerable<(int x, int y)> PathCells()
     {
-        var layout = ValleyTerrain.Layout;
+        var layout = EditorGround.Layout;
         foreach (var (x, y) in layout.Cells())
         {
             var (cx, cz) = layout.CellCenter(x, y);
@@ -77,7 +77,7 @@ public static class DefenseFieldBuilder
     static Vector3 At(Vector2 p)
     {
         var at = new Vector3(p.x, 0f, p.y);
-        at.y = ValleyTerrain.GroundAt(at);
+        at.y = EditorGround.GroundAt(at);
         return at;
     }
 
@@ -97,7 +97,7 @@ public static class DefenseFieldBuilder
         foreach (float side in new[] { -1f, 1f })
         {
             var p = new Vector3(foot.x, 0f, foot.z + side * gap);
-            p.y = ValleyTerrain.GroundAt(p);
+            p.y = EditorGround.GroundAt(p);
             Solid(root, PrimitiveType.Cube, "Defense gate pillar", p + Vector3.up * (tall / 2f - 0.3f), new Vector3(1.1f, tall, 1.1f), looks.stone);
         }
         Solid(root, PrimitiveType.Cube, "Defense gate lintel", foot + Vector3.up * (tall - 0.1f), new Vector3(1.3f, 0.9f, gap * 2f + 1.6f), looks.stone);

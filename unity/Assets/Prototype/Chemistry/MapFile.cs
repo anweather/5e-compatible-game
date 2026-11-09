@@ -1,6 +1,7 @@
 // A map's folder, world/maps/<id> (docs/design/maps-as-data.md): map.json says what the map is and what its land should
 // look like, and cells.txt is its cell map, one legend character a cell, rows top to bottom.
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
@@ -25,6 +26,12 @@ namespace Chem
         public int Lowest { get; private set; }
         /// <summary>How low and high land can be stamped, in land units; left out, the valley's.</summary>
         public (int low, int high) LandRange { get; private set; } = (World.LandLowest, World.LandHighest);
+        /// <summary>
+        /// The places that stay code which the map wants built (docs/design/maps-as-data.md, section 4: the court, the
+        /// bridge, the falls...), by name; left out, none. The scene builds every place it knows into a root of its own,
+        /// and a root the map doesn't name switches itself off (PlaceRoot).
+        /// </summary>
+        public string[] Dresses { get; private set; } = System.Array.Empty<string>();
         /// <summary>Whether map.json says its own range. The valley's doesn't hold its land: it's where stamps stop, and the sea bed lies below it.</summary>
         public bool OwnLandRange { get; private set; }
 
@@ -38,6 +45,7 @@ namespace Chem
             {
                 LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
                 OwnLandRange = drawable != null,
+                Dresses = o["dresses"] is JArray dresses ? dresses.Select(d => (string)d).ToArray() : System.Array.Empty<string>(),
                 Id = (string)o["id"],
                 Name = (string)o["name"],
                 W = (int)o["size"][0],
