@@ -41,6 +41,20 @@ Each entry has:
 
 ## Decided
 
+### J-081: An outside architecture review (2026-11-08)
+
+- **Asked:** Andrew pasted a review of the repo's architecture, CI and tests.
+- **Also comes up when:** splitting assemblies or test projects, refactoring the core, CI speed.
+- **The lead's triage:** kept the review's "keep" list (engine-free core, rules as JSON, lockstep, goldens). Taken for
+  u2 now as `core-boundaries`: CI triggers and caching, test projects split by boundary, Unit/Simulation categories,
+  World.React's Apply split (goldens byte-identical), dependency directions in ARCHITECTURE.md. Deferred until after
+  the 3 x 3 playtest: a runtime asmdef for Scripts (the PC's compile time; measure first). Dropped after the
+  reviewer's second look at dev: splitting World.Sim's passes (keep its stages, slices and order; SlicedTickTests and
+  TickStageBench already guard them). No weekly CI review (Andrew: "let's not"). Already done: the sandbox is frozen (2026-10-31); a Sweep category exists (test-speed-core).
+- **Weighed:** CI takes 4.5-5 min and isn't the bottleneck (the PC's Editor is), so CI changes are cheap tidying;
+  the test split and React refactor help agents most (smaller things to read and test).
+- **Revisited:** 0.
+
 ### J-080: The world squares (playtest 2026-11-08 follow-up, `docs/design/world-squares.md`)
 
 - **Asked:** 2026-11-08, by the lead; answered on https://claude.ai/artifact/SU4mkw9cWLdtgzjz5iDApQ (`picks`).
@@ -102,6 +116,13 @@ Each entry has:
   the path out of the village is the road leading up the mountain." A levelled shelf at the foot with the houses on
   it, one winding, graded trail out of the village up toward the crater, no houses on the steep cone.
 - **The big spells:** "way better now ... good enough for us to move ahead with" (wow-looks, 44a8103a).
+- **Spawn points (2026-11-08):** "Let's add more spawn points in the 3x3 too." The lead's reading: one spawn per
+  square from the plan (on a road, near its inn, village or landmark), a Host "Start in" choice, joiners beside the
+  host, a waystone at each, respawn at the nearest one reached. u2 in chunk-gen-polish step 5, the PC in play-nine
+  step 6.
+- **A hung Editor (2026-11-08):** play-nine's Editor (pid 44784) froze for 20 min after a whole-nine overhead
+  render (D3D12 fence lost, 14 GB). Andrew: yes, end that pid. One-off; the rule "never kill an Editor" stands, and
+  overhead shots stay to one or two squares at a time.
 - **Revisited:** 0.
 
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)

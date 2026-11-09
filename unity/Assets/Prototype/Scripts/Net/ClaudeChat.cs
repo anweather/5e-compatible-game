@@ -42,6 +42,17 @@ public sealed class ClaudeChat : IChatHarness
     /// <summary>For the real-prompt probe's comparison: the notes stay in their file, and the message goes without them. False in play.</summary>
     public static bool NotesOff { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        StandIn = null;
+        Tap = null;
+        Extra = null;
+        Model = null;
+        NotesOff = false;
+    }
+
     /// <summary>Whether a message is still being answered.</summary>
     public bool Busy => running != null;
 

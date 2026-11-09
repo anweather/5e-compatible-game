@@ -20,6 +20,13 @@ public partial class SpellCaster
     /// <summary>Lock-on and pitch on (the game) or off (the probe's before picture: the aim as it was).</summary>
     public static bool AimHelp { get; set; } = true;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetAimHelp()
+    {
+        AimHelp = true;
+    }
+
     /// <summary>The camera's ray to aim along instead of the crosshair's (the probe: a look up at a flyer). Null for the crosshair.</summary>
     public Ray? AimRayOverride { get; set; }
 

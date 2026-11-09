@@ -12,6 +12,13 @@ public class HoldShow : MonoBehaviour
     const float HurtSeconds = 0.35f;
     static float hurtAt = -1f;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        hurtAt = -1f;
+    }
+
     ChemGrid grid;
     World shownFor;
     GameObject plate;

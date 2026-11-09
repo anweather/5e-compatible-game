@@ -17,7 +17,27 @@ tools/probe.sh fire --shots /some/folder    # also save screenshots there
 tools/probe.sh perf --seconds 20            # hold the camera for 20 s
 tools/probe.sh online                       # host + one Multiplayer Play Mode virtual player
 tools/probe.sh online --keep-players true   # leave Player 2 running for faster reruns
+tools/probe.sh smoke fire court             # several, back to back: one JSON each, then the batch's
+tools/probe.sh sweep                        # every probe (layer 4, docs/TESTING_LAYERS.md)
+tools/probe.sh sweep --half 1               # every other probe by name: the PC runs half 1, the Mac half 2
 ```
+
+**Several at once.** Names in a row run as a batch: the Editor runs each in a Play session of its own (leaving Play
+mode is what puts the world back) and goes straight on to the next, so there's no CLI round trip between them. Each
+one's JSON is in `unity/Temp/Probe/results/NNN-name.json` as it finishes and is printed at the end, followed by the
+batch's own (`batch`: each scenario's state, pass and seconds; `pass` only when all did). A two-player scenario
+(`online`, ...) runs on its own; `sweep` runs those after the batch, and leaves out the clips (`films: true` in
+`ProbeScenarios`: they need `--shots`, and film for a brief).
+
+**Faster than real time.** A slow scenario whose checks hold at speed says so in `ProbeScenarios` (`speed: 3f`): the
+runner sets `Time.timeScale` for it, so the world's ticks, physics and `Wait` run that much faster, and puts it back
+after. A run with `--shots` films at real speed. A scenario that measures frames or real seconds stays at 1: `hands`
+(charge timed in frames), `castfeel` (beats in frames) and `stamplooks` (how far physics flings a crate) fail at 3x.
+
+**Entering Play mode doesn't reload the domain** (Edit > Project Settings > Editor > Enter Play Mode Settings:
+domain reload off, scene reload on; since J-023, 2026-10-27), so entry takes about a second. Statics keep their values from one Play session
+to the next: a static that a session changes is set back in a `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`
+method of its class (`ResetStatics` and the like), and a cached Unity object is made again when it's null.
 
 `tools/probe.sh` exits 0 when every check passed, 1 when one failed or the
 run was aborted, 2 when the run couldn't start (unknown name, already playing,
@@ -32,11 +52,9 @@ unity command probe run --name smoke [--shots <folder>] [--seconds N] --result-o
 unity command probe result --wait true --timeout 300 --result-only
 ```
 
-Why two calls, not one: entering Play mode reloads the scripting domain (the
-project keeps domain reload on), which restarts the Editor's command server
-and drops any open request. So `probe run` saves the request and enters Play
-mode, and returns at once. After the reload, the scenario runs, its result is
-written to `unity/Temp/Probe/result.json`, and the Editor leaves Play mode.
+Why two calls, not one: a compile reloads the scripting domain, which restarts the Editor's command server and drops
+any open request, and a run can take minutes. So `probe run` saves the request and enters Play mode, and returns at
+once. The scenario runs, its result is written to `unity/Temp/Probe/result.json`, and the Editor leaves Play mode.
 `probe result --wait true` waits for that file to say `done` or `aborted`. It
 can fail to connect for a few seconds during the reload; the script retries.
 
@@ -85,7 +103,7 @@ and `SpellCaster.Cast` (the spell must be in the rules).
 |---|---|---|
 | `smoke` | Checks every thing of `world/things.json` spawned on its own cell; walks toward the pond for up to 3 s, casts each Elements spell once (Fire Bolt on the oil, Create Water, Ray of Frost, Shocking Grasp, Grease, Gust of Wind, Thunderwave, Levitate), then Shape Earth | `things_spawned` (as many as the data lists, each on its cell with its kind), `walked` (over 1 m), `bar_has_<spell>` for each, `cast_<spell>` ("You cast …" in the World log; not Levitate, which logs nothing there), `fire_started`, `levitate_lifted` (a prop's "floats up" line), `reactions_logged` (World log lines other than casts), `mold_earth_shaped` (its cells' heights changed) |
 | `fire` | Fire Bolt on the meadow west of the old yard, camera high above | `fire_spread_t10` (more than 1 burning cell at t+10 s); reports burning cells at t+0, t+10 and t+20 s and ash cells at t+0 and t+20 s |
-| `earth` | Earthen Trench west from the pond's bank, wait 8 s, then Wall of Stone across it | `trench_dug`, `trench_has_water_t8` (a trench cell has water), `wall_raised` (every wall cell is a raised wall) |
+| `earth` | Earthen Trench west from the pond's bank, wait 8 s, then Wall of Stone across it | `trench_dug`, `trench_has_water_t8` (a trench cell has water), `wall_raised` (every wall cell is a raised wall, or on what was open water at the cast a stepping stone exactly Wall of Stone's `stepping` high, J-039; at least one wall) |
 | `perf` | Fixed camera over the meadow toward the pond for `--seconds` (default 10, 1 to 300) | Only `no_console_errors`; the point is `frames` |
 | `online` | This Editor hosts; Multiplayer Play Mode's Player 2 joins on 127.0.0.1. On one schedule of sim ticks: Player 2's Thunderwave beside crate `4,5#2` and the host's wizard; each casts Fire Bolt (meadow; oil spill), Earthen Trench (from the pond's bank; beside it) and Wall of Stone; the host's wizard falls 10 m. Both sample at the same tick, 20 s after the fall | `virtual_player_joined`, `virtual_player_reported`, `checksums_equal` (every 30-tick checksum both recorded, at least 3), `sampled_same_world`, `client_saw_no_desync`, `client_terrain_matches` (cells' heights and the terrain drawn under the earth spells, within 1 cm, and dug), `client_water_matches` (wet cells, water, cells drawn wet), `client_walls_match`, `thing_ids_match` (the same stable ids and kinds on both, all of `world/things.json`), `prop_moved_matches` (crate `4,5#2`, found by its stable id, thrown over 1 m, client within 5 cm), `player_knockback_matches` (the host's wizard, same), `client_no_console_errors`, `reset_online` (the host's R resets the world for everyone: the countdown heard for the reset's tick, not reloaded, both players stay), `reset_things_back` (the same stable ids after, a crate broken just before back too), `reset_wizard_at_start`, `reset_clock_restarts`, `reset_checksums_equal` (every 30-tick checksum after the reset equal on both, at least 3), `tag_passes_on_touch` (the host starts tag as it and steps up to the virtual player, who is then it); the virtual player sees the host's Shapeshift form and its end (`shape_*` checks); both peers see the same cast beats (`beats_seen_online`); a remote wizard gets no hit-stop (`remote_wizard_has_no_hit_stop`), the client settles after a reset (`reset_client_settled_s`), with a settle wait after a reset and 0.3 s between casts; each online run takes 3-4 GB of memory for the virtual player; a remote wizard's cast sounds from where it stands (`remote_cast_sounds_at_its_wizard`) |
 | `menu` | The Esc menu with a controller: Start pressed on a virtual gamepad the run adds, then the menu's own `Navigate` / `Submit` / `Back` (what the d-pad, A and B call): every entry is in its sub menu; Game, down to Mods, A, A on the first mod twice, B; Credits and back; Join by code (letters stepped, A, B twice); B closes; Start opens and closes. `--shots` saves the main page with the highlight, Mods, Credits and Join by code | `start_opens_menu`, `wizard_paused`, `main_page_items`, `mods_page_opens`, `mods_page_lists_mods` (5 mods and Back), `a_toggles_mod`, `a_toggles_mod_back`, `b_backs_out_of_mods` (highlight back on Mods), `credits_page_opens`, `code_page_opens`, `code_page_b_goes_back_a_letter`, `code_page_b_leaves`, `b_closes_menu`, `wizard_resumed`, `start_closes_menu`, `cut_entries_gone` (J-065: no sub menu has Host, Join, Frame-rate log or Open log folder); `Settings_has_Play_log`, `play_log_not_in_developer`, and A on it twice from a log writing: `play_log_says_off`, `play_log_off_is_kept`, `play_log_off_stops_writing`, `play_log_off_stays_off_next_game`, then the same four back on, the choice put back after; the Shake and rumble page opens (`feel_page_opens`) and its buttons step (`feel_buttons_step`) |

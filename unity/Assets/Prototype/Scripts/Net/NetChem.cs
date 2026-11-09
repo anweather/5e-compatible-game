@@ -147,6 +147,9 @@ public partial class NetChem : NetworkBehaviour
     /// </summary>
     public bool CaughtUp => synced && NetTick >= replayedUpTo;
 
+    /// <summary>The tick a late joiner's history went up to: it replayed the ticks to it and ran those after it live; 0 for the host.</summary>
+    public int ReplayedUpTo => replayedUpTo;
+
     /// <summary>The countdown to an online reset, in seconds (J-014).</summary>
     public const float ResetCountdownSeconds = 3f;
 

@@ -1,0 +1,166 @@
+number,title,state,finds,ite,tokens,minutes,fix_ite,fix_commits,days
+167,"lookfx probe: the rules MCP answers ""That isn't JSON."" to the blue fire patch (14 of 103 fail)",CLOSED,4,0,0,25,13272661,5,0.6
+166,"aimlooks probe: no aim marker for a selected spell since D16 (9 of 65 fail)",CLOSED,1,0,0,0,3440255,3,0.5
+165,"The Hold: the offer can include upgrades a one-handed wizard can't use",OPEN,2,0,150000,30,641666,3,2.9
+164,"Late joiner's cast checksum differs for ticks before a moment",OPEN,1,0,0,0,0,0,3.1
+163,"Human playtest, alpha 0.1.11 (2026-11-05)",OPEN,1,0,0,0,0,1,3.4
+162,"Core tests take 5 to 6 minutes, and nothing runs in parallel",CLOSED,2,0,0,0,909147,3,0.1
+161,"Invisible tree colliders left standing where a laid row cleared the trees",CLOSED,1,0,0,0,2832323,2,0.1
+160,"Camera on the castle: hides the wizard at the stair top, jams on the wall walk",CLOSED,2,0,0,0,4140491,2,0.2
+159,"Claude's houses all look the same",OPEN,1,0,0,0,0,0,3.9
+158,"Wizard invisible after changing back from a shapeshift",OPEN,3,0,0,0,0,0,3.9
+157,"Shapeshift: the camera sits inside a big deer",OPEN,1,0,0,0,0,0,3.9
+156,"Land stamps: nothing limits steepness, and refusals move stamps far from where asked",OPEN,3,0,0,0,1166435,3,3.9
+155,"Switching a mod on stalls one frame for 115 to 182 ms",OPEN,1,0,0,0,0,0,3.9
+154,"Late join and going online: a 1.5 s frame, the joiner's unnamed",OPEN,1,0,0,0,0,0,3.9
+153,"Start-up: defer RulesMcpServer.Start until it is needed",OPEN,1,0,0,0,0,0,3.9
+152,"Epic: The game loop",OPEN,1,0,0,0,0,1,4.0
+151,"Land stamps: the frame a stamp lands takes over 100 ms",CLOSED,3,0,0,0,6661661,2,0.4
+150,"Named acts: rows don't share a spot at a named place",OPEN,1,0,0,0,1013924,2,4.2
+149,"Named acts: a firing that drops rows says it's done",OPEN,1,0,0,0,1013924,2,4.2
+148,"Land stamps: a small stamp reads as a rock patch",OPEN,2,0,0,0,7692150,3,4.2
+147,"Land stamps: a crate slid 55 m off a dome",OPEN,2,0,0,0,7692150,3,4.2
+146,"Land stamps: the same canyon can be refused by seed",OPEN,1,0,0,0,1013924,2,4.2
+145,"Unity Editor memory grows to 14 GB in a long session; maybe a leak",OPEN,2,0,0,0,0,0,4.3
+144,"Land stamps: act says 100 m either way, hollows stop at -17 m",OPEN,1,0,0,0,865827,2,4.4
+143,"Land stamps: a stamp went over the ball court",OPEN,1,0,0,0,865827,2,4.4
+142,"Land stamps: props don't follow the ground",OPEN,1,0,0,0,1513228,2,4.4
+141,"Maps phase 9: keeping (keep_land, a hill shaped by asking Claude then played on)",OPEN,1,0,0,0,0,0,4.4
+140,"Maps phase 8: the test (host picks a map; the Drowned Chain; a player build with two peers)",OPEN,1,0,0,0,0,0,4.4
+139,"Maps phase 7: sea and life (Ocean from land, shore map, level from map.json)",OPEN,1,0,0,0,0,0,4.4
+138,"Maps phase 6: the scene lets go (terrains and ChemGrid.map out, place roots)",OPEN,1,0,0,0,0,0,4.4
+137,"Maps phase 5: the builder (arrays to TerrainData behind a switch; look compared, start-up measured)",CLOSED,3,0,0,0,0,0,0.6
+136,"Maps phase 4: export (the valley's ground/, its tests, the fell and Bind checks)",OPEN,1,0,0,0,0,0,4.4
+135,"Maps phase 3: land stamps live (the row, act, undo_act, budgets, save, reset); after named acts",OPEN,1,0,0,0,0,0,4.4
+134,"Maps phase 2: identity (hash, approval, LandHash, a mismatched peer really run)",OPEN,1,0,0,0,0,0,4.4
+133,"Maps phase 1: the folder (world/ to world/maps/valley/, map.json, cells.txt, MapCheck)",OPEN,1,0,0,0,0,0,4.4
+132,"In-game extras for talking to Claude: a terminal panel, speech to text, a player page",OPEN,1,0,0,0,0,0,4.4
+131,"Who did what: the core records who caused an effect (needs an ADR, D9)",OPEN,1,0,0,0,0,0,4.4
+130,"World tools: reading and looks, mods in the world, spawners, scoped looks, colour mixing, paint as a test",OPEN,1,0,0,0,0,0,4.4
+129,"Generated areas from biomes: baked from seed and theme, or at run time",OPEN,1,0,0,0,0,0,4.4
+128,"Punchy animal port, 2 and 3: variety as data; water life",OPEN,1,0,0,0,0,0,4.4
+127,"What Claude can do in the world: named acts, more triggers, a general ball, animals apart, the water level",OPEN,1,0,0,0,0,0,4.4
+126,"Game modes: saved sets of mods",OPEN,1,0,0,0,0,0,4.4
+125,"Pick another LLM harness (Codex, Kiro): the hard requirement and a terms check first",OPEN,1,0,0,0,0,0,4.4
+124,"Dragon leftovers: shelter in the rules, dawn, birds, a landing clip, raiders drawn down",OPEN,1,0,0,0,0,0,4.4
+123,"The Gauntlet: a carnival course and spell-restricted zones, a small slice first",OPEN,1,0,0,0,0,0,4.4
+122,"Spell golf: play again after holing out (needs a GolfCommand intent)",OPEN,1,0,0,0,0,0,4.4
+121,"The beard as a look option",OPEN,1,0,0,0,0,0,4.4
+120,"Weather casts and three-element casts",OPEN,1,0,0,0,0,0,4.4
+119,"Player saves: progress travels with the player (J-038)",OPEN,1,0,0,0,0,0,4.4
+118,"World life: villages, villagers, fish, birds, generated wizard looks",OPEN,1,0,0,0,0,0,4.4
+117,"Performance pass: player-build spikes and Play-mode start",OPEN,1,0,0,0,0,0,4.4
+116,"Finer ground: a smoother height field, or finer height with mean-height water",OPEN,1,0,0,0,0,0,4.4
+115,"Tower defense: towers that shoot, upgrades, currency, flying and swimming raiders, shoves",OPEN,1,0,0,0,0,0,4.4
+114,"Platformer tower polish: wall jump, kept best times, shared collapse, camera on the far side",OPEN,1,0,0,0,0,0,4.4
+113,"Ball court scoreboard polish: HUD line, reset, clock or first to N",OPEN,1,0,0,0,0,0,4.4
+112,"Climbing",OPEN,1,0,0,0,0,0,4.4
+111,"Swim animation",OPEN,1,0,0,0,0,0,4.4
+110,"World streaming, part 2: to disk, interest by chunk, floating origin",OPEN,1,0,0,0,0,0,4.4
+109,"Components in the rules (ECS-ready step 1: flammable, conducts, interned ids)",OPEN,1,0,0,0,0,0,4.4
+108,"Animation: foot and aim IK, casting poses",OPEN,1,0,0,0,0,0,4.4
+107,"Sound by distance and proximity voice (Vivox, D8), sound-sight spells",OPEN,1,0,0,0,0,0,4.4
+106,"First-person mode",OPEN,1,0,0,0,0,0,4.4
+105,"Weapons: spell weapons or a gun module (needs a fit decision first)",OPEN,1,0,0,0,0,0,4.4
+104,"Items and an inventory: tools, flasks, hands or a belt",OPEN,1,0,0,0,0,0,4.4
+103,"Weather, the rest: heat, fronts per chunk, big-fire updraft, rain under roofs, splashes, Control Weather choosing wind or fog",OPEN,1,0,0,0,0,0,4.4
+102,"What night does: stars, lights at dusk, slowing or stopping time",OPEN,1,0,0,0,0,0,4.4
+101,"Epic: Look, feel and animation",OPEN,1,0,0,0,0,0,4.4
+100,"Epic: Performance and test health",OPEN,1,0,0,0,0,0,4.4
+99,"Epic: Lockstep and online",OPEN,1,0,0,0,0,0,4.4
+98,"Epic: Claude in the game",OPEN,1,0,0,0,0,0,4.4
+97,"Epic: Mini games",OPEN,1,0,0,0,0,0,4.4
+96,"Epic: Attributes, bodies and items",OPEN,1,0,0,0,0,0,4.4
+95,"Epic: Spell effects and casting",OPEN,1,0,0,0,0,0,4.4
+94,"Epic: Material interactions",OPEN,1,0,0,0,0,0,4.4
+93,"The build's PSO content check comes and goes, so a good release build can report FAILED",OPEN,1,0,0,0,0,0,4.6
+92,"The lava Molten Boulder leaves doesn't hurt anything",OPEN,1,0,0,0,0,0,4.6
+91,"Frost sits on molten lava until the pool sets",OPEN,2,0,0,0,0,0,4.9
+90,"Deep ice never thaws, and stands alone after its water has gone",OPEN,1,0,0,0,0,0,4.9
+89,"Watcher reads a dated limit reset as today, so a weekly limit shows as back early",CLOSED,2,0,0,0,3474651,3,0.2
+88,"Mod dependence should count styles and building rows, not only materials",CLOSED,1,0,0,0,2713547,4,0.0
+87,"DragonTests sweep budget flakes on a loaded machine",OPEN,1,0,0,0,0,0,5.5
+86,"A mod can't name another mod's material since temp-materials (house wing refused)",CLOSED,1,0,0,0,1652743,3,0.0
+85,"Mod building tables: three quiet gaps (no throw)",CLOSED,1,0,0,0,1018212,3,0.1
+84,"Play mode run-in-background rewrites a tracked ProjectSettings file",CLOSED,1,0,0,0,0,0,0.0
+83,"Late-joiner replay grows by every step while a step trigger is on",OPEN,2,0,0,0,405720,2,5.6
+82,"fauna probe: cornered_deer_mills flakes about 1 in 12 on dev",OPEN,1,0,0,0,0,0,5.7
+81,"set_run_in_background dirties a tracked ProjectSettings file",CLOSED,2,0,0,0,2774644,2,0.4
+80,"Claude's species: resizing misses animals already out, and giants flee too far and run too fast",CLOSED,1,0,0,0,7819387,7,0.3
+79,"A mod changing building tables may throw in ApplyRoom on every peer",CLOSED,1,0,0,0,730751,3,0.4
+78,"Editor test runs write into the player's data folder",CLOSED,1,0,0,0,2872550,3,0.5
+77,"The dragon and meteor showers loop, and the dragon isn't in the tools",OPEN,1,0,0,35,634791,2,6.0
+76,"Rules that react to the player walking",OPEN,1,0,0,35,13670987,6,6.0
+75,"No tool scatters trees: asking for 50 trees built roofless huts",CLOSED,1,0,0,35,5175426,6,0.1
+74,"A spell can't summon a creature",CLOSED,1,0,0,35,3846516,4,0.1
+73,"New creatures from parts: centaurs and other made-up bodies",OPEN,1,0,0,35,14035911,10,6.0
+72,"Animals made through Claude stand still",CLOSED,1,0,0,35,1325738,2,0.1
+71,"Claude says a change worked when nothing visible changed: lit windows",CLOSED,1,0,0,35,4243403,2,0.1
+70,"After a meteor shower and a storm the frame rate halves: water tiles take 2 ms each to draw",OPEN,1,0,0,35,28727165,9,6.0
+69,"More than one map: ship and load maps other than the valley",OPEN,1,0,0,0,0,0,6.2
+68,"A lagging client's rule switch reads a stale room",OPEN,1,0,0,0,0,0,6.2
+67,"roomruin fails on dev on the Mac, including checksums_match",CLOSED,1,0,0,0,8287916,3,0.2
+66,"A client throws InvalidOperationException (LoadScene in play mode) on the first run after a yard rebuild",OPEN,1,0,0,0,0,0,6.4
+65,"roomhost fails on dev on the Mac: the client seems not to apply the host's Big fireball",CLOSED,1,0,0,0,4578971,3,0.2
+64,"Chat fails with no help on an account without Haiku; blocks 0.1.11",OPEN,1,0,0,0,5178265,4,6.5
+63,"A player's saved mod lives in the install folder, so an update may wipe it",OPEN,1,0,0,0,2014624,4,6.5
+62,"A player over about 1.2 s behind can see a real cast fizzle",CLOSED,1,0,0,0,505073,1,0.0
+61,"Claude can't change sizes: bigger animals, taller player",OPEN,2,0,0,35,4022450,4,7.0
+60,"Build on water: docks and anything else that sits on the surface",OPEN,2,0,0,35,4568669,5,7.0
+59,"Chat: progress bar for players, time from prompt to world, tokens per prompt",OPEN,1,0,0,0,26771113,23,7.0
+58,"Voice: dictation gives no text, and the next press freezes the game for 20 s",CLOSED,4,0,0,10,8338236,9,2.0
+57,"Created buildings: lit as if by a constant light, and flicker low on the walls",CLOSED,1,0,0,0,3280468,3,1.0
+56,"chat fails on the Mac: Claude wouldn't start",OPEN,1,0,0,0,0,0,7.0
+55,"a late joiner's replay disagrees with the host for a checksum or two after a Fireball",OPEN,2,0,0,0,0,0,7.0
+54,"row houses: burnt or broken walls stay drawn; other first-cut gaps",OPEN,1,0,0,0,266832,1,7.1
+53,"spoken words are written to the player log",OPEN,1,0,0,0,1189905,2,7.1
+52,"MCP gaps from the first play with Claude in the game",OPEN,1,0,0,0,2211743,2,7.3
+51,"the radial doesn't look like a wheel on keyboard and mouse; colours are off",CLOSED,1,0,0,0,4648280,3,0.2
+50,"roomopen fails 4 of 8 on the Mac, passes on the PC",CLOSED,1,0,0,0,0,0,1.1
+49,"fire set to blue on the element leaves a Fireball's own blast orange",CLOSED,1,0,0,0,488191,2,0.1
+48,"a landing past 90 m is silent",OPEN,1,0,0,0,0,0,7.5
+47,"up close you can see inside models: a deer's cylinder, the log cabins",CLOSED,1,0,0,0,463095,4,0.5
+46,"Controller doesn't work right on the Linux build, such as on a Steam Deck; a player needed a keyboard",OPEN,1,0,0,0,0,2,7.8
+45,"combo probe: bar_fills_smoothly has a thin margin and failed 2 of 4 on spell-look-fx",OPEN,2,0,0,0,0,0,7.8
+44,"A wizard set down just above ice is launched: SurfaceEffects.Slide reads the drop as momentum (risk, unconfirmed in play)",OPEN,1,0,0,0,0,0,8.1
+43,"castfeel probe flakes: repeat_casts_* and hit_stop_is_short, and the check count varies",CLOSED,1,0,0,0,1992455,2,0.2
+42,"dragon probe flakes: burn_makes_no_garbage (4 KB multiples) and stream_seen_below (thin margin)",CLOSED,1,0,0,0,1992455,3,0.2
+41,"feel: sleet_slides_the_wizard fails on dev (slides 0.2 m)",CLOSED,1,0,0,0,1992455,2,0.2
+40,"First yard build pass leaves 37 materials white (Lake included); YardAutoBuild and PlaytestBuild do one pass",OPEN,1,0,0,0,0,0,8.3
+39,"Loading an element in the same frame a sliced tick fires a cast may lose that cast (unproven)",CLOSED,1,0,0,0,461952,2,0.3
+37,"The robe's cloth can go NaN and the wizard loses the skirt until the run ends",OPEN,2,0,0,0,960576,1,8.5
+36,"A glow ball (rose) can end up under the ground or far from where it started",OPEN,1,0,0,5,0,0,8.6
+35,"A peer more than 1.2 s behind may show another wizard's cast fizzling instead of releasing",OPEN,1,0,0,0,0,0,8.6
+34,"Draw the fog patches: fog weather's patches only change sight lines today",OPEN,1,0,0,0,0,0,8.6
+33,"Water left with a stale runoff edge",OPEN,1,0,84000,0,0,2,8.7
+32,"the forest is steadily twice the meadow's GPU time",OPEN,1,0,84000,0,0,2,8.7
+31,"GPU time climbs late in a storm",OPEN,2,0,84000,0,0,4,8.7
+30,"the lit smoke is most of a close fire's GPU time",OPEN,1,0,84000,0,0,2,8.7
+29,"snow still hitches about every 4 s",OPEN,2,0,84000,0,0,0,8.7
+28,"fog weather lays a unit on most open cells",OPEN,1,0,84000,0,4649960,4,8.7
+27,"storm and fog run the world under speed, and the debt has no cap",OPEN,1,0,84000,0,546584,1,8.7
+26,"the film is rebuilt whole for a few cells of mud",CLOSED,1,0,84000,0,0,0,1.2
+25,"one water tile takes far longer than the frame's budget",CLOSED,1,0,84000,0,0,0,1.2
+24,"Water.Recompute walks every wet cell for any change",CLOSED,1,0,84000,0,0,0,1.2
+23,"Surf should push toward the nearest land (the island too), and its waves should run that way",CLOSED,1,0,0,0,27867,3,7.0
+22,"Casting feels floaty: give it weight (no staff, IK hands, slam, hit-stop, recoil)",CLOSED,1,0,0,0,4223748,2,7.0
+21,"Rolling Boulder only rolls in the four compass directions",CLOSED,1,0,0,0,443677,4,5.7
+20,"The camera zooms right in when you walk up to a house or a window",CLOSED,1,0,0,0,2036270,5,1.4
+19,"Fire looks the same every time: centred in each square, stamped out",CLOSED,1,0,0,0,2036270,3,0.6
+18,"A punch on a face button, to break windows and knock things",OPEN,2,0,0,0,6523319,10,9.1
+17,"The wizard's head clips into the hat",CLOSED,1,0,0,0,1741497,2,1.4
+16,"A bloom flare on the wizard's head or neck when the camera looks down at about 45°",CLOSED,1,0,0,0,1741497,3,1.4
+15,"Casting water then fire on a pool of water put a brick texture on the water",CLOSED,1,0,0,0,2093948,5,5.7
+14,"Health: at 1 HP nothing happens, then it regenerates",CLOSED,1,0,0,0,0,6,7.2
+13,"The log calls a running turkey a ""rotten turkey""",CLOSED,1,0,0,0,1030193,4,0.0
+12,"Running on ice loses speed: it should keep your momentum",CLOSED,1,0,0,0,673694,6,5.7
+11,"Wave only travels in the four compass directions, and leaves no water behind",CLOSED,1,0,0,0,2388721,8,0.7
+10,"Grimoire: Back takes you to the pause menu instead of closing it",CLOSED,1,0,0,0,0,15,1.4
+9,"Cast bar: make it fill up smoothly instead of a chunky countdown",CLOSED,1,0,0,0,0,8,1.4
+8,"HUD: the stamina bar in the middle of the screen, the top bar and the log text are too big or in the way",CLOSED,1,0,0,0,0,8,7.2
+7,"Strong (held) casts are gone with element casting: Plant Growth does nothing, Wall of Stone's ramp can't be reached",CLOSED,1,0,0,0,1760898,7,5.7
+6,"Shapeshift: there's no way to change back before the timer runs out",CLOSED,1,0,0,0,673694,9,5.7
+5,"Walking hitches: a 185 ms frame in the forest at night",CLOSED,2,0,134000,0,13971333,11,7.3
+4,"The wizard's robe stretches into a long flat tail, and leaves the legs bare",OPEN,1,0,50000,0,4485772,4,9.2
+3,"A flat pale band covers the view at the waterfall's pool",OPEN,1,0,50000,0,11015765,8,9.2
+2,"Targeting UI: aim markers shaped by the spell (a direction, a top-down burst, a rising column), not cream squares",CLOSED,1,0,50000,0,20121964,11,7.3

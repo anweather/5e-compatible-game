@@ -567,6 +567,17 @@ public partial class ChemGrid : MonoBehaviour
 
     static string checkedMap;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetMapStatics()
+    {
+        folders = null;
+        mapHash = null;
+        mapHashOf = null;
+        checkedMap = null;
+        KeepStartMs = 0;
+    }
+
     // A folder that's wrong stops the game here, by name, rather than start on the wrong land: once, not at every reset.
     static void CheckMap()
     {

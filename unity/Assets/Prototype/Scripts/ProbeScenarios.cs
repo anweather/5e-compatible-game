@@ -20,14 +20,23 @@ public static class ProbeScenarios
         public Type Type { get; }
         /// <summary>Players in the run: more than 1 means Multiplayer Play Mode virtual players (Player 2 on), started before Play mode.</summary>
         public int Players { get; }
+        /// <summary>
+        /// How much faster than real time the run plays (Time.timeScale, so the ticks, physics and Wait), for a slow scenario
+        /// whose checks hold at that speed; 1 for one that measures frames or real seconds.
+        /// </summary>
+        public float Speed { get; }
+        /// <summary>Films into --shots and fails without it: a clip for a brief, left out of a sweep.</summary>
+        public bool Films { get; }
 
-        public Entry(string name, Type type, float maxSeconds, string description, int players = 1)
+        public Entry(string name, Type type, float maxSeconds, string description, int players = 1, float speed = 1f, bool films = false)
         {
             Name = name;
             Type = type;
             MaxSeconds = maxSeconds;
             Description = description;
             Players = players;
+            Speed = speed;
+            Films = films;
         }
     }
 
@@ -42,7 +51,7 @@ public static class ProbeScenarios
             "Checks: the fire has spread (more than one burning cell at t+10 s), no console errors."),
         new Entry("earth", typeof(EarthProbe), 60f,
             "Earthen Trench west from the pond's bank, then Wall of Stone across it. " +
-            "Checks: water in the trench by t+8 s, the wall's cells raised to a wall, no console errors."),
+            "Checks: water in the trench by t+8 s, the wall's cells raised to a wall, or on open water to stepping stones, no console errors."),
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
@@ -171,18 +180,18 @@ public static class ProbeScenarios
             "The beats of a cast by elements (CastBeats): a single, a pair, one charged and one cancelled, and their sounds (CastSounds). Checks: each beat and sound in order, the thump at contact, the hum rising by level and gone after a cancel, pause, fall, Shapeshift, reset or quit, the hands at their targets once settled, " +
             "the slam about 0.1 s, a charged cast's beats to the frame as they were, an uncharged cast's wind-up and timing, casts on each other's heels all going on time, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after."),
         new Entry("castclip", typeof(CastClipProbe), 90f,
-            "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg."),
+            "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg.", films: true),
         new Entry("punchclip", typeof(PunchClipProbe), 60f,
-            "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes."),
+            "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes.", films: true),
         new Entry("dragonclip", typeof(DragonClipProbe), 200f,
-            "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
+            "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire.", films: true),
         new Entry("chimeclip", typeof(ChimeClipProbe), 60f,
-            "Films the casts that used to chime (Scalding Steam, Mud, Rain Cloud, a d-pad cast) with the HUD and the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Checks: each cast started, frames and sound were written."),
+            "Films the casts that used to chime (Scalding Steam, Mud, Rain Cloud, a d-pad cast) with the HUD and the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Checks: each cast started, frames and sound were written.", films: true),
         new Entry("millclip", typeof(MillClipProbe), 90f,
-            "Films, for Andrew's board, into --shots: three deer backed into a corner of the valley by the wizard, then two leashed deer in the meadow with the wizard just outside the leash. Same corner and cameras each run. Checks: the corner found, the film saved with its sound. Metrics: each deer's moving share, metres walked and reversals a second."),
+            "Films, for Andrew's board, into --shots: three deer backed into a corner of the valley by the wizard, then two leashed deer in the meadow with the wizard just outside the leash. Same corner and cameras each run. Checks: the corner found, the film saved with its sound. Metrics: each deer's moving share, metres walked and reversals a second.", films: true),
         new Entry("uxclip", typeof(UxClipProbe), 120f,
             "Films what plain shots can't show, with the HUD, into a folder each under --shots (frames for ffmpeg): grimoire/ (d-pad down, Back, then the menu's button and Back), " +
-            "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest."),
+            "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest.", films: true),
         new Entry("combo", typeof(ComboProbe), 85f,
             "The d-pad's spells on a virtual gamepad, with the HUD on: right cycles them, up casts Light, B cancels it with an item in hand and doesn't throw it, the cast bar fills " +
             "smoothly and evenly between ticks (#9), Back from the menu's grimoire stays in the menu (#10), the stamina line drains. Element loading, the slower walk and d-pad down " +
@@ -247,7 +256,7 @@ public static class ProbeScenarios
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
             "The chunk terrains the scene started with (MapTerrains, from the map's folder; unity/Temp/ground-builder saying land draws the land alone) and what the ground's Bind took. Checks: all 81 chunks built, none held by the scene, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
-            "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader."),
+            "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader.", speed: 3f),
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,
             "Land stamps seen small and with crates on them (#147, #148): a radius 3 dome is a bump (no rock paint, no boulders), then ten crates on a 15 m dome as it rises, against the same crates set on the still dome. " +
             "Checks: none buried, the carried crates go no higher or much further than on the still dome, the carry query's cost a frame with crates on the stamp, how far each slid and how fast, and where they end after the undo, no console errors."),
@@ -260,9 +269,9 @@ public static class ProbeScenarios
             "A map that isn't the valley, named in unity/Temp/map (test-fixtures/maps/coast-192 for its sea): the world and chunks are the map's, the wizard starts at its spawn on its ground and walks off, and the sea is drawn over its sea, a cove and a walled-off hollow and not over dry land, at the map's level. " +
             "Checks: each of those, not falling, no console errors. Shots: the land and the sea."),
         new Entry("cliffclip", typeof(CastleCliffClipProbe), 120f,
-            "Films the castle on its cliff from the town, then an eye-height walk from the castle's gate past the stable to the cliff's lip and the view down its face, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed."),
+            "Films the castle on its cliff from the town, then an eye-height walk from the castle's gate past the stable to the cliff's lip and the view down its face, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed.", films: true),
         new Entry("stampclip", typeof(StampClipProbe), 120f,
-            "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up."),
+            "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up.", films: true),
         new Entry("act", typeof(ActProbe), 60f,
             "Acts through the real MCP server in a running game (docs/design/world-acts.md): 20 trees near the wizard twice leave the mod list as it was, three deer come out, undo_act takes the second trees back and refuses animals, and set_species turns the turkeys blue. Checks: each of those, no console errors."),
         new Entry("chat", typeof(ChatProbe), 40f,
@@ -285,9 +294,9 @@ public static class ProbeScenarios
         new Entry("rowlight", typeof(RowLightProbe), 240f,
             "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
         new Entry("holdclip", typeof(HoldClipProbe), 150f,
-            "The hold-batch clip, with the HUD, on a virtual pad: in a run at the water tower the right trigger attunes the hand, then casts, the wave timer counting down; then high in the open keep raiders strike the crystal as it cracks and shatters. Into --shots: frames, sound.wav and timeline.txt."),
+            "The hold-batch clip, with the HUD, on a virtual pad: in a run at the water tower the right trigger attunes the hand, then casts, the wave timer counting down; then high in the open keep raiders strike the crystal as it cracks and shatters. Into --shots: frames, sound.wav and timeline.txt.", films: true),
         new Entry("holdbodies", typeof(HoldBodiesProbe), 480f,
-            "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt."),
+            "The Hold's raider kinds from the valley's animals, and the folk off the raiders' road in a run (hold-bodies): a run starts from the plate, the workers whose rounds go up the road walk to their stops for a run and none is left near it, then a mixed wave comes up the road, each kind drawn with its row's body, and strikes the crystal. With --shots, the clip: frames, sound.wav and timeline.txt.", speed: 3f),
         new Entry("holdeast", typeof(HoldEastProbe), 600f,
             "The Hold's second road (hold-east-path): a run's wave comes from both spawners and in at both gates, the east and the south; the brook behind the castle is dry; wading at the lake's edge slows the wizard a little. With --shots, films the clip (both roads, the south gate, a wade) and writes castle-map.png."),
         new Entry("towers", typeof(TowersProbe), 150f,
@@ -296,7 +305,7 @@ public static class ProbeScenarios
             "The keep's crystal at the Hold's heart (hold-batch): raiders beside the heart strike it, and as the keep's health is stepped down it cracks in stages, shatters at 0 and comes back whole for the next run. With --shots, pictures from up on the walls at each stage."),
         new Entry("hold", typeof(HoldProbe), 400f,
             "The valley's laid row (the-hold.md): its cells and drawing, no tree on it, a walk through the gate into the keep and its room, " +
-            "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls."),
+            "up a stair along the wall walk over the gate, a cast from there, the gate shut and burnt, and the frames from the floor and the walls.", speed: 3f),
         new Entry("hands", typeof(HandsProbe), 300f,
             "The hands (D16, unified-casting.md; the-hold.md, phase 3) on a virtual pad, mouse and keyboard: on outside the Hold, attuning from the spell list (a moment; one element on both hands), " +
             "a held trigger charging to the most and firing on its release, both held merging on screen and firing once, one hand tapping while the other charges, attuning in the room, " +
@@ -307,16 +316,16 @@ public static class ProbeScenarios
             "missing with lock-on and pitch off as the game was, then locking on and hitting with them on; Gust of Wind knocking a raider below back; a Whirlwind lifting one and flinging it. " +
             "With --shots, the before and after pictures."),
         new Entry("aimedclip", typeof(AimedClipProbe), 240f,
-            "The aimed scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg."),
+            "The aimed scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg.", films: true),
         new Entry("bigspells", typeof(BigSpellsProbe), 300f,
             "The four big spells (casting-pace-options.md, \"A Meteor for every element\") in a Hold run on the north wall, the hands on a virtual pad, each merged on screen and cast at a raider: " +
             "Thunder Strike marking it and bolting down, Tornado lifting and flinging it, Earth Spires throwing it up and leaving its spires standing, Iceberg crushing it and leaving walkable ice. With --shots, a picture of each."),
         new Entry("bigspellsclip", typeof(BigSpellsClipProbe), 300f,
-            "The bigspells scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg."),
+            "The bigspells scenario filmed with the HUD into --shots for the demo reel: frames and sound.wav, for ffmpeg.", films: true),
         new Entry("mergeclip", typeof(MergeClipProbe), 120f,
-            "Films three different merges with the HUD on a virtual pad (D16, \"The merge\"): each pair's icons slam into its own glyph as both hands charge, then it goes off. Scalding Steam, Lightning, Wall of Stone; the attuning between is cut. Into --shots: frames, sound.wav and timeline.txt."),
+            "Films three different merges with the HUD on a virtual pad (D16, \"The merge\"): each pair's icons slam into its own glyph as both hands charge, then it goes off. Scalding Steam, Lightning, Wall of Stone; the attuning between is cut. Into --shots: frames, sound.wav and timeline.txt.", films: true),
         new Entry("tapsclip", typeof(TapsClipProbe), 120f,
-            "Films the hands' taps (J-078, casting-taps) with the HUD on a virtual pad: triggers and bumpers tapped as fast as the hands take them, then a held charge, then a merge. Into --shots: frames, sound.wav and timeline.txt."),
+            "Films the hands' taps (J-078, casting-taps) with the HUD on a virtual pad: triggers and bumpers tapped as fast as the hands take them, then a held charge, then a merge. Into --shots: frames, sound.wav and timeline.txt.", films: true),
         new Entry("pairglyphs",typeof(PairGlyphsProbe), 30f,
             "Every merged pair's icon (D16, \"The merge\") on one sheet, as the HUD draws it, with the spell's name: --shots for a before and after."),
         new Entry("playermods", typeof(PlayerModsProbe), 120f,
@@ -325,7 +334,7 @@ public static class ProbeScenarios
         new Entry("handsmenu", typeof(HandsMenuProbe), 150f,
             "The pad's hands menu (pad-hands-menu) on a virtual pad: hold the d-pad's down, each stick points its hand at an element, letting go attunes both (the second after the first), B lets go without; the hands' icons show only while a hand is at work; in a Hold run nothing picks away from the towers and the tower's element does at one, then casts. With --shots, films the free-roam part."),
         new Entry("handsclip", typeof(HandsClipProbe), 90f,
-            "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg."),
+            "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg.", films: true),
         new Entry("progress", typeof(ProgressProbe), 600f,
             "The Hold's progress on screen (the-hold.md, phase 5), F7 playing from the save: a locked hand and gesture saying so, attuning only to what's unlocked, " +
             "the offer in words after wave 1, the d-pad picking Tough and the health it adds, the run's end and points earned, the save on disk, and a reset keeping them."),
@@ -482,11 +491,11 @@ public static class ProbeScenarios
             "What a full valley costs a frame: 120 animals and folk of a fixed mix round the wizard, 6 s to settle, 20 s measured. Metrics: the main thread's p50 and p95, and ValleyFauna's Update, Think and Draw markers, for the before and after of a change to the creatures."),
         new Entry("people", typeof(PeopleProbe), 90f,
             "The valley's peoples (rules/fauna.json, from Punchy's f3141f6), films into --shots <folder>: Hollowmere's folk come out, workers take up their posts, and a line of humans, a child, a dwarf, an elf, a goblin and an ogre walks past the camera. " +
-            "Checks: at least two workers at their posts, every people is in the rows and shows at its own size, no console errors."),
+            "Checks: at least two workers at their posts, every people is in the rows and shows at its own size, no console errors.", films: true),
         new Entry("spawners", typeof(SpawnersProbe), 160f,
             "Which spawners really turn up: the wilds opened up (a big cap, a fast spawn rate) for 40 s at each of three places, the start, the lake and far out. Metric: how many of each species came out; a check that every bird with a spawn row did, no console errors."),
         new Entry("waterlife", typeof(WaterLifeProbe), 60f,
-            "The valley's water from its rows, filmed into --shots <folder>: water deep enough to swim in near the wizard, with ducks, trout, koi, lily pads and reeds put there. Checks: the water is found, every row exists, no console errors."),
+            "The valley's water from its rows, filmed into --shots <folder>: water deep enough to swim in near the wizard, with ducks, trout, koi, lily pads and reeds put there. Checks: the water is found, every row exists, no console errors.", films: true),
         new Entry("closeup", typeof(CloseupProbe), 60f,
             "Models close up at a clear noon (issue #47): a deer across the follow camera, then a deer, a valley cabin and a village log house, each from the same " +
             "cameras (`--shots`). Checks: a deer at the lens is drawn for its shadow alone, and again once past it, no limb ends in the picture, the cabin's gable closed, " +
@@ -710,14 +719,24 @@ public class EarthProbe : ProbeScenario
         Check("trench_has_water_t8", wet > 0, $"{wet}/{trench.Count} cells wet, {units} units");
         Shot("trench");
 
-        // A Wall of Stone across it, north from (12, 7).
+        // A Wall of Stone across it, north from (12, 7): a wall on dry ground, and on open water, which the trench spills
+        // onto the flat cells beside it as the wizard walks over, stepping stones only "stepping" high (World.Terraform,
+        // J-039). Which cells were wet at the cast's tick only shows after it: a cell is a wall, or a stone of exactly
+        // that height in the spell's terrain.
         Place(10, 6);
+        var spell = World.Rules.Spell(SpellIds.WallOfStone);
         var wall = SpellCells(SpellIds.WallOfStone, 12, 7, 0);
+        var before = wall.ToDictionary(c => c, c => World.At(c.x, c.y).Height);
         yield return CastFromBar(SpellIds.WallOfStone, 12, 7, 0, 3f);
-        int raised = wall.Count(c => World.IsRaisedWall(World.At(c.x, c.y)));
+        bool Walled((int x, int y) c) => World.IsRaisedWall(World.At(c.x, c.y));
+        bool Stone((int x, int y) c) => !Walled(c) && World.At(c.x, c.y).Height == spell.Stepping && World.At(c.x, c.y).T == spell.Terrain;
+        int raised = wall.Count(Walled), stones = wall.Count(Stone);
         Metric("wall_cells", wall.Count);
         Metric("wall_cells_raised", raised);
-        Check("wall_raised", wall.Count > 0 && raised == wall.Count, $"{raised}/{wall.Count} cells a wall");
+        Metric("wall_cells_stepping", stones);
+        string Short() => string.Join(" ", wall.Where(c => !Walled(c) && !Stone(c))
+            .Select(c => $"({c.x},{c.y}) {before[c]}->{World.At(c.x, c.y).Height} {World.At(c.x, c.y).T} water {World.At(c.x, c.y).Water}"));
+        Check("wall_raised", raised > 0 && raised + stones == wall.Count, $"{raised} walls and {stones} stepping stones of {wall.Count}; neither: {Short()}");
         Shot("wall");
     }
 }
