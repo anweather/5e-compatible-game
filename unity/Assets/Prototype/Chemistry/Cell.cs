@@ -152,9 +152,11 @@ namespace Chem
             set { if (rare != null || value != 0) Kept.Cracked = value; }
         }
 
-        // World.TerrainOf's cache: the definition of the terrain id it was looked up for, dropped when T changes.
-        // Not cell state (not hashed or saved).
+        // World.TerrainOf's cache: the definition of the terrain id it was looked up for, dropped when T changes, and
+        // the rules it was looked up in (World's rules stamp: a switch makes every cell's stale at once, #181). Not cell
+        // state (not hashed or saved).
         internal TerrainDef Def;
+        internal int DefRules;
 
         /// <summary>Drops that cache, for when the rules it was looked up in are replaced.</summary>
         internal void ForgetDef() => Def = null;

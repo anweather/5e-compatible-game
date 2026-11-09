@@ -398,7 +398,8 @@ namespace Chem.Tests
         [Test]
         public void ATerrainARuleSwitchTookAwayComesBackAsDirt()
         {
-            var modded = R.WithMods(new[] { ModPatch.Parse("{ \"materials\": { \"cloudstone\": { \"name\": \"Cloudstone\", \"tags\": [\"ground\"] } } }") });
+            var modded = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"cloudstone\": { \"name\": \"Cloudstone\", \"tags\": [\"ground\"] } } }") });
+            Assert.That(modded.Terrain.ContainsKey("cloudstone"), "the mod defines it, and the switch back takes it away");
             var w = new World(modded, 64, 64, 2);
             w.At(5, 5).T = "cloudstone";
             w.KeepStart();

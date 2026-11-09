@@ -40,10 +40,21 @@ public sealed class CreatureBodies
         return kind;
     }
 
+    /// <summary>Whether the last Refresh found every row as it was, so no body changed.</summary>
+    public bool Unchanged { get; private set; }
+
     /// <summary>Brings the bodies up to these rules.</summary>
     public void Refresh(Rules rules)
     {
         var next = rules.Fauna;
+        // A switch that leaves every row as it was (most do) changes no body (#181).
+        Unchanged = tables != null && next.SameAs(tables);
+        if (Unchanged)
+        {
+            tables = next;
+            Rebuilt = 0;
+            return;
+        }
         var changedParts = tables != null ? next.ChangedParts(tables) : null;
         Rebuilt = 0;
         var kept = new HashSet<string>();

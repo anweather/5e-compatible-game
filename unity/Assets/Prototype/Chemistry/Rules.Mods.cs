@@ -54,6 +54,49 @@ namespace Chem
         /// </summary>
         public string Fingerprint => fingerprint ??= Fnv1a.Hash(CanonicalRules());
 
+        /// <summary>
+        /// Whether every look is as in <paramref name="other"/>: what <see cref="Fingerprint"/> leaves out as looks, every
+        /// "look" group and the element looks (the creature tables apart). A view asks it to tell whether a switch changed any
+        /// colour, so a switch that changed none needn't redraw the world (#181). Walks both documents together without
+        /// copying; any difference in their shape counts as a change, which only costs a redraw.
+        /// </summary>
+        public bool SameLooks(Rules other)
+        {
+            if (other == null) return false;
+            if (ReferenceEquals(this, other)) return true;
+            foreach (var p in doc.Properties())
+            {
+                if (FaunaTables.Holds(p.Name)) continue;
+                if (!(other.doc.Property(p.Name) is JProperty q) || !SameLooks(p, q)) return false;
+            }
+            return other.doc.Properties().All(q => FaunaTables.Holds(q.Name) || doc.Property(q.Name) != null);
+        }
+
+        static bool SameLooks(JProperty a, JProperty b)
+        {
+            if (IsLookGroup(a) || IsLookGroup(b)) return JToken.DeepEquals(a.Value, b.Value);
+            return SameLooks(a.Value, b.Value);
+        }
+
+        static bool SameLooks(JToken a, JToken b)
+        {
+            if (a is JObject oa)
+            {
+                if (!(b is JObject ob) || oa.Count != ob.Count) return false;
+                foreach (var p in oa.Properties())
+                    if (!(ob.Property(p.Name) is JProperty q) || !SameLooks(p, q)) return false;
+                return true;
+            }
+            if (a is JArray aa)
+            {
+                if (!(b is JArray ab) || aa.Count != ab.Count) return false;
+                for (int i = 0; i < aa.Count; i++)
+                    if (!SameLooks(aa[i], ab[i])) return false;
+                return true;
+            }
+            return true; // a value outside a look group isn't a look
+        }
+
         /// <summary>The effective rules as JSON, in the shape of the sandbox's Rules object (for tools and tests).</summary>
         public string ToJson() => doc.ToString(Formatting.Indented);
 
