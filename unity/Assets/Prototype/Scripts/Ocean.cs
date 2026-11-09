@@ -88,6 +88,7 @@ public class Ocean : MonoBehaviour
     public void Build()
     {
         Clear();
+        terrains = null;
         builtFor = MapLand.Current;
         if (builtFor != null) FromMap(builtFor);
         var out_ = seaward.normalized;
@@ -247,14 +248,71 @@ public class Ocean : MonoBehaviour
     float Depth(Vector2 xz, float outward)
     {
         var p = new Vector3(xz.x, 0f, xz.y);
-        foreach (var terrain in Terrain.activeTerrains)
-        {
-            var size = terrain.terrainData.size;
-            var local = p - terrain.transform.position;
-            if (local.x < 0f || local.z < 0f || local.x > size.x || local.z > size.z) continue;
-            return level - (terrain.SampleHeight(p) + terrain.transform.position.y);
-        }
+        var terrain = (terrains ??= new TerrainTiles()).At(p);
+        if (terrain != null) return level - (terrain.SampleHeight(p) + terrain.transform.position.y);
         return Mathf.Clamp(3f + outward * 0.12f, 3f, 60f);
+    }
+
+    TerrainTiles terrains;
+
+    // The terrains by where they stand, read once per build: the map's chunks are a grid of same-sized tiles, so a point
+    // finds its own in one step rather than asking each (the nine has 729, and the sea's mesh asks for every vertex).
+    sealed class TerrainTiles
+    {
+        readonly Terrain[] all = Terrain.activeTerrains;
+        readonly Dictionary<(int, int), Terrain> byTile = new();
+        readonly float x0, z0, w, d;
+        readonly bool tiled;
+
+        public TerrainTiles()
+        {
+            if (all.Length == 0) return;
+            var size = all[0].terrainData.size;
+            w = size.x;
+            d = size.z;
+            x0 = float.MaxValue;
+            z0 = float.MaxValue;
+            foreach (var t in all)
+            {
+                x0 = Mathf.Min(x0, t.transform.position.x);
+                z0 = Mathf.Min(z0, t.transform.position.z);
+            }
+            tiled = w > 0f && d > 0f;
+            foreach (var t in all)
+            {
+                var s = t.terrainData.size;
+                var p = t.transform.position;
+                float i = (p.x - x0) / w, j = (p.z - z0) / d;
+                if (!Mathf.Approximately(s.x, w) || !Mathf.Approximately(s.z, d) || Mathf.Abs(i - Mathf.Round(i)) > 0.01f || Mathf.Abs(j - Mathf.Round(j)) > 0.01f)
+                    tiled = false;
+                byTile.TryAdd((Mathf.RoundToInt(i), Mathf.RoundToInt(j)), t);
+            }
+        }
+
+        // The first terrain holding the point, as asking each in turn would find it (a shared edge goes to either).
+        public Terrain At(Vector3 p)
+        {
+            if (!tiled) return First(all, p);
+            int i = Mathf.FloorToInt((p.x - x0) / w), j = Mathf.FloorToInt((p.z - z0) / d);
+            for (int dj = 0; dj >= -1; dj--)
+                for (int di = 0; di >= -1; di--)
+                    if (byTile.TryGetValue((i + di, j + dj), out var t) && t != null && Holds(t, p)) return t;
+            return null;
+        }
+
+        static Terrain First(Terrain[] terrains, Vector3 p)
+        {
+            foreach (var t in terrains)
+                if (t != null && Holds(t, p)) return t;
+            return null;
+        }
+
+        static bool Holds(Terrain t, Vector3 p)
+        {
+            var size = t.terrainData.size;
+            var local = p - t.transform.position;
+            return local.x >= 0f && local.z >= 0f && local.x <= size.x && local.z <= size.z;
+        }
     }
 
     // Coordinates from lo to hi: fineStep apart between fineLo and fineHi, growing by a sixth each
