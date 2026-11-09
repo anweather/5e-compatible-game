@@ -189,13 +189,13 @@ namespace Chem.Tests
                 // Straight out on each side, at its radius and a cell past it.
                 foreach (var (dx, dy) in new[] { (1, 0), (0, 1), (-1, 0), (0, -1) })
                 {
-                    Assert.That(far.SeenAt(l.X + dx * r, l.Y + dy * r), Does.Contain(l), $"{Show(l)} at {r} cells");
-                    Assert.That(far.SeenAt(l.X + dx * (r + 1), l.Y + dy * (r + 1)), Does.Not.Contain(l), $"{Show(l)} at {r + 1} cells");
+                    Assert.That(far.SeenAt(l.X + dx * r, l.Y + dy * r), Has.Member(l), $"{Show(l)} at {r} cells");
+                    Assert.That(far.SeenAt(l.X + dx * (r + 1), l.Y + dy * (r + 1)), Has.No.Member(l), $"{Show(l)} at {r + 1} cells");
                 }
                 // A radius, not a square: on the diagonal at the square's corner it's out of sight.
-                Assert.That(far.SeenAt(l.X + r, l.Y + r), Does.Not.Contain(l), $"{Show(l)} on the diagonal");
+                Assert.That(far.SeenAt(l.X + r, l.Y + r), Has.No.Member(l), $"{Show(l)} on the diagonal");
                 int d = (int)(r / Math.Sqrt(2));
-                Assert.That(far.SeenAt(l.X + d, l.Y - d), Does.Contain(l), $"{Show(l)} on the diagonal within its radius");
+                Assert.That(far.SeenAt(l.X + d, l.Y - d), Has.Member(l), $"{Show(l)} on the diagonal within its radius");
             }
             // From the valley's middle: the list is exactly the landmarks within radius.
             var (vx, vy) = (Valley.x * ChunkGen.Size + 32, Valley.y * ChunkGen.Size + 32);
