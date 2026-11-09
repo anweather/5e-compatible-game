@@ -10,9 +10,10 @@ using UnityEngine.InputSystem.LowLevel;
 // (UX pass 4). Running onto ice and Frost's glaze keeps its speed and slides; snow
 // and a bank slow it; the punch on F and Circle on a pane, a crate and a ball, and
 // Square not punching, its strength, arm, hit-stop and landing, a miss, off still, and
-// the same ticks with and without its hit-stop; charged casts on keys and pad (their timing, Plant Growth on
-// burnt ground, Wall of Stone held to a ramp, Frost held to Sleet Storm's slippery
-// field); Frost over a swimmer, and Left Ctrl held climbing out of the water.
+// the same ticks with and without its hit-stop; charged casts from the hands (D16) on keys and pad (their
+// timing, water and earth thrown together held to Plant Growth on burnt ground, both hands of earth held to
+// Wall of Stone's ramp, a water sweep held to Sleet Storm's slippery field); Frost over a swimmer, and Left
+// Ctrl held climbing out of the water.
 public class FeelProbe : SpellLooksProbe
 {
     const int LaneLong = 30, LaneWide = 7, RunUp = 12;
@@ -23,6 +24,7 @@ public class FeelProbe : SpellLooksProbe
     const float CrateWentBefore = 0.42f, FistTolerance = 0.25f;
     Gamepad pad;
     Keyboard keys;
+    Mouse mouse;
     PlayerControls controls;
     string me;
     ItemHolder fists;
@@ -39,6 +41,8 @@ public class FeelProbe : SpellLooksProbe
         caster.enabled = true;
         pad = InputSystem.AddDevice<Gamepad>("Feel pad");
         keys = InputSystem.AddDevice<Keyboard>("Feel keys");
+        mouse = InputSystem.AddDevice<Mouse>("Feel mouse");
+        string leftWas = World.HandsOf(caster.CastPlayer).Holds[HandsDef.Left], rightWas = World.HandsOf(caster.CastPlayer).Holds[HandsDef.Right];
         me = caster.CastPlayer;
         fists = wizard.GetComponent<ItemHolder>();
         arm = wizard.GetComponent<PunchPose>();
@@ -53,6 +57,7 @@ public class FeelProbe : SpellLooksProbe
             yield return Charged();
             yield return Swimmer();
             yield return PunchTicks();
+            yield return Attune(leftWas, rightWas);
         }
         finally
         {
@@ -63,6 +68,7 @@ public class FeelProbe : SpellLooksProbe
             caster.enabled = casterWasOn;
             InputSystem.RemoveDevice(pad);
             InputSystem.RemoveDevice(keys);
+            InputSystem.RemoveDevice(mouse);
         }
     }
 
@@ -357,10 +363,10 @@ public class FeelProbe : SpellLooksProbe
 
     IEnumerator Charged()
     {
-        yield return PlantGrowth("keys", Key.C, Key.X, default, default);
-        yield return Ramp("keys", Key.C, default);
-        yield return PlantGrowth("pad", Key.None, Key.None, new GamepadState { leftTrigger = 1f }, new GamepadState().WithButton(GamepadButton.RightShoulder));
-        yield return Ramp("pad", Key.None, new GamepadState { leftTrigger = 1f });
+        yield return PlantGrowth("keys", false);
+        yield return Ramp("keys", false);
+        yield return PlantGrowth("pad", true);
+        yield return Ramp("pad", true);
         yield return Timing();
         yield return Sleet();
     }
@@ -371,29 +377,30 @@ public class FeelProbe : SpellLooksProbe
         var o = Spot(13, 9);
         Patch(o, 13, 9, TerrainIds.Dirt);
         yield return Aimed(o, 13, 9);
+        yield return Attune("earth", "earth");
+        yield return Cooled();
         float start = Time.time;
-        yield return Tap(Key.C);
-        yield return Wait(0.1f);
-        InputSystem.QueueStateEvent(keys, new KeyboardState(Key.C));
+        Press(false, HandsDef.Throw, false, true);
         float second = 0f, third = 0f;
         for (float t = 0f; t < 5f && third == 0f; t += Time.deltaTime)
         {
-            if (second == 0f && caster.HoldCharge >= 2) second = Time.time;
-            if (caster.HoldCharge >= 3) third = Time.time;
+            if (second == 0f && Charge >= 2) second = Time.time;
+            if (Charge >= 3) third = Time.time;
             yield return null;
         }
         float full = Time.time - start;
         Shot("bar-full-charge");
         yield return null;
         Check("held_marker_shown", caster.Marker != null, $"{caster.Marker?.Kind}");
-        InputSystem.QueueStateEvent(keys, new KeyboardState());
+        Let();
         for (float t = 0f; t < 4f && World.CastOf(me).Casting; t += Time.deltaTime) yield return null;
         float landedAt = Time.time - start;
         Metric("seconds_a_level", third - second);
         Metric("full_charge_s", full);
         Metric("held_cast_landed_s", landedAt);
         Check("a_level_takes_half_a_second", Mathf.Abs(third - second - (float)World.SecondsPerLevel) < 0.12f, $"{third - second:0.00} s, the rules say {World.SecondsPerLevel:0.00}");
-        Check("full_charge_in_two_to_three_seconds", full >= 1.8f && full <= 3.2f, $"{full:0.0} s to full charge, landed at {landedAt:0.0} s");
+        // A hand's wind-up, then a level each SecondsPerLevel (the old meter took 2 to 3 s; the hands are quicker).
+        Check("full_charge_under_three_seconds", full >= 2f * World.SecondsPerLevel && full <= 3.2f, $"{full:0.00} s to full charge, landed at {landedAt:0.0} s");
         yield return Wait(1f);
     }
 
@@ -405,7 +412,8 @@ public class FeelProbe : SpellLooksProbe
         for (int y = 0; y < 13; y++)
             for (int x = 0; x < 13; x++) World.At(o.x + x, o.y + y).Water = 1;
         yield return Aimed(o, 13, 13);
-        yield return Pair(Key.X, Key.V, default, default, 3);
+        yield return Attune(null, "water");
+        yield return Charge3(false, HandsDef.Sweep, false, true);
         yield return Wait(2.5f);
         var cells = Enumerable.Range(0, 169).Select(i => World.At(o.x + i % 13, o.y + i / 13)).ToList();
         int slick = cells.Count(World.IsSlippery);
@@ -442,14 +450,16 @@ public class FeelProbe : SpellLooksProbe
         yield return Wait(0.5f);
     }
 
-    IEnumerator PlantGrowth(string on, Key first, Key last, GamepadState firstPad, GamepadState lastPad)
+    // Water and earth thrown together, held: Plant Growth (the hands' table, water+earth throw).
+    IEnumerator PlantGrowth(string on, bool onPad)
     {
         var o = Spot(11, 11);
         Patch(o, 11, 11, TerrainIds.Dirt);
         for (int y = 0; y < 11; y++)
             for (int x = 0; x < 11; x++) World.SetCover(o.x + x, o.y + y, CoverIds.Ash);
         yield return Aimed(o, 11, 11);
-        yield return Pair(first, last, firstPad, lastPad, 3);
+        yield return Attune("water", "earth");
+        yield return Charge3(onPad, HandsDef.Throw, true, true);
         yield return Wait(1f);
         var cells = Enumerable.Range(0, 121).Select(i => World.At(o.x + i % 11, o.y + i / 11)).ToList();
         int shoots = cells.Count(c => c.T == TerrainIds.Sprouts || c.T == TerrainIds.Sapling || c.T == TerrainIds.Grass);
@@ -461,36 +471,99 @@ public class FeelProbe : SpellLooksProbe
         yield return null;
     }
 
-    IEnumerator Ramp(string on, Key earth, GamepadState earthPad)
+    // Both hands of earth thrust together, held: Wall of Stone at full charge. Since D16 a charge only makes a spell stronger
+    // (unified-casting.md), so it's a wall still, not Stone Ramp.
+    IEnumerator Ramp(string on, bool onPad)
     {
         var o = Spot(13, 9);
         Patch(o, 13, 9, TerrainIds.Dirt);
         yield return Aimed(o, 13, 9);
         int[] before = Enumerable.Range(0, 117).Select(i => World.At(o.x + i % 13, o.y + i / 13).Height).ToArray();
-        yield return Pair(earth, earth, earthPad, earthPad, 3);
+        yield return Attune("earth", "earth");
+        yield return Charge3(onPad, HandsDef.Thrust, true, true);
         yield return Wait(1.5f);
         var raised = Enumerable.Range(0, 117).Select(i => World.At(o.x + i % 13, o.y + i / 13).Height - before[i]).Where(d => d > 0).ToList();
-        Metric($"ramp_{on}_cells", raised.Count);
-        Check($"wall_held_to_ramp_{on}", raised.Distinct().Count() >= 2, $"{raised.Count} cells raised, heights {string.Join(",", raised.Distinct().OrderBy(d => d))}");
+        Metric($"wall_held_{on}_cells", raised.Count);
+        Check($"wall_held_goes_up_{on}", raised.Count > 0 && heldTo == World.MaxCharge, $"{raised.Count} cells raised, heights {string.Join(",", raised.Distinct().OrderBy(d => d))}, held to charge {heldTo}");
         Shot("ramp-" + on);
         yield return null;
         yield return null;
     }
 
-    // Two elements, the first tapped and the last held to this charge, then let go, on the keys or on the pad.
-    IEnumerator Pair(Key first, Key last, GamepadState firstPad, GamepadState lastPad, int charge)
+    // The charge the hands have built (SpellCaster.HeldHandCharge: a merge's is the lower of the two).
+    int Charge => SpellCaster.HeldHandCharge(World, me);
+
+    // Each hand to its element from the spell list (null: nothing, so the other's is on both), one at a time, as a player would.
+    IEnumerator Attune(string left, string right)
     {
-        bool onKeys = first != Key.None;
-        if (onKeys) yield return Tap(first);
-        else yield return Hold(firstPad, 0.1f);
+        foreach (var (hand, element) in new[] { (HandsDef.Left, left), (HandsDef.Right, right) })
+        {
+            if (World.HandsOf(me).Holds[hand] == element) continue;
+            for (float t = 0f; t < 3f && World.HandsOf(me).AttuneLeft > 0; t += Time.deltaTime) yield return null;
+            caster.AttuneTo(hand, element);
+            for (float t = 0f; t < 3f && (World.HandsOf(me).Holds[hand] != element || World.HandsOf(me).AttuneLeft > 0); t += Time.deltaTime) yield return null;
+        }
+        Check($"attuned_{left ?? "nothing"}_{right ?? "nothing"}", World.HandsOf(me).Holds[HandsDef.Left] == left && World.HandsOf(me).Holds[HandsDef.Right] == right,
+            $"{World.HandsOf(me).Holds[HandsDef.Left]}, {World.HandsOf(me).Holds[HandsDef.Right]}");
+    }
+
+    // A gesture's buttons down on these hands (PlayerControls.HandPad): on the pad a trigger thrusts and a bumper throws; on the
+    // keys a click thrusts and Q or E throws; both of a hand's buttons are its sweep.
+    void Press(bool onPad, int gesture, bool left, bool right)
+    {
+        bool thrust = gesture != HandsDef.Throw, thrown = gesture != HandsDef.Thrust;
+        if (onPad) PadPress(thrust, thrown, left, right);
+        else KeysPress(thrust, thrown, left, right);
+    }
+
+    void PadPress(bool thrust, bool thrown, bool left, bool right)
+    {
+        var state = new GamepadState { leftTrigger = left && thrust ? 1f : 0f, rightTrigger = right && thrust ? 1f : 0f };
+        if (left && thrown) state = state.WithButton(GamepadButton.LeftShoulder);
+        if (right && thrown) state = state.WithButton(GamepadButton.RightShoulder);
+        InputSystem.QueueStateEvent(pad, state);
+    }
+
+    void KeysPress(bool thrust, bool thrown, bool left, bool right)
+    {
+        var clicks = new MouseState();
+        if (left && thrust) clicks = clicks.WithButton(MouseButton.Left);
+        if (right && thrust) clicks = clicks.WithButton(MouseButton.Right);
+        var board = new KeyboardState();
+        if (left && thrown) board.Set(Key.Q, true);
+        if (right && thrown) board.Set(Key.E, true);
+        InputSystem.QueueStateEvent(keys, board);
+        InputSystem.QueueStateEvent(mouse, clicks);
+    }
+
+    // Every hand's button up.
+    void Let()
+    {
+        InputSystem.QueueStateEvent(pad, new GamepadState());
+        InputSystem.QueueStateEvent(keys, new KeyboardState());
+        InputSystem.QueueStateEvent(mouse, new MouseState());
+    }
+
+    // The charge the last Charge3 held to before letting go.
+    int heldTo;
+
+    IEnumerator Cooled()
+    {
+        for (float t = 0f; t < 4f && (World.HandCooling(me, HandsDef.Left) > 0 || World.HandCooling(me, HandsDef.Right) > 0 || World.CastOf(me).Casting); t += Time.deltaTime)
+            yield return null;
+    }
+
+    // A gesture held to full charge (3), then let go, and the cast waited out. First the hands cool: a press while they do
+    // is dropped (handCooldown, and bothCooldown after a merge).
+    IEnumerator Charge3(bool onPad, int gesture, bool left, bool right)
+    {
+        yield return Cooled();
+        Press(onPad, gesture, left, right);
+        for (float t = 0f; t < 5f && Charge < 3; t += Time.deltaTime) yield return null;
         yield return Wait(0.1f);
-        if (onKeys) InputSystem.QueueStateEvent(keys, new KeyboardState(last));
-        else InputSystem.QueueStateEvent(pad, lastPad);
-        for (float t = 0f; t < 5f && caster.HoldCharge < charge; t += Time.deltaTime) yield return null;
-        yield return Wait(0.1f);
-        Metric(onKeys ? "held_charge_keys" : "held_charge_pad", caster.HoldCharge);
-        if (onKeys) InputSystem.QueueStateEvent(keys, new KeyboardState());
-        else InputSystem.QueueStateEvent(pad, new GamepadState());
+        heldTo = Charge;
+        Metric(onPad ? "held_charge_pad" : "held_charge_keys", heldTo);
+        Let();
         for (float t = 0f; t < 4f && World.CastOf(me).Casting; t += Time.deltaTime) yield return null;
     }
 

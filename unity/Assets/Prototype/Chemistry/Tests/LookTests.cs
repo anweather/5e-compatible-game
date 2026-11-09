@@ -11,6 +11,7 @@ namespace Chem.Tests
     /// the terrain table that used to live in CellDressing came across unchanged, and looks stay
     /// the view's: they reach neither the rules fingerprint nor a world's state.
     /// </summary>
+    [Category("Simulation")]
     public class LookTests
     {
         static Rules baseRules;

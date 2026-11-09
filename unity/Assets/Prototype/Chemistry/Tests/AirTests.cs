@@ -7,6 +7,7 @@ namespace Chem.Tests
     /// and could knock them off the cliff, with diminishing returns", and Whirlwind must do something): World.CastShove and
     /// World.LiftInTheEye, in the core, so every peer moves the raider alike.
     /// </summary>
+    [Category("Simulation")]
     public class AirTests
     {
         static Rules R => ChemistryTests.R;

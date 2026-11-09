@@ -15,6 +15,7 @@ namespace Chem.Tests
     /// the private fields taken out: blue (an apply), refuse (nothing it can do), denied (a tool denied, an apply
     /// refused, then one that went in), badmodel (an API failure). Each line "arrives" 100 ms after the last.
     /// </summary>
+    [Category("Unit")]
     public class ChatRecordTests
     {
         [Test]

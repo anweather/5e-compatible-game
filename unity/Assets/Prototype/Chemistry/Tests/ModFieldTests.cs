@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>A mod patches only the fields it names (Rules.MergedEntry), so mods stack and a revert undoes only its own.</summary>
+    [Category("Simulation")]
     public class ModFieldTests
     {
         static readonly Rules Base = Rules.Load(ChemistryTests.RulesDir());

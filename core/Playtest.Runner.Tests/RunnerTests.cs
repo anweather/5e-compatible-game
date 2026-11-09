@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// coverage, which player it runs, how a run's ending becomes a candidate, and the crash
     /// events it reads. The parts that launch players or Unity are checked by running them.
     /// </summary>
+    [Category("Unit")]
     public class RunnerTests
     {
         static Preflight.State State(double gb, params string[] unity) => new Preflight.State { FreeGB = gb, Unity = unity };

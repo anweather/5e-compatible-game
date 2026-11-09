@@ -4,6 +4,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class HoldCurveTests
     {
         static HoldRun Short()

@@ -15,6 +15,7 @@ namespace Chem.Tests
     /// an opening's cells too many for its span to be an int, or an at near int's top, are refused; a table a
     /// mod's "buildings" can't add rows to is refused by name.
     /// </summary>
+    [Category("Simulation")]
     public class BuildingGapsTests
     {
         string data;

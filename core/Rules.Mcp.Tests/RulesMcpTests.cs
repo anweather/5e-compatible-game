@@ -9,6 +9,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The rules MCP server (core/Rules.Mcp, docs/RULES_MCP.md): validate, simulate, drafts and save.</summary>
+    [Category("Simulation")]
     public class RulesMcpTests
     {
         static Workbench bench;

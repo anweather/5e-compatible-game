@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// ("rabbits 20 times faster"), a shower (add_trigger on tick, "constant meteors"), and a tall land stamp saying what
     /// it can rise ("a 100 m mountain").
     /// </summary>
+    [Category("Simulation")]
     public class PlayerToolsTests
     {
         static Workbench Bench(int slot = 1) =>

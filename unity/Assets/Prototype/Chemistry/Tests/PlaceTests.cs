@@ -7,6 +7,7 @@ namespace Chem.Tests
     /// Spells that place (docs/design/events-and-placing.md 2a): Placement.Pick, a spell's place of a thing, an
     /// animal, a terrain or a cover, World.Placed lapsing, World.Summoned, the checks and budgets, and the save.
     /// </summary>
+    [Category("Simulation")]
     public class PlaceTests
     {
         static Rules R => ChemistryTests.R;

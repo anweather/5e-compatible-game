@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// sandbox/src/rules.ts; the expected list is the one in sandbox/test/items.test.ts),
     /// when a lantern breaks, and what it spills (World.Spill).
     /// </summary>
+    [Category("Unit")]
     public class ItemTests
     {
         static Rules R => ChemistryTests.R;

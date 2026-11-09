@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The valley's puzzles (world/puzzles.json, WorldPuzzles.cs): the meadow coil by spell golf's hole.</summary>
+    [Category("Simulation")]
     public class PuzzleTests
     {
         static Rules R => ChemistryTests.R;

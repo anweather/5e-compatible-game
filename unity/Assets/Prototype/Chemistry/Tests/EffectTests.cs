@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// Physics props' effects on cells as lockstep inputs (Effects.cs): stamped into a tick batch
     /// next to the casts, applied at that tick, and replayed by a late joiner from the history.
     /// </summary>
+    [Category("Unit")]
     public class EffectTests
     {
         static Rules R => ChemistryTests.R;

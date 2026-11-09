@@ -7,6 +7,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The MCP protocol as the game serves it (McpRpc): what a client sends, and what comes back.</summary>
+    [Category("Simulation")]
     public class McpRpcTests
     {
         sealed class Desk : IRoomDesk

@@ -62,9 +62,11 @@ Waiting:
 
 1. `late-join-core` landed 0372298f (EditMode 1842/1842). Issues #173 #164 #55 #83 still open: closing them was
    refused by the permission check, so Andrew or a session with GitHub write closes them.
-1b. **Compile and land `core-boundaries`** (the PC is on it) (u2 done at fac1c8e2, 133 files, mostly Chemistry/: full EditMode).
-2. **`nine-slopes` (u2):** compile and land it, then a unity-task walks out of the valley through each open side in
-   the Editor (a clip). No Windows build for Andrew and no waiting on his play (J-082).
+1b. `core-boundaries` landed dc26ac97 (the lead tagged late-join-core's two fixtures Simulation) (u2 done at fac1c8e2, 133 files, mostly Chemistry/: full EditMode).
+2. `nine-slopes` landed 3b3cbac4 (EditMode 1847/1847). In the nine the wizard walks out east (straight from spawn) and
+   north (only by the west corridor near x 84: the valley's own lake and hills block the rest of its north side, by
+   design, since the valley stays byte-identical). Clip: host-ux `unity/Builds/demo-videos/nine-slopes-east.mp4`.
+   Steep generated faces are brown dirt; a walkable rock look needs a cell character (u2's follow-up, not briefed).
 3. **The far ring on the PC** (phase 6's rest: landmarks behind haze, the known ring). The paper is done (507e0f72,
    `tools/world-paper/` Horizon panel); its numbers and four fixes are in `world-squares.md` section 4 "On paper".
    Core half (known chunks' 9 × 9 heights, `seenFrom` as a radius, new values) to u2; the view half to the PC.

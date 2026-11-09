@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// faster, Control Weather holds a weather, Fog Cloud lays fog that hides what's behind it.
     /// Ported from sandbox/test/time.test.ts; the golden hash comes from running the same world there.
     /// </summary>
+    [Category("Unit")]
     public class TimeWeatherTests
     {
         static Rules R => ChemistryTests.R;

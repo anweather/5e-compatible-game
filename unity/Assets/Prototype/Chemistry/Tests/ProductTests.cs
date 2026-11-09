@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// (sim.json fire.ash and smoke, water.boils and freezes; a material's burn.ash and burn.smoke), so a
     /// mod's material leaves a product of its own choosing with no code naming it.
     /// </summary>
+    [Category("Simulation")]
     public class ProductTests
     {
         static Rules baseRules;

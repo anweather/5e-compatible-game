@@ -4,7 +4,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 // The probe's roll scenario (docs/FAST_LOOP.md): a virtual controller walks
-// the wizard north and pulls the left trigger (DodgeRoll), then pulls it again
+// the wizard north and clicks the right stick (DodgeRoll; the left trigger rolls only in
+// the debug layout, the hands' layout has it as the left hand's thrust), then clicks it again
 // just after the roll ends, inside the wait before the next. It follows the
 // ground covered and the body's turn (hips to head about the wizard's side).
 public class RollProbe : ProbeScenario
@@ -38,7 +39,7 @@ public class RollProbe : ProbeScenario
         Metric("turned_deg", turned);
         float tilt = Vector3.Angle(head.position - hips.position, Vector3.up);
         Metric("end_tilt_deg", tilt);
-        Check("rolls", roll.Count >= before + 1, $"{roll.Count - before} rolls from the trigger");
+        Check("rolls", roll.Count >= before + 1, $"{roll.Count - before} rolls from the stick click");
         Check("quick", past3m > 0f && past3m < 0.6f, past3m > 0f ? $"3 m in {past3m:0.00} s" : "never 3 m from the start");
         // The pose's own turn (RollPose.Angle); the bones' turn as read here is a metric, as when the
         // probe's frame comes before the pose is laid on it reads nothing.
@@ -52,7 +53,7 @@ public class RollProbe : ProbeScenario
     float turned, past3m, posed;
     bool secondPressed;
 
-    // Pulls the trigger and follows the roll for Watch seconds: how far the body turns, when it's 3 m
+    // Clicks the stick and follows the roll for Watch seconds: how far the body turns, when it's 3 m
     // out, and a second pull just after the roll, inside its wait.
     IEnumerator WatchRoll(Vector2 up, Transform head, Transform hips)
     {
@@ -93,6 +94,10 @@ public class RollProbe : ProbeScenario
         base.OnDestroy();
     }
 
-    void Press(Vector2 stick, bool trigger) =>
-        InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = stick, leftTrigger = trigger ? 1f : 0f });
+    void Press(Vector2 stick, bool click)
+    {
+        var state = new GamepadState { leftStick = stick };
+        if (click) state = state.WithButton(GamepadButton.RightStick);
+        InputSystem.QueueStateEvent(pad, state);
+    }
 }

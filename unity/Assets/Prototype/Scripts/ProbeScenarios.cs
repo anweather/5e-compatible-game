@@ -436,7 +436,7 @@ public static class ProbeScenarios
             "it burns, how long the log walls burn. Checks: the thatch catches and burns out within 3 s each, it lights more of the walls, the wood burns over 20 s."),
         new Entry("roofs", typeof(RoofsProbe), 120f,
             "Walls and roofs fail separately: a Fire Bolt on a timber house with a slate roof, and grease set alight beside a stone house with a " +
-            "thatch roof, 50 s. Checks: the log walls burn down and the slate falls onto them, the thatch burns away, the stone stands, sooted. Before and after pictures."),
+            "thatch roof, 50 s (up to 25 s more for the last log wall and the slate). Checks: the log walls burn down and the slate falls onto them, the thatch burns away, the stone stands, sooted. Before and after pictures."),
         new Entry("houses", typeof(HousesProbe), 120f,
             "The materials step: a Fire Bolt on one of Hollowmere's timber houses and one of its stone houses, clear noon, 45 s. Checks: each has " +
             "wall cells of its material (world/villages.json), the timber house's log walls burn down, the stone house's stand, no console errors."),

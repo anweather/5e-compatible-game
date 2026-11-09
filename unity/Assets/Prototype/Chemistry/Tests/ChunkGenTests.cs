@@ -14,6 +14,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class ChunkGenTests
     {
         static GeneratedMap nine;

@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>world/places.json (Places.cs): the named landmarks, generated from the world data where it can be.</summary>
+    [Category("Simulation")]
     public class PlacesTests
     {
         static WorldPlaces Valley => WorldPlaces.Load(ChemistryTests.WorldDir());

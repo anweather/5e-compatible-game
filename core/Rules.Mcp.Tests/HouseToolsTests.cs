@@ -11,6 +11,7 @@ namespace Chem.Tests
     /// Building part of the game by asking and keeping it (J-059, J-062): the two asks from a headless
     /// client, over the MCP's own messages, ending as one mod that survives save and reload.
     /// </summary>
+    [Category("Simulation")]
     public class HouseToolsTests
     {
         string data, dir;

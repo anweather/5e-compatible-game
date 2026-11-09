@@ -11,6 +11,7 @@ namespace Chem.Tests
     /// chunk + index, the same however often and wherever the file is read, and carried by the
     /// lockstep effects a prop hands the chemistry.
     /// </summary>
+    [Category("Unit")]
     public class ThingTests
     {
         static Rules R => ChemistryTests.R;

@@ -5,6 +5,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>add_trigger and the walk in simulate (docs/design/events-and-placing.md 2c, 5): "a meteor at every step I take".</summary>
+    [Category("Simulation")]
     public class TriggerToolsTests
     {
         const string MeteorAhead = "[{\"cast\": \"meteor\", \"at\": \"ahead\", \"by\": 2, \"delay\": 6}]";

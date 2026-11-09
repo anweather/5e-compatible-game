@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// act, undo_act, superseded mods and a species' colours (docs/design/world-acts.md): "add 20 trees near me" twice is two
     /// acts and no mods, the same on every peer; a chat change that says all an earlier one said takes its place.
     /// </summary>
+    [Category("Simulation")]
     public class ActToolsTests
     {
         static (Workbench bench, RulesTools tools) Tools()

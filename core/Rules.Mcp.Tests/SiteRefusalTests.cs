@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// through a running game's desk, as the tools reach it, never an exception thrown on the game's main thread.
     /// The world is left as it was, and the same on every peer.
     /// </summary>
+    [Category("Simulation")]
     public class SiteRefusalTests
     {
         const string TimedOut = "The game didn't answer in time; ask for the room to see whether it went in.";

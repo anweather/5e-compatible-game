@@ -4,6 +4,7 @@ using static Chem.Tests.ChatFixtures;
 namespace Chem.Tests
 {
     /// <summary>The chat bench's report (core/Chat.Bench, docs/design/chat-telemetry.md), on a stream fixture's record.</summary>
+    [Category("Unit")]
     public class ChatBenchTests
     {
         [Test]

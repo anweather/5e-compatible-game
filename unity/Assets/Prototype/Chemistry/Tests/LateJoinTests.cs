@@ -11,6 +11,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class LateJoinTests
     {
         static Rules R => ChemistryTests.R;

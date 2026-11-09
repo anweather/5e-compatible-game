@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// a mod naming it its dependent, which goes with it, reverted or lapsed, at the same tick on every peer
     /// (World.Lapse.cs). A mod naming a row whose owner went is refused naming the owner.
     /// </summary>
+    [Category("Simulation")]
     public class ModDependentsTests
     {
         const int After = 12;

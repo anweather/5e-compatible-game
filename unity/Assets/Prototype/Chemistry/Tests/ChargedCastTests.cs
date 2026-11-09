@@ -5,6 +5,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class ChargedCastTests
     {
         static Rules rules;

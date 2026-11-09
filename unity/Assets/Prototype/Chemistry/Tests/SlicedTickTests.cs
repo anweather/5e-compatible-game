@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// tick must be exactly the tick Step computes, whatever the slicing, or peers that slice
     /// differently would part. Commands that arrive while a tick is part done land after it.
     /// </summary>
+    [Category("Simulation")]
     public class SlicedTickTests
     {
         static Rules R => ChemistryTests.R;

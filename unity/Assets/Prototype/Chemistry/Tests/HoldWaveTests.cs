@@ -5,6 +5,7 @@ using static Chem.Tests.HoldTests;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public partial class HoldWaveTests
     {
         static Rules R => ChemistryTests.R;

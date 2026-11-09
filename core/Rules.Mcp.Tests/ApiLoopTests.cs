@@ -10,6 +10,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The API loop behind the chat's seam, on a wire with nobody at the other end: what runs, what it costs, how it stops.</summary>
+    [Category("Unit")]
     public class ApiLoopTests
     {
         const string Model = "claude-haiku-5-5", Url = "http://127.0.0.1:1/mcp";

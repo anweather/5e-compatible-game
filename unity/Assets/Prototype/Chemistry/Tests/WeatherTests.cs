@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// The clock and the weather (Sky.cs) and what the weather does to cells (World.Weather.cs).
     /// Ported from sandbox/test/weather.test.ts; the golden numbers come from running the same worlds there.
     /// </summary>
+    [Category("Simulation")]
     public class WeatherTests
     {
         static Rules R => ChemistryTests.R;

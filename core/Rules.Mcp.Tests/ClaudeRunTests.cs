@@ -7,6 +7,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The in-game chat's one headless process a message (ClaudeRun, J-060).</summary>
+    [Category("Unit")]
     public class ClaudeRunTests
     {
         [Test]

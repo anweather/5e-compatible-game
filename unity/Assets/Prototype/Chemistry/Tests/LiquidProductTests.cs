@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// them through the material verbs and the fire and cold rows, never a rule for one liquid; the
     /// base lava stays terrain (J-062).
     /// </summary>
+    [Category("Simulation")]
     public class LiquidProductTests
     {
         static Rules R => ChemistryTests.R;

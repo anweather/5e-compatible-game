@@ -10,6 +10,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class HeightfieldThreadingTests
     {
         static readonly Rules R = ChemistryTests.R;
