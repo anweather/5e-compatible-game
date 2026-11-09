@@ -109,7 +109,8 @@ namespace Chem
 
         // ---------- landmarks ----------
 
-        // Not every square that may hold a village keeps one: Towns percent of them do, and at least one in the world.
+        // Not every square that may hold a village keeps one: Towns percent of them do, every must-have's, and at least one
+        // other in the world.
         void PlaceLandmarks()
         {
             int n = Count;
@@ -120,7 +121,7 @@ namespace Chem
             for (int i = 0; i < n; i++)
             {
                 string lm = Options[i].Template.Lm;
-                if ((lm == "land" || lm == "water") && TownRoll(i) < lowest)
+                if ((lm == "land" || lm == "water") && TownRoll(i) < lowest && Array.IndexOf(MustSquares, i) < 0)
                 {
                     lowest = TownRoll(i);
                     firstTown = i;
@@ -131,7 +132,7 @@ namespace Chem
                 var t = Options[i].Template;
                 string lm = t.Lm;
                 if (lm == null) continue;
-                if ((lm == "land" || lm == "water") && TownRoll(i) >= towns && i != firstTown) continue;
+                if ((lm == "land" || lm == "water") && TownRoll(i) >= towns && i != firstTown && Array.IndexOf(MustSquares, i) < 0) continue;
                 var r = new PlanRng(H(Seed, i, 77));
                 int sx = 150 + r.Below(277), sy = 150 + r.Below(277);
                 if (lm == "castle")

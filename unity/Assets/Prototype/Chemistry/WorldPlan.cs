@@ -2,8 +2,8 @@
 // every peer from a seed. Each world square gets a band (an integer field, then an envelope so touching squares differ
 // by at most one), the coasts that go with the bands (matched across sides and at corners), a template from
 // world/squares/ (wave-function style, with backtracking and a filler per band so it never fails, repeats weighed down
-// and never within 3 squares), then landmarks, the crossings nature allows, the roads between them and sights along
-// them, and a spawn point per square (WorldPlan.Spawns.cs). Ported from the paper prototype Andrew tried
+// and never within 3 squares; a must-have, "a volcano", takes a square first), then landmarks, the crossings nature
+// allows, the roads between them and sights along them, and a spawn point per square (WorldPlan.Spawns.cs). Ported from the paper prototype Andrew tried
 // (tools/world-paper/index.html: buildWorld, buildCoasts, placeInlandSeas, Solver, finishPlan, solveRoads,
 // placeOutcrops), its rules but not its floats: every number here is an integer and every roll comes from WorldHash, so
 // the plan, and its hash, depend only on the seed and the inputs (D4).
@@ -37,6 +37,11 @@ namespace Chem
         public ValleySides Valley;
         /// <summary>The valley's own spawn, cells within its square (its map.json's); null to place one as any square's.</summary>
         public (int x, int y)? ValleySpawn;
+        /// <summary>
+        /// The far landmarks the world must hold (section 5's must-haves, "a volcano"): each a village form's landmark. The
+        /// solve gives one square inside the map a template whose village comes out as it, and keeps that village.
+        /// </summary>
+        public List<string> Musts = new List<string>();
         /// <summary>Backtracks in all, and per contradiction, before a filler takes a square.</summary>
         public int Budget = 3000, LocalBacktracks = 40;
 
@@ -213,6 +218,10 @@ namespace Chem
         public PlanDestination[] Destinations;
         /// <summary>What the checks found wrong: empty for a good plan.</summary>
         public List<string> Problems = new List<string>();
+        /// <summary>Per must-have of the inputs, in order: the square holding it, or -1 where the land doesn't allow one.</summary>
+        public int[] MustSquares = Array.Empty<int>();
+        /// <summary>Why a must-have has no square (empty when every one has).</summary>
+        public List<string> MustMisses = new List<string>();
         /// <summary>FNV-1a over the plan in a fixed order: squares, coasts, landmarks, crossings, roads, sights, spawns.</summary>
         public uint Hash;
 
@@ -252,6 +261,18 @@ namespace Chem
         public SquareTemplate TemplateAt(int i) => Options[i].Template;
 
         bool IsLand(int i) => Band[i] > 0 && Wall[i] == 0;
+
+        /// <summary>Whether square <paramref name="i"/> is in the map (an unwrapped world's sea column and row aren't).</summary>
+        public bool InMap(int i) => Inputs.Wrap != PlanWrap.None || (Grid.X(i) > 0 && Grid.Y(i) < Grid.H - 1);
+
+        /// <summary>The far landmark a template's village comes out as ("volcano", "great tree"), or null; a village by the
+        /// water may turn a fishing village, so it's none.</summary>
+        internal string VillageLandmarkOf(SquareTemplate t)
+        {
+            string lm = t.Lm;
+            if (lm != "land" || Library.Village == null) return null;
+            return Library.Village.LandmarkOf(FormOf(t.Biome));
+        }
 
         // ---------- bands ----------
 

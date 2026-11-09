@@ -64,8 +64,8 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0x0be3c4bdu;
-        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xc6391688u), (9, 20, 0x019aa188u), (4, 4, 0x126a5ca0u), (26, 0, 0x7594a450u) };
+        const uint NineGolden = 0x4aec0b00u;
+        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0x1e6a5e3du), (9, 20, 0xe5e01521u), (4, 4, 0x57b7117cu), (26, 0, 0x6a99a7f2u) };
 
         [Test]
         public void TheNinesWorldFileSaysItsShape()
@@ -78,6 +78,38 @@ namespace Chem.Tests
             var map = MapFile.Load(NineDir);
             Assert.That((map.W, map.H), Is.EqualTo((m.Gen.CellsW, m.Gen.CellsH)));
             Assert.That(m.Plan.Problems, Is.Empty);
+        }
+
+        // Section 5's must-haves: the nine's world file asks for a volcano, the plan gives one a square of the map (kept
+        // whatever the town roll), and its cone stands in the land, the same on every load.
+        [Test]
+        public void TheNinesPlanHoldsAVolcano()
+        {
+            var plan = Nine.Plan;
+            Assert.That(plan.Inputs.Musts, Is.EqualTo(new[] { "volcano" }));
+            Assert.That(plan.MustMisses, Is.Empty);
+            int square = plan.MustSquares.Single();
+            Assert.That(plan.InMap(square), Is.True, "in the map");
+            Assert.That(square, Is.Not.EqualTo(plan.Valley));
+            var v = Nine.Far.All.Single(l => l.Type == "volcano");
+            Assert.That(v.Square, Is.EqualTo(square));
+            Assert.That(v.Name, Is.Not.Null, "a named volcano, from its rows");
+            // Its cone: the rim stands 40 m or more over the land 100 cells out.
+            int w = Nine.Gen.CellsW, rim = int.MinValue;
+            var foot = new List<int>();
+            for (int dy = -100; dy <= 100; dy++)
+                for (int dx = -100; dx <= 100; dx++)
+                {
+                    int d2 = dx * dx + dy * dy, h = Whole[(v.Y + dy) * w + v.X + dx];
+                    if (d2 <= 40 * 40) rim = Math.Max(rim, h);
+                    else if (d2 >= 95 * 95 && d2 <= 100 * 100) foot.Add(h);
+                }
+            foot.Sort();
+            TestContext.Out.WriteLine($"VOLCANO {v.Name} in square ({plan.Grid.X(square)}, {plan.Grid.Y(square)}) {plan.TemplateAt(square).Id}, at cell ({v.X}, {v.Y}); rim {rim}, foot {foot[foot.Count / 2]} (land units)");
+            Assert.That(rim - foot[foot.Count / 2], Is.GreaterThanOrEqualTo(320));
+            var again = GeneratedMap.Load(NineDir).Plan;
+            Assert.That(again.Hash, Is.EqualTo(plan.Hash), "same seed, same plan");
+            Assert.That(again.MustSquares, Is.EqualTo(plan.MustSquares));
         }
 
         [Test]

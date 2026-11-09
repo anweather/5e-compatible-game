@@ -105,6 +105,7 @@ namespace Chem
             for (int i = 0; i < n; i++) all.Add(i);
             int bad = Propagate(all, false);
             if (bad >= 0) Resolve(bad);
+            PlaceMusts();
             bool more = true;
             while (more) more = Step();
             plan.Options = new SquareOption[n];
@@ -113,6 +114,73 @@ namespace Chem
             plan.Steps = steps;
             plan.Picks = picks;
             plan.Backtracks = backtracks;
+        }
+
+        // Each must-have takes a square before the roll: of the squares in the map that could still take a template whose
+        // village comes out as it (not the valley, a wall or the sea), in a seeded order, the first that collapses to one of
+        // those templates (its own seeded roll among them) leaving every square something. Where none does, the first
+        // takes it anyway and the squares left with nothing take their band's filler, as a solve past its budget does. A
+        // must-have's square is settled before the first pick, so nothing backtracks it.
+        void PlaceMusts()
+        {
+            var musts = plan.Inputs.Musts;
+            plan.MustSquares = new int[musts.Count];
+            var roll = new PlanRng(plan.Seed ^ 0x6d75);
+            for (int k = 0; k < musts.Count; k++)
+            {
+                string want = musts[k];
+                plan.MustSquares[k] = -1;
+                var cands = new List<(uint key, int i)>();
+                for (int i = 0; i < n; i++)
+                    if (!col[i] && plan.InMap(i) && Array.Exists(dom[i], o => Makes(o, want)))
+                        cands.Add((WorldPlan.H(plan.Seed ^ 0x6d75, i, k), i));
+                if (cands.Count == 0)
+                {
+                    plan.MustMisses.Add($"{want}: no square in the map can take a template whose village is one ({Holders(want)})");
+                    continue;
+                }
+                cands.Sort();
+                foreach (var (_, i) in cands)
+                {
+                    var keepDom = (int[][])dom.Clone();
+                    var keepCol = (bool[])col.Clone();
+                    var keepUsed = new Dictionary<string, int>(used, StringComparer.Ordinal);
+                    int keepFillers = fillers.Count;
+                    if (Collapse(i, MustPick(i, want, roll)) < 0)
+                    {
+                        plan.MustSquares[k] = i;
+                        break;
+                    }
+                    dom = keepDom;
+                    col = keepCol;
+                    used = keepUsed;
+                    fillers.RemoveRange(keepFillers, fillers.Count - keepFillers);
+                }
+                if (plan.MustSquares[k] >= 0) continue;
+                int at = cands[0].i;
+                int bad = Collapse(at, MustPick(at, want, roll));
+                if (bad >= 0) Resolve(bad);
+                if (dom[at].Length == 1 && Makes(dom[at][0], want)) plan.MustSquares[k] = at;
+                else plan.MustMisses.Add($"{want}: none of the {cands.Count} squares that could take one fits beside its neighbours");
+            }
+        }
+
+        // A seeded weighted roll among square x's options that make the landmark, apart from the solve's own rolls.
+        int MustPick(int x, string landmark, PlanRng roll) => Roll(x, Array.FindAll(dom[x], o => Makes(o, landmark)), roll);
+
+        bool Makes(int o, string landmark) => !lib.Options[o].Sea && plan.VillageLandmarkOf(lib.Options[o].Template) == landmark;
+
+        // The templates that hold a must-have, and their bands, for a miss's reason.
+        string Holders(string landmark)
+        {
+            var ts = new List<string>();
+            foreach (var o in lib.Options)
+            {
+                var t = o.Template;
+                string at = $"{t.Id} ({string.Join(", ", Array.ConvertAll(t.Bands, b => lib.BandIds[b]))})";
+                if (!o.Sea && plan.VillageLandmarkOf(t) == landmark && !ts.Contains(at)) ts.Add(at);
+            }
+            return ts.Count == 0 ? "no template makes one" : "only " + string.Join(", ", ts) + " can";
         }
 
         int SideSig(int o, int s)
@@ -202,9 +270,10 @@ namespace Chem
             return Math.Max(1, w);
         }
 
-        int Pick(int x)
+        int Pick(int x) => Roll(x, dom[x], rng);
+
+        int Roll(int x, int[] d, PlanRng r)
         {
-            var d = dom[x];
             var ws = new long[d.Length];
             long total = 0;
             for (int k = 0; k < d.Length; k++)
@@ -212,11 +281,11 @@ namespace Chem
                 ws[k] = Weight(x, d[k]);
                 total += ws[k];
             }
-            long r = rng.Below(total);
+            long t = r.Below(total);
             for (int k = 0; k < d.Length; k++)
             {
-                r -= ws[k];
-                if (r < 0) return d[k];
+                t -= ws[k];
+                if (t < 0) return d[k];
             }
             return d[d.Length - 1];
         }

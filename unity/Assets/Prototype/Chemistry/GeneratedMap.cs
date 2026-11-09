@@ -95,6 +95,7 @@ namespace Chem
             var sides = ValleySides.Read(pinned.Land, WorldPlan.SquareCells, valleyMap.SeaLevel, 0.125, lib);
             var inputs = PlanInputs.For(m.Seed, m.SquaresW, PlanWrap.None, sides);
             inputs.ValleySpawn = valleyMap.Spawn;
+            if (o["musts"] is JArray musts) inputs.Musts.AddRange(musts.Select(x => (string)x));
             m.Plan = WorldPlan.Solve(inputs, lib);
             m.PinnedName = valleyMap.Name;
             pinned.Square = m.Plan.Valley;

@@ -163,7 +163,7 @@ public static class FarMeshes
     {
         "volcano" => new Color(0.24f, 0.21f, 0.2f),
         "lake" or "port" => new Color(0.42f, 0.4f, 0.36f),
-        "great tree" or "lone great tree" => new Color(0.1f, 0.18f, 0.08f),
+        "great tree" or "lone great tree" => new Color(0.05f, 0.09f, 0.11f),
         _ => shape switch
         {
             "needle" => new Color(0.5f, 0.48f, 0.45f),
