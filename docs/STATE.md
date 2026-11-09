@@ -67,9 +67,11 @@ Waiting:
    north (only by the west corridor near x 84: the valley's own lake and hills block the rest of its north side, by
    design, since the valley stays byte-identical). Clip: host-ux `unity/Builds/demo-videos/nine-slopes-east.mp4`.
    Steep generated faces are brown dirt; a walkable rock look needs a cell character (u2's follow-up, not briefed).
-3. **The far ring on the PC** (phase 6's rest: landmarks behind haze, the known ring). The paper is done (507e0f72,
-   `tools/world-paper/` Horizon panel); its numbers and four fixes are in `world-squares.md` section 4 "On paper".
-   Core half (known chunks' 9 × 9 heights, `seenFrom` as a radius, new values) to u2; the view half to the PC.
+3. **The far ring.** Paper 507e0f72; core half `far-ring-core` landed 663c226a (KnownRing, `world/horizon.json`,
+   EditMode 1855/1855; 144 known chunks cost 35-48 ms on a worker). **The PC is building `far-ring-view`**
+   (`queue/taken/far-ring-view.md`): meshes, haze, landmarks through fog, sea plane, a clip.
+   Seen on the way: smoke on the nine runs at 37.9 ms mean / 64 ms p95 and fails cast_fire-bolt, fire_started and
+   levitate_lifted (same on dev; smoke's casts are placed for the valley's yard, so likely the probe, unconfirmed).
 Then: `core-boundaries` landings (step 4 changes Chemistry/, PC compiles); a Scripts runtime asmdef (measure compile
 time first, J-081; no longer waits on the playtest); #170 barrels; mana after Andrew plays quick taps; maps phase 8
 (runtime map switch rebuilds terrain).
