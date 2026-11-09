@@ -26,7 +26,7 @@ public class GlowMossProbe : RoomProbe
     const int Search = 90;
     // The river stones the mod lays: this many bank cells within BankReach of the river cell nearest the wizard.
     const int Stones = 40, BankReach = 8;
-    const float Creep = 18f, LightWait = 12f;
+    const float Creep = 18f, LightWait = 12f, GlowSettle = 5f;
     // A moss cell's glow at midnight must pass this (its brightest channel); by day it stays under DayMost.
     const float NightLeast = 0.15f, DayMost = 0.03f, SameColour = 0.02f;
 
@@ -38,6 +38,9 @@ public class GlowMossProbe : RoomProbe
     bool Filming => !string.IsNullOrEmpty(ScreenshotDir);
 
     /// <summary>"moss cells/glowing cells", for both peers to compare.</summary>
+    // Moss cells "/" glowing cells, as Glows writes them: every moss cell glows.
+    static bool AllGlow(string glows) => glows != null && glows.Split('/') is var p && p.Length == 2 && p[0] == p[1];
+
     public static string Glows(ChemGrid grid) => $"{grid.World.Cells.Count(c => c != null && c.Cover == Moss)}/{grid.GlowCells}";
 
     protected override IEnumerator Run()
@@ -70,7 +73,10 @@ public class GlowMossProbe : RoomProbe
         yield return Agree("moss_on", $"Player 1 switched on {Title}");
         int laid = MossCells();
         Metric("moss_laid", laid);
-        Check("the_stones_and_moss_are_laid", laid == 2 && stones.Skip(2).All(c => World.At(c.x, c.y).T == TerrainIds.Rock), $"{laid} moss cells, {stones.Count(c => World.At(c.x, c.y).T == TerrainIds.Rock)} of {stones.Count - 2} stones");
+        // The two laid cells are moss: the count can be past two by now, as the moss spreads every 30 ticks and the switch is
+        // agreed some ticks after it went on.
+        int laidOn = stones.Take(2).Count(c => World.At(c.x, c.y).Cover == Moss);
+        Check("the_stones_and_moss_are_laid", laidOn == 2 && stones.Skip(2).All(c => World.At(c.x, c.y).T == TerrainIds.Rock), $"{laidOn} of 2 laid moss cells ({laid} in all, tick {World.Tick}), {stones.Count(c => World.At(c.x, c.y).T == TerrainIds.Rock)} of {stones.Count - 2} stones");
 
         // It creeps, filmed or not, at dusk.
         var lens = new ProductsViewProbe.Lens(grid, Filming ? Path.Combine(ScreenshotDir, "glow-moss") : null, a, new Vector3(3f, 7f, -9f), true);
@@ -103,9 +109,16 @@ public class GlowMossProbe : RoomProbe
         Check("a_moss_cell_glows_at_night", night.maxColorComponent > NightLeast && night.maxColorComponent > bank.maxColorComponent + NightLeast, $"moss {night}, the bank beside {bank}");
         Check("the_bank_and_bare_stones_do_not", bank.maxColorComponent == 0f && stoneGlow == 0f && World.At(bare.x, bare.y).Cover != Moss, $"bank {bank} at {bare}, stones {stoneGlow}");
         Check("in_the_moss_colour", Mathf.Abs(night.g / Mathf.Max(night.r, 1e-4f) - MossColour[1] / MossColour[0]) < 0.05f, $"{night}");
-        yield return Ask("report");
+        // Every moss cell glows there too. The two sides report at different ticks and the moss spreads meanwhile, so
+        // the client's glow is held to its own moss (moss_in_step holds the cells the same), once it has drawn them.
+        yield return Reach("night_report", Net.NetTick);
+        for (float t = 0f; t < GlowSettle && Theirs != null && !AllGlow(Theirs.glows); t += 0.5f)
+        {
+            yield return Wait(0.5f);
+            yield return Ask("report");
+        }
         if (Theirs == null) yield break;
-        Check("client_glows_alike", Theirs.glows == Mine.glows, $"{Theirs.glows}, here {Mine.glows}");
+        Check("client_glows_alike", AllGlow(Theirs.glows), $"{Theirs.glows} there (moss/glowing), here {Mine.glows}");
         CompareHashes("moss_in_step");
 
         yield return SetTime("noon", 0.01f, false);
