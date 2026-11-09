@@ -121,6 +121,9 @@ public class SurfaceEffects : MonoBehaviour
     /// <summary>True while the water over the swimming wizard is frozen: it can't come up.</summary>
     public bool UnderIce { get; private set; }
 
+    /// <summary>How many times the wizard has come onto slick ground at speed and skidded (the probe).</summary>
+    public int Skids { get; private set; }
+
     /// <summary>Kicks up out of the water, if swimming (what jump does afloat).</summary>
     public void Kick() => kick = swimming;
 
@@ -258,6 +261,8 @@ public class SurfaceEffects : MonoBehaviour
             wasSlipping = false;
             return;
         }
+        // A skid starts as the wizard comes onto slick ground at speed (once a log line, cut with the narration lines: 5f4815fd).
+        if (!wasSlipping && momentum.sqrMagnitude > 1f) Skids++;
         wasSlipping = true;
         momentum = Glide(momentum, Wanted(moved), slipperyGrip, dt);
         transform.position = settled;
