@@ -271,6 +271,42 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void EveryLandSquareHasASpawnNearItsPlaces()
+        {
+            // One spawn per land square below the peaks, the valley's its own; each on land, beside a road where the square
+            // has one (but for the few whose road has no room beside it), and clear (by the plan's reckoning) of the sides, the shore, landmark
+            // sites, rivers and lakes: always in the nine, and in the bigger worlds but for a rare square with no room.
+            int spawns = 0, cramped = 0, offRoad = 0;
+            long far = 0;
+            foreach (var p in ManyPlans())
+            {
+                var want = Enumerable.Range(0, p.Count).Where(i => p.Band[i] > 0 && p.Wall[i] == 0 && !p.Options[i].Sea && p.Band[i] < Lib.Lands - 1).ToList();
+                Assert.That(p.Spawns.Select(s => s.Square), Is.EqualTo(want), $"{p.Inputs.Seed}: a spawn a land square, in order");
+                foreach (var s in p.Spawns)
+                {
+                    spawns++;
+                    string at = $"{Where(p, s.Square)}: the spawn at ({s.SiteX}, {s.SiteY}) near the {s.Near}";
+                    Assert.That(p.InSea(s.Square, s.SiteX, s.SiteY), Is.False, at);
+                    Assert.That(s.SiteX >= 0 && s.SiteY >= 0 && s.SiteX < WorldPlan.SquareCells && s.SiteY < WorldPlan.SquareCells, at);
+                    bool roads = p.Features[s.Square].Any(side => side.Any(f => f.Kind == EdgeKind.Road));
+                    if (s.ByRoad) Assert.That(roads, at);
+                    if (roads && !s.ByRoad) offRoad++;
+                    if (p.SpawnRoom(s.Square, s.SiteX, s.SiteY) < 0)
+                    {
+                        cramped++;
+                        if (p.Inputs.Size == 3) Assert.Fail($"{at} has no room");
+                    }
+                    var l = p.Landmarks.FirstOrDefault(m => m.Square == s.Square);
+                    if (l != null && s.Near != "inn" && s.Near != "shop")
+                        far = Math.Max(far, (long)Math.Sqrt((double)(s.SiteX - l.SiteX) * (s.SiteX - l.SiteX) + (double)(s.SiteY - l.SiteY) * (s.SiteY - l.SiteY)));
+                }
+            }
+            TestContext.Out.WriteLine($"SPAWNS {spawns} in all, {cramped} with less room than they keep, {offRoad} away from their square's road; the farthest from its square's landmark {far} cells");
+            Assert.That(cramped * 50, Is.LessThanOrEqualTo(spawns), "cramped spawns are rare");
+            Assert.That(offRoad * 10, Is.LessThanOrEqualTo(spawns), "a square's spawn is by its road but for a few");
+        }
+
+        [Test]
         public void ThePlanIsTheSameEveryTime()
         {
             var a = Nine("again");
@@ -283,10 +319,10 @@ namespace Chem.Tests
         }
 
         // Goldens: a change that alters a plan is made on purpose (a new WorldPlan.Version), or the goldens are re-picked.
-        [TestCase("valley-1", 3, PlanWrap.None, 0x2a58d027u)]
-        [TestCase("seed-7", 3, PlanWrap.None, 0x0003a9c9u)]
-        [TestCase("seed-2", 12, PlanWrap.EastWest, 0xc1bc5b9cu)]
-        [TestCase("seed-3", 12, PlanWrap.Torus, 0xd81ce0e6u)]
+        [TestCase("valley-1", 3, PlanWrap.None, 0x152204a9u)]
+        [TestCase("seed-7", 3, PlanWrap.None, 0x8f986941u)]
+        [TestCase("seed-2", 12, PlanWrap.EastWest, 0x7925e04du)]
+        [TestCase("seed-3", 12, PlanWrap.Torus, 0xca82e839u)]
         public void ItsHashIsGolden(string seed, int size, PlanWrap wrap, uint expected)
         {
             var p = WorldPlan.Solve(PlanInputs.For(seed, size, wrap, Valley), Lib);

@@ -373,7 +373,7 @@ namespace Chem
             }
         }
 
-        static string Slug(string name) =>
+        internal static string Slug(string name) =>
             string.Join("-", new string(name.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : ' ').ToArray())
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries));
 

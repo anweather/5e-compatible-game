@@ -359,4 +359,64 @@ Phases 1-5 are core only (u2, Linux) while the PC does maps 6-8; the PC waits on
   - the valley's `ground/` and `themes/`: in the nine the valley is drawn from its land, like any map without a ground
     pack;
   - buildings' `site.metres`, which only the old valley scene read, isn't moved.
-  - A river's bed follows a straight line from slot to hub, so where two biomes' bases differ a river can pool.
+
+## As built: chunk-gen-polish (u2, 2026-11-09)
+
+What the first heights picture of the nine showed, fixed (generator version 2; the goldens and the nine's `expects.highest`
+changed with it):
+
+- **The meet with the valley** was a comb of stripes: each row or column outside the valley copied the one rim cell
+  straight in from it, so the rim's cell-to-cell roughness ran out 90 cells. The meet now reads the rim as a mean along
+  it over as many cells either side as a cell is out from it (running sums round the rim as one loop, so the corners
+  carry on), and it widens where the rim stands far above or below the land beside it, up to 240 cells, so its steepest
+  pitch stays under 6 land units a cell. `TheValleysMeetIsSmoothBothWays` holds it: from 8 to 90 cells out, a cell
+  bends against its neighbours (along the side and across it) by more than 2 land units on under 0.2% of cells (0.08%
+  in the nine), never more than 8, where the first meet bent by 3 to 10 on about one cell in eight.
+- **The grey rectangle** under the valley's north edge was stone on a steep face: the valley's north rim stands about
+  117 m up, the land beside it about 23 m, and the 90-cell meet fell 1.75 m a cell, over `SteepUnits`. The wider meet
+  is a slope, not a face.
+- **The stripes along the south coast** were the shore's distance rounded to whole cells, so the land leaning down to
+  it stepped a column at a time. The shore is now in fractions of a cell (`Shore`, Q16).
+- **Rivers** (`ChunkGen.Rivers.cs`) are curves, not ruler lines: each leaves its side square on for 110 cells (as the
+  paper prototype draws them), runs straight through the hub where one river comes in and one goes out, and wanders
+  either side by seeded noise, up to 44 cells, none at either end so the next square's and the hub's carry on from it.
+  They widen downstream with the squares they drain (half a width of 2 cells at a spring, 4 for one square, one more for
+  each square upstream, at most 8), and the water only goes down: over the whole plan, every crossing stands at least
+  a metre below the hub upstream of it and every hub a metre below each crossing flowing in, worked out before any
+  chunk. `RiversWanderDownhillAndWidenDownstream` checks levels, widths, the joins, the corridor and the wander.
+- **The central plateau** (the tundra plateau, band hills plus tundra's 105 m base) was one dome from the bands' and
+  biomes' smooth blends. Land more than 60 m up is now a **massif**: ridged noise stretched three times along the world's
+  **grain** (a seeded direction) and warped, so crests run as ranges instead of closing into rings, with finer spurs on
+  them; broad noise drops some of it to saddles and lifts summits; a quarter-strength terrace leaves shoulders. River
+  levels take the massif too. `HighGroundReadsAsMountains`: lines across the square rise and fall by 10 m 55 times on 24
+  lines (the dome: 34).
+- **Still to look at:** a river whose level is far below the land beside it (a spring on a massif) leans its banks over
+  the same 73 cells, so a gorge wall can be stone; the radial streaks round a spring are its bank leaning.
+
+### Spawn points (step 5, Andrew 2026-11-08: "more spawn points in the 3x3")
+
+Plan version 2, generator version 3 (the plan goldens and the nine's golden changed; the four chunk goldens didn't,
+no spawn is in them).
+
+- **The plan** (`WorldPlan.Spawns.cs`) gives every land world square below the peaks one spawn, in square order and in
+  the plan hash. The valley's is its own `map.json` spawn (`PlanInputs.ValleySpawn`). Every other square's is placed
+  near its **anchor** (its inn or shop, else its village or landmark, else a sight on its road, else its hub): on the
+  road arm nearest the anchor (slot to hub, as `ChunkGen` lays roads), 30 to 100 cells along from the anchor's foot,
+  stood off the road's edge by 6 cells; a square with no road puts it in the open 60 to 100 cells from the anchor. Each
+  of 32 seeded tries is scored by `SpawnRoom`, its distance past what a spawn keeps from the square's sides (40 cells),
+  the shore (1.5 times its depth, for the wobble, and 40), a landmark's site (60), a river's line (72: slot, 110 cells
+  square on, then to the hub, for the curve and the wander) and a lake (64). If none has room (a road between two
+  rivers), the spot every 16 cells with room nearest the road is taken. Over the 49 plans the plan tests solve, 1574
+  spawns: none short of room, 13 off their square's road.
+- **The chunks** (`ChunkGen.Spawns.cs`) level a clearing 4 cells round each spawn to the land at it, leaning back over
+  6 cells, grass with no tree, stone or boulder. The valley's is left as its folder has it.
+- **The bake** writes a `spawn` place per square into `places.json`: a circle of the clearing, the map `square` it's
+  in, what it's `near`, the valley's marked `start`, each named for its square (the pinned map's name, the village made
+  there, else the template, a filler's biome; a compass word where two would meet). In the nine: The Valley, Riverbend,
+  Meadow Cross, Saltpan, Downs, Thornwick, Grassland, Reedbeds, Lakeland. `MapCheck` holds a spawn place above the sea.
+- **Tests:** `EveryLandSquareHasASpawnNearItsPlaces` (the plans), `EverySquaresSpawnIsOpenFlatAndDry` (the nine and
+  two more seeds: a spawn a square, the valley's the map's, level open ground, no thing, off every landmark's footprint,
+  beside its road) and `EverySpawnIsReachableOnFootFromTheValleys` (a walk over dry land, no sea, lake or river, never
+  more than a metre up or down a cell, reaches all nine; 93% of the nine's cells).
+- **Still to look at:** a spawn by its road can be 400 cells from its village where the road never passes near it
+  (roads run slot to hub); the anchor is a hint, the road wins.

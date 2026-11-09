@@ -1,8 +1,9 @@
 // The world plan once its templates are solved (the paper prototype's finishPlan, placePorts, settleFillerRivers and
-// riverViolations): the features crossing every side (a filler takes its neighbours'), lakes and the place each square's
-// features meet, the landmarks and their sites, a port on each inland sea, then the roads (WorldPlan.Roads.cs), the plan
-// hash, and the checks a good plan passes: every shared side and corner agrees, rivers run downhill from a spring or a
-// lake to the sea or a lake, nothing crosses into a wall, and an inland sea is sea with land all round.
+// riverViolations): the features crossing every side (a filler takes its neighbours'), lakes and the place each
+// square's features meet, the landmarks and their sites, a port on each inland sea, then the roads
+// (WorldPlan.Roads.cs), the spawns (WorldPlan.Spawns.cs), the plan hash, and the checks a good plan passes: every
+// shared side and corner agrees, rivers run downhill from a spring or a lake to the sea or a lake, nothing crosses into
+// a wall, and an inland sea is sea with land all round.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,6 +58,7 @@ namespace Chem
             CheckRivers();
             SolveRoads();
             PlaceOutcrops();
+            PlaceSpawns();
             CheckSidesAndCorners();
             CheckInlandSeas();
             CheckWalls();
@@ -409,6 +411,7 @@ namespace Chem
                 parts.AddRange(r.Slots);
             }
             foreach (var w in Waystations.Concat(Outcrops)) parts.AddRange(new[] { w.Square, (int)Fnv(w.Kind), w.SiteX, w.SiteY });
+            foreach (var s in Spawns) parts.AddRange(new[] { s.Square, (int)Fnv(s.Near), s.SiteX, s.SiteY, s.ByRoad ? 1 : 0 });
             return HashInts(parts);
         }
 

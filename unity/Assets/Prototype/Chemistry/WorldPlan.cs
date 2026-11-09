@@ -1,11 +1,12 @@
 // The world plan (docs/design/world-squares.md sections 2 and 5, J-080 phase 2): the coarse world, solved at load on
-// every peer from a seed. Each world square gets a band (an integer field, then an envelope so touching squares differ by
-// at most one), the coasts that go with the bands (matched across sides and at corners), a template from
+// every peer from a seed. Each world square gets a band (an integer field, then an envelope so touching squares differ
+// by at most one), the coasts that go with the bands (matched across sides and at corners), a template from
 // world/squares/ (wave-function style, with backtracking and a filler per band so it never fails, repeats weighed down
 // and never within 3 squares), then landmarks, the crossings nature allows, the roads between them and sights along
-// them. Ported from the paper prototype Andrew tried (tools/world-paper/index.html: buildWorld, buildCoasts,
-// placeInlandSeas, Solver, finishPlan, solveRoads, placeOutcrops), its rules but not its floats: every number here is an
-// integer and every roll comes from WorldHash, so the plan, and its hash, depend only on the seed and the inputs (D4).
+// them, and a spawn point per square (WorldPlan.Spawns.cs). Ported from the paper prototype Andrew tried
+// (tools/world-paper/index.html: buildWorld, buildCoasts, placeInlandSeas, Solver, finishPlan, solveRoads,
+// placeOutcrops), its rules but not its floats: every number here is an integer and every roll comes from WorldHash, so
+// the plan, and its hash, depend only on the seed and the inputs (D4).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,6 +35,8 @@ namespace Chem
         public int InlandSeas, InlandSize = 1;
         /// <summary>The valley's sides read from its land; null for the prototype's (sea to the south and west).</summary>
         public ValleySides Valley;
+        /// <summary>The valley's own spawn, cells within its square (its map.json's); null to place one as any square's.</summary>
+        public (int x, int y)? ValleySpawn;
         /// <summary>Backtracks in all, and per contradiction, before a filler takes a square.</summary>
         public int Budget = 3000, LocalBacktracks = 40;
 
@@ -170,7 +173,7 @@ namespace Chem
         public const int SquareCells = 576, ChunkCells = 64, ChunksPerSquare = SquareCells / ChunkCells;
         public const string VillageIntent = "village-with-landmark", MainRoad = "main road";
         /// <summary>The generator's version, in the hash: a change that alters plans is a new version.</summary>
-        public const int Version = 1;
+        public const int Version = 2;
         /// <summary>sim.json streaming's `sight`, in chunks: an outcrop is placed within it of its road.</summary>
         const int Sight = 4;
 
@@ -210,7 +213,7 @@ namespace Chem
         public PlanDestination[] Destinations;
         /// <summary>What the checks found wrong: empty for a good plan.</summary>
         public List<string> Problems = new List<string>();
-        /// <summary>FNV-1a over the plan in a fixed order: squares, coasts, landmarks, crossings, roads, sights.</summary>
+        /// <summary>FNV-1a over the plan in a fixed order: squares, coasts, landmarks, crossings, roads, sights, spawns.</summary>
         public uint Hash;
 
         WorldPlan(PlanInputs inputs, SquareLibrary lib)

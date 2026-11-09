@@ -1,10 +1,11 @@
 // A cell's land in a generated chunk, from its position alone (docs/design/world-squares.md section 5, level 2): the
-// bands of the world squares round it blended over 300 cells, its biomes' base and relief (BiomeField's shape weights,
-// anchored by the plan's templates), the coast (the plan's shore depths, wobbled along each side and the same where two
-// squares meet), river channels carved by distance to the plan's rivers (a slot on a side to the square's hub, the land
-// either side leaning down to the water over 110 m), lakes at a hub where a river ends, roads drawn and levelled through
-// their slots, and last the pinned valley's own land met over 90 cells. All integers (Q16 and land units) on WorldHash,
-// so every peer gets the same land bit for bit.
+// bands of the world squares round it blended over 300 cells, its biomes' base (BiomeField's shape weights, anchored by
+// the plan's templates), high ground shaped as a massif (ranges along the world's grain, saddles, shoulders) and the
+// biomes' relief, the coast (the plan's shore depths, wobbled along each side and the same where two squares meet),
+// river channels carved by distance to the plan's rivers (ChunkGen.Rivers.cs: a wandering curve from a slot on a side
+// to the square's hub, the land either side leaning down to the water over 110 m), lakes at a hub where a river ends,
+// roads drawn and levelled through their slots, and last the pinned valley's own land met over at least 90 cells. All
+// integers (Q16 and land units) on WorldHash, so every peer gets the same land bit for bit.
 using System;
 using System.Collections.Generic;
 
@@ -19,14 +20,16 @@ namespace Chem
         const int PerMetre = 8;
         /// <summary>Sub-units per land unit while land is worked out, rounded at the end.</summary>
         const long Q = 256;
-        const int BandBlend = 300, ValleyBlend = 90, RiverFade = 73, ShoreRamp = 100, SeaRamp = 90, BeachCells = 5;
+        const int BandBlend = 300, ValleyBlend = 90, MeetWidest = 240, MeetPitch = 6, RiverFade = 73, ShoreRamp = 100, SeaRamp = 90, BeachCells = 5;
         const int RiverHalf = 4, LakeRadius = 30, MainRoadHalf = 3, RoadHalf = 2, RoadBank = 6;
         // Land units: a face this steep a cell is bare stone; trees thin out above the tree line.
         // bands.json's wall: an east-west world's edge rows (none in the nine).
         const int WallMetres = 900;
         const int SteepUnits = 10, TreeLine = 220 * PerMetre;
         internal const byte WetSea = 1, WetRiver = 2, WetLake = 3, WetShore = 4;
-        const int SaltRelief = 0x0c61, SaltCell = 0x0c62, SaltSpot = 0x0c63, SaltShore = 0x0c64;
+        const int SaltRelief = 0x0c61, SaltCell = 0x0c62, SaltSpot = 0x0c63, SaltShore = 0x0c64, SaltMassif = 0x0c66;
+        // Metres: the plain above which land is a massif, and the height of a terrace step its shoulders sit on.
+        const int MassifFrom = 60, ShoulderMetres = 32;
 
         sealed class Shape
         {
@@ -35,22 +38,20 @@ namespace Chem
             public long Wx, Wy; // the wind's direction in Q16, for dunes
         }
 
-        sealed class Segment
-        {
-            public bool River, Lake;
-            public int X0, Y0, X1, Y1, Half, Reach; // map cells
-            public long S0, S1; // the water's surface at each end, land units × Q
-        }
-
         static readonly string[] Kinds = { "hills", "ridged", "dunes" };
         Shape[] shapes;
-        readonly List<Segment> segments = new List<Segment>();
+        // The world's grain, the way its ranges run: a seeded one of WindSin's sixteen directions, Q16.
+        long grainX, grainY;
 
         // Sixteen wind directions, (sin, −cos) in Q16, so a dune's crest needs no float.
         static readonly int[] WindSin = { 0, 25080, 46341, 60547, 65536, 60547, 46341, 25080, 0, -25080, -46341, -60547, -65536, -60547, -46341, -25080 };
 
         void SetUpLand()
         {
+            SetUpRim();
+            int grain = (int)(WorldHash.Hash4(seed, SaltMassif, 0, 0) & 15);
+            grainX = WindSin[grain];
+            grainY = WindSin[(grain + 12) & 15];
             shapes = new Shape[table.Rows.Count];
             for (int b = 0; b < table.Rows.Count; b++)
             {
@@ -69,73 +70,27 @@ namespace Chem
                     Wy = WindSin[(wind + 12) & 15],
                 };
             }
-            // The rivers and roads from each side's slot to the square's hub, a lake at a hub where a river ends.
-            for (int i = 0; i < Plan.Count; i++)
-            {
-                var (hx, hy) = Plan.Hub[i];
-                var hub = MapCell(i, hx, hy);
-                long hubSurface = Surface(hub.x, hub.y), lowestIn = long.MaxValue;
-                var rivers = new List<Segment>();
-                for (int s = 0; s < 4; s++)
-                    foreach (var f in Plan.Features[i][s])
-                    {
-                        if (f.Kind != EdgeKind.River && f.Kind != EdgeKind.Road) continue;
-                        var (sx, sy) = WorldPlan.Inside(s, f.Slot * Size + Size / 2, 0);
-                        var at = MapCell(i, sx, sy);
-                        var seg = new Segment { X0 = at.x, Y0 = at.y, X1 = hub.x, Y1 = hub.y };
-                        if (f.Kind == EdgeKind.River)
-                        {
-                            seg.River = true;
-                            seg.Half = RiverHalf;
-                            seg.Reach = RiverHalf + RiverFade;
-                            seg.S0 = Surface(at.x, at.y);
-                            if (f.Flow > 0) lowestIn = Math.Min(lowestIn, seg.S0);
-                            rivers.Add(seg);
-                        }
-                        else
-                        {
-                            seg.Half = f.Main ? MainRoadHalf : RoadHalf;
-                            seg.Reach = seg.Half + RoadBank;
-                        }
-                        segments.Add(seg);
-                    }
-                // The water at the hub stands below every river flowing in, so it runs down to it.
-                if (lowestIn != long.MaxValue) hubSurface = Math.Min(hubSurface, lowestIn - PerMetre * Q);
-                foreach (var r in rivers) r.S1 = hubSurface;
-                if (Plan.Lake[i])
-                    segments.Add(new Segment { Lake = true, River = true, X0 = hub.x, Y0 = hub.y, X1 = hub.x, Y1 = hub.y, Half = LakeRadius, Reach = LakeRadius + RiverFade, S0 = hubSurface, S1 = hubSurface });
-            }
+            SetUpPaths();
         }
 
-        // Where a river's water stands at a map cell: the bands and the biomes' base there, two metres down, without relief.
+        // Where a river's water stands at a map cell: the bands and the biomes' base there, shaped as a massif, two metres
+        // down, without the biomes' relief.
         long Surface(int x, int y)
         {
             int px = x + OriginX * Square, py = y + OriginY * Square;
             var b = Field.At(px, FieldY(py), table.ShapeBlendCells);
             long land = BandAt(px, py);
             for (int s = 0; s < 4; s++) land += b.Weight(s) * shapes[b.Id(s)].Base / One;
-            return land - 2 * PerMetre * Q;
+            return land + Massif(land, (long)px * One + One / 2, (long)py * One + One / 2) - 2 * PerMetre * Q;
         }
 
         int FieldY(int py) => Plan.Grid.H * Square - 1 - py;
-
-        // The segments whose reach touches the cells [x0, x1] × [y0, y1], and a road's width past them: a road's cell takes
-        // the land at its middle, which a river beyond the cell's own reach may have carved.
-        List<Segment> Nearby(int x0, int y0, int x1, int y1)
-        {
-            const int margin = MainRoadHalf + RoadBank + 2;
-            var near = new List<Segment>();
-            foreach (var s in segments)
-                if (Math.Max(s.X0, s.X1) + s.Reach + margin >= x0 && Math.Min(s.X0, s.X1) - s.Reach - margin <= x1 &&
-                    Math.Max(s.Y0, s.Y1) + s.Reach + margin >= y0 && Math.Min(s.Y0, s.Y1) - s.Reach - margin <= y1) near.Add(s);
-            return near;
-        }
 
         struct LandPoint
         {
             public int Land;
             public byte Wet;
-            public bool Road;
+            public bool Road, Clear;
         }
 
         /// <summary>The land at a map cell, in land units, before any landmark's stamps: a pure function of position.</summary>
@@ -166,7 +121,8 @@ namespace Chem
                 }
             }
             g = MeetPinned(x, y, g, ref wet);
-            return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road };
+            bool clear = !road && (wet == 0 || wet == WetShore) && Clearing(x, y, ref g);
+            return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road, Clear = clear };
         }
 
         // The land with its coast, rivers and lakes, before roads and the pinned square.
@@ -174,34 +130,35 @@ namespace Chem
         {
             int px = x + OriginX * Square, py = y + OriginY * Square;
             blend = Field.At(px, FieldY(py), table.ShapeBlendCells);
-            long g = BandAt(px, py);
+            long plain = BandAt(px, py), relief = 0;
             long xq = (long)px * One + One / 2, yq = (long)py * One + One / 2;
             for (int s = 0; s < 4; s++)
             {
                 long w = blend.Weight(s);
                 if (w <= 0) continue;
                 var sh = shapes[blend.Id(s)];
-                g += w * (sh.Base + Relief(sh, xq, yq)) / One;
+                plain += w * sh.Base / One;
+                relief += w * Relief(sh, xq, yq) / One;
             }
+            long g = plain + Massif(plain, xq, yq) + relief;
             wet = 0;
-            int shore = ShoreDistance(px, py);
+            long shore = Shore(px, py);
             long shoreLand = 4 * Q;
             if (shore <= 0)
             {
                 long deep = (long)Plan.Library.BandHeights[0] * PerMetre * Q, shallow = -12 * Q;
                 wet = WetSea;
-                return shallow + (deep - shallow) * BiomeMath.Smoothstep(-(long)shore * One / SeaRamp) / One;
+                return shallow + (deep - shallow) * BiomeMath.Smoothstep(-shore / SeaRamp) / One;
             }
             // Dry land stands above the shore: only the sea, a river or a lake is under it.
             g = Math.Max(g, shoreLand);
-            if (shore < ShoreRamp) g = shoreLand + (g - shoreLand) * BiomeMath.Smoothstep((long)shore * One / ShoreRamp) / One;
-            if (shore < BeachCells) wet = WetShore;
+            if (shore < ShoreRamp * One) g = shoreLand + (g - shoreLand) * BiomeMath.Smoothstep(shore / ShoreRamp) / One;
+            if (shore < BeachCells * One) wet = WetShore;
             foreach (var s in near)
             {
                 if (!s.River) continue;
-                long d = Distance(s, x, y, out _, out _, out long t);
-                if (d >= (long)s.Reach * One) continue;
-                long surface = s.S0 + (s.S1 - s.S0) * t / One, half = s.Half * One;
+                long d = Distance(s, x, y, out _, out _, out long surface, out long half);
+                if (d >= half + (long)RiverFade * One) continue;
                 if (d < half)
                 {
                     long depth = (s.Lake ? 2 : 1) * PerMetre * Q + PerMetre * Q / 2;
@@ -214,7 +171,11 @@ namespace Chem
             return g;
         }
 
-        // The pinned square's own land, met over 90 cells outside it: at its edge a cell is all the square's.
+        // The pinned square's own land, met over at least 90 cells outside it: at its edge a cell is all the square's. The
+        // square's rim is read as a mean along it over as many cells either side as the cell is out from it, so its
+        // cell-to-cell roughness fades within a few cells instead of running out as a stripe per row or column. Where the
+        // rim stands far above or below the land beside it, the meet widens (up to 240 cells) so its steepest pitch stays
+        // under MeetPitch, a slope, not a stone face along the rim.
         long MeetPinned(int x, int y, long g, ref byte wet)
         {
             if (Pinned == null) return g;
@@ -223,12 +184,67 @@ namespace Chem
             long dx = x - cx, dy = y - cy;
             if (dx == 0 && dy == 0) return g;
             long d = BiomeMath.Sqrt((dx * dx + dy * dy) * One * One);
-            if (d >= ValleyBlend * One) return g;
-            long v = (long)Pinned.Land[(cy - y0) * Square + cx - x0] * Q;
-            g = v + (g - v) * BiomeMath.Smoothstep(d / ValleyBlend) / One;
+            if (d >= MeetWidest * One) return g;
+            long v = RimMean(RimAt(cx - x0, cy - y0), (int)(d / One));
+            // Smoothstep's steepest pitch is 1.5 times the mean: wide enough that 1.5 × drop / width ≤ MeetPitch.
+            long width = Math.Max(ValleyBlend * One, Math.Min(MeetWidest * One, Math.Abs(g - v) * 3 / 2 * One / (MeetPitch * Q)));
+            if (d >= width) return g;
+            g = v + (g - v) * BiomeMath.Smoothstep(d * One / width) / One;
             if (g < SeaLevel * Q && wet != WetRiver && wet != WetLake) wet = WetSea;
             else if (wet == WetSea) wet = WetShore;
             return g;
+        }
+
+        // The pinned square's rim as one loop, clockwise from its north-west cell (north, east, south, west sides), in land
+        // units × Q, and its running sums: what the meet reads its rim from.
+        long[] rimSums;
+
+        void SetUpRim()
+        {
+            if (Pinned == null) return;
+            int n = 4 * (Square - 1);
+            rimSums = new long[n + 1];
+            for (int p = 0; p < n; p++)
+            {
+                var (rx, ry) = RimCell(p);
+                rimSums[p + 1] = rimSums[p] + (long)Pinned.Land[ry * Square + rx] * Q;
+            }
+        }
+
+        static (int x, int y) RimCell(int p)
+        {
+            int e = Square - 1;
+            if (p < e) return (p, 0);
+            if (p < 2 * e) return (e, p - e);
+            if (p < 3 * e) return (e - (p - 2 * e), e);
+            return (0, e - (p - 3 * e));
+        }
+
+        // A rim cell's place in the loop, from the pinned square's own coordinates.
+        static int RimAt(int rx, int ry)
+        {
+            int e = Square - 1;
+            if (ry == 0) return rx;
+            if (rx == e) return e + ry;
+            if (ry == e) return 2 * e + (e - rx);
+            return 3 * e + (e - ry);
+        }
+
+        // The mean of the rim over the 2r + 1 cells round place p, round the loop.
+        long RimMean(int p, int r)
+        {
+            int n = rimSums.Length - 1;
+            r = Math.Min(r, n / 2 - 1);
+            int a = p - r, b = p + r + 1;
+            long sum = Span(a, b, n);
+            return BiomeMath.FloorDiv(sum, 2 * r + 1);
+        }
+
+        long Span(int a, int b, int n)
+        {
+            if (a < 0) return rimSums[n] - rimSums[a + n] + rimSums[b];
+            if (b > n) return rimSums[n] - rimSums[a] + rimSums[b - n];
+            return rimSums[b] - rimSums[a];
         }
 
         // The bands of the four squares nearest, each square its own across its middle and blended with the next over
@@ -260,6 +276,39 @@ namespace Chem
             return (long)metres * PerMetre * Q;
         }
 
+        // What the land's plain (its bands and biomes' base, land units × Q) gains or loses as a massif at a point (Q16
+        // cells): land standing more than MassifFrom metres up is the uplift above that, and the uplift is shaped so a high
+        // band reads as mountains, not one cap: ridged noise raises crests and spurs with valleys between, broad noise
+        // drops some of it to saddles and lifts the rest to summits, and a soft terrace leaves shoulders on the slopes.
+        long Massif(long plain, long xq, long yq)
+        {
+            long above = plain - MassifFrom * PerMetre * Q;
+            if (above <= 0) return 0;
+            long Crest(long n)
+            {
+                long r = One - Math.Abs(n);
+                return r * r / One;
+            }
+            // The crests run along where the noise crosses zero: stretched three times along the world's grain (a seeded
+            // direction) and warped, so they run on as ranges and wander instead of closing into rings. The finer crests
+            // ride on the coarse ones (spurs off a ridge), not on the valleys between.
+            long wx = xq + BiomeMath.Centred(seed, SaltMassif + 3, xq, yq, 340) * 90, wy = yq + BiomeMath.Centred(seed, SaltMassif + 4, xq, yq, 340) * 90;
+            long across = (wx * grainX + wy * grainY) / One, along = (wy * grainX - wx * grainY) / One / 3;
+            long coarse = Crest(BiomeMath.Centred(seed, SaltMassif, across, along, 200));
+            long fine = Crest(BiomeMath.Centred(seed, SaltMassif + 1, across, along * 3 / 2, 90)) * coarse / One;
+            long finest = Crest(BiomeMath.Centred(seed, SaltMassif + 5, wx, wy, 45)) * fine / One;
+            long ridge = (4 * coarse + 3 * fine + finest) / 8;
+            long broad = BiomeMath.Centred(seed, SaltMassif + 2, xq, yq, 430);
+            // 0.25 + 0.85 ridge + 0.3 broad: from nothing in a deep saddle to 1.4 times the uplift on a summit.
+            long shape = One / 4 + ridge * 85 / 100 + broad * 3 / 10;
+            long lifted = Math.Max(0, above * shape / One);
+            // A quarter of the way to terraces ShoulderMetres high, eased: a slope eases to a shoulder, then steepens.
+            const long step = ShoulderMetres * PerMetre * Q;
+            long k = BiomeMath.FloorDiv(lifted, step), f = (lifted - k * step) * One / step;
+            lifted += (k * step + step * BiomeMath.Smoothstep(f) / One - lifted) / 4;
+            return lifted - above;
+        }
+
         // A biome's relief at a point (Q16 cells), land units × Q: hills a sum of octaves either side of the base, ridged
         // the sharp crests of folded noise rising from it, dunes ridged crests stretched across the wind.
         long Relief(Shape sh, long xq, long yq)
@@ -289,59 +338,46 @@ namespace Chem
             return sum * One / amps * sh.Relief / One;
         }
 
-        // Cells from the shore, inland positive and out to sea zero or less; a large number with no coast near. Each open
-        // side's shoreline wobbles along it, the wobble gone at the square's corners so it runs on into the next square.
-        int ShoreDistance(int px, int py)
+        // Q16 cells from the shore, inland positive and out to sea zero or less; a large number with no coast near. Each
+        // open side's shoreline wobbles along it, the wobble gone at the square's corners so it runs on into the next
+        // square. Kept in fractions of a cell: a shore rounded to whole cells steps the land beside it column by column.
+        long Shore(int px, int py)
         {
             var grid = Plan.Grid;
             int sx = (int)BiomeMath.FloorDiv(px, Square), sy = (int)BiomeMath.FloorDiv(py, Square);
-            if (sx < 0 || sy < 0 || sx >= grid.W || sy >= grid.H) return -SeaRamp;
+            if (sx < 0 || sy < 0 || sx >= grid.W || sy >= grid.H) return -SeaRamp * One;
             int i = grid.Index(sx, sy);
-            if (Plan.Band[i] == 0) return -SeaRamp;
+            if (Plan.Band[i] == 0) return -SeaRamp * One;
             var c = Plan.Coasts[i];
             int lx = px - sx * Square, ly = py - sy * Square;
             int[] from = { ly, Square - 1 - lx, Square - 1 - ly, lx };
             int[] along = { lx, ly, lx, ly };
-            int best = int.MaxValue;
+            long best = long.MaxValue / 4;
             for (int s = 0; s < 4; s++)
             {
                 if (!c.Open[s]) continue;
                 int t = along[s];
                 long bow = 4L * t * (Square - t) * One / ((long)Square * Square);
-                long wobble = BiomeMath.Centred(seed, SaltShore + i * 4 + s, (long)t * One, 0, 96) * bow / One * c.Depth[s] * 42 / 100 / One;
-                best = Math.Min(best, from[s] - c.Depth[s] - (int)wobble);
+                long wobble = BiomeMath.Centred(seed, SaltShore + i * 4 + s, (long)t * One, 0, 96) * bow / One * c.Depth[s] * 42 / 100;
+                best = Math.Min(best, (long)(from[s] - c.Depth[s]) * One - wobble);
             }
             for (int k = 0; k < 4; k++)
             {
                 if (c.Notch[k] == 0) continue;
                 int a = PlanGrid.CornerSides[k][0], b = PlanGrid.CornerSides[k][1];
-                long r = BiomeMath.Sqrt(((long)from[a] * from[a] + (long)from[b] * from[b]) * One * One) / One;
-                best = Math.Min(best, (int)r - c.Notch[k]);
+                long r = BiomeMath.Sqrt(((long)from[a] * from[a] + (long)from[b] * from[b]) * One * One);
+                best = Math.Min(best, r - (long)c.Notch[k] * One);
             }
             return best;
-        }
-
-        // Distance from a cell's middle to a segment, Q16 cells; the nearest point, and how far along it is (Q16).
-        static long Distance(Segment s, int x, int y, out long cx, out long cy) => Distance(s, x, y, out cx, out cy, out _);
-
-        static long Distance(Segment s, int x, int y, out long cx, out long cy, out long t)
-        {
-            long ax = s.X0 * One + One / 2, ay = s.Y0 * One + One / 2, bx = s.X1 * One + One / 2, by = s.Y1 * One + One / 2;
-            long qx = x * One + One / 2, qy = y * One + One / 2;
-            long vx = (bx - ax) / 16, vy = (by - ay) / 16, len2 = vx * vx + vy * vy;
-            t = len2 == 0 ? 0 : Math.Max(0, Math.Min(One, ((qx - ax) / 16 * vx + (qy - ay) / 16 * vy) * One / len2));
-            cx = ax + (bx - ax) * t / One;
-            cy = ay + (by - ay) * t / One;
-            return BiomeMath.Length(qx - cx, qy - cy);
         }
 
         // Whether a landmark may build on a map cell: dry land off the beach and away from the rivers.
         bool Buildable(int x, int y)
         {
             if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) return false;
-            if (ShoreDistance(x + OriginX * Square, y + OriginY * Square) < BeachCells * 2) return false;
+            if (Shore(x + OriginX * Square, y + OriginY * Square) < BeachCells * 2 * One) return false;
             foreach (var s in segments)
-                if (s.River && Distance(s, x, y, out _, out _) < (long)(s.Half + 3) * One) return false;
+                if (s.River && Distance(s, x, y, out _, out _, out _, out long half) < half + 3 * One) return false;
             return !IsPinned(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
         }
     }

@@ -131,6 +131,22 @@ touch them.
   valley). Its other files are a **bake** (`GeneratedMap.Bake`), written beside it and never committed; its map hash is
   over its inputs, not the bake.
 
+**Meet**
+: Where a generated map's land comes round to a pinned map's own (the valley's) outside its rim: over at least 90 cells,
+  wider (up to 240) where the rim stands far above or below the land beside it, reading the rim as a mean along it so the
+  land is smooth both ways (`ChunkGen.MeetPinned`).
+
+**Massif / grain**
+: High ground in a generated map shaped as mountains, not one cap (`ChunkGen.Massif`): land more than 60 m up is
+  ranges, the saddles between them and shoulders on their slopes. The **grain** is the way a world's ranges run, a
+  direction from its seed. *Not* a biome's own relief.
+
+**Spawn point**
+: Where a player may start in a generated map, one per world square below the peaks (`WorldPlan.Spawns`, in the plan
+  hash): the valley's is its own map's spawn, every other one a seeded spot beside the world square's road near its inn,
+  village or landmark, clear of rivers, lakes, the shore and landmark sites. `ChunkGen` levels and clears a few cells
+  round it (its **clearing**), and the bake writes it as a `spawn` place. *Not* a **spawner** (raiders, ambient life).
+
 **Ground pack**
 : The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
   `docs/design/maps-as-data.md`). The valley's is what the game draws (`MapTerrains`, phase 6): the bake that exported it is retired. A map without one is drawn from its land and cells.
