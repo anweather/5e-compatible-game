@@ -102,6 +102,10 @@ Each entry has:
   the path out of the village is the road leading up the mountain." A levelled shelf at the foot with the houses on
   it, one winding, graded trail out of the village up toward the crater, no houses on the steep cone.
 - **The big spells:** "way better now ... good enough for us to move ahead with" (wow-looks, 44a8103a).
+- **Spawn points (2026-11-08):** "Let's add more spawn points in the 3x3 too." The lead's reading: one spawn per
+  square from the plan (on a road, near its inn, village or landmark), a Host "Start in" choice, joiners beside the
+  host, a waystone at each, respawn at the nearest one reached. u2 in chunk-gen-polish step 5, the PC in play-nine
+  step 6.
 - **Revisited:** 0.
 
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)
