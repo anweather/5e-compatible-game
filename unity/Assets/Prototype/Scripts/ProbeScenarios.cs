@@ -339,7 +339,7 @@ public static class ProbeScenarios
             "Films casting with the hands, with the HUD, on a virtual pad into --shots: a full charge, a merge, and one hand firing again and again while the other charges; frames, sound.wav and timeline.txt, for ffmpeg.", films: true),
         new Entry("progress", typeof(ProgressProbe), 600f,
             "The Hold's progress on screen (the-hold.md, phase 5), F7 playing from the save: a locked hand and gesture saying so, attuning only to what's unlocked, " +
-            "the offer in words after wave 1, the d-pad picking Tough and the health it adds, the run's end and points earned, the save on disk, and a reset keeping them."),
+            "the offer in words after wave 1, the d-pad picking Tough and the health it adds, the run's end and points earned, the save on disk, and a reset keeping them; the save's files then go back as they were."),
         new Entry("roomprogress", typeof(RoomProgressProbe), 600f,
             "Two peers with different points in one Hold run (the-hold.md, phase 5): the host with 8 points (short of the second hand, as a save holding them would be; nothing saved), a virtual player with everything; both peers' hands as the core has them, " +
             "wave 1 beaten by Fireballs, the host's pick and the joiner's picked for it, and every checksum alike.", players: 2),

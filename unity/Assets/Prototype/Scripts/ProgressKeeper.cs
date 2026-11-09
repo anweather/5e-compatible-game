@@ -34,11 +34,20 @@ public partial class ProgressKeeper : MonoBehaviour
     void Awake()
     {
         grid = GetComponent<ChemGrid>();
-        file = new ProgressFile(ChemGrid.Folders.PlayerData ?? Application.persistentDataPath);
-        file.Load();
+        ReadTheSave();
         if (file.Trouble != null) EventLog.Add(file.Trouble);
         AddPage();
     }
+
+    /// <summary>The save read again from its folder, as at the start: for a probe that put the file back as it found it.</summary>
+    public void ReadTheSave()
+    {
+        file = new ProgressFile(SaveFolder);
+        file.Load();
+    }
+
+    /// <summary>The folder the save is in.</summary>
+    public static string SaveFolder => ChemGrid.Folders.PlayerData ?? Application.persistentDataPath;
 
     void OnDestroy() => RemovePage();
 
