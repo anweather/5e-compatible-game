@@ -14,7 +14,7 @@ reach them.
 | 1. **Author** | the worker writing the change (u2, the Mac, a PC job) | New or changed tests for what it changed; `dotnet build core -c Release -warnaserror` and the tests nearest the change while working | The whole suite on every edit |
 | 2. **Unity check** | a `unity-task` on the PC, or the Mac | Compile with 0 errors; the Unity-side tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) and the touched fixtures; `smoke` and the probes the change can reach; a clip only when asked. **The full EditMode suite (Chemistry under Mono) only when `Chemistry/` code changed** | Core tests under Mono for view-only changes; unrelated probes |
 | 3. **Landing gates** | `land.sh` | Core build, format, duplicate code, **the core suite once** (.NET) but the `Sweep` category (`gates.sh`: `--filter "TestCategory!=Sweep"`), the workers and chat tests | Unity, probes, the `Sweep` category |
-| 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | Full EditMode under Mono, the core's `Sweep` category (`dotnet test core --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
+| 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | Full EditMode under Mono with the `Timing` tests (`test run --include_explicit true`), the core's `Sweep` category (`dotnet test core --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
 | 5. **Release** | the release steps (`docs/RELEASING.md`) | `smoke`, `online`, the release's own probes, install from the draft, the PC joining a Mac host | Anything a sweep already covered on that commit |
 
 The holes, on purpose:
@@ -24,6 +24,12 @@ The holes, on purpose:
   `TheRunIsInTheChecksum`, `TwoWorldsMatchOverSeveralWaves`). A test goes in the category only if a shorter one of the
   same thing lands. Plain `dotnet test core` (and CI's quality workflow) still runs everything.
 
+- **Timing tests on a busy Editor** (#177, 2026-11-09: two EditMode timings failed after a long suite and with a stray
+  run alongside): a test that times something takes the best of a few rounds, each after a settled heap, and has
+  `[Category("Timing")]`. A Unity-only one is also `[Explicit]`, so a full EditMode run under load skips it and the sweep
+  runs it on the idle machine (`--include_explicit true`; only the timing tests: `unity command test run --mode EditMode
+  --filter Timing --filter_type category --include_explicit true`). Named alone it needs the flag too. A core one stays
+  in the landing suite, where .NET times it on every landing, with a looser limit under Mono.
 - **Mono versus .NET rounding** (seen 2026-11-08 on the seeded heights): layer 2 runs Mono only for core changes;
   the sweep runs it for everything.
 - **A probe a change "couldn't reach" but did:** the sweep runs every probe on dev.
