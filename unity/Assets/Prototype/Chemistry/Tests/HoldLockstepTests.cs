@@ -166,35 +166,37 @@ namespace Chem.Tests
             }
         }
 
-        // The cells round the Hold that a run reaches: its castle, heart, plate, towers, barricades and spawners, and the
-        // painted ground round them (HoldTests.Field's 40 cells).
-        const int Around = 40;
-
-        // Only the chunks round the Hold are active, as only those in a wizard's reach are in the game: the rest of the 576 x 576
-        // test world is grass nobody comes to, and stepping it was most of this test's time. Every peer, the late joiner too,
-        // switches the same chunks before its first tick.
-        static void OnlyTheHold(World w)
-        {
-            var s = w.HoldSite;
-            var cells = BuildingRaster.Cells(BuildingRow.Read(s.Castle, s.Row, R.Buildings), R.Buildings).Select(c => (c.X, c.Y))
-                .Concat(s.Spawners.SelectMany(p => p.Cells)).Concat(s.Barricades)
-                .Concat(new[] { s.Heart, s.Plate, s.Rise }).Concat(s.Towers.Select(t => (t.X, t.Y))).ToList();
-            const int size = 64; // a chunk's side, in cells
-            int fromX = Math.Max(0, cells.Min(c => c.Item1) - Around) / size, toX = Math.Min(w.W - 1, cells.Max(c => c.Item1) + Around) / size;
-            int fromY = Math.Max(0, cells.Min(c => c.Item2) - Around) / size, toY = Math.Min(w.H - 1, cells.Max(c => c.Item2) + Around) / size;
-            w.SetAllActive(false);
-            for (int cy = fromY; cy <= toY; cy++)
-                for (int cx = fromX; cx <= toX; cx++) w.SetActive(cx, cy, true);
-        }
-
         static Peer PeerOf(string me, int points, int post, Func<int, int> choose)
         {
             var w = Field(Seed, R);
-            OnlyTheHold(w);
             return new Peer { W = w, Me = me, Points = points, Post = Posts(w)[post], Choose = choose };
         }
 
+        // The landing's short one: two peers with different points through a wave and its picks, and a joiner caught up.
         [Test]
+        public void TwoPeersWithDifferentPointsStayInLockstepThroughAWave()
+        {
+            var room = new Room();
+            var fresh = PeerOf(Me, 0, 0, wave => 0);
+            room.Peers.Add(fresh);
+            room.Peers.Add(PeerOf(Bo, World.AllPoints, 1, wave => 1));
+            var w = fresh.W;
+            room.Tick();
+            var plate = StrikeCommand.Stand(Me, w.HoldSite.Plate.x, w.HoldSite.Plate.y, 1000000);
+            room.History.Add((w.Tick, plate));
+            foreach (var p in room.Peers) Apply(p.W, plate);
+            room.Until(x => x.HoldRunning, "the run starts");
+            room.Until(x => x.Hold.Wave >= 2 && x.RunOf(Me)?.Picks.Count > 0, "a wave beaten and picked from");
+            var late = room.Join(PeerOf(Cy, 9, 2, wave => 0));
+            for (int i = 0; i < 30; i++) room.Tick();
+            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "a fresh wizard's attuning is refused on every peer");
+            foreach (var p in room.Peers.Skip(1)) Assert.That(Checksum(p.W), Is.EqualTo(Checksum(w)), p.Me + "'s peer at the end");
+            Assert.That(late.W.HoldText(), Is.EqualTo(w.HoldText()));
+            Assert.That(late.W.HandsText(), Is.EqualTo(w.HandsText()));
+        }
+
+        // Five waves with three peers: the sweep runs it (docs/TESTING_LAYERS.md), the one above and the control below land.
+        [Test, Category("Sweep")]
         public void TwoPeersWithDifferentPointsStayInLockstepThroughARunAndALateJoiner()
         {
             var room = new Room();
