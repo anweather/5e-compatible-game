@@ -63,6 +63,8 @@ smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's look
 - **u2 first, paper first, clear after big features** (2026-11-08): core halves go to u2; open looks start as a
   paper prototype or stills board; after a big landing, hand off and remind Andrew to clear.
 - No waiting on Andrew's playtest for now (J-082).
+- The 60 fps pass's fixes run on Fable 5.2 while its limit is reset (Andrew, 2026-11-09): pass `model: "fable"` on
+  each perf `unity-task` (the agent has no model of its own, so it otherwise follows the lead's session).
 - Publishing a release needs Andrew's explicit go; always run the PC-joins-Mac test first (0.1.12 at d1d142c7).
 - Never kill a Unity Editor; open host-ux by full path; leave pid 22552 (Hub).
 - Deleting unmerged branches, force-pushing and changing the plan are Andrew's. Never type sign-ins or tokens.
