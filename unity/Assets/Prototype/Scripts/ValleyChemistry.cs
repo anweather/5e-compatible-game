@@ -78,8 +78,16 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The rules switched: the lake's colour, tinted from its art.</summary>
     public void RecolourWater(Color tint)
     {
-        var lake = GameObject.Find("Lake");
-        if (lake == null || !lake.TryGetComponent<Renderer>(out var r)) return;
+        // Looked for once a world, not at every switch: GameObject.Find walks the whole scene, 20-50 ms on the nine,
+        // which has no lake (#181).
+        if (!lakeSought)
+        {
+            lakeSought = true;
+            var lake = GameObject.Find("Lake");
+            lakeRenderer = lake != null && lake.TryGetComponent<Renderer>(out var found) ? found : null;
+        }
+        var r = lakeRenderer;
+        if (r == null) return;
         var own = r.sharedMaterial.color;
         var block = new MaterialPropertyBlock();
         r.GetPropertyBlock(block);
@@ -88,6 +96,8 @@ public partial class ValleyChemistry : MonoBehaviour
     }
 
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    Renderer lakeRenderer;
+    bool lakeSought;
 
     static IEnumerable<TerrainData> DataOf(ValleyGround g)
     {
@@ -161,6 +171,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
+        lakeSought = false; // a new world: the lake (or none) is looked for again at the next recolour
         if (ground == null && MapLand.Current is { } map)
         {
             layout = map.Layout;

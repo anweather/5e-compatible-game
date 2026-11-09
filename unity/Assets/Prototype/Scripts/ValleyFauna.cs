@@ -188,6 +188,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         long began = System.Diagnostics.Stopwatch.GetTimestamp();
         using (ReadRowsMarker.Auto()) bodies.Refresh(grid.CurrentRules.Effective);
         ReadRowsMs = (System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        // No row changed (a switch of something else): every creature's traits and size are as they were (#181).
+        if (bodies.Unchanged) return;
         counts = new int[bodies.Count];
         creatures.RemoveAll(c => bodies[c.species] == null);
         foreach (var c in creatures)
