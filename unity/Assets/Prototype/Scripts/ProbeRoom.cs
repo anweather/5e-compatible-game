@@ -37,6 +37,8 @@ public class RoomProbeSeen
     public string id;
     public int step;
     public int netTick;
+    /// <summary>A late joiner's: the host's tick its history went up to (NetChem.ReplayedUpTo); ticks after it ran live.</summary>
+    public int replayedUpTo;
     /// <summary>How long this side waited to reach the net tick it was asked to report at.</summary>
     public float reachSeconds;
     public List<string> lines = new();
@@ -116,6 +118,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.id = id;
         seen.step = step;
         seen.netTick = net.NetTick;
+        seen.replayedUpTo = net.ReplayedUpTo;
         seen.roomText = grid.World.RoomText();
         seen.rules = grid.World.Rules.Fingerprint;
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
@@ -393,6 +396,8 @@ public abstract class RoomProbe : ProbeScenario
     const float ReplySeconds = 40f;
     /// <summary>How long the virtual player may take to reach a tick the host has run: well inside ReplySeconds.</summary>
     const float ReachSeconds = 10f;
+    // A late joiner is still catching up on the history it replays, a few hundred ticks in a busy room.
+    protected const float LateJoinerSeconds = 40f;
     protected const string Wildfire = "wildfire", BigFireball = "big-fireball";
 
     static string Beside(string name) => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), name);
@@ -508,6 +513,22 @@ public abstract class RoomProbe : ProbeScenario
 
     float slowestReach;
 
+    // The parts of a checksum (NetChem.Checksum: the cells, then Others) that differ, by name, with both sides' values.
+    static readonly string[] ChecksumParts = { "cells", "rules", "things", "sky", "defense", "casts", "dragon", "land" };
+
+    static string PartsApart(string mine, string theirs)
+    {
+        var a = mine.Split('/');
+        var b = theirs.Split('/');
+        var apart = new List<string>();
+        for (int k = 0; k < Math.Max(a.Length, b.Length); k++)
+        {
+            string x = k < a.Length ? a[k] : "", y = k < b.Length ? b[k] : "";
+            if (x != y) apart.Add($"{(k < ChecksumParts.Length ? ChecksumParts[k] : "part " + k)} here {x}, there {y}");
+        }
+        return apart.Count == 0 ? "" : " (" + string.Join("; ", apart) + ")";
+    }
+
     /// <summary>The net tick the end of a run compares checksums from.</summary>
     protected int HashesFrom { get; set; }
 
@@ -517,6 +538,7 @@ public abstract class RoomProbe : ProbeScenario
         var here = new Dictionary<int, string>();
         for (int i = 0; i < mine.hashTicks.Count; i++) here[mine.hashTicks[i]] = mine.hashes[i];
         int same = 0, differ = 0, firstDiffer = -1;
+        string parts = "";
         for (int i = 0; i < Theirs.hashTicks.Count; i++)
         {
             if (Theirs.hashTicks[i] < from || !here.TryGetValue(Theirs.hashTicks[i], out var hash)) continue;
@@ -526,13 +548,17 @@ public abstract class RoomProbe : ProbeScenario
                 continue;
             }
             differ++;
-            if (firstDiffer < 0) firstDiffer = Theirs.hashTicks[i];
+            if (firstDiffer < 0)
+            {
+                firstDiffer = Theirs.hashTicks[i];
+                parts = PartsApart(hash, Theirs.hashes[i]);
+            }
         }
         Metric("checksums_compared", same + differ);
         string theirs = $"they recorded {Theirs.hashTicks.FirstOrDefault()} to {Theirs.hashTicks.LastOrDefault()}";
         Check(name, same >= 1 && differ == 0, same + differ == 0
             ? $"nothing compared: {theirs}, here {mine.hashTicks.FirstOrDefault()} to {mine.hashTicks.LastOrDefault()}, from net tick {from}"
-            : $"{same} same, {differ} differ, first at net tick {firstDiffer}; {theirs}");
+            : $"{same} same, {differ} differ, first at net tick {firstDiffer}{parts}; {theirs}");
         Check("no_desync", !Theirs.desync, "the client saw none");
     }
 }
@@ -702,10 +728,18 @@ public class RoomOpenProbe : RoomProbe
         yield return Wait(0.5f);
         yield return Ask("rejoin");
         if (Theirs == null) yield break;
+        // After the tick it joined at, its checksums are the host's. Up to it it replayed a history that keeps a player's
+        // newest stand since the last strike, not every stand (StandKeeper), so a stand a replayed checksum saw can
+        // differ, which no peer's own desync check compares (a window it saw only part of gives none).
+        HashesFrom = Theirs.replayedUpTo + 1;
         Check("late_joiner_has_the_room", Theirs.roomText == World.RoomText(), $"{Theirs.roomText}, here {World.RoomText()}");
         Check("late_joiner_has_the_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
         Check("late_joiner_fireball", Theirs.fireballRadius == World.Rules.Spell(SpellIds.Fireball).Radius, $"radius {Theirs.fireballRadius}");
-        Check("late_joiner_has_the_waves", Theirs.defense == Mine.defense, $"{Theirs.defense}, here {Mine.defense}");
+        // The waves at one tick: this side's now, and the joiner's once it has run it (a wave can turn between).
+        string waves = Mine.defense;
+        yield return Reach("late_joiner_waves", Mine.netTick, LateJoinerSeconds);
+        if (Theirs == null) yield break;
+        Check("late_joiner_has_the_waves", Theirs.defense == waves, $"{Theirs.defense}, here {waves}");
         Check("late_joiner_has_the_strike", !string.IsNullOrEmpty(Mine.strikes) && Theirs.strikes == Mine.strikes, $"{Theirs.strikes}, here {Mine.strikes}");
     }
 
