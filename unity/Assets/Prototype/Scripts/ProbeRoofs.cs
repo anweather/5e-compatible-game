@@ -11,13 +11,40 @@ using UnityEngine;
 // Numbers and before/after pictures of both.
 public class RoofsProbe : ProbeScenario
 {
+    // The fire's pace varies: at 50 s a last log cell can still stand, or the slate be just starting down onto the burnt
+    // walls. Gives both a little longer, read as they settle.
+    IEnumerator FallenIn(VillageHouse timber, float roofBefore)
+    {
+        for (float t = 0f; t < LateSeconds; t += 0.5f)
+        {
+            if (Cells(timber).All(c => World.At(c.x, c.y).T != TerrainIds.LogWall) && Roof(timber).enabled && roofBefore - Roof(timber).transform.position.y > 1f) yield break;
+            yield return Wait(0.5f);
+        }
+    }
+
+    // Casts and waits for it to land: solo the core takes a cast as its effect lands (SpellCaster.Cast, D16), after the
+    // gesture's wind-up and the flight, and the wizard moving on or casting again meanwhile can cut it off.
+    IEnumerator CastAndLand(string spell, Vector2Int at)
+    {
+        var cast = new CastCommand(spell, at.x, at.y, 1);
+        caster.Cast(cast);
+        yield return Wait(caster.FlightSeconds(cast) + 0.3f);
+    }
+
+    // How much longer than 50 s the timber house may take to burn down and its slate to fall in.
+    const float LateSeconds = 25f;
+
     protected override IEnumerator Run()
     {
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
             "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
         var houses = FindObjectsByType<VillageHouse>(FindObjectsSortMode.None);
-        var timber = houses.FirstOrDefault(h => h.walls == WallKind.Timber && h.cover == RoofCover.Slate);
-        var stone = houses.FirstOrDefault(h => h.walls == WallKind.Stone && h.cover == RoofCover.Thatch);
+        // The smallest of each, by name after that: FindObjectsByType has no order, and a big timber hall's walls don't all
+        // burn in time for its slate to fall (it falls once half a building's walls are gone, ValleyChemistry.CabinWallLost).
+        VillageHouse Pick(WallKind walls, RoofCover cover) => houses.Where(h => h.walls == walls && h.cover == cover)
+            .OrderBy(h => Cells(h).Count).ThenBy(h => h.name, System.StringComparer.Ordinal).FirstOrDefault();
+        var timber = Pick(WallKind.Timber, RoofCover.Slate);
+        var stone = Pick(WallKind.Stone, RoofCover.Thatch);
         Check("houses_found", timber != null && stone != null, $"timber with slate {timber != null}, stone with thatch {stone != null}");
         if (timber == null || stone == null) yield break;
 
@@ -32,14 +59,15 @@ public class RoofsProbe : ProbeScenario
         // The timber house: a Fire Bolt on a wall.
         var wall = Cells(timber).FirstOrDefault(c => World.At(c.x, c.y).T == TerrainIds.LogWall);
         Teleport(timber.transform.position - timber.transform.forward * 7f + Vector3.up * 0.1f);
-        caster.Cast(SpellIds.FireBolt, wall.x, wall.y, 1);
+        yield return CastAndLand(SpellIds.FireBolt, wall);
+        Metric("timber_bolt_took", World.At(wall.x, wall.y).T != TerrainIds.LogWall || World.At(wall.x, wall.y).Fire > 0 ? 1 : 0);
         // The stone house: grease beside a wall, set alight.
         var beside = Beside(stone);
         Teleport(stone.transform.position - stone.transform.forward * 7f + Vector3.up * 0.1f);
-        caster.Cast(SpellIds.Grease, beside.x, beside.y, 1);
-        yield return Wait(0.5f);
-        caster.Cast(SpellIds.FireBolt, beside.x, beside.y, 1);
+        yield return CastAndLand(SpellIds.Grease, beside);
+        yield return CastAndLand(SpellIds.FireBolt, beside);
         yield return Wait(50f);
+        yield return FallenIn(timber, roofBefore);
 
         int logLeft = Cells(timber).Count(c => World.At(c.x, c.y).T == TerrainIds.LogWall);
         var slate = Roof(timber);

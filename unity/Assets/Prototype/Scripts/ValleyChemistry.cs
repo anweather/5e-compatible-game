@@ -199,6 +199,7 @@ public partial class ValleyChemistry : MonoBehaviour
         cabinWrecked = new int[n];
         cabinCharred = new bool[n];
         BindRoofs(n);
+        HookRows(world);
         if (startTrees.Length != world.W * world.H) startTrees = new bool[world.W * world.H];
         var all = world.Cells;
         for (int y = 0; y < world.H; y++)
@@ -521,9 +522,37 @@ public partial class ValleyChemistry : MonoBehaviour
     int BuildingWallAt(string terrain, int x, int y)
     {
         if (terrain != TerrainIds.LogWall && terrain != TerrainIds.Stone) return -1;
+        // A row's wall (a landmark's house, the castle, a mod's) is none of the scene's: RowHouses draws it.
+        if (rowCells.Contains(grid.World.Idx(x, y))) return -1;
         int inside = CabinAround(x, y);
         if (inside >= 0 || terrain == TerrainIds.Stone) return inside;
         return CabinAt(x, y);
+    }
+
+    // The cells of the rows drawn from the world (World.RowsDrawn), kept as the rows change: without them a laid row's log
+    // walls went to the nearest scene house (CabinAt), which then needed them burnt too before its roof fell in.
+    readonly HashSet<int> rowCells = new();
+    World hookedRows;
+
+    void HookRows(World world)
+    {
+        IndexRowCells(world);
+        if (hookedRows == world) return;
+        if (hookedRows != null) hookedRows.BuildingsChanged -= RowsChanged;
+        hookedRows = world;
+        world.BuildingsChanged += RowsChanged;
+    }
+
+    void IndexRowCells(World world)
+    {
+        rowCells.Clear();
+        foreach (var row in world.RowsDrawn())
+            foreach (var c in world.BuildingCellsOf(row)) rowCells.Add(world.Idx(c.X, c.Y));
+    }
+
+    void RowsChanged(BuildingsChange change)
+    {
+        if (hookedRows != null) IndexRowCells(hookedRows);
     }
 
     // The cabin or house whose box (its BoxCollider, a little grown) holds a cell, or -1.
@@ -682,6 +711,7 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (grid != null && ground != null) grid.DetailChunksChanged -= ground.DrawDetails;
         if (grid != null) grid.ChunkFreshened -= BuildingsBack;
+        if (hookedRows != null) hookedRows.BuildingsChanged -= RowsChanged;
         if (charred != null) Destroy(charred);
         wet?.Destroy();
         ground?.Destroy();
