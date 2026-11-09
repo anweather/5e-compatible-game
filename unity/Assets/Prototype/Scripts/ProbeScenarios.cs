@@ -51,7 +51,7 @@ public static class ProbeScenarios
             "Checks: the fire has spread (more than one burning cell at t+10 s), no console errors."),
         new Entry("earth", typeof(EarthProbe), 60f,
             "Earthen Trench west from the pond's bank, then Wall of Stone across it. " +
-            "Checks: water in the trench by t+8 s, the wall's cells raised to a wall, no console errors."),
+            "Checks: water in the trench by t+8 s, the wall's cells raised to a wall, or on open water to stepping stones, no console errors."),
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
@@ -719,14 +719,24 @@ public class EarthProbe : ProbeScenario
         Check("trench_has_water_t8", wet > 0, $"{wet}/{trench.Count} cells wet, {units} units");
         Shot("trench");
 
-        // A Wall of Stone across it, north from (12, 7).
+        // A Wall of Stone across it, north from (12, 7): a wall on dry ground, and on open water, which the trench spills
+        // onto the flat cells beside it as the wizard walks over, stepping stones only "stepping" high (World.Terraform,
+        // J-039). Which cells were wet at the cast's tick only shows after it: a cell is a wall, or a stone of exactly
+        // that height in the spell's terrain.
         Place(10, 6);
+        var spell = World.Rules.Spell(SpellIds.WallOfStone);
         var wall = SpellCells(SpellIds.WallOfStone, 12, 7, 0);
+        var before = wall.ToDictionary(c => c, c => World.At(c.x, c.y).Height);
         yield return CastFromBar(SpellIds.WallOfStone, 12, 7, 0, 3f);
-        int raised = wall.Count(c => World.IsRaisedWall(World.At(c.x, c.y)));
+        bool Walled((int x, int y) c) => World.IsRaisedWall(World.At(c.x, c.y));
+        bool Stone((int x, int y) c) => !Walled(c) && World.At(c.x, c.y).Height == spell.Stepping && World.At(c.x, c.y).T == spell.Terrain;
+        int raised = wall.Count(Walled), stones = wall.Count(Stone);
         Metric("wall_cells", wall.Count);
         Metric("wall_cells_raised", raised);
-        Check("wall_raised", wall.Count > 0 && raised == wall.Count, $"{raised}/{wall.Count} cells a wall");
+        Metric("wall_cells_stepping", stones);
+        string Short() => string.Join(" ", wall.Where(c => !Walled(c) && !Stone(c))
+            .Select(c => $"({c.x},{c.y}) {before[c]}->{World.At(c.x, c.y).Height} {World.At(c.x, c.y).T} water {World.At(c.x, c.y).Water}"));
+        Check("wall_raised", raised > 0 && raised + stones == wall.Count, $"{raised} walls and {stones} stepping stones of {wall.Count}; neither: {Short()}");
         Shot("wall");
     }
 }
