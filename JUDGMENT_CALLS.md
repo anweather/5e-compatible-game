@@ -41,6 +41,19 @@ Each entry has:
 
 ## Decided
 
+### J-086: What a rule switch and a look change may touch (2026-11-09)
+
+- **Asked:** Andrew, on why a bigger world slowed spells when only the cells near players are active. The lead:
+  the tick is bounded by reach (1.2 ms on the nine), but code outside it walked the whole map: a rule switch
+  sanitized every cell, a look change redrew every chunk.
+- **Also comes up when:** any new system that reacts to a switch, a mod, weather or a save; the 12 x 10's sparse
+  world; anything that loops over `World.Cells` or every chunk.
+- **Answer (Andrew):** a rule switch affects active cells now, and every other chunk when it activates. A look
+  change affects only chunks being drawn; a chunk drawn later takes the current look then. Cost follows the active
+  region and the drawn tier, never the map's size.
+- **Doing:** core half to u2 (`rule-switch-by-chunk`, #190); view half on the PC with #185 (#186).
+- **Revisited:** 0.
+
 ### J-085: Same biomes side by side: the patchwork (2026-11-09)
 
 - **Asked:** Andrew: why can't similar biomes sit side by side? Two or three forests together, or a big desert,
