@@ -359,4 +359,36 @@ Phases 1-5 are core only (u2, Linux) while the PC does maps 6-8; the PC waits on
   - the valley's `ground/` and `themes/`: in the nine the valley is drawn from its land, like any map without a ground
     pack;
   - buildings' `site.metres`, which only the old valley scene read, isn't moved.
-  - A river's bed follows a straight line from slot to hub, so where two biomes' bases differ a river can pool.
+
+## As built: chunk-gen-polish (u2, 2026-11-09)
+
+What the first heights picture of the nine showed, fixed (generator version 2; the goldens and the nine's `expects.highest`
+changed with it):
+
+- **The meet with the valley** was a comb of stripes: each row or column outside the valley copied the one rim cell
+  straight in from it, so the rim's cell-to-cell roughness ran out 90 cells. The meet now reads the rim as a mean along
+  it over as many cells either side as a cell is out from it (running sums round the rim as one loop, so the corners
+  carry on), and it widens where the rim stands far above or below the land beside it, up to 240 cells, so its steepest
+  pitch stays under 6 land units a cell. `TheValleysMeetIsSmoothBothWays` holds it: from 8 to 90 cells out, a cell
+  bends against its neighbours (along the side and across it) by more than 2 land units on under 0.2% of cells (0.08%
+  in the nine), never more than 8, where the first meet bent by 3 to 10 on about one cell in eight.
+- **The grey rectangle** under the valley's north edge was stone on a steep face: the valley's north rim stands about
+  117 m up, the land beside it about 23 m, and the 90-cell meet fell 1.75 m a cell, over `SteepUnits`. The wider meet
+  is a slope, not a face.
+- **The stripes along the south coast** were the shore's distance rounded to whole cells, so the land leaning down to
+  it stepped a column at a time. The shore is now in fractions of a cell (`Shore`, Q16).
+- **Rivers** (`ChunkGen.Rivers.cs`) are curves, not ruler lines: each leaves its side square on for 110 cells (as the
+  paper prototype draws them), runs straight through the hub where one river comes in and one goes out, and wanders
+  either side by seeded noise, up to 44 cells, none at either end so the next square's and the hub's carry on from it.
+  They widen downstream with the squares they drain (half a width of 2 cells at a spring, 4 for one square, one more for
+  each square upstream, at most 8), and the water only goes down: over the whole plan, every crossing stands at least
+  a metre below the hub upstream of it and every hub a metre below each crossing flowing in, worked out before any
+  chunk. `RiversWanderDownhillAndWidenDownstream` checks levels, widths, the joins, the corridor and the wander.
+- **The central plateau** (the tundra plateau, band hills plus tundra's 105 m base) was one dome from the bands' and
+  biomes' smooth blends. Land more than 60 m up is now a **massif**: ridged noise stretched three times along the world's
+  **grain** (a seeded direction) and warped, so crests run as ranges instead of closing into rings, with finer spurs on
+  them; broad noise drops some of it to saddles and lifts summits; a quarter-strength terrace leaves shoulders. River
+  levels take the massif too. `HighGroundReadsAsMountains`: lines across the square rise and fall by 10 m 55 times on 24
+  lines (the dome: 34).
+- **Still to look at:** a river whose level is far below the land beside it (a spring on a massif) leans its banks over
+  the same 73 cells, so a gorge wall can be stone; the radial streaks round a spring are its bank leaning.

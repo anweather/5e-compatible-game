@@ -1,7 +1,8 @@
 // ChunkGen (J-080 phase 4, docs/design/world-squares.md section 5, level 2): the nine's chunks from its world file
 // (world/maps/nine/map.json) and plan. A chunk is the same made in any order or on any thread (goldens of its hash), its
 // land is a function of position so the cells either side of every chunk side meet, the valley's chunks are its own
-// folder's, and a bake is a map that passes MapCheck. CHUNK_GEN_PNG_OUT=<folder> dotnet test core --filter
+// folder's and the land beside it meets them smoothly, rivers wander downhill and widen, high ground is mountains, and a
+// bake is a map that passes MapCheck. CHUNK_GEN_PNG_OUT=<folder> dotnet test core --filter
 // "FullyQualifiedName~ChunkGenTests" writes the nine's heights as a small picture, and prints the times.
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,23 @@ namespace Chem.Tests
 
         static GeneratedChunk At(int cx, int cy) => All[cy * Nine.Gen.ChunksW + cx];
 
+        static int[] wholeLand;
+
+        // The nine's land, row-major over all its cells.
+        static int[] Whole
+        {
+            get
+            {
+                if (wholeLand != null) return wholeLand;
+                var gen = Nine.Gen;
+                int n = ChunkGen.Size, w = gen.CellsW;
+                var land = new int[w * gen.CellsH];
+                foreach (var c in All)
+                    for (int j = 0; j < n; j++) Array.Copy(c.Land, j * n, land, (c.Y * n + j) * w + c.X * n, n);
+                return wholeLand = land;
+            }
+        }
+
         // The hash of every chunk's hash in row-major order: the nine's golden.
         static uint HashOfAll(IEnumerable<GeneratedChunk> chunks)
         {
@@ -44,8 +62,8 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0x0416f8b3u;
-        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0x8266fe6du), (9, 20, 0xa5cfdad9u), (4, 4, 0x9de4f5efu), (26, 0, 0x151ac700u) };
+        const uint NineGolden = 0xda7401e6u;
+        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xa2d57868u), (9, 20, 0x612d3d88u), (4, 4, 0x126a5ca0u), (26, 0, 0x7594a450u) };
 
         [Test]
         public void TheNinesWorldFileSaysItsShape()
@@ -113,9 +131,7 @@ namespace Chem.Tests
             // to the next is no bigger than the land makes inside its chunks: no cliff where two chunks, made apart, meet.
             var gen = Nine.Gen;
             int n = ChunkGen.Size, w = gen.CellsW;
-            var land = new int[w * gen.CellsH];
-            foreach (var c in All)
-                for (int j = 0; j < n; j++) Array.Copy(c.Land, j * n, land, (c.Y * n + j) * w + c.X * n, n);
+            var land = Whole;
             int inside = 0, across = 0, worstX = 0, worstY = 0;
             for (int y = 0; y < gen.CellsH; y++)
                 for (int x = 0; x + 1 < w; x++)
@@ -141,6 +157,169 @@ namespace Chem.Tests
             }
             TestContext.Out.WriteLine($"SEAMS the valley's sides step at most {valleyStep} land units more than the valley's own next cell");
             Assert.That(valleyStep, Is.LessThanOrEqualTo(8));
+        }
+
+        [Test]
+        public void TheValleysMeetIsSmoothBothWays()
+        {
+            // Outside the valley's north and east sides, the land meeting it is smooth along the side and across it: no
+            // comb of rows or columns each blended on its own (as the first meet made, bending by 3 to 10 land units on about
+            // one cell in eight). A bend is a cell against its two neighbours (|left + right − 2 × middle|, and up and
+            // down): a smooth slope bends by 0 or 1 however steep it is. Over 2 is rare, where the biomes' own relief folds;
+            // by the rim no sharper than the rim itself. Land a river, road or lake carves, the coast's step, and chunks a
+            // landmark stamps are left out; the land beyond the meet is printed to compare.
+            var gen = Nine.Gen;
+            var land = Whole;
+            int w = gen.CellsW, x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square;
+            int rim = 0;
+            for (int t = 1; t + 1 < sq; t++)
+            {
+                rim = Math.Max(rim, Bend(land, w, x0 + t, y0, true));
+                rim = Math.Max(rim, Bend(land, w, x0 + sq - 1, y0 + t, false));
+            }
+            var near = new Bends();
+            var meet = new Bends();
+            var beyond = new Bends();
+            for (int y = 1; y + 1 < gen.CellsH; y++)
+                for (int x = 1; x + 1 < w; x++)
+                {
+                    int cx = Math.Max(x0, Math.Min(x0 + sq - 1, x)), cy = Math.Max(y0, Math.Min(y0 + sq - 1, y));
+                    long d2 = (long)(x - cx) * (x - cx) + (long)(y - cy) * (y - cy);
+                    Bends into = null;
+                    if (d2 == 0) continue;
+                    if (d2 < 8 * 8) into = near;
+                    else if (d2 < 90 * 90) into = meet;
+                    else if (d2 >= 250 * 250 && d2 < 330 * 330) into = beyond;
+                    if (into == null || At(x / ChunkGen.Size, y / ChunkGen.Size).Landmarks.Count > 0) continue;
+                    int k = y * w + x;
+                    if (new[] { k, k - 1, k + 1, k - w, k + w }.Any(i => land[i] < ChunkGen.SeaLevel + 2) || gen.NearPath(x, y)) continue;
+                    into.Add(Math.Max(Bend(land, w, x, y, true), Bend(land, w, x, y, false)), x, y);
+                }
+            TestContext.Out.WriteLine($"MEET the valley's rim bends at most {rim}; within 8 cells of it {near}; the meet (8 to 90 cells) {meet}; beyond it (250 to 330) {beyond}");
+            Assert.That(meet.Cells, Is.GreaterThan(40000));
+            Assert.That(meet.Worst, Is.LessThanOrEqualTo(8), $"the meet's worst bend at ({meet.X}, {meet.Y})");
+            Assert.That(meet.Over2 * 1000, Is.LessThanOrEqualTo(meet.Cells * 2), "bends over 2 land units are rare in the meet");
+            Assert.That(near.Worst, Is.LessThanOrEqualTo(rim), $"by the rim, no bend sharper than the rim's own, at ({near.X}, {near.Y})");
+        }
+
+        static int Bend(int[] land, int w, int x, int y, bool alongX)
+        {
+            int k = y * w + x, step = alongX ? 1 : w;
+            return Math.Abs(land[k - step] + land[k + step] - 2 * land[k]);
+        }
+
+        sealed class Bends
+        {
+            public int Cells, Over2, Worst, X, Y;
+
+            public void Add(int bend, int x, int y)
+            {
+                Cells++;
+                if (bend > 2) Over2++;
+                if (bend > Worst) (Worst, X, Y) = (bend, x, y);
+            }
+
+            public override string ToString() => $"{Cells} cells, {Over2} bend over 2, the worst {Worst} at ({X}, {Y})";
+        }
+
+        [Test]
+        public void RiversWanderDownhillAndWidenDownstream()
+        {
+            var gen = Nine.Gen;
+            var rivers = gen.Rivers;
+            Assert.That(rivers, Is.Not.Empty);
+            int joins = 0;
+            foreach (var r in rivers)
+            {
+                string name = $"the river in square {r.Square} from ({r.X[0] >> 16}, {r.Y[0] >> 16})";
+                for (int k = 1; k < r.X.Length; k++)
+                {
+                    Assert.That(r.Surface[k], Is.LessThanOrEqualTo(r.Surface[k - 1]), $"{name}: its water never rises downstream");
+                    Assert.That(r.Half[k], Is.GreaterThanOrEqualTo(r.Half[k - 1]), $"{name}: it never narrows downstream");
+                }
+                // In its square's corridor (a slot on the east or south side is the next square's first cell).
+                var (sx, sy) = gen.MapCell(r.Square, 0, 0);
+                for (int k = 0; k < r.X.Length; k++)
+                {
+                    long x = r.X[k] >> 16, y = r.Y[k] >> 16;
+                    Assert.That(x >= sx && x <= sx + ChunkGen.Square && y >= sy && y <= sy + ChunkGen.Square, $"{name}: ({x}, {y}) is in its square");
+                }
+                // Not a ruler line: somewhere it strays from the straight line between its ends.
+                long ax = r.X[0], ay = r.Y[0], bx = r.X[^1], by = r.Y[^1];
+                double chord = Math.Sqrt((double)(bx - ax) * (bx - ax) + (double)(by - ay) * (by - ay)) / 65536;
+                double stray = 0;
+                for (int k = 0; k < r.X.Length; k++)
+                    stray = Math.Max(stray, Math.Abs((double)(bx - ax) * (r.Y[k] - ay) - (double)(by - ay) * (r.X[k] - ax)) / 65536 / 65536 / Math.Max(1, chord));
+                TestContext.Out.WriteLine($"RIVER {name}: {chord:F0} cells end to end, strays {stray:F0}, water {r.Surface[0] / 256.0 / 8:F1} m to {r.Surface[^1] / 256.0 / 8:F1} m, half its width {r.Half[0] / 65536.0:F1} to {r.Half[^1] / 65536.0:F1} cells");
+                if (chord > 150) Assert.That(stray, Is.GreaterThan(10), $"{name} wanders");
+                // Where the next river starts as this one ends (the hub, or the next square across a side), it carries on.
+                foreach (var next in rivers.Where(o => o != r && o.X[0] == bx && o.Y[0] == by))
+                {
+                    Assert.That(next.Surface[0], Is.EqualTo(r.Surface[^1]), $"{name} runs on at the same level");
+                    Assert.That(next.Half[0], Is.EqualTo(r.Half[^1]), $"{name} runs on as wide");
+                    joins++;
+                }
+            }
+            Assert.That(joins, Is.GreaterThanOrEqualTo(3), "the nine's river runs through squares and hubs");
+            // And the water is there: a river's cells along its middle.
+            int wet = 0, middles = 0;
+            foreach (var r in rivers)
+                for (int k = 1; k + 1 < r.X.Length; k++)
+                {
+                    int x = (int)(r.X[k] >> 16), y = (int)(r.Y[k] >> 16);
+                    if (gen.IsPinned(x / ChunkGen.Size, y / ChunkGen.Size) || x >= gen.CellsW || y >= gen.CellsH) continue;
+                    middles++;
+                    var c = At(x / ChunkGen.Size, y / ChunkGen.Size);
+                    if (c.Cells[(y % ChunkGen.Size) * ChunkGen.Size + x % ChunkGen.Size] == 'r') wet++;
+                }
+            Assert.That(wet * 10, Is.GreaterThanOrEqualTo(middles * 9), $"{wet} of {middles} river middles are water");
+        }
+
+        [Test]
+        public void HighGroundReadsAsMountains()
+        {
+            // A square above the hills band is ranges, saddles and shoulders, not one cap: lines across it every 48 cells,
+            // each way, rise and fall by 10 m more than twice on average (a cap: about once).
+            var gen = Nine.Gen;
+            var land = Whole;
+            int w = gen.CellsW, sq = ChunkGen.Square;
+            var high = Enumerable.Range(0, Nine.Plan.Count).Where(i => Nine.Plan.Band[i] >= 2).Select(i => gen.MapCell(i, 0, 0))
+                .Where(p => p.x >= 0 && p.y >= 0 && p.x < gen.CellsW && p.y < gen.CellsH).ToList();
+            Assert.That(high, Is.Not.Empty, "the nine has high ground");
+            foreach (var (sx, sy) in high)
+            {
+                int turns = 0, lines = 0;
+                for (int k = 24; k < sq; k += 48)
+                {
+                    turns += Turns(Enumerable.Range(0, sq / 4).Select(t => land[(sy + k) * w + sx + t * 4]), 80);
+                    turns += Turns(Enumerable.Range(0, sq / 4).Select(t => land[(sy + t * 4) * w + sx + k]), 80);
+                    lines += 2;
+                }
+                TestContext.Out.WriteLine($"MOUNTAINS the square at ({sx}, {sy}): {turns} turns of 10 m on {lines} lines across it");
+                Assert.That(turns, Is.GreaterThan(2 * lines), $"the square at ({sx}, {sy}) rises and falls");
+            }
+        }
+
+        // The peaks and troughs along a line, each counted once the land has come back by at least the given height.
+        static int Turns(IEnumerable<int> line, int by)
+        {
+            int turns = 0, dir = 0, hi = int.MinValue, lo = int.MaxValue;
+            foreach (int v in line)
+            {
+                hi = Math.Max(hi, v);
+                lo = Math.Min(lo, v);
+                if (dir >= 0 && hi - v >= by)
+                {
+                    if (dir > 0) turns++;
+                    (dir, hi, lo) = (-1, v, v);
+                }
+                else if (dir <= 0 && v - lo >= by)
+                {
+                    if (dir < 0) turns++;
+                    (dir, hi, lo) = (1, v, v);
+                }
+            }
+            return turns;
         }
 
         [Test]

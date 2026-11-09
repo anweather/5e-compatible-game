@@ -50,7 +50,7 @@ namespace Chem
     public sealed partial class ChunkGen
     {
         /// <summary>The generator's version, in the map's input hash: a change that alters any chunk is a new version.</summary>
-        public const int Version = 1;
+        public const int Version = 2;
         public const int Size = WorldPlan.ChunkCells, Square = WorldPlan.SquareCells;
 
         // Legend characters (ChemGrid.Legend).
