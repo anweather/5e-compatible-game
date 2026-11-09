@@ -169,7 +169,7 @@ public class RowHouses : MonoBehaviour
     Drawn Draw(World world, BuildingRow row, string json)
     {
         FindMaterials();
-        var corner = grid.CellCenter(row.X, row.Y) + new Vector3(-grid.cellSize / 2f, 0f, grid.cellSize / 2f);
+        var corner = Corner(row);
         var root = new GameObject("Row house " + row.Id);
         root.transform.SetParent(transform, false);
         bool level = (bool?)row.Json["level"] ?? false;
@@ -242,7 +242,7 @@ public class RowHouses : MonoBehaviour
             tree.AddComponent<GroundedTree>();
             // Its scale is times the valley's tallest tree there, however tall its own kind is drawn.
             float own = Height(tree), tallest = valley.TreeKinds(cx, cy).Select(Measured).DefaultIfEmpty(own).Max();
-            tree.transform.localScale = size * ((float?)part["scale"] ?? 3f) * tallest / Mathf.Max(0.1f, own);
+            tree.transform.localScale = (((float?)part["scale"] ?? 3f) * tallest / Mathf.Max(0.1f, own)) * size;
         }
     }
 
@@ -352,6 +352,19 @@ public class RowHouses : MonoBehaviour
     // An edited building with no baked cells replaces the scene's; a new one, or a cabin's, stands beside.
     static Transform HideBase(World world, BuildingRow row, Vector3 corner)
     {
+        var house = SceneHouse(world, row, corner);
+        if (house != null) house.gameObject.SetActive(false);
+        return house;
+    }
+
+    /// <summary>The scene's house an edit of this row would replace, or null: a cabin, the castle or a landmark's own house has none.</summary>
+    public Transform SceneHouseOf(BuildingRow row) => SceneHouse(grid.World, row, Corner(row));
+
+    // A row's (0, 0) join: its at cell's north-west corner.
+    Vector3 Corner(BuildingRow row) => grid.CellCenter(row.X, row.Y) + new Vector3(-grid.cellSize / 2f, 0f, grid.cellSize / 2f);
+
+    static Transform SceneHouse(World world, BuildingRow row, Vector3 corner)
+    {
         if (row.Json["built"] != null || !world.IsBaseBuilding(row.Id)) return null;
         var valley = FindAnyObjectByType<ValleyChemistry>();
         if (valley == null || valley.cabins == null) return null;
@@ -369,7 +382,6 @@ public class RowHouses : MonoBehaviour
             best = d;
             house = candidate;
         }
-        if (house != null) house.gameObject.SetActive(false);
         return house;
     }
 

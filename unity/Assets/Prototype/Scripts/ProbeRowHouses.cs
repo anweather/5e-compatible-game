@@ -28,11 +28,14 @@ public class RowHousesProbe : ProbeScenario
     static readonly HttpClient Http = new();
 
     protected RowHouses houses;
+    // The world's own rows RowHouses draws before any mod (the castle, the landmarks' houses): what a revert leaves.
+    protected int valleyDrawn;
     protected string answer;
 
     protected override IEnumerator Run()
     {
         houses = grid.GetComponent<RowHouses>();
+        valleyDrawn = houses != null ? houses.Count : 0;
         Check("row_houses_here", houses != null && RulesMcpServer.Url != null, RulesMcpServer.Url);
         if (houses == null || RulesMcpServer.Url == null) yield break;
         yield return Tool("find_site", new JObject { ["width"] = HouseWidth, ["depth"] = HouseDepth, ["near"] = "lake", ["side"] = "north", ["edge"] = "shore" });
@@ -95,8 +98,8 @@ public class RowHousesProbe : ProbeScenario
         yield return Look("shack", x + 7, y + 4);
 
         yield return RevertAll();
-        yield return Until(() => houses.Count == 0);
-        Check("revert_takes_it_all_off", houses.Count == 0 && world.At(x + 4, y).T == was, world.At(x + 4, y).T);
+        yield return Until(() => houses.Count == valleyDrawn);
+        Check("revert_takes_it_all_off", houses.Count == valleyDrawn && world.At(x + 4, y).T == was, $"{houses.Count} houses of {valleyDrawn}, {world.At(x + 4, y).T} at {x + 4},{y}, was {was}");
         yield return Base();
         yield return Dozen12();
     }
@@ -280,7 +283,11 @@ public class RowHousesProbe : ProbeScenario
         Check("the_cabin_wing_shows", Vertices("cabin#2") > 0, $"{Vertices("cabin#2")} vertices, {Size("cabin#2")}");
         var cabin = grid.World.BuildingRowOf("cabin#2");
         yield return Look("cabin-wing", cabin.X + 3, cabin.Y, CloseBack, FromNorth);
-        var row = grid.World.BuildingsNow.First(r => !r.Id.StartsWith("cabin", System.StringComparison.Ordinal));
+        // A village house: one the valley drew a scene house for, which an edit replaces (not a cabin, the castle or a
+        // landmark's own house).
+        var row = grid.World.BuildingsNow.FirstOrDefault(r => houses.SceneHouseOf(r) != null);
+        Check("a_village_house_to_edit", row != null, string.Join(", ", grid.World.BuildingsNow.Select(r => r.Id).Take(12)));
+        if (row == null) yield break;
         yield return Look("village-before", row.X + 3, row.Y + 3, CloseBack);
         yield return Tool("set_building", new JObject { ["id"] = row.Id, ["field"] = "wall.finish", ["value"] = "{ \"color\": \"#a04040\" }" });
         yield return ApplyDraft("Red house");
@@ -290,8 +297,8 @@ public class RowHousesProbe : ProbeScenario
         Check("its_old_smoke_goes_and_its_chimney_smokes", hidden != null && !hidden.GetComponentsInChildren<ParticleSystem>(true).Any(p => p.gameObject.activeInHierarchy) && houses.Root(row.Id).GetComponentInChildren<ParticleSystem>() != null, answer);
         yield return Look("village-edited", row.X + 3, row.Y + 3, CloseBack);
         yield return RevertAll();
-        yield return Until(() => houses.Count == 0);
-        Check("reverting_brings_it_back", hidden != null && hidden.gameObject.activeSelf && houses.Count == 0);
+        yield return Until(() => houses.Count == valleyDrawn);
+        Check("reverting_brings_it_back", hidden != null && hidden.gameObject.activeSelf && houses.Count == valleyDrawn);
         yield return Look("village-after", row.X + 3, row.Y + 3, CloseBack);
     }
 
@@ -310,10 +317,10 @@ public class RowHousesProbe : ProbeScenario
             yield return Until(() => houses.Count > count);
         }
         Metric("houses_drawn", houses.Count);
-        Check("a_dozen_stand", houses.Count == Dozen, answer);
+        Check("a_dozen_stand", houses.Count == valleyDrawn + Dozen, answer);
         yield return Sample("frame_ms_after");
         yield return RevertAll();
-        yield return Until(() => houses.Count == 0);
+        yield return Until(() => houses.Count == valleyDrawn);
     }
 
     protected IEnumerator Sample(string name)
