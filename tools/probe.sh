@@ -89,11 +89,12 @@ if [ "$1" = sweep ]; then
     esac
   done
   list=$("$UNITY" command probe list --result-only) || { echo "$list" >&2; exit 2; }
-  # Every other probe by name for a half, so each half gets a mix; two-player ones (online) run on their own.
+  # Every other probe by name for a half, so each half gets a mix; two-player ones (online) run on their own;
+  # a clip (films: it needs --shots) is a brief's, not a sweep's.
   read -r solo pairs < <(echo "$list" | node -e '
     let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
       const half=Number(process.argv[1]);
-      const all=JSON.parse(s).map(e=>({name:e.name,players:e.players||1})).sort((a,b)=>a.name<b.name?-1:1)
+      const all=JSON.parse(s).filter(e=>!e.films).map(e=>({name:e.name,players:e.players||1})).sort((a,b)=>a.name<b.name?-1:1)
         .filter((e,i)=>half===0||i%2===half-1);
       const one=all.filter(e=>e.players<2).map(e=>e.name), two=all.filter(e=>e.players>=2).map(e=>e.name);
       console.log((one.join(",")||"-")+" "+(two.join(",")||"-"));

@@ -101,6 +101,7 @@ public static class ProbeCommands
         max_seconds = e.MaxSeconds,
         players = e.Players,
         speed = e.Speed,
+        films = e.Films,
     }).ToList();
 
     [CliGroupCommand(Group, "Enter Play mode and run a probe scenario in the open scene (the Chemistry Yard), or several, " +

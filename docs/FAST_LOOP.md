@@ -26,7 +26,8 @@ tools/probe.sh sweep --half 1               # every other probe by name: the PC 
 mode is what puts the world back) and goes straight on to the next, so there's no CLI round trip between them. Each
 one's JSON is in `unity/Temp/Probe/results/NNN-name.json` as it finishes and is printed at the end, followed by the
 batch's own (`batch`: each scenario's state, pass and seconds; `pass` only when all did). A two-player scenario
-(`online`, ...) runs on its own; `sweep` runs those after the batch.
+(`online`, ...) runs on its own; `sweep` runs those after the batch, and leaves out the clips (`films: true` in
+`ProbeScenarios`: they need `--shots`, and film for a brief).
 
 **Faster than real time.** A slow scenario whose checks hold at speed says so in `ProbeScenarios` (`speed: 3f`): the
 runner sets `Time.timeScale` for it, so the world's ticks, physics and `Wait` run that much faster, and puts it back
