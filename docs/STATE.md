@@ -1,36 +1,38 @@
-# State (2026-11-08, night)
+# State (2026-11-09, morning)
 
 The one page the lead reads first (`unity-lead` skill). History is in `docs/coordination-log/2026-11.md` (the full
 STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
-**The goal: Andrew playtests the 3 x 3 world (the nine)** (`docs/design/world-squares.md`, J-080; rings deferred,
-all nine generated at load). It is playable on dev as of 487f537e. One blocker left: steep land is walls.
+**The 3 x 3 world (the nine) plays, and the far ring shows.** Andrew doesn't need a Windows build or a playtest yet:
+keep working without his play (J-082). dev is at 5b79241c.
 
-Landed 2026-11-08 (all on dev):
-- maps phase 7 18f59b04 (sea from land, Bake Map Data with an inputs hash, `-map`); `world-plan` 3c4d62e1;
-  `test-speed-core` 05786f5c (core suite about 1 m 10 s now); `cell-memory` 0ffdc178 (Cell 128 to 64 B, the last
-  world freed after Play); `view-rebuild` 6313314e (the nine start in about 6 s, rebuild under 2 s); `chunk-gen`
-  d4e22253; `chunk-gen-polish` 3a3b328d (smooth valley seams, wandering rivers, mountains, a spawn per square);
-  `play-nine` 487f537e (bake at start, biome ground, Host map and Start in choices, joiners load the host's map,
-  waystones, respawn at the nearest reached; #169 fixed).
-- The Mac: `probe-speed` 5995cce1 (`probe.sh a b c`, `sweep --half 1|2`), `roomopen-sync` e39d9a2f (#171 was the
-  probe, not a desync), `mac-telemetry` 19df6c79, earth probe 8b9aeb44.
-- Clip for Andrew (sent): `.claude/worktrees/host-ux/unity/Builds/demo-videos/play-nine-valley-to-reedbeds.mp4`.
-- play-nine's two-peer run: two builds over loopback, players=2, no desync, 25-27 ms mean / 33-36 ms p95, 5.5-5.8 GB
-  per process. Its scripted walk never left the valley (stopped by the town); the Editor clip shows the crossing.
+Landed 2026-11-09 (all on dev):
+- `late-join-core` 0372298f (a late joiner's replay equals the host's; #173 #164 #55 #83). `core-boundaries` dc26ac97
+  (Unit/Simulation categories; every fixture needs one, `EveryFixtureIsUnitOrSimulation`); core-boundaries-1
+  e8ad931c (CI paths, NuGet cache, tool test projects, dependency table). J-081: step 4 closed, S3776 stays a warning.
+- `nine-slopes` 3b3cbac4: steep generated land is dirt, not stone walls; the wizard walks out east and north (north
+  only by the west corridor near x 84: the valley's own hills, by design). Clip `nine-slopes-east.mp4` (sent).
+- The far ring: paper 507e0f72 (`tools/world-paper/` Horizon panel; numbers in `world-squares.md` section 4);
+  `far-ring-core` 663c226a (KnownRing, `world/horizon.json`; 144 known chunks 35-48 ms on a worker); `far-ring-view`
+  1eec423c (known-chunk meshes, haze, far landmarks, sea plane; camera far plane 15 km, cell dressing culled at
+  500 m); `nine-volcano` 0cc4d8dd (`musts` in the nine's `map.json`: "Old Grumbler" in the middle square, generator
+  5, NineGolden 0x7c681170); `far-volcano` 5b79241c (a steel-blue cone with a crater notch, stretched only past
+  sight so the hand-off doesn't pop). Clips sent: `far-ring-nine.mp4`, `far-volcano.mp4` (from ~200 m up: at the
+  spawn's ground a nearer 156 m hill hides it).
+- #170 `barrels-170` 333dfe05: smoke passes in full on a fresh yard (first bad was 6313314e view-rebuild). **Rebuild
+  the yard before trusting smoke after a switch** (a stale yard gave false bisect results).
+- The Mac: glowmoss ee82a35b, rowhouses 3e57216a, defense 46bb2999, feel ac3250cd, roll 66e99339, roofs 6811c427
+  (a real bug: laid rows' walls given to scene houses), productsview 7ba08d6e, stamplooks bb0b9d1c, roomprogress
+  fa2451d7, progress-restore 9c28329b, map-proof-tests 97164fc2 (`[OnTheValley]`, `ChemGrid.OnMap`). Sweep on
+  7ba08d6e: 111/123; dragon, housecam, scopelooks, airpeers pass on newer dev; the rest are the Mac's Claude setup.
+- Numbers now: EditMode 1862 on the PC; valley smoke ~11.8 ms mean; the nine's farringclip ~31 ms mean, 38 ms p95.
 
 Waiting:
-- **The PC:** compiling u2's `late-join-core` (6d10ea7a; #173 #164 #55 #83; StandKeeper into the core) with full
-  EditMode and `online roomopen roomruin smoke`. Land it with `land.sh auto late-join-core --compiled --deletes`
-  if green (its brief file `queue/late-join-core.md` must leave the queue with it).
-- **u2:** on `core-boundaries` (claimed, J-081: CI caching, split test projects, Unit/Simulation categories,
-  World.React split, dependency table). Briefed `nine-slopes` next, the playtest blocker: ChunkGen writes `#` on
-  every steep slope and `#` plays as a stone wall (about 35k cells, nearly the whole valley seam). If u2 is deep in
-  core-boundaries, nine-slopes still comes first.
-- **The Mac:** on #172 (sweep failures): glowmoss bisect (a regression since 0.1.12), rowhouses probe fix ready, then
-  defense, feel, roll, roofs, hitch, productsview. Andrew reads the Mac himself: don't relay its reports.
+- **Issues #170 #173 #164 #55 #83 are fixed but open:** `gh issue close` was refused by this session's permission
+  check. Andrew closes them or allows it.
+- Nothing waits on a compile. host-ux is clean (an untracked `unity/Assets/_Recovery/` stays); Editor pid 20380 open.
 
 ## Who runs where
 
@@ -40,62 +42,46 @@ Waiting:
 | **SpellValleyMac** (Remote Control; SendMessage, no read receipts) | A second Unity Editor: probes, sweeps, bisects, macOS and Linux builds. Self-lands with `land.sh auto ... --compiled`. Commit hook on (`Worker: mac`) |
 | **u2** (Linux VM, Max) | Core, rules, tools, data, measuring under dotnet. Takes `Needs: core` briefs from `docs/handoffs/briefs/queue/`, or `tools/workers/start.cmd u2 <brief path>`. Its Unity-C# branches come to the PC to compile |
 
-- The watcher (`tools/workers/bridge-watch.sh`, one only, started 2026-11-08 16:30) pauses u2 with Save-VM below
-  1.5 GB free and resumes it at 6 GB. Reports land in `~/.agent-bridge/pm/`; read by hand (no listener running).
-- Landing gates drop to 3 test workers under 10 GB free (`tools/workers/gates.sh`).
-- Testing is layered (`docs/TESTING_LAYERS.md`): a unity-task runs Unity-side tests and touched probes; full EditMode
-  only when `Chemistry/` changes; the sweep runs everything daily.
+Right now: **the PC** idle. **u2** idle (queue empty). **The Mac** on `smoke-nine` (smoke's casts on the nine fail
+cast_fire-bolt, fire_started, levitate_lifted), `apikey-tests-mac` (ApiKeyTests fail 8/8 on the Mac; make them
+hermetic), then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
+2026-11-09.
+
+- The watcher (`tools/workers/bridge-watch.sh`, one only) pauses u2 below 1.5 GB free and resumes it at 6 GB. While
+  the Editor runs a big job, u2 flaps paused/resumed every minute: keep u2 idle then, or leave the mailbox listener
+  off until the unity-task reports.
+- u2's branches pass `dotnet test` and can still fail in Unity: two misses on 2026-11-09 (a fixture without a
+  category; `Does.Contain(object)`, which Unity's NUnit lacks). Both are now in `Chemistry/CLAUDE.md`.
+- Stale u2 WIP branches (`wip/u2-*`, 6) and `landmark-valley-look` (Andrew, 21 ahead) are unmerged; leave them.
+- Testing is layered (`docs/TESTING_LAYERS.md`); landing gates drop to 3 test workers under 10 GB free.
 
 ## Standing rules (Andrew)
 
-- **u2 first, paper first, clear after big features** (2026-11-08, unity-lead skill): core halves go to u2; open
-  looks start as a paper prototype or stills board; after a big landing, hand off and remind Andrew to clear.
-- Publishing a release needs Andrew's explicit go; always run the PC-joins-Mac test first (0.1.12 published
-  2026-11-08 at d1d142c7).
-- Never kill a Unity Editor (one-off exception logged in J-080); open host-ux by full path; leave pid 22552 (Hub).
+- **u2 first, paper first, clear after big features** (2026-11-08): core halves go to u2; open looks start as a
+  paper prototype or stills board; after a big landing, hand off and remind Andrew to clear.
+- No waiting on Andrew's playtest for now (J-082).
+- Publishing a release needs Andrew's explicit go; always run the PC-joins-Mac test first (0.1.12 at d1d142c7).
+- Never kill a Unity Editor; open host-ux by full path; leave pid 22552 (Hub).
 - Deleting unmerged branches, force-pushing and changing the plan are Andrew's. Never type sign-ins or tokens.
 - Controller first. The TS sandbox is frozen. Caves deferred. Ask one question at a time, logged in JUDGMENT_CALLS.
-- GitHub issues are the lead's: file with a `Discovery-Cost:` line (missed on #169-174), close when fixed.
-- No weekly CI review (Andrew, 2026-11-08).
+- GitHub issues are the lead's: file with a `Discovery-Cost:` line, close when fixed. No weekly CI review.
 
 ## Next, in order
 
-1. `late-join-core` landed 0372298f (EditMode 1842/1842). Issues #173 #164 #55 #83 still open: closing them was
-   refused by the permission check, so Andrew or a session with GitHub write closes them.
-1b. `core-boundaries` landed dc26ac97 (the lead tagged late-join-core's two fixtures Simulation) (u2 done at fac1c8e2, 133 files, mostly Chemistry/: full EditMode).
-2. `nine-slopes` landed 3b3cbac4 (EditMode 1847/1847). In the nine the wizard walks out east (straight from spawn) and
-   north (only by the west corridor near x 84: the valley's own lake and hills block the rest of its north side, by
-   design, since the valley stays byte-identical). Clip: host-ux `unity/Builds/demo-videos/nine-slopes-east.mp4`.
-   Steep generated faces are brown dirt; a walkable rock look needs a cell character (u2's follow-up, not briefed).
-3. **The far ring.** Paper 507e0f72; core half `far-ring-core` landed 663c226a (KnownRing, `world/horizon.json`,
-   EditMode 1855/1855; 144 known chunks cost 35-48 ms on a worker). View half `far-ring-view` landed 1eec423c
-   (EditMode 1859/1859; the nine 35.3 ms mean, faster than dev's 39.2, since the camera now culls cell dressing past
-   500 m; clip `far-ring-nine.mp4`, sent). The nine's seed has no volcano or spire: **u2's `nine-volcano`** (queued)
-   makes the plan place one and retunes the great tree's look: **done at ea43e514, waiting for the PC** to compile
-   it, land it and re-shoot `tools/probe.sh farringclip` (after #170). "Old Grumbler" in the middle square, the nine's
-   `map.json` gets `musts`, generator 5, valley byte-identical. Landed 0cc4d8dd (NineGolden 0x7c681170, EditMode
-   1861/1861, smoke full pass, the nine 31.4 / 38.3 ms). The volcano reads as a squat ochre mound behind a hill, so
-   **the PC is on `far-volcano`** (a cone in distance blue, seated on the ground). The Mac's far-ring looks (item 3)
-   wait for it: same files.
-   #170 fixed 333dfe05 (first bad 6313314e view-rebuild, not cell-memory; barrels moved off the pond pit's lip): smoke
-   passes in full on a fresh yard (rebuild the yard before trusting smoke after a switch). Issue still open (gh close
-   was refused here).
-   The Mac (2026-11-09): sweep 111/123; stamplooks bb0b9d1c, roomprogress fa2451d7 fixed; now ProbeProgress restoring
-   the save, `map-proof-tests` (the 10 Temp/map-dependent tests), then the sea horizon and tundra wedge looks. Left for the PC after it: a hard sea horizon line,
-   tundra plateaus as flat white wedges; and 10 map-reading EditMode tests (DragonView, FolkJobs, GroundBuilder,
-   GroundLand, RowMesher, ShoreMap) fail when `unity/Temp/map` says nine, so they depend on the Editor's map file.
-   Seen on the way: smoke on the nine runs at 37.9 ms mean / 64 ms p95 and fails cast_fire-bolt, fire_started and
-   levitate_lifted (same on dev; smoke's casts are placed for the valley's yard, so likely the probe, unconfirmed).
-Then: `core-boundaries` landings (step 4 changes Chemistry/, PC compiles); a Scripts runtime asmdef (measure compile
-time first, J-081; no longer waits on the playtest); #170 barrels; mana after Andrew plays quick taps; maps phase 8
-(runtime map switch rebuilds terrain).
+1. **A Scripts runtime asmdef: measure first** (J-081). A unity-task times a Scripts-only change's recompile in
+   host-ux today, then tries splitting Scripts into a runtime asmdef and times it again; land only if it's clearly
+   faster and nothing breaks (EditMode, smoke, `online`).
+2. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
+   there is one; the view on the PC.
+3. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
+Also open: a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
+of the volcano is hidden by a nearer hill (a viewpoint or landmark placement question, not briefed).
 
 ## Open questions for Andrew
 
-- None open. The play-nine clip is with him; his verdict on the nine's look goes in J-080.
+- None open.
 
 ## Telemetry
 
 Latest report `docs/telemetry/2026-11-08.md`: coordination 55% of spend, cache reads 73%, the PC 4.7x u2 per feature.
-The Mac's commits carry cost lines since 19df6c79. `feature-costs.mjs --since 2026-11-08` returns nothing while
-`--since 2026-11-07` works (a date or timezone bug, unfiled).
+`feature-costs.mjs --since 2026-11-08` returns nothing while `--since 2026-11-07` works (a date bug, unfiled).
