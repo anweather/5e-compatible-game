@@ -73,8 +73,10 @@ Waiting:
    500 m; clip `far-ring-nine.mp4`, sent). The nine's seed has no volcano or spire: **u2's `nine-volcano`** (queued)
    makes the plan place one and retunes the great tree's look: **done at ea43e514, waiting for the PC** to compile
    it, land it and re-shoot `tools/probe.sh farringclip` (after #170). "Old Grumbler" in the middle square, the nine's
-   `map.json` gets `musts`, generator 5, valley byte-identical. The PC is compiling it (the nine golden is
-   recomputed over barrels-170's).
+   `map.json` gets `musts`, generator 5, valley byte-identical. Landed 0cc4d8dd (NineGolden 0x7c681170, EditMode
+   1861/1861, smoke full pass, the nine 31.4 / 38.3 ms). The volcano reads as a squat ochre mound behind a hill, so
+   **the PC is on `far-volcano`** (a cone in distance blue, seated on the ground). The Mac's far-ring looks (item 3)
+   wait for it: same files.
    #170 fixed 333dfe05 (first bad 6313314e view-rebuild, not cell-memory; barrels moved off the pond pit's lip): smoke
    passes in full on a fresh yard (rebuild the yard before trusting smoke after a switch). Issue still open (gh close
    was refused here).
