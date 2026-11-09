@@ -460,7 +460,8 @@ public partial class ChemGrid : MonoBehaviour
             string id = Path.GetFileName(dir);
             maps.Add((id, MapFile.Load(dir).Name ?? id));
         }
-        maps.Sort((a, b) => a.id == GameFolders.DefaultMap ? -1 : b.id == GameFolders.DefaultMap ? 1 : string.CompareOrdinal(a.id, b.id));
+        // The valley first, then the rest by id.
+        maps.Sort((a, b) => (a.id != GameFolders.DefaultMap).CompareTo(b.id != GameFolders.DefaultMap) is var first && first != 0 ? first : string.CompareOrdinal(a.id, b.id));
         return maps.ToArray();
     }
 
