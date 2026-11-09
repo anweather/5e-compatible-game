@@ -41,6 +41,23 @@ Each entry has:
 
 ## Decided
 
+### J-084: Start the 12 x 10 world's first proof now? (2026-11-09)
+
+- **Asked:** start the cheap proof (u2: the 12 x 10 EW plan and a known ring over every chunk; the PC: three
+  distance dials and a sweep probe on the nine), ahead of maps phase 8's view half?
+- **Also comes up when:** ordering world growth against maps phase 8 and mana.
+- **Answer (Andrew):** start both now. u2 takes `world-12x10-plan` after `drowned-chain-core`; the PC does
+  `tier-dials` now; phase 8's view half waits.
+- **Revisited:** 0.
+
+### J-083: The 12 x 8 world's rows (2026-11-09, `docs/design/world-12x8-scope.md`)
+
+- **Asked:** does "8 tall" count the ice cap and desert edge rows?
+- **Also comes up when:** sizing any generated world, writing a map.json `squares`, the plan's wall rows.
+- **Answer (Andrew):** 8 land rows plus an ice row north and a desert row south: 12 x 10 world squares in all,
+  the way `PlanGrid` already adds wall rows.
+- **Revisited:** 0.
+
 ### J-082: Wait for Andrew's playtest of the nine? (2026-11-08)
 
 - **Asked:** Andrew told the lead, unprompted: "I don't need the Windows build for playtesting yet. Keep working

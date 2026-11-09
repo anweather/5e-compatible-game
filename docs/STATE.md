@@ -31,7 +31,7 @@ Landed 2026-11-09 (all on dev):
 
 Waiting:
 - **The Mac was back online at ~07:55 and re-told its three jobs.** Earlier its Editor hung at 06:08 MST (pid 1031, likely a hidden save-scene modal after building the yard with
-  `Temp/map` = nine); it asked Andrew to look. `apikey-tests-mac` is written, not compiled. Rule for briefs: build the
+  `Temp/map` = nine); it asked Andrew to look. Rule for briefs: build the
   yard on the valley; point `Temp/map` at the nine only for the probe run.
 - Nothing waits on a compile. host-ux is clean (an untracked `unity/Assets/_Recovery/` stays); Editor pid 20380 open.
 
@@ -45,9 +45,9 @@ Waiting:
 
 Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
 
-Right now: **the PC** idle (host-ux detached at a535d458, clean). **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half). **The Mac** on `smoke-nine` (smoke's casts on the nine fail
-cast_fire-bolt, fire_started, levitate_lifted), `apikey-tests-mac` (ApiKeyTests fail 8/8 on the Mac; make them
-hermetic), then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
+Right now: **the PC** on `tier-dials` (three distance dials and a sweep probe on the nine; J-084). **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half), then `world-12x10-plan` (queued; J-083, J-084). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
+cast_fire-bolt, fire_started, levitate_lifted), apikey-tests-mac landed e1b442f1 (EditMode 1858 + 1 skip on the Mac);
+then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
 2026-11-09.
 
 - The watcher (`tools/workers/bridge-watch.sh`, one only) pauses u2 below 1.5 GB free and resumes it at 6 GB. While
