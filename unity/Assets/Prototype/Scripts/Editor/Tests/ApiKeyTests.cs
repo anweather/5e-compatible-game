@@ -303,11 +303,27 @@ public class ApiKeyTests
         throw new TimeoutException("The check never came back.");
     }
 
+    // A stand-in Claude Code install that prints its version and one variable from its environment: a .cmd on Windows,
+    // a shell script elsewhere, so the check runs it the way it would run the real one on that machine.
+    string StandInClaude(string version, string variable)
+    {
+        if (Application.platform == RuntimePlatform.WindowsEditor)
+        {
+            string cmd = Path.Combine(folder, "my-claude.cmd");
+            File.WriteAllText(cmd, $"@echo {version} %{variable}%\r\n");
+            return cmd;
+        }
+        string script = Path.Combine(folder, "my-claude");
+        File.WriteAllText(script, $"#!/bin/sh\necho \"{version} ${variable}\"\n");
+        using (var chmod = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("/bin/chmod", $"+x \"{script}\"") { UseShellExecute = false }))
+            chmod.WaitForExit();
+        return script;
+    }
+
     [Test]
     public void AClaudeCodePathIsFoundAndKept()
     {
-        string install = Path.Combine(folder, "my-claude.cmd");
-        File.WriteAllText(install, "@echo 9.9.9 (Claude Code) %CLAUDE_CONFIG_DIR%\r\n");
+        string install = StandInClaude("9.9.9 (Claude Code)", "CLAUDE_CONFIG_DIR");
         ChatSetup.SetVariable("CLAUDE_CONFIG_DIR", "hidden-value");
         var check = new ClaudeCheck();
         string says = CheckedClaude(check, install);
