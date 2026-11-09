@@ -267,6 +267,13 @@ public static class ProbeScenarios
             "Checks: the canyon laid, the pad and road unmoved, no tree on rock, the crag laid, one height from the gate to the lip by the ground and by the wizard walking it, a drop below the lip, the cliff a rock wall the wizard can't walk up, rocks on its faces, the stable standing, the canyon deep with a rock floor and a dirt path, no console errors."),
         new Entry("mapshots", typeof(MapShotsProbe), 120f,
             "The same three views of the valley each time (from the town toward the castle, of the castle, along the shore out to sea, at 11 in the morning) into --shots, for a before and an after when the map's data moves. Checks: shot."),
+        new Entry("mapswitch", typeof(MapSwitchProbe), 240f,
+            "On the valley (unity/Temp/map empty): switches to the Drowned Chain and back in one session, the way the Esc menu's map to host does (ChemGrid.PlayMap). " +
+            "Checks on each map: the world, chunks, sea level, spawn and things are that map's, its cells are as a fresh start lays them and its land is its land.json; " +
+            "back on the valley, the land as at the start and no GameObjects, meshes, textures, materials or terrain data leaked. Metrics: each switch's seconds and longest frame."),
+        new Entry("mapswitchclip", typeof(MapSwitchClipProbe), 180f,
+            "On the valley: films a few steps, the Esc menu's Play together page with the Drowned Chain picked to host, the switch to it, a walk along its beach and a look over its islands, " +
+            "with the HUD, into --shots: frames and sound.wav, for ffmpeg. Checks: switched, filmed.", films: true),
         new Entry("secondmap", typeof(SecondMapProbe), 120f,
             "A map that isn't the valley, named in unity/Temp/map (test-fixtures/maps/coast-192 for its sea): the world and chunks are the map's, the wizard starts at its spawn on its ground and walks off, and the sea is drawn over its sea, a cove and a walled-off hollow and not over dry land, at the map's level. " +
             "Checks: each of those, not falling, no console errors. Shots: the land and the sea."),
