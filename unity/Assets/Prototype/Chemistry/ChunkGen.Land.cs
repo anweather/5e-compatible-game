@@ -22,9 +22,10 @@ namespace Chem
         const long Q = 256;
         const int BandBlend = 300, ValleyBlend = 90, MeetWidest = 240, MeetPitch = 6, RiverFade = 73, ShoreRamp = 100, SeaRamp = 90, BeachCells = 5;
         const int RiverHalf = 4, LakeRadius = 30, MainRoadHalf = 3, RoadHalf = 2, RoadBank = 6;
-        // Land units: a face this steep a cell is bare stone; trees thin out above the tree line.
         // bands.json's wall: an east-west world's edge rows (none in the nine).
         const int WallMetres = 900;
+        // Land units: a face this steep (1.25 m a cell) a cell is bare dirt, no tree or brush; trees thin out above the
+        // tree line.
         const int SteepUnits = 10, TreeLine = 220 * PerMetre;
         internal const byte WetSea = 1, WetRiver = 2, WetLake = 3, WetShore = 4;
         const int SaltRelief = 0x0c61, SaltCell = 0x0c62, SaltSpot = 0x0c63, SaltShore = 0x0c64, SaltMassif = 0x0c66;

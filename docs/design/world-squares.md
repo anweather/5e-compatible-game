@@ -337,9 +337,9 @@ Phases 1-5 are core only (u2, Linux) while the PC does maps 6-8; the PC waits on
   - roads from their slots to the hub, levelled across to the land at their middle and banked back over 6 cells;
   - last, the pinned valley's own land, met over 90 cells outside it.
   - Then come the landmarks' map stamps (`LandmarkIntent`'s rows, baked into the land), the cells, and the things.
-    Cells are the biome's ground with seeded trees and brush, stone where a face is steep, and water where the sea, a
-    river or a lake is. Things are the landmarks' rows first, then a seeded boulder at some of the 64 spots, appended
-    per chunk so ids hold.
+    Cells are the biome's ground with seeded trees and brush, bare dirt where a face is steep (no tree, brush or
+    boulder), and water where the sea, a river or a lake is; stone (`#`) only where a landmark's stamp lays it. Things
+    are the landmarks' rows first, then a seeded boulder at some of the 64 spots, appended per chunk so ids hold.
 - **The valley pinned:** its 81 chunks are its folder's land, cells and things byte for byte (a test checks every
   cell), and the chunks beside it meet its edge (the valley-side test: no step bigger than the valley's own).
 - **Negative rows: none.** The map's origin is the nine's north-west corner, not the valley's, so the valley is
@@ -427,7 +427,31 @@ no spawn is in them).
   Meadow Cross, Saltpan, Downs, Thornwick, Grassland, Reedbeds, Lakeland. `MapCheck` holds a spawn place above the sea.
 - **Tests:** `EveryLandSquareHasASpawnNearItsPlaces` (the plans), `EverySquaresSpawnIsOpenFlatAndDry` (the nine and
   two more seeds: a spawn a square, the valley's the map's, level open ground, no thing, off every landmark's footprint,
-  beside its road) and `EverySpawnIsReachableOnFootFromTheValleys` (a walk over dry land, no sea, lake or river, never
-  more than a metre up or down a cell, reaches all nine; 93% of the nine's cells).
+  beside its road) and `EverySpawnIsReachableOnFootAcrossEachOfTheValleysOpenSides` (a walk over dry land, no sea, lake
+  or river and no wall, never more than a metre up or down a cell, reaches all nine; see nine-slopes below).
 - **Still to look at:** a spawn by its road can be 400 cells from its village where the road never passes near it
   (roads run slot to hub); the anchor is a hint, the road wins.
+
+### Steep slopes aren't walls (nine-slopes, u2, 2026-11-09; generator version 4)
+
+play-nine found the valley all but walled in: `ChunkGen` laid `#` on every face of 1.25 m a cell or more
+(`SteepUnits`), and `#` is stone wherever it's read: ChemGrid's legend makes it `stone`, which `materials.json` tags
+`blocking` (a "Stone wall" 1.2 m high), so the view puts a blocker on it (`CellBlockers`) and walkers, folk and raiders
+treat it as a wall. Nearly the whole seam along the valley's north and east sides was stone (6 of the north side's 576
+rim cells crossed).
+
+- **What the valley does:** its own steep faces are grass at every pitch (about 16,700 dry cells over 2 m a cell, a
+  few up to 29 m); its 58 `#` cells are placed stone on flat ground. A face too steep to climb stops a walker by its
+  height, not by a wall laid on it.
+- **Now:** a steep generated face is bare dirt (no tree, brush or boulder), walkable or not by its pitch as the valley's
+  hills are. `#` comes only from a landmark's own stamp (`MarkBare`). The valley's chunks are byte for byte its folder's
+  still; the goldens changed once, in this commit.
+- **`#` cells in the nine, before and after** (valley-1, seed-4, seed-9): 35,417 / 160,660 / 207,424 before, 58 /
+  32,504 / 13,114 after. What remains is the valley's own 58 (placed stone) and, on the other seeds, the landmarks' own
+  stamps that lay bare stone (`MarkBare`), every one in a chunk a landmark reaches; none within 240 cells of the valley.
+- **Tests:** `EverySpawnIsReachableOnFootAcrossEachOfTheValleysOpenSides` walks from the valley's spawn with stone,
+  trees and brambles as walls, once across each open side alone (the other closed), and reaches every square's spawn on
+  all three seeds (it failed on seed-9 before). `TheValleysOpenSidesAreCrossableAlongMostOfTheirLength`: at least 90%
+  of each open side's dry rim steps out (the nine: north 572 of 576, east 308 of its 324 dry cells; the rest of the east
+  side is the valley's own sea), in every slot with dry rim and at every road, and no stone just outside it (before: 6
+  of 576 on the north side, on every seed).
