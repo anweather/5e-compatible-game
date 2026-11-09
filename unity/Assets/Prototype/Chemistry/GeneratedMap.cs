@@ -26,6 +26,11 @@ namespace Chem
         public const string Key = "generated";
         /// <summary>A bake's own note of what it was made from, beside the files it wrote.</summary>
         public const string BakeName = "bake.json";
+        /// <summary>
+        /// What a bake away from the map's folder holds, as bake.json's "format": one of another format is made again.
+        /// 2: its map.json says the full detail the pinned map gives (#183).
+        /// </summary>
+        public const int BakeFormat = 2;
         /// <summary>The files a bake writes; a generated map's folder commits only map.json.</summary>
         public static readonly string[] Baked =
         {
@@ -221,6 +226,34 @@ namespace Chem
             return true;
         }
 
+        /// <summary>
+        /// Bakes the map into <paramref name="outDir"/>, a folder away from the map's own (a build bakes into the player's
+        /// data), unless it already holds a bake of the same inputs in this format; whether it baked.
+        /// </summary>
+        public static bool EnsureBakedInto(string mapDir, string outDir)
+        {
+            string path = Path.Combine(outDir, BakeName);
+            if (File.Exists(path))
+            {
+                var note = JObject.Parse(File.ReadAllText(path));
+                if ((string)note["inputs"] == InputHash(mapDir) && (int?)note["format"] == BakeFormat) return false;
+            }
+            Load(mapDir).Bake(outDir);
+            return true;
+        }
+
+        // The map's map.json for a bake away from its folder. The pinned maps are found from the map's own folder
+        // (PinnedSquares: ../../maps/<id>) and can't be from there, so what map.json takes from them is written in: the
+        // chunks drawn in full detail (MapFile.FullDetailOf). Without it the bake's layout had none, the pinned ground laid
+        // into it (PinnedGround) kept its own 257 samples a chunk, and a build's world was never made (#183).
+        string OwnMapFile()
+        {
+            var o = JObject.Parse(File.ReadAllText(Path.Combine(MapDir, MapFile.FileName)));
+            var (i0, j0, i1, j1) = MapFile.Load(MapDir).FullDetail;
+            if (o["fullDetail"] == null && i1 >= i0) o["fullDetail"] = new JArray(i0, j0, i1, j1);
+            return Json(o);
+        }
+
         string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): it's planned and known only, until the sparse World";
 
         /// <summary>
@@ -259,9 +292,9 @@ namespace Chem
             Write(outDir, "things.json", Json(new JObject { ["about"] = $"Made by ChunkGen {ChunkGen.Version} from {MapFile.FileName}: the valley's things in its chunks, then each chunk's landmarks' and seeded things.", ["chunks"] = things }));
             WriteRows(outDir);
             if (Path.GetFullPath(outDir).TrimEnd('/', '\\') != Path.GetFullPath(MapDir).TrimEnd('/', '\\'))
-                File.Copy(Path.Combine(MapDir, MapFile.FileName), Path.Combine(outDir, MapFile.FileName), true);
+                Write(outDir, MapFile.FileName, OwnMapFile());
             Write(outDir, WorldPlaces.FileName, WorldPlaces.Generate(outDir));
-            Write(outDir, BakeName, Json(new JObject { ["inputs"] = InputHash(MapDir), ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture), ["generator"] = ChunkGen.Version }));
+            Write(outDir, BakeName, Json(new JObject { ["inputs"] = InputHash(MapDir), ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture), ["generator"] = ChunkGen.Version, ["format"] = BakeFormat }));
             report.TotalMs = timer.Elapsed.TotalMilliseconds;
             report.Land = land;
             report.W = w;

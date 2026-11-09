@@ -49,6 +49,12 @@ public static class PinnedGround
         {
             var at = (from.I + di, from.J + dj);
             if (!index.TryGetValue(at, out int n)) continue;
+            // The layout's chunk must be the pinned one's size: the terrain is made at the chunk's and the cells drawn on
+            // it at the layout's (#183: a build's layout had lost the pinned map's full detail, and no world was made).
+            var over = ground.Chunks[n];
+            if (over.Resolution != from.Resolution || over.Texels != from.Texels)
+                throw new InvalidDataException($"The pinned ground's chunk ({from.I}, {from.J}) is {from.Resolution} samples and {from.Texels} texels a side, " +
+                    $"and this map draws its chunk ({at.Item1}, {at.Item2}) at {over.Resolution} and {over.Texels}: the map's full detail isn't its pinned map's");
             var c = Moved(from, at, ground.Layers.Length, ground.Grasses.Length, paint, grass, trees);
             Rescale(c, pinned.Bottom, pinned.Top, bottom, top);
             ground.Chunks[n] = c;

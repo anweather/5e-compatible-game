@@ -7,7 +7,8 @@ using UnityEngine;
 // emitting and fade) rather than popped out. Smoke effects are pooled (made
 // once, reused as they come and go). New effects are made with Prewarm off and
 // at most a few a frame (the rest wait a frame or two), so a burst of smoke
-// never stalls a frame making and prewarming dozens at once.
+// never stalls a frame making and prewarming dozens at once. Each is copied from
+// its prefab's template (FxTemplate), which has dropped what made waking one slow.
 // Lightning's sparks come from the same pool: a Shocking Grasp into water charges
 // up to sim.conductLimit cells at once, and making a sparks effect for each in
 // one frame stalled it (playtest F-0001: 199 ms on 0.1.5, 663 ms on dev).
@@ -74,7 +75,8 @@ public partial class ChemGrid
     // again each frame): a burst of smoke or flames would otherwise make dozens at once.
     const int MaxNewFxPerFrame = 3;
     int newFxFrame = -1, newFxThisFrame;
-    Transform fxStaging;
+    Transform fxTemplates;
+    readonly System.Collections.Generic.Dictionary<GameObject, GameObject> fxTemplate = new();
 
     // An effect from the pool, or a new one (fresh: true) when none is free; null once this many
     // are alive, or when this frame has made its share of new ones.
@@ -85,6 +87,7 @@ public partial class ChemGrid
         if (freeFx.TryGetValue(prefab, out var free) && free.Count > 0)
         {
             liveFx++;
+            PerfCounts.Add("fx.reused");
             var go = free.Pop();
             go.transform.SetPositionAndRotation(at, turn);
             go.SetActive(true);
@@ -99,6 +102,7 @@ public partial class ChemGrid
         if (newFxThisFrame >= MaxNewFxPerFrame) return null;
         newFxThisFrame++;
         liveFx++;
+        PerfCounts.Add("fx.made");
         var made = MakeFx(prefab, at, turn);
         made.SetActive(true); // a gas's copy in a look stands inactive
         fxPrefab[made] = prefab;
@@ -106,26 +110,45 @@ public partial class ChemGrid
         return made;
     }
 
-    // A new effect, made under an inactive parent so its particle systems can be set up before they
-    // wake: Prewarm off. A prewarmed system simulates a whole cycle when it starts (thousands of
-    // particle updates, collision included, for one smoke puff), and again each time the pool
-    // replays it; a cell's gas or fire is better starting from nothing anyway.
+    // A new effect, copied from its prefab's template.
     GameObject MakeFx(GameObject prefab, Vector3 at, Quaternion turn)
     {
-        if (fxStaging == null)
+        if (!fxTemplate.TryGetValue(prefab, out var template) || template == null) fxTemplate[prefab] = template = FxTemplate(prefab);
+        return Instantiate(template, at, turn, transform);
+    }
+
+    // A prefab's template: a copy kept under an inactive parent (so it never wakes), trimmed once (TrimFx).
+    GameObject FxTemplate(GameObject prefab)
+    {
+        if (fxTemplates == null)
         {
-            fxStaging = new GameObject("Effects being made").transform;
-            fxStaging.SetParent(transform, false);
-            fxStaging.gameObject.SetActive(false);
+            fxTemplates = new GameObject("Effect templates").transform;
+            fxTemplates.SetParent(transform, false);
+            fxTemplates.gameObject.SetActive(false);
         }
-        var made = Instantiate(prefab, at, turn, fxStaging);
-        foreach (var ps in made.GetComponentsInChildren<ParticleSystem>(true))
+        var template = Instantiate(prefab, fxTemplates);
+        template.name = prefab.name;
+        TrimFx(template);
+        return template;
+    }
+
+    /// <summary>
+    /// Sets an effect up to start cheaply, with nothing seen changed. Prewarm off: a prewarmed system simulates a whole
+    /// cycle when it starts (thousands of particle updates, collision included, for one smoke puff), and again each
+    /// time the pool replays it; a cell's gas or fire is better starting from nothing anyway. And no mesh on a renderer
+    /// that draws none: the pack's smoke is billboards with a sphere left in its mesh slot, and a renderer holding a
+    /// mesh was slow to wake each time, which was most of what a puff of smoke cost (#178: 5-10 ms to make one and as
+    /// much to wake a pooled one, in a player on the nine).
+    /// </summary>
+    public static void TrimFx(GameObject fx)
+    {
+        foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
         {
             var main = ps.main;
             main.prewarm = false;
         }
-        made.transform.SetParent(transform, true);
-        return made;
+        foreach (var drawn in fx.GetComponentsInChildren<ParticleSystemRenderer>(true))
+            if (drawn.renderMode != ParticleSystemRenderMode.Mesh && drawn.meshCount > 0) drawn.SetMeshes(System.Array.Empty<Mesh>());
     }
 
     // Stops an effect emitting; once it has faded it goes back to the pool.
@@ -133,6 +156,7 @@ public partial class ChemGrid
     {
         if (go == null) return;
         if (!fxPrefab.ContainsKey(go)) { Retire(go); return; }
+        PerfCounts.Add("fx.retired");
         foreach (var ps in go.GetComponentsInChildren<ParticleSystem>()) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         fadingFx.Add((go, Time.time + FxFadeSeconds));
     }
@@ -184,7 +208,8 @@ public partial class ChemGrid
         fogBank = null;
         if (flameBank != null) Destroy(flameBank.gameObject);
         flameBank = null;
-        fxStaging = null;
+        fxTemplates = null;
+        fxTemplate.Clear();
         ReadWorldLooks();
         columns.Clear();
         liveFx = 0;
@@ -193,6 +218,10 @@ public partial class ChemGrid
         fadingFx.Clear();
         sparking.Clear();
         sparksWaiting.Clear();
+        // The templates nearly every fight needs are made with the world, not on the frame the first smoke rises.
+        if (!Application.isPlaying) return;
+        foreach (var prefab in new[] { smokeFx, steamFx, sparksFx })
+            if (prefab != null) fxTemplate[prefab] = FxTemplate(prefab);
     }
 
     // --- gas -----------------------------------------------------------------------

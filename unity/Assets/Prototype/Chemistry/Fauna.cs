@@ -193,6 +193,22 @@ namespace Chem
             return true;
         }
 
+        // The last tables found to hold the same rows, so a second asker (the raiders after the creatures) needn't compare again.
+        FaunaTables same;
+
+        /// <summary>
+        /// Whether every row is as in <paramref name="other"/>: what a rule switch that leaves the creatures alone (a sim
+        /// value, a spell) is, so the view needn't compare them species by species (#181).
+        /// </summary>
+        public bool SameAs(FaunaTables other)
+        {
+            if (other == null) return false;
+            if (ReferenceEquals(this, other) || ReferenceEquals(same, other) || ReferenceEquals(other.same, this)) return true;
+            if (!JToken.DeepEquals(species, other.species) || !JToken.DeepEquals(parts, other.parts)) return false;
+            same = other;
+            return true;
+        }
+
         /// <summary>The ids of parts whose rows differ from <paramref name="other"/>'s.</summary>
         public ISet<string> ChangedParts(FaunaTables other)
         {

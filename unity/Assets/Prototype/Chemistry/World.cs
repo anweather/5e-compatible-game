@@ -3,6 +3,7 @@
 // World.Sim.cs and spells in World.Spells.cs.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Chem
 {
@@ -94,15 +95,28 @@ namespace Chem
             ForgetWaterSnapshots(); // terrain may mean something else now
             Weather = SkyNow();
             RemapLiquids(before, rules);
-            foreach (var c in Cells)
-            {
-                c.ForgetDef();
-                Sanitize(c);
-            }
+            // Every cell's cached terrain is now stale (TerrainOf reads it again), without a pass over the cells; the
+            // pass is only for a switch that leaves cells something the new rules don't define (#181).
+            rulesStamp++;
+            if (Unfits(before, rules))
+                foreach (var c in Cells) Sanitize(c);
             SanitizeRaiders();
             LayBuildings(before, rules);
             LayCells(before, rules);
         }
+
+        // Which rules a cell's cached terrain was looked up in (Cell.DefRules).
+        int rulesStamp = 1;
+
+        // Whether a cell that fits the rules before can fail to fit the rules after (Sanitize): a terrain, cover or gas
+        // they no longer define, fewer liquids, or another height range. Most switches (a sim value, a spell, a rate)
+        // are none of those.
+        static bool Unfits(Rules before, Rules after) =>
+            before.Sim.Height.Min != after.Sim.Height.Min || before.Sim.Height.Max != after.Sim.Height.Max
+            || after.Liquids.Count < before.Liquids.Count
+            || before.Terrain.Keys.Any(id => !after.Terrain.ContainsKey(id))
+            || before.Covers.Keys.Any(id => !after.Covers.ContainsKey(id))
+            || before.Gases.Keys.Any(id => !after.Gases.ContainsKey(id));
 
         // A cell made to fit the rules in force (sanitizeCell in the TS).
         void Sanitize(Cell c)
@@ -149,7 +163,10 @@ namespace Chem
         {
             // Every tick asks each wet or burning cell about its terrain several times; looking the
             // id up only when it changes keeps that cheap (Cell.T drops the cache when it's replaced).
-            return c.Def ??= Rules.Terrain[c.T];
+            var def = c.Def;
+            if (def != null && c.DefRules == rulesStamp) return def;
+            c.DefRules = rulesStamp;
+            return c.Def = Rules.Terrain[c.T];
         }
         public bool HasTag(Cell c, string tag) => TerrainOf(c).Has(tag);
         public bool IsBlocking(Cell c) => TerrainOf(c).Blocking || IsRaisedWall(c);

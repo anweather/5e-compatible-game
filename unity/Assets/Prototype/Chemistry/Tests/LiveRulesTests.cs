@@ -50,6 +50,24 @@ namespace Chem.Tests
 
         // ---------- composing: parity with composeRules ----------
 
+        // A view skips redrawing the world for a switch that changed no colour (ChemGrid.Announce, #181): the looks hold
+        // for a sim value and change for a look, which the shared fingerprint leaves out.
+        [Test]
+        public void SameLooksChangesOnlyForALook()
+        {
+            var plain = With();
+            var sim = With("{ 'sim': { 'conductLimit': 9 } }");
+            var colour = With("{ 'terrain': { 'grass': { 'look': { 'color': [0.9, 0.1, 0.1] } } } }");
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            bool same = sim.SameLooks(plain);
+            TestContext.Out.WriteLine($"SAME LOOKS {watch.Elapsed.TotalMilliseconds:0.0} ms");
+            Assert.That(same, Is.True, "a sim value is no look");
+            Assert.That(sim.Fingerprint, Is.Not.EqualTo(plain.Fingerprint));
+            Assert.That(colour.SameLooks(plain), Is.False, "grass's colour is a look");
+            Assert.That(plain.SameLooks(colour), Is.False);
+            Assert.That(colour.Fingerprint, Is.EqualTo(plain.Fingerprint), "and isn't in the shared fingerprint");
+        }
+
         [Test]
         public void LongSlidesModComposesLikeTheSandbox()
         {
@@ -379,6 +397,20 @@ namespace Chem.Tests
             Assert.That(w.Flammability(w.At(1, 1)), Is.EqualTo(0));
             w.Apply(1, 1, "fire");
             Assert.That(w.At(1, 1).Fire, Is.EqualTo(0), "wet grass doesn't catch");
+        }
+
+        // A switch passes over the cells only when one could stop fitting (#181): a narrower height range still clamps
+        // them, and a switch of something else leaves them as they were.
+        [Test]
+        public void ANarrowerHeightRangeStillClampsTheCells()
+        {
+            var w = new World(Base, 3, 1, 1, "grass");
+            w.At(0, 0).Height = 7;
+            w.At(1, 0).Height = -5;
+            w.ApplyRules(With("{ 'sim': { 'conductLimit': 9 } }"));
+            Assert.That((w.At(0, 0).Height, w.At(1, 0).Height), Is.EqualTo((7, -5)), "a sim value changes no height");
+            w.ApplyRules(With("{ 'sim': { 'height': { 'min': -2, 'max': 4, 'blockAt': 3 } } }"));
+            Assert.That((w.At(0, 0).Height, w.At(1, 0).Height, w.At(2, 0).Height), Is.EqualTo((4, -2, 0)));
         }
 
         [Test]
