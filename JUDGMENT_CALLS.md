@@ -66,6 +66,11 @@ Each entry has:
 - **The lead, 2026-11-09, on u2's two leftovers:** step 4 (a `Chemistry/Reactions/` folder) is closed as done:
   react-split already split Apply and a cold build has no S3776. S3776 stays in `WarningsNotAsErrors` (a parallel Mac
   build can still raise it; CLAUDE.md's `-m:1` note).
+- **The lead, 2026-11-09, the Scripts asmdef measured and dropped:** a Scripts-only change recompiled in 12.7 s
+  (median of 3) before and 11.9 s after one runtime asmdef (6%; the bar was 30%). EditMode 1862/1862, smoke and online
+  passed with it, but the new assembly holds 505 of 506 files, so nothing is saved. Not landed. A real gain needs
+  several smaller assemblies (Net or the Probe* files apart), a bigger refactor nobody has asked for. Note: a yard
+  rebuild under a new asmdef rewrites NetWizard.prefab's `m_EditorClassIdentifier` lines.
 - **Revisited:** 0.
 
 ### J-080: The world squares (playtest 2026-11-08 follow-up, `docs/design/world-squares.md`)

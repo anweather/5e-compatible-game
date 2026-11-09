@@ -45,7 +45,7 @@ Waiting:
 
 Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
 
-Right now: **the PC** on the Scripts asmdef measurement (Next 1). **u2** idle (queue empty). **The Mac** on `smoke-nine` (smoke's casts on the nine fail
+Right now: **the PC** idle (host-ux detached at a535d458, clean). **u2** idle (queue empty). **The Mac** on `smoke-nine` (smoke's casts on the nine fail
 cast_fire-bolt, fire_started, levitate_lifted), `apikey-tests-mac` (ApiKeyTests fail 8/8 on the Mac; make them
 hermetic), then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
 2026-11-09.
@@ -71,12 +71,10 @@ hermetic), then the far ring's looks (the sea horizon's hard line, tundra platea
 
 ## Next, in order
 
-1. **A Scripts runtime asmdef: measure first** (J-081). A unity-task times a Scripts-only change's recompile in
-   host-ux today, then tries splitting Scripts into a runtime asmdef and times it again; land only if it's clearly
-   faster and nothing breaks (EditMode, smoke, `online`).
-2. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
+(The Scripts runtime asmdef was measured 2026-11-09 and dropped: 6% faster, J-081.)
+1. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
    there is one; the view on the PC.
-3. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
+2. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
 Also open: a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
 of the volcano is hidden by a nearer hill (a viewpoint or landmark placement question, not briefed).
 
