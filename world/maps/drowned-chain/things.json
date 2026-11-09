@@ -1,0 +1,23 @@
+{
+  "about": "The Drowned Chain's props and items: a few by the start, on the middle island's beach, and a pair of things on the wooded isle, so a walk finds them. Same format as the valley's things.json.",
+  "chunks": [
+    {
+      "chunk": [4, 5],
+      "things": [
+        { "kind": "barrel", "cell": [8, 34], "note": "by the start" },
+        { "kind": "barrel", "cell": [10, 34] },
+        { "kind": "crate", "cell": [8, 38] },
+        { "kind": "crate", "cell": [14, 38] },
+        { "kind": "pick", "cell": [14, 35] },
+        { "kind": "sending-stone", "cell": [16, 35], "link": "stones" }
+      ]
+    },
+    {
+      "chunk": [2, 6],
+      "things": [
+        { "kind": "crate", "cell": [40, 40], "note": "on the wooded isle" },
+        { "kind": "sending-stone", "cell": [42, 40], "link": "stones", "note": "the far end of the pair" }
+      ]
+    }
+  ]
+}

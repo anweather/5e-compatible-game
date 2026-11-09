@@ -1,0 +1,10 @@
+{
+  "about": "The Drowned Chain's one village, on the wooded isle. Same format as world/villages.json; its materials are that file's, copied, since nothing shares them.",
+  "materials": { "about": "As world/villages.json.",
+    "walls": { "timber": "logwall", "stone": "stone", "log": "logwall" },
+    "roofs": { "thatch": "thatch", "slate": "slate", "shingle": "shingle" },
+    "windows": { "about": "As world/villages.json.", "material": "pane", "every": 2, "backInTen": 8 } },
+  "villages": [
+    { "name": "Saltwick", "at": [163, 444], "seed": 11, "square": [8, 9], "houses": 6, "lanes": 2, "laneLength": [6, 9], "stoneInTen": 2 }
+  ]
+}

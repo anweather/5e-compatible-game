@@ -1,0 +1,17 @@
+{
+  "id": "drowned-chain",
+  "name": "The Drowned Chain",
+  "description": "No valley, no lake, no river: a chain of islands runs south-west to north-east across an open sea. You wake on a low island in the middle of it. A snow-capped peak stands on the big island to the north-east, a wooded isle lies to the south-west, and small scrubby rocks fill the gaps. Every crossing is a swim.",
+  "revision": 1,
+  "start": { "setting": "field", "settlement": "town", "biome": "meadow" },
+  "features": [
+    { "id": "peak-isle", "kind": "mountains", "at": { "x": 0.5, "y": -0.5 }, "size": "large", "stretch": 1.5, "orientation": "nesw" },
+    { "id": "snow-cap", "kind": "influence", "look": "snowpeaks", "around": "peak-isle", "reach": 0.05, "falloff": 0.9, "strength": 0.9 },
+    { "id": "north-skerry", "kind": "zone", "biome": "scrubland", "at": { "x": 0.05, "y": -0.72 }, "size": "small", "stretch": 1.6, "orientation": "ew" },
+    { "id": "east-skerry", "kind": "zone", "biome": "highlands", "at": { "x": 0.8, "y": 0.1 }, "size": "small", "stretch": 1.4, "orientation": "ns" },
+    { "id": "stepping-stone", "kind": "zone", "biome": "scrubland", "at": { "x": 0.27, "y": -0.1 }, "size": "small", "stretch": 1.2, "orientation": "nesw" },
+    { "id": "wood-isle", "kind": "zone", "biome": "deepwood", "at": { "x": -0.45, "y": 0.42 }, "size": "large", "stretch": 1.3, "orientation": "nesw" },
+    { "id": "far-sw-rock", "kind": "zone", "biome": "tundra", "at": { "x": -0.82, "y": 0.8 }, "size": "small", "stretch": 1.5, "orientation": "nwse" },
+    { "id": "west-isle", "kind": "zone", "biome": "plains", "at": { "x": -0.68, "y": -0.45 }, "size": "medium", "stretch": 1.5, "orientation": "ns" }
+  ]
+}
