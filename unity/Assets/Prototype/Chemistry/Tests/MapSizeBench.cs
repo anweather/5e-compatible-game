@@ -1,5 +1,5 @@
 // What a bigger map costs in the core (map-size, J-080): a world for the valley (576 x 576) and for the flat 3 x 3 test map
-// (1728 x 1728), loaded from their folders as the game does, every cell a Cell object ("cells everywhere"): the memory, the
+// (1728 x 1728, test-fixtures/maps), loaded from their folders as the game does, every cell a Cell object ("cells everywhere"): the memory, the
 // time to load, and a full heightfield rebuild on a terrain layout of that size. Explicit: run it by name.
 // dotnet test core -c Release --filter "FullyQualifiedName~MapSizeBench" --logger "console;verbosity=detailed"
 using System;
@@ -14,6 +14,9 @@ namespace Chem.Tests
     public class MapSizeBench
     {
         static Rules R => ChemistryTests.R;
+
+        /// <summary>The flat 1728 x 1728 test map, kept out of world/ so builds don't ship it and joins don't hash it.</summary>
+        internal static string BigMap => Path.Combine(ChemistryTests.Folders.Repo, "test-fixtures", "maps", "flat-1728");
 
         // The map as made: grass everywhere, what a save is told apart from.
         sealed class FlatGrass : IChunkSource
@@ -79,9 +82,9 @@ namespace Chem.Tests
         [Test, Explicit("a benchmark: run it by name")]
         public void MapSizeCosts()
         {
-            foreach (string id in new[] { "valley", "flat-1728" })
+            foreach (string dir in new[] { ChemistryTests.WorldDir(), BigMap })
             {
-                string dir = Path.Combine(ChemistryTests.Folders.Maps, id);
+                string id = Path.GetFileName(dir);
                 Load(dir, out _); // warm the JIT and the file cache
                 long before = Heap();
                 var world = Load(dir, out _);
@@ -115,6 +118,21 @@ namespace Chem.Tests
                     return sw.Elapsed.TotalMilliseconds;
                 }, 3);
                 double gc = Median(FullCollect, 3);
+                // The online desync check's cost a tick (RollingHash): a slice of Every, as before chunk-hash, and of the
+                // world's own window.
+                double SliceMs(int slices)
+                {
+                    var sum = Fnv1aSum.Start();
+                    return Median(() =>
+                    {
+                        var sw = Stopwatch.StartNew();
+                        world.HashSlice(ref sum, 0, slices);
+                        return sw.Elapsed.TotalMilliseconds;
+                    }, 9);
+                }
+                int window = RollingHash.WindowFor(world);
+                TestContext.Out.WriteLine($"MAP SIZE {id} the desync check a tick: {SliceMs(RollingHash.Every):0.00} ms at {RollingHash.Every} ticks a window, " +
+                    $"{SliceMs(window):0.00} ms at its own {window}");
                 var sws = Stopwatch.StartNew();
                 string save = world.Save(new FlatGrass());
                 double saveMs = sws.Elapsed.TotalMilliseconds;

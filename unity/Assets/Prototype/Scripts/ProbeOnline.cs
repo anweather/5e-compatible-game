@@ -548,7 +548,8 @@ public class OnlineProbeClient : MonoBehaviour
     static IEnumerator PutACellWrong(NetChem net, OnlineObservation after)
     {
         net.GetComponent<ChemGrid>().World.At(0, 0).Fuel += 7;
-        float most = RollingHash.Every * 2f / net.GetComponent<ChemGrid>().World.Rules.Sim.TicksPerSecond + WrongCellGrace;
+        var world = net.GetComponent<ChemGrid>().World;
+        float most = RollingHash.WindowFor(world) * 2f / world.Rules.Sim.TicksPerSecond + WrongCellGrace;
         for (float waited = 0f; waited < most && !net.DesyncSeen; waited += Time.unscaledDeltaTime) yield return null;
         after.wrongCellCaught = net.DesyncSeen;
     }

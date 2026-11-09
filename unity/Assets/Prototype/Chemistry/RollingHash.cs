@@ -4,17 +4,33 @@
 //
 // Not a port: the sandbox has no peers.
 //
-// Peers agree because a tick number alone picks its slice: row-major from the world's size, with no
-// reading of the seed, the active chunks or the order anything was stepped in. A window a peer saw
+// Peers agree because a tick number and the world's size alone pick its slice: row-major, with no
+// reading of the seed, the active chunks or the order anything was stepped in. A big world's window is
+// longer, so a tick still hashes about two valleys' worth of cells (map-size: a 3 x 3's whole sum was
+// 6 ms a tick under Mono at 30 ticks); the valley's stays Every.
+//
+// After (chunk-hash, 2026-11-08): a hash cached per chunk and recomputed only for chunks that changed would cost almost
+// nothing a tick and keep a big world's window at 5 s. It needs every cell write to mark its chunk, and cells are written
+// in place all over the core, so it waits for D9's accessors (cells behind World.At and arrays) rather than a partial
+// dirty flag that could miss a change (a missed desync) or invent one. A window a peer saw
 // only part of (it joined midway) gives no fingerprint, rather than one that can't match.
+using System;
 using System.Globalization;
 
 namespace Chem
 {
     public sealed class RollingHash
     {
-        /// <summary>Ticks to a window, and how many slices the cells are cut into.</summary>
+        /// <summary>Ticks to a window, and how many slices the cells are cut into, at the least: the valley's.</summary>
         public const int Every = 30;
+
+        /// <summary>The cells a window of Every ticks covers at most: two valleys (576 x 576 each), about 1.5 ms a tick.</summary>
+        public const int CellsPerWindow = 2 * 576 * 576;
+
+        /// <summary>A world's window in ticks: Every, or longer for a world of more than CellsPerWindow cells, by its size alone.</summary>
+        public static int WindowFor(int cells) => Math.Max(Every, (int)((Every * (long)cells + CellsPerWindow - 1) / CellsPerWindow));
+
+        public static int WindowFor(World world) => WindowFor(world.W * world.H);
 
         Fnv1aSum sum = Fnv1aSum.Start();
         int seen;
@@ -25,19 +41,22 @@ namespace Chem
         /// </summary>
         public string Add(World world, int tick)
         {
-            int slice = SliceOf(tick);
+            int window = WindowFor(world), slice = SliceOf(tick, window);
             if (slice == 0)
             {
                 sum = Fnv1aSum.Start();
                 seen = 0;
             }
-            world.HashSlice(ref sum, slice, Every);
+            world.HashSlice(ref sum, slice, window);
             seen++;
-            return slice == Every - 1 && seen == Every ? world.CloseHash(sum) : null;
+            return slice == window - 1 && seen == window ? world.CloseHash(sum) : null;
         }
 
-        /// <summary>The slice a tick hashes: a window runs from a tick after a multiple of Every up to the next multiple.</summary>
-        public static int SliceOf(int tick) => ((tick - 1) % Every + Every) % Every;
+        /// <summary>The slice a tick hashes in the valley's window.</summary>
+        public static int SliceOf(int tick) => SliceOf(tick, Every);
+
+        /// <summary>The slice a tick hashes: a window runs from a tick after a multiple of its length up to the next multiple.</summary>
+        public static int SliceOf(int tick, int window) => ((tick - 1) % window + window) % window;
     }
 
     /// <summary>32-bit FNV-1a a character at a time: Fnv1a.Hash of what was written, with no string to build.</summary>
