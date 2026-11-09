@@ -39,7 +39,7 @@ Built so far (core): `ChatRecorder` and `ChatLog` in `Chemistry/Mcp/ChatRecord.c
 nothing to change, so it doesn't land in the refused list. An outcome is refused when it changed nothing and either a game tool refused or
 Claude read `outside_rules`. `applied` is added to the times: when the room's answer came back. `why` holds a refusal's or failure's reason.
 
-What the stream really says, from claude 2.1.312 (fixtures in `core/Game.Core.Tests/RulesMcp/chat-fixtures/`):
+What the stream really says, from claude 2.1.312 (fixtures in `core/Rules.Mcp.Tests/chat-fixtures/`):
 
 - **Tokens and cost:** `result` has `usage`, `total_cost_usd`, `num_turns`, `duration_ms`, `duration_api_ms` and `modelUsage` (per model,
   `costUSD`). Assistant lines mustn't be added up: one reply comes on several lines with the same `message.id` and `usage`, taken before its

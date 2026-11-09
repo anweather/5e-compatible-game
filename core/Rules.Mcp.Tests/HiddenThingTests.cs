@@ -182,7 +182,7 @@ namespace Chem.Tests
 
         // What a real Claude wrote, with only the game's tools, in a headless run (docs/RULES_MCP.md "Things"): kept as it came, but for its glow.
         static string WrittenByAClient() =>
-            File.ReadAllText(Path.Combine(ChemistryTests.Folders.Repo, "core", "Game.Core.Tests", "RulesMcp", "golden-squirrel.mod.json"));
+            File.ReadAllText(Path.Combine(ChemistryTests.Folders.Repo, "core", "Rules.Mcp.Tests", "golden-squirrel.mod.json"));
 
         [Test]
         public void TheModAHeadlessClientWroteHoldsThroughRunsPeersAndASave()

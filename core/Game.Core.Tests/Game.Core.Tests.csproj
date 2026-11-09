@@ -12,20 +12,16 @@
     <Compile Include="../../unity/Assets/Prototype/Chemistry/Tests/*.cs" Link="Tests/%(Filename)%(Extension)" />
     <!-- How they run here (#162): only this project's, so Unity's runner never reads it. -->
     <Compile Include="Parallel.cs" />
+    <Compile Include="../TestParallel.cs" Link="TestParallel.cs" />
     <!-- The playtest bot's tests (its logic is in Game.Core; playtest/DESIGN.md). -->
     <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
-    <!-- The playtest runner's tests (core/Playtest.Runner): the parts that don't launch anything. -->
-    <Compile Include="Runner/*.cs" />
-    <!-- The rules MCP server (core/Rules.Mcp): validate, simulate, drafts and save. -->
-    <Compile Include="RulesMcp/*.cs" />
+    <!-- The tools' tests are their own projects (Rules.Mcp.Tests, Playtest.Runner.Tests, Chat.Bench.Tests,
+         Hold.Runner.Tests), which reference this one for the helpers above; Friends.cs lets them. -->
+    <Compile Include="Friends.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
-    <ProjectReference Include="../Playtest.Runner/Playtest.Runner.csproj" />
-    <ProjectReference Include="../Rules.Mcp/Rules.Mcp.csproj" />
-    <ProjectReference Include="../Chat.Bench/Chat.Bench.csproj" />
-    <ProjectReference Include="../Hold.Runner/Hold.Runner.csproj" />
   </ItemGroup>
 
   <ItemGroup>

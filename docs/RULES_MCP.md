@@ -654,7 +654,7 @@ claude -p "Put a rare golden squirrel somewhere in the woods for us to find. Sav
 ```
 
 `.mcp.json` starts `Rules.Mcp.dll --rules <the copy>/rules`. It ended as one mod all three times it was run, with its spots from `find_site`.
-What one run wrote is `core/Game.Core.Tests/RulesMcp/golden-squirrel.mod.json`, and `HiddenThingTests` holds it through two runs,
+What one run wrote is `core/Rules.Mcp.Tests/golden-squirrel.mod.json`, and `HiddenThingTests` holds it through two runs,
 two peers and a save. **Limit:** the woods aren't a place and a stand-in valley has no trees, so a headless client can't tell
 woods from a meadow, and `find_site` may give a cell a real tree stands on; the game's `find_site` reads the real valley,
 and a room refuses a row on a blocked cell at the switch.

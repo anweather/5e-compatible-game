@@ -92,7 +92,7 @@ dotnet build core -c Release -warnaserror   # on a many-core Mac add -m:1: a par
 dotnet test core
 dotnet test core --filter "FullyQualifiedName~EveryExampleModPassesTheChecks"   # one test
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
-npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%)
+tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%); jscpd pinned in its lockfile
 node --test tools/chat-report.test.mjs        # the chat report, on real records
 
 # Sandbox (CI's "sandbox" workflow)
