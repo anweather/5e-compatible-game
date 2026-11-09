@@ -261,7 +261,7 @@ public partial class ChemGrid
 
     void FallbackGas(View v, Cell c, string kind, Vector3 center, float ground)
     {
-        var puff = Ensure(ref v.gas, "Gas", center);
+        var puff = v.gas = Ensure(v.gas, "Gas", center);
         float s = 0.25f + 0.1f * c.GasAmt;
         puff.transform.localScale = Vector3.one * s;
         puff.transform.position = new Vector3(center.x, ground + 1.2f, center.z);
@@ -304,7 +304,7 @@ public partial class ChemGrid
             return;
         }
         if (!on) { Hide(v.spark); return; }
-        var spark = Ensure(ref v.spark, "Charge", center);
+        var spark = v.spark = Ensure(v.spark, "Charge", center);
         spark.transform.position = new Vector3(center.x, ground + 0.08f, center.z);
         spark.transform.localScale = new Vector3(0.8f * cellSize, 0.05f, 0.8f * cellSize);
         spark.GetComponent<Renderer>().sharedMaterial = materials.Lit("Charge", new Color(1f, 0.95f, 0.3f), 0.5f, new Color(1f, 0.9f, 0.2f) * 6f);

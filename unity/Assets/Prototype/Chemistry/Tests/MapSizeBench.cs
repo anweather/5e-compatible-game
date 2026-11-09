@@ -79,6 +79,75 @@ namespace Chem.Tests
             return times.OrderBy(t => t).ElementAt(n / 2);
         }
 
+        // Where a world's load goes (cell-memory): the time and the bytes of each step, as Load and ChemGrid.StartWorld take
+        // them, the cells' allocation apart from what's laid on them.
+        [Test, Explicit("a benchmark: run it by name")]
+        public void MapSizePhases()
+        {
+            foreach (string dir in new[] { ChemistryTests.WorldDir(), BigMap })
+            {
+                Phases(dir, false); // warms the JIT and the file cache
+                Heap();
+                Phases(dir, true);
+            }
+            Assert.Pass();
+        }
+
+        // One load, step by step; its own method, so nothing of it is still held when the next one measures.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static void Phases(string dir, bool tell)
+        {
+            long h0 = Heap();
+            int gen0 = GC.CollectionCount(0), gen2 = GC.CollectionCount(2);
+            var sw = Stopwatch.StartNew();
+            var map = MapFile.Load(dir);
+            var rows = MapFile.ReadCells(dir).Replace("\r", "").Split('\n');
+            double readCells = sw.Elapsed.TotalMilliseconds;
+            sw.Restart();
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            double readLand = sw.Elapsed.TotalMilliseconds;
+            long hFiles = Heap();
+            sw.Restart();
+            var w = new World(R, map.W, map.H, 7, "grass");
+            double alloc = sw.Elapsed.TotalMilliseconds;
+            long h1 = Heap();
+            sw.Restart();
+            for (int y = 0; y < map.H; y++)
+                for (int x = 0; x < map.W; x++)
+                {
+                    char c = rows[y][x];
+                    if (c == 'T') w.Paint(x, y, "tree");
+                    else if (c == 'w') w.At(x, y).Water = 4;
+                    else w.Paint(x, y, "grass");
+                }
+            double paint = sw.Elapsed.TotalMilliseconds;
+            sw.Restart();
+            w.SetLand(land);
+            double setLand = sw.Elapsed.TotalMilliseconds;
+            long h2 = Heap();
+            sw.Restart();
+            w.KeepStart();
+            double keep = sw.Elapsed.TotalMilliseconds;
+            long h3 = Heap();
+            sw.Restart();
+            w.CellHash();
+            double hash = sw.Elapsed.TotalMilliseconds;
+            sw.Restart();
+            w.Step();
+            double tick = sw.Elapsed.TotalMilliseconds;
+            long h4 = Heap();
+            int g0 = GC.CollectionCount(0) - gen0, g2 = GC.CollectionCount(2) - gen2;
+            if (!tell) return;
+            double chunks = w.W * w.H / (double)Chunks.Area;
+            string Kb(long a, long b) => ((b - a) / 1024.0 / chunks).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+            TestContext.Out.WriteLine($"PHASES {Path.GetFileName(dir)} read cells {readCells:0} ms, land {readLand:0} ms ({Kb(h0, hFiles)} KB a chunk held); " +
+                $"new World {alloc:0} ms {Kb(hFiles, h1)} KB a chunk; paint {paint:0} ms; SetLand {setLand:0} ms {Kb(h1, h2)} KB; KeepStart {keep:0} ms {Kb(h2, h3)} KB; " +
+                $"CellHash {hash:0} ms; first tick {tick:0} ms {Kb(h3, h4)} KB; world {(h4 - hFiles) / 1048576.0:0} MB; gen0 {g0}, gen2 {g2} (some ours)");
+            GC.KeepAlive(w);
+            GC.KeepAlive(land);
+            GC.KeepAlive(rows);
+        }
+
         [Test, Explicit("a benchmark: run it by name")]
         public void MapSizeCosts()
         {

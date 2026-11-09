@@ -48,7 +48,10 @@ public sealed partial class CellDressing
     static Color ColorOf(LookDef look) => new(look.R, look.G, look.B);
 
     /// <summary>True for terrains drawn as ground with something standing on it (the plant and debris families).</summary>
-    public static bool IsDressed(Rules rules, string terrain) => Of(rules, terrain) is { Family: Plant or Debris };
+    public static bool IsDressed(Rules rules, string terrain) => IsDressed(Of(rules, terrain));
+
+    /// <summary>The same, by the terrain's look (a cell's, World.TerrainOf: no lookup by id).</summary>
+    public static bool IsDressed(LookDef look) => look is { Family: Plant or Debris };
 
     /// <summary>Whether Dress draws a terrain family: the check that rules/looks.json and this file agree.</summary>
     public static bool Draws(string family) => family is Ground or Block or SpireFamily or Plant or Debris or Deck or PlateFamily or Machine or Wall;
