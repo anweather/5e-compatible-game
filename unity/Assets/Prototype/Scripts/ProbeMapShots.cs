@@ -3,7 +3,7 @@ using System.Collections;
 // The probe's mapshots scenario: the same three views of the valley each time, from the town toward the castle, of the
 // castle, and along the shore out to sea, at 11 in the morning, for telling a before from an after when the map's data
 // moves (docs/design/maps-as-data.md, phase 7). Checks nothing but that it shot them.
-public class MapShotsProbe : CastleCliffProbe
+public class MapShotsProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {

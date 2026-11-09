@@ -166,6 +166,8 @@ public partial class ValleyChemistry : MonoBehaviour
             builder = BuiltGround(world);
             if (builder != terrains.Builder) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land ready in {timer.Elapsed.TotalMilliseconds:0} ms");
             ground = new ValleyGround(layout, terrains.Chunks, builder, built: builder == terrains.Builder);
+            // The chunks waited blank for the land (no ground/, or land mode): the sea measures its depth again on them.
+            if (builder != terrains.Builder && Ocean.Instance != null) Ocean.Instance.Build();
             rocks = new LandRocks(grid);
             rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).

@@ -208,8 +208,8 @@ public class Ocean : MonoBehaviour
         return (Mathf.Ceil(most / fineStep) * fineStep, Mathf.Ceil(back / fineStep) * fineStep);
     }
 
-    /// <summary>Whether a point is under the sea's mesh (seaward of where it starts inland).</summary>
-    public bool Covers(Vector2 xz) => mesh != null && Vector2.Dot(xz - shoreOrigin, seaward.normalized) > -inland && Wet(xz);
+    /// <summary>Whether a point is under the sea's mesh: over the map's water or a beach's width from it, or off the map by the sea.</summary>
+    public bool Covers(Vector2 xz) => mesh != null && Wet(xz);
 
     /// <summary>
     /// How far the swell lifts (or drops) the sea's surface above its level at a point, now: the

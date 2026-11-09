@@ -145,10 +145,16 @@ touch them.
 
 **Shore map**
 : Over the sea and out past the terrain, the way to the nearest land and
-  the distance to the shore (`ShoreMap`, baked by `ValleyBuilder` into
-  `Generated/ShoreMap.asset`). The surf's push (`WaterCurrents`) and the
+  the distance to the shore (`ShoreMap`, worked out from the map's land
+  when the scene starts, `MapLand`). The surf's push (`WaterCurrents`) and the
   waves (`Ocean`, the Ocean shader) both run along it, so near the island
   they go toward the island. A view of the land, never the chemistry (D4).
+
+**Sea, basin**
+: A map's land below its sea level (`map.json`) is water: the **sea** where
+  it reaches the map's edge, a **basin** (a lake's, a stamped hollow's)
+  where it's walled off (`SeaMask`). The view draws them at the map's water
+  level, 0.1 m under the sea level (`Ocean`, `MapLand`).
 
 **The yard**
 : The old 64 × 64 play area, now meadow in the middle of the valley

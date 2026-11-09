@@ -50,16 +50,20 @@ public static class ValleyBuilder
     {
         ("Lake", "lake"), ("Rocks", "rocks"), ("River rocks", "river-rocks"), ("Ball court", "court"), ("Landmarks", "landmarks"),
         ("Falls", "falls"), ("Bridge", "bridge"), ("Tower", "tower"), ("Defense field", "defense-field"), ("Coast", "coast"),
-        ("SkyboxMountains", "skyline"),
+        ("SkyboxMountains", "skyline"), ("Cabin*", "cabins"), ("Village *", "villages"), ("World edge", "world-edge"),
     };
 
     static void MarkPlaces()
     {
         var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
         foreach (var (name, place) in Places)
-            foreach (var root in roots.Where(r => r.name == name))
+            foreach (var root in roots.Where(r => Named(r.name, name)))
                 root.AddComponent<PlaceRoot>().place = place;
     }
+
+    // A root's name, or the start of its name for one ending in * (the cabins, the villages: one root each).
+    static bool Named(string root, string name) =>
+        name.EndsWith("*") ? root.StartsWith(name.TrimEnd('*'), System.StringComparison.Ordinal) : root == name;
 
     // What stands on the ground, built while EditorGround has it.
     static void DressGround(ChemGrid grid, MapTerrains terrains)

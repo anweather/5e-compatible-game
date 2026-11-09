@@ -203,18 +203,15 @@ public partial class ChemGrid : MonoBehaviour
         using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
     }
 
-    // Where the map's cells stand in the world (map.json's yard: its south-west cell at world 0, 0), when this grid plays the
-    // map's whole world; a small test yard keeps its own.
+    // Where the map's cells stand in the world (map.json's yard: its south-west cell at world 0, 0), when this grid plays a
+    // map (the yard scene's, with its valley's ground); a test's own small yard keeps its own.
     void TakeYard()
     {
         var land = MapLand.Current;
-        if (land == null || (yardCells.width > 0 && !OnMapsWorld(land))) return;
+        if (land == null || valley == null) return;
         var (x, y, w, h) = land.Map.Yard;
         yardCells = new RectInt(x, y, w, h);
     }
-
-    // Whether the scene's yard is one of the map's (the yard scene's grid, built for a map): not a test's own small yard.
-    bool OnMapsWorld(MapLand land) => yardCells.xMax <= land.Map.W && yardCells.yMax <= land.Map.H && valley != null;
 
     // The solo wizard is built standing at the valley's start; on another map it starts at that map's, on its ground.
     void StandAtSpawn()
@@ -399,6 +396,17 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     static GameFolders folders;
+
+    // Play mode without a domain reload keeps statics: each play starts on this copy's own map again (Temp/map may name
+    // another since).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ForgetFolders()
+    {
+        folders = null;
+        checkedMap = null;
+        mapHashOf = null;
+        ValleyChemistry.ForgetLand();
+    }
 
     /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
     public static string CellMap() => MapFile.ReadCells(Folders.World);

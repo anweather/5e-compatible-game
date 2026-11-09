@@ -9,5 +9,5 @@
   "yard": [279, 315, 26, 16],
   "fullDetail": [3, 2, 5, 4],
   "expects": { "landShare": 87, "highest": 1319, "lowest": -174 },
-  "dresses": ["lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline"]
+  "dresses": ["lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline", "cabins", "villages", "world-edge"]
 }
