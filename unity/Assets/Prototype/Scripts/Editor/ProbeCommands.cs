@@ -135,8 +135,7 @@ public static class ProbeCommands
         if (names.Length > 1 && names.Any(n => ProbeScenarios.Find(n).Players > 1))
             throw new ArgumentException("A two-player scenario (online, ...) runs on its own, not in a batch.");
         var entry = ProbeScenarios.Find(names[0]);
-        if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Already in Play mode: stop it first.");
-        if (EditorApplication.isCompiling) throw new InvalidOperationException("Scripts are compiling: try again when they finish.");
+        RefuseIfBusy();
         if (UnityEngine.Object.FindAnyObjectByType<ChemGrid>() == null)
             throw new InvalidOperationException("The open scene has no ChemGrid: open Assets/Prototype/Scenes/ChemistryYard.unity.");
 
@@ -185,6 +184,27 @@ public static class ProbeCommands
             starting_player = waitForPlayer ? SecondPlayer : null,
             next = "unity command probe result --wait true --timeout 300",
         };
+    }
+
+    // Throws if the Editor can't enter Play mode for a probe now: it's playing, compiling or running EditMode tests.
+    static void RefuseIfBusy()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Already in Play mode: stop it first.");
+        if (EditorApplication.isCompiling) throw new InvalidOperationException("Scripts are compiling: try again when they finish.");
+        if (TestRunActive())
+            throw new InvalidOperationException("An EditMode test run is still going: try again when it ends (its scene restore fails in Play mode, #174).");
+    }
+
+    /// <summary>
+    /// Whether the Test Runner has a run going (TestRunnerApi.IsRunActive, internal in the test framework): one that
+    /// timed out at the CLI still runs on, and when it ends it restores its scene, which throws in Play mode and leaves an
+    /// empty scene (#174). False if this test framework can't say.
+    /// </summary>
+    public static bool TestRunActive()
+    {
+        var api = Type.GetType("UnityEditor.TestTools.TestRunner.Api.TestRunnerApi, UnityEditor.TestRunner");
+        var isActive = api?.GetMethod("IsRunActive", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+        return isActive != null && isActive.ReturnType == typeof(bool) && (bool)isActive.Invoke(null, null);
     }
 
     static string FullPath(string folder) => string.IsNullOrWhiteSpace(folder) ? null : Path.GetFullPath(folder);

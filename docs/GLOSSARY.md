@@ -236,6 +236,22 @@ touch them.
   where it's walled off (`SeaMask`). The view draws them at the map's water
   level, 0.1 m under the sea level (`Ocean`, `MapLand`).
 
+**Lake level** *(paper only so far)*
+: A lake's own water level, above the sea's: the lowest land on its rim less
+  a metre, so a lake in the hills sits high and the land round it leans down
+  to it. Every basin has the sea's level today (`docs/design/world-squares.md`,
+  "Shores").
+
+**Shore kind** *(paper only so far)*
+: What a stretch of shore is, picked from the land behind it and the seed: an
+  **open coast** (a beach, or a cliff on high land), a **marsh** (low, flat
+  land by water breaking into bits of land standing out of shallow water), a
+  **delta** (a river splitting into channels with land between, fanning out
+  where it meets the sea or a lake) or a **lake shore** (a beach or reeds). A
+  marsh shore is not the Foggy Marsh biome, though that biome likes one. The
+  sea floor off a shore falls away gradually over a **shelf**, with the
+  distance from the shore, not by world square.
+
 **The yard**
 : The old 64 × 64 play area, now meadow in the middle of the valley
   (`ChemistryYard.unity` keeps the name).

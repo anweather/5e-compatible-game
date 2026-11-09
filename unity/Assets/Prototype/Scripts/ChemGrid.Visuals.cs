@@ -141,9 +141,9 @@ public partial class ChemGrid
     }
 
     // Every cell once, for a new world: the chunks near the players and the camera now, the rest a few a frame after,
-    // nearest first (view-rebuild: every cell of a 1728-cell map at once was 2.3 s of each start and reset). The sleeping
-    // chunks' trees and walls get their blockers too, as they draw. Until every chunk has drawn, the old world's spare
-    // blockers stay standing (most stand where the new world's will).
+    // nearest first (view-rebuild: every cell of a 1728-cell map at once was 2.3 s of each start and reset), within
+    // DrawRadius. The sleeping chunks' trees and walls get their blockers too, as they draw. Until every queued chunk has
+    // drawn, the old world's spare blockers stay standing (most stand where the new world's will).
     void RenderAll()
     {
         int across = ChunksAcross, down = (World.H + Chunks.Size - 1) >> Chunks.Shift;
@@ -151,21 +151,57 @@ public partial class ChemGrid
         undrawn = drawn.Length;
         spareToHide = true;
         DrawNear();
+        partRow = 0;
+        partChunk = -1;
+        QueueToDraw();
+        HideSpareOnceDrawn();
+        FinishRender();
+    }
+
+    // The undrawn chunks within DrawRadius of a focus, nearest first, then by row and column (a stable order: the same on
+    // every peer, though only the view reads it). Made again when the focus moves a chunk or the radius changes, so a
+    // walk draws ahead of itself. A chunk half drawn stays first.
+    void QueueToDraw()
+    {
         var focus = Focus();
+        int across = ChunksAcross, radius = DrawRadius();
+        queuedRadius = radius;
+        queuedFocus.Clear();
+        queuedFocus.AddRange(focus);
         toDraw.Clear();
-        for (int cy = 0; cy < down; cy++)
-            for (int cx = 0; cx < across; cx++)
-                if (!drawn[cy * across + cx]) toDraw.Add(cy * across + cx);
-        // Nearest first, then by row and column (a stable order: the same on every peer, though only the view reads it).
-        toDraw.Sort((a, b) =>
+        int kept = partRow > 0 && partChunk >= 0 && !drawn[partChunk] ? partChunk : -1;
+        if (kept >= 0) toDraw.Add(kept);
+        else partRow = 0;
+        for (int n = 0; n < drawn.Length; n++)
+            if (!drawn[n] && n != kept && FocusDistance(focus, n % across, n / across) <= radius) toDraw.Add(n);
+        int first = kept >= 0 ? 1 : 0;
+        toDraw.Sort(first, toDraw.Count - first, Comparer<int>.Create((a, b) =>
         {
             int da = FocusDistance(focus, a % across, a / across), db = FocusDistance(focus, b % across, b / across);
             return da != db ? da.CompareTo(db) : a.CompareTo(b);
-        });
+        }));
         nextToDraw = 0;
-        partRow = 0;
-        HideSpareOnceDrawn();
-        FinishRender();
+    }
+
+    // How far round a focus (chunks) the chunks draw before they're near. On a generated map, the far ring's known radius:
+    // past it the haze is ~98% (FarRing), so a chunk there shows nothing, and drawing all 729 of the nine's took a minute
+    // of 3 ms frames, with a box collider made for every tree (#179, #180). It draws as a focus comes within it. Elsewhere
+    // (the valley) every chunk.
+    static int DrawRadius()
+    {
+        var far = FarRing.Instance;
+        int known = far != null ? far.Dials.known : 0;
+        return known > 0 ? known : int.MaxValue;
+    }
+
+    bool FocusMoved()
+    {
+        if (DrawRadius() != queuedRadius) return true;
+        var focus = Focus();
+        if (focus.Count != queuedFocus.Count) return true;
+        for (int i = 0; i < focus.Count; i++)
+            if (focus[i] != queuedFocus[i]) return true;
+        return false;
     }
 
     // Chunks not yet drawn since the world was built (RenderAll), by world chunk index (cy * ChunksAcross + cx).
@@ -174,13 +210,29 @@ public partial class ChemGrid
     bool spareToHide;
     readonly List<int> toDraw = new();
     int nextToDraw;
+    // The focus and radius toDraw was queued for (QueueToDraw).
+    readonly List<Vector2Int> queuedFocus = new();
+    int queuedRadius;
     readonly List<Vector2Int> focusChunks = new();
     readonly System.Diagnostics.Stopwatch drawTimer = new();
 
     int ChunksAcross => (World.W + Chunks.Size - 1) >> Chunks.Shift;
 
-    /// <summary>Chunks of this world not drawn yet: they draw a few a frame after a build, nearest the players first.</summary>
-    public int ChunksLeftToDraw => undrawn;
+    /// <summary>
+    /// Chunks of this world still to draw: they draw a few a frame after a build, nearest the players first. On a generated
+    /// map only those within the far ring's known radius count; the rest draw as a player comes near (DrawRadius).
+    /// </summary>
+    public int ChunksLeftToDraw
+    {
+        get
+        {
+            if (undrawn == 0) return 0;
+            int left = 0;
+            for (int i = nextToDraw; i < toDraw.Count; i++)
+                if (!drawn[toDraw[i]]) left++;
+            return left;
+        }
+    }
 
     // A frame's drawing of chunks still undrawn, past those near the players: about this many ms (at least one chunk), or
     // in a playtest run this many chunks (ExactFrames).
@@ -226,12 +278,13 @@ public partial class ChemGrid
     {
         if (undrawn == 0) return;
         DrawNear();
+        if (FocusMoved()) QueueToDraw();
         drawTimer.Restart();
         int across = ChunksAcross, done = 0;
         // A few rows at a time, so a crowded chunk (a town's) is spread over frames too; it counts as drawn once whole.
         while (nextToDraw < toDraw.Count && undrawn > 0)
         {
-            if (ExactFrames ? done >= ExactChunksAFrame * Chunks.Size : done > 0 && drawTimer.Elapsed.TotalMilliseconds >= DrawBudgetMs) break;
+            if (DrawnEnough(done)) break;
             int n = toDraw[nextToDraw];
             if (drawn[n])
             {
@@ -245,6 +298,7 @@ public partial class ChemGrid
             RenderRows(cx, from, to);
             done += to - from;
             partRow = to - y0;
+            partChunk = n;
             if (to < y1) continue;
             MarkDrawn(n);
             nextToDraw++;
@@ -253,13 +307,17 @@ public partial class ChemGrid
         HideSpareOnceDrawn();
     }
 
-    // How many of its rows DrawSome has drawn of the chunk it's on, and how many it draws a step.
-    int partRow;
+    // Whether DrawSome has drawn its frame's share: done rows, or its time.
+    bool DrawnEnough(int done) =>
+        ExactFrames ? done >= ExactChunksAFrame * Chunks.Size : done > 0 && drawTimer.Elapsed.TotalMilliseconds >= DrawBudgetMs;
+
+    // How many of its rows DrawSome has drawn of the chunk it's on (partChunk), and how many it draws a step.
+    int partRow, partChunk = -1;
     const int RowsAStep = 8;
 
     void HideSpareOnceDrawn()
     {
-        if (undrawn > 0 || !spareToHide) return;
+        if (!spareToHide || ChunksLeftToDraw > 0) return;
         spareToHide = false;
         blockers.HideSpare();
     }

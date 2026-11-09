@@ -83,8 +83,13 @@ public class CreatureRowTests
 
     // What a row change costs, for the report: composing and checking the rules with the mod (with and
     // without the creature tables, for what they add), then in the view one body built, every row compared
-    // and the hunting set again. Asserts only that the view's part is well under a frame.
+    // and the hunting set again. Asserts only that the view's part is well under a frame (about 2.8 ms on the Mac's Editor
+    // alone): the best of up to RefreshRounds rounds, each after a settled heap, so a loaded Editor (a long suite's garbage,
+    // another job, #177) can't fail it alone, and a view that has really grown slower fails every round. A timing test runs
+    // on an idle Editor (docs/TESTING_LAYERS.md): the sweep's, or by its name; either way with test run --include_explicit true.
     [Test]
+    [Explicit("Timing: run on an idle Editor, with test run --include_explicit true (the sweep's)")]
+    [Category("Timing")]
     public void ALiveChangeCostsLessThanAFrame()
     {
         var plain = Base();
@@ -92,6 +97,32 @@ public class CreatureRowTests
         var patched = plain.WithMods(new[] { ModPatch.Parse($"{{ \"fauna\": {{ \"deer\": {row} }} }}") });
         var bodies = new CreatureBodies();
         bodies.Refresh(plain);
+        var rounds = new List<double>();
+        for (int r = 0; r < RefreshRounds && (rounds.Count == 0 || rounds.Min() >= FrameBudgetMs); r++)
+        {
+            Settle();
+            rounds.Add(MedianRefresh(bodies, plain, patched));
+        }
+        double refresh = rounds.Min();
+        var mod = new[] { ModPatch.Parse($"{{ \"fauna\": {{ \"deer\": {row} }} }}") };
+        var sim = new[] { ModPatch.Parse("{ \"sim\": { \"conductLimit\": 9 } }") };
+        var bare = Rules.FromJson(Directory.GetFiles(ChemGrid.Folders.Rules, "*.json")
+            .Where(f => Path.GetFileName(f) != "fauna.json" && Path.GetFileName(f) != "parts.json")
+            .ToDictionary(f => Path.GetFileName(f), File.ReadAllText));
+        double compose = Timed(() => plain.WithMods(mod));
+        double composeBare = Timed(() => bare.WithMods(sim));
+        double build = Timed(() => CreatureBody.Build(patched.Fauna, "deer"));
+        string tries = string.Join(", ", rounds.Select(t => t.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)));
+        UnityEngine.Debug.Log($"A live row change: compose {compose:F3} ms ({composeBare:F3} without the creature tables), view {refresh:F3} ms (rounds {tries}), of which one body {build:F3} ms");
+        Assert.That(refresh, Is.LessThan(FrameBudgetMs), $"the view's refresh, best of the rounds {tries} ms");
+    }
+
+    const double FrameBudgetMs = 8.0;
+    const int RefreshRounds = 3;
+
+    // The median of 40 refreshes, the row changed and changed back by turns.
+    static double MedianRefresh(CreatureBodies bodies, Rules plain, Rules patched)
+    {
         var times = new List<double>();
         var clock = new Stopwatch();
         for (int i = 0; i < 41; i++)
@@ -102,18 +133,18 @@ public class CreatureRowTests
             clock.Stop();
             if (i > 0) times.Add(clock.Elapsed.TotalMilliseconds);
         }
-        double refresh = Median(times);
-        var mod = new[] { ModPatch.Parse($"{{ \"fauna\": {{ \"deer\": {row} }} }}") };
-        var sim = new[] { ModPatch.Parse("{ \"sim\": { \"conductLimit\": 9 } }") };
-        var bare = Rules.FromJson(Directory.GetFiles(ChemGrid.Folders.Rules, "*.json")
-            .Where(f => Path.GetFileName(f) != "fauna.json" && Path.GetFileName(f) != "parts.json")
-            .ToDictionary(f => Path.GetFileName(f), File.ReadAllText));
-        double compose = Timed(() => plain.WithMods(mod));
-        double composeBare = Timed(() => bare.WithMods(sim));
-        double build = Timed(() => CreatureBody.Build(patched.Fauna, "deer"));
-        UnityEngine.Debug.Log($"A live row change: compose {compose:F3} ms ({composeBare:F3} without the creature tables), view {refresh:F3} ms, of which one body {build:F3} ms");
-        Assert.That(refresh, Is.LessThan(8.0));
+        return Median(times);
     }
+
+    // Earlier tests' garbage collected now, not in the middle of a timed refresh: a timing test's only use of the collector.
+#pragma warning disable S1215
+    static void Settle()
+    {
+        System.GC.Collect();
+        System.GC.WaitForPendingFinalizers();
+        System.GC.Collect();
+    }
+#pragma warning restore S1215
 
     static double Median(List<double> times)
     {
