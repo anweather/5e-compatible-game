@@ -16,6 +16,7 @@ namespace Chem.Tests
     /// <code>dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~TickStageBench" --logger "console;verbosity=detailed"</code>
     /// </summary>
     [Explicit("a benchmark: run it by name")]
+    [Category("Simulation")]
     public class TickStageBench
     {
         const int SettleTicks = 600, MeasuredTicks = 300;

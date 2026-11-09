@@ -13,6 +13,7 @@ namespace Chem.Tests
     /// writes it), and goes with that mod when it goes, reverted or lapsed, at the same tick on every peer
     /// (World.Lapse.cs). A mod naming a material whose owner went is refused, naming the owner.
     /// </summary>
+    [Category("Simulation")]
     public class ModStackingTests
     {
         const string House = "lakeside#1";

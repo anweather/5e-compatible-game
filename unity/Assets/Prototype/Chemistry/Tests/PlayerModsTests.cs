@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// #63: a player's mods live in their data folder, not the install. Reading both folders, the player's copy
     /// winning an id both have, the save, and the move out of the install. Every folder here is a temp one.
     /// </summary>
+    [Category("Simulation")]
     public class PlayerModsTests
     {
         const string Mod = "{ \"title\": \"Mine\", \"idea\": \"Slides go on.\", \"patch\": { \"sim\": { \"push\": { \"slideCells\": 7 } } } }";

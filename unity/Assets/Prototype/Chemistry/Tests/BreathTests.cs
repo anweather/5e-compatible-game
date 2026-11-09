@@ -4,6 +4,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>A swimmer's breath and drowning (docs/BACKLOG.md 13; Breath.cs, sim.json breath).</summary>
+    [Category("Unit")]
     public class BreathTests
     {
         static BreathParams P => ChemistryTests.R.Sim.Breath;

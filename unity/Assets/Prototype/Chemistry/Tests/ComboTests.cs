@@ -7,6 +7,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class ComboTests
     {
         static readonly string[] Elements = { "fire", "water", "earth", "air" };

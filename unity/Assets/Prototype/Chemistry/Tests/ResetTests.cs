@@ -13,6 +13,7 @@ namespace Chem.Tests
     /// whose history starts at the reset, both end exactly where a fresh world with the same mods
     /// does.
     /// </summary>
+    [Category("Simulation")]
     public class ResetTests
     {
         static Rules R => ChemistryTests.R;

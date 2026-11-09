@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// What a building mod says that nothing draws (#71): validate and apply name it in a line, so Claude
     /// can't claim a change the player won't see. Andrew's "Lit windows on the lake house" is the case.
     /// </summary>
+    [Category("Simulation")]
     public class UnseenTests
     {
         const string Unseen = "Won't show:";

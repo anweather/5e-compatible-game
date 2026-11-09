@@ -7,6 +7,7 @@ namespace Chem.Tests
     /// <summary>
     /// Chunked cell storage and the active-chunk set (docs/WORLD_STREAMING.md, part 1).
     /// </summary>
+    [Category("Simulation")]
     public class ChunkTests
     {
         static Rules R => ChemistryTests.R;

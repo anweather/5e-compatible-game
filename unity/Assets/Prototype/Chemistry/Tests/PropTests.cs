@@ -7,6 +7,7 @@ namespace Chem.Tests
     /// The rules side of the Unity physics props: entities.json, a barrel's blast
     /// (World.Explode, a port of explode's cell part) and PropState's ticks.
     /// </summary>
+    [Category("Unit")]
     public class PropTests
     {
         static Rules R => ChemistryTests.R;

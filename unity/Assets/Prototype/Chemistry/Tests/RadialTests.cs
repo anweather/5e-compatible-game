@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// The spell radial (docs/SPELL_RADIAL.md): the groups in the rules, the wedge and arc
     /// geometry, and the state machine for both pointer and stick input.
     /// </summary>
+    [Category("Unit")]
     public class RadialTests
     {
         static Rules baseRules;

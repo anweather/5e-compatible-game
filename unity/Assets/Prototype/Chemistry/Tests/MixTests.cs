@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// derive a row with no reaction for the pair, a pure function of the two, at the same tick on every peer;
     /// the room's list comes through a save and a late join; a cap, then a wall; it lapses with the later parent.
     /// </summary>
+    [Category("Simulation")]
     public class MixTests
     {
         const string Purple = "blue-paint+red-paint", Mixed = "blue-film+red-film";

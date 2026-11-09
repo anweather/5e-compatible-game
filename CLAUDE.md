@@ -91,6 +91,7 @@ stable), not something to commit or keep reverting.
 dotnet build core -c Release -warnaserror   # on a many-core Mac add -m:1: a parallel build can turn Rules.Mcp's S3776 into an error
 dotnet test core
 dotnet test core --filter "FullyQualifiedName~EveryExampleModPassesTheChecks"   # one test
+dotnet test core --filter TestCategory=Unit    # the quick fixtures, in seconds (docs/TESTING_LAYERS.md)
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
 tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%); jscpd pinned in its lockfile
 node --test tools/chat-report.test.mjs        # the chat report, on real records

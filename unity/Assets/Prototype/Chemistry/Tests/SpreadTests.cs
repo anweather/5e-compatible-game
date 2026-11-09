@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// itself on its neighbours on the soak pass, from the world's RNG, only where its onto and notOnto let it,
     /// the same on every peer; and a world with no spreading cover is the world it was.
     /// </summary>
+    [Category("Simulation")]
     public class SpreadTests
     {
         static Rules R => ChemistryTests.R;

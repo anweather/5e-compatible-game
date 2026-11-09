@@ -9,6 +9,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class BiomeFieldTests
     {
         const long One = BiomeMath.One;

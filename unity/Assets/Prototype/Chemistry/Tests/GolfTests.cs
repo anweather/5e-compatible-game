@@ -5,6 +5,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>Spell golf (docs/BACKLOG.md 24; World.Golf.cs): the ball, the strokes and the course in world/golf.json.</summary>
+    [Category("Unit")]
     public class GolfTests
     {
         static Rules R => ChemistryTests.R;

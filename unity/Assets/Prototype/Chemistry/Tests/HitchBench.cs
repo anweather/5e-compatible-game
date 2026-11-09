@@ -12,6 +12,7 @@ namespace Chem.Tests
     /// <code>dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~HitchBench" --logger "console;verbosity=detailed"</code>
     /// </summary>
     [Explicit("a benchmark: run it by name")]
+    [Category("Simulation")]
     public class HitchBench
     {
         const int Runs = 5;

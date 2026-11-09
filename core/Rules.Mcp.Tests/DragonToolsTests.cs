@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The dragon in the tools (#77): tune and list reach sim.json's dragon, and describe says what it is.</summary>
+    [Category("Simulation")]
     public class DragonToolsTests
     {
         static Workbench bench;

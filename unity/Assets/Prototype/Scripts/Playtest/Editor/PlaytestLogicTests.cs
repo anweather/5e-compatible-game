@@ -8,6 +8,7 @@ using Playtest;
 // they should and not on what they shouldn't, known issues aren't filed, and
 // a replay is checked against its original. Run by Unity's EditMode runner
 // and by dotnet test core (core/Game.Core.Tests links them).
+[Category("Unit")]
 public class PlaytestLogicTests
 {
     static GoalOptions Options() => new GoalOptions

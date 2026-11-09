@@ -16,6 +16,7 @@ namespace Chem.Tests
     /// <code>dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~FogTickBench" --logger "console;verbosity=detailed"</code>
     /// </summary>
     [Explicit("a benchmark: run it by name")]
+    [Category("Simulation")]
     public class FogTickBench
     {
         const int Size = 576, ActiveChunks = 65, SettleTicks = 600, MeasuredTicks = 600;

@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The view's smooth noise and the rounded outlines of water and slicks (ValueNoise, CellContour).</summary>
+    [Category("Simulation")]
     public class ContourTests
     {
         static readonly ContourSpec Smooth = new ContourSpec(4, 0.5f, 0f, 7);

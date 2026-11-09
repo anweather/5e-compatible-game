@@ -8,6 +8,7 @@ namespace Chem.Tests
     /// The defense field (World.Defense.cs, World.Raiders.cs). Ported from sandbox/test/defense.test.ts;
     /// the golden numbers come from running the same script there.
     /// </summary>
+    [Category("Simulation")]
     public class DefenseTests
     {
         static Rules rules;

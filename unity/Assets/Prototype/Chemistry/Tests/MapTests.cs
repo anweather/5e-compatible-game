@@ -8,6 +8,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class MapTests
     {
         // The FNV-1a of the cell map taken from the baked scene when it moved to cells.txt.

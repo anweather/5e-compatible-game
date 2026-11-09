@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// Scoped and mixed looks (LookScopes.cs; docs/design/world-tools.md "Scoped and mixed looks"): the
     /// colour the view draws at a cell from the looks in force and where the players stand.
     /// </summary>
+    [Category("Simulation")]
     public class LookScopeTests
     {
         [Test]

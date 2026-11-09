@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// streaming.keep (3), reaches that overlap are one active region, and the switches travel in
     /// tick batches so a replay (a late joiner) switches the same chunks at the same ticks.
     /// </summary>
+    [Category("Simulation")]
     public class ChunkStreamingTests
     {
         static Rules R => ChemistryTests.R;

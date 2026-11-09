@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// PocketTactics' own TypeScript (src/core/world/hash.ts, noise.ts, theme/geometry.ts) on the same
     /// inputs, so these pin the port to the original bit for bit.
     /// </summary>
+    [Category("Unit")]
     public class WorldGenTests
     {
         static string Bits(double x) => BitConverter.DoubleToInt64Bits(x).ToString("x16", System.Globalization.CultureInfo.InvariantCulture);

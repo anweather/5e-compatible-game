@@ -8,6 +8,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>places(), here(), and set_look's where and mix (docs/design/world-tools.md G1 and "Scoped and mixed looks").</summary>
+    [Category("Simulation")]
     public class WorldToolsTests
     {
         static Workbench Bench(HereSpot? spot = null, bool standIn = true)

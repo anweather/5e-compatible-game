@@ -4,6 +4,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The online desync check's rolling fingerprint (RollingHash), and the running hash under CellHash.</summary>
+    [Category("Simulation")]
     public class RollingHashTests
     {
         const int Side = 96;

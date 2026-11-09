@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// cell; a liquid's touch lets the reactions decide where it meets another; the kind travels by id
     /// through saves and rule switches, and lapses with its mod, the same on every peer.
     /// </summary>
+    [Category("Simulation")]
     public class LiquidTests
     {
         static Rules R => ChemistryTests.R;

@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// Grafts (bodies-and-surfaces.md sections 2 and 3, #73): a species row built from others' slots by "from",
     /// flattened by the core when it's read, so the view, the checks and describe see plain slots.
     /// </summary>
+    [Category("Simulation")]
     public class GraftTests
     {
         static Workbench bench;

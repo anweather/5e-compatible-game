@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// place as one firing. It lives in a mod that's on, so a saved mod carries it. No firework or campsite is in the code:
     /// these rows are only tests of the tools.
     /// </summary>
+    [Category("Simulation")]
     public class NamedActsTests
     {
         const string Rows = "[{\"act\": \"tree\", \"count\": 5, \"within\": 8}, {\"act\": \"land\", \"radius\": 10, \"rise\": 12, \"rough\": 0}]";

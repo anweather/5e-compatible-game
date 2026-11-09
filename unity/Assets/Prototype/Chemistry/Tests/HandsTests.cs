@@ -7,6 +7,7 @@ using static Chem.Tests.HoldTests;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class HandsTests
     {
         static Rules R => ChemistryTests.R;

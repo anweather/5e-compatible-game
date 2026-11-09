@@ -4,6 +4,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The clock and the weather as room commands (World.RoomSky.cs): every peer does them at the same tick, a late joiner too.</summary>
+    [Category("Simulation")]
     public class RoomSkyTests
     {
         static ModBudgets budgets;

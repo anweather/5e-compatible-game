@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// World themes (D11): the DSL's checks and mix-ins (ThemeSchema, ThemeRegistry), the blueprint
     /// solver (ThemeBlueprint) and what it says about each cell (ThemeField), on the checked-in themes.
     /// </summary>
+    [Category("Simulation")]
     public class ThemeTests
     {
         static ThemeRegistry Registry => ThemeRegistry.Load(ChemistryTests.WorldDir());

@@ -9,6 +9,7 @@ using Playtest;
 // few ahead, the trigger at what the setup left), passes its own check. So a
 // chain the bot reports as doing nothing is the game, not the bot's idea of
 // the rules. Run by Unity's EditMode runner and by dotnet test core.
+[Category("Unit")]
 public class PlaytestChainTests
 {
     static Rules rules;

@@ -8,6 +8,7 @@ using static Chem.Tests.HoldTests;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public partial class HoldProgressTests
     {
         const string Bo = "Bo";

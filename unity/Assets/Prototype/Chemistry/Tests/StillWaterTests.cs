@@ -10,6 +10,7 @@ namespace Chem.Tests
     /// trench dug beside a pond at rest, a neighbour switched off and on, a rule switch, rain,
     /// and ticks run in slices.
     /// </summary>
+    [Category("Simulation")]
     public class StillWaterTests
     {
         static Rules R => ChemistryTests.R;

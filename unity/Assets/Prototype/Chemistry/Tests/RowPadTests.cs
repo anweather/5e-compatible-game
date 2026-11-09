@@ -4,6 +4,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class RowPadTests
     {
         const int Margin = 2, Bank = 4;

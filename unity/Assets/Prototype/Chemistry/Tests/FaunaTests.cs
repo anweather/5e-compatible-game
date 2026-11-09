@@ -7,6 +7,7 @@ namespace Chem.Tests
 {
     // The creature tables (Fauna.cs): the view's, so out of the fingerprint; rows a mod
     // replaces whole; and refused here when a name in one doesn't hold.
+    [Category("Simulation")]
     public class FaunaTests
     {
         static Rules Base() => Rules.Load(ChemistryTests.RulesDir());

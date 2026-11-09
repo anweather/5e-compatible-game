@@ -18,6 +18,7 @@
     <!-- The tools' tests are their own projects (Rules.Mcp.Tests, Playtest.Runner.Tests, Chat.Bench.Tests,
          Hold.Runner.Tests), which reference this one for the helpers above; Friends.cs lets them. -->
     <Compile Include="Friends.cs" />
+    <Compile Include="TestKinds.cs" />
   </ItemGroup>
 
   <ItemGroup>

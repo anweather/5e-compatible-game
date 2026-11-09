@@ -5,6 +5,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Unit")]
     public class HandsPickTests
     {
         [TestCase(0f, 1f, 0)]

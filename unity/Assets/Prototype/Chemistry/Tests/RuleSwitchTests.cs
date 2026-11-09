@@ -9,6 +9,7 @@ namespace Chem.Tests
     /// Switching rules in a running game: rule sets (base + mods), tick batches that carry a
     /// rule switch next to the casts, and a late joiner's replay of the host's history.
     /// </summary>
+    [Category("Simulation")]
     public class RuleSwitchTests
     {
         static string ModsDir => Path.Combine(ChemistryTests.RulesDir(), "mods");

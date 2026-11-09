@@ -4,6 +4,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>The unarmed strike (World.Strike.cs): the attack roll, the damage, the knock-back, downed, lockstep.</summary>
+    [Category("Unit")]
     public class StrikeTests
     {
         static Rules rules;

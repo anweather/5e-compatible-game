@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class StandKeeperTests
     {
         /// <summary>A host's history as NetChem keeps it: each tick's stand stamped, then the tick run (Ran) with the world's reads so far.</summary>
