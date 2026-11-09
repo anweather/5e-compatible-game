@@ -75,7 +75,7 @@ smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's look
 1. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
    there is one; the view on the PC.
 2. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
-Also open: a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
+Also open: the world sketch in the core (paper landed 577a9533, `tools/world-paper/` World sketch panel; world-squares.md "Draw first": the sketch should drive the land's biome, ~2-3 u2 days, not briefed); a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
 of the volcano is hidden by a nearer hill (a viewpoint or landmark placement question, not briefed).
 
 ## Open questions for Andrew
