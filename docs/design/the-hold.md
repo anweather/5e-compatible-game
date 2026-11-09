@@ -106,7 +106,7 @@ spawners, each a place in `places.json` and the kinds it sends. `World.Hold.cs` 
 start command. Raiders use the field's list, so spells reach them as ever, but their way is `World.Hold.cs`'s: it can cost a way through a wall, by blows (`strength`). A
 wizard on a blocking cell is on the walls and no raider reaches it. An adjective's raider is an entity of its own, `kind~adjective`, so `World.Raiders.cs` and
 `World.Defense.cs` are unchanged. A defense field started during a run isn't refused, and its march moves all raiders: don't run both.
-A late joiner gets a run by replaying stands, so `StandKeeper` keeps every stand of a run and those on the plate.
+A late joiner gets a run by replaying stands, so `StandKeeper` keeps every stand of a run and those on the plate, and every stand standing when a run starts (`World.StandReads`: it counts who stands).
 
 ### 3. Hands
 
@@ -157,7 +157,7 @@ from its row's `castTicks` (casting-taps), so a lone trigger isn't held back. Di
 back along its line (`HandsDef.Within`), so it's a limit on what the caster aims, and a spell from the caster's own cell is shaped by its own numbers. The hands' layout is on
 during a run and in the attuning room (`PlayerControls.HandPad`); in the room a trigger moves that hand to the next element or nothing, so a wizard there can't cast. The kit
 starts as the `dpad` spells. Hand spells aren't charged and don't join the grimoire. Keyboard: the clicks are the triggers, Q and C the bumpers. Stands in the room stay in a
-joiner's history (`StandKeeper`), since attuning reads them.
+joiner's history (`StandKeeper`), since attuning reads them; anywhere else, the stands standing when a hand attunes stay too (attuning reads whether the wizard is down).
 
 `HandPose` puts the hands on the body, on every copy of a wizard, from the hands in the core: each arm winds up while its gesture is under way and goes out when the core fires it, so a thrust and a throw play on their own arms, and the same gesture on both is a two-handed version. An arm with no gesture stays down. `HandHeld` shows what each hand holds, one small particle system a hand, whenever that wizard's hands are on (`World.HandsOn`). The `handlooks` probe checks both peers show both wizards' hands.
 

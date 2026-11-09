@@ -363,6 +363,16 @@ Mode (one Mac, 2 and then 4 players, same-network transport).
   batch next to the casts, every machine applies them at that tick
   (`TickBatch.RunOn`), and a late joiner replays them from the host's
   history. Clients never apply effects themselves.
+- A wizard's stands (where it is and its health, `StrikeCommand.Stand`) are
+  sent at every step, so the host's history keeps only those a late joiner's
+  replay needs (`Chem.StandKeeper`): every stand standing at a checksum, at a
+  tick a rule read the stands (a golf turn, a run of the Hold starting, a hand
+  attuning, a trigger firing: `World.StandReads`), up to a strike, on the
+  Hold's plate and towers and through a run, and, while a step or tick trigger
+  is on, every one that isn't a plain step. So the joiner's past is the
+  host's at every tick something reads it (`LateJoinTests` replays joiners
+  arriving at any tick), and the history grows by about a stand a checksum
+  and one a read while players walk.
 - Spell shoves follow the cast's tick batch: the host shoves the props,
   each player shoves their own wizard (owner-authoritative movement), from
   the caster's position carried in `CastIntent.From`. A shove the host's

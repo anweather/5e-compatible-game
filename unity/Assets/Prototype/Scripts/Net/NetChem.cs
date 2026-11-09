@@ -54,9 +54,9 @@ using UnityEngine;
 // - A wizard's stands and unarmed strikes (WizardStrike, World.Strike.cs) travel as combo input
 //   does (a CommandChannel holds them on the way): its owner asks, the host names the player and
 //   stamps them into the next tick. The host sends a leaving player's Leave. A late joiner gets them
-//   with the history, without the stands its replay doesn't need (StandKeeper): a stand a later one
-//   replaces before any strike, and while a step trigger is on, one that fired nothing and leaves
-//   the next step as it was.
+//   with the history, without the stands its replay doesn't need (Chem.StandKeeper): a stand no rule
+//   read and no checksum saw before the next replaced it, and while a trigger reads stands, one that
+//   also fired nothing and leaves the next step as it was. Its past is the host's, tick for tick.
 [RequireComponent(typeof(ChemGrid))]
 public partial class NetChem : NetworkBehaviour
 {
@@ -79,7 +79,7 @@ public partial class NetChem : NetworkBehaviour
     readonly List<EffectIntent> effectHistory = new();
     readonly List<ChunkIntent> chunkHistory = new();
     // Which stands the strike history keeps for joiners (#83), and the last tick a room command was stamped for.
-    StandKeeper standKeeper;
+    StandKeeper<StrikeIntent> standKeeper;
     int roomStampedFor;
     bool dragonAsked;
     readonly List<int> dragonHistory = new();
@@ -174,7 +174,7 @@ public partial class NetChem : NetworkBehaviour
         grid = GetComponent<ChemGrid>();
         defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
         combos = ComboChannel(batches, HoldMoments.Offered);
-        standKeeper = new StandKeeper(StepsMayFire, (x, y) => grid.World.InBounds(x, y), HoldReads);
+        standKeeper = new StandKeeper<StrikeIntent>(StandsReadByTriggers, (x, y) => grid.World.InBounds(x, y), HoldReads);
         strikes = new CommandChannel<StrikeIntent>(batches, (batch, s) => batch.Strikes.Add(s.ToCommand()), standKeeper.Record);
         roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
     }
@@ -455,13 +455,13 @@ public partial class NetChem : NetworkBehaviour
         if (stamped.Length > 0) StrikesStampedRpc(hostTick, stamped);
     }
 
-    // Whether a stand stamped now may be a step that fires a trigger (World.Triggers.cs): one is in force, or
-    // a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
     // A stand the Hold reads: all of them during a run, and those on its plate or in its attuning room.
     bool HoldReads(int x, int y) => grid.World?.HoldReadsStand(x, y) == true;
 
-    bool StepsMayFire() =>
-        grid.World != null && (grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0 || roomCommands.HasPending || roomStampedFor > NetTick);
+    // Whether a stand stamped now may be read by a trigger (World.TriggersReadStands: a step or tick trigger): one is in force,
+    // or a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
+    bool StandsReadByTriggers() =>
+        grid.World != null && (grid.World.TriggersReadStands || roomCommands.HasPending || roomStampedFor > NetTick);
 
     [Rpc(SendTo.ClientsAndHost)]
     void StrikesStampedRpc(int tick, StrikeIntent[] commands) => strikes.Receive(tick, commands);
@@ -667,7 +667,7 @@ public partial class NetChem : NetworkBehaviour
     {
         if (liveCasts.Remove(tick, out var casts)) Shove(casts);
         grid.NoteTickDone();
-        if (IsServer) standKeeper.Ran(tick, grid.World.TriggerFirings);
+        if (IsServer) standKeeper.Ran(tick, grid.World.StandReads, RollingHash.WindowFor(grid.World));
         HashTick(tick);
         // The whole checksum, for the probes that listen: `?.` builds it only when one does, so a game hashes its cells only
         // a slice a tick (HashTick).
@@ -892,13 +892,22 @@ public struct ChunkIntent : INetworkSerializable
 }
 
 /// <summary>A wizard's stand, strike or leaving (Chem.StrikeCommand), stamped with the sim tick it lands on.</summary>
-public struct StrikeIntent : INetworkSerializable, ITickStamped
+public struct StrikeIntent : INetworkSerializable, ITickStamped, IStampedStrike<StrikeIntent>
 {
     public byte Kind;
     public FixedString32Bytes Player;
     public int X, Y, AimX, AimY, Hp, Tick;
 
     int ITickStamped.Tick => Tick;
+
+    // What StandKeeper reads of it.
+    int IStampedStrike<StrikeIntent>.Tick => Tick;
+    StrikeKind IStampedStrike<StrikeIntent>.Kind => (StrikeKind)Kind;
+    int IStampedStrike<StrikeIntent>.X => X;
+    int IStampedStrike<StrikeIntent>.Y => Y;
+    int IStampedStrike<StrikeIntent>.Hp => Hp;
+
+    bool IStampedStrike<StrikeIntent>.SamePlayer(StrikeIntent other) => Player == other.Player;
 
     void ITickStamped.StampFor(int tick) => Tick = tick;
 
