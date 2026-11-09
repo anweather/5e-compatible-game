@@ -392,3 +392,31 @@ changed with it):
   lines (the dome: 34).
 - **Still to look at:** a river whose level is far below the land beside it (a spring on a massif) leans its banks over
   the same 73 cells, so a gorge wall can be stone; the radial streaks round a spring are its bank leaning.
+
+### Spawn points (step 5, Andrew 2026-11-08: "more spawn points in the 3x3")
+
+Plan version 2, generator version 3 (the plan goldens and the nine's golden changed; the four chunk goldens didn't,
+no spawn is in them).
+
+- **The plan** (`WorldPlan.Spawns.cs`) gives every land world square below the peaks one spawn, in square order and in
+  the plan hash. The valley's is its own `map.json` spawn (`PlanInputs.ValleySpawn`). Every other square's is placed
+  near its **anchor** (its inn or shop, else its village or landmark, else a sight on its road, else its hub): on the
+  road arm nearest the anchor (slot to hub, as `ChunkGen` lays roads), 30 to 100 cells along from the anchor's foot,
+  stood off the road's edge by 6 cells; a square with no road puts it in the open 60 to 100 cells from the anchor. Each
+  of 32 seeded tries is scored by `SpawnRoom`, its distance past what a spawn keeps from the square's sides (40 cells),
+  the shore (1.5 times its depth, for the wobble, and 40), a landmark's site (60), a river's line (72: slot, 110 cells
+  square on, then to the hub, for the curve and the wander) and a lake (64). If none has room (a road between two
+  rivers), the spot every 16 cells with room nearest the road is taken. Over the 49 plans the plan tests solve, 1574
+  spawns: none short of room, 13 off their square's road.
+- **The chunks** (`ChunkGen.Spawns.cs`) level a clearing 4 cells round each spawn to the land at it, leaning back over
+  6 cells, grass with no tree, stone or boulder. The valley's is left as its folder has it.
+- **The bake** writes a `spawn` place per square into `places.json`: a circle of the clearing, the map `square` it's
+  in, what it's `near`, the valley's marked `start`, each named for its square (the pinned map's name, the village made
+  there, else the template, a filler's biome; a compass word where two would meet). In the nine: The Valley, Riverbend,
+  Meadow Cross, Saltpan, Downs, Thornwick, Grassland, Reedbeds, Lakeland. `MapCheck` holds a spawn place above the sea.
+- **Tests:** `EveryLandSquareHasASpawnNearItsPlaces` (the plans), `EverySquaresSpawnIsOpenFlatAndDry` (the nine and
+  two more seeds: a spawn a square, the valley's the map's, level open ground, no thing, off every landmark's footprint,
+  beside its road) and `EverySpawnIsReachableOnFootFromTheValleys` (a walk over dry land, no sea, lake or river, never
+  more than a metre up or down a cell, reaches all nine; 93% of the nine's cells).
+- **Still to look at:** a spawn by its road can be 400 cells from its village where the road never passes near it
+  (roads run slot to hub); the anchor is a hint, the road wins.

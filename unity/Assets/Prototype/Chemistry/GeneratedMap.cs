@@ -3,7 +3,8 @@
 // the rest is solved (WorldPlan) and made a chunk at a time (ChunkGen). Its identity is a hash of its inputs, never its
 // output: the world file, every committed file the plan and the chunks read, each pinned map's folder hash and the
 // versions. Bake writes the whole map as a map folder the game already loads (cells.txt, land.json, things.json and the
-// rows), with the pinned valley's own rows moved to where it lies in the map.
+// rows), with the pinned valley's own rows moved to where it lies in the map, and a "spawn" place for each square's
+// spawn point (SpawnPlaces).
 //
 // Coordinates: the map's cells start at the north-west corner of its squares, so none is negative; the valley at the
 // south-west of the nine is chunks (0..8, 18..26) and its rows move 1152 cells south.
@@ -47,6 +48,8 @@ namespace Chem
         public string MapDir { get; private set; }
         public string WorldDir { get; private set; }
         public string PinnedDir => Path.Combine(WorldDir, "maps", PinnedMap);
+        /// <summary>The pinned map's name (its map.json's), what its spawn is called.</summary>
+        public string PinnedName { get; private set; }
 
         /// <summary>Whether the map in this folder is made from a world file.</summary>
         public static bool IsGenerated(string mapDir)
@@ -55,8 +58,11 @@ namespace Chem
             return File.Exists(path) && JObject.Parse(File.ReadAllText(path))[Key] is JObject;
         }
 
-        /// <summary>The world file in a map folder, its plan solved and its generator ready; throws if it can't be.</summary>
-        public static GeneratedMap Load(string mapDir)
+        /// <summary>
+        /// The world file in a map folder, its plan solved and its generator ready; throws if it can't be. A
+        /// <paramref name="seed"/> makes the same map from another seed (for tests and pictures: its InputHash is the file's).
+        /// </summary>
+        public static GeneratedMap Load(string mapDir, string seed = null)
         {
             var o = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(mapDir, MapFile.FileName)))[Key]
                 ?? throw new FormatException($"{MapFile.FileName}: no \"{Key}\"");
@@ -65,7 +71,7 @@ namespace Chem
                 Id = Path.GetFileName(Path.GetFullPath(mapDir).TrimEnd('/', '\\')),
                 MapDir = mapDir,
                 WorldDir = Path.GetFullPath(Path.Combine(mapDir, "..", "..")),
-                Seed = (string)o["seed"],
+                Seed = seed ?? (string)o["seed"],
                 SquaresW = (int)o["squares"][0],
                 SquaresH = (int)o["squares"][1],
                 Generator = (int)o["generator"],
@@ -79,7 +85,10 @@ namespace Chem
             var pinned = ReadPinned(m.PinnedDir);
             var valleyMap = MapFile.Load(m.PinnedDir);
             var sides = ValleySides.Read(pinned.Land, WorldPlan.SquareCells, valleyMap.SeaLevel, 0.125, lib);
-            m.Plan = WorldPlan.Solve(PlanInputs.For(m.Seed, m.SquaresW, PlanWrap.None, sides), lib);
+            var inputs = PlanInputs.For(m.Seed, m.SquaresW, PlanWrap.None, sides);
+            inputs.ValleySpawn = valleyMap.Spawn;
+            m.Plan = WorldPlan.Solve(inputs, lib);
+            m.PinnedName = valleyMap.Name;
             pinned.Square = m.Plan.Valley;
             int ox = m.Plan.Grid.X(m.Plan.Valley) - m.PinnedAt.x, oy = m.Plan.Grid.Y(m.Plan.Valley) - m.PinnedAt.y;
             var biomes = BiomeTable.Load(Path.Combine(m.WorldDir, BiomeTable.FileName));
@@ -222,6 +231,66 @@ namespace Chem
             return File.Exists(path);
         }
 
+        /// <summary>
+        /// The map's spawn places, one per square in the plan's order: kind "spawn", a circle of the spawn's clearing round
+        /// its cell, the map square it's in ("square", from the north-west) and what it stands near. Each is named for its
+        /// square: the pinned map's name for the valley (whose is the map's own spawn, "start"), the village's name where
+        /// one was made, else the square's template (a filler's biome), with a compass word where two names would meet.
+        /// </summary>
+        public List<JObject> SpawnPlaces()
+        {
+            var list = new List<JObject>();
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var s in Gen.Spawns)
+            {
+                int sx = s.X / ChunkGen.Square, sy = s.Y / ChunkGen.Square;
+                string name = s.Pinned ? PinnedName : VillageIn(s.Square) ?? SquareTitle(s.Square);
+                if (!names.Add(name))
+                {
+                    string first = name + " (" + Compass(sx, sy) + ")";
+                    name = first;
+                    int k = 1;
+                    while (!names.Add(name)) name = first + " " + ++k;
+                }
+                var o = new JObject
+                {
+                    ["id"] = "spawn-" + WorldPlaces.Slug(name),
+                    ["name"] = name,
+                    ["kind"] = "spawn",
+                    ["from"] = MapFile.FileName,
+                    ["square"] = new JArray(sx, sy),
+                    ["near"] = s.Near,
+                    ["circle"] = new JObject { ["at"] = new JArray(s.X, s.Y), ["radius"] = ChunkGen.ClearCells },
+                };
+                if (s.Pinned) o["start"] = true;
+                list.Add(o);
+            }
+            return list;
+        }
+
+        string VillageIn(int square)
+        {
+            for (int k = 0; k < Gen.LandmarkRows.Count; k++)
+                if (Gen.LandmarkRows[k]?.VillageName is string v && Plan.Landmarks[k].Square == square) return v;
+            return null;
+        }
+
+        string SquareTitle(int square)
+        {
+            var t = Plan.TemplateAt(square);
+            string words = (t.Filler ? t.Biome : t.Id) ?? "land";
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(words.Replace('-', ' '));
+        }
+
+        // Where a map square lies in the map, as a compass word ("north-west", "middle", "east").
+        string Compass(int sx, int sy)
+        {
+            string ns = (sy * 3 / SquaresH) switch { 0 => "north", 2 => "south", _ => "" };
+            string ew = (sx * 3 / SquaresW) switch { 0 => "west", 2 => "east", _ => "" };
+            if (ns.Length > 0 && ew.Length > 0) return ns + "-" + ew;
+            return ns.Length + ew.Length > 0 ? ns + ew : "middle";
+        }
+
         // The valley's rows moved to its place in the map, and the landmarks' rows after them.
         void WriteRows(string outDir)
         {
@@ -325,6 +394,7 @@ namespace Chem
                 if (r.Place != null) kept.Add(r.Place.DeepClone());
                 if (r.VillagePlace != null) kept.Add(r.VillagePlace.DeepClone());
             }
+            foreach (var s in SpawnPlaces()) kept.Add(s);
             places["places"] = kept;
             Write(outDir, WorldPlaces.FileName, Json(places));
         }

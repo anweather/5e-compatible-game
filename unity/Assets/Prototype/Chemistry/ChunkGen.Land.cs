@@ -90,7 +90,7 @@ namespace Chem
         {
             public int Land;
             public byte Wet;
-            public bool Road;
+            public bool Road, Clear;
         }
 
         /// <summary>The land at a map cell, in land units, before any landmark's stamps: a pure function of position.</summary>
@@ -121,7 +121,8 @@ namespace Chem
                 }
             }
             g = MeetPinned(x, y, g, ref wet);
-            return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road };
+            bool clear = !road && (wet == 0 || wet == WetShore) && Clearing(x, y, ref g);
+            return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road, Clear = clear };
         }
 
         // The land with its coast, rivers and lakes, before roads and the pinned square.

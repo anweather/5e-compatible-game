@@ -2,7 +2,8 @@
 // (world/maps/nine/map.json) and plan. A chunk is the same made in any order or on any thread (goldens of its hash), its
 // land is a function of position so the cells either side of every chunk side meet, the valley's chunks are its own
 // folder's and the land beside it meets them smoothly, rivers wander downhill and widen, high ground is mountains, and a
-// bake is a map that passes MapCheck. CHUNK_GEN_PNG_OUT=<folder> dotnet test core --filter
+// bake is a map that passes MapCheck; every square has a spawn, on open, level, dry ground and reached on foot from the
+// valley's. CHUNK_GEN_PNG_OUT=<folder> dotnet test core --filter
 // "FullyQualifiedName~ChunkGenTests" writes the nine's heights as a small picture, and prints the times.
 using System;
 using System.Collections.Generic;
@@ -62,7 +63,7 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0xda7401e6u;
+        const uint NineGolden = 0xee17eb9eu;
         static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xa2d57868u), (9, 20, 0x612d3d88u), (4, 4, 0x126a5ca0u), (26, 0, 0x7594a450u) };
 
         [Test]
@@ -322,6 +323,105 @@ namespace Chem.Tests
             return turns;
         }
 
+        [TestCase("valley-1")]
+        [TestCase("seed-4")]
+        [TestCase("seed-9")]
+        public void EverySquaresSpawnIsOpenFlatAndDry(string seed)
+        {
+            // One spawn per map square (all nine are land below the peaks), the valley's its own map's spawn; every other
+            // one beside a road where its square has one, near its anchor, on cleared, level grass: no water, tree, stone
+            // or boulder in its clearing, off every landmark's footprint and above the sea.
+            var m = seed == Nine.Seed ? Nine : GeneratedMap.Load(NineDir, seed);
+            var gen = m.Gen;
+            Assert.That(gen.Spawns.Count, Is.EqualTo(9), "a spawn a square");
+            Assert.That(gen.Spawns.Select(s => (s.X / ChunkGen.Square, s.Y / ChunkGen.Square)).Distinct().Count(), Is.EqualTo(9));
+            var valley = gen.Spawns.Single(s => s.Pinned);
+            var map = MapFile.Load(NineDir);
+            Assert.That((valley.X, valley.Y), Is.EqualTo(map.Spawn), "the valley's spawn is the map's");
+            var made = new Dictionary<(int, int), GeneratedChunk>();
+            GeneratedChunk ChunkAt(int x, int y)
+            {
+                var key = (x / ChunkGen.Size, y / ChunkGen.Size);
+                if (!made.TryGetValue(key, out var c)) made[key] = c = seed == Nine.Seed ? At(key.Item1, key.Item2) : gen.Make(key.Item1, key.Item2);
+                return c;
+            }
+            int LandOf(int x, int y) => ChunkAt(x, y).Land[(y % ChunkGen.Size) * ChunkGen.Size + x % ChunkGen.Size];
+            char CellOf(int x, int y) => ChunkAt(x, y).Cells[(y % ChunkGen.Size) * ChunkGen.Size + x % ChunkGen.Size];
+            foreach (var s in gen.Spawns.Where(s => !s.Pinned))
+            {
+                var p = m.Plan.Spawns.Single(q => q.Square == s.Square);
+                string name = $"{seed}: the spawn at ({s.X}, {s.Y}) near the {s.Near}";
+                TestContext.Out.WriteLine($"SPAWN {name}, room {m.Plan.SpawnRoom(s.Square, p.SiteX, p.SiteY)}, by a road {p.ByRoad}, land {LandOf(s.X, s.Y) / 8.0:F1} m");
+                Assert.That(m.Plan.Band[s.Square], Is.LessThan(m.Plan.Library.Lands - 1), $"{name}: not on the peaks");
+                int lo = int.MaxValue, hi = int.MinValue;
+                for (int dy = -ChunkGen.ClearCells + 1; dy < ChunkGen.ClearCells; dy++)
+                    for (int dx = -ChunkGen.ClearCells + 1; dx < ChunkGen.ClearCells; dx++)
+                    {
+                        if (dx * dx + dy * dy >= ChunkGen.ClearCells * ChunkGen.ClearCells) continue;
+                        int x = s.X + dx, y = s.Y + dy;
+                        char cell = CellOf(x, y);
+                        Assert.That(cell == ',' || cell == '.', $"{name}: ({x}, {y}) is '{cell}', not open ground");
+                        lo = Math.Min(lo, LandOf(x, y));
+                        hi = Math.Max(hi, LandOf(x, y));
+                    }
+                Assert.That(hi - lo, Is.LessThanOrEqualTo(2), $"{name}: its clearing is level");
+                Assert.That(lo, Is.GreaterThan(ChunkGen.SeaLevel + 8), $"{name}: above the sea");
+                foreach (var t in ChunkAt(s.X, s.Y).Things.Select(t => (Newtonsoft.Json.Linq.JArray)t["cell"]))
+                {
+                    int tx = (s.X / ChunkGen.Size) * ChunkGen.Size + (int)t[0], ty = (s.Y / ChunkGen.Size) * ChunkGen.Size + (int)t[1];
+                    Assert.That(Math.Max(Math.Abs(tx - s.X), Math.Abs(ty - s.Y)), Is.GreaterThanOrEqualTo(ChunkGen.ClearCells), $"{name}: a thing in its clearing");
+                }
+                foreach (var r in gen.LandmarkRows.Where(r => r != null))
+                {
+                    long dx = s.X - r.Centre.x, dy = s.Y - r.Centre.y;
+                    Assert.That(dx * dx + dy * dy, Is.GreaterThan((long)(r.Reach + ChunkGen.ClearCells) * (r.Reach + ChunkGen.ClearCells)), $"{name}: inside {r.Name}'s footprint");
+                }
+                if (p.ByRoad)
+                {
+                    bool road = false;
+                    for (int dy = -10; dy <= 10 && !road; dy++)
+                        for (int dx = -10; dx <= 10 && !road; dx++) road = CellOf(s.X + dx, s.Y + dy) == '.' && gen.NearPath(s.X + dx, s.Y + dy);
+                    Assert.That(road, $"{name}: beside its road");
+                }
+            }
+        }
+
+        [Test]
+        public void EverySpawnIsReachableOnFootFromTheValleys()
+        {
+            // From the valley's spawn, walking from cell to cell over dry land (no sea, lake or river) and never up or down
+            // more than a metre a cell, every other square's spawn is reached: along the roads or over open land.
+            var gen = Nine.Gen;
+            var land = Whole;
+            int w = gen.CellsW, h = gen.CellsH;
+            var cells = new char[w * h];
+            foreach (var c in All)
+                for (int j = 0; j < ChunkGen.Size; j++) Array.Copy(c.Cells, j * ChunkGen.Size, cells, (c.Y * ChunkGen.Size + j) * w + c.X * ChunkGen.Size, ChunkGen.Size);
+            bool Open(int k) => land[k] >= ChunkGen.SeaLevel && cells[k] != 'w' && cells[k] != 'r';
+            var seen = new bool[w * h];
+            var start = gen.Spawns.Single(s => s.Pinned);
+            var queue = new Queue<int>();
+            queue.Enqueue(start.Y * w + start.X);
+            seen[start.Y * w + start.X] = true;
+            int reached = 0;
+            while (queue.Count > 0)
+            {
+                int k = queue.Dequeue();
+                reached++;
+                int x = k % w, y = k / w;
+                foreach (var (nx, ny) in new[] { (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1) })
+                {
+                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                    int n = ny * w + nx;
+                    if (seen[n] || !Open(n) || Math.Abs(land[n] - land[k]) > 8) continue;
+                    seen[n] = true;
+                    queue.Enqueue(n);
+                }
+            }
+            TestContext.Out.WriteLine($"REACH {reached} of {w * h} cells on foot from the valley's spawn");
+            foreach (var s in gen.Spawns) Assert.That(seen[s.Y * w + s.X], $"the spawn at ({s.X}, {s.Y}) near the {s.Near} is reached on foot");
+        }
+
         [Test]
         public void TheValleysChunksAreItsOwnFolders()
         {
@@ -372,6 +472,13 @@ namespace Chem.Tests
                 Assert.That(rows[map.Spawn.y][map.Spawn.x], Is.EqualTo('@'), "the valley's spawn, moved with it");
                 Assert.That(rows.Sum(r => r.Count(ch => ch == '@')), Is.EqualTo(1));
                 foreach (string name in GeneratedMap.Baked) Assert.That(File.Exists(Path.Combine(dir, name)), name);
+                // A spawn place a square, named for it, at its spawn; the valley's the map's start.
+                var spawns = WorldPlaces.Load(dir).All.Where(p => p.Kind == "spawn").ToList();
+                TestContext.Out.WriteLine("BAKE spawns: " + string.Join(", ", spawns.Select(p => $"{p.Name} {p.Middle}")));
+                Assert.That(spawns.Select(p => p.Middle), Is.EquivalentTo(Nine.Gen.Spawns.Select(s => (s.X, s.Y))));
+                Assert.That(spawns.Select(p => p.Name).Distinct().Count(), Is.EqualTo(9));
+                var start = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, WorldPlaces.FileName)))["places"].Single(p => (bool?)p["start"] == true);
+                Assert.That(spawns.Single(p => p.Id == (string)start["id"]).Middle, Is.EqualTo(map.Spawn), "the valley's spawn is the map's start");
                 // The rows the valley's buildings stand on are where the valley is now.
                 var hold = WorldBuildings.Load(dir);
                 Assert.That(hold, Is.Not.Null);
