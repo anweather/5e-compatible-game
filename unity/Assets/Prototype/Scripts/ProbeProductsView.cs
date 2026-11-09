@@ -192,13 +192,14 @@ public class ProductsViewProbe : RoomProbe
         yield return IceOn();
         if (iceMod == null) yield break;
         lens = new Lens(grid, Filming ? Path.Combine(ScreenshotDir, "black-ice") : null, new Vector2Int(from.x, from.y + 9), new Vector3(8f, 10f, -12f), true);
-        int mark = ConsoleMark;
         yield return Glazes(from);
         yield return Ask("report");
         if (Theirs == null) yield break;
         Check("client_draws_the_ice", Theirs.films == Mine.films, $"{Theirs.films}, here {Mine.films}");
+        var feet = Host.GetComponent<SurfaceEffects>();
+        int skids = feet != null ? feet.Skids : 0;
         yield return Skid(from);
-        Check("and_skids", ConsoleSaid("You skid across the slick ground", mark));
+        Check("and_skids", feet != null && feet.Skids > skids, $"{(feet != null ? feet.Skids - skids : -1)} skids");
         // Up to the lapse, and a little after.
         yield return lens.Roll(40f, () => World.Tick >= lapses);
         yield return lens.Roll(2.5f, null);
