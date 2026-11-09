@@ -33,6 +33,8 @@ public class WaterCurrents : MonoBehaviour
     public float surge = 2.2f, drift = 0.25f;
 
     MapLand seaOf;
+    // The river's line as the scene was built with it, on the valley.
+    Vector2[] valleyRiver;
 
     void OnEnable()
     {
@@ -45,6 +47,13 @@ public class WaterCurrents : MonoBehaviour
     {
         seaOf = MapLand.Current;
         if (seaOf == null) return;
+        // The river is the valley's: on a map that pins the valley into a square, it runs where the valley is (PinnedValley).
+        if (Application.isPlaying)
+        {
+            valleyRiver ??= river;
+            var shift = PinnedValley.Shift;
+            river = System.Array.ConvertAll(valleyRiver, p => p + new Vector2(shift.x, shift.z));
+        }
         shoreMap = seaOf.ShoreMap;
         shoreOrigin = seaOf.Shore;
         seaward = seaOf.Seaward;

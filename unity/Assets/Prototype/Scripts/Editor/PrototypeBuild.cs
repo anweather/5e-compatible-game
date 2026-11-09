@@ -280,11 +280,15 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         Debug.Log($"Packed {files.Length} {folder} files into the build: {string.Join(", ", files.Select(Path.GetFileName))}");
     }
 
-    /// <summary>Copies a folder and all under it, every map with its land, cells and themes; what was packed before goes first.</summary>
+    /// <summary>
+    /// Copies a folder and all under it, every map with its land, cells and themes; what was packed before goes first. A
+    /// generated map (the nine) goes as its world file only: an Editor's bake beside it stays out, and the player bakes it.
+    /// </summary>
     internal static int PackTree(string source, string target)
     {
         if (Directory.Exists(target)) Directory.Delete(target, true);
-        var files = Directory.GetFiles(source, "*", SearchOption.AllDirectories).Where(f => !Path.GetFileName(f).StartsWith(".")).ToList();
+        var files = Directory.GetFiles(source, "*", SearchOption.AllDirectories)
+            .Where(f => !Path.GetFileName(f).StartsWith(".") && !ABake(f)).ToList();
         foreach (var file in files)
         {
             string there = Path.Combine(target, Path.GetRelativePath(source, file));
@@ -293,4 +297,8 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         }
         return files.Count;
     }
+
+    // A file a generated map's bake wrote beside its world file.
+    static bool ABake(string file) =>
+        System.Array.IndexOf(Chem.GeneratedMap.Baked, Path.GetFileName(file)) >= 0 && Chem.GeneratedMap.IsGenerated(Path.GetDirectoryName(file));
 }

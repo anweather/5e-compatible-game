@@ -309,18 +309,15 @@ public class AmbientLife : MonoBehaviour
 
     static Vector3 Flat(Vector3 v) => new(v.x, 0f, v.z);
 
-    // The ground under a point (the terrain there), or a fallback height.
-    static float Ground(Vector3 p, float fallback)
+    // The ground under a point (the terrain there), or a fallback height. The terrains are found by tile, once they're
+    // there: asking each of a big map's (729 on the nine) for every crab was 7 ms a frame.
+    float Ground(Vector3 p, float fallback)
     {
-        foreach (var t in Terrain.activeTerrains)
-        {
-            var size = t.terrainData.size;
-            var local = p - t.transform.position;
-            if (local.x < 0f || local.z < 0f || local.x > size.x || local.z > size.z) continue;
-            return t.SampleHeight(p) + t.transform.position.y;
-        }
-        return fallback;
+        if (tiles == null || !tiles.Any) tiles = new TerrainTiles();
+        return tiles.HeightAt(p) ?? fallback;
     }
+
+    TerrainTiles tiles;
 
     static void DestroyNow(Object o)
     {

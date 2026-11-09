@@ -20,6 +20,8 @@ public static class GroundFromLand
         public string[] Layers, Grasses, TreeKinds;
         /// <summary>Grass texels along a chunk's side.</summary>
         public int DetailResolution;
+        /// <summary>A generated map's biomes, whose ground the grass is painted as; null for any other map.</summary>
+        public BiomeGround Biomes;
     }
 
     // Room below and above the drawable range for a cell's own height, in metres: the valley's chunks have this.
@@ -124,17 +126,21 @@ public static class GroundFromLand
         var block = CellPaint.Block(g, new ChunkRect(i, j, 0, 0, texels - 1, texels - 1), (x, y) => CellPaint.Mix(s.World, x, y));
         var slots = ValleyGround.LayerIndices(s.Layers);
         var paint = new byte[texels * texels * s.Layers.Length];
+        var mix = new float[slots.Length];
         for (int z = 0; z < texels; z++)
             for (int x = 0; x < texels; x++)
             {
                 var (cx, cy) = g.CellOfTexel(i, j, x, z);
-                var own = CellPaint.Mix(s.World, Math.Max(0, Math.Min(g.GridW - 1, cx)), Math.Max(0, Math.Min(g.GridH - 1, cy)));
+                cx = Math.Max(0, Math.Min(g.GridW - 1, cx));
+                cy = Math.Max(0, Math.Min(g.GridH - 1, cy));
+                var own = CellPaint.Mix(s.World, cx, cy);
                 float cover = block.Cover[z, x];
+                for (int k = 0; k < slots.Length; k++) mix[k] = cover * block.Mix[z, x, k] + (1f - cover) * own[k];
+                s.Biomes?.Repaint(cx, cy, mix);
                 for (int k = 0; k < slots.Length; k++)
                 {
                     if (slots[k] < 0) continue;
-                    float value = cover * block.Mix[z, x, k] + (1f - cover) * own[k];
-                    paint[(slots[k] * texels + z) * texels + x] = (byte)Math.Round(Math.Max(0f, Math.Min(1f, value)) * 255f);
+                    paint[(slots[k] * texels + z) * texels + x] = (byte)Math.Round(Math.Max(0f, Math.Min(1f, mix[k])) * 255f);
                 }
             }
         return paint;
@@ -151,7 +157,7 @@ public static class GroundFromLand
             for (int x = 0; x < res; x++)
             {
                 var (cx, cy) = g.GridCell(i * TerrainGrid.ChunkCells + x * TerrainGrid.ChunkCells / res, j * TerrainGrid.ChunkCells + z * TerrainGrid.ChunkCells / res);
-                if (!g.InGrid(cx, cy) || !CellPaint.IsGrassy(CellPaint.Mix(s.World, cx, cy))) continue;
+                if (!g.InGrid(cx, cy) || !CellPaint.IsGrassy(CellPaint.Mix(s.World, cx, cy)) || s.Biomes?.Grassy(cx, cy) == false) continue;
                 uint hash = WorldHash.Hash4(seed, GrassSalt, i * res + x, j * res + z);
                 if (hash % GrassEvery != 0) continue;
                 int kind = (int)(hash / GrassEvery % (uint)kinds);

@@ -88,6 +88,7 @@ public class Ocean : MonoBehaviour
     public void Build()
     {
         Clear();
+        terrains = null;
         builtFor = MapLand.Current;
         if (builtFor != null) FromMap(builtFor);
         var out_ = seaward.normalized;
@@ -247,15 +248,12 @@ public class Ocean : MonoBehaviour
     float Depth(Vector2 xz, float outward)
     {
         var p = new Vector3(xz.x, 0f, xz.y);
-        foreach (var terrain in Terrain.activeTerrains)
-        {
-            var size = terrain.terrainData.size;
-            var local = p - terrain.transform.position;
-            if (local.x < 0f || local.z < 0f || local.x > size.x || local.z > size.z) continue;
-            return level - (terrain.SampleHeight(p) + terrain.transform.position.y);
-        }
+        var terrain = (terrains ??= new TerrainTiles()).At(p);
+        if (terrain != null) return level - (terrain.SampleHeight(p) + terrain.transform.position.y);
         return Mathf.Clamp(3f + outward * 0.12f, 3f, 60f);
     }
+
+    TerrainTiles terrains;
 
     // Coordinates from lo to hi: fineStep apart between fineLo and fineHi, growing by a sixth each
     // step beyond them.

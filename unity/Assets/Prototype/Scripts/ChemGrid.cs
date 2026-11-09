@@ -140,6 +140,7 @@ public partial class ChemGrid : MonoBehaviour
         if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
         if (!TryGetComponent<HoldBarricades>(out _)) gameObject.AddComponent<HoldBarricades>();
         if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
+        if (!TryGetComponent<Waystones>(out _)) gameObject.AddComponent<Waystones>();
     }
 
     // The things file is read once: it is the same for every world this scene starts (and online
@@ -195,7 +196,8 @@ public partial class ChemGrid : MonoBehaviour
         };
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
-        PlayerStart = start;
+        // The spawn the host picked (SpawnPoints), else the map's own.
+        PlayerStart = SpawnPoints.StartCell(start);
         phase.Restart();
         if (valley != null)
             using (BuildValleyMarker.Auto()) valley.Bind(World);
@@ -236,7 +238,7 @@ public partial class ChemGrid : MonoBehaviour
         if (body) controller.enabled = false;
         wizard.transform.position = at;
         if (body) controller.enabled = true;
-        Debug.Log($"SPAWN: on {Folders.Map} at {PlayerStart}");
+        Debug.Log($"SPAWN: on {MapId} at {PlayerStart}");
     }
 
     void OnChunkSwitched(ChunkSwitch s)
@@ -426,18 +428,52 @@ public partial class ChemGrid : MonoBehaviour
         folders = null;
         checkedMap = null;
         mapHashOf = null;
+        chosenMap = null;
         ValleyChemistry.ForgetLand();
     }
 
     /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
     public static string CellMap() => MapFile.ReadCells(Folders.World);
 
+    // A map picked in play (the Esc menu's map to host, or the host's map a joiner goes to): it outlives the scene's reload.
+    static string chosenMap;
+
+    /// <summary>
+    /// Plays another map from here on: its folders (baked first, for a generated one) and the scene loaded again on it, as
+    /// the scene's terrains, places and sea are built for the map it starts on.
+    /// </summary>
+    public static void PlayMap(string id)
+    {
+        chosenMap = id;
+        SwitchFolders(id);
+        Debug.Log($"MAP: on to {MapId}");
+        UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+    }
+
+    /// <summary>The maps this copy has (world/maps), by id and name, the valley first.</summary>
+    public static (string id, string name)[] Maps()
+    {
+        var game = NewFolders(GameFolders.DefaultMap);
+        if (!Directory.Exists(game.Maps)) return new[] { (GameFolders.DefaultMap, "The Valley") };
+        var maps = new List<(string id, string name)>();
+        foreach (var dir in Directory.GetDirectories(game.Maps))
+        {
+            if (!File.Exists(Path.Combine(dir, MapFile.FileName))) continue;
+            string id = Path.GetFileName(dir);
+            maps.Add((id, MapFile.Load(dir).Name ?? id));
+        }
+        // The valley first, then the rest by id.
+        maps.Sort((a, b) => (a.id != GameFolders.DefaultMap).CompareTo(b.id != GameFolders.DefaultMap) is var first && first != 0 ? first : string.CompareOrdinal(a.id, b.id));
+        return maps.ToArray();
+    }
+
     // The map this copy starts on, its own pick: the host's map when it hosts. A player takes -map <id>; the open Editor,
-    // which a shell can't pass a flag to, reads Temp/map (a probe on a second map).
+    // which a shell can't pass a flag to, reads Temp/map (a probe on a second map). One picked in play comes first.
     static string OwnMap
     {
         get
         {
+            if (chosenMap != null) return chosenMap;
             var args = System.Environment.GetCommandLineArgs();
             if (System.Array.IndexOf(args, "-map") >= 0 || !Application.isEditor || !File.Exists(EditorMapFile)) return MapIdentity.Named(args);
             string named = File.ReadAllText(EditorMapFile).Trim();
@@ -455,32 +491,78 @@ public partial class ChemGrid : MonoBehaviour
     {
         if (mapHashOf != Folders.World)
         {
-            mapHash = MapIdentity.Hash(Folders.World);
+            // A generated map's hash is of its inputs, read from the folder it's made from (a build's bake is elsewhere).
+            mapHash = MapIdentity.Hash(MapSource);
             mapHashOf = Folders.World;
         }
-        return MapIdentity.Refusal(Folders.Map, MapFile.Load(Folders.World).Name, mapHash, offered);
-    }
-
-    /// <summary>The host's map, for a world about to be built: what's read from the map's folder is read again.</summary>
-    public void UseMap(string id)
-    {
-        if (string.IsNullOrEmpty(id) || id == Folders.Map) return;
-        Debug.Log($"NET: on the host's map, {id}");
-        SwitchFolders(id);
-        budgets = null;
-        LoadThings();
+        return MapIdentity.Refusal(MapId, MapFile.Load(Folders.World).Name, mapHash, offered);
     }
 
     /// <summary>Back from a host's map to this copy's own, before the scene starts over.</summary>
     public static void BackToOwnMap()
     {
-        if (OwnMap != Folders.Map) SwitchFolders(OwnMap);
+        if (OwnMap != MapId) SwitchFolders(OwnMap);
     }
 
     static void SwitchFolders(string id)
     {
-        folders = Folders.WithMap(id);
+        folders = FoldersFor(id);
         ValleyChemistry.ForgetLand();
+    }
+
+    /// <summary>The id of the map being played (world/maps/&lt;id&gt;, or a map folder's name), what peers know it by.</summary>
+    public static string MapId => PlayedMaps.TryGetValue(Folders.World, out var m) ? m.id : Folders.Map;
+
+    /// <summary>The folder the map is made from: its own, unless it's a build's bake of a generated map.</summary>
+    public static string MapSource => PlayedMaps.TryGetValue(Folders.World, out var m) ? m.source : Folders.World;
+
+    // Each played folder's map id and the folder it was made from, for a folder that isn't world/maps/<id> itself.
+    static readonly Dictionary<string, (string id, string source)> PlayedMaps = new();
+    // Names said once not to be maps, so the Editor's every look at its folders doesn't say it again.
+    static readonly HashSet<string> NotMaps = new();
+
+    /// <summary>The folder a map by this id is played from (a generated one baked first when playing).</summary>
+    public static string PlayFolder(string id) => FoldersFor(id).World;
+
+    // A map's folders from its name in -map, the menu or Temp/map: an id under world/maps, or a map folder's path (absolute,
+    // or from the repo's root: test-fixtures/maps/flat-1728, #169). A generated map (the nine) is baked first when playing:
+    // into its own folder in the Editor (out of git), and into the player's data folder in a build (worlds/<inputs>/<id>).
+    static GameFolders FoldersFor(string named)
+    {
+        var game = NewFolders(GameFolders.DefaultMap);
+        if (string.IsNullOrEmpty(named) || named == GameFolders.DefaultMap) return game;
+        bool path = Path.IsPathRooted(named) || named.IndexOf('/') >= 0 || named.IndexOf('\\') >= 0;
+        string dir = path ? Path.GetFullPath(Path.Combine(game.Repo, named)) : Path.Combine(game.Maps, named);
+        string id = path ? Path.GetFileName(dir.TrimEnd('/', '\\')) : named;
+        if (!File.Exists(Path.Combine(dir, MapFile.FileName)))
+        {
+            if (NotMaps.Add(named)) Debug.LogError($"MAP: {named} isn't a map ({dir} has no {MapFile.FileName}), so this is {GameFolders.DefaultMap}");
+            return game;
+        }
+        string played = Application.isPlaying ? Baked(dir, id, game) : dir;
+        if (played != Path.Combine(game.Maps, id)) PlayedMaps[played] = (id, dir);
+        return game.WithMap(played == Path.Combine(game.Maps, id) ? id : played);
+    }
+
+    // The folder to play a map from: its own, or a generated map's bake (made now if there's none of its inputs yet).
+    static string Baked(string dir, string id, GameFolders game)
+    {
+        if (!GeneratedMap.IsGenerated(dir)) return dir;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        string into = dir;
+        bool baked;
+        if (Application.isEditor || game.PlayerData == null) baked = GeneratedMap.EnsureBaked(dir);
+        else
+        {
+            string inputs = GeneratedMap.InputHash(dir);
+            // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
+            into = Path.Combine(game.PlayerData, "worlds", inputs, id);
+            string note = Path.Combine(into, GeneratedMap.BakeName);
+            baked = !File.Exists(note) || !File.ReadAllText(note).Contains(inputs);
+            if (baked) GeneratedMap.Load(dir).Bake(into);
+        }
+        Debug.Log($"MAP: {id} {(baked ? "baked" : "already baked")} in {into} ({timer.Elapsed.TotalMilliseconds:0} ms)");
+        return into;
     }
 
     static string checkedMap;
@@ -507,10 +589,10 @@ public partial class ChemGrid : MonoBehaviour
 
     // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
     // Outside Play mode the Editor's map is read afresh each time: Temp/map may have named another since a play.
-    public static GameFolders Folders => Application.isEditor && !Application.isPlaying ? NewFolders() : folders ??= NewFolders();
+    public static GameFolders Folders => Application.isEditor && !Application.isPlaying ? FoldersFor(OwnMap) : folders ??= FoldersFor(OwnMap);
 
-    static GameFolders NewFolders() =>
-        GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
+    static GameFolders NewFolders(string map) =>
+        GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, map);
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather

@@ -61,6 +61,9 @@ public class NetSession : MonoBehaviour
         joinFailure = null;
         joinFailureUntil = 0f;
         RoomMode = ChangeMode.Open;
+        HostMap = null;
+        hostWhenLoaded = false;
+        joinCodeWhenLoaded = joinAddressWhenLoaded = joinedCode = joinedAddress = null;
     }
 
     // The scene's NetworkManager (Netcode's singleton), looked up once it exists.
@@ -81,6 +84,66 @@ public class NetSession : MonoBehaviour
         Net.ConnectionApprovalCallback = Approve;
         Net.OnClientConnectedCallback += Connected;
         Net.OnClientDisconnectCallback += Disconnected;
+        ResumeAfterMapChange();
+    }
+
+    // --- the map ----------------------------------------------------------------
+
+    // What to do once the scene is back on another map: host (the Esc menu's map was another), or join again (the host
+    // is on another map). Static: they outlive the scene's reload.
+    static bool hostWhenLoaded;
+    static string joinCodeWhenLoaded, joinAddressWhenLoaded;
+    // How this copy last joined, to join the same way again after going to the host's map.
+    static string joinedCode, joinedAddress;
+
+    /// <summary>The map to host on, by id: the map being played until another is picked in the Esc menu.</summary>
+    public static string HostMap { get; set; }
+
+    void ResumeAfterMapChange()
+    {
+        if (hostWhenLoaded)
+        {
+            hostWhenLoaded = false;
+            _ = HostOnline();
+        }
+        else if (joinCodeWhenLoaded != null)
+        {
+            string code = joinCodeWhenLoaded;
+            joinCodeWhenLoaded = null;
+            _ = JoinOnline(code);
+        }
+        else if (joinAddressWhenLoaded != null)
+        {
+            string address = joinAddressWhenLoaded;
+            joinAddressWhenLoaded = null;
+            Join(address);
+        }
+    }
+
+    /// <summary>
+    /// The host is on another map than this copy (which has it, or the host would have turned it away): leave, go to that
+    /// map (made from its world file here too, the same as the host's) and join again the way it joined.
+    /// </summary>
+    public static void JoinOnHostMap(string id)
+    {
+        Debug.Log($"NET: the host is on {id}; going there and joining again");
+        joinCodeWhenLoaded = joinedCode;
+        joinAddressWhenLoaded = joinedCode == null ? joinedAddress : null;
+        var net = NetworkManager.Singleton;
+        if (net != null && net.IsListening) net.Shutdown();
+        ChemGrid.PlayMap(id);
+    }
+
+    // Host online on the map picked in the Esc menu: straight away on this one, after the scene reloads on another.
+    void HostPicked()
+    {
+        if (HostMap == null || HostMap == ChemGrid.MapId)
+        {
+            _ = HostOnline();
+            return;
+        }
+        hostWhenLoaded = true;
+        ChemGrid.PlayMap(HostMap);
     }
 
     void OnDestroy()
@@ -120,6 +183,7 @@ public class NetSession : MonoBehaviour
         await SignIn();
         PrepareForNetwork();
         joining = true;
+        joinedCode = code;
         session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant());
     });
 
@@ -178,6 +242,8 @@ public class NetSession : MonoBehaviour
     {
         PrepareForNetwork();
         Transport.SetConnectionData(host, Port);
+        joinedAddress = host;
+        joinedCode = null;
         joining = true;
         Net.StartClient();
     }
@@ -301,7 +367,8 @@ public class NetSession : MonoBehaviour
         GUI.enabled = !busy;
         if (PauseMenu.Button($"Rule changes when you host: {RoomPolicy.Words(RoomMode)}", PauseMenu.ButtonStyle)) RoomMode = (ChangeMode)(((int)RoomMode + 1) % 3);
         GUILayout.Label($"<color=#ffffff99>{ModeHint(RoomMode)}</color>", label);
-        if (PauseMenu.Button("Host online", PauseMenu.ButtonStyle)) _ = HostOnline();
+        MapPicker();
+        if (PauseMenu.Button("Host online", PauseMenu.ButtonStyle)) HostPicked();
         GUILayout.BeginHorizontal();
         GUI.SetNextControlName(JoinField);
         joinCode = GUILayout.TextField(joinCode, 12, field, GUILayout.Width(170));
@@ -312,6 +379,35 @@ public class NetSession : MonoBehaviour
         // The code field needs a keyboard; with a controller, pick the code letter by letter.
         if (Gamepad.current != null && PauseMenu.Button("Enter a code with the controller", null, GUILayout.Height(32))) PickCode();
         GUI.enabled = true;
+    }
+
+    (string id, string name)[] maps;
+
+    // The map to host on: each press the next this copy has (the Valley, The Nine). Hosting another than the one being
+    // played loads it first.
+    void MapPicker()
+    {
+        maps ??= ChemGrid.Maps();
+        if (maps.Length < 2) return;
+        string current = HostMap ?? ChemGrid.MapId;
+        int at = System.Array.FindIndex(maps, m => m.id == current);
+        string name = at >= 0 ? maps[at].name : current;
+        if (PauseMenu.Button($"Map when you host: {name}", PauseMenu.ButtonStyle))
+        {
+            HostMap = maps[(at + 1) % maps.Length].id;
+            SpawnPoints.StartIn = null;
+        }
+        StartPicker(HostMap ?? ChemGrid.MapId);
+    }
+
+    // Where to start on that map, for a map with more than one spawn: each press the next (its own spawn first).
+    static void StartPicker(string map)
+    {
+        var spawns = SpawnPoints.OfMap(map);
+        if (spawns.Count < 2) return;
+        int at = spawns.FindIndex(s => s.Id == SpawnPoints.StartIn);
+        if (at < 0) at = 0;
+        if (PauseMenu.Button($"Start in: {spawns[at].Name}", PauseMenu.ButtonStyle)) SpawnPoints.StartIn = spawns[(at + 1) % spawns.Count].Id;
     }
 
     static string ModeHint(ChangeMode mode) => mode switch
