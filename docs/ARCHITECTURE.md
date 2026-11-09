@@ -290,6 +290,25 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
    `UnityTechnologies`, `TerrainSampleAssets`, `TerrainDemoScene_URP`) or
    `Generated/`.
 
+### Which project or folder may reference which
+
+The same rules as a table, with the .NET projects under `core/`. A reference that isn't here is a new direction: say
+why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files are the truth.
+
+| Project or folder | May reference | Never |
+|---|---|---|
+| `Chemistry/` (asmdef `Chemistry`, `noEngineReferences`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, anything under `core/` |
+| `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
+| `Scripts/` (the view) | `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
+| `Scripts/Net/` | `Scripts/`, `Chemistry/` | the view uses it only as the door of rule 3 |
+| `Scripts/Editor/` | everything | nothing references it |
+| `Chemistry/Tests/` (asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
+| `core/Game.Core` | links `Chemistry/*.cs`, `Chemistry/Mcp/`, `Scripts/Playtest/Logic/` | any other `core/` project |
+| `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
+| `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |
+| `core/Game.Core.Tests` (links `Chemistry/Tests/`, `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core` | the tools |
+| `core/<Tool>.Tests` (`Rules.Mcp.Tests`, `Playtest.Runner.Tests`, `Chat.Bench.Tests`, `Hold.Runner.Tests`) | its tool, `Game.Core.Tests` for the Chemistry tests' internal helpers (`Friends.cs`) | the other tools |
+
 ## Conventions
 
 - **Naming:** types and methods `PascalCase`; fields `camelCase`
