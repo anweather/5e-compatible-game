@@ -4,8 +4,8 @@ using Chem;
 using UnityEngine;
 
 // The probe's farringclip scenario, on the nine (unity/Temp/map = nine): films the far ring (FarRing) in clear daylight
-// from over the valley's spawn: the eye looks over the valley, turns to the tallest far landmark the plan has (the spire
-// or the volcano where the plan places one; the nine's seed valley-1 has neither, so its village's great tree), then
+// from over the valley's spawn: the eye looks over the valley, turns to the tallest far landmark the plan has (the volcano
+// or the spire where the plan places one; the nine's seed valley-1 has neither, so its village's great tree), then
 // glides toward it past its seenFrom, so the haze, the known chunks' land beyond the generated ring and the landmark
 // coming out of the sky through the fog are all in it. The wizard keeps under the eye, so the rings follow it.
 // Needs --shots <folder>: ClipFilm's frames and sound.wav, for ffmpeg, and a still of the last view with the landmarks'
@@ -62,12 +62,12 @@ public class FarRingClipProbe : ProbeScenario
 
     static bool RingUp(FarRing far) => far != null && far.IsReady && far.KnownDrawn > 0;
 
-    // The spire, else the volcano, else the plan's tallest landmark; with the ring's metrics.
+    // The volcano (the nine's must), else the spire, else the plan's tallest landmark; with the ring's metrics.
     (FarLandmark landmark, Vector3 foot, bool shown) Target(FarRing far, Vector3 start)
     {
         var all = far.Landmarks.ToList();
-        var target = all.FirstOrDefault(l => l.landmark.Type == "spire");
-        if (target.landmark == null) target = all.FirstOrDefault(l => l.landmark.Type == "volcano");
+        var target = all.FirstOrDefault(l => l.landmark.Type == "volcano");
+        if (target.landmark == null) target = all.FirstOrDefault(l => l.landmark.Type == "spire");
         if (target.landmark == null) target = all.Where(l => l.landmark.From == "landmark").OrderByDescending(l => l.landmark.Height).FirstOrDefault();
         Check("landmark_to_film", target.landmark != null, target.landmark == null ? "the plan has no far landmark" : Describe(target, start));
         Metric("landmarks", all.Count);
