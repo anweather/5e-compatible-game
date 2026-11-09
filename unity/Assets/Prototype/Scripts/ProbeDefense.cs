@@ -71,6 +71,7 @@ public class DefenseProbe : ProbeScenario
         yield return Wait(3f);
         int after = first.Alive ? Mathf.Abs(flag.x - first.X) + Mathf.Abs(flag.y - first.Y) : -1;
         Metric("raider_squares_walked_3s", before - after);
+        squaresPerSecond = (before - after) / 3f;
         Check("raiders_walk_to_flag", after >= 0 && after < before - 2, $"{before} squares from the flag, then {after} three seconds on");
         Cut(defense.gate.position + V(6f, 9f, -14f), defense.gate.position + V(14f, 0f, 0f));
         yield return Wait(0.6f);
@@ -78,13 +79,21 @@ public class DefenseProbe : ProbeScenario
         Check("raiders_drawn", defense.DrawnRaiders > 0, $"{defense.DrawnRaiders} raiders drawn as creatures");
     }
 
-    // A Fireball a square ahead of the leader, where it will be when the bead lands.
+    // How fast the first raider walked (Walking), to lead a Fireball by.
+    float squaresPerSecond;
+
+    // A Fireball ahead of the leader, where it will be when the bead lands: the core takes the cast at the landing, a
+    // wind-up and a flight later, and the leader walks on meanwhile (about 5 squares from this far).
     IEnumerator Fireball(Vector2Int flag)
     {
         if (World.Raiders.Count == 0) yield break;
         var lead = World.Raiders[0];
         int alive = World.Raiders.Count, puffs = defense.Puffs;
-        int x = lead.X + System.Math.Sign(flag.x - lead.X);
+        int dir = System.Math.Sign(flag.x - lead.X);
+        float flight = caster.FlightSeconds(new CastCommand(SpellIds.Fireball, lead.X, lead.Y, 1));
+        int ahead = Mathf.Max(1, Mathf.RoundToInt(squaresPerSecond * flight));
+        Metric("fireball_led_squares", ahead);
+        int x = lead.X + dir * Mathf.Min(ahead, System.Math.Abs(flag.x - lead.X));
         puppet.Face(grid.CellCenter(x, lead.Y));
         caster.Cast(SpellIds.Fireball, x, lead.Y, 1);
         yield return Wait(2.5f);
