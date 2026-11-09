@@ -338,7 +338,8 @@ public sealed partial class FarRing : MonoBehaviour
         return cx >= chunksW || cy >= chunksH || LandIsTerrain(cx, cy);
     }
 
-    // From the map's edge to the horizon at the water's level (a little under it, so the map's own sea draws over it).
+    // From the map's edge to the horizon at the water's level (a little under it, so the map's own sea draws over it), and
+    // under the map itself past the known ring (FarMeshes.SeaFrame).
     void MakeSea()
     {
         var l = land.Layout;
@@ -347,6 +348,23 @@ public sealed partial class FarRing : MonoBehaviour
         var go = new GameObject("Sea to the horizon");
         go.transform.SetParent(transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = data.ToMesh(go.name);
-        Quiet(go.AddComponent<MeshRenderer>(), landMaterial);
+        Quiet(go.AddComponent<MeshRenderer>(), SeaMaterial());
     }
+
+    // The far land's look, drawn after the sky and going clear past SeaClearFrom so the sky shows through toward the
+    // horizon (FarLand.shader): fogged wholly it's the haze's colour, and the sky just over the horizon is brighter.
+    Material SeaMaterial()
+    {
+        var sea = new Material(landMaterial) { name = "Far sea", renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent };
+        sea.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        sea.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        sea.SetFloat("_ZWrite", 0f);
+        sea.SetFloat("_SkyFadeFrom", SeaClearFrom);
+        sea.SetFloat("_SkyFadeTo", SeeMetres * 0.9f);
+        sea.SetFloat("_SkyClearNear", HazeMetres);
+        return sea;
+    }
+
+    /// <summary>Where the sea plane starts to give way to the sky (m): past the known ring, where the haze is whole.</summary>
+    public const float SeaClearFrom = 1500f;
 }
