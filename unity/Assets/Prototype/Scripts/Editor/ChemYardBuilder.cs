@@ -58,14 +58,12 @@ public static class ChemYardBuilder
         var grid = new GameObject("ChemGrid").AddComponent<ChemGrid>();
         AssignEffects(grid);
 
-        // Find the @ to place the wizard; cell (x, y) sits at world (x, 0, H-1-y) times the cell size.
+        // The wizard at the map's spawn (map.json), whose cell stands where map.json's yard puts it: on the old yard's
+        // flat ground at 0 in the valley. On another map ChemGrid stands it at that map's spawn, on its ground.
         var rows = Map.Split('\n');
-        var start = Vector3.zero;
-        for (int y = 0; y < rows.Length; y++)
-        {
-            int x = rows[y].IndexOf('@');
-            if (x >= 0) start = new Vector3(x, 0.1f, rows.Length - 1 - y) * grid.cellSize;
-        }
+        var map = Chem.MapFile.Load(ChemGrid.Folders.World);
+        var (spawnX, spawnY) = (map.Spawn.x - map.Origin.x, map.Origin.y - map.Spawn.y);
+        var start = new Vector3(spawnX * grid.cellSize, 0.1f, spawnY * grid.cellSize);
 
         // The wizard is the Starter Assets third-person character (restore it with
         // Prototype > Restore Asset Packs), with our spellcasting added.

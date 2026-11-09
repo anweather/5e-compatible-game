@@ -254,6 +254,11 @@ public static class ProbeScenarios
         new Entry("castlecliff", typeof(CastleCliffProbe), 240f,
             "The castle on its cliff (the Hold's pad reaching north of the castle and dropping off as a crag, buildings.json) with its stable, and the canyon beside the river north of it (world/maps/valley/stamps.json), seen from the town, over the pad, along the walk from the gate to the lip, from the cliff's foot and from the canyon's floor. " +
             "Checks: the canyon laid, the pad and road unmoved, no tree on rock, the crag laid, one height from the gate to the lip by the ground and by the wizard walking it, a drop below the lip, the cliff a rock wall the wizard can't walk up, rocks on its faces, the stable standing, the canyon deep with a rock floor and a dirt path, no console errors."),
+        new Entry("mapshots", typeof(MapShotsProbe), 120f,
+            "The same three views of the valley each time (from the town toward the castle, of the castle, along the shore out to sea, at 11 in the morning) into --shots, for a before and an after when the map's data moves. Checks: shot."),
+        new Entry("secondmap", typeof(SecondMapProbe), 120f,
+            "A map that isn't the valley, named in unity/Temp/map (test-fixtures/maps/coast-192 for its sea): the world and chunks are the map's, the wizard starts at its spawn on its ground and walks off, and the sea is drawn over its sea, a cove and a walled-off hollow and not over dry land, at the map's level. " +
+            "Checks: each of those, not falling, no console errors. Shots: the land and the sea."),
         new Entry("cliffclip", typeof(CastleCliffClipProbe), 120f,
             "Films the castle on its cliff from the town, then an eye-height walk from the castle's gate past the stable to the cliff's lip and the view down its face, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed."),
         new Entry("stampclip", typeof(StampClipProbe), 120f,

@@ -7,7 +7,8 @@ using UnityEngine;
 // ValleyTerrain, the bake whose last job was the ground pack.
 public static class EditorGround
 {
-    public static readonly TerrainGrid Layout = TerrainGrid.Valley();
+    /// <summary>Where the map's chunks stand (map.json): the valley's, the map the yard is built for.</summary>
+    public static TerrainGrid Layout => MapLand.Current?.Layout ?? TerrainGrid.Valley();
     static GameObject root;
     static Terrain[] terrains;
 

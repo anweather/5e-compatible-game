@@ -265,6 +265,14 @@ public abstract class ProbeScenario : ShowcaseScript
         yield return Wait(wait);
     }
 
+    /// <summary>The camera at a cell, this high over its ground, looking at another cell this high over its own.</summary>
+    protected void Look(int x, int y, float up, int atX, int atY, float atUp)
+    {
+        var from = grid.CellCenter(x, y);
+        var to = grid.CellCenter(atX, atY);
+        Cut(new Vector3(from.x, grid.GroundAt(from) + up, from.z), new Vector3(to.x, grid.GroundAt(to) + atUp, to.z));
+    }
+
     /// <summary>Walks the wizard toward a yard cell for at most <paramref name="seconds"/> of game time.</summary>
     protected IEnumerator WalkFor(int x, int y, float seconds)
     {

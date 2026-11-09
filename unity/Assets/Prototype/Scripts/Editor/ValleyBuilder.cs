@@ -50,16 +50,20 @@ public static class ValleyBuilder
     {
         ("Lake", "lake"), ("Rocks", "rocks"), ("River rocks", "river-rocks"), ("Ball court", "court"), ("Landmarks", "landmarks"),
         ("Falls", "falls"), ("Bridge", "bridge"), ("Tower", "tower"), ("Defense field", "defense-field"), ("Coast", "coast"),
-        ("SkyboxMountains", "skyline"),
+        ("SkyboxMountains", "skyline"), ("Cabin*", "cabins"), ("Village *", "villages"), ("World edge", "world-edge"),
     };
 
     static void MarkPlaces()
     {
         var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
         foreach (var (name, place) in Places)
-            foreach (var root in roots.Where(r => r.name == name))
+            foreach (var root in roots.Where(r => Named(r.name, name)))
                 root.AddComponent<PlaceRoot>().place = place;
     }
+
+    // A root's name, or the start of its name for one ending in * (the cabins, the villages: one root each).
+    static bool Named(string root, string name) =>
+        name.EndsWith("*") ? root.StartsWith(name.TrimEnd('*'), System.StringComparison.Ordinal) : root == name;
 
     // What stands on the ground, built while EditorGround has it.
     static void DressGround(ChemGrid grid, MapTerrains terrains)
@@ -82,9 +86,7 @@ public static class ValleyBuilder
         BuildSky();
         var cabins = BuildCabins();
         var houses = BuildVillages();
-        // The way to the nearest land over the sea, for the surf's push and the waves (ShoreMap).
-        var shoreMap = ShoreMapBaker.Bake($"{Generated}/ShoreMap.asset", ValleyCoast.IsLand);
-        CoastBuilder.Build(VillageMaterial(), shoreMap);
+        CoastBuilder.Build(VillageMaterial());
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
@@ -99,18 +101,14 @@ public static class ValleyBuilder
         valley.terrains = terrains;
         // Village buildings burn and cave in by the cabins' rules.
         valley.cabins = cabins.Concat(houses).ToArray();
-        valley.lakeLevel = LakeLevel;
+        valley.lakeLevel = (float)MapFile.Load(ChemGrid.Folders.World).WaterMetres;
         grid.valley = valley;
 
-        // The river's current along its course and the surf's on the coast (WaterCurrents).
+        // The river's current along its course and the surf's on the coast (WaterCurrents; the sea is the map's).
         var currents = grid.gameObject.AddComponent<WaterCurrents>();
         currents.grid = grid;
         currents.river = ValleyShape.RiverLine;
         currents.riverHalfWidth = ValleyShape.RiverHalfWidth;
-        currents.shoreMap = shoreMap;
-        currents.shoreOrigin = ValleyCoast.ShoreOrigin;
-        currents.seaward = ValleyCoast.Seaward;
-        currents.seaLevel = ValleyCoast.SeaLevel;
     }
 
     // --- terrain -------------------------------------------------------------
@@ -231,7 +229,7 @@ public static class ValleyBuilder
 
     // Spell golf's fairway and the world's puzzles (world/golf.json, puzzles.json), which the map's trees and
     // rocks keep off: dropped here, so every other tree stands where it always has.
-    static bool OnPlayedGround(Vector2 at, int margin)
+    internal static bool OnPlayedGround(Vector2 at, int margin)
     {
         var cell = cellAt(at);
         return PlayedGround().Any(r => cell.x >= r.xMin - margin && cell.x < r.xMax + margin && cell.y >= r.yMin - margin && cell.y < r.yMax + margin);
@@ -288,6 +286,16 @@ public static class ValleyBuilder
     static List<RectInt> playedGround;
     // A point's cell, before the grid has a world to ask (WireChemistry's CellOf).
     static System.Func<Vector2, Vector2Int> cellAt;
+
+    /// <summary>Where world points fall on the cells, for a yard of <paramref name="yardHeight"/> rows at (left, top); the played ground read afresh.</summary>
+    internal static void PlanCells(float cellSize, int left, int top, int yardHeight)
+    {
+        playedGround = null;
+        cellAt = at => CellOf(at, cellSize, left, top, yardHeight);
+    }
+
+    /// <summary>The cell a world point (x, z) falls on (after PlanCells or a build).</summary>
+    internal static Vector2Int CellAt(Vector2 at) => cellAt(at);
 
     static bool RockKeepsOff(Vector2 w) => ValleyShape.KeepClear(w, 10f) || OnPlayedGround(w, 2);
 
@@ -574,7 +582,7 @@ public static class ValleyBuilder
 
     // A few things to walk out to, well away from the start: a ring of standing stones on the
     // rise north-west of the yard, and a tall outcrop of rock to the east, past the river.
-    static readonly Vector2 StonesAt = new Vector2(-120f, 175f), OutcropAt = new Vector2(215f, 110f);
+    internal static readonly Vector2 StonesAt = new Vector2(-120f, 175f), OutcropAt = new Vector2(215f, 110f);
 
     static void BuildLandmarks()
     {
@@ -1439,8 +1447,12 @@ public static class ValleyBuilder
     // of docs/design/maps-as-data.md): the build no longer works it out from the valley's shapes.
     static void WireChemistry(ChemGrid grid, string[] yardRows)
     {
+        // Where the cells stand is the map's (map.json's yard); the rows are the valley's shapes' yard, and must agree.
+        var (x, y, w, h) = MapFile.Load(ChemGrid.Folders.World).Yard;
+        grid.yardCells = new RectInt(x, y, w, h);
         var (left, top) = EditorGround.Layout.CellAt(0f, (yardRows.Length - 1) * grid.cellSize);
-        grid.yardCells = new RectInt(left, top, yardRows[0].Length, yardRows.Length);
+        if (new RectInt(left, top, yardRows[0].Length, yardRows.Length) != grid.yardCells)
+            Debug.LogError($"map.json's yard {grid.yardCells} isn't where the yard's rows lie ({left}, {top})");
         grid.fireFadeCells = FireFadeCells;
         grid.conductLimit = LightningReach;
     }

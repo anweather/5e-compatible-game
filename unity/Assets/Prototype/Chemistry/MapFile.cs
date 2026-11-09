@@ -35,16 +35,59 @@ namespace Chem
         /// <summary>Whether map.json says its own range. The valley's doesn't hold its land: it's where stamps stop, and the sea bed lies below it.</summary>
         public bool OwnLandRange { get; private set; }
 
+        /// <summary>A land unit in metres.</summary>
+        public const double LandUnitMetres = 0.125;
+        /// <summary>How far under the sea level the water's surface is drawn: below the lowest dry land, above the highest drowned.</summary>
+        public const double SurfaceUnderLevel = 0.1;
+
+        /// <summary>The height the sea and the lakes are drawn at, in metres: just under the sea level.</summary>
+        public double WaterMetres => SeaLevel * LandUnitMetres - SurfaceUnderLevel;
+
+        /// <summary>
+        /// Where the swell comes in from (map.json's sea, in world metres): a point on the coast and the way out to sea. Left
+        /// out, the view works it out from where the land is low.
+        /// </summary>
+        public (double x, double z)? SeaShore { get; private set; }
+        public (double x, double z)? Seaward { get; private set; }
+
+        /// <summary>
+        /// The old chemistry yard (map.json's yard: x, y, width, height in cells), whose south-west cell stands at world
+        /// (0, 0); left out, a one-cell yard at the map's middle. Where the cells stand in the world follows from it.
+        /// </summary>
+        public (int x, int y, int w, int h) Yard { get; private set; }
+
+        /// <summary>The cell at world (0, 0): the yard's south-west cell.</summary>
+        public (int x, int y) Origin => (Yard.x, Yard.y + Yard.h - 1);
+
+        /// <summary>The chunks drawn in full detail (map.json's fullDetail: i0, j0, i1, j1, inclusive); left out, none.</summary>
+        public (int i0, int j0, int i1, int j1) FullDetail { get; private set; }
+
+        /// <summary>A cell's side in metres, on every map.</summary>
+        public const float CellMetres = 1.5f;
+
+        /// <summary>Where this map's chunk terrains and cells stand in the world.</summary>
+        public TerrainGrid Layout()
+        {
+            var (ox, oy) = Origin;
+            return new TerrainGrid(CellMetres, (-(ox + 0.5f) * CellMetres, (oy - H + 0.5f) * CellMetres), (W / Chunks.Size, H / Chunks.Size),
+                (0, H - 1), (W, H), FullDetail);
+        }
+
         /// <summary>The map.json in a map's folder; throws if it's missing or a field is.</summary>
         public static MapFile Load(string worldDir)
         {
             var o = JObject.Parse(File.ReadAllText(Path.Combine(worldDir, FileName)));
             var expects = (JObject)o["expects"];
             var drawable = o["drawable"] as JArray;
+            var sea = o["sea"] as JObject;
             return new MapFile
             {
                 LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
                 OwnLandRange = drawable != null,
+                Yard = o["yard"] is JArray yard ? ((int)yard[0], (int)yard[1], (int)yard[2], (int)yard[3]) : ((int)o["size"][0] / 2, (int)o["size"][1] / 2, 1, 1),
+                FullDetail = o["fullDetail"] is JArray full ? ((int)full[0], (int)full[1], (int)full[2], (int)full[3]) : (0, 0, -1, -1),
+                SeaShore = Pair(sea?["shore"]),
+                Seaward = Pair(sea?["seaward"]),
                 Dresses = o["dresses"] is JArray dresses ? dresses.Select(d => (string)d).ToArray() : System.Array.Empty<string>(),
                 Id = (string)o["id"],
                 Name = (string)o["name"],
@@ -57,6 +100,8 @@ namespace Chem
                 Lowest = (int)expects["lowest"],
             };
         }
+
+        static (double x, double z)? Pair(JToken t) => t is JArray a && a.Count == 2 ? ((double)a[0], (double)a[1]) : ((double, double)?)null;
 
         /// <summary>The map's cells as text.</summary>
         public static string ReadCells(string worldDir) => File.ReadAllText(Path.Combine(worldDir, CellsName));

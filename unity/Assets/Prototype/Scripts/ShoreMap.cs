@@ -1,8 +1,8 @@
 using UnityEngine;
 
 // The shore map (docs/GLOSSARY.md): over the sea and out past the terrain, the
-// way to the nearest land and how far off it is. ValleyBuilder bakes it
-// (ShoreMapBaker) into a texture, red and green the way to land (a metre per
+// way to the nearest land and how far off it is. Worked out from the map's land
+// when the sea first asks (MapLand, ShoreField) into a texture, red and green the way to land (a metre per
 // metre, shrinking toward nothing where two shores are about as near), blue the
 // signed distance to the shore in metres (negative on land). The Ocean shader
 // reads it for the waves, WaterCurrents and Ocean.WaveOffset through At, so the
@@ -12,6 +12,36 @@ public class ShoreMap : ScriptableObject
 {
     /// <summary>How far in from the map's edges the waves die away (m), so they don't end at a line.</summary>
     public const float FadeMetres = 300f;
+
+    /// <summary>The side of the square a map's shore map covers (m).</summary>
+    public const float Side = ShoreField.Texels * ShoreField.TexelMetres;
+
+    /// <summary>The shore map of this land, centred on <paramref name="middle"/>: held in memory, never saved.</summary>
+    public static ShoreMap FromLand(System.Func<Vector2, bool> isLand, Vector2 middle)
+    {
+        const int n = ShoreField.Texels;
+        var origin = middle - Vector2.one * (Side / 2f);
+        var land = new bool[n * n];
+        for (int z = 0; z < n; z++)
+            for (int x = 0; x < n; x++)
+                land[z * n + x] = isLand(origin + new Vector2(x + 0.5f, z + 0.5f) * ShoreField.TexelMetres);
+        var distance = ShoreField.Blur(ShoreField.SignedDistance(land, n, ShoreField.TexelMetres), n, ShoreField.BlurTexels);
+        var texture = new Texture2D(n, n, TextureFormat.RGBAHalf, false, true)
+        {
+            name = "Shore map",
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+            hideFlags = HideFlags.DontSave,
+        };
+        texture.SetPixels(ShoreField.Pixels(distance, n, ShoreField.TexelMetres));
+        texture.Apply(false, false); // stays readable: At reads it
+        var map = CreateInstance<ShoreMap>();
+        map.hideFlags = HideFlags.DontSave;
+        map.texture = texture;
+        map.origin = origin;
+        map.size = Side;
+        return map;
+    }
 
     public Texture2D texture;
     [Tooltip("The map's south-west corner (x, z).")]

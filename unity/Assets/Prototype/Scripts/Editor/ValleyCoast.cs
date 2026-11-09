@@ -92,9 +92,6 @@ public static class ValleyCoast
     /// <summary>How much of the island's own lush green a point gets: none on its beach, all of it a few metres in.</summary>
     public static float Lush(Vector2 p) => Mathf.InverseLerp(IslandBeach, IslandBeach + 6f, InIsland(p));
 
-    /// <summary>Whether a point is land as the sea sees it: not under the sea's level, or inland of the coast (the lake and the river are no sea).</summary>
-    public static bool IsLand(Vector2 p) => Out(p) < HillAt || ValleyShape.HeightAt(p) >= SeaLevel;
-
     /// <summary>Whether a point is the island (inside its shoreline).</summary>
     public static bool OnIsland(Vector2 p) => InIsland(p) >= 0f;
 

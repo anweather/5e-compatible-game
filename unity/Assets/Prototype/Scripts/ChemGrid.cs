@@ -132,6 +132,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         TakeCurrent();
         BuildWorld();
+        StandAtSpawn();
         LoadThings();
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
@@ -177,6 +178,7 @@ public partial class ChemGrid : MonoBehaviour
         var roomWas = World?.Room;
 
         CheckMap();
+        TakeYard();
         Vector2Int start;
         using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
@@ -199,6 +201,32 @@ public partial class ChemGrid : MonoBehaviour
             RenderAll();
         }
         using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
+    }
+
+    // Where the map's cells stand in the world (map.json's yard: its south-west cell at world 0, 0), when this grid plays a
+    // map (the yard scene's, with its valley's ground); a test's own small yard keeps its own.
+    void TakeYard()
+    {
+        var land = MapLand.Current;
+        if (land == null || valley == null) return;
+        var (x, y, w, h) = land.Map.Yard;
+        yardCells = new RectInt(x, y, w, h);
+    }
+
+    // The solo wizard is built standing at the valley's start; on another map it starts at that map's, on its ground.
+    void StandAtSpawn()
+    {
+        var wizard = WizardRig.FindLocal();
+        if (wizard == null || valley == null) return;
+        var at = CellCenter(PlayerStart.x, PlayerStart.y);
+        var was = wizard.transform.position;
+        if (new Vector2(was.x - at.x, was.z - at.z).magnitude < 2f) return;
+        at.y = GroundAt(at) + 0.1f;
+        bool body = wizard.TryGetComponent<CharacterController>(out var controller) && controller.enabled;
+        if (body) controller.enabled = false;
+        wizard.transform.position = at;
+        if (body) controller.enabled = true;
+        Debug.Log($"SPAWN: on {Folders.Map} at {PlayerStart}");
     }
 
     void OnChunkSwitched(ChunkSwitch s)
@@ -300,7 +328,8 @@ public partial class ChemGrid : MonoBehaviour
     // The map's own land stamps (stamps.json), before its rows, which are laid on the stamped land: only on the map's whole world.
     static void LayStamps(World world)
     {
-        if (world.W != MapCheck.Size || world.H != MapCheck.Size) return;
+        var map = MapLand.Current?.Map;
+        if (map == null || world.W != map.W || world.H != map.H) return;
         try
         {
             foreach (var why in MapStamps.Load(Folders.World).LayInto(world)) Debug.LogError(why);
@@ -368,11 +397,35 @@ public partial class ChemGrid : MonoBehaviour
 
     static GameFolders folders;
 
+    // Play mode without a domain reload keeps statics: each play starts on this copy's own map again (Temp/map may name
+    // another since).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ForgetFolders()
+    {
+        folders = null;
+        checkedMap = null;
+        mapHashOf = null;
+        ValleyChemistry.ForgetLand();
+    }
+
     /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
     public static string CellMap() => MapFile.ReadCells(Folders.World);
 
-    // The map this copy starts on, its own pick: the host's map when it hosts.
-    static string OwnMap => MapIdentity.Named(System.Environment.GetCommandLineArgs());
+    // The map this copy starts on, its own pick: the host's map when it hosts. A player takes -map <id>; the open Editor,
+    // which a shell can't pass a flag to, reads Temp/map (a probe on a second map).
+    static string OwnMap
+    {
+        get
+        {
+            var args = System.Environment.GetCommandLineArgs();
+            if (System.Array.IndexOf(args, "-map") >= 0 || !Application.isEditor || !File.Exists(EditorMapFile)) return MapIdentity.Named(args);
+            string named = File.ReadAllText(EditorMapFile).Trim();
+            return named.Length > 0 ? named : GameFolders.DefaultMap;
+        }
+    }
+
+    /// <summary>The file that names the open Editor's map (its id), when there is one.</summary>
+    public const string EditorMapFile = "Temp/map";
 
     static string mapHash, mapHashOf;
 
@@ -421,7 +474,11 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
-    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
+    // Outside Play mode the Editor's map is read afresh each time: Temp/map may have named another since a play.
+    public static GameFolders Folders => Application.isEditor && !Application.isPlaying ? NewFolders() : folders ??= NewFolders();
+
+    static GameFolders NewFolders() =>
+        GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather

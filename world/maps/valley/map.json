@@ -1,10 +1,13 @@
 {
-  "about": "What this map is, read with the rest of its folder (docs/design/maps-as-data.md). Sea level and expects are in land units of 0.125 m; landShare is the percent of cells at or above the sea level. MapCheck holds the folder to them. dresses: the places that stay code which this map wants built (PlaceRoot).",
+  "about": "What this map is, read with the rest of its folder (docs/design/maps-as-data.md). Sea level and expects are in land units of 0.125 m; landShare is the percent of cells at or above the sea level; the water is drawn 0.1 m under it. sea: where the swell comes in from, a point on the coast and the way out, in world metres (left out, worked out from the low land). yard: the old chemistry yard in cells (x, y, width, height), whose south-west cell stands at world (0, 0); fullDetail: the chunks drawn in full detail (i0, j0, i1, j1). MapCheck holds the folder to them. dresses: the places that stay code which this map wants built (PlaceRoot).",
   "id": "valley",
   "name": "The Valley",
   "size": [576, 576],
   "seaLevel": -4,
+  "sea": { "shore": [225, -160], "seaward": [0.62, -0.78] },
   "spawn": [292, 328],
+  "yard": [279, 315, 26, 16],
+  "fullDetail": [3, 2, 5, 4],
   "expects": { "landShare": 87, "highest": 1319, "lowest": -174 },
-  "dresses": ["lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline"]
+  "dresses": ["lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline", "cabins", "villages", "world-edge"]
 }

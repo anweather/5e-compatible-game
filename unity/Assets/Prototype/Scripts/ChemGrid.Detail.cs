@@ -34,7 +34,7 @@ public partial class ChemGrid
         if (cell == detailFrom && World == detailWorld) return;
         detailFrom = cell;
         detailWorld = World;
-        detailLayout ??= TerrainGrid.Valley();
+        detailLayout ??= MapLand.Current?.Layout ?? TerrainGrid.Valley();
         if (World.W != detailLayout.GridW || World.H != detailLayout.GridH) return;
         // From the camera's cell, so a cell's width more: no terrain with grass in sight is left out.
         var near = detailLayout.ChunksWithin(cell.x, cell.y, DetailDistance / cellSize + 1);

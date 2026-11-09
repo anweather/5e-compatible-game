@@ -1,0 +1,9 @@
+{
+  "about": "A small test map of 3 x 3 chunks for a second map's sea (maps phase 7): grass at one height, the sea along its east edge with a beach down to it, a cove cut in from the sea, and a hollow inland that holds a basin of water. Not a map to play.",
+  "id": "coast-192",
+  "name": "Coast 192 (test)",
+  "size": [192, 192],
+  "seaLevel": -4,
+  "spawn": [40, 96],
+  "expects": { "landShare": 72, "highest": 8, "lowest": -40 }
+}

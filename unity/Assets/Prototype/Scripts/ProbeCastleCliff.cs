@@ -219,12 +219,4 @@ public class CastleCliffProbe : ProbeScenario
     // The canyon's floor: cut a crag deep along its path.
     IEnumerable<Vector2Int> CanyonFloor() =>
         Cells(120, 250, 192, 295).Where(c => grid.World.LandStampedAt(c.x, c.y) <= -World.LandCrag);
-
-    /// <summary>The camera at a cell, this high over its ground, looking at another cell this high over its own.</summary>
-    protected void Look(int x, int y, float up, int atX, int atY, float atUp)
-    {
-        var from = grid.CellCenter(x, y);
-        var to = grid.CellCenter(atX, atY);
-        Cut(new Vector3(from.x, grid.GroundAt(from) + up, from.z), new Vector3(to.x, grid.GroundAt(to) + atUp, to.z));
-    }
 }

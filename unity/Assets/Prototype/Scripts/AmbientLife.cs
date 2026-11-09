@@ -6,7 +6,9 @@ using UnityEngine.Rendering;
 // wheeling over the beach, crabs scuttling along the waterline and shoals of
 // fish in the shallows and the lake, now and then one jumping. Gulls climb away
 // from a wizard; crabs bolt sideways and burrow into the sand, coming back up
-// later; shoals slip away from a swimmer. ValleyBuilder bakes where they live;
+// later; shoals slip away from a swimmer. ValleyBuilder bakes where they live on
+// the valley's coast; on a map that doesn't dress that coast they live where its
+// own land meets its water (MapLand), so they're no place's to leave out;
 // they're drawn instanced (VillageLit), a few mesh frames each (CreatureMesher).
 // View-only: every machine has its own, and nothing they do reaches the chemistry.
 public class AmbientLife : MonoBehaviour
@@ -67,7 +69,35 @@ public class AmbientLife : MonoBehaviour
         crabFrames = new[] { CreatureMesher.Crab(0), CreatureMesher.Crab(1) };
         var silver = new Color(0.45f, 0.55f, 0.62f, 0f);
         fishFrames = new[] { CreatureMesher.Fish(-1f, silver), CreatureMesher.Fish(1f, silver) };
+        if (MapLand.Current is { } map && System.Array.IndexOf(map.Map.Dresses, "coast") < 0) FromLand(map);
         Spawn();
+    }
+
+    // Where the map's own land meets its water: gulls over the shore, crabs on the dry cells beside the sea, shoals where
+    // the sea or a basin is 1.4 to 12 m deep. Cells looked at on a coarse grid, from a seed, so every machine has the same.
+    void FromLand(MapLand map)
+    {
+        var pick = new System.Random(91);
+        var layout = map.Layout;
+        float unit = (float)Chem.MapFile.LandUnitMetres, sea = map.WaterLevel;
+        var gulls = new List<Vector3>();
+        var crabsAt = new List<Vector3>();
+        var fish = new List<Vector4>();
+        const int Step = 6;
+        for (int y = Step / 2; y < map.Map.H; y += Step)
+            for (int x = Step / 2; x < map.Map.W; x += Step)
+            {
+                var (wx, wz) = layout.CellCenter(x, y);
+                float ground = map.Land[y * map.Map.W + x] * unit, depth = sea - ground;
+                bool water = map.Sea.IsSea(x, y) || map.Sea.IsBasin(x, y);
+                bool shore = !water && (map.Sea.IsSea(x + Step, y) || map.Sea.IsSea(x - Step, y) || map.Sea.IsSea(x, y + Step) || map.Sea.IsSea(x, y - Step));
+                if (shore && gulls.Count < 12 && pick.NextDouble() < 0.2) gulls.Add(new Vector3(wx, sea, wz));
+                if (shore && crabsAt.Count < 40 && pick.NextDouble() < 0.5) crabsAt.Add(new Vector3(wx, ground, wz));
+                if (water && depth > 1.4f && depth < 12f && fish.Count < 26 && pick.NextDouble() < 0.05) fish.Add(new Vector4(wx, sea, wz, depth));
+            }
+        gullAnchors = gulls.ToArray();
+        crabSpots = crabsAt.ToArray();
+        shoals = fish.ToArray();
     }
 
     void OnDisable()

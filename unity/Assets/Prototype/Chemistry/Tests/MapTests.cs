@@ -165,7 +165,7 @@ namespace Chem.Tests
         [Test]
         public void TheValleyDressesItsPlaces()
         {
-            Assert.That(MapFile.Load(map).Dresses, Is.EquivalentTo(new[] { "lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline" }));
+            Assert.That(MapFile.Load(map).Dresses, Is.EquivalentTo(new[] { "lake", "rocks", "river-rocks", "court", "landmarks", "falls", "bridge", "tower", "defense-field", "coast", "skyline", "cabins", "villages", "world-edge" }));
             Change(o => o.Remove("dresses"));
             Assert.That(MapFile.Load(map).Dresses, Is.Empty, "left out, none");
             Assert.That(Errors, Is.Empty);
@@ -214,6 +214,31 @@ namespace Chem.Tests
         {
             Change(o => o["seaLevel"] = -8);
             Assert.That(Errors, Does.Contain("finds water below -4"));
+        }
+
+        // The cells stand where the map says (map.json's yard and fullDetail): the valley's are where they always stood.
+        [Test]
+        public void TheValleysLayoutIsTheOneItAlwaysHad()
+        {
+            var file = MapFile.Load(ChemistryTests.WorldDir());
+            TerrainGrid a = file.Layout(), b = TerrainGrid.Valley();
+            Assert.That((a.CellSize, a.OriginX, a.OriginZ, a.ChunksX, a.ChunksZ, a.U0, a.V0, a.GridW, a.GridH),
+                Is.EqualTo((b.CellSize, b.OriginX, b.OriginZ, b.ChunksX, b.ChunksZ, b.U0, b.V0, b.GridW, b.GridH)));
+            for (int j = 0; j < b.ChunksZ; j++)
+                for (int i = 0; i < b.ChunksX; i++) Assert.That(a.IsHighRes(i, j), Is.EqualTo(b.IsHighRes(i, j)), $"chunk {i},{j}");
+            Assert.That(file.Origin, Is.EqualTo((279, 330)));
+            Assert.That(file.Spawn, Is.EqualTo((292, 328)), "the yard's @");
+        }
+
+        [Test]
+        public void AMapWithNoYardStandsOnItsMiddle()
+        {
+            var file = MapFile.Load(MapSizeBench.BigMap);
+            var layout = file.Layout();
+            Assert.That((layout.ChunksX, layout.ChunksZ, layout.GridW), Is.EqualTo((27, 27, 1728)));
+            var (x, z) = layout.CellCenter(864, 864);
+            Assert.That((x, z), Is.EqualTo((0f, 0f)), "the middle cell at world (0, 0)");
+            Assert.That(layout.IsHighRes(13, 13), Is.False, "no full detail when the map names none");
         }
     }
 }
