@@ -56,5 +56,6 @@ for i in "${!pids[@]}"; do
   fi
   cat "$log.${names[$i]}" >> "$log"; rm -f "$log.${names[$i]}"
 done
-grep -E 'Passed!|Failed!' "$log" | tail -1 | sed 's/^ */  /'
+# One line per test project (core has five).
+grep -E 'Passed!|Failed!' "$log" | sed 's/^ */  /'
 exit "$failed"
