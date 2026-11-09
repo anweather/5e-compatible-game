@@ -224,6 +224,19 @@ coast), with the castle; the great tree is gone from this seed, and a sea spire 
 haze at the spawn, was 94%), 22 for the spire, 12 the castle, 13 the great tree, whose far colour is now a dark
 blue-green (it read as a pale olive lens).
 
+**The far volcano (far-volcano, the PC, 2026-11-09).** Old Grumbler read as a faint ochre mound: its true 60 m on a
+105 m radius is under 3 degrees from the valley at 1.2 km, and past the known ring it stood on the sky. Its far mesh's
+foot was right (the lowest dry sample round it, 7 m under the middle of the land round its foot; the -48.7 m the probe
+reported was its crater floor). Now, from `horizon.json`'s new view-only `"far"` row: the crater profile follows the
+stamp as sampled (concave, rim at 0.28 of the radius); past `FarRing.StretchFrom` (sight + 1 chunks on a diagonal,
+679 m, as far as its chunk can be from the eye while it's still a chunk terrain) it stands up to `stretch` 1.8 times
+as tall (108 m, whole 3 chunks on), its rim dips `notch` 0.2 of its height where it faces the eye (FarLand.shader, so
+the crater shows from the side), and an `apron` of land runs out to 3 radii and down to the water. At the hand-off it's
+its true size (the far rim 163.8 m against the stamp's 165-168 m), so it doesn't pop. Its colour is cool basalt and
+the landmarks' haze greys toward the sky's blue (half the zenith at full haze, the sky again as it fades out), not the
+horizon's pale. From the ground at the spawn it can't be seen at any honest size: a 156 m hill 400 m out would need it
+about 500 m tall; from the clip's eye (200 m up) it stands clear above that hill.
+
 ## 5. The solve, order-free
 
 **Level 1, the world plan, at load, for the whole world.** The world is bounded (an ocean-ringed 3 × 3 now, a torus

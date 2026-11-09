@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Chem;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 // The far ring's meshes as plain arrays (FarRing, docs/design/world-squares.md section 4), so they can be worked out off
@@ -148,7 +149,13 @@ public static class FarMeshes
     static readonly Dictionary<string, Vector2[]> Profiles = new()
     {
         ["cone"] = new[] { new Vector2(1f, 0f), new Vector2(0.55f, 0.6f), new Vector2(0.12f, 1f), new Vector2(0f, 1f) },
-        ["crater"] = new[] { new Vector2(1f, 0f), new Vector2(0.62f, 0.55f), new Vector2(0.34f, 1f), new Vector2(0.22f, 0.84f), new Vector2(0f, 0.8f) },
+        // A volcano's cone as its stamp stands (the nine's Old Grumbler sampled: 0.2 of its rise at 0.86 of its radius, 0.55
+        // at 0.67, 0.8 at 0.48, its rim at 0.27), concave up to a narrow rim round a crater a fifth of its rise deep.
+        ["crater"] = new[]
+        {
+            new Vector2(1f, 0f), new Vector2(0.8f, 0.3f), new Vector2(0.6f, 0.62f), new Vector2(0.42f, 0.88f), new Vector2(0.28f, 1f),
+            new Vector2(0.18f, 0.86f), new Vector2(0f, 0.78f),
+        },
         ["needle"] = new[] { new Vector2(1f, 0f), new Vector2(0.55f, 0.22f), new Vector2(0.32f, 0.7f), new Vector2(0.14f, 0.95f), new Vector2(0f, 1f) },
         ["dome"] = new[] { new Vector2(1f, 0f), new Vector2(0.92f, 0.38f), new Vector2(0.7f, 0.72f), new Vector2(0.38f, 0.93f), new Vector2(0f, 1f) },
         ["tree"] = new[] { new Vector2(0.1f, 0f), new Vector2(0.1f, 0.38f), new Vector2(0.75f, 0.42f), new Vector2(1f, 0.62f), new Vector2(0.72f, 0.88f), new Vector2(0f, 1f) },
@@ -161,7 +168,8 @@ public static class FarMeshes
     /// <summary>A far landmark's colour by its type and shape.</summary>
     public static Color LandmarkColour(string type, string shape) => type switch
     {
-        "volcano" => new Color(0.24f, 0.21f, 0.2f),
+        // Basalt and ash, cool so the haze greys it blue far off (a warm brown went ochre in the sun).
+        "volcano" => new Color(0.13f, 0.14f, 0.17f),
         "lake" or "port" => new Color(0.42f, 0.4f, 0.36f),
         "great tree" or "lone great tree" => new Color(0.05f, 0.09f, 0.11f),
         _ => shape switch
@@ -177,9 +185,11 @@ public static class FarMeshes
     /// <summary>
     /// A far landmark's stand-in: its shape's profile turned round its axis (four sides for a keep), <paramref name="radius"/>
     /// across and <paramref name="height"/> high from its foot at the origin, flat-shaded, and <paramref name="sink"/> metres
-    /// more below the foot so it never floats on a slope.
+    /// more below the foot so it never floats on a slope. With an <paramref name="apron"/> (a multiple of the radius, more
+    /// than 1) the land it stands on goes on out from its foot to that radius and down <paramref name="drop"/> metres below
+    /// it (to the water), so past the known ring, where no land is drawn, it stands on a swell of land, not on the sky.
     /// </summary>
-    public static Data Landmark(string type, string shape, float radius, float height, float sink)
+    public static Data Landmark(string type, string shape, float radius, float height, float sink, float apron = 0f, float drop = 0f)
     {
         if (shape == null || !Profiles.TryGetValue(shape, out var profile)) profile = Profiles[shape = "keep"];
         int sides = shape == "keep" ? 4 : 16;
@@ -205,7 +215,54 @@ public static class FarMeshes
                 d.Flat(a, f, b, c);
             }
         }
+        if (apron > 1f)
+        {
+            // From the foot's ring out and down: seen from outside, as the rows above.
+            float low = -Mathf.Max(sink, drop);
+            for (int s = 0; s < sides; s++)
+            {
+                Vector3 a = At(new Vector2(apron, 0f), s, false), b = At(new Vector2(apron, 0f), s + 1, false);
+                a.y = b.y = low;
+                Vector3 e = At(profile[0], s, true), f = At(profile[0], s + 1, true);
+                d.Flat(a, e, f, colour);
+                d.Flat(a, f, b, colour);
+            }
+        }
         return d;
+    }
+
+    /// <summary>
+    /// How a far landmark's stand-in is drawn past the known ring, from its world/horizon.json row's "far" (view only; the
+    /// core's HorizonTable doesn't read it): how much taller it stands where it's full far (1 where it gives way to the
+    /// land), how deep a notch its rim shows the eye (a fraction of its height), and its apron (a multiple of its radius).
+    /// </summary>
+    public readonly struct FarLook
+    {
+        public readonly float Stretch, Notch, Apron;
+
+        public FarLook(float stretch, float notch, float apron)
+        {
+            Stretch = stretch;
+            Notch = notch;
+            Apron = apron;
+        }
+
+        /// <summary>Drawn as its row says, nothing more.</summary>
+        public static readonly FarLook Plain = new(1f, 0f, 0f);
+    }
+
+    /// <summary>Each horizon.json type's FarLook; a type with no "far" isn't listed (it's Plain).</summary>
+    public static Dictionary<string, FarLook> FarLooks(string horizonJson)
+    {
+        var looks = new Dictionary<string, FarLook>();
+        if (!(JObject.Parse(horizonJson)["landmarks"] is JObject rows)) return looks;
+        foreach (var p in rows.Properties())
+        {
+            if (!(p.Value["far"] is JObject far)) continue;
+            float F(string key, float plain, float least, float most) => Mathf.Clamp((float?)far[key] ?? plain, least, most);
+            looks[p.Name] = new FarLook(F("stretch", 1f, 1f, 4f), F("notch", 0f, 0f, 0.5f), F("apron", 0f, 0f, 6f));
+        }
+        return looks;
     }
 
     /// <summary>

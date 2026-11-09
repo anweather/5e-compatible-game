@@ -6,12 +6,17 @@ Shader "Prototype/FarLand"
     // landmark (_OwnHaze 1) takes its own haze instead, the land's within sight and thinner past it (about 90% at its
     // seenFrom) so it shows through the fog, and fades into the sky's colour where it's seen (the skybox's gradient, Punchy's Sky.hlsl),
     // not the fog's, so it never stands out against a bluer sky; over the last _FadeMetres it goes wholly into the sky.
+    // Its horizon.json "far" look comes in past _FarStretchFrom (where it can no longer have given way to the land): it
+    // stands _Stretch times as tall and its rim dips _Notch of its height where it faces the eye, a crater's notch.
     Properties
     {
         _OwnHaze ("Own haze (a far landmark)", Float) = 0
         _SeenMetres ("Seen from (m)", Float) = 1344
         _HazeAtSeen ("Haze at seen from", Float) = 0.9
         _FadeMetres ("Fade into the sky over (m)", Float) = 144
+        _Stretch ("Far stretch (x its height)", Float) = 1
+        _Notch ("Rim notch (of its height)", Float) = 0
+        _Top ("Its height (m)", Float) = 1
     }
     SubShader
     {
@@ -35,6 +40,9 @@ Shader "Prototype/FarLand"
             float _SeenMetres;
             half _HazeAtSeen;
             float _FadeMetres;
+            float _Stretch;
+            float _Notch;
+            float _Top;
             CBUFFER_END
 
             // Set by FarRing each frame: the land's haze density now and in clear weather (per metre), where the generated
@@ -44,6 +52,8 @@ Shader "Prototype/FarLand"
             float _FarSightMetres;
             half3 _FarSkyZenith;
             half3 _FarSkyHorizon;
+            float _FarStretchFrom;
+            float _FarStretchTo;
 
             struct Attributes
             {
@@ -64,9 +74,25 @@ Shader "Prototype/FarLand"
             Varyings Vert(Attributes input)
             {
                 Varyings o;
-                o.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 p = input.positionOS.xyz;
+                float3 n = input.normalOS;
+                UNITY_BRANCH if (_OwnHaze > 0.5 && p.y > 0.0)
+                {
+                    // A far landmark's far look, none where it gives way to the land. Its mesh isn't turned, so object
+                    // x and z are the world's.
+                    float2 toEye = _WorldSpaceCameraPos.xz - GetObjectToWorldMatrix()._m03_m23;
+                    float d = length(toEye);
+                    float t = smoothstep(_FarStretchFrom, _FarStretchTo, d);
+                    float r = length(p.xz);
+                    float facing = r > 1e-3 ? dot(p.xz / r, toEye / max(1e-3, d)) : 0.0;
+                    float rim = saturate((p.y / max(1e-3, _Top) - 0.84) / 0.16);
+                    float stretch = lerp(1.0, _Stretch, t);
+                    p.y *= stretch * (1.0 - _Notch * t * facing * facing * rim);
+                    n = float3(n.x, n.y / stretch, n.z);
+                }
+                o.positionWS = TransformObjectToWorld(p);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
-                o.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                o.normalWS = TransformObjectToWorldNormal(normalize(n));
                 o.color = input.color;
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
                 return o;
@@ -76,14 +102,14 @@ Shader "Prototype/FarLand"
             // _SeenMetres in clear weather (the paper's), thickened as the land's is by rain and fog; within sight the
             // land's, blended to its own over the next two chunks (192 m), so where it gives way to the chunk terrains
             // it's at their haze; and all of it over the last _FadeMetres.
-            half LandmarkHaze(float d)
+            half LandmarkHaze(float d, out half fade)
             {
                 float land = d * _FarHazeDensity;
                 float root = sqrt(-log(max(1e-4, 1.0 - _HazeAtSeen)));
                 float own = d * root / max(1.0, _SeenMetres) * max(1.0, _FarHazeDensity / max(1e-6, _FarHazeClear));
                 float x = lerp(land, own, smoothstep(_FarSightMetres, _FarSightMetres + 192.0, d));
                 half haze = 1.0 - exp(-x * x);
-                half fade = saturate((d - (_SeenMetres - _FadeMetres)) / max(1.0, _FadeMetres));
+                fade = saturate((d - (_SeenMetres - _FadeMetres)) / max(1.0, _FadeMetres));
                 return lerp(haze, 1.0, fade);
             }
 
@@ -102,7 +128,12 @@ Shader "Prototype/FarLand"
                     float d = length(toPixel);
                     half h = toPixel.y / max(1e-3, d);
                     half3 sky = lerp(_FarSkyHorizon, _FarSkyZenith, pow(saturate(h), 0.45));
-                    return half4(lerp(color, sky, LandmarkHaze(d)), 1);
+                    half fade;
+                    half haze = LandmarkHaze(d, fade);
+                    // The air in front of a far mountain is bluer than the sky at the horizon behind it (the sky's blue
+                    // scattered in), so it greys blue, not to the horizon's pale; wholly the sky again as it fades out.
+                    half3 air = lerp(sky, _FarSkyZenith, 0.5 * haze * (1.0 - fade));
+                    return half4(lerp(color, air, haze), 1);
                 }
                 return half4(MixFog(color, input.fogFactor), 1);
             }
