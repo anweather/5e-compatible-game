@@ -354,10 +354,10 @@ namespace Chem.Tests
         }
 
         // Goldens: a change that alters a plan is made on purpose (a new WorldPlan.Version), or the goldens are re-picked.
-        [TestCase("valley-1", 3, PlanWrap.None, 0x152204a9u)]
-        [TestCase("seed-7", 3, PlanWrap.None, 0x8f986941u)]
-        [TestCase("seed-2", 12, PlanWrap.EastWest, 0x7925e04du)]
-        [TestCase("seed-3", 12, PlanWrap.Torus, 0xca82e839u)]
+        [TestCase("valley-1", 3, PlanWrap.None, 0xac2a0d7fu)]
+        [TestCase("seed-7", 3, PlanWrap.None, 0x1c7937efu)]
+        [TestCase("seed-2", 12, PlanWrap.EastWest, 0x65f27f02u)]
+        [TestCase("seed-3", 12, PlanWrap.Torus, 0x04de4db6u)]
         public void ItsHashIsGolden(string seed, int size, PlanWrap wrap, uint expected)
         {
             var p = WorldPlan.Solve(PlanInputs.For(seed, size, wrap, Valley), Lib);
