@@ -17,7 +17,8 @@ using UnityEngine;
 // a real flight from one spot over the valley (give -perf-seconds for the length you
 // want), dragonclear the same spot without it, and dragonlow one from a wizard's height
 // in the valley's middle, for the wall going through the camera. forestload is a player's
-// fire with the player still playing (PerfStage.ForestLoad.cs).
+// fire with the player still playing (PerfStage.ForestLoad.cs). fireball is one Fireball into the
+// map's thickest forest, cast as measuring starts: the frames of the cast and of the fire and smoke after it (#178).
 public partial class PerfStage : ShowcaseScript
 {
     // Hollowmere's place and square in cells (world/villages.json).
@@ -28,6 +29,7 @@ public partial class PerfStage : ShowcaseScript
     static readonly (int cx, int cy)[] ForestRoute = { (6, 7), (6, 6), (5, 6), (5, 5), (4, 5), (4, 4), (5, 4), (6, 4), (6, 5), (7, 5), (7, 6), (6, 6) };
     const int ChunkCells = 64, WallCells = 40, WallDeep = 6, DragonWarning = 30;
     const float StuckSeconds = 6f, JumpEverySeconds = 1f, ArriveMetres = 3f;
+    const int FireballBlast = 3, FireballReach = 8;
     const float AimSecondsEach = 5f, AimStepSeconds = 0.1f, AimRingMetres = 14f, RelightSeconds = 0.5f;
 
     /// <summary>The scenario's name. Set before Start.</summary>
@@ -47,6 +49,11 @@ public partial class PerfStage : ShowcaseScript
         else if (Scenario == "showerstorm") yield return ShowerStorm();
         else if (Scenario == "forest") LogMap();
         else if (Scenario is "dragon" or "dragonclear" or "dragonlow") DragonShot();
+        else if (Scenario == "fireball")
+        {
+            StartCoroutine(Fireball());
+            yield break; // Ready once the chunks round the forest are drawn
+        }
         else Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
         if (Scenario == "forestload") ForestLoadStage();
@@ -54,6 +61,43 @@ public partial class PerfStage : ShowcaseScript
         if (Scenario == "flamewall") StartCoroutine(FlameWall());
         if (Scenario == "pso") yield return new PerfPsoCheck(this).Run();
         Ready = true;
+    }
+
+    // A Fireball into the map's thickest forest (the chunk forestload burns), at its cell with the most trees round it:
+    // the wizard a cast's reach south of it, the camera on it, and the chunks round it drawn before the run starts.
+    IEnumerator Fireball()
+    {
+        var thickest = World.ChunkCoords.OrderByDescending(TreesIn).ThenBy(c => c.cy).ThenBy(c => c.cx).First();
+        var best = new Vector2Int(thickest.cx * ChunkCells + ChunkCells / 2, thickest.cy * ChunkCells + ChunkCells / 2);
+        int most = -1;
+        for (int y = thickest.cy * ChunkCells + FireballReach; y < (thickest.cy + 1) * ChunkCells - FireballReach; y++)
+            for (int x = thickest.cx * ChunkCells + FireballReach; x < (thickest.cx + 1) * ChunkCells - FireballReach; x++)
+            {
+                int trees = TreesRound(x, y);
+                if (trees <= most) continue;
+                most = trees;
+                best = new Vector2Int(x, y);
+            }
+        PlaceCell(best.x, best.y + FireballReach);
+        var at = grid.CellCenter(best.x, best.y);
+        at.y = grid.GroundAt(at);
+        Cut(at + V(0f, 12f, -22f), at + V(0f, 2f, 0f));
+        Debug.Log($"PERF FIREBALL chunk={thickest.cx},{thickest.cy} cell={best.x},{best.y} trees={most}");
+        yield return null;
+        while (grid.ChunksLeftToDraw > 0) yield return null;
+        Ready = true;
+        while (!Go) yield return null;
+        puppet.Face(at);
+        caster.Cast(SpellIds.Fireball, best.x, best.y, 0);
+    }
+
+    int TreesRound(int x, int y)
+    {
+        int trees = 0;
+        for (int dy = -FireballBlast; dy <= FireballBlast; dy++)
+            for (int dx = -FireballBlast; dx <= FireballBlast; dx++)
+                if (World.InBounds(x + dx, y + dy) && World.At(x + dx, y + dy)?.T == TerrainIds.Tree) trees++;
+        return trees;
     }
 
     // One view from above the valley's middle, for the dragon's flight (from R, at its real speed, with a short warning) and for
