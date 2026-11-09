@@ -56,8 +56,8 @@ public sealed class Waystones : MonoBehaviour
         light.transform.localPosition = new Vector3(0f, Height + 0.3f, 0f);
         light.type = LightType.Point;
         light.color = new Color(0.55f, 0.8f, 1f);
-        light.range = 7f;
-        light.intensity = 2.5f;
+        light.range = 5f;
+        light.intensity = 1.2f;
         light.shadows = LightShadows.None;
         return root;
     }
