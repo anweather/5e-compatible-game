@@ -3,7 +3,8 @@ using UnityEditor;
 using UnityEngine;
 
 // Dresses the coast ValleyCoast shapes (docs/WORLD_LIFE.md): the sea (Ocean,
-// out to the horizon), palms and glowbulbs (GeneratedProp, on the squares
+// out to the horizon, a root of its own that every map keeps: its water is the
+// map's, from its land), palms and glowbulbs (GeneratedProp, on the squares
 // ValleyCoast.Plants marks), sets of loungers, umbrellas and towels on the
 // beach by the path's end and round the island, driftwood and starfish along
 // the water's edge, and a dock off the island toward the mainland. The island's
@@ -16,10 +17,10 @@ public static class CoastBuilder
     static Vector2 Seaward => ValleyCoast.Seaward;
     static Vector2 Along => Vector2.Perpendicular(Seaward);
 
-    public static void Build(Material vertexLit, ShoreMap shoreMap)
+    public static void Build(Material vertexLit)
     {
+        BuildSea();
         var root = new GameObject("Coast").transform;
-        BuildSea(root, shoreMap);
         var rng = new System.Random(77);
         var plants = new GameObject("Plants").transform;
         plants.SetParent(root, false);
@@ -47,22 +48,17 @@ public static class CoastBuilder
 
     // --- the sea ----------------------------------------------------------------------
 
-    static void BuildSea(Transform root, ShoreMap shoreMap)
+    // The sea's level, its way out and its shore map are the map's (MapLand), set as the sea builds itself; the shore map
+    // the yard build once baked (Generated/ShoreMap.asset) goes.
+    static void BuildSea()
     {
+        AssetDatabase.DeleteAsset($"{Generated}/ShoreMap.asset");
         var material = EditorAssets.LoadOrCreate($"{Generated}/Ocean.mat", () => new Material(Shader.Find("Prototype/Ocean")));
-        material.SetVector("_ShoreDir", new Vector4(-Seaward.x, -Seaward.y, 0f, 0f));
-        material.SetTexture("_ShoreMap", shoreMap.texture);
-        material.SetVector("_ShoreMapRect", shoreMap.Rect);
+        material.SetTexture("_ShoreMap", null);
         material.SetFloat("_Swell", 0.6f);
         EditorUtility.SetDirty(material);
-        var sea = new GameObject("Sea");
-        sea.transform.SetParent(root, false);
-        var ocean = sea.AddComponent<Ocean>();
+        var ocean = new GameObject("Sea").AddComponent<Ocean>();
         ocean.material = material;
-        ocean.shoreMap = shoreMap;
-        ocean.level = ValleyCoast.SeaLevel;
-        ocean.shoreOrigin = ValleyCoast.ShoreOrigin;
-        ocean.seaward = Seaward;
         ocean.inland = 60f;
         ocean.Build();
     }

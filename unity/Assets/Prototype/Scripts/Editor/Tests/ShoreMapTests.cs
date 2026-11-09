@@ -1,14 +1,11 @@
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 
-// The shore map (ShoreMap): the baker's distance and smoothing on made-up land,
-// then the baked map of the real coast: off the island the way to land is the
+// The shore map (ShoreMap): the field's distance and smoothing on made-up land
+// (ShoreField), then the map of the valley's coast worked out from its land (MapLand): off the island the way to land is the
 // way to the island, off the mainland the way to the mainland.
 public class ShoreMapTests
 {
-    const string Baked = "Assets/Prototype/Generated/ShoreMap.asset";
-
     static bool[] Land(int n, System.Func<int, int, bool> isLand)
     {
         var land = new bool[n * n];
@@ -22,7 +19,7 @@ public class ShoreMapTests
     {
         const int N = 32;
         // Land on the western half: the shore is the line between x = 15 and x = 16.
-        var d = ShoreMapBaker.SignedDistance(Land(N, (x, _) => x < 16), N, 2f);
+        var d = ShoreField.SignedDistance(Land(N, (x, _) => x < 16), N, 2f);
         Assert.AreEqual(1f, d[8 * N + 16], 1e-4f);
         Assert.AreEqual(-1f, d[8 * N + 15], 1e-4f);
         Assert.AreEqual(21f, d[8 * N + 26], 1e-4f);
@@ -33,7 +30,7 @@ public class ShoreMapTests
     public void TheDistanceGoesAroundCornersLikeARuler()
     {
         const int N = 32;
-        var d = ShoreMapBaker.SignedDistance(Land(N, (x, z) => x == 4 && z == 4), N, 1f);
+        var d = ShoreField.SignedDistance(Land(N, (x, z) => x == 4 && z == 4), N, 1f);
         Assert.AreEqual(Mathf.Sqrt(9f * 9f + 12f * 12f) - 0.5f, d[16 * N + 13], 1e-3f);
     }
 
@@ -61,13 +58,13 @@ public class ShoreMapTests
     }
 
     static Color[] Map(bool[] land, int n) =>
-        ShoreMapBaker.Pixels(ShoreMapBaker.Blur(ShoreMapBaker.SignedDistance(land, n, ShoreMapBaker.TexelMetres), n, ShoreMapBaker.BlurTexels), n, ShoreMapBaker.TexelMetres);
+        ShoreField.Pixels(ShoreField.Blur(ShoreField.SignedDistance(land, n, ShoreField.TexelMetres), n, ShoreField.BlurTexels), n, ShoreField.TexelMetres);
 
     static ShoreMap BakedMap()
     {
-        var map = AssetDatabase.LoadAssetAtPath<ShoreMap>(Baked);
-        Assert.IsNotNull(map, "build the yard first: Prototype > Build Chemistry Yard");
-        return map;
+        var land = MapLand.Current;
+        Assert.IsNotNull(land, "the map's folder reads");
+        return land.ShoreMap;
     }
 
     [Test]
@@ -109,23 +106,20 @@ public class ShoreMapTests
         }
     }
 
-    // A yard built before the map has neither push nor waves: this says rebuild it.
+    // Every map keeps its sea: the Ocean isn't in a place a map can leave out (PlaceRoot), and it takes its shore map from
+    // the map as it builds. A yard built before the sea moved out of the coast says rebuild it.
     [Test]
-    public void TheYardsSeaAndCurrentsUseTheMap()
+    public void TheYardsSeaIsTheMapsOwn()
     {
-        var map = BakedMap();
         WizardPartsTests.WithYard(scene =>
         {
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                foreach (var currents in root.GetComponentsInChildren<WaterCurrents>(true))
-                    Assert.AreEqual(map, currents.shoreMap, "WaterCurrents: rebuild the yard");
-                foreach (var ocean in root.GetComponentsInChildren<Ocean>(true))
-                {
-                    Assert.AreEqual(map, ocean.shoreMap, "Ocean: rebuild the yard");
-                    Assert.AreEqual(map.texture, ocean.material.GetTexture("_ShoreMap"), "the sea's material: rebuild the yard");
-                }
-            }
+            var oceans = new System.Collections.Generic.List<Ocean>();
+            foreach (var root in scene.GetRootGameObjects()) oceans.AddRange(root.GetComponentsInChildren<Ocean>(true));
+            Assert.AreEqual(1, oceans.Count, "one sea");
+            Assert.IsNull(oceans[0].GetComponentInParent<PlaceRoot>(true), "the sea isn't the coast's to leave out: rebuild the yard");
+            oceans[0].Build();
+            Assert.AreEqual(MapLand.Current.ShoreMap, oceans[0].shoreMap, "the map's shore map");
+            Assert.AreEqual(MapLand.Current.WaterLevel, oceans[0].level, "at the map's level");
         });
     }
 

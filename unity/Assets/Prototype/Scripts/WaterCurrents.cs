@@ -5,7 +5,8 @@ using UnityEngine;
 // the nearest beach, the mainland's or the island's, as each breaker comes in
 // (in time with the Ocean shader's swell) and drifts gently shoreward further
 // out, both along the shore map (ShoreMap). The still lake has none. ValleyBuilder
-// bakes the river's line and the coast in. Anyone in the water can ask At(p):
+// bakes the river's line in; the sea (its cells, level, way out and shore map) is
+// the map's own, from its land (MapLand), so a second map's sea runs too. Anyone in the water can ask At(p):
 // CurrentRider pushes the local wizard with it, PhysicsProp drifts floating
 // things on it. Physics only, never the chemistry (D4): each machine pushes
 // its own wizard, and the host its props.
@@ -20,7 +21,7 @@ public class WaterCurrents : MonoBehaviour
     [Tooltip("How fast the river runs mid-channel (m/s).")]
     public float riverSpeed = 1.6f;
 
-    [Header("Sea (match the Ocean material)")]
+    [Header("Sea: from the map's land when the scene starts (MapLand)")]
     [Tooltip("The way to the nearest land over the sea, and how far off it is.")]
     public ShoreMap shoreMap;
     [Tooltip("A line across the coast, for telling the sea from the lake (IsSea).")]
@@ -31,7 +32,29 @@ public class WaterCurrents : MonoBehaviour
     [Tooltip("How hard a breaker shoves up the beach (m/s at its peak), and the steady drift ashore further out.")]
     public float surge = 2.2f, drift = 0.25f;
 
-    void OnEnable() => Instance = this;
+    MapLand seaOf;
+
+    void OnEnable()
+    {
+        Instance = this;
+        FromMap();
+    }
+
+    // The map's sea: its shore map, the way out, the level.
+    void FromMap()
+    {
+        seaOf = MapLand.Current;
+        if (seaOf == null) return;
+        shoreMap = seaOf.ShoreMap;
+        shoreOrigin = seaOf.Shore;
+        seaward = seaOf.Seaward;
+        seaLevel = seaOf.WaterLevel;
+    }
+
+    void Update()
+    {
+        if (MapLand.Current != seaOf) FromMap();
+    }
 
     void OnDisable()
     {
@@ -71,8 +94,8 @@ public class WaterCurrents : MonoBehaviour
         return new Vector3(along.x, 0f, along.y) * speed;
     }
 
-    /// <summary>Whether a point is out at sea (seaward of a line well inland of the shore), not the lake.</summary>
-    public bool IsSea(Vector3 p) => Vector2.Dot(new Vector2(p.x, p.z) - shoreOrigin, seaward.normalized) > -60f;
+    /// <summary>Whether a point is out at sea (the map's low land joined to its edge, SeaMask), not a lake.</summary>
+    public bool IsSea(Vector3 p) => seaOf != null ? seaOf.IsSea(new Vector2(p.x, p.z)) : Vector2.Dot(new Vector2(p.x, p.z) - shoreOrigin, seaward.normalized) > -60f;
 
     // Toward the nearest land: in pulses as each breaker comes in over the shallows, a steady drift
     // further out. Dying away where two shores are about as near, as the map's way to land does.

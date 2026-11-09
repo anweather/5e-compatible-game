@@ -1,14 +1,10 @@
-using System;
-using UnityEditor;
 using UnityEngine;
 
-// Bakes the shore map (ShoreMap) for ValleyBuilder: which texels are land, a
-// distance transform of those (Felzenszwalb and Huttenlocher's, in time linear
-// in the texels) from each side of the shore into one signed distance, a blur
-// so that it has no crease where two shores are about as near, and the way
-// down that distance for the way to land. Near that crease the way to land
-// shrinks toward nothing rather than flipping over.
-public static class ShoreMapBaker
+// The shore map's field (ShoreMap): which texels are land, a distance transform of those (Felzenszwalb and
+// Huttenlocher's, in time linear in the texels) from each side of the shore into one signed distance, a blur so that it
+// has no crease where two shores are about as near, and the way down that distance for the way to land. Near that crease
+// the way to land shrinks toward nothing rather than flipping over. Worked out at run time from the map's land (MapLand).
+public static class ShoreField
 {
     /// <summary>Texels along a side, and a texel's side (m): 4 cells, out over 1.3 km past the world on the sea's side.</summary>
     public const int Texels = 512;
@@ -16,38 +12,6 @@ public static class ShoreMapBaker
 
     /// <summary>The blur's width in texels (a standard deviation).</summary>
     public const float BlurTexels = 3f;
-
-    // The map's middle: the valley's south-east corner, out where the sea is.
-    static readonly Vector2 Middle = new(444f, -366f);
-
-    /// <summary>Bakes the map of this land into the asset at the path (made if missing), keeping its id.</summary>
-    public static ShoreMap Bake(string path, Func<Vector2, bool> isLand)
-    {
-        float side = Texels * TexelMetres;
-        var origin = Middle - Vector2.one * (side / 2f);
-        var land = new bool[Texels * Texels];
-        for (int z = 0; z < Texels; z++)
-            for (int x = 0; x < Texels; x++)
-                land[z * Texels + x] = isLand(origin + new Vector2(x + 0.5f, z + 0.5f) * TexelMetres);
-        var distance = Blur(SignedDistance(land, Texels, TexelMetres), Texels, BlurTexels);
-        var pixels = Pixels(distance, Texels, TexelMetres);
-
-        var map = EditorAssets.LoadOrCreate(path, ScriptableObject.CreateInstance<ShoreMap>);
-        if (map.texture == null)
-        {
-            map.texture = new Texture2D(Texels, Texels, TextureFormat.RGBAHalf, false, true) { name = "Shore map" };
-            AssetDatabase.AddObjectToAsset(map.texture, map);
-        }
-        map.texture.wrapMode = TextureWrapMode.Clamp;
-        map.texture.filterMode = FilterMode.Bilinear;
-        map.texture.SetPixels(pixels);
-        map.texture.Apply(false, false); // stays readable: ShoreMap.At reads it
-        map.origin = origin;
-        map.size = side;
-        EditorUtility.SetDirty(map.texture);
-        EditorUtility.SetDirty(map);
-        return map;
-    }
 
     /// <summary>The distance from each texel to the shore (m): positive off the land, negative on it.</summary>
     public static float[] SignedDistance(bool[] land, int n, float texel)

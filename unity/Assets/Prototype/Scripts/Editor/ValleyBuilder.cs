@@ -82,9 +82,7 @@ public static class ValleyBuilder
         BuildSky();
         var cabins = BuildCabins();
         var houses = BuildVillages();
-        // The way to the nearest land over the sea, for the surf's push and the waves (ShoreMap).
-        var shoreMap = ShoreMapBaker.Bake($"{Generated}/ShoreMap.asset", ValleyCoast.IsLand);
-        CoastBuilder.Build(VillageMaterial(), shoreMap);
+        CoastBuilder.Build(VillageMaterial());
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
@@ -102,15 +100,11 @@ public static class ValleyBuilder
         valley.lakeLevel = LakeLevel;
         grid.valley = valley;
 
-        // The river's current along its course and the surf's on the coast (WaterCurrents).
+        // The river's current along its course and the surf's on the coast (WaterCurrents; the sea is the map's).
         var currents = grid.gameObject.AddComponent<WaterCurrents>();
         currents.grid = grid;
         currents.river = ValleyShape.RiverLine;
         currents.riverHalfWidth = ValleyShape.RiverHalfWidth;
-        currents.shoreMap = shoreMap;
-        currents.shoreOrigin = ValleyCoast.ShoreOrigin;
-        currents.seaward = ValleyCoast.Seaward;
-        currents.seaLevel = ValleyCoast.SeaLevel;
     }
 
     // --- terrain -------------------------------------------------------------
