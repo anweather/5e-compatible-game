@@ -1,17 +1,31 @@
 {
-  "about": "The 12 x 10 world (docs/design/world-12x8-scope.md, J-083, J-084): 12 world squares east-west, 8 rows of land with an ice row north and a desert row south (the plan's wall rows), 6912 x 5760 cells, 108 x 90 chunks, and east joins west (\"wrap\": \"ew\"). A world file like the nine's (\"generated\": the seed, the size in world squares, wall rows included, the generator's version, the squares pinned to a map folder); a world that wraps is its whole plan, so the valley is pinned at the plan's own valley square, [0, 5]. Too big to bake whole (about 9-10 GB of cells): \"bake\": false, so it's planned and known only (GeneratedMap.EnsureBaked refuses it) until the sparse World. Spawn is the valley's moved; expects are read from the known ring over every chunk (9 x 9 samples a chunk), not a bake.",
+  "about": "The 12 x 10 world (docs/design/world-12x8-scope.md, J-083, J-084): 12 world squares east-west, 8 rows of land with an ice row north and a desert row south (the plan's wall rows), 6912 x 5760 cells, 108 x 90 chunks, and east joins west (\"wrap\": \"ew\"). A world file like the nine's (\"generated\": the seed, the size in world squares, wall rows included, the generator's version, the squares pinned to a map folder); a world that wraps is its whole plan, so the valley is pinned at the plan's own valley square, [0, 5]. Too big to bake whole (about 9-10 GB of cells): \"bake\": false, so it's planned and known only (GeneratedMap.EnsureBaked refuses it) until the sparse World. \"sketch\" is the world sketch the land's biome follows (J-085; the paper's default 12 x 10, docs/design/world-squares.md \"Draw first\"): its shapes, in world squares from the north-west corner, say what the land is where they're drawn and ask their world squares' bands; the templates only weigh toward it. Spawn is the valley's moved; expects are read from the known ring over every chunk (9 x 9 samples a chunk), not a bake.",
   "id": "world-12x10",
   "name": "The Wide World",
   "size": [6912, 5760],
   "seaLevel": -4,
   "spawn": [292, 3208],
-  "expects": { "landShare": 89, "highest": 9886, "lowest": -320 },
+  "expects": { "landShare": 97, "highest": 9515, "lowest": -320 },
   "generated": {
     "seed": "valley-1",
     "squares": [12, 10],
     "wrap": "ew",
     "bake": false,
-    "generator": 6,
-    "pinned": [ { "map": "valley", "square": [0, 5] } ]
+    "generator": 7,
+    "pinned": [ { "map": "valley", "square": [0, 5] } ],
+    "sketch": {
+      "worldSketch": 1, "name": "Default 12 x 10", "world": { "w": 12, "h": 10, "wrap": "ew" }, "soft": 96,
+      "shapes": [
+        { "biome": "grassland", "pts": [[-0.5,5.9],[2,5.6],[4,6],[6,5.7],[8,6.1],[10,5.8],[12.5,5.9],[12.5,8.2],[10,8],[8,8.3],[6,8],[4,8.3],[2,8],[-0.5,8.2]] },
+        { "biome": "temperate", "pts": [[-0.5,3.4],[3,3.1],[6,3.5],[9,3.2],[12.5,3.4],[12.5,5.9],[9,6.1],[6,5.8],[3,6.1],[-0.5,5.9]] },
+        { "biome": "tundra", "pts": [[-0.5,1],[12.5,1],[12.5,2.3],[10,2.6],[8,2.2],[6,2.5],[4,2.1],[2,2.5],[-0.5,2.3]] },
+        { "biome": "mountains", "pts": [[2.5,3],[4,2.4],[6,2.2],[8,2.4],[9.6,2.9],[8,3.5],[6,3.7],[4,3.5]] },
+        { "biome": "salt-flat", "pts": [[-0.5,7.7],[3,7.9],[6,7.5],[9,7.8],[12.5,7.7],[12.5,9.3],[-0.5,9.3]] },
+        { "biome": "ocean", "pts": [[7.17,5.4],[7.03,5.58],[6.86,5.7],[6.7,5.79],[6.5,5.79],[6.28,5.84],[6.02,5.79],[6,5.57],[6.07,5.4],[6.01,5.24],[6.09,5.06],[6.27,4.95],[6.5,4.89],[6.7,5.01],[6.8,5.16],[7.01,5.23]] },
+        { "biome": "ocean", "pts": [[2.58,5.3],[2.52,5.4],[2.42,5.48],[2.36,5.6],[2.2,5.67],[2.06,5.57],[1.98,5.48],[1.87,5.41],[1.82,5.3],[1.82,5.18],[1.88,5.05],[2.07,5.04],[2.2,5.07],[2.35,5.02],[2.51,5.05],[2.57,5.18]] },
+        { "biome": "foggy-marsh", "pts": [[8.19,5.8],[8.15,5.98],[7.91,6.07],[7.71,6.14],[7.5,6.16],[7.29,6.14],[7,6.13],[6.85,5.98],[6.99,5.8],[7.04,5.67],[7.06,5.51],[7.25,5.4],[7.5,5.36],[7.75,5.4],[7.85,5.57],[7.96,5.67]] },
+        { "biome": "ashlands", "pts": [[11.2,4.2],[11.14,4.39],[10.96,4.5],[10.81,4.62],[10.6,4.8],[10.33,4.74],[10.24,4.5],[10.12,4.37],[10,4.2],[10.03,4],[10.12,3.8],[10.35,3.69],[10.6,3.8],[10.79,3.81],[11.09,3.8],[11.23,3.98]] }
+      ]
+    }
   }
 }

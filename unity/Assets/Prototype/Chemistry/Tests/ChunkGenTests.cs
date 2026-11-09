@@ -64,8 +64,8 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0x7c681170u;
-        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0x1e6a5e3du), (9, 20, 0xe5e01521u), (4, 4, 0x57b7117cu), (26, 0, 0x6a99a7f2u) };
+        const uint NineGolden = 0xc1dc3e94u;
+        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xf3fe1169u), (9, 20, 0x04dcf363u), (4, 4, 0x8ba5599du), (26, 0, 0xf8076225u) };
 
         [Test]
         public void TheNinesWorldFileSaysItsShape()
@@ -602,6 +602,14 @@ namespace Chem.Tests
                 PictureOf(report);
                 Assert.That(MapCheck.Errors(dir), Is.Empty);
                 var map = MapFile.Load(dir);
+                // This folder is away from the map's own, as a build's bake is (the player's data), and the pinned map
+                // can't be found from there: the bake says the full detail the pinned map gave it (#183: the nine's ground
+                // was the valley's 257 samples a chunk on a layout of 65, and a build's world was never made).
+                var own = MapFile.Load(Nine.MapDir);
+                Assert.That(own.FullDetail, Is.EqualTo((3, 2, 5, 4)), "the valley's full detail, where its square is (terrain rows count from the south)");
+                Assert.That(map.FullDetail, Is.EqualTo(own.FullDetail), "a bake away from the map's folder draws the chunks its map does");
+                foreach (var (i, j) in new[] { (0, 0), (3, 2), (4, 3), (5, 4), (6, 4) })
+                    Assert.That(map.Layout().Resolution(i, j), Is.EqualTo(own.Layout().Resolution(i, j)), $"chunk ({i}, {j})'s samples");
                 var rows = MapFile.ReadCells(dir).Split('\n');
                 Assert.That(rows.Length, Is.EqualTo(map.H));
                 Assert.That(rows[map.Spawn.y][map.Spawn.x], Is.EqualTo('@'), "the valley's spawn, moved with it");
@@ -617,6 +625,17 @@ namespace Chem.Tests
                 // The rows the valley's buildings stand on are where the valley is now.
                 var hold = WorldBuildings.Load(dir);
                 Assert.That(hold, Is.Not.Null);
+                // A build's bake is kept while it's of these inputs and this format; an older one (it has no "format",
+                // and its map.json none of the pinned map's full detail) is made again.
+                Assert.That(GeneratedMap.EnsureBakedInto(NineDir, dir), Is.False, "a bake of these inputs in this format is kept");
+                File.Copy(Path.Combine(NineDir, MapFile.FileName), Path.Combine(dir, MapFile.FileName), true);
+                var note = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, GeneratedMap.BakeName)));
+                note.Remove("format");
+                File.WriteAllText(Path.Combine(dir, GeneratedMap.BakeName), note.ToString());
+                Assert.That(MapFile.Load(dir).FullDetail, Is.EqualTo((0, 0, -1, -1)), "the old bake, as a build before #183's fix left it");
+                Assert.That(GeneratedMap.EnsureBakedInto(NineDir, dir), Is.True, "a bake of an older format is made again");
+                Assert.That(MapFile.Load(dir).FullDetail, Is.EqualTo(own.FullDetail));
+                Assert.That(MapCheck.Errors(dir), Is.Empty);
             }
             finally
             {

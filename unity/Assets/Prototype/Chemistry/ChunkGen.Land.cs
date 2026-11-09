@@ -1,6 +1,6 @@
 // A cell's land in a generated chunk, from its position alone (docs/design/world-squares.md section 5, level 2): the
-// bands of the world squares round it blended over 300 cells, its biomes' base (BiomeField's shape weights, anchored by
-// the plan's templates), high ground shaped as a massif (ranges along the world's grain, saddles, shoulders) and the
+// bands of the world squares round it blended over 300 cells, its biomes' base (BiomeField's shape weights, from the
+// world's field: the sketch, else latitude and the bands, WorldBiomes), high ground shaped as a massif (ranges along the world's grain, saddles, shoulders) and the
 // biomes' relief, the coast (the plan's shore depths, wobbled along each side and the same where two squares meet),
 // river channels carved by distance to the plan's rivers (ChunkGen.Rivers.cs: a wandering curve from a slot on a side
 // to the square's hub, the land either side leaning down to the water over 110 m), lakes at a hub where a river ends,
@@ -109,6 +109,9 @@ namespace Chem
 
         int FieldY(int py) => Plan.Grid.H * Square - 1 - py;
 
+        /// <summary>The biome most of a map cell is (a biomes.json id), from the field alone: no water, roads or landmarks.</summary>
+        public string BiomeAt(int x, int y) => table.Rows[Field.At(x + OriginX * Square, FieldY(y + OriginY * Square)).Dominant].Id;
+
         struct LandPoint
         {
             public int Land;
@@ -144,7 +147,9 @@ namespace Chem
                 }
             }
             g = MeetPinned(x, y, g, ref wet);
-            bool clear = !road && (wet == 0 || wet == WetShore) && Clearing(x, y, ref g);
+            // A spawn's clearing levels a road through it too (a lay-by: its cells stay road), so a spawn beside a road
+            // that climbs still starts on flat ground.
+            bool clear = (wet == 0 || wet == WetShore) && Clearing(x, y, ref g);
             return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road, Clear = clear };
         }
 

@@ -111,15 +111,21 @@ touch them.
   at most one band. *Not* the dragon's band of fire.
 
 **Square template**
-: A curated kind of world square (`world/squares/<id>.json`): its bands, anchor biome, landmark intents and where they
-  may go, what each side offers (a road, river, range or canyon at one of 9 slots, a must or a may) and whether it may
+: A curated kind of world square (`world/squares/<id>.json`): its bands, anchor biome (since J-085 a preference the plan
+  weighs it by, not what its land is: see **world biome field**), landmark intents and where they may go, what each side offers (a road, river, range or canyon at one of 9 slots, a must or a may) and whether it may
   face the sea, how a feature may end in it, and whether it turns. A **filler** is a band's template that fits anything.
 
-**World sketch** *(paper only so far)*
+**World sketch**
 : The suggestion a world plan is fitted to: biome shapes drawn freely over the world (a lake as a blob, a range as a
-  long triangle), blended at their edges, saved as a small JSON. Each world square reads what the sketch puts under it
-  and gets the band and square template that fit it best, within the plan's rules; where a rule wins, the plan says
-  which. "Biome" keeps its meaning from `world/biomes.json` (`docs/design/world-squares.md`, "Draw first").
+  long triangle), blended at their edges, saved as a small JSON (a world file's `generated.sketch`, `Chem.WorldSketch`).
+  Where it's drawn it is what the land's biome is, and each world square drawn a quarter or more asks the band its
+  biomes stand on; the square templates are then weighed toward it. "Biome" keeps its meaning from `world/biomes.json`
+  (`docs/design/world-squares.md`, "Draw first").
+
+**World biome field**
+: What the land's biome comes from (J-085, `Chem.WorldBiomes`): the world sketch where one is drawn, else a climate
+  read from latitude and the plan's bands, running on smoothly across world squares and the east-west seam. The plan
+  and the chunks read the same field; the only anchor left is the pinned valley's own biome.
 
 **Landmark intent**
 : What a world square asks for, never where it goes (`world/landmarks/<id>.json`, `Chem.LandmarkIntent`): "a village
