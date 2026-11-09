@@ -341,7 +341,7 @@ public static class ProbeScenarios
             "The Hold's progress on screen (the-hold.md, phase 5), F7 playing from the save: a locked hand and gesture saying so, attuning only to what's unlocked, " +
             "the offer in words after wave 1, the d-pad picking Tough and the health it adds, the run's end and points earned, the save on disk, and a reset keeping them."),
         new Entry("roomprogress", typeof(RoomProgressProbe), 600f,
-            "Two peers with different points in one Hold run (the-hold.md, phase 5): the host from its save (F7), a virtual player with everything; both peers' hands as the core has them, " +
+            "Two peers with different points in one Hold run (the-hold.md, phase 5): the host with 8 points (short of the second hand, as a save holding them would be; nothing saved), a virtual player with everything; both peers' hands as the core has them, " +
             "wave 1 beaten by Fireballs, the host's pick and the joiner's picked for it, and every checksum alike.", players: 2),
         new Entry("moments", typeof(MomentsProbe), 200f,
             "Every Hold moment by name (rules/hold.json) through HoldMoments, or just MOMENT if the environment names one: the wave, the hands, the keep's health, the wizard at the castle, and raiders coming."),

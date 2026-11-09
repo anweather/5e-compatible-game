@@ -71,7 +71,9 @@ Waiting:
    EditMode 1855/1855; 144 known chunks cost 35-48 ms on a worker). View half `far-ring-view` landed 1eec423c
    (EditMode 1859/1859; the nine 35.3 ms mean, faster than dev's 39.2, since the camera now culls cell dressing past
    500 m; clip `far-ring-nine.mp4`, sent). The nine's seed has no volcano or spire: **u2's `nine-volcano`** (queued)
-   makes the plan place one and retunes the great tree's look. Left for the PC after it: a hard sea horizon line,
+   makes the plan place one and retunes the great tree's look: **done at ea43e514, waiting for the PC** to compile
+   it, land it and re-shoot `tools/probe.sh farringclip` (after #170). "Old Grumbler" in the middle square, the nine's
+   `map.json` gets `musts`, generator 5, nine golden 0x4aec0b00, valley byte-identical. Left for the PC after it: a hard sea horizon line,
    tundra plateaus as flat white wedges; and 10 map-reading EditMode tests (DragonView, FolkJobs, GroundBuilder,
    GroundLand, RowMesher, ShoreMap) fail when `unity/Temp/map` says nine, so they depend on the Editor's map file.
    Seen on the way: smoke on the nine runs at 37.9 ms mean / 64 ms p95 and fails cast_fire-bolt, fire_started and

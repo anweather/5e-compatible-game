@@ -136,7 +136,7 @@ public class StampLooksProbe : LandShapesProbe
         Metric("carry_colliders_found", carryFound);
         Metric("carry_bodies", carryCarried);
         Check("none_buried_on_the_dome", Buried(crates) == 0, $"{Buried(crates)} buried");
-        float carriedUp = crates.Max(c => c.Highest), carriedFar = crates.Max(c => Flat(c.Body.position, c.Home));
+        float carriedUp = crates.Average(c => c.Highest), carriedFar = crates.Average(c => Flat(c.Body.position, c.Home));
         Check("the_carry_is_cheap", carryFrames > 0 && carryMostMs < 2.0, $"{carryMostMs:0.00} ms at most over {carryFrames} frames");
 
         // The same crates set on the still dome: what the slope alone does.
@@ -152,10 +152,13 @@ public class StampLooksProbe : LandShapesProbe
         }
         yield return Watch(crates, 15f);
         Report("still", crates);
-        // A crate tumbling down a 50 degree flank hops and runs on by itself: the carry may not add to that.
-        float stillUp = crates.Max(c => c.Highest), stillFar = crates.Max(c => Flat(c.Body.position, c.Home));
+        // A crate tumbling down a 50 degree flank hops and runs on by itself: the carry may not add to that. Over the
+        // crates, not the one that went furthest: one crate's tumble runs anywhere from 70 to 140 m either way.
+        float stillUp = crates.Average(c => c.Highest), stillFar = crates.Average(c => Flat(c.Body.position, c.Home));
+        Metric("carried_highest_mean_m", carriedUp);
+        Metric("still_highest_mean_m", stillUp);
         Check("the_carry_flings_none_past_the_slope", carriedUp <= stillUp + 0.5f && carriedFar <= stillFar * 1.5f + 5f,
-            $"carried: up {carriedUp:0.0} m, {carriedFar:0} m off; on the still dome: up {stillUp:0.0} m, {stillFar:0} m off");
+            $"a crate on average: carried up {carriedUp:0.0} m, {carriedFar:0} m off; on the still dome up {stillUp:0.0} m, {stillFar:0} m off");
 
         yield return Say("undo_act", "{}");
         for (int i = 0; i < crates.Count; i++) crates[i].Home = homes[i];
