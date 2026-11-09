@@ -62,6 +62,7 @@ public sealed partial class FarRing : MonoBehaviour
     {
         Instance = null;
         LastBuild = default;
+        ViewDrawn = ViewKnown = null;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -69,6 +70,7 @@ public sealed partial class FarRing : MonoBehaviour
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
         SceneManager.sceneLoaded += OnSceneLoaded;
+        DialsFromArgs();
         Begin();
     }
 
@@ -139,6 +141,9 @@ public sealed partial class FarRing : MonoBehaviour
     void Update()
     {
         if (map == null && !Ready()) return;
+        // A rule switch can move streaming sight or know (the dials unset follow it); nothing changes while they hold.
+        var rules = ChemGrid.Current?.Rules;
+        if (rules != null) Dial(rules.Sim.Streaming);
         float clear = HazeK / Mathf.Max(1f, HazeMetres);
         Shader.SetGlobalFloat(HazeDensityId, RenderSettings.fogMode == FogMode.ExponentialSquared ? RenderSettings.fogDensity : clear);
         Shader.SetGlobalFloat(HazeClearId, clear);
@@ -172,16 +177,11 @@ public sealed partial class FarRing : MonoBehaviour
         map = loaded.Map;
         chunksW = map.Gen.ChunksW;
         chunksH = map.Gen.ChunksH;
-        sight = rules.Sim.Streaming.Sight;
-        know = rules.Sim.Streaming.Know;
         chunkMetres = land.Layout.ChunkSize;
-        ring = map.KnownRing(rules.Sim.Streaming);
         terrains = FindFirstObjectByType<MapTerrains>();
-
-        HazeMetres = know * chunkMetres;
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogDensity = HazeK / HazeMetres;
+        Dial(rules.Sim.Streaming);
 
         var grid = ChemGrid.Current.Grid;
         var shader = grid.farShader != null ? grid.farShader : Shader.Find("Prototype/FarLand");
