@@ -1,5 +1,6 @@
 // A map's folder, world/maps/<id> (docs/design/maps-as-data.md): map.json says what the map is and what its land should
 // look like, and cells.txt is its cell map, one legend character a cell, rows top to bottom.
+using System;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -73,6 +74,36 @@ namespace Chem
                 (0, H - 1), (W, H), FullDetail);
         }
 
+        /// <summary>
+        /// How far a pinned map's chunk terrains move in the map that pins it, in chunks: its cell (x, y) is the map's
+        /// (x + <paramref name="pinnedX"/>, y + <paramref name="pinnedY"/>), and both grids run their terrains' rows from
+        /// the south (Layout: gridCorner (0, H - 1)). Throws if the square doesn't sit on whole chunks.
+        /// </summary>
+        public static (int di, int dj) ChunkShift(int mapH, int pinnedH, int pinnedX, int pinnedY)
+        {
+            int dv = mapH - pinnedH - pinnedY;
+            if (pinnedX % Chunks.Size != 0 || dv % Chunks.Size != 0)
+                throw new FormatException($"a pinned map at cell ({pinnedX}, {pinnedY}) doesn't sit on whole chunks");
+            return (pinnedX / Chunks.Size, dv / Chunks.Size);
+        }
+
+        // Its full-detail chunks: map.json's, or on a generated map without them, its pinned map's moved to the pinned
+        // square, so the pinned chunks keep their own ground (PinnedGround) at the resolution it was made at.
+        static (int i0, int j0, int i1, int j1) FullDetailOf(string mapDir, JObject o, int h)
+        {
+            if (o["fullDetail"] is JArray full) return ((int)full[0], (int)full[1], (int)full[2], (int)full[3]);
+            foreach (var (dir, x, y) in GeneratedMap.PinnedSquares(mapDir))
+            {
+                if (!File.Exists(Path.Combine(dir, FileName))) continue;
+                var pinned = Load(dir);
+                var f = pinned.FullDetail;
+                if (f.i1 < f.i0) continue;
+                var (di, dj) = ChunkShift(h, pinned.H, x, y);
+                return (f.i0 + di, f.j0 + dj, f.i1 + di, f.j1 + dj);
+            }
+            return (0, 0, -1, -1);
+        }
+
         /// <summary>The map.json in a map's folder; throws if it's missing or a field is.</summary>
         public static MapFile Load(string worldDir)
         {
@@ -85,7 +116,7 @@ namespace Chem
                 LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
                 OwnLandRange = drawable != null,
                 Yard = o["yard"] is JArray yard ? ((int)yard[0], (int)yard[1], (int)yard[2], (int)yard[3]) : ((int)o["size"][0] / 2, (int)o["size"][1] / 2, 1, 1),
-                FullDetail = o["fullDetail"] is JArray full ? ((int)full[0], (int)full[1], (int)full[2], (int)full[3]) : (0, 0, -1, -1),
+                FullDetail = FullDetailOf(worldDir, o, (int)o["size"][1]),
                 SeaShore = Pair(sea?["shore"]),
                 Seaward = Pair(sea?["seaward"]),
                 Dresses = o["dresses"] is JArray dresses ? dresses.Select(d => (string)d).ToArray() : System.Array.Empty<string>(),
