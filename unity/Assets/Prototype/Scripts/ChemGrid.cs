@@ -140,6 +140,7 @@ public partial class ChemGrid : MonoBehaviour
         if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
         if (!TryGetComponent<HoldBarricades>(out _)) gameObject.AddComponent<HoldBarricades>();
         if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
+        if (!TryGetComponent<Waystones>(out _)) gameObject.AddComponent<Waystones>();
     }
 
     // The things file is read once: it is the same for every world this scene starts (and online
@@ -195,7 +196,8 @@ public partial class ChemGrid : MonoBehaviour
         };
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
-        PlayerStart = start;
+        // The spawn the host picked (SpawnPoints), else the map's own.
+        PlayerStart = SpawnPoints.StartCell(start);
         phase.Restart();
         if (valley != null)
             using (BuildValleyMarker.Auto()) valley.Bind(World);
@@ -518,6 +520,9 @@ public partial class ChemGrid : MonoBehaviour
     static readonly Dictionary<string, (string id, string source)> PlayedMaps = new();
     // Names said once not to be maps, so the Editor's every look at its folders doesn't say it again.
     static readonly HashSet<string> NotMaps = new();
+
+    /// <summary>The folder a map by this id is played from (a generated one baked first when playing).</summary>
+    public static string PlayFolder(string id) => FoldersFor(id).World;
 
     // A map's folders from its name in -map, the menu or Temp/map: an id under world/maps, or a map folder's path (absolute,
     // or from the repo's root: test-fixtures/maps/flat-1728, #169). A generated map (the nine) is baked first when playing:

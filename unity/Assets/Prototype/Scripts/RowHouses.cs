@@ -381,7 +381,9 @@ public class RowHouses : MonoBehaviour
         var valley = FindAnyObjectByType<ValleyChemistry>();
         if (valley != null && d.panes != null) valley.UnbindPanes(d.panes);
         if (d.root == null) return;
-        foreach (var filter in d.root.GetComponentsInChildren<MeshFilter>()) Destroy(filter.sharedMesh);
+        // Only the meshes made for it: a landmark's model (a great tree on the nine) shares its asset's, which stays.
+        foreach (var filter in d.root.GetComponentsInChildren<MeshFilter>())
+            if (filter.sharedMesh != null && filter.sharedMesh.GetInstanceID() < 0) Destroy(filter.sharedMesh);
         Destroy(d.root);
     }
 

@@ -145,6 +145,14 @@ public class WizardDown : MonoBehaviour
             EventLog.Add("You come to at your last checkpoint");
             return;
         }
+        // A map with waystones: the nearest one the party has reached (SpawnPoints).
+        if (SpawnPoints.Several)
+        {
+            var back = SpawnPoints.ComeBackAt(fellOn);
+            ToSpot(Above(grid, back.Cell));
+            EventLog.Add($"You come to at the waystone of {back.Name}");
+            return;
+        }
         if (Online) net.JumpToStart();
         else ToSpot(Above(grid, grid.PlayerStart));
         EventLog.Add("You come to at the yard, back on your feet");

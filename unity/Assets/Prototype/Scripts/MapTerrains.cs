@@ -45,6 +45,33 @@ public sealed class MapTerrains : MonoBehaviour
         if (chunks == null) Make();
     }
 
+    // A chunk past the camera's far plane isn't drawn, but Unity still culls every terrain each frame: on the nine (729)
+    // that was 9 ms. Those beyond it stop drawing (they stay terrains, for heights and collisions) and draw again as the
+    // camera nears; a few times a second, as the camera moves less than a chunk in that time.
+    const float ReachEvery = 0.25f;
+    float nextReach;
+
+    void Update()
+    {
+        if (!Application.isPlaying || chunks == null || Time.unscaledTime < nextReach) return;
+        nextReach = Time.unscaledTime + ReachEvery;
+        var cam = Camera.main;
+        if (cam == null) return;
+        float reach = cam.farClipPlane + layout.ChunkSize, reachSq = reach * reach;
+        var eye = cam.transform.position;
+        float half = layout.ChunkSize * 0.5f;
+        foreach (var t in chunks)
+        {
+            if (t == null) continue;
+            var p = t.transform.position;
+            float dx = p.x + half - eye.x, dz = p.z + half - eye.z;
+            bool draw = dx * dx + dz * dz <= reachSq;
+            if (t.drawHeightmap == draw) continue;
+            t.drawHeightmap = draw;
+            t.drawTreesAndFoliage = draw;
+        }
+    }
+
     void Make()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();

@@ -62,6 +62,8 @@ public partial class NetChem : NetworkBehaviour
 {
     // Which map the host is on (docs/design/maps-as-data.md, section 2).
     readonly NetworkVariable<Unity.Collections.FixedString64Bytes> hostMap = new();
+    // The spawn the host started in (SpawnPoints): joiners start beside the host.
+    readonly NetworkVariable<Unity.Collections.FixedString64Bytes> hostStart = new();
 
     const int HashEvery = RollingHash.Every, HashesKept = 4;
     // A late joiner replays the whole history; spread it so no frame spends more than this.
@@ -186,6 +188,8 @@ public partial class NetChem : NetworkBehaviour
             NetSession.JoinOnHostMap(hostMap.Value.ToString());
             return;
         }
+        if (IsServer) hostStart.Value = SpawnPoints.StartIn ?? "";
+        else SpawnPoints.StartIn = hostStart.Value.ToString();
         // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
         if (IsServer) grid.PlanRoom(NetSession.RoomMode);
         else grid.AwaitRoom();

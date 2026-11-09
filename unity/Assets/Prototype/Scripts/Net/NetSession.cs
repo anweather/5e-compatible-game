@@ -392,7 +392,22 @@ public class NetSession : MonoBehaviour
         string current = HostMap ?? ChemGrid.MapId;
         int at = System.Array.FindIndex(maps, m => m.id == current);
         string name = at >= 0 ? maps[at].name : current;
-        if (PauseMenu.Button($"Map when you host: {name}", PauseMenu.ButtonStyle)) HostMap = maps[(at + 1) % maps.Length].id;
+        if (PauseMenu.Button($"Map when you host: {name}", PauseMenu.ButtonStyle))
+        {
+            HostMap = maps[(at + 1) % maps.Length].id;
+            SpawnPoints.StartIn = null;
+        }
+        StartPicker(HostMap ?? ChemGrid.MapId);
+    }
+
+    // Where to start on that map, for a map with more than one spawn: each press the next (its own spawn first).
+    static void StartPicker(string map)
+    {
+        var spawns = SpawnPoints.OfMap(map);
+        if (spawns.Count < 2) return;
+        int at = spawns.FindIndex(s => s.Id == SpawnPoints.StartIn);
+        if (at < 0) at = 0;
+        if (PauseMenu.Button($"Start in: {spawns[at].Name}", PauseMenu.ButtonStyle)) SpawnPoints.StartIn = spawns[(at + 1) % spawns.Count].Id;
     }
 
     static string ModeHint(ChangeMode mode) => mode switch
