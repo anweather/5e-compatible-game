@@ -48,7 +48,7 @@ namespace Chem
             bool inside = false;
             foreach (var (cx, cy, land) in clearings)
             {
-                long dx = x - cx, dy = y - cy;
+                long dx = Dx(x, cx), dy = y - cy;
                 if (Math.Abs(dx) > reach || Math.Abs(dy) > reach) continue;
                 long d = BiomeMath.Sqrt((dx * dx + dy * dy) * One * One);
                 if (d >= reach * One) continue;

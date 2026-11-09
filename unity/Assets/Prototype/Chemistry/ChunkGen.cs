@@ -50,7 +50,7 @@ namespace Chem
     public sealed partial class ChunkGen
     {
         /// <summary>The generator's version, in the map's input hash: a change that alters any chunk is a new version.</summary>
-        public const int Version = 5;
+        public const int Version = 6;
         public const int Size = WorldPlan.ChunkCells, Square = WorldPlan.SquareCells;
 
         // Legend characters (ChemGrid.Legend).
@@ -60,6 +60,11 @@ namespace Chem
         public readonly WorldPlan Plan;
         /// <summary>The plan square at the map's north-west corner, and the map's size in squares.</summary>
         public readonly int OriginX, OriginY, SquaresW, SquaresH;
+        /// <summary>
+        /// Whether the map joins east to west (an east-west plan, the map its whole width): a land point at x is the one at
+        /// x modulo <see cref="CellsW"/>, and every noise lattice repeats round it (generator 6).
+        /// </summary>
+        public readonly bool WrapX;
         public readonly PinnedSquare Pinned;
         public readonly BiomeField Field;
         readonly BiomeTable table;
@@ -86,6 +91,10 @@ namespace Chem
             OriginY = originY;
             SquaresW = w;
             SquaresH = h;
+            if (plan.Grid.WrapY) throw new ArgumentException("a generated map wraps east-west at most, not north-south");
+            WrapX = plan.Grid.WrapX;
+            if (WrapX && (originX != 0 || w != plan.Grid.W))
+                throw new ArgumentException($"a map that wraps is its plan's whole width, {plan.Grid.W} squares from square 0, not {w} from {originX}");
             seed = plan.Seed;
             table = Anchored(biomes, plan);
             Field = new BiomeField(table, seed);
@@ -130,6 +139,7 @@ namespace Chem
                 SquareCells = biomes.SquareCells,
                 ClimateInfluence = biomes.ClimateInfluence,
                 AnchorBias = biomes.AnchorBias,
+                WrapCells = g.WrapX ? g.W * Square : 0,
                 Layout = layout,
             };
             t.Rows.AddRange(biomes.Rows);
@@ -140,6 +150,25 @@ namespace Chem
         {
             if (terrain == null) return '\0';
             return terrain == "stone" || terrain == "bedrock" ? Stone : Dirt;
+        }
+
+        /// <summary>A map cell's x on the map: modulo the map's width where it wraps, else as it is.</summary>
+        public int WrapCell(int x) => WrapX ? PlanGrid.Mod(x, CellsW) : x;
+
+        /// <summary>A map chunk's x on the map: modulo the map's width in chunks where it wraps, else as it is.</summary>
+        public int WrapChunk(int cx) => WrapX ? PlanGrid.Mod(cx, ChunksW) : cx;
+
+        /// <summary>Chebyshev distance in chunks between two map chunks, the short way round where the map wraps.</summary>
+        public int ChunkDistance(int ax, int ay, int bx, int by) =>
+            WrapX ? Plan.Grid.ChunkDistance(ax, ay, bx, by) : Math.Max(Math.Abs(ax - bx), Math.Abs(ay - by));
+
+        // x − from in cells, the short way round where the map wraps.
+        int Dx(int x, int from)
+        {
+            int d = x - from;
+            if (!WrapX) return d;
+            d = PlanGrid.Mod(d, CellsW);
+            return d >= CellsW - CellsW / 2 ? d - CellsW : d;
         }
 
         /// <summary>Whether the pinned square holds map chunk (<paramref name="cx"/>, <paramref name="cy"/>).</summary>
@@ -191,8 +220,9 @@ namespace Chem
             for (int j = 0; j < ap; j++)
                 for (int i = 0; i < ap; i++)
                 {
-                    // The apron stays on the map: past its edge a cell's slope is read against itself.
-                    int x = Math.Max(0, Math.Min(CellsW - 1, x0 - 1 + i)), y = Math.Max(0, Math.Min(CellsH - 1, y0 - 1 + j));
+                    // The apron stays on the map: past its edge a cell's slope is read against itself. Round a world that
+                    // wraps, the apron is the land across the seam (land is the same at x and x + CellsW).
+                    int x = WrapX ? x0 - 1 + i : Math.Max(0, Math.Min(CellsW - 1, x0 - 1 + i)), y = Math.Max(0, Math.Min(CellsH - 1, y0 - 1 + j));
                     var p = Point(x, y, near, out var b);
                     land[j * ap + i] = p.Land;
                     wet[j * ap + i] = p.Wet;
@@ -206,13 +236,13 @@ namespace Chem
             for (int k = 0; k < stamps.Count; k++)
             {
                 var (s, bareChar, landmark) = stamps[k];
-                int reach = s.Bound;
-                if (s.X + reach < x0 || s.X - reach >= x0 + Size || s.Y + reach < y0 || s.Y - reach >= y0 + Size) continue;
+                int reach = s.Bound, sx = StampX(s, x0);
+                if (sx + reach < x0 || sx - reach >= x0 + Size || s.Y + reach < y0 || s.Y - reach >= y0 + Size) continue;
                 if (!c.Landmarks.Contains(landmark)) c.Landmarks.Add(landmark);
                 for (int j = -1; j <= Size; j++)
                     for (int i = -1; i <= Size; i++)
                     {
-                        int by = s.At(x0 + i - s.X, y0 + j - s.Y);
+                        int by = s.At(x0 + i - sx, y0 + j - s.Y);
                         if (by == 0) continue;
                         land[(j + 1) * ap + i + 1] += by;
                         if (bareChar != '\0' && i >= 0 && j >= 0 && i < Size && j < Size) bare[j * Size + i] = true;
@@ -224,6 +254,7 @@ namespace Chem
                 var r = landmarkRows[k];
                 if (r == null || c.Landmarks.Contains(k)) continue;
                 var (lx, ly) = r.Centre;
+                lx = x0 + Size / 2 + Dx(lx, x0 + Size / 2);
                 if (lx + r.Reach >= x0 && lx - r.Reach < x0 + Size && ly + r.Reach >= y0 && ly - r.Reach < y0 + Size) c.Landmarks.Add(k);
             }
             c.Landmarks.Sort();
@@ -252,6 +283,9 @@ namespace Chem
                         foreach (var t in (JArray)list["things"]) c.Things.Add(t.DeepClone());
             SeedThings(c, blend, clear, steep);
         }
+
+        // A stamp's x seen from the chunk at x0: across the seam where that's the short way round.
+        int StampX(LandStamp s, int x0) => WrapX ? x0 + Size / 2 + Dx(s.X, x0 + Size / 2) : s.X;
 
         // The cell's Legend character: water where the land is under the sea or a river runs, a road's dirt, a stamp's
         // bare rock, a spawn's clearing grass, bare dirt on a steep face, else the biome's ground, a tree or brush by a

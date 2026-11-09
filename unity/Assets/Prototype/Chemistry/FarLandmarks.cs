@@ -75,12 +75,26 @@ namespace Chem
         public int X, Y;
         public int SeenFrom, Height, Radius;
         public string Shape;
+        /// <summary>The map's width in cells where it wraps east-west, else 0.</summary>
+        public int WrapCells;
 
-        /// <summary>Whether it shows from map cell (<paramref name="x"/>, <paramref name="y"/>): within its seenFrom radius.</summary>
+        /// <summary>
+        /// Whether it shows from map cell (<paramref name="x"/>, <paramref name="y"/>): within its seenFrom radius, the
+        /// short way round where the map wraps.
+        /// </summary>
         public bool SeenAt(int x, int y)
         {
-            long dx = X - x, dy = Y - y, r = (long)SeenFrom * ChunkGen.Size;
+            long dx = DxTo(x), dy = Y - y, r = (long)SeenFrom * ChunkGen.Size;
             return dx * dx + dy * dy <= r * r;
+        }
+
+        /// <summary>Its x less <paramref name="x"/>, in cells: the short way round where the map wraps.</summary>
+        public int DxTo(int x)
+        {
+            int d = X - x;
+            if (WrapCells <= 0) return d;
+            d = PlanGrid.Mod(d, WrapCells);
+            return d >= WrapCells - WrapCells / 2 ? d - WrapCells : d;
         }
     }
 
@@ -112,6 +126,7 @@ namespace Chem
                     Height = row.Height,
                     Radius = row.Radius,
                     Shape = row.Shape,
+                    WrapCells = gen.WrapX ? gen.CellsW : 0,
                 });
             }
             for (int k = 0; k < plan.Landmarks.Count; k++)
