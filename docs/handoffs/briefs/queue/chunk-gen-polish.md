@@ -20,3 +20,9 @@ of the same seed and two more seeds:
    saddle) so it reads as mountains, not a cap.
 Keep: chunks pure and order-free (goldens may change, update them in one commit and say so), the valley byte-identical,
 seams matching. Layer 1; the PC compiles and lands it.
+
+5. **Spawn points (Andrew, 2026-11-08: "more spawn points in the 3x3").** `WorldPlan` gives one spawn per square
+   (the valley's is its current spawn): a flat, dry spot on or beside a road, near the square's inn, village or
+   landmark, never on a peak, in water or inside a stamp. Seeded and in the plan hash. `ChunkGen` keeps a few cells
+   around each clear, and `GeneratedMap.Bake` writes them into the map's places (`spawn` places, one per square, named
+   for the square). A test that every spawn is reachable on foot from the valley's along roads or open land.

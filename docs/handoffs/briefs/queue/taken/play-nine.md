@@ -25,3 +25,8 @@ Landed: maps phase 7 (`-map`, sea from land), `world-plan`, `chunk-gen` (`Genera
 Done: a 30 s 720p clip walking from the valley into the next square (Andrew's first look), shots of three squares at
 1280 px checked at 480 px, probes smoke, online, hold, secondmap, groundbuild, crossing on the valley unchanged, and
 the Unity-side EditMode tests. Push each step; git rm this claim in the last commit. The lead lands it.
+
+6. **Spawn points (Andrew, 2026-11-08).** u2 adds one `spawn` place per square to the nine's map (chunk-gen-polish
+   step 5). Until it lands, read whatever spawn places the map has and fall back to the valley's. Host gets a
+   "Start in" choice (the valley by default, or any square by name); joiners start beside the host. Each spawn shows
+   as a waystone so players can find them. Respawn after death goes to the nearest spawn the party has reached.
