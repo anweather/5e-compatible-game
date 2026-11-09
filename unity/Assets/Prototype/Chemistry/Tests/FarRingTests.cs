@@ -12,6 +12,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
+    [Category("Simulation")]
     public class FarRingTests
     {
         static string NineDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "nine");
