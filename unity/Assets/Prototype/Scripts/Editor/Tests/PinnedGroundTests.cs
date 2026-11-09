@@ -90,4 +90,15 @@ public class PinnedGroundTests
         Assert.That(PinnedGround.Lay(ground, Layout, "/no/such/map"), Is.EqualTo(0));
         for (int n = 0; n < before.Count; n++) Assert.That(ground.Chunks[n].Heights, Is.EqualTo(before[n]));
     }
+
+    // #183: in a build the nine's layout had lost the valley's full detail, the valley's 257-sample chunks were laid over
+    // 65-sample ones all the same, and the world's ground threw far from the cause (ValleyGround.Recover).
+    [Test]
+    public void APinnedChunkOfAnotherSizeThanTheLayoutsIsRefused()
+    {
+        var pinned = Pinned();
+        pinned.Chunks[0].Resolution = 257;
+        Assert.That(() => PinnedGround.Lay(Generated(), Layout, pinned, 64, 64, 64, 64),
+            Throws.InstanceOf<System.IO.InvalidDataException>().With.Message.Contains("257 samples").And.Message.Contains("full detail"));
+    }
 }

@@ -587,12 +587,9 @@ public partial class ChemGrid : MonoBehaviour
         if (Application.isEditor || game.PlayerData == null) baked = GeneratedMap.EnsureBaked(dir);
         else
         {
-            string inputs = GeneratedMap.InputHash(dir);
             // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
-            into = Path.Combine(game.PlayerData, "worlds", inputs, id);
-            string note = Path.Combine(into, GeneratedMap.BakeName);
-            baked = !File.Exists(note) || !File.ReadAllText(note).Contains(inputs);
-            if (baked) GeneratedMap.Load(dir).Bake(into);
+            into = Path.Combine(game.PlayerData, "worlds", GeneratedMap.InputHash(dir), id);
+            baked = GeneratedMap.EnsureBakedInto(dir, into);
         }
         Debug.Log($"MAP: {id} {(baked ? "baked" : "already baked")} in {into} ({timer.Elapsed.TotalMilliseconds:0} ms)");
         return into;
