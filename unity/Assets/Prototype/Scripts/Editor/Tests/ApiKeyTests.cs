@@ -15,6 +15,7 @@ public class ApiKeyTests
     const string Good = ApiStandIn.GoodKey + "-tests", Bad = ApiStandIn.BadKey + "-tests", Offline = ApiStandIn.OfflineKey + "-tests";
 
     string folder, envWas;
+    IKeyVault vaultWas;
     Func<IKeyLister> listerWas;
     string[] modelsWas;
 
@@ -23,6 +24,9 @@ public class ApiKeyTests
     {
         folder = Path.Combine(Path.GetTempPath(), "api-key-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
+        // The tests' own vault, so they run alike on every machine: the Mac has no vault yet (ApiKey.PlatformVault).
+        vaultWas = ApiKey.Vault;
+        ApiKey.Vault = new TestVault();
         ApiKey.TestFile = Path.Combine(folder, "api-key.dat");
         ChatSetup.TestFile = Path.Combine(folder, "chat-setup.dat");
         ChatSetup.Reload();
@@ -36,6 +40,7 @@ public class ApiKeyTests
     public void PutBack()
     {
         ApiKey.Remove();
+        ApiKey.Vault = vaultWas;
         if (modelsWas.Length > 0) ApiKey.Models = modelsWas;
         ApiKey.TestFile = null;
         ChatSetup.TestFile = null;
@@ -43,6 +48,35 @@ public class ApiKeyTests
         ApiKeyCheck.Lister = listerWas;
         Environment.SetEnvironmentVariable(ClaudeRun.GameKey, envWas);
         Directory.Delete(folder, true);
+    }
+
+    // Seals by a header and the bytes turned round and mixed, so the plain key is never on disk and a file it didn't write
+    // won't open; it holds nothing in memory, so a new one opens what an old one sealed (as after a restart).
+    sealed class TestVault : IKeyVault
+    {
+        static readonly byte[] Header = Encoding.ASCII.GetBytes("test-vault:");
+
+        public byte[] Seal(byte[] plain) => Header.Concat(Mixed(plain)).ToArray();
+
+        public byte[] Open(byte[] sealedKey)
+        {
+            if (sealedKey.Length < Header.Length || !sealedKey.Take(Header.Length).SequenceEqual(Header))
+                throw new IOException("Not sealed by the test vault.");
+            return Mixed(sealedKey.Skip(Header.Length).ToArray());
+        }
+
+        static byte[] Mixed(byte[] bytes) => bytes.Reverse().Select(b => (byte)(b ^ 0x5A)).ToArray();
+    }
+
+    [Test]
+    public void TheMachinesOwnVaultSealsAndOpens()
+    {
+        if (vaultWas == null) Assert.Ignore("No vault on this platform yet (ApiKey.PlatformVault): its players use the environment variable.");
+        byte[] plain = Encoding.UTF8.GetBytes(Good);
+        byte[] sealedKey = vaultWas.Seal(plain);
+        Assert.That(Encoding.GetEncoding(28591).GetString(sealedKey), Does.Not.Contain(Good));
+        Assert.That(vaultWas.Open(sealedKey), Is.EqualTo(plain));
+        Assert.That(((IKeyVault)Activator.CreateInstance(vaultWas.GetType())).Open(sealedKey), Is.EqualTo(plain), "a new vault opens it, as after a restart");
     }
 
     static KeyCheck Checked(string typed)
@@ -269,11 +303,27 @@ public class ApiKeyTests
         throw new TimeoutException("The check never came back.");
     }
 
+    // A stand-in Claude Code install that prints its version and one variable from its environment: a .cmd on Windows,
+    // a shell script elsewhere, so the check runs it the way it would run the real one on that machine.
+    string StandInClaude(string version, string variable)
+    {
+        if (Application.platform == RuntimePlatform.WindowsEditor)
+        {
+            string cmd = Path.Combine(folder, "my-claude.cmd");
+            File.WriteAllText(cmd, $"@echo {version} %{variable}%\r\n");
+            return cmd;
+        }
+        string script = Path.Combine(folder, "my-claude");
+        File.WriteAllText(script, $"#!/bin/sh\necho \"{version} ${variable}\"\n");
+        using (var chmod = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("/bin/chmod", $"+x \"{script}\"") { UseShellExecute = false }))
+            chmod.WaitForExit();
+        return script;
+    }
+
     [Test]
     public void AClaudeCodePathIsFoundAndKept()
     {
-        string install = Path.Combine(folder, "my-claude.cmd");
-        File.WriteAllText(install, "@echo 9.9.9 (Claude Code) %CLAUDE_CONFIG_DIR%\r\n");
+        string install = StandInClaude("9.9.9 (Claude Code)", "CLAUDE_CONFIG_DIR");
         ChatSetup.SetVariable("CLAUDE_CONFIG_DIR", "hidden-value");
         var check = new ClaudeCheck();
         string says = CheckedClaude(check, install);
