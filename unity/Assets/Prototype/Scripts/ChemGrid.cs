@@ -460,6 +460,8 @@ public partial class ChemGrid : MonoBehaviour
         {
             if (!File.Exists(Path.Combine(dir, MapFile.FileName))) continue;
             string id = Path.GetFileName(dir);
+            // A generated map too big to bake whole (world-12x10, "bake": false) can't be played yet: hosting it would throw.
+            if (GeneratedMap.IsGenerated(dir) && Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, MapFile.FileName)))[GeneratedMap.Key]?["bake"]?.ToObject<bool>() == false) continue;
             maps.Add((id, MapFile.Load(dir).Name ?? id));
         }
         // The valley first, then the rest by id.

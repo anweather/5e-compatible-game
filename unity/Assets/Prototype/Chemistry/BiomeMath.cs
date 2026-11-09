@@ -52,8 +52,47 @@ namespace Chem
             return top + (bottom - top) * ty / One;
         }
 
+        /// <summary>
+        /// <see cref="Noise(int, int, long, long, long)"/> repeating every <paramref name="periodX"/> cells along x and
+        /// <paramref name="periodY"/> along y (0 for an axis that doesn't), for a world that wraps (world-squares.md section
+        /// 8): an axis that repeats takes a whole number of control points a period, the nearest to its lattice, so the
+        /// lattice stretches a little to fit, and noise at x and x + period is the same bit for bit.
+        /// </summary>
+        public static long Noise(int seed, int salt, long xQ, long yQ, long lattice, long periodX, long periodY)
+        {
+            if (periodX <= 0 && periodY <= 0) return Noise(seed, salt, xQ, yQ, lattice);
+            var (x0, x1, tx) = Axis(xQ, lattice, periodX);
+            var (y0, y1, ty) = Axis(yQ, lattice, periodY);
+            long a = Lattice(seed, salt, x0, y0), b = Lattice(seed, salt, x1, y0);
+            long c = Lattice(seed, salt, x0, y1), d = Lattice(seed, salt, x1, y1);
+            long top = a + (b - a) * tx / One;
+            long bottom = c + (d - c) * tx / One;
+            return top + (bottom - top) * ty / One;
+        }
+
+        // An axis's two control points and the smoothed way between them, repeating every period cells (0 for never).
+        static (int i0, int i1, long t) Axis(long q, long lattice, long period)
+        {
+            if (period <= 0)
+            {
+                long span = lattice * One;
+                long i = FloorDiv(q, span);
+                return (unchecked((int)i), unchecked((int)i + 1), Smoothstep((q - i * span) / lattice));
+            }
+            long n = Math.Max(1, (period + lattice / 2) / lattice);
+            long u = FloorDiv(q * n, period), k = FloorDiv(u, One);
+            return ((int)Mod(k, n), (int)Mod(k + 1, n), Smoothstep(u - k * One));
+        }
+
+        /// <summary>a modulo n, from 0 to n − 1 for a negative a too.</summary>
+        public static long Mod(long a, long n) => ((a % n) + n) % n;
+
         /// <summary>Noise in Q16 [−1, 1], where Punchy reads simplex.</summary>
         public static long Centred(int seed, int salt, long xQ, long yQ, long lattice) => 2 * Noise(seed, salt, xQ, yQ, lattice) - One;
+
+        /// <summary>Centred noise repeating every <paramref name="periodX"/> and <paramref name="periodY"/> cells (0 for never).</summary>
+        public static long Centred(int seed, int salt, long xQ, long yQ, long lattice, long periodX, long periodY) =>
+            2 * Noise(seed, salt, xQ, yQ, lattice, periodX, periodY) - One;
 
         static long Lattice(int seed, int salt, int x, int y) => WorldHash.Hash4(seed, salt, x, y) >> 16;
 

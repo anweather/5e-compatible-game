@@ -73,6 +73,22 @@ namespace Chem.Tests
             }
         }
 
+        /// <summary>A heights picture's colour for land <paramref name="v"/> (land units): sea blue by depth, else green to brown to white.</summary>
+        internal static (int R, int G, int B) Height(int v)
+        {
+            if (v < ChunkGen.SeaLevel) return (30, 70 + Math.Max(0, 60 + v / 6), 150 + Math.Max(0, 60 + v / 8));
+            int t = Math.Min(255, Math.Max(0, v * 255 / 1800));
+            return t < 128 ? (60 + t, 130 + t / 3, 50) : (188 + (t - 128) / 2, 172 + (t - 128) * 2 / 3, 50 + (t - 128) * 3 / 2);
+        }
+
+        /// <summary>Writes <paramref name="col"/> lit by <paramref name="shade"/> into an RGB array at pixel <paramref name="at"/>.</summary>
+        internal static void Put(byte[] rgb, int at, (int R, int G, int B) col, int shade)
+        {
+            rgb[at * 3] = (byte)Math.Max(0, Math.Min(255, col.R + shade));
+            rgb[at * 3 + 1] = (byte)Math.Max(0, Math.Min(255, col.G + shade));
+            rgb[at * 3 + 2] = (byte)Math.Max(0, Math.Min(255, col.B + shade));
+        }
+
         static (byte, byte, byte) Mix((byte r, byte g, byte b) a, (byte r, byte g, byte b) b, int pctB) =>
             ((byte)((a.r * (100 - pctB) + b.r * pctB) / 100), (byte)((a.g * (100 - pctB) + b.g * pctB) / 100), (byte)((a.b * (100 - pctB) + b.b * pctB) / 100));
 

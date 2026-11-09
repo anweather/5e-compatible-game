@@ -1,7 +1,8 @@
 // The known ring (docs/design/world-squares.md section 3): every chunk within sim.json's streaming.know of a character
 // and past its streaming.sight, as a KnownChunk (ChunkGen.Know), for the view to draw far off. It stops one chunk past
 // the coast: a chunk that's all sea is known only beside one that isn't. The chunks are worked out off the tick, on a
-// worker, and handed over at a tick boundary in chunk order. A pure function of the seed, the plan and where the
+// worker, and handed over at a tick boundary in chunk order. Round a world that wraps east-west it reaches across the
+// seam: distances go the short way round (ChunkGen.ChunkDistance) and chunk ids take x modulo the width. A pure function of the seed, the plan and where the
 // characters stand: no switch, nothing shared depends on it.
 using System;
 using System.Collections.Generic;
@@ -46,11 +47,11 @@ namespace Chem
         /// <summary>The known chunks, in chunk order (north to south, west to east).</summary>
         public IReadOnlyList<KnownChunk> Chunks => ordered;
 
-        /// <summary>Known chunk (<paramref name="cx"/>, <paramref name="cy"/>), if it's known now.</summary>
+        /// <summary>Known chunk (<paramref name="cx"/>, <paramref name="cy"/>), if it's known now (x modulo the width where the map wraps).</summary>
         public bool TryGet(int cx, int cy, out KnownChunk chunk) => shown.TryGetValue(Id(cx, cy), out chunk);
 
-        /// <summary>The chunk id the ring keys by: <c>cy × ChunksW + cx</c>.</summary>
-        public int Id(int cx, int cy) => cy * gen.ChunksW + cx;
+        /// <summary>The chunk id the ring keys by: <c>cy × ChunksW + cx</c>, cx taken modulo the width where the map wraps.</summary>
+        public int Id(int cx, int cy) => cy * gen.ChunksW + gen.WrapChunk(cx);
 
         /// <summary>
         /// Where the characters stand now (map chunks), at a tick boundary: the chunks they know follow, worked out on the
@@ -58,14 +59,14 @@ namespace Chem
         /// </summary>
         public void Want(IEnumerable<(int x, int y)> characterChunks)
         {
-            var now = characterChunks.Distinct().OrderBy(c => c.y).ThenBy(c => c.x).ToArray();
+            var now = characterChunks.Select(c => (x: gen.WrapChunk(c.x), c.y)).Distinct().OrderBy(c => c.y).ThenBy(c => c.x).ToArray();
             if (now.SequenceEqual(characters)) return;
             characters = now;
             var near = new SortedSet<int>();
             foreach (var (x, y) in characters)
                 for (int cy = Math.Max(0, y - Know); cy <= Math.Min(gen.ChunksH - 1, y + Know); cy++)
-                    for (int cx = Math.Max(0, x - Know); cx <= Math.Min(gen.ChunksW - 1, x + Know); cx++)
-                        if (Nearest(cx, cy) > Sight) near.Add(Id(cx, cy));
+                    for (int cx = gen.WrapX ? x - Know : Math.Max(0, x - Know); cx <= (gen.WrapX ? x + Know : Math.Min(gen.ChunksW - 1, x + Know)); cx++)
+                        if (Nearest(gen.WrapChunk(cx), cy) > Sight) near.Add(Id(cx, cy));
             wanted = near.ToList();
             // Forget what's past every character's ring and the chunk beyond it.
             foreach (int id in made.Keys.Where(id => Nearest(id % gen.ChunksW, id / gen.ChunksW) > Know + 1).ToList()) made.Remove(id);
@@ -146,7 +147,7 @@ namespace Chem
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
                 {
-                    int nx = cx + dx, ny = cy + dy;
+                    int nx = gen.WrapChunk(cx + dx), ny = cy + dy;
                     if ((dx != 0 || dy != 0) && nx >= 0 && ny >= 0 && nx < gen.ChunksW && ny < gen.ChunksH) yield return (nx, ny);
                 }
         }
@@ -200,7 +201,7 @@ namespace Chem
         int Nearest(int cx, int cy)
         {
             int near = int.MaxValue;
-            foreach (var (x, y) in characters) near = Math.Min(near, Math.Max(Math.Abs(x - cx), Math.Abs(y - cy)));
+            foreach (var (x, y) in characters) near = Math.Min(near, gen.ChunkDistance(x, y, cx, cy));
             return near;
         }
     }

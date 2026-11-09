@@ -113,3 +113,38 @@ What it says, so far:
   setting's own cost is lost in it. Per-setting memory wants a player build (`-perf-scenario` with `-drawn`/`-known`).
 - Active chunks are 16 / 36 / 64 at active 1 / 2 / 3 (4 x 4, 6 x 6, 8 x 8: the reach round the lap's chunks), with
   no frame cost seen at 3 on a quiet world (no fire, no weather).
+
+## As built: the plan and the known ring (world-12x10-plan, u2, 2026-11-09)
+
+Step 1 of the cheap first proof, core and data only. The pictures are `docs/design/world-12x10/plan.png` and
+`heights.png` (the whole world from its known samples, a pixel per 8 cells, the first two world squares drawn again past
+the east edge; the seam is the red tick).
+
+- **`world/maps/world-12x10/map.json`**: seed `valley-1`, `squares [12, 10]` (wall rows included), `"wrap": "ew"`,
+  `"bake": false`, generator 6, the valley pinned at the plan's own valley square [0, 5]. A world that wraps must be its
+  whole plan (`GeneratedMap.Load` says so otherwise). `EnsureBaked` and `Bake` refuse it; its `expects` are read from
+  the known samples (`WorldTwelveTests.ItsExpectsAreTheKnownLand`): land share 89 %, highest 9886, lowest -320.
+  `ChemGrid.Maps()` (view) still lists it: picking it in play throws the refusal, so the menu wants to skip
+  `"bake": false` maps (PC, a one-line filter).
+- **`PlanInputs`** has `Width` and `Height` (land rows; `Size` is the longer). A square world's seed and noise are as
+  before, so the nine, its goldens and the valley are byte-identical. Plan golden 0x3e847c28; it solves in ~0.5 s.
+- **Generator 6 (`ChunkGen.WrapX`)**: land is the same at x and x + 6912, bit for bit (tested near the seam). Every
+  noise lattice repeats round the world: `BiomeMath.Noise` takes periods, and an axis that repeats takes a whole number
+  of control points a period, the lattice stretched to fit (climate 1234 cells goes round as 6 of 1152; regions and
+  warp divide 6912 already, hotspot columns stretch the same way). `BiomeTable.WrapCells` makes regions repeat (12
+  across). The massif's grain and the dunes' wind snap to an axis in a world that wraps (a slanted lattice can't
+  repeat). Rivers and roads near the seam are copied a world's width either side (`seamCopies`); the meet, clearings
+  and stamps measure the short way round. A map that doesn't wrap takes the old code paths, so the nine's golden
+  (0x7c681170) holds; nine's map.json says generator 6 only because the version is in its input hash.
+- **KnownRing and FarLandmarks** measure across the wrap (`ChunkGen.ChunkDistance`, chunk ids modulo the width,
+  `FarLandmark.DxTo`).
+- **Measured** (this VM, 2 threads): every one of the 9720 chunks known in ~2.0 s, 0.12-0.22 ms a chunk on one thread;
+  the ring from one character knowing the whole world 1.2-1.7 s, 9111 chunks shown (881 open sea away from any coast).
+- **The seam**: on land the biggest step across it is 65 land units, under the 97 inside the chunks beside it; onto
+  the valley 1 more than the valley's own next step. Under the sea it isn't smooth, and that's not the wrap: where a
+  coast's sea ramp meets an open-sea world square the floor drops straight to the deep, about 170-180 land units in one
+  cell, at every such border (squares (6, 6) and (7, 6) too). The nine has no open-sea square, so it never showed. The
+  open seas also read as square-edged in the heights picture. Both are a ChunkGen sea-floor follow-up.
+- **Wall rows** are the plan's `ice-wall` and `dune-sea`, 900 m bands shaped by the massif, coloured ice and sand in
+  the picture; nothing else yet (the ragged fringe, ice cliff, beach and sandstorm are later, paper first).
+

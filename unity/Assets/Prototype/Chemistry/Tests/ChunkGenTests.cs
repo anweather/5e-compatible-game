@@ -682,21 +682,11 @@ namespace Chem.Tests
                     int cx = x * scale + 1, cy = y * scale + 1, v = r.Land[cy * r.W + cx];
                     char cell = cells[cy * r.W + cx];
                     int shade = v - r.Land[(cy - 1) * r.W + cx - 1];
-                    (int R, int G, int B) col;
-                    if (v < ChunkGen.SeaLevel) col = (30, 70 + Math.Max(0, 60 + v / 6), 150 + Math.Max(0, 60 + v / 8));
-                    else if (cell == 'r' || cell == 'w') col = (90, 160, 230);
-                    else
-                    {
-                        int t = Math.Min(255, Math.Max(0, v * 255 / 1800));
-                        col = t < 128 ? (60 + t, 130 + t / 3, 50) : (188 + (t - 128) / 2, 172 + (t - 128) * 2 / 3, 50 + (t - 128) * 3 / 2);
-                        if (cell == 'T') col = (col.R * 3 / 4, col.G * 3 / 4, col.B * 3 / 4);
-                        if (cell == '#') col = (130, 125, 120);
-                    }
-                    int s = Math.Max(-60, Math.Min(60, shade * 6));
-                    int k = (y * w + x) * 3;
-                    rgb[k] = (byte)Math.Max(0, Math.Min(255, col.R + s));
-                    rgb[k + 1] = (byte)Math.Max(0, Math.Min(255, col.G + s));
-                    rgb[k + 2] = (byte)Math.Max(0, Math.Min(255, col.B + s));
+                    var col = WorldPlanPicture.Height(v);
+                    if (v >= ChunkGen.SeaLevel && (cell == 'r' || cell == 'w')) col = (90, 160, 230);
+                    else if (v >= ChunkGen.SeaLevel && cell == 'T') col = (col.R * 3 / 4, col.G * 3 / 4, col.B * 3 / 4);
+                    else if (v >= ChunkGen.SeaLevel && cell == '#') col = (130, 125, 120);
+                    WorldPlanPicture.Put(rgb, y * w + x, col, Math.Max(-60, Math.Min(60, shade * 6)));
                 }
             // The squares' borders, faintly.
             for (int y = 0; y < h; y++)

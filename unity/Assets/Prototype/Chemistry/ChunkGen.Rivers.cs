@@ -65,6 +65,9 @@ namespace Chem
         }
 
         readonly List<Segment> segments = new List<Segment>();
+        // Round a world that wraps, the segments near the seam again a world's width east or west, each with the index of
+        // the one it copies, so the land just across the seam reads them as the land beside them does.
+        readonly List<(int of, Segment copy)> seamCopies = new List<(int, Segment)>();
         long[] hubLevel;
         int[] drained;
         // The squares being worked out, so a loop in the plan's rivers (it has none) can't recurse for ever.
@@ -142,6 +145,41 @@ namespace Chem
                         Reach = LakeRadius + RiverFade,
                     }));
             }
+            if (WrapX) CopyAcrossTheSeam();
+        }
+
+        void CopyAcrossTheSeam()
+        {
+            const int margin = MainRoadHalf + RoadBank + 2;
+            for (int k = 0; k < segments.Count; k++)
+            {
+                var s = segments[k];
+                if (s.MaxX + s.Reach + margin + Size >= CellsW) seamCopies.Add((k, Shifted(s, -CellsW)));
+                if (s.MinX - s.Reach - margin - Size <= 0) seamCopies.Add((k, Shifted(s, CellsW)));
+            }
+        }
+
+        static Segment Shifted(Segment s, int dx)
+        {
+            var px = new long[s.Px.Length];
+            for (int k = 0; k < px.Length; k++) px[k] = s.Px[k] + (long)dx * One;
+            return new Segment
+            {
+                River = s.River,
+                Lake = s.Lake,
+                Px = px,
+                Py = s.Py,
+                S = s.S,
+                H = s.H,
+                Half = s.Half,
+                Reach = s.Reach,
+                MinX = s.MinX + dx,
+                MaxX = s.MaxX + dx,
+                MinY = s.MinY,
+                MaxY = s.MaxY,
+                Home = s.Home,
+                Out = s.Out,
+            };
         }
 
         static long Mid(int cell) => (long)cell * One + One / 2;
@@ -303,9 +341,16 @@ namespace Chem
         {
             const int margin = MainRoadHalf + RoadBank + 2;
             var near = new List<Segment>();
-            foreach (var s in segments)
-                if (s.MaxX + s.Reach + margin >= x0 && s.MinX - s.Reach - margin <= x1 && s.MaxY + s.Reach + margin >= y0 && s.MinY - s.Reach - margin <= y1)
-                    near.Add(s);
+            bool Touches(Segment s) =>
+                s.MaxX + s.Reach + margin >= x0 && s.MinX - s.Reach - margin <= x1 && s.MaxY + s.Reach + margin >= y0 && s.MinY - s.Reach - margin <= y1;
+            int c = 0;
+            for (int k = 0; k < segments.Count; k++)
+            {
+                if (Touches(segments[k])) near.Add(segments[k]);
+                // A copy follows the one it copies, so a cell and its twin a world round read their paths in one order.
+                for (; c < seamCopies.Count && seamCopies[c].of == k; c++)
+                    if (Touches(seamCopies[c].copy)) near.Add(seamCopies[c].copy);
+            }
             return near;
         }
 

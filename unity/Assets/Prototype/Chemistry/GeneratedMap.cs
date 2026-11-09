@@ -39,6 +39,13 @@ namespace Chem
         public int SquaresW { get; private set; }
         public int SquaresH { get; private set; }
         public int Generator { get; private set; }
+        /// <summary>map.json's "wrap": "ew" joins east to west (the north and south rows are walls); absent, none.</summary>
+        public PlanWrap Wrap { get; private set; }
+        /// <summary>
+        /// Whether the map may be baked whole: map.json's "bake", true when absent. A world too big to hold every cell of
+        /// (the 12 × 10, about 9-10 GB) says false, and is known and planned only until the sparse World.
+        /// </summary>
+        public bool Bakes { get; private set; }
         /// <summary>The pinned map's id and its square in the map (squares from the north-west).</summary>
         public string PinnedMap { get; private set; }
         public (int x, int y) PinnedAt { get; private set; }
@@ -83,9 +90,13 @@ namespace Chem
                 SquaresW = (int)o["squares"][0],
                 SquaresH = (int)o["squares"][1],
                 Generator = (int)o["generator"],
+                Wrap = WrapOf((string)o["wrap"]),
+                Bakes = (bool?)o["bake"] ?? true,
             };
             if (m.Generator != ChunkGen.Version) throw new FormatException($"{MapFile.FileName}: made by generator {m.Generator}, and this is {ChunkGen.Version}");
-            if (m.SquaresW != m.SquaresH) throw new FormatException($"{MapFile.FileName}: a world plan is square for now");
+            // An east-west world's map is its whole plan, the wall rows north and south included.
+            int landRows = m.Wrap == PlanWrap.EastWest ? m.SquaresH - 2 : m.SquaresH;
+            if (m.SquaresW < 1 || landRows < 1) throw new FormatException($"{MapFile.FileName}: squares {m.SquaresW} x {m.SquaresH} is too small{(m.Wrap == PlanWrap.EastWest ? " for an east-west world (its two wall rows)" : "")}");
             var pin = (JObject)((JArray)o["pinned"])[0];
             m.PinnedMap = (string)pin["map"];
             m.PinnedAt = ((int)pin["square"][0], (int)pin["square"][1]);
@@ -93,17 +104,27 @@ namespace Chem
             var pinned = ReadPinned(m.PinnedDir);
             var valleyMap = MapFile.Load(m.PinnedDir);
             var sides = ValleySides.Read(pinned.Land, WorldPlan.SquareCells, valleyMap.SeaLevel, 0.125, lib);
-            var inputs = PlanInputs.For(m.Seed, m.SquaresW, PlanWrap.None, sides);
+            var inputs = PlanInputs.For(m.Seed, m.SquaresW, landRows, m.Wrap, sides);
             inputs.ValleySpawn = valleyMap.Spawn;
             if (o["musts"] is JArray musts) inputs.Musts.AddRange(musts.Select(x => (string)x));
             m.Plan = WorldPlan.Solve(inputs, lib);
             m.PinnedName = valleyMap.Name;
             pinned.Square = m.Plan.Valley;
             int ox = m.Plan.Grid.X(m.Plan.Valley) - m.PinnedAt.x, oy = m.Plan.Grid.Y(m.Plan.Valley) - m.PinnedAt.y;
+            if (m.Wrap != PlanWrap.None && (ox != 0 || oy != 0 || m.SquaresW != m.Plan.Grid.W || m.SquaresH != m.Plan.Grid.H))
+                throw new FormatException($"{MapFile.FileName}: a world that wraps is its whole plan, so the valley's square is " +
+                    $"[{m.Plan.Grid.X(m.Plan.Valley)}, {m.Plan.Grid.Y(m.Plan.Valley)}], not [{m.PinnedAt.x}, {m.PinnedAt.y}]");
             var biomes = BiomeTable.Load(Path.Combine(m.WorldDir, BiomeTable.FileName));
             m.Gen = new ChunkGen(m.Plan, biomes, pinned, ox, oy, m.SquaresW, m.SquaresH);
             return m;
         }
+
+        static PlanWrap WrapOf(string wrap) => wrap switch
+        {
+            null => PlanWrap.None,
+            "ew" => PlanWrap.EastWest,
+            _ => throw new FormatException($"{MapFile.FileName}: wrap \"{wrap}\" isn't one of \"ew\" (or none)"),
+        };
 
         static PinnedSquare ReadPinned(string dir)
         {
@@ -177,9 +198,13 @@ namespace Chem
         public static bool EnsureBaked(string mapDir)
         {
             if (IsBaked(mapDir)) return false;
-            Load(mapDir).Bake(mapDir);
+            var m = Load(mapDir);
+            if (!m.Bakes) throw new InvalidOperationException(m.NoBake);
+            m.Bake(mapDir);
             return true;
         }
+
+        string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): it's planned and known only, until the sparse World";
 
         /// <summary>
         /// Writes the whole map as a map folder into <paramref name="outDir"/> (its map.json too, unless it's the map's own
@@ -188,6 +213,7 @@ namespace Chem
         /// </summary>
         public BakeReport Bake(string outDir, GeneratedChunk[] chunks = null)
         {
+            if (!Bakes) throw new InvalidOperationException(NoBake);
             var timer = System.Diagnostics.Stopwatch.StartNew();
             chunks ??= MakeAll();
             var report = new BakeReport { MakeMs = timer.Elapsed.TotalMilliseconds };

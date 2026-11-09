@@ -126,6 +126,11 @@ namespace Chem
         public List<BiomeRow> Rows { get; } = new List<BiomeRow>();
         public int Seed, RegionCells, WarpCells, ClimateCells, BlendCells, ShapeBlendCells, SquareCells;
         public long ClimateInfluence, AnchorBias; // Q16
+        /// <summary>
+        /// Cells after which the field repeats east-west, a world that wraps (0 for none): regions, warp, climate and
+        /// hotspots all repeat, so the land runs on unbroken across the seam. A whole number of regions.
+        /// </summary>
+        public int WrapCells;
 
         /// <summary>The anchor biome's row index per square, [x, y] with y north; −1 for none.</summary>
         public int[,] Layout;
@@ -204,6 +209,8 @@ namespace Chem
         readonly int seed;
         readonly int[] land; // row indices of the land biomes that are on
         readonly Dictionary<(int, int), int> anchored = new Dictionary<(int, int), int>();
+        // Regions east-west before the field repeats; 0 for a field that doesn't.
+        readonly int regionsX;
 
         public BiomeTable Table => table;
 
@@ -215,6 +222,12 @@ namespace Chem
             for (int i = 0; i < table.Rows.Count; i++)
                 if (table.Rows[i].On && !table.Rows[i].Ocean) on.Add(i);
             land = on.ToArray();
+            if (table.WrapCells > 0)
+            {
+                if (table.WrapCells % table.RegionCells != 0)
+                    throw new InvalidDataException($"biomes.json: a world {table.WrapCells} cells round needs a whole number of {table.RegionCells}-cell regions");
+                regionsX = table.WrapCells / table.RegionCells;
+            }
             // The region nearest each square's centre takes the square's anchor.
             for (int sx = 0; sx < table.Layout.GetLength(0); sx++)
                 for (int sy = 0; sy < table.Layout.GetLength(1); sy++)
@@ -223,7 +236,8 @@ namespace Chem
                     if (a < 0) continue;
                     long cx = ((long)sx * table.SquareCells * 2 + table.SquareCells) * One / 2 / table.RegionCells;
                     long cy = ((long)sy * table.SquareCells * 2 + table.SquareCells) * One / 2 / table.RegionCells;
-                    anchored[NearestRegion(cx, cy)] = a;
+                    var (rx, ry) = NearestRegion(cx, cy);
+                    anchored[(WrapRegion(rx), ry)] = a;
                 }
         }
 
@@ -232,9 +246,12 @@ namespace Chem
         /// <summary>A region's feature point in Q16 region units.</summary>
         (long x, long y) Feature(int rx, int ry)
         {
-            uint h = WorldHash.Hash4(seed, SaltJitter, rx, ry);
+            uint h = WorldHash.Hash4(seed, SaltJitter, WrapRegion(rx), ry);
             return ((long)rx * One + JitterLow + (h & 0xFFFF) * JitterSpan / 0xFFFF, (long)ry * One + JitterLow + (h >> 16) * JitterSpan / 0xFFFF);
         }
+
+        // The region east-west as the field counts it: the same region either side of a wrapped world's seam.
+        int WrapRegion(int rx) => regionsX > 0 ? (int)BiomeMath.Mod(rx, regionsX) : rx;
 
         (int, int) NearestRegion(long px, long py)
         {
@@ -260,8 +277,8 @@ namespace Chem
         {
             long xq = (long)x * One + One / 2, yq = (long)y * One + One / 2;
             long lattice = Math.Max(1, table.RegionCells / 2);
-            long wx = BiomeMath.Centred(seed, SaltWarpX, xq, yq, lattice) * table.WarpCells;
-            long wy = BiomeMath.Centred(seed, SaltWarpY, xq, yq, lattice) * table.WarpCells;
+            long wx = BiomeMath.Centred(seed, SaltWarpX, xq, yq, lattice, table.WrapCells, 0) * table.WarpCells;
+            long wy = BiomeMath.Centred(seed, SaltWarpY, xq, yq, lattice, table.WrapCells, 0) * table.WarpCells;
             return (BiomeMath.FloorDiv(xq + wx, table.RegionCells), BiomeMath.FloorDiv(yq + wy, table.RegionCells));
         }
 
@@ -292,6 +309,7 @@ namespace Chem
         /// <summary>The biome (row index) of a region.</summary>
         public int RegionBiome(int rx, int ry)
         {
+            rx = WrapRegion(rx);
             if (anchored.TryGetValue((rx, ry), out int forced)) return forced;
             if (land.Length <= 1) return land.Length == 1 ? land[0] : 0;
             var c = RegionCentre(rx, ry);
@@ -348,36 +366,40 @@ namespace Chem
         long Altitude(long xq, long yq)
         {
             long c = table.ClimateCells;
-            long n = BiomeMath.Centred(seed, SaltAlt, xq, yq, c) * 7 / 10 + BiomeMath.Centred(seed, SaltAlt2, xq, yq, c * 10 / 23) * 3 / 10;
+            long p = table.WrapCells;
+            long n = BiomeMath.Centred(seed, SaltAlt, xq, yq, c, p, 0) * 7 / 10 + BiomeMath.Centred(seed, SaltAlt2, xq, yq, c * 10 / 23, p, 0) * 3 / 10;
             return Spread(n);
         }
 
         /// <summary>The climate at a point in Q16 cells: smooth fields a few regions across, and volcanic hotspots.</summary>
         public BiomeClimate Climate(long xq, long yq)
         {
-            long c = table.ClimateCells;
+            long c = table.ClimateCells, p = table.WrapCells;
             long altitude = Altitude(xq, yq);
-            long temperature = BiomeMath.Clamp01(Spread(BiomeMath.Centred(seed, SaltTemp, xq, yq, c * 10 / 8)) - (altitude - One / 2) * 6 / 10);
-            long humidity = Spread(BiomeMath.Centred(seed, SaltHum, xq, yq, c * 10 / 11) * 3 / 4 + BiomeMath.Centred(seed, SaltHum2, xq, yq, c * 10 / 26) / 4);
+            long temperature = BiomeMath.Clamp01(Spread(BiomeMath.Centred(seed, SaltTemp, xq, yq, c * 10 / 8, p, 0)) - (altitude - One / 2) * 6 / 10);
+            long humidity = Spread(BiomeMath.Centred(seed, SaltHum, xq, yq, c * 10 / 11, p, 0) * 3 / 4 + BiomeMath.Centred(seed, SaltHum2, xq, yq, c * 10 / 26, p, 0) / 4);
             return new BiomeClimate(altitude, temperature, humidity, Volcanism(xq, yq));
         }
 
         // About a quarter of the cells of a coarse grid hold a hotspot (if it's in high country); volcanism falls off
-        // from it, so every volcanic area has its heart.
+        // from it, so every volcanic area has its heart. Round a wrapped world the grid's columns stretch a little so a
+        // whole number of them go round, and a hotspot repeats with them.
         long Volcanism(long xq, long yq)
         {
             long g = (long)table.ClimateCells * 8 / 5;
-            long gx = xq / g, gy = yq / g; // Q16 grid units
+            long cols = table.WrapCells > 0 ? Math.Max(1, (table.WrapCells + g / 2) / g) : 0;
+            long gx = cols > 0 ? BiomeMath.FloorDiv(xq * cols, table.WrapCells) : xq / g, gy = yq / g; // Q16 grid units
             long hx = BiomeMath.FloorDiv(gx, One), hy = BiomeMath.FloorDiv(gy, One);
             long v = 0;
             for (int i = 0; i < 9; i++)
             {
                 int cx = (int)hx + i % 3 - 1, cy = (int)hy + i / 3 - 1;
-                uint h = WorldHash.Hash4(seed, SaltVolc, cx, cy);
+                uint h = WorldHash.Hash4(seed, SaltVolc, cols > 0 ? (int)BiomeMath.Mod(cx, cols) : cx, cy);
                 if ((h & 0xFF) >= 70) continue;
                 long sx = (long)cx * One + 13107 + ((h >> 8) & 0xFFF) * 39321 / 4095;
                 long sy = (long)cy * One + 13107 + (h >> 20) * 39321 / 4095;
-                if (Altitude(sx * g, sy * g) < 29491) continue; // 0.45: only in high country
+                long atX = cols > 0 ? BiomeMath.FloorDiv(sx * table.WrapCells, cols) : sx * g;
+                if (Altitude(atX, sy * g) < 29491) continue; // 0.45: only in high country
                 v = Math.Max(v, BiomeMath.Clamp01(One - BiomeMath.Length(gx - sx, gy - sy) * One / 23593)); // over 0.36
             }
             return v;
