@@ -106,6 +106,9 @@ Each entry has:
   square from the plan (on a road, near its inn, village or landmark), a Host "Start in" choice, joiners beside the
   host, a waystone at each, respawn at the nearest one reached. u2 in chunk-gen-polish step 5, the PC in play-nine
   step 6.
+- **A hung Editor (2026-11-08):** play-nine's Editor (pid 44784) froze for 20 min after a whole-nine overhead
+  render (D3D12 fence lost, 14 GB). Andrew: yes, end that pid. One-off; the rule "never kill an Editor" stands, and
+  overhead shots stay to one or two squares at a time.
 - **Revisited:** 0.
 
 ### J-078: Casting pace and big spells (playtest 2026-11-08, C1 and C2)
