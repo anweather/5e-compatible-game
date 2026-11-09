@@ -98,7 +98,7 @@ public partial class ChemGrid
     public bool GasInLookAt(int x, int y)
     {
         var v = views[World.Idx(x, y)];
-        return v.gas != null && v.gas.activeInHierarchy && v.gasPrefab != null && (v.gasPrefab == steamInLook || v.gasPrefab == smokeInLook);
+        return v?.gas != null && v.gas.activeInHierarchy && v.gasPrefab != null && (v.gasPrefab == steamInLook || v.gasPrefab == smokeInLook);
     }
 
     // Reads the colours in force. Copies of the gases' effects made for the last ones go.

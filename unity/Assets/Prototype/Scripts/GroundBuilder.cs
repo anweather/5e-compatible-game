@@ -67,6 +67,12 @@ public sealed class GroundBuilder
         return data;
     }
 
+    /// <summary>
+    /// A chunk built here, taken again by a new world as it is: its layers back to the template's (WetGround gave it copies
+    /// to wet, which go with the old world).
+    /// </summary>
+    public void FreshLayers(TerrainData data) => data.terrainLayers = template.terrainLayers;
+
     static void SetHeights(TerrainData data, GroundChunk c)
     {
         int res = c.Resolution;

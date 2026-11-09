@@ -376,8 +376,17 @@ public partial class ChemGrid : MonoBehaviour
         if (spec.cover != null) world.SetCover(x, y, spec.cover);
     }
 
+    // From the start of Play to the grid's first frame: what a start-up costs (view-rebuild's target).
+    static readonly System.Diagnostics.Stopwatch SincePlay = new();
+    static bool readyLogged;
+
     void Update()
     {
+        if (!readyLogged)
+        {
+            readyLogged = true;
+            Debug.Log($"PLAY READY {World.W} x {World.H}: first frame {SincePlay.Elapsed.TotalMilliseconds:0} ms after Play started");
+        }
         using (DetailChunksMarker.Auto()) UpdateDetailChunks();
         FollowLooks();
         if (ExternalTicks)
@@ -412,6 +421,8 @@ public partial class ChemGrid : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ForgetFolders()
     {
+        SincePlay.Restart();
+        readyLogged = false;
         folders = null;
         checkedMap = null;
         mapHashOf = null;

@@ -16,7 +16,8 @@ using UnityEngine;
 // playing never changes the saved valley: chunks built from the map's arrays (GroundBuilder; the
 // scene's start built the first, MapTerrains), or in tests copies of chunks given to it. They are made up front, not when a
 // chunk first changes: swapping a terrain's collider under a prop resting on it
-// drops the contact, and the prop falls through the ground. The baked heights already hold the starting cells' offsets
+// drops the contact, and the prop falls through the ground. A new world on the same
+// map keeps a chunk built from the arrays that nothing has changed since (touched). The baked heights already hold the starting cells' offsets
 // (the ground pack was baked with the same CellHeightfield), so the base under
 // each sample is what was baked minus that offset.
 public sealed class ValleyGround
@@ -31,6 +32,11 @@ public sealed class ValleyGround
         // data: its runtime copy. fresh: data is as built and nothing has changed it yet (the first Bind takes it as is).
         public TerrainData original, data;
         public bool fresh;
+        // Something changed data since it was built (heights, paint, grass, trees): a new world builds it again. Untouched,
+        // a world on the same map takes it as it is (view-rebuild: 729 chunks built again were most of a big map's bind).
+        public bool touched;
+        // Where the terrain stands (its transform's height), read once a Bind rather than once a cell.
+        public float bottom;
         // Heights in metres above the terrain's position, before the cells' offsets: [z, x].
         public float[,] baseHeights;
         // CellPaint.Layers as indices into the terrain's layers (-1: the terrain lacks it).
@@ -113,7 +119,12 @@ public sealed class ValleyGround
     public bool HasChunk((int i, int j) at) => chunks.ContainsKey(at);
 
     /// <summary>One of the chunks the cells reach, to change: its runtime copy, made now if it has none yet.</summary>
-    public TerrainData WritableData((int i, int j) at) => Writable(chunks[at]);
+    public TerrainData WritableData((int i, int j) at)
+    {
+        var ch = chunks[at];
+        ch.touched = true;
+        return Writable(ch);
+    }
 
     static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
 
@@ -141,6 +152,7 @@ public sealed class ValleyGround
         else Object.DestroyImmediate(ch.data);
         ch.data = null;
         ch.heightsChanged = false;
+        ch.touched = false;
     }
 
     /// <summary>What making the chunks took at the last Bind (ms): the probe compares built with baked.</summary>
@@ -174,17 +186,25 @@ public sealed class ValleyGround
         foreach (var r in heightfield.Update(w, w.LandLaidCells(), snap: true)) WriteHeights(r);
         BindMs = timer.Elapsed.TotalMilliseconds;
         Debug.Log($"GROUND BIND {(builder != null ? "built" : "baked")}: {chunks.Count} chunks in {BindMs:0} ms");
-        cellBase = new float[w.W * w.H];
-        bakedPaint = new IReadOnlyList<float>[w.W * w.H];
+        // A world of the same size takes the last one's arrays, every entry written again.
+        int cells = w.W * w.H;
+        if (cellBase == null || cellBase.Length != cells)
+        {
+            cellBase = new float[cells];
+            bakedPaint = new IReadOnlyList<float>[cells];
+            paintedMix = new IReadOnlyList<float>[cells];
+        }
+        var all = w.Cells;
         for (int y = 0; y < w.H; y++)
         {
             for (int x = 0; x < w.W; x++)
             {
-                cellBase[w.Idx(x, y)] = SampleBase(x, y);
-                bakedPaint[w.Idx(x, y)] = CellPaint.Mix(w, w.At(x, y));
+                int k = w.Idx(x, y);
+                cellBase[k] = SampleBase(x, y);
+                bakedPaint[k] = CellPaint.Mix(w, all[k]);
             }
         }
-        paintedMix = (IReadOnlyList<float>[])bakedPaint.Clone();
+        System.Array.Copy(bakedPaint, paintedMix, cells);
     }
 
     static readonly Unity.Profiling.ProfilerMarker BindMarker = new("ValleyGround.Bind");
@@ -196,8 +216,11 @@ public sealed class ValleyGround
     void Recover((int i, int j) at, Chunk ch)
     {
         if (ch.fresh) ch.fresh = false;
+        else if (builder != null && ch.data != null && !ch.touched) builder.FreshLayers(ch.data);
         else Restore(ch);
         var data = Writable(ch);
+        ch.touched = false;
+        ch.bottom = ch.terrain.transform.position.y;
         int res = data.heightmapResolution;
         var heights = data.GetHeights(0, 0, res, res);
         var offsets = heightfield.Current(at.i, at.j);
@@ -229,10 +252,14 @@ public sealed class ValleyGround
         return map;
     }
 
+    Chunk lastBase;
+
     float SampleBase(int x, int y)
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
-        return chunks.TryGetValue((i, j), out var ch) ? ch.terrain.transform.position.y + ch.baseHeights[sz, sx] : 0f;
+        // Cells along a row share a chunk: the last one found is kept rather than looked up again.
+        if (lastBase == null || lastBase.at != (i, j)) lastBase = chunks.TryGetValue((i, j), out var found) ? found : null;
+        return lastBase != null && lastBase.at == (i, j) ? lastBase.bottom + lastBase.baseHeights[sz, sx] : 0f;
     }
 
     /// <summary>The valley's own ground at a cell, before the cell's offset.</summary>
@@ -327,6 +354,7 @@ public sealed class ValleyGround
             for (int x = 0; x < r.Width; x++) heights[z, x] = (ch.baseHeights[r.Z + z, r.X + x] + offsets[r.Z + z, r.X + x]) / size;
         data.SetHeightsDelayLOD(r.X, r.Z, heights);
         ch.heightsChanged = true;
+        ch.touched = true;
     }
 
     // The easing writes the same few rectangle sizes every frame: one buffer per size, reused.
@@ -573,6 +601,7 @@ public sealed class ValleyGround
     {
         using var marked = UploadMarker.Auto();
         if (ch.dx1 < 0) return;
+        ch.touched = true;
         var textures = ch.data.alphamapTextures;
         for (int t = 0; t < textures.Length; t++)
         {
@@ -617,6 +646,7 @@ public sealed class ValleyGround
         bare.Clear();
         regrown.Clear();
         foreach (var (r, grassy) in cells.Values) (grassy ? regrown : bare).Add(r);
+        chunks[at].touched = true;
         if (bare.Count > 0) ClearDetail(Writable(chunks[at]), bare);
         if (regrown.Count > 0) RestoreDetail(chunks[at], regrown);
     }

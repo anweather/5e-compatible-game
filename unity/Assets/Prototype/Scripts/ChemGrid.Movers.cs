@@ -256,7 +256,7 @@ public partial class ChemGrid
         if (c.T == TerrainIds.Pillar)
         {
             boulderRests.Add(index);
-            Redress(views[index], c, boulder.X, boulder.Y, false);
+            if (views[index] != null) Redress(views[index], c, boulder.X, boulder.Y, false);
         }
         else BurstFx.Play(BurstFx.Kind.Splash, MoverGround(boulder.X, boulder.Y));
         Dust(MoverGround(boulder.X, boulder.Y));

@@ -518,6 +518,9 @@ public static class ProbeScenarios
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),
+        new Entry("crossing", typeof(CrossingProbe), 60f,
+            "The world rebuilt from the map (an online reset's rebuild), then the wizard runs north on a virtual pad for 24 s across chunks as they draw. " +
+            "Checks: it reached new chunks, no frame over 100 ms, no console errors. Metrics: rebuild_ms, worst_frame_ms, frames_over_50ms, median_frame_ms, chunks_crossed."),
         new Entry("roll", typeof(RollProbe), 30f,
             "A virtual controller walks the wizard north and pulls the left trigger (DodgeRoll), then pulls it again 0.55 s in, during the wait " +
             "before the next roll. Checks: it rolls, over 3 m in under 0.6 s, the body turns once head over heels (300 to 420 degrees, hips to " +

@@ -97,8 +97,8 @@ public partial class ChemGrid
 
     void InitVisuals()
     {
+        // A chunk's views are made as it first draws (RenderChunk): 3 million made at once were much of a big map's build.
         views = new View[World.W * World.H];
-        for (int i = 0; i < views.Length; i++) views[i] = new View();
         dressings ??= new CellDressing(this, materials);
         if (blockers == null) blockers = new CellBlockers(this);
         else blockers.ReleaseAll();
@@ -129,7 +129,7 @@ public partial class ChemGrid
 
     /// <summary>What stands on a cell (its CellDressing: a wall's crags, a stone block), or null; OccluderFade dithers one that hides the wizard.</summary>
     public GameObject DressingAt(int x, int y) =>
-        views != null && World != null && x >= 0 && y >= 0 && x < World.W && y < World.H ? views[y * World.W + x].dressing : null;
+        views != null && World != null && x >= 0 && y >= 0 && x < World.W && y < World.H ? views[y * World.W + x]?.dressing : null;
 
     /// <summary>The top of the water drawn on a cell (CellWaterMesh), or null where none is drawn.</summary>
     public float? DrawnWaterTop(int x, int y)
@@ -138,15 +138,135 @@ public partial class ChemGrid
         return float.IsNaN(top) ? null : top;
     }
 
-    // Every cell once, for a new world: the sleeping chunks' trees and walls get their blockers too.
+    // Every cell once, for a new world: the chunks near the players and the camera now, the rest a few a frame after,
+    // nearest first (view-rebuild: every cell of a 1728-cell map at once was 2.3 s of each start and reset). The sleeping
+    // chunks' trees and walls get their blockers too, as they draw. Until every chunk has drawn, the old world's spare
+    // blockers stay standing (most stand where the new world's will).
     void RenderAll()
     {
-        for (int y = 0; y < World.H; y++)
+        int across = ChunksAcross, down = (World.H + Chunks.Size - 1) >> Chunks.Shift;
+        drawn = new bool[across * down];
+        undrawn = drawn.Length;
+        spareToHide = true;
+        DrawNear();
+        var focus = Focus();
+        toDraw.Clear();
+        for (int cy = 0; cy < down; cy++)
+            for (int cx = 0; cx < across; cx++)
+                if (!drawn[cy * across + cx]) toDraw.Add(cy * across + cx);
+        // Nearest first, then by row and column (a stable order: the same on every peer, though only the view reads it).
+        toDraw.Sort((a, b) =>
         {
-            for (int x = 0; x < World.W; x++) RenderCell(x, y);
-        }
-        blockers.HideSpare();
+            int da = FocusDistance(focus, a % across, a / across), db = FocusDistance(focus, b % across, b / across);
+            return da != db ? da.CompareTo(db) : a.CompareTo(b);
+        });
+        nextToDraw = 0;
+        partRow = 0;
+        HideSpareOnceDrawn();
         FinishRender();
+    }
+
+    // Chunks not yet drawn since the world was built (RenderAll), by world chunk index (cy * ChunksAcross + cx).
+    bool[] drawn = System.Array.Empty<bool>();
+    int undrawn;
+    bool spareToHide;
+    readonly List<int> toDraw = new();
+    int nextToDraw;
+    readonly List<Vector2Int> focusChunks = new();
+    readonly System.Diagnostics.Stopwatch drawTimer = new();
+
+    int ChunksAcross => (World.W + Chunks.Size - 1) >> Chunks.Shift;
+
+    /// <summary>Chunks of this world not drawn yet: they draw a few a frame after a build, nearest the players first.</summary>
+    public int ChunksLeftToDraw => undrawn;
+
+    // A frame's drawing of chunks still undrawn, past those near the players: about this many ms (at least one chunk), or
+    // in a playtest run this many chunks (ExactFrames).
+    const double DrawBudgetMs = 3.0;
+    const int ExactChunksAFrame = 2;
+
+    // Where the chunks that must be drawn are: every wizard's (the solo one, or every player's online), the start's and the
+    // camera's.
+    List<Vector2Int> Focus()
+    {
+        focusChunks.Clear();
+        foreach (var (x, y) in PlayerCells()) focusChunks.Add(new Vector2Int(Chunks.ChunkOf(x), Chunks.ChunkOf(y)));
+        focusChunks.Add(new Vector2Int(Chunks.ChunkOf(PlayerStart.x), Chunks.ChunkOf(PlayerStart.y)));
+        var cam = Camera.main;
+        if (cam != null)
+        {
+            var cell = CellAt(cam.transform.position);
+            if (World.InBounds(cell.x, cell.y)) focusChunks.Add(new Vector2Int(Chunks.ChunkOf(cell.x), Chunks.ChunkOf(cell.y)));
+        }
+        return focusChunks;
+    }
+
+    static int FocusDistance(List<Vector2Int> focus, int cx, int cy)
+    {
+        int best = int.MaxValue;
+        foreach (var f in focus) best = Mathf.Min(best, Mathf.Max(Mathf.Abs(f.x - cx), Mathf.Abs(f.y - cy)));
+        return best;
+    }
+
+    // Every undrawn chunk within the streaming reach of a focus, drawn now: what a player stands in or walks into.
+    void DrawNear()
+    {
+        if (undrawn == 0) return;
+        int reach = World.Rules.Sim.Streaming.Reach, across = ChunksAcross, down = drawn.Length / Mathf.Max(1, across);
+        foreach (var f in Focus())
+            for (int cy = Mathf.Max(0, f.y - reach); cy <= Mathf.Min(down - 1, f.y + reach); cy++)
+                for (int cx = Mathf.Max(0, f.x - reach); cx <= Mathf.Min(across - 1, f.x + reach); cx++)
+                    if (!drawn[cy * across + cx]) RenderChunk(cx, cy);
+    }
+
+    // The rest a few a frame, nearest first.
+    void DrawSome()
+    {
+        if (undrawn == 0) return;
+        DrawNear();
+        drawTimer.Restart();
+        int across = ChunksAcross, done = 0;
+        // A few rows at a time, so a crowded chunk (a town's) is spread over frames too; it counts as drawn once whole.
+        while (nextToDraw < toDraw.Count && undrawn > 0)
+        {
+            if (ExactFrames ? done >= ExactChunksAFrame * Chunks.Size : done > 0 && drawTimer.Elapsed.TotalMilliseconds >= DrawBudgetMs) break;
+            int n = toDraw[nextToDraw];
+            if (drawn[n])
+            {
+                nextToDraw++;
+                partRow = 0;
+                continue;
+            }
+            int cx = n % across, cy = n / across, y0 = cy << Chunks.Shift, y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+            int from = y0 + partRow, to = Mathf.Min(y1, from + RowsAStep);
+            if (partRow == 0) MakeViews(cx, cy);
+            RenderRows(cx, from, to);
+            done += to - from;
+            partRow = to - y0;
+            if (to < y1) continue;
+            MarkDrawn(n);
+            nextToDraw++;
+            partRow = 0;
+        }
+        HideSpareOnceDrawn();
+    }
+
+    // How many of its rows DrawSome has drawn of the chunk it's on, and how many it draws a step.
+    int partRow;
+    const int RowsAStep = 8;
+
+    void HideSpareOnceDrawn()
+    {
+        if (undrawn > 0 || !spareToHide) return;
+        spareToHide = false;
+        blockers.HideSpare();
+    }
+
+    /// <summary>Whether a chunk of this world has been drawn since it was built (it draws on first sight, or soon after).</summary>
+    public bool IsChunkDrawn(int cx, int cy)
+    {
+        int across = ChunksAcross, n = cy * across + cx;
+        return cx >= 0 && cy >= 0 && cx < across && n < drawn.Length && drawn[n];
     }
 
     // Each frame: the simulated chunks' cells (a sleeping chunk doesn't change; ChunkStreaming).
@@ -159,10 +279,12 @@ public partial class ChemGrid
     {
         renderTurn = (renderTurn + 1) % RenderTurns;
         int turn = 0;
+        DrawSome();
         foreach (var (cx, cy) in World.ActiveChunks)
         {
             if (turn++ % RenderTurns != renderTurn) continue;
-            RenderChunk(cx, cy);
+            // A chunk not drawn yet draws whole, in its turn (DrawSome); a new world's chunks are all active at first.
+            if (IsChunkDrawn(cx, cy)) RenderChunk(cx, cy);
         }
         RenderFresh(out int fresh);
         RenderSwept();
@@ -210,10 +332,38 @@ public partial class ChemGrid
     // Every cell of a chunk, looked over.
     void RenderChunk(int cx, int cy)
     {
+        int n = cy * ChunksAcross + cx;
+        if (n < drawn.Length && !drawn[n])
+        {
+            MakeViews(cx, cy);
+            MarkDrawn(n);
+        }
+        int y0 = cy << Chunks.Shift;
+        RenderRows(cx, y0, Mathf.Min(World.H, y0 + Chunks.Size));
+    }
+
+    // Rows y0 to y1 (not included) of chunk column cx.
+    void RenderRows(int cx, int y0, int y1)
+    {
+        int x0 = cx << Chunks.Shift, x1 = Mathf.Min(World.W, x0 + Chunks.Size);
+        for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++) RenderCell(x, y);
+    }
+
+    // A chunk's views, made as it first draws (a drawn chunk's are all there).
+    void MakeViews(int cx, int cy)
+    {
         int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
         int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
         for (int y = y0; y < y1; y++)
-            for (int x = x0; x < x1; x++) RenderCell(x, y);
+            for (int x = x0; x < x1; x++) views[y * World.W + x] ??= new View();
+    }
+
+    void MarkDrawn(int n)
+    {
+        if (drawn[n]) return;
+        drawn[n] = true;
+        undrawn--;
     }
 
     /// <summary>Inactive chunks redrawn because the dragon's breath reset them, for the probe.</summary>

@@ -13,7 +13,7 @@ using UnityEngine;
 // console errors and screenshots.
 public abstract class ProbeScenario : ShowcaseScript
 {
-    const float SettleSeconds = 1f;
+    const float SettleSeconds = 1f, MostDrawWaitSeconds = 30f;
     const int MaxErrorsKept = 20;
     /// <summary>Bytes a call that counts as none: half the smallest object there is. Stray allocations in a frame came to 0.6 at most.</summary>
     protected const float MostGarbage = 8f;
@@ -77,6 +77,8 @@ public abstract class ProbeScenario : ShowcaseScript
     protected override IEnumerator Play()
     {
         yield return Wait(SettleSeconds);
+        // The world's far chunks draw a few a frame after it's built (ChemGrid.RenderAll): a scenario starts on all of it.
+        for (float waited = 0f; grid.ChunksLeftToDraw > 0 && waited < MostDrawWaitSeconds; waited += Time.unscaledDeltaTime) yield return null;
         tickAtStart = grid.World.Tick;
         measureStarted = Time.realtimeSinceStartup;
         measuring = true;

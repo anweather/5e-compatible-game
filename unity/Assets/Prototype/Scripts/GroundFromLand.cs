@@ -37,18 +37,29 @@ public static class GroundFromLand
         var pack = new GroundPack { Bottom = bottom, Top = high * (double)s.Unit + RoomAbove, Layers = s.Layers, Grasses = s.Grasses, TreeKinds = s.TreeKinds };
         var field = new CellHeightfield(s.Layout, s.StepHeight, 1f);
         var trees = TreesByChunk(s);
-        for (int j = 0; j < s.Layout.ChunksZ; j++)
-            for (int i = 0; i < s.Layout.ChunksX; i++)
-            {
-                var chunk = new GroundChunk { I = i, J = j, Resolution = s.Layout.Resolution(i, j), Texels = s.Layout.TexelResolution(i, j), DetailResolution = s.DetailResolution };
-                chunk.Heights = Heights(s, field, pack, i, j);
-                chunk.Paint = Paint(s, i, j);
-                chunk.Details = Details(s, i, j);
-                chunk.Trees = Placed(s, pack, chunk, trees.TryGetValue((i, j), out var mine) ? mine : new List<(int, int)>());
-                pack.Chunks.Add(chunk);
-            }
+        int across = s.Layout.ChunksX, chunks = across * s.Layout.ChunksZ;
+        var built = new GroundChunk[chunks];
+        // The chunks side by side (view-rebuild: 729 of them one after another were 5 s of a big map's start). Each reads
+        // the world, the land and the layout, which nothing changes meanwhile, and writes only its own chunk, so the order
+        // they run in changes nothing; they're added in order after.
+        void One(int n)
+        {
+            int i = n % across, j = n / across;
+            var chunk = new GroundChunk { I = i, J = j, Resolution = s.Layout.Resolution(i, j), Texels = s.Layout.TexelResolution(i, j), DetailResolution = s.DetailResolution };
+            chunk.Heights = Heights(s, field, pack, i, j);
+            chunk.Paint = Paint(s, i, j);
+            chunk.Details = Details(s, i, j);
+            chunk.Trees = Placed(s, pack, chunk, trees.TryGetValue((i, j), out var mine) ? mine : new List<(int, int)>());
+            built[n] = chunk;
+        }
+        if (Threaded) System.Threading.Tasks.Parallel.For(0, chunks, One);
+        else for (int n = 0; n < chunks; n++) One(n);
+        pack.Chunks.AddRange(built);
         return pack;
     }
+
+    /// <summary>Whether Build works the chunks out side by side (the default); off, one after another, for comparison: both give the same arrays.</summary>
+    public static bool Threaded { get; set; } = true;
 
     // The land at a world cell, the nearest on the grid past its edge.
     static float LandAt(Source s, int u, int v)

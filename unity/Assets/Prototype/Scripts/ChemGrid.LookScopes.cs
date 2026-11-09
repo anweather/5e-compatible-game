@@ -104,7 +104,7 @@ public partial class ChemGrid
         {
             int index = toRemark.Dequeue();
             remarking[index] = false;
-            views[index].key = int.MinValue;
+            if (views[index] != null) views[index].key = int.MinValue;
             PerfCounts.Add("scope.marked");
         }
     }
