@@ -64,8 +64,8 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0xee17eb9eu;
-        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xa2d57868u), (9, 20, 0x612d3d88u), (4, 4, 0x126a5ca0u), (26, 0, 0x7594a450u) };
+        const uint NineGolden = 0x0be3c4bdu;
+        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xc6391688u), (9, 20, 0x019aa188u), (4, 4, 0x126a5ca0u), (26, 0, 0x7594a450u) };
 
         [Test]
         public void TheNinesWorldFileSaysItsShape()
@@ -387,40 +387,142 @@ namespace Chem.Tests
             }
         }
 
-        [Test]
-        public void EverySpawnIsReachableOnFootFromTheValleys()
+        // A cell a walker can stand on: dry land (no sea, lake or river) that isn't a wall. Stone, trees and brambles are
+        // walls wherever they're read (ChemGrid's legend, materials.json's "blocking").
+        static bool Walkable(int[] land, char[] cells, int k) =>
+            land[k] >= ChunkGen.SeaLevel && cells[k] != 'w' && cells[k] != 'r' && cells[k] != '#' && cells[k] != 'T' && cells[k] != '"';
+
+        // A step a walker takes between two side-by-side cells: both walkable, and no more than a metre up or down.
+        static bool Steps(int[] land, char[] cells, int a, int b) =>
+            Walkable(land, cells, a) && Walkable(land, cells, b) && Math.Abs(land[a] - land[b]) <= 8;
+
+        // The valley's sides that face another square of the map (north 0, east 1, south 2, west 3; the nine's are north
+        // and east), and for side s and a place along it the valley's rim cell and the map cell just outside it.
+        static IEnumerable<int> OpenSides(ChunkGen gen)
         {
-            // From the valley's spawn, walking from cell to cell over dry land (no sea, lake or river) and never up or down
-            // more than a metre a cell, every other square's spawn is reached: along the roads or over open land.
-            var gen = Nine.Gen;
-            var land = Whole;
-            int w = gen.CellsW, h = gen.CellsH;
-            var cells = new char[w * h];
-            foreach (var c in All)
-                for (int j = 0; j < ChunkGen.Size; j++) Array.Copy(c.Cells, j * ChunkGen.Size, cells, (c.Y * ChunkGen.Size + j) * w + c.X * ChunkGen.Size, ChunkGen.Size);
-            bool Open(int k) => land[k] >= ChunkGen.SeaLevel && cells[k] != 'w' && cells[k] != 'r';
-            var seen = new bool[w * h];
-            var start = gen.Spawns.Single(s => s.Pinned);
-            var queue = new Queue<int>();
-            queue.Enqueue(start.Y * w + start.X);
-            seen[start.Y * w + start.X] = true;
-            int reached = 0;
-            while (queue.Count > 0)
+            int x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square;
+            if (y0 > 0) yield return 0;
+            if (x0 + sq < gen.CellsW) yield return 1;
+            if (y0 + sq < gen.CellsH) yield return 2;
+            if (x0 > 0) yield return 3;
+        }
+
+        static (int inside, int outside) Across(ChunkGen gen, int s, int along)
+        {
+            int x0 = gen.PinnedX, y0 = gen.PinnedY, e = ChunkGen.Square - 1, w = gen.CellsW;
+            var (ix, iy, ox, oy) = s switch
             {
-                int k = queue.Dequeue();
-                reached++;
-                int x = k % w, y = k / w;
-                foreach (var (nx, ny) in new[] { (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1) })
+                0 => (x0 + along, y0, x0 + along, y0 - 1),
+                1 => (x0 + e, y0 + along, x0 + e + 1, y0 + along),
+                2 => (x0 + along, y0 + e, x0 + along, y0 + e + 1),
+                _ => (x0, y0 + along, x0 - 1, y0 + along),
+            };
+            return (iy * w + ix, oy * w + ox);
+        }
+
+        static (int[] land, char[] cells) WholeOf(ChunkGen gen, IEnumerable<GeneratedChunk> chunks)
+        {
+            int w = gen.CellsW, n = ChunkGen.Size;
+            var land = new int[w * gen.CellsH];
+            var cells = new char[w * gen.CellsH];
+            foreach (var c in chunks)
+                for (int j = 0; j < n; j++)
                 {
-                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-                    int n = ny * w + nx;
-                    if (seen[n] || !Open(n) || Math.Abs(land[n] - land[k]) > 8) continue;
-                    seen[n] = true;
-                    queue.Enqueue(n);
+                    Array.Copy(c.Land, j * n, land, (c.Y * n + j) * w + c.X * n, n);
+                    Array.Copy(c.Cells, j * n, cells, (c.Y * n + j) * w + c.X * n, n);
+                }
+            return (land, cells);
+        }
+
+        [TestCase("valley-1")]
+        [TestCase("seed-4")]
+        [TestCase("seed-9")]
+        public void EverySpawnIsReachableOnFootAcrossEachOfTheValleysOpenSides(string seed)
+        {
+            // From the valley's spawn, walking from cell to cell over dry land, never through a wall (stone, a tree,
+            // brambles) and never up or down more than a metre a cell, every other square's spawn is reached; and it is
+            // reached across each of the valley's open sides alone (the other closed), so neither side is a wall. Steep
+            // generated land once laid stone on every face over 1.25 m a cell, which walled off nearly all of the valley's
+            // north and east seam; this would have caught it.
+            var m = seed == Nine.Seed ? Nine : GeneratedMap.Load(NineDir, seed);
+            var gen = m.Gen;
+            var (land, cells) = WholeOf(gen, seed == Nine.Seed ? All : m.MakeAll());
+            int w = gen.CellsW, h = gen.CellsH, x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square;
+            bool InValley(int k) => k % w >= x0 && k % w < x0 + sq && k / w >= y0 && k / w < y0 + sq;
+            var start = gen.Spawns.Single(s => s.Pinned);
+            var sides = OpenSides(gen).ToList();
+            Assert.That(sides, Is.Not.Empty, "the valley has a side on the map");
+            foreach (int side in sides)
+            {
+                var seen = new bool[w * h];
+                var queue = new Queue<int>();
+                queue.Enqueue(start.Y * w + start.X);
+                seen[start.Y * w + start.X] = true;
+                int reached = 0;
+                while (queue.Count > 0)
+                {
+                    int k = queue.Dequeue();
+                    reached++;
+                    int x = k % w, y = k / w;
+                    foreach (var (nx, ny, s) in new[] { (x, y - 1, 0), (x + 1, y, 1), (x, y + 1, 2), (x - 1, y, 3) })
+                    {
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        int n = ny * w + nx;
+                        if (seen[n] || !Steps(land, cells, k, n)) continue;
+                        // Into or out of the valley only across this side (s is the way the step goes, out of the valley).
+                        if (InValley(k) != InValley(n) && (InValley(k) ? s : (s + 2) % 4) != side) continue;
+                        seen[n] = true;
+                        queue.Enqueue(n);
+                    }
+                }
+                TestContext.Out.WriteLine($"REACH {seed} across side {side} alone: {reached} of {w * h} cells on foot from the valley's spawn");
+                foreach (var s in gen.Spawns)
+                    Assert.That(seen[s.Y * w + s.X], $"{seed}: the spawn at ({s.X}, {s.Y}) near the {s.Near} is reached across the valley's side {side}");
+            }
+        }
+
+        [TestCase("valley-1")]
+        [TestCase("seed-4")]
+        [TestCase("seed-9")]
+        public void TheValleysOpenSidesAreCrossableAlongMostOfTheirLength(string seed)
+        {
+            // Along each of the valley's open sides, a walker steps from the valley's rim cell to the cell outside it at
+            // most places its rim is dry land (the valley's own sea and lakes are left out: its east side is sea south of
+            // row 324), in every one of the plan's slots on that side (a chunk's width each) with dry rim, and at every
+            // road that crosses it, on the road. Where it can't, it is the valley's own trees or a step over a metre (no
+            // stone is laid on a steep face), and no stone at all stands outside the rim.
+            var m = seed == Nine.Seed ? Nine : GeneratedMap.Load(NineDir, seed);
+            var gen = m.Gen;
+            var (land, cells) = WholeOf(gen, seed == Nine.Seed ? All : m.MakeAll());
+            int sq = ChunkGen.Square, per = sq / m.Plan.Library.Slots;
+            foreach (int side in OpenSides(gen))
+            {
+                var crossable = new bool[sq];
+                var dry = new bool[sq];
+                int stone = 0;
+                for (int t = 0; t < sq; t++)
+                {
+                    var (a, b) = Across(gen, side, t);
+                    dry[t] = land[a] >= ChunkGen.SeaLevel && cells[a] != 'w' && cells[a] != 'r';
+                    crossable[t] = Steps(land, cells, a, b);
+                    if (cells[b] == '#') stone++;
+                }
+                int open = crossable.Count(c => c), rim = dry.Count(d => d);
+                TestContext.Out.WriteLine($"SEAM {seed} side {side}: {open} of its {rim} dry rim cells cross ({sq - rim} are the valley's water), {stone} outside are stone");
+                Assert.That(rim, Is.GreaterThan(sq / 4), $"{seed}: side {side} is mostly land");
+                Assert.That(open * 100, Is.GreaterThanOrEqualTo(rim * 90), $"{seed}: side {side} crosses along most of its dry rim");
+                Assert.That(stone, Is.Zero, $"{seed}: no stone along side {side}, outside the valley");
+                for (int slot = 0; slot < m.Plan.Library.Slots; slot++)
+                {
+                    var span = Enumerable.Range(slot * per, per).ToList();
+                    if (span.Any(t => dry[t])) Assert.That(span.Any(t => crossable[t]), $"{seed}: side {side} crosses in slot {slot}");
+                }
+                foreach (var f in m.Plan.Features[m.Plan.Valley][side].Where(f => f.Kind == EdgeKind.Road))
+                {
+                    int mid = f.Slot * per + per / 2;
+                    Assert.That(Enumerable.Range(mid - 3, 7).Any(t => crossable[t]), $"{seed}: side {side} crosses on its road at slot {f.Slot}");
                 }
             }
-            TestContext.Out.WriteLine($"REACH {reached} of {w * h} cells on foot from the valley's spawn");
-            foreach (var s in gen.Spawns) Assert.That(seen[s.Y * w + s.X], $"the spawn at ({s.X}, {s.Y}) near the {s.Near} is reached on foot");
         }
 
         [Test]

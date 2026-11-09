@@ -9,7 +9,7 @@
   "generated": {
     "seed": "valley-1",
     "squares": [3, 3],
-    "generator": 3,
+    "generator": 4,
     "pinned": [ { "map": "valley", "square": [0, 2] } ]
   }
 }

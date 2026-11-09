@@ -50,7 +50,7 @@ namespace Chem
     public sealed partial class ChunkGen
     {
         /// <summary>The generator's version, in the map's input hash: a change that alters any chunk is a new version.</summary>
-        public const int Version = 3;
+        public const int Version = 4;
         public const int Size = WorldPlan.ChunkCells, Square = WorldPlan.SquareCells;
 
         // Legend characters (ChemGrid.Legend).
@@ -185,6 +185,7 @@ namespace Chem
             var wet = new byte[ap * ap];
             var road = new bool[ap * ap];
             var clear = new bool[Size * Size];
+            var steep = new bool[Size * Size];
             var near = Nearby(x0 - 1, y0 - 1, x0 + Size, y0 + Size);
             var blend = new BiomeBlend[Size * Size];
             for (int j = 0; j < ap; j++)
@@ -239,6 +240,7 @@ namespace Chem
                     byte mark = bare[j * Size + i] ? MarkBare : (byte)0;
                     if (clear[j * Size + i]) mark = MarkClear;
                     if (road[k]) mark = MarkRoad;
+                    steep[j * Size + i] = slope >= SteepUnits;
                     c.Cells[j * Size + i] = CellOf(x0 + i, y0 + j, h, wet[k], mark, slope, b);
                 }
             int top = counts.OrderByDescending(p => p.Value).ThenBy(p => p.Key).First().Key;
@@ -248,12 +250,14 @@ namespace Chem
                 foreach (var list in (landmarkRows[k]?.Things ?? new JArray()).OfType<JObject>())
                     if ((int)list["chunk"][0] == c.X && (int)list["chunk"][1] == c.Y)
                         foreach (var t in (JArray)list["things"]) c.Things.Add(t.DeepClone());
-            SeedThings(c, blend, clear);
+            SeedThings(c, blend, clear, steep);
         }
 
         // The cell's Legend character: water where the land is under the sea or a river runs, a road's dirt, a stamp's
-        // bare rock, a spawn's clearing grass, stone on a steep face, else the biome's ground, a tree or brush by a roll
-        // per cell.
+        // bare rock, a spawn's clearing grass, bare dirt on a steep face, else the biome's ground, a tree or brush by a
+        // roll per cell. Stone ('#') is a blocking wall 1.2 m high wherever it is read (ChemGrid's legend, materials.json's
+        // "stone"), so only a landmark's own stamp lays it: a steep face is land like the valley's, whose steep faces are
+        // grass at every pitch, and one too steep to climb stops a walker by its height, not by a wall on it.
         char CellOf(int x, int y, int h, byte wet, byte mark, int slope, BiomeBlend b)
         {
             bool road = mark == MarkRoad, bare = mark == MarkBare;
@@ -263,7 +267,7 @@ namespace Chem
             if (road) return Dirt;
             if (bare) return Stone;
             if (mark == MarkClear) return Grass;
-            if (slope >= SteepUnits) return Stone;
+            if (slope >= SteepUnits) return Dirt;
             if (wet == WetShore) return Dirt;
             long trees = 0, brush = 0, dirt = 0;
             for (int s = 0; s < 4; s++)
@@ -297,9 +301,9 @@ namespace Chem
         };
 
         // ap spot every 8 cells, jittered within its 8 × 8 block, with one roll: a boulder or a crate where the land
-        // allows, by the biome there, but never in a spawn's clearing. Its place in the chunk's list is its spot's order,
-        // so ids hold.
-        void SeedThings(GeneratedChunk c, BiomeBlend[] blend, bool[] clear)
+        // allows, by the biome there, but never in a spawn's clearing or on a steep face. Its place in the chunk's list is
+        // its spot's order, so ids hold.
+        void SeedThings(GeneratedChunk c, BiomeBlend[] blend, bool[] clear, bool[] steep)
         {
             const int spot = 8;
             for (int sj = 0; sj < Size / spot; sj++)
@@ -309,7 +313,7 @@ namespace Chem
                     uint h = WorldHash.Hash4(seed, SaltSpot, x, y);
                     int i = si * spot + (int)(h & 7), j = sj * spot + (int)((h >> 3) & 7);
                     char cell = c.Cells[j * Size + i];
-                    if ((cell != Grass && cell != Dirt && cell != Brush) || clear[j * Size + i]) continue;
+                    if ((cell != Grass && cell != Dirt && cell != Brush) || clear[j * Size + i] || steep[j * Size + i]) continue;
                     string biome = table.Rows[blend[j * Size + i].Dominant].Id;
                     int odds = biome switch { "mountains" => 60, "tundra" => 30, "ashlands" => 25, "salt-flat" => 4, _ => 6 };
                     if ((h >> 8) % 1000 >= (uint)odds) continue;
