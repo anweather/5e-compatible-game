@@ -29,6 +29,45 @@ namespace Chem.Tests
             };
         }
 
+        // A map's baked ground says what it was baked from (MapInputs): an edit to a stamp, a village, a row, a puzzle, the
+        // golf or a theme that wasn't baked (Prototype > Bake Map Data) fails here, not as old ground on screen.
+        [Test]
+        public void EveryBakedMapWasBakedFromItsInputsAsTheyAre()
+        {
+            var baked = Directory.GetDirectories(ChemistryTests.Folders.Maps).Where(GroundPack.In).ToArray();
+            Assert.That(baked, Is.Not.Empty, "the valley has a ground/");
+            foreach (string dir in baked)
+            {
+                var head = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, GroundPack.FolderName, GroundPack.FileName)));
+                Assert.That((string)head["inputs"], Is.EqualTo(MapInputs.Hash(dir)),
+                    $"{Path.GetFileName(dir)}'s ground/ was baked from other inputs than its folder has now: run Prototype > Bake Map Data and commit what it writes");
+            }
+        }
+
+        [Test]
+        public void TheInputsHashMovesWithAStampAndNotWithLineEndings()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "inputs-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(dir, MapInputs.ThemesFolder));
+                File.WriteAllText(Path.Combine(dir, MapStamps.FileName), "{\n  \"stamps\": []\n}\n");
+                File.WriteAllText(Path.Combine(dir, MapInputs.ThemesFolder, "a.json"), "{}\n");
+                string before = MapInputs.Hash(dir);
+                File.WriteAllText(Path.Combine(dir, MapStamps.FileName), "{\r\n  \"stamps\": []\r\n}\r\n");
+                Assert.That(MapInputs.Hash(dir), Is.EqualTo(before), "CRLF reads as LF");
+                File.WriteAllText(Path.Combine(dir, MapStamps.FileName), "{\n  \"stamps\": [1]\n}\n");
+                Assert.That(MapInputs.Hash(dir), Is.Not.EqualTo(before), "a stamp edit");
+                File.WriteAllText(Path.Combine(dir, MapStamps.FileName), "{\n  \"stamps\": []\n}\n");
+                File.WriteAllText(Path.Combine(dir, MapInputs.ThemesFolder, "a.json"), "{ }\n");
+                Assert.That(MapInputs.Hash(dir), Is.Not.EqualTo(before), "a theme edit");
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
         [Test]
         public void WhatIsSavedComesBack()
         {

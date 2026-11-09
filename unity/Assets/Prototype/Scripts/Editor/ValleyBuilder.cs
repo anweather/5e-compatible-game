@@ -231,7 +231,7 @@ public static class ValleyBuilder
 
     // Spell golf's fairway and the world's puzzles (world/golf.json, puzzles.json), which the map's trees and
     // rocks keep off: dropped here, so every other tree stands where it always has.
-    static bool OnPlayedGround(Vector2 at, int margin)
+    internal static bool OnPlayedGround(Vector2 at, int margin)
     {
         var cell = cellAt(at);
         return PlayedGround().Any(r => cell.x >= r.xMin - margin && cell.x < r.xMax + margin && cell.y >= r.yMin - margin && cell.y < r.yMax + margin);
@@ -288,6 +288,16 @@ public static class ValleyBuilder
     static List<RectInt> playedGround;
     // A point's cell, before the grid has a world to ask (WireChemistry's CellOf).
     static System.Func<Vector2, Vector2Int> cellAt;
+
+    /// <summary>Where world points fall on the cells, for a yard of <paramref name="yardHeight"/> rows at (left, top); the played ground read afresh.</summary>
+    internal static void PlanCells(float cellSize, int left, int top, int yardHeight)
+    {
+        playedGround = null;
+        cellAt = at => CellOf(at, cellSize, left, top, yardHeight);
+    }
+
+    /// <summary>The cell a world point (x, z) falls on (after PlanCells or a build).</summary>
+    internal static Vector2Int CellAt(Vector2 at) => cellAt(at);
 
     static bool RockKeepsOff(Vector2 w) => ValleyShape.KeepClear(w, 10f) || OnPlayedGround(w, 2);
 
@@ -574,7 +584,7 @@ public static class ValleyBuilder
 
     // A few things to walk out to, well away from the start: a ring of standing stones on the
     // rise north-west of the yard, and a tall outcrop of rock to the east, past the river.
-    static readonly Vector2 StonesAt = new Vector2(-120f, 175f), OutcropAt = new Vector2(215f, 110f);
+    internal static readonly Vector2 StonesAt = new Vector2(-120f, 175f), OutcropAt = new Vector2(215f, 110f);
 
     static void BuildLandmarks()
     {

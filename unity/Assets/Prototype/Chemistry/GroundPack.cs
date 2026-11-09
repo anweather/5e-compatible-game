@@ -46,6 +46,8 @@ namespace Chem
         /// <summary>The river's cells, and how far each one's ground is cut below its banks, in metres.</summary>
         public int[] ChannelCells = Array.Empty<int>();
         public float[] ChannelDepths = Array.Empty<float>();
+        /// <summary>The hash of the files the pack was baked from (MapInputs); null for a pack that doesn't say.</summary>
+        public string Inputs;
 
         /// <summary>The ground at one of a chunk's samples, in metres.</summary>
         public double Metres(GroundChunk chunk, int sx, int sz) => Bottom + (Top - Bottom) * chunk.Heights[sz * chunk.Resolution + sx] / HeightSteps;
@@ -71,6 +73,7 @@ namespace Chem
                 ["chunks"] = new JArray(Chunks.Select(c => (object)new JArray(c.I, c.J, c.Resolution, c.Texels, c.DetailResolution, c.Trees.Length)).ToArray()),
                 ["channelCells"] = ChannelCells.Length,
             };
+            if (Inputs != null) head["inputs"] = Inputs;
             // LF on every machine: a map's hash is over its bytes, and peers on other systems must agree (MapIdentity).
             File.WriteAllText(Path.Combine(dir, FileName), head.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
             Pack(dir, HeightsFile, w => Chunks.ForEach(c => WriteHeights(w, c)));
@@ -97,6 +100,7 @@ namespace Chem
                 Layers = head["layers"].Values<string>().ToArray(),
                 Grasses = head["grasses"].Values<string>().ToArray(),
                 TreeKinds = head["treeKinds"].Values<string>().ToArray(),
+                Inputs = (string)head["inputs"],
             };
             var trees = new List<int>();
             foreach (var c in head["chunks"].Cast<JArray>())
