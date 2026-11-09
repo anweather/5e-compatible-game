@@ -60,17 +60,23 @@ public sealed class MapTerrains : MonoBehaviour
         float reach = cam.farClipPlane + layout.ChunkSize, reachSq = reach * reach;
         var eye = cam.transform.position;
         float half = layout.ChunkSize * 0.5f;
-        foreach (var t in chunks)
+        // On a generated map the far ring says which draw: none past the known ring, and none it draws as a known chunk.
+        var far = FarRing.Instance;
+        for (int k = 0; k < chunks.Length; k++)
         {
+            var t = chunks[k];
             if (t == null) continue;
             var p = t.transform.position;
             float dx = p.x + half - eye.x, dz = p.z + half - eye.z;
-            bool draw = dx * dx + dz * dz <= reachSq;
+            bool draw = dx * dx + dz * dz <= reachSq && (far == null || far.TerrainDraws(k % layout.ChunksX, k / layout.ChunksX));
             if (t.drawHeightmap == draw) continue;
             t.drawHeightmap = draw;
             t.drawTreesAndFoliage = draw;
         }
     }
+
+    /// <summary>Works out which terrains draw at the next frame, not at the next quarter second (the far ring changed).</summary>
+    public void ReachNow() => nextReach = 0f;
 
     void Make()
     {

@@ -33,6 +33,8 @@ public partial class ChemGrid
     public Shader lavaShader;
     [Tooltip("Draws the aim marker (AimMarker). The builder sets it, so the shader is in the build.")]
     public Shader aimShader;
+    [Tooltip("Draws the far ring on a generated map (Prototype/FarLand: known chunks, the sea plane, far landmarks). The builder sets it, so the shader is in the build.")]
+    public Shader farShader;
     [Tooltip("Optional: rock models a raised wall is built of, one per square, sized to cover its face (CellDressing). Without them, rough shapes stand in.")]
     public GameObject[] wallRocks;
     [Tooltip("Optional: smaller stones set on a raised wall's top to break its line.")]

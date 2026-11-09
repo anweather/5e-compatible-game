@@ -24,6 +24,7 @@ public class UnderwaterView : MonoBehaviour
     CameraClearFlags clear;
     Color background;
     bool fogWas;
+    FogMode fogModeWas;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Attach()
@@ -47,6 +48,7 @@ public class UnderwaterView : MonoBehaviour
         if (now != under) Switch(now);
         if (!under) return;
         RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogColor = Tint;
         RenderSettings.fogStartDistance = 0f;
         RenderSettings.fogEndDistance = FogEnd;
@@ -87,6 +89,7 @@ public class UnderwaterView : MonoBehaviour
             clear = cam.clearFlags;
             background = cam.backgroundColor;
             fogWas = RenderSettings.fog;
+            fogModeWas = RenderSettings.fogMode;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = Deep;
             if (sheet == null) sheet = MakeSheet();
@@ -96,6 +99,7 @@ public class UnderwaterView : MonoBehaviour
         cam.clearFlags = clear;
         cam.backgroundColor = background;
         RenderSettings.fog = fogWas;
+        RenderSettings.fogMode = fogModeWas;
         if (sheet != null) sheet.SetActive(false);
     }
 
