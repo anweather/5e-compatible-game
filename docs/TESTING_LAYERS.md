@@ -30,6 +30,10 @@ The holes, on purpose:
   runs it on the idle machine (`--include_explicit true`; only the timing tests: `unity command test run --mode EditMode
   --filter Timing --filter_type category --include_explicit true`). Named alone it needs the flag too. A core one stays
   in the landing suite, where .NET times it on every landing, with a looser limit under Mono.
+- **A core test too slow for Mono** (#187: the 12 x 10's whole known ring, 1 s under .NET, over 180 s in the Editor):
+  it stays in the .NET suite, which the landing gates and CI run, and skips itself under Mono with the reason
+  (`Assert.Ignore` when `Type.GetType("Mono.Runtime") != null`), so a full EditMode run shows it as skipped rather
+  than timing out. Only for a test whose proof isn't about Mono: one guarding Mono's rounding stays, made cheaper.
 - **Mono versus .NET rounding** (seen 2026-11-08 on the seeded heights): layer 2 runs Mono only for core changes;
   the sweep runs it for everything.
 - **A probe a change "couldn't reach" but did:** the sweep runs every probe on dev.
