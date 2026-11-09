@@ -15,8 +15,18 @@ public sealed class PlaceRoot : MonoBehaviour
 
     void Awake()
     {
+        // On a generated map the valley's own places stand where the valley lies in it (PinnedValley), once.
+        if (PinnedValley.InGenerated && Array.IndexOf(PinnedValley.Dresses, place) >= 0)
+        {
+            if (!shifted) transform.position += PinnedValley.Shift;
+            shifted = true;
+            return;
+        }
         if (Array.IndexOf(Dressed(), place) < 0) gameObject.SetActive(false);
     }
+
+    // Whether this root has been moved to the valley's place on a generated map (Play mode only: the scene isn't saved).
+    bool shifted;
 
     /// <summary>The places the current map dresses (none if its map.json can't be read).</summary>
     public static string[] Dressed()

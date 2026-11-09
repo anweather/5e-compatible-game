@@ -141,6 +141,7 @@ public partial class ValleyChemistry : MonoBehaviour
             Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
             TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
             DetailResolution = template.detailResolution,
+            Biomes = BiomeGround.For(ChemGrid.MapSource),
         }), template, layout.ChunkSize);
     }
 

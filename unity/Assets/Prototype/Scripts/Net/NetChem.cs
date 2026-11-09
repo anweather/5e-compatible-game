@@ -179,8 +179,13 @@ public partial class NetChem : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         // The host's map, before any world is built: a late joiner builds the right one, then replays the history.
-        if (IsServer) hostMap.Value = ChemGrid.Folders.Map;
-        else grid.UseMap(hostMap.Value.ToString());
+        // On another map than the host's, a joiner loads the host's (the scene is built for the map it starts on) and joins again.
+        if (IsServer) hostMap.Value = ChemGrid.MapId;
+        else if (hostMap.Value.ToString() != ChemGrid.MapId)
+        {
+            NetSession.JoinOnHostMap(hostMap.Value.ToString());
+            return;
+        }
         // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
         if (IsServer) grid.PlanRoom(NetSession.RoomMode);
         else grid.AwaitRoom();
