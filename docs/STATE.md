@@ -45,7 +45,7 @@ Waiting:
 
 Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
 
-Right now: **the PC** idle (host-ux detached at a535d458, clean). **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
+Right now: **the PC** on `tier-dials` (three distance dials and a sweep probe on the nine; J-084). **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half), then `world-12x10-plan` (queued; J-083, J-084). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
 cast_fire-bolt, fire_started, levitate_lifted), apikey-tests-mac landed e1b442f1 (EditMode 1858 + 1 skip on the Mac);
 then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
 2026-11-09.
