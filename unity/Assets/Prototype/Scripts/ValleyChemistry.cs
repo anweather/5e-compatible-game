@@ -199,14 +199,18 @@ public partial class ValleyChemistry : MonoBehaviour
         cabinCharred = new bool[n];
         BindRoofs(n);
         if (startTrees.Length != world.W * world.H) startTrees = new bool[world.W * world.H];
+        var all = world.Cells;
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
             {
-                startTrees[world.Idx(x, y)] = world.At(x, y).T == TerrainIds.Tree;
-                int k = BuildingWallAt(world.At(x, y).T, x, y);
+                int key = world.Idx(x, y);
+                string t = all[key].T;
+                startTrees[key] = t == TerrainIds.Tree;
+                if (t != TerrainIds.LogWall && t != TerrainIds.Stone) continue;
+                int k = BuildingWallAt(t, x, y);
                 if (k < 0) continue;
                 cabinCells[k]++;
-                buildingCells[k].Add(world.Idx(x, y));
+                buildingCells[k].Add(key);
             }
         ClearLaidRows(world);
         BindStampedLand(world);

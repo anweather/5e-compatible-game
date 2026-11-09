@@ -230,7 +230,7 @@ public partial class ChemGrid
         for (int i = 0; i < views.Length; i++)
         {
             var v = views[i];
-            if (v.terrain == null || !changed.Contains(v.terrain)) continue;
+            if (v?.terrain == null || !changed.Contains(v.terrain)) continue;
             var c = World.Cells[i];
             if (c != null) Redress(v, c, i % World.W, i / World.W, false);
         }

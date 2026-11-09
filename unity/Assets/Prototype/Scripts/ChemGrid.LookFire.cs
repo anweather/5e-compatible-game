@@ -57,7 +57,7 @@ public partial class ChemGrid
     {
         if (litBy.TryAdd(index, note)) litByCheck.Enqueue((Time.time + LookFireWait, index));
         else litBy[index] = note;
-        if (views != null) views[index].key = int.MinValue; // a fire already there redraws in it
+        if (views?[index] != null) views[index].key = int.MinValue; // a fire already there redraws in it
     }
 
     /// <summary>The look the fire on a cell burns in: its spell's if it chose a colour, else the fire element's.</summary>
@@ -140,6 +140,7 @@ public partial class ChemGrid
     void RedrawLookFire()
     {
         if (views == null) return;
-        foreach (int index in litBy.Keys) views[index].key = int.MinValue;
+        foreach (int index in litBy.Keys)
+            if (views[index] != null) views[index].key = int.MinValue;
     }
 }

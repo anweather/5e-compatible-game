@@ -113,6 +113,28 @@ public class GroundBuilderTests
     }
 
     [Test]
+    public void ChunksBuiltSideBySideAreTheSameAsOneByOne()
+    {
+        var (world, land) = Hilly();
+        var side = GroundFromLand.Build(Source(world, land));
+        GroundFromLand.Threaded = false;
+        try
+        {
+            var one = GroundFromLand.Build(Source(world, land));
+            Assert.That(side.Chunks.Select(c => (c.I, c.J)), Is.EqualTo(one.Chunks.Select(c => (c.I, c.J))), "in the same order");
+            Assert.That(side.Chunks.SelectMany(c => c.Heights), Is.EqualTo(one.Chunks.SelectMany(c => c.Heights)));
+            Assert.That(side.Chunks.SelectMany(c => c.Paint), Is.EqualTo(one.Chunks.SelectMany(c => c.Paint)));
+            Assert.That(side.Chunks.SelectMany(c => c.Details), Is.EqualTo(one.Chunks.SelectMany(c => c.Details)));
+            Assert.That(side.Chunks.SelectMany(c => c.Trees).Select(t => (t.X, t.Y, t.Z, t.Prototype)),
+                Is.EqualTo(one.Chunks.SelectMany(c => c.Trees).Select(t => (t.X, t.Y, t.Z, t.Prototype))));
+        }
+        finally
+        {
+            GroundFromLand.Threaded = true;
+        }
+    }
+
+    [Test]
     public void BuiltChunksMeetAtTheirSeams()
     {
         var (world, land) = Hilly();
