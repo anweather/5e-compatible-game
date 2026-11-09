@@ -105,21 +105,16 @@ tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # jscpd, pinned in tools
 In Unity: change any script (or **Assets → Refresh**). The warnings appear in
 the Console once compiling finishes.
 
-## Baseline (2026-10-25, after the clean-up; World.Spells.cs added 2026-10-27)
+## Baseline (2026-11-09)
 
-What the analyzers report on our code now. The architecture the code follows
-is in `docs/ARCHITECTURE.md`.
+A cold `dotnet build core -c Release -warnaserror` reports **no warnings**: Chemistry's S3776 are gone
+(`react-split`, 2026-11-03, split `World.React.cs`'s `Apply`, `RunEffect` and `Matches` into named steps, each
+under 15; the others went with the chunked tick and later splits). The architecture the code follows is in
+`docs/ARCHITECTURE.md`. `S3776` is still in `WarningsNotAsErrors` (`core/Directory.Build.props`); taking it out
+would make a new over-complex method fail the build.
 
-| File | Warnings | Rules |
-|---|---|---|
-| Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 18, 28, 69) |
-| Chemistry/World.Terraform.cs | 1 | S3776 (23) |
-| Chemistry/World.Spells.cs | 2 | S3776 ×2 (ShapeCells, SlantCells: ported from the sandbox, to be split) |
-| *Starter Assets ReadmeEditor.cs (pack)* | 2 | S1066, S1199 |
-
-Totals: **Scripts/ 0**, **Chemistry/ 6** (all cognitive complexity; the
-chunked tick split `World.Sim.cs`'s three; `World.Spells.cs`'s two came back
-with aiming any way and Time & Weather), pack 2, which makes 8 in the Unity console.
+The 2026-10-25 baseline, after the clean-up, was **Scripts/ 0**, **Chemistry/ 6** (S3776: `World.React.cs`
+×3 at 18, 28 and 69, `World.Terraform.cs` 23, `World.Spells.cs` ×2), pack 2.
 
 Before the clean-up (2026-10-25, the code had grown since the first baseline
 of 39) it was **Scripts/ 65**, **Chemistry/ 8**, pack 2: S3776 21, UNT0039 10,
@@ -136,9 +131,7 @@ for Unity messages (see `Default.globalconfig`). Naming rules (`IDE1006`) find
 nothing in our code. jscpd finds one 5-line clone (the rules-folder lookup in
 `ChemGrid` and the tests), 0.08% of the C#.
 
-The Chemistry methods are ported line by line from the TS sandbox. With the sandbox
-frozen (J-042), splitting them is the next refactor, C# only; then remove `S3776` from
-`WarningsNotAsErrors` in `core/Directory.Build.props`.
+The Chemistry methods ported line by line from the TS sandbox have been split since (the sandbox is frozen, J-042).
 
 ## Windows PC check (2026-10-25)
 
