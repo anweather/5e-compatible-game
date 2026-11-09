@@ -26,7 +26,8 @@ gate() {
 }
 
 # jscpd runs out of Node's default heap on a 5 GB VM.
-alongside "duplicates" env NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=3072" npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
+# The pinned jscpd (tools/jscpd/package-lock.json), installed once per lock.
+alongside "duplicates" env NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=3072" bash tools/jscpd/run.sh unity/Assets/Prototype sandbox/src
 alongside "chat-report" node --test tools/chat-report.test.mjs
 alongside "chat-strict" node --test tools/chat-strict.test.mjs
 alongside "workers" node --test tools/workers/gates.test.mjs tools/workers/queue.test.mjs tools/workers/land.test.mjs tools/workers/bridge-watch.test.mjs
@@ -55,5 +56,6 @@ for i in "${!pids[@]}"; do
   fi
   cat "$log.${names[$i]}" >> "$log"; rm -f "$log.${names[$i]}"
 done
-grep -E 'Passed!|Failed!' "$log" | tail -1 | sed 's/^ */  /'
+# One line per test project (core has five).
+grep -E 'Passed!|Failed!' "$log" | sed 's/^ */  /'
 exit "$failed"

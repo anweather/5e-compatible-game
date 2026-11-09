@@ -1,9 +1,6 @@
-// The core tests run side by side, a fixture to a thread (#162). Here, and not beside the tests they run, because Unity's test
-// runner reads those same files: this file is only this project's. A test that can't share says so with [NonParallelizable].
+// The Chemistry fixtures that run their own tests side by side too (#162); the assembly's settings, a fixture to a thread
+// and 6 at once, are core/TestParallel.cs. Here, and not beside the tests, because Unity's test runner reads those files.
 using NUnit.Framework;
-
-[assembly: Parallelizable(ParallelScope.Fixtures)]
-[assembly: LevelOfParallelism(6)] // past this the fixtures, who all make whole worlds, slow each other down
 
 namespace Chem.Tests
 {

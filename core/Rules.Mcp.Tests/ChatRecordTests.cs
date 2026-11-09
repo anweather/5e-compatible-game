@@ -6,6 +6,7 @@ using Chem.Mcp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using static Chem.Tests.ChatFixtures;
 
 namespace Chem.Tests
 {
@@ -16,22 +17,6 @@ namespace Chem.Tests
     /// </summary>
     public class ChatRecordTests
     {
-        const int Step = 100;
-
-        static string Fixtures => Path.Combine(ChemistryTests.Folders.Repo, "core", "Game.Core.Tests", "RulesMcp", "chat-fixtures");
-
-        static string[] Lines(string name) => File.ReadAllLines(Path.Combine(Fixtures, name + ".jsonl"));
-
-        static ChatRecorder Fed(string[] lines)
-        {
-            var recorder = new ChatRecorder("a prompt", "typed", 1000, new ChatWho { Id = "r1", GameVersion = "0.1.2", Commit = "abc", RoomMode = "open", Players = 2, ModsOn = new[] { "bigger" } });
-            recorder.Started(1000 + Step);
-            for (int i = 0; i < lines.Length; i++) recorder.Line(lines[i], 1000 + Step * (i + 2));
-            return recorder;
-        }
-
-        static JObject Record(string name) => Fed(Lines(name)).Record();
-
         [Test]
         public void APlayersRecordsGoOutsideWhatTheyAreToldToSend()
         {
@@ -316,16 +301,6 @@ namespace Chem.Tests
                 return;
             }
             Assert.That(kept.Skip(5), Is.EqualTo(ends));
-        }
-
-        [Test]
-        public void TheBenchRowAndTableSayTheDesignsNumbers()
-        {
-            var r = Record("blue");
-            string row = Chem.Bench.Program.Row(r);
-            Assert.That(row, Does.Contain("applied").And.Contain("$0.0047").And.Contain("out 764").And.Contain("6 turns"));
-            Assert.That(Chem.Bench.Program.Table(new[] { r, Record("blue") }), Does.Contain("a prompt, 2, applied,"));
-            Assert.That(Chem.Bench.Program.Prompts, Has.Length.EqualTo(5));
         }
     }
 }

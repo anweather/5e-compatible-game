@@ -1,0 +1,8 @@
+{
+  "name": "jscpd-gate",
+  "private": true,
+  "description": "The duplicate-code gate's jscpd, pinned (docs/QUALITY.md). Run from the repo's root: tools/jscpd/run.sh",
+  "devDependencies": {
+    "jscpd": "4.0.5"
+  }
+}
