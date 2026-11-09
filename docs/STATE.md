@@ -73,7 +73,13 @@ Waiting:
    500 m; clip `far-ring-nine.mp4`, sent). The nine's seed has no volcano or spire: **u2's `nine-volcano`** (queued)
    makes the plan place one and retunes the great tree's look: **done at ea43e514, waiting for the PC** to compile
    it, land it and re-shoot `tools/probe.sh farringclip` (after #170). "Old Grumbler" in the middle square, the nine's
-   `map.json` gets `musts`, generator 5, nine golden 0x4aec0b00, valley byte-identical. Left for the PC after it: a hard sea horizon line,
+   `map.json` gets `musts`, generator 5, valley byte-identical. The PC is compiling it (the nine golden is
+   recomputed over barrels-170's).
+   #170 fixed 333dfe05 (first bad 6313314e view-rebuild, not cell-memory; barrels moved off the pond pit's lip): smoke
+   passes in full on a fresh yard (rebuild the yard before trusting smoke after a switch). Issue still open (gh close
+   was refused here).
+   The Mac (2026-11-09): sweep 111/123; stamplooks bb0b9d1c, roomprogress fa2451d7 fixed; now ProbeProgress restoring
+   the save, `map-proof-tests` (the 10 Temp/map-dependent tests), then the sea horizon and tundra wedge looks. Left for the PC after it: a hard sea horizon line,
    tundra plateaus as flat white wedges; and 10 map-reading EditMode tests (DragonView, FolkJobs, GroundBuilder,
    GroundLand, RowMesher, ShoreMap) fail when `unity/Temp/map` says nine, so they depend on the Editor's map file.
    Seen on the way: smoke on the nine runs at 37.9 ms mean / 64 ms p95 and fails cast_fire-bolt, fire_started and
