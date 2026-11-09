@@ -22,6 +22,21 @@ land become water. The map's **Sketch** layer shows the outlines. Save, copy, do
 12 × 10. From the address: `#sketch=lake-district|mountain-spine|default-12x10&sview=all|sketch|squares|land&sksel=x,y`,
 and `#size=12x10`.
 
+## The shores panel (water that doesn't look square)
+
+**Shores** shows the same world's water before (whole sea squares, the coast's lines, the core's 90-cell ramp and its
+step at an open-sea square, #176) and after (one field over the world: the squares' sea smoothed across their sides with
+a ragged noise; lakes at their own level; a shelf by the distance from the shore), as heights with a depth line every
+5 m. Each stretch of shore gets a kind from the land and the seed: open coast (beach or cliff), marsh, delta (where a
+river meets the water over low land) or lake shore (beach or reeds); *Shore kinds* tints them, and the map's **Shore
+kinds** layer shows them per chunk. *A delta*, *A marsh*, *A lake* and *Open coast* jump to a close look at this world's
+best example of each. The panel lists the shares of each kind, the lakes and their levels, the sea floor's steepest step
+before and after, and a shores hash. `docs/design/world-squares.md`, "Shores"; shots in `docs/design/shores/`.
+
+From the address: `#shore=world|delta|marsh|lake|coast&shview=before|after|both&shkinds=0&shlayer=1&shpx=1240&shshot=1`
+(`shpx` fixes the canvas's width; `shshot` writes its PNG data URL into `#shShot`, for a headless browser's
+`--dump-dom`).
+
 ## The horizon panel (section 4, the far ring in the view)
 
 Below the map, **Horizon** shows what the character sees from its chunk toward the far ring, before phase 6 builds it.
