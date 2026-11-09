@@ -18,6 +18,11 @@ namespace Chem
         public int X, Y;
         /// <summary>The biome most of its samples are (a biomes.json id), or the pinned map's name.</summary>
         public string Biome;
+        /// <summary>
+        /// The biome at each sample (most of it there, a biomes.json id, or the pinned map's name), row-major like
+        /// <see cref="Heights"/>: the view paints by it, so its colours change where the biomes do, not at the chunk's edge.
+        /// </summary>
+        public string[] Biomes = new string[Side * Side];
         /// <summary>Land units (0.125 m) at cell (8i, 8j) from its north-west corner, row-major, <see cref="Side"/> a row.</summary>
         public int[] Heights = new int[Side * Side];
         /// <summary>What water stands at each sample: <see cref="Dry"/>, <see cref="Sea"/>, <see cref="River"/> or <see cref="Lake"/>.</summary>
@@ -54,6 +59,7 @@ namespace Chem
                         char cell = Pinned.Rows[y - PinnedY][x - PinnedX];
                         k.Heights[q] = Pinned.Land[at];
                         k.Water[q] = Pinned.Land[at] < SeaLevel ? KnownChunk.Sea : WaterOf(cell);
+                        k.Biomes[q] = Pinned.Map;
                         continue;
                     }
                     var p = Point(x, y, near, out var b);
@@ -62,6 +68,7 @@ namespace Chem
                     k.Heights[q] = h;
                     k.Water[q] = WaterOf(p.Wet, h);
                     int dom = b.Dominant;
+                    k.Biomes[q] = table.Rows[dom].Id;
                     counts[dom] = (counts.TryGetValue(dom, out int n) ? n : 0) + 1;
                 }
             if (IsPinned(cx, cy)) k.Biome = Pinned.Map;

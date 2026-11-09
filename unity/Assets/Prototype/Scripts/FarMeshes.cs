@@ -70,7 +70,9 @@ public static class FarMeshes
         ["temperate"] = new Color(0.30f, 0.42f, 0.20f),
         ["grassland"] = new Color(0.42f, 0.46f, 0.22f),
         ["mountains"] = new Color(0.38f, 0.38f, 0.33f),
-        ["tundra"] = new Color(0.82f, 0.85f, 0.88f),
+        // Snow with the rock showing through, as BiomeGround paints it near (0.85 snow, 0.15 rock), a little greyer
+        // than snow alone: lit by the sun, flat white read as a blank wedge against the haze.
+        ["tundra"] = new Color(0.70f, 0.73f, 0.76f),
         ["salt-flat"] = new Color(0.84f, 0.81f, 0.72f),
         ["foggy-marsh"] = new Color(0.28f, 0.33f, 0.22f),
         ["ashlands"] = new Color(0.20f, 0.18f, 0.17f),
@@ -92,6 +94,7 @@ public static class FarMeshes
         float step = KnownChunk.Step * cellMetres, unit = (float)MapFile.LandUnitMetres;
         var d = new Data();
         var biome = BiomeColour(k.Biome);
+        var biomes = k.Biomes;
         float H(int i, int j) => k.Heights[Mathf.Clamp(j, 0, n - 1) * n + Mathf.Clamp(i, 0, n - 1)] * unit;
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++)
@@ -100,7 +103,7 @@ public static class FarMeshes
                 float dx = (H(i + 1, j) - H(i - 1, j)) / (step * (i == 0 || i == n - 1 ? 1 : 2));
                 float dz = (H(i, j - 1) - H(i, j + 1)) / (step * (j == 0 || j == n - 1 ? 1 : 2));
                 var normal = new Vector3(-dx, 1f, -dz).normalized;
-                d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, Paint(k, i, j, biome, normal));
+                d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, Paint(k, i, j, biomes?[j * n + i] is { } b ? BiomeColour(b) : biome, normal));
             }
         for (int j = 0; j < n - 1; j++)
             for (int i = 0; i < n - 1; i++)
@@ -112,7 +115,7 @@ public static class FarMeshes
         return d;
     }
 
-    // A sample's colour: its water, else its biome's, turned to rock where it's steep, with a little variety.
+    // A sample's colour: its water, else its own biome's (blended to its neighbours' across the triangles), turned to rock where it's steep, with a little variety.
     static Color32 Paint(KnownChunk k, int i, int j, Color biome, Vector3 normal)
     {
         byte water = k.Water[j * KnownChunk.Side + i];
@@ -267,12 +270,19 @@ public static class FarMeshes
 
     /// <summary>
     /// The sea plane: a frame at <paramref name="level"/> round the rectangle (x0, z0)-(x1, z1), out <paramref name="reach"/>
-    /// metres past it on every side, so the sky never shows below the horizon past the coast.
+    /// metres past it on every side, so the sky never shows below the horizon past the coast; and the map's own rectangle,
+    /// its vertices' alpha <see cref="UnderTheMap"/>, which FarLand.shader clears within the known ring (the map's land and
+    /// water draw there) and leaves past it, where nothing else is drawn and the sky below the horizon, paler than the
+    /// haze, showed through as flat white wedges between the known ring and the coast.
     /// </summary>
+    /// <summary>The sea plane's vertex alpha over the map itself, cleared near the eye (FarLand.shader).</summary>
+    public const byte UnderTheMap = 255;
+
     public static Data SeaFrame(float x0, float z0, float x1, float z1, float reach, float level, Color colour)
     {
         var d = new Data();
         Color32 c = colour;
+        c.a = 0;
         var up = Vector3.up;
         int[] inner =
         {
@@ -290,6 +300,11 @@ public static class FarMeshes
             int t = (s + 1) % 4;
             d.Quad(outer[s], outer[t], inner[s], inner[t]);
         }
+        Color32 under = c;
+        under.a = UnderTheMap;
+        int nw = d.Vertex(new Vector3(x0, level, z1), up, under), ne = d.Vertex(new Vector3(x1, level, z1), up, under);
+        int se = d.Vertex(new Vector3(x1, level, z0), up, under), sw = d.Vertex(new Vector3(x0, level, z0), up, under);
+        d.Quad(nw, ne, sw, se);
         return d;
     }
 }

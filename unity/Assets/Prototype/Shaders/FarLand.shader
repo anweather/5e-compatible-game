@@ -8,6 +8,11 @@ Shader "Prototype/FarLand"
     // not the fog's, so it never stands out against a bluer sky; over the last _FadeMetres it goes wholly into the sky.
     // Its horizon.json "far" look comes in past _FarStretchFrom (where it can no longer have given way to the land): it
     // stands _Stretch times as tall and its rim dips _Notch of its height where it faces the eye, a crater's notch.
+    // The sea plane (_SkyFadeTo above 0) is drawn after the sky and goes clear between _SkyFadeFrom and _SkyFadeTo, so it
+    // gives way to the sky as it's drawn there (its sun, cirrus and clouds near the horizon are brighter than the haze),
+    // not with a hard line against it. Over the map itself (vertex alpha 1) it's also clear within _FarKnownMetres, the
+    // known ring, where the map's own land and water draw, and there past it, where nothing else is: there the sky below
+    // the horizon, paler than the haze, showed through as flat white wedges.
     Properties
     {
         _OwnHaze ("Own haze (a far landmark)", Float) = 0
@@ -17,6 +22,11 @@ Shader "Prototype/FarLand"
         _Stretch ("Far stretch (x its height)", Float) = 1
         _Notch ("Rim notch (of its height)", Float) = 0
         _Top ("Its height (m)", Float) = 1
+        _SkyFadeFrom ("Into the sky from (m)", Float) = 0
+        _SkyFadeTo ("Into the sky by (m), 0 for never", Float) = 0
+        [HideInInspector] _SrcBlend ("", Float) = 1
+        [HideInInspector] _DstBlend ("", Float) = 0
+        [HideInInspector] _ZWrite ("", Float) = 1
     }
     SubShader
     {
@@ -26,6 +36,8 @@ Shader "Prototype/FarLand"
         {
             Name "ForwardLit"
             Tags { "LightMode" = "UniversalForward" }
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
 
             HLSLPROGRAM
             #pragma target 3.5
@@ -43,13 +55,16 @@ Shader "Prototype/FarLand"
             float _Stretch;
             float _Notch;
             float _Top;
+            float _SkyFadeFrom;
+            float _SkyFadeTo;
             CBUFFER_END
 
             // Set by FarRing each frame: the land's haze density now and in clear weather (per metre), where the generated
-            // ring ends (m), and the sky's colours.
+            // ring ends (m), where the known ring ends (m, the view dial's), and the sky's colours.
             float _FarHazeDensity;
             float _FarHazeClear;
             float _FarSightMetres;
+            float _FarKnownMetres;
             half3 _FarSkyZenith;
             half3 _FarSkyHorizon;
             float _FarStretchFrom;
@@ -135,7 +150,14 @@ Shader "Prototype/FarLand"
                     half3 air = lerp(sky, _FarSkyZenith, 0.5 * haze * (1.0 - fade));
                     return half4(lerp(color, air, haze), 1);
                 }
-                return half4(MixFog(color, input.fogFactor), 1);
+                half alpha = 1;
+                UNITY_BRANCH if (_SkyFadeTo > 0)
+                {
+                    float d = length(input.positionWS - _WorldSpaceCameraPos);
+                    alpha = 1 - smoothstep(_SkyFadeFrom, _SkyFadeTo, d);
+                    if (input.color.a > 0.5) alpha *= smoothstep(_FarKnownMetres * 0.85, _FarKnownMetres, d);
+                }
+                return half4(MixFog(color, input.fogFactor), alpha);
             }
             ENDHLSL
         }
