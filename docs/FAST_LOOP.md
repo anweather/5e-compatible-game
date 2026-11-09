@@ -30,7 +30,8 @@ batch's own (`batch`: each scenario's state, pass and seconds; `pass` only when 
 
 **Faster than real time.** A slow scenario whose checks hold at speed says so in `ProbeScenarios` (`speed: 3f`): the
 runner sets `Time.timeScale` for it, so the world's ticks, physics and `Wait` run that much faster, and puts it back
-after. A run with `--shots` films at real speed. A scenario that measures frames or real seconds stays at 1.
+after. A run with `--shots` films at real speed. A scenario that measures frames or real seconds stays at 1: `hands`
+(charge timed in frames), `castfeel` (beats in frames) and `stamplooks` (how far physics flings a crate) fail at 3x.
 
 **Entering Play mode doesn't reload the domain** (Edit > Project Settings > Editor > Enter Play Mode Settings:
 domain reload off, scene reload on; since J-023, 2026-10-27), so entry takes about a second. Statics keep their values from one Play session
