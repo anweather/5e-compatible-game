@@ -43,7 +43,9 @@ public static class ProbeScenarios
     public static readonly IReadOnlyList<Entry> All = new[]
     {
         new Entry("smoke", typeof(SmokeProbe), 90f,
-            "Walks a few steps, casts each Elements spell once on the yard, then Shape Earth. " +
+            "Walks a few steps, casts each Elements spell once on the yard, then Shape Earth. On a map without a yard (the nine) the same " +
+            "layout sits round the wizard's start, with Fire Bolt on the nearest thing that burns and Levitate on the nearest prop (skipped, " +
+            "saying so, if there's none). " +
             "Checks: every prop and item of world/things.json spawned on its cell, the wizard moved, every spell is on the bar and was cast (World log), fire started, " +
             "Levitate lifted a prop, reactions logged, Shape Earth changed the ground, no console errors."),
         new Entry("fire", typeof(FireProbe), 60f,
@@ -595,47 +597,75 @@ public static class ProbeScenarios
 
 public class SmokeProbe : ProbeScenario
 {
+    // The layout's cells (DemoDirector's, in yard coordinates) sit on the yard on a map that has one (the valley). On one
+    // without (the nine's yard is a 1x1 stub hundreds of cells from the start), they're moved to sit round the wizard's
+    // start, as on the valley, and Fire Bolt and Levitate are aimed at the nearest thing that burns and the nearest prop,
+    // since there's no oil spill or crate laid out for them.
+    Vector2Int shift;
+    bool onYard;
+    static readonly Vector2Int StartInLayout = new Vector2Int(14, 7);
+    const int Nearby = 12;
+
     protected override IEnumerator Run()
     {
         int startTick = World.Tick;
         CheckThingsSpawned();
+        onYard = grid.yardCells.width > 1 && grid.yardCells.height > 1;
+        var start = grid.CellAt(wizard.transform.position);
+        shift = onYard ? Vector2Int.zero : start - grid.YardCell(StartInLayout.x, StartInLayout.y);
+        var walkCell = grid.YardCell(S(20, 11).x, S(20, 11).y);
+        Check("layout_near_start", onYard || (walkCell - start).magnitude < Nearby,
+            onYard ? $"on the yard {grid.yardCells}" : $"no yard on this map: the layout moved {shift} to sit round the start {start}, the walk to {walkCell}");
 
         // Walk: from the player start toward the pond, as DemoDirector does.
         var from = wizard.transform.position;
-        yield return WalkFor(20, 11, 3f);
+        var walkTo = S(20, 11);
+        yield return WalkFor(walkTo.x, walkTo.y, 3f);
         float walked = Vector3.Distance(Flat(from), Flat(wizard.transform.position));
         Metric("walked_m", walked);
         Check("walked", walked > 1f, $"{walked:0.0} m");
         Shot("walk");
 
         // Every Elements spell once (DemoDirector's targets; Thunderwave and Levitate by the crate).
-        yield return CastLogged(SpellIds.FireBolt, 19, 3, 0, 1.5f);        // the oil spill
-        Metric("burning_after_fire_bolt", BurningCells());
-        Check("fire_started", BurningCells() > 0, $"{BurningCells()} burning cells");
-        yield return CastLogged(SpellIds.CreateWater, 19, 3, 0, 1.5f);
-        yield return CastLogged(SpellIds.RayOfFrost, 20, 10, 0, 1.5f);
-        yield return CastLogged(SpellIds.ShockingGrasp, 24, 9, 1, 1.5f);
-        yield return CastLogged(SpellIds.Grease, 10, 12, 3, 1f);
-        yield return CastLogged(SpellIds.GustOfWind, 13, 12, 3, 1.5f);
-        Place(15, 6);
-        yield return CastLogged(SpellIds.Thunderwave, 15, 6, 1, 1.5f);
+        var fire = onYard ? S(19, 3) : Nearest(S(19, 3), c => c.Water == 0 && c.Fire == 0 && (World.TerrainOf(c).Burns || World.CoverBurns(c)));
+        if (fire is { } burn)
+        {
+            yield return CastLogged(SpellIds.FireBolt, burn, 0, 1.5f);        // the oil spill
+            Metric("burning_after_fire_bolt", BurningCells());
+            Check("fire_started", BurningCells() > 0, $"{BurningCells()} burning cells");
+            yield return CastLogged(SpellIds.CreateWater, burn, 0, 1.5f);
+        }
+        else Check("fire_started", true, $"skipped: nothing that burns within {Nearby} cells of where the valley has its oil spill");
+        yield return CastLogged(SpellIds.RayOfFrost, S(20, 10), 0, 1.5f);
+        yield return CastLogged(SpellIds.ShockingGrasp, S(24, 9), 1, 1.5f);
+        yield return CastLogged(SpellIds.Grease, S(10, 12), 3, 1f);
+        yield return CastLogged(SpellIds.GustOfWind, S(13, 12), 3, 1.5f);
+        var place = S(15, 6);
+        Place(place.x, place.y);
+        yield return CastLogged(SpellIds.Thunderwave, place, 1, 1.5f);
         // Levitate moves things, not cells: World.Cast logs nothing for it, but the lifted prop says so (EventLog).
-        int mark = ConsoleMark;
-        yield return CastFromBar(SpellIds.Levitate, 17, 6, 1, 1.5f);
-        Check("levitate_lifted", ConsoleSaid("floats up", mark), "a prop's \"... floats up\" line in the console");
+        var lift = onYard ? S(17, 6) : NearestProp();
+        if (lift is { } prop)
+        {
+            int mark = ConsoleMark;
+            yield return CastFromBar(SpellIds.Levitate, prop.x, prop.y, 1, 1.5f);
+            Check("levitate_lifted", ConsoleSaid("floats up", mark), "a prop's \"... floats up\" line in the console");
+        }
+        else Check("levitate_lifted", true, $"skipped: no prop within {Nearby} cells of the start on this map");
         Shot("elements");
 
         // Shape Earth digs its square.
-        var cells = SpellCells(SpellIds.MoldEarth, 6, 8, 0);
+        var dig = S(6, 8);
+        var cells = SpellCells(SpellIds.MoldEarth, dig.x, dig.y, 0);
         int before = cells.Sum(c => World.At(c.x, c.y).Height);
-        yield return CastLogged(SpellIds.MoldEarth, 6, 8, 0, 1.5f);
+        yield return CastLogged(SpellIds.MoldEarth, dig, 0, 1.5f);
         int after = cells.Sum(c => World.At(c.x, c.y).Height);
         Metric("mold_earth_height_change", after - before);
         Check("mold_earth_shaped", after != before, $"height sum {before} -> {after}");
 
         // The fire spells past Fire Bolt: a cone from the hands, and a blast.
-        yield return CastLogged(SpellIds.BurningHands, 4, 14, 3, 1f);
-        yield return CastLogged(SpellIds.Fireball, 22, 1, 0, 1.5f);
+        yield return CastLogged(SpellIds.BurningHands, S(4, 14), 3, 1f);
+        yield return CastLogged(SpellIds.Fireball, S(22, 1), 0, 1.5f);
 
         var reactions = LogSince(startTick).Where(t => !t.StartsWith("You cast", StringComparison.Ordinal)).ToList();
         Metric("reaction_log_lines", reactions.Count);
@@ -643,11 +673,48 @@ public class SmokeProbe : ProbeScenario
         Metric("burning_cells_end", BurningCells());
     }
 
+    // A layout cell, in the yard coordinates the casts take, moved round the start on a map without a yard.
+    Vector2Int S(int x, int y) => new Vector2Int(x + shift.x, y + shift.y);
+
+    // The yard cell (layout coordinates) nearest a layout cell, within Nearby of it, whose world cell passes a test.
+    Vector2Int? Nearest(Vector2Int around, Func<Chem.Cell, bool> fits)
+    {
+        var at = grid.YardCell(around.x, around.y);
+        Vector2Int? best = null;
+        int bestD = int.MaxValue;
+        for (int dy = -Nearby; dy <= Nearby; dy++)
+            for (int dx = -Nearby; dx <= Nearby; dx++)
+            {
+                var c = World.At(at.x + dx, at.y + dy);
+                int d = dx * dx + dy * dy;
+                if (c == null || d >= bestD || !fits(c)) continue;
+                bestD = d;
+                best = new Vector2Int(around.x + dx, around.y + dy);
+            }
+        return best;
+    }
+
+    // The yard cell (layout coordinates) of the prop nearest the wizard, within Nearby of it.
+    Vector2Int? NearestProp()
+    {
+        var spawner = FindAnyObjectByType<ThingSpawner>();
+        if (spawner == null) return null;
+        var me = grid.CellAt(wizard.transform.position);
+        var origin = grid.YardCell(0, 0);
+        return spawner.Live
+            .Where(t => t.prop.GetComponent<Carryable>() == null)
+            .Select(t => grid.CellAt(t.prop.transform.position))
+            .Where(c => (c - me).magnitude <= Nearby)
+            .OrderBy(c => (c - me).sqrMagnitude)
+            .Select(c => (Vector2Int?)(c - origin))
+            .FirstOrDefault();
+    }
+
     // Casts from the bar and checks the World log has "You cast <name>" since the cast.
-    IEnumerator CastLogged(string spellId, int x, int y, int dir, float wait)
+    IEnumerator CastLogged(string spellId, Vector2Int at, int dir, float wait)
     {
         int tick = World.Tick;
-        yield return CastFromBar(spellId, x, y, dir, wait);
+        yield return CastFromBar(spellId, at.x, at.y, dir, wait);
         string line = $"You cast {World.Rules.Spell(spellId).Name}";
         Check($"cast_{spellId}", LogSince(tick).Contains(line), line);
     }
