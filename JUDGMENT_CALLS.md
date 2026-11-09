@@ -48,8 +48,9 @@ Each entry has:
 - **The lead's triage:** kept the review's "keep" list (engine-free core, rules as JSON, lockstep, goldens). Taken for
   u2 now as `core-boundaries`: CI triggers and caching, test projects split by boundary, Unit/Simulation categories,
   World.React's Apply split (goldens byte-identical), dependency directions in ARCHITECTURE.md. Deferred until after
-  the 3 x 3 playtest: a runtime asmdef for Scripts (the PC's compile time; measure first) and splitting World.Sim's
-  passes. Already done: the sandbox is frozen (2026-10-31); a Sweep category exists (test-speed-core).
+  the 3 x 3 playtest: a runtime asmdef for Scripts (the PC's compile time; measure first). Dropped after the
+  reviewer's second look at dev: splitting World.Sim's passes (keep its stages, slices and order; SlicedTickTests and
+  TickStageBench already guard them). No weekly CI review (Andrew: "let's not"). Already done: the sandbox is frozen (2026-10-31); a Sweep category exists (test-speed-core).
 - **Weighed:** CI takes 4.5-5 min and isn't the bottleneck (the PC's Editor is), so CI changes are cheap tidying;
   the test split and React refactor help agents most (smaller things to read and test).
 - **Revisited:** 0.
