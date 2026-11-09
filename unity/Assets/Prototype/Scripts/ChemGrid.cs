@@ -474,7 +474,11 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
-    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
+    // Outside Play mode the Editor's map is read afresh each time: Temp/map may have named another since a play.
+    public static GameFolders Folders => Application.isEditor && !Application.isPlaying ? NewFolders() : folders ??= NewFolders();
+
+    static GameFolders NewFolders() =>
+        GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, OwnMap);
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather
