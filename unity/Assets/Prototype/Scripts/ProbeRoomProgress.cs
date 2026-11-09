@@ -5,13 +5,16 @@ using Unity.Netcode;
 using UnityEngine;
 
 // The probe's roomprogress scenario (docs/design/the-hold.md, phase 5): two peers with different points in one run. This Editor
-// hosts and plays from its save (F7), so it has what its points unlock; the virtual player is a dev build's everything. Both attune,
+// hosts and plays with HostPoints, as a save holding them would (not its own save, which grows as the progress probe earns), so
+// it has what they unlock and not the second hand; the virtual player is a dev build's everything. Both attune,
 // the run starts, and each peer must see both wizards' hands as the core has them; wave 1 falls to the host's Fireballs, cast as
 // any player casts; the host picks an upgrade, the joiner's is picked for it as wave 2 starts, and every checksum agrees.
 // Nothing here is in the game.
 public class RoomProgressProbe : RoomProbe
 {
     const float MostWait = 15f, WaveWait = 180f, CastEvery = 0.8f, Settle = 6f;
+    // Throw and sweep, short of the second hand (rules/hold.json's unlocks: 3, 5, then 8 for it).
+    const int HostPoints = 8;
 
     protected override ChangeMode Mode => ChangeMode.Open;
     protected override bool StartsWithAMod => false;
@@ -22,17 +25,18 @@ public class RoomProgressProbe : RoomProbe
         var keeper = grid.GetComponent<ProgressKeeper>();
         var me = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<SpellCaster>();
         string host = me.CastPlayer;
-        keeper.PlayFromTheSave(true);
-        for (float t = 0f; t < MostWait && world.PointsOf(host) != keeper.Saved; t += Time.unscaledDeltaTime) yield return null;
-        Metric("host_points", keeper.Saved);
-        Check("the_host_plays_from_its_save", world.PointsOf(host) == keeper.Saved, $"{world.PointsOf(host)} of {keeper.Saved}");
+        keeper.PlayAsIf(HostPoints);
+        for (float t = 0f; t < MostWait && world.PointsOf(host) != HostPoints; t += Time.unscaledDeltaTime) yield return null;
+        Metric("host_points", HostPoints);
+        Check("the_host_plays_with_its_points", world.PointsOf(host) == HostPoints, $"{world.PointsOf(host)} of {HostPoints}");
 
         yield return HandLooksProbe.Attune(grid, Net, "-,fire");
         yield return Ask("attune", "water,air");
         if (Theirs == null) yield break;
         string joiner = world.Stands.Keys.FirstOrDefault(p => p != host);
         Check("the_joiner_has_everything", joiner != null && world.PointsOf(joiner) == World.AllPoints, $"{joiner}: {(joiner != null ? world.PointsOf(joiner) : null)}");
-        Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left));
+        Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left),
+            $"host left {world.HandOpen(host, HandsDef.Left)}, joiner left {world.HandOpen(joiner ?? "", HandsDef.Left)}");
 
         // The host onto the plate, which starts the run (hold-batch: attuning no longer happens in a room round it).
         var plate = world.HoldSite.Plate;
