@@ -307,3 +307,56 @@ Phases 1-5 are core only (u2, Linux) while the PC does maps 6-8; the PC waits on
 3. **How far is "line of sight"?** (a) `sight` 4 (generated one past `keep`), `know` 7 with haze to its edge
    (~670 m). (b) Larger, `sight` 5 and `know` 9 (~860 m), about 1.6 times the generated chunks and memory.
    **Recommend (a)** to start; both are numbers in `sim.json`, tuned in phase 6.
+
+## As built: phase 4, ChunkGen (chunk-gen, u2, 2026-11-09)
+
+- **`Chem.ChunkGen`** (`ChunkGen.cs`, `ChunkGen.Land.cs`): `Make(cx, cy)` makes one chunk's land, cells and things from
+  the plan alone, in integers on `WorldHash`, safe from any thread. A cell's land comes from its position only:
+  - the bands of the four nearest world squares, blended over the 300 cells either side of each border (a sea square
+    counts as low land, and the coast takes it down);
+  - `BiomeField`'s shape weights (300 cells), with its anchors from the plan's templates in place of `biomes.json`'s
+    fixed layout and the plan's seed. Each biome adds its base and its relief: hills either side of the base, ridged
+    and dunes rising from it;
+  - the coast from the plan's shore depths, wobbled along each side and back to the plan's depth at the corners, so a
+    shore runs on into the next world square. The land leans down to the shore over 100 cells, and the sea bed falls to
+    the sea band over 90;
+  - rivers from each side's slot to the world square's hub, with the water at each end a pure function of that point
+    (bands and biome base, 2 m down) and the hub's set below every river flowing in. The channel is carved, and the
+    land either side leans down to the water over 110 m (73 cells). There is a lake at the hub where a river ends;
+  - roads from their slots to the hub, levelled across to the land at their middle and banked back over 6 cells;
+  - last, the pinned valley's own land, met over 90 cells outside it.
+  - Then come the landmarks' map stamps (`LandmarkIntent`'s rows, baked into the land), the cells, and the things.
+    Cells are the biome's ground with seeded trees and brush, stone where a face is steep, and water where the sea, a
+    river or a lake is. Things are the landmarks' rows first, then a seeded boulder at some of the 64 spots, appended
+    per chunk so ids hold.
+- **The valley pinned:** its 81 chunks are its folder's land, cells and things byte for byte (a test checks every
+  cell), and the chunks beside it meet its edge (the valley-side test: no step bigger than the valley's own).
+- **Negative rows: none.** The map's origin is the nine's north-west corner, not the valley's, so the valley is
+  chunks (0..8, 18..26) and no coordinate goes below zero. The cell store's `y × W + x` from zero is the one thing that
+  can't take a negative row, and every loop over the world, in the core and the view, runs from zero. Moving the origin
+  costs one shift of the valley's rows as the nine is put together (1152 cells south). `Chunks.ChunkOf` already floors,
+  and `ThingId` already packs signed 16-bit chunks, so negative chunks would only be a cell-store question if a world
+  ever needs them.
+- **The world file** `world/maps/nine/map.json` holds the seed, the size in world squares, the generator version and
+  the pinned valley. `GeneratedMap` reads it, solves the plan and makes the generator. The **input hash**
+  (`GeneratedMap.InputHash`) covers the world file, `bands.json`, `biomes.json`, every square template and landmark
+  intent, the valley folder's hash and the two versions. `MapIdentity.Hash` gives it for a generated map, so a bake
+  never changes the map's identity.
+- **A map the PC can load:** `GeneratedMap.Bake(dir)` writes a whole 1728² map folder that phase 7 loads with `-map nine`:
+  `cells.txt`, `land.json`, `things.json`, and the valley's rows moved to its place with the landmarks' added
+  (`stamps`, `villages`, `buildings`, `golf`, `gauntlet`, `puzzles`, `jobs`, `rocks`, `hold`, `looks`). `places.json`
+  is the hand-written places moved, then `WorldPlaces.Generate`. `GeneratedMap.EnsureBaked(world/maps/nine)` bakes into
+  the folder itself (gitignored apart from `map.json`) unless `bake.json` already holds these inputs. A test bakes it
+  and holds it to `MapCheck`.
+- **Measured** (u2, a 2-core VM, core Release):
+  - one chunk: median 4.9 ms, p95 12.5 ms;
+  - the whole nine (729 chunks): 2.4-2.6 s on 2 threads, then 0.5 s to write the folder;
+  - memory: 20 MB held for all 729 chunks' land, cells and things.
+  - The golden of the nine's chunk hashes and four single chunks is in `ChunkGenTests`. Chunks made one at a time
+    from the far corner back, and again on one thread row-major, give the same hashes as the nine made on every thread.
+- **Not drawn yet:**
+  - caves (no intent file), crossings, waystations and outcrops (they are in the plan, and nothing is stamped for them);
+  - the valley's `ground/` and `themes/`: in the nine the valley is drawn from its land, like any map without a ground
+    pack;
+  - buildings' `site.metres`, which only the old valley scene read, isn't moved.
+  - A river's bed follows a straight line from slot to hub, so where two biomes' bases differ a river can pool.

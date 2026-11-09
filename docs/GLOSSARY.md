@@ -119,10 +119,17 @@ touch them.
 : What a world square asks for, never where it goes (`world/landmarks/<id>.json`, `Chem.LandmarkIntent`): "a village
   with a landmark", with a form per biome. The plan picks its world square; the form comes from the biome there.
 
-**Known chunk / generated chunk** *(planned)*
+**Known chunk / generated chunk** *(the rings are planned)*
 : The two states a chunk is in before it's active, by distance from a character (`sight` and `know` in `sim.json`
   `streaming`): a **known** chunk is decided, not built (its biome, coarse heights and landmarks, for the far view); a
-  **generated** chunk has its cells, land and things made from the world plan, and is held inactive.
+  **generated** chunk has its cells, land and things made from the world plan (`Chem.ChunkGen`, a pure function of the
+  plan and the chunk's coordinates), and is held inactive.
+
+**World file / generated map**
+: A **generated map** is made from a **world file**, its `map.json` with a `generated` section: the seed, its size in
+  world squares, the generator's version and the world squares pinned to another map's folder (the nine pins the
+  valley). Its other files are a **bake** (`GeneratedMap.Bake`), written beside it and never committed; its map hash is
+  over its inputs, not the bake.
 
 **Ground pack**
 : The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
@@ -924,7 +931,7 @@ that long, and doesn't march.
   shaped (`World.Land.cs`, `docs/design/maps-as-data.md`). A mountain is a stamp, never a tool of its own. Its **profile** is its shape; a **canyon** and a **cliff** are the two with a **face**, a steep wall of rock that wanders along a line, or along a **path** of points so it bends. What's on a face (`LandRocks`) is only drawn. A **map stamp** is one of a map's own, in its `stamps.json` (`MapStamps`): laid when the world is made, and no undo or reset takes it.
 
 **Map**
-: A whole world to play on, a folder under `world/maps/`. Its **map hash** is over every file there (`MapIdentity`): the host turns away a peer without its id and hash. One build still draws one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
+: A whole world to play on, a folder under `world/maps/`. Its **map hash** is over every file there (a generated map's, over its inputs) (`MapIdentity`): the host turns away a peer without its id and hash. One build still draws one, the valley; loading another is future work (`docs/design/second-map-2026-11-02.md`). *Not* the
   **cell map** in the map's `cells.txt`, one character a cell, nor a **shore map**.
 
 **Theme look**

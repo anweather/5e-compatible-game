@@ -14,7 +14,7 @@ namespace Chem.Tests
         public void PlacesFileIsUpToDate()
         {
             bool write = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PLACES_OUT"));
-            foreach (string map in Directory.GetDirectories(ChemistryTests.Folders.Maps))
+            foreach (string map in Directory.GetDirectories(ChemistryTests.Folders.Maps).Where(m => !GeneratedMap.IsGenerated(m)))
             {
                 string path = Path.Combine(map, WorldPlaces.FileName);
                 string made = WorldPlaces.Generate(map);

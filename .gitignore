@@ -31,3 +31,7 @@ unity/ProjectSettings/Packages/com.unity.pipeline/EditorPipelineConfig.json
 # punchy-sync build output
 tools/punchy-sync/bin/
 tools/punchy-sync/obj/
+
+# A generated map's bake (GeneratedMap.Bake): its folder commits only its world file, map.json
+/world/maps/nine/*
+!/world/maps/nine/map.json
