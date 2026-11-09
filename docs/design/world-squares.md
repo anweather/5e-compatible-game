@@ -186,6 +186,17 @@ mesh from their 9 × 9 heights, painted by dominant biome, no colliders, built i
 (about 670 m). Landmarks are drawn as far meshes from the plan out to their `seenFrom`, so a volcano or the spire shows
 through the fog before its chunks are known. All float, all view: nothing shared depends on it.
 
+**On paper (2026-11-09, `tools/world-paper/`, its Horizon panel).** Keep `know` 7 and haze k = 1.98 (98% at 672 m,
+Unity fogDensity 0.00295/m; half-haze at 283 m, so `sight` 4 is already 72%); the 9 × 9 heights are plenty. What the
+paragraph above gets wrong, to fix when the PC builds it:
+1. One haze can't show landmarks past `know` (the volcano at 10 chunks is 99.97%): landmarks get their own haze, about
+   90% at their `seenFrom`, and fade into the sky colour, not the fog colour, or they pop against a bluer sky.
+2. `seenFrom` should be about `know` + 3 or more: volcano and spire ~14 (spire 12 reads from the spawn at 59%),
+   castle, great tree and outcrops 9-10. Today's 5, 6 and 3 (great tree, castle, lake) sit inside the known ring.
+3. `seenFrom` reads better as a radius than a Chebyshev square (1.4 times farther on diagonals).
+4. The known ring stops at the coast, so the view needs a sea plane to the horizon, or the unfogged skybox shows
+   below it.
+
 ## 5. The solve, order-free
 
 **Level 1, the world plan, at load, for the whole world.** The world is bounded (an ocean-ringed 3 × 3 now, a torus

@@ -63,8 +63,9 @@ Waiting:
 1. **Land `late-join-core`** when the PC's compile reports green.
 2. **`nine-slopes` (u2):** compile and land it, then a unity-task walks out of the valley through each open side in
    the Editor (a clip). No Windows build for Andrew and no waiting on his play (J-082).
-3. **The far ring as a paper prototype first** (phase 6's rest: landmarks behind haze, the known ring), per "paper
-   first"; then the PC.
+3. **The far ring on the PC** (phase 6's rest: landmarks behind haze, the known ring). The paper is done (507e0f72,
+   `tools/world-paper/` Horizon panel); its numbers and four fixes are in `world-squares.md` section 4 "On paper".
+   Core half (known chunks' 9 × 9 heights, `seenFrom` as a radius, new values) to u2; the view half to the PC.
 Then: `core-boundaries` landings (step 4 changes Chemistry/, PC compiles); a Scripts runtime asmdef (measure compile
 time first, J-081; no longer waits on the playtest); #170 barrels; mana after Andrew plays quick taps; maps phase 8
 (runtime map switch rebuilds terrain).
