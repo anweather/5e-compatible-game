@@ -36,6 +36,7 @@ public sealed partial class FarRing : MonoBehaviour
         public GeneratedMap Map;
         public FarLandmarks Far;
         public float[] Ground;
+        public Dictionary<string, FarMeshes.FarLook> Looks;
     }
 
     Task<Loaded> loading;
@@ -107,7 +108,8 @@ public sealed partial class FarRing : MonoBehaviour
             var l = far.All[n];
             ground[n] = Ground(gen, l, water, near, cell);
         }
-        return new Loaded { Map = m, Far = far, Ground = ground };
+        var looks = FarMeshes.FarLooks(System.IO.File.ReadAllText(System.IO.Path.Combine(m.WorldDir, HorizonTable.FileName)));
+        return new Loaded { Map = m, Far = far, Ground = ground, Looks = looks };
     }
 
     // The ground a far landmark stands on (m): the lowest dry known sample within its radius (at least a sample's spacing)
@@ -141,6 +143,8 @@ public sealed partial class FarRing : MonoBehaviour
         Shader.SetGlobalFloat(HazeDensityId, RenderSettings.fogMode == FogMode.ExponentialSquared ? RenderSettings.fogDensity : clear);
         Shader.SetGlobalFloat(HazeClearId, clear);
         Shader.SetGlobalFloat(SightMetresId, sight * chunkMetres);
+        Shader.SetGlobalFloat(StretchFromId, StretchFrom);
+        Shader.SetGlobalFloat(StretchToId, StretchFrom + StretchOverChunks * chunkMetres);
         var horizon = RenderSettings.fogColor;
         var zenith = Shader.GetGlobalColor(PunchyZenithId);
         Shader.SetGlobalColor(SkyHorizonId, horizon);

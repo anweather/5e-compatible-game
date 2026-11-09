@@ -75,8 +75,22 @@ public class FarRingClipProbe : ProbeScenario
         Metric("known_drawn", far.KnownDrawn);
         Metric("known_build_worker_ms", (float)FarRing.LastBuild.workerMs);
         Metric("known_build_main_ms", (float)FarRing.LastBuild.mainMs);
-        if (target.landmark != null) Metric("landmark_foot_over_ground_m", target.foot.y - grid.GroundAt(target.foot));
+        if (target.landmark != null) Metric("landmark_foot_over_ground_m", target.foot.y - GroundRound(target.foot, target.landmark.Radius));
         return target;
+    }
+
+    // The ground round a landmark's foot (m): the middle of 16 samples on the ring at its radius, outside its own stamp
+    // (the ground at its middle is a volcano's crater floor, 50 m up its cone).
+    float GroundRound(Vector3 foot, float radius)
+    {
+        var heights = new float[16];
+        for (int s = 0; s < 16; s++)
+        {
+            float a = s * Mathf.PI / 8f;
+            heights[s] = grid.GroundAt(foot + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * radius);
+        }
+        System.Array.Sort(heights);
+        return (heights[7] + heights[8]) / 2f;
     }
 
     Glide Plan((FarLandmark landmark, Vector3 foot, bool shown) target, Vector3 start)

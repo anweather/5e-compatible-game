@@ -70,6 +70,26 @@ public class FarMeshesTests
     }
 
     [Test]
+    public void TheVolcanosFarLookIsReadAndItsApronRunsDownToTheWater()
+    {
+        string world = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "world"));
+        var looks = FarMeshes.FarLooks(File.ReadAllText(Path.Combine(world, HorizonTable.FileName)));
+        Assert.That(looks.ContainsKey("volcano"), "the volcano has a far look");
+        var v = looks["volcano"];
+        Assert.That(v.Stretch, Is.InRange(1f, 4f));
+        Assert.That(v.Notch, Is.InRange(0f, 0.5f));
+        Assert.That(v.Apron, Is.GreaterThan(1f));
+        Assert.That(looks.ContainsKey("castle"), Is.False, "a row with no far look is drawn plain");
+
+        var d = FarMeshes.Landmark("volcano", "crater", 100f, 60f, 8f, v.Apron, 90f);
+        Assert.AreEqual(60f, d.Vertices.Max(p => p.y), 1e-3f, "it stands its height (the shader stretches it)");
+        Assert.AreEqual(-90f, d.Vertices.Min(p => p.y), 1e-3f, "its apron reaches down to the water");
+        Assert.AreEqual(100f * v.Apron, d.Vertices.Max(p => new Vector2(p.x, p.z).magnitude), 1e-2f, "out to its apron");
+        for (int t = 0; t < d.Triangles.Count; t += 3)
+            Assert.That(d.Normals[d.Triangles[t]].y, Is.GreaterThan(-1e-3f), $"triangle {t / 3} faces up or out");
+    }
+
+    [Test]
     public void TheSeaPlaneLeavesTheMapOpen()
     {
         var d = FarMeshes.SeaFrame(-100f, -50f, 300f, 250f, 5000f, -0.5f, Color.blue);
