@@ -4,6 +4,7 @@ using UnityEngine;
 // The shore map (ShoreMap): the field's distance and smoothing on made-up land
 // (ShoreField), then the map of the valley's coast worked out from its land (MapLand): off the island the way to land is the
 // way to the island, off the mainland the way to the mainland.
+[OnTheValley]
 public class ShoreMapTests
 {
     static bool[] Land(int n, System.Func<int, int, bool> isLand)

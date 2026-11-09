@@ -9,6 +9,7 @@ using UnityEngine;
 // The Dragon's seams to the view, on the real valley's map. The order at the start of a world
 // is the one that bites: whatever isn't laid when ChemGrid.StartWorld keeps the starting
 // state, the dragon wipes. And the flight drawn must stay in one piece at any frame rate.
+[OnTheValley]
 public class DragonViewTests
 {
     // The Gauntlet's lava pit, its first booth (world/gauntlet.json, puzzles.json).

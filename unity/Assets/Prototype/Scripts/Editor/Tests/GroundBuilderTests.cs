@@ -8,6 +8,7 @@ using UnityEngine;
 
 // The run-time builder (docs/design/maps-as-data.md, phase 5): arrays become TerrainData, from a map's ground/ or from its
 // land alone, and the ground drawn from them still eases, keeps its seams and comes back whole on a new world.
+[OnTheValley]
 public class GroundBuilderTests
 {
     const float Unit = 0.125f, Step = 0.5f;

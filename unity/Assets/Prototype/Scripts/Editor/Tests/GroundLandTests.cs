@@ -9,6 +9,7 @@ using UnityEngine;
 // map's pack (ground/, committed) is the only ground there is: the scene holds none, and the game and the yard's build both
 // make their chunks from it (MapTerrains, EditorGround). The yard's own bake, which once drew another ground in the Editor,
 // retired with phase 6. ValleyChemistry.CheckGround looks at 64 cells as drawn; this looks at every cell.
+[OnTheValley]
 public class GroundLandTests
 {
     // One land unit.
