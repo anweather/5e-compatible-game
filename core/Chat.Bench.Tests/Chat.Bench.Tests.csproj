@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The chat bench's tests (core/Chat.Bench, docs/design/chat-telemetry.md): its report, not a run (that spends tokens). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <!-- Fixtures side by side, as in Game.Core.Tests (#162). -->
+    <Compile Include="../TestParallel.cs" Link="TestParallel.cs" />
+    <Compile Include="../Rules.Mcp.Tests/ChatFixtures.cs" Link="ChatFixtures.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The Chemistry tests' shared helpers (ChemistryTests.Folders, ComboTests.Blank...), which Unity compiles with
+         them: NUnit runs only this assembly's own tests, so none of Game.Core.Tests' run twice. -->
+    <ProjectReference Include="../Game.Core.Tests/Game.Core.Tests.csproj" />
+    <ProjectReference Include="../Chat.Bench/Chat.Bench.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- As Game.Core.Tests: NUnit 3, like Unity's Test Framework. -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

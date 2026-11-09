@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { kindOf, read, report, text } from "./chat-report.mjs";
 
-const folder = fileURLToPath(new URL("../core/Game.Core.Tests/RulesMcp/chat-fixtures/log", import.meta.url));
+const folder = fileURLToPath(new URL("../core/Rules.Mcp.Tests/chat-fixtures/log", import.meta.url));
 const log = read(folder);
 const r = report(log);
 
