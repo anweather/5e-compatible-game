@@ -15,6 +15,14 @@ public static class McpLog
     /// <summary>Where the lines go, set on the main thread as the server starts.</summary>
     public static string Folder { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        WaitedMs = 0;
+        Folder = null;
+    }
+
     /// <summary>One tool call has ended.</summary>
     public static void Write(string tool, long ms, int chars, bool ok)
     {

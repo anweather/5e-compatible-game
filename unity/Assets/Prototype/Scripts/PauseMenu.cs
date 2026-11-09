@@ -43,6 +43,8 @@ public class PauseMenu : MonoBehaviour
         instance = null;
         sections.Clear();
         pages.Clear();
+        KeysTaken = false;
+        fieldFrame = -2;
     }
 
     GUIStyle box, title, button;

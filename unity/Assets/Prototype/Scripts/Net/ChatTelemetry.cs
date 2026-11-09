@@ -54,6 +54,15 @@ public class ChatTelemetry : MonoBehaviour
     /// <summary>Where the records go in place of Home, for the probe.</summary>
     public static string Folder { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Instance = null;
+        live = null;
+        Folder = null;
+    }
+
     /// <summary>Where the records and the MCP log go now: ChatLog.Home unless the probe says otherwise. On the main thread.</summary>
     public static string Home => Folder ?? ChatLog.Home(ChemGrid.Folders.PlayerData, GivenLogFolder());
 

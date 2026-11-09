@@ -130,6 +130,14 @@ public static class ApiKey
 
     static ApiBudget session;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        TestFile = null;
+        session = null;
+    }
+
     /// <summary>What this sitting has spent, and its limit: gone when the game closes.</summary>
     public static ApiBudget Session => session ??= ApiBudget.ForSession(Cap);
 

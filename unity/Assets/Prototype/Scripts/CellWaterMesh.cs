@@ -644,6 +644,15 @@ public sealed class CellWaterMesh
 
     static int keptChecked, keptDifferent;
     static long keptVertices, keptTicks, perPointTicks;
+
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetKeptPoints()
+    {
+        CheckKeptPoints = false;
+        keptChecked = keptDifferent = 0;
+        keptVertices = keptTicks = perPointTicks = 0;
+    }
     readonly KeptCells kept;
     ContourSurface checkSurface;
 

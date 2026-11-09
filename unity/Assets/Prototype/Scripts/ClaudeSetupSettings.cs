@@ -26,6 +26,15 @@ public class ClaudeSetupSettings : MonoBehaviour
     public static float Widest { get; private set; }
     public static float Room => Mathf.Min(PageWidth, HudScale.Width - Margins) - Margins - Scrollbar;
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        instance = null;
+        Drawn = 0;
+        Widest = 0f;
+    }
+
     /// <summary>Fills the path's box without storing anything, for the probe: a long one must not widen the page.</summary>
     public static void ShowPath(string text)
     {

@@ -42,6 +42,15 @@ public static class SpeechChoice
     /// <summary>How long the stub transcriber works before it answers.</summary>
     public static TimeSpan StubDelay { get; set; } = Seconds(StubSecondsFlag, TimeSpan.FromSeconds(DefaultStubSeconds));
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Wav = Arg(Environment.GetCommandLineArgs(), WavFlag);
+        Timeout = Seconds(TimeoutFlag, TranscribedSpeech.DefaultTimeout);
+        StubDelay = Seconds(StubSecondsFlag, TimeSpan.FromSeconds(DefaultStubSeconds));
+    }
+
     /// <summary>Where the model is: -speech-model's file, otherwise the one the build shipped.</summary>
     public static string ModelPath =>
         Arg(Environment.GetCommandLineArgs(), ModelFlag) ?? Path.Combine(Application.streamingAssetsPath, "Whisper", ModelFile);

@@ -25,6 +25,13 @@ public sealed class RecordedSpeech : ISpeech
     /// <summary>Set by the probe: the sample the next hold plays.</summary>
     public static string Next { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Next = null;
+    }
+
     /// <summary>The whole ask, once a sample is loaded.</summary>
     public string Text => string.Join(" ", words.ConvertAll(w => w.word));
 
