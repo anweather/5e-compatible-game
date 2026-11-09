@@ -68,8 +68,12 @@ Waiting:
    design, since the valley stays byte-identical). Clip: host-ux `unity/Builds/demo-videos/nine-slopes-east.mp4`.
    Steep generated faces are brown dirt; a walkable rock look needs a cell character (u2's follow-up, not briefed).
 3. **The far ring.** Paper 507e0f72; core half `far-ring-core` landed 663c226a (KnownRing, `world/horizon.json`,
-   EditMode 1855/1855; 144 known chunks cost 35-48 ms on a worker). **The PC is building `far-ring-view`**
-   (`queue/taken/far-ring-view.md`): meshes, haze, landmarks through fog, sea plane, a clip.
+   EditMode 1855/1855; 144 known chunks cost 35-48 ms on a worker). View half `far-ring-view` landed 1eec423c
+   (EditMode 1859/1859; the nine 35.3 ms mean, faster than dev's 39.2, since the camera now culls cell dressing past
+   500 m; clip `far-ring-nine.mp4`, sent). The nine's seed has no volcano or spire: **u2's `nine-volcano`** (queued)
+   makes the plan place one and retunes the great tree's look. Left for the PC after it: a hard sea horizon line,
+   tundra plateaus as flat white wedges; and 10 map-reading EditMode tests (DragonView, FolkJobs, GroundBuilder,
+   GroundLand, RowMesher, ShoreMap) fail when `unity/Temp/map` says nine, so they depend on the Editor's map file.
    Seen on the way: smoke on the nine runs at 37.9 ms mean / 64 ms p95 and fails cast_fire-bolt, fire_started and
    levitate_lifted (same on dev; smoke's casts are placed for the valley's yard, so likely the probe, unconfirmed).
 Then: `core-boundaries` landings (step 4 changes Chemistry/, PC compiles); a Scripts runtime asmdef (measure compile
