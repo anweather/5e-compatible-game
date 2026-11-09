@@ -45,7 +45,8 @@ workers=6; if command -v powershell >/dev/null 2>&1; then
   freegb="$(powershell -NoProfile -Command "[math]::Floor((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB)" 2>/dev/null | tr -d '\r')"
   [[ "$freegb" =~ ^[0-9]+$ ]] && (( freegb < 10 )) && workers=3
 fi
-[[ $failed == 0 ]] && gate "core tests" dotnet test core -c Release --no-build -- NUnit.NumberOfTestWorkers=$workers
+# The Sweep category (whole runs, peer by peer) is the sweep's, layer 4 of docs/TESTING_LAYERS.md: a landing skips it.
+[[ $failed == 0 ]] && gate "core tests" dotnet test core -c Release --no-build --filter "TestCategory!=Sweep" -- NUnit.NumberOfTestWorkers=$workers
 
 for i in "${!pids[@]}"; do
   if wait "${pids[$i]}"; then echo "  ok  ${names[$i]}"

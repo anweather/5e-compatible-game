@@ -16,17 +16,39 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
         static WorldHold Site => WorldHold.Load(ChemistryTests.WorldDir());
 
-        // Grass round the castle and the spawners, the rows laid, and the map's Hold.
+        // The painted ground round the spawners and the heart, in cells.
+        const int Around = 40;
+
+        // Grass round the castle and the spawners, the rows laid, and the map's Hold, with only the chunks round it active.
         internal static World Field(int seed = 7, Rules rules = null)
         {
             var s = Site;
             var w = new World(rules ?? R, 576, 576, (uint)seed);
             var cells = s.Spawners.SelectMany(p => p.Cells).Concat(new[] { s.Heart }).ToList();
-            for (int y = cells.Min(c => c.y) - 40; y < cells.Max(c => c.y) + 40; y++)
-                for (int x = cells.Min(c => c.x) - 40; x < cells.Max(c => c.x) + 40; x++) w.Paint(x, y, "grass");
+            for (int y = cells.Min(c => c.y) - Around; y < cells.Max(c => c.y) + Around; y++)
+                for (int x = cells.Min(c => c.x) - Around; x < cells.Max(c => c.x) + Around; x++) w.Paint(x, y, "grass");
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(s);
+            OnlyTheHold(w);
             return w;
+        }
+
+        // Only the chunks a run reaches are active (its castle, heart, plate, towers, barricades and spawners, and the painted
+        // ground round them), as only those in a wizard's reach are in the game: the rest of the 576 x 576 world is ground
+        // nobody comes to, and stepping it was most of every Hold test's time. Every peer switches the same chunks before its
+        // first tick, a late joiner too.
+        internal static void OnlyTheHold(World w)
+        {
+            var s = w.HoldSite;
+            var cells = BuildingRaster.Cells(BuildingRow.Read(s.Castle, s.Row, R.Buildings), R.Buildings).Select(c => (c.X, c.Y))
+                .Concat(s.Spawners.SelectMany(p => p.Cells)).Concat(s.Barricades)
+                .Concat(new[] { s.Heart, s.Plate, s.Rise }).Concat(s.Towers.Select(t => (t.X, t.Y))).ToList();
+            const int size = 64; // a chunk's side, in cells
+            int fromX = Math.Max(0, cells.Min(c => c.Item1) - Around) / size, toX = Math.Min(w.W - 1, cells.Max(c => c.Item1) + Around) / size;
+            int fromY = Math.Max(0, cells.Min(c => c.Item2) - Around) / size, toY = Math.Min(w.H - 1, cells.Max(c => c.Item2) + Around) / size;
+            w.SetAllActive(false);
+            for (int cy = fromY; cy <= toY; cy++)
+                for (int cx = fromX; cx <= toX; cx++) w.SetActive(cx, cy, true);
         }
 
         internal static void Stand(World w, string who, (int x, int y) at, int hp = 12) => w.ApplyStrike(StrikeCommand.Stand(who, at.x, at.y, hp));
@@ -325,7 +347,9 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            for (int wave = 1; wave <= 7; wave++)
+            // From wave 4: the first waves are every other test's.
+            w.Hold.Wave = 4;
+            for (int wave = 4; wave <= 7; wave++)
             {
                 Until(w, () => w.Hold.Wave > wave || w.Raiders.Count > 0, "raiders come");
                 int left = MostTicks;
@@ -387,7 +411,8 @@ namespace Chem.Tests
             var w = Running();
             Away(w);
             bool seen = false, early = false;
-            for (int i = 0; i < MostTicks && w.Hold.Wave < 6; i++)
+            // Until the first is seen: wave 1 is behind it by then.
+            for (int i = 0; i < MostTicks && w.Hold.Wave < 6 && !seen; i++)
             {
                 foreach (var r in w.Raiders)
                 {
@@ -402,7 +427,8 @@ namespace Chem.Tests
             Assert.That(early, Is.False);
         }
 
-        [Test]
+        // A whole run to a loss, peer by peer: the sweep runs it (docs/TESTING_LAYERS.md); TheRunIsInTheChecksum and HoldWaveTests.TwoWorldsMatchOverSeveralWaves land.
+        [Test, Category("Sweep")]
         public void TwoPeersRunAlikeToALoss()
         {
             var a = Running(11);
@@ -481,11 +507,13 @@ namespace Chem.Tests
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(Site);
+            OnlyTheHold(w);
             Stand(w, Me, w.HoldSite.Plate);
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);
             Until(w, () => w.Raiders.Count >= 2, "raiders come");
             var back = World.Load(w.Save(source), R, source);
+            Assert.That(back.ActiveChunks, Is.EqualTo(w.ActiveChunks), "the save keeps which chunks are active");
             back.SetHold(Site);
             Assert.That(back.HoldText(), Is.EqualTo(w.HoldText()));
             Ticks(w, 100);

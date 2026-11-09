@@ -1,4 +1,5 @@
 // Progress in the Hold (docs/design/the-hold.md, phase 5): upgrades inside a run, unlocks between runs, and the player's own save.
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -16,16 +17,23 @@ namespace Chem.Tests
 
         static (int x, int y) Far(World w, int n = 0) => (w.HoldSite.Rise.x - 40 - n, w.HoldSite.Rise.y - 30);
 
-        // Two wizards, a run, and its first wave just beaten: the offers are out.
-        static World Offered(int seed = 7)
+        // Two wizards in a run of the first wave, everything open.
+        static World InRun(int seed)
         {
             var w = Field(seed);
             Stand(w, Bo, Far(w, 2));
             Stand(w, Me, Far(w));
             w.ApplyCombo(ComboCommand.Moment(Me, "first-wave"));
             w.Hold.Moment = null;
-            return Beaten(w);
+            return w;
         }
+
+        // Two wizards, a run, and its first wave just beaten: the offers are out.
+        static World Offered(int seed = 7) => Beaten(InRun(seed));
+
+        // The same, built once a seed for the fixture: only for a test that looks and changes nothing.
+        static readonly ConcurrentDictionary<int, System.Lazy<World>> Seen = new ConcurrentDictionary<int, System.Lazy<World>>();
+        static World OfferedToLook(int seed) => Seen.GetOrAdd(seed, s => new System.Lazy<World>(() => Offered(s))).Value;
 
         // The wave on now, beaten: the offers are out.
         static World Beaten(World w)
@@ -86,7 +94,7 @@ namespace Chem.Tests
         [Test]
         public void EveryPeerSeesTheSameOffers()
         {
-            var one = Offered(11);
+            var one = OfferedToLook(11);
             var other = Offered(11);
             Assert.That(one.RunOf(Me).Offer.Count, Is.EqualTo(P.Offer));
             Assert.That(other.RunOf(Me).Offer, Is.EqualTo(one.RunOf(Me).Offer));
@@ -100,7 +108,7 @@ namespace Chem.Tests
             int differ = 0;
             for (int seed = 1; seed <= 5; seed++)
             {
-                var w = Offered(seed);
+                var w = OfferedToLook(seed);
                 if (!w.RunOf(Me).Offer.SequenceEqual(w.RunOf(Bo).Offer)) differ++;
             }
             Assert.That(differ, Is.GreaterThan(0));
@@ -149,7 +157,7 @@ namespace Chem.Tests
         {
             for (int seed = 1; seed <= 6; seed++)
             {
-                var w = Offered(seed);
+                var w = OfferedToLook(seed);
                 var holds = w.HandsOf(Me).Holds;
                 Assert.That(w.RunOf(Me).Offer.Select(P.Upgrade).All(u => u.Holds == null || holds.Contains(u.Holds)), $"seed {seed}");
             }
@@ -176,7 +184,7 @@ namespace Chem.Tests
             Assert.That(P.Upgrades.Count(u => u.BothHands), Is.EqualTo(1), "the one row that needs both hands");
             Assert.That(RunningWith(0).Suits(calm, Me), Is.False, "one hand");
             Assert.That(RunningWith(CostTo("second-hand")).Suits(calm, Me), "the second hand");
-            Assert.That(Offered().Suits(calm, Me), "everything open");
+            Assert.That(OfferedToLook(7).Suits(calm, Me), "everything open");
         }
 
         [Test]
@@ -184,7 +192,7 @@ namespace Chem.Tests
         {
             int offered = 0;
             for (int seed = 1; seed <= 12 && offered == 0; seed++)
-                if (Offered(seed).RunOf(Me).Offer.Contains("calm-hands")) offered++;
+                if (OfferedToLook(seed).RunOf(Me).Offer.Contains("calm-hands")) offered++;
             Assert.That(offered, Is.GreaterThan(0));
         }
 
@@ -232,19 +240,21 @@ namespace Chem.Tests
         [Test]
         public void ADamageUpgradeHitsHarderForThatWizardOnly()
         {
+            // Each on a world of its own, so each roll is the same roll.
             int Hurt(string by, string pick)
             {
-                var w = Offered(11);
+                var w = InRun(11);
                 w.Hold.NextSpawn = w.Tick + 500;
-                w.Hold.Wizards[Me].Picks.Clear();
+                foreach (var who in new[] { Me, Bo }) w.Hold.Wizards[who] = new RunWizard { Player = who };
                 if (pick != null) w.Hold.Wizards[Me].Picks.Add(pick);
                 var r = w.SpawnRaider("giant-spider", 300, 300, 100000);
                 w.Cast(new CastCommand("fire-bolt", r.X, r.Y, 0, by: by));
                 return 100000 - r.Hp;
             }
-            Assert.That(Hurt(Me, "hard-throw"), Is.GreaterThan(Hurt(Me, null)));
+            int plain = Hurt(Me, null);
+            Assert.That(Hurt(Me, "hard-throw"), Is.GreaterThan(plain));
             Assert.That(Hurt(Bo, "hard-throw"), Is.EqualTo(Hurt(Bo, null)));
-            Assert.That(Hurt(Me, "hard-thrust"), Is.EqualTo(Hurt(Me, null)), "it's a throw");
+            Assert.That(Hurt(Me, "hard-thrust"), Is.EqualTo(plain), "it's a throw");
         }
 
         [Test]
@@ -438,6 +448,7 @@ namespace Chem.Tests
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(WorldHold.Load(ChemistryTests.WorldDir()));
+            OnlyTheHold(w);
             w.ApplyCombo(ComboCommand.Bring(Me, 12));
             Stand(w, Me, w.HoldSite.Plate);
             Ticks(w, P.PlateTicks + 1);

@@ -64,3 +64,5 @@ test("jscpd gets the heap a 5 GB VM needs, with no NODE_OPTIONS in the shell", (
 });
 
 test("a test run reads the build it follows", () => assert.match(run(NOTHING).ran, /dotnet test core -c Release --no-build/));
+
+test("a landing leaves the Sweep category to the sweep", () => assert.match(run(NOTHING).ran, /dotnet test core .*--filter TestCategory!=Sweep/));
