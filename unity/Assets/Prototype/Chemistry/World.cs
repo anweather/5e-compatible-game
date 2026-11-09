@@ -148,13 +148,8 @@ namespace Chem
         public TerrainDef TerrainOf(Cell c)
         {
             // Every tick asks each wet or burning cell about its terrain several times; looking the
-            // id up only when it changes keeps that cheap. (Reference check: T is replaced, not edited.)
-            if (!ReferenceEquals(c.DefFor, c.T))
-            {
-                c.Def = Rules.Terrain[c.T];
-                c.DefFor = c.T;
-            }
-            return c.Def;
+            // id up only when it changes keeps that cheap (Cell.T drops the cache when it's replaced).
+            return c.Def ??= Rules.Terrain[c.T];
         }
         public bool HasTag(Cell c, string tag) => TerrainOf(c).Has(tag);
         public bool IsBlocking(Cell c) => TerrainOf(c).Blocking || IsRaisedWall(c);

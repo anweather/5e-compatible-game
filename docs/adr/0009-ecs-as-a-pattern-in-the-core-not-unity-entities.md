@@ -32,6 +32,12 @@
   3. **Fields, not objects, per cell.** Reach cells through accessors
      (`World.At` and friends), not by holding `Cell` objects, so a chunk
      can become one array per field (struct of arrays) behind them.
+     (2026-11-08, cell-memory: not yet. A `Cell` keeps its common fields,
+     terrain, water, liquid, height, fire, frozen, and puts the rest,
+     cover, gas and the timers, in a side object made when one is first
+     set, behind the same properties: 64 bytes a bare cell, not 128. The
+     view's per-cell `View` does the same. A big map measured the need;
+     struct of arrays is still the step if the core tick needs it.)
   4. **Components as tags in the rules.** Entities and materials carry
      tags (`flammable`, `conducts`, `brittle`, `floats`...) and reactions
      match on tags, not on ids.

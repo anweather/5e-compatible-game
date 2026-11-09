@@ -81,6 +81,10 @@ public class OnlineReset : MonoBehaviour
     void OnDestroy()
     {
         if (net != null) net.ResetComing -= Coming;
+        net = null;
+        // Leaving Play mode in the Editor keeps statics (no domain reload): a static still naming this one would hold its
+        // NetChem, and through it the grid and the whole last world, until the next Play (cell-memory: 0.8 GB on flat-1728).
+        if (instance == this) instance = null;
     }
 
     void Coming(int tick) => resetAt = tick;

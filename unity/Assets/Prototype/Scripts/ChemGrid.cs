@@ -167,6 +167,8 @@ public partial class ChemGrid : MonoBehaviour
         freshChunks.Clear();
         lastLog = null;
         tickTimer = 0f;
+        // The old world's views go before the new one is built, so both worlds' views aren't held at once at the peak.
+        views = null;
         BuildWorld();
     }
 
@@ -180,7 +182,9 @@ public partial class ChemGrid : MonoBehaviour
         CheckMap();
         TakeYard();
         Vector2Int start;
+        var phase = System.Diagnostics.Stopwatch.StartNew();
         using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
+        double cellsMs = phase.Elapsed.TotalMilliseconds;
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
         World.ChunkSwitched += OnChunkSwitched;
         World.LandMoved += (x, y, reach) =>
@@ -192,15 +196,21 @@ public partial class ChemGrid : MonoBehaviour
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
+        phase.Restart();
         if (valley != null)
             using (BuildValleyMarker.Auto()) valley.Bind(World);
-
+        double valleyMs = phase.Elapsed.TotalMilliseconds;
+        phase.Restart();
         using (BuildDrawMarker.Auto())
         {
             InitVisuals();
             RenderAll();
         }
+        double drawMs = phase.Elapsed.TotalMilliseconds;
+        phase.Restart();
         using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
+        // What a world costs to build, by part (cell-memory: a big map's start and every reset pay it).
+        Debug.Log($"WORLD BUILT {World.W} x {World.H}: cells {cellsMs:0} ms, valley {valleyMs:0} ms, draw {drawMs:0} ms, listeners {phase.Elapsed.TotalMilliseconds:0} ms");
     }
 
     // Where the map's cells stand in the world (map.json's yard: its south-west cell at world 0, 0), when this grid plays a

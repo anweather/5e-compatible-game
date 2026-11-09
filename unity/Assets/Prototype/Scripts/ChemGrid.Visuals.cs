@@ -38,23 +38,44 @@ public partial class ChemGrid
     [Tooltip("Optional: smaller stones set on a raised wall's top to break its line.")]
     public GameObject[] wallStones;
 
-    // What is currently shown for one cell, so a cell is only redrawn when it changes.
+    // What is currently shown for one cell, so a cell is only redrawn when it changes. One a cell, so what few cells show at
+    // once (a cover, gas, sparks, thorns, a fire's level) is kept apart in a Rare, made when one is first set: 56 bytes a
+    // cell of bare ground rather than 136 (cell-memory: 3 million of them on a 1728 x 1728 map). Read and set alike.
     sealed class View
     {
-        public GameObject dressing, cover, gas, spark, thorns, vines;
-        public string terrain, coverId;
-        // The effect the gas is drawn with: the prefab, or its copy in a look.
-        public GameObject gasPrefab;
+        sealed class Rare
+        {
+            public GameObject cover, gas, spark, thorns, vines, gasPrefab;
+            public string coverId, gasKind;
+            public int fireLevel, heatLevel, rustLevel;
+            public bool charged, flashed, fogged;
+        }
+
+        Rare rare;
+        Rare Kept => rare ??= new Rare();
+
+        public GameObject dressing;
+        public string terrain;
         public int height, elevation;
         public int key = int.MinValue;
-        public int fireLevel;
-        public string gasKind;
-        public bool charged;
-        public bool flashed;
         public bool wet;
-        public bool fogged;
-        public int heatLevel;
-        public int rustLevel;
+
+        // A reference is kept as it was given (a destroyed object too, as a field would): only a real null makes no Rare.
+        public GameObject cover { get => rare?.cover; set { if (rare != null || (object)value != null) Kept.cover = value; } }
+        public GameObject gas { get => rare?.gas; set { if (rare != null || (object)value != null) Kept.gas = value; } }
+        public GameObject spark { get => rare?.spark; set { if (rare != null || (object)value != null) Kept.spark = value; } }
+        public GameObject thorns { get => rare?.thorns; set { if (rare != null || (object)value != null) Kept.thorns = value; } }
+        public GameObject vines { get => rare?.vines; set { if (rare != null || (object)value != null) Kept.vines = value; } }
+        // The effect the gas is drawn with: the prefab, or its copy in a look.
+        public GameObject gasPrefab { get => rare?.gasPrefab; set { if (rare != null || (object)value != null) Kept.gasPrefab = value; } }
+        public string coverId { get => rare?.coverId; set { if (rare != null || value != null) Kept.coverId = value; } }
+        public string gasKind { get => rare?.gasKind; set { if (rare != null || value != null) Kept.gasKind = value; } }
+        public int fireLevel { get => rare?.fireLevel ?? 0; set { if (rare != null || value != 0) Kept.fireLevel = value; } }
+        public int heatLevel { get => rare?.heatLevel ?? 0; set { if (rare != null || value != 0) Kept.heatLevel = value; } }
+        public int rustLevel { get => rare?.rustLevel ?? 0; set { if (rare != null || value != 0) Kept.rustLevel = value; } }
+        public bool charged { get => rare != null && rare.charged; set { if (rare != null || value) Kept.charged = value; } }
+        public bool flashed { get => rare != null && rare.flashed; set { if (rare != null || value) Kept.flashed = value; } }
+        public bool fogged { get => rare != null && rare.fogged; set { if (rare != null || value) Kept.fogged = value; } }
     }
 
     // Lights from the Light spell at once, however many cells are lit.
@@ -271,7 +292,10 @@ public partial class ChemGrid
         RenderHeat(v, c, redressed);
         RenderRust(v, c, redressed);
         float groundTop = GroundTop(x, y, c);
-        float ground = CellDressing.IsDressed(World.Rules, c.T) ? groundTop : groundTop + CellDressing.Look(World.Rules, c.T).height;
+        // The look from the cell's own terrain definition (World.TerrainOf's cache), not looked up by id twice a cell.
+        var look = World.TerrainOf(c).Look;
+        float stands = look != null ? look.Height : 0f;
+        float ground = CellDressing.IsDressed(look) ? groundTop : groundTop + stands;
         var center = CellCenter(x, y);
         bool lake = valley != null && valley.IsLake(c, x, y);
 
@@ -472,7 +496,7 @@ public partial class ChemGrid
             Hide(v.cover);
             return;
         }
-        var film = Ensure(ref v.cover, "Cover", center);
+        var film = v.cover = Ensure(v.cover, "Cover", center);
         film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
         film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
         film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-" + c.Cover, CoverColor(c.Cover, new Color(0.35f, 0.34f, 0.33f)), 0.05f);
@@ -517,7 +541,7 @@ public partial class ChemGrid
     // --- stand-in cubes ------------------------------------------------------------
 
     // A cell's stand-in cube, made (or remade, if the slot holds a particle effect) and shown.
-    GameObject Ensure(ref GameObject go, string name, Vector3 at)
+    GameObject Ensure(GameObject go, string name, Vector3 at)
     {
         if (go == null || go.GetComponent<ParticleSystem>() != null)
         {
