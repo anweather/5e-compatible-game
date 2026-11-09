@@ -466,6 +466,8 @@ namespace Chem
     public sealed class StreamingParams
     {
         public int Reach = 2, Keep = 3;
+        /// <summary>A chunk is generated within this of a character, and known (a coarse far chunk, KnownRing) out to know.</summary>
+        public int Sight = 4, Know = 7;
         /// <summary>A chunk is settled once nothing in it has been live for this many ticks.</summary>
         public int SettleTicks = 12;
         /// <summary>At most this many chunks out of every reach stay active while live (linger).</summary>
@@ -1337,6 +1339,8 @@ namespace Chem
             {
                 s.Streaming.Reach = Int(so["reach"]) ?? s.Streaming.Reach;
                 s.Streaming.Keep = Int(so["keep"]) ?? s.Streaming.Keep;
+                s.Streaming.Sight = Int(so["sight"]) ?? s.Streaming.Sight;
+                s.Streaming.Know = Int(so["know"]) ?? s.Streaming.Know;
                 s.Streaming.SettleTicks = Int(so["settleTicks"]) ?? s.Streaming.SettleTicks;
                 s.Streaming.LingerChunks = Int(so["lingerChunks"]) ?? s.Streaming.LingerChunks;
                 s.Streaming.LingerTicks = Int(so["lingerTicks"]) ?? s.Streaming.LingerTicks;

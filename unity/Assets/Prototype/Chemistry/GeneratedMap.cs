@@ -51,6 +51,14 @@ namespace Chem
         /// <summary>The pinned map's name (its map.json's), what its spawn is called.</summary>
         public string PinnedName { get; private set; }
 
+        FarLandmarks far;
+
+        /// <summary>The plan's landmarks that show from far off (world/horizon.json), for the view's far ring.</summary>
+        public FarLandmarks Far => far ??= FarLandmarks.Make(Gen, HorizonTable.Load(WorldDir));
+
+        /// <summary>A known ring on this map, sized by the rules' streaming.sight and streaming.know.</summary>
+        public KnownRing KnownRing(StreamingParams streaming) => new KnownRing(Gen, streaming);
+
         /// <summary>Whether the map in this folder is made from a world file.</summary>
         public static bool IsGenerated(string mapDir)
         {
