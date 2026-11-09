@@ -41,6 +41,19 @@ Each entry has:
 
 ## Decided
 
+### J-081: An outside architecture review (2026-11-08)
+
+- **Asked:** Andrew pasted a review of the repo's architecture, CI and tests.
+- **Also comes up when:** splitting assemblies or test projects, refactoring the core, CI speed.
+- **The lead's triage:** kept the review's "keep" list (engine-free core, rules as JSON, lockstep, goldens). Taken for
+  u2 now as `core-boundaries`: CI triggers and caching, test projects split by boundary, Unit/Simulation categories,
+  World.React's Apply split (goldens byte-identical), dependency directions in ARCHITECTURE.md. Deferred until after
+  the 3 x 3 playtest: a runtime asmdef for Scripts (the PC's compile time; measure first) and splitting World.Sim's
+  passes. Already done: the sandbox is frozen (2026-10-31); a Sweep category exists (test-speed-core).
+- **Weighed:** CI takes 4.5-5 min and isn't the bottleneck (the PC's Editor is), so CI changes are cheap tidying;
+  the test split and React refactor help agents most (smaller things to read and test).
+- **Revisited:** 0.
+
 ### J-080: The world squares (playtest 2026-11-08 follow-up, `docs/design/world-squares.md`)
 
 - **Asked:** 2026-11-08, by the lead; answered on https://claude.ai/artifact/SU4mkw9cWLdtgzjz5iDApQ (`picks`).
