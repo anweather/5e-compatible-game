@@ -4,6 +4,24 @@ A paper prototype of `docs/design/world-squares.md` (J-080), one self-contained 
 like a puzzle (bands, templates, edges and coasts matched, fillers), landmarks by biome, and the active, generated and
 known rings as you walk. Open `index.html` in a browser. Not the game: invented templates, coarse chunk hashes.
 
+Sizes: the nine (3 × 3), **12 × 10** (J-083: 8 land rows between an ice row and a desert row, wrapping east-west) and
+12 × 12.
+
+## The world sketch panel (draw first, then fit the world squares)
+
+**World sketch** turns the plan round: pick a biome (lake or sea, marsh, grassland, forest, desert, ashlands, ice cap,
+mountains) and drag closed outlines on the world; they wrap east-west, overlap (the last on top) and interleave at their
+edges over the blend width, after the climate's warp. Each world square with a quarter or more drawn asks the band its
+biomes allow and weighs templates by what's drawn on it; the solve and its side rules are unchanged. Three views, or all
+three side by side: the sketch, the world squares the plan picked (a solid red box: a rule changed the band or the sea;
+a dashed one: another anchor biome; faded: under a quarter drawn) and the land that comes out. The list names each
+break's world square, rule and what the plan did instead; tap a row or a world square for its reading. *Land follows
+the sketch* paints the drawn biome where the plan has it in that world square or one beside it, and drawn lakes in low
+land become water. The map's **Sketch** layer shows the outlines. Save, copy, download or load a sketch as JSON
+(`docs/design/world-squares.md`, "Draw first"); samples: a lake district (the nine), a mountain spine and a default
+12 × 10. From the address: `#sketch=lake-district|mountain-spine|default-12x10&sview=all|sketch|squares|land&sksel=x,y`,
+and `#size=12x10`.
+
 ## The horizon panel (section 4, the far ring in the view)
 
 Below the map, **Horizon** shows what the character sees from its chunk toward the far ring, before phase 6 builds it.
