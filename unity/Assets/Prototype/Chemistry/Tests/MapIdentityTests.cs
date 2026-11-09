@@ -76,14 +76,14 @@ namespace Chem.Tests
         [Test]
         public void APeerWithoutTheHostsMapIsToldWhich()
         {
-            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", "valley:123"), Is.EqualTo("The host is on The Isle, and this copy doesn't have it."));
-            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", ""), Does.Contain("doesn't have it"));
-            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", null), Does.Contain("doesn't have it"));
+            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", "valley:123"), Is.EqualTo("The host is on The Isle, but your copy doesn't have that map."));
+            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", ""), Does.Contain("doesn't have that map"));
+            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", null), Does.Contain("doesn't have that map"));
         }
 
         [Test]
         public void APeerWithAnotherFolderOfTheSameNameIsToldSo() =>
-            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", "isle:def"), Is.EqualTo("The host is on The Isle, and this copy has a different The Isle."));
+            Assert.That(MapIdentity.Refusal("isle", "The Isle", "abc", "isle:def"), Is.EqualTo("The host is on The Isle, but your copy of that map is different."));
 
         [Test]
         public void TheCommandLineNamesTheMap()

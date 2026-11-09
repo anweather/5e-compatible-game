@@ -70,8 +70,8 @@ Measured on the Mac, in a development player: `Bind` 45 ms baked, 225 ms built, 
 the same ground even though it decides nothing.
 
 - **Approval:** the client's `ConnectionData` gains the id:hash of each map it has, beside `BuildVersion`. `Approve` refuses
-  through the existing `response.Reason`: "The host is on The Drowned Chain, and this copy doesn't have it" or "...has a
-  different The Drowned Chain". That's the screen a build mismatch already shows.
+  through the existing `response.Reason`: "The host is on The Drowned Chain, but your copy doesn't have that map" or "...but
+  your copy of that map is different". That's the screen a build mismatch already shows.
 - **Which map:** a `NetworkVariable` on `NetChem`, read in `OnNetworkSpawn` before `grid.ResetWorld()`, which already rebuilds
   the joiner's world. So a late joiner builds the right world and then replays history, and no map goes through history.
 - **Checksum:** `LandHash` joins `Others`, "" until land is stamped, then the hash of the stamps so far, as `ActText` does.

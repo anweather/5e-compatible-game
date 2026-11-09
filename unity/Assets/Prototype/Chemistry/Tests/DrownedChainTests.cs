@@ -163,8 +163,8 @@ namespace Chem.Tests
             string valley = GameFolders.DefaultMap + ":" + MapIdentity.Hash(Path.Combine(ChemistryTests.Folders.Maps, GameFolders.DefaultMap));
             string chain = Id + ":" + MapIdentity.Hash(Dir);
             var name = MapFile.Load(Dir).Name;
-            Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley), Is.EqualTo("The host is on The Drowned Chain, and this copy doesn't have it."));
-            Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley + "," + Id + ":0123456789abcdef"), Is.EqualTo("The host is on The Drowned Chain, and this copy has a different The Drowned Chain."));
+            Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley), Is.EqualTo("The host is on The Drowned Chain, but your copy doesn't have that map."));
+            Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley + "," + Id + ":0123456789abcdef"), Is.EqualTo("The host is on The Drowned Chain, but your copy of that map is different."));
             Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley + "," + chain), Is.Null);
             Assert.That(MapIdentity.Offered(ChemistryTests.Folders), Does.Contain(chain));
         }

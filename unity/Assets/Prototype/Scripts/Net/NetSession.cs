@@ -165,7 +165,10 @@ public class NetSession : MonoBehaviour
         joining = false;
         joinFailure = BuildVersion.JoinFailure(Net.DisconnectReason);
         joinFailureUntil = Time.realtimeSinceStartup + 20f;
-        Debug.LogWarning($"NET: {joinFailure} (Netcode said: {Net.DisconnectReason})");
+        // The host's own words are already in joinFailure; add Netcode's only when they say something else.
+        string reason = Net.DisconnectReason;
+        bool said = !string.IsNullOrEmpty(reason) && joinFailure.Contains(reason);
+        Debug.LogWarning(said ? $"NET: {joinFailure}" : $"NET: {joinFailure} (Netcode said: {reason})");
         _ = Leave();
     }
 
