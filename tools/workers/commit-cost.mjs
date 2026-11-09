@@ -106,7 +106,8 @@ let name = os.hostname();
 for (const f of ['C:/ProgramData/worker/name.txt', '/var/lib/worker/name.txt']) { // start.cmd writes it (Windows, Linux)
   try { name = fs.readFileSync(f, 'utf8').trim().split(' ')[0] || name; break; } catch { }
 }
-if (role !== 'Worker') name = process.env.COMMIT_COST_NAME || name;
+// COMMIT_COST_NAME names who did it, for any role: the Mac's hook sets it to mac, as its hostname is a person's machine.
+name = process.env.COMMIT_COST_NAME || name;
 const plural = (k, word) => `${k} ${word}${k > 1 ? 's' : ''}`;
 const trouble = [compactions && plural(compactions, 'compaction'), apiErrors && plural(apiErrors, 'API error')].filter(Boolean);
 const lines = [
