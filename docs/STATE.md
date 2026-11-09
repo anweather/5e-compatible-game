@@ -30,7 +30,7 @@ Landed 2026-11-09 (all on dev):
 - Numbers now: EditMode 1862 on the PC; valley smoke ~11.8 ms mean; the nine's farringclip ~31 ms mean, 38 ms p95.
 
 Waiting:
-- **The Mac's Editor hung at 06:08 MST** (pid 1031, likely a hidden save-scene modal after building the yard with
+- **The Mac was back online at ~07:55 and re-told its three jobs.** Earlier its Editor hung at 06:08 MST (pid 1031, likely a hidden save-scene modal after building the yard with
   `Temp/map` = nine); it asked Andrew to look. `apikey-tests-mac` is written, not compiled. Rule for briefs: build the
   yard on the valley; point `Temp/map` at the nine only for the probe run.
 - Nothing waits on a compile. host-ux is clean (an untracked `unity/Assets/_Recovery/` stays); Editor pid 20380 open.
