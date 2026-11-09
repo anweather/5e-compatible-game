@@ -17,14 +17,20 @@ using UnityEngine;
 //   unity command probe run --name online [--keep-players true]
 //   unity command probe run --name chatprompts [--real-claude true --out <folder>] [--prompts N] [--only <kind>] [--model <id>] [--context bare] [--also <args>] [--set <file>] [--harness api --budget <file> --ttl 1h|5m] [--replay <folders>] [--shots <folder>]
 //   unity command probe result --wait true --timeout 300
+//   unity command probe run --name smoke,fire,court     (several, one after another: a batch)
 //
-// Entering Play mode reloads the scripting domain (this project keeps domain
-// reload on), which drops the CLI's connection, so one request can't span a
-// run. `probe run` saves the request in SessionState and enters Play mode;
+// A run outlives the CLI request that starts it: a compile reloads the scripting
+// domain and drops the CLI's connection, and Play mode can take minutes (the
+// project has had domain reload on entering Play mode off since J-023), so a request
+// can't span a run. `probe run` saves the request in SessionState and enters Play mode;
 // after the reload the hook below adds the scenario (ProbeScenarios), waits
 // for it, writes its result to Temp/Probe/result.json and leaves Play mode.
 // `probe result` reads that file off the main thread, waiting for it if asked.
 // tools/probe.sh does all three steps in one call.
+//
+// A batch (names joined by commas) runs its scenarios one after another, each in a Play session of its own (leaving
+// Play mode is what puts the world back): each one's JSON goes to Temp/Probe/results/NNN-name.json as it finishes,
+// and result.json says done only when the last one has, listing them all. A two-player scenario runs on its own.
 //
 // A scenario with more than one player (online) needs Multiplayer Play Mode's
 // Player 2: `probe run` starts it first if it isn't running (VirtualPlayers),
@@ -48,6 +54,9 @@ public static class ProbeCommands
     // The project folder: the Editor's working directory, readable from any thread.
     static string ResultPath => Path.Combine(Directory.GetCurrentDirectory(), "Temp", "Probe", "result.json");
 
+    // A batch's scenarios' results, one file each, in the order they ran.
+    static string ResultsDir => Path.Combine(Directory.GetCurrentDirectory(), "Temp", "Probe", "results");
+
     sealed class Request
     {
         public string Id { get; set; }
@@ -70,6 +79,12 @@ public static class ProbeCommands
         public DateTime RequestedUtc { get; set; }
         /// <summary>The virtual player this run started, to stop after it (null: none, or keep it).</summary>
         public string StopAfter { get; set; }
+        /// <summary>A batch's scenarios still to run after this one, and where this one is in it (0 from the first).</summary>
+        public string[] Queue { get; set; } = Array.Empty<string>();
+        public int Index { get; set; }
+        /// <summary>Every scenario of a batch, and when the batch was asked for; null for one scenario alone.</summary>
+        public string[] Batch { get; set; }
+        public DateTime BatchUtc { get; set; }
     }
 
     // The run in progress (Play mode doesn't reload the domain on the way out, so this lasts the run).
@@ -84,13 +99,16 @@ public static class ProbeCommands
         name = e.Name,
         description = e.Description,
         max_seconds = e.MaxSeconds,
+        players = e.Players,
+        speed = e.Speed,
+        films = e.Films,
     }).ToList();
 
-    [CliGroupCommand(Group, "Enter Play mode and run a probe scenario in the open scene (the Chemistry Yard). " +
-        "Returns at once; read the JSON result with `probe result --wait true`.")]
+    [CliGroupCommand(Group, "Enter Play mode and run a probe scenario in the open scene (the Chemistry Yard), or several, " +
+        "named with commas, one after another. Returns at once; read the JSON result with `probe result --wait true`.")]
 #pragma warning disable S107 // Too many parameters: the CLI makes one argument of each
     public static object Run(
-        [CliArg("name", "Scenario name, from `probe list`", Required = true)] string name,
+        [CliArg("name", "Scenario name, from `probe list`; several joined by commas run one after another", Required = true)] string name,
         [CliArg("shots", "Folder to save screenshots in (absolute, e.g. a scratchpad); empty for none")] string shots = "",
         [CliArg("seconds", "perf only: how long to hold the camera, in seconds")] float seconds = 10f,
         [CliArg("keep-players", "online only: leave a virtual player this run started running afterwards (faster reruns)")] bool keepPlayers = false,
@@ -109,9 +127,14 @@ public static class ProbeCommands
         [CliArg("ttl", "chatprompts only, with harness api: how long the prefix stays cached, 1h or 5m")] string ttl = "")
 #pragma warning restore S107
     {
-        var entry = ProbeScenarios.Find(name);
-        if (entry == null)
-            throw new ArgumentException($"No probe scenario '{name}'. Known: {string.Join(", ", ProbeScenarios.All.Select(e => e.Name))}");
+        var names = name.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(n => n.Trim()).ToArray();
+        foreach (string n in names)
+            if (ProbeScenarios.Find(n) == null)
+                throw new ArgumentException($"No probe scenario '{n}'. Known: {string.Join(", ", ProbeScenarios.All.Select(e => e.Name))}");
+        if (names.Length == 0) throw new ArgumentException("Name a scenario.");
+        if (names.Length > 1 && names.Any(n => ProbeScenarios.Find(n).Players > 1))
+            throw new ArgumentException("A two-player scenario (online, ...) runs on its own, not in a batch.");
+        var entry = ProbeScenarios.Find(names[0]);
         if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Already in Play mode: stop it first.");
         if (EditorApplication.isCompiling) throw new InvalidOperationException("Scripts are compiling: try again when they finish.");
         if (UnityEngine.Object.FindAnyObjectByType<ChemGrid>() == null)
@@ -137,7 +160,11 @@ public static class ProbeCommands
             Budget = FullPath(budget),
             Ttl = ttl,
             RequestedUtc = DateTime.UtcNow,
+            Queue = names.Skip(1).ToArray(),
+            Batch = names.Length > 1 ? names : null,
+            BatchUtc = DateTime.UtcNow,
         };
+        if (Directory.Exists(ResultsDir)) Directory.Delete(ResultsDir, true);
         bool waitForPlayer = false;
         if (entry.Players > 2) throw new ArgumentException($"{entry.Name} wants {entry.Players} players; the probe starts at most 2");
         if (entry.Players == 2 && !VirtualPlayers.Running(SecondPlayer))
@@ -211,6 +238,16 @@ public static class ProbeCommands
         EditorApplication.update += wait;
     }
 
+    [CliGroupCommand(Group, "Starts a batch's next scenario if it's waiting to (an Editor in the background doesn't tick in Edit " +
+        "mode until a command on the main thread wakes it); says what it did")]
+    public static object Kick()
+    {
+        bool waiting = SessionState.GetString(RequestKey, "") != "";
+        if (!waiting || EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling) return new { started = false, waiting };
+        Play();
+        return new { started = true, waiting };
+    }
+
     [CliGroupCommand(Group, "The last probe run's JSON result (Temp/Probe/result.json); with wait=true, waits until it has finished",
         MainThreadRequired = false)]
     public static object Result(
@@ -264,9 +301,17 @@ public static class ProbeCommands
                 if (active != null) Finish(Aborted, $"Play mode ended after {EditorApplication.timeSinceStartup - startedAt:0.0} s, before the scenario finished");
                 break;
             case PlayModeStateChange.EnteredEditMode:
+                StopPlayer();
+                // A batch's next scenario: straight back into Play mode, for a fresh world.
+                if (SessionState.GetString(RequestKey, "") != "")
+                {
+                    // Not from inside this callback. An Editor in the background doesn't tick on its own in Edit mode,
+                    // so this may wait for the next command on the main thread: `probe kick` (probe.sh sends it).
+                    EditorApplication.delayCall += Play;
+                    break;
+                }
                 RestoreFocus();
                 FocusKeeper.Release();
-                StopPlayer();
                 break;
         }
     }
@@ -307,6 +352,8 @@ public static class ProbeCommands
         scenario.BudgetFile = active.Budget;
         scenario.PrefixTtl = active.Ttl;
         go.SetActive(true);
+        // A slow scenario's own pace (ProbeScenarios.Entry.Speed); clips film at their own fixed clock.
+        Time.timeScale = active.Shots == null ? entry.Speed : 1f;
         if (active.Shots != null) DemoRecorder.HideGizmos();
         startedAt = EditorApplication.timeSinceStartup;
         WriteResult(Status(active, Running));
@@ -326,6 +373,7 @@ public static class ProbeCommands
     static void Finish(string state, string reason)
     {
         EditorApplication.update -= Tick;
+        Time.timeScale = 1f;
         var run = active;
         active = null;
         stopAfterRun = run.StopAfter;
@@ -340,10 +388,54 @@ public static class ProbeCommands
         if (reason != null) result["reason"] = reason;
         result["wall_seconds"] = Math.Round((DateTime.UtcNow - run.RequestedUtc).TotalSeconds, 1);
         result["unity"] = Application.unityVersion;
-        WriteResult(result);
+        if (run.Batch == null) WriteResult(result);
+        else NextInBatch(run, result);
         DemoRecorder.RestoreGizmos();
         scenario = null;
         if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
+    }
+
+    // A batch's scenario is over: its result into the results folder, then the next one asked for (it starts when Play
+    // mode has ended), or, after the last, the batch's own result.
+    static void NextInBatch(Request run, JObject result)
+    {
+        result["batch_index"] = run.Index;
+        Directory.CreateDirectory(ResultsDir);
+        File.WriteAllText(Path.Combine(ResultsDir, $"{run.Index:000}-{run.Name}.json"), result.ToString(Formatting.Indented));
+        if (run.Queue.Length > 0)
+        {
+            var next = JsonConvert.DeserializeObject<Request>(JsonConvert.SerializeObject(run));
+            next.Name = run.Queue[0];
+            next.Queue = run.Queue.Skip(1).ToArray();
+            next.Index = run.Index + 1;
+            next.RequestedUtc = DateTime.UtcNow;
+            next.StopAfter = null;
+            SessionState.SetString(RequestKey, JsonConvert.SerializeObject(next));
+            var going = Status(next, Starting);
+            going["batch"] = new JArray(run.Batch);
+            going["batch_done"] = run.Index + 1;
+            WriteResult(going);
+            return;
+        }
+        var all = Directory.GetFiles(ResultsDir, "*.json").OrderBy(f => f, StringComparer.Ordinal).Select(f => JObject.Parse(File.ReadAllText(f))).ToList();
+        WriteResult(new JObject
+        {
+            ["id"] = run.Id,
+            ["scenario"] = string.Join(",", run.Batch),
+            ["state"] = Done,
+            ["pass"] = all.Count == run.Batch.Length && all.All(r => (bool?)r["pass"] == true),
+            ["batch"] = new JArray(all.Select(r => new JObject
+            {
+                ["scenario"] = r["scenario"],
+                ["state"] = r["state"],
+                ["pass"] = r["pass"],
+                ["wall_seconds"] = r["wall_seconds"],
+                ["reason"] = r["reason"],
+            })),
+            ["results"] = ResultsDir,
+            ["wall_seconds"] = Math.Round((DateTime.UtcNow - run.BatchUtc).TotalSeconds, 1),
+            ["unity"] = Application.unityVersion,
+        });
     }
 
     // --- the result file -----------------------------------------------------------------

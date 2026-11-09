@@ -14,6 +14,13 @@ public static class HudScale
     /// <summary>A factor to use whatever the screen, above 0; the probe's way to a big screen, since its Game view is 1080p.</summary>
     public static float Forced { get; set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Forced = 0f;
+    }
+
     /// <summary>The screen's width in HUD units.</summary>
     public static float Width => Screen.width / Factor;
 

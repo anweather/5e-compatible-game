@@ -31,6 +31,14 @@ public class ArcFx : MonoBehaviour
     /// <summary>How many arcs are playing now, for the probe.</summary>
     public static int Playing { get; private set; }
 
+    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        instance = null;
+        Playing = 0;
+    }
+
     /// <summary>An arc from <paramref name="from"/> to <paramref name="to"/>, after <paramref name="delay"/> seconds, for <paramref name="seconds"/>, in a spell's <paramref name="look"/> if given.</summary>
     public static void Play(Vector3 from, Vector3 to, float width = 0.07f, float delay = 0f, float seconds = 0.35f, Color? look = null)
     {

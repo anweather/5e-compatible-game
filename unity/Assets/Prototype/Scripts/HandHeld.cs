@@ -141,8 +141,9 @@ public sealed class HandHeld
             var cube = Primitives.Visual(PrimitiveType.Cube, "Hand stone");
             stoneMesh = cube.GetComponent<MeshFilter>().sharedMesh;
             Object.Destroy(cube);
-            stoneMaterial = UrpMaterials.NewLit("Hand stone", Stone);
         }
+        // A Play mode's end destroys the material and not the built-in mesh: each is made again on its own.
+        if (stoneMaterial == null) stoneMaterial = UrpMaterials.NewLit("Hand stone", Stone);
         var look = ps.GetComponent<ParticleSystemRenderer>();
         look.renderMode = ParticleSystemRenderMode.Mesh;
         look.mesh = stoneMesh;
