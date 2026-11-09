@@ -526,7 +526,7 @@ public partial class ChemGrid : MonoBehaviour
 
     // A map's folders from its name in -map, the menu or Temp/map: an id under world/maps, or a map folder's path (absolute,
     // or from the repo's root: test-fixtures/maps/flat-1728, #169). A generated map (the nine) is baked first when playing:
-    // into its own folder in the Editor (out of git), and into the player's data folder in a build (worlds/<id>/<inputs>).
+    // into its own folder in the Editor (out of git), and into the player's data folder in a build (worlds/<inputs>/<id>).
     static GameFolders FoldersFor(string named)
     {
         var game = NewFolders(GameFolders.DefaultMap);
@@ -555,7 +555,8 @@ public partial class ChemGrid : MonoBehaviour
         else
         {
             string inputs = GeneratedMap.InputHash(dir);
-            into = Path.Combine(game.PlayerData, "worlds", id, inputs);
+            // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
+            into = Path.Combine(game.PlayerData, "worlds", inputs, id);
             string note = Path.Combine(into, GeneratedMap.BakeName);
             baked = !File.Exists(note) || !File.ReadAllText(note).Contains(inputs);
             if (baked) GeneratedMap.Load(dir).Bake(into);

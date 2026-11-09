@@ -159,7 +159,7 @@ public class NetCommandLine : MonoBehaviour
         foreach (float f in frames) mean += f;
         mean = frames.Count > 0 ? mean / frames.Count : 0f;
         float p95 = frames.Count > 0 ? frames[Mathf.Min(frames.Count - 1, (int)(frames.Count * 0.95f))] : 0f;
-        long mb = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
+        long mb = UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong() / (1024 * 1024);
         return string.Format(CultureInfo.InvariantCulture, "NET STATUS: role={0} players={1} tick={2} desync={3} frame_mean_ms={4:0.0} frame_p95_ms={5:0.0} memory_mb={6}",
             Role(), players, tick, desync, mean, p95, mb);
     }

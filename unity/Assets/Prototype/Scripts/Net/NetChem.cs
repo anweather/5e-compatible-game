@@ -61,9 +61,10 @@ using UnityEngine;
 public partial class NetChem : NetworkBehaviour
 {
     // Which map the host is on (docs/design/maps-as-data.md, section 2).
-    readonly NetworkVariable<Unity.Collections.FixedString64Bytes> hostMap = new();
+    // Wrapped to go by memcpy: a player build has no generated serializer for a bare FixedString64Bytes (play-nine).
+    readonly NetworkVariable<ForceNetworkSerializeByMemcpy<FixedString64Bytes>> hostMap = new();
     // The spawn the host started in (SpawnPoints): joiners start beside the host.
-    readonly NetworkVariable<Unity.Collections.FixedString64Bytes> hostStart = new();
+    readonly NetworkVariable<ForceNetworkSerializeByMemcpy<FixedString64Bytes>> hostStart = new();
 
     const int HashEvery = RollingHash.Every, HashesKept = 4;
     // A late joiner replays the whole history; spread it so no frame spends more than this.
@@ -182,14 +183,14 @@ public partial class NetChem : NetworkBehaviour
     {
         // The host's map, before any world is built: a late joiner builds the right one, then replays the history.
         // On another map than the host's, a joiner loads the host's (the scene is built for the map it starts on) and joins again.
-        if (IsServer) hostMap.Value = ChemGrid.MapId;
-        else if (hostMap.Value.ToString() != ChemGrid.MapId)
+        if (IsServer) hostMap.Value = new FixedString64Bytes(ChemGrid.MapId);
+        else if (hostMap.Value.Value.ToString() != ChemGrid.MapId)
         {
-            NetSession.JoinOnHostMap(hostMap.Value.ToString());
+            NetSession.JoinOnHostMap(hostMap.Value.Value.ToString());
             return;
         }
-        if (IsServer) hostStart.Value = SpawnPoints.StartIn ?? "";
-        else SpawnPoints.StartIn = hostStart.Value.ToString();
+        if (IsServer) hostStart.Value = new FixedString64Bytes(SpawnPoints.StartIn ?? "");
+        else SpawnPoints.StartIn = hostStart.Value.Value.ToString();
         // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
         if (IsServer) grid.PlanRoom(NetSession.RoomMode);
         else grid.AwaitRoom();
