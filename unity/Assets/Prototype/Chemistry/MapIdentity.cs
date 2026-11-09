@@ -60,8 +60,8 @@ namespace Chem
                 int at = map.IndexOf(IdFromHash);
                 if (at > 0) maps[map.Substring(0, at)] = map.Substring(at + 1);
             }
-            if (!maps.TryGetValue(hostId, out string hash)) return $"The host is on {hostName}, and this copy doesn't have it.";
-            return hash == hostHash ? null : $"The host is on {hostName}, and this copy has a different {hostName}.";
+            if (!maps.TryGetValue(hostId, out string hash)) return $"The host is on {hostName}, but your copy doesn't have that map.";
+            return hash == hostHash ? null : $"The host is on {hostName}, but your copy of that map is different.";
         }
 
         /// <summary>The map named on the command line by -map, or the default: the host's pick until there's a menu for it.</summary>
