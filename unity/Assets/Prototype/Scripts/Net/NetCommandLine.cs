@@ -10,7 +10,7 @@ using UnityEngine;
 //   SpellChemistryValley -join-code K7QX2M     join that code
 //   -room-mode Locked (or HostOnly, Open)      the change mode of a room this copy hosts
 //   -host-local / -join-address 127.0.0.1      the same on one network, no Relay (two copies on one machine)
-//   -walk-east 90                              once in, walk east for that many seconds (a test run's walk
+//   -walk-to 620,1440                          once in, walk to that cell along a path (TestWalk; a test run's walk
 //                                              from the valley into the next square, with no one at the keys)
 //
 // Either way it also writes a "NET STATUS" line to the player log every 10
@@ -52,50 +52,75 @@ public class NetCommandLine : MonoBehaviour
         var go = new GameObject("Net command line");
         DontDestroyOnLoad(go);
         var line = go.AddComponent<NetCommandLine>();
-        if (float.TryParse(ValueAfter(args, "-walk-east"), NumberStyles.Float, CultureInfo.InvariantCulture, out float walk)) line.walkSeconds = walk;
+        string[] to = (ValueAfter(args, "-walk-to") ?? "").Split(',');
+        if (to.Length == 2 && int.TryParse(to[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int tx)
+            && int.TryParse(to[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int ty))
+        {
+            line.walkTo = new Vector2Int(tx, ty);
+            line.walkSeconds = 240f;
+        }
         if (hostLocal || address != null) line.BeginLocal(hostLocal, address);
         else line.Begin(host, code);
     }
 
     float walkSeconds, walked;
 
-    void BeginLocal(bool host, string address)
+    void BeginLocal(bool host, string address) => StartCoroutine(Local(host, address));
+
+    // A frame later, not as the scene loads: Netcode's generated serializers start then too, in no set order, and a
+    // network started before them can't send its variables (the host's map, a FixedString).
+    System.Collections.IEnumerator Local(bool host, string address)
     {
+        yield return null;
         session = FindAnyObjectByType<NetSession>();
         if (session == null)
         {
             Debug.LogError("NET: no NetSession in this scene; can't go online.");
-            return;
+            yield break;
         }
         Debug.Log(host ? "NET: hosting on this network" : $"NET: joining {address}");
         if (host) session.Host();
         else session.Join(address);
     }
 
-    // East across the map, whichever way the camera looks: the controller's stick is the camera's.
+    // To the cell -walk-to names, along a path over the cells (TestWalk): the controller's stick is the camera's.
     void Walk()
     {
         var net = NetworkManager.Singleton;
         var me = net != null && net.IsConnectedClient ? net.SpawnManager.GetLocalPlayerObject() : null;
         var chem = FindAnyObjectByType<NetChem>();
-        if (me == null || chem == null || !chem.CaughtUp || Camera.main == null) return;
+        var grid = ChemGrid.Current?.Grid;
+        if (me == null || chem == null || !chem.CaughtUp || Camera.main == null || grid == null) return;
         var inputs = me.GetComponent(WizardRig.InputsComponent);
         var move = WizardRig.Field(inputs, "move", isPublic: true);
         var sprint = WizardRig.Field(inputs, "sprint", isPublic: true);
+        var jump = WizardRig.Field(inputs, "jump", isPublic: true);
         if (move == null) return;
+        if (walk == null)
+        {
+            walk = TestWalk.To(grid, grid.CellAt(me.transform.position), walkTo);
+            Debug.Log(walk != null ? $"NET WALK: {walk.Length} cells to {walkTo}" : $"NET WALK: no way to {walkTo}");
+            if (walk == null)
+            {
+                walkSeconds = 0f;
+                return;
+            }
+        }
         walked += Time.deltaTime;
-        bool on = walked < walkSeconds;
-        var cam = Camera.main.transform;
-        var right = new Vector3(cam.right.x, 0f, cam.right.z).normalized;
-        var forward = new Vector3(cam.forward.x, 0f, cam.forward.z).normalized;
-        move.SetValue(inputs, on ? new Vector2(Vector3.Dot(Vector3.right, right), Vector3.Dot(Vector3.right, forward)) : Vector2.zero);
+        bool on = walked < walkSeconds && !walk.Done;
+        var stick = on ? walk.Stick(grid, me.transform, Camera.main.transform, Time.deltaTime, out bool hop) : Vector2.zero;
+        move.SetValue(inputs, stick);
         sprint?.SetValue(inputs, on);
+        jump?.SetValue(inputs, on && hop);
         if (!on)
         {
             walkSeconds = 0f;
-            Debug.Log($"NET WALK: done, at cell {ChemGrid.Current?.Grid.CellAt(me.transform.position)}");
+            Debug.Log($"NET WALK: {(walk.Done ? "there" : "out of time")}, at cell {grid.CellAt(me.transform.position)} after {walked:0} s");
         }
     }
+
+    TestWalk walk;
+    Vector2Int walkTo;
 
     static string ValueAfter(string[] args, string flag)
     {
