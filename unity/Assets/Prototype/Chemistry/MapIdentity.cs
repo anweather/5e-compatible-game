@@ -15,9 +15,11 @@ namespace Chem
         const string MapFlag = "-map";
         const ulong Offset = 14695981039346656037, Prime = 1099511628211;
 
-        /// <summary>The hash of a map's folder: every file's path under it and its bytes, in path order, whatever the machine.</summary>
+        /// <summary>The hash of a map's folder: every file's path under it and its bytes, in path order, whatever the machine; a generated map's inputs.</summary>
         public static string Hash(string worldDir)
         {
+            // A map made from a world file is what it's made from: its bake is a function of those (GeneratedMap).
+            if (GeneratedMap.IsGenerated(worldDir)) return GeneratedMap.InputHash(worldDir);
             ulong hash = Offset;
             var files = Directory.GetFiles(worldDir, "*", SearchOption.AllDirectories)
                 .Select(f => (file: f, name: Path.GetRelativePath(worldDir, f).Replace('\\', '/')))

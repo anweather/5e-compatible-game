@@ -59,7 +59,8 @@ namespace Chem.Tests
         {
             var maps = Directory.GetDirectories(ChemistryTests.Folders.Maps);
             Assert.That(maps.Select(Path.GetFileName), Does.Contain(GameFolders.DefaultMap));
-            foreach (string folder in maps) Assert.That(MapCheck.Errors(folder), Is.Empty, folder);
+            // A generated map's folder holds its world file alone until it's baked; ChunkGenTests checks a bake of it.
+            foreach (string folder in maps.Where(m => !GeneratedMap.IsGenerated(m))) Assert.That(MapCheck.Errors(folder), Is.Empty, folder);
         }
 
         [Test]
