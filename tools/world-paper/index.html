@@ -127,6 +127,7 @@ select{min-height:40px;padding:0 8px;border-radius:10px;border:1px solid var(--b
     <button data-layer="landmarks" aria-pressed="true">Landmarks</button>
     <button data-layer="rings" aria-pressed="true">Rings</button>
     <button data-layer="sketch" aria-pressed="true">Sketch</button>
+    <button data-layer="shores" aria-pressed="false">Shore kinds</button>
   </div>
 
   <div class="stats" id="solveStats"></div>
@@ -176,6 +177,20 @@ select{min-height:40px;padding:0 8px;border-radius:10px;border:1px solid var(--b
         <label class="sm">or a file <input type="file" id="skFile" accept=".json,application/json"></label></div>
       <div class="msg" id="skJsonMsg"></div>
     </details>
+  </section>
+
+  <section class="panel" aria-label="Shores" id="shPanel">
+    <div class="ph"><b>Shores</b><span class="k">water that doesn’t look square: open coast, marsh, deltas and lakes, each picked from the land</span></div>
+    <div class="row">
+      <span class="seg" role="group" aria-label="Shores view"><button data-shv="before" aria-pressed="false">Before</button><button data-shv="after" aria-pressed="false">After</button><button data-shv="both" aria-pressed="true">Both</button></span>
+      <button id="shKinds" aria-pressed="true">Shore kinds</button>
+    </div>
+    <div class="chips" role="group" aria-label="Look at" id="shFocus"></div>
+    <div class="stage"><canvas id="shc" width="720" height="320" aria-label="The world's water before and after: heights, shore kinds and lake levels"></canvas></div>
+    <div class="legend" id="shLegend"></div>
+    <div class="msg" id="shStats"></div>
+    <div id="shLakes" style="font-size:13px"></div>
+    <textarea id="shShot" hidden readonly></textarea>
   </section>
 
   <section class="panel" aria-label="Horizon">
@@ -1129,6 +1144,10 @@ function squareAt(W,x,y){ let sx=Math.floor(x/S), sy=Math.floor(y/S);
 // land takes that square's biome.
 function biomeAt(W,x,y){
   if(seaAt(W,x,y)) return 'ocean';
+  return landBiomeAt(W,x,y);
+}
+// the biome the land has at (x,y) whether or not the sea is there (the shores read it on both sides of a moved shore)
+function landBiomeAt(W,x,y){
   const ed=edgeAt(W,x,y); if(ed) return ed===1?'ice-wall':'dune-sea';
   const own=squareAt(W,x,y);
   // a world sketch the land follows: the drawn biome wins where the plan put that biome in this square or one beside it
@@ -1349,6 +1368,273 @@ const SKETCH_SAMPLES = {
     { biome:'ashlands', pts:blobPts(10.6,4.2,0.6,0.5,2.7) } ] } };
 function sampleSketch(id){ const s=SKETCH_SAMPLES[id]; return s ? cleanSketch(JSON.parse(JSON.stringify(s))) : null; }
 
+// ---------- shores: water that doesn't look square (paper, 2026-11-09) ----------
+// The plan's sea is whole world squares, and a coast only moves its line into the land square beside it, so the sea reads
+// square-edged and its floor steps where a coast square's ramp meets an open-sea square (#176). Here the water comes from
+// one field over the world instead: the squares' sea smoothed across their sides, plus a ragged noise, so a shore runs on
+// through sides and corners alike. The water falls into bodies: the sea, and lakes (a body under three world squares that
+// doesn't reach the world's edge, so a drawn lake, a lone sea square or a lake at a river's end), each lake at its own
+// level, the lowest land on its rim less a metre. Each stretch of shore takes a kind from the land behind it and the seed:
+// a delta where a river reaches the water over low land, a lake shore (beach or reeds), a marsh where the land is low and
+// flat and its biome likes one, else an open coast (a beach, or a cliff on high land). The sea floor shelves with the
+// distance from the shore, not with the square, so it has no step. Metres; the sea's level is 0.
+const SEA_LVL=0, SHORE_LAND=0.5, LAND_RAMP=100, SHELF=360, SEA_SHALLOW=-1.5, SEA_DEEP=BAND_H[0], CORE_SEA_RAMP=90;
+const SH_G=16, SH_AMP=0.5, MARSH_OUT=150, MARSH_IN=90, LAKE_MAX=3, RIVER_HALF=4.5;
+const SHK={ coast:1, cliff:2, marsh:3, delta:4, lake:5, reeds:6 };
+const SHK_NAME=['','open coast: beach','open coast: cliff','marsh','delta','lake shore: beach','lake shore: reeds'];
+const SHK_COL=['','#f1d27f','#8f8478','#a7bd45','#f0843a','#3fc4b4','#2d8c66'];
+// how much each biome likes a marsh on its shore (times how low and how flat the land is there)
+const MARSH_LIKES={ 'foggy-marsh':1, 'grassland':0.6, 'temperate':0.45, 'tundra':0.4, 'salt-flat':0.15, 'ashlands':0.1 };
+const D4=[[1,0],[-1,0],[0,1],[0,-1]];
+const smooth01=t=>{ t=t<0?0:t>1?1:t; return t*t*(3-2*t); };
+function wrapDX(W,d){ if(!W.wx) return d; const ww=W.w*S; return d-Math.round(d/ww)*ww; }
+function wrapDY(W,d){ if(!W.wy) return d; const hh=W.h*S; return d-Math.round(d/hh)*hh; }
+function nearLandBiome(W,i){ for(const j of [i].concat(W.nb[i],W.diag[i])) if(j>=0&&W.band[j]>0&&!W.wall[j]&&W.opt[j].tpl.biome!=='ocean') return W.opt[j].tpl.biome; return 'grassland'; }
+// the bands blended as bandHAt does, but a sea square counts as low land (as in ChunkGen): the shore takes it down
+function landBandAt(W,x,y){ const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=fx-ix, ty=fy-iy;
+  const B=(a,b)=>{ const j=squareAt(W,(a+0.5)*S,(b+0.5)*S); return W.wall[j]===2?60:BAND_H[Math.max(1,W.band[j])]; };
+  return B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty; }
+// the land before any water: bands, the biome's base and relief (heightAt's, with a sea square as land, and the biomes'
+// base and relief blended between square middles as the bands are, so the land doesn't step at a side)
+function landRaw(W,SH,x,y){ const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=smooth01(fx-ix), ty=smooth01(fy-iy);
+  let base=0, rel=0; const add=(a,b,w)=>{ const bio=BIOMES[SH.sqBio[squareAt(W,(a+0.5)*S,(b+0.5)*S)]]; base+=w*bio.base; rel+=w*bio.relief; };
+  add(ix,iy,(1-tx)*(1-ty)); add(ix+1,iy,tx*(1-ty)); add(ix,iy+1,(1-tx)*ty); add(ix+1,iy+1,tx*ty);
+  return landBandAt(W,x,y)+base+(vnoise(W.seed^0x7e1,x/192,y/192,W.wx?W.w*3:0,W.wy?W.h*3:0)-0.5)*2*rel; }
+// the water field: the squares' sea (1) and land (0) blended between square middles with a smoothstep, a ragged noise in
+// three octaves (192, 96, 32 cells) and a slow bias for bays; water where it passes 0.5. A sea square's middle is always
+// water and a land square's always land; the shore wanders up to about 100 cells either side of a side.
+function shField(W,SH,x,y){
+  const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=smooth01(fx-ix), ty=smooth01(fy-iy);
+  const B=(a,b)=>SH.wsq[squareAt(W,(a+0.5)*S,(b+0.5)*S)];
+  const v=B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty;
+  const P=k=>W.wx?W.w*S/k:0, Q=k=>W.wy?W.h*S/k:0;
+  // the octaves read a warped point (value noise on a square lattice otherwise lines its edges up with the axes)
+  const ux=x+56*(vnoise(W.seed^0x5405,x/144,y/144,P(144),Q(144))-0.5), uy=y+56*(vnoise(W.seed^0x5406,x/144,y/144,P(144),Q(144))-0.5);
+  const n=0.5*vnoise(W.seed^0x5401,ux/192,uy/192,P(192),Q(192))+0.3*vnoise(W.seed^0x5402,ux/96,uy/96,P(96),Q(96))+0.2*vnoise(W.seed^0x5403,ux/32,uy/32,P(32),Q(32))-0.5;
+  return v+SH_AMP*n+0.04+0.08*(vnoise(W.seed^0x5404,x/576,y/576,P(576),Q(576))-0.5); }
+// 0 dry, 1 the field's water, 2 a drawn lake, 3 a lake at a river's end (x, y already inside the world). The paper runs
+// the field over the pinned valley too; the game keeps the valley's own shore and would meet it as ChunkGen meets its land.
+function shBase(W,SH,x,y){
+  const i=squareAt(W,x,y);
+  if(W.wall[i]){ const top=((i/W.w)|0)===0, ly=y-((i/W.w)|0)*S, d=top?S-ly:ly, m=edgeM(W,top,x); if(d>m) return 0;
+    if(shField(W,SH,x,top?S+0.5:(W.h-1)*S-0.5)<=0.5) return 0; return (W.wall[i]!==2||d<m-beachW(W,x))?1:0; }
+  if(shField(W,SH,x,y)>0.5) return 1;
+  if(W.skc && W.skc.follow && W.band[i]===1){ const o=sketchAt(W,W.skc,x,y); if(o.m>=0.5 && o.b==='ocean' && bandHAt(W,x,y)<70) return 2; }
+  const L=SH.hubLake[i]; if(L){ const dx=(x-L.x)/L.rx, dy=(y-L.y)/L.ry; if(dx*dx+dy*dy < 1+0.6*(vnoise(W.seed^0x1a4e,x/24,y/24,0,0)-0.5)) return 3; }
+  return 0; }
+// the core's Shore() today (ChunkGen.Land.cs), for the before: cells from the plan's shore, inland positive; an open-sea
+// square is the full ramp out at once, which is #176's step
+function coreShore(W,x,y){
+  const i=squareAt(W,x,y); if(W.wall[i]) return 1e9; if(!W.band[i]) return -CORE_SEA_RAMP;
+  const c=W.coast[i], lx=x-(i%W.w)*S, ly=y-((i/W.w)|0)*S, from=[ly,S-lx,S-ly,lx], along=[lx,ly,lx,ly]; let best=1e9;
+  for(let s=0;s<4;s++) if(c.open[s]) best=Math.min(best, from[s]-edgeD(W,i,s,along[s]));
+  for(let k=0;k<4;k++) if(c.notch[k]){ const cx=(k===1||k===2)?S:0, cy=k>=2?S:0; best=Math.min(best, Math.hypot(lx-cx,ly-cy)-c.notch[k]); }
+  return best; }
+const coreFloor=d=>SEA_SHALLOW+(SEA_DEEP-SEA_SHALLOW)*smooth01(d/CORE_SEA_RAMP);
+const shelfFloor=d=>SEA_SHALLOW+(SEA_DEEP-SEA_SHALLOW)*smooth01(d/SHELF);
+function polyDist2(P,x,y){ let d2=1e18;
+  for(let k=1;k<P.length;k++){ const ax=P[k-1][0], ay=P[k-1][1], dx=P[k][0]-ax, dy=P[k][1]-ay, L=dx*dx+dy*dy; let t=L?((x-ax)*dx+(y-ay)*dy)/L:0; t=t<0?0:t>1?1:t;
+    const ex=ax+dx*t-x, ey=ay+dy*t-y, e=ex*ex+ey*ey; if(e<d2) d2=e; }
+  return d2; }
+function riverHit(W,list,x,y,full){
+  for(const R of list){ const P=full?R.full:R.pts; if(P.length<2) continue; const bb=full?R.bbF:R.bb;
+    const xs=bb[0]+wrapDX(W,x-bb[0]), ys=bb[1]+wrapDY(W,y-bb[1]);
+    if(xs<bb[0]-8||xs>bb[2]+8||ys<bb[1]-8||ys>bb[3]+8) continue;
+    if(polyDist2(P,xs,ys)<RIVER_HALF*RIVER_HALF) return true; }
+  return false; }
+const bbOf=P=>{ let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const [x,y] of P){ if(x<a)a=x; if(y<b)b=y; if(x>c)c=x; if(y>d)d=y; } return [a,b,c,d]; };
+// once per solved world: the field on a 16-cell grid, its bodies and lake levels, the river mouths and deltas, each shore
+// sample's kind and every sample's distance from the shore (a chamfer over the grid, wrapped)
+function shoreOf(W){
+  if(W.shore) return W.shore;
+  const t0=(typeof performance!=='undefined'?performance:Date).now(), n=W.n, SH={};
+  SH.wsq=new Float32Array(n); SH.sqBio=[]; SH.hubLake=new Array(n).fill(null); SH.hubOld=new Array(n).fill(null);
+  for(let i=0;i<n;i++){ const y=(i/W.w)|0, x0=(i%W.w)*S, y0=y*S;
+    if(W.wall[i]){ const j=W.nb[i][y===0?2:0]; SH.wsq[i]=j>=0&&!W.wall[j]&&!W.band[j]?1:0; } else SH.wsq[i]=W.band[i]?0:1;
+    SH.sqBio.push(W.wall[i]?W.opt[i].tpl.biome:(W.band[i]&&W.opt[i].tpl.biome!=='ocean'?W.opt[i].tpl.biome:nearLandBiome(W,i)));
+    if(W.lake[i]&&W.band[i]&&!W.wall[i]&&i!==W.valley){ const hx=x0+W.hub[i][0], hy=y0+W.hub[i][1];
+      SH.hubLake[i]={ x:hx, y:hy, rx:70+50*h01(W.seed^0x1a4e,i,1), ry:55+40*h01(W.seed^0x1a4e,i,2) }; } }
+  for(let i=0;i<n;i++){ const L=SH.hubLake[i]; if(L) SH.hubOld[i]={ x:L.x, y:L.y, lv:landRaw(W,SH,L.x,L.y)-2 }; }
+  const G=SH_G, gw=W.w*S/G, gh=W.h*S/G, N=gw*gh; SH.gw=gw; SH.gh=gh;
+  const gi=(x,y)=>{ let gx=Math.floor(x/G), gy=Math.floor(y/G); gx=W.wx?mod(gx,gw):Math.max(0,Math.min(gw-1,gx)); gy=W.wy?mod(gy,gh):Math.max(0,Math.min(gh-1,gy)); return gy*gw+gx; };
+  const nbr=(g,dx,dy)=>{ let x=g%gw+dx, y=((g/gw)|0)+dy; if(W.wx) x=mod(x,gw); else if(x<0||x>=gw) return -1; if(W.wy) y=mod(y,gh); else if(y<0||y>=gh) return -1; return y*gw+x; };
+  SH.gi=gi;
+  const base=new Uint8Array(N); for(let gy=0;gy<gh;gy++) for(let gx=0;gx<gw;gx++) base[gy*gw+gx]=shBase(W,SH,(gx+0.5)*G,(gy+0.5)*G);
+  SH.base=base;
+  // bodies of water, 4-connected; a lake is one under LAKE_MAX world squares that doesn't reach the world's edge
+  const lab=new Int32Array(N).fill(-1), bodies=[]; const wg=(d,m,on)=>on?d-Math.round(d/m)*m:d;
+  for(let g=0;g<N;g++){ if(!base[g]||lab[g]>=0) continue;
+    const B={ id:bodies.length, n:0, edge:false, drawn:0, hub:0, sx:0, sy:0, gx0:g%gw, gy0:(g/gw)|0, rims:[] }; bodies.push(B);
+    const stack=[g]; lab[g]=B.id;
+    while(stack.length){ const q=stack.pop(), qx=q%gw, qy=(q/gw)|0; B.n++;
+      B.sx+=wg(qx-B.gx0,gw,W.wx); B.sy+=wg(qy-B.gy0,gh,W.wy);
+      if(base[q]===2) B.drawn++; else if(base[q]===3) B.hub++;
+      if(W.wall[squareAt(W,(qx+0.5)*G,(qy+0.5)*G)]) B.edge=true;
+      for(const [dx,dy] of D4){ const r=nbr(q,dx,dy); if(r<0){ B.edge=true; continue; } if(base[r]&&lab[r]<0){ lab[r]=B.id; stack.push(r); } } } }
+  for(const B of bodies){ B.area=B.n*G*G; B.lake=!B.edge && B.area<LAKE_MAX*S*S; B.cx=(B.gx0+B.sx/B.n+0.5)*G; B.cy=(B.gy0+B.sy/B.n+0.5)*G; }
+  // a "lake" within two samples of the sea is the sea through a gap the grid is too coarse to see
+  for(let g=0;g<N;g++){ if(!base[g]) continue; const A=bodies[lab[g]]; if(!A.lake) continue;
+    for(let dy=-2;dy<=2&&A.lake;dy++) for(let dx=-2;dx<=2;dx++){ const r=nbr(g,dx,dy); if(r>=0&&base[r]&&!bodies[lab[r]].lake){ A.lake=false; break; } } }
+  // shore samples: land with water beside it; a lake's level is its rim's lowest land less a metre
+  const sbody=new Int32Array(N).fill(-1), shoreList=[];
+  for(let g=0;g<N;g++){ if(base[g]) continue; let b=-1; for(const [dx,dy] of D4){ const r=nbr(g,dx,dy); if(r>=0&&base[r]){ b=lab[r]; break; } }
+    if(b<0) continue; shoreList.push(g); sbody[g]=b;
+    const B=bodies[b]; if(B.lake) B.rims.push(landRaw(W,SH,(g%gw+0.5)*G,((g/gw|0)+0.5)*G)); }
+  // the rim's low tenth stands for its spill point (the paper's relief noise is too rough for its very lowest sample)
+  for(const B of bodies){ if(B.lake){ B.rims.sort((a,b)=>a-b); B.rim=B.rims.length?B.rims[Math.floor(B.rims.length*0.1)]:SEA_LVL; } delete B.rims;
+    B.level = B.lake ? Math.max(SEA_LVL+2, Math.round(B.rim-1)) : SEA_LVL; }
+  SH.bodies=bodies; SH.lab=lab;
+  // rivers, downstream, from each square's sides to its hub (the map's curves); a river out to a sea square runs on past
+  // its side. A river's mouth is where it first meets the water; it gets a delta over low land, often over flat land.
+  SH.rivers=[]; SH.mouths=[]; SH.riverBy=Array.from({length:n},()=>[]); SH.mouthBy=Array.from({length:n},()=>[]);
+  const wet=(x,y)=>shBase(W,SH,W.wx?mod(x,W.w*S):x,W.wy?mod(y,W.h*S):y);
+  for(let i=0;i<n;i++){ if(W.wall[i]||!W.band[i]) continue; const x0=(i%W.w)*S, y0=((i/W.w)|0)*S, hub=W.hub[i];
+    for(let s=0;s<4;s++) for(const f of W.feats[i][s]){ if(f.k!=='r') continue;
+      const [px,py]=slotPoint(s,f.slot), [ix,iy]=inward(s), qx=px+ix*110, qy=py+iy*110; let pts=[];
+      for(let k=0;k<=24;k++){ const t=k/24, a=(1-t)*(1-t), b=2*(1-t)*t, c=t*t; pts.push([x0+a*px+b*qx+c*hub[0], y0+a*py+b*qy+c*hub[1]]); }
+      const j=W.nb[i][s];
+      if(f.f==='o'){ pts.reverse(); if(j>=0&&!W.band[j]) for(let k=1;k<=10;k++) pts.push([x0+px-ix*24*k, y0+py-iy*24*k]); }
+      const R={ i, full:pts, pts }; let st=0; while(st<pts.length-1 && wet(pts[st][0],pts[st][1])) st++;   // out of a lake: starts at its shore
+      let k=-1; for(let q=st+1;q<pts.length;q++) if(wet(pts[q][0],pts[q][1])){ k=q; break; }
+      R.pts=pts.slice(st);
+      if(k>0){ const a=pts[Math.max(st,k-4)], m=pts[k]; let dx=m[0]-a[0], dy=m[1]-a[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+        let g=gi(W.wx?mod(m[0]+dx*G,W.w*S):m[0]+dx*G, W.wy?mod(m[1]+dy*G,W.h*S):m[1]+dy*G); if(!base[g]) g=gi(W.wx?mod(m[0],W.w*S):m[0],W.wy?mod(m[1],W.h*S):m[1]);
+        const body=base[g]?lab[g]:-1;
+        if(body>=0){ const B=bodies[body], key=s*16+f.slot, hb=landBandAt(W,m[0]-dx*100,m[1]-dy*100), rel=BIOMES[SH.sqBio[i]].relief;
+          let Rr=140+110*h01(W.seed^0xde18,i,key); if(B.lake) Rr=Math.min(Rr,0.7*Math.sqrt(B.area/Math.PI));
+          const delta = i!==W.valley && hb<75 && (rel<=25 || h01(W.seed^0xde17,i,key)<0.45) && Rr>=45;
+          const M={ x:m[0], y:m[1], dx, dy, body, delta, R:Rr, i, ax:m[0]-dx*Rr*0.3, ay:m[1]-dy*Rr*0.3, ch:[] };
+          if(delta){ const nc=3+((h01(W.seed^0xde19,i,key)*3)|0);
+            for(let c=0;c<nc;c++) M.ch.push({ th:-0.8+1.6*c/(nc-1)+(h01(W.seed^0xde1a,i,key*8+c)-0.5)*0.25, ph:h01(W.seed^0xde1b,i,key*8+c)*6.283 }); }
+          SH.mouths.push(M);
+          const ms=squareAt(W,W.wx?mod(m[0],W.w*S):m[0],W.wy?mod(m[1],W.h*S):m[1]);
+          for(const q of [ms].concat(W.nb[ms],W.diag[ms])) if(q>=0&&!SH.mouthBy[q].includes(M)) SH.mouthBy[q].push(M);
+          let end=k; if(delta){ let bd=1e18; for(let q=st;q<=k;q++){ const d=(pts[q][0]-M.ax)**2+(pts[q][1]-M.ay)**2; if(d<bd){ bd=d; end=q; } } }
+          R.pts=pts.slice(st,end+1); R.mouth=M; } }
+      R.bb=bbOf(R.pts.length?R.pts:pts); R.bbF=bbOf(pts);
+      SH.rivers.push(R); for(const q of [i].concat(W.nb[i],W.diag[i])) if(q>=0) SH.riverBy[q].push(R); } }
+  // each shore sample's kind, then every sample's distance from the shore and the nearest shore sample
+  const kind=new Uint8Array(N);
+  for(const g of shoreList) kind[g]=shKind(W,SH,(g%gw+0.5)*G,((g/gw|0)+0.5)*G,bodies[sbody[g]]);
+  const dist=new Float32Array(N).fill(1e9), near=new Int32Array(N).fill(-1); for(const g of shoreList){ dist[g]=0; near[g]=g; }
+  const r2=G*Math.SQRT2, F=[[-1,0,G],[-1,-1,r2],[0,-1,G],[1,-1,r2]], Bk=[[1,0,G],[1,1,r2],[0,1,G],[-1,1,r2]];
+  const gd=(g,h)=>{ const dx=wg(g%gw-h%gw,gw,W.wx), dy=wg(((g/gw)|0)-((h/gw)|0),gh,W.wy); return Math.sqrt(dx*dx+dy*dy)*G; };
+  const relax=(g,D)=>{ for(const [dx,dy] of D){ const r=nbr(g,dx,dy); if(r<0||near[r]<0||near[r]===near[g]) continue; const d=gd(g,near[r]); if(d<dist[g]){ dist[g]=d; near[g]=near[r]; } } };
+  for(let it=0;it<2;it++){ for(let g=0;g<N;g++) relax(g,F); for(let g=N-1;g>=0;g--) relax(g,Bk); }
+  const sd=new Float32Array(N), kAt=new Uint8Array(N), bAt=new Int32Array(N);
+  for(let g=0;g<N;g++){ sd[g]=base[g]?-(dist[g]-G/2):dist[g]+G/2; kAt[g]=near[g]>=0?kind[near[g]]:0; bAt[g]=base[g]?lab[g]:near[g]>=0?sbody[near[g]]:-1; }
+  SH.sd=sd; SH.kAt=kAt; SH.bAt=bAt; SH.kind=kind; SH.shoreList=shoreList; SH.sbody=sbody;
+  // a marsh's strength, smoothed along the shore (the share of marsh among the shore samples within 6 of each), and the
+  // nearest water's level, so neither steps where the nearest shore sample changes
+  const mws=new Float32Array(N); const isM=new Uint8Array(N); for(const g of shoreList) if(kind[g]===SHK.marsh) isM[g]=1;
+  for(const g of shoreList){ let m=0, c=0; for(let dy=-6;dy<=6;dy++) for(let dx=-6;dx<=6;dx++){ const r=nbr(g,dx,dy); if(r<0||sbody[r]<0) continue; c++; m+=isM[r]; } mws[g]=c?m/c:0; }
+  const mw=new Float32Array(N), lv=new Float32Array(N);
+  for(let g=0;g<N;g++){ mw[g]=near[g]>=0?mws[near[g]]:0; lv[g]=bAt[g]>=0?bodies[bAt[g]].level:SEA_LVL; }
+  const blur=(A,rad,passes)=>{ const T=new Float32Array(N);
+    for(let p=0;p<passes;p++){ for(let g=0;g<N;g++){ let v=0,c=0; for(let d=-rad;d<=rad;d++){ const r=nbr(g,d,0); if(r>=0){ v+=A[r]; c++; } } T[g]=v/c; }
+      for(let g=0;g<N;g++){ let v=0,c=0; for(let d=-rad;d<=rad;d++){ const r=nbr(g,0,d); if(r>=0){ v+=T[r]; c++; } } A[g]=v/c; } } };
+  blur(mw,3,3); blur(lv,2,2);
+  const bil=A=>(x,y)=>{ const fx=x/G-0.5, fy=y/G-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=fx-ix, ty=fy-iy;
+    const at=(a,b)=>A[gi((a+0.5)*G,(b+0.5)*G)];
+    return at(ix,iy)*(1-tx)*(1-ty)+at(ix+1,iy)*tx*(1-ty)+at(ix,iy+1)*(1-tx)*ty+at(ix+1,iy+1)*tx*ty; };
+  SH.sdAt=bil(sd); SH.mwAt=bil(mw); SH.lvAt=bil(lv);
+  // what came out
+  SH.cnt=[0,0,0,0,0,0,0]; for(const g of shoreList) SH.cnt[kind[g]]++;
+  SH.lakes=bodies.filter(B=>B.lake);
+  // #176: the steepest one-cell step on the sea floor, before (the core's ramp against an open-sea square) and after
+  SH.stepBefore=0; SH.stepAt=null;
+  for(let i=0;i<n;i++){ if(W.wall[i]||!W.band[i]||i===W.valley) continue; const c=W.coast[i], x0=(i%W.w)*S, y0=((i/W.w)|0)*S;
+    for(let s=0;s<4;s++){ if(!c.open[s]) continue; const j=W.nb[i][s]; if(j<0||W.wall[j]||W.band[j]) continue;
+      for(let t=8;t<S-8;t+=8){ const step=Math.abs(coreFloor(edgeD(W,i,s,t)-0.5)-SEA_DEEP);
+        const [bx,by]=s===0?[t,0]:s===1?[S,t]:s===2?[t,S]:[0,t], k=kAt[gi(W.wx?mod(x0+bx,W.w*S):x0+bx,y0+by)];
+        if(step>SH.stepBefore) SH.stepBefore=step;
+        // the close look goes where the step is steepest and the shore after is an open coast
+        if((k===SHK.coast||k===SHK.cliff) && (!SH.stepAt||step>SH.stepAt.step)) SH.stepAt={ x:x0+bx, y:y0+by, i, s, step }; } } }
+  SH.stepAfter=0;
+  for(let g=0;g<N;g++){ if(!base[g]||bodies[lab[g]].lake) continue;
+    for(const [dx,dy] of [[1,0],[0,1]]){ const r=nbr(g,dx,dy); if(r<0||!base[r]||lab[r]!==lab[g]) continue;
+      const d=Math.abs(shelfFloor(Math.max(0,-sd[g]))-shelfFloor(Math.max(0,-sd[r])))/G; if(d>SH.stepAfter) SH.stepAfter=d; } }
+  const hv=[]; for(const B of bodies) hv.push(B.n, B.lake?B.level:-1); for(const g of shoreList) hv.push(g, kind[g]); for(const M of SH.mouths) hv.push(Math.round(M.x), Math.round(M.y), M.delta?1:0);
+  SH.hash=fnv(hv); SH.ms=(typeof performance!=='undefined'?performance:Date).now()-t0;
+  W.shore=SH; return SH;
+}
+// a stretch of shore's kind, from the land behind it, the water in front and the seed
+function shKind(W,SH,x,y,B){
+  const i=squareAt(W,x,y);
+  for(const M of SH.mouthBy[i]) if(M.delta && M.body===B.id && Math.hypot(wrapDX(W,x-M.ax),wrapDY(W,y-M.ay))<M.R*1.15) return SHK.delta;
+  let b=landBiomeAt(W,x,y); if(!BIOMES[b]||b==='ocean') b=SH.sqBio[i];
+  const hb=landBandAt(W,x,y), rel=BIOMES[b].relief, low=clamp01((75-hb)/50), flat=clamp01(1-rel/40);
+  const score=(MARSH_LIKES[b]||0)*low*flat + 0.36*(vnoise(W.seed^0x3a85,x/768,y/768,W.wx?W.w*0.75:0,W.wy?W.h*0.75:0)-0.5)*2;
+  if(B.lake) return score>0.3?SHK.reeds:SHK.lake;
+  if(score>0.4) return SHK.marsh;
+  return hb>=110 || (rel>=60 && h01(W.seed^0xc11f,i,(x/192|0)+(y/192|0)*97)<0.4) ? SHK.cliff : SHK.coast; }
+// one cell of the world after: its height, whether it is water and the water's surface, its shore kind and zone
+// (1 a marsh's fringe, 2 a delta's land, 3 a delta's channel, 4 a river)
+const SHO={ h:0, surf:0, water:false, kind:0, sd:0, body:-1, zone:0 };
+function shMarshNoise(W,x,y){ return 0.55*vnoise(W.seed^0x3a51,x/18,y/18,W.wx?W.w*32:0,W.wy?W.h*32:0)+0.45*vnoise(W.seed^0x3a52,x/8,y/8,W.wx?W.w*72:0,W.wy?W.h*72:0); }
+// sdNear/baseNear: a picture's own distance from the shore at its resolution and the field there (shRaster), so the
+// shore isn't drawn in the 16-cell grid's steps; it hands over to the grid's distance 30 to 120 cells out
+function shAfterAt(W,SH,x,y,sdNear,baseNear){
+  if(W.wx) x=mod(x,W.w*S); if(W.wy) y=mod(y,W.h*S);
+  const o=SHO, g=SH.gi(x,y), i=squareAt(W,x,y); o.sd=SH.sdAt(x,y); o.kind=SH.kAt[g]; o.body=SH.bAt[g]; o.zone=0;
+  if(sdNear!==undefined && Math.abs(sdNear)<Math.abs(o.sd)+24) o.sd=sdNear;
+  const B=o.body>=0?SH.bodies[o.body]:null, L=B?B.level:SEA_LVL;
+  let water=(baseNear!==undefined?baseNear:shBase(W,SH,x,y))!==0, q=0;
+  // a marsh: over a band either side of the shore (as wide as the marsh is strong there) the land breaks into bits
+  // standing out of shallow water, more water seaward, more land inland
+  const mw=SH.mwAt(x,y), mo=MARSH_OUT*mw, mi=MARSH_IN*mw;
+  if(mw>0.03 && o.sd>-mo && o.sd<mi){ const t=(o.sd+mo)/(mo+mi); q=shMarshNoise(W,x,y); water=q>0.1+0.8*t; o.zone=1; }
+  for(const M of SH.mouthBy[i]){ if(!M.delta) continue;
+    const rx=wrapDX(W,x-M.ax), ry=wrapDY(W,y-M.ay), al=rx*M.dx+ry*M.dy, ac=-rx*M.dy+ry*M.dx, r=Math.hypot(al,ac);
+    if(r>M.R*1.3) continue; const an=Math.atan2(ac,al); if(Math.abs(an)>1.6) continue;
+    // the lobe: a rounded bulge out from the apex, longest straight out, its sides curving back to the shore, ragged
+    let rl=M.R*Math.pow(Math.max(0,Math.cos(an)),0.6)*(0.84+0.3*vnoise(W.seed^0xde1c^M.i,an*3+4,r/60,0,0)); const u=Math.min(1,r/M.R); let ch=false;
+    for(const C of M.ch){ const e=(an-C.th)/0.16; rl+=0.2*M.R*Math.exp(-e*e); }     // each channel builds its own finger out
+    if(r>=rl*1.06) continue;
+    for(const C of M.ch){ const th=C.th*Math.pow(u,0.6)+0.14*Math.sin(r/37+C.ph)*Math.min(1,r/(0.3*M.R)); if(Math.abs(an-th)*r<2.5+4.5*u){ ch=true; break; } }
+    if(ch){ water=true; o.zone=3; o.body=M.body; break; }
+    if(r<rl){ q=shMarshNoise(W,x,y); water=r>0.62*rl && q>0.63; o.zone=2; q*=1-r/rl; o.body=M.body; break; } }
+  // a marsh's land stays flat to its inner edge and rises from there; its water shelves from its outer edge
+  const Lv=water||o.zone===2?(o.body>=0?SH.bodies[o.body].level:L):SH.lvAt(x,y), hr=landRaw(W,SH,x,y), b0=Lv+SHORE_LAND;
+  const lean=b0+(Math.max(hr,b0)-b0)*smooth01(Math.max(0,o.sd-mi)/LAND_RAMP);
+  if(!water && o.zone===0 && riverHit(W,SH.riverBy[i],x,y,false)){ water=true; o.zone=4; }
+  o.water=water; o.surf=Lv;
+  const sea=Lv+shelfFloor(Math.max(0,-o.sd-mo*0.6));
+  if(!water) o.h = (o.zone===1||o.zone===2) ? Lv+0.3+0.5*q : lean;
+  else if(o.zone===4){ o.surf=lean; o.h=lean-1.5; }
+  else if(o.zone===1) o.h=Math.min(Lv-0.3-0.7*q, sea);
+  else if(o.zone===2) o.h=Lv-0.3-0.7*q;
+  else if(o.zone===3) o.h=Lv-1.5;
+  else if(SH.bodies[o.body]&&SH.bodies[o.body].lake){ const Bb=SH.bodies[o.body], dep=Math.min(16,3+Math.sqrt(Bb.area)/60); o.h=Lv-1-(dep-1)*smooth01(Math.max(0,-o.sd)/140); }
+  else o.h=sea;
+  return o; }
+// one cell before: the paper's sea (whole squares, the plan's coast lines), the core's floor (#176), drawn lakes at the
+// sea's level, a river's end lake as the map's disc, rivers to the square's side
+function shBeforeAt(W,SH,x,y){
+  if(W.wx) x=mod(x,W.w*S); if(W.wy) y=mod(y,W.h*S);
+  const o=SHO, i=squareAt(W,x,y), sh=coreShore(W,x,y), hr=landRaw(W,SH,x,y); o.kind=0; o.zone=0; o.body=-1; o.sd=sh; o.surf=SEA_LVL;
+  if(seaAt(W,x,y)){ o.water=true; o.h = W.band[i]>0&&!W.wall[i]&&sh>0 ? SEA_LVL-1.5 : coreFloor(Math.max(0,-sh)); return o; }
+  const g=Math.max(hr,SHORE_LAND), lean=sh<LAND_RAMP?SHORE_LAND+(g-SHORE_LAND)*smooth01(sh/LAND_RAMP):g;
+  const L=SH.hubOld[i]; if(L){ const dx=(x-L.x)/62, dy=(y-L.y)/44; if(dx*dx+dy*dy<1){ o.water=true; o.surf=L.lv; o.h=L.lv-2.5; return o; } }
+  if(riverHit(W,SH.riverBy[i],x,y,true)){ o.water=true; o.zone=4; o.surf=lean; o.h=lean-1.5; return o; }
+  o.water=false; o.h=lean; return o; }
+// a close look at each kind, picked from this world: the biggest delta out to sea, the longest run of marsh, a lake (a
+// drawn one first), and where #176's step is steepest
+function shFocus(W,SH,f){
+  const ws=W.w*S, hs=W.h*S;
+  if(f==='world') return { x:0, y:0, w:ws, h:hs };
+  const box=(cx,cy,win)=>({ x:cx-win/2, y:cy-win/2, w:win, h:win });
+  if(f==='delta'){ const D=SH.mouths.filter(M=>M.delta).sort((a,b)=>(SH.bodies[a.body].lake-SH.bodies[b.body].lake)||(b.R-a.R)); const M=D[0]; if(!M) return null;
+    return box(M.x+M.dx*M.R*0.15, M.y+M.dy*M.R*0.15, Math.max(640,M.R*4.4)); }
+  if(f==='marsh'){ const gw=SH.gw, ms=SH.shoreList.filter(g=>SH.kind[g]===SHK.marsh); if(!ms.length) return null; let best=ms[0], bn=-1;
+    for(let a=0;a<ms.length;a+=Math.max(1,ms.length/300|0)){ const g=ms[a], gx=g%gw, gy=(g/gw)|0; let c=0;
+      for(const h of ms){ const dx=Math.abs(h%gw-gx), dy=Math.abs(((h/gw)|0)-gy); if(Math.min(dx,gw-dx)<=24&&dy<=24) c++; } if(c>bn){ bn=c; best=g; } }
+    return box((best%gw+0.5)*SH_G,(((best/gw)|0)+0.5)*SH_G,1024); }
+  if(f==='lake'){ const L=SH.lakes.filter(B=>B.area>=0.04*S*S).sort((a,b)=>(!!b.drawn-!!a.drawn)||(b.area-a.area))[0]; if(!L) return null;
+    return box(L.cx,L.cy,Math.max(720,2.8*Math.sqrt(L.area))); }
+  if(f==='coast'){ const A=SH.stepAt; if(!A) return null; return box(A.x,A.y,1152); }
+  return null; }
+
 // makeWorld(seed, constraints) or the old makeWorld(seed, N, torus, lib)
 function makeWorld(seedStr,C,torus,lib,budget){
   if(typeof C!=='object') C=defaultConstraints(C, torus?'torus':'none', lib);
@@ -1385,7 +1671,7 @@ function readReply(v){
 
 // exposed for a headless check
 const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, heightAt, edgeAt, edgeM, walkBlocked, biomeAt, EDGE_MAX, riverViolations, defaultConstraints, cleanConstraints, scoreWorld, compactPlan, MUSTS, GEN_VERSION, readReply, describePrompt,
-  cleanSketch, sampleSketch, SKETCH_SAMPLES, sketchAt, compileSketch };
+  cleanSketch, sampleSketch, SKETCH_SAMPLES, sketchAt, compileSketch, shoreOf, shAfterAt, shBeforeAt, shFocus, SHK, SHK_NAME };
 if(typeof globalThis!=='undefined') globalThis.WorldPaper=API;
 if(typeof document==='undefined') return;
 
@@ -1394,7 +1680,7 @@ if(typeof document==='undefined') return;
 // =====================================================================
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
-const st={ C:defaultConstraints(12,'ew',26), view:'world', layers:{bands:false,biomes:true,edges:true,landmarks:true,rings:true,sketch:true}, playing:false, flash:null };
+const st={ C:defaultConstraints(12,'ew',26), view:'world', layers:{bands:false,biomes:true,edges:true,landmarks:true,rings:true,sketch:true,shores:false}, playing:false, flash:null };
 let W=null, sv=null, solveMs=0, lastHash=0, lastScore=null;
 let walk=null; // { cx, cy, state:Uint8Array, order:[], hashes:Map }
 let COL={};
@@ -1518,6 +1804,7 @@ function draw(){
   ctx.fillStyle=COL.sea; for(const p of seaPaths) ctx.fill(p);
   // 3b. the world's edges: a jagged ice cliff or a beach where they meet the sea, the ice or the sandstorm beyond
   drawWorldEdges(tiles,X,Y,sc);
+  if(W.solved && st.layers.shores) drawShoreLayer(v,X,Y);
   // 4. edge features
   if(st.layers.edges){ for(const T of tiles){ const i=T.i; let feats=null;
       if(W.solved) feats=W.feats[i]; else if(sv.col[i] && !OPTS[sv.dom[i][0]].filler) feats=OPTS[sv.dom[i][0]].feats;
@@ -1936,7 +2223,7 @@ function valleyNote(){ if(!W) return ''; const c=W.coldRow[W.vy];
   return (W.wrap==='ew'?'wraps east–west':W.wrap==='torus'?'torus':'no wrap')+(W.wrap!=='torus'?', '+(W.half?'half':'full')+' latitude':'')
     +' · the valley sits on row '+W.vy+' of '+W.h+' (coldness '+c.toFixed(2)+', temperate)'; }
 function updateHud(){
-  scheduleHorizon(); scheduleSketch();
+  scheduleHorizon(); scheduleSketch(); scheduleShores();
   $("planNote").textContent=valleyNote();
   if(!W) return;
   const fl=(W.solved?W.fillers:sv.fillers).length;
@@ -1991,6 +2278,7 @@ function buildLegend(){
   h+='<div>Wrap E–W (the default): east and west join; the north edge is an ice wall, the south an ice wall (full latitude) or a dune sea under a sandstorm (half). Each edge row has a ragged line: beyond it nothing enters (no road, river or walker); before it a passable fringe where the land shades into snowfield and tundra, or dunes and salt flat, with the same warped borders as between any two biomes. Where the edge meets the sea, the ice breaks off in a jagged cliff with floes, and the desert runs down to a beach with the storm just beyond. Rows run from cold to hot, and each anchor biome is weighted toward its latitude (tundra and mountains cold, temperate in between, salt flat hot). The valley is pinned on a temperate row.</div>';
   h+='<div>Inland seas: sea squares with land on all eight sides, so never at an edge; each gets a port town on its shore. Shapes: an island, 2–4 continents, or an archipelago, with ocean between.</div>';
   h+='<div>World sketch: biome shapes drawn freely, blended at their warped edges. A world square with a quarter or more drawn asks for the band its biomes allow (the seed varies it within that) and weighs templates by how much of it their biome covers; the side rules still hold. In the sketch’s world squares, a solid red box is a rule that changed the band or the sea, a dashed grey one a square whose template has another anchor biome; faded squares have under a quarter drawn. With <i>Land follows the sketch</i> the drawn biome is painted wherever the plan put it in that square or one beside it, and drawn lakes in low land become water. The dashed outline on the map is the sketch.</div>';
+  h+='<div>Shore kinds (the map’s layer, and the Shores panel): the chunks on a shore after the field, tinted by kind: '+SHK_NAME.slice(1).map((t,k)=>'<span class="sw" style="background:'+SHK_COL[k+1]+'"></span>'+t).join(' ')+'.</div>';
   h+='<div>red edge or dot: a mismatch</div><div>dashed red box: a filler</div><div>number: options left in the solve</div><div>dashed ring on a landmark: seen through the fog</div>';
   $('legend').innerHTML=h;
 }
@@ -2167,6 +2455,118 @@ function skBuildPanel(){
   $('skFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; if(f.size>200000){ $('skJsonMsg').textContent='Too big for a sketch.'; return; }
     const r=new FileReader(); r.onload=()=>{ $('skJson').value=String(r.result); fromText(String(r.result)); }; r.readAsText(f); };
   skSync(); }
+
+// ---- the shores panel: the same world's water before and after, the shore kinds, lake levels, close looks ----
+const shCv=$('shc'), shG=shCv.getContext('2d');
+const SHV={ view:'both', focus:'world', kinds:true, px:0, raf:0, key:'' };
+const SH_FOCI=[['world','The world'],['delta','A delta'],['marsh','A marsh'],['lake','A lake'],['coast','Open coast (#176)']];
+const SHV_TITLE={ before:'Before: whole sea squares, the core’s ramp', after:'After: one field, shore kinds, lake levels' };
+// heights as the core's heights picture: green low land to yellow hills to white peaks; water by its depth
+const LAND_PAL=[[-5,'#86b462'],[0,'#5e9c3e'],[30,'#4f8a33'],[80,'#98a845'],[150,'#cdb956'],[300,'#dccdaa'],[600,'#f3f2ee'],[1000,'#ffffff']].map(([h,c])=>[h,rgbOf(c)]);
+const WATER_SHALLOW=rgbOf('#6cb6f0'), WATER_DEEP=rgbOf('#1b3a94');
+function palAt(P,h){ if(h<=P[0][0]) return P[0][1]; for(let k=1;k<P.length;k++) if(h<=P[k][0]){ const t=(h-P[k-1][0])/(P[k][0]-P[k-1][0]), a=P[k-1][1], b=P[k][1]; return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; } return P[P.length-1][1]; }
+function shRaster(SH,view,reg,cols,rows,kinds){
+  const key=view+'|'+reg.x+','+reg.y+','+reg.w+'|'+cols+'x'+rows+'|'+(view==='after'&&kinds?1:0);
+  SH.rc=SH.rc||new Map(); const hit=SH.rc.get(key); if(hit) return hit;
+  const n=cols*rows, H=new Float32Array(n), Su=new Float32Array(n), Wt=new Uint8Array(n), Kd=new Uint8Array(n), Zn=new Uint8Array(n), SD=new Float32Array(n);
+  const sx=reg.w/cols, sy=reg.h/rows, at=(i,j)=>[reg.x+(i+0.5)*sx,reg.y+(j+0.5)*sy];
+  let bs=null, sdn=null;
+  if(view==='after'){ bs=new Uint8Array(n); sdn=new Float32Array(n);
+    const nx=x=>W.wx?mod(x,W.w*S):Math.max(0,Math.min(W.w*S-1,x)), ny=y=>W.wy?mod(y,W.h*S):Math.max(0,Math.min(W.h*S-1,y));
+    for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const [x,y]=at(i,j); bs[j*cols+i]=shBase(W,SH,nx(x),ny(y)); }
+    // a chamfer at the picture's resolution from the samples on either side of the shore
+    const D=new Float32Array(n).fill(1e9), Nr=new Int32Array(n).fill(-1);
+    for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=j*cols+i, w=!!bs[q];
+      if((i>0&&!!bs[q-1]!==w)||(i<cols-1&&!!bs[q+1]!==w)||(j>0&&!!bs[q-cols]!==w)||(j<rows-1&&!!bs[q+cols]!==w)){ D[q]=0; Nr[q]=q; } }
+    const rl=(q,q2)=>{ const s2=Nr[q2]; if(s2<0||s2===Nr[q]) return; const dx=(q%cols-s2%cols)*sx, dy=(((q/cols)|0)-((s2/cols)|0))*sy, d=Math.sqrt(dx*dx+dy*dy); if(d<D[q]){ D[q]=d; Nr[q]=s2; } };
+    for(let it=0;it<2;it++){
+      for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=j*cols+i; if(i>0) rl(q,q-1); if(j>0){ rl(q,q-cols); if(i>0) rl(q,q-cols-1); if(i<cols-1) rl(q,q-cols+1); } }
+      for(let j=rows-1;j>=0;j--) for(let i=cols-1;i>=0;i--){ const q=j*cols+i; if(i<cols-1) rl(q,q+1); if(j<rows-1){ rl(q,q+cols); if(i<cols-1) rl(q,q+cols+1); if(i>0) rl(q,q+cols-1); } } }
+    const st=Math.min(sx,sy); for(let q=0;q<n;q++) sdn[q]=(bs[q]?-1:1)*(D[q]+st/2);
+    // two light box blurs: the distance to a row of samples is scalloped, and the land's lean would show it
+    const tmp=new Float32Array(n);
+    for(let it=0;it<2;it++){ for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=j*cols+i; tmp[q]=(sdn[i>0?q-1:q]+sdn[q]+sdn[i<cols-1?q+1:q])/3; }
+      for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=j*cols+i; const v=(tmp[j>0?q-cols:q]+tmp[q]+tmp[j<rows-1?q+cols:q])/3; sdn[q]=(bs[q]?Math.min(v,-st/2):Math.max(v,st/2)); } } }
+  for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=j*cols+i, [x,y]=at(i,j), o=view==='before'?shBeforeAt(W,SH,x,y):shAfterAt(W,SH,x,y,sdn[q],bs[q]);
+    H[q]=o.h; Su[q]=o.surf; Wt[q]=o.water?1:0; Kd[q]=o.kind; Zn[q]=o.zone; SD[q]=o.sd; }
+  const cv2=document.createElement('canvas'); cv2.width=cols; cv2.height=rows; const g2=cv2.getContext('2d'), img=g2.createImageData(cols,rows), d=img.data;
+  const bw=Math.max(14,2.2*sx);
+  for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=j*cols+i; let c;
+    if(Wt[q]){ const dep=Su[q]-H[q], u=clamp01(dep/40); c=[WATER_SHALLOW[0]+(WATER_DEEP[0]-WATER_SHALLOW[0])*u, WATER_SHALLOW[1]+(WATER_DEEP[1]-WATER_SHALLOW[1])*u, WATER_SHALLOW[2]+(WATER_DEEP[2]-WATER_SHALLOW[2])*u];
+      // a depth line every 5 m: where they bunch the floor is steep, and a step draws one thick line
+      const band=Math.floor(dep/5), l=i>0?q-1:q, up=j>0?q-cols:q;
+      if((Wt[l]&&Math.floor((Su[l]-H[l])/5)!==band)||(Wt[up]&&Math.floor((Su[up]-H[up])/5)!==band)){ c=[c[0]*0.72,c[1]*0.72,c[2]*0.8]; } }
+    else { c=palAt(LAND_PAL,H[q]-(view==='after'?0:0)); const l=i>0?q-1:q, r=i<cols-1?q+1:q, u=j>0?q-cols:q, dn=j<rows-1?q+cols:q;
+      const gx=(H[r]-H[l])/((r-l)*sx||1), gy=(H[dn]-H[u])/(((dn-u)/cols)*sy||1), f=1+Math.max(-0.45,Math.min(0.4,(-gx-gy)*1.6)); c=[c[0]*f,c[1]*f,c[2]*f]; }
+    if(view==='after' && kinds && Kd[q] && Zn[q]!==3 && (Zn[q]===1||Zn[q]===2||Math.abs(SD[q])<bw)){ const k=rgbOf(SHK_COL[Zn[q]===1?SHK.marsh:Zn[q]===2?SHK.delta:Kd[q]]), a=Zn[q]===1||Zn[q]===2?0.2:0.62; c=[c[0]+(k[0]-c[0])*a,c[1]+(k[1]-c[1])*a,c[2]+(k[2]-c[2])*a]; }
+    const p=q*4; d[p]=c[0]; d[p+1]=c[1]; d[p+2]=c[2]; d[p+3]=255; }
+  g2.putImageData(img,0,0);
+  if(SH.rc.size>16) SH.rc.clear(); SH.rc.set(key,cv2); return cv2; }
+function drawShores(){
+  SHV.raf=0; const el=$('shStats');
+  if(!W||!W.solved){ el.textContent='Solving…'; return; }
+  const SH=shoreOf(W), cssW=SHV.px||shCv.clientWidth||700, views=SHV.view==='both'?['before','after']:[SHV.view];
+  const reg=shFocus(W,SH,SHV.focus)||shFocus(W,SH,'world'), gap=8, top=18, pw=(cssW-gap*(views.length-1))/views.length, ph=pw*reg.h/reg.w, cssH=Math.ceil(top+ph);
+  const key=W.planHash+'|'+W.seedStr+'|'+SH.hash+'|'+SHV.view+'|'+SHV.focus+'|'+SHV.kinds+'|'+cssW+'|'+COL.bg;
+  if(key===SHV.key) return; SHV.key=key; shSync();
+  const dpr=SHV.px?1:Math.min(window.devicePixelRatio||1,2), bw=Math.round(cssW*dpr), bh=Math.round(cssH*dpr);
+  if(shCv.width!==bw||shCv.height!==bh){ shCv.width=bw; shCv.height=bh; }
+  const g=shG; g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=COL.panel; g.fillRect(0,0,cssW,cssH);
+  const world=SHV.focus==='world', sc=pw/reg.w;
+  let cols=Math.round(pw*(world?1:Math.min(dpr,1.5))), rows=Math.round(ph*(world?1:Math.min(dpr,1.5)));
+  const cap=world?260000:360000; if(cols*rows>cap){ const f=Math.sqrt(cap/(cols*rows)); cols=Math.round(cols*f); rows=Math.round(rows*f); }
+  views.forEach((view,k)=>{ const px0=k*(pw+gap), X=x=>px0+(x-reg.x)*sc, Y=y=>top+(y-reg.y)*sc;
+    g.save(); g.beginPath(); g.rect(px0,top,pw,ph); g.clip();
+    g.imageSmoothingEnabled=!world; g.drawImage(shRaster(SH,view,reg,cols,rows,SHV.kinds),px0,top,pw,ph);
+    // world squares, faint
+    g.strokeStyle='rgba(0,0,0,.22)'; g.lineWidth=1; g.setLineDash([3,3]); g.beginPath();
+    for(let x=Math.ceil(reg.x/S)*S;x<reg.x+reg.w;x+=S){ g.moveTo(X(x),top); g.lineTo(X(x),top+ph); } for(let y=Math.ceil(reg.y/S)*S;y<reg.y+reg.h;y+=S){ g.moveTo(px0,Y(y)); g.lineTo(px0+pw,Y(y)); } g.stroke(); g.setLineDash([]);
+    // rivers as lines on the whole world (a close look draws them in its cells)
+    if(world){ g.strokeStyle='#2b78d6'; g.lineWidth=1.3; g.lineJoin='round'; g.lineCap='round';
+      for(const R of SH.rivers){ const P=view==='before'?R.full:R.pts; if(P.length<2) continue; g.beginPath(); P.forEach(([x,y],q)=>q?g.lineTo(X(x),Y(y)):g.moveTo(X(x),Y(y))); g.stroke(); } }
+    // lake levels
+    if(view==='after'){ g.font='600 '+(world?10:12)+'px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+      for(const B of SH.lakes){ if(B.area<(world?0.06:0.01)*S*S) continue; let cx=B.cx, cy=B.cy; if(W.wx) cx=reg.x+mod(cx-reg.x,W.w*S); const x=X(cx), y=Y(cy);
+        if(x<px0+8||x>px0+pw-8||y<top+8||y>top+ph-8) continue; const t='+'+B.level+' m', tw=g.measureText(t).width+6;
+        g.fillStyle='rgba(255,253,248,.85)'; g.fillRect(x-tw/2,y-7,tw,14); g.fillStyle='#1f2328'; g.fillText(t,x,y); } }
+    if(!world && view==='after') for(const M of SH.mouths){ if(!M.delta) continue; const x=X(M.ax+(W.wx?mod(M.ax-reg.x,W.w*S)-(M.ax-reg.x):0)), y=Y(M.ay); if(x<px0||x>px0+pw||y<top||y>top+ph) continue;
+      g.beginPath(); g.arc(x,y,3,0,7); g.fillStyle='#f0843a'; g.fill(); g.strokeStyle='#1f2328'; g.lineWidth=1; g.stroke(); }
+    if(!world){ g.fillStyle='rgba(255,253,248,.85)'; const t=Math.round(reg.w)+' cells ('+Math.round(reg.w*1.5)+' m) across'; g.font='11px system-ui,sans-serif'; const tw=g.measureText(t).width+8;
+      g.fillRect(px0+4,top+ph-18,tw,14); g.fillStyle='#1f2328'; g.textAlign='left'; g.textBaseline='middle'; g.fillText(t,px0+8,top+ph-11); }
+    g.restore(); g.strokeStyle=COL.border; g.lineWidth=1; g.strokeRect(px0+0.5,top+0.5,pw-1,ph-1);
+    g.fillStyle=COL.muted; g.font='600 12px system-ui,sans-serif'; g.textAlign='left'; g.textBaseline='top'; g.fillText(SHV_TITLE[view],px0+1,1,pw-2); });
+  shStats(SH); }
+function scheduleShores(){ if(!SHV.raf) SHV.raf=requestAnimationFrame(drawShores); }
+function shStats(SH){
+  const tot=Math.max(1,SH.shoreList.length), c=SH.cnt, pc=v=>Math.round(100*v/tot)+'%';
+  const mouths=SH.mouths.length, deltas=SH.mouths.filter(M=>M.delta).length, lakes=SH.lakes.filter(B=>B.area>=CH*CH);
+  const lv=lakes.map(B=>B.level);
+  $('shStats').innerHTML='Shoreline ('+tot+' samples a '+SH_G+' cells): open coast <b>'+pc(c[1]+c[2])+'</b> ('+pc(c[1])+' beach, '+pc(c[2])+' cliff) · marsh <b>'+pc(c[3])+'</b> · delta <b>'+pc(c[4])+'</b> ('+deltas+' of '+mouths+' river mouths) · lake shore <b>'+pc(c[5]+c[6])+'</b> ('+pc(c[6])+' reeds)'
+    +'<br>Sea floor, the steepest step in one cell: before <b class="badc">'+SH.stepBefore.toFixed(1)+' m</b> (an open-sea world square against a coast’s ramp, #176) · after <b class="ok">'+SH.stepAfter.toFixed(2)+' m</b> (the floor shelves over '+SHELF+' cells from the shore)'
+    +'<br>'+lakes.length+' lakes of a chunk or more'+(lv.length?', levels +'+Math.min(...lv)+' to +'+Math.max(...lv)+' m above the sea':'')+' · shores '+hex(SH.hash)+' · made in '+Math.round(SH.ms)+' ms';
+  $('shLakes').innerHTML=lakes.length?'<div style="overflow:auto;max-height:200px"><table class="hzt"><tr><th>Lake</th><th>World square</th><th>Size</th><th>From</th><th>Level</th></tr>'
+    +lakes.map((B,k)=>{ const i=squareAt(W,W.wx?mod(B.cx,W.w*S):B.cx,B.cy); return '<tr><td>'+(k+1)+'</td><td>'+sqName(W,i)+'</td><td>'+Math.round(B.area/(CH*CH))+' chunks</td><td>'
+      +(B.drawn?'drawn':B.hub?'a river’s end':'a sea square on its own')+'</td><td>+'+B.level+' m</td></tr>'; }).join('')+'</table></div>':''; }
+function shBuildPanel(){
+  const box=$('shFocus'); for(const [f,label] of SH_FOCI){ const b=document.createElement('button'); b.dataset.f=f; b.textContent=label; b.onclick=()=>{ SHV.focus=f; shSync(); scheduleShores(); }; box.append(b); }
+  document.querySelectorAll('[data-shv]').forEach(b=>b.onclick=()=>{ SHV.view=b.dataset.shv; shSync(); scheduleShores(); });
+  $('shKinds').onclick=()=>{ SHV.kinds=!SHV.kinds; shSync(); scheduleShores(); };
+  $('shLegend').innerHTML=SHK_NAME.slice(1).map((t,k)=>'<div><span class="sw" style="background:'+SHK_COL[k+1]+'"></span>'+t+'</div>').join('')
+    +'<div><span class="sw" style="background:linear-gradient(90deg,#6cb6f0,#1b3a94)"></span>water, shallow to 40 m; a line every 5 m</div><div><span class="sw" style="background:#ffffff;border-color:#f0843a;border-width:3px"></span>+N m: a lake’s level</div>';
+  shSync(); }
+function shSync(){
+  document.querySelectorAll('[data-shv]').forEach(b=>setPressed(b,b.dataset.shv===SHV.view)); setPressed($('shKinds'),SHV.kinds);
+  const SH=W&&W.solved?shoreOf(W):null;
+  document.querySelectorAll('#shFocus button').forEach(b=>{ setPressed(b,b.dataset.f===SHV.focus); const none=SH&&b.dataset.f!=='world'&&!shFocus(W,SH,b.dataset.f); b.disabled=!!none; b.title=none?'none in this world':''; }); }
+// the main map's layer: chunks on a shore tinted by its kind
+function drawShoreLayer(v,X,Y){
+  const SH=shoreOf(W), cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH), nn=Math.ceil(v.span/CH)+1;
+  ctx.save(); ctx.globalAlpha=0.8;
+  for(let j=0;j<nn;j++) for(let i=0;i<nn;i++){ let x=(cx0+i)*CH+32, y=(cy0+j)*CH+32;
+    if(W.wx) x=mod(x,W.w*S); else if(x<0||x>=W.w*S) continue; if(W.wy) y=mod(y,W.h*S); else if(y<0||y>=W.h*S) continue;
+    if(Math.abs(SH.sdAt(x,y))>44) continue; const k=SH.kAt[SH.gi(x,y)]; if(!k) continue;
+    ctx.fillStyle=SHK_COL[k]; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); }
+  ctx.restore(); }
 
 // ---- order independence ----
 function otherWay(){
@@ -2352,18 +2752,26 @@ window.addEventListener('gamepadconnected',()=>{ if(!padT){ padT=1; requestAnima
 const mq=window.matchMedia('(prefers-color-scheme: dark)'); const retheme=()=>{ readColors(); SKV.statKey=''; draw(); updateHud(); };
 if(mq.addEventListener) mq.addEventListener('change',retheme);
 new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-window.addEventListener('resize',()=>{ draw(); scheduleSketch(); });
+window.addEventListener('resize',()=>{ draw(); scheduleSketch(); scheduleShores(); });
 if(!archStore) $('archStore').textContent='not kept: this browser blocks storage';
 // a view from the address, for stills: #size=3&seed=valley-1&at=dx,dy (chunks from the spawn)&face=spire|sea|<degrees>
 // &know=7&haze=1.98&eye=10&lm=own|same&lmAt=0.98&seen=0&tint=1&thin=1&sea=0&shot=1 (shot puts the PNG's data URL in #hzShot)
 // &size=12x10, &sketch=lake-district|mountain-spine|default-12x10 (a sample, which sets its world's size),
 // &sview=all|sketch|squares|land, &sksel=x,y (a world square to select in the sketch's list)
+// &shore=world|delta|marsh|lake|coast, &shview=before|after|both, &shkinds=0, &shlayer=1 (the map's Shore kinds layer),
+// &shpx=<css px> (the shores canvas's width),
+// &shshot=1 (the shores canvas's PNG data URL in #shShot)
 const HP=new URLSearchParams(location.hash.slice(1));
 if(HP.get('size')==='3') setSize(3); else if(HP.get('size')==='12x10') setSize(12,8);
 if(HP.get('sketch') && SKETCH_SAMPLES[HP.get('sketch')]){ const Ks=sampleSketch(HP.get('sketch')); skWorldFor(Ks); st.C.sketch=Ks; }
 if(['all','sketch','squares','land'].includes(HP.get('sview'))) SKV.view=HP.get('sview');
+if(SH_FOCI.some(([f])=>f===HP.get('shore'))) SHV.focus=HP.get('shore');
+if(['before','after','both'].includes(HP.get('shview'))) SHV.view=HP.get('shview');
+if(HP.get('shkinds')==='0') SHV.kinds=false;
+if(+HP.get('shpx')>=320&&+HP.get('shpx')<=2000) SHV.px=Math.round(+HP.get('shpx'));
+if(HP.get('shlayer')==='1'){ st.layers.shores=true; document.querySelectorAll('[data-layer="shores"]').forEach(b=>setPressed(b,true)); }
 if(HP.get('seed')) $('seed').value=HP.get('seed').slice(0,80);
-hzBuildPanel(); skBuildPanel(); syncPanel(); renderArchs(); readColors(); buildLegend(); rebuild();
+hzBuildPanel(); skBuildPanel(); shBuildPanel(); syncPanel(); renderArchs(); readColors(); buildLegend(); rebuild();
 if([...HP.keys()].length){ stopPlay(); finishIfNeeded();
   const num=(k,lo,hi)=>{ const v=parseFloat(HP.get(k)); return isFinite(v)?Math.max(lo,Math.min(hi,v)):null; };
   const at=(HP.get('at')||'').split(',').map(Number); if(at.length===2&&at.every(isFinite)){ for(let s=0;s<Math.abs(at[0]);s++) moveBy(Math.sign(at[0]),0); for(let s=0;s<Math.abs(at[1]);s++) moveBy(0,Math.sign(at[1])); }
@@ -2377,6 +2785,7 @@ if([...HP.keys()].length){ stopPlay(); finishIfNeeded();
   else if(face && isFinite(+face)) setHeading(+face);
   else if(face){ const c=hzLandmarks().filter(L=>L.icon===face||L.kind===face).map(L=>({L,p:lmDistM(L)})).sort((a,b)=>a.p.m-b.p.m)[0]; if(c) setHeading(headingTo(c.p.dx,c.p.dy)); }
   renderHorizon();
-  if(HP.get('shot')==='1') $('hzShot').textContent=$('hz').toDataURL('image/png'); }
+  if(HP.get('shot')==='1') $('hzShot').textContent=$('hz').toDataURL('image/png');
+  if(HP.get('shshot')==='1'){ SHV.key=''; drawShores(); $('shShot').textContent=shCv.toDataURL('image/png'); } }
 })();
 </script>

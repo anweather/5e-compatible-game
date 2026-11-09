@@ -573,3 +573,94 @@ distances in longs, the warp and threshold from `BiomeMath.Noise`), the band ask
 and `WorldPlan.SketchMisses` beside `MustMisses`; `BiomeField` taking the drawn biome as an anchor where the plan has
 it within one world square; `ChunkGen` water for drawn lakes at a lake level, not the sea's. Goldens: a plan hash per
 sample, and plans without a sketch unchanged (on paper they are: 12 seed and size pairs checked).
+
+## Shores: water that doesn't look square (paper, 2026-11-09)
+
+Andrew (2026-11-09, on `world-12x10/heights.png`): the land reads well but the water is still square, and it shouldn't
+be one way everywhere: marsh, deltas, lakes with their own level, open coasts that are ragged and shelve gradually (with
+#176, the sea floor dropping ~175 units in one cell where a coast's ramp meets an open-sea world square). On paper in
+`tools/world-paper/`, panel **Shores** (before and after of the same world, side by side, and a close look at each
+kind) and the map's **Shore kinds** layer. Shots in `docs/design/shores/`: `12x10-before-after.png`, `delta.png`,
+`marsh.png` and `lakes-nine.png` (the nine with the lake district sketch). Nothing in the core yet.
+
+**Why it is square now.** The sea is whole world squares, and a coast only moves its line 48 or 112 cells into the land
+square beside it, with a wobble that goes to nothing at the corners. So a lone sea square is a square lake with rounded
+corners, and the floor ramps over 90 cells from the coast square's shore, then the open-sea square is the full 40 m at
+once: a step of up to 30 m in one cell (the paper's measure of #176, against ~22 m in the issue).
+
+**After: one field.** The water comes from one field over the world, not from squares:
+
+1. **The field.** The squares' sea (1) and land (0), blended between square middles with a smoothstep, plus a ragged
+   noise (three octaves, 192, 96 and 32 cells, read at a warped point so its edges don't line up with the axes) and a
+   slow bias for bays; water where it passes 0.5. A sea square's middle is always water and a land square's always
+   land; the shore wanders up to about 100 cells either side of a side, and runs on through corners like anywhere
+   else. Drawn lakes (the sketch) and a lake at a river's end (a ragged ellipse, 70-120 cells) join it.
+2. **Bodies.** The field on a 16-cell grid falls into bodies of water (4-connected, wrapped). A body is a **lake** when
+   it is under three world squares and doesn't reach the world's edge: a drawn lake, a lone sea square, a lake at a
+   river's end. Inland seas of three squares or more stay seas at the sea's level. A "lake" within two grid samples of
+   the sea is the sea through a gap the grid can't see.
+3. **Lake levels.** A lake's level is its rim's lowest land less a metre (the rim's low tenth, as the paper's relief is
+   rough), at least 2 m above the sea. The land within 100 cells leans down to half a metre above it, so the rim holds
+   there. A drawn lake now sits at its own level (+27 m and +29 m in the lake district), where the sketch paper left it
+   at the sea's.
+4. **Shore kinds** (`SHK` in the page), per 16-cell shore sample, from the land behind it and the seed:
+   - **delta** where a river meets the water (the first point of its path in the water) over low land (the bands under
+     75 m, 100 cells upstream), on flat land, or 45% of the time on rough land, if the water is big enough (a lake's
+     delta is under 0.7 of its radius). The delta is a rounded lobe out from an apex 0.3 of its size upstream, 140-250
+     cells, with 3-5 channels fanning from the apex (each builds its own finger out) and pools near its edge; its land
+     stands 0.3-0.8 m over the water;
+   - **lake shore** on a lake: reeds where a marsh would be likely, else a beach;
+   - **marsh** where a score passes 0.4: how much the biome likes one (foggy marsh 1, grassland 0.6, temperate 0.45,
+     tundra 0.4, salt flat 0.15, ashlands 0.1) × how low (the bands under 75 m) × how flat (relief under 40), plus a
+     slow seeded noise (768 cells) so marshes come in runs. Over a band 150 cells out and 90 in, scaled by how much of
+     the shore round it is marsh, the shore breaks into bits of land standing out of shallow water: more water seaward,
+     more land inland (two octaves of noise, 18 and 8 cells). The land is flat to the band's inner edge and rises from
+     there; the water shelves from its outer edge;
+   - **open coast** otherwise: a cliff on hills or higher (or 40% of the time on rough land), else a beach.
+5. **The floor.** A sample's distance from the shore comes from a chamfer over the grid that carries each sample's
+   nearest shore sample (so it is a true distance to that sample), wrapped east-west; a picture redoes it at its own
+   resolution near the shore. The sea floor falls from 1.5 m to 40 m over a **shelf** of 360 cells by that distance, so
+   it has no step anywhere: the steepest is 0.16 m a cell, against 30 m before. A lake's floor falls to 3-16 m (by its
+   size) over 140 cells.
+
+Everything is a function of the seed and the plan; the panel prints a shores hash (node and Edge give the same). The
+plan itself is unchanged, so is its hash.
+
+**What it suggests** (seeds `seed-0` to `seed-7`):
+
+| | open coast (cliff) | marsh | delta | lake shore (reeds) | lakes a world | river mouths with a delta |
+|---|---|---|---|---|---|---|
+| 12 × 10 | 35% (6%) | 30% | 8% | 27% (16%) | 9.8 (of 78: 68 at a river's end, 10 lone sea squares) | 76 of 104 |
+| 12 × 10, default sketch | 12% (3%) | 7% | 12% | 69% (19%) | 11 (24 drawn) | 75 of 97 |
+| the nine | 55% (17%) | 35% | 3% | 7% (4%) | 0.6 | 5 of 15 |
+
+- **Lake levels** come out at a median of +21 m (2 to 80): most lakes are in low land (20 m) and sit a little under it.
+- **A marsh is common** (30% of the 12 × 10's sea shore): low flat land is common at the coast, because the bands lean
+  down to the sea. The 0.4 threshold is the knob.
+- **Most river mouths get a delta** (3 in 4), because rivers end in low land. Rough temperate land keeps a plain mouth
+  more than half the time.
+- **The shore moves up to ~100 cells** from where the plan put it. A coastal village (placed 60 cells in from the plan's
+  shore) can end up by a marsh or a little inland; in the core the field would place them.
+- **The pinned valley** keeps its own shore in the game; the paper runs the field over it too. In the core the field
+  would meet the valley's shore as `ChunkGen` meets its land.
+
+**In the core** (u2, inferred, about 7-9 days in four steps, each with its own goldens and generator version):
+
+1. **The field and the shelf (#176), 2 days.** `ChunkGen.Shore()` becomes the field: the squares' sea blended with
+   `BiomeMath.Smoothstep` and `BiomeMath` noise octaves in Q16, a pure function of a cell. The distance from the shore
+   can't be made from one chunk (it reaches 360 cells), so a **shore grid** is laid once with the generator, like the
+   rivers' segments: the field every 16 cells, its bodies, levels, shore kinds and distances (155 k samples for the
+   12 × 10, about 1 MB, a few hundred ms in integers, the same on every peer). The sea floor and the land's lean read
+   it; the coasts' depth classes and their union-find stop drawing the shoreline (the templates' "may face the sea"
+   stays). Drop the seam test's sea-floor exemption.
+2. **Lakes at their own levels, 2-3 days.** `WetLake` water up to the lake's level, not the hub's river level, and a
+   rim check (no lake cell beside dry land below its level). `SeaMask` takes a level per basin instead of the one sea
+   level (a basin is a lake's body), and the view draws a water plane per lake at its level (`Ocean`, `MapLand`);
+   `map.json` keeps the sea level, the bake writes the lakes' levels. Rivers run into a lake at or above its level.
+3. **Deltas, 1.5 days.** `ChunkGen.Rivers` adds the channels from the apex as river segments (narrower, their water
+   down to the level) and raises the lobe's land to just over the water; the shore kinds say where.
+4. **Marsh, 1 day.** The band's noise picks land or water per cell (`WetShore` or a shallow `WetSea`), the land flat at
+   the level + 0.3-0.8 m, with the biome's ground and reeds or mud where the rules have them.
+
+Then the goldens (chunk hashes, the nine's `expects`) and a heights picture of the 12 × 10 beside
+`world-12x10/heights.png`.
