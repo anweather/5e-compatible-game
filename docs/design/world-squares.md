@@ -527,3 +527,49 @@ The valley's cells and every golden are unchanged (it adds data, it changes no c
   give one, its map cell (a village landmark's first stamp's middle, so the volcano's cone, not its village) and its
   square. `SeenAt(x, y)` lists those within their radius of a map cell. In the nine (valley-1): the great tree, the
   castle, a ruin and four lone great trees.
+
+## Draw first: a world sketch (paper, 2026-11-09)
+
+Andrew (2026-11-09): turn it round, draw the biomes first and fit the world squares to them. On paper in
+`tools/world-paper/`, panel **World sketch** (shots in `docs/design/world-sketch/`). Nothing in the core yet.
+
+**The sketch** is a small JSON: `{ worldSketch: 1, name, world: {w, h, wrap}, soft, fit, follow, shapes: [{ biome,
+pts }] }`, points in world squares from the grid's north-west corner (wall rows included), one closed outline per shape,
+later shapes on top. Three ship: a lake district on the nine, a mountain spine and a default for the 12 × 10 (J-083).
+
+**How it maps to world squares:**
+
+1. **Read.** Each point takes the topmost shape whose outline it is inside, after the climate's warp (the same 300-cell
+   warp `biomeAt` uses), with a noisy threshold over `soft` cells (96) so shapes interleave at their edges instead of
+   meeting on a line. With the E-W wrap the shapes wrap too. A world square samples its 81 chunk middles.
+2. **Band.** A world square with a quarter or more drawn asks a band: half water is sea, a quarter water is low (a lake
+   needs low land round it); else the mean over its chunks of the seed's band held inside each drawn biome's range
+   (forest and grassland low to hills, marsh and desert low, ice cap and ashlands hills to high, mountains high to
+   peaks), and at least the lowest band of any biome drawn over a quarter of it, so a range thinner than a world square
+   still lifts it. A drawn high square lifts the squares round it to foothills where their own drawing allows. Then the
+   envelope as before: touching world squares differ by at most one band.
+3. **Templates.** The solve is unchanged (sides, coasts, rivers downhill, the 3-square rule); a drawn square weighs
+   each template by `0.02 + 4 × the share of it drawn as the template's anchor biome` instead of by latitude.
+4. **Breaks.** After the solve, each drawn square that didn't get what it asked names the rule and what the plan did
+   instead: *band step* (with the square that held it down), *edge* (the sea the world keeps), *pinned* (the valley),
+   *coast*, *filler*, *sides* (the nearest template of the drawn biome and the neighbour's side it would break),
+   *repeat* (the copies within 3 world squares) or the seeded *roll*. The first five change the band or the sea, so
+   the land differs from the drawing; the rest only change the template's anchor biome.
+5. **The land follows the drawing** (a switch): a drawn biome is painted wherever the plan put that biome in the world
+   square or one of the eight beside it, and a drawn lake in low land is water where the bands round it stay near low,
+   so its shore follows the drawing and fades out against higher world squares instead of stopping at a side.
+
+**What it suggests** (seeds 0-7 on 12 × 10, 26 templates): about 41% of drawn world squares get a template of the drawn
+biome, 46% another template with the land still following the drawing, 8% a rule that changes the band or the sea.
+The anchors can't tile a big one-biome region: the 26 templates hold 3-5 per biome per band, and the 3-square rule
+allows a template once in a 5 × 5. So the sketch should drive the land's biome (`BiomeField`), and the templates keep
+what they curate (landmarks, sides, bands). On the nine with 13 templates a lake-heavy sketch pins most of it low,
+and 11 of 30 seeds need fillers (5 without a sketch, 3 with the 26). A lake drawn next to a range pulls the range
+down a band (the band step names it).
+
+**In the core** (u2, about 2-3 days, inferred): a `sketch` field in `map.json` (the JSON above), in the map hash;
+`PlanInputs.Sketch`; in `WorldPlan`, the read before the bands in integers (outlines in cells, the inside test and
+distances in longs, the warp and threshold from `BiomeMath.Noise`), the band asks, the foothill lift and the weights,
+and `WorldPlan.SketchMisses` beside `MustMisses`; `BiomeField` taking the drawn biome as an anchor where the plan has
+it within one world square; `ChunkGen` water for drawn lakes at a lake level, not the sea's. Goldens: a plan hash per
+sample, and plans without a sketch unchanged (on paper they are: 12 seed and size pairs checked).

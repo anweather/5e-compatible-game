@@ -97,14 +97,14 @@ select{min-height:40px;padding:0 8px;border-radius:10px;border:1px solid var(--b
 
 <main class="wrap">
   <h1>World squares, on paper</h1>
-  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, ridges, canyons, coast), rivers only run downhill, and then roads are routed between the landmarks. Watch it solve, then walk: chunks near you go from fog to known to generated. East and west wrap; north and south end in an ice wall and a sandstorm. Describe a world, find the best seeds for it, and keep the ones you like.</p>
+  <p class="lede">The world is a grid of valley-sized world squares, solved from a seed like a puzzle: every side must match its neighbour (rivers, ridges, canyons, coast), rivers only run downhill, and then roads are routed between the landmarks. Watch it solve, then walk: chunks near you go from fog to known to generated. East and west wrap; north and south end in an ice wall and a sandstorm. Describe a world, find the best seeds for it, and keep the ones you like. Or draw the biomes first, in the World sketch below the map, and see the world squares fitted to your drawing.</p>
 
   <div class="row">
     <label class="sm" for="seed">Seed</label>
     <input id="seed" value="valley-1" autocomplete="off" spellcheck="false">
     <button id="reroll">Reroll</button>
     <span class="seg" role="group" aria-label="World size">
-      <button id="sz3" aria-pressed="false">3 × 3</button><button id="sz12" aria-pressed="true">12 × 12</button>
+      <button id="sz3" aria-pressed="false">3 × 3</button><button id="sz1210" aria-pressed="false" title="J-083: 8 land rows between an ice row and a desert row, wrapping east–west">12 × 10</button><button id="sz12" aria-pressed="true">12 × 12</button>
     </span>
     <span class="seg" role="group" aria-label="Wrap">
       <button data-wrap="ew" aria-pressed="true">Wrap E–W</button><button data-wrap="torus" aria-pressed="false">Torus</button><button data-wrap="none" aria-pressed="false">None</button>
@@ -126,6 +126,7 @@ select{min-height:40px;padding:0 8px;border-radius:10px;border:1px solid var(--b
     <button data-layer="edges" aria-pressed="true">Edges</button>
     <button data-layer="landmarks" aria-pressed="true">Landmarks</button>
     <button data-layer="rings" aria-pressed="true">Rings</button>
+    <button data-layer="sketch" aria-pressed="true">Sketch</button>
   </div>
 
   <div class="stats" id="solveStats"></div>
@@ -147,6 +148,35 @@ select{min-height:40px;padding:0 8px;border-radius:10px;border:1px solid var(--b
 
   <div class="panel" id="here"></div>
   <div class="panel" id="cost"></div>
+
+  <section class="panel" aria-label="World sketch" id="skPanel">
+    <div class="ph"><b>World sketch</b><span class="k">draw biome shapes on the world first; the plan fits its world squares to them</span></div>
+    <div class="row">
+      <label class="sm" for="skSample">Sample</label><select id="skSample"></select>
+      <button id="skFit" aria-pressed="true">Fit the plan to the sketch</button>
+      <button id="skFollow" aria-pressed="true">Land follows the sketch</button>
+    </div>
+    <div class="sub">Draw: pick a biome, then drag a closed outline on the sketch (it wraps east–west)</div>
+    <div class="chips" role="group" aria-label="Biome to draw" id="skKinds"></div>
+    <div class="row">
+      <button id="skErase" aria-pressed="false">Erase a shape</button><button id="skUndo">Undo</button><button id="skClear">Clear</button>
+      <label class="sm" style="flex:1;min-width:180px">Blend width <output id="skSoftOut"></output><input type="range" id="skSoft" min="24" max="240" step="8" aria-label="Blend width"></label>
+    </div>
+    <div class="row">
+      <span class="seg" role="group" aria-label="Sketch view"><button data-skv="all" aria-pressed="true">All three</button><button data-skv="sketch" aria-pressed="false">Sketch</button><button data-skv="squares" aria-pressed="false">World squares</button><button data-skv="land" aria-pressed="false">Land</button></span>
+    </div>
+    <div class="stage"><canvas id="sk" width="720" height="240" aria-label="World sketch, the world squares fitted to it, and the land"></canvas></div>
+    <div class="msg" id="skStats"></div>
+    <div class="msg" id="skInfo"></div>
+    <div id="skBreaks" style="font-size:13px"></div>
+    <details>
+      <summary>Save or load the sketch (JSON)</summary>
+      <textarea id="skJson" rows="4" spellcheck="false" placeholder="A world sketch as JSON"></textarea>
+      <div class="row"><button id="skShow">Show this sketch</button><button id="skCopy">Copy</button><button id="skDownload">Download</button><button id="skLoad">Load from the box</button>
+        <label class="sm">or a file <input type="file" id="skFile" accept=".json,application/json"></label></div>
+      <div class="msg" id="skJsonMsg"></div>
+    </details>
+  </section>
 
   <section class="panel" aria-label="Horizon">
     <div class="ph"><b>Horizon</b><span class="k">what the character sees: the known ring as coarse land, haze, far landmarks</span></div>
@@ -238,11 +268,12 @@ const SHAPES = ['current','island','continents','archipelago'];
 const SHAPE_SEA = { current:0.12, island:0.25, continents:0.05, archipelago:0.5 };
 const WRAPS = ['ew','torus','none'], PROFILES = ['half','full'];
 // a 3 x 3 that wraps is its own neighbour's neighbour, so wrapping is a 12 x 12 setting
-function defaultConstraints(N, wrap, lib){
+// rows: the land rows; 8 with the E-W wrap is J-083's 12 x 10 (8 land rows, an ice row north, a desert row south)
+function defaultConstraints(N, wrap, lib, rows){
   N = N===12?12:3; wrap = N===3?'none':(WRAPS.includes(wrap)?wrap:'ew');
   const biomes={}; for(const b of CURATED) biomes[b]=1;
-  return { size:N, wrap, shape:'current', profile:'half', latitude:0.6, library:lib===13||lib===26?lib:(N===3?13:26), biomes, sea:N===3?0:0.12,
-    inlandSeas:0, inlandSize:N===3?1:4, mountains:0.3, towns:0.35, mainRoads:mainRoadCap(N), must:[] };
+  return { size:N, rows:N===12&&wrap==='ew'&&rows===8?8:N, wrap, shape:'current', profile:'half', latitude:0.6, library:lib===13||lib===26?lib:(N===3?13:26), biomes, sea:N===3?0:0.12,
+    inlandSeas:0, inlandSize:N===3?1:4, mountains:0.3, towns:0.35, mainRoads:mainRoadCap(N), must:[], sketch:null };
 }
 // untrusted input (a described world, a saved archetype): keep known fields, clamp numbers, drop the rest
 function cleanConstraints(raw){
@@ -252,8 +283,9 @@ function cleanConstraints(raw){
   const pick=(v,list,d)=>{ const s=typeof v==='string'?v.toLowerCase().trim():''; return list.includes(s)?s:d; };
   let wrap = pick(raw.wrap, WRAPS, raw.torus===true?'torus':null);
   if(wrap && wrap!=='none') size=12;
-  const D=defaultConstraints(size, wrap||'ew', Number(raw.library));
+  const D=defaultConstraints(size, wrap||'ew', Number(raw.library), Number(raw.rows));
   const C=Object.assign({},D,{ biomes:Object.assign({},D.biomes) });
+  C.sketch=cleanSketch(raw.sketch);
   C.shape=pick(raw.shape, SHAPES, 'current'); C.profile=pick(raw.profile, PROFILES, 'half');
   C.latitude=num(raw.latitude,[0,1],D.latitude);
   if(C.shape!=='current') D.sea=SHAPE_SEA[C.shape];
@@ -413,9 +445,10 @@ function compat(sx,sy,bx,by){
 function clamp01(v){ return v<0?0:v>1?1:v; }
 function buildWorld(seedStr, C){
   const N=C.size, wrap=C.wrap, wx=wrap!=='none', wy=wrap==='torus';
-  const seed=strHash(seedStr+'|'+N+'|'+(wrap==='torus'?'t':wrap==='ew'?'c':'r'));
+  const R=wrap==='ew'&&C.rows===8?8:N;             // land rows (12 x 10: 8, between the ice and the desert rows)
+  const seed=strHash(seedStr+'|'+N+(R!==N?'x'+R:'')+'|'+(wrap==='torus'?'t':wrap==='ew'?'c':'r'));
   const libSmall = C.library===13;
-  const w = wrap==='none'?N+1:N, h = wrap==='none'?N+1:wrap==='ew'?N+2:N, n=w*h;
+  const w = wrap==='none'?N+1:N, h = wrap==='none'?N+1:wrap==='ew'?R+2:N, n=w*h;
   const half = C.profile==='half' && wrap!=='torus';
   const W = { seedStr, seed, N, wrap, wx, wy, torus:wy, half, w, h, n, libSmall, C };
   // the valley stays pinned at a temperate row (coldness about 0.4)
@@ -471,8 +504,9 @@ function buildWorld(seedStr, C){
   for(let i=0;i<n;i++){ if(forcedSea[i]){ raw[i]=0; continue; } const v=vs[i];
     raw[i] = v<t0?0 : v<t2?1 : v<t3?2 : v<t4?3 : 4; }
   raw[V]=1; for(const i of vLand) raw[i]=Math.max(raw[i],1);
-  W.forcedSea=forcedSea;
-  placeInlandSeas(W, raw, i=>border(i)||!!W.wall[i]||!!forcedSea[i]);
+  W.forcedSea=forcedSea; W.vLand=vLand; W.vSea=vSea; W.border=border;
+  readSketch(W, raw, forcedSea, vLand);                // a world sketch, if any, sets the raw band where it is drawn
+  placeInlandSeas(W, raw, i=>border(i)||!!W.wall[i]||!!forcedSea[i]||!!(W.sk&&W.sk[i]&&W.sk[i].on));
   // envelope: band(s) = min over t of raw(t) + distance(s,t); neighbours differ by at most one. Walls are band 5.
   const band=new Int8Array(n);
   for(let i=0;i<n;i++){ if(W.wall[i]){ band[i]=5; continue; } let m=raw[i]; for(let j=0;j<n;j++){ if(W.wall[j]) continue; const v=raw[j]+W.dist(i,j); if(v<m) m=v; } band[i]=m; }
@@ -603,8 +637,10 @@ class Solver{
   restore(s){ this.dom=s.dom; this.col=s.col; this.used=s.used; this.fillers.length=s.fl; }
   pick(x){
     const d=this.dom[x], W=this.W, C=W.C, c=W.cold(x); let tot=0;
+    const R=W.sk&&W.sk[x]&&W.sk[x].on?W.sk[x]:null;   // a drawn square weighs templates by how much of it their biome covers
     const ws=d.map(o=>{ const op=OPTS[o]; const t=op.tpl; let w=op.w||1e-6; if(!t.exempt) w/=Math.pow(4,this.used[t.id]||0);
-      if(t.biome in C.biomes){ const bw=C.biomes[t.biome]; w*=bw>0?bw:0.002; w*=latFit(t.biome,c,C.latitude); }
+      if(R && !op.sea){ w*=0.02+4*(R.cov[t.biome]||0); if(t.biome in C.biomes){ const bw=C.biomes[t.biome]; w*=bw>0?bw:0.002; } }
+      else if(t.biome in C.biomes){ const bw=C.biomes[t.biome]; w*=bw>0?bw:0.002; w*=latFit(t.biome,c,C.latitude); }
       if(t.id==='open-sea' && W.inland[x]) w*=2;
       tot+=w; return w; });
     let r=this.r()*tot; for(let k=0;k<d.length;k++){ r-=ws[k]; if(r<=0) return d[k]; } return d[d.length-1];
@@ -650,6 +686,7 @@ class Solver{
 function finishPlan(W, sv, light){
   const n=W.n; W.opt=new Array(n); for(let i=0;i<n;i++) W.opt[i]=OPTS[sv.dom[i][0]];
   W.fillers=sv.fillers.slice();
+  sketchNear(W);
   W.feats=new Array(n);
   for(let i=0;i<n;i++){ const o=W.opt[i];
     if(!o.filler){ W.feats[i]=o.feats.map(L=>L.slice()); continue; }
@@ -714,6 +751,7 @@ function finishPlan(W, sv, light){
     const e=W.nb[i][1], s=W.nb[i][2], se=W.diag[i][2]; if(e<0||s<0||se<0) continue;
     const v=[cornerSea(i,2), cornerSea(e,3), cornerSea(s,1), cornerSea(se,0)];
     if(!(v.every(Boolean)||v.every(x=>!x))) W.cornerBad.push(i); }
+  sketchFit(W);
   W.solved=true;
   if(!light) buildChunkCaches(W);
 }
@@ -747,6 +785,7 @@ function scoreWorld(W){
   P.castle = on.has(W.valley) ? 10*reached/Math.max(1,D.length) : 0;
   const tpl=new Set(); let landSq=0; for(let i=0;i<W.n;i++){ const t=W.opt[i].tpl; if(!W.band[i]||W.wall[i]||W.opt[i].filler) continue; landSq++; if(!t.exempt) tpl.add(t.id); }
   P.variety = 10*Math.min(1, tpl.size/Math.max(1,Math.min(landSq,(W.libSmall?13:26)*0.7)));
+  if(W.skFit && W.skFit.on) P.sketch = 10*(W.skFit.ok+0.6*W.skFit.follows)/W.skFit.on;   // how much of the drawing the plan could follow
   let total=0; for(const k in P){ P[k]=Math.round(P[k]*10)/10; total+=P[k]; }
   return { total:Math.round(total*10)/10, parts:P, met, shares:sh };
 }
@@ -1076,6 +1115,9 @@ function seaAt(W,x,y){
   if(c.open[2] && S-ly<edgeD(W,i,2,lx)) return true;
   if(c.open[3] && lx<edgeD(W,i,3,ly)) return true;
   for(let k=0;k<4;k++) if(c.notch[k]){ const cx=(k===1||k===2)?S:0, cy=k>=2?S:0; if((lx-cx)*(lx-cx)+(ly-cy)*(ly-cy)<c.notch[k]*c.notch[k]) return true; }
+  // a drawn lake inside low land: water where the sketch has it and the land around is near the low band, so its shore
+  // follows the drawing (warped) and fades out against higher squares instead of stopping at a side
+  if(W.skc && W.skc.follow && W.band[i]===1 && i!==W.valley){ const o=sketchAt(W,W.skc,x,y); if(o.m>=0.5 && o.b==='ocean' && bandHAt(W,x,y)<70) return true; }
   return false;
 }
 function squareAt(W,x,y){ let sx=Math.floor(x/S), sy=Math.floor(y/S);
@@ -1088,19 +1130,25 @@ function squareAt(W,x,y){ let sx=Math.floor(x/S), sy=Math.floor(y/S);
 function biomeAt(W,x,y){
   if(seaAt(W,x,y)) return 'ocean';
   const ed=edgeAt(W,x,y); if(ed) return ed===1?'ice-wall':'dune-sea';
-  const P=W.wx?W.w*4:0, Q=W.wy?W.h*4:0;
-  const wx=x+(vnoise(W.seed^0xa1,x/144,y/144,P,Q)-0.5)*300, wy=y+(vnoise(W.seed^0xa2,x/144,y/144,P,Q)-0.5)*300;
-  const own=squareAt(W,x,y); let j=squareAt(W,wx,wy);
+  const own=squareAt(W,x,y);
+  // a world sketch the land follows: the drawn biome wins where the plan put that biome in this square or one beside it
+  if(W.skc && W.skc.follow && !W.wall[own] && W.skNear){ const o=sketchAt(W,W.skc,x,y); if(o.m>=0.5 && o.b!=='ocean' && W.skNear[own].has(o.b)) return o.b; }
+  const [wx,wy]=warpXY(W,x,y);
+  let j=squareAt(W,wx,wy);
   if(W.wall[j]){ const k=W.wall[j], e=edgeAt(W,wx,wy); return k===1?(e?'snowfield':'tundra'):(e?'dunes':'salt-flat'); }
   if(W.wall[own]){ if(!W.band[j]||W.opt[j].filler||W.opt[j].tpl.biome==='ocean') return W.wall[own]===1?'tundra':'dunes'; return W.opt[j].tpl.biome; }
   if(!W.band[j]||W.opt[j].filler) j=own;
   return W.opt[j].tpl.biome==='ocean' ? W.opt[squareAt(W,x,y)].tpl.biome : W.opt[j].tpl.biome;
 }
-function heightAt(W,x,y){
-  if(seaAt(W,x,y)) return -40;
+// the bands' heights blended between square middles
+function bandHAt(W,x,y){
   const fx=x/S-0.5, fy=y/S-0.5, ix=Math.floor(fx), iy=Math.floor(fy), tx=fx-ix, ty=fy-iy;
   const B=(a,b)=>{ const j=squareAt(W,(a+0.5)*S,(b+0.5)*S); return W.wall[j]===2?60:BAND_H[W.band[j]]; };
-  const hb=B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty;
+  return B(ix,iy)*(1-tx)*(1-ty)+B(ix+1,iy)*tx*(1-ty)+B(ix,iy+1)*(1-tx)*ty+B(ix+1,iy+1)*tx*ty;
+}
+function heightAt(W,x,y){
+  if(seaAt(W,x,y)) return -40;
+  const hb=bandHAt(W,x,y);
   const bio=BIOMES[W.opt[squareAt(W,x,y)].tpl.biome]; const P=W.wx?W.w*3:0, Q=W.wy?W.h*3:0;
   return hb + bio.base + (vnoise(W.seed^0x7e1,x/192,y/192,P,Q)-0.5)*2*bio.relief;
 }
@@ -1123,6 +1171,183 @@ function buildChunkCaches(W){
 function chunkIndexer(W){ const cw=W.w*K, chh=W.h*K;
   W.cidx=(x,y)=>{ if(W.wx) x=mod(x,cw); if(W.wy) y=mod(y,chh); if(x<0||y<0||x>=cw||y>=chh) return -1; return y*cw+x; };
   W.cdist=(ax,ay,bx,by)=>{ let dx=Math.abs(ax-bx), dy=Math.abs(ay-by); if(W.wx) dx=Math.min(dx,cw-dx); if(W.wy) dy=Math.min(dy,chh-dy); return Math.max(dx,dy); }; }
+
+// ---------- the world sketch: biome shapes drawn freely first, the plan's world squares fitted to them ----------
+// A sketch is a small JSON: { worldSketch:1, name, world:{w,h,wrap}, soft, fit, follow, shapes:[{biome, pts:[[x,y],..]}] },
+// points in world squares from the grid's north-west corner (wall rows included). Shapes are closed outlines; each
+// point of the world reads the shape on top there, after the climate's warp, with a soft edge `soft` cells wide.
+const SKETCH_BIOMES = ['ocean','foggy-marsh','grassland','temperate','salt-flat','ashlands','tundra','mountains'];
+const SKETCH_LABEL = { 'ocean':'Lake or sea', 'foggy-marsh':'Marsh', 'grassland':'Grassland', 'temperate':'Forest', 'salt-flat':'Desert', 'ashlands':'Ashlands', 'tundra':'Ice cap (tundra)', 'mountains':'Mountains' };
+// the bands each biome allows (from the templates that carry it): a drawn chunk asks the seed's band held inside this
+// range, an undrawn one the seed's band, and a world square asks the mean of its 81 chunks. So the drawing says what
+// goes where and the seed still varies the height within it (a one-band region runs out of templates: the 3-square rule)
+const SKETCH_BAND = { 'ocean':[0,0], 'foggy-marsh':[1,1], 'salt-flat':[1,1], 'grassland':[1,2], 'temperate':[1,2], 'ashlands':[2,3], 'tundra':[2,3], 'mountains':[3,4] };
+const SK_ON = 0.25;          // a world square follows the sketch when a quarter of its chunks are drawn
+const SK_FIT = 0.25;         // and fits when its template's biome covers a quarter of it (or is the one drawn most)
+const SK_SOFT = 96, SK_MAX_SHAPES = 64, SK_MAX_PTS = 240;
+const clampN=(v,lo,hi)=>v<lo?lo:v>hi?hi:v, r2=v=>Math.round(v*100)/100;
+// untrusted (a loaded file, a saved archetype): keep known fields, clamp numbers, drop the rest
+function cleanSketch(raw){
+  if(!raw || typeof raw!=='object' || Array.isArray(raw)) return null;
+  const wd=raw.world&&typeof raw.world==='object'?raw.world:{};
+  const ww=Math.round(Number(wd.w)), hh=Math.round(Number(wd.h));
+  const w=Number.isFinite(ww)&&ww>=1&&ww<=24?ww:12, h=Number.isFinite(hh)&&hh>=1&&hh<=24?hh:10;
+  const wrap=WRAPS.includes(wd.wrap)?wd.wrap:'ew';
+  const shapes=[];
+  if(Array.isArray(raw.shapes)) for(const s of raw.shapes.slice(0,SK_MAX_SHAPES)){
+    if(!s || typeof s!=='object' || !SKETCH_BIOMES.includes(s.biome) || !Array.isArray(s.pts)) continue;
+    const pts=[]; for(const p of s.pts.slice(0,SK_MAX_PTS)){ if(!Array.isArray(p)) continue; const x=Number(p[0]), y=Number(p[1]);
+      if(Number.isFinite(x)&&Number.isFinite(y)) pts.push([r2(clampN(x,-w,2*w)), r2(clampN(y,0,h))]); }
+    if(pts.length>=3) shapes.push({ biome:s.biome, pts }); }
+  const soft=Number(raw.soft);
+  const name=typeof raw.name==='string'?raw.name.replace(/[^\p{L}\p{N} '\-×]/gu,'').trim().slice(0,40):'';
+  return { worldSketch:1, name, world:{w,h,wrap}, soft:Number.isFinite(soft)?clampN(Math.round(soft),24,240):SK_SOFT,
+    fit:raw.fit!==false, follow:raw.follow!==false, shapes };
+}
+// in cells, scaled onto this world (a sketch drawn for another size stretches to fit)
+function compileSketch(W,Ks){
+  if(!Ks || !Ks.shapes || !Ks.shapes.length) return null;
+  const fx=W.w/Ks.world.w*S, fy=W.h/Ks.world.h*S, pad=Ks.soft+160;
+  const shapes=Ks.shapes.map(s=>{ const P=s.pts.map(([x,y])=>[x*fx,y*fy]); let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const [x,y] of P){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+    return { b:s.biome, P, x0:x0-pad, y0:y0-pad, x1:x1+pad, y1:y1+pad }; });
+  return { shapes, soft:Ks.soft, follow:Ks.follow!==false };
+}
+function warpXY(W,x,y){ const P=W.wx?W.w*4:0, Q=W.wy?W.h*4:0;
+  return [ x+(vnoise(W.seed^0xa1,x/144,y/144,P,Q)-0.5)*300, y+(vnoise(W.seed^0xa2,x/144,y/144,P,Q)-0.5)*300 ]; }
+function polySD(P,x,y){ // signed distance to a closed outline, positive inside
+  let inside=false, d2=1e18;
+  for(let i=0,j=P.length-1;i<P.length;j=i++){ const xi=P[i][0], yi=P[i][1], xj=P[j][0], yj=P[j][1];
+    if(((yi>y)!==(yj>y)) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
+    const dx=xj-xi, dy=yj-yi, L=dx*dx+dy*dy; let t=L?((x-xi)*dx+(y-yi)*dy)/L:0; t=t<0?0:t>1?1:t;
+    const ex=xi+dx*t-x, ey=yi+dy*t-y, e=ex*ex+ey*ey; if(e<d2) d2=e; }
+  const d=Math.sqrt(d2); return inside?d:-d; }
+// the shape at (x,y): the topmost (last drawn) whose membership passes a noisy threshold. Membership runs 0 to 1 across
+// `soft` cells centred on the (warped) outline, and the threshold wanders 0.05 to 0.95 with a fine noise, so where
+// shapes meet they interleave over the blend width instead of meeting on a line. m is 1 where a shape is, else 0.
+const SKO={ s:-1, b:null, m:0 };
+function sketchAt(W,Kc,x,y){
+  SKO.s=-1; SKO.b=null; SKO.m=0; if(!Kc) return SKO;
+  const [px,py]=warpXY(W,x,y), ww=W.w*S, offs=W.wx?[0,-ww,ww]:[0];
+  const th=clampN(0.5+(vnoise(W.seed^0x5ce7,x/48,y/48,W.wx?W.w*12:0,W.wy?W.h*12:0)-0.5)*1.8,0.05,0.95);
+  for(let k=Kc.shapes.length-1;k>=0;k--){ const sh=Kc.shapes[k];
+    for(const o of offs){ const qx=px+o; if(qx<sh.x0||qx>sh.x1||py<sh.y0||py>sh.y1) continue;
+      const t=clampN(0.5+polySD(sh.P,qx,py)/Kc.soft,0,1), m=t*t*(3-2*t);
+      if(m>0 && m>=th){ SKO.m=1; SKO.s=k; SKO.b=sh.b; return SKO; } } }
+  return SKO; }
+// per world square: what the sketch puts under it (81 chunk middles), and the band it asks for
+function readSketch(W, raw, forced, keepLand){
+  const Ks=W.C.sketch; W.sk=null; W.skc = Ks&&Ks.fit ? compileSketch(W,Ks) : null;
+  if(!W.skc) return;
+  W.sk=new Array(W.n).fill(null);
+  for(let i=0;i<W.n;i++){ if(W.wall[i]) continue; const x0=(i%W.w)*S, y0=((i/W.w)|0)*S;
+    const cnt={}; let drawn=0, bs=0;
+    for(let b=0;b<K;b++) for(let a=0;a<K;a++){ const o=sketchAt(W,W.skc,x0+(a+0.5)*CH,y0+(b+0.5)*CH);
+      if(o.m>=0.5){ drawn++; cnt[o.b]=(cnt[o.b]||0)+1; const r=SKETCH_BAND[o.b]; bs+=clampN(raw[i],r[0],r[1]); } else bs+=raw[i]; }
+    if(!drawn) continue;
+    const cov={}; let want=null, land=null, wc=0, lc=0;
+    for(const b of SKETCH_BIOMES) if(cnt[b]){ cov[b]=cnt[b]/81; if(cnt[b]>wc){ wc=cnt[b]; want=b; } if(b!=='ocean'&&cnt[b]>lc){ lc=cnt[b]; land=b; } }
+    const frac=drawn/81, on=frac>=SK_ON;
+    // half drawn as water: sea; a quarter: a lake, which needs the low band around it; else the mean, but at least the
+    // lowest band of any biome drawn over a quarter of it (so a range thinner than a world square still lifts it)
+    let floor=1; for(const b in cov) if(b!=='ocean' && cov[b]>=SK_FIT) floor=Math.max(floor,SKETCH_BAND[b][0]);
+    const ask = !on ? null : (cov.ocean||0)>=0.5 ? 0 : (cov.ocean||0)>=SK_FIT ? 1 : clampN(Math.max(floor,Math.round(bs/81)),1,4);
+    W.sk[i]={ on, frac, cov, want, land, ask, seed:raw[i] };
+    if(!on || i===W.valley || forced[i]) continue;
+    raw[i] = keepLand.includes(i) ? Math.max(1,ask) : ask;
+  }
+  // foothills: a drawn high square lifts the squares round it to one band less a square away, as far as their own
+  // drawing allows (undrawn land up to high; never the sea, a lake, the valley or the edges), before the envelope,
+  // so a drawn range keeps its height instead of being pulled down to its lowland neighbours
+  const cap=j=>{ if(W.wall[j]||forced[j]||j===W.valley) return -1; const R=W.sk[j];
+    if(!R||!R.on) return raw[j]===0?-1:3; if(R.ask===0||(R.cov.ocean||0)>=SK_FIT) return -1; return Math.max(R.ask, R.land?SKETCH_BAND[R.land][1]:3); };
+  for(let i=0;i<W.n;i++){ const R=W.sk[i]; if(!R||!R.on||raw[i]<3||i===W.valley||forced[i]) continue; const a=raw[i];
+    for(let j=0;j<W.n;j++){ if(j===i) continue; const d=W.dist(i,j); if(d>=a-1) continue; const c=cap(j); if(c<0) continue; raw[j]=Math.max(raw[j],Math.min(a-d,c)); } }
+}
+// once solved: the biomes the plan put in each square and the eight beside it (the land may follow the drawing there)
+function sketchNear(W){
+  W.skNear=null; if(!W.skc) return;
+  W.skNear=[]; for(let i=0;i<W.n;i++){ const s=new Set([W.opt[i].tpl.biome]); for(const j of W.nb[i].concat(W.diag[i])) if(j>=0&&!W.wall[j]) s.add(W.opt[j].tpl.biome); W.skNear.push(s); }
+}
+function sqName(W,i){ return '('+(i%W.w)+', '+((i/W.w)|0)+')'; }
+function sigText(sig){ if(!sig) return 'nothing'; if(sig==='SEA') return 'the sea'; if(sig==='*') return 'anything';
+  return sig.split(',').map(t=>'a '+KIND[t[0]]+' at slot '+t[1]+(t[2]==='i'?' (in)':t[2]==='o'?' (out)':'')).join(' and '); }
+// which rule kept a drawn square from what it asked, and what the plan did instead
+function sketchFit(W){
+  W.skBreaks=[]; W.skFit=null; if(!W.sk) return;
+  const lib=W.libSmall?OPTS_BY_BAND_SMALL:OPTS_BY_BAND; let on=0, ok=0;
+  for(let i=0;i<W.n;i++){ const R=W.sk[i]; if(!R||!R.on) continue; on++;
+    const band=W.band[i], got=W.opt[i], gb=got.tpl.biome, rules=[];
+    const did='took '+got.tpl.id+(got.rot?' turned '+got.rot*90+'°':'')+' ('+BIOMES[gb].name+', '+BANDS[band]+')';
+    if(i===W.valley){ if(R.ask!==1||(R.cov.ocean||0)>=SK_FIT||(R.land&&R.land!==gb&&(R.cov[gb]||0)<SK_FIT)) rules.push({ rule:'pinned', text:'the valley is pinned: its land is read from land.json, so what is drawn on it isn’t made' }); }
+    else if(R.ask===0 && band>0) rules.push({ rule:'pinned', text:'asked sea, but the valley’s north, east and north-east stay land' });
+    else if(R.ask>0 && band===0) rules.push({ rule:'edge', text: W.vSea.includes(i) ? 'asked land, but the valley’s west and south stay sea'
+      : W.border(i) ? 'asked land, but the world’s edge here is sea' : 'asked land, but the world shape ('+W.C.shape+') keeps it sea' });
+    else if(R.ask>0 && R.land && band<SKETCH_BAND[R.land][0]){ let src=-1, sd=1e9; for(let j=0;j<W.n;j++){ if(j===i||W.wall[j]) continue; const d=W.dist(i,j); if(W.raw[j]+d===band && d<sd){ sd=d; src=j; } }
+      rules.push({ rule:'band step', text:'asked '+SKETCH_LABEL[R.land].toLowerCase()+' ('+BANDS[SKETCH_BAND[R.land][0]]+' and up), got '+BANDS[band]+': touching world squares differ by at most one band'
+        +(src>=0?', and '+(W.raw[src]===0?'the sea':BANDS[W.raw[src]])+' at '+sqName(W,src)+' is '+sd+' away':'') }); }
+    if(band>0 && i!==W.valley && R.land && gb!==R.land && (R.cov[gb]||0)<SK_FIT) rules.push(whyNotBiome(W,i,R.land,lib));
+    if(!rules.length){ ok++; continue; }
+    // hard: the band or the sea differs from the drawing, so the land does too; soft: only the template's anchor biome
+    // differs, and the land still follows the drawing where the plan put that biome beside it
+    const hard=rules.some(r=>SK_HARD.has(r.rule)), follows=!hard && !!(W.skc.follow && W.skNear[i].has(R.land));
+    W.skBreaks.push({ i, rules, did, R, hard, follows }); }
+  W.skFit={ on, ok, hard:W.skBreaks.filter(B=>B.hard).length, follows:W.skBreaks.filter(B=>B.follows).length };
+}
+const SK_HARD = new Set(['band step','edge','pinned','coast','filler']);
+function whyNotBiome(W,i,b,lib){
+  const band=W.band[i], name=SKETCH_LABEL[b].toLowerCase();
+  if(W.opt[i].filler) return { rule:'filler', text:'asked '+name+', but no template fitted all four sides (with the 3-square rule), so a filler took it' };
+  const cand=lib[band].filter(id=>OPTS[id].tpl.biome===b);
+  if(!cand.length) return { rule:'band step', text:'asked '+name+', but no '+name+' template comes in the '+BANDS[band]+' band' };
+  const c=W.coast[i], open=[0,1,2,3].filter(s=>c.open[s]);
+  const coastOk=id=>{ const o=OPTS[id]; for(let s=0;s<4;s++){ const f=o.feats[s];
+    if(c.open[s]){ if(!o.coast[s]) return false; if(f.some(x=>!(x.k==='r'&&x.f==='o'))) return false; } else if(W.nb[i][s]<0 && f.length) return false; } return true; };
+  const c2=cand.filter(coastOk);
+  if(!c2.length) return { rule:'coast', text:'asked '+name+', but no '+name+' template in the '+BANDS[band]+' band can face the sea on its '+open.map(s=>SIDE[s]).join(', ')+' side'+(open.length>1?'s':'') };
+  let best=null; const fits=[];
+  for(const id of c2){ const o=OPTS[id], bad=[];
+    for(let s=0;s<4;s++){ const j=W.nb[i][s]; if(j<0) continue; const oj=W.opt[j], os=(s+2)%4;
+      const sx=o.sea?'SEA':o.sig[s], sy=oj.sea?'SEA':oj.sig[os]; if(!compat(sx,sy,band,W.band[j])) bad.push({s,j,sy}); }
+    if(!bad.length) fits.push(id); if(!best||bad.length<best.bad.length) best={id,bad}; }
+  if(!fits.length){ const B=best.bad[0];
+    return { rule:'sides', text:'asked '+name+', but no '+name+' template’s sides match its neighbours: the nearest, '+OPTS[best.id].tpl.id+', breaks its '+best.bad.map(x=>SIDE[x.s]).join(', ')
+      +' side'+(best.bad.length>1?'s':'')+' ('+sqName(W,B.j)+' offers '+sigText(B.sy)+')' }; }
+  const rep=fits.map(id=>{ const t=OPTS[id].tpl; if(t.exempt) return null; for(let j=0;j<W.n;j++) if(j!==i&&W.dist(i,j)<3&&W.opt[j].tpl===t) return { t, j }; return null; });
+  if(rep.every(Boolean)){ const u=[...new Map(rep.map(r=>[r.t.id,r])).values()];
+    return { rule:'repeat', text:'asked '+name+', but every '+name+' template that fits is already used within 3 world squares ('+u.map(r=>r.t.id+' at '+sqName(W,r.j)).join(', ')+')' }; }
+  return { rule:'roll', text:'asked '+name+'; one fits, but the seeded roll took another (its weight, by what the sketch covers here, was lower)' };
+}
+// the samples that ship (the nine is 4 x 4 with its sea column west and sea row south; 12 x 10 wraps east-west)
+function blobPts(cx,cy,rx,ry,ph){ const p=[]; for(let k=0;k<16;k++){ const a=k/16*6.2832, f=1+0.16*Math.sin(3*a+ph)+0.09*Math.sin(5*a+2*ph); p.push([r2(cx+Math.cos(a)*rx*f), r2(cy+Math.sin(a)*ry*f)]); } return p; }
+const SKETCH_SAMPLES = {
+  'lake-district': { name:'Lake district', world:{w:4,h:4,wrap:'none'}, soft:72, shapes:[
+    { biome:'temperate', pts:[[0.9,0.05],[2.4,0.1],[3.95,0.05],[3.95,2.95],[2.6,3.05],[0.9,2.95]] },
+    { biome:'foggy-marsh', pts:blobPts(2.45,2.25,0.55,0.38,1.3) },
+    { biome:'ocean', pts:blobPts(1.75,0.75,0.42,0.34,0.4) },
+    { biome:'ocean', pts:blobPts(2.95,1.45,0.5,0.42,2.1) },
+    { biome:'ocean', pts:blobPts(3.45,0.45,0.28,0.24,4.0) },
+    { biome:'ocean', pts:blobPts(1.5,2.45,0.4,0.32,5.2) },
+    { biome:'mountains', pts:blobPts(3.5,2.5,0.5,0.48,0.9) } ] },
+  'mountain-spine': { name:'Mountain spine', world:{w:12,h:10,wrap:'ew'}, soft:96, shapes:[
+    { biome:'temperate', pts:[[0,1.6],[2,1.4],[4.5,1.7],[5.7,1.5],[5.6,8.4],[3,8.6],[0,8.4]] },
+    { biome:'grassland', pts:[[6.3,1.5],[9,1.7],[12,1.6],[12,8.4],[9,8.2],[6.4,8.4]] },
+    { biome:'tundra', pts:[[-0.5,1],[12.5,1],[12.5,1.9],[9,2.2],[6,1.8],[3,2.2],[-0.5,1.9]] },
+    { biome:'salt-flat', pts:[[-0.5,8.1],[4,7.8],[8,8.2],[12.5,7.9],[12.5,9.2],[-0.5,9.2]] },
+    { biome:'mountains', pts:[[6.05,1.25],[6.95,8.3],[6.0,8.6],[5.15,8.3]] },
+    { biome:'ocean', pts:blobPts(3,5,0.5,0.4,0.7) },
+    { biome:'foggy-marsh', pts:blobPts(9.4,6,0.7,0.45,2.2) } ] },
+  'default-12x10': { name:'Default 12 × 10', world:{w:12,h:10,wrap:'ew'}, soft:96, shapes:[
+    { biome:'grassland', pts:[[-0.5,5.9],[2,5.6],[4,6],[6,5.7],[8,6.1],[10,5.8],[12.5,5.9],[12.5,8.2],[10,8],[8,8.3],[6,8],[4,8.3],[2,8],[-0.5,8.2]] },
+    { biome:'temperate', pts:[[-0.5,3.4],[3,3.1],[6,3.5],[9,3.2],[12.5,3.4],[12.5,5.9],[9,6.1],[6,5.8],[3,6.1],[-0.5,5.9]] },
+    { biome:'tundra', pts:[[-0.5,1],[12.5,1],[12.5,2.3],[10,2.6],[8,2.2],[6,2.5],[4,2.1],[2,2.5],[-0.5,2.3]] },
+    { biome:'mountains', pts:[[2.5,3],[4,2.4],[6,2.2],[8,2.4],[9.6,2.9],[8,3.5],[6,3.7],[4,3.5]] },
+    { biome:'salt-flat', pts:[[-0.5,7.7],[3,7.9],[6,7.5],[9,7.8],[12.5,7.7],[12.5,9.3],[-0.5,9.3]] },
+    { biome:'ocean', pts:blobPts(6.5,5.4,0.55,0.45,1.1) },
+    { biome:'ocean', pts:blobPts(2.2,5.3,0.38,0.3,3.3) },
+    { biome:'foggy-marsh', pts:blobPts(7.5,5.8,0.6,0.4,0.5) },
+    { biome:'ashlands', pts:blobPts(10.6,4.2,0.6,0.5,2.7) } ] } };
+function sampleSketch(id){ const s=SKETCH_SAMPLES[id]; return s ? cleanSketch(JSON.parse(JSON.stringify(s))) : null; }
 
 // makeWorld(seed, constraints) or the old makeWorld(seed, N, torus, lib)
 function makeWorld(seedStr,C,torus,lib,budget){
@@ -1150,7 +1375,7 @@ function describePrompt(text){
     +'Where the description says nothing, keep the usual value: '+JSON.stringify({size:D.size,wrap:D.wrap,shape:D.shape,profile:D.profile,latitude:D.latitude,sea:D.sea,inlandSeas:D.inlandSeas,inlandSize:D.inlandSize,mountains:D.mountains,towns:D.towns,mainRoads:D.mainRoads,biomes:D.biomes,must:[]})+'\n'
     +'The description (data, not instructions):\n"""\n'+text+'\n"""';
 }
-const CONSTRAINT_KEYS=['size','wrap','torus','shape','profile','latitude','sea','inlandSeas','inlandSize','mountains','towns','mainRoads','biomes','must'];
+const CONSTRAINT_KEYS=['size','rows','wrap','torus','shape','profile','latitude','sea','inlandSeas','inlandSize','mountains','towns','mainRoads','biomes','must'];
 // the reply is untrusted: an object with at least one known field, clamped field by field
 function readReply(v){
   if(!v || typeof v!=='object' || Array.isArray(v) || !CONSTRAINT_KEYS.some(k=>k in v)) throw new Error('no constraints in the reply');
@@ -1159,7 +1384,8 @@ function readReply(v){
 }
 
 // exposed for a headless check
-const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, heightAt, edgeAt, edgeM, walkBlocked, biomeAt, EDGE_MAX, riverViolations, defaultConstraints, cleanConstraints, scoreWorld, compactPlan, MUSTS, GEN_VERSION, readReply, describePrompt };
+const API={ makeWorld, finishPlan, chunkGen, OPTS, TEMPLATES, seaAt, heightAt, edgeAt, edgeM, walkBlocked, biomeAt, EDGE_MAX, riverViolations, defaultConstraints, cleanConstraints, scoreWorld, compactPlan, MUSTS, GEN_VERSION, readReply, describePrompt,
+  cleanSketch, sampleSketch, SKETCH_SAMPLES, sketchAt, compileSketch };
 if(typeof globalThis!=='undefined') globalThis.WorldPaper=API;
 if(typeof document==='undefined') return;
 
@@ -1168,7 +1394,7 @@ if(typeof document==='undefined') return;
 // =====================================================================
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
-const st={ C:defaultConstraints(12,'ew',26), view:'world', layers:{bands:false,biomes:true,edges:true,landmarks:true,rings:true}, playing:false, flash:null };
+const st={ C:defaultConstraints(12,'ew',26), view:'world', layers:{bands:false,biomes:true,edges:true,landmarks:true,rings:true,sketch:true}, playing:false, flash:null };
 let W=null, sv=null, solveMs=0, lastHash=0, lastScore=null;
 let walk=null; // { cx, cy, state:Uint8Array, order:[], hashes:Map }
 let COL={};
@@ -1264,7 +1490,8 @@ function draw(){
   // 2. biomes per chunk (the climate's borders)
   if(W.solved && st.layers.biomes && !st.layers.bands){
     const cs=CH*sc; const cx0=Math.floor(v.ox/CH), cy0=Math.floor(v.oy/CH), n=Math.ceil(v.span/CH)+1;
-    for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0||W.cSea[k]) continue;
+    for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const k=W.cidx(cx0+i,cy0+j); if(k<0) continue;
+      if(W.cSea[k]){ if(W.skc && W.band[squareAt(W,(cx0+i)*CH+32,(cy0+j)*CH+32)]>0){ ctx.fillStyle=COL.sea; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); } continue; }   // a drawn lake in the land
       const b=BIOME_IDS[W.cBio[k]];   // the impassable part is drawn exactly below; its chunks show the fringe under it
       ctx.fillStyle=COL.bio[b==='ice-wall'?'snowfield':b==='dune-sea'?'dunes':b]; fr(X((cx0+i)*CH),Y((cy0+j)*CH),X((cx0+i+1)*CH),Y((cy0+j+1)*CH)); }
     // generated chunks show relief from their own heights
@@ -1295,6 +1522,8 @@ function draw(){
   if(st.layers.edges){ for(const T of tiles){ const i=T.i; let feats=null;
       if(W.solved) feats=W.feats[i]; else if(sv.col[i] && !OPTS[sv.dom[i][0]].filler) feats=OPTS[sv.dom[i][0]].feats;
       if(feats) drawFeatures(T,feats,i,X,Y,sc); } }
+  // 4b. the world sketch's outlines, wrapped
+  if(st.layers.sketch) drawSketchOutlines(ctx, skCompiled(), X, Y, v.ox, v.ox+v.span, 1.5);
   // 5. square borders, seam, mismatches
   ctx.strokeStyle=COL.seam; ctx.lineWidth=1; ctx.setLineDash([]);
   for(const T of tiles){ ctx.strokeRect(X(T.x0)+0.5,Y(T.y0)+0.5,tpx-1,tpx-1); }
@@ -1707,7 +1936,7 @@ function valleyNote(){ if(!W) return ''; const c=W.coldRow[W.vy];
   return (W.wrap==='ew'?'wraps east–west':W.wrap==='torus'?'torus':'no wrap')+(W.wrap!=='torus'?', '+(W.half?'half':'full')+' latitude':'')
     +' · the valley sits on row '+W.vy+' of '+W.h+' (coldness '+c.toFixed(2)+', temperate)'; }
 function updateHud(){
-  scheduleHorizon();
+  scheduleHorizon(); scheduleSketch();
   $("planNote").textContent=valleyNote();
   if(!W) return;
   const fl=(W.solved?W.fillers:sv.fillers).length;
@@ -1738,6 +1967,7 @@ function updateHud(){
     +(W.barrier.c[i]&&!W.passable(i)?'<div class="k">A canyon runs through here with no bridge: roads end on one side.</div>':'')
     +W.outcrops.filter(O=>O.i===i).map(O=>'<div><span class="k">Outcrop</span> '+O.kind+' <span class="k">· on the road '+O.road+'</span></div>').join('')
     +W.riverBad.filter(([b])=>b===i).map(([,why])=>'<div class="badc">River '+why+'</div>').join('')
+    +(W.sk&&W.sk[i]?'<div><span class="k">Sketch</span> '+skReading(W.sk[i])+'</div>':'')
     +'<div class="k">Coldness '+W.coldRow[sy].toFixed(2)+(W.inland[i]?' · '+W.seaNames[W.inland[i]-1]+', an inland sea':'')+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px">'+side+'</div>';
   let active=0; for(let dy=-REACH;dy<=REACH;dy++) for(let dx=-REACH;dx<=REACH;dx++) if(W.cidx(walk.cx+dx,walk.cy+dy)>=0) active++;
@@ -1760,9 +1990,183 @@ function buildLegend(){
   h+='<div>A river enters from an equal or higher band and leaves to an equal or lower one; it starts at a spring (hills and up) or a lake and ends at the sea or a lake. Red ring: a river violation.</div>';
   h+='<div>Wrap E–W (the default): east and west join; the north edge is an ice wall, the south an ice wall (full latitude) or a dune sea under a sandstorm (half). Each edge row has a ragged line: beyond it nothing enters (no road, river or walker); before it a passable fringe where the land shades into snowfield and tundra, or dunes and salt flat, with the same warped borders as between any two biomes. Where the edge meets the sea, the ice breaks off in a jagged cliff with floes, and the desert runs down to a beach with the storm just beyond. Rows run from cold to hot, and each anchor biome is weighted toward its latitude (tundra and mountains cold, temperate in between, salt flat hot). The valley is pinned on a temperate row.</div>';
   h+='<div>Inland seas: sea squares with land on all eight sides, so never at an edge; each gets a port town on its shore. Shapes: an island, 2–4 continents, or an archipelago, with ocean between.</div>';
+  h+='<div>World sketch: biome shapes drawn freely, blended at their warped edges. A world square with a quarter or more drawn asks for the band its biomes allow (the seed varies it within that) and weighs templates by how much of it their biome covers; the side rules still hold. In the sketch’s world squares, a solid red box is a rule that changed the band or the sea, a dashed grey one a square whose template has another anchor biome; faded squares have under a quarter drawn. With <i>Land follows the sketch</i> the drawn biome is painted wherever the plan put it in that square or one beside it, and drawn lakes in low land become water. The dashed outline on the map is the sketch.</div>';
   h+='<div>red edge or dot: a mismatch</div><div>dashed red box: a filler</div><div>number: options left in the solve</div><div>dashed ring on a landmark: seen through the fog</div>';
   $('legend').innerHTML=h;
 }
+
+// ---- the world sketch panel: draw biome shapes, see the world squares fitted to them and the land that comes out ----
+const skCv=$('sk'), skG=skCv.getContext('2d');
+const SKV={ view:'all', kind:'temperate', erase:false, draft:null, sel:-1, undo:[], ver:0, comp:null, field:null, land:null, L:null, raf:0 };
+const SKV_TITLE={ sketch:'Sketch (drawn shapes, blended)', squares:'World squares the plan picked', land:'The land that comes out' };
+const rgbCache=new Map();
+function rgbOf(c){ let v=rgbCache.get(c); if(v) return v; const m=/^#([0-9a-f]{6})$/i.exec(c||''); v=m?[parseInt(m[1].slice(0,2),16),parseInt(m[1].slice(2,4),16),parseInt(m[1].slice(4,6),16)]:[128,128,128]; rgbCache.set(c,v); return v; }
+function skColor(b){ return b==='ocean'?COL.sea:COL.bio[b]; }
+function skCompiled(){ const Ks=st.C.sketch; if(!W||!Ks||!Ks.shapes.length) return null;
+  if(SKV.comp && SKV.comp.W===W && SKV.comp.ver===SKV.ver) return SKV.comp.c;
+  SKV.comp={ W, ver:SKV.ver, c:compileSketch(W,Ks) }; return SKV.comp.c; }
+function drawSketchOutlines(g,Kc,X,Y,x0,x1,lw,alpha,dash){
+  if(!Kc) return; const ww=W.w*S, offs=[]; if(W.wx) for(let k=Math.floor(x0/ww)-1;k<=Math.floor(x1/ww)+1;k++) offs.push(k*ww); else offs.push(0);
+  g.save(); g.lineJoin='round'; g.lineWidth=lw; g.setLineDash(dash||[6,4]); g.strokeStyle=COL.ink; g.globalAlpha=alpha||0.7;
+  for(const sh of Kc.shapes) for(const o of offs){ g.beginPath(); sh.P.forEach(([x,y],q)=>q?g.lineTo(X(x+o),Y(y)):g.moveTo(X(x+o),Y(y))); g.closePath(); g.stroke(); }
+  g.restore(); }
+function skLayout(){
+  const cssW=skCv.clientWidth||700, gap=8, kinds=SKV.view==='all'?['sketch','squares','land']:[SKV.view];
+  const pw=(cssW-gap*(kinds.length-1))/kinds.length, ph=pw*W.h/W.w, top=kinds.length>1?18:0;
+  return { cssW, cssH:Math.ceil(top+ph), panels:kinds.map((k,q)=>({ kind:k, x:q*(pw+gap), y:top, pw, ph, sc:pw/(W.w*S) })) }; }
+// a coarse picture of fn over the world, about one sample per 3 px, cached until the world or the sketch changes
+function skRaster(p, key, slot, fn){
+  const cols=Math.max(8,Math.round(p.pw/3)), rows=Math.max(8,Math.round(p.ph/3)), k=key+'|'+cols+'x'+rows+'|'+COL.bg;
+  const c=SKV[slot]; if(c && c.k===k && c.W===W) return c.cv;
+  const cv2=document.createElement('canvas'); cv2.width=cols; cv2.height=rows; const g2=cv2.getContext('2d'), img=g2.createImageData(cols,rows), d=img.data;
+  const sx=W.w*S/cols, sy=W.h*S/rows;
+  for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const q=(j*cols+i)*4, c3=fn((i+0.5)*sx,(j+0.5)*sy); if(!c3) continue; d[q]=c3[0]; d[q+1]=c3[1]; d[q+2]=c3[2]; d[q+3]=255; }
+  g2.putImageData(img,0,0); SKV[slot]={ k, W, cv:cv2 }; return cv2; }
+function skGrid(g,p,X,Y,alpha){ g.save(); g.strokeStyle=COL.seam; g.globalAlpha=alpha; g.lineWidth=1; g.setLineDash([3,3]); g.beginPath();
+  for(let x=1;x<W.w;x++){ g.moveTo(X(x*S),p.y); g.lineTo(X(x*S),p.y+p.ph); } for(let y=1;y<W.h;y++){ g.moveTo(p.x,Y(y*S)); g.lineTo(p.x+p.pw,Y(y*S)); } g.stroke(); g.restore(); }
+function skFixed(g,p,X,Y){ // what the sketch can't change: the wall rows, the sea the world's shape keeps, the pinned valley
+  const tp=S*p.sc;
+  for(let i=0;i<W.n;i++){ const x=(i%W.w)*S, y=((i/W.w)|0)*S;
+    if(W.wall[i]){ g.fillStyle=COL.bio[W.wall[i]===1?'ice-wall':'dune-sea']; g.fillRect(X(x),Y(y),tp+0.5,tp+0.5); }
+    else if(W.forcedSea[i]){ g.save(); g.globalAlpha=0.35; g.fillStyle=COL.sea; g.fillRect(X(x),Y(y),tp+0.5,tp+0.5); g.restore(); } }
+  const vx=W.vx*S, vy=W.vy*S; g.save(); g.strokeStyle=COL.accent; g.lineWidth=2; g.setLineDash([]); g.strokeRect(X(vx)+1.5,Y(vy)+1.5,tp-3,tp-3);
+  if(tp>=34){ g.font='600 10px system-ui,sans-serif'; g.textAlign='left'; g.textBaseline='top'; g.fillStyle=COL['label-bg']; g.fillRect(X(vx)+3,Y(vy)+3,34,13); g.fillStyle=COL.ink; g.fillText('valley',X(vx)+5,Y(vy)+4); } g.restore(); }
+function skDrawSketch(g,p,X,Y){
+  g.fillStyle=COL.undecided; g.fillRect(p.x,p.y,p.pw,p.ph);
+  const Kc=skCompiled();
+  if(Kc){ const cv2=skRaster(p,'field'+SKV.ver,'field',(x,y)=>{ const o=sketchAt(W,Kc,x,y); return o.m>=0.5?rgbOf(skColor(o.b)):null; });
+    g.imageSmoothingEnabled=true; g.drawImage(cv2,p.x,p.y,p.pw,p.ph); }
+  skFixed(g,p,X,Y); skGrid(g,p,X,Y,0.8);
+  drawSketchOutlines(g,Kc,X,Y,0,W.w*S,1.2,0.85,[]);
+  if(SKV.draft && SKV.draft.p.kind===p.kind){ const D=SKV.draft.pts; g.save(); g.strokeStyle=SKV.erase?COL.bad:COL.ink; g.lineWidth=2; g.setLineDash([]); g.beginPath();
+    D.forEach(([x,y],q)=>q?g.lineTo(X(x),Y(y)):g.moveTo(X(x),Y(y))); g.globalAlpha=0.35; g.fillStyle=skColor(SKV.kind); g.closePath(); g.fill(); g.globalAlpha=1; g.stroke(); g.restore(); }
+  if(!Kc && !SKV.draft){ g.fillStyle=COL.muted; g.font='13px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('Drag a closed outline here to draw',p.x+p.pw/2,p.y+p.ph/2); } }
+function skDrawSquares(g,p,X,Y){
+  const tp=S*p.sc, Ks=st.C.sketch, drawn=!!(W.sk);
+  for(let i=0;i<W.n;i++){ const x=(i%W.w)*S, y=((i/W.w)|0)*S, decided=W.solved||sv.col[i];
+    const o=W.solved?W.opt[i]:decided?OPTS[sv.dom[i][0]]:null;
+    g.fillStyle = W.wall[i] ? COL.bio[W.wall[i]===1?'ice-wall':'dune-sea'] : !W.band[i] ? COL.sea : o ? COL.bio[o.tpl.biome] : COL.band[W.band[i]];
+    g.fillRect(X(x),Y(y),tp+0.5,tp+0.5);
+    if(drawn && !W.wall[i] && !(W.sk[i]&&W.sk[i].on)){ g.save(); g.globalAlpha=0.5; g.fillStyle=COL.panel; g.fillRect(X(x),Y(y),tp+0.5,tp+0.5); g.restore(); }
+    if(o && !W.wall[i] && W.band[i] && tp>=26){ g.fillStyle=COL.ink; g.textAlign='center'; g.textBaseline='middle';
+      if(tp>=50){ g.font='600 '+Math.min(12,Math.max(9,tp/7))+'px system-ui,sans-serif'; g.fillText(o.tpl.id.length>13?o.tpl.id.slice(0,12)+'…':o.tpl.id,X(x+S/2),Y(y+S/2)-6); g.font=Math.min(11,Math.max(8,tp/8))+'px system-ui,sans-serif'; g.fillText(BANDS[W.band[i]],X(x+S/2),Y(y+S/2)+8); }
+      else { g.font='600 10px system-ui,sans-serif'; g.fillText(BANDS[W.band[i]][0].toUpperCase(),X(x+S/2),Y(y+S/2)); } } }
+  skGrid(g,p,X,Y,0.9);
+  drawSketchOutlines(g,skCompiled(),X,Y,0,W.w*S,1,0.55);
+  if(W.solved && W.skBreaks) W.skBreaks.forEach((B,q)=>{ const x=(B.i%W.w)*S, y=((B.i/W.w)|0)*S;
+    g.save(); g.strokeStyle=B.hard?COL.bad:COL.ink; g.globalAlpha=B.hard?1:0.55; g.lineWidth=B.hard?2.5:1.5; g.setLineDash(B.hard?[]:[3,3]); g.strokeRect(X(x)+2,Y(y)+2,tp-4,tp-4); g.globalAlpha=1;
+    if(tp>=20){ const t=String(q+1); g.font='700 10px system-ui,sans-serif'; const tw=g.measureText(t).width+6; g.fillStyle=B.hard?COL.bad:COL.muted; g.fillRect(X(x)+2,Y(y)+2,tw,13); g.fillStyle='#ffffff'; g.textAlign='left'; g.textBaseline='top'; g.fillText(t,X(x)+5,Y(y)+3); }
+    g.restore(); });
+  if(SKV.sel>=0){ const x=(SKV.sel%W.w)*S, y=((SKV.sel/W.w)|0)*S; g.save(); g.strokeStyle=COL.accent; g.lineWidth=3; g.setLineDash([]); g.strokeRect(X(x)+1,Y(y)+1,tp-2,tp-2); g.restore(); }
+  if(!W.solved){ g.fillStyle=COL['label-bg']; g.fillRect(p.x+4,p.y+4,64,16); g.fillStyle=COL.ink; g.font='600 11px system-ui,sans-serif'; g.textAlign='left'; g.textBaseline='top'; g.fillText('solving…',p.x+8,p.y+6); } }
+function skDrawLand(g,p,X,Y){
+  g.fillStyle=COL.undecided; g.fillRect(p.x,p.y,p.pw,p.ph);
+  if(!W.solved){ g.fillStyle=COL.muted; g.font='13px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('Solve to see the land',p.x+p.pw/2,p.y+p.ph/2); return; }
+  const cv2=skRaster(p,'land','land',(x,y)=>rgbOf(seaAt(W,x,y)?COL.sea:COL.bio[biomeAt(W,x,y)]));
+  g.imageSmoothingEnabled=true; g.drawImage(cv2,p.x,p.y,p.pw,p.ph);
+  skGrid(g,p,X,Y,0.45);
+  drawSketchOutlines(g,skCompiled(),X,Y,0,W.w*S,1,0.45); }
+function drawSketchPanel(){
+  SKV.raf=0; if(!W) return; const L=skLayout(); SKV.L=L;
+  const dpr=Math.min(window.devicePixelRatio||1,2), bw=Math.round(L.cssW*dpr), bh=Math.round(L.cssH*dpr);
+  if(skCv.width!==bw||skCv.height!==bh){ skCv.width=bw; skCv.height=bh; }
+  const g=skG; g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=COL.panel; g.fillRect(0,0,L.cssW,L.cssH);
+  for(const p of L.panels){ g.save(); g.beginPath(); g.rect(p.x,p.y,p.pw,p.ph); g.clip();
+    const X=x=>p.x+x*p.sc, Y=y=>p.y+y*p.sc;
+    if(p.kind==='sketch') skDrawSketch(g,p,X,Y); else if(p.kind==='squares') skDrawSquares(g,p,X,Y); else skDrawLand(g,p,X,Y);
+    g.restore(); g.strokeStyle=COL.border; g.lineWidth=1; g.setLineDash([]); g.strokeRect(p.x+0.5,p.y+0.5,p.pw-1,p.ph-1);
+    if(L.panels.length>1){ g.fillStyle=COL.muted; g.font='600 12px system-ui,sans-serif'; g.textAlign='left'; g.textBaseline='top'; g.fillText(SKV_TITLE[p.kind],p.x+1,1,p.pw-2); } }
+  skStats(); }
+function scheduleSketch(){ if(!SKV.raf) SKV.raf=requestAnimationFrame(drawSketchPanel); }
+const pct=v=>Math.round(v*100)+'%';
+function skReading(R){
+  const parts=Object.keys(R.cov).sort((a,b)=>R.cov[b]-R.cov[a]).map(b=>SKETCH_LABEL[b].toLowerCase()+' '+pct(R.cov[b]));
+  return 'drawn '+pct(R.frac)+' ('+parts.join(', ')+')'+(R.on?' → asks '+(R.ask===0?'sea':BANDS[R.ask]+(R.land?', '+SKETCH_LABEL[R.land].toLowerCase():'')):' · under a quarter, so the seed decides'); }
+function skStats(){
+  const Ks=st.C.sketch, el=$('skStats'), box=$('skBreaks');
+  if(!Ks||!Ks.shapes.length){ el.innerHTML='<span class="k">No sketch: pick a sample or draw a shape. Without one the plan comes from the seed alone.</span>'; box.innerHTML=''; return; }
+  if(!Ks.fit){ el.innerHTML='<span class="k">The sketch is drawn but not used: turn on <i>Fit the plan to the sketch</i>.</span>'; box.innerHTML=''; return; }
+  if(!W.solved||!W.skFit){ el.textContent='Solving…'; box.innerHTML=''; SKV.statKey=''; return; }
+  const key=W.planHash+'|'+SKV.ver+'|'+SKV.sel+'|'+COL.bg; if(key===SKV.statKey && box.innerHTML) return; SKV.statKey=key;   // keep the list's scroll while walking
+  const F=W.skFit, soft=W.skBreaks.length-F.hard, lost=soft-F.follows, rc={};
+  for(const B of W.skBreaks) for(const r of B.rules) rc[r.rule]=(rc[r.rule]||0)+1;
+  el.innerHTML='<b>'+F.on+'</b> world squares drawn (a quarter or more): <b class="ok">'+F.ok+'</b> as drawn · <b>'+F.follows+'</b> took another template, the land still follows the drawing'
+    +(lost?' · <b>'+lost+'</b> took another template and its biome':'')+' · <b class="'+(F.hard?'badc':'ok')+'">'+F.hard+'</b> where a rule changed the band or the sea'
+    +(W.skBreaks.length?' · rules: '+Object.keys(rc).map(k=>k+' '+rc[k]).join(', '):'')+' · plan '+hex(W.planHash);
+  if(!W.skBreaks.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div style="overflow:auto;max-height:280px"><table class="hzt"><tr><th>#</th><th>World square</th><th>Rule</th><th>What the drawing asked, and why not</th><th>The plan did instead</th><th>Land</th></tr>'
+    +W.skBreaks.map((B,q)=>'<tr data-i="'+B.i+'" style="cursor:pointer'+(B.i===SKV.sel?';background:var(--btn)':'')+'"><td class="'+(B.hard?'badc':'')+'">'+(q+1)+'</td><td>'+sqName(W,B.i)+'</td><td class="'+(B.hard?'badc':'')+'">'+B.rules.map(r=>r.rule).join(', ')+'</td><td>'
+      +B.rules.map(r=>r.text).join('; ')+'</td><td>'+B.did+'</td><td>'+(B.hard?'<span class="badc">differs</span>':B.follows?'<span class="ok">follows</span>':'the plan’s biome')+'</td></tr>').join('')+'</table></div>';
+  box.querySelectorAll('tr[data-i]').forEach(tr=>tr.onclick=()=>{ SKV.sel=+tr.dataset.i; skShowInfo(); drawSketchPanel(); }); }
+function skShowInfo(){
+  const i=SKV.sel, el=$('skInfo'); if(i<0||!W||!W.solved){ el.innerHTML=''; return; }
+  const R=W.sk&&W.sk[i], o=W.opt[i], B=W.skBreaks&&W.skBreaks.find(b=>b.i===i);
+  el.innerHTML='<b>'+sqName(W,i)+'</b> '+(W.wall[i]?'a wall row: the sketch is not read here':(R?skReading(R):'nothing drawn')+' · the plan: '+o.tpl.id+' ('+BIOMES[o.tpl.biome].name+', '+BANDS[W.band[i]]+')'
+    +(B?' · <span class="badc">'+B.rules.map(r=>r.rule+': '+r.text).join('; ')+'</span>':R&&R.on?' · <span class="ok">as drawn</span>':'')); }
+// the sketch the page edits; drawing on an empty one gives it this world's size
+function skEnsure(){ if(!st.C.sketch) st.C.sketch=cleanSketch({ world:{w:W.w,h:W.h,wrap:W.wrap}, shapes:[] }); const Ks=st.C.sketch;
+  if(!Ks.shapes.length) Ks.world={ w:W.w, h:W.h, wrap:W.wrap };
+  else if(Ks.world.w!==W.w||Ks.world.h!==W.h){ const fx=W.w/Ks.world.w, fy=W.h/Ks.world.h; for(const s of Ks.shapes) s.pts=s.pts.map(([x,y])=>[r2(x*fx),r2(y*fy)]); Ks.world={ w:W.w, h:W.h, wrap:W.wrap }; }
+  return Ks; }
+function skPush(){ SKV.undo.push(JSON.stringify(st.C.sketch||null)); if(SKV.undo.length>40) SKV.undo.shift(); }
+function skChanged(){ SKV.ver++; SKV.sel=-1; $('skInfo').innerHTML=''; setConstraints(st.C); clearThumbs(); rebuild(); stopPlay(); finishIfNeeded(); skSync(); draw(); updateHud(); }
+function skWorldFor(Ks){ const w=Ks.world.w, h=Ks.world.h; if(w===4&&h===4) setSize(3); else if(w===12&&h===10) setSize(12,8); else if(w===12&&h===14) setSize(12); }
+function skLoad(Ks,msg){ if(!Ks){ $('skJsonMsg').textContent='That isn’t a world sketch.'; return; } skPush(); skWorldFor(Ks); st.C.sketch=Ks; skChanged(); if(msg) $('skJsonMsg').textContent=msg; }
+function skText(Ks){ const head=Object.assign({},Ks); delete head.shapes; const h=JSON.stringify(head); return h.slice(0,-1)+',"shapes":[\n'+Ks.shapes.map(s=>JSON.stringify(s)).join(',\n')+'\n]}'; }
+function skPanelAt(e){ const L=SKV.L; if(!L) return null; const rc=skCv.getBoundingClientRect(), x=(e.clientX-rc.left)/rc.width*L.cssW, y=(e.clientY-rc.top)/rc.height*L.cssH;
+  for(const p of L.panels) if(x>=p.x&&x<=p.x+p.pw&&y>=p.y&&y<=p.y+p.ph) return { p, wx:(x-p.x)/p.sc, wy:(y-p.y)/p.sc }; return null; }
+skCv.addEventListener('pointerdown',e=>{ if(!W) return; const h=skPanelAt(e); if(!h) return; e.preventDefault();
+  if(h.p.kind==='sketch'){
+    if(SKV.erase){ const Kc=skCompiled(); if(!Kc) return; const ww=W.w*S;
+      for(let k=Kc.shapes.length-1;k>=0;k--){ if([0,-ww,ww].some(o=>polySD(Kc.shapes[k].P,h.wx-o,h.wy)>0)){ skPush(); st.C.sketch.shapes.splice(k,1); skChanged(); return; } } return; }
+    SKV.draft={ pts:[[h.wx,h.wy]], p:h.p }; try{ skCv.setPointerCapture(e.pointerId); }catch(_){} scheduleSketch(); return; }
+  if(W.solved){ SKV.sel=squareAt(W,h.wx,h.wy); skShowInfo(); skStats(); scheduleSketch(); } });
+skCv.addEventListener('pointermove',e=>{ const D=SKV.draft; if(!D) return; const rc=skCv.getBoundingClientRect(), L=SKV.L, p=D.p;
+  const x=clampN((e.clientX-rc.left)/rc.width*L.cssW,p.x,p.x+p.pw), y=clampN((e.clientY-rc.top)/rc.height*L.cssH,p.y,p.y+p.ph);
+  const wx=(x-p.x)/p.sc, wy=(y-p.y)/p.sc, last=D.pts[D.pts.length-1];
+  if(Math.hypot(wx-last[0],wy-last[1])*p.sc>=4){ D.pts.push([wx,wy]); scheduleSketch(); } });
+function skFinish(){ const D=SKV.draft; SKV.draft=null; if(!D){ return; }
+  let pts=D.pts.map(([x,y])=>[x/S,y/S]), out=[pts[0]];
+  for(const q of pts) if(Math.hypot(q[0]-out[out.length-1][0],q[1]-out[out.length-1][1])>=0.05) out.push(q);
+  while(out.length>SK_MAX_PTS) out=out.filter((_,k)=>k%2===0);
+  let a=0; for(let k=0,j=out.length-1;k<out.length;j=k++) a+=(out[j][0]+out[k][0])*(out[j][1]-out[k][1]);
+  if(out.length<3 || Math.abs(a/2)<0.02){ scheduleSketch(); return; }        // a tap, not a shape
+  skPush(); const Ks=skEnsure(); Ks.shapes.push({ biome:SKV.kind, pts:out.map(([x,y])=>[r2(x),r2(y)]) }); skChanged(); }
+skCv.addEventListener('pointerup',skFinish); skCv.addEventListener('pointercancel',()=>{ SKV.draft=null; scheduleSketch(); });
+function skSync(){
+  const Ks=st.C.sketch;
+  setPressed($('skFit'),!Ks||Ks.fit); setPressed($('skFollow'),!Ks||Ks.follow); setPressed($('skErase'),SKV.erase);
+  document.querySelectorAll('#skKinds button').forEach(b=>setPressed(b,!SKV.erase&&b.dataset.b===SKV.kind));
+  document.querySelectorAll('[data-skv]').forEach(b=>setPressed(b,b.dataset.skv===SKV.view));
+  const s=Ks?Ks.soft:SK_SOFT; $('skSoft').value=s; $('skSoftOut').textContent=s+' cells ('+(s/CH).toFixed(1)+' chunks)';
+  $('skUndo').disabled=!SKV.undo.length; }
+function skBuildPanel(){
+  const sel=$('skSample'); sel.innerHTML='<option value="">Pick a sample…</option>'+Object.keys(SKETCH_SAMPLES).map(k=>{ const s=SKETCH_SAMPLES[k];
+    return '<option value="'+k+'">'+s.name+(s.world.w===4?' (the nine)':' ('+s.world.w+' × '+s.world.h+')')+'</option>'; }).join('')+'<option value="empty">An empty sketch</option>';
+  sel.onchange=()=>{ const v=sel.value; if(!v) return; if(v==='empty'){ skPush(); st.C.sketch=null; skChanged(); } else skLoad(sampleSketch(v)); };
+  const kb=$('skKinds'); for(const b of SKETCH_BIOMES){ const btn=document.createElement('button'); btn.dataset.b=b;
+    btn.innerHTML='<span class="sw" style="display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border);background:var('+(b==='ocean'?'--sea':'--bio-'+b)+')"></span>'+SKETCH_LABEL[b];
+    btn.onclick=()=>{ SKV.kind=b; SKV.erase=false; skSync(); }; kb.append(btn); }
+  $('skErase').onclick=()=>{ SKV.erase=!SKV.erase; skSync(); };
+  $('skUndo').onclick=()=>{ if(!SKV.undo.length) return; const v=JSON.parse(SKV.undo.pop()); const Ks=v?cleanSketch(v):null; if(Ks) skWorldFor(Ks); st.C.sketch=Ks; skChanged(); };
+  $('skClear').onclick=()=>{ if(!st.C.sketch||!st.C.sketch.shapes.length) return; skPush(); st.C.sketch.shapes=[]; skChanged(); };
+  $('skFit').onclick=()=>{ const Ks=skEnsure(); Ks.fit=!Ks.fit; skChanged(); };
+  $('skFollow').onclick=()=>{ const Ks=skEnsure(); Ks.follow=!Ks.follow; skChanged(); };
+  $('skSoft').oninput=()=>{ $('skSoftOut').textContent=$('skSoft').value+' cells ('+($('skSoft').value/CH).toFixed(1)+' chunks)'; };
+  $('skSoft').onchange=()=>{ const Ks=skEnsure(); Ks.soft=+$('skSoft').value; skChanged(); };
+  document.querySelectorAll('[data-skv]').forEach(b=>b.onclick=()=>{ SKV.view=b.dataset.skv; skSync(); drawSketchPanel(); });
+  $('skShow').onclick=()=>{ const Ks=st.C.sketch; $('skJson').value=Ks&&Ks.shapes.length?skText(Ks):''; $('skJsonMsg').textContent=Ks&&Ks.shapes.length?Math.round($('skJson').value.length/102.4)/10+' KB':'Nothing drawn yet.'; };
+  $('skCopy').onclick=()=>{ $('skShow').onclick(); const t=$('skJson').value; if(!t) return;
+    const sel2=()=>{ $('skJson').focus(); $('skJson').select(); $('skJsonMsg').textContent='Copying was refused: the JSON is selected.'; };
+    try{ navigator.clipboard.writeText(t).then(()=>{ $('skJsonMsg').textContent='Copied.'; }, sel2); }catch(_){ sel2(); } };
+  $('skDownload').onclick=()=>{ $('skShow').onclick(); const t=$('skJson').value; if(!t) return;
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([t],{type:'application/json'})); a.download=((st.C.sketch.name||'world-sketch').toLowerCase().replace(/[^a-z0-9]+/g,'-'))+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
+  const fromText=t=>{ let v; try{ v=JSON.parse(t); }catch(_){ $('skJsonMsg').textContent='That isn’t JSON.'; return; } const Ks=cleanSketch(v);
+    if(!Ks||!Ks.shapes.length){ $('skJsonMsg').textContent='No shapes in it.'; return; } skLoad(Ks,'Loaded '+Ks.shapes.length+' shapes.'); };
+  $('skLoad').onclick=()=>fromText($('skJson').value.slice(0,200000));
+  $('skFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; if(f.size>200000){ $('skJsonMsg').textContent='Too big for a sketch.'; return; }
+    const r=new FileReader(); r.onload=()=>{ $('skJson').value=String(r.result); fromText(String(r.result)); }; r.readAsText(f); };
+  skSync(); }
 
 // ---- order independence ----
 function otherWay(){
@@ -1800,7 +2204,7 @@ function chip(label,on,fn){ const b=document.createElement('button'); b.textCont
 function setConstraints(C){ st.C=cleanConstraints(C); syncPanel(); }
 function syncPanel(){
   const C=st.C;
-  setPressed($('sz3'),C.size===3); setPressed($('sz12'),C.size===12);
+  setPressed($('sz3'),C.size===3); setPressed($('sz1210'),C.size===12&&C.rows===8); setPressed($('sz12'),C.size===12&&C.rows!==8);
   document.querySelectorAll('[data-wrap]').forEach(b=>setPressed(b,b.dataset.wrap===C.wrap));
   setPressed($('lib13'),C.library===13); setPressed($('lib26'),C.library===26);
   const sh=$('shapeSeg'); sh.innerHTML=''; for(const k of SHAPES) sh.append(chip(SHAPE_LABEL[k],C.shape===k,()=>{ st.C.shape=k; st.C.sea=k==='current'&&st.C.size===3?0:SHAPE_SEA[k]; changed(); }));
@@ -1815,11 +2219,13 @@ function syncPanel(){
   const mc=$('mustChips'); mc.innerHTML=''; for(const m of MUST_IDS) mc.append(chip(m, C.must.includes(m), ()=>{ const s2=new Set(st.C.must); s2.has(m)?s2.delete(m):s2.add(m); st.C.must=[...s2]; changed(); }));
 }
 function changed(){ setConstraints(st.C); clearThumbs(); rebuild(); }
-function setSize(n){ const C=st.C; C.size=n; C.library=n===3?13:26; C.mainRoads=mainRoadCap(n); if(n===3){ C.wrap='none'; C.inlandSize=Math.min(C.inlandSize,1); if(C.shape==='current') C.sea=0; } else if(C.wrap==='none') C.wrap='ew'; }
+function setSize(n,rows){ const C=st.C; C.size=n; C.rows=n; C.library=n===3?13:26; C.mainRoads=mainRoadCap(n); if(n===3){ C.wrap='none'; C.inlandSize=Math.min(C.inlandSize,1); if(C.shape==='current') C.sea=0; } else if(C.wrap==='none') C.wrap='ew';
+  if(n===12 && rows===8){ C.rows=8; C.wrap='ew'; } }
 $('sz3').onclick=()=>{ setSize(3); changed(); };
+$('sz1210').onclick=()=>{ setSize(12,8); changed(); };
 $('sz12').onclick=()=>{ setSize(12); changed(); };
-// a 3 x 3 that wraps is its own neighbour's neighbour, so wrapping is a 12 x 12 setting
-document.querySelectorAll('[data-wrap]').forEach(b=>b.onclick=()=>{ const wr=b.dataset.wrap; if(wr!=='none'&&st.C.size===3) setSize(12); st.C.wrap=wr; changed(); });
+// a 3 x 3 that wraps is its own neighbour's neighbour, so wrapping is a 12 x 12 setting; 12 x 10 is E-W only
+document.querySelectorAll('[data-wrap]').forEach(b=>b.onclick=()=>{ const wr=b.dataset.wrap; if(wr!=='none'&&st.C.size===3) setSize(12); if(wr!=='ew') st.C.rows=st.C.size; st.C.wrap=wr; changed(); });
 $('lib13').onclick=()=>{ st.C.library=13; changed(); };
 $('lib26').onclick=()=>{ st.C.library=26; changed(); };
 
@@ -1830,6 +2236,7 @@ $('describe').onclick=async()=>{
   const btn=$('describe'); btn.disabled=true; $('descMsg').textContent='Thinking…';
   try{ const v=await sampleFn.json(describePrompt(text)); const {C,name}=readReply(v);
     lastDescription=text; lastName=name; if(name) $('archName').value=name;
+    C.sketch=st.C.sketch;   // a description sets the plan inputs; the drawing stays
     setConstraints(C); clearThumbs(); rebuild(); $('descMsg').textContent='Done: the panel shows what it read. Try Find the best.'; }
   catch(e){ const code=e&&e.code;
     if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(code)){ $('describeBox').hidden=true; }
@@ -1867,7 +2274,7 @@ $('findBest').onclick=()=>{
     const th=$('thumbs'); th.innerHTML='';
     for(const T of top){ const b=document.createElement('button'); const cv2=document.createElement('canvas'); drawThumb(T.W,cv2); b.append(cv2);
       const P=T.sc.parts, d=document.createElement('div');
-      d.innerHTML='<b>'+T.sc.total+'</b> · '+T.seed+'<br><span class="k">must '+P.must+' · shares '+P.shares+' · fillers '+P.fillers+' · roads '+P.roads+' · spacing '+P.spacing+' · castle '+P.castle+' · variety '+P.variety+'</span>'
+      d.innerHTML='<b>'+T.sc.total+'</b> · '+T.seed+'<br><span class="k">must '+P.must+' · shares '+P.shares+' · fillers '+P.fillers+' · roads '+P.roads+' · spacing '+P.spacing+' · castle '+P.castle+' · variety '+P.variety+(P.sketch!==undefined?' · sketch '+P.sketch:'')+'</span>'
         +(C.must.length?'<br><span class="k">met: '+(T.sc.met.join(', ')||'none')+'</span>':'');
       b.append(d); b.setAttribute('aria-label','Load '+T.seed+', score '+T.sc.total);
       b.onclick=()=>{ $('seed').value=T.seed; setConstraints(C); rebuild(); };
@@ -1885,7 +2292,8 @@ function renderArchs(){
   if(!archs.length){ box.innerHTML='<div class="k">None yet.</div>'; return; }
   archs.forEach((a,ix)=>{ const row=document.createElement('div'); row.className='arch';
     const nm=document.createElement('div'); nm.className='nm'; nm.innerHTML='<b></b> <span class="k"></span>';
-    nm.querySelector('b').textContent=a.name; nm.querySelector('.k').textContent=a.seed+' · '+(a.constraints&&a.constraints.size||'?')+' × '+(a.constraints&&a.constraints.size||'?')+' · plan '+a.planHash;
+    const cs=a.constraints||{}, dims=cs.size===12&&cs.rows===8?'12 × 10':(cs.size||'?')+' × '+(cs.size||'?');
+    nm.querySelector('b').textContent=a.name; nm.querySelector('.k').textContent=a.seed+' · '+dims+(cs.sketch&&cs.sketch.shapes&&cs.sketch.shapes.length?' · sketch of '+cs.sketch.shapes.length+' shapes':'')+' · plan '+a.planHash;
     const ld=document.createElement('button'); ld.textContent='Load'; ld.onclick=()=>loadArch(a);
     const cp=document.createElement('button'); cp.textContent='Copy JSON'; cp.onclick=()=>copyArch(a);
     const del=document.createElement('button'); del.textContent='Delete'; del.onclick=()=>{ archs.splice(ix,1); storeArchs(); renderArchs(); };
@@ -1941,17 +2349,21 @@ function pollPad(t){ const pads=navigator.getGamepads?navigator.getGamepads():[]
   requestAnimationFrame(pollPad); }
 window.addEventListener('gamepadconnected',()=>{ if(!padT){ padT=1; requestAnimationFrame(pollPad); } });
 // theme follows the page
-const mq=window.matchMedia('(prefers-color-scheme: dark)'); const retheme=()=>{ readColors(); draw(); updateHud(); };
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); const retheme=()=>{ readColors(); SKV.statKey=''; draw(); updateHud(); };
 if(mq.addEventListener) mq.addEventListener('change',retheme);
 new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-window.addEventListener('resize',()=>draw());
+window.addEventListener('resize',()=>{ draw(); scheduleSketch(); });
 if(!archStore) $('archStore').textContent='not kept: this browser blocks storage';
 // a view from the address, for stills: #size=3&seed=valley-1&at=dx,dy (chunks from the spawn)&face=spire|sea|<degrees>
 // &know=7&haze=1.98&eye=10&lm=own|same&lmAt=0.98&seen=0&tint=1&thin=1&sea=0&shot=1 (shot puts the PNG's data URL in #hzShot)
+// &size=12x10, &sketch=lake-district|mountain-spine|default-12x10 (a sample, which sets its world's size),
+// &sview=all|sketch|squares|land, &sksel=x,y (a world square to select in the sketch's list)
 const HP=new URLSearchParams(location.hash.slice(1));
-if(HP.get('size')==='3') setSize(3);
+if(HP.get('size')==='3') setSize(3); else if(HP.get('size')==='12x10') setSize(12,8);
+if(HP.get('sketch') && SKETCH_SAMPLES[HP.get('sketch')]){ const Ks=sampleSketch(HP.get('sketch')); skWorldFor(Ks); st.C.sketch=Ks; }
+if(['all','sketch','squares','land'].includes(HP.get('sview'))) SKV.view=HP.get('sview');
 if(HP.get('seed')) $('seed').value=HP.get('seed').slice(0,80);
-hzBuildPanel(); syncPanel(); renderArchs(); readColors(); buildLegend(); rebuild();
+hzBuildPanel(); skBuildPanel(); syncPanel(); renderArchs(); readColors(); buildLegend(); rebuild();
 if([...HP.keys()].length){ stopPlay(); finishIfNeeded();
   const num=(k,lo,hi)=>{ const v=parseFloat(HP.get(k)); return isFinite(v)?Math.max(lo,Math.min(hi,v)):null; };
   const at=(HP.get('at')||'').split(',').map(Number); if(at.length===2&&at.every(isFinite)){ for(let s=0;s<Math.abs(at[0]);s++) moveBy(Math.sign(at[0]),0); for(let s=0;s<Math.abs(at[1]);s++) moveBy(0,Math.sign(at[1])); }
@@ -1959,6 +2371,7 @@ if([...HP.keys()].length){ stopPlay(); finishIfNeeded();
   if(HP.get('lm')==='same'||HP.get('lm')==='own') HZ.lm=HP.get('lm');
   for(const k of ['tint','thin','sea','fade']) if(HP.has(k)) HZ[k]=HP.get(k)==='1';
   HZ.sync(); draw(); updateHud();
+  const ss=(HP.get('sksel')||'').split(',').map(Number); if(ss.length===2&&ss.every(Number.isInteger)){ const i=W.idx(ss[0],ss[1]); if(i>=0){ SKV.sel=i; skShowInfo(); } }
   const face=HP.get('face')||'';
   if(face==='sea') faceSea();
   else if(face && isFinite(+face)) setHeading(+face);
