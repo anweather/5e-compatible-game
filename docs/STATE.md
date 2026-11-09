@@ -30,8 +30,6 @@ Landed 2026-11-09 (all on dev):
 - Numbers now: EditMode 1862 on the PC; valley smoke ~11.8 ms mean; the nine's farringclip ~31 ms mean, 38 ms p95.
 
 Waiting:
-- **Issues #170 #173 #164 #55 #83 are fixed but open:** `gh issue close` was refused by this session's permission
-  check. Andrew closes them or allows it.
 - **The Mac's Editor hung at 06:08 MST** (pid 1031, likely a hidden save-scene modal after building the yard with
   `Temp/map` = nine); it asked Andrew to look. `apikey-tests-mac` is written, not compiled. Rule for briefs: build the
   yard on the valley; point `Temp/map` at the nine only for the probe run.
@@ -45,7 +43,9 @@ Waiting:
 | **SpellValleyMac** (Remote Control; SendMessage, no read receipts) | A second Unity Editor: probes, sweeps, bisects, macOS and Linux builds. Self-lands with `land.sh auto ... --compiled`. Commit hook on (`Worker: mac`) |
 | **u2** (Linux VM, Max) | Core, rules, tools, data, measuring under dotnet. Takes `Needs: core` briefs from `docs/handoffs/briefs/queue/`, or `tools/workers/start.cmd u2 <brief path>`. Its Unity-C# branches come to the PC to compile |
 
-Right now: **the PC** idle. **u2** idle (queue empty). **The Mac** on `smoke-nine` (smoke's casts on the nine fail
+Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
+
+Right now: **the PC** on the Scripts asmdef measurement (Next 1). **u2** idle (queue empty). **The Mac** on `smoke-nine` (smoke's casts on the nine fail
 cast_fire-bolt, fire_started, levitate_lifted), `apikey-tests-mac` (ApiKeyTests fail 8/8 on the Mac; make them
 hermetic), then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
 2026-11-09.
