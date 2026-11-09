@@ -41,6 +41,19 @@ Each entry has:
 
 ## Decided
 
+### J-085: Same biomes side by side: the patchwork (2026-11-09)
+
+- **Asked:** Andrew: why can't similar biomes sit side by side? Two or three forests together, or a big desert,
+  would quilt less. The lead: the spacing rule (J-080: no two copies of a square template within 3 world squares,
+  each repeat weighed down) is about templates, but each template carries one anchor biome and there are 13, so a
+  big one-biome region can't fill (the world sketch paper measured it: 41% of drawn world squares got their biome).
+- **Also comes up when:** template library size, world sketch in the core, latitude bands, any "looks like a quilt"
+  report.
+- **Answer (Andrew):** split biome from template. The biome comes from the world sketch and latitude across world
+  squares, so forests and deserts can span many; the spacing rule stays, for a template's village, landmarks and
+  layout only. Queued for u2 as `biome-from-sketch`, after `world-12x10-plan`.
+- **Revisited:** 0 (J-080's repeat rule narrowed, not reversed).
+
 ### J-084: Start the 12 x 10 world's first proof now? (2026-11-09)
 
 - **Asked:** start the cheap proof (u2: the 12 x 10 EW plan and a known ring over every chunk; the PC: three
