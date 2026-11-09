@@ -422,7 +422,8 @@ public partial class SpellCaster : MonoBehaviour
         return v.sqrMagnitude > 1e-4f ? v : Vector3.forward;
     }
 
-    float FlightSeconds(CastCommand cast)
+    /// <summary>Seconds from the cast to the spell landing (the gesture's wind-up, then its flight): when the core takes it.</summary>
+    public float FlightSeconds(CastCommand cast)
     {
         var look = LookOf(cast.Spell);
         // The gesture's wind-up comes first: the spell leaves the hands at its release (PlayCastEffect).
