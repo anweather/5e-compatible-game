@@ -50,7 +50,7 @@ namespace Chem
     public sealed partial class ChunkGen
     {
         /// <summary>The generator's version, in the map's input hash: a change that alters any chunk is a new version.</summary>
-        public const int Version = 6;
+        public const int Version = 7;
         public const int Size = WorldPlan.ChunkCells, Square = WorldPlan.SquareCells;
 
         // Legend characters (ChemGrid.Legend).
@@ -81,7 +81,8 @@ namespace Chem
 
         /// <summary>
         /// ap generator for the map of <paramref name="w"/> × <paramref name="h"/> plan squares from (<paramref name="originX"/>,
-        /// <paramref name="originY"/>), with the biome rows of <paramref name="biomes"/> anchored by the plan's templates.
+        /// <paramref name="originY"/>), its land's biomes from the world's field over the plan (<see cref="WorldBiomes"/>), with the
+        /// rows of <paramref name="biomes"/>.
         /// </summary>
         public ChunkGen(WorldPlan plan, BiomeTable biomes, PinnedSquare pinned, int originX, int originY, int w, int h)
         {
@@ -96,8 +97,8 @@ namespace Chem
             if (WrapX && (originX != 0 || w != plan.Grid.W))
                 throw new ArgumentException($"a map that wraps is its plan's whole width, {plan.Grid.W} squares from square 0, not {w} from {originX}");
             seed = plan.Seed;
-            table = Anchored(biomes, plan);
-            Field = new BiomeField(table, seed);
+            Field = WorldBiomes.Field(biomes, plan);
+            table = Field.Table;
             SetUpLand();
             SetUpSpawns();
             landmarkRows = new LandmarkRows[plan.Landmarks.Count];
@@ -116,35 +117,6 @@ namespace Chem
         /// <summary>ap plan site (cells within square <paramref name="i"/>) as a map cell.</summary>
         public (int x, int y) MapCell(int i, int siteX, int siteY) =>
             ((Plan.Grid.X(i) - OriginX) * Square + siteX, (Plan.Grid.Y(i) - OriginY) * Square + siteY);
-
-        // The biome rows with the plan's anchors: each square's template biome, if it's a land biome that's on.
-        static BiomeTable Anchored(BiomeTable biomes, WorldPlan plan)
-        {
-            var g = plan.Grid;
-            var layout = new int[g.W, g.H];
-            for (int i = 0; i < plan.Count; i++)
-            {
-                int b = biomes.IndexOf(plan.TemplateAt(i).Biome ?? "");
-                bool land = b >= 0 && biomes.Rows[b].On && !biomes.Rows[b].Ocean && plan.Band[i] > 0 && plan.Wall[i] == 0;
-                layout[g.X(i), g.H - 1 - g.Y(i)] = land ? b : -1;
-            }
-            var t = new BiomeTable
-            {
-                Seed = plan.Seed,
-                RegionCells = biomes.RegionCells,
-                WarpCells = biomes.WarpCells,
-                ClimateCells = biomes.ClimateCells,
-                BlendCells = biomes.BlendCells,
-                ShapeBlendCells = biomes.ShapeBlendCells,
-                SquareCells = biomes.SquareCells,
-                ClimateInfluence = biomes.ClimateInfluence,
-                AnchorBias = biomes.AnchorBias,
-                WrapCells = g.WrapX ? g.W * Square : 0,
-                Layout = layout,
-            };
-            t.Rows.AddRange(biomes.Rows);
-            return t;
-        }
 
         static char BareChar(string terrain)
         {

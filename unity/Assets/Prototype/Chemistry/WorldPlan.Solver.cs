@@ -258,7 +258,16 @@ namespace Chem
             var t = op.Template;
             long w = Math.Max(1, op.Weight);
             if (!t.Repeats && used.TryGetValue(t.Id, out int k)) w >>= 2 * Math.Min(k, 15);
-            if (t.Biome != null && LatitudePeak.TryGetValue(t.Biome, out long peak) && plan.Inputs.Latitude > 0)
+            int row = plan.BiomeCounts?[x] != null && t.Biome != null ? lib.Biomes.IndexOf(t.Biome) : -1;
+            if (row >= 0)
+            {
+                // The world's biome field says what the land is; a template of the biome it puts under more of the square
+                // weighs more (the paper's 0.02 + 4 × the share drawn as the template's biome).
+                const long one = BiomeMath.One;
+                long fit = one / 50 + 4 * one * plan.BiomeCounts[x][row] / (WorldPlan.ChunksPerSquare * WorldPlan.ChunksPerSquare);
+                w = w * fit / one;
+            }
+            else if (plan.BiomeCounts == null && t.Biome != null && LatitudePeak.TryGetValue(t.Biome, out long peak) && plan.Inputs.Latitude > 0)
             {
                 const long one = BiomeMath.One;
                 long s = plan.Inputs.Latitude * one / 100;

@@ -44,7 +44,7 @@ namespace Chem.Tests
         static StreamingParams Streaming => ChemistryTests.R.Sim.Streaming;
 
         // The plan's golden: a change that alters it is a new WorldPlan.Version, or a change to the files it reads.
-        const uint PlanGolden = 0x3e847c28u;
+        const uint PlanGolden = 0x9a65cab9u;
 
         [Test]
         public void TheWorldFileSaysItsShape()
