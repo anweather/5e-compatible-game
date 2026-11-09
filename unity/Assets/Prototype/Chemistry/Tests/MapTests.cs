@@ -242,5 +242,22 @@ namespace Chem.Tests
             Assert.That((x, z), Is.EqualTo((0f, 0f)), "the middle cell at world (0, 0)");
             Assert.That(layout.IsHighRes(13, 13), Is.False, "no full detail when the map names none");
         }
+
+        // The nine pins the valley at square [0, 2]: its chunk terrains are the valley's own, chunk for chunk, and it draws
+        // them in the valley's full detail, so the valley's ground pack lays into it as it is (PinnedGround).
+        [Test]
+        public void AGeneratedMapTakesItsPinnedMapsFullDetailWhereItIs()
+        {
+            string nine = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "nine");
+            var pins = GeneratedMap.PinnedSquares(nine);
+            Assert.That(pins.Count, Is.EqualTo(1));
+            Assert.That((Path.GetFileName(pins[0].dir), pins[0].x, pins[0].y), Is.EqualTo(("valley", 0, 1152)));
+            var valley = MapFile.Load(pins[0].dir);
+            var file = MapFile.Load(nine);
+            Assert.That(MapFile.ChunkShift(file.H, valley.H, pins[0].x, pins[0].y), Is.EqualTo((0, 0)), "the valley's chunk (I, J) is the nine's (I, J)");
+            Assert.That(file.FullDetail, Is.EqualTo(valley.FullDetail));
+            Assert.That(MapFile.ChunkShift(1728, 576, 576, 0), Is.EqualTo((9, 18)), "a valley at square [1, 0], the north edge");
+            Assert.That(GeneratedMap.PinnedSquares(ChemistryTests.WorldDir()), Is.Empty, "the valley pins nothing");
+        }
     }
 }

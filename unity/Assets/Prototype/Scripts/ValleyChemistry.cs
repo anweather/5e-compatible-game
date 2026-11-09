@@ -123,13 +123,13 @@ public partial class ValleyChemistry : MonoBehaviour
     GroundBuilder builder;
 
     // The builder the terrains were made with (the map's ground/), or in land mode, or for a map with none, one from the
-    // map's land and this world's cells.
+    // map's land and this world's cells, with any pinned map's own ground laid in (PinnedGround).
     GroundBuilder BuiltGround(World world)
     {
         if (terrains.Builder != null) return terrains.Builder;
         var template = terrains.template;
         var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
-        return new GroundBuilder(GroundFromLand.Build(new GroundFromLand.Source
+        var pack = GroundFromLand.Build(new GroundFromLand.Source
         {
             World = world,
             Land = land,
@@ -142,7 +142,14 @@ public partial class ValleyChemistry : MonoBehaviour
             TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
             DetailResolution = template.detailResolution,
             Biomes = BiomeGround.For(ChemGrid.MapSource),
-        }), template, layout.ChunkSize);
+        });
+        // A generated map's pinned squares (the nine's valley) draw their own map's shaped ground, as that map does.
+        if (GroundSwitch.Mode == GroundSwitch.On)
+        {
+            int laid = PinnedGround.Lay(pack, layout, ChemGrid.MapSource);
+            if (laid > 0) Debug.Log($"PINNED GROUND: {laid} chunks from the pinned map's ground/, the seam eased over {PinnedGround.SeamCells} cells");
+        }
+        return new GroundBuilder(pack, template, layout.ChunkSize);
     }
 
     /// <summary>The rocks on stamped land; null until the ground is bound.</summary>

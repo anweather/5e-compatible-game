@@ -59,6 +59,22 @@ namespace Chem
         /// <summary>A known ring on this map, sized by the rules' streaming.sight and streaming.know.</summary>
         public KnownRing KnownRing(StreamingParams streaming) => new KnownRing(Gen, streaming);
 
+        /// <summary>
+        /// The maps a world file pins, without solving its plan: each one's folder (world/maps/id) and the map cell its
+        /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY). Empty for a
+        /// map that isn't generated.
+        /// </summary>
+        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir)
+        {
+            var found = new List<(string dir, int x, int y)>();
+            string path = Path.Combine(mapDir, MapFile.FileName);
+            if (!File.Exists(path) || !(JObject.Parse(File.ReadAllText(path))[Key] is JObject o) || !(o["pinned"] is JArray pins)) return found;
+            string worldDir = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
+            foreach (var pin in pins.OfType<JObject>())
+                found.Add((Path.Combine(worldDir, "maps", (string)pin["map"]), (int)pin["square"][0] * WorldPlan.SquareCells, (int)pin["square"][1] * WorldPlan.SquareCells));
+            return found;
+        }
+
         /// <summary>Whether the map in this folder is made from a world file.</summary>
         public static bool IsGenerated(string mapDir)
         {
