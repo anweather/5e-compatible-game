@@ -7,6 +7,7 @@ using UnityEngine;
 
 // RowMesher's shapes, without a world; and that the rows the world is made with stand on the valley
 // as it was baked, so drawing buildings from rows can't move a village or a cabin.
+[OnTheValley]
 public class RowMesherTests
 {
     const float Tolerance = 0.01f;

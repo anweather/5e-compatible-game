@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Unity.Mathematics;
 
 // The valley's jobs over its real land: the road is why anyone takes it.
+[OnTheValley]
 public class FolkJobsTests
 {
     const float CellMetres = 1.5f, Walk = 1.4f;

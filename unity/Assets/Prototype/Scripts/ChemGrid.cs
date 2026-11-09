@@ -473,11 +473,42 @@ public partial class ChemGrid : MonoBehaviour
     {
         get
         {
+            if (testMap != null) return testMap;
             if (chosenMap != null) return chosenMap;
             var args = System.Environment.GetCommandLineArgs();
             if (System.Array.IndexOf(args, "-map") >= 0 || !Application.isEditor || !File.Exists(EditorMapFile)) return MapIdentity.Named(args);
             string named = File.ReadAllText(EditorMapFile).Trim();
             return named.Length > 0 ? named : GameFolders.DefaultMap;
+        }
+    }
+
+    // An EditMode fixture's map in place of the Editor's own (OnMap): one that reads the valley's data says so.
+    static string testMap;
+
+    /// <summary>
+    /// For an EditMode fixture (OnTheValleyAttribute): the Editor's folders are this map's until the scope ends, whatever
+    /// Temp/map names, so a test of the valley's data passes with the Editor pointed at another map.
+    /// </summary>
+    public static System.IDisposable OnMap(string id)
+    {
+        var before = testMap;
+        testMap = id;
+        ValleyChemistry.ForgetLand();
+        return new MapScope(before);
+    }
+
+    sealed class MapScope : System.IDisposable
+    {
+        readonly string before;
+        bool ended;
+        public MapScope(string before) => this.before = before;
+
+        public void Dispose()
+        {
+            if (ended) return;
+            ended = true;
+            testMap = before;
+            ValleyChemistry.ForgetLand();
         }
     }
 
