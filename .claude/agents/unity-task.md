@@ -15,7 +15,9 @@ message, so the work stays here and only the result goes back.
 - After any switch or merge: run `AssetDatabase.Refresh()` (`unity command script eval -- --code 'UnityEditor.AssetDatabase.Refresh()'`), then wait until
   `unity command console status --result-only` shows `"compiling": false`. Never probe or test during a
   recompile, because Play mode floods with errors.
-- If the Editor isn't open, open it on host-ux. Close any Editor you opened yourself when you're done (RAM is tight).
+- If the Editor isn't open, open it on host-ux **by full path** (`unity open C:\Users\Andrew\Development\5e-compatible-game\.claude\worktrees\host-ux\unity`):
+  `unity open unity` resolves by Hub name to the main checkout instead (2026-11-08). Close any Editor you opened
+  yourself when you're done (RAM is tight).
 
 ## How you work
 
