@@ -1,0 +1,17 @@
+{
+  "about": "The 12 x 10 world (docs/design/world-12x8-scope.md, J-083, J-084): 12 world squares east-west, 8 rows of land with an ice row north and a desert row south (the plan's wall rows), 6912 x 5760 cells, 108 x 90 chunks, and east joins west (\"wrap\": \"ew\"). A world file like the nine's (\"generated\": the seed, the size in world squares, wall rows included, the generator's version, the squares pinned to a map folder); a world that wraps is its whole plan, so the valley is pinned at the plan's own valley square, [0, 5]. Too big to bake whole (about 9-10 GB of cells): \"bake\": false, so it's planned and known only (GeneratedMap.EnsureBaked refuses it) until the sparse World. Spawn is the valley's moved; expects are read from the known ring over every chunk (9 x 9 samples a chunk), not a bake.",
+  "id": "world-12x10",
+  "name": "The Wide World",
+  "size": [6912, 5760],
+  "seaLevel": -4,
+  "spawn": [292, 3208],
+  "expects": { "landShare": 89, "highest": 9886, "lowest": -320 },
+  "generated": {
+    "seed": "valley-1",
+    "squares": [12, 10],
+    "wrap": "ew",
+    "bake": false,
+    "generator": 6,
+    "pinned": [ { "map": "valley", "square": [0, 5] } ]
+  }
+}

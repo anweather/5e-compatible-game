@@ -90,16 +90,21 @@ public class FarMeshesTests
     }
 
     [Test]
-    public void TheSeaPlaneLeavesTheMapOpen()
+    public void TheSeaPlaneOverTheMapIsMarkedToClearNearTheEye()
     {
         var d = FarMeshes.SeaFrame(-100f, -50f, 300f, 250f, 5000f, -0.5f, Color.blue);
+        float over = 0f;
         for (int t = 0; t < d.Triangles.Count; t += 3)
         {
             var c = (d.Vertices[d.Triangles[t]] + d.Vertices[d.Triangles[t + 1]] + d.Vertices[d.Triangles[t + 2]]) / 3f;
-            Assert.That(c.x < -100f || c.x > 300f || c.z < -50f || c.z > 250f, $"triangle {t / 3} is over the map at {c}");
+            bool overTheMap = !(c.x < -100f || c.x > 300f || c.z < -50f || c.z > 250f);
+            for (int k = 0; k < 3; k++)
+                Assert.That(d.Colors[d.Triangles[t + k]].a == FarMeshes.UnderTheMap, Is.EqualTo(overTheMap), $"triangle {t / 3} at {c}: marked only over the map");
             var n = Vector3.Cross(d.Vertices[d.Triangles[t + 1]] - d.Vertices[d.Triangles[t]], d.Vertices[d.Triangles[t + 2]] - d.Vertices[d.Triangles[t]]);
             Assert.That(n.y, Is.GreaterThan(0f), "it faces up (clockwise from above)");
+            if (overTheMap) over += n.y / 2f;
         }
+        Assert.That(over, Is.EqualTo(400f * 300f).Within(1f), "the whole map is under it, past the known ring");
         Assert.That(d.Vertices.All(v => Mathf.Approximately(v.y, -0.5f)));
     }
 }

@@ -37,6 +37,7 @@ namespace Chem
             public long Base, Relief; // land units × Q
             public int Kind, Lattice, Octaves, Salt;
             public long Wx, Wy; // the wind's direction in Q16, for dunes
+            public long PeriodX, PeriodY; // the cells its noise repeats over in its own axes, round a world that wraps
         }
 
         static readonly string[] Kinds = { "hills", "ridged", "dunes" };
@@ -47,10 +48,28 @@ namespace Chem
         // Sixteen wind directions, (sin, −cos) in Q16, so a dune's crest needs no float.
         static readonly int[] WindSin = { 0, 25080, 46341, 60547, 65536, 60547, 46341, 25080, 0, -25080, -46341, -60547, -65536, -60547, -46341, -25080 };
 
+        // Cells round the world east-west where it wraps (0 where it doesn't): what every noise lattice repeats over.
+        int Period => WrapX ? Plan.Grid.W * Square : 0;
+
+        // The periods of noise read at (across, along / div) for a direction (dx, dy) in Q16, Period along x: an
+        // axis-aligned direction (all a wrapped world allows) puts x in one of them.
+        (long across, long along) Periods(long dx, long dy, int div)
+        {
+            if (!WrapX) return (0, 0);
+            long across = dx != 0 ? Period : 0, along = dy != 0 ? Period / div : 0;
+            return (across, along);
+        }
+
+        // a / d, rounding down where the world wraps (so a point and its copy a world round agree bit for bit), toward
+        // zero where it doesn't (as it always has).
+        long Div(long a, long d) => WrapX ? BiomeMath.FloorDiv(a, d) : a / d;
+
         void SetUpLand()
         {
             SetUpRim();
             int grain = (int)(WorldHash.Hash4(seed, SaltMassif, 0, 0) & 15);
+            // Round a world that wraps, ranges run along an axis: a slanted grain's noise can't repeat round it.
+            if (WrapX) grain &= 12;
             grainX = WindSin[grain];
             grainY = WindSin[(grain + 12) & 15];
             shapes = new Shape[table.Rows.Count];
@@ -59,6 +78,7 @@ namespace Chem
                 var o = table.Rows[b].Shape;
                 string kind = (string)o?["kind"] ?? "hills";
                 int wind = (int)Math.Round(((double?)o?["wind"] ?? 0) / 22.5, MidpointRounding.AwayFromZero) & 15;
+                if (WrapX) wind &= 12; // dunes too, as the grain
                 shapes[b] = new Shape
                 {
                     Base = (long)Math.Round(((double?)o?["baseElevation"] ?? 0) * PerMetre * Q, MidpointRounding.AwayFromZero),
@@ -70,6 +90,8 @@ namespace Chem
                     Wx = WindSin[wind],
                     Wy = WindSin[(wind + 12) & 15],
                 };
+                var sh = shapes[b];
+                (sh.PeriodX, sh.PeriodY) = sh.Kind == 2 ? Periods(sh.Wx, sh.Wy, 3) : (Period, 0L);
             }
             SetUpPaths();
         }
@@ -181,6 +203,7 @@ namespace Chem
         {
             if (Pinned == null) return g;
             int x0 = PinnedX, y0 = PinnedY;
+            x = x0 + Square / 2 + Dx(x, x0 + Square / 2);
             int cx = Math.Max(x0, Math.Min(x0 + Square - 1, x)), cy = Math.Max(y0, Math.Min(y0 + Square - 1, y));
             long dx = x - cx, dy = y - cy;
             if (dx == 0 && dy == 0) return g;
@@ -270,7 +293,7 @@ namespace Chem
         long BandHeight(int sx, int sy)
         {
             var g = Plan.Grid;
-            int i = sx >= 0 && sy >= 0 && sx < g.W && sy < g.H ? g.Index(sx, sy) : -1;
+            int i = (g.WrapX || (sx >= 0 && sx < g.W)) && sy >= 0 && sy < g.H ? g.Index(sx, sy) : -1;
             var heights = Plan.Library.BandHeights;
             int metres = heights[1];
             if (i >= 0 && Plan.Band[i] > 0) metres = Plan.Wall[i] != 0 || Plan.Band[i] >= heights.Length ? WallMetres : heights[Plan.Band[i]];
@@ -293,13 +316,15 @@ namespace Chem
             // The crests run along where the noise crosses zero: stretched three times along the world's grain (a seeded
             // direction) and warped, so they run on as ranges and wander instead of closing into rings. The finer crests
             // ride on the coarse ones (spurs off a ridge), not on the valleys between.
-            long wx = xq + BiomeMath.Centred(seed, SaltMassif + 3, xq, yq, 340) * 90, wy = yq + BiomeMath.Centred(seed, SaltMassif + 4, xq, yq, 340) * 90;
-            long across = (wx * grainX + wy * grainY) / One, along = (wy * grainX - wx * grainY) / One / 3;
-            long coarse = Crest(BiomeMath.Centred(seed, SaltMassif, across, along, 200));
-            long fine = Crest(BiomeMath.Centred(seed, SaltMassif + 1, across, along * 3 / 2, 90)) * coarse / One;
-            long finest = Crest(BiomeMath.Centred(seed, SaltMassif + 5, wx, wy, 45)) * fine / One;
+            long p = Period;
+            var (pa, pl) = Periods(grainX, grainY, 3);
+            long wx = xq + BiomeMath.Centred(seed, SaltMassif + 3, xq, yq, 340, p, 0) * 90, wy = yq + BiomeMath.Centred(seed, SaltMassif + 4, xq, yq, 340, p, 0) * 90;
+            long across = (wx * grainX + wy * grainY) / One, along = Div((wy * grainX - wx * grainY) / One, 3);
+            long coarse = Crest(BiomeMath.Centred(seed, SaltMassif, across, along, 200, pa, pl));
+            long fine = Crest(BiomeMath.Centred(seed, SaltMassif + 1, across, Div(along * 3, 2), 90, pa, pl * 3 / 2)) * coarse / One;
+            long finest = Crest(BiomeMath.Centred(seed, SaltMassif + 5, wx, wy, 45, p, 0)) * fine / One;
             long ridge = (4 * coarse + 3 * fine + finest) / 8;
-            long broad = BiomeMath.Centred(seed, SaltMassif + 2, xq, yq, 430);
+            long broad = BiomeMath.Centred(seed, SaltMassif + 2, xq, yq, 430, p, 0);
             // 0.25 + 0.85 ridge + 0.3 broad: from nothing in a deep saddle to 1.4 times the uplift on a summit.
             long shape = One / 4 + ridge * 85 / 100 + broad * 3 / 10;
             long lifted = Math.Max(0, above * shape / One);
@@ -319,13 +344,13 @@ namespace Chem
             {
                 long across = (xq * sh.Wx + yq * sh.Wy) / One, along = (yq * sh.Wx - xq * sh.Wy) / One;
                 xq = across;
-                yq = along / 3;
+                yq = Div(along, 3);
             }
             long sum = 0, amps = 0, amp = One;
             int lattice = sh.Lattice;
             for (int o = 0; o < sh.Octaves; o++)
             {
-                long n = BiomeMath.Centred(seed, sh.Salt + o, xq, yq, Math.Max(4, lattice));
+                long n = BiomeMath.Centred(seed, sh.Salt + o, xq, yq, Math.Max(4, lattice), sh.PeriodX, sh.PeriodY);
                 if (sh.Kind != 0)
                 {
                     long r = One - Math.Abs(n);
@@ -346,7 +371,7 @@ namespace Chem
         {
             var grid = Plan.Grid;
             int sx = (int)BiomeMath.FloorDiv(px, Square), sy = (int)BiomeMath.FloorDiv(py, Square);
-            if (sx < 0 || sy < 0 || sx >= grid.W || sy >= grid.H) return -SeaRamp * One;
+            if ((!grid.WrapX && (sx < 0 || sx >= grid.W)) || sy < 0 || sy >= grid.H) return -SeaRamp * One;
             int i = grid.Index(sx, sy);
             if (Plan.Band[i] == 0) return -SeaRamp * One;
             var c = Plan.Coasts[i];
@@ -378,6 +403,8 @@ namespace Chem
             if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) return false;
             if (Shore(x + OriginX * Square, y + OriginY * Square) < BeachCells * 2 * One) return false;
             foreach (var s in segments)
+                if (s.River && Distance(s, x, y, out _, out _, out _, out long half) < half + 3 * One) return false;
+            foreach (var (_, s) in seamCopies)
                 if (s.River && Distance(s, x, y, out _, out _, out _, out long half) < half + 3 * One) return false;
             return !IsPinned(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
         }

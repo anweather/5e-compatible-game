@@ -45,9 +45,9 @@ Waiting:
 
 Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
 
-Right now: **the PC** idle. Phase 8's two-peer player build (b9aad8e, 2026-11-09): the joiner followed the host to the Chain, players=2, ~3 min all desync=False, host 6.5 ms mean / joiner 7.5 ms; a changed copy of the Chain is refused (wording has a doubled "The", and the log prints it twice). Not checked: a cast seen on both sides (a full-screen Windows Security window, PickerHost, takes every click; needs Andrew or a scripted cast). Port is fixed at 7777 (no port flag). `map-switch-view` landed 171ac83a: the switch already existed (`ChemGrid.PlayMap` reloads the scene on host or join, not while online); added `mapswitch` (no leaks; ~3.8 s a switch, one 2.6 s frame) and `online` with the host on the Chain (checksums agree); clip `map-switch-to-drowned-chain.mp4` (sent). Later: shorten the 2.6 s frame; the Chain has no crate or glow ball, so those checks skip there. `drowned-chain-core` landed 9cb66049 (baked land, 8 tests, EditMode 1870 on the PC). `tier-dials` landed 99692d2c: `FarRing.SetView(drawn, known)`, player flags `-drawn N` / `-known N`, active as a rule switch, `tools/probe.sh tiersweep` (nine only); on the nine no dial moved frame time past noise (today 2/4/7: 24.2 ms mean, 30.2 p95; table in world-12x8-scope.md "Measured"). Per-setting memory needs a player build. **u2** on `world-12x10-plan` (briefed 09:09; J-083, J-084). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
+Right now: **the PC** on `perf-profile-1` (the 60 fps pass, step 1: profile the valley and the nine in the Editor and a player build, write `docs/perf/2026-11-09-profile.md`, no fixes yet). Phase 8's two-peer player build (b9aad8e, 2026-11-09): the joiner followed the host to the Chain, players=2, ~3 min all desync=False, host 6.5 ms mean / joiner 7.5 ms; a changed copy of the Chain is refused (wording has a doubled "The", and the log prints it twice). Not checked: a cast seen on both sides (a full-screen Windows Security window, PickerHost, takes every click; needs Andrew or a scripted cast). Port is fixed at 7777 (no port flag). `map-switch-view` landed 171ac83a: the switch already existed (`ChemGrid.PlayMap` reloads the scene on host or join, not while online); added `mapswitch` (no leaks; ~3.8 s a switch, one 2.6 s frame) and `online` with the host on the Chain (checksums agree); clip `map-switch-to-drowned-chain.mp4` (sent). Later: shorten the 2.6 s frame; the Chain has no crate or glow ball, so those checks skip there. `drowned-chain-core` landed 9cb66049 (baked land, 8 tests, EditMode 1870 on the PC). `tier-dials` landed 99692d2c: `FarRing.SetView(drawn, known)`, player flags `-drawn N` / `-known N`, active as a rule switch, `tools/probe.sh tiersweep` (nine only); on the nine no dial moved frame time past noise (today 2/4/7: 24.2 ms mean, 30.2 p95; table in world-12x8-scope.md "Measured"). Per-setting memory needs a player build. **u2** on `biome-from-sketch` (J-085). `world-12x10-plan` landed b817ca53 (12 x 10 EW plan golden 0x3e847c28, generator 6, KnownRing 2.0 s over 9720 chunks, seam continuous; `ChemGrid.Maps` leaves out `"bake": false` maps; pictures `docs/design/world-12x10/`; #176 the sea floor step). A helper on `shores-paper` (marsh, deltas, lakes, gradual coasts; Andrew: the water still reads square). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
 cast_fire-bolt, fire_started, levitate_lifted), apikey-tests-mac landed e1b442f1 (EditMode 1858 + 1 skip on the Mac);
-smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), then `things-nine` (smoke things_spawned on the nine: 5-7 things off their cells in chunks (2,23) and (4,23); no issue filed, `gh issue create` was refused), all told
+smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), far-looks landed 85180586; now `things-nine`: the nine draws the pinned valley from its land (GroundFromLand), not the valley's ground/ pack, so the valley's things roll on a different ground; fix (a): pinned chunks draw from the pinned map's ground/, the seam joined on the generated side (#175; #174 likely the EditMode runner's scene restore during Play, commented), all told
 2026-11-09.
 
 - The watcher (`tools/workers/bridge-watch.sh`, one only) pauses u2 below 1.5 GB free and resumes it at 6 GB. While
@@ -67,14 +67,19 @@ smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's look
 - Never kill a Unity Editor; open host-ux by full path; leave pid 22552 (Hub).
 - Deleting unmerged branches, force-pushing and changing the plan are Andrew's. Never type sign-ins or tokens.
 - Controller first. The TS sandbox is frozen. Caves deferred. Ask one question at a time, logged in JUDGMENT_CALLS.
-- GitHub issues are the lead's: file with a `Discovery-Cost:` line, close when fixed. No weekly CI review.
+- GitHub issues are the lead's: file with a `Discovery-Cost:` line, comment, close when fixed (Andrew allowed `gh issue create`/`comment`/`close`, 2026-11-09). No weekly CI review.
 
 ## Next, in order
 
 (The Scripts runtime asmdef was measured 2026-11-09 and dropped: 6% faster, J-081.)
-1. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
-   there is one; the view on the PC.
-2. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
+(Maps phase 8 is done but the cast seen on both peers in a player build: blocked by a Windows Security window.)
+1. **A profile and optimisation pass for 60 fps** (16.7 ms mean and p95; Andrew 2026-11-09), once far-looks and the
+   12 x 10 plan settle. Profile the nine and the valley in a player build and the Editor (the Editor shows farringclip
+   ~31 ms, tiersweep 22-28 ms; a player build on the Chain ran 6.5-7.5 ms), find the top costs, fix them. far-looks
+   (landed 85180586) ran farringclip at 32.6 ms mean but 51.0 ms p95 (was ~38), one run: check that first. Also a
+   long slanted strip under Old Grumbler's far silhouette (farringclip frame 700), not known whether new.
+2. **Biome from the world** (`biome-from-sketch`, queued for u2 after `world-12x10-plan`; J-085).
+3. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
 Also open: the world sketch in the core (paper landed 577a9533, `tools/world-paper/` World sketch panel; world-squares.md "Draw first": the sketch should drive the land's biome, ~2-3 u2 days, not briefed); a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
 of the volcano is hidden by a nearer hill (a viewpoint or landmark placement question, not briefed).
 

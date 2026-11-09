@@ -79,6 +79,31 @@ namespace Chem.Tests
             }
         }
 
+        // The far ring paints each sample by its own biome (FarMeshes.Known), so a biome's edge shows where it runs, not as
+        // a whole chunk of one colour: a flat tundra chunk drew as a white wedge against its neighbours.
+        [Test]
+        public void EverySampleNamesItsBiomeAndTwoChunksAgreeWhereTheyMeet()
+        {
+            var gen = Nine.Gen;
+            int mixed = 0;
+            for (int cy = 0; cy < gen.ChunksH; cy += 3)
+                for (int cx = 0; cx < gen.ChunksW; cx += 3)
+                {
+                    var known = gen.Know(cx, cy);
+                    Assert.That(known.Biomes, Has.None.Null, $"chunk ({cx}, {cy})");
+                    if (known.Biomes.Distinct().Count() > 1) mixed++;
+                    if (gen.IsPinned(cx, cy)) continue;
+                    Assert.That(known.Biomes, Has.Member(known.Biome), $"chunk ({cx}, {cy})");
+                    if (cx + 1 < gen.ChunksW)
+                    {
+                        var east = gen.Know(cx + 1, cy);
+                        for (int j = 0; j < KnownChunk.Side; j++)
+                            Assert.That(known.Biomes[j * KnownChunk.Side + KnownChunk.Side - 1], Is.EqualTo(east.Biomes[j * KnownChunk.Side]), $"chunk ({cx}, {cy}) east edge");
+                    }
+                }
+            Assert.That(mixed, Is.GreaterThan(0), "some chunk on the nine holds more than one biome");
+        }
+
         [Test]
         public void TheSameSeedGivesTheSameKnownRingAndLandmarksOnTwoLoads()
         {

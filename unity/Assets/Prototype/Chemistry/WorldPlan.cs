@@ -17,8 +17,11 @@ namespace Chem
     public sealed class PlanInputs
     {
         public string Seed = "valley-1";
-        /// <summary>World squares a side, not counting the sea column and row of an unwrapped world or the wall rows.</summary>
-        public int Size = 3;
+        /// <summary>
+        /// World squares across and down, not counting the sea column and row of an unwrapped world or the wall rows of an
+        /// east-west one (a 12 × 8 east-west world is 12 × 10 squares in all).
+        /// </summary>
+        public int Width = 3, Height = 3;
         public PlanWrap Wrap = PlanWrap.None;
         /// <summary>Ice to the north, desert to the south (Andrew's start), or ice at both ends with desert between.</summary>
         public bool HalfProfile = true;
@@ -45,16 +48,27 @@ namespace Chem
         /// <summary>Backtracks in all, and per contradiction, before a filler takes a square.</summary>
         public int Budget = 3000, LocalBacktracks = 40;
 
-        /// <summary>The prototype's defaults for a world of this size: a 3 × 3 doesn't wrap and has no open sea.</summary>
-        public static PlanInputs For(string seed, int size, PlanWrap wrap, ValleySides valley = null) => new PlanInputs
+        /// <summary>The longer side, in squares: what the prototype's size-led defaults read.</summary>
+        public int Size => Math.Max(Width, Height);
+
+        /// <summary>The prototype's defaults for a square world of this size: a 3 × 3 doesn't wrap and has no open sea.</summary>
+        public static PlanInputs For(string seed, int size, PlanWrap wrap, ValleySides valley = null) => For(seed, size, size, wrap, valley);
+
+        /// <summary>The prototype's defaults for a world <paramref name="width"/> × <paramref name="height"/> squares.</summary>
+        public static PlanInputs For(string seed, int width, int height, PlanWrap wrap, ValleySides valley = null)
         {
-            Seed = seed,
-            Size = size,
-            Wrap = size <= 3 ? PlanWrap.None : wrap,
-            Sea = size <= 3 ? 0 : 12,
-            InlandSize = size <= 3 ? 1 : 4,
-            Valley = valley,
-        };
+            int size = Math.Max(width, height);
+            return new PlanInputs
+            {
+                Seed = seed,
+                Width = width,
+                Height = height,
+                Wrap = size <= 3 ? PlanWrap.None : wrap,
+                Sea = size <= 3 ? 0 : 12,
+                InlandSize = size <= 3 ? 1 : 4,
+                Valley = valley,
+            };
+        }
 
         /// <summary>The most main roads this world may have.</summary>
         public int MainRoadCap => MainRoads >= 0 ? MainRoads : Math.Max(1, Math.Min(6, (Size + 1) / 2));
@@ -229,18 +243,19 @@ namespace Chem
         {
             Inputs = inputs;
             Library = lib;
-            int n = inputs.Size;
+            int nw = inputs.Width, nh = inputs.Height;
             var wrap = inputs.Wrap;
-            if (n < 1) throw new ArgumentException("a world needs a world square");
+            if (nw < 1 || nh < 1) throw new ArgumentException("a world needs a world square");
             string mode = wrap switch { PlanWrap.Torus => "t", PlanWrap.EastWest => "c", _ => "r" };
-            Seed = (int)Fnv(inputs.Seed + "|" + n + "|" + mode);
+            // A square world's seed says its side alone, as it always has.
+            Seed = (int)Fnv(inputs.Seed + "|" + (nw == nh ? nw.ToString(System.Globalization.CultureInfo.InvariantCulture) : nw + "x" + nh) + "|" + mode);
             // An unwrapped world has a sea column west and a sea row south; an east-west one a wall row north and south.
-            int w = wrap == PlanWrap.None ? n + 1 : n, h = wrap switch { PlanWrap.None => n + 1, PlanWrap.EastWest => n + 2, _ => n };
+            int w = wrap == PlanWrap.None ? nw + 1 : nw, h = wrap switch { PlanWrap.None => nh + 1, PlanWrap.EastWest => nh + 2, _ => nh };
             Grid = new PlanGrid(w, h, wrap);
             Half = inputs.HalfProfile && wrap != PlanWrap.Torus;
             // The valley stays at a temperate row (its coldness about 0.4).
             int vy = ((h - 1) * 71 + 50) / 100;
-            if (wrap == PlanWrap.None) vy = n - 1;
+            if (wrap == PlanWrap.None) vy = nh - 1;
             else if (Half) vy = ((h - 1) * 6 + 5) / 10;
             Valley = vy * w + (wrap == PlanWrap.None ? 1 : 0);
         }
@@ -278,7 +293,7 @@ namespace Chem
 
         void LayBands()
         {
-            int n = Count, w = Grid.W, h = Grid.H, size = Inputs.Size;
+            int n = Count, w = Grid.W, h = Grid.H;
             const long one = BiomeMath.One;
             var wrap = Inputs.Wrap;
             Wall = new byte[n];
@@ -303,7 +318,7 @@ namespace Chem
                 Cold[i] = c;
             }
             // The raw field: low-frequency noise whose period divides a wrapped axis, and the latitude's pull.
-            int lattice = Math.Max(1, (size + 1) / 3);
+            int latticeX = Math.Max(1, (Inputs.Width + 1) / 3), latticeY = Math.Max(1, (Inputs.Height + 1) / 3);
             long s = Inputs.Latitude * one / 100;
             var v = new long[n];
             ForcedSea = new bool[n];
@@ -311,7 +326,7 @@ namespace Chem
             {
                 int x = Grid.X(i), y = Grid.Y(i);
                 long c = Cold[i];
-                long val = (72 * Noise(Seed ^ 0xb00b, x * one / 3, y * one / 3, Grid.WrapX ? lattice : 0, Grid.WrapY ? lattice : 0)
+                long val = (72 * Noise(Seed ^ 0xb00b, x * one / 3, y * one / 3, Grid.WrapX ? latticeX : 0, Grid.WrapY ? latticeY : 0)
                     + 28 * Unit(Seed ^ 0x51, x, y)) / 100;
                 if (Grid.WrapX)
                     val += s * 30 * Math.Max(0, c - 55 * one / 100) / (45 * one) - s * 10 * Math.Max(0, 25 * one / 100 - c) / (25 * one);

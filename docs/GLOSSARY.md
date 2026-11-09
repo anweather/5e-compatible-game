@@ -149,6 +149,12 @@ touch them.
   valley). Its other files are a **bake** (`GeneratedMap.Bake`), written beside it and never committed; its map hash is
   over its inputs, not the bake.
 
+**Wrap / seam / wall row**
+: A world that **wraps** east-west (map.json's `"wrap": "ew"`, `PlanWrap.EastWest`) joins its east edge to its west:
+  walking off one side comes on at the other, and land, noise and distances are taken modulo its width (generator 6).
+  The **seam** is where the two edges meet; nothing about the land marks it. Its north and south rows are **wall
+  rows**, an ice row and a desert row the plan fills with `ice-wall` and `dune-sea` (the 12 × 10 world).
+
 **Meet**
 : Where a generated map's land comes round to a pinned map's own (the valley's) outside its rim: over at least 90 cells,
   wider (up to 240) where the rim stands far above or below the land beside it, reading the rim as a mean along it so the
