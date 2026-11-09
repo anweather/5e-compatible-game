@@ -1,0 +1,13 @@
+{
+  "about": "The Drowned Chain: a chain of islands running south-west to north-east across an open sea, with one 154 m peak (docs/design/second-map-2026-11-02.md, maps phase 8). Read as the valley's map.json is. Its land.json is the bake from branch second-map, committed as it was; cells.txt follows from it: sea below the sea level, dirt along the shore, grass the rest. The start is on the low beach of the middle island, the yard a strip of it; there is no lake, river, court or cabin, so it dresses only the village and the world's edge.",
+  "id": "drowned-chain",
+  "name": "The Drowned Chain",
+  "size": [576, 576],
+  "seaLevel": -4,
+  "sea": { "shore": [15, -4.5], "seaward": [0, -1] },
+  "spawn": [268, 356],
+  "yard": [258, 352, 20, 6],
+  "fullDetail": [3, 4, 5, 6],
+  "expects": { "landShare": 31, "highest": 1233, "lowest": -112 },
+  "dresses": ["villages", "world-edge"]
+}

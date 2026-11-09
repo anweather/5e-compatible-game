@@ -1,0 +1,23 @@
+{
+  "$comment": "The looks a world theme may paint (world/themes/*.json: a zone's biome, an influence's look, a lake island's, the start's), the same ids as PocketTactics' world biomes. 'land' is the generated land that draws it in the valley's surroundings (ValleySurroundings): Grassland, Temperate (forest), Mountains or Fells; looks with no land of their own yet borrow the nearest. 'trees' scales how thick the forest grows there (1 is the land's own).",
+  "grassland":    { "land": "Grassland", "trees": 1 },
+  "plains":       { "land": "Grassland", "trees": 0.5 },
+  "meadow":       { "land": "Grassland", "trees": 0.8 },
+  "water-meadow": { "land": "Grassland", "trees": 1.5 },
+  "oasis":        { "land": "Grassland", "trees": 2 },
+  "deepwood":     { "land": "Temperate", "trees": 1.2 },
+  "wetlands":     { "land": "Temperate", "trees": 0.8 },
+  "highlands":    { "land": "Fells", "trees": 2 },
+  "frostreach":   { "land": "Fells", "trees": 0.5 },
+  "tundra":       { "land": "Fells", "trees": 0.3 },
+  "mountains":    { "land": "Mountains", "trees": 1 },
+  "snowpeaks":    { "land": "Mountains", "trees": 0 },
+  "desert":       { "land": "Grassland", "trees": 0.1 },
+  "dunes":        { "land": "Grassland", "trees": 0 },
+  "scrubland":    { "land": "Grassland", "trees": 0.3 },
+  "ashflats":     { "land": "Fells", "trees": 0.1 },
+  "ashplains":    { "land": "Fells", "trees": 0.1 },
+  "cinderfield":  { "land": "Fells", "trees": 0.4 },
+  "caldera":      { "land": "Mountains", "trees": 0 },
+  "volcanic":     { "land": "Mountains", "trees": 0 }
+}
