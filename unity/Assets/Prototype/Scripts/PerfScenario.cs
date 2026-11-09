@@ -14,10 +14,10 @@ using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
 // (docs/perf/, the MacOSProfiling build in PrototypeBuild). Start the game with
-//   -fps-probe -perf-scenario <meadow|wildfire|forestload|showerstorm|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
+//   -fps-probe -perf-scenario <meadow|wildfire|forestload|showerstorm|storm|rain|snow|fog|village|dragon|dragonclear|fireball|bot> [-perf-seconds N]
 // and FpsProbe hands over to this instead of its showcase: PerfStage sets the
 // scene, it settles, every frame is measured for N seconds (30 by default, 20
-// for the wildfire), one "PERF RESULT" line of key=value pairs goes to the
+// for the wildfire, 6 for the fireball: its cast and the 5 s after), one "PERF RESULT" line of key=value pairs goes to the
 // player log, and the game quits. With v-sync and the frame cap off, frame times
 // are the real work, read from Update here at the head of the frame so they
 // line up with the markers of the frame just ended (PerfMarkers). The cell
@@ -55,15 +55,15 @@ using Debug = UnityEngine.Debug;
 public class PerfScenario : MonoBehaviour
 {
     PerfStage stage;
-    const string Bot = "bot", Wildfire = "wildfire", Fog = "fog";
-    const float WarmUpSeconds = 3f, SettleSeconds = 5f, DefaultSeconds = 30f, BurnSeconds = 20f;
+    const string Bot = "bot", Wildfire = "wildfire", Fog = "fog", Fireball = "fireball";
+    const float WarmUpSeconds = 3f, SettleSeconds = 5f, DefaultSeconds = 30f, BurnSeconds = 20f, FireballSeconds = 6f;
     const float CountEverySeconds = 2f, SpikeMs = 50f;
     const int MostSpikes = 200, ShotQuietFrames = 3, WorstFrames = 5;
     const double BytesPerMb = 1024.0 * 1024.0;
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast" };
 
@@ -175,7 +175,7 @@ public class PerfScenario : MonoBehaviour
     void ReadTimes()
     {
         if (float.TryParse(Arg("-perf-spike-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float bar) && bar > 0f) spikeMs = bar;
-        seconds = scenario == Wildfire ? BurnSeconds : DefaultSeconds;
+        seconds = scenario == Wildfire ? BurnSeconds : scenario == Fireball ? FireballSeconds : DefaultSeconds;
         if (float.TryParse(Arg("-perf-seconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out float asked) && asked > 0f) seconds = asked;
     }
 
