@@ -97,7 +97,7 @@ public static class ValleyBuilder
         valley.terrains = terrains;
         // Village buildings burn and cave in by the cabins' rules.
         valley.cabins = cabins.Concat(houses).ToArray();
-        valley.lakeLevel = LakeLevel;
+        valley.lakeLevel = (float)MapFile.Load(ChemGrid.Folders.World).WaterMetres;
         grid.valley = valley;
 
         // The river's current along its course and the surf's on the coast (WaterCurrents; the sea is the map's).
@@ -1443,8 +1443,12 @@ public static class ValleyBuilder
     // of docs/design/maps-as-data.md): the build no longer works it out from the valley's shapes.
     static void WireChemistry(ChemGrid grid, string[] yardRows)
     {
+        // Where the cells stand is the map's (map.json's yard); the rows are the valley's shapes' yard, and must agree.
+        var (x, y, w, h) = MapFile.Load(ChemGrid.Folders.World).Yard;
+        grid.yardCells = new RectInt(x, y, w, h);
         var (left, top) = EditorGround.Layout.CellAt(0f, (yardRows.Length - 1) * grid.cellSize);
-        grid.yardCells = new RectInt(left, top, yardRows[0].Length, yardRows.Length);
+        if (new RectInt(left, top, yardRows[0].Length, yardRows.Length) != grid.yardCells)
+            Debug.LogError($"map.json's yard {grid.yardCells} isn't where the yard's rows lie ({left}, {top})");
         grid.fireFadeCells = FireFadeCells;
         grid.conductLimit = LightningReach;
     }

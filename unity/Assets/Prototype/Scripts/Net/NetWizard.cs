@@ -207,6 +207,7 @@ public class NetWizard : NetworkBehaviour
     {
         float angle = OwnerClientId * 90f * Mathf.Deg2Rad;
         var start = grid.CellCenter(grid.PlayerStart.x, grid.PlayerStart.y);
+        start.y = grid.GroundAt(start);
         return start + new Vector3(Mathf.Cos(angle), 0.1f, Mathf.Sin(angle)) * grid.cellSize;
     }
 

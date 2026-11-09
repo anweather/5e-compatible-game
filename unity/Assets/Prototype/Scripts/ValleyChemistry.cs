@@ -22,10 +22,10 @@ public partial class ValleyChemistry : MonoBehaviour
     public MapTerrains terrains;
     [Tooltip("The cabins and village buildings; a wall cell belongs to the one whose box holds it, else a log wall to the nearest.")]
     public Transform[] cabins;
-    [Tooltip("Height of the lake's surface; lake cells' effects sit on it.")]
+    [Tooltip("Height of the lake's surface, the map's water level (MapLand); lake cells' effects sit on it.")]
     public float lakeLevel = -0.6f;
 
-    readonly TerrainGrid layout = TerrainGrid.Valley();
+    TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
     WetGround wet;
     LandRocks rocks;
@@ -153,6 +153,11 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
+        if (ground == null && MapLand.Current is { } map)
+        {
+            layout = map.Layout;
+            lakeLevel = map.WaterLevel;
+        }
         if (world.W != layout.GridW || world.H != layout.GridH)
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
         if (ground == null)

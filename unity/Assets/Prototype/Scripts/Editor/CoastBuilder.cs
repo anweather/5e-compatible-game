@@ -152,8 +152,8 @@ public static class CoastBuilder
     {
         material.enableInstancing = true;
         EditorUtility.SetDirty(material);
+        // A root of its own: life isn't the coast's to leave out (on a map without it, it lives on that map's shore).
         var life = new GameObject("Coast life").AddComponent<AmbientLife>();
-        life.transform.SetParent(root, false);
         life.material = material;
         var rng = new System.Random(91);
         life.gullAnchors = GullAnchors();

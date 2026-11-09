@@ -15,7 +15,7 @@ public sealed class MapTerrains : MonoBehaviour
     [Tooltip("The terrains' material: URP's terrain with rock mapped from the sides (TerrainRock.shader).")]
     public Material material;
 
-    readonly TerrainGrid layout = TerrainGrid.Valley();
+    TerrainGrid layout;
     Terrain[] chunks;
 
     /// <summary>The builder the chunks were built with at the start; null when they wait for a world (land mode).</summary>
@@ -49,6 +49,7 @@ public sealed class MapTerrains : MonoBehaviour
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
         string dir = ChemGrid.Folders.World;
+        layout = MapLand.Current?.Layout ?? TerrainGrid.Valley();
         builder = GroundSwitch.Mode == GroundSwitch.On && GroundPack.In(dir)
             ? new GroundBuilder(GroundPack.Load(dir), template, layout.ChunkSize)
             : null;
