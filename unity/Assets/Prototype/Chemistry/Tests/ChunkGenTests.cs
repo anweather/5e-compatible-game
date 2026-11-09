@@ -64,7 +64,7 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0x0be3c4bdu;
+        const uint NineGolden = 0x490043cdu;
         static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xc6391688u), (9, 20, 0x019aa188u), (4, 4, 0x126a5ca0u), (26, 0, 0x7594a450u) };
 
         [Test]

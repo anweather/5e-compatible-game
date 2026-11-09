@@ -4,8 +4,8 @@
     {
       "chunk": [4, 4],
       "things": [
-        { "kind": "barrel", "cell": [41, 62], "note": "in the oil spill: light the oil and it goes up" },
-        { "kind": "barrel", "cell": [43, 62], "note": "in the oil spill" },
+        { "kind": "barrel", "cell": [42, 61], "note": "in the oil spill, a cell back from the pond's lip (#170: on the lip the ground slopes under it and it slides in): light the oil and it goes up" },
+        { "kind": "barrel", "cell": [43, 61], "note": "in the oil spill, back from the pond's lip" },
         { "kind": "barrel", "cell": [40, 61], "note": "beside the oil spill" },
         { "kind": "crate", "cell": [34, 61], "note": "by the brambles" },
         { "kind": "crate", "cell": [34, 62], "note": "by the brambles" },

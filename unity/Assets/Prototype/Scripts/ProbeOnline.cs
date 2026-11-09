@@ -580,6 +580,7 @@ public class OnlineProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         string id = Guid.NewGuid().ToString("N").Substring(0, 8);
+        thingsAtStart = new HashSet<ThingId>(FindAnyObjectByType<ThingSpawner>().Live.Select(t => t.id));
         ProbeLink.Clear();
         var session = FindAnyObjectByType<NetSession>();
         session.Host();
@@ -702,6 +703,9 @@ public class OnlineProbe : ProbeScenario
 
     int ballsBefore;
     ThingId ballId = ThingId.None;
+    // The things standing as the scenario began: the reset brings back these too, not only those still standing at it
+    // (the Fire Bolt on the oil spill blows up its barrels, #170).
+    HashSet<ThingId> thingsAtStart = new();
 
     // The host's checksums since the reset (TryReset starts collecting them).
     readonly Dictionary<int, string> afterReset = new();
@@ -923,6 +927,7 @@ public class OnlineProbe : ProbeScenario
         var spawner = FindAnyObjectByType<ThingSpawner>();
         var before = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
         if (!ballId.IsNone) before.Add(ballId); // the ball broken earlier comes back too
+        before.UnionWith(thingsAtStart); // and whatever else broke along the way
         var broken = spawner.Live.Select(t => t.prop).FirstOrDefault(p => p.State != null && p.kind == EntityIds.Crate);
         var brokenId = broken != null ? broken.Thing : ThingId.None;
         if (broken != null) broken.Hurt(9999);
