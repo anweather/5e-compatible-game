@@ -32,6 +32,9 @@ Landed 2026-11-09 (all on dev):
 Waiting:
 - **Issues #170 #173 #164 #55 #83 are fixed but open:** `gh issue close` was refused by this session's permission
   check. Andrew closes them or allows it.
+- **The Mac's Editor hung at 06:08 MST** (pid 1031, likely a hidden save-scene modal after building the yard with
+  `Temp/map` = nine); it asked Andrew to look. `apikey-tests-mac` is written, not compiled. Rule for briefs: build the
+  yard on the valley; point `Temp/map` at the nine only for the probe run.
 - Nothing waits on a compile. host-ux is clean (an untracked `unity/Assets/_Recovery/` stays); Editor pid 20380 open.
 
 ## Who runs where
