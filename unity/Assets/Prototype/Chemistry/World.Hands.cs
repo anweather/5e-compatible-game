@@ -114,6 +114,7 @@ namespace Chem
             string player = c.Player;
             if (hand < 0 || hand >= HandsDef.Count || (element != null && !Rules.Combos.Elements.Contains(element)) || !HandOpen(player, hand) || !ElementOpen(player, element)) return false;
             if (HandsOf(player).Busy || c.Casting) return false;
+            ReadStands();
             var tower = TowerOf(player);
             if (tower != null ? element != tower.Element : HoldRunning) return false;
             if (stands.TryGetValue(player, out var s) && s.Down) return false;

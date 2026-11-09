@@ -60,7 +60,9 @@ Waiting:
 
 ## Next, in order
 
-1. **Land `late-join-core`** when the PC's compile reports green.
+1. `late-join-core` landed 0372298f (EditMode 1842/1842). Issues #173 #164 #55 #83 still open: closing them was
+   refused by the permission check, so Andrew or a session with GitHub write closes them.
+1b. **Compile and land `core-boundaries`** (the PC is on it) (u2 done at fac1c8e2, 133 files, mostly Chemistry/: full EditMode).
 2. **`nine-slopes` (u2):** compile and land it, then a unity-task walks out of the valley through each open side in
    the Editor (a clip). No Windows build for Andrew and no waiting on his play (J-082).
 3. **The far ring on the PC** (phase 6's rest: landmarks behind haze, the known ring). The paper is done (507e0f72,

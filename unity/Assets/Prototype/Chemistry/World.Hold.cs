@@ -138,6 +138,7 @@ namespace Chem
             if (holdPlate < p.PlateTicks || (Defense != null && Defense.Phase == DefensePhase.Running)) return;
             holdPlate = 0;
             ClearRaiders();
+            ReadStands();
             int peers = stands.Values.Count(s => !s.Down);
             Hold = new HoldState { Phase = HoldPhase.Running, Wave = 1, Health = p.Health, Peers = peers, ToSpawn = HoldWaveSize(p, 1, peers), NextSpawn = Tick + p.Warmup, Theme = ThemeOfWave(1) };
             Hold.NextWave = p.WaveTicks > 0 ? Hold.NextSpawn + p.WaveTicks : 0;
@@ -155,6 +156,7 @@ namespace Chem
             if (HoldSite == null || m == null) return false;
             ClearRaiders();
             MendCastle();
+            ReadStands();
             int peers = stands.Values.Count(s => !s.Down);
             Hold = new HoldState
             {

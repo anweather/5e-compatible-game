@@ -158,7 +158,9 @@ namespace Chem
         // Whether the cast's player may hit the ball: not again straight after their own shot while someone else is playing.
         bool TurnOpen(GolfState g)
         {
-            if (castBy == null || castBy != g.LastBy || !GolfWaiting(g)) return true;
+            if (castBy == null || castBy != g.LastBy) return true;
+            ReadStands();
+            if (!GolfWaiting(g)) return true;
             LogOnce($"turn#{Whole(g.Strokes)}", $"{TriggerDef.PeerOf(castBy)} just played: it's someone else's shot", LogKind.Notable);
             return false;
         }
