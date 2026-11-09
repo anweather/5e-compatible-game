@@ -57,7 +57,8 @@ and `CA…`/`IDE…` at `learn.microsoft.com/dotnet/fundamentals/code-analysis/`
 
 ## Layer 2: the CI quality gate
 
-`.github/workflows/quality.yml` runs when C#, rules or this tooling changes:
+`.github/workflows/quality.yml` runs when C#, rules or this tooling changes
+(NuGet's packages cached, keyed on core's `.csproj` files):
 
 1. **Build and test.** `core/Game.Core` (netstandard2.1, C# 9: D3's
    engine-free core) compiles `unity/Assets/Prototype/Chemistry/*.cs` from
@@ -68,7 +69,9 @@ and `CA…`/`IDE…` at `learn.microsoft.com/dotnet/fundamentals/code-analysis/`
    `.editorconfig`.
 2. **Format.** `dotnet format core --verify-no-changes` fails if spacing,
    braces or other style in Chemistry doesn't match `.editorconfig`.
-3. **Duplicates.** `jscpd` (4.0.5) looks for copy-pasted blocks (50 tokens
+3. **Duplicates** (`duplicates.yml`, apart because it scans the sandbox too, so a
+   sandbox change runs it and not the dotnet jobs). `jscpd` (4.0.5, pinned in
+   `tools/jscpd/package-lock.json`; `tools/jscpd/run.sh` runs it) looks for copy-pasted blocks (50 tokens
    and 5 lines or more) in `unity/Assets/Prototype` and `sandbox/src`. It
    fails if more than 2% of the code is duplicated. The settings are in
    `.jscpd.json`. C# and TypeScript are counted apart, so the sandbox was
@@ -96,7 +99,7 @@ export PATH="$HOME/.dotnet:$PATH"          # .NET 8 SDK
 dotnet build core -c Release -warnaserror  # analyzers, warnings fail
 dotnet test core                           # the chemistry and live-mod tests
 dotnet format core --verify-no-changes     # drop --verify-no-changes to fix
-npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
+tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # jscpd, pinned in tools/jscpd/package-lock.json
 ```
 
 In Unity: change any script (or **Assets → Refresh**). The warnings appear in
