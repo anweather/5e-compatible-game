@@ -54,7 +54,7 @@ namespace Chem
 
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
-            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "dragon.speed", "dragon.depth", "dragon.breathChunks", "dragon.chunksPerTick", "breath.seconds", "breath.drownEvery", "breath.drownSides", "strike.reach", "dragon.scale" };
+            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.sight", "streaming.know", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "dragon.speed", "dragon.depth", "dragon.breathChunks", "dragon.chunksPerTick", "breath.seconds", "breath.drownEvery", "breath.drownSides", "strike.reach", "dragon.scale" };
 
             readonly JObject r, terrain, covers, gases;
             readonly HashSet<string> elements;
@@ -547,6 +547,11 @@ namespace Chem
                     && (keep.Type == JTokenType.Integer || keep.Type == JTokenType.Float)
                     && (double)keep < (double)reach)
                     Errors.Add("sim streaming.keep must be at least streaming.reach");
+                // A chunk is generated before it can activate, and known before it's generated.
+                static double? Count(JToken t) => t is JValue v && (v.Type == JTokenType.Integer || v.Type == JTokenType.Float) ? (double)v : (double?)null;
+                double? keepAt = Count(streaming?["keep"]), sight = Count(streaming?["sight"]), know = Count(streaming?["know"]);
+                if (sight <= keepAt) Errors.Add("sim streaming.sight must be more than streaming.keep");
+                if (know < sight) Errors.Add("sim streaming.know must be at least streaming.sight");
             }
 
             void RuleNumbers(JObject rule)

@@ -60,6 +60,9 @@ namespace Chem
             return intent;
         }
 
+        /// <summary>What a form's landmark is ("great tree", "volcano", "lake"), or null for a form the file hasn't got.</summary>
+        public string LandmarkOf(string form) => (string)(by[form ?? ""] as JObject)?["landmark"];
+
         /// <summary>The form a biome takes: its own, the one it uses, or "*"'s.</summary>
         public string FormFor(string biome)
         {

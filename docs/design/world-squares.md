@@ -455,3 +455,35 @@ rim cells crossed).
   of each open side's dry rim steps out (the nine: north 572 of 576, east 308 of its 324 dry cells; the rest of the east
   side is the valley's own sea), in every slot with dry rim and at every road, and no stone just outside it (before: 6
   of 576 on the north side, on every seed).
+
+## As built: the far ring, core half (far-ring-core, u2, 2026-11-09)
+
+What the view reads for section 4; all of it a pure function of the seed and the plan, nothing shared depending on it.
+The valley's cells and every golden are unchanged (it adds data, it changes no cells).
+
+- **Rules:** `sim.json` `streaming` has `sight` 4 (more than `keep`) and `know` 7 (at least `sight`), checked. Nothing
+  generates at `sight` yet (that's the generate switch); here it's the known ring's inner edge.
+- **A known chunk** (`ChunkGen.Know`, `Chem.KnownChunk`): heights in land units at every 8th cell, 9 × 9 from the
+  chunk's north-west corner to the next chunk's, so chunks side by side share their edge samples and their meshes meet;
+  the landmarks' stamps in them; the water at each sample (dry, sea, river or lake); the biome most samples are (the
+  pinned map's name in the valley). The samples are the made chunk's land at those cells exactly
+  (`AKnownChunkIsTheMadeChunksLandAtEveryEighthCell`).
+- **The ring** (`Chem.KnownRing`, `GeneratedMap.KnownRing(streaming)`): `Want(character chunks)` at a tick boundary
+  sets the chunks past `sight` and within `know` (Chebyshev) of the nearest character; a worker works out the missing
+  ones on every core; `Handover()` at a tick boundary shows what it has finished, in chunk order (north to south, west
+  to east). The view polls `Version`, `Chunks` and `TryGet(cx, cy)`; `Fill()` does it all now, for load and tests. A
+  chunk that's all sea is known only beside one that isn't, so the ring stops one chunk past the coast; past the map's
+  edge there is nothing (the nine's open sea all lies past its edge, so the test uses a 4 × 4 plan with 45% sea).
+- **Load cost, measured** (u2, 2-core VM, Release, the test alone): a lone character in the middle of the nine knows
+  144 chunks in 35-48 ms (median ~38), 0.24-0.28 ms a chunk on one core. That's about four times the design's guess
+  (0.06 ms a chunk): every sample runs the whole land point (bands, biome blend, massif, rivers, roads, coast). It runs
+  on the worker, off the tick; a step across a chunk side costs about 24 (15 at the far edge, 9 just out of `sight`), ~6 ms.
+- **Far landmarks** (`Chem.FarLandmarks`, `GeneratedMap.Far`), from `world/horizon.json` (view data, outside the map's
+  input hash): each type's `seenFrom` (a radius in chunks), rough `height` and `radius` in metres, and a stand-in
+  `shape`. Volcano and spire 14; castle, great tree, rock spire and waterfall 10; lake, port, crag, lone great tree,
+  ruin, inn and shop 9; nothing below `know` + 2. A type the file doesn't name (a cave, a sea view, a crossing) isn't a
+  far landmark: it's part of the land once its chunk is known. The list is the plan's landmarks, then outcrops, then
+  waystations, each with its type (a village's form's landmark, "port", or the plan's kind), its name where its rows
+  give one, its map cell (a village landmark's first stamp's middle, so the volcano's cone, not its village) and its
+  square. `SeenAt(x, y)` lists those within their radius of a map cell. In the nine (valley-1): the great tree, the
+  castle, a ruin and four lone great trees.

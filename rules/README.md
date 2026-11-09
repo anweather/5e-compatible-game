@@ -373,6 +373,11 @@ minutes). While rain falls, water moving doesn't count as live. A chunk the
 caps let go while live runs the ticks it missed when it next activates, up to
 `catchUpTicks` (720, two minutes).
 
+Past the active ring, `sim.streaming.sight` (4, more than `keep`) is how far
+out a chunk is generated, and `sim.streaming.know` (7, at least `sight`) how
+far it is known: its biome and coarse land for the far view
+(`docs/design/world-squares.md` section 3, `Chem.KnownRing`).
+
 ## Products (`sim.fire`, `sim.water`)
 
 What fire and water leave is data, never a name in code (`docs/design/primitives.md` P3):

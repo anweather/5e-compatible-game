@@ -119,11 +119,17 @@ touch them.
 : What a world square asks for, never where it goes (`world/landmarks/<id>.json`, `Chem.LandmarkIntent`): "a village
   with a landmark", with a form per biome. The plan picks its world square; the form comes from the biome there.
 
-**Known chunk / generated chunk** *(the rings are planned)*
-: The two states a chunk is in before it's active, by distance from a character (`sight` and `know` in `sim.json`
-  `streaming`): a **known** chunk is decided, not built (its biome, coarse heights and landmarks, for the far view); a
-  **generated** chunk has its cells, land and things made from the world plan (`Chem.ChunkGen`, a pure function of the
-  plan and the chunk's coordinates), and is held inactive.
+**Known chunk / generated chunk** *(the generate switch is planned)*
+: The two states a chunk is in before it's active, by distance from a character (`sight` 4 and `know` 7 in `sim.json`
+  `streaming`): a **known** chunk is decided, not built (its dominant biome and its land every 8th cell, 9 × 9, for the
+  far view: `Chem.KnownChunk`, `ChunkGen.Know`, held round the characters by `Chem.KnownRing`, which stops one chunk past
+  the coast); a **generated** chunk has its cells, land and things made from the world plan (`Chem.ChunkGen`, a pure
+  function of the plan and the chunk's coordinates), and is held inactive.
+
+**Far landmark / seenFrom**
+: A landmark the view draws far off, past the known ring (`Chem.FarLandmarks`): a plan landmark, outcrop or waystation
+  whose type `world/horizon.json` names. Its **seenFrom** is how far off it shows, a radius in chunks (not a square),
+  at least `know` + 2.
 
 **World file / generated map**
 : A **generated map** is made from a **world file**, its `map.json` with a `generated` section: the seed, its size in
