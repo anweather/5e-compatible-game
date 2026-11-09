@@ -62,6 +62,7 @@ public sealed class MapTerrains : MonoBehaviour
         float half = layout.ChunkSize * 0.5f;
         // On a generated map the far ring says which draw: none past the known ring, and none it draws as a known chunk.
         var far = FarRing.Instance;
+        int drawing = 0;
         for (int k = 0; k < chunks.Length; k++)
         {
             var t = chunks[k];
@@ -69,11 +70,16 @@ public sealed class MapTerrains : MonoBehaviour
             var p = t.transform.position;
             float dx = p.x + half - eye.x, dz = p.z + half - eye.z;
             bool draw = dx * dx + dz * dz <= reachSq && (far == null || far.TerrainDraws(k % layout.ChunksX, k / layout.ChunksX));
+            if (draw) drawing++;
             if (t.drawHeightmap == draw) continue;
             t.drawHeightmap = draw;
             t.drawTreesAndFoliage = draw;
         }
+        Drawing = drawing;
     }
+
+    /// <summary>How many chunk terrains drew at the last check (the drawn tier, for the tiersweep probe).</summary>
+    public int Drawing { get; private set; }
 
     /// <summary>Works out which terrains draw at the next frame, not at the next quarter second (the far ring changed).</summary>
     public void ReachNow() => nextReach = 0f;

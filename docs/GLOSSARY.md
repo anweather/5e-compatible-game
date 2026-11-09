@@ -115,6 +115,12 @@ touch them.
   may go, what each side offers (a road, river, range or canyon at one of 9 slots, a must or a may) and whether it may
   face the sea, how a feature may end in it, and whether it turns. A **filler** is a band's template that fits anything.
 
+**World sketch** *(paper only so far)*
+: The suggestion a world plan is fitted to: biome shapes drawn freely over the world (a lake as a blob, a range as a
+  long triangle), blended at their edges, saved as a small JSON. Each world square reads what the sketch puts under it
+  and gets the band and square template that fit it best, within the plan's rules; where a rule wins, the plan says
+  which. "Biome" keeps its meaning from `world/biomes.json` (`docs/design/world-squares.md`, "Draw first").
+
 **Landmark intent**
 : What a world square asks for, never where it goes (`world/landmarks/<id>.json`, `Chem.LandmarkIntent`): "a village
   with a landmark", with a form per biome. The plan picks its world square; the form comes from the biome there.

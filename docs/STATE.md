@@ -45,9 +45,9 @@ Waiting:
 
 Issues #170 #173 #164 #55 #83 closed 2026-11-09 (the lead may close issues now).
 
-Right now: **the PC** on `tier-dials` (three distance dials and a sweep probe on the nine; J-084). **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half), then `world-12x10-plan` (queued; J-083, J-084). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
+Right now: **the PC** idle. `tier-dials` landed 99692d2c: `FarRing.SetView(drawn, known)`, player flags `-drawn N` / `-known N`, active as a rule switch, `tools/probe.sh tiersweep` (nine only); on the nine no dial moved frame time past noise (today 2/4/7: 24.2 ms mean, 30.2 p95; table in world-12x8-scope.md "Measured"). Per-setting memory needs a player build. **u2** queued `drowned-chain-core` (the Chain's folder from `second-map`, checked; phase 8's core half), then `world-12x10-plan` (queued; J-083, J-084). **The Mac** on `smoke-nine` (now; smoke's casts on the nine fail
 cast_fire-bolt, fire_started, levitate_lifted), apikey-tests-mac landed e1b442f1 (EditMode 1858 + 1 skip on the Mac);
-then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), all told
+smoke-nine landed d3647cda (the casts pass on the nine); now the far ring's looks (the sea horizon's hard line, tundra plateaus as flat white wedges), then `things-nine` (smoke things_spawned on the nine: 5-7 things off their cells in chunks (2,23) and (4,23); no issue filed, `gh issue create` was refused), all told
 2026-11-09.
 
 - The watcher (`tools/workers/bridge-watch.sh`, one only) pauses u2 below 1.5 GB free and resumes it at 6 GB. While
@@ -75,7 +75,7 @@ then the far ring's looks (the sea horizon's hard line, tundra plateaus as flat 
 1. **Maps phase 8: a runtime map switch rebuilds terrain** (`docs/design/maps-as-data.md`). Core half to u2 first if
    there is one; the view on the PC.
 2. **Mana**, after Andrew plays quick taps (J-078). Until then, ask him only if he offers to play.
-Also open: a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
+Also open: the world sketch in the core (paper landed 577a9533, `tools/world-paper/` World sketch panel; world-squares.md "Draw first": the sketch should drive the land's biome, ~2-3 u2 days, not briefed); a walkable rock look for steep generated faces needs a cell character (paper first); the ground-level view
 of the volcano is hidden by a nearer hill (a viewpoint or landmark placement question, not briefed).
 
 ## Open questions for Andrew
