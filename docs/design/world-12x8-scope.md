@@ -65,4 +65,4 @@ when crossing chunks, float jitter without re-centring, save size per chunk (nev
 3. Then the sparse World and on-demand Terrains, a walk on a 12 x 8 world without wrap; then the seam; then the ice
    and desert looks, paper first.
 
-Open: does "8 tall" count the ice and desert wall rows, or is it 8 land rows plus two walls?
+Decided (J-083): 8 land rows plus an ice row north and a desert row south, 12 x 10 world squares in all.
