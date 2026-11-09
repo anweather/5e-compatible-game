@@ -34,6 +34,16 @@ Reports from u2 and the watcher land in the `pm` mailbox. That's yours now.
    `tools/workers/bridge-watch.cmd`. More than one: kill all but the newest (old ones run old code
    and re-mail reports; that happened on 2026-11-07).
 
+## Split before you brief (Andrew, 2026-11-08)
+
+The PC costs about 4.7x u2 per feature (`docs/telemetry/2026-11-08.md`), so:
+
+- **u2 first:** every part that runs without Unity (generation, rules, data, measuring under `dotnet`, core fixes)
+  goes to the queue as `Needs: core`. The PC gets the compile, the look and the probes.
+- **Low fidelity first:** a look or an idea that's still open starts as a paper prototype (an HTML artifact like
+  `tools/world-paper/`) or a board of stills to pick from in one round. The Editor comes after the shape is chosen.
+- **Clear after big features:** after a big landing, run `lead-handoff` and remind Andrew it's a good moment to clear.
+
 ## Handing a job to `unity-task`
 
 Write the prompt as a full brief, since the subagent sees none of this conversation:
