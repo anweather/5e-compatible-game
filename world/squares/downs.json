@@ -1,0 +1,15 @@
+{
+  "id": "downs",
+  "about": "Rolling downs with springs that run off north and south.",
+  "bands": ["low", "hills"],
+  "biome": "grassland",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "land"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "river", "slot": 6, "flow": "out", "may": true}]},
+    "e": {"offers": [{"kind": "road", "slot": 2, "may": true}]},
+    "s": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "may": true}]},
+    "w": {"offers": [{"kind": "road", "slot": 2, "may": true}]}
+  },
+  "rotate": true
+}

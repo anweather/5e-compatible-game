@@ -1,0 +1,16 @@
+{
+  "id": "ash-fields",
+  "about": "Grey ash plains split by a canyon north to south.",
+  "bands": ["hills", "high"],
+  "biome": "ashlands",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "land"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "canyon", "slot": 4, "may": true}]},
+    "e": {"offers": [{"kind": "road", "slot": 6, "may": true}]},
+    "s": {"offers": [{"kind": "canyon", "slot": 4, "may": true}]},
+    "w": {}
+  },
+  "ends": {"canyon": "close"},
+  "rotate": true
+}

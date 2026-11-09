@@ -1,0 +1,18 @@
+{
+  "id": "filler-sea",
+  "about": "The sea band's filler: it takes whatever its neighbours bring and ends it. The solver puts one where nothing else fits.",
+  "bands": ["sea"],
+  "biome": "ocean",
+  "weight": 0,
+  "filler": true,
+  "repeats": true,
+  "landmarks": [],
+  "edges": {
+    "n": {},
+    "e": {},
+    "s": {},
+    "w": {}
+  },
+  "ends": {"river": "lake", "range": "fade", "canyon": "close"},
+  "rotate": false
+}

@@ -1,0 +1,16 @@
+{
+  "id": "tundra-plateau",
+  "about": "A cold plateau along a range; meltwater runs east.",
+  "bands": ["high", "hills"],
+  "biome": "tundra",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "land"}}, {"intent": "cave", "where": {"band": "hills"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "range", "slot": 2, "may": true}]},
+    "e": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "may": true}]},
+    "s": {"offers": [{"kind": "range", "slot": 2, "may": true}]},
+    "w": {"offers": [{"kind": "road", "slot": 4, "may": true}]}
+  },
+  "ends": {"range": "fade"},
+  "rotate": true
+}

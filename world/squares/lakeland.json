@@ -1,0 +1,16 @@
+{
+  "id": "lakeland",
+  "about": "A marsh round a lake fed from the north and west; a fishing village on its shore.",
+  "bands": ["low"],
+  "biome": "foggy-marsh",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "water"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "river", "slot": 4, "flow": "in", "may": true}], "coast": true},
+    "e": {"offers": [{"kind": "road", "slot": 4, "must": true}]},
+    "s": {"coast": true},
+    "w": {"offers": [{"kind": "river", "slot": 6, "flow": "in", "may": true}], "coast": true}
+  },
+  "ends": {"river": "lake"},
+  "rotate": true
+}

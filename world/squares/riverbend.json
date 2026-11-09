@@ -1,0 +1,15 @@
+{
+  "id": "riverbend",
+  "about": "Woods on a river that comes from the north and bends out east or south.",
+  "bands": ["low", "hills"],
+  "biome": "temperate",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "water"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "river", "slot": 4, "flow": "in", "may": true}]},
+    "e": {"offers": [{"kind": "river", "slot": 6, "flow": "out", "may": true}], "coast": true},
+    "s": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "may": true}], "coast": true},
+    "w": {"offers": [{"kind": "road", "slot": 4, "may": true}], "coast": true}
+  },
+  "rotate": true
+}

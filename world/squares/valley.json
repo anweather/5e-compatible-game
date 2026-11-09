@@ -1,0 +1,17 @@
+{
+  "id": "valley",
+  "about": "The hand-made valley (world/maps/valley), pinned. Its coasts and the bands beside it are read from its land at the borders; these are the features it hands its neighbours: the road north, the river in from the east and out to the sea in the south.",
+  "bands": ["low"],
+  "biome": "temperate",
+  "weight": 1,
+  "pinned": true,
+  "repeats": true,
+  "landmarks": [{"intent": "castle", "where": {"at": [112, 352]}}],
+  "edges": {
+    "n": {"offers": [{"kind": "road", "slot": 4, "must": true}], "coast": true},
+    "e": {"offers": [{"kind": "river", "slot": 4, "flow": "in", "must": true}], "coast": true},
+    "s": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "must": true}], "coast": true},
+    "w": {"coast": true}
+  },
+  "rotate": false
+}

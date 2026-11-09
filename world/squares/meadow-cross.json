@@ -1,0 +1,15 @@
+{
+  "id": "meadow-cross",
+  "about": "Open meadows where a north-south road meets a stream running east.",
+  "bands": ["low", "hills"],
+  "biome": "grassland",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "land"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "road", "slot": 4, "must": true}]},
+    "e": {"offers": [{"kind": "river", "slot": 2, "flow": "out", "may": true}], "coast": true},
+    "s": {"offers": [{"kind": "road", "slot": 4, "must": true}]},
+    "w": {"offers": [{"kind": "river", "slot": 2, "flow": "in", "may": true}], "coast": true}
+  },
+  "rotate": true
+}

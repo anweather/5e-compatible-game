@@ -1,0 +1,16 @@
+{
+  "id": "reedbeds",
+  "about": "Reeds and slow channels; rivers come in from east and west and leave south, or pool.",
+  "bands": ["low"],
+  "biome": "foggy-marsh",
+  "weight": 1,
+  "landmarks": [],
+  "edges": {
+    "n": {"offers": [{"kind": "road", "slot": 2, "may": true}], "coast": true},
+    "e": {"offers": [{"kind": "river", "slot": 4, "flow": "in", "may": true}], "coast": true},
+    "s": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "may": true}], "coast": true},
+    "w": {"offers": [{"kind": "river", "slot": 4, "flow": "in", "may": true}], "coast": true}
+  },
+  "ends": {"river": "lake"},
+  "rotate": true
+}

@@ -1,0 +1,15 @@
+{
+  "id": "open-sea",
+  "about": "Open sea round a lone rock spire, reached by Frozen Tide or Iceberg.",
+  "bands": ["sea"],
+  "biome": "ocean",
+  "weight": 0.7,
+  "landmarks": [{"intent": "sea-spire", "where": {"near": "water"}}],
+  "edges": {
+    "n": {},
+    "e": {},
+    "s": {},
+    "w": {}
+  },
+  "rotate": false
+}

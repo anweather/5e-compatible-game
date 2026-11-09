@@ -97,6 +97,33 @@ touch them.
   the lake, the river, the falls, Hollowmere and the coast. Shaped by
   `ValleyShape` and baked in the Editor.
 
+**World square**
+: A valley-sized piece of the bigger world: 9 × 9 chunks, 576 × 576 cells (`squareCells`). The world is a grid of them,
+  the valley one (`docs/design/world-squares.md`). Always "world square" in full: "square" alone is a spell shape.
+
+**World plan**
+: The coarse world, decided for every world square at load on every peer from the seed (`Chem.WorldPlan`): each one's
+  band, square template and turn, the features crossing its sides, its coasts, its landmarks and the roads between them.
+  A pure function of the seed and its inputs, with a **plan hash**. Chunks are made from it.
+
+**Band**
+: A world square's height class (`world/bands.json`): sea, low, hills, high, peaks. Touching world squares differ by
+  at most one band. *Not* the dragon's band of fire.
+
+**Square template**
+: A curated kind of world square (`world/squares/<id>.json`): its bands, anchor biome, landmark intents and where they
+  may go, what each side offers (a road, river, range or canyon at one of 9 slots, a must or a may) and whether it may
+  face the sea, how a feature may end in it, and whether it turns. A **filler** is a band's template that fits anything.
+
+**Landmark intent**
+: What a world square asks for, never where it goes (`world/landmarks/<id>.json`, `Chem.LandmarkIntent`): "a village
+  with a landmark", with a form per biome. The plan picks its world square; the form comes from the biome there.
+
+**Known chunk / generated chunk** *(planned)*
+: The two states a chunk is in before it's active, by distance from a character (`sight` and `know` in `sim.json`
+  `streaming`): a **known** chunk is decided, not built (its biome, coarse heights and landmarks, for the far view); a
+  **generated** chunk has its cells, land and things made from the world plan, and is held inactive.
+
 **Ground pack**
 : The drawn detail of a map, `ground/` in its folder: heights, paint, trees and grass per chunk, and the river's channel (`GroundPack`,
   `docs/design/maps-as-data.md`). The valley's is what the game draws (`MapTerrains`, phase 6): the bake that exported it is retired. A map without one is drawn from its land and cells.

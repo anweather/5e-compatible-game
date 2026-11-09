@@ -1,0 +1,16 @@
+{
+  "id": "foothill-forest",
+  "about": "Forested foothills; a range fades out from the north, a river runs off south.",
+  "bands": ["hills", "high"],
+  "biome": "temperate",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "land"}}, {"intent": "cave", "where": {"band": "hills"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "range", "slot": 4, "may": true}]},
+    "e": {"offers": [{"kind": "road", "slot": 4, "may": true}]},
+    "s": {"offers": [{"kind": "river", "slot": 4, "flow": "out", "may": true}]},
+    "w": {"offers": [{"kind": "river", "slot": 6, "flow": "in", "may": true}]}
+  },
+  "ends": {"range": "fade"},
+  "rotate": true
+}

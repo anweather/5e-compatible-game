@@ -1,0 +1,16 @@
+{
+  "id": "open-water",
+  "about": "Open sea with nothing in it. Repeats freely.",
+  "bands": ["sea"],
+  "biome": "ocean",
+  "weight": 3,
+  "repeats": true,
+  "landmarks": [],
+  "edges": {
+    "n": {},
+    "e": {},
+    "s": {},
+    "w": {}
+  },
+  "rotate": false
+}

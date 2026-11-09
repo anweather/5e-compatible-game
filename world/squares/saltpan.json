@@ -1,0 +1,16 @@
+{
+  "id": "saltpan",
+  "about": "A white salt flat; a stream from the south dies in its pan, a dry canyon closes in from the north.",
+  "bands": ["low"],
+  "biome": "salt-flat",
+  "weight": 1,
+  "landmarks": [{"intent": "village-with-landmark", "where": {"near": "water"}}],
+  "edges": {
+    "n": {"offers": [{"kind": "canyon", "slot": 6, "may": true}], "coast": true},
+    "e": {"offers": [{"kind": "road", "slot": 4, "may": true}], "coast": true},
+    "s": {"offers": [{"kind": "river", "slot": 2, "flow": "in", "may": true}], "coast": true},
+    "w": {"offers": [{"kind": "road", "slot": 4, "may": true}], "coast": true}
+  },
+  "ends": {"river": "lake", "canyon": "close"},
+  "rotate": true
+}
