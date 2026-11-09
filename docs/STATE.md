@@ -61,14 +61,13 @@ Waiting:
 ## Next, in order
 
 1. **Land `late-join-core`** when the PC's compile reports green.
-2. **`nine-slopes` (u2) then a playtest build of the nine for Andrew:** compile and land nine-slopes, then a
-   unity-task builds `Builds/PcDev` from dev with the Host map choice, checks a walk out of the valley through each
-   open side, and Andrew plays it (a plan in `docs/playtests/`).
+2. **`nine-slopes` (u2):** compile and land it, then a unity-task walks out of the valley through each open side in
+   the Editor (a clip). No Windows build for Andrew and no waiting on his play (J-082).
 3. **The far ring as a paper prototype first** (phase 6's rest: landmarks behind haze, the known ring), per "paper
    first"; then the PC.
-Then: `core-boundaries` landings (step 4 changes Chemistry/, PC compiles); a Scripts runtime asmdef after the
-playtest (measure compile time first, J-081); #170 barrels; mana after Andrew plays quick taps; maps phase 8 (runtime
-map switch rebuilds terrain).
+Then: `core-boundaries` landings (step 4 changes Chemistry/, PC compiles); a Scripts runtime asmdef (measure compile
+time first, J-081; no longer waits on the playtest); #170 barrels; mana after Andrew plays quick taps; maps phase 8
+(runtime map switch rebuilds terrain).
 
 ## Open questions for Andrew
 

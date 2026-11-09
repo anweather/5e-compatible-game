@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-082: Wait for Andrew's playtest of the nine? (2026-11-08)
+
+- **Asked:** Andrew told the lead, unprompted: "I don't need the Windows build for playtesting yet. Keep working
+  without my playtest."
+- **Also comes up when:** any step in STATE's order that ends in "Andrew plays it".
+- **Answer:** don't build `Builds/PcDev` for him and don't block on his play. Unity-task walk checks and clips stand
+  in for the playtest; the order goes on (nine-slopes, then the far ring on paper, then the deferred items).
+- **Why:** he'll ask for a build when he wants one.
+- **Revisited:** 0.
+
 ### J-081: An outside architecture review (2026-11-08)
 
 - **Asked:** Andrew pasted a review of the repo's architecture, CI and tests.
