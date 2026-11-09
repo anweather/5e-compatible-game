@@ -63,6 +63,9 @@ Each entry has:
   TickStageBench already guard them). No weekly CI review (Andrew: "let's not"). Already done: the sandbox is frozen (2026-10-31); a Sweep category exists (test-speed-core).
 - **Weighed:** CI takes 4.5-5 min and isn't the bottleneck (the PC's Editor is), so CI changes are cheap tidying;
   the test split and React refactor help agents most (smaller things to read and test).
+- **The lead, 2026-11-09, on u2's two leftovers:** step 4 (a `Chemistry/Reactions/` folder) is closed as done:
+  react-split already split Apply and a cold build has no S3776. S3776 stays in `WarningsNotAsErrors` (a parallel Mac
+  build can still raise it; CLAUDE.md's `-m:1` note).
 - **Revisited:** 0.
 
 ### J-080: The world squares (playtest 2026-11-08 follow-up, `docs/design/world-squares.md`)
