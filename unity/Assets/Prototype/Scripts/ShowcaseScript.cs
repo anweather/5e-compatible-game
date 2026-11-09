@@ -39,6 +39,17 @@ public abstract class ShowcaseScript : MonoBehaviour
     {
         started = Time.time;
         EventLog.HudVisible = false;
+        Rebind();
+
+        yield return Play();
+
+        EventLog.HudVisible = true;
+        Done = true;
+    }
+
+    /// <summary>Finds the grid, the wizard and the camera again: at the start, and after the scene has loaded again (a map switch).</summary>
+    protected void Rebind()
+    {
         grid = ChemGrid.Current?.Grid;
         wizard = WizardRig.FindLocal();
         puppet = new WizardPuppet(wizard);
@@ -46,11 +57,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         caster.enabled = false;
         hands = wizard.GetComponent<ItemHolder>();
         brain = Camera.main.GetComponent<CinemachineBrain>();
-
-        yield return Play();
-
-        EventLog.HudVisible = true;
-        Done = true;
     }
 
     protected void Chapter(string title)

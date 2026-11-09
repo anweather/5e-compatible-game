@@ -389,20 +389,37 @@ public class OnlineProbeClient : MonoBehaviour
         return local != null && net.Online && grid.World.Tick > 0 && net.CaughtUp ? local.gameObject : null;
     }
 
+    // This side in the game: a host on another map sends it there first (NetSession.JoinOnHostMap), and the scene loads
+    // again on it, so the grid is found afresh each frame until this side has joined on the host's map.
+    sealed class Joined
+    {
+        const float MostSeconds = 45f;
+        public ChemGrid Grid;
+        public NetChem Net;
+        public GameObject Wizard;
+
+        public IEnumerator Wait()
+        {
+            for (float waited = 0f; waited < MostSeconds; waited += Time.unscaledDeltaTime)
+            {
+                Grid = ChemGrid.Current?.Grid;
+                Net = Grid != null ? Grid.GetComponent<NetChem>() : null;
+                Wizard = Net != null ? JoinedWizard(Grid, Net) : null;
+                if (Wizard != null) yield break;
+                yield return null;
+            }
+        }
+    }
+
     IEnumerator Take(string id)
     {
         errorCount = 0;
         errors.Clear();
         var session = FindAnyObjectByType<NetSession>();
         session.Join("127.0.0.1");
-        var grid = ChemGrid.Current?.Grid;
-        var net = grid.GetComponent<NetChem>();
-        GameObject wizard = null;
-        for (float waited = 0f; waited < 30f && wizard == null; waited += Time.unscaledDeltaTime)
-        {
-            wizard = JoinedWizard(grid, net);
-            if (wizard == null) yield return null;
-        }
+        var joined = new Joined();
+        yield return joined.Wait();
+        var (grid, net, wizard) = (joined.Grid, joined.Net, joined.Wizard);
         if (wizard == null) yield break;   // the host times out waiting for "joined"
         var recorder = new OnlineProbeRecorder(grid, client: true);
         recorder.Seen.id = id;
@@ -625,7 +642,7 @@ public class OnlineProbe : ProbeScenario
             if (!ballBroken && World.Tick > recorder.StartTick + OnlineSchedule.PropTick)
             {
                 ballBroken = true;
-                BreakBall();
+                StartCoroutine(BreakBall());
             }
             yield return null;
         }
@@ -891,8 +908,11 @@ public class OnlineProbe : ProbeScenario
         // The owner moves it; its copy here gets there through the NetworkTransform.
         var to = new Vector2Int(hit.ToX, hit.ToY);
         for (float t = 0f; t < 2f && grid.CellAt(other.PlayerObject.transform.position) != to; t += Time.unscaledDeltaTime) yield return null;
-        if (to == from + Vector2Int.right && grid.CellAt(other.PlayerObject.transform.position) == to) strikeMoved++;
-        else if (to != from) Check("strike_moved_where_the_core_said", false, $"core {to}, its copy here {grid.CellAt(other.PlayerObject.transform.position)}");
+        var copy = grid.CellAt(other.PlayerObject.transform.position);
+        // Pushed a cell east, unless the land there stops it (the core then puts it where it can stand): either way its
+        // copy here is where the core said.
+        if (copy == to && to == from + Vector2Int.right) strikeMoved++;
+        else if (copy != to) Check("strike_moved_where_the_core_said", false, $"core {to}, its copy here {grid.CellAt(other.PlayerObject.transform.position)}");
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.
@@ -961,18 +981,23 @@ public class OnlineProbe : ProbeScenario
         return seen != null && seen.id == id && (phase == null || seen.phase == phase) ? seen : null;
     }
 
-    // A glow ball hurled at the ground near the wizard: the host's physics breaks it for everyone.
-    void BreakBall()
+    // A glow ball hurled at the ground near the wizard: the host's physics breaks it for everyone. Its glass cracks on the
+    // first hard hit (Fragile), so a ball whose bounces didn't break it is hurled again.
+    IEnumerator BreakBall()
     {
         var ball = OnlineSchedule.GlowBalls().FirstOrDefault();
-        if (ball == null) return;
+        if (ball == null) yield break;
         ballId = ball.GetComponent<PhysicsProp>().Thing;
-        var from = wizard.transform.position + wizard.transform.forward * 2f + Vector3.up * 1.5f;
-        var body = ball.GetComponent<Rigidbody>();
-        body.isKinematic = false;
-        body.position = from;
-        ball.transform.position = from;
-        body.linearVelocity = Vector3.down * 12f;
+        for (int hurls = 0; hurls < 2 && ball != null; hurls++)
+        {
+            var from = wizard.transform.position + wizard.transform.forward * 2f + Vector3.up * 1.5f;
+            var body = ball.GetComponent<Rigidbody>();
+            body.isKinematic = false;
+            body.position = from;
+            ball.transform.position = from;
+            body.linearVelocity = Vector3.down * 12f;
+            for (float t = 0f; t < 1f && ball != null; t += Time.unscaledDeltaTime) yield return null;
+        }
     }
 
     void CompareCombos(OnlineObservation host, OnlineObservation client)
@@ -980,7 +1005,10 @@ public class OnlineProbe : ProbeScenario
         Metric("glow_balls_before", ballsBefore);
         Metric("glow_balls_host", host.glowBalls);
         Metric("glow_balls_client", client.glowBalls);
-        Check("broken_ball_gone_on_both", ballsBefore > 0 && host.glowBalls == ballsBefore - 1 && client.glowBalls == host.glowBalls,
+        // A map with no glow ball (the Drowned Chain): said, not failed. The valley has three.
+        if (!grid.Things.All.Any(t => t.Kind.StartsWith("glow-ball", StringComparison.Ordinal)) && ChemGrid.MapId != GameFolders.DefaultMap)
+            Check("broken_ball_gone_on_both", true, $"skipped: {ChemGrid.MapId} has no glow ball");
+        else Check("broken_ball_gone_on_both", ballsBefore > 0 && host.glowBalls == ballsBefore - 1 && client.glowBalls == host.glowBalls,
             $"{ballsBefore} glow balls, then {host.glowBalls} on the host and {client.glowBalls} on the client");
         Check("combo_state_equal", host.castState == client.castState, $"host {host.castState}; client {client.castState}");
         string me = NetworkManager.Singleton.LocalClientId == 0 ? "p0" : $"p{NetworkManager.Singleton.LocalClientId}";
@@ -1062,6 +1090,12 @@ public class OnlineProbe : ProbeScenario
         float apart = Vector3.Distance(host.propAfter, client.propAfter);
         Metric("prop_moved_m", moved);
         Metric("prop_apart_m", apart);
+        // A map with no crate where the Thunderwave shoves (the Drowned Chain): said, not failed. The valley has one.
+        if (OnlineSchedule.PushedThing(grid).IsNone && ChemGrid.MapId != GameFolders.DefaultMap)
+        {
+            Check("prop_moved_matches", true, $"skipped: {ChemGrid.MapId} has no crate on the yard's cell {OnlineSchedule.PushedCell}");
+            return;
+        }
         Check("prop_moved_matches", host.propFound && client.propFound && moved > 1f && apart < 0.05f,
             $"crate {host.propId} moved {moved:0.00} m on the host by the client's Thunderwave; the client's copy {apart * 100f:0.0} cm from it");
     }
