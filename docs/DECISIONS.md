@@ -23,6 +23,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D14 | [Creatures are data](adr/0014-creatures-are-data.md) | Proposed (2026-11-02) |
 | D15 | [Workers land and pull their own work](adr/0015-workers-land-and-pull-their-own-work.md) | Accepted (2026-11-06) |
 | D16 | [One way to cast: two hands, with a charge](adr/0016-one-way-to-cast-hands-with-a-charge.md) | Accepted (2026-11-07) |
+| D17 | [The sparse World: inactive chunks as their source plus their changes](adr/0017-the-sparse-world.md) | Proposed (2026-11-10) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 

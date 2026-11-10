@@ -201,7 +201,7 @@ namespace Chem
         void LayAct(ActDone act, int x, int y, SortedSet<(int y, int x)> touched)
         {
             int key = Idx(x, y);
-            var c = Cells[key];
+            var c = CellAt(key);
             act.Cells.Add((key, c.T, c.Cover));
             LayFresh(c, act.Kind == ActTerrain ? act.What : null, act.Kind == ActCover ? act.What : null);
             KeepInStart(key, c);
@@ -287,7 +287,7 @@ namespace Chem
             int gone = 0;
             foreach (var (key, terrain, cover) in act.Cells)
             {
-                var c = Cells[key];
+                var c = CellAt(key);
                 // Burnt, felled or built on since: what's there now stands.
                 if ((act.Kind == ActTerrain ? c.T : c.Cover) != act.What) continue;
                 LayFresh(c, Rules.Terrain.ContainsKey(terrain) ? terrain : Rules.Buildings.Ground, cover != null && Rules.Covers.ContainsKey(cover) ? cover : null);

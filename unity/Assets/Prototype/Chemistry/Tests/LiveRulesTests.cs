@@ -44,7 +44,7 @@ namespace Chem.Tests
 
         /// <summary>Indexes of squares that are burning or have burned (grass burns to dirt).</summary>
         static HashSet<int> Burnt(World w) =>
-            new HashSet<int>(Enumerable.Range(0, w.Cells.Length).Where(i => w.Cells[i].Fire > 0 || w.Cells[i].T == "dirt"));
+            new HashSet<int>(Enumerable.Range(0, w.W * w.H).Where(i => w.CellAt(i).Fire > 0 || w.CellAt(i).T == "dirt"));
 
         const string NoSpread = "{ 'sim': { 'fire': { 'spreadChance': 0 } } }";
 
@@ -319,7 +319,7 @@ namespace Chem.Tests
             modded.ApplyRules(With(NoSpread));
             Assert.That(modded.CellHash(), Is.EqualTo(plain.CellHash()), "switching keeps the cells");
             var atSwitch = Burnt(modded);
-            Assert.That(modded.Cells.Count(c => c.Fire > 0), Is.GreaterThan(0), "the fire is still going");
+            Assert.That(modded.AllCells().Count(c => c.Fire > 0), Is.GreaterThan(0), "the fire is still going");
 
             Run(plain, 200);
             Run(modded, 200);

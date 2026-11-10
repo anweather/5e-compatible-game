@@ -390,9 +390,9 @@ namespace Chem.Tests
             Until(w, () => w.Raiders.Count > 0, "a raider comes");
             var r = w.SpawnRaider("bone-hound~burning", w.Raiders[0].X, w.Raiders[0].Y + 3, 500);
             Assert.That(r, Is.Not.Null);
-            int was = w.Cells.Count(c => c.Fire > 0);
+            int was = w.AllCells().Count(c => c.Fire > 0);
             Ticks(w, 12);
-            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(was));
+            Assert.That(w.AllCells().Count(c => c.Fire > 0), Is.GreaterThan(was));
         }
 
         [Test]

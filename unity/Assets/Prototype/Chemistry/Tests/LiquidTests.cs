@@ -37,9 +37,9 @@ namespace Chem.Tests
 
         static World Flat(Rules rules) => new World(rules, 64, 64, 7, "grass");
 
-        static int Wet(World w, string liquid) => w.Cells.Count(c => c.Water > 0 && w.LiquidId(c) == liquid);
-        static int Units(World w, string liquid) => w.Cells.Where(c => c.Water > 0 && w.LiquidId(c) == liquid).Sum(c => c.Water);
-        static int Deepest(World w, string liquid) => w.Cells.Where(c => c.Water > 0 && w.LiquidId(c) == liquid).Select(c => c.Water).DefaultIfEmpty().Max();
+        static int Wet(World w, string liquid) => w.AllCells().Count(c => c.Water > 0 && w.LiquidId(c) == liquid);
+        static int Units(World w, string liquid) => w.AllCells().Where(c => c.Water > 0 && w.LiquidId(c) == liquid).Sum(c => c.Water);
+        static int Deepest(World w, string liquid) => w.AllCells().Where(c => c.Water > 0 && w.LiquidId(c) == liquid).Select(c => c.Water).DefaultIfEmpty().Max();
         static int Farthest(World w, string liquid)
         {
             int far = 0;
@@ -86,7 +86,7 @@ namespace Chem.Tests
             Assert.That(Units(honey, "honey"), Is.EqualTo(64), "none soaks in or is lost");
             Assert.That(Wet(honey, "honey"), Is.LessThan(Wet(water, "water")), "honey stands in a mound where water spreads");
             Assert.That(Deepest(honey, "honey"), Is.GreaterThan(Deepest(water, "water")));
-            Assert.That(honey.Cells.Count(c => c.Water > 0 && c.Liquid != rules.LiquidIndex("honey")), Is.Zero, "it's honey wherever it went");
+            Assert.That(honey.AllCells().Count(c => c.Water > 0 && c.Liquid != rules.LiquidIndex("honey")), Is.Zero, "it's honey wherever it went");
             TestContext.WriteLine($"honey {Wet(honey, "honey")} cells, {Deepest(honey, "honey")} deep, to x {Farthest(honey, "honey")}; water {Wet(water, "water")}, {Deepest(water, "water")}, {Farthest(water, "water")}");
             Assert.That(honey.CellHash(), Is.EqualTo("4a7f3f69"), "the honey golden");
         }
@@ -105,8 +105,8 @@ namespace Chem.Tests
                 water.Step();
             }
             int kind = rules.LiquidIndex("red-paint");
-            Assert.That(paint.Cells.Select(c => c.Water), Is.EqualTo(water.Cells.Select(c => c.Water)), "thick 1 and heap 2: water's own run, cell for cell");
-            Assert.That(paint.Cells.Where(c => c.Water > 0).All(c => c.Liquid == kind), Is.True);
+            Assert.That(paint.AllCells().Select(c => c.Water), Is.EqualTo(water.AllCells().Select(c => c.Water)), "thick 1 and heap 2: water's own run, cell for cell");
+            Assert.That(paint.AllCells().Where(c => c.Water > 0).All(c => c.Liquid == kind), Is.True);
             Assert.That(Farthest(paint, "red-paint"), Is.GreaterThan(16), "it ran down the slope");
             Assert.That(paint.CellHash(), Is.Not.EqualTo(water.CellHash()), "the kind is in the hash");
             Assert.That(paint.CellText(), Does.Contain(",qred-paint;"), "by its id");
@@ -155,8 +155,8 @@ namespace Chem.Tests
                 for (int x = 36; x < 44; x++) w.AddWater(x, y, 8);
             Pour(w, "molten", 34, 32, 32);
             for (int t = 0; t < 120; t++) w.Step();
-            Assert.That(w.Cells.Count(c => c.T == "rock"), Is.GreaterThan(0), "the pond's edge set to rock");
-            Assert.That(w.Cells.Count(c => c.Water > 0 && c.Liquid != 0 && c.T == "rock"), Is.Zero);
+            Assert.That(w.AllCells().Count(c => c.T == "rock"), Is.GreaterThan(0), "the pond's edge set to rock");
+            Assert.That(w.AllCells().Count(c => c.Water > 0 && c.Liquid != 0 && c.T == "rock"), Is.Zero);
             Assert.That(w.CellHash(), Is.EqualTo("81a98542"), "the molten-rock golden");
         }
 
@@ -218,7 +218,7 @@ namespace Chem.Tests
             Assert.That(w.At(20, 20).Water, Is.Zero, "a liquid the rules lost dries");
             Assert.That(w.LiquidId(w.At(40, 40)), Is.EqualTo("red-paint"));
             w.ApplyRules(R);
-            Assert.That(w.Cells.Count(c => c.Water > 0), Is.Zero);
+            Assert.That(w.AllCells().Count(c => c.Water > 0), Is.Zero);
         }
 
         [TestCase(@"""water"": { ""thick"": 2 }", "water is built in")]
@@ -285,7 +285,7 @@ namespace Chem.Tests
             if (t % 50 == 0 || t >= Lapses - 2) Assert.That(State(b), Is.EqualTo(State(a)), $"tick {t}");
             if (t == Switched + 2) Assert.That(Honey(a), Is.GreaterThan(0), Last(a));
             if (t == Lapses - 1) Assert.That(Honey(a), Is.GreaterThan(9), "the honey stands until the lapse");
-            if (t == Lapses) Assert.That(a.Cells.Count(c => c.Water > 0), Is.Zero, "it dries at the lapse, everywhere");
+            if (t == Lapses) Assert.That(a.AllCells().Count(c => c.Water > 0), Is.Zero, "it dries at the lapse, everywhere");
         }
 
         [Test]
@@ -314,12 +314,12 @@ namespace Chem.Tests
             Assert.That(done.Done, Is.True, done.Line);
             w.Cast("honey-spill", 32, 32, 0);
             w.Step();
-            int units = w.Cells.Sum(c => c.Water);
+            int units = w.AllCells().Sum(c => c.Water);
             Assert.That(Honey(w), Is.GreaterThan(0));
             Assert.That(w.ApplyRoom(RoomCommand.Revert("Bo", "honey")).Done, Is.True);
             Assert.That(Honey(w), Is.Zero);
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(units), "every unit is water now");
-            Assert.That(w.Cells.Where(c => c.Water > 0).All(c => c.Liquid == 0), Is.True);
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(units), "every unit is water now");
+            Assert.That(w.AllCells().Where(c => c.Water > 0).All(c => c.Liquid == 0), Is.True);
         }
 
         static string Last(World w) => w.Log.Count == 0 ? "" : w.Log[w.Log.Count - 1].Text;

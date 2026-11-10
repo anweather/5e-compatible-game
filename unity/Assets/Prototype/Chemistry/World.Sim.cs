@@ -254,7 +254,7 @@ namespace Chem
         int TickTimers(RowSpan s, byte flow, bool soak)
         {
             var ch = s.Chunk;
-            var cells = ch.Cells;
+            var cells = ch.ActiveCells;
             var marks = ch.Marks;
             int edges = -1;
             for (int i = s.Start; i < s.End; i++)
@@ -551,7 +551,7 @@ namespace Chem
             burning.Clear();
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++) if (cells[i].Fire > 0) burning.Add((s.Chunk, i));
             }
         }
@@ -564,7 +564,7 @@ namespace Chem
         void Burn(Chunk ch, int i)
         {
             var p = Rules.Sim.Fire;
-            var c = ch.Cells[i];
+            var c = ch.ActiveCells[i];
             if (c.Fire == 0) return;
             // Water puts out anything but a floating oil or grease fire.
             if (IsOpenWater(c) && !CoverBurns(c))
@@ -680,7 +680,7 @@ namespace Chem
             {
                 var s = rows[k];
                 if (skipStill && Skips(s.Chunk)) continue;
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
@@ -700,7 +700,7 @@ namespace Chem
             {
                 var s = rows[k];
                 if (skipStill && Skips(s.Chunk)) continue;
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++) if (cells[i].Water != 0) Flow(s.Chunk, i);
             }
         }
@@ -712,7 +712,7 @@ namespace Chem
             {
                 var s = rows[k];
                 if (skipStill && Skips(s.Chunk)) continue;
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.End - 1; i >= s.Start; i--) if (cells[i].Water != 0) Flow(s.Chunk, i);
             }
         }
@@ -725,7 +725,7 @@ namespace Chem
         /// </summary>
         void Flow(Chunk ch, int i)
         {
-            var c = ch.Cells[i];
+            var c = ch.ActiveCells[i];
             if (c.Frozen || IsBlocking(c)) return;
             // With water alone in the rules (liquid null) none of a liquid's own rules can apply: water's path stays as it was.
             int kind = c.Liquid;
@@ -738,7 +738,7 @@ namespace Chem
             }
             var (best, bestI, other) = Lowest(ch, i, c, liquid);
             if (best == null) return;
-            var to = best.Cells[bestI];
+            var to = best.ActiveCells[bestI];
             int lands = kind;
             if (other)
             {
@@ -823,7 +823,7 @@ namespace Chem
             for (int k = from; k < to; k++)
             {
                 var s = rows[k];
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     if (cells[i].Gas == null) continue;
@@ -908,7 +908,7 @@ namespace Chem
         /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
         void Drift(Chunk ch, int i)
         {
-            var c = ch.Cells[i];
+            var c = ch.ActiveCells[i];
             if (Rand() < DecayOf(c.Gas))
             {
                 c.GasAmt--;

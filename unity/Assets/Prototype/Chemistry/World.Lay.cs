@@ -47,7 +47,7 @@ namespace Chem
                 if (newCells.TryGetValue(old.Key, out var same) && same == old.Value) continue;
                 if (!underLaid.TryGetValue(old.Key, out var under)) continue;
                 underLaid.Remove(old.Key);
-                var c = Cells[old.Key];
+                var c = CellAt(old.Key);
                 LayFresh(c, now.Terrain.ContainsKey(under.terrain) ? under.terrain : now.Buildings.Ground, under.cover != null && now.Covers.ContainsKey(under.cover) ? under.cover : null);
                 KeepInStart(old.Key, c);
                 touched.Add(ChunkKey(old.Key));
@@ -59,7 +59,7 @@ namespace Chem
                 if (oldCells.TryGetValue(cell.Key, out var had) && had == cell.Value) continue;
                 skipped.TryGetValue(cell.Value, out var tally);
                 tally.of++;
-                var c = Cells[cell.Key];
+                var c = CellAt(cell.Key);
                 if (open(cell.Key % W, cell.Key / W))
                 {
                     underLaid[cell.Key] = (c.T, c.Cover);

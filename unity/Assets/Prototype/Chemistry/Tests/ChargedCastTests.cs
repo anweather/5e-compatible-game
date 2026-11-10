@@ -307,7 +307,7 @@ namespace Chem.Tests
                 }
             var fired = Charged(w, "earth+water", charge);
             w.Cast(fired.Spell, 9, 9, 1, fired.Charge);
-            return w.Cells.Count(c => c.T == "sapling");
+            return w.AllCells().Count(c => c.T == "sapling");
         }
 
         [Test]

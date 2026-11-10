@@ -156,7 +156,7 @@ namespace Chem
             int max = Rules.Sim.WaterMaxLevel;
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
@@ -175,7 +175,7 @@ namespace Chem
         {
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
@@ -190,7 +190,7 @@ namespace Chem
         {
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
@@ -218,7 +218,7 @@ namespace Chem
         // Snow on one square: a cover on open ground, a bank where it's sheltered, and slowly in the open.
         void SettleOn(Chunk ch, int i, int upwind, double cover, double bank, double deepen)
         {
-            var c = ch.Cells[i];
+            var c = ch.ActiveCells[i];
             var w = Rules.Sim.Weather;
             if (c.Water > 0 || c.Fire > 0 || IsBlocking(c)) return;
             if (c.Cover == null)
@@ -322,7 +322,7 @@ namespace Chem
         {
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++) MeltOn(cells[i], chance);
             }
         }

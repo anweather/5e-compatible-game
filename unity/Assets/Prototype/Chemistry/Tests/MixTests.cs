@@ -54,7 +54,7 @@ namespace Chem.Tests
             for (int t = 0; t < ticks; t++) w.Step();
         }
 
-        static int Cells(World w, string liquid) => w.Cells.Count(c => c.Water > 0 && w.LiquidId(c) == liquid);
+        static int Cells(World w, string liquid) => w.AllCells().Count(c => c.Water > 0 && w.LiquidId(c) == liquid);
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState}";
 
@@ -255,7 +255,7 @@ namespace Chem.Tests
             Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", "blue")).Done, Is.True);
             Assert.That(w.Room.Mixes, Is.Empty);
             Assert.That(w.Rules.LiquidIndex(Purple), Is.EqualTo(-1));
-            Assert.That(w.Cells.Count(c => c.Water > 0), Is.Zero, "gone with the later parent");
+            Assert.That(w.AllCells().Count(c => c.Water > 0), Is.Zero, "gone with the later parent");
             Assert.That(w.Room.Retired.Any(r => r.Id == Purple), Is.True);
         }
 

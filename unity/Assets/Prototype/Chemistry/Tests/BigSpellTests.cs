@@ -169,7 +169,7 @@ namespace Chem.Tests
         {
             var w = new World(R, 24, 9, 6, "dirt");
             w.Cast("earth-spires", 2, 4, 1);
-            var pillars = w.Cells.Select((c, i) => (c, i)).Where(p => p.c.T == "pillar").Select(p => (p.i % 24, p.i / 24)).ToList();
+            var pillars = w.AllCells().Select((c, i) => (c, i)).Where(p => p.c.T == "pillar").Select(p => (p.i % 24, p.i / 24)).ToList();
             int[] side = { 0, 1, 0, -1 };
             var want = Enumerable.Range(0, 12).Select(k => (2 + k, 4 + side[k % 4])).ToList();
             Assert.That(pillars, Is.EquivalentTo(want), "a cell on, a cell off to the south, on, off to the north");
@@ -218,7 +218,7 @@ namespace Chem.Tests
             var w = new World(R, 30, 11, 6, "dirt");
             w.Cast("iceberg", 8, 5, 1);
             Run(w, 16);
-            int ice = w.Cells.Count(c => c.Frozen);
+            int ice = w.AllCells().Count(c => c.Frozen);
             Assert.That(ice, Is.GreaterThanOrEqualTo(40));
             w.Cast("fireball", 11, 5, 1);
             Assert.That(w.At(11, 5).Frozen, Is.False);

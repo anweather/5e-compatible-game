@@ -47,7 +47,22 @@ namespace Chem
     internal sealed class Chunk
     {
         public readonly int X, Y;
-        public readonly Cell[] Cells = new Cell[Chunks.Area];
+        // Its cells, reached through CellAt and Put, or ActiveCells for the tick's own passes, so how an inactive
+        // chunk holds them can change under its callers (the sparse World, docs/design/sparse-world.md).
+        readonly Cell[] cells = new Cell[Chunks.Area];
+
+        /// <summary>The cell at local index i, or null outside the world's extent.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Cell CellAt(int i) => cells[i];
+
+        /// <summary>Puts the cell at local index i (as the world is built).</summary>
+        public void Put(int i, Cell c) => cells[i] = c;
+
+        /// <summary>
+        /// Its cells as one array by local index, for the tick's hot passes over an active chunk (World.Sim, Weather,
+        /// Machines, StillWater): only ever read for a chunk the tick simulates.
+        /// </summary>
+        public Cell[] ActiveCells => cells;
         /// <summary>
         /// How many spreads each burning cell is from where its fire started (see FireParams.FadeCells).
         /// Kept outside Cell so cell state, checksums and the TS parity tests are unaffected.
@@ -131,7 +146,7 @@ namespace Chem
                     else { next = ch.West; ni = i + Chunks.Mask; }
                     break;
             }
-            return next?.Cells[ni];
+            return next?.CellAt(ni);
         }
     }
 }

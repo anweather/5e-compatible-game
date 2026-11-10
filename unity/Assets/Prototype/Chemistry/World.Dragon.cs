@@ -148,9 +148,10 @@ namespace Chem
             var made = new Cell();
             Cell last = null;
             int shape = 0;
-            for (int i = 0; i < Cells.Length; i++)
+            for (var run = new RowCells(this, 0, W * H); run.MoveNext();)
             {
-                var c = Cells[i];
+                int i = run.Index;
+                var c = run.Cell;
                 if (source != null)
                 {
                     made.Reset();
@@ -356,7 +357,7 @@ namespace Chem
         // chunks already reset (a burning valley of grass ended a third burnt without this). One tick, cheaply: it's a test on each cell.
         void SnuffFires()
         {
-            foreach (var c in Cells)
+            foreach (var c in AllCells())
             {
                 if (c.Fire == 0) continue;
                 c.Fire = 0;
@@ -428,7 +429,7 @@ namespace Chem
         {
             for (int i = 0; i < Chunks.Area; i++)
             {
-                var c = ch.Cells[i];
+                var c = ch.CellAt(i);
                 if (c == null) continue;
                 c.CopyFrom(startShapes[startAt[Idx(CellX(ch, i), CellY(ch, i))]]);
                 c.ForgetDef();
@@ -481,7 +482,7 @@ namespace Chem
             int count = 0;
             for (int i = 0; i < Chunks.Area; i++)
             {
-                var c = ch.Cells[i];
+                var c = ch.CellAt(i);
                 if (c != null && Differs(c, startShapes[startAt[Idx(CellX(ch, i), CellY(ch, i))]])) count++;
             }
             ChangedCount += count - ch.Changed;

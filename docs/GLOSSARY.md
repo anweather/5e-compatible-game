@@ -68,6 +68,13 @@ touch them.
   paused or frozen (for chunks; frozen means ice, asleep means a resting
   physics body).
 
+**Packed chunk / unpacked chunk**
+: How a chunk holds its cells (the sparse World, D17, `docs/design/sparse-world.md`). An **unpacked** chunk holds
+  them as `Cell` objects; every active chunk is unpacked. A **packed** chunk holds only its **source** (where its
+  cells come from before play, an `IChunkSource`: for a generated map, its bake) and its **changes** (the cells that
+  differ from the source). A chunk **packs** and **unpacks**; neither shows in its cells, the hash or a save.
+  Not the same as active / inactive: an inactive chunk may be either.
+
 **The world**
 : `Chem.World`: the cells, the chunk store and everything that ticks.
   A map's folder, `world/maps/<id>/`, is the **world data**: where things stand

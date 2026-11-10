@@ -35,9 +35,10 @@ namespace Chem
         public int H { get; }
         public int Tick { get; private set; }
         /// <summary>
-        /// Every cell of the world's extent, row-major (index Idx(x, y)): a view for callers that
-        /// want them all. The cells themselves are stored in chunks (World.Chunks.cs); this array
-        /// holds the same objects.
+        /// Every cell of the world's extent, row-major (index Idx(x, y)), the same objects its chunks hold
+        /// (World.Chunks.cs). Only the view reads it now, until it moves to At, CellAt and AllCells: the core
+        /// reaches cells through their chunks, and the sparse World drops this array
+        /// (docs/design/sparse-world.md, step 2).
         /// </summary>
         public Cell[] Cells { get; }
 

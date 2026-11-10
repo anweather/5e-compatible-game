@@ -115,7 +115,7 @@ namespace Chem.Tests
             Assert.That(w.IsActive(2, 1), "chunks start active");
             Assert.Throws<ArgumentOutOfRangeException>(() => w.SetActive(-1, 0, false));
             foreach (var (x, y) in new[] { (0, 0), (63, 63), (64, 63), (199, 174), (128, 64) })
-                Assert.That(w.At(x, y), Is.SameAs(w.Cells[w.Idx(x, y)]));
+                Assert.That(w.At(x, y), Is.SameAs(w.CellAt(w.Idx(x, y))));
             Assert.That(w.At(200, 0), Is.Null);
             Assert.That(w.At(-1, 5), Is.Null);
         }
@@ -165,12 +165,12 @@ namespace Chem.Tests
             string before = w.ChunkHash(1, 0);
             Run(w, 30);
             Assert.That(w.ChunkHash(1, 0), Is.EqualTo(before));
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(160), "water piles up against the paused chunk");
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(160), "water piles up against the paused chunk");
 
             w.SetActive(1, 0, true);
             Run(w, 30);
             Assert.That(Any(w, 64, 64, c => c.Water > 0), "water runs on once it wakes");
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(160));
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(160));
         }
 
         [Test]
@@ -222,6 +222,55 @@ namespace Chem.Tests
             Assert.That(b.CellHash(), Is.EqualTo(a.CellHash()));
             Assert.That(b.RngState, Is.EqualTo(a.RngState));
             Assert.That(a.CellHash(), Is.Not.EqualTo(Play((3, 0), (1, 1)).CellHash()), "and pausing does change the run");
+        }
+
+        // ---------- cells through their chunks (docs/design/sparse-world.md) ----------
+
+        [Test]
+        public void CellsThroughTheirChunksAreTheWorldsOwn()
+        {
+            var w = Valley(); // 200 x 175: the last column and row of chunks partial
+            var all = w.AllCells().ToList();
+            Assert.That(all.Count, Is.EqualTo(w.W * w.H));
+            for (int y = 0; y < w.H; y++)
+                for (int x = 0; x < w.W; x++)
+                {
+                    Assert.That(all[w.Idx(x, y)], Is.SameAs(w.At(x, y)), $"AllCells in row order at ({x}, {y})");
+                    Assert.That(w.CellAt(w.Idx(x, y)), Is.SameAs(w.At(x, y)), $"CellAt at ({x}, {y})");
+                }
+            Assert.That(w.CellAt(-1), Is.Null);
+            Assert.That(w.CellAt(w.W * w.H), Is.Null);
+        }
+
+        [Test]
+        public void TheHashsSlicesAddUpToTheWholeHash()
+        {
+            var w = Valley();
+            ValleyScript(w, 40);
+            var sum = Fnv1aSum.Start();
+            for (int k = 0; k < 7; k++) w.HashSlice(ref sum, k, 7); // slices that start and end inside a chunk's row
+            Assert.That(w.CloseHash(sum), Is.EqualTo(w.CellHash()));
+        }
+
+        [Test]
+        public void AHashSliceAllocatesNothing()
+        {
+            var w = Valley();
+            void Slice()
+            {
+                var sum = Fnv1aSum.Start();
+                w.HashSlice(ref sum, 2, 5);
+            }
+            for (int warm = 0; warm < 32; warm++) Slice(); // past the tiered JIT's recompiling (as LookScopeTests)
+            long Measure(int slices)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < slices; i++) Slice();
+                return GC.GetAllocatedBytesForCurrentThread() - before;
+            }
+            long one = Measure(1), three = Measure(3);
+            Assert.That(three, Is.EqualTo(one), "nothing per slice");
+            Assert.That(one, Is.LessThan(64));
         }
     }
 }
