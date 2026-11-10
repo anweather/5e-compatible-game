@@ -18,12 +18,13 @@ namespace Chem.Tests
 
         static World Meadow(Rules rules) => new World(rules, 64, 64, 5, "grass");
 
-        /// <summary>What one tick stamps: casts, a rule switch, combo input and stands, strikes or leavings.</summary>
+        /// <summary>What one tick stamps: casts, a rule switch, chunk switches, combo input and stands, strikes or leavings.</summary>
         sealed class Stamp
         {
             public readonly List<CastCommand> Casts = new List<CastCommand>();
             public readonly List<ComboCommand> Combos = new List<ComboCommand>();
             public readonly List<StrikeCommand> Strikes = new List<StrikeCommand>();
+            public readonly List<ChunkSwitch> Chunks = new List<ChunkSwitch>();
             public IReadOnlyList<ActiveMod> Mods;
         }
 
@@ -88,6 +89,7 @@ namespace Chem.Tests
         {
             var batch = new TickBatch(t, stamp.Casts, stamp.Mods);
             batch.Combos.AddRange(stamp.Combos);
+            batch.Chunks.AddRange(stamp.Chunks);
             batch.Strikes.AddRange(strikes);
             return batch;
         }
@@ -276,6 +278,34 @@ namespace Chem.Tests
             var w = Meadow(R);
             w.ApplyGolf(new GolfCommand(16, 24, 50, 24));
             return w;
+        }
+
+        [Test]
+        public void ARuleSwitchWhileAChunkIsInactiveReplaysTheSame()
+        {
+            // #190: Moonstone on, moonstone laid in two chunks, the far one deactivated, Moonstone off (the near chunk is made
+            // to fit then, the far one waits), the far one activated (made to fit then). Joiners before, between and after match.
+            var moonstone = new ActiveMod("moonstone", System.IO.File.ReadAllText(System.IO.Path.Combine(ChemistryTests.RulesDir(), "mods", "moonstone.json")));
+            Func<World> build = () => new World(R, 3 * Chunks.Size, Chunks.Size, 5, "grass");
+            string waiting = null, after = null;
+            var host = Host(build, 45, (t, w, s) =>
+            {
+                if (t == 1) s.Mods = new[] { moonstone };
+                if (t == 3)
+                {
+                    s.Casts.Add(new CastCommand("moon-frost", 30, 30, 1, by: "p0"));
+                    s.Casts.Add(new CastCommand("moon-frost", 150, 30, 1, by: "p0"));
+                }
+                if (t == 8) s.Chunks.Add(new ChunkSwitch(2, 0, false));
+                if (t == 12) s.Mods = Array.Empty<ActiveMod>();
+                if (t == 20) s.Casts.Add(new CastCommand("fire-bolt", 40, 40, 1, by: "p0"));
+                if (t == 29) waiting = w.At(150, 30).T + " " + w.At(30, 30).T;
+                if (t == 30) s.Chunks.Add(new ChunkSwitch(2, 0, true));
+                if (t == 31) after = w.At(150, 30).T;
+            });
+            Assert.That(waiting, Is.EqualTo("moonstone dirt"), "the switch made the active chunk fit and left the inactive one");
+            Assert.That(after, Is.EqualTo("dirt"), "made to fit when it activated");
+            AssertJoinersMatch(host, build, new[] { 1, 7, 8, 11, 12, 13, 29, 30, 31, 45 });
         }
 
         [Test]

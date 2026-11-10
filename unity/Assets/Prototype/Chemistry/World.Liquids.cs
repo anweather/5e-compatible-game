@@ -4,8 +4,9 @@
 // melting or condensing doesn't fall into another's. Meeting another kind, a liquid lays
 // its touch element there at power 1 and the reactions decide; with no touch the other is
 // a wall. Everything that asked "is it water" still means kind 0, so a world of water
-// runs as it did. The kind is an index into the rules in force, the core's own: at a rule
-// switch every cell is remapped by id (a liquid gone lapses into water or dries).
+// runs as it did. The kind is an index into the rules a chunk was made to fit, the core's own:
+// at a rule switch a chunk's cells are remapped by id when it's made to fit (World.Fit.cs; a
+// liquid gone lapses into water or dries).
 using System;
 using System.Linq;
 
@@ -13,8 +14,8 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>The liquid a cell holds (water when it's dry).</summary>
-        public LiquidDef LiquidOf(Cell c) => Rules.Liquid(c.Kind);
+        /// <summary>The liquid a cell holds (water when it's dry, or when the rules have no liquid of its kind: a chunk not yet made to fit them dries it).</summary>
+        public LiquidDef LiquidOf(Cell c) => Rules.Liquid(c.Kind < Rules.Liquids.Count ? c.Kind : 0);
 
         /// <summary>The id of the liquid a cell holds ("water" when it's dry).</summary>
         public string LiquidId(Cell c) => LiquidOf(c).Id;
@@ -176,19 +177,19 @@ namespace Chem
         Rules stillTicksFor;
         int stillTicks = 1;
 
-        // At a rule switch: each wet cell's kind from the rules before to the rules now, by id. A
-        // kind the new rules don't have lapses: into water if a retired row says so, else it dries.
-        void RemapLiquids(Rules before, Rules now)
+        // A chunk made to fit the rules (World.Fit.cs): each wet cell's kind from the liquids it was made under (their ids,
+        // by index) to the rules now, by id; empty when no index moves. A kind the new rules don't have lapses: into
+        // water if a retired row says so, else it dries.
+        int[] LiquidMap(string[] was)
         {
-            if (before == null || SameLiquids(before, now)) return;
-            var map = new int[before.Liquids.Count];
+            if (SameLiquids(was, Rules)) return Array.Empty<int>();
+            var map = new int[was.Length];
             for (int k = 0; k < map.Length; k++)
             {
-                string id = before.Liquids[k].Id;
-                int to = now.LiquidIndex(id);
-                map[k] = to >= 0 ? to : RetiredLiquidInto(id);
+                int to = Rules.LiquidIndex(was[k]);
+                map[k] = to >= 0 ? to : RetiredLiquidInto(was[k]);
             }
-            foreach (var c in Cells) RemapLiquid(c, map);
+            return map;
         }
 
         static void RemapLiquid(Cell c, int[] map)
@@ -206,11 +207,13 @@ namespace Chem
         }
 
         // Both rules list the same liquids in the same order: no index moves.
-        static bool SameLiquids(Rules a, Rules b)
+        static bool SameLiquids(Rules a, Rules b) => SameLiquids(a.Liquids.Select(l => l.Id).ToArray(), b);
+
+        static bool SameLiquids(string[] ids, Rules b)
         {
-            if (a.Liquids.Count != b.Liquids.Count) return false;
-            for (int k = 0; k < a.Liquids.Count; k++)
-                if (a.Liquids[k].Id != b.Liquids[k].Id) return false;
+            if (ids.Length != b.Liquids.Count) return false;
+            for (int k = 0; k < ids.Length; k++)
+                if (ids[k] != b.Liquids[k].Id) return false;
             return true;
         }
 

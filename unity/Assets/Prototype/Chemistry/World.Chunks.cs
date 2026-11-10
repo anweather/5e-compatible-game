@@ -51,7 +51,7 @@ namespace Chem
 
         void AddChunk(int cx, int cy)
         {
-            var ch = new Chunk(cx, cy);
+            var ch = new Chunk(cx, cy) { Fit = fits }; // made under the rules in force
             chunks.Add(Chunks.Key(cx, cy), ch);
             ch.North = FindChunk(cx, cy - 1);
             ch.South = FindChunk(cx, cy + 1);
@@ -154,17 +154,22 @@ namespace Chem
             var ch = ChunkOrThrow(cx, cy);
             if (ch.Active == active) return;
             ch.Active = active;
-            // Activating, it catches up what it missed (World.CatchUp) and counts as live, so a
-            // chunk activated for what is about to cross into it (ChunkPlanner) isn't let go as
-            // settled before it arrives.
-            if (active) Resume(ch);
+            // Activating, it's made to fit the rules if a switch while it was inactive could
+            // have unfitted it (World.Fit.cs), catches up what it missed (World.CatchUp) and
+            // counts as live, so a chunk activated for what is about to cross into it
+            // (ChunkPlanner) isn't let go as settled before it arrives.
+            if (active)
+            {
+                MakeFit(ch);
+                Resume(ch);
+            }
             else Stop(ch);
             spans = null;
             activeCoords = null;
             ChunkSwitched?.Invoke(new ChunkSwitch(cx, cy, active));
         }
 
-        /// <summary>Activates or deactivates every loaded chunk (no catching up), raising ChunkSwitched for each that changed, by row then column.</summary>
+        /// <summary>Activates or deactivates every loaded chunk (no catching up, but made to fit the rules), raising ChunkSwitched for each that changed, by row then column.</summary>
         public void SetAllActive(bool active)
         {
             FinishTick();
@@ -173,6 +178,7 @@ namespace Chem
             {
                 if (ch.Active == active) continue;
                 ch.Active = active;
+                if (active) MakeFit(ch);
                 changed.Add(ch);
             }
             spans = null;
@@ -253,7 +259,7 @@ namespace Chem
         public string CellHash()
         {
             var sum = Fnv1aSum.Start();
-            foreach (var c in Cells) AddCell(ref sum, c);
+            for (int i = 0; i < Cells.Length; i++) AddCell(ref sum, Cells[i], LiquidsAt(i, Cells[i]));
             return CloseHash(sum);
         }
 
@@ -261,19 +267,19 @@ namespace Chem
         public string CellText()
         {
             var sb = new StringBuilder();
-            foreach (var c in Cells) AppendCell(sb, c);
+            for (int i = 0; i < Cells.Length; i++) AppendCell(sb, Cells[i], LiquidsAt(i, Cells[i]));
             foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            return sb.ToString();
+            return sb.Append(FitText()).ToString();
         }
 
         /// <summary>Adds one of <paramref name="slices"/> slices of the cells to a running hash (RollingHash): row-major, by the world's size alone.</summary>
         public void HashSlice(ref Fnv1aSum sum, int slice, int slices)
         {
             int from = (int)((long)Cells.Length * slice / slices), to = (int)((long)Cells.Length * (slice + 1) / slices);
-            for (int i = from; i < to; i++) AddCell(ref sum, Cells[i]);
+            for (int i = from; i < to; i++) AddCell(ref sum, Cells[i], LiquidsAt(i, Cells[i]));
         }
 
-        /// <summary>What a hash of the cells ends with: the things cracked so far.</summary>
+        /// <summary>What a hash of the cells ends with: the things cracked so far, then the chunks not yet made to fit the rules (FitText).</summary>
         public string CloseHash(Fnv1aSum sum)
         {
             foreach (ulong thing in crackedThings)
@@ -281,6 +287,7 @@ namespace Chem
                 sum.Add('!');
                 sum.AddDigits(thing);
             }
+            sum.Add(FitText());
             return sum.ToString();
         }
 
@@ -288,12 +295,13 @@ namespace Chem
         public string ChunkHash(int cx, int cy)
         {
             var sum = Fnv1aSum.Start();
-            foreach (var c in ChunkOrThrow(cx, cy).Cells) if (c != null) AddCell(ref sum, c);
+            var ch = ChunkOrThrow(cx, cy);
+            foreach (var c in ch.Cells) if (c != null) AddCell(ref sum, c, LiquidsOf(ch));
             return sum.ToString();
         }
 
-        // What AppendCell writes, into a running hash.
-        void AddCell(ref Fnv1aSum sum, Cell c)
+        // What AppendCell writes, into a running hash; a liquid by its id in liquids (LiquidsOf: null for the rules in force).
+        void AddCell(ref Fnv1aSum sum, Cell c, string[] liquids)
         {
             sum.Add(c.T);
             sum.Add(',');
@@ -326,7 +334,7 @@ namespace Chem
             {
                 sum.Add(',');
                 sum.Add('q');
-                sum.Add(LiquidId(c));
+                sum.Add(LiquidIdIn(liquids, c));
             }
             sum.Add(';');
         }
@@ -339,7 +347,7 @@ namespace Chem
             sum.Add(value);
         }
 
-        void AppendCell(StringBuilder sb, Cell c)
+        void AppendCell(StringBuilder sb, Cell c, string[] liquids)
         {
             sb.Append(c.T).Append(',').Append(c.Water).Append(',').Append(c.Frozen ? 1 : 0).Append(',')
               .Append(c.Cover ?? "").Append(',').Append(c.Fire).Append(',').Append(c.Fuel).Append(',')
@@ -353,7 +361,7 @@ namespace Chem
             if (c.Star != 0) sb.Append(",s").Append(c.Star.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Cracked != 0) sb.Append(",c").Append(c.Cracked.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Setting != 0) sb.Append(",p").Append(c.Setting.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            if (c.Kind != 0) sb.Append(",q").Append(LiquidId(c));
+            if (c.Kind != 0) sb.Append(",q").Append(LiquidIdIn(liquids, c));
             sb.Append(';');
         }
     }

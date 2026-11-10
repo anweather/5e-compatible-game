@@ -828,6 +828,20 @@ that long, and doesn't march.
   (720, two minutes) (`World.CatchUp`). The chunk switch is the command:
   every peer catches it up the same.
 
+**Made to fit** (a chunk's **fit number**)
+: A rule switch that could leave a cell something the new rules don't
+  define (a terrain, cover or gas dropped, the liquids changed, another
+  height range) makes the active chunks' cells fit them on its tick: a
+  terrain gone turns into its lapse or dirt, a cover or gas goes, liquids
+  are remapped by id, heights clamped. Every other chunk keeps the fit
+  number of the rules it was last made to fit and is made to fit when it
+  next activates, before it catches up, by the rules in force then. So a
+  chunk inactive across two switches is fitted once, to the last: a
+  terrain dropped and brought back survives in a chunk nobody was near.
+  Until then its cells read as fitting would make them (`World.TerrainOf`,
+  `HeightOf`, `LiquidIdAt`) without being written. The fit numbers are
+  shared state, in the cell hash and the save (`World.Fit.cs`).
+
 **Generated chunk / diff** *(planned)*
 : A chunk made from the seed the first time anyone comes near
   (`ChunkGen`), and what's saved of it: only what players changed.
