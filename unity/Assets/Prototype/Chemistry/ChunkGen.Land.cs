@@ -1,7 +1,8 @@
 // A cell's land in a generated chunk, from its position alone (docs/design/world-squares.md section 5, level 2): the
 // bands of the world squares round it blended over 300 cells, its biomes' base (BiomeField's shape weights, from the
 // world's field: the sketch, else latitude and the bands, WorldBiomes), high ground shaped as a massif (ranges along the world's grain, saddles, shoulders) and the
-// biomes' relief, the coast (the plan's shore depths, wobbled along each side and the same where two squares meet),
+// biomes' relief, the coast (the plan's shore depths, wobbled along each side and the same where two squares meet; the
+// sea floor shelving by the distance out from the shore, across the squares' sides),
 // river channels carved by distance to the plan's rivers (ChunkGen.Rivers.cs: a wandering curve from a slot on a side
 // to the square's hub, the land either side leaning down to the water over 110 m), lakes at a hub where a river ends,
 // roads drawn and levelled through their slots, and last the pinned valley's own land met over at least 90 cells. All
@@ -67,6 +68,7 @@ namespace Chem
         void SetUpLand()
         {
             SetUpRim();
+            SetUpShelf();
             int grain = (int)(WorldHash.Hash4(seed, SaltMassif, 0, 0) & 15);
             // Round a world that wraps, ranges run along an axis: a slanted grain's noise can't repeat round it.
             if (WrapX) grain &= 12;
@@ -176,7 +178,7 @@ namespace Chem
             {
                 long deep = (long)Plan.Library.BandHeights[0] * PerMetre * Q, shallow = -12 * Q;
                 wet = WetSea;
-                return shallow + (deep - shallow) * BiomeMath.Smoothstep(-shore / SeaRamp) / One;
+                return shallow + (deep - shallow) * BiomeMath.Smoothstep(ShelfAt(px, py) / ShelfCells) / One;
             }
             // Dry land stands above the shore: only the sea, a river or a lake is under it.
             g = Math.Max(g, shoreLand);
@@ -200,8 +202,9 @@ namespace Chem
         }
 
         // The pinned square's own land, met over at least 90 cells outside it: at its edge a cell is all the square's. The
-        // square's rim is read as a mean along it over as many cells either side as the cell is out from it, so its
-        // cell-to-cell roughness fades within a few cells instead of running out as a stripe per row or column. Where the
+        // square's rim is read as a mean along it, over no cells either side for the first cell out (so it meets its pinned
+        // neighbour, #193) and half a cell more for each cell further, so its cell-to-cell roughness fades within a few
+        // cells instead of running out as a stripe per row or column, and no more than half of it a cell. Where the
         // rim stands far above or below the land beside it, the meet widens (up to 240 cells) so its steepest pitch stays
         // under MeetPitch, a slope, not a stone face along the rim.
         long MeetPinned(int x, int y, long g, ref byte wet)
@@ -214,7 +217,7 @@ namespace Chem
             if (dx == 0 && dy == 0) return g;
             long d = BiomeMath.Sqrt((dx * dx + dy * dy) * One * One);
             if (d >= MeetWidest * One) return g;
-            long v = RimMean(RimAt(cx - x0, cy - y0), (int)(d / One));
+            long v = RimMean(RimAt(cx - x0, cy - y0), Math.Max(0, d - One) / 2);
             // Smoothstep's steepest pitch is 1.5 times the mean: wide enough that 1.5 × drop / width ≤ MeetPitch.
             long width = Math.Max(ValleyBlend * One, Math.Min(MeetWidest * One, Math.Abs(g - v) * 3 / 2 * One / (MeetPitch * Q)));
             if (d >= width) return g;
@@ -259,6 +262,15 @@ namespace Chem
             return 3 * e + (e - ry);
         }
 
+        // The mean of the rim round place p, round the loop, over a reach of r (Q16 cells): between the means over the
+        // 2k + 1 and 2k + 3 cells round it, k the whole cells of r, by its fraction.
+        long RimMean(int p, long r)
+        {
+            int k = (int)(r / One);
+            long f = r - k * One, lo = RimMean(p, k);
+            return f == 0 ? lo : lo + (RimMean(p, k + 1) - lo) * f / One;
+        }
+
         // The mean of the rim over the 2r + 1 cells round place p, round the loop.
         long RimMean(int p, int r)
         {
@@ -274,6 +286,86 @@ namespace Chem
             if (a < 0) return rimSums[n] - rimSums[a + n] + rimSums[b];
             if (b > n) return rimSums[n] - rimSums[a] + rimSums[b - n];
             return rimSums[b] - rimSums[a];
+        }
+
+        // The sea floor shelves by the distance out from the shore (#176; the shores paper's shelf, docs/design/world-squares.md
+        // "Shores"): from 1.5 m down at the shore to the sea band's depth 360 cells out, so a coast square's sea runs on into
+        // an open-sea square's instead of stepping down where they meet. The distance is a chamfer over a 16-cell grid of the
+        // plan, set up once: a sample of land starts at none, one of a coast square's sea at its distance out from that
+        // square's shore, and every sea sample takes the nearest of its neighbours' plus the way to them. Read between the
+        // samples, it is continuous, and near the shore, where it is roughest, the shelf is flattest.
+        const int ShelfCells = 360, ShelfGrid = 16;
+        const long Root2 = 92682; // √2 in Q16
+        long[] shelf;
+        int shelfW, shelfH;
+
+        void SetUpShelf()
+        {
+            var grid = Plan.Grid;
+            shelfW = grid.W * Square / ShelfGrid;
+            shelfH = grid.H * Square / ShelfGrid;
+            shelf = new long[shelfW * shelfH];
+            const long far = ShelfCells * One;
+            for (int j = 0; j < shelfH; j++)
+                for (int i = 0; i < shelfW; i++)
+                {
+                    int px = i * ShelfGrid + ShelfGrid / 2, py = j * ShelfGrid + ShelfGrid / 2;
+                    long d = far;
+                    if (Plan.Band[grid.Index(px / Square, py / Square)] > 0)
+                    {
+                        long s = Shore(px, py);
+                        d = s > 0 ? 0 : Math.Min(far, -s);
+                    }
+                    shelf[j * shelfW + i] = d;
+                }
+            // Forward and back over the grid until nothing moves (a few times: the shelf is 23 samples wide).
+            bool moved = true;
+            while (moved)
+            {
+                moved = false;
+                for (int j = 0; j < shelfH; j++)
+                    for (int i = 0; i < shelfW; i++) moved = Relax(i, j, 1) || moved;
+                for (int j = shelfH - 1; j >= 0; j--)
+                    for (int i = shelfW - 1; i >= 0; i--) moved = Relax(i, j, -1) || moved;
+            }
+        }
+
+        // The four neighbours a forward pass has been to (west, north-west, north, north-east); a pass back, the others.
+        static readonly int[] PassDx = { -1, -1, 0, 1 }, PassDy = { 0, -1, -1, -1 };
+
+        // Sample (i, j) takes the nearest of the four neighbours the pass has been to (way 1 forward, −1 back) plus the
+        // way to it, if that's nearer; whether it moved.
+        bool Relax(int i, int j, int way)
+        {
+            long d = shelf[j * shelfW + i], was = d;
+            for (int k = 0; k < 4; k++)
+            {
+                int ni = i + PassDx[k] * way, nj = j + PassDy[k] * way;
+                if (nj < 0 || nj >= shelfH) continue;
+                if (WrapX) ni = PlanGrid.Mod(ni, shelfW);
+                else if (ni < 0 || ni >= shelfW) continue;
+                d = Math.Min(d, shelf[nj * shelfW + ni] + (PassDx[k] == 0 || PassDy[k] == 0 ? ShelfGrid * One : ShelfGrid * Root2));
+            }
+            shelf[j * shelfW + i] = d;
+            return d < was;
+        }
+
+        // The distance out from the shore at a plan cell (Q16 cells), read between the grid's samples.
+        long ShelfAt(int px, int py)
+        {
+            const int span = 2 * ShelfGrid; // half cells between samples
+            long u = 2L * px + 1 - ShelfGrid, v = 2L * py + 1 - ShelfGrid;
+            int i0 = (int)BiomeMath.FloorDiv(u, span), j0 = (int)BiomeMath.FloorDiv(v, span);
+            long fx = u - (long)i0 * span, fy = v - (long)j0 * span;
+            long Sample(int i, int j)
+            {
+                i = WrapX ? PlanGrid.Mod(i, shelfW) : Math.Max(0, Math.Min(shelfW - 1, i));
+                j = Math.Max(0, Math.Min(shelfH - 1, j));
+                return shelf[j * shelfW + i];
+            }
+            long top = Sample(i0, j0) * (span - fx) + Sample(i0 + 1, j0) * fx;
+            long bottom = Sample(i0, j0 + 1) * (span - fx) + Sample(i0 + 1, j0 + 1) * fx;
+            return (top * (span - fy) + bottom * fy) / (span * span);
         }
 
         // The bands of the four squares nearest, each square its own across its middle and blended with the next over

@@ -11,7 +11,7 @@
     "squares": [12, 10],
     "wrap": "ew",
     "bake": false,
-    "generator": 7,
+    "generator": 8,
     "pinned": [ { "map": "valley", "square": [0, 5] } ],
     "sketch": {
       "worldSketch": 1, "name": "Default 12 x 10", "world": { "w": 12, "h": 10, "wrap": "ew" }, "soft": 96,
