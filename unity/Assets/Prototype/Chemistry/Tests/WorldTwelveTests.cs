@@ -23,6 +23,14 @@ namespace Chem.Tests
 
         static GeneratedMap World => world ??= GeneratedMap.Load(Dir);
 
+        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
+        [OneTimeTearDown]
+        public void DropTheMap()
+        {
+            world = null;
+            known = null;
+        }
+
         static KnownChunk[] known;
         static double knownMs;
 

@@ -27,6 +27,13 @@ namespace Chem.Tests
         static GeneratedMap island;
         static GeneratedMap Island => island ??= GeneratedMap.Load(Dir);
 
+        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
+        [OneTimeTearDown]
+        public void DropTheMap()
+        {
+            island = null;
+        }
+
         // The plan's golden: a change here is a change to the world file, the files the plan reads or the nine's plan.
         const uint PlanGolden = 0xacc38348u;
 

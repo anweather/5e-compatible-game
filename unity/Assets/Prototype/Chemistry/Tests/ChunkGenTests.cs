@@ -31,6 +31,15 @@ namespace Chem.Tests
 
         static int[] wholeLand;
 
+        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
+        [OneTimeTearDown]
+        public void DropTheMap()
+        {
+            nine = null;
+            all = null;
+            wholeLand = null;
+        }
+
         // The nine's land, row-major over all its cells.
         static int[] Whole
         {
