@@ -732,7 +732,8 @@ public class SmokeProbe : ProbeScenario
 
     static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
 
-    // Every prop and item of world/things.json spawned by ThingSpawner, on its own cell, with its own id.
+    // Every prop and item of world/things.json in the chunks spawned so far (the reach, #209) spawned by ThingSpawner, on its
+    // own cell, with its own id.
     void CheckThingsSpawned()
     {
         var spawner = FindAnyObjectByType<ThingSpawner>();
@@ -742,9 +743,10 @@ public class SmokeProbe : ProbeScenario
             var data = World.ThingsNow.Find(t.id);
             return data != null && data.Kind == t.prop.kind && grid.CellAt(t.prop.transform.position) == new Vector2Int(data.CellX, data.CellY);
         });
+        int loaded = spawner != null ? World.ThingsNow.All.Count(t => spawner.IsLoaded(t.ChunkX, t.ChunkY)) : World.ThingsNow.Count;
         Metric("things_spawned", live.Count);
-        Check("things_spawned", live.Count == World.ThingsNow.Count && placed == live.Count,
-            $"{live.Count}/{World.ThingsNow.Count} things spawned from world/things.json, {placed} on their own cell with their kind");
+        Check("things_spawned", live.Count > 0 && live.Count == loaded && placed == live.Count,
+            $"{live.Count}/{loaded} things of the loaded chunks spawned from world/things.json ({World.ThingsNow.Count} on the map), {placed} on their own cell with their kind");
     }
 }
 
