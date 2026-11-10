@@ -249,11 +249,14 @@ public class RowHouses : MonoBehaviour
     const string GreatTree = "great-tree";
 
     // The drawn terrain's height under a point, or null off every terrain: a great tree stands on the ground drawn, which the
-    // grid only reports once the valley has bound it (a row is drawn before that).
+    // grid only reports once the valley has bound it (a row is drawn before that). Every chunk's terrain, the ones switched
+    // off out of sight too (MapTerrains, #182), so a row drawn far off still stands on its ground.
     static float? TerrainY(Vector3 p)
     {
-        foreach (var t in Terrain.activeTerrains)
+        var map = Object.FindAnyObjectByType<MapTerrains>();
+        foreach (var t in map != null ? map.Chunks : Terrain.activeTerrains)
         {
+            if (t == null) continue;
             var o = t.transform.position;
             var size = t.terrainData.size;
             if (p.x >= o.x && p.x <= o.x + size.x && p.z >= o.z && p.z <= o.z + size.z) return o.y + t.SampleHeight(p);

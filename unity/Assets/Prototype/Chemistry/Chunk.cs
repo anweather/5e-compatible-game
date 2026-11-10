@@ -73,6 +73,11 @@ namespace Chem
         public int CaughtUp;
         /// <summary>Cells that differed from the starting state when it was last audited (World.Dragon).</summary>
         public int Changed;
+        /// <summary>
+        /// The rules its cells were last made to fit (World's fit number, World.Fit.cs): behind the world's after a switch
+        /// that could unfit cells while it was inactive, until it activates. Shared state: saved and in the cell hash.
+        /// </summary>
+        public int Fit = 1;
 
         // Still water (World.StillWater): what the water pass reads of each cell (water, height,
         // frozen, terrain) as it was at the last pass, and the neighbours' active state then.

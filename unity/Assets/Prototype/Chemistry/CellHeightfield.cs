@@ -111,7 +111,7 @@ namespace Chem
         {
             if (c == null) return 0f;
             float bank = CellPaint.IsBank(c.Cover, world.Rules) ? BankDepth : 0f;
-            return (world.TerrainOf(c).Elevation + c.Height) * StepHeight + bank;
+            return (world.TerrainOf(c).Elevation + world.HeightOf(c)) * StepHeight + bank;
         }
 
         /// <summary>One sample's offset, seams included.</summary>
@@ -249,10 +249,10 @@ namespace Chem
 
         // A cell's offset as the ground under it is drawn (a raised wall over FlatUnderWalls drawn flat).
         float Offset(World world, Cell c) =>
-            c != null && FlatUnderWalls && world.IsRaisedWall(c) ? (world.TerrainOf(c).Elevation + Math.Min(c.Height, 0)) * StepHeight : GroundOffset(world, c);
+            c != null && FlatUnderWalls && world.IsRaisedWall(c) ? (world.TerrainOf(c).Elevation + Math.Min(world.HeightOf(c), 0)) * StepHeight : GroundOffset(world, c);
 
         // A cell's ground without its snow bank (BankAt draws the banks as mounds).
-        float GroundOffset(World world, Cell c) => c == null ? 0f : (world.TerrainOf(c).Elevation + c.Height) * StepHeight;
+        float GroundOffset(World world, Cell c) => c == null ? 0f : (world.TerrainOf(c).Elevation + world.HeightOf(c)) * StepHeight;
 
         // Bilinear between the centres of the four cells round a full-detail sample. A neighbour that
         // is a raised wall (drawn by its own rule) counts as the sample's own cell; one off the grid as 0.

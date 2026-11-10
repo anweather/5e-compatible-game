@@ -51,6 +51,7 @@ namespace Chem
                     source.Make(x, y, c);
                     c.ForgetDef();
                 }
+            AllFitted();
             ForgetWaterSnapshots();
         }
 
@@ -104,6 +105,7 @@ namespace Chem
             SaveLand(save);
             SaveLaid(save);
             SaveTriggers(save);
+            SaveFits(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
@@ -146,6 +148,7 @@ namespace Chem
             w.LoadStart(s);
             w.NoteBaseBuildings();
             w.LoadState(s);
+            w.LoadFits(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
             w.BuildingsIntoStart();
             w.TotalChanged();
@@ -317,6 +320,21 @@ namespace Chem
 
         // ---------- chunks ----------
 
+        // The fit number (World.Fit.cs) when a switch has raised it, and the liquids under each older one a chunk holds.
+        void SaveFits(JObject save)
+        {
+            if (fits != 1) save["fits"] = fits;
+            if (fitLiquids.Count > 0) save["fitLiquids"] = new JArray(fitLiquids.OrderBy(f => f.Key).Select(f => new JArray(f.Key, new JArray(f.Value))));
+        }
+
+        // Every chunk fits the saved fit number unless its own entry says otherwise (LoadChunk).
+        void LoadFits(JObject s)
+        {
+            fits = (int?)s["fits"] ?? 1;
+            AllFitted();
+            foreach (var f in s["fitLiquids"] ?? new JArray()) fitLiquids[(int)f[0]] = f[1].Select(id => (string)id).ToArray();
+        }
+
         // The local indices of a chunk's cells that differ from the source's.
         static IEnumerable<int> ChangedCells(Chunk ch, IChunkSource source, Cell made)
         {
@@ -344,21 +362,22 @@ namespace Chem
             if (ch.StoppedAt != NeverLive) o["stopped"] = ch.StoppedAt;
             if (ch.CaughtUp != 0) o["caughtUp"] = ch.CaughtUp;
             if (ch.Changed != 0) o["changed"] = ch.Changed;
+            if (ch.Fit != fits) o["fit"] = ch.Fit;
             var fire = Enumerable.Range(0, Chunks.Area).Where(i => ch.FireGeneration[i] != 0).Select(i => new JArray(i, ch.FireGeneration[i])).ToList();
             if (fire.Count > 0) o["fireGen"] = new JArray(fire);
-            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.Cells[i])).ToList();
+            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.Cells[i], LiquidsOf(ch))).ToList();
             if (cells.Count > 0) o["cells"] = new JArray(cells);
             return o;
         }
 
         // Rust only when it has some, so saves without it read as they did; a liquid other than water
-        // last, by its id (never its index), so saves of water read as they did.
-        JArray SaveCell(int i, Cell c)
+        // last, by its id (never its index; in the liquids its chunk was made under), so saves of water read as they did.
+        JArray SaveCell(int i, Cell c, string[] liquids)
         {
             var a = SaveCellFields(i, c);
             if (c.Kind == 0) return a;
             while (a.Count < LiquidField) a.Add(0);
-            a.Add(LiquidId(c));
+            a.Add(LiquidIdIn(liquids, c));
             if (c.Setting != 0) a.Add(c.Setting);
             return a;
         }
@@ -387,12 +406,17 @@ namespace Chem
             ch.StoppedAt = (int?)o["stopped"] ?? NeverLive;
             ch.CaughtUp = (int?)o["caughtUp"] ?? 0;
             ch.Changed = (int?)o["changed"] ?? 0;
+            if (o["fit"] != null)
+            {
+                ch.Fit = (int)o["fit"];
+                unfitChunks++;
+            }
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
-            foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.Cells[(int)a[0]], (JArray)a);
+            foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.Cells[(int)a[0]], (JArray)a, LiquidsOf(ch));
         }
 
         // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.
-        void LoadCell(Cell c, JArray a)
+        void LoadCell(Cell c, JArray a, string[] liquids)
         {
             c.T = (string)a[1];
             c.Water = (int)a[2];
@@ -412,16 +436,17 @@ namespace Chem
             c.Slick = Later(a, 16);
             c.Star = Later(a, 17);
             c.Cracked = Later(a, 18);
-            c.Liquid = LoadLiquid(a);
+            c.Liquid = LoadLiquid(a, liquids);
             c.Sets = Later(a, SetsField);
             c.ForgetDef();
         }
 
-        // A saved liquid's kind in the rules in force (the save's fingerprint matched them, so they have it).
-        int LoadLiquid(JArray a)
+        // A saved liquid's kind in the rules in force (the save's fingerprint matched them, so they have it), or in the
+        // liquids its chunk was made under (LiquidsOf, InForce for the rules in force) while it waits to be made to fit.
+        int LoadLiquid(JArray a, string[] liquids)
         {
             if (a.Count <= LiquidField) return 0;
-            int kind = Rules.LiquidIndex((string)a[LiquidField]);
+            int kind = liquids.Length == 0 ? Rules.LiquidIndex((string)a[LiquidField]) : System.Array.IndexOf(liquids, (string)a[LiquidField]);
             if (kind < 0) throw new SaveException($"This save doesn't fit: a cell holds liquid {a[LiquidField]}, which the rules don't have");
             return kind;
         }

@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-087: Restart the PC's Editor when its memory runs away? (2026-11-09)
+
+- **Asked:** the lead, after the editor-lean trial found the Editor (up 20 h) holding 49 GB of private memory
+  (26 GB native), with commit at 92 of 102 GB and jobs killed for low memory.
+- **Also comes up when:** any low-memory kill, a long session, #145.
+- **Answer (Andrew):** he restarts it himself; the lead asks when it passes about 20 GB, with the tree clean and
+  the branch pushed.
+- **Revisited:** 0.
+
 ### J-086: What a rule switch and a look change may touch (2026-11-09)
 
 - **Asked:** Andrew, on why a bigger world slowed spells when only the cells near players are active. The lead:

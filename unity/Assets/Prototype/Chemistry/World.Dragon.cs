@@ -176,7 +176,7 @@ namespace Chem
         int ShapeOf(Cell c, Dictionary<string, int> known, StringBuilder sb)
         {
             sb.Clear();
-            AppendCell(sb, c);
+            AppendCell(sb, c, InForce);
             sb.Append(c.DampUntil.ToString(CultureInfo.InvariantCulture));
             string key = sb.ToString();
             if (known.TryGetValue(key, out int shape)) return shape;
@@ -434,6 +434,7 @@ namespace Chem
                 c.ForgetDef();
                 Sanitize(c);
             }
+            Fitted(ch); // its cells fit the rules in force now (World.Fit.cs)
             Array.Clear(ch.FireGeneration, 0, ch.FireGeneration.Length);
             Array.Clear(ch.Marks, 0, ch.Marks.Length);
             ch.LastLive = NeverLive;
