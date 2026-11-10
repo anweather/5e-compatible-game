@@ -19,6 +19,7 @@ public class TreeImpostorsProbe : ProbeScenario
     static readonly float[] Distances = { 50f, 120f, 250f, 500f };
 
     Vector3 tree, centre;
+    float middle = 14.5f;
     Vector3 away;
     readonly List<Renderer> hidden = new();
 
@@ -344,14 +345,14 @@ public class TreeImpostorsProbe : ProbeScenario
     }
 
     // Nothing with a collider (a rock, a cabin, another tree's trunk) between the ground cameras and the tree's middle.
-    static bool Unblocked(Vector3 at, Vector3 dir, float height)
+    static bool Unblocked(Vector3 at, Vector3 dir, float up)
     {
-        var middle = at + Vector3.up * (14.5f * height);
+        var mid = at + Vector3.up * up;
         foreach (float d in Distances)
         {
             var eye = at + dir * d;
             eye.y = (MapTerrains.Instance.HeightAt(eye) ?? at.y) + 2f;
-            var to = middle + (eye - middle).normalized * 8f;
+            var to = mid + (eye - mid).normalized * 8f;
             if (Physics.Linecast(eye, to)) return false;
         }
         return true;
@@ -364,6 +365,9 @@ public class TreeImpostorsProbe : ProbeScenario
         var trees = Trees(species);
         var me = wizard.transform.position;
         float best = float.MaxValue;
+        // The species' middle at scale 1 (its impostor's bounding centre): the Conifer's is 14.5 m up, the Cypress's 3.6.
+        var mat = Resources.Load<Material>($"{TreeImpostors.ResourceFolder}/{species}");
+        middle = mat != null ? mat.GetVector("_Centre").y : 14.5f;
         foreach (var c in trees)
         {
             if (!c.mine || (c.at - me).sqrMagnitude > 320f * 320f) continue;
@@ -372,13 +376,13 @@ public class TreeImpostorsProbe : ProbeScenario
             {
                 float r = h * Mathf.PI / 8f;
                 var dir = new Vector3(Mathf.Cos(r), 0f, Mathf.Sin(r));
-                if (GroundInTheWay(c.at, dir) || !Unblocked(c.at, dir, c.height)) continue;
+                if (GroundInTheWay(c.at, dir) || !Unblocked(c.at, dir, middle * c.height)) continue;
                 float score = near * 10f + InLine(trees, c.at, dir);
                 if (score >= best) continue;
                 best = score;
                 tree = c.at;
                 away = dir;
-                centre = c.at + Vector3.up * (14.5f * c.height);
+                centre = c.at + Vector3.up * (middle * c.height);
             }
         }
         Metric("subject_neighbours_score", best);
