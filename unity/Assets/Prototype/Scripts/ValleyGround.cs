@@ -164,6 +164,7 @@ public sealed class ValleyGround
         ch.baseHeights = null;
         ch.baseAlpha = ch.frameAlpha = null;
         builder.Forget(at);
+        heightfield.Forget(at.i, at.j);
         foreach (var (x, y) in layout.CellsIn(at.i, at.j))
         {
             int k = world.Idx(x, y);
@@ -387,6 +388,9 @@ public sealed class ValleyGround
         ch.touched = false;
     }
 
+    /// <summary>How many chunks have their height offsets worked out now (a generated map's only as they're wanted).</summary>
+    public int HeightfieldChunks => heightfield?.Worked ?? 0;
+
     /// <summary>What working out the cells' height offsets took at the last Bind (ms).</summary>
     public double HeightfieldMs { get; private set; }
 
@@ -410,9 +414,11 @@ public sealed class ValleyGround
         landUnit = stepHeight / w.Rules.Sim.WaterUnitsPerStep;
         heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
         var reset = System.Diagnostics.Stopwatch.StartNew();
-        heightfield.Reset(w);
+        // A generated map's chunks are worked out as they're wanted (#206): every chunk's at once was 0.5 s on the nine.
+        if (lazy) heightfield.ResetLazily(w);
+        else heightfield.Reset(w);
         HeightfieldMs = reset.Elapsed.TotalMilliseconds;
-        Debug.Log($"GROUND HEIGHTFIELD reset: {HeightfieldMs:0} ms");
+        Debug.Log($"GROUND HEIGHTFIELD {(lazy ? "reset a chunk at a time" : "reset")}: {HeightfieldMs:0} ms");
         repaint.Clear();
         cleared.Clear();
         pendingDetail.Clear();

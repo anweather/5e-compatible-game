@@ -100,8 +100,90 @@ namespace Chem
         /// <summary>The offsets the cells ask for, [z, x], for one of Chunks. Call Reset first.</summary>
         public float[,] Target(int i, int j) => State(i, j).Target;
 
-        ChunkState State(int i, int j) =>
-            chunks.TryGetValue((i, j), out var s) ? s : throw new ArgumentOutOfRangeException(nameof(i), $"The cells don't reach chunk ({i}, {j})");
+        ChunkState State(int i, int j)
+        {
+            if (!chunks.TryGetValue((i, j), out var s)) throw new ArgumentOutOfRangeException(nameof(i), $"The cells don't reach chunk ({i}, {j})");
+            if (s.Target == null && lazyWorld != null) Work(lazyWorld, (i, j), s);
+            return s;
+        }
+
+        // ---------- a chunk at a time ----------
+
+        // The world a lazy Reset left the chunks to be worked out from, as each is first asked for; null after a whole Reset.
+        World lazyWorld;
+
+        /// <summary>How many chunks have their offsets worked out now (a lazy Reset works out none until asked).</summary>
+        public int Worked
+        {
+            get
+            {
+                int n = 0;
+                foreach (var s in chunks.Values)
+                    if (s.Target != null) n++;
+                return n;
+            }
+        }
+
+        /// <summary>
+        /// Reset for a big map (#206, J-086): no chunk is worked out now, each is the first time it's asked for (Current,
+        /// Target, an Update or a Queue reaching it), from the cells as they are then; until a chunk is, nothing the cells
+        /// did can have moved it. The same offsets as Reset for a chunk whose cells haven't changed since.
+        /// </summary>
+        public void ResetLazily(World world)
+        {
+            lazyWorld = world ?? throw new ArgumentNullException(nameof(world));
+            foreach (var s in chunks.Values) Drop(s);
+            waiting.Clear();
+            moving.Clear();
+        }
+
+        /// <summary>
+        /// After a lazy Reset: lets a chunk's offsets go (its terrain went) when nothing is easing or waiting in it; it's
+        /// worked out again from the cells when next asked for. False when it's kept.
+        /// </summary>
+        public bool Forget(int i, int j)
+        {
+            if (lazyWorld == null || !chunks.TryGetValue((i, j), out var s) || s.Target == null || s.Moving.HasValue) return false;
+            if (s.Queued != null)
+                foreach (bool q in s.Queued)
+                    if (q) return false;
+            Drop(s);
+            return true;
+        }
+
+        static void Drop(ChunkState s)
+        {
+            s.Target = s.Current = null;
+            s.Moving = null;
+            s.Queued = null;
+            s.FilledBy = null;
+        }
+
+        // One chunk's offsets from the cells now, through a cache of the cells it reads (the chunk and a margin for the
+        // seams and the snow mounds).
+        void Work(World world, (int i, int j) key, ChunkState s)
+        {
+            var was = cache;
+            int u0 = key.i * TerrainGrid.ChunkCells - CacheMargin, u1 = (key.i + 1) * TerrainGrid.ChunkCells + CacheMargin;
+            int v0 = key.j * TerrainGrid.ChunkCells - CacheMargin, v1 = (key.j + 1) * TerrainGrid.ChunkCells + CacheMargin;
+            var (xa, ya) = grid.GridCell(u0, v0);
+            var (xb, yb) = grid.GridCell(u1, v1);
+            cache = Cache(world, Math.Min(xa, xb), Math.Min(ya, yb), Math.Max(xa, xb), Math.Max(ya, yb));
+            try
+            {
+                s.Target = Compute(world, key.i, key.j);
+            }
+            finally
+            {
+                cache = was;
+            }
+            s.Current = (float[,])s.Target.Clone();
+            s.Moving = null;
+            s.Queued = null;
+        }
+
+        // How far past a chunk's own cells its samples read: a seam's cell and a mound's reach (BankAt), with room.
+        const int CacheMargin = 4;
 
         // ---------- the rule ----------
 
@@ -180,7 +262,8 @@ namespace Chem
         float LandAt(World world, int u, int v)
         {
             var (x, y) = grid.GridCell(u, v);
-            if (cache != null) return grid.InGrid(x, y) ? cache.Land[y * grid.GridW + x] : 0f;
+            if (cache != null && cache.Holds(x, y)) return cache.Land[cache.Index(x, y)];
+            if (cache != null && !grid.InGrid(x, y)) return 0f;
             return LandOf(world, x, y);
         }
 
@@ -291,9 +374,9 @@ namespace Chem
                 raised = bank = false;
                 return false;
             }
-            if (cache != null)
+            if (cache != null && cache.Holds(x, y))
             {
-                int k = y * grid.GridW + x;
+                int k = cache.Index(x, y);
                 offset = cache.Offset[k];
                 raised = cache.Raised[k];
                 bank = cache.Bank[k];
@@ -314,20 +397,33 @@ namespace Chem
             public float[] Offset, Land;
             public bool[] Raised, Bank;
             public bool AnyBank;
+            // The grid cells it holds: X0..X0 + W - 1, Y0..Y0 + H - 1 (the whole grid for a Reset, a chunk and its margin for one).
+            public int X0, Y0, W, H;
+
+            public bool Holds(int x, int y) => x >= X0 && y >= Y0 && x < X0 + W && y < Y0 + H;
+
+            public int Index(int x, int y) => (y - Y0) * W + (x - X0);
         }
 
         CellCache cache;
 
-        CellCache Cache(World world)
+        CellCache Cache(World world) => Cache(world, 0, 0, grid.GridW - 1, grid.GridH - 1);
+
+        // The cells x0..x1, y0..y1 (inclusive, clipped to the grid).
+        CellCache Cache(World world, int x0, int y0, int x1, int y1)
         {
-            int n = grid.GridW * grid.GridH;
-            var c = new CellCache { Offset = new float[n], Land = new float[n], Raised = new bool[n], Bank = new bool[n] };
-            for (int y = 0; y < grid.GridH; y++)
+            x0 = Math.Max(0, x0);
+            y0 = Math.Max(0, y0);
+            x1 = Math.Min(grid.GridW - 1, x1);
+            y1 = Math.Min(grid.GridH - 1, y1);
+            int w = Math.Max(0, x1 - x0 + 1), h = Math.Max(0, y1 - y0 + 1), n = w * h;
+            var c = new CellCache { Offset = new float[n], Land = new float[n], Raised = new bool[n], Bank = new bool[n], X0 = x0, Y0 = y0, W = w, H = h };
+            for (int y = y0; y <= y1; y++)
             {
-                for (int x = 0; x < grid.GridW; x++)
+                for (int x = x0; x <= x1; x++)
                 {
                     var cell = world.At(x, y);
-                    int k = y * grid.GridW + x;
+                    int k = c.Index(x, y);
                     c.Offset[k] = Offset(world, cell);
                     c.Raised[k] = cell != null && world.IsRaisedWall(cell);
                     c.Bank[k] = cell != null && CellPaint.IsBank(cell.Cover, world.Rules);
@@ -407,6 +503,7 @@ namespace Chem
         /// </remarks>
         public void Reset(World world)
         {
+            lazyWorld = null;
             cache = Cache(world);
             try
             {
@@ -443,7 +540,7 @@ namespace Chem
             var changed = new List<(int x, int y)>(cells);
             var rects = DirtyRects(changed);
             foreach (var r in rects)
-                if (chunks[(r.I, r.J)].Target == null) throw new InvalidOperationException("Call Reset before Update");
+                if (State(r.I, r.J).Target == null) throw new InvalidOperationException("Call Reset before Update");
             updates++;
             SamplesFilled = 0;
             foreach (var (x, y) in changed) ForEachRect(x, y, r => FillOnce(world, chunks[(r.I, r.J)], r));
@@ -468,7 +565,7 @@ namespace Chem
 
         void Enqueue(ChunkRect r)
         {
-            var s = chunks[(r.I, r.J)];
+            var s = State(r.I, r.J);
             if (s.Target == null) throw new InvalidOperationException("Call Reset before Queue");
             s.Queued ??= new bool[s.Target.GetLength(0), s.Target.GetLength(1)];
             for (int sz = r.Z; sz <= r.ZMax; sz++)
@@ -489,7 +586,8 @@ namespace Chem
             while (SamplesFilled < most && waiting.Count > 0)
             {
                 var (i, j, x, z) = waiting.Dequeue();
-                var s = chunks[(i, j)];
+                var s = State(i, j);
+                if (s.Queued == null) continue;
                 s.Queued[z, x] = false;
                 s.Target[z, x] = SampleOffset(world, i, j, x, z);
                 SamplesFilled++;
