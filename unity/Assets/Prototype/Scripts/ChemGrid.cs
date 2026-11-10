@@ -63,7 +63,7 @@ public partial class ChemGrid : MonoBehaviour
     /// </summary>
     public event System.Action<ChunkSwitch> ChunkSwitched;
 
-    /// <summary>A new world was built (ResetWorld, or going online): every chunk starts active again, with no ChunkSwitched for it.</summary>
+    /// <summary>A new world was built (ResetWorld, or going online): the start's reach is active again (ChunkStreaming.StartPlan), with no ChunkSwitched for it.</summary>
     public event System.Action WorldReset;
 
     /// <summary>
@@ -187,6 +187,11 @@ public partial class ChemGrid : MonoBehaviour
         using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
         double cellsMs = phase.Elapsed.TotalMilliseconds;
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
+        // The spawn the host picked (SpawnPoints), else the map's own.
+        PlayerStart = SpawnPoints.StartCell(start);
+        // Only the start's reach starts active (#209), before anything is drawn or spawned for the
+        // chunks: every peer builds from the same map and start, so all start alike.
+        if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.StartPlan(World, new[] { (PlayerStart.x, PlayerStart.y) }));
         World.ChunkSwitched += OnChunkSwitched;
         World.LandMoved += (x, y, reach) =>
         {
@@ -196,8 +201,6 @@ public partial class ChemGrid : MonoBehaviour
         };
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
-        // The spawn the host picked (SpawnPoints), else the map's own.
-        PlayerStart = SpawnPoints.StartCell(start);
         phase.Restart();
         if (valley != null)
             using (BuildValleyMarker.Auto()) valley.Bind(World);

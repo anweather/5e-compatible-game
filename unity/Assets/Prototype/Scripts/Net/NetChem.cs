@@ -414,8 +414,13 @@ public partial class NetChem : NetworkBehaviour
         ruleHistory.Clear();
         ruleHistory.Add(rules);
         historyFrom = hostTick;
+        // The rebuilt world starts with only the start's reach active (ChunkStreaming.StartPlan, #209).
         plannedAwake.Clear();
         foreach (var c in grid.World.ChunkCoords) plannedAwake.Add(c);
+        if (grid.streamChunks)
+            foreach (var s in ChunkStreaming.StartPlan(grid.World.ChunkCoords, (_, _) => true,
+                new[] { (grid.PlayerStart.x, grid.PlayerStart.y) }, grid.World.Rules.Sim.Streaming.Reach))
+                plannedAwake.Remove((s.CX, s.CY));
         planner = new ChunkPlanner();
         return rules;
     }
