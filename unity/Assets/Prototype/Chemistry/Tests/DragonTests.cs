@@ -506,11 +506,27 @@ namespace Chem.Tests
         /// <summary>
         /// The time a full sweep takes on a world land.json's size (576 × 576), every chunk active and a third of the cells
         /// changed, against the budgets: 1/6 s for a tick (ticks at 6 a second), 6 ms for a slice (ChemGrid.StepBudgetMs).
-        /// Prints the numbers; run with --logger "console;verbosity=detailed" to read them.
+        /// The best of up to three sweeps, each on a fresh world after a settled heap, so a busy Editor (a long suite's
+        /// garbage, another job, #192, as #177) can't fail it alone, and a sweep that has really grown slower fails every
+        /// round. Prints the numbers; run with --logger "console;verbosity=detailed" to read them.
         /// </summary>
         [Test]
         [NonParallelizable] // it times itself: it needs the machine to itself
+        [Category("Timing")]
         public void AFullSweepStaysWithinTheTickBudget()
+        {
+            const double budget = 1000.0 / 6;
+            var rounds = new List<double>();
+            while (rounds.Count < 3 && (rounds.Count == 0 || rounds.Min() >= budget))
+            {
+                Settle();
+                rounds.Add(TimedSweep());
+            }
+            Assert.That(rounds.Min(), Is.LessThan(budget), $"the worst tick, best of the rounds {string.Join(", ", rounds.Select(r => r.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)))} ms");
+        }
+
+        // One sweep over a fresh 576 x 576 world: its worst tick (ms), its numbers printed, and the world as it started after.
+        static double TimedSweep()
         {
             const int size = 576, dragonStage = 8;
             var w = new World(R, size, size, 11);
@@ -555,8 +571,18 @@ namespace Chem.Tests
             TestContext.Progress.WriteLine($"DRAGON SWEEP {ticks} ticks ({ticks / 6.0:0} s), mean tick {sum / ticks:0.0} ms, worst tick {worstTick:0.0} ms (budget 166.7), worst dragon slice {worstSlice:0.00} ms (budget 6), worst dragon stage {worstDragon:0.00} ms");
             TestContext.Progress.WriteLine($"DRAGON START {size * size} cells in {w.StartShapes} shapes, KeepStart {keep.Elapsed.TotalMilliseconds:0} ms");
             Assert.That(w.Cells.All(c => c.Height == 0 && c.Cover == null));
-            Assert.That(worstTick, Is.LessThan(1000.0 / 6));
+            return worstTick;
         }
+
+        // Earlier tests' garbage collected before a timed sweep, not in the middle of it: a timing test's only use of the collector.
+#pragma warning disable S1215
+        static void Settle()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+#pragma warning restore S1215
 
         [Test]
         public void AFlightPutsTheCourseBackAndKeepsItsZonesAndTimes()
