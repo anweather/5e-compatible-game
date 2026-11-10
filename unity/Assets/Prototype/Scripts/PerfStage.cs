@@ -92,6 +92,9 @@ public partial class PerfStage : ShowcaseScript
         Debug.Log($"PERF FIREBALL chunk={thickest.cx},{thickest.cy} cell={best.x},{best.y} trees={most}");
         yield return null;
         while (grid.ChunksLeftToDraw > 0) yield return null;
+        // Again once its ground is drawn: on the nine the forest is far from the start, and a wizard put there before
+        // its chunk's ground stood fell through the map and cast from 2 km under it, so the Fireball never landed.
+        PlaceCell(best.x, best.y + FireballReach);
         Ready = true;
         while (!Go) yield return null;
         puppet.Face(at);

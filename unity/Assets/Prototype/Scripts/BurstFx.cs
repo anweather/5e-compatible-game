@@ -114,6 +114,14 @@ public static class BurstFx
         ps.Play(true);
     }
 
+    /// <summary>Makes the first burst of a kind ahead of its first use (ShowPool readies them): the first one also makes its material and puff.</summary>
+    public static void Ready(Kind kind)
+    {
+        if (!pools.TryGetValue(kind, out var pool)) pools[kind] = pool = new List<ParticleSystem>();
+        pool.RemoveAll(p => p == null);
+        if (pool.Count == 0) pool.Add(Make(kind));
+    }
+
     static ParticleSystem Take(Kind kind)
     {
         if (!pools.TryGetValue(kind, out var pool)) pools[kind] = pool = new List<ParticleSystem>();

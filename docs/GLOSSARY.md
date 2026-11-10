@@ -159,6 +159,16 @@ touch them.
   whose type `world/horizon.json` names. Its **seenFrom** is how far off it shows, a radius in chunks (not a square),
   at least `know` + 2.
 
+**Tree impostor** *(a trial, off by default: J-090)*
+: A tree drawn far off as one camera-facing quad coloured from an atlas of the tree baked from 12 × 12 directions over
+  the upper hemisphere (an **octahedral impostor**: `TreeImpostorBaker`, `Prototype/TreeImpostor`, `TreeImpostors`).
+  View only: the trees it draws are the terrain's where a terrain is made, else a tree a tree cell
+  (`docs/design/tree-impostors.md`).
+
+**Tree tiers** *(proposed)*
+: How far out each way of drawing a tree goes: the **full mesh** near (within 60 m in the trial), the **impostor**
+  from there, a small atlas farther, and forest colour (groves) at the horizon (`docs/design/tree-impostors.md`).
+
 **World file / generated map**
 : A **generated map** is made from a **world file**, its `map.json` with a `generated` section: the seed, its size in
   world squares, the generator's version and the world squares pinned to another map's folder (the nine pins the

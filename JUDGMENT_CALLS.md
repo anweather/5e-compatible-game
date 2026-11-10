@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-090: Realistic trees cheaply: our own impostors or a bought tool? (2026-11-10)
+
+- **Asked:** the lead, after Andrew asked for realistic trees at distance without the cost (the trees are the biggest
+  render cost left on the nine's walk, 13 M triangles), with octahedral impostors as the technique.
+- **Also comes up when:** any far-distance look (forests at the horizon, the far ring), buying Asset Store tools.
+- **Answer (Andrew):** do the trial: our own baker and shader on one species, stills board first
+  (`docs/handoffs/briefs/tree-impostors-trial.md`); no purchase.
+- **Revisited:** 0.
+
 ### J-089: Accept D17, the sparse World? (2026-11-10)
 
 - **Asked:** the lead, after u2's step 1 (`sparse-world-1`: the design, D17 proposed, the core's cells through chunk

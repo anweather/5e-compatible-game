@@ -64,36 +64,65 @@ public static class FarMeshes
     /// <summary>How far a known chunk's skirt hangs below its edge (m), to cover the step to a chunk terrain beside it.</summary>
     public const float SkirtMetres = 10f;
 
-    // Each biome's far colour, close to its ground's paint (BiomeGround.Looks); a biome not here, and the pinned map, are grass.
-    static readonly Dictionary<string, Color> BiomeColours = new()
+    /// <summary>
+    /// The far ring's colours for the land: each biome's, and the rock that steep land turns to. Drawn() makes them from the
+    /// same paint the near ground draws (#191): each biome's ground as BiomeGround.Grounds measures it on the map, mixed
+    /// from the colours of the terrain layers the chunk terrains draw. Plain is a stand-in for a ring with neither (the
+    /// tests, a map whose terrains can't be read): every biome grass.
+    /// </summary>
+    public sealed class Palette
     {
-        ["temperate"] = new Color(0.30f, 0.42f, 0.20f),
-        ["grassland"] = new Color(0.42f, 0.46f, 0.22f),
-        ["mountains"] = new Color(0.38f, 0.38f, 0.33f),
-        // Snow with the rock showing through, as BiomeGround paints it near (0.85 snow, 0.15 rock), a little greyer
-        // than snow alone: lit by the sun, flat white read as a blank wedge against the haze.
-        ["tundra"] = new Color(0.70f, 0.73f, 0.76f),
-        ["salt-flat"] = new Color(0.84f, 0.81f, 0.72f),
-        ["foggy-marsh"] = new Color(0.28f, 0.33f, 0.22f),
-        ["ashlands"] = new Color(0.20f, 0.18f, 0.17f),
-    };
+        readonly Dictionary<string, Color> biomes = new();
 
-    static readonly Color Grass = new(0.30f, 0.42f, 0.20f), Rock = new(0.40f, 0.39f, 0.36f), Water = new(0.16f, 0.30f, 0.36f),
-        SeaFloor = new(0.09f, 0.19f, 0.22f);
+        /// <summary>A biome not in the palette (the pinned map's name too).</summary>
+        public Color Grass { get; private set; } = new(0.30f, 0.42f, 0.20f);
+        /// <summary>Where the land is steep.</summary>
+        public Color Rock { get; private set; } = new(0.40f, 0.39f, 0.36f);
 
-    /// <summary>A biome's far colour (a biomes.json id; anything else, the pinned map's name too, is grass).</summary>
-    public static Color BiomeColour(string biome) => biome != null && BiomeColours.TryGetValue(biome, out var c) ? c : Grass;
+        /// <summary>Every biome grass.</summary>
+        public static readonly Palette Plain = new();
+
+        /// <summary>A biome's colour (a biomes.json id; anything else is grass).</summary>
+        public Color Of(string biome) => biome != null && biomes.TryGetValue(biome, out var c) ? c : Grass;
+
+        /// <summary>
+        /// The palette of <paramref name="grounds"/> (each biome's weights over CellPaint.Layers) in <paramref name="layers"/>
+        /// (each CellPaint layer's colour as drawn); a layer with no colour counts as grass.
+        /// </summary>
+        public static Palette Drawn(IReadOnlyDictionary<string, float[]> grounds, IReadOnlyDictionary<string, Color> layers)
+        {
+            var p = new Palette();
+            if (layers.TryGetValue(CellPaint.Grass, out var grass)) p.Grass = grass;
+            if (layers.TryGetValue(CellPaint.Rock, out var rock)) p.Rock = rock;
+            foreach (var (id, weights) in grounds)
+            {
+                Color c = Color.black;
+                float total = 0f;
+                for (int k = 0; k < weights.Length && k < CellPaint.Layers.Count; k++)
+                {
+                    if (weights[k] <= 0f) continue;
+                    c += weights[k] * (layers.TryGetValue(CellPaint.Layers[k], out var layer) ? layer : p.Grass);
+                    total += weights[k];
+                }
+                p.biomes[id] = total > 0f ? new Color(c.r / total, c.g / total, c.b / total) : p.Grass;
+            }
+            return p;
+        }
+    }
+
+    static readonly Color Water = new(0.16f, 0.30f, 0.36f), SeaFloor = new(0.09f, 0.19f, 0.22f);
 
     /// <summary>
     /// A known chunk's land: its 9 × 9 samples <paramref name="cellMetres"/> × KnownChunk.Step apart, from its north-west
     /// corner (the mesh's origin) east along +x and south along -z, each at its height in metres; then its skirt.
     /// </summary>
-    public static Data Known(KnownChunk k, float cellMetres)
+    public static Data Known(KnownChunk k, float cellMetres, Palette palette = null)
     {
+        palette ??= Palette.Plain;
         const int n = KnownChunk.Side;
         float step = KnownChunk.Step * cellMetres, unit = (float)MapFile.LandUnitMetres;
         var d = new Data();
-        var biome = BiomeColour(k.Biome);
+        var biome = palette.Of(k.Biome);
         var biomes = k.Biomes;
         float H(int i, int j) => k.Heights[Mathf.Clamp(j, 0, n - 1) * n + Mathf.Clamp(i, 0, n - 1)] * unit;
         for (int j = 0; j < n; j++)
@@ -103,7 +132,7 @@ public static class FarMeshes
                 float dx = (H(i + 1, j) - H(i - 1, j)) / (step * (i == 0 || i == n - 1 ? 1 : 2));
                 float dz = (H(i, j - 1) - H(i, j + 1)) / (step * (j == 0 || j == n - 1 ? 1 : 2));
                 var normal = new Vector3(-dx, 1f, -dz).normalized;
-                d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, Paint(k, i, j, biomes?[j * n + i] is { } b ? BiomeColour(b) : biome, normal));
+                d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, Paint(k, i, j, biomes?[j * n + i] is { } b ? palette.Of(b) : biome, palette.Rock, normal));
             }
         for (int j = 0; j < n - 1; j++)
             for (int i = 0; i < n - 1; i++)
@@ -116,14 +145,14 @@ public static class FarMeshes
     }
 
     // A sample's colour: its water, else its own biome's (blended to its neighbours' across the triangles), turned to rock where it's steep, with a little variety.
-    static Color32 Paint(KnownChunk k, int i, int j, Color biome, Vector3 normal)
+    static Color32 Paint(KnownChunk k, int i, int j, Color biome, Color rock, Vector3 normal)
     {
         byte water = k.Water[j * KnownChunk.Side + i];
         Color c = water switch
         {
             KnownChunk.River or KnownChunk.Lake => Water,
             KnownChunk.Sea => SeaFloor,
-            _ => Color.Lerp(biome, Rock, Mathf.InverseLerp(0.85f, 0.6f, normal.y)),
+            _ => Color.Lerp(biome, rock, Mathf.InverseLerp(0.85f, 0.6f, normal.y)),
         };
         uint hash = (uint)((k.X * 64 + i * 8) * 73856093 ^ (k.Y * 64 + j * 8) * 19349663);
         float vary = 0.94f + 0.12f * ((hash >> 8) % 1000) / 1000f;

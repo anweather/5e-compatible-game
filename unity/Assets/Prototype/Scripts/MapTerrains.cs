@@ -20,6 +20,18 @@ public sealed class MapTerrains : MonoBehaviour
     /// <summary>How far a chunk terrain draws its details (grass), in metres, as made.</summary>
     public const float DetailMetres = 120f;
 
+    /// <summary>How far a chunk terrain draws its trees, in metres (900 as made; the tree impostors' trial draws them nearer, TreeImpostors).</summary>
+    public static float TreeDistance { get; private set; } = 900f;
+
+    /// <summary>Sets TreeDistance, on every terrain made now and on those made after.</summary>
+    public static void SetTreeDistance(float metres)
+    {
+        TreeDistance = metres;
+        if (Instance == null || Instance.chunks == null) return;
+        foreach (var t in Instance.chunks)
+            if (t != null) t.treeDistance = metres;
+    }
+
     /// <summary>The scene's chunk terrains (null before one starts).</summary>
     public static MapTerrains Instance { get; private set; }
 
@@ -121,11 +133,73 @@ public sealed class MapTerrains : MonoBehaviour
             t.drawTreesAndFoliage = draw;
         }
         Drawing = drawn.Count;
+        HintDrawn();
     }
 
     // The chunks that drew at the last check, and those this check visits.
     readonly System.Collections.Generic.HashSet<int> drawn = new(), visit = new();
     bool checkedOnce, withFar;
+
+    // The world's drawn hint (World.SetDrawn, D17): the chemistry chunks under the drawn terrains, so the core doesn't pack
+    // what the view draws. Given again only when the drawn terrains or the world change. The terrains are offset from the
+    // chemistry's chunks and run north to south the other way, so each terrain meets up to four of them.
+    readonly HashSet<int> hinted = new();
+    readonly HashSet<(int cx, int cy)> drawnCells = new();
+    World hintedWorld;
+
+    void HintDrawn(bool now = false)
+    {
+        var world = ChemGrid.Current?.Grid?.World;
+        if (world == null || (!now && world == hintedWorld && hinted.SetEquals(drawn))) return;
+        hintedWorld = world;
+        hinted.Clear();
+        hinted.UnionWith(drawn);
+        drawnCells.Clear();
+        foreach (int k in drawn) CellChunksUnder(world, k % layout.ChunksX, k / layout.ChunksX, 0, drawnCells);
+        if (world == pinnedWorld) drawnCells.UnionWith(pinned);
+        world.SetDrawn(drawnCells);
+    }
+
+    // The chemistry chunks under chunk terrain (i, j), and `ring` chunks round them.
+    void CellChunksUnder(World world, int i, int j, int ring, HashSet<(int cx, int cy)> into)
+    {
+        int last = Chem.Chunks.Size - 1;
+        int x0 = Mathf.Max(0, i * Chem.Chunks.Size - layout.U0), x1 = Mathf.Min(world.W - 1, i * Chem.Chunks.Size + last - layout.U0);
+        int y0 = Mathf.Max(0, layout.V0 - j * Chem.Chunks.Size - last), y1 = Mathf.Min(world.H - 1, layout.V0 - j * Chem.Chunks.Size);
+        if (x0 > x1 || y0 > y1) return;
+        int cxMax = (world.W - 1) >> Chem.Chunks.Shift, cyMax = (world.H - 1) >> Chem.Chunks.Shift;
+        for (int cy = Mathf.Max(0, (y0 >> Chem.Chunks.Shift) - ring); cy <= Mathf.Min(cyMax, (y1 >> Chem.Chunks.Shift) + ring); cy++)
+            for (int cx = Mathf.Max(0, (x0 >> Chem.Chunks.Shift) - ring); cx <= Mathf.Min(cxMax, (x1 >> Chem.Chunks.Shift) + ring); cx++) into.Add((cx, cy));
+    }
+
+    // The ground's arrays and heights are made side by side (Parallel.For, a worker), and they read the world's cells. A
+    // read of a packed chunk unpacks it (D17), which changes the world's lists and its pool of blocks: never safe off the
+    // main thread. So the chunks they read (those under the terrains and one round them, for the paint's and heights'
+    // neighbours) are unpacked here first, on the main thread, and held in the drawn hint until the work is taken.
+    readonly HashSet<(int cx, int cy)> pinned = new();
+    World pinnedWorld;
+
+    void Warm(IEnumerable<(int i, int j)> terrains)
+    {
+        var world = ground?.World;
+        if (world == null) return;
+        if (world != pinnedWorld)
+        {
+            pinned.Clear();
+            pinnedWorld = world;
+        }
+        int before = pinned.Count;
+        foreach (var (i, j) in terrains) CellChunksUnder(world, i, j, 1, pinned);
+        if (pinned.Count != before) HintDrawn(now: true);
+        foreach (var (cx, cy) in pinned) world.At(cx << Chem.Chunks.Shift, cy << Chem.Chunks.Shift);
+    }
+
+    void Unpin()
+    {
+        if (pinned.Count == 0) return;
+        pinned.Clear();
+        HintDrawn(now: true);
+    }
 
     /// <summary>How many chunk terrains drew at the last check (the drawn tier, for the tiersweep probe).</summary>
     public int Drawing { get; private set; }
@@ -295,7 +369,9 @@ public sealed class MapTerrains : MonoBehaviour
         var timer = System.Diagnostics.Stopwatch.StartNew();
         if (whole)
         {
+            Warm(toMake);
             ground.Prepare(toMake);
+            if (arrays == null) Unpin();
             ArraysMs = timer.Elapsed.TotalMilliseconds;
         }
         else PrepareHeights();
@@ -349,6 +425,7 @@ public sealed class MapTerrains : MonoBehaviour
         if (missing.Count == 0) return;
         var builder = ground.Builder;
         arraysFor = missing;
+        Warm(missing);
         arrays = System.Threading.Tasks.Task.Run(() => builder.MakeArrays(missing));
     }
 
@@ -358,6 +435,7 @@ public sealed class MapTerrains : MonoBehaviour
         if (arrays == null || !arrays.IsCompleted) return;
         var job = arrays;
         arrays = null;
+        Unpin();
         if (job.IsFaulted)
         {
             Debug.LogError($"GROUND TERRAINS: a chunk's arrays failed: {job.Exception?.GetBaseException().Message}");
@@ -469,7 +547,7 @@ public sealed class MapTerrains : MonoBehaviour
     // resolution, so full-detail and coarse chunks are two groups (their shared edges match by construction).
     static Terrain Configure(Terrain terrain, bool fullDetail, Material material)
     {
-        terrain.treeDistance = 900f;
+        terrain.treeDistance = TreeDistance;
         terrain.treeBillboardDistance = 160f;
         terrain.detailObjectDistance = DetailMetres;
         terrain.heightmapPixelError = 4f;

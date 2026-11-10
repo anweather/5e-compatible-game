@@ -28,6 +28,7 @@ public sealed class MapLand
         {
             string dir = ChemGrid.Folders.World;
             if (current != null && currentDir == dir) return current;
+            current?.Release();
             try
             {
                 current = new MapLand(dir);
@@ -117,4 +118,26 @@ public sealed class MapLand
 
     /// <summary>The way to the nearest land over the sea, worked out from the land the first time it's asked for.</summary>
     public ShoreMap ShoreMap => shoreMap != null ? shoreMap : shoreMap = ShoreMap.FromLand(IsLand, Middle + Seaward * (ShoreMap.Side / 2f - Reach));
+
+    // The shore map is DontSave, so nothing frees it but this: left when the map changed or the scripts reloaded (which
+    // forgets `current`), every one stayed in the Editor, 4 MB each (#145). Whoever drew with it builds again from Current.
+    void Release()
+    {
+        if (shoreMap == null) return;
+        Free(shoreMap.texture);
+        Free(shoreMap);
+        shoreMap = null;
+    }
+
+    static void Free(Object thing)
+    {
+        if (thing == null) return;
+        if (Application.isPlaying) Object.Destroy(thing);
+        else Object.DestroyImmediate(thing);
+    }
+
+#if UNITY_EDITOR
+    [UnityEditor.InitializeOnLoadMethod]
+    static void ReleaseBeforeReload() => UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += () => current?.Release();
+#endif
 }

@@ -37,6 +37,7 @@ public sealed partial class FarRing : MonoBehaviour
         public FarLandmarks Far;
         public float[] Ground;
         public Dictionary<string, FarMeshes.FarLook> Looks;
+        public BiomeGround Biomes;
     }
 
     Task<Loaded> loading;
@@ -111,7 +112,7 @@ public sealed partial class FarRing : MonoBehaviour
             ground[n] = Ground(gen, l, water, near, cell);
         }
         var looks = FarMeshes.FarLooks(System.IO.File.ReadAllText(System.IO.Path.Combine(m.WorldDir, HorizonTable.FileName)));
-        return new Loaded { Map = m, Far = far, Ground = ground, Looks = looks };
+        return new Loaded { Map = m, Far = far, Ground = ground, Looks = looks, Biomes = BiomeGround.Of(m) };
     }
 
     // The ground a far landmark stands on (m): the lowest dry known sample within its radius (at least a sample's spacing)
@@ -191,6 +192,7 @@ public sealed partial class FarRing : MonoBehaviour
         landmarkMaterial.SetFloat(OwnHazeId, 1f);
         MakeSea();
         MakeLandmarks(loaded);
+        palette = Palette(loaded.Biomes, grid.World, terrains);
         Debug.Log($"FAR RING: know {know} (haze 98% at {HazeMetres:0} m, density {RenderSettings.fogDensity:0.00000}/m), {loaded.Far.All.Count} far landmarks");
         return true;
     }
@@ -236,18 +238,62 @@ public sealed partial class FarRing : MonoBehaviour
         foreach (var k in ring.Chunks)
             if (!drawn.TryGetValue(ring.Id(k.X, k.Y), out var d) || d.chunk != k) fresh.Add(k);
         float cell = land.Layout.CellSize;
+        var colours = palette;
         buildStarted = Time.realtimeSinceStartupAsDouble;
         building = Task.Run(() =>
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             var made = new List<(KnownChunk, FarMeshes.Data)>(fresh.Count);
-            foreach (var k in fresh) made.Add((k, FarMeshes.Known(k, cell)));
+            foreach (var k in fresh) made.Add((k, FarMeshes.Known(k, cell, colours)));
             workerMs = timer.Elapsed.TotalMilliseconds;
             return made;
         });
     }
 
     double workerMs;
+    FarMeshes.Palette palette = FarMeshes.Palette.Plain;
+
+    // The known chunks' colours from what the near ground draws (#191): each biome's ground as the map's cells paint it,
+    // in the colours of the chunk terrains' own layers. Once, as the ring starts.
+    static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains)
+    {
+        var layers = terrains != null && terrains.template != null ? terrains.template.terrainLayers : null;
+        if (biomes == null || world == null || layers == null) return FarMeshes.Palette.Plain;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var colours = new Dictionary<string, Color>();
+        foreach (string name in CellPaint.Layers)
+            foreach (var layer in layers)
+                if (layer != null && layer.diffuseTexture != null && layer.name.StartsWith(name, System.StringComparison.Ordinal))
+                {
+                    var tint = layer.diffuseRemapMax;
+                    var mean = MeanColour(layer.diffuseTexture);
+                    colours[name] = new Color(mean.r * tint.x, mean.g * tint.y, mean.b * tint.z);
+                    break;
+                }
+        var palette = FarMeshes.Palette.Drawn(biomes.Grounds(world), colours);
+        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms");
+        return palette;
+    }
+
+    // A texture's mean colour, linear as the terrain's shader mixes and lights it (FarLand lights a vertex colour as it is),
+    // from a small copy on the GPU: the terrain's textures can't be read here.
+    static Color MeanColour(Texture texture)
+    {
+        const int Side = 64;
+        var small = RenderTexture.GetTemporary(Side, Side, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        var was = RenderTexture.active;
+        Graphics.Blit(texture, small);
+        RenderTexture.active = small;
+        var read = new Texture2D(Side, Side, TextureFormat.RGBAHalf, false, true);
+        read.ReadPixels(new Rect(0, 0, Side, Side), 0, 0);
+        RenderTexture.active = was;
+        RenderTexture.ReleaseTemporary(small);
+        Color sum = Color.black;
+        var pixels = read.GetPixels();
+        foreach (var p in pixels) sum += p;
+        Destroy(read);
+        return sum / pixels.Length;
+    }
 
     // The worker's meshes to Unity, the chunks no longer known taken away, and the terrains told what's drawn now.
     void FinishBuild()
