@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-088: A baked land.json whose compressed bytes differ by runtime (2026-11-10)
+
+- **Asked:** the PC's compile of `bake-lean`: the streaming writer feeds the deflater a row at a time, so the nine's
+  baked `land.json` decompresses to the same land but its compressed bytes differ between .NET 8 and the Editor.
+- **Also comes up when:** any writer of a map file; `MapIdentity.Hash`, which hashes every file's bytes for a map
+  that isn't generated.
+- **Answer (the lead):** accepted. The streaming writer is used only by the bake, whose maps are generated, and a
+  generated map's identity is its inputs (`GeneratedMap.InputHash`), never its baked files. Committed maps keep
+  `LandFile.Write`. If the streaming writer is ever used for a committed map, its bytes must be made stable first.
+- **Revisited:** 0.
+
 ### J-087: Restart the PC's Editor when its memory runs away? (2026-11-09)
 
 - **Asked:** the lead, after the editor-lean trial found the Editor (up 20 h) holding 49 GB of private memory
