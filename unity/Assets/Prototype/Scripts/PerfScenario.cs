@@ -344,10 +344,18 @@ public class PerfScenario : MonoBehaviour
     {
         long from = Stopwatch.GetTimestamp();
         burningNow = fogNow = 0;
-        foreach (var c in grid.World.AllCells())
+        // The unpacked chunks only (D17): a read of a packed one unpacks it, and this every second unpacked the whole map.
+        // A packed chunk is inactive and has been for streaming.packTicks, so nothing in it burns or drifts meanwhile.
+        var world = grid.World;
+        foreach (var (cx, cy) in world.ChunkCoords)
         {
-            if (c.Fire > 0) burningNow++;
-            if (c.Gas == GasIds.Fog) fogNow++;
+            if (world.IsPacked(cx, cy)) continue;
+            foreach (var c in world.ChunkCells(cx, cy))
+            {
+                if (c == null) continue;
+                if (c.Fire > 0) burningNow++;
+                if (c.Gas == GasIds.Fog) fogNow++;
+            }
         }
         burningPeak = Math.Max(burningPeak, burningNow);
         fogPeak = Math.Max(fogPeak, fogNow);
