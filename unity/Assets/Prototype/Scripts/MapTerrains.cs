@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Chem;
 using UnityEngine;
 
@@ -7,9 +8,20 @@ using UnityEngine;
 // what its land is (ValleyChemistry.Bind). What can't be data stays an asset: the template (the prototypes: layers,
 // trees, grass) and the rock material, both made by Build Chemistry Yard. Early, so what reads the terrains as it
 // starts (the sea's depth, the coast's life) finds them.
+//
+// A generated map's terrains are made only for the drawn tier (#205, J-086): the chunks within the far ring's sight (its
+// drawn dial) of a character plus a chunk, and those under the active chunks, nearest first and a few a frame, from a pool
+// the chunks left behind go back to. The far ring's known meshes draw the land past them. Nothing is made for the rest of
+// the map, so what the terrains cost follows the drawn tier, never the map's size. The valley keeps all of its 81.
 [DefaultExecutionOrder(-1000)]
 public sealed class MapTerrains : MonoBehaviour
 {
+    /// <summary>How far a chunk terrain draws its details (grass), in metres, as made.</summary>
+    public const float DetailMetres = 120f;
+
+    /// <summary>The scene's chunk terrains (null before one starts).</summary>
+    public static MapTerrains Instance { get; private set; }
+
     [Tooltip("The prototypes every chunk is built with: terrain layers, trees, grass (Generated/Ground/Template.asset).")]
     public TerrainData template;
     [Tooltip("The terrains' material: URP's terrain with rock mapped from the sides (TerrainRock.shader).")]
@@ -42,7 +54,13 @@ public sealed class MapTerrains : MonoBehaviour
 
     void Awake()
     {
+        Instance = this;
         if (chunks == null) Make();
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     // A chunk past the camera's far plane isn't drawn, but Unity still culls every terrain each frame: on the nine (729)
@@ -53,6 +71,7 @@ public sealed class MapTerrains : MonoBehaviour
 
     void Update()
     {
+        if (lazy && ground != null) Stream();
         if (!Application.isPlaying || chunks == null || Time.unscaledTime < nextReach) return;
         nextReach = Time.unscaledTime + ReachEvery;
         var cam = Camera.main;
@@ -66,7 +85,8 @@ public sealed class MapTerrains : MonoBehaviour
         // round the camera's reach. Any other was off and stays off. The first check visits them all, as they start on, and
         // so does the first with the far ring (which switches the off ones off, not only hidden).
         visit.Clear();
-        if (!checkedOnce || withFar != (far != null))
+        if (lazy) visit.UnionWith(made);
+        else if (!checkedOnce || withFar != (far != null))
         {
             for (int k = 0; k < chunks.Length; k++) visit.Add(k);
             checkedOnce = true;
@@ -110,7 +130,11 @@ public sealed class MapTerrains : MonoBehaviour
     public int Drawing { get; private set; }
 
     /// <summary>Works out which terrains draw at the next frame, not at the next quarter second (the far ring changed).</summary>
-    public void ReachNow() => nextReach = 0f;
+    public void ReachNow()
+    {
+        nextReach = 0f;
+        planNow = true;
+    }
 
     void Make()
     {
@@ -120,8 +144,229 @@ public sealed class MapTerrains : MonoBehaviour
         builder = GroundSwitch.Mode == GroundSwitch.On && GroundPack.In(dir)
             ? new GroundBuilder(GroundPack.Load(dir), template, layout.ChunkSize)
             : null;
-        chunks = Place(transform, layout, builder, material);
-        Debug.Log($"GROUND TERRAINS {(builder != null ? "built" : "waiting for the land")}: {chunks.Length} chunks in {timer.Elapsed.TotalMilliseconds:0} ms");
+        // A generated map (no ground/: its ground is made from its land) makes its terrains as they're wanted, once the
+        // ground is served (ValleyChemistry's first Bind), none now.
+        lazy = builder == null && Application.isPlaying && GeneratedMap.IsGenerated(ChemGrid.MapSource);
+        chunks = lazy ? new Terrain[layout.ChunksX * layout.ChunksZ] : Place(transform, layout, builder, material);
+        Debug.Log(lazy
+            ? $"GROUND TERRAINS for the drawn tier: none of {chunks.Length} chunks made yet, they're made as they're wanted"
+            : $"GROUND TERRAINS {(builder != null ? "built" : "waiting for the land")}: {chunks.Length} chunks in {timer.Elapsed.TotalMilliseconds:0} ms");
+    }
+
+    // ---------- the drawn tier's terrains (#205) ----------
+
+    bool lazy;
+    ValleyGround ground;
+    readonly Stack<Terrain> pool = new();
+    readonly HashSet<int> made = new();
+    readonly List<(int i, int j)> toMake = new();
+    readonly HashSet<(int i, int j)> wantedNow = new(), activeNow = new();
+    readonly List<(int i, int j)> focus = new(), batch = new();
+    readonly List<int> leaving = new();
+    float nextPlan;
+    bool planNow;
+    int createdEver;
+
+    // A chunk terrain is made within the drawn dial plus Margin of a character, and goes back to the pool past it plus
+    // KeepMargin (the two apart so a character on a chunk's edge doesn't make and drop the same row each step).
+    const int Margin = 1, KeepMargin = 2;
+    // About this many ms a frame go to making terrains in play (at least one a frame while any is wanted); the arrays of up
+    // to MostAtOnce chunks are made side by side.
+    const double MakeBudgetMs = 4.0;
+    const int MostAtOnce = 8;
+
+    /// <summary>Whether the terrains are made only for the drawn tier (a generated map's), not one for every chunk.</summary>
+    public bool Lazy => lazy;
+
+    /// <summary>How many chunk terrains stand now, how many wait in the pool, and how many were ever made (the pool's size).</summary>
+    public (int standing, int pooled, int created) Counts => lazy ? (made.Count, pool.Count, createdEver) : (chunks?.Length ?? 0, 0, chunks?.Length ?? 0);
+
+    /// <summary>How many chunk terrains are wanted and not made yet.</summary>
+    public int Waiting => toMake.Count;
+
+    /// <summary>
+    /// A generated map's ground is ready (ValleyChemistry's first Bind): the terrains the drawn tier wants are made now,
+    /// whole, before the first frame; then as the characters move, a few a frame.
+    /// </summary>
+    public void Serve(ValleyGround served)
+    {
+        if (!lazy) return;
+        ground = served;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        Plan();
+        MakeSome(whole: true);
+        Debug.Log($"GROUND TERRAINS for the drawn tier: {made.Count} of {chunks.Length} chunks made in {timer.Elapsed.TotalMilliseconds:0} ms (sight {Sight()} + {Margin})");
+    }
+
+    void Stream()
+    {
+        if (planNow || Time.unscaledTime >= nextPlan) Plan();
+        MakeSome(whole: false);
+    }
+
+    // The far ring's drawn dial (sim.json's streaming sight until it's read).
+    static int Sight()
+    {
+        var far = FarRing.Instance;
+        int sight = far != null ? far.Dials.drawn : 0;
+        return sight > 0 ? sight : ChemGrid.Current?.Rules?.Sim.Streaming.Sight ?? 4;
+    }
+
+    // Which terrains are wanted: round each character (and the camera), and under the active chunks. Those no longer
+    // wanted go back to the pool now; those wanted and not made wait, nearest first.
+    void Plan()
+    {
+        planNow = false;
+        nextPlan = Time.unscaledTime + ReachEvery;
+        focus.Clear();
+        var grid = ChemGrid.Current?.Grid;
+        if (grid != null && grid.World != null)
+            foreach (var (x, y) in grid.PlayerCells()) AddFocus(layout.ChunkOfCell(x, y));
+        var cam = Camera.main;
+        if (cam != null)
+        {
+            var p = cam.transform.position;
+            AddFocus((Mathf.FloorToInt((p.x - layout.OriginX) / layout.ChunkSize), Mathf.FloorToInt((p.z - layout.OriginZ) / layout.ChunkSize)));
+        }
+        activeNow.Clear();
+        if (grid != null && grid.World != null)
+            foreach (var (cx, cy) in grid.World.ActiveChunks) AddActive(grid.World, cx, cy);
+        int sight = Sight(), make = sight + Margin, keep = sight + KeepMargin;
+        leaving.Clear();
+        foreach (int k in made)
+        {
+            var at = (k % layout.ChunksX, k / layout.ChunksX);
+            if (Distance(at) > keep && !activeNow.Contains(at)) leaving.Add(k);
+        }
+        foreach (int k in leaving) Release(k);
+        wantedNow.Clear();
+        foreach (var (fi, fj) in focus)
+            for (int j = fj - make; j <= fj + make; j++)
+                for (int i = fi - make; i <= fi + make; i++) Want((i, j));
+        foreach (var at in activeNow) Want(at);
+        toMake.Clear();
+        toMake.AddRange(wantedNow);
+        toMake.Sort((a, b) => Distance(a).CompareTo(Distance(b)));
+    }
+
+    void AddFocus((int i, int j) at)
+    {
+        if (!focus.Contains(at)) focus.Add(at);
+    }
+
+    // The terrains under an active chunk of cells (cx, cy): the cells' chunks and the terrains' are offset.
+    void AddActive(World world, int cx, int cy)
+    {
+        int x0 = cx << Chem.Chunks.Shift, y0 = cy << Chem.Chunks.Shift;
+        int x1 = Mathf.Min(world.W - 1, x0 + Chem.Chunks.Size - 1), y1 = Mathf.Min(world.H - 1, y0 + Chem.Chunks.Size - 1);
+        var (ia, ja) = layout.ChunkOfCell(x0, y0);
+        var (ib, jb) = layout.ChunkOfCell(x1, y1);
+        for (int j = Mathf.Min(ja, jb); j <= Mathf.Max(ja, jb); j++)
+            for (int i = Mathf.Min(ia, ib); i <= Mathf.Max(ia, ib); i++)
+                if (layout.HasChunk(i, j)) activeNow.Add((i, j));
+    }
+
+    void Want((int i, int j) at)
+    {
+        if (layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] == null && ground.HasChunk(at)) wantedNow.Add(at);
+    }
+
+    // Chebyshev chunks to the nearest focus (0 for an active chunk, which must stand under what moves there).
+    int Distance((int i, int j) at)
+    {
+        if (activeNow.Contains(at)) return 0;
+        int best = int.MaxValue;
+        foreach (var (fi, fj) in focus) best = Mathf.Min(best, Mathf.Max(Mathf.Abs(at.i - fi), Mathf.Abs(at.j - fj)));
+        return best;
+    }
+
+    // The waiting terrains, nearest first: all of them (before the first frame), or as many as fit the frame's budget.
+    void MakeSome(bool whole)
+    {
+        if (toMake.Count == 0) return;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        int next = 0;
+        if (whole) ground.Builder.Prepare(toMake);
+        while (next < toMake.Count && (whole || next == 0 || timer.Elapsed.TotalMilliseconds < MakeBudgetMs))
+        {
+            var at = toMake[next];
+            if (!ground.Builder.Holds(at))
+            {
+                batch.Clear();
+                for (int m = next; m < toMake.Count && batch.Count < MostAtOnce; m++) batch.Add(toMake[m]);
+                ground.Builder.Prepare(batch);
+            }
+            Attach(at);
+            next++;
+        }
+        toMake.RemoveRange(0, next);
+        Terrain.SetConnectivityDirty();
+        nextReach = 0f;
+    }
+
+    // A terrain from the pool (or a new one) for chunk (i, j), given the chunk's ground.
+    void Attach((int i, int j) at)
+    {
+        Terrain t;
+        if (pool.Count > 0)
+        {
+            t = pool.Pop();
+            t.gameObject.SetActive(true);
+        }
+        else
+        {
+            var go = new GameObject("Chunk", typeof(Terrain), typeof(TerrainCollider));
+            go.transform.SetParent(transform, false);
+            t = go.GetComponent<Terrain>();
+            createdEver++;
+        }
+        t.name = $"Chunk {at.i},{at.j}";
+        var (cx, cz) = layout.ChunkCorner(at.i, at.j);
+        t.transform.position = new Vector3(cx, 0f, cz);
+        Configure(t, layout.IsHighRes(at.i, at.j), material);
+        t.enabled = true;
+        t.drawHeightmap = true;
+        t.drawTreesAndFoliage = true;
+        ground.Attach(at, t);
+        int k = at.j * layout.ChunksX + at.i;
+        chunks[k] = t;
+        made.Add(k);
+    }
+
+    // Chunk k's terrain back to the pool (its ground keeps what was changed on it).
+    void Release(int k)
+    {
+        var t = chunks[k];
+        chunks[k] = null;
+        made.Remove(k);
+        drawn.Remove(k);
+        ground.Release((k % layout.ChunksX, k / layout.ChunksX));
+        if (t == null) return;
+        t.terrainData = null;
+        if (t.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = null;
+        t.gameObject.SetActive(false);
+        pool.Push(t);
+    }
+
+    /// <summary>The chunk terrain standing under a world point, or null (none made there, or off the map).</summary>
+    public Terrain TerrainAt(Vector3 p)
+    {
+        if (chunks == null) return null;
+        int i = Mathf.FloorToInt((p.x - layout.OriginX) / layout.ChunkSize), j = Mathf.FloorToInt((p.z - layout.OriginZ) / layout.ChunkSize);
+        return layout.HasChunk(i, j) ? chunks[j * layout.ChunksX + i] : null;
+    }
+
+    /// <summary>
+    /// The drawn ground's height under a point: its terrain's where one stands, else the ground's (the land, for a chunk
+    /// with no terrain made); null off the map.
+    /// </summary>
+    public float? HeightAt(Vector3 p)
+    {
+        var t = TerrainAt(p);
+        if (t != null && t.terrainData != null) return t.SampleHeight(p) + t.transform.position.y;
+        int i = Mathf.FloorToInt((p.x - layout.OriginX) / layout.ChunkSize), j = Mathf.FloorToInt((p.z - layout.OriginZ) / layout.ChunkSize);
+        if (ground == null || !layout.HasChunk(i, j)) return null;
+        return ground.GroundAt(p.x, p.z);
     }
 
     /// <summary>
@@ -161,7 +406,7 @@ public sealed class MapTerrains : MonoBehaviour
     {
         terrain.treeDistance = 900f;
         terrain.treeBillboardDistance = 160f;
-        terrain.detailObjectDistance = 120f;
+        terrain.detailObjectDistance = DetailMetres;
         terrain.heightmapPixelError = 4f;
         terrain.drawInstanced = true;
         terrain.materialTemplate = material;

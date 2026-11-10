@@ -199,6 +199,16 @@ namespace Chem
             return GridCell(u, v);
         }
 
+        /// <summary>The grid cells chunk (i, j) holds (those whose ChunkOfCell it is), row by row as Cells lists them.</summary>
+        public IEnumerable<(int x, int y)> CellsIn(int i, int j)
+        {
+            int u0 = i * ChunkCells, v0 = j * ChunkCells;
+            var (xLo, yHi) = GridCell(u0, v0);
+            var (xHi, yLo) = GridCell(u0 + ChunkCells - 1, v0 + ChunkCells - 1);
+            for (int y = Math.Max(0, yLo); y <= Math.Min(GridH - 1, yHi); y++)
+                for (int x = Math.Max(0, xLo); x <= Math.Min(GridW - 1, xHi); x++) yield return (x, y);
+        }
+
         /// <summary>Every grid cell, row by row.</summary>
         public IEnumerable<(int x, int y)> Cells()
         {

@@ -34,9 +34,7 @@ public static class GroundFromLand
     /// <summary>The ground a map's land and cells draw.</summary>
     public static GroundPack Build(Source s)
     {
-        var (low, high) = s.World.LandRange;
-        double bottom = Math.Min(low * (double)s.Unit - RoomBelow, s.Lowest * (double)s.Unit - RoomUnderBed);
-        var pack = new GroundPack { Bottom = bottom, Top = high * (double)s.Unit + RoomAbove, Layers = s.Layers, Grasses = s.Grasses, TreeKinds = s.TreeKinds };
+        var pack = Shared(s);
         var field = new CellHeightfield(s.Layout, s.StepHeight, 1f);
         var trees = TreesByChunk(s);
         int across = s.Layout.ChunksX, chunks = across * s.Layout.ChunksZ;
@@ -47,17 +45,51 @@ public static class GroundFromLand
         void One(int n)
         {
             int i = n % across, j = n / across;
-            var chunk = new GroundChunk { I = i, J = j, Resolution = s.Layout.Resolution(i, j), Texels = s.Layout.TexelResolution(i, j), DetailResolution = s.DetailResolution };
-            chunk.Heights = Heights(s, field, pack, i, j);
-            chunk.Paint = Paint(s, i, j);
-            chunk.Details = Details(s, i, j);
-            chunk.Trees = Placed(s, pack, chunk, trees.TryGetValue((i, j), out var mine) ? mine : new List<(int, int)>());
-            built[n] = chunk;
+            built[n] = Chunk(s, field, pack, i, j, trees.TryGetValue((i, j), out var mine) ? mine : new List<(int, int)>());
         }
         if (Threaded) System.Threading.Tasks.Parallel.For(0, chunks, One);
         else for (int n = 0; n < chunks; n++) One(n);
         pack.Chunks.AddRange(built);
         return pack;
+    }
+
+    /// <summary>
+    /// The same ground a chunk at a time (#205): the pack holds what the chunks share and no chunk, and the function makes
+    /// chunk (i, j) as Build would, from the world <paramref name="s"/> holds when it's asked (a new world on the same map
+    /// sets it). Safe to call side by side while nothing changes the world.
+    /// </summary>
+    public static (GroundPack pack, Func<(int i, int j), GroundChunk> make) Lazy(Source s)
+    {
+        var pack = Shared(s);
+        var field = new CellHeightfield(s.Layout, s.StepHeight, 1f);
+        return (pack, at => Chunk(s, field, pack, at.i, at.j, TreesIn(s, at.i, at.j)));
+    }
+
+    // What the chunks share: the heights' range and the names.
+    static GroundPack Shared(Source s)
+    {
+        var (low, high) = s.World.LandRange;
+        double bottom = Math.Min(low * (double)s.Unit - RoomBelow, s.Lowest * (double)s.Unit - RoomUnderBed);
+        return new GroundPack { Bottom = bottom, Top = high * (double)s.Unit + RoomAbove, Layers = s.Layers, Grasses = s.Grasses, TreeKinds = s.TreeKinds };
+    }
+
+    static GroundChunk Chunk(Source s, CellHeightfield field, GroundPack pack, int i, int j, List<(int x, int y)> trees)
+    {
+        var chunk = new GroundChunk { I = i, J = j, Resolution = s.Layout.Resolution(i, j), Texels = s.Layout.TexelResolution(i, j), DetailResolution = s.DetailResolution };
+        chunk.Heights = Heights(s, field, pack, i, j);
+        chunk.Paint = Paint(s, i, j);
+        chunk.Details = Details(s, i, j);
+        chunk.Trees = Placed(s, pack, chunk, trees);
+        return chunk;
+    }
+
+    // One chunk's tree cells, in the order TreesByChunk lists them (row by row of the grid).
+    static List<(int x, int y)> TreesIn(Source s, int i, int j)
+    {
+        var list = new List<(int x, int y)>();
+        foreach (var (x, y) in s.Layout.CellsIn(i, j))
+            if (s.World.At(x, y).T == TerrainIds.Tree) list.Add((x, y));
+        return list;
     }
 
     /// <summary>Whether Build works the chunks out side by side (the default); off, one after another, for comparison: both give the same arrays.</summary>

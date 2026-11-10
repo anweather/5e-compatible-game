@@ -254,6 +254,8 @@ public class RowHouses : MonoBehaviour
     static float? TerrainY(Vector3 p)
     {
         var map = Object.FindAnyObjectByType<MapTerrains>();
+        // A generated map's terrains stand only in the drawn tier (#205): its ground answers for the rest.
+        if (map != null && map.Lazy) return map.HeightAt(p);
         foreach (var t in map != null ? map.Chunks : Terrain.activeTerrains)
         {
             if (t == null) continue;

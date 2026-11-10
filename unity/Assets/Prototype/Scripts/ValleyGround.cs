@@ -50,6 +50,11 @@ public sealed class ValleyGround
         public bool heightsChanged;
         // In syncQueue / paintQueue already, so a chunk waits in each once.
         public bool syncQueued, paintQueued;
+        // Made one at a time (a generated map's, #205): whether its data and the arrays read from it are made for this
+        // world, and what waited for that (cells to repaint, cells to paint afresh, anything else).
+        public bool ready;
+        public List<(int x, int y)> repaint, anew;
+        public List<System.Action> whenReady;
     }
 
     readonly TerrainGrid layout;
@@ -64,6 +69,204 @@ public sealed class ValleyGround
     IReadOnlyList<float>[] bakedPaint;
 
     readonly GroundBuilder builder;
+    // A generated map's ground, a chunk at a time (#205): no chunk has data until its terrain is made (Attach) or something
+    // writes to it, and an untouched chunk whose terrain goes gives its data back (Release), to be used again.
+    readonly bool lazy;
+    readonly HashSet<(int i, int j)> attached = new();
+    readonly Dictionary<(int res, int texels), Stack<TerrainData>> spare = new();
+    // The offsets the arrays were made with (the baked ground's: no laid land), and the river's extra under its cells.
+    CellHeightfield bakedField;
+    readonly Dictionary<int, float> raised = new();
+    HashSet<(int i, int j)> detailNear = new();
+    const int MostSpare = 16;
+
+    /// <summary>
+    /// A generated map's ground, made a chunk at a time from <paramref name="builder"/>'s arrays (#205, J-086): a chunk is
+    /// made when its terrain is (Attach) or when something changes it, and nothing is made for the rest of the map.
+    /// </summary>
+    public ValleyGround(TerrainGrid layout, GroundBuilder builder)
+    {
+        this.layout = layout;
+        this.builder = builder;
+        lazy = true;
+        foreach (var at in layout.GridChunks()) chunks[at] = new Chunk { at = at, detailDistance = MapTerrains.DetailMetres };
+    }
+
+    /// <summary>Whether its chunks are made one at a time (a generated map's).</summary>
+    public bool Lazy => lazy;
+
+    /// <summary>The arrays its chunks are built from.</summary>
+    public GroundBuilder Builder => builder;
+
+    /// <summary>The map's land, in land units by cell (land.json): a chunk not made yet stands on it. Set before Bind.</summary>
+    public int[] Land { get; set; }
+
+    /// <summary>A chunk was made for this world (its data, trees and paint read): what keeps a chunk's state takes it up.</summary>
+    public event System.Action<(int i, int j), TerrainData> ChunkReady;
+
+    /// <summary>A chunk nothing had changed gave its data back (its terrain went): what kept its state lets it go.</summary>
+    public event System.Action<(int i, int j), TerrainData> ChunkGone;
+
+    /// <summary>Whether a chunk's data is made for this world (always, for a ground made whole).</summary>
+    public bool IsReady((int i, int j) at) => !lazy || (chunks.TryGetValue(at, out var ch) && ch.ready);
+
+    /// <summary>How many chunks have data now.</summary>
+    public int WithData => chunks.Values.Count(c => c.data != null);
+
+    /// <summary>
+    /// Runs <paramref name="then"/> once the chunk is made, and says false; true when it is already (the caller goes on).
+    /// </summary>
+    public bool WhenReady((int i, int j) at, System.Action then)
+    {
+        if (IsReady(at) || !chunks.TryGetValue(at, out var ch)) return true;
+        (ch.whenReady ??= new List<System.Action>()).Add(then);
+        return false;
+    }
+
+    /// <summary>Something the view keeps for this chunk changed (its trees): it keeps its data when its terrain goes.</summary>
+    public void Touch((int i, int j) at)
+    {
+        if (chunks.TryGetValue(at, out var ch)) ch.touched = true;
+    }
+
+    /// <summary>The tree kinds a chunk draws (every chunk has the template's), without making it.</summary>
+    public TreePrototype[] TreePrototypes((int i, int j) at) =>
+        lazy && builder != null && !IsReady(at) ? builder.TreePrototypes : Data(at).treePrototypes;
+
+    /// <summary>A terrain now stands for this chunk: its data made for this world if it isn't, and given to it.</summary>
+    public void Attach((int i, int j) at, Terrain terrain)
+    {
+        var ch = chunks[at];
+        ch.terrain = terrain;
+        attached.Add(at);
+        if (!ch.ready) MakeReady(ch);
+        Use(ch, ch.data);
+        var p = terrain.transform.position;
+        terrain.transform.position = new Vector3(p.x, builder.Bottom, p.z);
+        terrain.detailObjectDistance = detailNear.Contains(at) ? ch.detailDistance : 0f;
+    }
+
+    /// <summary>
+    /// The chunk's terrain goes (back to the pool). Untouched, its data goes too, to be used again, and the chunk is made
+    /// afresh if it's wanted again; changed, it keeps it (and all it was given) for when its terrain comes back.
+    /// </summary>
+    public void Release((int i, int j) at)
+    {
+        if (!chunks.TryGetValue(at, out var ch)) return;
+        ch.terrain = null;
+        attached.Remove(at);
+        if (!ch.ready || ch.touched || ch.syncQueued || ch.paintQueued || pendingDetail.ContainsKey(at) || treeColliders.Contains(at)) return;
+        ChunkGone?.Invoke(at, ch.data);
+        Spare(ch.data);
+        ch.data = null;
+        ch.ready = false;
+        ch.baseHeights = null;
+        ch.baseAlpha = ch.frameAlpha = null;
+        builder.Forget(at);
+        foreach (var (x, y) in layout.CellsIn(at.i, at.j))
+        {
+            int k = world.Idx(x, y);
+            cellBase[k] = LandMetres(k);
+            bakedPaint[k] = paintedMix[k] = null;
+        }
+    }
+
+    void Spare(TerrainData data)
+    {
+        var key = (data.heightmapResolution, data.alphamapResolution);
+        if (!spare.TryGetValue(key, out var stack)) spare[key] = stack = new Stack<TerrainData>();
+        if (stack.Count < MostSpare) stack.Push(data);
+        else Free(data);
+    }
+
+    static void Free(Object o)
+    {
+        if (Application.isPlaying) Object.Destroy(o);
+        else Object.DestroyImmediate(o);
+    }
+
+    TerrainData Spared((int i, int j) at)
+    {
+        var key = (layout.Resolution(at.i, at.j), layout.TexelResolution(at.i, at.j));
+        return spare.TryGetValue(key, out var stack) && stack.Count > 0 ? stack.Pop() : null;
+    }
+
+    // A cell's ground while its chunk isn't made: the map's land (which the drawn ground matches to a unit, CheckGround).
+    float LandMetres(int k) => Land != null && k < Land.Length ? Land[k] * landUnit : 0f;
+
+    // A chunk made for this world (#205): its data from the arrays (data it kept, untouched, as it is), its base heights
+    // under the offsets the arrays were made with, its cells' base and paint, the ground moved since drawn over it, and
+    // what waited for it.
+    void MakeReady(Chunk ch)
+    {
+        if (ch.data == null) ch.data = builder.Build(ch.at, Spared(ch.at));
+        else builder.FreshLayers(ch.data);
+        if (ch.terrain != null) Use(ch, ch.data);
+        ch.ready = true;
+        ch.touched = false;
+        ch.bottom = builder.Bottom;
+        var data = ch.data;
+        int res = data.heightmapResolution;
+        var heights = data.GetHeights(0, 0, res, res);
+        var baked = bakedField.Compute(world, ch.at.i, ch.at.j);
+        float size = data.size.y;
+        ch.baseHeights = new float[res, res];
+        for (int z = 0; z < res; z++)
+            for (int x = 0; x < res; x++) ch.baseHeights[z, x] = heights[z, x] * size - baked[z, x];
+        ch.layers = LayerIndices(data.terrainLayers);
+        ch.baseAlpha = null;
+        ch.frameAlpha = null;
+        ch.dx0 = ch.dz0 = int.MaxValue;
+        ch.dx1 = ch.dz1 = -1;
+        ReadCells(ch);
+        // The ground drawn now where it isn't the baked (laid land, a stamp, a dug cell): drawn over the arrays'.
+        if (heightfield.Shapes(ch.at.i, ch.at.j) && Moved(heightfield.Current(ch.at.i, ch.at.j), baked)) WriteHeights(layout.SampleRect(ch.at.i, ch.at.j));
+        TakeWaiting(ch, data);
+    }
+
+    // A made chunk's cells: their base from its heights (and the river's extra), their paint as it was made.
+    void ReadCells(Chunk ch)
+    {
+        var all = world.Cells;
+        foreach (var (x, y) in layout.CellsIn(ch.at.i, ch.at.j))
+        {
+            int k = world.Idx(x, y);
+            cellBase[k] = SampleBase(x, y) + (raised.TryGetValue(k, out float more) ? more : 0f);
+            bakedPaint[k] = paintedMix[k] = CellPaint.Mix(world, all[k]);
+        }
+    }
+
+    static bool Moved(float[,] now, float[,] baked)
+    {
+        int h = now.GetLength(0), w = now.GetLength(1);
+        for (int z = 0; z < h; z++)
+            for (int x = 0; x < w; x++)
+                if (Mathf.Abs(now[z, x] - baked[z, x]) > 1e-5f) return true;
+        return false;
+    }
+
+    // What waited for a chunk to be made: its cells to repaint and to paint afresh, then those keeping its state, then the rest.
+    void TakeWaiting(Chunk ch, TerrainData data)
+    {
+        if (ch.repaint != null)
+        {
+            foreach (var c in ch.repaint) repaint.Add(c);
+            ch.repaint = null;
+        }
+        if (ch.anew != null)
+        {
+            foreach (var (x, y) in ch.anew) PaintAnew(x, y);
+            ch.anew = null;
+        }
+        ChunkReady?.Invoke(ch.at, data);
+        if (ch.whenReady == null) return;
+        var then = ch.whenReady;
+        ch.whenReady = null;
+        foreach (var a in then) a();
+    }
+
+    // The chunk a cell's paint and trees are in, made: false while it isn't (a generated map's chunk out of sight).
+    bool CellReady(int x, int y) => !lazy || (chunks.TryGetValue(layout.ChunkOfCell(x, y), out var ch) && ch.ready);
 
     /// <summary>
     /// The ground of <paramref name="terrains"/>; <paramref name="built"/>: they already carry <paramref name="builder"/>'s
@@ -94,7 +297,14 @@ public sealed class ValleyGround
     }
 
     /// <summary>How far the terrains draw details as built (ChemGrid.DetailDistance takes it).</summary>
-    public float DetailDistance => chunks.Count > 0 ? chunks.Values.Max(c => c.detailDistance) : 0f;
+    public float DetailDistance
+    {
+        get
+        {
+            if (lazy) return MapTerrains.DetailMetres;
+            return chunks.Count > 0 ? chunks.Values.Max(c => c.detailDistance) : 0f;
+        }
+    }
 
     /// <summary>
     /// Only the terrains <paramref name="near"/> the camera draw their details (ChemGrid.DetailChunks):
@@ -104,18 +314,30 @@ public sealed class ValleyGround
     {
         using var marked = DrawDetailsMarker.Auto();
         PerfCounts.Add("detail.changes");
+        if (lazy)
+        {
+            // Only the terrains made (#205); one made later takes the last near set as it's attached.
+            detailNear = new HashSet<(int i, int j)>(near);
+            foreach (var at in attached)
+            {
+                var ch = chunks[at];
+                ch.terrain.detailObjectDistance = detailNear.Contains(at) ? ch.detailDistance : 0f;
+            }
+            return;
+        }
         foreach (var kv in chunks)
             if (kv.Value.terrain != null) kv.Value.terrain.detailObjectDistance = near.Contains(kv.Key) ? kv.Value.detailDistance : 0f;
     }
 
-    /// <summary>The chunks the cells reach as drawn now: a runtime copy once one changed, else the saved one.</summary>
+    /// <summary>The chunks the cells reach as drawn now: a runtime copy once one changed, else the saved one. Made ones only, on a generated map.</summary>
     public IEnumerable<((int i, int j) at, TerrainData data)> Chunks()
     {
-        foreach (var kv in chunks) yield return (kv.Key, Shown(kv.Value));
+        foreach (var kv in chunks)
+            if (!lazy || kv.Value.ready) yield return (kv.Key, Shown(kv.Value));
     }
 
-    /// <summary>One of the chunks the cells reach, as drawn now.</summary>
-    public TerrainData Data((int i, int j) at) => Shown(chunks[at]);
+    /// <summary>One of the chunks the cells reach, as drawn now (made now, on a generated map, if it isn't).</summary>
+    public TerrainData Data((int i, int j) at) => Shown(Made(chunks[at]));
 
     /// <summary>Whether the cells reach this chunk (it has a terrain).</summary>
     public bool HasChunk((int i, int j) at) => chunks.ContainsKey(at);
@@ -123,9 +345,15 @@ public sealed class ValleyGround
     /// <summary>One of the chunks the cells reach, to change: its runtime copy, made now if it has none yet.</summary>
     public TerrainData WritableData((int i, int j) at)
     {
-        var ch = chunks[at];
+        var ch = Made(chunks[at]);
         ch.touched = true;
         return Writable(ch);
+    }
+
+    Chunk Made(Chunk ch)
+    {
+        if (lazy && !ch.ready) MakeReady(ch);
+        return ch;
     }
 
     static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
@@ -141,6 +369,7 @@ public sealed class ValleyGround
 
     static void Use(Chunk ch, TerrainData data)
     {
+        if (ch.terrain == null) return;
         ch.terrain.terrainData = data;
         if (ch.terrain.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = data;
     }
@@ -182,6 +411,11 @@ public sealed class ValleyGround
         pendingDetail.Clear();
         treeColliders.Clear();
         reshaped.Clear();
+        if (lazy)
+        {
+            BindLazily(w, stepHeight, shapeSpeed, flatUnderWalls);
+            return;
+        }
         var timer = System.Diagnostics.Stopwatch.StartNew();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
         heightfield.LaidLandDrawn = true;
@@ -207,6 +441,49 @@ public sealed class ValleyGround
             }
         }
         System.Array.Copy(bakedPaint, paintedMix, cells);
+    }
+
+    // A generated map's Bind (#205): no chunk is made for the new world until its terrain is or something changes it. One
+    // made for the last world keeps its data if nothing changed it (made afresh from it), else gives it up; those with a
+    // terrain now are made at once. Every other cell stands on the map's land until its chunk is made.
+    void BindLazily(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls)
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        bakedField = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
+        raised.Clear();
+        syncQueue.Clear();
+        paintQueue.Clear();
+        foreach (var ch in chunks.Values)
+        {
+            ch.ready = false;
+            ch.repaint = ch.anew = null;
+            ch.whenReady = null;
+            ch.syncQueued = ch.paintQueued = false;
+            ch.heightsChanged = false;
+            if (ch.data != null && ch.touched)
+            {
+                Free(ch.data);
+                ch.data = null;
+                ch.touched = false;
+            }
+        }
+        heightfield.LaidLandDrawn = true;
+        heightfield.Update(w, w.LandLaidCells(), snap: true);
+        int cells = w.W * w.H;
+        if (cellBase == null || cellBase.Length != cells)
+        {
+            cellBase = new float[cells];
+            bakedPaint = new IReadOnlyList<float>[cells];
+            paintedMix = new IReadOnlyList<float>[cells];
+        }
+        for (int k = 0; k < cells; k++) cellBase[k] = LandMetres(k);
+        System.Array.Clear(bakedPaint, 0, cells);
+        System.Array.Clear(paintedMix, 0, cells);
+        var now = attached.ToList();
+        builder.Prepare(now);
+        foreach (var at in now) MakeReady(chunks[at]);
+        BindMs = timer.Elapsed.TotalMilliseconds;
+        Debug.Log($"GROUND BIND made a chunk at a time: {now.Count} of {chunks.Count} chunks made in {BindMs:0} ms");
     }
 
     static readonly Unity.Profiling.ProfilerMarker BindMarker = new("ValleyGround.Bind");
@@ -277,7 +554,18 @@ public sealed class ValleyGround
         if (cellBase == null || cells == null || metres == null) return;
         int n = Mathf.Min(cells.Length, metres.Length);
         for (int k = 0; k < n; k++)
-            if (cells[k] >= 0 && cells[k] < cellBase.Length) cellBase[cells[k]] += metres[k];
+        {
+            if (cells[k] < 0 || cells[k] >= cellBase.Length) continue;
+            if (!lazy)
+            {
+                cellBase[cells[k]] += metres[k];
+                continue;
+            }
+            // A chunk not made yet takes it as it's made (its cells stand on the land until then).
+            raised[cells[k]] = (raised.TryGetValue(cells[k], out float was) ? was : 0f) + metres[k];
+            int x = cells[k] % world.W, y = cells[k] / world.W;
+            if (CellReady(x, y)) cellBase[cells[k]] += metres[k];
+        }
     }
 
     /// <summary>The ground drawn at a cell's centre now (it lags its target while easing).</summary>
@@ -293,9 +581,16 @@ public sealed class ValleyGround
     {
         var (x, y) = layout.CellAt(wx, wz);
         if (!chunks.TryGetValue(layout.ChunkOfCell(x, y), out var ch)) return 0f;
+        // A generated map's chunk not made: the cell's ground as it stands (the land and its offset), nothing made for it.
+        if (lazy && !ch.ready) return world != null && world.InBounds(x, y) ? ShownGround(x, y) : 0f;
         var data = Shown(ch);
-        var p = ch.terrain.transform.position;
-        return p.y + data.GetInterpolatedHeight((wx - p.x) / data.size.x, (wz - p.z) / data.size.z);
+        if (ch.terrain != null)
+        {
+            var p = ch.terrain.transform.position;
+            return p.y + data.GetInterpolatedHeight((wx - p.x) / data.size.x, (wz - p.z) / data.size.z);
+        }
+        var (cx, cz) = layout.ChunkCorner(ch.at.i, ch.at.j);
+        return ch.bottom + data.GetInterpolatedHeight((wx - cx) / data.size.x, (wz - cz) / data.size.z);
     }
 
     /// <summary>A cell's elevation or height changed: its ground eases there (see Advance).</summary>
@@ -307,6 +602,13 @@ public sealed class ValleyGround
     /// <summary>A cell the bake drew as something else (a laid row's): its paint is laid afresh, and its grass goes.</summary>
     public void PaintAnew(int x, int y)
     {
+        if (!CellReady(x, y))
+        {
+            // Laid afresh when its chunk is made (its baked paint is read then).
+            var ch = chunks[layout.ChunkOfCell(x, y)];
+            (ch.anew ??= new List<(int x, int y)>()).Add((x, y));
+            return;
+        }
         int key = world.Idx(x, y);
         bakedPaint[key] = null;
         paintedMix[key] = null;
@@ -347,7 +649,8 @@ public sealed class ValleyGround
 
     void WriteHeights(ChunkRect r)
     {
-        if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
+        // A chunk not made takes the ground as it is then, when it's made (MakeReady).
+        if (!chunks.TryGetValue((r.I, r.J), out var ch) || (lazy && !ch.ready)) return;
         var offsets = heightfield.Current(r.I, r.J);
         var data = Writable(ch);
         float size = data.size.y;
@@ -486,6 +789,7 @@ public sealed class ValleyGround
         {
             if (batch.Count == most || looked.Count == MostLooks) break;
             looked.Add(cell);
+            if (WaitsForChunk(cell)) continue;
             int key = world.Idx(cell.x, cell.y);
             var mix = CellPaint.Mix(world, cell.x, cell.y, scorched(cell.x, cell.y));
             bool same = ReferenceEquals(mix, paintedMix[key]);
@@ -495,6 +799,14 @@ public sealed class ValleyGround
             batch.Add(cell);
         }
         foreach (var cell in looked) repaint.Remove(cell);
+    }
+
+    // A cell whose chunk isn't made (out of sight on a generated map) repaints when it is.
+    bool WaitsForChunk((int x, int y) cell)
+    {
+        if (CellReady(cell.x, cell.y)) return false;
+        if (chunks.TryGetValue(layout.ChunkOfCell(cell.x, cell.y), out var ch)) (ch.repaint ??= new List<(int x, int y)>()).Add(cell);
+        return true;
     }
 
     int PaintCellsThisFrame() => Mathf.Clamp(Mathf.FloorToInt(PaintBudgetMs / Mathf.Max(msPerCell, 1e-4f)), FewestRepaints, MostRepaints);
@@ -527,7 +839,8 @@ public sealed class ValleyGround
         if (treeColliders.Count == 0) return;
         var at = treeColliders.First();
         treeColliders.Remove(at);
-        if (!chunks[at].terrain.TryGetComponent<TerrainCollider>(out var collider)) return;
+        var terrain = chunks[at].terrain;
+        if (terrain == null || !terrain.TryGetComponent<TerrainCollider>(out var collider)) return;
         var data = collider.terrainData;
         collider.terrainData = null;
         collider.terrainData = data;
@@ -548,7 +861,7 @@ public sealed class ValleyGround
     // Composes a strip of cells' paint into its chunk's frame copy; WritePaint sends it to the terrain.
     void Paint(ChunkRect r, System.Func<int, int, IReadOnlyList<float>> paintOf)
     {
-        if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
+        if (!chunks.TryGetValue((r.I, r.J), out var ch) || (lazy && !ch.ready)) return;
         var data = Writable(ch);
         int res = data.alphamapResolution;
         ch.baseAlpha ??= data.GetAlphamaps(0, 0, res, res);
@@ -646,7 +959,7 @@ public sealed class ValleyGround
             if (grassy && !cleared.Remove(key)) continue;
             if (!grassy) cleared.Add(key);
             var r = layout.TexelRect(x, y);
-            if (!chunks.ContainsKey((r.I, r.J))) continue;
+            if (!chunks.ContainsKey((r.I, r.J)) || !IsReady((r.I, r.J))) continue;
             if (!pendingDetail.TryGetValue((r.I, r.J), out var cells)) pendingDetail[(r.I, r.J)] = cells = new Dictionary<int, (ChunkRect, bool)>();
             cells[key] = (r, grassy); // a cell bared and grown again before its chunk's turn: the last wins
         }
@@ -773,5 +1086,9 @@ public sealed class ValleyGround
             Restore(ch);
             if (ch.terrain != null) ch.terrain.detailObjectDistance = ch.detailDistance;
         }
+        foreach (var stack in spare.Values)
+            foreach (var data in stack)
+                if (data != null) Free(data);
+        spare.Clear();
     }
 }

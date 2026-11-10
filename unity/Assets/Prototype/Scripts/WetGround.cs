@@ -31,26 +31,29 @@ public sealed class WetGround
     /// <summary>Gives each of these runtime terrain data copies its own copies of their layers, to wet.</summary>
     public WetGround(IEnumerable<TerrainData> chunks)
     {
-        foreach (var data in chunks)
+        foreach (var data in chunks) Add(data);
+    }
+
+    /// <summary>One more runtime terrain data copy (a generated map's chunk made later, #205): its layers wet as the rest.</summary>
+    public void Add(TerrainData data)
+    {
+        var own = data.terrainLayers;
+        bool changed = false;
+        for (int i = 0; i < own.Length; i++)
         {
-            var own = data.terrainLayers;
-            bool changed = false;
-            for (int i = 0; i < own.Length; i++)
+            if (own[i] == null) continue;
+            if (!layers.TryGetValue(own[i], out var copy))
             {
-                if (own[i] == null) continue;
-                if (!layers.TryGetValue(own[i], out var copy))
-                {
-                    var wet = Object.Instantiate(own[i]);
-                    wet.name = own[i].name;
-                    float gloss = own[i].name.Contains("Grass") ? GrassGloss : Gloss;
-                    copy = (wet, own[i].diffuseRemapMax, own[i].smoothness, own[i].maskMapRemapMin, own[i].maskMapRemapMax, gloss);
-                    layers[own[i]] = copy;
-                }
-                own[i] = copy.wet;
-                changed = true;
+                var wet = Object.Instantiate(own[i]);
+                wet.name = own[i].name;
+                float gloss = own[i].name.Contains("Grass") ? GrassGloss : Gloss;
+                copy = (wet, own[i].diffuseRemapMax, own[i].smoothness, own[i].maskMapRemapMin, own[i].maskMapRemapMax, gloss);
+                layers[own[i]] = copy;
             }
-            if (changed) data.terrainLayers = own;
+            own[i] = copy.wet;
+            changed = true;
         }
+        if (changed) data.terrainLayers = own;
     }
 
     /// <summary>The rules switched: each layer's tint on top of its own, by the layer's name, drawn at the next Advance.</summary>
