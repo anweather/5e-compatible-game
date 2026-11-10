@@ -151,8 +151,9 @@ public partial class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<GeneratedProp>> palmsByCell = new();
     // Cells whose tree grew from a sapling in this world (Grown).
     readonly HashSet<int> grown = new();
-    // The tree cells of the world as it started, by index: the land's, drawn by the terrain (or, for a few, not at all).
-    bool[] startTrees = System.Array.Empty<bool>();
+    // The tree cells of the world as it started, a block a chunk (StartTrees): the land's, drawn by the terrain (or, for a
+    // few, not at all).
+    StartTrees startTrees;
     // Every window pane by its cell (a world index).
     readonly Dictionary<int, WindowPanes> panesByCell = new();
     int[] cabinCells, cabinBurnt, cabinWrecked;
@@ -176,7 +177,8 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (terrains.Builder != null) return terrains.Builder;
         var template = terrains.template;
-        var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
+        // The land the world reads too (LandOf, read once a map): a second copy was an int a cell more (#207).
+        var land = LandOf(world) ?? LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
         var source = new GroundFromLand.Source
         {
             World = world,
@@ -229,6 +231,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
+        var steps = new StepTimes();
         lakeSought = false; // a new world: the lake (or none) is looked for again at the next recolour
         if (ground == null && MapLand.Current is { } map)
         {
@@ -255,6 +258,7 @@ public partial class ValleyChemistry : MonoBehaviour
             grid.DetailDistance = ground.DetailDistance;
             grid.DetailChunksChanged += ground.DrawDetails;
             if (grid.DetailChunks.Count > 0) ground.DrawDetails(grid.DetailChunks);
+            steps.Mark("ground_made");
         }
         grid.ChunkFreshened -= BuildingsBack;
         grid.ChunkFreshened += BuildingsBack;
@@ -265,20 +269,24 @@ public partial class ValleyChemistry : MonoBehaviour
         binding = true;
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         binding = false;
+        steps.Mark("ground_bind");
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         var (channelCells, channelDepths) = builder.Channel;
         ground.RaiseBase(channelCells, channelDepths);
         SetLand(world);
         CheckGround(world);
+        steps.Mark("land");
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
         if (grid.CurrentRules != null) RecolourGround(grid.CurrentRules.Base, grid.CurrentRules.Effective);
         scorched.Clear();
         grown.Clear();
+        steps.Mark("wet");
         IndexTrees();
         IndexPalms();
+        steps.Mark("trees");
         int n = cabins?.Length ?? 0;
         cabinCells = new int[n];
         cabinBurnt = new int[n];
@@ -286,22 +294,12 @@ public partial class ValleyChemistry : MonoBehaviour
         cabinCharred = new bool[n];
         BindRoofs(n);
         HookRows(world);
-        if (startTrees.Length != world.W * world.H) startTrees = new bool[world.W * world.H];
-        var all = world.Cells;
-        for (int y = 0; y < world.H; y++)
-            for (int x = 0; x < world.W; x++)
-            {
-                int key = world.Idx(x, y);
-                string t = all[key].T;
-                startTrees[key] = t == TerrainIds.Tree;
-                if (t != TerrainIds.LogWall && t != TerrainIds.Stone) continue;
-                int k = BuildingWallAt(t, x, y);
-                if (k < 0) continue;
-                cabinCells[k]++;
-                buildingCells[k].Add(key);
-            }
+        BindStartTrees(world);
+        if (n > 0) CountBuildingWalls(world);
+        steps.Mark("cells");
         ClearLaidRows(world);
         BindStampedLand(world);
+        steps.Mark("rows_stamps");
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
         panesByCell.Clear();
         foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
@@ -313,9 +311,81 @@ public partial class ValleyChemistry : MonoBehaviour
             terrains.Serve(ground);
             if (Ocean.Instance != null) Ocean.Instance.Build();
         }
+        steps.Mark("panes_terrains");
+        Debug.Log($"VALLEY BIND steps (ms): {steps}; heightfield chunks worked {ground.HeightfieldChunks}, start trees read {startTrees.Read()}");
     }
 
     bool served, binding;
+
+    // The world's starting trees, a chunk at a time (#206, J-086): every cell of the map at the start was a loop over 3
+    // million cells on the nine. A chunk is read when it first activates, or when a tree's drawing first asks about it;
+    // until then nothing has changed it (an inactive chunk is held as it is), so it's read as it started. The valley,
+    // drawn whole from the start, reads all of its chunks now.
+    void BindStartTrees(World world)
+    {
+        startTrees = new StartTrees(world);
+        grid.ChunkSwitched -= ReadStartTrees;
+        grid.ChunkSwitched += ReadStartTrees;
+        if (!ground.Lazy)
+        {
+            foreach (var (cx, cy) in world.ChunkCoords) startTrees.Read(cx, cy);
+            return;
+        }
+        foreach (var (cx, cy) in world.ActiveChunks) startTrees.Read(cx, cy);
+    }
+
+    void ReadStartTrees(ChunkSwitch s)
+    {
+        if (s.Active) startTrees?.Read(s.CX, s.CY);
+    }
+
+    // The walls of the scene's cabins and houses: on the valley a log wall anywhere goes to the nearest. On a generated map
+    // (the nine's valley in its middle) only the chunks round the houses are looked at, never every cell of the map (#206):
+    // a wall further than that is a generated village's, none of the scene's.
+    void CountBuildingWalls(World world)
+    {
+        if (!ground.Lazy)
+        {
+            for (int y = 0; y < world.H; y++)
+                for (int x = 0; x < world.W; x++) CountWall(world, x, y);
+            return;
+        }
+        foreach (var (cy, cx) in ChunksNearHouses(world))
+        {
+            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+            for (int y = y0; y < Mathf.Min(world.H, y0 + Chunks.Size); y++)
+                for (int x = x0; x < Mathf.Min(world.W, x0 + Chunks.Size); x++) CountWall(world, x, y);
+        }
+    }
+
+    // The chunks within HouseReach of a scene house, each once, by row.
+    SortedSet<(int cy, int cx)> ChunksNearHouses(World world)
+    {
+        var near = new SortedSet<(int cy, int cx)>();
+        foreach (var cabin in cabins)
+        {
+            if (cabin == null) continue;
+            var c = grid.CellAt(cabin.position);
+            for (int y = c.y - HouseReach; y <= c.y + HouseReach; y += Chunks.Size / 2)
+                for (int x = c.x - HouseReach; x <= c.x + HouseReach; x += Chunks.Size / 2)
+                    if (world.InBounds(x, y)) near.Add((y >> Chunks.Shift, x >> Chunks.Shift));
+        }
+        return near;
+    }
+
+    // How far round a scene house its walls are looked for on a generated map, in cells.
+    const int HouseReach = 32;
+
+    void CountWall(World world, int x, int y)
+    {
+        int key = world.Idx(x, y);
+        string t = world.Cells[key].T;
+        if (t != TerrainIds.LogWall && t != TerrainIds.Stone) return;
+        int k = BuildingWallAt(t, x, y);
+        if (k < 0) return;
+        cabinCells[k]++;
+        buildingCells[k].Add(key);
+    }
 
     // A generated map's chunk made for this world (#205): its trees indexed, its layers wet, its grass tinted as the rest.
     void ChunkMade((int i, int j) at, TerrainData data)
@@ -775,7 +845,7 @@ public partial class ValleyChemistry : MonoBehaviour
     public bool NeedsTreeDrawn(int x, int y)
     {
         int key = grid.World.Idx(x, y);
-        return grown.Contains(key) || (key < startTrees.Length && !startTrees[key] && !TreeStands(x, y));
+        return grown.Contains(key) || (startTrees != null && !startTrees.At(x, y) && !TreeStands(x, y));
     }
 
     /// <summary>
