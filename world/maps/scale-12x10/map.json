@@ -1,0 +1,38 @@
+{
+  "about": "A test map for finding what doesn't scale (Andrew, 2026-11-09; docs/design/world-12x8-scope.md, \"A test map for scale\"), not the real 12 x 10 (world/maps/world-12x10). 12 x 10 world squares, 6912 x 5760 cells, 108 x 90 chunks, no wrap, baked whole. The nine is pinned whole in its middle as a pinned block (its map's north-west square at [4, 3]): its squares keep their own plan's templates, turns and bands, and its chunks are its own generator's, moved, so the valley lies at square [4, 5] and its rows 2304 cells east and 3456 south of its own folder's. \"forced\" says every other square, a character each from the north-west (GeneratedMap.ReadForced): open sea round it and in the nine's own bay to its west and south, rolling grass hills (the band's filler, grassland by the sketch) and ten landmark squares spaced at least 3 apart a template, two sea spires among them; \"towns\" 100 keeps every village. Spawn is the valley's moved; expects are what the bake makes.",
+  "id": "scale-12x10",
+  "name": "The Scale Island",
+  "size": [6912, 5760],
+  "seaLevel": -4,
+  "spawn": [2596, 3208],
+  "expects": { "landShare": 53, "highest": 1319, "lowest": -320 },
+  "generated": {
+    "seed": "valley-1",
+    "squares": [12, 10],
+    "generator": 8,
+    "towns": 100,
+    "pinned": [ { "map": "nine", "square": [4, 3] } ],
+    "forced": {
+      "legend": {
+        "~": "open-water", "S": "open-sea", "h": "filler@hills", "g": "downs@hills", "m": "meadow-cross@hills",
+        "a": "ash-fields@hills", "l": "lakeland@low", "r": "riverbend@low", "N": "pinned"
+      },
+      "rows": [
+        "~~~~~~~~~~~S",
+        "~hhhhmhhhhh~",
+        "~hghhhhhhhh~",
+        "~hh~NNNhahh~",
+        "~hh~NNNhhhr~",
+        "~hh~NNNhghh~",
+        "~~~~~~~~hhh~",
+        "~lhhhhhhhhh~",
+        "~hhhhmhhhhl~",
+        "S~~~~~~~~~~~"
+      ]
+    },
+    "sketch": {
+      "worldSketch": 1, "name": "All grass", "world": { "w": 13, "h": 11, "wrap": "none" }, "soft": 96,
+      "shapes": [ { "biome": "grassland", "pts": [[-0.5, -0.5], [13.5, -0.5], [13.5, 11.5], [-0.5, 11.5]] } ]
+    }
+  }
+}

@@ -35,3 +35,5 @@ tools/punchy-sync/obj/
 # A generated map's bake (GeneratedMap.Bake): its folder commits only its world file, map.json
 /world/maps/nine/*
 !/world/maps/nine/map.json
+/world/maps/scale-12x10/*
+!/world/maps/scale-12x10/map.json
