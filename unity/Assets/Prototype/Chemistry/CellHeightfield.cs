@@ -46,6 +46,10 @@ namespace Chem
         // Samples Queue has asked for and FillSome hasn't reached, oldest first.
         readonly Queue<(int i, int j, int x, int z)> waiting = new Queue<(int i, int j, int x, int z)>();
 
+        // The chunks with a Moving rectangle, each once: Advance and Settled look at these, never every chunk of the map
+        // (#199: 729 a frame on the nine, 9,720 on the 12 x 10).
+        readonly List<ChunkState> moving = new List<ChunkState>();
+
         /// <param name="grid">The chunk layout.</param>
         /// <param name="stepHeight">Metres per height step (ChemGrid.stepHeight).</param>
         /// <param name="easeSpeed">How fast an eased sample moves toward its new height, in metres per second.</param>
@@ -83,9 +87,7 @@ namespace Chem
         {
             get
             {
-                if (waiting.Count > 0) return false;
-                foreach (var s in chunks.Values) if (s.Moving.HasValue) return false;
-                return true;
+                return waiting.Count == 0 && moving.Count == 0;
             }
         }
 
@@ -418,6 +420,7 @@ namespace Chem
                 cache = null;
             }
             waiting.Clear();
+            moving.Clear();
         }
 
         void ResetChunk(World world, (int i, int j) key, ChunkState s)
@@ -448,7 +451,7 @@ namespace Chem
             {
                 var s = chunks[(r.I, r.J)];
                 if (snap) Copy(s.Target, s.Current, r);
-                else s.Moving = s.Moving.HasValue ? s.Moving.Value.Union(r) : r;
+                else Move(s, r);
             }
             return rects;
         }
@@ -491,12 +494,23 @@ namespace Chem
                 s.Target[z, x] = SampleOffset(world, i, j, x, z);
                 SamplesFilled++;
                 if (Math.Abs(s.Target[z, x] - s.Current[z, x]) <= 0f) continue;
-                var sample = new ChunkRect(i, j, x, z, x, z);
-                s.Moving = s.Moving.HasValue ? s.Moving.Value.Union(sample) : sample;
+                Move(s, new ChunkRect(i, j, x, z, x, z));
             }
         }
 
         int updates;
+
+        // A chunk's samples in r ease from now on.
+        void Move(ChunkState s, ChunkRect r)
+        {
+            if (s.Moving.HasValue)
+            {
+                s.Moving = s.Moving.Value.Union(r);
+                return;
+            }
+            s.Moving = r;
+            moving.Add(s);
+        }
 
         // Fill, skipping samples this Update has already worked out.
         void FillOnce(World world, ChunkState s, ChunkRect r)
@@ -528,14 +542,17 @@ namespace Chem
         {
             var changed = new List<ChunkRect>();
             float step = EaseSpeed * dt;
-            foreach (var s in chunks.Values)
+            int kept = 0;
+            for (int k = 0; k < moving.Count; k++)
             {
-                if (!s.Moving.HasValue) continue;
+                var s = moving[k];
                 var r = s.Moving.Value;
                 var (moved, still) = Ease(s, r, step);
                 if (moved) changed.Add(r);
-                if (!still) s.Moving = null;
+                if (still) moving[kept++] = s;
+                else s.Moving = null;
             }
+            moving.RemoveRange(kept, moving.Count - kept);
             changed.Sort((a, b) => a.J != b.J ? a.J.CompareTo(b.J) : a.I.CompareTo(b.I));
             return changed;
         }
