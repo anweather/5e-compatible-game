@@ -121,11 +121,40 @@ public sealed class MapTerrains : MonoBehaviour
             t.drawTreesAndFoliage = draw;
         }
         Drawing = drawn.Count;
+        HintDrawn();
     }
 
     // The chunks that drew at the last check, and those this check visits.
     readonly System.Collections.Generic.HashSet<int> drawn = new(), visit = new();
     bool checkedOnce, withFar;
+
+    // The world's drawn hint (World.SetDrawn, D17): the chemistry chunks under the drawn terrains, so the core doesn't pack
+    // what the view draws. Given again only when the drawn terrains or the world change. The terrains are offset from the
+    // chemistry's chunks and run north to south the other way, so each terrain meets up to four of them.
+    readonly HashSet<int> hinted = new();
+    readonly HashSet<(int cx, int cy)> drawnCells = new();
+    World hintedWorld;
+
+    void HintDrawn()
+    {
+        var world = ChemGrid.Current?.Grid?.World;
+        if (world == null || (world == hintedWorld && hinted.SetEquals(drawn))) return;
+        hintedWorld = world;
+        hinted.Clear();
+        hinted.UnionWith(drawn);
+        drawnCells.Clear();
+        int last = Chem.Chunks.Size - 1;
+        foreach (int k in drawn)
+        {
+            int i = k % layout.ChunksX, j = k / layout.ChunksX;
+            int x0 = Mathf.Max(0, i * Chem.Chunks.Size - layout.U0), x1 = Mathf.Min(world.W - 1, i * Chem.Chunks.Size + last - layout.U0);
+            int y0 = Mathf.Max(0, layout.V0 - j * Chem.Chunks.Size - last), y1 = Mathf.Min(world.H - 1, layout.V0 - j * Chem.Chunks.Size);
+            if (x0 > x1 || y0 > y1) continue;
+            for (int cy = y0 >> Chem.Chunks.Shift; cy <= y1 >> Chem.Chunks.Shift; cy++)
+                for (int cx = x0 >> Chem.Chunks.Shift; cx <= x1 >> Chem.Chunks.Shift; cx++) drawnCells.Add((cx, cy));
+        }
+        world.SetDrawn(drawnCells);
+    }
 
     /// <summary>How many chunk terrains drew at the last check (the drawn tier, for the tiersweep probe).</summary>
     public int Drawing { get; private set; }
