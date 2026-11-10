@@ -71,8 +71,13 @@ namespace Chem.Tests
 
                 // The files the bake once held the whole map for, as it wrote them then.
                 var (land, _) = WholeMap(m, chunks, whole);
-                foreach (string name in new[] { MapFile.CellsName, MapFile.LandName, "things.json" })
+                foreach (string name in new[] { MapFile.CellsName, "things.json" })
                     Assert.That(File.ReadAllBytes(Path.Combine(one, name)), Is.EqualTo(File.ReadAllBytes(Path.Combine(whole, name))), name);
+                // land.json is compared by its land, not its bytes: the deflater's output fed a row at a time differs by
+                // runtime (J-088), and a generated map is known by its inputs, never its baked files.
+                int w = m.Gen.CellsW, h = m.Gen.CellsH;
+                Assert.That(LandFile.Read(File.ReadAllText(Path.Combine(one, MapFile.LandName)), w, h),
+                    Is.EqualTo(LandFile.Read(File.ReadAllText(Path.Combine(whole, MapFile.LandName)), w, h)), MapFile.LandName);
                 var settings = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(one, WorldPlaces.FileName)))["generate"]["water"];
                 var filled = FloodFilled(land, m.Gen.CellsW, m.Gen.CellsH, (int)settings["below"], (int?)settings["least"] ?? 1);
                 var baked = WaterPlaces(one);
