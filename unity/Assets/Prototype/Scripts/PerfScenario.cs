@@ -476,6 +476,9 @@ public class PerfScenario : MonoBehaviour
         Add("gfx_used_mb", markers.GfxUsedBytes / BytesPerMb, "0");
         Add("system_used_mb", markers.SystemUsedBytes / BytesPerMb, "0");
         line.Append($" active_chunks={grid.World.ActiveChunks.Count} ticks={grid.World.Tick - tickAtStart}");
+        // The sparse World (D17): chunks unpacked now, the drawn hint, and the packing since the world was made.
+        var w = grid.World;
+        line.Append($" unpacked={w.UnpackedCount} drawn_hint={w.DrawnCount} packs={w.Packs} unpacks={w.Unpacks} read_unpacks={w.ReadUnpacks} pack_ms={w.PackMs.ToString("0.0", inv)} unpack_ms={w.UnpackMs.ToString("0.0", inv)}");
         line.Append($" burning_peak={burningPeak} burning_end={burningNow} fog_cells_peak={fogPeak} fog_cells_end={fogNow} fog_drawn={grid.Fog.SquaresShown}");
         line.Append($" hour={(grid.World.Minutes / 60.0 % 24.0).ToString("0.0", inv)} weather={grid.World.Weather.Kind}");
         line.Append($" worst={(frameMs.Count > 0 ? frameMs.Max() : 0f).ToString("0.0", inv)} over_30ms={frameMs.Count(ms => ms > Over30Ms)}");
