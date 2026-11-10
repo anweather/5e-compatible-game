@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-089: Accept D17, the sparse World? (2026-11-10)
+
+- **Asked:** the lead, after u2's step 1 (`sparse-world-1`: the design, D17 proposed, the core's cells through chunk
+  accessors).
+- **Also comes up when:** the 12 x 10 loading, any change to how the World holds cells.
+- **Answer (Andrew):** accept after the bench: D17 is accepted if `sparse-world-bench` shows packed hashes, saves and
+  unpacking fit the tick budget; the lead then starts step 2. If they don't, the fallback (packed arrays) goes back
+  to Andrew.
+- **Revisited:** 0.
+
 ### J-088: A baked land.json whose compressed bytes differ by runtime (2026-11-10)
 
 - **Asked:** the PC's compile of `bake-lean`: the streaming writer feeds the deflater a row at a time, so the nine's
