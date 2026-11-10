@@ -210,9 +210,9 @@ namespace Chem
         long MeetPinned(int x, int y, long g, ref byte wet)
         {
             if (Pinned == null) return g;
-            int x0 = PinnedX, y0 = PinnedY;
-            x = x0 + Square / 2 + Dx(x, x0 + Square / 2);
-            int cx = Math.Max(x0, Math.Min(x0 + Square - 1, x)), cy = Math.Max(y0, Math.Min(y0 + Square - 1, y));
+            int x0 = PinnedX, y0 = PinnedY, pw = PinnedW, ph = PinnedH;
+            x = x0 + pw / 2 + Dx(x, x0 + pw / 2);
+            int cx = Math.Max(x0, Math.Min(x0 + pw - 1, x)), cy = Math.Max(y0, Math.Min(y0 + ph - 1, y));
             long dx = x - cx, dy = y - cy;
             if (dx == 0 && dy == 0) return g;
             long d = BiomeMath.Sqrt((dx * dx + dy * dy) * One * One);
@@ -234,32 +234,70 @@ namespace Chem
         void SetUpRim()
         {
             if (Pinned == null) return;
-            int n = 4 * (Square - 1);
+            int ew = PinnedW - 1, eh = PinnedH - 1, n = 2 * (ew + eh);
+            var rim = Pinned.Inner != null ? BlockRim() : null;
             rimSums = new long[n + 1];
             for (int p = 0; p < n; p++)
             {
                 var (rx, ry) = RimCell(p);
-                rimSums[p + 1] = rimSums[p] + (long)Pinned.Land[ry * Square + rx] * Q;
+                int land = rim != null ? rim[p] : Pinned.Land[ry * Square + rx];
+                rimSums[p + 1] = rimSums[p] + (long)land * Q;
             }
         }
 
-        static (int x, int y) RimCell(int p)
+        // A block's rim as its own generator makes it, round the loop: its edge chunks made once (on every thread), and
+        // each of them known for the known samples on the rim of the chunks beside it.
+        int[] BlockRim()
         {
-            int e = Square - 1;
-            if (p < e) return (p, 0);
-            if (p < 2 * e) return (e, p - e);
-            if (p < 3 * e) return (e - (p - 2 * e), e);
-            return (0, e - (p - 3 * e));
+            int cw = Pinned.W * WorldPlan.ChunksPerSquare, ch = Pinned.H * WorldPlan.ChunksPerSquare;
+            var edge = new List<(int x, int y)>();
+            for (int j = 0; j < ch; j++)
+                for (int i = 0; i < cw; i++)
+                    if (i == 0 || j == 0 || i == cw - 1 || j == ch - 1) edge.Add((i, j));
+            var made = new GeneratedChunk[edge.Count];
+            var known = new KnownChunk[edge.Count];
+            System.Threading.Tasks.Parallel.For(0, edge.Count, k =>
+            {
+                made[k] = Pinned.Inner.Make(edge[k].x, edge[k].y);
+                known[k] = Pinned.Inner.Know(edge[k].x, edge[k].y);
+            });
+            var byChunk = new Dictionary<(int, int), GeneratedChunk>();
+            for (int k = 0; k < edge.Count; k++)
+            {
+                byChunk[edge[k]] = made[k];
+                blockKnown[edge[k]] = known[k];
+            }
+            int n = 2 * (PinnedW - 1 + PinnedH - 1);
+            var rim = new int[n];
+            for (int p = 0; p < n; p++)
+            {
+                var (rx, ry) = RimCell(p);
+                rim[p] = byChunk[(rx / Size, ry / Size)].Land[(ry % Size) * Size + rx % Size];
+            }
+            return rim;
+        }
+
+        // A block's edge chunks as its own generator knows them, by its own chunk.
+        readonly Dictionary<(int x, int y), KnownChunk> blockKnown = new Dictionary<(int x, int y), KnownChunk>();
+
+        // The cell at place p round the pinned square's rim, clockwise from its north-west cell, in its own coordinates.
+        (int x, int y) RimCell(int p)
+        {
+            int ew = PinnedW - 1, eh = PinnedH - 1;
+            if (p < ew) return (p, 0);
+            if (p < ew + eh) return (ew, p - ew);
+            if (p < 2 * ew + eh) return (ew - (p - ew - eh), eh);
+            return (0, eh - (p - 2 * ew - eh));
         }
 
         // A rim cell's place in the loop, from the pinned square's own coordinates.
-        static int RimAt(int rx, int ry)
+        int RimAt(int rx, int ry)
         {
-            int e = Square - 1;
+            int ew = PinnedW - 1, eh = PinnedH - 1;
             if (ry == 0) return rx;
-            if (rx == e) return e + ry;
-            if (ry == e) return 2 * e + (e - rx);
-            return 3 * e + (e - ry);
+            if (rx == ew) return ew + ry;
+            if (ry == eh) return ew + eh + (ew - rx);
+            return 2 * ew + eh + (eh - ry);
         }
 
         // The mean of the rim round place p, round the loop, over a reach of r (Q16 cells): between the means over the

@@ -148,3 +148,39 @@ the east edge; the seam is the red tick).
 - **Wall rows** are the plan's `ice-wall` and `dune-sea`, 900 m bands shaped by the massif, coloured ice and sand in
   the picture; nothing else yet (the ragged fringe, ice cliff, beach and sandstorm are later, paper first).
 
+
+## A test map for scale: the scale island (scale-12x10, u2, 2026-11-10)
+
+Andrew (2026-11-09): "get a version of the 12 x 10 out so we can look for more things that don't scale with a large
+world ... just the nine plus a bunch of rolling hill grass surrounded by water." A test map, not the real 12 x 10
+(`world/maps/world-12x10/` is unchanged). The plan is `docs/design/scale-12x10/plan.png` (a pixel row of 24 per world
+square; the plan's own sea column west and sea row south are outside the map).
+
+- **`world/maps/scale-12x10/map.json`**: seed `valley-1`, `squares [12, 10]`, no wrap, bakeable, generator 8: 6912 x
+  5760 cells, 108 x 90 = 9720 chunks. "The Scale Island".
+- **The nine is pinned whole** (`"pinned": [{ "map": "nine", "square": [4, 3] }]`), a **pinned block** (new in the
+  GLOSSARY): its nine world squares are held as the nine's own plan has them (templates, turns, bands; `PlanInputs.Held`)
+  and its chunks, known chunks, spawns and far landmarks are the nine's own generator's, moved
+  (`PinnedSquare.Inner`). So **every one of the middle 729 chunks is the nine's, bit for bit** (land, cells, things and
+  biome; the nine's golden 0x69abb343 holds over them, `TheMiddleChunksAreTheNines`), the valley lies at square [4, 5],
+  and the spawn is the nine's moved (2596, 3208). The land round the block meets its whole rim as round the valley
+  (`MeetPinned` over a rectangle; the rim is read from the nine's 104 edge chunks once, at load). Only the hash of a
+  chunk differs, since it has the chunk's coordinates in it.
+- **Every other square is a forced square** (new in the GLOSSARY; `"forced"`: a picture of the map, a character a world
+  square): open water round it all and in the nine's own bay west and south of it (the nine's west and south face the
+  sea in its own plan), the band's filler elsewhere (grassland from a one-shape sketch over everything), and ten
+  landmark squares laid out so no template stands within 3 squares of a copy, the nine's included (J-080 holds with no
+  exemption; `NoTemplateStandsWithinThreeSquaresOfACopy`): five great trees (downs, meadow-cross), a volcano
+  (ash-fields), three lake villages (lakeland, riverbend) and two sea spires (open-sea), with `"towns": 100` keeping every
+  village. With Old Grumbler and the nine's own that's the far ring's landmarks; the plan's roads add outcrops (ruins,
+  lone great trees, rock spires) and inns and shops on top. The envelope lowers the grass next to the sea to the low
+  band, so most of the island is low rolling land with hills inland.
+- **Plan golden 0xacc38348**, no problems and no forced misses; it solves in under a second. The nine's plan, the
+  nine's chunks and the valley are unchanged (a world file without `forced` or a pinned block takes the old paths).
+
+### Measured on the VM (2 threads, 2.8 GB)
+
+The whole map's cells are more than this VM holds, so the costs come from a 6 x 6 copy of the same layout (the nine,
+a ring of grass with a village, the sea round it; 2916 chunks), baked in a world folder of its own in
+`ASmallCopyBakesAndMeetsTheSpawnsChecks`, and from making every chunk of the full map one at a time.
+

@@ -166,6 +166,19 @@ touch them.
   wider (up to 240) where the rim stands far above or below the land beside it, reading the rim as a mean along it so the
   land is smooth both ways (`ChunkGen.MeetPinned`).
 
+**Pinned block**
+: A generated map pinned whole into a bigger one (a world file's `pinned` naming a generated map: the scale island pins
+  the nine). Its world squares are **held**: they keep the templates, turns and bands its own plan gave them
+  (`PlanInputs.Held`), its valley is the bigger plan's, and its chunks, known chunks, spawns and far landmarks are its
+  own generator's, moved (`PinnedSquare.Inner`). The land round it meets its rim as round a pinned square.
+
+**Forced square**
+: A world square whose template a world file sets instead of the solve (`generated.forced`: a picture of the map, a
+  character a world square, and a legend of templates and bands; `PlanInputs.Forced`): the sea's open water, the
+  band's filler, a landmark's template. The solve keeps J-080's rules round it, and one whose template can't stand
+  there takes its band's filler and says so (`WorldPlan.ForcedMisses`). A test map's tool (the scale island), not how
+  the real world is made.
+
 **Massif / grain**
 : High ground in a generated map shaped as mountains, not one cap (`ChunkGen.Massif`): land more than 60 m up is
   ranges, the saddles between them and shoulders on their slopes. The **grain** is the way a world's ranges run, a

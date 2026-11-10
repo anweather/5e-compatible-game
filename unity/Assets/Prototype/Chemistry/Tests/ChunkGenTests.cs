@@ -47,7 +47,7 @@ namespace Chem.Tests
         }
 
         // The hash of every chunk's hash in row-major order: the nine's golden.
-        static uint HashOfAll(IEnumerable<GeneratedChunk> chunks)
+        internal static uint HashOfAll(IEnumerable<GeneratedChunk> chunks)
         {
             uint h = 2166136261u;
             foreach (var c in chunks.OrderBy(c => c.Y).ThenBy(c => c.X))
@@ -64,7 +64,7 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0x69abb343u;
+        internal const uint NineGolden = 0x69abb343u;
         static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xf3fe1169u), (9, 20, 0xaae09923u), (4, 4, 0x8ba5599du), (26, 0, 0xf8076225u) };
 
         [Test]

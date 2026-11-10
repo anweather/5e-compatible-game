@@ -47,6 +47,18 @@ namespace Chem
         public List<string> Musts = new List<string>();
         /// <summary>The world sketch the land's biome follows where it's drawn (map.json's "sketch"); null for none.</summary>
         public WorldSketch Sketch;
+        /// <summary>
+        /// Forced squares (a world file's "forced"), by plan square: the template each takes and the band it asks. One of
+        /// the sea band is open sea; one the envelope moves off its template's bands takes its band's filler.
+        /// </summary>
+        public Dictionary<(int x, int y), ForcedSquare> Forced = new Dictionary<(int x, int y), ForcedSquare>();
+        /// <summary>
+        /// A pinned block (a world file pinning a generated map): the plan whose map squares this one holds as they are,
+        /// their templates, turns and bands, with its map's north-west square at plan square <see cref="HeldAt"/>. Its
+        /// valley is this plan's valley. Null for none.
+        /// </summary>
+        public WorldPlan Held;
+        public (int x, int y) HeldAt;
         /// <summary>Backtracks in all, and per contradiction, before a filler takes a square.</summary>
         public int Budget = 3000, LocalBacktracks = 40;
 
@@ -74,6 +86,14 @@ namespace Chem
 
         /// <summary>The most main roads this world may have.</summary>
         public int MainRoadCap => MainRoads >= 0 ? MainRoads : Math.Max(1, Math.Min(6, (Size + 1) / 2));
+    }
+
+    /// <summary>A forced square: the template it takes ("filler" for its band's filler) and the band it asks.</summary>
+    public sealed class ForcedSquare
+    {
+        public const string Filler = "filler";
+        public string Template;
+        public int Band;
     }
 
     /// <summary>What the valley's land says about each of its sides (n e s w): mostly sea or not, and its band.</summary>
@@ -267,7 +287,40 @@ namespace Chem
             if (wrap == PlanWrap.None) vy = nh - 1;
             else if (Half) vy = ((h - 1) * 6 + 5) / 10;
             Valley = vy * w + (wrap == PlanWrap.None ? 1 : 0);
+            held = Hold(out int heldValley);
+            if (heldValley >= 0) Valley = heldValley;
         }
+
+        // Per square, the held plan's square it is (-1 for none); a held plan's valley is this one's.
+        readonly int[] held;
+
+        int[] Hold(out int valley)
+        {
+            var at = Enumerable.Repeat(-1, Grid.Count).ToArray();
+            valley = -1;
+            var inner = Inputs.Held;
+            if (inner == null) return at;
+            if (Inputs.Wrap != PlanWrap.None || inner.Inputs.Wrap != PlanWrap.None) throw new ArgumentException("a pinned block is a plan that doesn't wrap, in one that doesn't");
+            for (int j = 0; j < inner.Count; j++)
+            {
+                if (!inner.InMap(j)) continue;
+                int x = Inputs.HeldAt.x + inner.Grid.X(j) - 1, y = Inputs.HeldAt.y + inner.Grid.Y(j);
+                if (x < 1 || y < 0 || x >= Grid.W || y >= Grid.H - 1) throw new ArgumentException($"the pinned block at [{Inputs.HeldAt.x}, {Inputs.HeldAt.y}] runs off the map");
+                at[Grid.Index(x, y)] = j;
+                if (j == inner.Valley) valley = Grid.Index(x, y);
+            }
+            return at;
+        }
+
+        /// <summary>The held plan's square that square <paramref name="i"/> is (a pinned block's), or -1.</summary>
+        public int HeldSquare(int i) => held[i];
+
+        /// <summary>The forced square at plan square <paramref name="i"/>, or null.</summary>
+        public ForcedSquare ForcedAt(int i) => Inputs.Forced.TryGetValue((Grid.X(i), Grid.Y(i)), out var f) ? f : null;
+
+        /// <summary>Forced squares that didn't take their template (the envelope moved their band off it, or a neighbour or
+        /// a copy within 3 squares left it nothing): empty when every one did.</summary>
+        public List<string> ForcedMisses = new List<string>();
 
         /// <summary>Solves a plan. Never fails: a square nothing fits takes its band's filler.</summary>
         public static WorldPlan Solve(PlanInputs inputs, SquareLibrary lib)
@@ -364,6 +417,12 @@ namespace Chem
             }
             foreach (var (i, _) in vLand) ForcedSea[i] = false;
             foreach (int i in vSea) if (vLand.All(l => l.i != i)) ForcedSea[i] = true;
+            // A world file's held and forced squares are what it says, whatever the valley's sides ask.
+            for (int i = 0; i < n; i++)
+            {
+                if (held[i] >= 0) ForcedSea[i] = Inputs.Held.Band[held[i]] == 0;
+                else if (ForcedAt(i) is ForcedSquare f) ForcedSea[i] = f.Band == 0;
+            }
             // The band thresholds are quantiles of the inner squares, so the sea share and the mountain cover are what's asked.
             var inner = new List<long>();
             for (int i = 0; i < n; i++) if (Wall[i] == 0 && !ForcedSea[i]) inner.Add(v[i]);
@@ -388,7 +447,13 @@ namespace Chem
             Raw[Valley] = 1;
             foreach (var (i, band) in vLand) Raw[i] = Math.Max(Raw[i], i == Valley ? 1 : band);
             ReadSketch(vLand); // a world sketch, if any, sets the raw band where it's drawn
-            PlaceInlandSeas(i => (wrap == PlanWrap.None && (Grid.X(i) == 0 || Grid.Y(i) == h - 1)) || Wall[i] != 0 || ForcedSea[i] || SketchOn(i));
+            for (int i = 0; i < n; i++)
+            {
+                if (held[i] >= 0) Raw[i] = Inputs.Held.Band[held[i]];
+                else if (ForcedAt(i) is ForcedSquare f) Raw[i] = f.Band;
+            }
+            PlaceInlandSeas(i => (wrap == PlanWrap.None && (Grid.X(i) == 0 || Grid.Y(i) == h - 1)) || Wall[i] != 0 || ForcedSea[i] || SketchOn(i)
+                || held[i] >= 0 || ForcedAt(i) != null);
             // The envelope: band(s) = min over t of raw(t) + step × distance(s, t), so neighbours differ by at most a step.
             Band = new int[n];
             for (int i = 0; i < n; i++)
@@ -401,7 +466,8 @@ namespace Chem
                     int b = Raw[j] + Library.Step * Grid.Distance(i, j);
                     if (b < m) m = b;
                 }
-                Band[i] = m;
+                // A held square keeps its own plan's band.
+                Band[i] = held[i] >= 0 ? Inputs.Held.Band[held[i]] : m;
             }
         }
 
