@@ -1,13 +1,79 @@
-# Trees as octahedral impostors: the trial (J-090)
+# Trees as octahedral impostors (J-090, J-091)
 
 Andrew asked for many realistic trees without the render cost, with detail dropping off with distance (J-090,
-`docs/handoffs/briefs/tree-impostors-trial.md`). This is the trial on one species, built by us end to end: our own
-baker, URP shader and renderer, nothing bought or imported. It is **off by default**; nothing a player sees changes
-until we decide to roll it out.
+`docs/handoffs/briefs/tree-impostors-trial.md`). We built it end to end: our own baker, URP shader and renderer,
+nothing bought or imported. The trial (one species, off by default) is below the rollout; after it Andrew chose near
+trees as SpeedTree GameObjects with their wind and impostor shadows only within the drawn tier (J-091), and the
+rollout (`docs/handoffs/briefs/tree-impostors-rollout.md`) turned it on for every species.
 
-## What was built
+## The rollout: on by default, every species (J-091)
 
-- **The baker** (Prototype > Bake Tree Impostor, `Editor/TreeImpostorBaker.cs`). It draws a species' LOD0 from
+- **On by default.** `-no-tree-impostors` (or `TreeImpostors.On = false`) gives the terrains their trees back.
+- **Every species** the maps use (the template's: Conifer and Cypress; the valley and the generated land share them)
+  is baked by the baker when its impostor is missing or was baked by an older baker (`TreeImpostorBaker.BakeVersion`
+  on each material): when the Editor starts, after the yard builds itself, and before a player build. The atlases stay
+  under `Generated/` (ignored); the menu item is Prototype > Bake Tree Impostors (every species, 12 x 12).
+- **Near trees (within 60 m) are their species' prefab**, a GameObject with its LOD group and SpeedTree's wind, from a
+  pool: a tree that leaves Near (plus 4 m, so one on the edge doesn't swap each step) gives its GameObject to one that
+  enters, nearest first; new ones are made at about 1 ms a frame, and a tree waiting for one is drawn as its impostor
+  meanwhile. Their colliders are taken off (the terrain's tree colliders stand there). The instanced near meshes are
+  gone. On the nine's spawn about 30-50 trees stand as prefabs.
+- **The wind.** SpeedTree's wind comes from a WindZone, and the Wind module had been dropped as unused
+  (`editor-lean`), so no tree ever swayed, the terrain's included. It is back on (`com.unity.modules.wind`) and
+  `TreeWind` makes a WindZone that follows the weather: a breeze when still, harder in a windy stretch or a storm,
+  blowing the way the world's wind does (Gust of Wind's while it blows), eased over 6 s.
+- **Shadows:** impostors cast within `ShadowFar` (256 m, the drawn tier) and none past it; they still receive.
+- **The 60 m seam.** The impostors were brighter and yellower than the mesh for two reasons: SpeedTree keeps its baked
+  occlusion in the vertex colour (Conifer 0.67, Cypress 0.82 on average) and darkens the albedo by it, which the bake
+  didn't; and what's left, measured on the board's pairs (the pixels that differ between a pair at 50 and 120 m, from
+  the ground and above, at 8 and at noon), is taken out by a tint a species (`TreeImpostorBaker.Tints`: Conifer
+  0.94/0.945/1.0, Cypress 0.965/0.966/1.0). After it the lone pairs differ by 2-3.5% (Conifer +2.5%, Cypress -2% and
+  3.5% less blue), and the forest view at the join by 0.5% (it was about 10%). The prefabs within 60 m are 1-3% brighter
+  than the terrain drew the same trees.
+- **#213, the far trees as they are now.** A packed chunk's cells are its source's with its changes laid over: the
+  changes are read from the chunk's save record (`World.SaveChunkOf`, which reads a packed chunk where it lies), so a
+  tree felled or burnt before its chunk packed doesn't show far off, and nothing is unpacked (the probe fells a tree
+  ~500 m out, packs its chunk, and checks it's gone with 0 unpacks). The pinned valley's chunks without a terrain take
+  their trees from the valley's own ground (`GroundBuilder.Pinned`, from `PinnedGround.LayLazily`), but those whose
+  cell was a tree as the world started and isn't now; the probe checks every terrain tree of the valley's 81 chunks
+  (3,150) is where the far read put it.
+
+### The board
+
+From `tools/probe.sh treeimpostors --shots <dir>` on the nine (1280 x 720 in the Editor, the valley's haze). Lone-tree
+pairs crop the middle at the same pixel scale for every distance (x1 at 50 m, x2 at 120, x4 at 250, x8 at 500).
+
+| Picture | What it shows |
+|---|---|
+| [lone-morning-ground.png](tree-impostors/rollout/lone-morning-ground.png) | 8 am from the ground, both species: off (SpeedTree on the terrain) against the impostor |
+| [lone-morning-up.png](tree-impostors/rollout/lone-morning-up.png) | 8 am, 100 m up |
+| [lone-noon-ground.png](tree-impostors/rollout/lone-noon-ground.png) | noon, from the ground |
+| [lone-noon-up.png](tree-impostors/rollout/lone-noon-up.png) | noon, 100 m up |
+| [forest-ground.png](tree-impostors/rollout/forest-ground.png) | the forest from the ground, 120 m out, morning and noon: off against on |
+| [forest-up.png](tree-impostors/rollout/forest-up.png) | the forest from 100 m up |
+| [seam-60m.png](tree-impostors/rollout/seam-60m.png) | the 60 m join at 1:1, off against on |
+| [circle-30m.png](tree-impostors/rollout/circle-30m.png) | circling a Conifer at 30 m: its prefab, then the impostor |
+| [wind-30m.png](tree-impostors/rollout/wind-30m.png) | the prefab at 30 m in a windy stretch, a still every quarter second (about 30% of the crown's pixels change from one to the next) |
+
+### The cost
+
+A development player built from this branch (727917f), drawn offscreen at 1080p (`-perf-offscreen`), one run each,
+back to back on the Windows PC with the Editor open; off is the same build with `-no-tree-impostors` (so its terrain
+trees have the new wind too). Walks are the playtest bot (`-perf-scenario bot -playtest -playtest-seed 1
+-playtest-seconds 120`, ~40 s measured), standing is `-perf-scenario stand -perf-seconds 30`.
+
+| | Off: mean / p95 ms | On: mean / p95 ms | Draw calls (mean) | Triangles (mean) |
+|---|---|---|---|---|
+| The nine, walk | 9.56 / 15.09 | **8.69 / 14.49** | 3,255 -> 1,200 | 18.0 M -> 11.4 M |
+| The nine, standing | 7.33 / 9.11 | **5.45 / 6.42** | 4,860 -> 799 | 17.4 M -> 6.1 M |
+| The valley, walk | 7.68 / 13.01 | **7.54 / 12.54** | 1,241 -> 873 | 12.9 M -> 11.1 M |
+
+GPU memory on the nine's walk: 550 -> 572 MB (the two species' atlases). The trees draw to 500 m against the
+terrain's ~256 m.
+
+## The trial: what was built
+
+- **The baker** (`Editor/TreeImpostorBaker.cs`). It draws a species' LOD0 from
   12 × 12 directions over the upper hemisphere (hemi-octahedral, `TreeImpostorMath`), orthographic and unlit, with
   `Hidden/Prototype/TreeImpostorBake`, into two 2048 px atlases: albedo with coverage, and the tree-space normal with,
   in alpha, the depth from each view's plane. Each view is spread into the empty pixels round it so mips don't go
@@ -34,7 +100,7 @@ The trial species is the **Conifer**: 53,643 of the nine's 105,951 trees (the Cy
 renderer draws whatever species are baked; the walk below ran with both baked, so every tree past 60 m is an
 impostor.
 
-## The board
+## The trial's board
 
 Every picture is 1280 × 720 in the Editor, the same camera and moment for each pair, with the haze the valley has.
 Lone-tree pairs crop the middle at the same pixel scale for every distance (full frame at 50 m, 2× at 120, 4× at 250,
@@ -66,7 +132,7 @@ What the board shows:
   meets the impostors: the impostors are about 10% brighter and yellower than the instanced mesh. That's tuning
   (`_Translucency` and `_Wrap` on the material, or matching SpeedTree's hue), not a limit of the method.
 
-## The cost
+## The trial's cost
 
 The playtest bot's walk on the nine (`-map nine -perf-scenario bot -playtest -playtest-seed 1 -playtest-seconds 300`),
 in a development player built from this branch, drawn offscreen at 1080p (`-perf-offscreen`), one run each,
@@ -109,9 +175,9 @@ vertex shader, in step with SpeedTree's global wind).
 terrain's tree distance does nothing to these LOD-grouped trees except at 0 (tested: 60 and 900 drew the same), so
 the terrain can't hand over at 60 m by itself.
 
-## Rollout
+## The trial's rollout plan
 
-To every species and the far tiers:
+What the trial proposed; all but the far tier is done in the rollout above:
 
 - **Every species:** bake each prefab (the menu has a "every species" item). That's 11.2 MB of atlases a species at
   2048 px and 2.8 MB at 1024. With 10 species: 112 MB at 2048, or 28 MB at 1024 with 2048 kept for the 2-3 commonest.
@@ -126,7 +192,7 @@ To every species and the far tiers:
   wizard; the fix is to read the packed changes (`PackedChunk`) as well.
 - **Far tier:** the same renderer with a second, smaller material past `Far`, and no shadows.
 
-## Decisions for Andrew
+## The trial's decisions for Andrew (answered in J-091: near trees as GameObjects with their wind, impostor shadows within the drawn tier; 60 m kept)
 
 1. **Wind:** accept still impostors past 60 m, or add the quad's sway (cheap)? And for the full mesh within 60 m:
    draw it as GameObjects with a LOD group (wind kept, more draws) or keep it instanced without wind?

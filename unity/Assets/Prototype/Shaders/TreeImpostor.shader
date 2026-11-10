@@ -18,6 +18,7 @@ Shader "Prototype/TreeImpostor"
         _ShadowStrength("Shadow strength", Range(0, 1)) = 0.7
         _Tint("Tint", Color) = (1, 1, 1, 1)
         [HideInInspector] _Debug("Debug: 1 the light, 2 the ambient, 3 the normal", Float) = 0
+        [HideInInspector] _BakeVersion("The baker's version (TreeImpostorBaker.BakeVersion)", Float) = 0
     }
 
     SubShader

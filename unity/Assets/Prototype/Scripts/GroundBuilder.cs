@@ -44,6 +44,15 @@ public sealed class GroundBuilder
         if (missing >= 0) throw new InvalidDataException($"The ground's layer {pack.Layers[missing]} isn't on the template terrain");
     }
 
+    /// <summary>
+    /// A generated map's pinned chunks (the nine's valley) by where they are, as the pinned map's ground/ has them, or
+    /// null: the far trees there are read from these, without making the chunk (TreeImpostors).
+    /// </summary>
+    public IReadOnlyDictionary<(int i, int j), GroundChunk> Pinned { get; set; }
+
+    /// <summary>The top of the chunks' range in metres (a height step of GroundPack.HeightSteps).</summary>
+    public float Top => (float)pack.Top;
+
     /// <summary>The height of the chunks' step 0 in metres: where the terrains stand.</summary>
     public float Bottom => (float)pack.Bottom;
 

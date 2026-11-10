@@ -12,23 +12,76 @@ using Debug = UnityEngine.Debug;
 // from N x N directions over the upper hemisphere (TreeImpostorMath), orthographic and unlit, into two atlases (albedo
 // and coverage; the tree-space normal and the depth from each view's plane), and a material on Prototype/TreeImpostor
 // that TreeImpostors draws with. Everything it writes is under Generated/ (ignored): it is made from pack trees, which a
-// public repo can't hold, and the menu makes it again. Nothing here is used at run time but the files it writes.
+// public repo can't hold, and the menu makes it again. Nothing here is used at run time but the files it writes. Every
+// species in Generated/Trees is baked when its impostor is missing or was baked by an older baker (BakeVersion): when the
+// Editor starts, after a yard build, and before a player build, as the yard itself is made when it's missing.
+[InitializeOnLoad]
 public static class TreeImpostorBaker
 {
+    /// <summary>The baker's version, kept on each material (_BakeVersion): a species baked by an older one is baked again.</summary>
+    public const int BakeVersion = 3;
+
+    const int Frames = 12, AtlasPixels = 2048;
+
+    static TreeImpostorBaker()
+    {
+        EditorApplication.update -= WhenFree;
+        EditorApplication.update += WhenFree;
+    }
+
+    // Once, on the first Editor update that isn't importing, compiling or playing.
+    static void WhenFree()
+    {
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+        EditorApplication.update -= WhenFree;
+        if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode) return;
+        BakeMissing();
+    }
+
+    /// <summary>The species in Generated/Trees (as Build Chemistry Yard repairs them), by name.</summary>
+    public static string[] Species() =>
+        Directory.Exists(Trees) ? Directory.GetFiles(Trees, "*.prefab").Select(Path.GetFileNameWithoutExtension).OrderBy(n => n, System.StringComparer.Ordinal).ToArray() : new string[0];
+
+    /// <summary>Whether a species' impostor is there and was baked by this baker.</summary>
+    public static bool IsBaked(string species)
+    {
+        var mat = AssetDatabase.LoadAssetAtPath<Material>($"{Folder}/{species}.mat");
+        return mat != null && mat.HasProperty(BakeVersionId) && Mathf.RoundToInt(mat.GetFloat(BakeVersionId)) == BakeVersion
+            && mat.GetTexture("_AlbedoAtlas") != null && mat.GetTexture("_NormalAtlas") != null;
+    }
+
+    /// <summary>Bakes every species whose impostor is missing or old; returns how many it baked.</summary>
+    public static int BakeMissing()
+    {
+        int baked = 0;
+        foreach (var species in Species())
+        {
+            if (IsBaked(species)) continue;
+            Debug.Log(Bake(species, Frames, AtlasPixels));
+            baked++;
+        }
+        return baked;
+    }
+
+    const string BakeVersionId = "_BakeVersion";
+
+    // Each species' impostor against its own mesh at the 60 m seam, measured (tools/probe.sh treeimpostors on the nine,
+    // the pixels that differ between a pair at 50 and 120 m, from the ground and from above, at 8 and at noon): with
+    // SpeedTree's occlusion baked in, the Conifer's impostor was 6.4% redder, 5.8% greener and as blue (a little bright and
+    // yellow), the Cypress's 3.6% and 3.5%. The tint takes that back out. A species not measured keeps white.
+    static readonly Dictionary<string, Color> Tints = new()
+    {
+        ["Conifer"] = new Color(1f / 1.064f, 1f / 1.058f, 1f / 0.998f, 1f),
+        ["Cypress"] = new Color(1f / 1.036f, 1f / 1.035f, 1f / 0.999f, 1f),
+    };
     /// <summary>Where the atlases and materials go: a Resources folder, so a player build carries them.</summary>
     public const string Folder = "Assets/Prototype/Generated/Resources/" + TreeImpostors.ResourceFolder;
     const string Trees = "Assets/Prototype/Generated/Trees";
 
-    /// <summary>The trial's species: the nine's commonest (Conifer: 53,643 of its 105,951 trees, the Cypress the rest).</summary>
-    public const string TrialSpecies = "Conifer";
-
-    [MenuItem("Prototype/Bake Tree Impostor")]
-    static void BakeTrial() => Debug.Log(Bake(TrialSpecies, 12, 2048));
-
     [MenuItem("Prototype/Bake Tree Impostors (every species, 12 x 12)")]
     static void BakeEvery()
     {
-        foreach (var path in Directory.GetFiles(Trees, "*.prefab")) Debug.Log(Bake(Path.GetFileNameWithoutExtension(path), 12, 2048));
+        foreach (var species in Species()) Debug.Log(Bake(species, Frames, AtlasPixels));
     }
 
     // One part of the tree to draw: a submesh, where it stands in the tree, and its textures.
@@ -117,6 +170,8 @@ public static class TreeImpostorBaker
         mat.SetFloat("_Translucency", 0.5f);
         mat.SetFloat("_ShadowStrength", 0.7f);
         mat.SetFloat("_Debug", 0f);
+        mat.SetFloat(BakeVersionId, BakeVersion);
+        mat.SetColor("_Tint", Tints.TryGetValue(species, out var tint) ? tint : Color.white);
         mat.enableInstancing = true;
         EditorUtility.SetDirty(mat);
         AssetDatabase.SaveAssets();

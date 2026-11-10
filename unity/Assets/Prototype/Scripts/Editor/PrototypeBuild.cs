@@ -200,6 +200,8 @@ public static class PrototypeBuild
             return refused;
         }
         SoundBankBuilder.BuildIfOld();
+        // The trees' impostors go into the player through Resources; made from pack trees, so made here when missing.
+        TreeImpostorBaker.BakeMissing();
         PlayerSettings.productName = ProductName;
         PlayerSettings.companyName = "anweather";
         PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.anweather.spellchemistryvalley");

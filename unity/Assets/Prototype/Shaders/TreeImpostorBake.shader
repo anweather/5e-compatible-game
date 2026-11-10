@@ -40,6 +40,7 @@ Shader "Hidden/Prototype/TreeImpostorBake"
                 float3 normalOS : NORMAL;
                 float4 tangentOS : TANGENT;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR;
             };
 
             struct Varyings
@@ -49,6 +50,7 @@ Shader "Hidden/Prototype/TreeImpostorBake"
                 float3 positionWS : TEXCOORD1;
                 float3 normalWS : TEXCOORD2;
                 float4 tangentWS : TEXCOORD3;
+                float3 ao : TEXCOORD4;
             };
 
             Varyings Vert(Attributes v)
@@ -57,6 +59,8 @@ Shader "Hidden/Prototype/TreeImpostorBake"
                 o.positionWS = TransformObjectToWorld(v.positionOS.xyz);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.uv = v.uv;
+                // SpeedTree keeps its baked occlusion in the vertex colour, and its shaders darken the albedo by it.
+                o.ao = v.color.rgb;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.tangentWS = float4(TransformObjectToWorldDir(v.tangentOS.xyz), v.tangentOS.w);
                 return o;
@@ -73,7 +77,7 @@ Shader "Hidden/Prototype/TreeImpostorBake"
                 float3 nm = normalize(t * ts.x + b * ts.y + n * ts.z);
                 if (!front) nm = -nm;
                 float depth = dot(i.positionWS - _BakeCentre.xyz, _BakeDir.xyz) / _BakeCentre.w;
-                albedo = float4(c.rgb, 1);
+                albedo = float4(c.rgb * i.ao, 1);
                 normalDepth = float4(nm * 0.5 + 0.5, saturate(depth * 0.5 + 0.5));
             }
             ENDHLSL

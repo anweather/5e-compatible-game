@@ -214,14 +214,15 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         lazySource = source;
         var (pack, make) = GroundFromLand.Lazy(source);
+        IReadOnlyDictionary<(int i, int j), GroundChunk> pinned = null;
         if (GroundSwitch.Mode == GroundSwitch.On)
         {
             int laid;
-            (laid, make) = PinnedGround.LayLazily(pack, layout, ChemGrid.MapSource, make);
+            (laid, make, pinned) = PinnedGround.LayLazily(pack, layout, ChemGrid.MapSource, make);
             if (laid > 0) Debug.Log($"PINNED GROUND: {laid} chunks from the pinned map's ground/, the seam eased over {PinnedGround.SeamCells} cells, made as they're wanted");
         }
         var shape = layout;
-        return new GroundBuilder(pack, template, layout.ChunkSize, make, at => shape.HasChunk(at.i, at.j));
+        return new GroundBuilder(pack, template, layout.ChunkSize, make, at => shape.HasChunk(at.i, at.j)) { Pinned = pinned };
     }
 
     GroundFromLand.Source lazySource;

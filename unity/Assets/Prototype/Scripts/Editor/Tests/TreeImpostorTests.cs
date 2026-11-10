@@ -47,9 +47,11 @@ public class TreeImpostorTests
     }
 
     [Test]
-    public void ImpostorsAreOffUnlessAskedFor()
+    public void ImpostorsAreOnUnlessTurnedOff()
     {
-        Assert.That(TreeImpostors.On, Is.False);
+        // On by default (J-091); outside play nothing has taken the terrains' trees away.
+        Assert.That(TreeImpostors.On, Is.True);
+        Assert.That(TreeImpostors.ShadowFar, Is.EqualTo(256f));
         Assert.That(MapTerrains.TreeDistance, Is.EqualTo(900f));
     }
 }

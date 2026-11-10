@@ -38,7 +38,7 @@ public static class PinnedGround
     {
         var index = ground.Chunks.Select((c, n) => (c, n)).ToDictionary(p => (p.c.I, p.c.J), p => p.n);
         GroundChunk Own((int i, int j) at) => ground.Chunks[index[at]];
-        var (laid, make) = Over(ground, layout, pinned, pinnedW, pinnedH, atX, atY, Own, at => index.ContainsKey(at), at => (Own(at).Resolution, Own(at).Texels));
+        var (laid, make, _) = Over(ground, layout, pinned, pinnedW, pinnedH, atX, atY, Own, at => index.ContainsKey(at), at => (Own(at).Resolution, Own(at).Texels));
         foreach (var (at, n) in index) ground.Chunks[n] = make(at);
         return laid;
     }
@@ -46,27 +46,30 @@ public static class PinnedGround
     /// <summary>
     /// Lays every pinned map's ground/ pack into a generated map's ground made a chunk at a time (#205): what
     /// <paramref name="make"/> makes, as Lay would leave it. <paramref name="ground"/> holds what the chunks share and takes
-    /// the pinned maps' range and river now. Returns how many chunks are pinned, and the new way to make one.
+    /// the pinned maps' range and river now. Returns how many chunks are pinned, the new way to make one, and the pinned
+    /// chunks themselves by where they are in this map (what a far view reads their trees from without making a chunk).
     /// </summary>
-    public static (int laid, Func<(int i, int j), GroundChunk> make) LayLazily(GroundPack ground, TerrainGrid layout, string mapDir, Func<(int i, int j), GroundChunk> make)
+    public static (int laid, Func<(int i, int j), GroundChunk> make, IReadOnlyDictionary<(int i, int j), GroundChunk> pinned) LayLazily(GroundPack ground, TerrainGrid layout, string mapDir, Func<(int i, int j), GroundChunk> make)
     {
         int laid = 0;
+        var pinned = new Dictionary<(int i, int j), GroundChunk>();
         foreach (var (dir, x, y) in GeneratedMap.PinnedSquares(mapDir))
         {
             if (!GroundPack.In(dir)) continue;
             var pinnedMap = MapFile.Load(dir);
-            var (n, over) = Over(ground, layout, GroundPack.Load(dir), pinnedMap.W, pinnedMap.H, x, y, make, at => layout.HasChunk(at.i, at.j),
+            var (n, over, square) = Over(ground, layout, GroundPack.Load(dir), pinnedMap.W, pinnedMap.H, x, y, make, at => layout.HasChunk(at.i, at.j),
                 at => (layout.Resolution(at.i, at.j), layout.TexelResolution(at.i, at.j)));
             laid += n;
             make = over;
+            foreach (var (at, c) in square) pinned[at] = c;
         }
-        return (laid, make);
+        return (laid, make, pinned);
     }
 
     // One pinned pack over the ground <paramref name="under"/> makes (its chunks in ground's range as it is now): the pinned
     // chunks moved to their square, every other chunk in the two's range, and those beside the square eased to meet it. The
     // ground takes the range and the river now; the function returned may be called side by side.
-    static (int laid, Func<(int i, int j), GroundChunk> make) Over(GroundPack ground, TerrainGrid layout, GroundPack pinned, int pinnedW, int pinnedH, int atX, int atY,
+    static (int laid, Func<(int i, int j), GroundChunk> make, Dictionary<(int i, int j), GroundChunk> square) Over(GroundPack ground, TerrainGrid layout, GroundPack pinned, int pinnedW, int pinnedH, int atX, int atY,
         Func<(int i, int j), GroundChunk> under, Func<(int i, int j), bool> has, Func<(int i, int j), (int res, int texels)> sizeOf)
     {
         var (di, dj) = MapFile.ChunkShift(layout.GridH, pinnedH, atX, atY);
@@ -113,7 +116,7 @@ public static class PinnedGround
             if (box != null && box.Beside(at.i, at.j)) Ease(bottom, top, c, box, square);
             return c;
         }
-        return (square.Count, Make);
+        return (square.Count, Make, square);
     }
 
     // A pinned chunk as this map's chunk (i, j): its heights as they are, its paint, grass and trees by this map's lists.
