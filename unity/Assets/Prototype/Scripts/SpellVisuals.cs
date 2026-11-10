@@ -82,17 +82,39 @@ public class SpellVisuals : ScriptableObject
         public void PlayImpact(Vector3 at, Quaternion rotation, float scale = 1f)
         {
             if (impact == null) return;
-            var fx = Spawn(impact, at, rotation);
-            Scale(fx, scale);
-            Dress(fx);
+            var fx = ShowPool.Take(ShowOf(impact), at, rotation, DressShow, scale);
             LastImpact = fx;
-            if (tinted)
-                foreach (var particles in fx.GetComponentsInChildren<ParticleSystem>())
-                {
-                    var main = particles.main;
-                    main.startColor = glow;
-                }
-            UnityEngine.Object.Destroy(fx, impactSeconds);
+            ShowPool.Release(fx, impactSeconds);
+        }
+
+        /// <summary>A copy of one of this show's effects kept for its look (ShowPool), dressed in it.</summary>
+        public ShowPool.Look ShowOf(GameObject prefab) => new(prefab, Tint, tinted ? glow : Color.clear);
+
+        /// <summary>A meteor's blast or dust kept for its look (MeteorFall): dressed, never tinted, so kept apart from a tinted impact.</summary>
+        public ShowPool.Look BlastOf(GameObject prefab) => new(prefab, Tint, Color.clear);
+
+        /// <summary>Has this show's effects copied ahead of its first cast (ShowPool.Ready).</summary>
+        public void Ready()
+        {
+            if (!fromSky)
+            {
+                ShowPool.Ready(ShowOf(impact), DressShow);
+                return;
+            }
+            ShowPool.Ready(BlastOf(impact), Dress);
+            ShowPool.Ready(BlastOf(afterImpact), Dress);
+        }
+
+        /// <summary>Turns a new copy of one of this show's effects to its look, and colours it with the glow if it's tinted.</summary>
+        public void DressShow(GameObject fx)
+        {
+            Dress(fx);
+            if (!tinted) return;
+            foreach (var particles in fx.GetComponentsInChildren<ParticleSystem>())
+            {
+                var main = particles.main;
+                main.startColor = glow;
+            }
         }
     }
 
@@ -108,6 +130,7 @@ public class SpellVisuals : ScriptableObject
     [NonSerialized] readonly Dictionary<string, Entry> shows = new();
     [NonSerialized] Rules showsFor, showsFrom;
     [NonSerialized] LookFamilies looks;
+    [NonSerialized] Rules readiedFor;
 
     /// <summary>
     /// A spell's show from the rules in force: its family's, in its colour; null with no rules or
@@ -152,6 +175,14 @@ public class SpellVisuals : ScriptableObject
         return follows ? new Color(element.R, element.G, element.B) : own;
     }
 
+    /// <summary>Has every spell's show in these rules copied ahead of its first cast (ShowPool.Ready), once for each rule set.</summary>
+    public void ReadyShows(Rules rules, Rules from = null)
+    {
+        if (rules == null || ReferenceEquals(rules, readiedFor)) return;
+        readiedFor = rules;
+        foreach (var spell in rules.Spells) For(rules, spell.Id, from)?.Ready();
+    }
+
     /// <summary>
     /// Scales a show as a whole: its particle systems follow the transform (the packs' are set to
     /// ignore it), and their speeds and lights go with it. At 1 the show stays exactly as authored.
@@ -175,10 +206,13 @@ public class SpellVisuals : ScriptableObject
     /// </summary>
     public static GameObject Spawn(GameObject prefab, Vector3 at, Quaternion turn)
     {
+        using var spawning = SpawnMarker.Auto();
         var go = Instantiate(prefab, at, turn);
         NoColliders(go);
         return go;
     }
+
+    static readonly Unity.Profiling.ProfilerMarker SpawnMarker = new("SpellVisuals.Spawn");
 
     /// <summary>Switches off and removes every collider in a show (off at once: Destroy waits for the frame's end).</summary>
     public static void NoColliders(GameObject show)
