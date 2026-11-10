@@ -350,6 +350,17 @@ public partial class ValleyChemistry : MonoBehaviour
                 for (int x = 0; x < world.W; x++) CountWall(world, x, y);
             return;
         }
+        foreach (var (cy, cx) in ChunksNearHouses(world))
+        {
+            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+            for (int y = y0; y < Mathf.Min(world.H, y0 + Chunks.Size); y++)
+                for (int x = x0; x < Mathf.Min(world.W, x0 + Chunks.Size); x++) CountWall(world, x, y);
+        }
+    }
+
+    // The chunks within HouseReach of a scene house, each once, by row.
+    SortedSet<(int cy, int cx)> ChunksNearHouses(World world)
+    {
         var near = new SortedSet<(int cy, int cx)>();
         foreach (var cabin in cabins)
         {
@@ -359,12 +370,7 @@ public partial class ValleyChemistry : MonoBehaviour
                 for (int x = c.x - HouseReach; x <= c.x + HouseReach; x += Chunks.Size / 2)
                     if (world.InBounds(x, y)) near.Add((y >> Chunks.Shift, x >> Chunks.Shift));
         }
-        foreach (var (cy, cx) in near)
-        {
-            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
-            for (int y = y0; y < Mathf.Min(world.H, y0 + Chunks.Size); y++)
-                for (int x = x0; x < Mathf.Min(world.W, x0 + Chunks.Size); x++) CountWall(world, x, y);
-        }
+        return near;
     }
 
     // How far round a scene house its walls are looked for on a generated map, in cells.

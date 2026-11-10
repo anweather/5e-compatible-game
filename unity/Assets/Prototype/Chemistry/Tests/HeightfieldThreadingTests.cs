@@ -121,6 +121,11 @@ namespace Chem.Tests
                 Assert.That(Heights(f).SequenceEqual(whole), Is.True, $"seed {seed}, flat under walls {flat}: lazy heights differ");
                 Assert.That(f.Forget(4, 3), Is.True);
                 Assert.That(Heights(f).SequenceEqual(whole), Is.True, $"seed {seed}: a chunk let go and worked out again differs");
+                var batch = new CellHeightfield(TerrainGrid.Valley()) { FlatUnderWalls = flat };
+                batch.ResetLazily(w);
+                batch.Prepare(batch.Chunks.ToList());
+                Assert.That(batch.Worked, Is.EqualTo(81), "a Prepare works out every chunk asked for");
+                Assert.That(Heights(batch).SequenceEqual(whole), Is.True, $"seed {seed}, flat under walls {flat}: prepared side by side, the heights differ");
             }
         }
 

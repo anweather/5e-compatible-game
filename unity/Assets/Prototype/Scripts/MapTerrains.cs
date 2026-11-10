@@ -200,7 +200,7 @@ public sealed class MapTerrains : MonoBehaviour
         Plan();
         MakeSome(whole: true);
         Debug.Log($"GROUND TERRAINS for the drawn tier: {made.Count} of {chunks.Length} chunks made in {timer.Elapsed.TotalMilliseconds:0} ms " +
-                  $"({ArraysMs:0} ms of it their arrays, side by side; sight {Sight()} + {Margin})");
+                  $"({ArraysMs:0} ms of it their arrays and height offsets, side by side; sight {Sight()} + {Margin})");
     }
 
     void Stream()
@@ -295,7 +295,7 @@ public sealed class MapTerrains : MonoBehaviour
         var timer = System.Diagnostics.Stopwatch.StartNew();
         if (whole)
         {
-            ground.Builder.Prepare(toMake);
+            ground.Prepare(toMake);
             ArraysMs = timer.Elapsed.TotalMilliseconds;
         }
         int next = 0;

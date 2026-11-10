@@ -164,26 +164,81 @@ namespace Chem
         void Work(World world, (int i, int j) key, ChunkState s)
         {
             var was = cache;
-            int u0 = key.i * TerrainGrid.ChunkCells - CacheMargin, u1 = (key.i + 1) * TerrainGrid.ChunkCells + CacheMargin;
-            int v0 = key.j * TerrainGrid.ChunkCells - CacheMargin, v1 = (key.j + 1) * TerrainGrid.ChunkCells + CacheMargin;
-            var (xa, ya) = grid.GridCell(u0, v0);
-            var (xb, yb) = grid.GridCell(u1, v1);
-            cache = Cache(world, Math.Min(xa, xb), Math.Min(ya, yb), Math.Max(xa, xb), Math.Max(ya, yb));
+            cache = CacheRound(world, key.i, key.j, key.i, key.j);
             try
             {
-                s.Target = Compute(world, key.i, key.j);
+                WorkCached(world, key, s);
             }
             finally
             {
                 cache = was;
             }
+        }
+
+        // A chunk's offsets worked out through the cache set now.
+        void WorkCached(World world, (int i, int j) key, ChunkState s)
+        {
+            s.Target = Compute(world, key.i, key.j);
             s.Current = (float[,])s.Target.Clone();
             s.Moving = null;
             s.Queued = null;
         }
 
+        // The cells chunks i0..i1, j0..j1 read, in a cache.
+        CellCache CacheRound(World world, int i0, int j0, int i1, int j1)
+        {
+            int u0 = i0 * TerrainGrid.ChunkCells - CacheMargin, u1 = (i1 + 1) * TerrainGrid.ChunkCells + CacheMargin;
+            int v0 = j0 * TerrainGrid.ChunkCells - CacheMargin, v1 = (j1 + 1) * TerrainGrid.ChunkCells + CacheMargin;
+            var (xa, ya) = grid.GridCell(u0, v0);
+            var (xb, yb) = grid.GridCell(u1, v1);
+            return Cache(world, Math.Min(xa, xb), Math.Min(ya, yb), Math.Max(xa, xb), Math.Max(ya, yb));
+        }
+
         // How far past a chunk's own cells its samples read: a seam's cell and a mound's reach (BankAt), with room.
         const int CacheMargin = 4;
+
+        // The most chunks one Prepare caches the cells of at once (a box round them all); more apart, they're worked one by one.
+        const int MostCachedChunks = 400;
+
+        /// <summary>
+        /// After a lazy Reset: works out those of these chunks not worked out yet, side by side (as Reset does, through one
+        /// cache of the cells round them all), so a batch of terrains made at once doesn't wait for them one at a time.
+        /// </summary>
+        public void Prepare(IEnumerable<(int i, int j)> wanted)
+        {
+            if (lazyWorld == null) return;
+            var todo = new List<(int i, int j)>();
+            var seen = new HashSet<(int i, int j)>();
+            int i0 = int.MaxValue, j0 = int.MaxValue, i1 = int.MinValue, j1 = int.MinValue;
+            foreach (var at in wanted)
+            {
+                if (!chunks.TryGetValue(at, out var st) || st.Target != null || !seen.Add(at)) continue;
+                todo.Add(at);
+                i0 = Math.Min(i0, at.i);
+                j0 = Math.Min(j0, at.j);
+                i1 = Math.Max(i1, at.i);
+                j1 = Math.Max(j1, at.j);
+            }
+            if (todo.Count == 0) return;
+            var world = lazyWorld;
+            if (todo.Count == 1 || (long)(i1 - i0 + 1) * (j1 - j0 + 1) > MostCachedChunks)
+            {
+                foreach (var at in todo) Work(world, at, chunks[at]);
+                return;
+            }
+            var states = new ChunkState[todo.Count];
+            for (int n = 0; n < todo.Count; n++) states[n] = chunks[todo[n]];
+            cache = CacheRound(world, i0, j0, i1, j1);
+            try
+            {
+                if (Threaded) System.Threading.Tasks.Parallel.For(0, todo.Count, n => WorkCached(world, todo[n], states[n]));
+                else for (int n = 0; n < todo.Count; n++) WorkCached(world, todo[n], states[n]);
+            }
+            finally
+            {
+                cache = null;
+            }
+        }
 
         // ---------- the rule ----------
 
@@ -509,8 +564,8 @@ namespace Chem
             {
                 var keys = new List<(int i, int j)>(chunks.Keys);
                 var states = new List<ChunkState>(chunks.Values);
-                if (Threaded) System.Threading.Tasks.Parallel.For(0, keys.Count, k => ResetChunk(world, keys[k], states[k]));
-                else for (int k = 0; k < keys.Count; k++) ResetChunk(world, keys[k], states[k]);
+                if (Threaded) System.Threading.Tasks.Parallel.For(0, keys.Count, k => WorkCached(world, keys[k], states[k]));
+                else for (int k = 0; k < keys.Count; k++) WorkCached(world, keys[k], states[k]);
             }
             finally
             {
@@ -520,13 +575,6 @@ namespace Chem
             moving.Clear();
         }
 
-        void ResetChunk(World world, (int i, int j) key, ChunkState s)
-        {
-            s.Target = Compute(world, key.i, key.j);
-            s.Current = (float[,])s.Target.Clone();
-            s.Moving = null;
-            s.Queued = null;
-        }
 
         /// <summary>
         /// Recomputes the targets around changed cells. With snap the drawn heights jump there

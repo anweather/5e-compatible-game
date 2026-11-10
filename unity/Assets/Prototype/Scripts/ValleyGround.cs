@@ -135,6 +135,16 @@ public sealed class ValleyGround
     public TreePrototype[] TreePrototypes((int i, int j) at) =>
         lazy && builder != null && !IsReady(at) ? builder.TreePrototypes : Data(at).treePrototypes;
 
+    /// <summary>
+    /// Before a batch of chunks is made at once: their arrays and their height offsets worked out side by side, so none
+    /// waits for the others one at a time.
+    /// </summary>
+    public void Prepare(IReadOnlyList<(int i, int j)> wanted)
+    {
+        builder.Prepare(wanted);
+        heightfield?.Prepare(wanted);
+    }
+
     /// <summary>A terrain now stands for this chunk: its data made for this world if it isn't, and given to it.</summary>
     public void Attach((int i, int j) at, Terrain terrain)
     {
@@ -485,7 +495,7 @@ public sealed class ValleyGround
         bakedPaint.Clear();
         paintedMix.Clear();
         var now = attached.ToList();
-        builder.Prepare(now);
+        Prepare(now);
         foreach (var at in now) MakeReady(chunks[at]);
         BindMs = timer.Elapsed.TotalMilliseconds;
         Debug.Log($"GROUND BIND made a chunk at a time: {now.Count} of {chunks.Count} chunks made in {BindMs:0} ms");
