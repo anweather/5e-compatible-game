@@ -62,15 +62,35 @@ public sealed class MapTerrains : MonoBehaviour
         float half = layout.ChunkSize * 0.5f;
         // On a generated map the far ring says which draw: none past the known ring, and none it draws as a known chunk.
         var far = FarRing.Instance;
-        int drawing = 0;
-        for (int k = 0; k < chunks.Length; k++)
+        // Only the chunks that can change are visited (#208): those that drew at the last check, and those in the square
+        // round the camera's reach. Any other was off and stays off. The first check visits them all, as they start on, and
+        // so does the first with the far ring (which switches the off ones off, not only hidden).
+        visit.Clear();
+        if (!checkedOnce || withFar != (far != null))
+        {
+            for (int k = 0; k < chunks.Length; k++) visit.Add(k);
+            checkedOnce = true;
+            withFar = far != null;
+        }
+        else
+        {
+            visit.UnionWith(drawn);
+            var (ox, oz) = layout.ChunkCorner(0, 0);
+            float size = layout.ChunkSize;
+            int i0 = Mathf.Max(0, Mathf.FloorToInt((eye.x - reach - ox) / size)), i1 = Mathf.Min(layout.ChunksX - 1, Mathf.FloorToInt((eye.x + reach - ox) / size));
+            int j0 = Mathf.Max(0, Mathf.FloorToInt((eye.z - reach - oz) / size)), j1 = Mathf.Min(layout.ChunksZ - 1, Mathf.FloorToInt((eye.z + reach - oz) / size));
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++) visit.Add(j * layout.ChunksX + i);
+        }
+        drawn.Clear();
+        foreach (int k in visit)
         {
             var t = chunks[k];
             if (t == null) continue;
             var p = t.transform.position;
             float dx = p.x + half - eye.x, dz = p.z + half - eye.z;
             bool draw = dx * dx + dz * dz <= reachSq && (far == null || far.TerrainDraws(k % layout.ChunksX, k / layout.ChunksX));
-            if (draw) drawing++;
+            if (draw) drawn.Add(k);
             // On a generated map a chunk that doesn't draw is switched off, not only hidden: Unity culls every enabled
             // Terrain each frame whether it draws or not (729 on the nine, 8 ms of TerrainManager.CullAllTerrains in the
             // Editor, #182). Its collider stays on, and SampleHeight still reads it. The valley's 81 stay as they were.
@@ -79,8 +99,12 @@ public sealed class MapTerrains : MonoBehaviour
             t.drawHeightmap = draw;
             t.drawTreesAndFoliage = draw;
         }
-        Drawing = drawing;
+        Drawing = drawn.Count;
     }
+
+    // The chunks that drew at the last check, and those this check visits.
+    readonly System.Collections.Generic.HashSet<int> drawn = new(), visit = new();
+    bool checkedOnce, withFar;
 
     /// <summary>How many chunk terrains drew at the last check (the drawn tier, for the tiersweep probe).</summary>
     public int Drawing { get; private set; }
