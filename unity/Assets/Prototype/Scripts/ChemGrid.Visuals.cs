@@ -1011,6 +1011,7 @@ public partial class ChemGrid
         materials.Destroy();
         waterSurface?.Destroy();
         slicks?.Destroy();
+        cracks?.Destroy(); // its mesh is DontSave: left, one stayed in the Editor every play (#145)
         lava?.Destroy();
         spellLights?.Destroy();
         cellFx?.Destroy();
