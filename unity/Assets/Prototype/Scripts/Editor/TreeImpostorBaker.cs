@@ -19,7 +19,7 @@ public static class TreeImpostorBaker
     public const string Folder = "Assets/Prototype/Generated/Resources/" + TreeImpostors.ResourceFolder;
     const string Trees = "Assets/Prototype/Generated/Trees";
 
-    /// <summary>The trial's species: the nine's commonest (Conifer, 54% of its tree cells).</summary>
+    /// <summary>The trial's species: the nine's commonest (Conifer: 53,643 of its 105,951 trees, the Cypress the rest).</summary>
     public const string TrialSpecies = "Conifer";
 
     [MenuItem("Prototype/Bake Tree Impostor")]
@@ -112,6 +112,11 @@ public static class TreeImpostorBaker
         mat.SetFloat("_FrameSize", tile / (float)atlas);
         mat.SetFloat("_Radius", radius);
         mat.SetVector("_Centre", centre);
+        mat.SetFloat("_Cutoff", 0.5f);
+        mat.SetFloat("_Wrap", 0.5f);
+        mat.SetFloat("_Translucency", 0.5f);
+        mat.SetFloat("_ShadowStrength", 0.7f);
+        mat.SetFloat("_Debug", 0f);
         mat.enableInstancing = true;
         EditorUtility.SetDirty(mat);
         AssetDatabase.SaveAssets();

@@ -211,28 +211,55 @@ public static class GroundFromLand
         return chunks;
     }
 
+    /// <summary>
+    /// Where in its cell, how big and which way a tree cell's tree stands, and which kind it is, as the ground draws it:
+    /// Inset and Across are the offsets into the world cell (u, v) along x and z, in cells.
+    /// </summary>
+    public readonly struct TreeSpot
+    {
+        public readonly float Inset, Across, Size, Rotation;
+        public readonly int Kind;
+
+        public TreeSpot(float inset, float across, float size, float rotation, int kind)
+        {
+            Inset = inset;
+            Across = across;
+            Size = size;
+            Rotation = rotation;
+            Kind = kind;
+        }
+    }
+
+    /// <summary>The tree grid cell (x, y) draws on a world of this seed with this many tree kinds (Placed's, for any view that draws it too).</summary>
+    public static TreeSpot Spot(int seed, int x, int y, int kinds)
+    {
+        kinds = Math.Max(1, kinds);
+        float Part(int salt) => WorldHash.Hash4(seed, salt, x, y) % 1024u / 1024f;
+        float inset = TreeInset + (1f - 2f * TreeInset) * Part(TreeSalt), across = TreeInset + (1f - 2f * TreeInset) * Part(TreeSalt + 1);
+        return new TreeSpot(inset, across, TreeSmallest + TreeSpread * Part(SizeSalt), Part(TurnSalt) * 6.2831855f,
+            (int)(WorldHash.Hash4(seed, TreeSalt + 2, x, y) % (uint)kinds));
+    }
+
     // One tree in each tree cell, somewhere inside it, so the view's tree of a cell is that cell's.
     static GroundTree[] Placed(Source s, GroundPack pack, GroundChunk chunk, List<(int x, int y)> cells)
     {
-        int seed = unchecked((int)s.World.Seed), kinds = Math.Max(1, s.TreeKinds.Length);
+        int seed = unchecked((int)s.World.Seed), kinds = s.TreeKinds.Length;
         return cells.Select(c =>
         {
             var (u, v) = s.Layout.WorldCell(c.x, c.y);
-            float Part(int salt) => WorldHash.Hash4(seed, salt, c.x, c.y) % 1024u / 1024f;
-            float inset = TreeInset + (1f - 2f * TreeInset) * Part(TreeSalt), across = TreeInset + (1f - 2f * TreeInset) * Part(TreeSalt + 1);
-            float size = TreeSmallest + TreeSpread * Part(SizeSalt);
+            var spot = Spot(seed, c.x, c.y, kinds);
             var (i, j, sx, sz) = s.Layout.CellSample(c.x, c.y);
             return new GroundTree
             {
-                X = (u - chunk.I * TerrainGrid.ChunkCells + inset) / TerrainGrid.ChunkCells,
+                X = (u - chunk.I * TerrainGrid.ChunkCells + spot.Inset) / TerrainGrid.ChunkCells,
                 Y = chunk.Heights[sz * chunk.Resolution + sx] / (float)GroundPack.HeightSteps,
-                Z = (v - chunk.J * TerrainGrid.ChunkCells + across) / TerrainGrid.ChunkCells,
-                Width = size,
-                Height = size,
-                Rotation = Part(TurnSalt) * 6.2831855f,
+                Z = (v - chunk.J * TerrainGrid.ChunkCells + spot.Across) / TerrainGrid.ChunkCells,
+                Width = spot.Size,
+                Height = spot.Size,
+                Rotation = spot.Rotation,
                 Color = White,
                 LightmapColor = White,
-                Prototype = (int)(WorldHash.Hash4(seed, TreeSalt + 2, c.x, c.y) % (uint)kinds),
+                Prototype = spot.Kind,
             };
         }).ToArray();
     }
