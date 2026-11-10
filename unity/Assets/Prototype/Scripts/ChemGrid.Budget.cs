@@ -23,8 +23,8 @@ public partial class ChemGrid
     /// <summary>One frame's allowance for work done in units: milliseconds normally, a count of units with ExactFrames.</summary>
     public sealed class FrameBudget
     {
-        readonly double ms;
-        readonly int units;
+        double ms;
+        int units;
         readonly Stopwatch watch = new();
         int used;
 
@@ -34,6 +34,13 @@ public partial class ChemGrid
         {
             this.ms = ms;
             this.units = exactUnits;
+        }
+
+        /// <summary>Another allowance from now on (a performance pass trying one, PerfScenario's -perf-step-ms).</summary>
+        public void Set(double ms, int exactUnits)
+        {
+            this.ms = ms;
+            units = exactUnits;
         }
 
         /// <summary>Starts the frame's allowance afresh.</summary>

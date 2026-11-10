@@ -423,29 +423,41 @@ public partial class ChemGrid
     // Each frame: the simulated chunks' cells (a sleeping chunk doesn't change; ChunkStreaming).
     // The active chunks are looked over a third a frame: cells change a few times a second at most,
     // and walking 150 000 of them every frame was 4 ms with nothing to show for it.
+    // A frame that finished a tick has spent most of its time on it: its third waits for the next frame, which draws
+    // the tick's changes there instead (never two frames running, so cells are looked over however often ticks come).
+    // The tick frames were the walk's slowest; this takes the look-over (1.7 ms on the nine's walk) out of them.
     const int RenderTurns = 3;
     int renderTurn;
+    bool turnWaited;
 
-    void Render()
+    void Render(bool ticked = false)
     {
-        renderTurn = (renderTurn + 1) % RenderTurns;
-        int turn = 0;
+        bool wait = ticked && !turnWaited;
+        turnWaited = wait;
         StartDrawBudget();
         RedrawSomeLooks();
         RenderSwept();
         DrawSome();
-        using (CellsMarker.Auto())
-            foreach (var (cx, cy) in World.ActiveChunks)
-            {
-                if (turn++ % RenderTurns != renderTurn) continue;
-                // A chunk not drawn yet draws whole, in its turn (DrawSome); a new world's chunks are all active at first.
-                if (!IsChunkDrawn(cx, cy)) continue;
-                PerfCounts.Add("render.chunks");
-                RenderChunk(cx, cy);
-            }
+        if (!wait) RenderTurn();
         RenderFresh(out int fresh);
         FinishRender();
         AnnounceFresh(fresh);
+    }
+
+    // The next third of the active chunks, looked over cell by cell.
+    void RenderTurn()
+    {
+        using var marked = CellsMarker.Auto();
+        renderTurn = (renderTurn + 1) % RenderTurns;
+        int turn = 0;
+        foreach (var (cx, cy) in World.ActiveChunks)
+        {
+            if (turn++ % RenderTurns != renderTurn) continue;
+            // A chunk not drawn yet draws whole, in its turn (DrawSome); a new world's chunks are all active at first.
+            if (!IsChunkDrawn(cx, cy)) continue;
+            PerfCounts.Add("render.chunks");
+            RenderChunk(cx, cy);
+        }
     }
 
     // The inactive chunks still to look over after a sweep (RedrawEveryChunk), and how many a frame at most: a cell

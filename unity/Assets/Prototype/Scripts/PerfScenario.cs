@@ -41,7 +41,7 @@ using Debug = UnityEngine.Debug;
 // lines and a "PERF COUNTS" line of name=sum/peak/frames; "PERF EARLY" lines for
 // frames over 100 ms before measuring starts, from the first frame here;
 // -perf-spike-ms N for a lower bar than 50; -perf-wide (PerfMarkers); -perf-hour H;
-// -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
+// -perf-step-ms N, a tick's allowance a frame (slices in proportion with ExactFrames); -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
 // (the bot turns it on; compare a budget in work units with one in milliseconds);
 // -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
 // <file>, which lists what a -pso-trace file has that the shipped collection hasn't;
@@ -133,6 +133,13 @@ public class PerfScenario : MonoBehaviour
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
         if (Has("-perf-exact")) ChemGrid.ExactFrames = true;
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
+        if (float.TryParse(Arg("-perf-step-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float stepMs) && stepMs > 0f)
+        {
+            // The slices a frame in a playtest run, in proportion to the game's 6 ms and 256.
+            int slices = Mathf.Max(1, Mathf.RoundToInt(stepMs / 6f * 256f));
+            ChemGrid.Current?.Grid.SetStepBudget(stepMs, slices);
+            Debug.Log($"PERF STEP BUDGET ms={stepMs.ToString("0.0", CultureInfo.InvariantCulture)} slices={slices}");
+        }
         if (Has("-perf-same-check")) CellWaterMesh.CheckKeptPoints = ValleyGround.CheckKeptNoise = true;
         yield return WaitToHost();
         grid = ChemGrid.Current?.Grid;

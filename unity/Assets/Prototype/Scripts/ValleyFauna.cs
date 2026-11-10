@@ -544,25 +544,39 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     // --- drawing -------------------------------------------------------------------
 
-    // Poses every animal into one list of segments and draws them all as instances of a unit capsule.
+    // Poses the animals the lens can see, or whose shadows it can, into one list of segments and draws them all as
+    // instances of a unit capsule. Posing is most of an animal's cost (its feet are set on the ground, leg by leg), and
+    // most of the herd round the camera is behind it or off to the side: those only think.
     void Draw(Camera cam)
     {
         int total = 0;
         foreach (var c in creatures) total += bodies[c.species].Segments.Length;
         if (total == 0) return;
         if (instances.Length < total) instances = new SegmentInstance[Mathf.NextPowerOfTwo(total)];
-        int offset = 0;
+        int offset = 0, posed = 0;
         AtLens = 0;
         using (PoseMarker.Auto())
+        {
+            view.From(cam, sky);
             foreach (var c in creatures)
             {
                 var b = bodies[c.species];
+                if (!view.Shows(c.state.Position, b, c.state.Scale)) continue;
+                posed++;
                 int shown = animator.Evaluate(b, c.state, in c.traits, this, instances, offset);
                 if (CreatureDrawer.HideAtLens(instances, offset, shown, cam)) AtLens++;
                 offset += shown;
             }
+        }
+        Posed = posed;
         PerfCounts.Add("fauna.creatures", creatures.Count);
+        PerfCounts.Add("fauna.posed", posed);
         PerfCounts.Add("fauna.segments", offset);
         using (SendMarker.Auto()) drawer.Draw(instances, offset, cam.transform.position);
     }
+
+    readonly CreatureView view = new();
+
+    /// <summary>The animals posed and drawn last frame: those in view, or whose shadows may be (the probe).</summary>
+    public int Posed { get; private set; }
 }
