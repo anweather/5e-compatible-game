@@ -61,7 +61,7 @@ public sealed class PerfMarkers : IDisposable
             "Contour.Tile.Outline", "Contour.Tile.Points", "Contour.Tile.Upload",
             "Contour.Film.Outline", "Contour.Film.Points", "Contour.Film.Upload",
             "FogBank.LateUpdate", "FogBank.MakePuffs", "FlameBank.Write", "FlameBank.LateUpdate",
-            "SpellCaster.ShowAim", "AimMarker.Redraw",
+            "SpellCaster.ShowAim", "AimMarker.Redraw", "SpellCaster.Unleash", "SpellCaster.Land", "SpellVisuals.Spawn",
         }),
         // What Physics.Simulate is made of (#184).
         (ProfilerCategory.Physics, new[]

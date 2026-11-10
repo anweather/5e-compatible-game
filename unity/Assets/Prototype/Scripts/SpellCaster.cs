@@ -92,6 +92,9 @@ public partial class SpellCaster : MonoBehaviour
     {
         // In an animal's shape, the cast buttons only change back (WhileShifted).
         if (controls == null || grid == null || grid.World == null) return;
+        // Every spell's show copied ahead of its first cast, one copy a frame (ShowPool, #189).
+        if (visuals != null) visuals.ReadyShows(grid.World.Rules, grid.CurrentRules?.Base);
+        ShowPool.ReadyNext();
         UpdateElements();
         if (WhileShifted()) return;
 
@@ -319,9 +322,11 @@ public partial class SpellCaster : MonoBehaviour
     // Locked onto a raider, a bolt, beam or projectile strikes it where it's drawn (<paramref name="strike"/>).
     void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive, Vector3? strike = null, float fall = MeteorFall.Seconds)
     {
+        using var unleashing = UnleashMarker.Auto();
         int charge = cast.Charge;
         void Land()
         {
+            using var landed = LandMarker.Auto();
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)), look.ScaleFor(def, charge));
             ElementBurst(def, look, landing, charge);
             if (def != null && def.Jagged > 0) Spires(def, cast);
@@ -342,6 +347,8 @@ public partial class SpellCaster : MonoBehaviour
             }, this, fall, blastScale: look.ScaleFor(def, charge));
         else Travel(look, def, charge, landing, Land, strike);
     }
+
+    static readonly Unity.Profiling.ProfilerMarker UnleashMarker = new("SpellCaster.Unleash"), LandMarker = new("SpellCaster.Land");
 
     // How a show that doesn't fall from the sky gets where it lands: a storm, a beam, a projectile, or at once.
     void Travel(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land, Vector3? strike)
