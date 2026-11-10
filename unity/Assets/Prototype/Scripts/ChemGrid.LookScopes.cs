@@ -30,7 +30,8 @@ public partial class ChemGrid
     readonly List<PlayerSpot> spots = new();
     readonly Dictionary<string, Vector2Int> spotWas = new();
     readonly Queue<int> toRemark = new();
-    bool[] remarking;
+    // The cells in toRemark, each once: only those a moving scope's edge reaches, never a bool a cell of the map (#207).
+    readonly HashSet<int> remarking = new();
     int spotsWere;
     LookColour fireArt;
     MaterialPropertyBlock clumpBlock;
@@ -103,7 +104,7 @@ public partial class ChemGrid
         for (int marked = 0; marked < MostMarksAFrame && toRemark.Count > 0; marked++)
         {
             int index = toRemark.Dequeue();
-            remarking[index] = false;
+            remarking.Remove(index);
             if (views[index] != null) views[index].key = int.MinValue;
             PerfCounts.Add("scope.marked");
         }
@@ -162,10 +163,7 @@ public partial class ChemGrid
     {
         var c = World.Cells[index];
         if (c == null || !LookReaches(c)) return;
-        remarking ??= new bool[World.Cells.Length];
-        if (remarking[index]) return;
-        remarking[index] = true;
-        toRemark.Enqueue(index);
+        if (remarking.Add(index)) toRemark.Enqueue(index);
     }
 
     // Whether anything on a cell is drawn from a look that isn't one colour everywhere.
