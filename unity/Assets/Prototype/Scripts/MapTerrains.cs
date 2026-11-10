@@ -298,6 +298,7 @@ public sealed class MapTerrains : MonoBehaviour
             ground.Prepare(toMake);
             ArraysMs = timer.Elapsed.TotalMilliseconds;
         }
+        else PrepareHeights();
         int next = 0;
         bool any = false;
         while (next < toMake.Count && (whole || !any || timer.Elapsed.TotalMilliseconds < MakeBudgetMs))
@@ -323,6 +324,21 @@ public sealed class MapTerrains : MonoBehaviour
         Terrain.SetConnectivityDirty();
         nextReach = 0f;
     }
+
+    // In play, the height offsets of the next few chunks whose arrays are made, side by side: worked out one at a time as
+    // each terrain is made, they were a few milliseconds a terrain on the main thread (#206).
+    void PrepareHeights()
+    {
+        var ready = new List<(int i, int j)>();
+        for (int n = 0; n < toMake.Count && ready.Count < HeightsAFrame; n++)
+        {
+            if (!ground.Builder.Holds(toMake[n])) break;
+            ready.Add(toMake[n]);
+        }
+        if (ready.Count > 1) ground.PrepareHeights(ready);
+    }
+
+    const int HeightsAFrame = 8;
 
     // The next chunks' arrays, made on a worker (one batch at a time).
     void StartArrays(int from)

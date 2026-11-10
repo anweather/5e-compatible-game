@@ -145,6 +145,9 @@ public sealed class ValleyGround
         heightfield?.Prepare(wanted);
     }
 
+    /// <summary>The height offsets of these chunks worked out side by side, where they aren't yet.</summary>
+    public void PrepareHeights(IReadOnlyList<(int i, int j)> wanted) => heightfield?.Prepare(wanted);
+
     /// <summary>A terrain now stands for this chunk: its data made for this world if it isn't, and given to it.</summary>
     public void Attach((int i, int j) at, Terrain terrain)
     {
