@@ -165,7 +165,7 @@ public class FpsProbe : MonoBehaviour
             }
         }
         int burning = 0;
-        foreach (var c in grid.World.Cells) if (c.Fire > 0) burning++;
+        foreach (var c in grid.World.AllCells()) if (c.Fire > 0) burning++;
         Report("FPS PROBE fire", $"{burning} cells burning at the end");
         EventLog.HudVisible = true;
     }

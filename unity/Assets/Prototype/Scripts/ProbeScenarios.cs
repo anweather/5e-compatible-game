@@ -776,7 +776,7 @@ public class FireProbe : ProbeScenario
         Check("fire_spread_t10", at10 > 1, $"{at10} burning cells at t+10 s");
     }
 
-    int AshCells() => World.Cells.Count(c => c.Cover == "ash");
+    int AshCells() => World.AllCells().Count(c => c.Cover == "ash");
 }
 
 // --- earth ---------------------------------------------------------------------------

@@ -42,7 +42,7 @@ public class ProductsViewProbe : RoomProbe
 
     /// <summary>For each cover the probe watches: "id:cells in the world/cells drawn wearing its film".</summary>
     public static string Films(ChemGrid grid) =>
-        string.Join(" ", new[] { Soot, Ice, CoverIds.Ash }.Select(id => $"{id}:{grid.World.Cells.Count(c => c.Cover == id)}/{grid.FilmCells(id)}"));
+        string.Join(" ", new[] { Soot, Ice, CoverIds.Ash }.Select(id => $"{id}:{grid.World.AllCells().Count(c => c.Cover == id)}/{grid.FilmCells(id)}"));
 
     bool Filming => !string.IsNullOrEmpty(ScreenshotDir);
 
@@ -72,7 +72,7 @@ public class ProductsViewProbe : RoomProbe
 
         // The base: a fire on lot A leaves the base ash.
         yield return Burn(a);
-        int baseAsh = World.Cells.Count(c => c.Cover == CoverIds.Ash);
+        int baseAsh = World.AllCells().Count(c => c.Cover == CoverIds.Ash);
         Metric("base_ash_cells", baseAsh);
         Check("base_fire_leaves_ash", baseAsh > 20, $"{baseAsh} ash cells");
         BaseAshDrawn("base_ash_drawn_as_before");
@@ -100,7 +100,7 @@ public class ProductsViewProbe : RoomProbe
         // Black ice: cast, walked on, lapsed.
         yield return Tool("revert", new JObject { ["mod"] = World.Room.Mods.FirstOrDefault(m => m.Title == SootTitle)?.Id ?? draft });
         yield return Agree("soot_off", $"Player 1 switched off {SootTitle}");
-        Check("the_soot_is_swept_with_its_mod", World.Cells.All(c => c.Cover != Soot), Films(grid));
+        Check("the_soot_is_swept_with_its_mod", World.AllCells().All(c => c.Cover != Soot), Films(grid));
         yield return BlackIce(from);
     }
 
@@ -117,9 +117,9 @@ public class ProductsViewProbe : RoomProbe
     // The base ash: charred paint, no film, its own colour.
     void BaseAshDrawn(string name)
     {
-        var cells = Enumerable.Range(0, World.Cells.Length).Where(i => World.Cells[i].Cover == CoverIds.Ash).ToList();
+        var cells = Enumerable.Range(0, World.W * World.H).Where(i => World.CellAt(i).Cover == CoverIds.Ash).ToList();
         int filmed = cells.Count(i => grid.SlickColorAt(i % World.W, i / World.W) != null);
-        int charred = cells.Count(i => Charred(World.Cells[i]));
+        int charred = cells.Count(i => Charred(World.CellAt(i)));
         Metric(name + "_cells", cells.Count);
         Metric(name + "_filmed", filmed);
         Check(name, cells.Count > 0 && filmed == 0 && charred == cells.Count, $"{cells.Count} ash cells, {filmed} with a film, {charred} charred");
@@ -127,7 +127,7 @@ public class ProductsViewProbe : RoomProbe
 
     void SootDrawn(Vector2Int lot)
     {
-        var cells = Enumerable.Range(0, World.Cells.Length).Where(i => World.Cells[i].Cover == Soot).ToList();
+        var cells = Enumerable.Range(0, World.W * World.H).Where(i => World.CellAt(i).Cover == Soot).ToList();
         Metric("soot_cells", cells.Count);
         Check("the_mod_fire_leaves_soot", cells.Count > 20, $"{cells.Count} soot cells round {lot}");
         if (cells.Count == 0) return;
@@ -140,7 +140,7 @@ public class ProductsViewProbe : RoomProbe
         Metric("soot_film_b", mean.b);
         Metric("soot_film_a", mean.a);
         Check("soot_painted_its_own_colour", filmed == cells.Count && Near(mean, SootColour[0], SootColour[1], SootColour[2]), $"{filmed} of {cells.Count} filmed, mean {mean}");
-        Check("soot_ground_charred", cells.All(i => Charred(World.Cells[i])));
+        Check("soot_ground_charred", cells.All(i => Charred(World.CellAt(i))));
         var ash = grid.CoverColor(CoverIds.Ash, Color.magenta);
         Check("soot_not_the_base_ash_colour", Mathf.Abs(mean.b - ash.b) > 0.3f, $"{mean} against {ash}");
     }
@@ -229,7 +229,7 @@ public class ProductsViewProbe : RoomProbe
             caster.Cast(Glaze, from.x, from.y + 5 + 4 * i, 0);
             yield return lens.Roll(1.2f, null);
         }
-        int laid = World.Cells.Count(c => c.Cover == Ice);
+        int laid = World.AllCells().Count(c => c.Cover == Ice);
         Metric("ice_cells_laid", laid);
         Check("glaze_lays_black_ice", laid > 20, $"{laid} cells");
         yield return lens.Roll(1f, null);
@@ -263,7 +263,7 @@ public class ProductsViewProbe : RoomProbe
         yield return Wait(Settle);
         Metric("swept_chunks_drawn", grid.SweptChunksDrawn);
         Check("the_lapse_redraws_every_chunk_once", grid.EveryChunkRedraws - redrawsWere == 1, $"{grid.EveryChunkRedraws - redrawsWere} sweeps");
-        Check("no_ice_left_in_any_chunk", !World.Cells.Any(c => c.Cover == Ice) && grid.FilmCells(Ice) == 0, Films(grid));
+        Check("no_ice_left_in_any_chunk", !World.AllCells().Any(c => c.Cover == Ice) && grid.FilmCells(Ice) == 0, Films(grid));
         Check("the_view_follows_the_lapse", grid.CurrentRules.Mods.Count == World.Room.Mods.Count && !grid.CurrentRules.IsOn(iceMod.Id) && !grid.IsFilm(Ice), $"view {string.Join(",", grid.CurrentRules.Mods.Select(m => m.Id))}, room {World.RoomText()}");
         Check("the_panel_drops_it", grid.GetComponent<RuleSwitcher>().LapseNote(iceMod.Id) == null);
         yield return Reach("ice_gone", Net.NetTick);
