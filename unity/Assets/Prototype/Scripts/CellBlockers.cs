@@ -79,15 +79,18 @@ public sealed class CellBlockers
     /// <summary>Whether a cell is a standing wall of a row house, which draws it.</summary>
     public bool IsBuiltWall(int key, Cell c) => built.ContainsKey(key) && grid.World.IsBlocking(c);
 
-    /// <summary>Puts a cell's blocker on its ground at <paramref name="ground"/>, or removes it if the cell doesn't block.</summary>
-    public void Place(int x, int y, Cell c, float ground)
+    /// <summary>
+    /// Puts a cell's blocker on its ground at <paramref name="ground"/>, or removes it if the cell doesn't block.
+    /// Returns whether one stands there now.
+    /// </summary>
+    public bool Place(int x, int y, Cell c, float ground)
     {
         int key = grid.World.Idx(x, y);
         float reach = built.TryGetValue(key, out float tall) && grid.World.IsBlocking(c) ? tall : Reach(c);
         if (reach <= 0f)
         {
             Release(key);
-            return;
+            return false;
         }
         if (!used.TryGetValue(key, out var box)) used[key] = box = Take();
         float foot = grid.World.IsRaisedWall(c) ? WallFoot : 0f;
@@ -95,6 +98,7 @@ public sealed class CellBlockers
         box.size = new Vector3(width, foot + reach, width);
         box.center = new Vector3(0f, (reach - foot) / 2f, 0f);
         Move(x, y, ground);
+        return true;
     }
 
     /// <summary>Moves a cell's blocker, if it has one, with its ground (earth shaping).</summary>
@@ -124,6 +128,7 @@ public sealed class CellBlockers
             if (!box.gameObject.activeSelf) box.gameObject.SetActive(true);
             return box;
         }
+        PerfCounts.Add("blockers.made");
         var go = new GameObject("Blocker");
         go.transform.SetParent(parent, false);
         return go.AddComponent<BoxCollider>();

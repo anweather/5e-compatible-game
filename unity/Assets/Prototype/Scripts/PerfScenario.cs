@@ -57,7 +57,7 @@ public class PerfScenario : MonoBehaviour
     PerfStage stage;
     const string Bot = "bot", Wildfire = "wildfire", Fog = "fog", Fireball = "fireball";
     const float WarmUpSeconds = 3f, SettleSeconds = 5f, DefaultSeconds = 30f, BurnSeconds = 20f, FireballSeconds = 6f;
-    const float CountEverySeconds = 2f, SpikeMs = 50f;
+    const float CountEverySeconds = 2f, SpikeMs = 50f, Over30Ms = 30f;
     const int MostSpikes = 200, ShotQuietFrames = 3, WorstFrames = 5;
     const double BytesPerMb = 1024.0 * 1024.0;
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
@@ -65,7 +65,7 @@ public class PerfScenario : MonoBehaviour
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
     static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball };
 
-    static readonly string[] WindowCounts = { "tick", "walk", "net", "cast" };
+    static readonly string[] WindowCounts = { "tick", "walk", "net", "cast", "draw", "blockers", "chunk" };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
@@ -435,6 +435,7 @@ public class PerfScenario : MonoBehaviour
         line.Append($" active_chunks={grid.World.ActiveChunks.Count} ticks={grid.World.Tick - tickAtStart}");
         line.Append($" burning_peak={burningPeak} burning_end={burningNow} fog_cells_peak={fogPeak} fog_cells_end={fogNow} fog_drawn={grid.Fog.SquaresShown}");
         line.Append($" hour={(grid.World.Minutes / 60.0 % 24.0).ToString("0.0", inv)} weather={grid.World.Weather.Kind}");
+        line.Append($" worst={(frameMs.Count > 0 ? frameMs.Max() : 0f).ToString("0.0", inv)} over_30ms={frameMs.Count(ms => ms > Over30Ms)}");
         line.Append($" spikes_over_50ms={spikes.Count} errors={errors} warnings={warnings}");
         if (shotMs.Count > 0) line.Append($" bot_shot_frames={shotMs.Count} bot_shot_worst={shotMs.Max().ToString("0.0", inv)}");
         return line.ToString();
