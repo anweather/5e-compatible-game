@@ -62,6 +62,8 @@ public static class YardAutoBuild
         if (!ClearForBuild()) return;
         Debug.Log($"{why}; building it.");
         ChemYardBuilder.Build();
+        // The trees the yard just repaired are what the impostors are baked from.
+        TreeImpostorBaker.BakeMissing();
     }
 
     // An automatic build must never stop at a "save changes?" dialog. The yard

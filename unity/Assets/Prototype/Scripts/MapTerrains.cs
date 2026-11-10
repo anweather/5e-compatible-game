@@ -201,6 +201,9 @@ public sealed class MapTerrains : MonoBehaviour
         HintDrawn(now: true);
     }
 
+    /// <summary>A generated map's ground, once it's served (null before, and for a map whose terrains are all made at the start).</summary>
+    public ValleyGround Ground => ground;
+
     /// <summary>How many chunk terrains drew at the last check (the drawn tier, for the tiersweep probe).</summary>
     public int Drawing { get; private set; }
 
