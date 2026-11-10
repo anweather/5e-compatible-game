@@ -63,10 +63,11 @@ public sealed class ValleyGround
     readonly List<(int x, int y)> reshaped = new();
     CellHeightfield heightfield;
     World world;
-    float[] cellBase;
+    // Each cell's base height, a block a chunk terrain (#207): a cell of a generated map's unmade chunk stands on the map's land.
+    CellsByChunk<float> cellBase;
     // Each cell's paint as baked (CellPaint.Mix of the starting world); a cell still painting
-    // this keeps the saved paint.
-    IReadOnlyList<float>[] bakedPaint;
+    // this keeps the saved paint. None for a cell of an unmade chunk.
+    CellsByChunk<IReadOnlyList<float>> bakedPaint;
 
     readonly GroundBuilder builder;
     // A generated map's ground, a chunk at a time (#205): no chunk has data until its terrain is made (Attach) or something
@@ -165,12 +166,10 @@ public sealed class ValleyGround
         ch.baseAlpha = ch.frameAlpha = null;
         builder.Forget(at);
         heightfield.Forget(at.i, at.j);
-        foreach (var (x, y) in layout.CellsIn(at.i, at.j))
-        {
-            int k = world.Idx(x, y);
-            cellBase[k] = LandMetres(k);
-            bakedPaint[k] = paintedMix[k] = null;
-        }
+        // Its cells stand on the land again, with no paint of their own.
+        cellBase.Drop(at.i, at.j);
+        bakedPaint.Drop(at.i, at.j);
+        paintedMix.Drop(at.i, at.j);
     }
 
     void Spare(TerrainData data)
@@ -435,14 +434,8 @@ public sealed class ValleyGround
         foreach (var r in heightfield.Update(w, w.LandLaidCells(), snap: true)) WriteHeights(r);
         BindMs = timer.Elapsed.TotalMilliseconds;
         Debug.Log($"GROUND BIND {(builder != null ? "built" : "baked")}: {chunks.Count} chunks in {BindMs:0} ms");
-        // A world of the same size takes the last one's arrays, every entry written again.
-        int cells = w.W * w.H;
-        if (cellBase == null || cellBase.Length != cells)
-        {
-            cellBase = new float[cells];
-            bakedPaint = new IReadOnlyList<float>[cells];
-            paintedMix = new IReadOnlyList<float>[cells];
-        }
+        // The valley's every cell, drawn whole from the start.
+        NewCellArrays();
         var all = w.Cells;
         for (int y = 0; y < w.H; y++)
         {
@@ -450,10 +443,9 @@ public sealed class ValleyGround
             {
                 int k = w.Idx(x, y);
                 cellBase[k] = SampleBase(x, y);
-                bakedPaint[k] = CellPaint.Mix(w, all[k]);
+                bakedPaint[k] = paintedMix[k] = CellPaint.Mix(w, all[k]);
             }
         }
-        System.Array.Copy(bakedPaint, paintedMix, cells);
     }
 
     // A generated map's Bind (#205): no chunk is made for the new world until its terrain is or something changes it. One
@@ -487,16 +479,11 @@ public sealed class ValleyGround
             if (!bakedOffsets.ContainsKey((r.I, r.J))) bakedOffsets[(r.I, r.J)] = (float[,])heightfield.Current(r.I, r.J).Clone();
         heightfield.LaidLandDrawn = true;
         heightfield.Update(w, laid, snap: true);
-        int cells = w.W * w.H;
-        if (cellBase == null || cellBase.Length != cells)
-        {
-            cellBase = new float[cells];
-            bakedPaint = new IReadOnlyList<float>[cells];
-            paintedMix = new IReadOnlyList<float>[cells];
-        }
-        for (int k = 0; k < cells; k++) cellBase[k] = LandMetres(k);
-        System.Array.Clear(bakedPaint, 0, cells);
-        System.Array.Clear(paintedMix, 0, cells);
+        // No chunk's cells yet: each block is made with its chunk (MakeReady), the rest stand on the land.
+        if (cellBase == null) NewCellArrays();
+        cellBase.Clear();
+        bakedPaint.Clear();
+        paintedMix.Clear();
         var now = attached.ToList();
         builder.Prepare(now);
         foreach (var at in now) MakeReady(chunks[at]);
@@ -508,7 +495,15 @@ public sealed class ValleyGround
 
     // Each cell's mix as its texels were last composed (the baked one at first): a cell asked to
     // repaint that would paint the same mix again changes nothing.
-    IReadOnlyList<float>[] paintedMix;
+    CellsByChunk<IReadOnlyList<float>> paintedMix;
+
+    // The cells' arrays, a block a chunk terrain, made as their chunks are (none yet).
+    void NewCellArrays()
+    {
+        cellBase = new CellsByChunk<float>(layout, LandMetres);
+        bakedPaint = new CellsByChunk<IReadOnlyList<float>>(layout);
+        paintedMix = new CellsByChunk<IReadOnlyList<float>>(layout);
+    }
 
     void Recover((int i, int j) at, Chunk ch)
     {
@@ -573,7 +568,7 @@ public sealed class ValleyGround
         int n = Mathf.Min(cells.Length, metres.Length);
         for (int k = 0; k < n; k++)
         {
-            if (cells[k] < 0 || cells[k] >= cellBase.Length) continue;
+            if (cells[k] < 0 || cells[k] >= world.W * world.H) continue;
             if (!lazy)
             {
                 cellBase[cells[k]] += metres[k];

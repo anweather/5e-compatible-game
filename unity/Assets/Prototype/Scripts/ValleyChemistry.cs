@@ -177,7 +177,8 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (terrains.Builder != null) return terrains.Builder;
         var template = terrains.template;
-        var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
+        // The land the world reads too (LandOf, read once a map): a second copy was an int a cell more (#207).
+        var land = LandOf(world) ?? LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
         var source = new GroundFromLand.Source
         {
             World = world,
