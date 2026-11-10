@@ -56,7 +56,7 @@ namespace Chem
         string StartTerrain(int x, int y)
         {
             if (!InBounds(x, y)) return null;
-            return startAt != null ? startShapes[startAt[Idx(x, y)]].T : At(x, y).T;
+            return startSource != null ? StartCell(x, y).T : At(x, y).T;
         }
 
         /// <summary>Every building in force, in order: those the world was made with, then those the mods added.</summary>
@@ -180,7 +180,7 @@ namespace Chem
             var c = CellAt(index);
             if (!baseCells.Contains(index) && !underBuildings.ContainsKey(index))
             {
-                var start = startAt != null ? startShapes[startAt[index]] : c;
+                var start = startSource != null ? StartCell(index) : c;
                 underBuildings[index] = (start.T, start.Height);
             }
             c.Reset(terrain);
@@ -202,16 +202,10 @@ namespace Chem
 
         void KeepInStart(int index, Cell c)
         {
-            if (startAt == null) return;
-            int shape = startShapes.FindIndex(s => SameCell(s, c));
-            if (shape < 0)
-            {
-                var copy = new Cell();
-                copy.CopyFrom(c);
-                startShapes.Add(copy);
-                shape = startShapes.Count - 1;
-            }
-            startAt[index] = shape;
+            if (startSource == null) return;
+            int x = index % W, y = index / W;
+            var ch = FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
+            ch.Start = WithChange(ch.Start, LocalIndex(x, y), c, x, y, startSource);
         }
 
         // A chunk's cells were laid over: its water is checked afresh, the audit counts again, and the view redraws it.
@@ -220,7 +214,7 @@ namespace Chem
             var ch = FindChunk(cx, cy);
             if (ch == null) return;
             ch.SnapValid = false;
-            if (startAt != null) Recount(ch);
+            if (startSource != null) Recount(ch);
             ChunkFreshened?.Invoke(new ChunkFresh(cx, cy));
         }
 
@@ -382,7 +376,7 @@ namespace Chem
         // A load makes the starting state from the source, without the mods' buildings: they go in again.
         internal void BuildingsIntoStart()
         {
-            if (startAt == null || Rules.ModBuildings.Count == 0) return;
+            if (startSource == null || Rules.ModBuildings.Count == 0) return;
             var plain = RoomRules?.Base ?? Rules;
             var ids = ChangedRows(plain, Rules);
             var was = CellsOf(ids, plain);

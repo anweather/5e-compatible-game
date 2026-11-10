@@ -311,7 +311,8 @@ namespace Chem
         int GroundUnits(int x, int y)
         {
             int units = ElevationUnits(At(x, y));
-            if (land != null && land[Idx(x, y)] != NoLand) units += land[Idx(x, y)];
+            int land = LandAtCell(x, y);
+            if (land != NoLand) units += land;
             return units;
         }
 

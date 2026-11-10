@@ -43,6 +43,32 @@ namespace Chem.Tests
             return baked = dir;
         }
 
+        // The Scale Island's bake (9,720 chunks, a row of chunks at a time: bake-lean), made once into a folder of the bench's
+        // own, the nine baked first for its rows.
+        static string islandBaked;
+
+        static string IslandBaked()
+        {
+            if (islandBaked != null) return islandBaked;
+            string root = Path.Combine(Path.GetTempPath(), "sparse-world-island");
+            string dir = Path.Combine(root, "baked");
+            if (!File.Exists(Path.Combine(dir, MapFile.CellsName)))
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+                Directory.CreateDirectory(root);
+                ScaleIslandTests.CopyInputs(root);
+                string map = Path.Combine(root, "maps", "scale-12x10");
+                Directory.CreateDirectory(map);
+                File.Copy(Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "scale-12x10", MapFile.FileName), Path.Combine(map, MapFile.FileName));
+                var watch = Stopwatch.StartNew();
+                var island = GeneratedMap.Load(map);
+                island.Inner.Bake(Path.Combine(root, "maps", "nine"));
+                island.Bake(dir);
+                TestContext.Out.WriteLine($"SPARSE baked the Scale Island in {watch.Elapsed.TotalSeconds:0} s");
+            }
+            return islandBaked = dir;
+        }
+
         /// <summary>A world as ChemGrid.MapWorld builds one from a map folder, and its starting state kept (StartWorld).</summary>
         internal static World Build(string dir, Rules rules, out BakedSource source)
         {
@@ -123,6 +149,42 @@ namespace Chem.Tests
             double cellsArray = 8.0 * w.W * w.H / 1024 / 1024;
             TestContext.Out.WriteLine($"SPARSE every chunk unpacked: the world {Mb(all):0.0} MB ({all / chunks / 1024} KB a chunk); "
                 + $"before step 2 add World.Cells' {cellsArray:0.0} MB: {Mb(all) + cellsArray:0.0} MB");
+            GC.KeepAlive(w);
+            Assert.Pass();
+        }
+
+        [Test]
+        public void TheIslandsWorldMemory()
+        {
+            string dir = IslandBaked();
+            Assert.That(R.Fingerprint, Is.Not.Empty, "the rules loaded before the heap is read, so they aren't counted");
+            long before = Heap();
+            var built = Stopwatch.StartNew();
+            var w = Build(dir, R, out var source);
+            double buildMs = built.Elapsed.TotalMilliseconds;
+            long asBuilt = Heap() - before;
+            int chunks = w.ChunkCoords.Count;
+            TestContext.Out.WriteLine($"SPARSE the Scale Island, {w.W} x {w.H}, {chunks} chunks: built in {buildMs:0} ms; the source holds {Mb(source.Bytes):0.0} MB "
+                + $"({source.UniformChunks} chunks all one character); {w.UnpackedCount} chunks unpacked by the build, the world {Mb(asBuilt):0.0} MB, "
+                + $"the map-sized arrays {Mb(w.MapArrayBytes):0.0} MB");
+
+            var spawn = MapFile.Load(dir).Spawn;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
+            w.SetDrawn(Drawn(w, spawn.x, spawn.y, 4));
+            int settled = R.Sim.Streaming.PackTicks + 60;
+            var drawn = Drawn(w, spawn.x, spawn.y, 4).ToList();
+            for (int t = 0; t < settled; t++)
+            {
+                w.Step();
+                foreach (var (cx, cy) in drawn) _ = w.ChunkCells(cx, cy).Length;
+            }
+            w.TrimPackPool(0);
+            long playing = Heap() - before;
+            long changes = w.ChunkCoords.Where(c => w.IsPacked(c.cx, c.cy)).Sum(c => w.PackedOf(c.cx, c.cy).Bytes);
+            TestContext.Out.WriteLine($"SPARSE the island in play after {settled} ticks: {w.ActiveChunks.Count} active, {w.UnpackedCount} unpacked, "
+                + $"{chunks - w.UnpackedCount} packed holding {Mb(changes):0.00} MB of changes: the world {Mb(playing):0.0} MB, of which the blocks ~{Mb(w.UnpackedCount * (long)BlockBytes):0.0} MB, "
+                + $"the source {Mb(source.Bytes):0.0} MB and the map-sized arrays {Mb(w.MapArrayBytes):0.0} MB ({Mb(w.PackedLandBytes):0.0} MB the packed chunks' land, "
+                + $"{w.StartShapes} cells of the start held apart from the source)");
             GC.KeepAlive(w);
             Assert.Pass();
         }

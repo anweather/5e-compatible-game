@@ -11,8 +11,9 @@
 // sandbox has no chunk store, so there a chunk is just its 64 × 64 cells, and
 // all are active.
 //
-// The starting state (KeepStart) is a palette of the distinct cells the world
-// was built with and, per cell, its index in the palette. The changed-cell count
+// The starting state (KeepStart) is each chunk's cells as the world was built, held
+// as a packed chunk's are (World.Pack.cs): its changes against the starting state's
+// source, which for most chunks of a big map are none. The changed-cell count
 // is an audit, not a write barrier: cells are written from all over the core, so
 // each tick one active chunk is compared with the starting state (the next in
 // row-major order), and the world's total is the sum of what each chunk last
@@ -107,10 +108,11 @@ namespace Chem
 
         const uint PathSalt = 17;
 
-        // The starting state: the distinct cells, each cell's index among them, and the ball as built.
-        List<Cell> startShapes;
-        int[] startAt;
+        // The starting state: what each chunk's cells are against (each chunk's Start holds its changes), null when none
+        // is kept, and the ball as built. The scratch cells its reads make a start cell in.
+        IChunkSource startSource;
         GolfState startGolf;
+        readonly Cell startScratch = new Cell(), startPeek = new Cell();
         // The chunks by row then column, and the next of them the audit looks at.
         Chunk[] auditChunks;
         int auditAt;
@@ -125,10 +127,13 @@ namespace Chem
         public int ChangedCount { get; private set; }
 
         /// <summary>Whether the world knows its starting state (KeepStart), without which no dragon comes.</summary>
-        public bool HasStart => startAt != null;
+        public bool HasStart => startSource != null;
 
-        /// <summary>The distinct cells in the starting state: its palette, for the memory it takes.</summary>
-        public int StartShapes => startShapes?.Count ?? 0;
+        /// <summary>The cells the starting state holds apart from its source (each chunk's changes), for the memory it takes.</summary>
+        public int StartShapes => startSource == null ? 0 : chunks.Values.Sum(ch => ch.Start.Count);
+
+        /// <summary>What the starting state holds, its chunks' changes, in bytes (those a packed chunk shares with it counted too).</summary>
+        public long StartBytes => startSource == null ? 0 : chunks.Values.Sum(ch => ch.Start.Bytes);
 
         /// <summary>Raised for each chunk reset, in the tick's dragon stage. For the view: a handler must not change the world.</summary>
         public event Action<ChunkFresh> ChunkFreshened;
@@ -141,27 +146,11 @@ namespace Chem
         public void KeepStart(IChunkSource source = null)
         {
             FinishTick();
-            startShapes = new List<Cell>();
-            startAt = new int[W * H];
-            var known = new Dictionary<string, int>();
-            var sb = new StringBuilder();
-            var made = new Cell();
-            Cell last = null;
-            int shape = 0;
-            for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();)
-            {
-                int i = run.Index;
-                var c = run.Cell;
-                if (source != null)
-                {
-                    made.Reset();
-                    source.Make(i % W, i / W, made);
-                    c = made;
-                }
-                if (last == null || !SameCell(c, last)) shape = ShapeOf(c, known, sb);
-                last = startShapes[shape];
-                startAt[i] = shape;
-            }
+            // Given a source, every chunk is as it makes it; else a packed chunk's changes are its start as they stand (a
+            // PackedChunk never changes), and an unpacked chunk's are diffed from its block.
+            startSource = source ?? Source;
+            foreach (var ch in chunks.Values)
+                ch.Start = source != null ? PackedChunk.Empty(ch.X, ch.Y) : ch.Packed ?? Changes(ch, ch.Held);
             startGolf = Golf?.Copy();
             auditChunks = SortedChunks(false).ToArray();
             auditAt = 0;
@@ -173,26 +162,24 @@ namespace Chem
             }
         }
 
-        // The palette's index for a cell like this one, adding it if it's new.
-        int ShapeOf(Cell c, Dictionary<string, int> known, StringBuilder sb)
+        // A chunk's starting cells, read in ascending local index (null outside the world's extent).
+        ChunkReader StartOf(Chunk ch, Cell scratch, int from = 0) => new ChunkReader(this, ch, ch.Start, startSource, scratch, from);
+
+        // The starting cell at (x, y) on the world, for reading only, until the next StartCell.
+        Cell StartCell(int x, int y)
         {
-            sb.Clear();
-            AppendCell(sb, c, InForce);
-            sb.Append(c.DampUntil.ToString(CultureInfo.InvariantCulture));
-            string key = sb.ToString();
-            if (known.TryGetValue(key, out int shape)) return shape;
-            var copy = new Cell();
-            copy.CopyFrom(c);
-            startShapes.Add(copy);
-            known[key] = startShapes.Count - 1;
-            return startShapes.Count - 1;
+            var ch = FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
+            int i = LocalIndex(x, y);
+            return StartOf(ch, startPeek, i).At(i);
         }
+
+        Cell StartCell(int index) => StartCell(index % W, index / W);
 
         /// <summary>The dragon's summons (a Reset): the warning starts now, unless one is flying or the world keeps no starting state.</summary>
         public void ApplyDragon(DragonCommand command)
         {
             FinishTick(); // commands land between whole ticks (StepSome)
-            if (startAt == null)
+            if (startSource == null)
             {
                 AddLog("Nothing answers: this world keeps no starting state");
                 return;
@@ -304,7 +291,7 @@ namespace Chem
             if (stagePos == 0)
             {
                 LandFloating();
-                if (startAt == null) return true;
+                if (startSource == null) return true;
                 FlyDragon();
                 stagePos = 1;
                 return false;
@@ -428,11 +415,12 @@ namespace Chem
         void Freshen(Chunk ch)
         {
             if (ch.Packed != null) UnpackChunk(ch); // a write, not a read: it packs again once its hold is up (World.Pack.cs)
+            var start = StartOf(ch, startScratch);
             for (int i = 0; i < Chunks.Area; i++)
             {
                 var c = ch.CellAt(i);
                 if (c == null) continue;
-                c.CopyFrom(startShapes[startAt[Idx(CellX(ch, i), CellY(ch, i))]]);
+                c.CopyFrom(start.At(i));
                 c.ForgetDef();
                 Sanitize(c);
             }
@@ -460,7 +448,7 @@ namespace Chem
         {
             foreach (int m in machines.Keys.Where(k => InChunk(ch, k)).ToList()) machines.Remove(m);
             foreach (var l in gateLinks)
-                if (InChunk(ch, l.Gate)) l.Open = startShapes[startAt[l.Gate]].T == "gate_open";
+                if (InChunk(ch, l.Gate)) l.Open = StartCell(l.Gate).T == "gate_open";
         }
 
         // ---------- the changed-cell count ----------
@@ -482,10 +470,11 @@ namespace Chem
         {
             int count = 0;
             var read = new ChunkReader(this, ch, walkScratch);
+            var start = StartOf(ch, startScratch);
             for (int i = 0; i < Chunks.Area; i++)
             {
                 var c = read.At(i);
-                if (c != null && Differs(c, startShapes[startAt[Idx(CellX(ch, i), CellY(ch, i))]])) count++;
+                if (c != null && Differs(c, start.At(i))) count++;
             }
             ChangedCount += count - ch.Changed;
             ch.Changed = count;
@@ -505,7 +494,7 @@ namespace Chem
         /// <summary>The dragon's state as text ("" for a world with no starting state), the same text as dragonState in the TS.</summary>
         public string DragonText()
         {
-            if (startAt == null) return "";
+            if (startSource == null) return "";
             var inv = CultureInfo.InvariantCulture;
             var sb = new StringBuilder();
             sb.Append(DragonFlights.ToString(inv)).Append(':').Append(auditAt.ToString(inv)).Append(':').Append(ChangedCount.ToString(inv));
@@ -521,7 +510,7 @@ namespace Chem
         // Only for a world that keeps a starting state, so other saves read as they did.
         void SaveDragon(JObject save)
         {
-            if (startAt == null) return;
+            if (startSource == null) return;
             var start = new JObject();
             if (startGolf != null) start["golf"] = GolfRow(startGolf);
             save["start"] = start;

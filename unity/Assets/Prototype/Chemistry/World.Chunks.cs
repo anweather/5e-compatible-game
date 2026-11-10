@@ -293,10 +293,9 @@ namespace Chem
                 Cell = null;
             }
 
-            /// <summary>The cell walked to, its chunk and its world index.</summary>
+            /// <summary>The cell walked to and its chunk.</summary>
             public Cell Cell;
             public Chunk Chunk;
-            public int Index => index;
 
             public bool MoveNext()
             {
@@ -319,7 +318,7 @@ namespace Chem
             }
         }
 
-        // The cell the hash's and the starting state's walks read a packed chunk's cells into (RowCells): the World is
+        // The cell the hash's, the audit's and SetLand's walks read a packed chunk's cells into (RowCells, ChunkReader): the World is
         // read on the main thread only.
         readonly Cell walkScratch = new Cell();
 
