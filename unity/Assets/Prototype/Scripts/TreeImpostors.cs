@@ -5,9 +5,11 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 // The tree impostors' trial (docs/design/tree-impostors.md, J-090), off unless asked for (-tree-impostors [near metres],
-// -tree-impostors-far <metres>, or TreeImpostors.On in the Editor). On, the chunk terrains draw their trees only within
-// Near of the camera, as full meshes, and this draws every tree from Near out to Far as one quad, an octahedral impostor
-// (Prototype/TreeImpostor, from the atlases Prototype > Bake Tree Impostor makes), instanced a chunk and a species a call.
+// -tree-impostors-far <metres>, or TreeImpostors.On in the Editor). On, the chunk terrains draw no trees (a terrain's
+// tree distance does nothing to LOD-grouped trees but at 0) and this draws them all: the full mesh within Near of the
+// camera (LOD0 within NearLod0, LOD1 past it, instanced, without wind), and from Near out to Far one quad a tree, an
+// octahedral impostor (Prototype/TreeImpostor, from the atlases Prototype > Bake Tree Impostor makes), instanced a chunk
+// and a species a call.
 //
 // It's view only and decides nothing (D4). The trees come from the view: a chunk with a terrain made has its terrain's
 // trees (the ones drawn there, burnt and felled ones gone); a chunk without one has a tree in each tree cell, placed as the
@@ -23,6 +25,8 @@ public sealed class TreeImpostors : MonoBehaviour
     public static bool On { get; set; }
     /// <summary>Nearer than this (m) the terrain draws the full tree; from here out the impostor does.</summary>
     public static float Near { get; set; } = 60f;
+    /// <summary>Within this (m) the full mesh is the tree's nearest LOD; from here to Near, its second.</summary>
+    public static float NearLod0 { get; set; } = 25f;
     /// <summary>How far out the impostors draw (m).</summary>
     public static float Far { get; set; } = 500f;
     /// <summary>Trees this says yes to aren't drawn (a probe clears a view with it); null for none.</summary>
@@ -42,6 +46,16 @@ public sealed class TreeImpostors : MonoBehaviour
     // Cell-made chunks read a frame, terrain chunks re-read a frame (a burnt tree drops out within a second or so).
     const int ReadsPerFrame = 4, RefreshesPerFrame = 2, Batch = 1023;
     const float TerrainTreeDistance = 900f;
+
+    // One part of a species' full mesh: a submesh, its material (an instanced copy), where it stands in the tree.
+    struct Part
+    {
+        public Mesh Mesh;
+        public int Submesh;
+        public Material Material;
+        public Matrix4x4 Local;
+        public bool Moved;
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
@@ -79,6 +93,8 @@ public sealed class TreeImpostors : MonoBehaviour
     readonly Plane[] planes = new Plane[6];
     Matrix4x4[] scratch = new Matrix4x4[Batch];
     Material[] materials; // by the template's tree kind
+    Part[][][] meshes;    // by kind, then LOD (0, 1): the full mesh's parts
+    List<Matrix4x4>[][] near; // by kind, then LOD: the trees within Near this frame
     string[] kinds;
     Mesh quad;
     World world;
@@ -115,7 +131,7 @@ public sealed class TreeImpostors : MonoBehaviour
             blocks.Clear();
         }
         if (materials == null && !Load(terrains.template)) return;
-        if (!applied || !Mathf.Approximately(MapTerrains.TreeDistance, Near)) MapTerrains.SetTreeDistance(Near);
+        if (!applied || MapTerrains.TreeDistance != 0f) MapTerrains.SetTreeDistance(0f);
         applied = true;
         if (quad == null) quad = Quad();
 
@@ -128,6 +144,8 @@ public sealed class TreeImpostors : MonoBehaviour
         stale.Clear();
         GeometryUtility.CalculateFrustumPlanes(cam, planes);
         float nearSq = Near * Near, farSq = Far * Far;
+        foreach (var byLod in near)
+            foreach (var list in byLod) list.Clear();
         for (int j = j0; j <= j1; j++)
         {
             for (int i = i0; i <= i1; i++)
@@ -150,6 +168,7 @@ public sealed class TreeImpostors : MonoBehaviour
                 Draw(b, eye, whole, nearSq, farSq);
             }
         }
+        DrawNear(eye);
         Read(wanted, layout, chunks, eye, ReadsPerFrame);
         if (stale.Count > 0)
         {
@@ -171,6 +190,7 @@ public sealed class TreeImpostors : MonoBehaviour
 
     void Draw(Block b, Vector3 eye, bool whole, float nearSq, float farSq)
     {
+        float lod0Sq = NearLod0 * NearLod0;
         for (int kind = 0; kind < b.ByKind.Length; kind++)
         {
             int count = b.Counts[kind];
@@ -185,12 +205,7 @@ public sealed class TreeImpostors : MonoBehaviour
             var all = b.ByKind[kind];
             if (whole)
             {
-                for (int start = 0; start < count; start += Batch)
-                {
-                    Graphics.RenderMeshInstanced(rp, quad, 0, all, Math.Min(Batch, count - start), start);
-                    Calls++;
-                }
-                Drawn += count;
+                for (int start = 0; start < count; start += Batch) Instanced(rp, all, start, Math.Min(Batch, count - start));
                 continue;
             }
             int n = 0;
@@ -198,20 +213,60 @@ public sealed class TreeImpostors : MonoBehaviour
             {
                 var p = all[t].GetColumn(3);
                 float dx = p.x - eye.x, dz = p.z - eye.z, d2 = dx * dx + dz * dz;
-                if (d2 < nearSq || d2 > farSq) continue;
+                if (d2 > farSq) continue;
+                if (d2 < nearSq)
+                {
+                    near[kind][d2 < lod0Sq ? 0 : 1].Add(all[t]);
+                    continue;
+                }
                 scratch[n++] = all[t];
                 if (n < Batch) continue;
-                Graphics.RenderMeshInstanced(rp, quad, 0, scratch, n);
-                Calls++;
-                Drawn += n;
+                Instanced(rp, scratch, 0, n);
                 n = 0;
             }
-            if (n == 0) continue;
-            Graphics.RenderMeshInstanced(rp, quad, 0, scratch, n);
-            Calls++;
-            Drawn += n;
+            if (n > 0) Instanced(rp, scratch, 0, n);
         }
     }
+
+    void Instanced(RenderParams rp, Matrix4x4[] list, int start, int count)
+    {
+        Graphics.RenderMeshInstanced(rp, quad, 0, list, count, start);
+        Calls++;
+        Drawn += count;
+    }
+
+    // The trees within Near as their full mesh, a part and a LOD a call.
+    void DrawNear(Vector3 eye)
+    {
+        NearDrawn = 0;
+        var bounds = new Bounds(eye, Vector3.one * (Near * 2f + 80f));
+        for (int kind = 0; kind < near.Length; kind++)
+        {
+            for (int lod = 0; lod < 2; lod++)
+            {
+                var list = near[kind][lod];
+                var parts = meshes[kind][lod];
+                if (list.Count == 0 || parts.Length == 0) continue;
+                NearDrawn += list.Count;
+                foreach (var part in parts) Parts(part, list, bounds);
+            }
+        }
+    }
+
+    void Parts(Part part, List<Matrix4x4> list, Bounds bounds)
+    {
+        var rp = new RenderParams(part.Material) { worldBounds = bounds, shadowCastingMode = ShadowCastingMode.On, receiveShadows = true };
+        for (int start = 0; start < list.Count; start += Batch)
+        {
+            int n = Math.Min(Batch, list.Count - start);
+            for (int t = 0; t < n; t++) scratch[t] = part.Moved ? list[start + t] * part.Local : list[start + t];
+            Graphics.RenderMeshInstanced(rp, part.Mesh, part.Submesh, scratch, n);
+            Calls++;
+        }
+    }
+
+    /// <summary>The trees drawn as their full mesh in the last frame.</summary>
+    public static int NearDrawn { get; private set; }
 
     // Reads the nearest of the wanted chunks, up to budget of those made from cells (a terrain's trees are cheap to read).
     void Read(List<int> list, TerrainGrid layout, Terrain[] chunks, Vector3 eye, int budget)
@@ -345,12 +400,42 @@ public sealed class TreeImpostors : MonoBehaviour
             materials[k] = Resources.Load<Material>($"{ResourceFolder}/{kinds[k]}");
             if (materials[k] != null) found++;
         }
+        meshes = new Part[protos.Length][][];
+        near = new List<Matrix4x4>[protos.Length][];
+        for (int k = 0; k < protos.Length; k++)
+        {
+            meshes[k] = new[] { PartsOf(protos[k].prefab, 0), PartsOf(protos[k].prefab, 1) };
+            near[k] = new[] { new List<Matrix4x4>(), new List<Matrix4x4>() };
+        }
         Debug.Log($"TREE IMPOSTORS: {found} of {protos.Length} species baked ({string.Join(", ", kinds)})");
         if (found > 0) return true;
         Debug.LogWarning("TREE IMPOSTORS: none baked (Prototype > Bake Tree Impostor); off");
         On = false;
         materials = null;
         return false;
+    }
+
+    // A species' full mesh at one LOD (the last there is, if it has fewer), its materials copied with instancing on.
+    static Part[] PartsOf(GameObject prefab, int lod)
+    {
+        if (prefab == null) return Array.Empty<Part>();
+        var group = prefab.GetComponent<LODGroup>();
+        var renderers = group != null ? group.GetLODs()[Mathf.Min(lod, group.lodCount - 1)].renderers : prefab.GetComponentsInChildren<Renderer>();
+        var root = prefab.transform.worldToLocalMatrix;
+        var parts = new List<Part>();
+        foreach (var r in renderers)
+        {
+            if (r == null || !r.TryGetComponent<MeshFilter>(out var filter) || filter.sharedMesh == null) continue;
+            var local = root * r.transform.localToWorldMatrix;
+            var mats = r.sharedMaterials;
+            for (int sub = 0; sub < filter.sharedMesh.subMeshCount && sub < mats.Length; sub++)
+            {
+                if (mats[sub] == null) continue;
+                var copy = new Material(mats[sub]) { enableInstancing = true };
+                parts.Add(new Part { Mesh = filter.sharedMesh, Submesh = sub, Material = copy, Local = local, Moved = !local.isIdentity });
+            }
+        }
+        return parts.ToArray();
     }
 
     // A quad of corners (-1, -1) to (1, 1), its bounds left wide: the shader stands it up and sizes it.
@@ -382,6 +467,8 @@ public sealed class TreeImpostors : MonoBehaviour
     {
         blocks.Clear();
         materials = null;
+        meshes = null;
+        near = null;
         ChunksRead = 0;
         ReadMs = 0;
     }
