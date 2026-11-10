@@ -423,26 +423,41 @@ public partial class ChemGrid
     // Each frame: the simulated chunks' cells (a sleeping chunk doesn't change; ChunkStreaming).
     // The active chunks are looked over a third a frame: cells change a few times a second at most,
     // and walking 150 000 of them every frame was 4 ms with nothing to show for it.
+    // A frame that finished a tick has spent most of its time on it: its third waits for the next frame, which draws
+    // the tick's changes there instead (never two frames running, so cells are looked over however often ticks come).
+    // The tick frames were the walk's slowest; this takes the look-over (1.7 ms on the nine's walk) out of them.
     const int RenderTurns = 3;
     int renderTurn;
+    bool turnWaited;
 
-    void Render()
+    void Render(bool ticked = false)
     {
-        renderTurn = (renderTurn + 1) % RenderTurns;
-        int turn = 0;
+        bool wait = ticked && !turnWaited;
+        turnWaited = wait;
         StartDrawBudget();
         RedrawSomeLooks();
         RenderSwept();
         DrawSome();
+        if (!wait) RenderTurn();
+        RenderFresh(out int fresh);
+        FinishRender();
+        AnnounceFresh(fresh);
+    }
+
+    // The next third of the active chunks, looked over cell by cell.
+    void RenderTurn()
+    {
+        using var marked = CellsMarker.Auto();
+        renderTurn = (renderTurn + 1) % RenderTurns;
+        int turn = 0;
         foreach (var (cx, cy) in World.ActiveChunks)
         {
             if (turn++ % RenderTurns != renderTurn) continue;
             // A chunk not drawn yet draws whole, in its turn (DrawSome); a new world's chunks are all active at first.
-            if (IsChunkDrawn(cx, cy)) RenderChunk(cx, cy);
+            if (!IsChunkDrawn(cx, cy)) continue;
+            PerfCounts.Add("render.chunks");
+            RenderChunk(cx, cy);
         }
-        RenderFresh(out int fresh);
-        FinishRender();
-        AnnounceFresh(fresh);
     }
 
     // The inactive chunks still to look over after a sweep (RedrawEveryChunk), and how many a frame at most: a cell
@@ -652,7 +667,8 @@ public partial class ChemGrid
         SlickMeshMarker = new("ChemGrid.SlickMesh"), ShapingMarker = new("ChemGrid.Shaping"), RecycleMarker = new("ChemGrid.RecycleFx"),
         DrawNearMarker = new("ChemGrid.DrawNear"), DrawSomeMarker = new("ChemGrid.DrawSome"), QueueMarker = new("ChemGrid.QueueToDraw"),
         SweptMarker = new("ChemGrid.RenderSwept"), LooksMarker = new("ChemGrid.RedrawLooks"), MarkDrawnMarker = new("ChemGrid.MarkDrawn"),
-        RecolourMarker = new("ChemGrid.RecolourWorld");
+        RecolourMarker = new("ChemGrid.RecolourWorld"), CellsMarker = new("ChemGrid.RenderCells"),
+        LavaMarker = new("ChemGrid.CracksLava"), FxMarker = new("ChemGrid.LightsFx"), OthersMarker = new("ChemGrid.RenderOthers");
 
     void FinishRender()
     {
@@ -662,19 +678,28 @@ public partial class ChemGrid
         bool busy = !ExactFrames && StepMs >= BusyStepMs;
         using (WaterMeshMarker.Auto()) waterSurface.Rebuild(busy);
         using (SlickMeshMarker.Auto()) slicks.Rebuild(busy);
-        cracks.Rebuild();
-        lava.Rebuild();
-        spellLights.Place();
-        cellFx.Advance(Time.deltaTime);
-        WatchAcidCells();
-        ForgetLookFire();
-        RenderWhirls();
-        RenderTriggered();
-        RenderStars();
-        RenderFlashes();
-        RenderMovers();
-        RenderChargeRun();
-        RenderShedStrikes();
+        using (LavaMarker.Auto())
+        {
+            cracks.Rebuild();
+            lava.Rebuild();
+        }
+        using (FxMarker.Auto())
+        {
+            spellLights.Place();
+            cellFx.Advance(Time.deltaTime);
+        }
+        using (OthersMarker.Auto())
+        {
+            WatchAcidCells();
+            ForgetLookFire();
+            RenderWhirls();
+            RenderTriggered();
+            RenderStars();
+            RenderFlashes();
+            RenderMovers();
+            RenderChargeRun();
+            RenderShedStrikes();
+        }
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
         using (ShapingMarker.Auto()) AnimateShaping();

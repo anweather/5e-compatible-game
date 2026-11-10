@@ -15,6 +15,8 @@ using Unity.Profiling.LowLevel.Unsafe;
 // frame's slow markers, for a line about a slow frame. A wide reader (-perf-wide)
 // also watches every timed marker of every thread, for a hitch nothing else names:
 // costlier, and its markers overlap (a parent and its children all show).
+// Every frame's reading is kept too (up to MostKept values), so SlowSummary can say what
+// the slowest frames were made of, not only the mean one.
 public sealed class PerfMarkers : IDisposable
 {
     /// <summary>The bot's own screenshot: its frames aren't the game's.</summary>
@@ -45,7 +47,7 @@ public sealed class PerfMarkers : IDisposable
             "ChemGrid.Step", "ChemGrid.Render", "ChemGrid.ChangeGround", "ChemGrid.RenderWater", "ChemGrid.RenderFire",
             "ChemGrid.RenderGas", "ChemGrid.FinishRender", "ChemGrid.WaterMesh", "ChemGrid.SlickMesh", "ChemGrid.Shaping", "ChemGrid.RecycleFx",
             "ValleyGround.Flush", "ValleyGround.Paint", "ValleyGround.ClearGrass", "ValleyGround.UploadPaint",
-            "ValleyFauna.Update", "ValleyFauna.Think", "ValleyFauna.Draw",
+            "ValleyFauna.Update", "ValleyFauna.Think", "ValleyFauna.Draw", "ValleyFauna.Pose", "ValleyFauna.Send", "ChemGrid.RenderCells", "ChemGrid.CracksLava", "ChemGrid.LightsFx", "ChemGrid.RenderOthers",
             "RobeCloth.Step", "PlaytestBot.LateUpdate", BotShot,
             "ChemGrid.ChunkPlan", "ChemGrid.ChunkApply", "ChemGrid.ChunkEvent", "ChemGrid.DetailChunks",
             "ChemGrid.DrawNear", "ChemGrid.DrawSome", "ChemGrid.QueueToDraw", "ChemGrid.RenderSwept",
@@ -101,6 +103,10 @@ public sealed class PerfMarkers : IDisposable
     ProfilerRecorder gfxUsed = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Gfx Used Memory");
     long allocatedSum, allocatedPeak;
     int frames, windowFrames, collections;
+    // Every frame's markers, frame after frame (names.Count values each), while there's room.
+    const int MostKept = 8 * 1024 * 1024;
+    float[] kept = new float[1 << 16];
+    int keptFrames;
 
     public PerfMarkers(bool wide = false)
     {
@@ -170,6 +176,7 @@ public sealed class PerfMarkers : IDisposable
             peak[i] = Math.Max(peak[i], ms);
             if (ms > 0 && names[i] == Collect) collections++;
         }
+        Keep();
         for (int i = 0; i < gauges.Count; i++)
             if (gauges[i].Valid) gaugeWindow[i] += gauges[i].LastValue;
         for (int i = 0; i < renderGauges.Count; i++)
@@ -179,6 +186,55 @@ public sealed class PerfMarkers : IDisposable
             renderSum[i] += value;
             renderPeak[i] = Math.Max(renderPeak[i], value);
         }
+    }
+
+    // This frame's markers onto the end of the kept ones, unless that would pass MostKept.
+    void Keep()
+    {
+        int at = keptFrames * names.Count;
+        if (at + names.Count > MostKept) return;
+        if (at + names.Count > kept.Length) Array.Resize(ref kept, Math.Min(MostKept, kept.Length * 2));
+        for (int i = 0; i < names.Count; i++) kept[at + i] = (float)last[i];
+        keptFrames++;
+    }
+
+    /// <summary>
+    /// What the slow frames were made of: each marker's mean over the frames (by their order of Sample) whose time is at
+    /// least <paramref name="atMs"/>, beside its mean over every frame, the dearest first, as name=slow/all pairs.
+    /// A frame whose time is NaN (the bot's own shot) is left out of both.
+    /// </summary>
+    public string SlowSummary(IReadOnlyList<float> frameMs, float atMs, int most = 30)
+    {
+        var inv = CultureInfo.InvariantCulture;
+        var slow = new double[names.Count];
+        var all = new double[names.Count];
+        int slowFrames = 0, allFrames = 0, n = Math.Min(keptFrames, frameMs.Count);
+        for (int f = 0; f < n; f++)
+        {
+            float ms = frameMs[f];
+            if (float.IsNaN(ms)) continue;
+            bool isSlow = ms >= atMs;
+            allFrames++;
+            if (isSlow) slowFrames++;
+            int at = f * names.Count;
+            for (int i = 0; i < names.Count; i++)
+            {
+                all[i] += kept[at + i];
+                if (isSlow) slow[i] += kept[at + i];
+            }
+        }
+        var line = new StringBuilder($" at_ms={atMs.ToString("0.0", inv)} slow_frames={slowFrames} frames={allFrames} kept={keptFrames}");
+        var order = new List<int>();
+        for (int i = 0; i < names.Count; i++)
+            if (slow[i] / Math.Max(1, slowFrames) >= WindowFloorMs) order.Add(i);
+        order.Sort((a, b) => slow[b].CompareTo(slow[a]));
+        for (int k = 0; k < order.Count && k < most; k++)
+        {
+            int i = order[k];
+            line.Append(' ').Append(names[i]).Append('=').Append((slow[i] / Math.Max(1, slowFrames)).ToString("0.00", inv))
+                .Append('/').Append((all[i] / Math.Max(1, allFrames)).ToString("0.00", inv));
+        }
+        return line.ToString();
     }
 
     /// <summary>What the frames drew over the run, as name=mean/peak pairs (counts, not times).</summary>
