@@ -83,7 +83,7 @@ public partial class ChemGrid
     // Lights from the Light spell at once, however many cells are lit.
     const int MaxSpellLights = 8;
 
-    View[] views;
+    ViewBlocks views;
     readonly MaterialCache materials = new();
     CellDressing dressings;
     CellBlockers blockers;
@@ -100,7 +100,8 @@ public partial class ChemGrid
     void InitVisuals()
     {
         // A chunk's views are made as it first draws (RenderChunk): 3 million made at once were much of a big map's build.
-        views = new View[World.W * World.H];
+        // Held a block a chunk (ViewBlocks), so the map's size costs nothing until its chunks draw.
+        views = new ViewBlocks(World.W, World.H);
         dressings ??= new CellDressing(this, materials);
         if (blockers == null) blockers = new CellBlockers(this);
         else blockers.ReleaseAll();
