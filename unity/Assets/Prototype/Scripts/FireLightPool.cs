@@ -85,17 +85,19 @@ public sealed class FireLightPool
     void CollectBurning()
     {
         var world = grid.World;
-        var cells = world.Cells;
         burning.Clear();
         foreach (var (cx, cy) in world.ActiveChunks)
         {
             int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
             int x1 = Mathf.Min(world.W, x0 + Chunks.Size), y1 = Mathf.Min(world.H, y0 + Chunks.Size);
+            var cells = world.ChunkCells(cx, cy);
+            if (cells.IsEmpty) continue;
             for (int y = y0; y < y1; y++)
             {
+                int row = (y - y0) << Chunks.Shift;
                 for (int x = x0; x < x1; x++)
                 {
-                    var c = cells[y * world.W + x];
+                    var c = cells[row + x - x0];
                     if (c.Fire > 0) burning.Add((x, y, c.Fire));
                     else if (CellLavaMesh.IsLava(c)) burning.Add((x, y, 1));
                 }

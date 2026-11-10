@@ -41,7 +41,7 @@ public class GlowMossProbe : RoomProbe
     // Moss cells "/" glowing cells, as Glows writes them: every moss cell glows.
     static bool AllGlow(string glows) => glows != null && glows.Split('/') is var p && p.Length == 2 && p[0] == p[1];
 
-    public static string Glows(ChemGrid grid) => $"{grid.World.Cells.Count(c => c != null && c.Cover == Moss)}/{grid.GlowCells}";
+    public static string Glows(ChemGrid grid) => $"{grid.World.AllCells().Count(c => c != null && c.Cover == Moss)}/{grid.GlowCells}";
 
     protected override IEnumerator Run()
     {
@@ -134,16 +134,16 @@ public class GlowMossProbe : RoomProbe
         Check("the_glow_goes_with_the_moss", MossCells() == 0 && grid.GlowCells == 0, Glows(grid));
     }
 
-    int MossCells() => World.Cells.Count(c => c != null && c.Cover == Moss);
+    int MossCells() => World.AllCells().Count(c => c != null && c.Cover == Moss);
 
     // The mean glow drawn now over the moss cells.
     Color MeanGlow()
     {
         var sum = Color.clear;
         int n = 0;
-        for (int i = 0; i < World.Cells.Length; i++)
+        for (int i = 0; i < World.W * World.H; i++)
         {
-            if (World.Cells[i]?.Cover != Moss) continue;
+            if (World.CellAt(i)?.Cover != Moss) continue;
             sum += grid.GlowAt(i % World.W, i / World.W);
             n++;
         }
@@ -168,7 +168,7 @@ public class GlowMossProbe : RoomProbe
     {
         stones = null;
         bare = default;
-        var river = Enumerable.Range(0, World.Cells.Length)
+        var river = Enumerable.Range(0, World.W * World.H)
             .Select(i => new Vector2Int(i % World.W, i / World.W))
             .Where(p => Mathf.Abs(p.x - from.x) + Mathf.Abs(p.y - from.y) <= Search && World.At(p.x, p.y) is Cell c && c.T == TerrainIds.River && c.Water > 0 && World.IsActiveAt(p.x, p.y))
             .OrderBy(p => (p - from).sqrMagnitude).Take(1).ToList();

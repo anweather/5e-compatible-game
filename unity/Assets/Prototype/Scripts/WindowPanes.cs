@@ -192,7 +192,7 @@ public class WindowPanes : MonoBehaviour
             if (cell >= 0)
             {
                 byCell[cell] = this;
-                cracked[i] = world.Cells[cell].Cracked != 0;
+                cracked[i] = world.CellAt(cell).Cracked != 0;
             }
             else open[i] = world.InBounds(at.x, at.y) && !world.IsBlocking(world.At(at.x, at.y));
         }

@@ -52,7 +52,7 @@ public class FlamesProbe : ProbeScenario
         var bank = grid.Flames;
         Check("flame_bank", bank != null && bank.CellsBurning > 0, bank != null ? $"{bank.CellsBurning} cells drawn" : "no bank");
         if (bank == null) return;
-        var cells = World.Cells.Select((c, i) => (c, i)).Where(p => p.c.Fire > 0).Select(p => p.i).ToList();
+        var cells = World.AllCells().Select((c, i) => (c, i)).Where(p => p.c.Fire > 0).Select(p => p.i).ToList();
         var all = cells.SelectMany(Standing).ToList();
         Metric("cells_burning", cells.Count);
         Metric("flames", all.Count);
@@ -107,7 +107,7 @@ public class FlamesProbe : ProbeScenario
         Check("types_differ", burning && Tall(0) > Tall(1) * 1.3f && Green(0) > Green(1) && Green(1) > Green(2) && Quick(0) > Quick(1),
             $"thatch taller, paler and quicker than wood, wood paler than oil ({Tall(0):0.00}, {Tall(1):0.00}, {Tall(2):0.00} m tall)");
         // What burns as the top level has the large sheet, and a cell's sheet always follows its fire.
-        var cells = World.Cells.Select((c, i) => (c, i)).Where(p => p.c.Fire > 0).ToList();
+        var cells = World.AllCells().Select((c, i) => (c, i)).Where(p => p.c.Fire > 0).ToList();
         int wrong = cells.Count(p => Standing(p.i).Any(f => (int)f.sheet != Mathf.Min(p.c.Fire, 3) - 1));
         Check("levels_keep_their_sheets", wrong == 0, $"{wrong} of {cells.Count} cells drawn with another level's flipbook");
     }

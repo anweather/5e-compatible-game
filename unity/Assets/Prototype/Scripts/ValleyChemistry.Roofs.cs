@@ -78,7 +78,7 @@ public partial class ValleyChemistry
         {
             var cells = buildingCells[k];
             if (!cells.Any(i => Chunks.ChunkOf(i % world.W) == fresh.CX && Chunks.ChunkOf(i / world.W) == fresh.CY)) continue;
-            if (cells.All(i => world.Cells[i].T == TerrainIds.LogWall || world.Cells[i].T == TerrainIds.Stone)) RestoreBuilding(k);
+            if (cells.All(i => world.CellAt(i).T == TerrainIds.LogWall || world.CellAt(i).T == TerrainIds.Stone)) RestoreBuilding(k);
         }
     }
 

@@ -101,7 +101,7 @@ public class DragonProbe : ProbeScenario
         Metric("changed_at_the_start", World.ChangedCount);
         // CellBytes each in the palette (Cell.cs's fields and an object's header), and an int a cell for the index.
         Metric("start_state_kb", (World.StartShapes * CellBytes + World.W * World.H * sizeof(int)) / 1024.0);
-        int deep = World.Cells.Count(c => c.Water >= World.Rules.Sim.Dragon.ShelterWater && !c.Frozen);
+        int deep = World.AllCells().Count(c => c.Water >= World.Rules.Sim.Dragon.ShelterWater && !c.Frozen);
         Metric("cells_deep_enough_to_shelter", deep);
     }
 

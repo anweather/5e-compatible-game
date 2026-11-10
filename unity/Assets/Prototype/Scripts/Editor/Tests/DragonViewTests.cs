@@ -37,14 +37,14 @@ public class DragonViewTests
         var world = ChemGrid.StartWorld(Quick(), ChemGrid.CellMap(), 1u, out _);
         Assert.That(world.HasStart, "a world to play in keeps its start");
         Assert.That(world.At(LavaX, LavaY).T, Is.EqualTo(TerrainIds.Lava), "the Gauntlet is laid");
-        var puzzleCoils = world.Cells.Count(c => c.T == TerrainIds.Coil);
+        var puzzleCoils = world.AllCells().Count(c => c.T == TerrainIds.Coil);
         Assert.That(puzzleCoils, Is.GreaterThan(0), "the puzzles are laid");
 
         world.Paint(LavaX, LavaY, TerrainIds.Stone);
         FlyAFlight(world);
 
         Assert.That(world.At(LavaX, LavaY).T, Is.EqualTo(TerrainIds.Lava), "the Gauntlet's lava comes back, not the map's meadow");
-        Assert.That(world.Cells.Count(c => c.T == TerrainIds.Coil), Is.EqualTo(puzzleCoils), "the puzzles come back");
+        Assert.That(world.AllCells().Count(c => c.T == TerrainIds.Coil), Is.EqualTo(puzzleCoils), "the puzzles come back");
         Assert.That(world.Golf, Is.Not.Null, "the ball is on its tee");
     }
 

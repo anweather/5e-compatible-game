@@ -22,7 +22,7 @@ public class ActProbe : ProbeScenario
         Check(tool, call.Result.status == 200 && !said.Contains("\"isError\":true"), said.Length > 240 ? said.Substring(0, 240) : said);
     }
 
-    int TreeCells => grid.World.Cells.Count(c => c.T == TerrainIds.Tree);
+    int TreeCells => grid.World.AllCells().Count(c => c.T == TerrainIds.Tree);
 
     protected override IEnumerator Run()
     {
