@@ -51,7 +51,7 @@ namespace Chem
 
         void AddChunk(int cx, int cy)
         {
-            var ch = new Chunk(cx, cy) { Fit = fits }; // made under the rules in force
+            var ch = new Chunk(cx, cy) { Fit = fits, Owner = this }; // made under the rules in force
             chunks.Add(Chunks.Key(cx, cy), ch);
             ch.North = FindChunk(cx, cy - 1);
             ch.South = FindChunk(cx, cy + 1);

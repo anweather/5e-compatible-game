@@ -275,3 +275,135 @@ over the active chunks instead.
 | 5 | The scale island loads in a player: the probe's scenarios on it, `PERF MEMORY` against this budget | the PC | S |
 
 Steps 2 and 3 can go in either order. The island needs 2, 3 and 4 before it can load.
+
+## Measured (`sparse-world-bench`, 2026-11-10)
+
+u2, before step 2, so the lead can read the numbers before D17 is decided. The questions were what the hash and the
+save cost reading packed cells, what packing and unpacking cost (five chunks at once when a character crosses a chunk
+edge), how big the changes get, whether option A is needed as a fallback, and what the hold time should be.
+
+**What was measured.**
+- **The prototype** is `World.Pack.cs`. It is not wired in and behind no switch: nothing in the game packs a chunk.
+  - `Pack` diffs an inactive chunk against its source, keeps the changes (`PackedChunk`), gives its `Cell` objects to
+    a pool and leaves its slots empty.
+  - `Unpack` takes a block from the pool, makes each cell from the source and lays the changes over.
+  - `PackedCellHash`, `PackedChunkHash` and `SavePacked` read a packed chunk without unpacking it.
+  - A read through `Chunk.CellAt` unpacks a packed chunk and counts it (`ReadUnpacks`). That's the design's "a read
+    unpacks", and what found the tick's reads below.
+- **The bench** is `Tests/SparseWorldBench.cs` (Explicit). It runs on the nine's valley square, built as
+  `ChemGrid.MapWorld` builds it. The source is `cells.txt`, a byte a cell through the map legend, which is what
+  step 2's `BakedSource` will be. Over it go the puzzles, stamps, rows, golf and the Hold.
+  - The chunks: a plain one (0, 0); the village one with the most changes (2, 5); one burnt out by a Fireball (3, 2),
+    235 ticks; one flooded with eight Floods and eight Create Waters (6, 2), 380 ticks; one dug, walled and heaped by
+    24 earth spells (6, 5).
+  - It ran under `dotnet` in Release on the worker VM (2 cores), best of 15 runs after a warm-up pass. Two runs agree
+    to about 10%. Unity's Mono and IL2CPP aren't measured.
+  - Run it with `dotnet test core -c Release --filter "FullyQualifiedName~SparseWorldBench" --logger "console;verbosity=detailed"`.
+- **The tests** are `Tests/PackTests.cs`, in CI:
+  - Pack then unpack gives back every field of every cell, the fire generations, the hash and each chunk's save record.
+  - The hash and the save read a packed chunk the same as unpacked.
+  - A read unpacks.
+  - **A peer packing differently hashes the same**: step 2's planned test, written now against the prototype.
+
+**Each chunk, packed:**
+
+| Chunk | Changed cells | With a rare record | Packed | Save record | Hash, objects | Hash, packed | Save today | Save, packed | Pack | Unpack |
+|---|---|---|---|---|---|---|---|---|---|---|
+| plain (0, 0) | 0 | 0 | 0.2 KB | 0 | 0.118 ms | 0.123 ms | 0.08-0.16 ms | 0.000 ms | 0.06-0.14 ms | 0.035 ms |
+| village (2, 5) | 1,333 | 0 | 31 KB | 55 KB | 0.120 ms | 0.137 ms | 0.83 ms | 0.75 ms | 0.08-0.13 ms | 0.040 ms |
+| Fireball (3, 2) | 3,974 | 25 | 95 KB | 166 KB | 0.137 ms | 0.166 ms | 2.2 ms | 2.2 ms | 0.12 ms | 0.082 ms |
+| flood (6, 2) | 508 | 0 | 12 KB | 22 KB | 0.116 ms | 0.122 ms | 0.33 ms | 0.28 ms | 0.07-0.15 ms | 0.041 ms |
+| earth (6, 5) | 391 | 0 | 9 KB | 16 KB | 0.123 ms | 0.117 ms | 0.26 ms | 0.21 ms | 0.07-0.17 ms | 0.036 ms |
+
+**More at once:**
+- **A chunk edge crossed** (five chunks in a row, two of them the burnt and the flooded, 7,361 changed cells):
+  unpacking and activating them takes **0.32 ms**. Today `SetActive` alone takes under 0.001 ms. That's 5% of the
+  step's 6 ms budget (`ChemGrid.StepBudgetMs`), and 0.2% of a tick at 6 ticks a second.
+- **A Misty Step or a respawn** (the 5 x 5 at once, 17,762 changed cells): **1.3 ms**.
+- **The whole world's hash** (81 chunks): 9.9 ms unpacked (29.7 ns a cell) against 12.3 ms with every chunk packed
+  (37.1 ns a cell). Across four runs, a packed cell costs **12-25% more** to hash. `RollingHash`'s slice a tick costs
+  that much more for its packed cells. At 9,720 chunks a whole `CellHash` would be about 1.5 s; today's would be
+  1.2 s, if the island could load.
+- **Memory:** packing all 81 chunks lets **264-272 KB a chunk** go, which is the 4,096 `Cell` objects. Step 2's block
+  also takes the per-cell arrays (`FireGeneration`, `Marks`, the `Snap*` arrays) for the design's ~356 KB. The 81
+  packed chunks hold 544 KB in all (6.7 KB a chunk), 738 KB after the 5 x 5 had been active.
+
+**What the numbers say:**
+- **Decode cost.** A packed cell is a `source.Make` (a byte and the legend) plus, for a changed cell, a binary search
+  and a 20-byte record. That's 4-7 ns a cell over an object read. For one chunk's hash that's 0.12 ms on objects against
+  0.12 to 0.19 ms packed.
+- **Saves.** Writing the JSON costs most of a save, not the diff: the packed save is only 0.1 ms faster on a changed
+  chunk. The win is the chunks nobody touched. Today each costs 0.08 to 0.16 ms of diffing; packed, they cost
+  nothing. At 9,720 chunks that's about 1-1.5 s off a save.
+- **Changes are smaller than the plan's estimate.** A changed cell is 24 bytes: a 20-byte `PackedCell` and a 4-byte
+  index. The plan guessed 40.
+  - A burnt-out chunk is 95 KB. The plan's bound was ≤160 KB, and the chunk unpacked is 356 KB.
+  - A village chunk has 1,333 changed cells (31 KB), more than the plan's "a few hundred": its rows, pads and stamps.
+  - The first layout kept `Cover` and `DampUntil` in the rare record. Every burnt cell has an ash cover, and every
+    flooded cell is damp, so that came to 80 bytes a cell and 326 KB for the burnt chunk. Both fields now sit in
+    `PackedCell`, and only 25 of the burnt chunk's cells (its smoke) still need a rare record.
+- **The case to watch is weather.** Snow covers, and rain damps, every cell of the active chunks. A long trip through
+  snow leaves fully changed chunks at ~95 KB each, so 1,000 of them is ~95 MB. It doesn't break the budget, but
+  `PERF MEMORY` on the island should look for it.
+
+**Option A isn't needed as a fallback.** Option A would hold every cell of every chunk (~48 KB a chunk dense, 480 MB on
+the island) to make reads faster. The source plus the changes already reads within 12-25% of an object, and unpacks
+in under 0.1 ms. Only a chunk changed nearly everywhere would be smaller dense: ~48-80 KB against 95 KB. That's a
+storage form one chunk could switch to later, if weather makes it matter. It isn't a fallback for the design.
+
+**The tick reads inactive chunks, one chunk out.** With 25 chunks active and the other 56 packed, a Fireball and a
+Flood at the active edge, and 600 ticks run, reads unpacked 8 chunks. All 8 were next to an active chunk: 7 on the
+first tick and 1 at tick 147. On ChunkTests' 4 x 3 valley, where every inactive chunk borders an active one, reads
+unpacked most of what was packed (100-124 of 113-150 packs). The reads:
+- **Reads that check activity only after reading the cell.**
+  - `Spread` reads the cell `Chunk.Next` returns, then checks `!nch.Active`.
+  - So do `Flow` (called from `FlowBackward`) and `IsActiveAt` → `LocateActive` (a spell's `Land` drops its cells in
+    inactive chunks that way).
+  - Step 2 should have these check the chunk first. That changes no behaviour.
+- **Real reads of an inactive neighbour.**
+  - `SoakIn` reads the water across a chunk edge with no active check.
+  - `NearHeat` reads `At` over a radius.
+  - A spell's `LineCells` reads `At` past the active edge.
+  - These use inactive state, which is the same on every peer, so they're deterministic. They reach one chunk out.
+
+So step 2 needs one more rule: **a chunk next to an active chunk never packs.** With that rule the tick never unpacks
+anything. The read hook in `Chunk.CellAt` can stay as a counted safety net: a `PERF` counter that should read 0.
+
+**A peer packing differently hashes the same.**
+- `PackTests.APeerPackingDifferentlyHashesTheSame` runs two copies of ChunkTests' valley for 300 ticks: fires, frost,
+  lightning, moved earth, and columns of chunks let go and taken back while still burning.
+- One peer never packs. The other packs and unpacks its inactive chunks on beats of its own, in three patterns:
+  113-150 packs and 13-26 unpacks between ticks, plus 100-124 by reads.
+- The packed peer's `PackedCellHash` equals the plain peer's `CellHash` at every tick. At the end, every field of
+  every cell and the RNG agree.
+- That holds even with reads unpacking chunks mid-tick, so the rule above is for time and memory, not for agreement.
+
+**The hold time and the drawn hint (proposed):**
+- **Which chunks pack.** An inactive chunk packs when, for the last **300 ticks** (50 s at 6 ticks a second), it has
+  been all of these:
+  - not active;
+  - not next to an active chunk;
+  - not in the view's drawn hint.
+- **How fast.** At most **2 packs a tick** (≤0.35 ms), oldest first, then by row and column. Every peer runs the core,
+  so the same tick-driven facts pack the same chunks.
+- **The hint.** The view's drawn hint is the drawn tier: radius 4 at `FarRing.SetView(2, 4, 7)`, 81 chunks. The core
+  keeps a hinted chunk unpacked, and its hold counts from when it leaves the hint.
+  - The hint changes memory only. The peer test shows packing at any tick changes no hash, so peers needn't agree on
+    it, and a peer with no view has no hint.
+- **Why 300.** Unpacking is cheap (0.04-0.09 ms a chunk, 1.3 ms for a 5 x 5), so the hold is about memory, not time.
+  - Sprinting (7 m/s ≈ 4.7 cells a second) crosses a chunk every ~82 ticks. Each crossing leaves a row of 9 chunks
+    of the drawn tier behind.
+  - At 300 ticks, ~33 chunks stay unpacked behind a sprinter, about 12 MB. That's the plan's "packing slack ~32". At
+    walking pace (4.5 m/s, a chunk every ~128 ticks), it's ~21.
+  - A player who turns back within 50 s finds the chunks still unpacked. One who comes back later pays a 0.1 ms
+    unpack.
+  - Anything from 60 to 600 ticks would work: shorter saves memory with four players far apart, longer saves
+    nothing that matters. It belongs in `sim.json`'s `streaming` (`packTicks: 300`, `packsPerTick: 2`) so it can be
+    tuned.
+
+**Not measured:**
+- Mono and IL2CPP in a player.
+- A real `BakedSource` over a packed bake (the bench's source is a flat byte array; a per-chunk one adds a chunk
+  lookup a row).
+- The island itself, which can't load until step 2.
+- The view's reads that would unpack drawn chunks (step 1b).

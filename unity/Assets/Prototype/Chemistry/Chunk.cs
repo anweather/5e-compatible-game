@@ -51,9 +51,17 @@ namespace Chem
         // chunk holds them can change under its callers (the sparse World, docs/design/sparse-world.md).
         readonly Cell[] cells = new Cell[Chunks.Area];
 
-        /// <summary>The cell at local index i, or null outside the world's extent.</summary>
+        /// <summary>The cell at local index i, or null outside the world's extent. A packed chunk unpacks to be read (World.Pack.cs).</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Cell CellAt(int i) => cells[i];
+        public Cell CellAt(int i) => cells[i] ?? (Packed == null ? null : Owner.UnpackOnRead(this, i));
+
+        /// <summary>The cell at local index i as held: null in a packed chunk too (for the reads that mustn't unpack it, World.Pack.cs).</summary>
+        public Cell HeldAt(int i) => cells[i];
+
+        /// <summary>Its changes while it's packed, else null: the sparse World's prototype (World.Pack.cs), which nothing in the game uses.</summary>
+        public PackedChunk Packed;
+        /// <summary>The world it's a chunk of, for unpacking it on a read.</summary>
+        public World Owner;
 
         /// <summary>Puts the cell at local index i (as the world is built).</summary>
         public void Put(int i, Cell c) => cells[i] = c;
