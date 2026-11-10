@@ -139,38 +139,33 @@ public static class TreeImpostorBaker
             var mats = r.sharedMaterials;
             for (int s = 0; s < filter.sharedMesh.subMeshCount && s < mats.Length; s++)
             {
-                var m = mats[s];
-                if (m == null) continue;
-                var props = new MaterialPropertyBlock();
-                if (m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null) props.SetTexture("_MainTex", m.GetTexture("_MainTex"));
-                if (m.HasProperty("_BumpMap") && m.GetTexture("_BumpMap") != null) props.SetTexture("_BumpMap", m.GetTexture("_BumpMap"));
-                props.SetColor("_Color", m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
-                props.SetFloat("_Cutoff", m.HasProperty("_AlphaClipThreshold") ? m.GetFloat("_AlphaClipThreshold") : 0f);
-                parts.Add(new Part { Mesh = filter.sharedMesh, Submesh = s, Matrix = root * r.transform.localToWorldMatrix, Props = props });
+                if (mats[s] == null) continue;
+                parts.Add(new Part { Mesh = filter.sharedMesh, Submesh = s, Matrix = root * r.transform.localToWorldMatrix, Props = PropsOf(mats[s]) });
             }
         }
         return parts;
     }
 
+    // A tree material's textures, colour and alpha clip, as the bake shader takes them.
+    static MaterialPropertyBlock PropsOf(Material m)
+    {
+        var props = new MaterialPropertyBlock();
+        foreach (var name in new[] { "_MainTex", "_BumpMap" })
+            if (m.HasProperty(name) && m.GetTexture(name) != null) props.SetTexture(name, m.GetTexture(name));
+        props.SetColor("_Color", m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
+        props.SetFloat("_Cutoff", m.HasProperty("_AlphaClipThreshold") ? m.GetFloat("_AlphaClipThreshold") : 0f);
+        return props;
+    }
+
     // The tree's bounding sphere: its box's centre, out to its farthest vertex.
     static (Vector3 centre, float radius) Bounds(List<Part> parts)
     {
-        var box = new Bounds();
-        bool first = true;
-        var points = new List<Vector3>();
-        foreach (var mesh in parts.Select(p => (p.Mesh, p.Matrix)).Distinct())
-        {
-            foreach (var v in mesh.Mesh.vertices)
-            {
-                var w = mesh.Matrix.MultiplyPoint3x4(v);
-                points.Add(w);
-                if (first) box = new Bounds(w, Vector3.zero);
-                else box.Encapsulate(w);
-                first = false;
-            }
-        }
-        float r = points.Count == 0 ? 1f : points.Max(p => (p - box.center).magnitude);
-        return (box.center, r * 1.02f);
+        var points = parts.Select(p => (p.Mesh, p.Matrix)).Distinct()
+            .SelectMany(m => m.Mesh.vertices.Select(v => m.Matrix.MultiplyPoint3x4(v))).ToList();
+        if (points.Count == 0) return (Vector3.up, 1f);
+        var box = new Bounds(points[0], Vector3.zero);
+        foreach (var w in points) box.Encapsulate(w);
+        return (box.center, points.Max(p => (p - box.center).magnitude) * 1.02f);
     }
 
     static Texture2D Read(RenderTexture rt, bool linear)
@@ -201,12 +196,9 @@ public static class TreeImpostorBaker
         }
         while (queue.Count > 0)
         {
-            int k = queue.Dequeue(), x = k % size, y = k / size, tx = x / tile, ty = y / tile;
-            for (int s = 0; s < 4; s++)
+            int k = queue.Dequeue();
+            foreach (int q in Neighbours(k, size, tile))
             {
-                int qx = x + (s == 0 ? 1 : s == 1 ? -1 : 0), qy = y + (s == 2 ? 1 : s == 3 ? -1 : 0);
-                if (qx < 0 || qy < 0 || qx >= size || qy >= size || qx / tile != tx || qy / tile != ty) continue;
-                int q = qy * size + qx;
                 if (done[q]) continue;
                 done[q] = true;
                 a[q] = new Color32(a[k].r, a[k].g, a[k].b, 0);
@@ -218,6 +210,19 @@ public static class TreeImpostorBaker
         normal.SetPixels32(n);
         albedo.Apply();
         normal.Apply();
+    }
+
+    static readonly (int x, int y)[] Steps = { (1, 0), (-1, 0), (0, 1), (0, -1) };
+
+    // The pixels beside pixel k that are in the same view.
+    static IEnumerable<int> Neighbours(int k, int size, int tile)
+    {
+        int x = k % size, y = k / size;
+        foreach (var (sx, sy) in Steps)
+        {
+            int qx = x + sx, qy = y + sy;
+            if (qx >= 0 && qy >= 0 && qx < size && qy < size && qx / tile == x / tile && qy / tile == y / tile) yield return qy * size + qx;
+        }
     }
 
     static void Import(string path, bool srgb)

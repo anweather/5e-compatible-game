@@ -254,7 +254,7 @@ public class TreeImpostorsProbe : ProbeScenario
     // Nothing with a collider (a rock, a cabin, another tree's trunk) between the ground cameras and the tree's middle.
     static bool Unblocked(Vector3 at, Vector3 dir, float height)
     {
-        var middle = at + Vector3.up * 14.5f * height;
+        var middle = at + Vector3.up * (14.5f * height);
         foreach (float d in Distances)
         {
             var eye = at + dir * d;
@@ -269,21 +269,8 @@ public class TreeImpostorsProbe : ProbeScenario
     // with the fewest trees and no ground in the line out to 500 m.
     bool Subject()
     {
-        var trees = new List<(Vector3 at, bool mine, float height)>();
+        var trees = Trees();
         var me = wizard.transform.position;
-        foreach (var t in MapTerrains.Instance.Chunks)
-        {
-            if (t == null || t.terrainData == null) continue;
-            var data = t.terrainData;
-            var protos = data.treePrototypes;
-            for (int i = 0; i < data.treeInstanceCount; i++)
-            {
-                var ti = data.GetTreeInstance(i);
-                var at = t.transform.position + Vector3.Scale(ti.position, data.size);
-                bool mine = ti.prototypeIndex < protos.Length && protos[ti.prototypeIndex].prefab != null && protos[ti.prototypeIndex].prefab.name == Species;
-                trees.Add((at, mine, ti.heightScale));
-            }
-        }
         float best = float.MaxValue;
         foreach (var c in trees)
         {
@@ -293,34 +280,61 @@ public class TreeImpostorsProbe : ProbeScenario
             {
                 float r = h * Mathf.PI / 8f;
                 var dir = new Vector3(Mathf.Cos(r), 0f, Mathf.Sin(r));
-                int inLine = 0;
-                bool blocked = false;
-                foreach (var o in trees)
-                {
-                    var rel = o.at - c.at;
-                    float along = Vector3.Dot(rel, dir);
-                    if (along < 8f || along > 500f) continue;
-                    if ((rel - dir * along).sqrMagnitude < 6f * 6f) inLine++;
-                }
-                for (float s = 20f; s <= 500f && !blocked; s += 10f)
-                {
-                    var p = c.at + dir * s;
-                    float g = MapTerrains.Instance.HeightAt(p) ?? c.at.y;
-                    // The line from 2 m over the far end's ground to the tree's middle.
-                    float eye = (MapTerrains.Instance.HeightAt(c.at + dir * 500f) ?? c.at.y) + 2f;
-                    float line = Mathf.Lerp(c.at.y + 10f, eye, s / 500f);
-                    if (g > line - 1f) blocked = true;
-                }
-                if (blocked || !Unblocked(c.at, dir, c.height)) continue;
-                float score = near * 10f + inLine;
+                if (GroundInTheWay(c.at, dir) || !Unblocked(c.at, dir, c.height)) continue;
+                float score = near * 10f + InLine(trees, c.at, dir);
                 if (score >= best) continue;
                 best = score;
                 tree = c.at;
                 away = dir;
-                centre = c.at + Vector3.up * 14.5f * c.height;
+                centre = c.at + Vector3.up * (14.5f * c.height);
             }
         }
         Metric("subject_neighbours_score", best);
         return best < float.MaxValue;
+    }
+
+    // Every tree the made terrains draw: where it stands, whether it's the species, its height's scale.
+    static List<(Vector3 at, bool mine, float height)> Trees()
+    {
+        var trees = new List<(Vector3 at, bool mine, float height)>();
+        foreach (var t in MapTerrains.Instance.Chunks)
+        {
+            if (t == null || t.terrainData == null) continue;
+            var data = t.terrainData;
+            var protos = data.treePrototypes;
+            for (int i = 0; i < data.treeInstanceCount; i++)
+            {
+                var ti = data.GetTreeInstance(i);
+                var at = t.transform.position + Vector3.Scale(ti.position, data.size);
+                var prefab = ti.prototypeIndex < protos.Length ? protos[ti.prototypeIndex].prefab : null;
+                trees.Add((at, prefab != null && prefab.name == Species, ti.heightScale));
+            }
+        }
+        return trees;
+    }
+
+    // How many trees stand within 6 m of the line out from a tree, 8 to 500 m along.
+    static int InLine(List<(Vector3 at, bool mine, float height)> trees, Vector3 from, Vector3 dir)
+    {
+        int inLine = 0;
+        foreach (var o in trees)
+        {
+            var rel = o.at - from;
+            float along = Vector3.Dot(rel, dir);
+            if (along >= 8f && along <= 500f && (rel - dir * along).sqrMagnitude < 6f * 6f) inLine++;
+        }
+        return inLine;
+    }
+
+    // Whether the ground rises into the line from 2 m over the ground 500 m out to 10 m up the tree.
+    static bool GroundInTheWay(Vector3 at, Vector3 dir)
+    {
+        float eye = (MapTerrains.Instance.HeightAt(at + dir * 500f) ?? at.y) + 2f;
+        for (float s = 20f; s <= 500f; s += 10f)
+        {
+            float g = MapTerrains.Instance.HeightAt(at + dir * s) ?? at.y;
+            if (g > Mathf.Lerp(at.y + 10f, eye, s / 500f) - 1f) return true;
+        }
+        return false;
     }
 }

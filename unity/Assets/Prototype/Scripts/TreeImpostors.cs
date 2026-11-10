@@ -57,6 +57,19 @@ public sealed class TreeImpostors : MonoBehaviour
         public bool Moved;
     }
 
+    // Play mode without a domain reload keeps statics: every play starts with the impostors off, as made.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void Reset()
+    {
+        On = false;
+        Near = 60f;
+        NearLod0 = 25f;
+        Far = 500f;
+        Shadows = true;
+        Skip = null;
+        MapTerrains.SetTreeDistance(TerrainTreeDistance);
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
     {
@@ -121,64 +134,76 @@ public sealed class TreeImpostors : MonoBehaviour
             return;
         }
         var terrains = MapTerrains.Instance;
-        var w = ChemGrid.Current?.World;
         var layout = MapLand.Current?.Layout;
         var cam = Camera.main;
-        if (terrains == null || w == null || layout == null || cam == null || terrains.template == null) return;
+        if (!Ready(terrains, layout, cam)) return;
+        var eye = cam.transform.position;
+        var chunks = terrains.Chunks;
+        wanted.Clear();
+        stale.Clear();
+        GeometryUtility.CalculateFrustumPlanes(cam, planes);
+        foreach (var byLod in near)
+            foreach (var list in byLod) list.Clear();
+        float size = layout.ChunkSize, reach = Far + size;
+        int i0 = Mathf.Max(0, Mathf.FloorToInt((eye.x - reach - layout.OriginX) / size)), i1 = Mathf.Min(layout.ChunksX - 1, Mathf.FloorToInt((eye.x + reach - layout.OriginX) / size));
+        int j0 = Mathf.Max(0, Mathf.FloorToInt((eye.z - reach - layout.OriginZ) / size)), j1 = Mathf.Min(layout.ChunksZ - 1, Mathf.FloorToInt((eye.z + reach - layout.OriginZ) / size));
+        for (int j = j0; j <= j1; j++)
+            for (int i = i0; i <= i1; i++) Visit(layout, chunks, i, j, eye);
+        DrawNear(eye);
+        Read(wanted, layout, chunks, eye, ReadsPerFrame);
+        Refresh(chunks);
+    }
+
+    // Whether there's a world, a map, a camera and a baked species to draw with; the terrains' trees off once there are.
+    bool Ready(MapTerrains terrains, TerrainGrid layout, Camera cam)
+    {
+        var w = ChemGrid.Current?.World;
+        if (terrains == null || w == null || layout == null || cam == null || terrains.template == null) return false;
         if (w != world)
         {
             world = w;
             blocks.Clear();
         }
-        if (materials == null && !Load(terrains.template)) return;
+        if (materials == null && !Load(terrains.template)) return false;
         if (!applied || MapTerrains.TreeDistance != 0f) MapTerrains.SetTreeDistance(0f);
         applied = true;
         if (quad == null) quad = Quad();
+        return true;
+    }
 
-        var eye = cam.transform.position;
-        float size = layout.ChunkSize, reach = Far + size;
-        int i0 = Mathf.Max(0, Mathf.FloorToInt((eye.x - reach - layout.OriginX) / size)), i1 = Mathf.Min(layout.ChunksX - 1, Mathf.FloorToInt((eye.x + reach - layout.OriginX) / size));
-        int j0 = Mathf.Max(0, Mathf.FloorToInt((eye.z - reach - layout.OriginZ) / size)), j1 = Mathf.Min(layout.ChunksZ - 1, Mathf.FloorToInt((eye.z + reach - layout.OriginZ) / size));
-        var chunks = terrains.Chunks;
-        wanted.Clear();
-        stale.Clear();
-        GeometryUtility.CalculateFrustumPlanes(cam, planes);
-        float nearSq = Near * Near, farSq = Far * Far;
-        foreach (var byLod in near)
-            foreach (var list in byLod) list.Clear();
-        for (int j = j0; j <= j1; j++)
+    // Chunk (i, j): its trees drawn if it's within Far and they've been read; asked to be read (or read again) if not.
+    void Visit(TerrainGrid layout, Terrain[] chunks, int i, int j, Vector3 eye)
+    {
+        float size = layout.ChunkSize, nearSq = Near * Near, farSq = Far * Far;
+        int k = j * layout.ChunksX + i;
+        var (cx, cz) = layout.ChunkCorner(i, j);
+        float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
+        if (dx * dx + dz * dz > farSq) return;
+        var t = chunks[k];
+        bool hasTerrain = t != null && t.terrainData != null;
+        bool known = blocks.TryGetValue(k, out var b);
+        if (!known || b.Terrain != (hasTerrain ? t : null))
         {
-            for (int i = i0; i <= i1; i++)
-            {
-                int k = j * layout.ChunksX + i;
-                var (cx, cz) = layout.ChunkCorner(i, j);
-                float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
-                if (dx * dx + dz * dz > farSq) continue;
-                var t = chunks[k];
-                bool hasTerrain = t != null && t.terrainData != null;
-                if (!blocks.TryGetValue(k, out var b) || (hasTerrain ? b.Terrain != t : b.Terrain != null))
-                {
-                    wanted.Add(k);
-                    if (b == null) continue;
-                }
-                else if (hasTerrain) stale.Add(k);
-                if (!b.Any || !GeometryUtility.TestPlanesAABB(planes, b.Bounds)) continue;
-                // The whole chunk past Near draws as it is; one that reaches nearer draws only its trees past Near.
-                bool whole = dx * dx + dz * dz >= nearSq && Far >= Mathf.Sqrt(Far2(eye, cx, cz, size));
-                Draw(b, eye, whole, nearSq, farSq);
-            }
+            wanted.Add(k);
+            if (!known) return;
         }
-        DrawNear(eye);
-        Read(wanted, layout, chunks, eye, ReadsPerFrame);
-        if (stale.Count > 0)
+        else if (hasTerrain) stale.Add(k);
+        if (!b.Any || !GeometryUtility.TestPlanesAABB(planes, b.Bounds)) return;
+        // The whole chunk past Near draws as it is; one that reaches nearer sorts its trees.
+        bool whole = dx * dx + dz * dz >= nearSq && Far >= Mathf.Sqrt(Far2(eye, cx, cz, size));
+        Draw(b, eye, whole, nearSq, farSq);
+    }
+
+    // A few of the terrain chunks' trees read again, in turn.
+    void Refresh(Terrain[] chunks)
+    {
+        if (stale.Count == 0) return;
+        for (int n = 0; n < RefreshesPerFrame && n < stale.Count; n++)
         {
-            for (int n = 0; n < RefreshesPerFrame && n < stale.Count; n++)
-            {
-                int k = stale[(refreshAt + n) % stale.Count];
-                blocks[k] = FromTerrain(chunks[k]);
-            }
-            refreshAt = (refreshAt + RefreshesPerFrame) % Math.Max(1, stale.Count);
+            int k = stale[(refreshAt + n) % stale.Count];
+            blocks[k] = FromTerrain(chunks[k]);
         }
+        refreshAt = (refreshAt + RefreshesPerFrame) % Math.Max(1, stale.Count);
     }
 
     // The squared distance from the eye to a chunk's farthest corner (in plan).
@@ -190,7 +215,6 @@ public sealed class TreeImpostors : MonoBehaviour
 
     void Draw(Block b, Vector3 eye, bool whole, float nearSq, float farSq)
     {
-        float lod0Sq = NearLod0 * NearLod0;
         for (int kind = 0; kind < b.ByKind.Length; kind++)
         {
             int count = b.Counts[kind];
@@ -202,30 +226,34 @@ public sealed class TreeImpostors : MonoBehaviour
                 shadowCastingMode = Shadows ? ShadowCastingMode.On : ShadowCastingMode.Off,
                 receiveShadows = true,
             };
-            var all = b.ByKind[kind];
             if (whole)
+                for (int start = 0; start < count; start += Batch) Instanced(rp, b.ByKind[kind], start, Math.Min(Batch, count - start));
+            else Sorted(rp, b.ByKind[kind], count, near[kind], eye, nearSq, farSq);
+        }
+    }
+
+    // A chunk's trees of one species that reaches within Near: those nearer go to the full mesh's lists, the rest out to
+    // Far are drawn as impostors.
+    void Sorted(RenderParams rp, Matrix4x4[] all, int count, List<Matrix4x4>[] nearByLod, Vector3 eye, float nearSq, float farSq)
+    {
+        float lod0Sq = NearLod0 * NearLod0;
+        int n = 0;
+        for (int t = 0; t < count; t++)
+        {
+            var p = all[t].GetColumn(3);
+            float dx = p.x - eye.x, dz = p.z - eye.z, d2 = dx * dx + dz * dz;
+            if (d2 > farSq) continue;
+            if (d2 < nearSq)
             {
-                for (int start = 0; start < count; start += Batch) Instanced(rp, all, start, Math.Min(Batch, count - start));
+                nearByLod[d2 < lod0Sq ? 0 : 1].Add(all[t]);
                 continue;
             }
-            int n = 0;
-            for (int t = 0; t < count; t++)
-            {
-                var p = all[t].GetColumn(3);
-                float dx = p.x - eye.x, dz = p.z - eye.z, d2 = dx * dx + dz * dz;
-                if (d2 > farSq) continue;
-                if (d2 < nearSq)
-                {
-                    near[kind][d2 < lod0Sq ? 0 : 1].Add(all[t]);
-                    continue;
-                }
-                scratch[n++] = all[t];
-                if (n < Batch) continue;
-                Instanced(rp, scratch, 0, n);
-                n = 0;
-            }
-            if (n > 0) Instanced(rp, scratch, 0, n);
+            scratch[n++] = all[t];
+            if (n < Batch) continue;
+            Instanced(rp, scratch, 0, n);
+            n = 0;
         }
+        if (n > 0) Instanced(rp, scratch, 0, n);
     }
 
     void Instanced(RenderParams rp, Matrix4x4[] list, int start, int count)
