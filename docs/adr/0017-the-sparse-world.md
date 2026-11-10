@@ -1,6 +1,6 @@
 # D17. The sparse World: inactive chunks as their source plus their changes (2026-11-10)
 
-**Status:** Proposed
+**Status:** Accepted (2026-11-10, J-089: Andrew accepted it once `sparse-world-bench` fit the tick budget; it did: five chunks unpacked at a chunk edge in 0.32 ms, 5% of the step budget; a packed cell hashes 12-25% dearer; option A not needed)
 
 - **Context:** The World holds a `Cell` object for every cell of the map: 356 KB a chunk. That's 254 MB on the
   nine and 3.4 GB on the scale island's 9,720 chunks, so the scale island runs out of RAM on the PC before its
