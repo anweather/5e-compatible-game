@@ -267,6 +267,8 @@ public static class ProbeScenarios
             "Checks: the canyon laid, the pad and road unmoved, no tree on rock, the crag laid, one height from the gate to the lip by the ground and by the wizard walking it, a drop below the lip, the cliff a rock wall the wizard can't walk up, rocks on its faces, the stable standing, the canyon deep with a rock floor and a dirt path, no console errors."),
         new Entry("mapshots", typeof(MapShotsProbe), 120f,
             "The same three views of the valley each time (from the town toward the castle, of the castle, along the shore out to sea, at 11 in the morning) into --shots, for a before and an after when the map's data moves. Checks: shot."),
+        new Entry("startupshots", typeof(StartupShotsProbe), 90f,
+            "The same views of a map's start each time (unity/Temp/map names the map): the spawn, the land from 200 m up, and a patch by the spawn laid ash with a pool of oily water beside it, at 11 in the morning with the ticks held, into --shots, for a before and an after when what the view makes at the start changes (#206, #207). Checks: the patch laid, shot."),
         new Entry("mapswitch", typeof(MapSwitchProbe), 240f,
             "On the valley (unity/Temp/map empty): switches to the Drowned Chain and back in one session, the way the Esc menu's map to host does (ChemGrid.PlayMap). " +
             "Checks on each map: the world, chunks, sea level, spawn and things are that map's, its cells are as a fresh start lays them and its land is its land.json; " +
