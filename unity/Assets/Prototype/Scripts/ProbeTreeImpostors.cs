@@ -154,6 +154,8 @@ public class TreeImpostorsProbe : ProbeScenario
             foreach (float d in Distances)
             {
                 yield return Pair($"{species}-{h}-ground-{d:0}", Ground(d), centre, 0f);
+                // Within Near, the tree as its prefab too: what stands against the impostor at the 60 m join.
+                if (d < 60f) yield return Prefab($"{species}-{h}-ground-{d:0}", Ground(d), centre);
                 yield return Pair($"{species}-{h}-up-{d:0}", tree + away * d + Vector3.up * 100f, centre, 0f);
             }
         }
@@ -286,6 +288,15 @@ public class TreeImpostorsProbe : ProbeScenario
         TreeImpostors.On = false;
     }
 
+    // The tree as its prefab (on, as play has it) from one camera.
+    IEnumerator Prefab(string label, Vector3 from, Vector3 at)
+    {
+        TreeImpostors.On = true;
+        TreeImpostors.Near = 60f;
+        yield return Still($"{label}-prefab", from, at);
+        TreeImpostors.On = false;
+    }
+
     IEnumerator Still(string label, Vector3 from, Vector3 at)
     {
         Cut(from, at);
@@ -311,13 +322,15 @@ public class TreeImpostorsProbe : ProbeScenario
         return p;
     }
 
-    // The wizard's renderers off for the shots (it stands near the tree, keeping the terrains made round it).
+    // The wizard's renderers off for the shots (it stands near the tree, keeping the terrains made round it), and the
+    // generated props' (the coast's palms have no collider, so the cameras' line can't see them to keep clear of them).
     void Hide(bool hide)
     {
         if (hide)
         {
             hidden.Clear();
-            foreach (var r in wizard.GetComponentsInChildren<Renderer>())
+            var props = FindObjectsByType<GeneratedProp>(FindObjectsSortMode.None).SelectMany(p => p.GetComponentsInChildren<Renderer>());
+            foreach (var r in wizard.GetComponentsInChildren<Renderer>().Concat(props))
                 if (r.enabled)
                 {
                     r.enabled = false;
@@ -344,7 +357,7 @@ public class TreeImpostorsProbe : ProbeScenario
         return true;
     }
 
-    // A tree of a species within 200 m of the wizard with the fewest trees round it, and the way to look at it from
+    // A tree of a species within 320 m of the wizard with the fewest trees round it, and the way to look at it from
     // with the fewest trees and no ground in the line out to 500 m.
     bool Subject(string species)
     {
@@ -353,7 +366,7 @@ public class TreeImpostorsProbe : ProbeScenario
         float best = float.MaxValue;
         foreach (var c in trees)
         {
-            if (!c.mine || (c.at - me).sqrMagnitude > 200f * 200f) continue;
+            if (!c.mine || (c.at - me).sqrMagnitude > 320f * 320f) continue;
             int near = trees.Count(o => (o.at - c.at).sqrMagnitude < 20f * 20f) - 1;
             for (int h = 0; h < 16; h++)
             {
@@ -405,14 +418,16 @@ public class TreeImpostorsProbe : ProbeScenario
         return inLine;
     }
 
-    // Whether the ground rises into the line from 2 m over the ground 500 m out to 10 m up the tree.
+    // Whether the ground rises into the line from 2 m over the ground 500 m out to 10 m up the tree, or the line runs out
+    // over water (a camera there would be under the sea, or shoot across it at the coast's palms).
     static bool GroundInTheWay(Vector3 at, Vector3 dir)
     {
         float eye = (MapTerrains.Instance.HeightAt(at + dir * 500f) ?? at.y) + 2f;
+        float water = MapLand.Current != null ? MapLand.Current.WaterLevel : float.MinValue;
         for (float s = 20f; s <= 500f; s += 10f)
         {
             float g = MapTerrains.Instance.HeightAt(at + dir * s) ?? at.y;
-            if (g > Mathf.Lerp(at.y + 10f, eye, s / 500f) - 1f) return true;
+            if (g > Mathf.Lerp(at.y + 10f, eye, s / 500f) - 1f || g < water + 1f) return true;
         }
         return false;
     }

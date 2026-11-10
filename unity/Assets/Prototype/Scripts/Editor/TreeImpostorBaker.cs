@@ -19,7 +19,7 @@ using Debug = UnityEngine.Debug;
 public static class TreeImpostorBaker
 {
     /// <summary>The baker's version, kept on each material (_BakeVersion): a species baked by an older one is baked again.</summary>
-    public const int BakeVersion = 2;
+    public const int BakeVersion = 3;
 
     const int Frames = 12, AtlasPixels = 2048;
 
@@ -64,6 +64,16 @@ public static class TreeImpostorBaker
     }
 
     const string BakeVersionId = "_BakeVersion";
+
+    // Each species' impostor against its own mesh at the 60 m seam, measured (tools/probe.sh treeimpostors on the nine,
+    // the pixels that differ between a pair at 50 and 120 m, from the ground and from above, at 8 and at noon): with
+    // SpeedTree's occlusion baked in, the Conifer's impostor was 6.4% redder, 5.8% greener and as blue (a little bright and
+    // yellow), the Cypress's 3.6% and 3.5%. The tint takes that back out. A species not measured keeps white.
+    static readonly Dictionary<string, Color> Tints = new()
+    {
+        ["Conifer"] = new Color(1f / 1.064f, 1f / 1.058f, 1f / 0.998f, 1f),
+        ["Cypress"] = new Color(1f / 1.036f, 1f / 1.035f, 1f / 0.999f, 1f),
+    };
     /// <summary>Where the atlases and materials go: a Resources folder, so a player build carries them.</summary>
     public const string Folder = "Assets/Prototype/Generated/Resources/" + TreeImpostors.ResourceFolder;
     const string Trees = "Assets/Prototype/Generated/Trees";
@@ -161,6 +171,7 @@ public static class TreeImpostorBaker
         mat.SetFloat("_ShadowStrength", 0.7f);
         mat.SetFloat("_Debug", 0f);
         mat.SetFloat(BakeVersionId, BakeVersion);
+        mat.SetColor("_Tint", Tints.TryGetValue(species, out var tint) ? tint : Color.white);
         mat.enableInstancing = true;
         EditorUtility.SetDirty(mat);
         AssetDatabase.SaveAssets();
