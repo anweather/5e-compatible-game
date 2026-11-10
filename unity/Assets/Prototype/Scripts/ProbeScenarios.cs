@@ -513,6 +513,10 @@ public static class ProbeScenarios
             "Which spawners really turn up: the wilds opened up (a big cap, a fast spawn rate) for 40 s at each of three places, the start, the lake and far out. Metric: how many of each species came out; a check that every bird with a spawn row did, no console errors."),
         new Entry("waterlife", typeof(WaterLifeProbe), 60f,
             "The valley's water from its rows, filmed into --shots <folder>: water deep enough to swim in near the wizard, with ducks, trout, koi, lily pads and reeds put there. Checks: the water is found, every row exists, no console errors.", films: true),
+        new Entry("treeimpostors", typeof(TreeImpostorsProbe), 400f,
+            "The tree impostors' stills (J-090, docs/design/tree-impostors.md), best on the nine: a Conifer in the open near the wizard, today's tree and its impostor " +
+            "from the same cameras at 50, 120, 250 and 500 m, from the ground and 100 m up, at 8 and at noon, then circling it at 30 m (`--shots`). " +
+            "Metrics: the map's trees by species (every chunk read once), the reads' cost, the impostors drawn a shot. Needs Prototype > Bake Tree Impostor first."),
         new Entry("closeup", typeof(CloseupProbe), 60f,
             "Models close up at a clear noon (issue #47): a deer across the follow camera, then a deer, a valley cabin and a village log house, each from the same " +
             "cameras (`--shots`). Checks: a deer at the lens is drawn for its shadow alone, and again once past it, no limb ends in the picture, the cabin's gable closed, " +

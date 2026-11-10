@@ -11,8 +11,9 @@ using UnityEngine.Rendering;
 //
 // It's view only and decides nothing (D4). The trees come from the view: a chunk with a terrain made has its terrain's
 // trees (the ones drawn there, burnt and felled ones gone); a chunk without one has a tree in each tree cell, placed as the
-// ground would place it (GroundFromLand.Spot). Cells are read on the main thread, through the chunk accessors, and a
-// packed chunk is never unpacked to read it (D17): its cells are made from the world's source, as it started.
+// ground would place it (GroundFromLand.Spot), standing on the map's land. Cells are read on the main thread, through the
+// chunk accessors, and a packed chunk is never unpacked to read it (D17): its cells are made from the world's source, as
+// it started.
 public sealed class TreeImpostors : MonoBehaviour
 {
     /// <summary>The Resources folder the baker writes the species' materials to (a material a species, named as its prefab).</summary>
@@ -24,6 +25,8 @@ public sealed class TreeImpostors : MonoBehaviour
     public static float Near { get; set; } = 60f;
     /// <summary>How far out the impostors draw (m).</summary>
     public static float Far { get; set; } = 500f;
+    /// <summary>Trees this says yes to aren't drawn (a probe clears a view with it); null for none.</summary>
+    public static Func<Vector3, bool> Skip { get; set; }
     /// <summary>Whether they cast shadows.</summary>
     public static bool Shadows { get; set; } = true;
 
@@ -147,7 +150,7 @@ public sealed class TreeImpostors : MonoBehaviour
                 Draw(b, eye, whole, nearSq, farSq);
             }
         }
-        Read(wanted, layout, terrains, chunks, eye, ReadsPerFrame);
+        Read(wanted, layout, chunks, eye, ReadsPerFrame);
         if (stale.Count > 0)
         {
             for (int n = 0; n < RefreshesPerFrame && n < stale.Count; n++)
@@ -211,7 +214,7 @@ public sealed class TreeImpostors : MonoBehaviour
     }
 
     // Reads the nearest of the wanted chunks, up to budget of those made from cells (a terrain's trees are cheap to read).
-    void Read(List<int> list, TerrainGrid layout, MapTerrains terrains, Terrain[] chunks, Vector3 eye, int budget)
+    void Read(List<int> list, TerrainGrid layout, Terrain[] chunks, Vector3 eye, int budget)
     {
         if (list.Count == 0) return;
         list.Sort((a, b) => Dist(layout, a, eye).CompareTo(Dist(layout, b, eye)));
@@ -223,7 +226,7 @@ public sealed class TreeImpostors : MonoBehaviour
             else
             {
                 if (budget-- <= 0) continue;
-                blocks[k] = FromCells(layout, terrains, k % layout.ChunksX, k / layout.ChunksX);
+                blocks[k] = FromCells(layout, k % layout.ChunksX, k / layout.ChunksX);
             }
             ChunksRead++;
         }
@@ -258,10 +261,14 @@ public sealed class TreeImpostors : MonoBehaviour
         return b;
     }
 
-    Block FromCells(TerrainGrid layout, MapTerrains terrains, int i, int j)
+    Block FromCells(TerrainGrid layout, int i, int j)
     {
         var b = NewBlock();
         int seed = unchecked((int)world.Seed);
+        // The ground from the map's land, not the drawn ground: a chunk with no terrain has its ground made from its cells,
+        // which would unpack it (and those round it).
+        var land = MapLand.Current?.Land;
+        float unit = ChemGrid.Current.Grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         int lastCx = int.MinValue, lastCy = int.MinValue;
         bool packed = false;
         ReadOnlySpan<Cell> cells = default;
@@ -292,8 +299,8 @@ public sealed class TreeImpostors : MonoBehaviour
             var spot = GroundFromLand.Spot(seed, x, y, kinds.Length);
             var (u, v) = layout.WorldCell(x, y);
             float wx = layout.OriginX + (u + spot.Inset) * layout.CellSize, wz = layout.OriginZ + (v + spot.Across) * layout.CellSize;
-            var at = new Vector3(wx, 0f, wz);
-            at.y = terrains.HeightAt(at) ?? 0f;
+            int idx = y * layout.GridW + x;
+            var at = new Vector3(wx, land != null && idx < land.Length ? land[idx] * unit : 0f, wz);
             Add(b, spot.Kind, at, spot.Rotation, spot.Size, spot.Size);
         }
         return b;
@@ -308,7 +315,7 @@ public sealed class TreeImpostors : MonoBehaviour
 
     void Add(Block b, int kind, Vector3 at, float rotation, float width, float height)
     {
-        if (kind < 0 || kind >= kinds.Length || materials[kind] == null) return;
+        if (kind < 0 || kind >= kinds.Length || materials[kind] == null || (Skip != null && Skip(at))) return;
         ref var list = ref b.ByKind[kind];
         int n = b.Counts[kind];
         if (n == list.Length) Array.Resize(ref list, Math.Max(16, n * 2));
