@@ -48,6 +48,8 @@ public sealed class ValleyGround
         public float[,,] frameAlpha;
         public int dx0 = int.MaxValue, dz0 = int.MaxValue, dx1 = -1, dz1 = -1;
         public bool heightsChanged;
+        // In syncQueue / paintQueue already, so a chunk waits in each once.
+        public bool syncQueued, paintQueued;
     }
 
     readonly TerrainGrid layout;
@@ -355,6 +357,9 @@ public sealed class ValleyGround
         data.SetHeightsDelayLOD(r.X, r.Z, heights);
         ch.heightsChanged = true;
         ch.touched = true;
+        if (ch.syncQueued) return;
+        ch.syncQueued = true;
+        syncQueue.Enqueue(ch);
     }
 
     // The easing writes the same few rectangle sizes every frame: one buffer per size, reused.
@@ -495,15 +500,16 @@ public sealed class ValleyGround
     int PaintCellsThisFrame() => Mathf.Clamp(Mathf.FloorToInt(PaintBudgetMs / Mathf.Max(msPerCell, 1e-4f)), FewestRepaints, MostRepaints);
 
     // Moved ground reaches a terrain's LOD and collider (SyncHeightmap, a few ms on a full chunk)
-    // one chunk a frame, taking them in turn; the rest stay marked for the next frames.
+    // one chunk a frame, in the order they moved; the rest wait in the queue for the next frames. Only
+    // the chunks waiting are looked at, never every chunk of the map (#199, J-086).
     void SyncOneHeightmap()
     {
-        if (syncOrder.Count != chunks.Count) syncOrder = new List<Chunk>(chunks.Values);
-        for (int k = 0; k < syncOrder.Count; k++)
+        while (syncQueue.Count > 0)
         {
-            nextSync = (nextSync + 1) % syncOrder.Count;
-            var ch = syncOrder[nextSync];
-            if (!ch.heightsChanged) continue;
+            var ch = syncQueue.Dequeue();
+            ch.syncQueued = false;
+            // A new world (Restore) took its waiting heights away.
+            if (!ch.heightsChanged || ch.data == null) continue;
             ch.data.SyncHeightmap();
             ch.heightsChanged = false;
             return;
@@ -528,10 +534,9 @@ public sealed class ValleyGround
     }
 
     readonly HashSet<(int i, int j)> treeColliders = new();
-    List<Chunk> syncOrder = new();
+    readonly Queue<Chunk> syncQueue = new(), paintQueue = new();
     // Metres in a land unit: what a land stamp's integers are drawn at.
     float landUnit;
-    int nextSync;
 
     // What a cell paints over the saved paint: nothing while it paints as it was baked.
     IReadOnlyList<float> PaintOf(int x, int y, bool scorched)
@@ -559,18 +564,23 @@ public sealed class ValleyGround
         ch.dz0 = Mathf.Min(ch.dz0, r.Z);
         ch.dx1 = Mathf.Max(ch.dx1, r.XMax);
         ch.dz1 = Mathf.Max(ch.dz1, r.ZMax);
+        if (ch.paintQueued) return;
+        ch.paintQueued = true;
+        paintQueue.Enqueue(ch);
     }
 
-    // Uploads one chunk's waiting paint a frame, taking the chunks in turn, so a fire across several
-    // chunks spreads its uploads over frames rather than stacking them in one.
+    // Uploads one chunk's waiting paint a frame, in the order they were painted, so a fire across several
+    // chunks spreads its uploads over frames rather than stacking them in one. Only the chunks waiting
+    // are looked at (#199).
     void WriteOnePaint()
     {
-        if (paintOrder.Count != chunks.Count) paintOrder = new List<Chunk>(chunks.Values);
-        for (int k = 0; k < paintOrder.Count; k++)
+        while (paintQueue.Count > 0)
         {
-            nextPaint = (nextPaint + 1) % paintOrder.Count;
-            if (paintOrder[nextPaint].dx1 < 0) continue;
-            WritePaint(paintOrder[nextPaint]);
+            var ch = paintQueue.Dequeue();
+            ch.paintQueued = false;
+            // A new world (Recover) dropped what it had waiting.
+            if (ch.dx1 < 0 || ch.data == null) continue;
+            WritePaint(ch);
             return;
         }
     }
@@ -596,8 +606,6 @@ public sealed class ValleyGround
 
     static byte Texel(float alpha) => (byte)Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f);
 
-    List<Chunk> paintOrder = new();
-    int nextPaint;
 
     // Writes the box round a chunk's painted strips into the terrain's paint textures (its
     // alphamapTextures, four layers to a texture, one per channel: the paint's own storage, so

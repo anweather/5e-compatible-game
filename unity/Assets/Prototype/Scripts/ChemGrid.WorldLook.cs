@@ -152,6 +152,7 @@ public partial class ChemGrid
     {
         ReadWorldLooks();
         if (views == null) return;
+        using var marked = RecolourMarker.Auto();
         MarkAllDrawn();
         fogBank?.Recolour();
         slicks.Recolour();

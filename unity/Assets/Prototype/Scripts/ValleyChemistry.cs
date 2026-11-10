@@ -50,29 +50,65 @@ public partial class ValleyChemistry : MonoBehaviour
         if (ground == null || (tint == Color.white && grassTint == Color.white)) return;
         grassTint = tint;
         grassToTint.Clear();
-        foreach (var data in DataOf(ground)) grassToTint.Enqueue(data);
+        grassQueued.Clear();
+        grid.DrawnChunksNearestFirst(drawnOrder);
+        foreach (var c in drawnOrder) QueueGrass(c.x, c.y);
     }
+
+    // The terrain chunks under a drawn chunk of cells (cx, cy) wait for the grass's tint, if they don't have it. Only drawn
+    // chunks, nearest a focus first; a chunk drawn later joins the queue as it draws (ChemGrid.ChunkDrawn), so the chunk a
+    // player stands in never waits behind the whole map (#200, J-086).
+    void QueueGrass(int cx, int cy)
+    {
+        var w = grid.World;
+        if (ground == null || w == null) return;
+        int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+        int x1 = Mathf.Min(w.W - 1, x0 + Chunks.Size - 1), y1 = Mathf.Min(w.H - 1, y0 + Chunks.Size - 1);
+        QueueGrassAt(layout.ChunkOfCell(x0, y0));
+        QueueGrassAt(layout.ChunkOfCell(x1, y0));
+        QueueGrassAt(layout.ChunkOfCell(x0, y1));
+        QueueGrassAt(layout.ChunkOfCell(x1, y1));
+    }
+
+    void QueueGrassAt((int i, int j) at)
+    {
+        if (!ground.HasChunk(at) || TintedAlready(ground.Data(at)) || !grassQueued.Add(at)) return;
+        grassToTint.Enqueue(at);
+    }
+
+    bool TintedAlready(TerrainData data) => tintedWith.TryGetValue(data, out var was) ? was == grassTint : grassTint == Color.white;
 
     // A chunk's grass a frame: every chunk's at once was a frame of 300 ms, and tufts a moment late are only tufts.
     void TintSomeGrass()
     {
-        if (grassToTint.Count == 0) return;
-        var data = grassToTint.Dequeue();
-        var kinds = data.detailPrototypes;
-        if (!grassColors.TryGetValue(data, out var own)) grassColors[data] = own = System.Array.ConvertAll(kinds, k => (k.healthyColor, k.dryColor));
-        for (int i = 0; i < kinds.Length; i++)
+        while (grassToTint.Count > 0)
         {
-            kinds[i].healthyColor = own[i].healthyColor * grassTint;
-            kinds[i].dryColor = own[i].dryColor * grassTint;
+            var at = grassToTint.Dequeue();
+            grassQueued.Remove(at);
+            var data = ground.Data(at);
+            if (TintedAlready(data)) continue;
+            var kinds = data.detailPrototypes;
+            if (!grassColors.TryGetValue(data, out var own)) grassColors[data] = own = System.Array.ConvertAll(kinds, k => (k.healthyColor, k.dryColor));
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                kinds[i].healthyColor = own[i].healthyColor * grassTint;
+                kinds[i].dryColor = own[i].dryColor * grassTint;
+            }
+            data.detailPrototypes = kinds;
+            tintedWith[data] = grassTint;
+            return;
         }
-        data.detailPrototypes = kinds;
     }
 
-    readonly System.Collections.Generic.Queue<TerrainData> grassToTint = new();
+    readonly Queue<(int i, int j)> grassToTint = new();
+    readonly HashSet<(int i, int j)> grassQueued = new();
+    readonly List<Vector2Int> drawnOrder = new();
     Color grassTint = Color.white;
-    readonly System.Collections.Generic.Dictionary<TerrainData, (Color healthyColor, Color dryColor)[]> grassColors = new();
+    readonly Dictionary<TerrainData, (Color healthyColor, Color dryColor)[]> grassColors = new();
+    // The tint each chunk's grass wears now (none: white, as built).
+    readonly Dictionary<TerrainData, Color> tintedWith = new();
 
-    /// <summary>Whether a rule switch's new colours are still going onto the land.</summary>
+    /// <summary>Whether a rule switch's new colours are still going onto the drawn land.</summary>
     public bool Recolouring => grassToTint.Count > 0;
 
     /// <summary>The rules switched: the lake's colour, tinted from its art.</summary>
@@ -196,6 +232,8 @@ public partial class ValleyChemistry : MonoBehaviour
         }
         grid.ChunkFreshened -= BuildingsBack;
         grid.ChunkFreshened += BuildingsBack;
+        grid.ChunkDrawn -= QueueGrass;
+        grid.ChunkDrawn += QueueGrass;
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
@@ -729,6 +767,7 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (grid != null && ground != null) grid.DetailChunksChanged -= ground.DrawDetails;
         if (grid != null) grid.ChunkFreshened -= BuildingsBack;
+        if (grid != null) grid.ChunkDrawn -= QueueGrass;
         if (hookedRows != null) hookedRows.BuildingsChanged -= RowsChanged;
         if (charred != null) Destroy(charred);
         wet?.Destroy();

@@ -35,7 +35,9 @@ public sealed class ContourSurface
     readonly float uvMetres;
     readonly bool tiled;
 
-    // Profiler markers: one set for water and ice (tiled), one for the slicks' one mesh.
+    // Profiler markers: one set for a tile of a tiled surface (water, ice, slicks, glow, lava), one for a surface drawn
+    // whole ("Film": none is now). The 865-1040 ms Contour.Film.Outline frames on the nine's forestload (#197) were the
+    // lava's one mesh round every lava and ember cell, before #188 tiled it; the slicks were in tiles already.
     static readonly Unity.Profiling.ProfilerMarker TileOutline = new("Contour.Tile.Outline"), TilePoints = new("Contour.Tile.Points"), TileUpload = new("Contour.Tile.Upload"),
         FilmOutline = new("Contour.Film.Outline"), FilmPoints = new("Contour.Film.Points"), FilmUpload = new("Contour.Film.Upload");
 

@@ -48,6 +48,8 @@ public sealed class PerfMarkers : IDisposable
             "ValleyFauna.Update", "ValleyFauna.Think", "ValleyFauna.Draw",
             "RobeCloth.Step", "PlaytestBot.LateUpdate", BotShot,
             "ChemGrid.ChunkPlan", "ChemGrid.ChunkApply", "ChemGrid.ChunkEvent", "ChemGrid.DetailChunks",
+            "ChemGrid.DrawNear", "ChemGrid.DrawSome", "ChemGrid.QueueToDraw", "ChemGrid.RenderSwept",
+            "ChemGrid.RedrawLooks", "ChemGrid.MarkDrawn", "ChemGrid.RecolourWorld",
             "ChemGrid.BuildWorld", "ChemGrid.BuildWorld.Rules", "ChemGrid.BuildWorld.Cells", "ChemGrid.BuildWorld.Valley",
             "ChemGrid.BuildWorld.Draw", "ChemGrid.BuildWorld.Listeners", "ValleyGround.Bind",
             "ThingSpawner.SpawnChunk", "ThingSpawner.UnloadChunk", "ValleyGround.DrawDetails",
@@ -59,9 +61,28 @@ public sealed class PerfMarkers : IDisposable
             "FogBank.LateUpdate", "FogBank.MakePuffs", "FlameBank.Write", "FlameBank.LateUpdate",
             "SpellCaster.ShowAim", "AimMarker.Redraw",
         }),
+        // What Physics.Simulate is made of (#184).
+        (ProfilerCategory.Physics, new[]
+        {
+            "Physics.PrepareSimulationStage", "Physics.RunSimulationStage", "Physics.PublishResultsStage", "PxScene.simulate",
+            "Physics.FetchPhysXResults", "Physics.FetchResults", "Physics.CalculateChangedColliderTransforms",
+            "Physics.WriteColliderPoses", "Physics.HandleColliderHierarchyChanges", "Physics.SendTriggerEvents",
+            "Physics.UpdateRigidbodies", "Physics.Interpolation", "Physics.ClearSceneBuffers", "Physics.Raycast",
+            "Physics.OverlapSphereNonAlloc", "Physics.OverlapBoxNonAlloc", "Physics.CheckSphere", "Physics.SphereCast",
+        }),
+    };
+
+    // Physics counts read as they stand each frame (not times): what a climbing Physics.Simulate is made of (#184).
+    static readonly string[] Gauges =
+    {
+        "Static Colliders", "Dynamic Bodies", "Active Dynamic Bodies", "Active Kinematic Bodies", "Overlaps",
+        "Colliders Synced", "Rigidbodies Synced", "Broadphase Adds", "Broadphase Removes", "Physics Queries",
+        "Trigger Overlaps", "Narrowphase Touches",
     };
 
     readonly List<string> names = new();
+    readonly List<ProfilerRecorder> gauges = new();
+    readonly double[] gaugeWindow = new double[Gauges.Length];
     readonly List<ProfilerRecorder> recorders = new();
     readonly double[] sum, peak, last, window;
     readonly int shotAt;
@@ -81,6 +102,7 @@ public sealed class PerfMarkers : IDisposable
                 names.Add(name);
                 recorders.Add(ProfilerRecorder.StartNew(category, name));
             }
+        foreach (string gauge in Gauges) gauges.Add(ProfilerRecorder.StartNew(ProfilerCategory.Physics, gauge));
         if (wide) WatchEverything();
         sum = new double[names.Count];
         peak = new double[names.Count];
@@ -138,6 +160,8 @@ public sealed class PerfMarkers : IDisposable
             peak[i] = Math.Max(peak[i], ms);
             if (ms > 0 && names[i] == Collect) collections++;
         }
+        for (int i = 0; i < gauges.Count; i++)
+            if (gauges[i].Valid) gaugeWindow[i] += gauges[i].LastValue;
     }
 
     /// <summary>The last frame's markers of half a millisecond or more, as name=ms pairs, then its garbage.</summary>
@@ -160,6 +184,11 @@ public sealed class PerfMarkers : IDisposable
             if (mean >= WindowFloorMs) line.Append(" m.").Append(names[i]).Append('=').Append(mean.ToString("0.00", CultureInfo.InvariantCulture));
             window[i] = 0;
         }
+        for (int i = 0; i < gauges.Count; i++)
+        {
+            if (gauges[i].Valid) line.Append(" p.").Append(Gauges[i].Replace(' ', '_')).Append('=').Append((gaugeWindow[i] / Math.Max(1, windowFrames)).ToString("0.0", CultureInfo.InvariantCulture));
+            gaugeWindow[i] = 0;
+        }
         windowFrames = 0;
         return line.ToString();
     }
@@ -180,6 +209,7 @@ public sealed class PerfMarkers : IDisposable
     public void Dispose()
     {
         foreach (var recorder in recorders) recorder.Dispose();
+        foreach (var gauge in gauges) gauge.Dispose();
         allocated.Dispose();
         systemUsed.Dispose();
         gfxUsed.Dispose();

@@ -140,15 +140,18 @@ public partial class ChemGrid
         return float.IsNaN(top) ? null : top;
     }
 
-    // Every cell once, for a new world: the chunks near the players and the camera now, the rest a few a frame after,
-    // nearest first (view-rebuild: every cell of a 1728-cell map at once was 2.3 s of each start and reset), within
-    // DrawRadius. The sleeping chunks' trees and walls get their blockers too, as they draw. Until every queued chunk has
-    // drawn, the old world's spare blockers stay standing (most stand where the new world's will).
+    // Every cell once, for a new world: the chunks near the players and the camera now (DrawNear, part of the build),
+    // the rest a few rows a frame after, nearest first (view-rebuild: every cell of a 1728-cell map at once was 2.3 s of
+    // each start and reset), within DrawRadius. The inactive chunks' trees and walls get their blockers too, as they
+    // draw. Until every queued chunk has drawn, the old world's spare blockers stay standing (most stand where the new
+    // world's will).
     void RenderAll()
     {
         int across = ChunksAcross, down = (World.H + Chunks.Size - 1) >> Chunks.Shift;
         drawn = new bool[across * down];
         undrawn = drawn.Length;
+        drawnChunks.Clear();
+        ForgetRedraws();
         spareToHide = true;
         DrawNear();
         partRow = 0;
@@ -160,27 +163,83 @@ public partial class ChemGrid
 
     // The undrawn chunks within DrawRadius of a focus, nearest first, then by row and column (a stable order: the same on
     // every peer, though only the view reads it). Made again when the focus moves a chunk or the radius changes, so a
-    // walk draws ahead of itself. A chunk half drawn stays first.
+    // walk draws ahead of itself. A chunk half drawn stays first, unless a focus now stands in another undrawn chunk
+    // (a teleport): that one can't wait. Only the chunks round each focus are looked at, never every chunk of the
+    // map (J-086); with no far ring (the valley) the radius is the map.
     void QueueToDraw()
     {
+        using var marked = QueueMarker.Auto();
         var focus = Focus();
-        int across = ChunksAcross, radius = DrawRadius();
+        int across = ChunksAcross, down = drawn.Length / Mathf.Max(1, across), radius = DrawRadius();
         queuedRadius = radius;
         queuedFocus.Clear();
         queuedFocus.AddRange(focus);
         toDraw.Clear();
-        int kept = partRow > 0 && partChunk >= 0 && !drawn[partChunk] ? partChunk : -1;
+        int kept = partRow > 0 && partChunk >= 0 && !drawn[partChunk] && !StandsUndrawn(focus, partChunk) ? partChunk : -1;
         if (kept >= 0) toDraw.Add(kept);
         else partRow = 0;
-        for (int n = 0; n < drawn.Length; n++)
-            if (!drawn[n] && n != kept && FocusDistance(focus, n % across, n / across) <= radius) toDraw.Add(n);
+        int reach = Mathf.Min(radius, across + down);
+        for (int i = 0; i < focus.Count; i++) QueueRound(focus, i, reach, kept);
         int first = kept >= 0 ? 1 : 0;
-        toDraw.Sort(first, toDraw.Count - first, Comparer<int>.Create((a, b) =>
+        toDraw.Sort(first, toDraw.Count - first, NearestFirst(focus));
+        nextToDraw = 0;
+    }
+
+    // The undrawn chunks within reach of the i-th focus that no focus before it reaches, so each is queued once.
+    void QueueRound(List<Vector2Int> focus, int i, int reach, int kept)
+    {
+        int across = ChunksAcross, down = drawn.Length / Mathf.Max(1, across);
+        var f = focus[i];
+        for (int cy = Mathf.Max(0, f.y - reach); cy <= Mathf.Min(down - 1, f.y + reach); cy++)
+            for (int cx = Mathf.Max(0, f.x - reach); cx <= Mathf.Min(across - 1, f.x + reach); cx++)
+            {
+                int n = cy * across + cx;
+                if (!drawn[n] && n != kept && !ReachedByEarlier(focus, i, cx, cy, reach)) toDraw.Add(n);
+            }
+    }
+
+    // Whether a focus stands in an undrawn chunk other than this one.
+    bool StandsUndrawn(List<Vector2Int> focus, int but)
+    {
+        int across = ChunksAcross;
+        foreach (var f in focus)
+            if (IsUndrawn(f.x, f.y) && f.y * across + f.x != but) return true;
+        return false;
+    }
+
+    bool IsUndrawn(int cx, int cy)
+    {
+        int across = ChunksAcross, n = cy * across + cx;
+        return cx >= 0 && cy >= 0 && cx < across && n < drawn.Length && !drawn[n];
+    }
+
+    // Whether a focus before the i-th already reaches this chunk, so it's queued once.
+    static bool ReachedByEarlier(List<Vector2Int> focus, int i, int cx, int cy, int reach)
+    {
+        for (int j = 0; j < i; j++)
+            if (Mathf.Abs(focus[j].x - cx) <= reach && Mathf.Abs(focus[j].y - cy) <= reach) return true;
+        return false;
+    }
+
+    // Chunks by how near a focus they are, then by row and column.
+    Comparer<int> NearestFirst(List<Vector2Int> focus)
+    {
+        int across = ChunksAcross;
+        return Comparer<int>.Create((a, b) =>
         {
             int da = FocusDistance(focus, a % across, a / across), db = FocusDistance(focus, b % across, b / across);
             return da != db ? da.CompareTo(db) : a.CompareTo(b);
-        }));
-        nextToDraw = 0;
+        });
+    }
+
+    // The chunks drawn so far, nearest a focus first: what a look change or a sweep walks. A chunk not drawn yet takes
+    // the rules and cells as they stand when it draws, so it's never in the list (J-086).
+    void DrawnNearestFirst(List<int> into, bool withPart)
+    {
+        into.Clear();
+        into.AddRange(drawnChunks);
+        if (withPart && partRow > 0 && partChunk >= 0 && !drawn[partChunk]) into.Add(partChunk);
+        into.Sort(NearestFirst(Focus()));
     }
 
     // How far round a focus (chunks) the chunks draw before they're near. On a generated map, the far ring's known radius:
@@ -214,9 +273,18 @@ public partial class ChemGrid
     readonly List<Vector2Int> queuedFocus = new();
     int queuedRadius;
     readonly List<Vector2Int> focusChunks = new();
+    // The chunks drawn so far, in the order they drew.
+    readonly List<int> drawnChunks = new();
+    // What this frame has spent on drawing chunks and drawing them again (DrawSome, RedrawSomeLooks, RenderSwept): its
+    // time, and the same as work done (a row looked over, a dressing or blocker made).
     readonly System.Diagnostics.Stopwatch drawTimer = new();
+    int drawUnits;
 
     int ChunksAcross => (World.W + Chunks.Size - 1) >> Chunks.Shift;
+
+    /// <summary>How many chunks of this world have been drawn, and how many blockers stand, for a performance pass.</summary>
+    public int ChunksDrawn => drawn.Length - undrawn;
+    public int BlockersStanding => blockers != null ? blockers.Count : 0;
 
     /// <summary>
     /// Chunks of this world still to draw: they draw a few a frame after a build, nearest the players first. On a generated
@@ -234,10 +302,21 @@ public partial class ChemGrid
         }
     }
 
-    // A frame's drawing of chunks still undrawn, past those near the players: about this many ms (at least one chunk), or
-    // in a playtest run this many chunks (ExactFrames).
+    // A frame's drawing of chunks still undrawn and of drawn chunks drawn again (a look change, a sweep): about this
+    // many ms between them, and each does a row or a chunk at least. In a playtest run (ExactFrames) it's counted as work
+    // instead, so a replay matches: a row of a new chunk is RowUnits (~0.08 ms on the PC), a dressing or a blocker one
+    // (~0.02 ms), a row looked over for a changed look one, a drawn chunk hashed again SweptUnits. Two whole chunks a
+    // frame, as it was, were 10 to 28 ms frames on the nine's walk (#185).
     const double DrawBudgetMs = 3.0;
-    const int ExactChunksAFrame = 2;
+    const int ExactDrawUnits = 150, RowUnits = 4, SweptUnits = ExactDrawUnits / SweptChunksAFrame;
+
+    void StartDrawBudget()
+    {
+        drawTimer.Reset();
+        drawUnits = 0;
+    }
+
+    bool DrawBudgetSpent() => ExactFrames ? drawUnits >= ExactDrawUnits : drawTimer.Elapsed.TotalMilliseconds >= DrawBudgetMs;
 
     // Where the chunks that must be drawn are: every wizard's (the solo one, or every player's online), the start's and the
     // camera's.
@@ -262,29 +341,41 @@ public partial class ChemGrid
         return best;
     }
 
-    // Every undrawn chunk within the streaming reach of a focus, drawn now: what a player stands in or walks into.
+    // Every undrawn chunk within the streaming reach of a focus, drawn whole: a new world's, as part of its build. In
+    // play nothing draws whole: a chunk a player walks towards has long drawn from the queue, and one they land in out
+    // of nowhere goes to the front of it (QueueToDraw).
     void DrawNear()
     {
         if (undrawn == 0) return;
+        using var marked = DrawNearMarker.Auto();
         int reach = World.Rules.Sim.Streaming.Reach, across = ChunksAcross, down = drawn.Length / Mathf.Max(1, across);
         foreach (var f in Focus())
             for (int cy = Mathf.Max(0, f.y - reach); cy <= Mathf.Min(down - 1, f.y + reach); cy++)
                 for (int cx = Mathf.Max(0, f.x - reach); cx <= Mathf.Min(across - 1, f.x + reach); cx++)
-                    if (!drawn[cy * across + cx]) RenderChunk(cx, cy);
+                    if (!drawn[cy * across + cx])
+                    {
+                        PerfCounts.Add("draw.near_chunks");
+                        RenderChunk(cx, cy);
+                    }
     }
 
-    // The rest a few a frame, nearest first.
+    // The rest a few rows a frame, nearest first, within the frame's budget.
     void DrawSome()
     {
         if (undrawn == 0) return;
-        DrawNear();
         if (FocusMoved()) QueueToDraw();
-        drawTimer.Restart();
+        if (nextToDraw >= toDraw.Count)
+        {
+            HideSpareOnceDrawn();
+            return;
+        }
+        using var marked = DrawSomeMarker.Auto();
+        drawTimer.Start();
         int across = ChunksAcross, done = 0;
-        // A few rows at a time, so a crowded chunk (a town's) is spread over frames too; it counts as drawn once whole.
+        // A row at a time, so a crowded chunk (a town's, a forest's) is spread over frames too; it counts as drawn once whole.
         while (nextToDraw < toDraw.Count && undrawn > 0)
         {
-            if (DrawnEnough(done)) break;
+            if (done > 0 && DrawBudgetSpent()) break;
             int n = toDraw[nextToDraw];
             if (drawn[n])
             {
@@ -296,7 +387,9 @@ public partial class ChemGrid
             int from = y0 + partRow, to = Mathf.Min(y1, from + RowsAStep);
             if (partRow == 0) MakeViews(cx, cy);
             RenderRows(cx, from, to);
+            PerfCounts.Add("draw.rows", to - from);
             done += to - from;
+            drawUnits += (to - from) * RowUnits;
             partRow = to - y0;
             partChunk = n;
             if (to < y1) continue;
@@ -304,16 +397,13 @@ public partial class ChemGrid
             nextToDraw++;
             partRow = 0;
         }
+        drawTimer.Stop();
         HideSpareOnceDrawn();
     }
 
-    // Whether DrawSome has drawn its frame's share: done rows, or its time.
-    bool DrawnEnough(int done) =>
-        ExactFrames ? done >= ExactChunksAFrame * Chunks.Size : done > 0 && drawTimer.Elapsed.TotalMilliseconds >= DrawBudgetMs;
-
     // How many of its rows DrawSome has drawn of the chunk it's on (partChunk), and how many it draws a step.
     int partRow, partChunk = -1;
-    const int RowsAStep = 8;
+    const int RowsAStep = 1;
 
     void HideSpareOnceDrawn()
     {
@@ -339,6 +429,9 @@ public partial class ChemGrid
     {
         renderTurn = (renderTurn + 1) % RenderTurns;
         int turn = 0;
+        StartDrawBudget();
+        RedrawSomeLooks();
+        RenderSwept();
         DrawSome();
         foreach (var (cx, cy) in World.ActiveChunks)
         {
@@ -347,14 +440,14 @@ public partial class ChemGrid
             if (IsChunkDrawn(cx, cy)) RenderChunk(cx, cy);
         }
         RenderFresh(out int fresh);
-        RenderSwept();
         FinishRender();
         AnnounceFresh(fresh);
     }
 
-    // The inactive chunks still to look over after a sweep (RedrawEveryChunk), and how many a frame: a cell
+    // The inactive chunks still to look over after a sweep (RedrawEveryChunk), and how many a frame at most: a cell
     // that hasn't changed costs a hash, so a chunk is about what a third of the active ones costs a frame.
     readonly Queue<Vector2Int> sweptChunks = new();
+    readonly List<int> sweptOrder = new();
     const int SweptChunksAFrame = 6;
 
     /// <summary>Inactive chunks redrawn after a sweep, for the probe; and how many are still to come.</summary>
@@ -366,27 +459,104 @@ public partial class ChemGrid
 
     /// <summary>
     /// A revert or a lapse swept its mod's materials from every cell (World.Lapse.cs), inactive chunks too, which
-    /// Render doesn't walk: each inactive chunk is looked over once, a few a frame, so the lapse clears everywhere.
+    /// Render doesn't walk: each inactive chunk drawn so far is looked over once, a few a frame and nearest first, so
+    /// the lapse clears everywhere it shows. A chunk not drawn yet draws from the swept cells when its turn comes; before,
+    /// the sweep drew each of the nine's 729 whole, six a frame: 120 frames of 100 to 900 ms (#186).
     /// </summary>
     void RedrawEveryChunk()
     {
         if (views == null) return;
         EveryChunkRedraws++;
         sweptChunks.Clear();
-        int cw = (World.W + Chunks.Size - 1) >> Chunks.Shift, chh = (World.H + Chunks.Size - 1) >> Chunks.Shift;
-        for (int cy = 0; cy < chh; cy++)
-            for (int cx = 0; cx < cw; cx++) sweptChunks.Enqueue(new Vector2Int(cx, cy));
+        // The rows a half-drawn chunk has drawn are from before the sweep: it starts again (an unchanged cell costs a hash).
+        partRow = 0;
+        DrawnNearestFirst(sweptOrder, false);
+        int across = ChunksAcross;
+        foreach (int n in sweptOrder) sweptChunks.Enqueue(new Vector2Int(n % across, n / across));
     }
 
     void RenderSwept()
     {
+        if (sweptChunks.Count == 0) return;
+        using var marked = SweptMarker.Auto();
+        drawTimer.Start();
         for (int n = 0; n < SweptChunksAFrame && sweptChunks.Count > 0; n++)
         {
+            if (n > 0 && DrawBudgetSpent()) break;
             var ch = sweptChunks.Dequeue();
-            if (World.IsActive(ch.x, ch.y)) continue; // Render walks it
+            if (World.IsActive(ch.x, ch.y) || !IsChunkDrawn(ch.x, ch.y)) continue; // Render walks it
             SweptChunksDrawn++;
+            drawUnits += SweptUnits;
             RenderChunk(ch.x, ch.y);
         }
+        drawTimer.Stop();
+    }
+
+    // A changed look's dressings, still to build again on the chunks drawn when it changed (RedrawLooks, in
+    // ChemGrid.Rules.cs): the terrains, the chunks nearest first, and how far through them it is.
+    readonly HashSet<string> looksOwed = new();
+    readonly List<int> looksQueue = new();
+    int looksNext, looksRow;
+
+    /// <summary>Drawn chunks whose dressings still wait for a changed look, for the probe; 0 once the change has reached them all.</summary>
+    public int LookChunksLeft => looksQueue.Count - looksNext;
+
+    // The terrains whose look changed, queued over every chunk drawn so far. A second change before the first is done
+    // starts the walk again with both.
+    void QueueLooks(IEnumerable<string> terrains)
+    {
+        looksOwed.UnionWith(terrains);
+        DrawnNearestFirst(looksQueue, true);
+        looksNext = looksRow = 0;
+    }
+
+    // A few rows a frame of the chunks a changed look still has to reach, within the frame's budget.
+    void RedrawSomeLooks()
+    {
+        if (looksNext >= looksQueue.Count) return;
+        using var marked = LooksMarker.Auto();
+        drawTimer.Start();
+        int across = ChunksAcross, done = 0;
+        while (looksNext < looksQueue.Count && (done == 0 || !DrawBudgetSpent()))
+        {
+            int n = looksQueue[looksNext], cy = n / across;
+            int y0 = cy << Chunks.Shift, y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+            RedressRow(n % across, y0 + looksRow);
+            drawUnits++;
+            done++;
+            if (++looksRow < y1 - y0) continue;
+            looksRow = 0;
+            looksNext++;
+        }
+        drawTimer.Stop();
+        if (looksNext < looksQueue.Count) return;
+        looksQueue.Clear();
+        looksOwed.Clear();
+        looksNext = 0;
+    }
+
+    // One row of a chunk: what stands on its cells of a terrain whose look changed, built again.
+    void RedressRow(int cx, int y)
+    {
+        int x0 = cx << Chunks.Shift, x1 = Mathf.Min(World.W, x0 + Chunks.Size);
+        for (int x = x0; x < x1; x++)
+        {
+            int index = y * World.W + x;
+            var v = views[index];
+            if (v?.terrain == null || !looksOwed.Contains(v.terrain)) continue;
+            var c = World.Cells[index];
+            if (c != null) Redress(v, c, x, y, false);
+        }
+    }
+
+    // A new world: nothing of the old one's is left to draw again.
+    void ForgetRedraws()
+    {
+        sweptChunks.Clear();
+        looksQueue.Clear();
+        looksOwed.Clear();
+        looksNext = looksRow = 0;
+        chunkLooks = new int[drawn.Length];
     }
 
     // Every cell of a chunk, looked over.
@@ -398,6 +568,7 @@ public partial class ChemGrid
             MakeViews(cx, cy);
             MarkDrawn(n);
         }
+        else if (n < drawn.Length) CatchUpLooks(n, cx, cy);
         int y0 = cy << Chunks.Shift;
         RenderRows(cx, y0, Mathf.Min(World.H, y0 + Chunks.Size));
     }
@@ -410,11 +581,12 @@ public partial class ChemGrid
             for (int x = x0; x < x1; x++) RenderCell(x, y);
     }
 
-    // A chunk's views, made as it first draws (a drawn chunk's are all there).
+    // A chunk's views, made as it first draws (a drawn chunk's are all there). They draw from the looks in force.
     void MakeViews(int cx, int cy)
     {
         int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
         int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+        if (views[y0 * World.W + x0] == null) chunkLooks[cy * ChunksAcross + cx] = lookStamp;
         for (int y = y0; y < y1; y++)
             for (int x = x0; x < x1; x++) views[y * World.W + x] ??= new View();
     }
@@ -424,7 +596,25 @@ public partial class ChemGrid
         if (drawn[n]) return;
         drawn[n] = true;
         undrawn--;
+        drawnChunks.Add(n);
+        PerfCounts.Add("draw.chunks");
+        ChunkDrawn?.Invoke(n % ChunksAcross, n / ChunksAcross);
     }
+
+    /// <summary>A chunk of this world (cx, cy) has drawn for the first time: what follows the look in force catches it up then (J-086).</summary>
+    public event System.Action<int, int> ChunkDrawn;
+
+    /// <summary>The chunks drawn so far (cx, cy), nearest a focus first: what a look change walks (J-086).</summary>
+    public void DrawnChunksNearestFirst(List<Vector2Int> into)
+    {
+        into.Clear();
+        if (drawnChunks.Count == 0) return;
+        DrawnNearestFirst(lookOrder, false);
+        int across = ChunksAcross;
+        foreach (int n in lookOrder) into.Add(new Vector2Int(n % across, n / across));
+    }
+
+    readonly List<int> lookOrder = new();
 
     /// <summary>Inactive chunks redrawn because the dragon's breath reset them, for the probe.</summary>
     public int FreshInactiveDrawn { get; private set; }
@@ -435,7 +625,8 @@ public partial class ChemGrid
         fresh = freshChunks.Count;
         foreach (var f in freshChunks)
         {
-            if (World.IsActive(f.CX, f.CY)) continue;
+            // One not drawn yet draws from its cells as they stand when its turn comes.
+            if (World.IsActive(f.CX, f.CY) || !IsChunkDrawn(f.CX, f.CY)) continue;
             FreshInactiveDrawn++;
             RenderChunk(f.CX, f.CY);
         }
@@ -457,7 +648,10 @@ public partial class ChemGrid
     static readonly Unity.Profiling.ProfilerMarker GroundMarker = new("ChemGrid.ChangeGround"),
         WaterMarker = new("ChemGrid.RenderWater"), FireMarker = new("ChemGrid.RenderFire"), GasMarker = new("ChemGrid.RenderGas"),
         FinishMarker = new("ChemGrid.FinishRender"), WaterMeshMarker = new("ChemGrid.WaterMesh"),
-        SlickMeshMarker = new("ChemGrid.SlickMesh"), ShapingMarker = new("ChemGrid.Shaping"), RecycleMarker = new("ChemGrid.RecycleFx");
+        SlickMeshMarker = new("ChemGrid.SlickMesh"), ShapingMarker = new("ChemGrid.Shaping"), RecycleMarker = new("ChemGrid.RecycleFx"),
+        DrawNearMarker = new("ChemGrid.DrawNear"), DrawSomeMarker = new("ChemGrid.DrawSome"), QueueMarker = new("ChemGrid.QueueToDraw"),
+        SweptMarker = new("ChemGrid.RenderSwept"), LooksMarker = new("ChemGrid.RedrawLooks"), MarkDrawnMarker = new("ChemGrid.MarkDrawn"),
+        RecolourMarker = new("ChemGrid.RecolourWorld");
 
     void FinishRender()
     {
@@ -560,9 +754,19 @@ public partial class ChemGrid
     {
         float shown = GroundTop(x, y, c);
         if (reshaped) shown = StandsAlone(c) && v.dressing != null ? v.dressing.transform.position.y : ShownGround(x, y, c);
-        if (v.dressing != null) Destroy(v.dressing);
+        if (v.dressing != null)
+        {
+            PerfCounts.Add("draw.dressings_destroyed");
+            drawUnits++;
+            Destroy(v.dressing);
+        }
         v.dressing = dressings.Build(c, x, y, shown);
-        blockers.Place(x, y, c, shown);
+        if (v.dressing != null)
+        {
+            PerfCounts.Add("draw.dressings_built");
+            drawUnits++;
+        }
+        if (blockers.Place(x, y, c, shown)) drawUnits++;
         if (reshaped) StartShaping(v, x, y, shown);
     }
 
