@@ -68,7 +68,7 @@ namespace Chem.Tests
                 elevation = Elevations();
             }
 
-            int[] Elevations() => World.Cells.Select(c => World.ElevationUnits(c)).ToArray();
+            int[] Elevations() => World.AllCells().Select(c => World.ElevationUnits(c)).ToArray();
 
             /// <summary>Applies a batch and steps, as NetChem.Advance does, reshaping the cells that moved (as ValleyGround does).</summary>
             public void Run(TickBatch batch, bool watch)
@@ -133,8 +133,8 @@ namespace Chem.Tests
             var (ci, cj) = Grid.ChunkOfCell(99, 81);
             Assert.That(host.Ground.Current(ci, cj), Is.Not.EqualTo(start.Ground.Current(ci, cj)), "the trench moved the ground");
             Assert.That(host.World.At(99, 81).Height, Is.LessThan(0), "dug");
-            Assert.That(host.World.Cells.Count(c => c.Water > 0 && c.T != "pit"), Is.GreaterThan(0), "the pond's water ran into a trench");
-            Assert.That(host.World.Cells.Count(c => host.World.IsRaisedWall(c)), Is.GreaterThan(0), "walls stand");
+            Assert.That(host.World.AllCells().Count(c => c.Water > 0 && c.T != "pit"), Is.GreaterThan(0), "the pond's water ran into a trench");
+            Assert.That(host.World.AllCells().Count(c => host.World.IsRaisedWall(c)), Is.GreaterThan(0), "walls stand");
         }
     }
 }

@@ -177,7 +177,7 @@ namespace Chem
 
         void LayBuildingCell(int index, string terrain, HashSet<int> baseCells)
         {
-            var c = Cells[index];
+            var c = CellAt(index);
             if (!baseCells.Contains(index) && !underBuildings.ContainsKey(index))
             {
                 var start = startAt != null ? startShapes[startAt[index]] : c;
@@ -191,7 +191,7 @@ namespace Chem
         // A wall taken away: what stood under it, or for a cell the world was made with, the plain ground.
         void ClearBuilding(int index, Rules now)
         {
-            var c = Cells[index];
+            var c = CellAt(index);
             if (!underBuildings.TryGetValue(index, out var under)) under = (now.Buildings.Ground, 0);
             underBuildings.Remove(index);
             c.Reset(now.Terrain.ContainsKey(under.terrain) ? under.terrain : now.Buildings.Ground);

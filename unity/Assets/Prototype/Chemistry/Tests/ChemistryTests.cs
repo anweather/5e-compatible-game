@@ -238,9 +238,9 @@ namespace Chem.Tests
             Assert.That(w.At(7, 7).Fire, Is.EqualTo(2));
             Assert.That(w.Log[w.Log.Count - 1].Text, Is.EqualTo("Fire takes hold of the grass"));
             Run(w, 6);
-            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(1), "fire spread to neighbours");
+            Assert.That(w.AllCells().Count(c => c.Fire > 0), Is.GreaterThan(1), "fire spread to neighbours");
             Run(w, 200);
-            var burnt = w.Cells.Where(c => c.T == "dirt").ToList();
+            var burnt = w.AllCells().Where(c => c.T == "dirt").ToList();
             Assert.That(burnt.Count, Is.GreaterThan(10), "a patch of grass burned away");
             Assert.That(burnt.All(c => c.Cover == "ash" && c.Fire == 0));
             Assert.That(w.At(7, 7).T, Is.EqualTo("dirt"));
@@ -331,8 +331,8 @@ namespace Chem.Tests
             w.SetLand(land);
             w.At(8, 4).Water = 12;
             Run(w, 300);
-            int west = w.Cells.Where((c, k) => k % 16 < 8).Sum(c => c.Water);
-            east = w.Cells.Where((c, k) => k % 16 > 8).Sum(c => c.Water);
+            int west = w.AllCells().Where((c, k) => k % 16 < 8).Sum(c => c.Water);
+            east = w.AllCells().Where((c, k) => k % 16 > 8).Sum(c => c.Water);
             return west;
         }
 
@@ -454,7 +454,7 @@ namespace Chem.Tests
             var w = new World(R, 6, 6, 1, "arid");
             w.At(2, 2).Water = 2;
             Run(w, 40);
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "gone in a few passes (dirt takes over a hundred ticks)");
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(0), "gone in a few passes (dirt takes over a hundred ticks)");
         }
 
         [Test]
@@ -463,7 +463,7 @@ namespace Chem.Tests
             var w = new World(R, 6, 6, 1, "arctic");
             w.At(2, 2).Water = 6;
             Run(w, 16);
-            var wet = w.Cells.Where(c => c.Water > 0).ToList();
+            var wet = w.AllCells().Where(c => c.Water > 0).ToList();
             Assert.That(wet, Is.Not.Empty);
             Assert.That(wet.All(c => c.Frozen), "every wet cell is ice, deep or thin");
         }
@@ -477,10 +477,10 @@ namespace Chem.Tests
             for (int t = 0; t < 160; t++)
             {
                 w.Step();
-                steamed |= w.Cells.Any(c => c.Gas == "steam");
+                steamed |= w.AllCells().Any(c => c.Gas == "steam");
             }
             Assert.That(steamed, "it boils off as steam");
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "all of it");
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(0), "all of it");
         }
 
         // Thatch at (2, 1) and (3, 1) against a log wall at (4, 1), on dirt; the thatch set alight.
@@ -633,7 +633,7 @@ namespace Chem.Tests
             var w = new World(R, 8, 4, 1, "metal");
             for (int x = 0; x < 4; x++) for (int y = 0; y < 4; y++) w.At(x, y).Water = 2;
             Run(w, ticks);
-            return (w, w.Cells.Count(c => c.T == "rusted-metal"), w.Log.Count(l => l.Text == "The metal rusts through"));
+            return (w, w.AllCells().Count(c => c.T == "rusted-metal"), w.Log.Count(l => l.Text == "The metal rusts through"));
         }
 
         [Test]
@@ -643,7 +643,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["metal"].RustEvery, Is.EqualTo(2000));
             var (early, none, _) = WetMetal(1000);
             Assert.That(none, Is.EqualTo(0), "not yet");
-            Assert.That(early.Cells.Count(c => c.Rust > 0), Is.GreaterThan(0), "but counting");
+            Assert.That(early.AllCells().Count(c => c.Rust > 0), Is.GreaterThan(0), "but counting");
             var (w, rusted, lines) = WetMetal(2400);
             Assert.That(rusted, Is.GreaterThan(0));
             Assert.That(lines, Is.InRange(1, rusted - 1), "a line a pass, not a line a cell");
@@ -653,7 +653,7 @@ namespace Chem.Tests
 
             var dry = new World(R, 8, 4, 1, "metal");
             Run(dry, 2400);
-            Assert.That(dry.Cells.All(c => c.T == "metal" && c.Rust == 0), "dry metal keeps");
+            Assert.That(dry.AllCells().All(c => c.T == "metal" && c.Rust == 0), "dry metal keeps");
         }
 
         [Test]
@@ -668,7 +668,7 @@ namespace Chem.Tests
         static World OilyPond(int spreadTicks)
         {
             var w = new World(R, 10, 5, 1, "pit");
-            foreach (var c in w.Cells) c.Water = 3;
+            foreach (var c in w.AllCells()) c.Water = 3;
             w.At(1, 2).Cover = "oil";
             Run(w, spreadTicks);
             return w;
@@ -679,9 +679,9 @@ namespace Chem.Tests
         {
             // Oil floats (materials.json float.every 16): the slick grows a cell a turn over open water.
             var w = OilyPond(80);
-            int slick = w.Cells.Count(c => c.Cover == "oil");
+            int slick = w.AllCells().Count(c => c.Cover == "oil");
             Assert.That(slick, Is.GreaterThan(5), "it spread across the surface");
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(150), "and the water stays as it was");
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(150), "and the water stays as it was");
 
             // Lit, the fire runs across the slick; the water doesn't burn, and the fire dies with the oil.
             w.Apply(1, 2, "fire", 1, -1, false);
@@ -689,12 +689,12 @@ namespace Chem.Tests
             for (int t = 0; t < 120; t++)
             {
                 w.Step();
-                most = Math.Max(most, w.Cells.Count(c => c.Fire > 0));
+                most = Math.Max(most, w.AllCells().Count(c => c.Fire > 0));
             }
             Assert.That(most, Is.GreaterThan(3), "the fire spread over the water");
-            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.EqualTo(0), "and went out");
-            Assert.That(w.Cells.Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
-            int water = w.Cells.Sum(c => c.Water);
+            Assert.That(w.AllCells().Count(c => c.Fire > 0), Is.EqualTo(0), "and went out");
+            Assert.That(w.AllCells().Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
+            int water = w.AllCells().Sum(c => c.Water);
             Assert.That(water, Is.InRange(1, 149), "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
             Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("19 19 147 e3e69588 2221874590"), "the golden");
         }
@@ -715,7 +715,7 @@ namespace Chem.Tests
             var w = new World(R, 9, 5, 1, "sand");
             w.At(6, 2).Water = 2;
             w.Cast("shocking-grasp", 2, 2, 2);
-            int glass = w.Cells.Count(c => c.T == "glass");
+            int glass = w.AllCells().Count(c => c.T == "glass");
             Assert.That(glass, Is.GreaterThan(0), "the strike fused some of the sand");
             Assert.That(w.Log.Any(l => l.Text == "The strike fuses the sand into glass"));
             var g = R.Terrain["glass"];
@@ -743,7 +743,7 @@ namespace Chem.Tests
             for (int t = 0; t < 10; t++)
             {
                 w.Step();
-                steam = Math.Max(steam, w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0));
+                steam = Math.Max(steam, w.AllCells().Sum(c => c.Gas == "steam" ? c.GasAmt : 0));
             }
             Assert.That(steam, Is.GreaterThan(0), "the water hisses into steam");
             Assert.That(w.Log.Any(l => l.Text == "Water hisses into steam on the hot metal"));
@@ -757,7 +757,7 @@ namespace Chem.Tests
             // Steam scalds a creature of a material that scalds (flesh, not bone), as fire damage; it drifts,
             // and as it decays a cell's thick steam leaves water (gases.steam condenseEvery 2).
             var w = new World(R, 9, 5, 1, "metal");
-            foreach (var c in w.Cells)
+            foreach (var c in w.AllCells())
             {
                 c.Gas = "steam";
                 c.GasAmt = 6;
@@ -768,7 +768,7 @@ namespace Chem.Tests
             Assert.That(goblin.Hp, Is.LessThan(99), "flesh scalds");
             Assert.That(hound.Hp, Is.EqualTo(99), "bone doesn't");
             Run(w, 150);
-            int steam = w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0), water = w.Cells.Sum(c => c.Water);
+            int steam = w.AllCells().Sum(c => c.Gas == "steam" ? c.GasAmt : 0), water = w.AllCells().Sum(c => c.Water);
             Assert.That(water, Is.GreaterThan(0), "it cooled back into water");
             Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 dc213318 2670964354"), "the golden");
         }
@@ -778,7 +778,7 @@ namespace Chem.Tests
         static (World w, int near, int far) SteamByHeat(bool hot)
         {
             var w = new World(R, 9, 5, 1, "metal");
-            foreach (var c in w.Cells)
+            foreach (var c in w.AllCells())
             {
                 c.Gas = "steam";
                 c.GasAmt = 6;
@@ -819,9 +819,9 @@ namespace Chem.Tests
             var hound = w.SpawnRaider("bone-hound", 10, 4, 99);
             w.Cast("flame-wave", 2, 4, 1);
             Assert.That(w.Wind, Is.EqualTo(((int, int)?)(1, 18)), "the flame wave raises a wind along it");
-            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(3), "and sets its cone alight");
+            Assert.That(w.AllCells().Count(c => c.Fire > 0), Is.GreaterThan(3), "and sets its cone alight");
             w.Cast("lava-pool", 10, 4, 0);
-            int pool = w.Cells.Count(c => c.T == "lava-pool");
+            int pool = w.AllCells().Count(c => c.T == "lava-pool");
             Assert.That(pool, Is.GreaterThan(0));
             Assert.That(w.At(10, 4).Heat, Is.EqualTo(300), "the lava is hot");
             w.Cast("scalding-steam", 18, 4, 0);
@@ -830,7 +830,7 @@ namespace Chem.Tests
             Assert.That(goblin.Hp, Is.LessThan(99), "the steam scalds the goblin");
             Assert.That(hound.Hp, Is.LessThan(99), "the lava burns the hound");
             Run(w, 300);
-            Assert.That(w.Cells.Count(c => c.T == "lava-pool"), Is.EqualTo(0), "the lava pool cools");
+            Assert.That(w.AllCells().Count(c => c.T == "lava-pool"), Is.EqualTo(0), "the lava pool cools");
             Assert.That(w.Log.Any(l => l.Text == "The lava pool cools into rock"));
             Assert.That($"{pool} {goblin.Hp} {hound.Hp} {w.CellHash()} {w.RngState}", Is.EqualTo("9 90 -1 d6bc3323 2450008921"), "the golden");
         }
@@ -841,12 +841,12 @@ namespace Chem.Tests
             // rules/combos.json air+fire, air+water, air+earth and air+air, each its own spell now.
             var w = new World(R, 24, 11, 1, "grass");
             w.Cast("sand-blast", 1, 2, 1);
-            int sand = w.Cells.Count(c => c.T == "sand");
+            int sand = w.AllCells().Count(c => c.T == "sand");
             Assert.That(sand, Is.GreaterThan(0), "the blast leaves sand along its line");
             w.Cast("lightning-bolt", 1, 2, 1);
-            int glass = w.Cells.Count(c => c.T == "glass");
+            int glass = w.AllCells().Count(c => c.T == "glass");
             Assert.That(glass, Is.GreaterThan(0), "the bolt fuses the sand it crosses into glass");
-            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(0), "and sets the grass beyond smouldering");
+            Assert.That(w.AllCells().Count(c => c.Fire > 0), Is.GreaterThan(0), "and sets the grass beyond smouldering");
             w.Cast("rain-cloud", 16, 2, 0);
             Assert.That(w.At(16, 2).Gas, Is.EqualTo("cloud"));
             w.At(10, 8).Gas = "smoke";
@@ -874,7 +874,7 @@ namespace Chem.Tests
             var w = new World(R, 7, 5, 1, "dirt");
             w.Cast("light", 3, 2, 0);
             Assert.That(w.At(3, 2).Lit, Is.EqualTo(21600), "lit for the hour");
-            Assert.That(w.Cells.Count(c => c.Lit > 0), Is.EqualTo(1), "on the cell touched only");
+            Assert.That(w.AllCells().Count(c => c.Lit > 0), Is.EqualTo(1), "on the cell touched only");
             Run(w, 10800);
             string half = w.CellHash();
             Assert.That(w.At(3, 2).Lit, Is.EqualTo(10800), "half way");
@@ -900,7 +900,7 @@ namespace Chem.Tests
             Assert.That(w.At(5, 2).Fire, Is.EqualTo(2));
             w.Cast("gust-of-wind", 1, 2, 1);
             Assert.That(w.At(3, 2).Gas == null && w.At(4, 2).Gas == null, "the gust swept the smoke and steam on");
-            Assert.That(w.Cells.Where((c, i) => i % 16 > 4 && c.Gas != null).Sum(c => c.GasAmt), Is.EqualTo(8), "east, all of it");
+            Assert.That(w.AllCells().Where((c, i) => i % 16 > 4 && c.Gas != null).Sum(c => c.GasAmt), Is.EqualTo(8), "east, all of it");
             Assert.That(w.At(5, 2).Fire, Is.EqualTo(3), "it fanned the fire hotter");
             Assert.That(w.At(6, 2).Fire, Is.GreaterThan(0), "and on downwind");
             Assert.That(w.At(10, 2).Heat, Is.EqualTo(120), "and kept the metal hot");
@@ -1330,8 +1330,8 @@ namespace Chem.Tests
             w.Apply(11, 3, "cold");
             Assert.That(w.At(11, 3).Gas, Is.EqualTo("snowcloud"));
             Run(w, 120);
-            Assert.That(w.Cells.Count(c => c.T == "sprouts" || c.T == "grass"), Is.GreaterThan(0), "the rain greens the ash");
-            Assert.That(w.Cells.Count(c => c.Cover == "snow"), Is.GreaterThan(0), "the snow cloud snows");
+            Assert.That(w.AllCells().Count(c => c.T == "sprouts" || c.T == "grass"), Is.GreaterThan(0), "the rain greens the ash");
+            Assert.That(w.AllCells().Count(c => c.Cover == "snow"), Is.GreaterThan(0), "the snow cloud snows");
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("788f5f20 1615770602"), "the golden");
         }
 
@@ -1463,7 +1463,7 @@ namespace Chem.Tests
             Assert.That(w.At(8, 4).Cover, Is.Not.EqualTo("snow"));
             Assert.That(w.At(7, 3).Frozen, Is.False);
             Assert.That(w.At(6, 4).Gas, Is.EqualTo("steam"));
-            Assert.That(w.Cells.Count(c => c.Cover == "embers" && c.Fire > 0), Is.GreaterThan(0));
+            Assert.That(w.AllCells().Count(c => c.Cover == "embers" && c.Fire > 0), Is.GreaterThan(0));
             Run(w, 12);
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c91f14e2 657895373"), "the golden");
         }
@@ -1851,7 +1851,7 @@ namespace Chem.Tests
             Run(w, 10);
             Assert.That(w.At(5, 4).Water, Is.EqualTo(3), "all of it ran into the pit");
             Assert.That(w.At(4, 4).Water, Is.EqualTo(0));
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(3), "water is conserved");
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(3), "water is conserved");
         }
 
         [Test]
@@ -1860,10 +1860,10 @@ namespace Chem.Tests
             var w = Room(16, 5, rules: NoSoak);
             for (int x = 2; x <= 13; x++) w.At(x, 2).T = "pit";
             w.Cast("create-water", 3, 2, 0);
-            int total = w.Cells.Sum(c => c.Water);
+            int total = w.AllCells().Sum(c => c.Water);
             Run(w, 80);
             Assert.That(w.At(9, 2).Water, Is.GreaterThan(0), "water reached the wheel's square (x=9 in sim.test.ts)");
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(total));
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(total));
             // The same setup in the TS sandbox ends with exactly this row.
             CollectionAssert.AreEqual(new[] { 0, 2, 7, 6, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0 },
                 Enumerable.Range(0, 16).Select(x => w.At(x, 2).Water).ToArray());
@@ -1922,7 +1922,7 @@ namespace Chem.Tests
             w.Apply(5, 3, "earth");
             Assert.That(w.At(5, 3).T, Is.EqualTo("dirt"));
             Assert.That(w.At(5, 3).Water, Is.EqualTo(0));
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(4));
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(4));
         }
 
         // ---------- shapes / log / determinism ----------

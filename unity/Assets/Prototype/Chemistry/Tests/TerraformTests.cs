@@ -31,7 +31,7 @@ namespace Chem.Tests
         }
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
-        static int TotalWater(World w) => w.Cells.Sum(c => c.Water);
+        static int TotalWater(World w) => w.AllCells().Sum(c => c.Water);
         static int[] Row(World w, int y, params int[] xs) => xs.Select(x => w.At(x, y).Water).ToArray();
         static int[] Heights(World w, int y, params int[] xs) => xs.Select(x => w.At(x, y).Height).ToArray();
 
@@ -620,7 +620,7 @@ namespace Chem.Tests
             w.At(13, 4).Gas = "dust";
             w.At(13, 4).GasAmt = 3;
             w.Apply(4, 4, "fire", 1, -1, true);
-            Assert.That(w.Cells.Count(c => c.Gas == "dust"), Is.EqualTo(1), "only the far cloud is left");
+            Assert.That(w.AllCells().Count(c => c.Gas == "dust"), Is.EqualTo(1), "only the far cloud is left");
             Assert.That(w.At(6, 4).Fire, Is.EqualTo(3));
             Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
             Assert.That(w.FlashesSince(-1).Count(), Is.GreaterThan(1), "the view hears of each cell");

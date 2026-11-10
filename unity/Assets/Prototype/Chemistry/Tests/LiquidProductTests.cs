@@ -41,7 +41,7 @@ namespace Chem.Tests
             return w;
         }
 
-        static int Wet(World w, string liquid) => w.Cells.Count(c => c.Water > 0 && w.LiquidId(c) == liquid);
+        static int Wet(World w, string liquid) => w.AllCells().Count(c => c.Water > 0 && w.LiquidId(c) == liquid);
 
         static void Pour(World w, string liquid, int x, int y, int units)
         {
@@ -61,19 +61,19 @@ namespace Chem.Tests
             Assert.That(w.At(12, 32).Heat, Is.EqualTo(160), "fresh, it's hot for its hot.for");
             Assert.That(w.At(12, 32).Sets, Is.EqualTo(300), "and sets in its sets.after");
             Run(w, 60);
-            Assert.That(w.Cells.Count(c => c.Fire > 0 || c.T == "dirt"), Is.GreaterThan(0), "the grass it ran over and beside caught");
-            Assert.That(w.Cells.Where(c => c.Water > 0).All(c => c.Heat > 0), Is.True, "each cell it ran to took its heat");
+            Assert.That(w.AllCells().Count(c => c.Fire > 0 || c.T == "dirt"), Is.GreaterThan(0), "the grass it ran over and beside caught");
+            Assert.That(w.AllCells().Where(c => c.Water > 0).All(c => c.Heat > 0), Is.True, "each cell it ran to took its heat");
             Run(w, 140);
             int magma = Wet(w, "magma");
             Assert.That(magma, Is.GreaterThan(0), "it hasn't set yet");
-            Assert.That(w.Cells.Where(c => c.Water > 0).All(c => c.Heat == 0), Is.True, "it cooled");
+            Assert.That(w.AllCells().Where(c => c.Water > 0).All(c => c.Heat == 0), Is.True, "it cooled");
             Run(w, 110);
             Assert.That(Wet(w, "magma"), Is.Zero, "every cell of it set");
-            Assert.That(w.Cells.Count(c => c.T == "rock"), Is.EqualTo(magma), "into rock, where it lay");
-            Assert.That(w.Cells.Count(c => c.Sets != 0 || c.Heat != 0), Is.Zero);
-            Assert.That(w.Cells.Count(c => c.T == "dirt"), Is.GreaterThan(magma), "the grass burnt beyond it too");
+            Assert.That(w.AllCells().Count(c => c.T == "rock"), Is.EqualTo(magma), "into rock, where it lay");
+            Assert.That(w.AllCells().Count(c => c.Sets != 0 || c.Heat != 0), Is.Zero);
+            Assert.That(w.AllCells().Count(c => c.T == "dirt"), Is.GreaterThan(magma), "the grass burnt beyond it too");
             Assert.That(w.Log.Any(l => l.Text == "The magma sets hard"), Is.True);
-            TestContext.WriteLine($"magma set into {magma} cells of rock; {w.Cells.Count(c => c.T == "dirt")} cells of grass burnt");
+            TestContext.WriteLine($"magma set into {magma} cells of rock; {w.AllCells().Count(c => c.T == "dirt")} cells of grass burnt");
             Assert.That(w.CellHash(), Is.EqualTo("32c93ebc"), "the magma golden");
         }
 
@@ -100,7 +100,7 @@ namespace Chem.Tests
             var w = new World(With(MagmaRow), 64, 64, 7, "grass");
             Assert.That(w.AddLiquid(20, 20, "magma", 4), Is.True);
             w.DisplaceWater(20, 20);
-            var pushed = w.Cells.Where(c => c.Water > 0).ToList();
+            var pushed = w.AllCells().Where(c => c.Water > 0).ToList();
             Assert.That(pushed, Is.Not.Empty);
             Assert.That(pushed.All(c => c.Sets == 300 && c.Heat == 160), Is.True, "each cell it was pushed onto took its count and heat");
             Run(w, 310);
@@ -137,7 +137,7 @@ namespace Chem.Tests
             Assert.That(Wet(w, "syrup"), Is.Zero, "the base cold-liquid row froze it (freezes: true)");
             Assert.That(syrup.All(k => w.At(k % 64, k / 64).Cover == "candy"), Is.True, "into its cover, where it lay");
             Assert.That(Wet(w, "honey"), Is.GreaterThan(0), "a liquid without freezes doesn't freeze");
-            Assert.That(w.Cells.Any(c => c.Frozen), Is.False);
+            Assert.That(w.AllCells().Any(c => c.Frozen), Is.False);
             Assert.That(w.CellHash(), Is.EqualTo("b1db7115"), "the syrup golden");
         }
 
@@ -240,8 +240,8 @@ namespace Chem.Tests
                 if (t == 5) Assert.That(Wet(a, "magma") > 0 && Wet(a, "syrup") > 0, Is.True, "both spells poured: " + string.Join(" | ", a.Log.Select(l => l.Text)));
             }
             Assert.That(Wet(a, "magma"), Is.Zero, "the lava set");
-            Assert.That(a.Cells.Count(c => c.T == "rock"), Is.GreaterThan(0));
-            Assert.That(a.Cells.Count(c => c.Cover == "candy"), Is.GreaterThan(0), "sleet froze the syrup to candy");
+            Assert.That(a.AllCells().Count(c => c.T == "rock"), Is.GreaterThan(0));
+            Assert.That(a.AllCells().Count(c => c.Cover == "candy"), Is.GreaterThan(0), "sleet froze the syrup to candy");
             Assert.That(State(b), Is.EqualTo(State(a)));
         }
     }

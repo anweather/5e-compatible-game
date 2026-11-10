@@ -34,7 +34,7 @@ namespace Chem
         // Whether a chunk changed since the last pass, refreshing its snapshot.
         static void CheckWater(Chunk ch, bool kinds)
         {
-            int n = ch.Cells.Length;
+            int n = ch.ActiveCells.Length;
             if (ch.SnapWater == null)
             {
                 ch.SnapWater = new int[n];
@@ -44,7 +44,7 @@ namespace Chem
                 ch.SnapKind = new byte[n];
             }
             bool same = ch.SnapValid;
-            var cells = ch.Cells;
+            var cells = ch.ActiveCells;
             for (int i = 0; i < n; i++)
             {
                 var c = cells[i];

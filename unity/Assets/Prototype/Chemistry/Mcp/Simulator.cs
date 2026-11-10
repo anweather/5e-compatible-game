@@ -155,11 +155,11 @@ namespace Chem.Mcp
         {
             var w = Build(rules, scenario);
             var run = new SimRun { Ticks = ticks, Walker = walker };
-            var start = w.Cells.Select(Snapshot).ToArray();
+            var start = w.AllCells().Select(Snapshot).ToArray();
             Census(w, run.Before);
             var clock = Stopwatch.StartNew();
             double stepping = 0;
-            var burnt = new bool[w.Cells.Length];
+            var burnt = new bool[w.W * w.H];
             for (int i = 0; i < ticks; i++)
             {
                 var t0 = clock.Elapsed.TotalSeconds;
@@ -170,15 +170,15 @@ namespace Chem.Mcp
                 }
                 w.Step();
                 stepping += clock.Elapsed.TotalSeconds - t0;
-                for (int c = 0; c < burnt.Length; c++) burnt[c] |= w.Cells[c].Fire > 0;
-                Peak(run, "fire", w.Cells.Count(c => c.Fire > 0), w.Tick);
-                Peak(run, "water", w.Cells.Count(c => c.Water > 0), w.Tick);
-                Peak(run, "gas", w.Cells.Count(c => c.Gas != null && c.GasAmt > 0), w.Tick);
+                for (int c = 0; c < burnt.Length; c++) burnt[c] |= w.CellAt(c).Fire > 0;
+                Peak(run, "fire", w.AllCells().Count(c => c.Fire > 0), w.Tick);
+                Peak(run, "water", w.AllCells().Count(c => c.Water > 0), w.Tick);
+                Peak(run, "gas", w.AllCells().Count(c => c.Gas != null && c.GasAmt > 0), w.Tick);
             }
             run.TicksPerSecond = ticks / Math.Max(stepping, 1e-6);
             Census(w, run.After);
             run.CellsBurnt = burnt.Count(b => b);
-            run.CellsChanged = w.Cells.Select(Snapshot).Zip(start, (a, b) => a == b ? 0 : 1).Sum();
+            run.CellsChanged = w.AllCells().Select(Snapshot).Zip(start, (a, b) => a == b ? 0 : 1).Sum();
             run.Hash = w.CellHash();
             run.Rng = w.RngState;
             run.Firings = w.TriggerFirings;
@@ -206,7 +206,7 @@ namespace Chem.Mcp
                 into.TryGetValue(key, out int n);
                 into[key] = n + 1;
             }
-            foreach (var c in w.Cells)
+            foreach (var c in w.AllCells())
             {
                 Count(c.T);
                 if (c.Cover != null) Count(c.Cover + " (cover)");

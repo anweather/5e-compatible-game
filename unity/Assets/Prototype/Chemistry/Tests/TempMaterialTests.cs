@@ -34,7 +34,7 @@ namespace Chem.Tests
             return w;
         }
 
-        static int Slicks(World w) => w.Cells.Count(c => c.Cover == "black-ice");
+        static int Slicks(World w) => w.AllCells().Count(c => c.Cover == "black-ice");
 
         static string Last(World w) => w.Log.Count == 0 ? "" : w.Log[w.Log.Count - 1].Text;
 
@@ -78,7 +78,7 @@ namespace Chem.Tests
             Assert.That(a.Rules.Fingerprint, Is.EqualTo(R.Fingerprint), "the rules are back to base");
             Assert.That(a.Room.Mods, Is.Empty);
             Assert.That(a.Room.Retired.Select(r => $"{r.Table} {r.Id} {r.Into} {r.Mod} {r.Tick}"), Is.EqualTo(new[] { $"covers black-ice  black-ice {Lapses}" }));
-            Assert.That(a.Cells.Count(c => c.Life != 0), Is.Zero, "the slicks' Life went with them");
+            Assert.That(a.AllCells().Count(c => c.Life != 0), Is.Zero, "the slicks' Life went with them");
             Assert.That(State(b), Is.EqualTo(State(a)));
             Assert.That(a.CastHash(), Is.Not.EqualTo(Room().CastHash()), "the retired list is in the checksum");
             Assert.That(a.RoomText(), Does.EndWith($"|retired:covers:black-ice::black-ice:{Lapses}"));

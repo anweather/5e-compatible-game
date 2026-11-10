@@ -25,7 +25,7 @@ namespace Chem.Tests
             return world;
         }
 
-        static int FogUnits(World w) => w.Cells.Where(c => c.Gas == "fog").Sum(c => c.GasAmt);
+        static int FogUnits(World w) => w.AllCells().Where(c => c.Gas == "fog").Sum(c => c.GasAmt);
 
         // ---------- Hasten Time ----------
 
@@ -114,7 +114,7 @@ namespace Chem.Tests
             Run(w, 200);
             Assert.That(w.Weather.Rain, Is.EqualTo(100));
             Run(w, 400);
-            Assert.That(w.Cells.Count(c => c.Water > 0), Is.GreaterThan(0), "the rain fills squares though the world is still calm");
+            Assert.That(w.AllCells().Count(c => c.Water > 0), Is.GreaterThan(0), "the rain fills squares though the world is still calm");
             Run(w, 120);
             Assert.That(w.WeatherSet, Is.Null, "720 ticks after the cast it lets go");
             var natural = Sky.Weather(R.Sim, w.Seed, w.Tick);
@@ -144,7 +144,7 @@ namespace Chem.Tests
             w.Cast("fog-cloud", 11, 10, 1);
             Assert.That(w.At(11, 10).Gas, Is.EqualTo("fog"));
             Assert.That(w.At(11, 10).GasAmt, Is.EqualTo(6));
-            Assert.That(w.Cells.Count(c => c.Gas == "fog"), Is.EqualTo(81), "radius 4: 9 by 9 squares");
+            Assert.That(w.AllCells().Count(c => c.Gas == "fog"), Is.EqualTo(81), "radius 4: 9 by 9 squares");
             Assert.That(w.LineOfSight(3, 10, 20, 10), Is.False, "fog hides the far side");
             Assert.That(w.FogBetween(3, 10, 20, 10), Is.True);
             Assert.That(w.LineOfSight(3, 3, 20, 3), Is.True, "a line past the fog is clear");

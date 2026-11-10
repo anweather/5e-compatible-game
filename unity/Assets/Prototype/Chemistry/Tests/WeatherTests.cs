@@ -105,7 +105,7 @@ namespace Chem.Tests
             w.At(3, 3).Water = 1;
             Run(w, 2 * 4 * 60 * R.Sim.TicksPerSecond - 1);
             Assert.That(w.Weather.Kind, Is.EqualTo(WeatherKind.Clear));
-            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(1), "no rain and no drying yet");
+            Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(1), "no rain and no drying yet");
         }
 
         [Test]
@@ -147,7 +147,7 @@ namespace Chem.Tests
             Assert.That(seen.Value.lands, Is.EqualTo(appeared + 11), "it lands fallTicks after it appears");
             int strikes = w.Log.Where(l => l.Text == "A meteor strikes").Sum(l => l.Count);
             Assert.That(strikes, Is.GreaterThan(0), "meteors landed");
-            Assert.That(w.Cells.Any(c => c.Height < 0), "and left craters");
+            Assert.That(w.AllCells().Any(c => c.Height < 0), "and left craters");
             Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("89885246 991183198 16"));
         }
 
@@ -163,20 +163,20 @@ namespace Chem.Tests
             for (int x = 8; x < 12; x++)
                 for (int y = 2; y < 10; y++) w.At(x, y).Water = 1 + x % 2;
             Run(w, 150);
-            int frozen = w.Cells.Count(c => c.Frozen && c.Water > 0);
+            int frozen = w.AllCells().Count(c => c.Frozen && c.Water > 0);
             Assert.That(frozen, Is.GreaterThan(10), "the puddles froze");
-            Assert.That(w.Cells.Any(c => c.Water > 2 && c.Frozen), Is.False, "the deep pond did not");
-            int covered = w.Cells.Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
-            int banks = w.Cells.Count(c => c.Cover == World.BankCover);
+            Assert.That(w.AllCells().Any(c => c.Water > 2 && c.Frozen), Is.False, "the deep pond did not");
+            int covered = w.AllCells().Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
+            int banks = w.AllCells().Count(c => c.Cover == World.BankCover);
             Assert.That(covered, Is.GreaterThan(50), "snow lies on the field");
             Assert.That(banks, Is.GreaterThan(0), "and drifts into banks against the walls");
             Assert.That($"{w.CellHash()} {w.RngState} {frozen} {covered} {banks}", Is.EqualTo("ebb306af 3764626303 37 124 36"));
 
             w.ApplyRules(clear);
             Run(w, 150);
-            int still = w.Cells.Count(c => c.Frozen && c.Water > 0);
+            int still = w.AllCells().Count(c => c.Frozen && c.Water > 0);
             Assert.That(still, Is.LessThan(frozen / 2), "a dry spell thawed most of it");
-            int left = w.Cells.Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
+            int left = w.AllCells().Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
             Assert.That(left, Is.LessThan(20), "the snow melted");
             Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("6ce8640a 1063028723 0 0"));
         }
@@ -198,7 +198,7 @@ namespace Chem.Tests
             return w;
         }
 
-        static int FogCells(World w) => w.Cells.Count(c => c.Gas == "fog");
+        static int FogCells(World w) => w.AllCells().Count(c => c.Gas == "fog");
 
         [Test]
         public void GoldenFogLiesInPatchesNotABlanketMatchesTs()
@@ -208,7 +208,7 @@ namespace Chem.Tests
             Run(w, 400);
             int fog = FogCells(w);
             Assert.That(fog * 100 / (256 * 256), Is.InRange(2, 9), $"{fog} cells: here and there");
-            Assert.That(w.Cells.All(c => c.Gas != "fog" || c.GasAmt < 2), "thin");
+            Assert.That(w.AllCells().All(c => c.Gas != "fog" || c.GasAmt < 2), "thin");
             Assert.That(Enumerable.Range(0, 256).Any(y => w.FogBetween(0, y, 255, y)), "a line through a patch is hidden");
             Assert.That(Enumerable.Range(0, 256).Any(y => !w.FogBetween(0, y, 255, y)), "a line past them is clear");
             Assert.That($"{w.CellHash()} {w.RngState} {fog}", Is.EqualTo("9d766b76 2392649509 4549"));
@@ -218,7 +218,7 @@ namespace Chem.Tests
         public void FogPatchesFavourLowGroundAndWater()
         {
             // Fog beside a river down the world, against the same seed with no river.
-            int Near(World w) => w.Cells.Select((c, i) => c.Gas == "fog" && Math.Abs(i % 256 - 65) < 20 ? 1 : 0).Sum();
+            int Near(World w) => w.AllCells().Select((c, i) => c.Gas == "fog" && Math.Abs(i % 256 - 65) < 20 ? 1 : 0).Sum();
             var wet = new World(Foggy(", 'tries': 64"), 256, 256, 3, "grass");
             for (int y = 0; y < 256; y++)
                 for (int x = 60; x < 70; x++)
@@ -237,7 +237,7 @@ namespace Chem.Tests
             var hill = new World(Foggy(", 'patches': 1, 'tries': 64"), 256, 256, 3, "grass");
             hill.SetLand(land);
             Run(hill, 240);
-            double Mean(World w) => w.Cells.Select((c, i) => c.Gas == "fog" ? i % 256 + i / 256 : -1).Where(v => v >= 0).Average();
+            double Mean(World w) => w.AllCells().Select((c, i) => c.Gas == "fog" ? i % 256 + i / 256 : -1).Where(v => v >= 0).Average();
             Assert.That(Mean(hill), Is.LessThan(Mean(dry)), "fog sits lower on a slope");
         }
 
@@ -281,12 +281,12 @@ namespace Chem.Tests
             var foggy = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 1, 'rain': 0, 'storm': 0, 'snow': 0 }");
             var clear = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, 'meteors': { 'showerChance': 0 }");
             var w = Field(foggy, 4);
-            int FogUnits() => w.Cells.Where(c => c.Gas == "fog").Sum(c => c.GasAmt);
+            int FogUnits() => w.AllCells().Where(c => c.Gas == "fog").Sum(c => c.GasAmt);
             Assert.That(w.LineOfSight(1, 6, 22, 6), "clear across the field before");
             Run(w, 120);
             int veiled = FogUnits();
             Assert.That(veiled, Is.GreaterThan(80), "fog lies over the field");
-            Assert.That(w.Cells.All(c => c.Gas != "fog" || c.GasAmt < 2), "thin: no square of it is thick on its own");
+            Assert.That(w.AllCells().All(c => c.Gas != "fog" || c.GasAmt < 2), "thin: no square of it is thick on its own");
             Assert.That(w.FogBetween(1, 6, 22, 6), "but the far side is hidden");
             Assert.That($"{w.CellHash()} {w.RngState} {veiled}", Is.EqualTo("4237fa52 2846909919 203"));
 

@@ -54,8 +54,9 @@ namespace Chem
         {
             if (ch.Fit == fits) return;
             var map = LiquidMap(fitLiquids[ch.Fit]);
-            foreach (var c in ch.Cells)
+            for (int i = 0; i < Chunks.Area; i++)
             {
+                var c = ch.CellAt(i);
                 if (c == null) continue;
                 if (map.Length > 0) RemapLiquid(c, map);
                 Sanitize(c);
@@ -88,9 +89,8 @@ namespace Chem
         // A cell's liquid id under the liquids its chunk holds (LiquidsOf).
         string LiquidIdIn(string[] liquids, Cell c) => liquids.Length == 0 ? LiquidId(c) : liquids[c.Kind];
 
-        // The liquids a cell of Cells[i] holds, for a pass over Cells: InForce while every chunk fits, or for a dry cell.
-        string[] LiquidsAt(int i, Cell c) =>
-            unfitChunks == 0 || c.Kind == 0 ? InForce : LiquidsOf(FindChunk(Chunks.ChunkOf(i % W), Chunks.ChunkOf(i / W)));
+        // The liquids a cell of a chunk holds, for a pass over every cell: InForce while every chunk fits, or for a dry cell.
+        string[] LiquidsIn(Chunk ch, Cell c) => unfitChunks == 0 || c.Kind == 0 ? InForce : LiquidsOf(ch);
 
         /// <summary>The id of the liquid at (x, y) ("water" when dry), in the liquids its chunk was made under; null off the world.</summary>
         public string LiquidIdAt(int x, int y)

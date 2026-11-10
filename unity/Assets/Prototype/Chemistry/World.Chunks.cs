@@ -43,7 +43,7 @@ namespace Chem
                 for (int x = 0; x < W; x++)
                 {
                     var c = new Cell(fill);
-                    FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)).Cells[LocalIndex(x, y)] = c;
+                    FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)).Put(LocalIndex(x, y), c);
                     Cells[y * W + x] = c;
                 }
             }
@@ -82,7 +82,7 @@ namespace Chem
         {
             i = LocalIndex(x, y);
             ch = InBounds(x, y) ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) : null;
-            return ch?.Cells[i];
+            return ch?.CellAt(i);
         }
 
         /// <summary>Like Locate, but null for a cell in a paused chunk too.</summary>
@@ -239,6 +239,62 @@ namespace Chem
             }
         }
 
+        // ---------- cells through their chunks ----------
+        // Every reach for a cell goes through its chunk (D9), never a map-sized array, so how a chunk holds its
+        // cells can change under these (the sparse World, docs/design/sparse-world.md).
+
+        /// <summary>The cell at a world index (Idx(x, y)), through its chunk; null off the world.</summary>
+        public Cell CellAt(int index) => index >= 0 && index < W * H ? Locate(index % W, index / W, out _, out _) : null;
+
+        /// <summary>Every cell of the world in row order (Idx), through their chunks. Not for the tick: it allocates its enumerator.</summary>
+        public IEnumerable<Cell> AllCells()
+        {
+            var run = new RowCells(this, 0, W * H);
+            while (run.MoveNext()) yield return run.Cell;
+        }
+
+        /// <summary>
+        /// Walks the cells of world indices [from, to) in row order through their chunks, finding a chunk once
+        /// for each row of it crossed: no allocation, so the tick's passes (HashSlice) use it.
+        /// </summary>
+        struct RowCells
+        {
+            readonly World world;
+            readonly int to;
+            int index, x, y;
+
+            public RowCells(World world, int from, int to)
+            {
+                this.world = world;
+                this.to = to;
+                index = from - 1;
+                x = from % world.W - 1;
+                y = from / world.W;
+                Chunk = null;
+                Cell = null;
+            }
+
+            /// <summary>The cell walked to, its chunk and its world index.</summary>
+            public Cell Cell;
+            public Chunk Chunk;
+            public int Index => index;
+
+            public bool MoveNext()
+            {
+                if (++index >= to) return false;
+                if (++x == world.W)
+                {
+                    x = 0;
+                    y++;
+                    Chunk = null;
+                }
+                else if (Chunks.LocalOf(x) == 0) Chunk = null;
+                Chunk ??= world.FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
+                Cell = Chunk.CellAt(LocalIndex(x, y));
+                return true;
+            }
+        }
+
         /// <summary>Sets one of the per-tick marks (FlowMark, ...) on a cell.</summary>
         void Mark(int x, int y, byte mark)
         {
@@ -259,7 +315,7 @@ namespace Chem
         public string CellHash()
         {
             var sum = Fnv1aSum.Start();
-            for (int i = 0; i < Cells.Length; i++) AddCell(ref sum, Cells[i], LiquidsAt(i, Cells[i]));
+            HashCells(ref sum, 0, W * H);
             return CloseHash(sum);
         }
 
@@ -267,7 +323,7 @@ namespace Chem
         public string CellText()
         {
             var sb = new StringBuilder();
-            for (int i = 0; i < Cells.Length; i++) AppendCell(sb, Cells[i], LiquidsAt(i, Cells[i]));
+            for (var run = new RowCells(this, 0, W * H); run.MoveNext();) AppendCell(sb, run.Cell, LiquidsIn(run.Chunk, run.Cell));
             foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return sb.Append(FitText()).ToString();
         }
@@ -275,8 +331,14 @@ namespace Chem
         /// <summary>Adds one of <paramref name="slices"/> slices of the cells to a running hash (RollingHash): row-major, by the world's size alone.</summary>
         public void HashSlice(ref Fnv1aSum sum, int slice, int slices)
         {
-            int from = (int)((long)Cells.Length * slice / slices), to = (int)((long)Cells.Length * (slice + 1) / slices);
-            for (int i = from; i < to; i++) AddCell(ref sum, Cells[i], LiquidsAt(i, Cells[i]));
+            long n = (long)W * H;
+            HashCells(ref sum, (int)(n * slice / slices), (int)(n * (slice + 1) / slices));
+        }
+
+        // Adds the cells of world indices [from, to) to a running hash, in row order.
+        void HashCells(ref Fnv1aSum sum, int from, int to)
+        {
+            for (var run = new RowCells(this, from, to); run.MoveNext();) AddCell(ref sum, run.Cell, LiquidsIn(run.Chunk, run.Cell));
         }
 
         /// <summary>What a hash of the cells ends with: the things cracked so far, then the chunks not yet made to fit the rules (FitText).</summary>
@@ -296,7 +358,7 @@ namespace Chem
         {
             var sum = Fnv1aSum.Start();
             var ch = ChunkOrThrow(cx, cy);
-            foreach (var c in ch.Cells) if (c != null) AddCell(ref sum, c, LiquidsOf(ch));
+            for (int i = 0; i < Chunks.Area; i++) if (ch.CellAt(i) is Cell c) AddCell(ref sum, c, LiquidsOf(ch));
             return sum.ToString();
         }
 

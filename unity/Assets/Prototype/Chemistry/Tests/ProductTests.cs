@@ -38,10 +38,10 @@ namespace Chem.Tests
             for (int t = 0; t < 300; t++)
             {
                 w.Step();
-                reeked |= w.Cells.Any(c => c.Gas == "reek");
-                Assert.That(w.Cells.Any(c => c.Gas == "smoke"), Is.False, "no smoke from peat");
+                reeked |= w.AllCells().Any(c => c.Gas == "reek");
+                Assert.That(w.AllCells().Any(c => c.Gas == "smoke"), Is.False, "no smoke from peat");
             }
-            var burnt = w.Cells.Where(c => c.T == "bog").ToList();
+            var burnt = w.AllCells().Where(c => c.T == "bog").ToList();
             Assert.That(burnt.Count, Is.GreaterThan(10), "the peat burned away");
             Assert.That(burnt.All(c => c.Cover == "cinders"), "each burnt cell is left with the mod's cinders");
             Assert.That(reeked, "the mod's reek rose from it");
@@ -57,8 +57,8 @@ namespace Chem.Tests
             w.At(2, 2).Water = 3;
             Run(w, 20);
             Assert.That(w.At(2, 2).Water, Is.LessThan(3), "the griddle boils it off");
-            Assert.That(w.Cells.Any(c => c.Gas == "vapour"), "as the mod's vapour");
-            Assert.That(w.Cells.Any(c => c.Gas == "steam"), Is.False);
+            Assert.That(w.AllCells().Any(c => c.Gas == "vapour"), "as the mod's vapour");
+            Assert.That(w.AllCells().Any(c => c.Gas == "steam"), Is.False);
         }
 
         [Test]

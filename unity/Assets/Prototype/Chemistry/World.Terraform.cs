@@ -172,7 +172,7 @@ namespace Chem
                 foreach (var (nx, ny, _) in ActiveNeighbours(i % W, i / W))
                 {
                     int k = Idx(nx, ny);
-                    var nc = Cells[k];
+                    var nc = CellAt(k);
                     if (seen.Add(k) && !IsBlocking(nc) && !(nc.Frozen && nc.Water > 0)) next.Add(k);
                 }
             return next;
@@ -188,7 +188,7 @@ namespace Chem
                 foreach (int k in next)
                 {
                     if (units == 0) break;
-                    var n = Cells[k];
+                    var n = CellAt(k);
                     if (n.Water >= max || (n.Water > 0 && n.Liquid != kind)) continue;
                     Pushed(from, n, kind);
                     n.Water++;

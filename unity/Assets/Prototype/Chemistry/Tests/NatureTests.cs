@@ -21,7 +21,7 @@ namespace Chem.Tests
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
-        static int Count(World w, string t) => w.Cells.Count(c => c.T == t);
+        static int Count(World w, string t) => w.AllCells().Count(c => c.T == t);
 
         /// <summary>Ground fire has been over: dirt under ash inside the room, with old stumps where trees stood.</summary>
         static void Burnt(World w, params (int x, int y)[] stumps)
@@ -159,7 +159,7 @@ namespace Chem.Tests
             w.Cast("fire-bolt", 7, 7, 1);
             Assert.That(w.At(7, 7).Fire, Is.GreaterThan(0), "the thorns catch");
             Run(w, 120);
-            Assert.That(w.Cells.Count(c => c.Cover == "ash"), Is.GreaterThan(5));
+            Assert.That(w.AllCells().Count(c => c.Cover == "ash"), Is.GreaterThan(5));
             Assert.That(w.At(7, 7).Cover, Is.EqualTo("ash"));
         }
 

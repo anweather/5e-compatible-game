@@ -50,14 +50,14 @@ namespace Chem.Tests
             return y < 8 ? "stone" : "rock";
         }
 
-        static int Mossy(World w) => w.Cells.Count(c => c.Cover == "river-moss");
+        static int Mossy(World w) => w.AllCells().Count(c => c.Cover == "river-moss");
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState}";
 
         // Where moss is: only on stone or rock, never on sand or open water.
         static void MossOnlyOnStones(World w, string when)
         {
-            var mossy = w.Cells.Where(c => c.Cover == "river-moss").ToList();
+            var mossy = w.AllCells().Where(c => c.Cover == "river-moss").ToList();
             Assert.That(mossy.Select(c => c.T).Distinct(), Is.SubsetOf(new[] { "stone", "rock" }), when);
             Assert.That(mossy.Count(c => c.Water > 0 && !c.Frozen), Is.Zero, $"{when}: no moss under water");
         }
@@ -93,7 +93,7 @@ namespace Chem.Tests
             }
             Assert.That(before, Is.GreaterThan(100), "the moss crept from its two stones");
             Assert.That(Mossy(a), Is.Zero, "every cell of it is swept at the lapse");
-            Assert.That(a.Cells.Count(c => c.Slick != 0), Is.Zero, "and its reach with it");
+            Assert.That(a.AllCells().Count(c => c.Slick != 0), Is.Zero, "and its reach with it");
             Assert.That(State(b), Is.EqualTo(State(a)));
         }
 
@@ -139,7 +139,7 @@ namespace Chem.Tests
                 ""world"": { ""lay"": [ { ""cover"": ""m"", ""cells"": [[10, 32]], ""seed"": 1 } ] } }";
             Assert.That(w.ApplyRoom(RoomCommand.Apply("Bo", "m", mod)).Done, Is.True);
             for (int t = 0; t < 1200; t++) w.Step();
-            Assert.That(w.Cells.Count(c => c.Cover == "m"), Is.GreaterThan(20));
+            Assert.That(w.AllCells().Count(c => c.Cover == "m"), Is.GreaterThan(20));
             Assert.That(Enumerable.Range(0, 64).Count(y => w.At(20, y).Cover == "m" || w.At(21, y).Cover == "m"), Is.Zero);
         }
 
@@ -153,7 +153,7 @@ namespace Chem.Tests
             Assert.That(w.ApplyRoom(RoomCommand.Apply("Bo", "m", mod)).Done, Is.True);
             for (int t = 0; t < 1200; t++) w.Step();
             // Three cells from where it was laid, counting that one: a diamond of radius 2, 13 cells.
-            Assert.That(w.Cells.Count(c => c.Cover == "m"), Is.EqualTo(13));
+            Assert.That(w.AllCells().Count(c => c.Cover == "m"), Is.EqualTo(13));
         }
 
         [Test]
@@ -169,9 +169,9 @@ namespace Chem.Tests
             int max = (int)Budgets.Number("materials.maxSpreadPerTick", 0);
             for (int t = 0; t < 64; t++)
             {
-                int was = w.Cells.Count(c => c.Cover == "m");
+                int was = w.AllCells().Count(c => c.Cover == "m");
                 w.Step();
-                Assert.That(w.Cells.Count(c => c.Cover == "m") - was, Is.LessThanOrEqualTo(max), $"tick {t}");
+                Assert.That(w.AllCells().Count(c => c.Cover == "m") - was, Is.LessThanOrEqualTo(max), $"tick {t}");
             }
         }
 

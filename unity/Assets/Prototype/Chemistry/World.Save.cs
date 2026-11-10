@@ -340,7 +340,7 @@ namespace Chem
         {
             for (int i = 0; i < Chunks.Area; i++)
             {
-                var c = ch.Cells[i];
+                var c = ch.CellAt(i);
                 if (c == null) continue;
                 made.Reset();
                 source.Make(ch.X * Chunks.Size + (i & Chunks.Mask), ch.Y * Chunks.Size + (i >> Chunks.Shift), made);
@@ -365,7 +365,7 @@ namespace Chem
             if (ch.Fit != fits) o["fit"] = ch.Fit;
             var fire = Enumerable.Range(0, Chunks.Area).Where(i => ch.FireGeneration[i] != 0).Select(i => new JArray(i, ch.FireGeneration[i])).ToList();
             if (fire.Count > 0) o["fireGen"] = new JArray(fire);
-            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.Cells[i], LiquidsOf(ch))).ToList();
+            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.CellAt(i), LiquidsOf(ch))).ToList();
             if (cells.Count > 0) o["cells"] = new JArray(cells);
             return o;
         }
@@ -412,7 +412,7 @@ namespace Chem
                 unfitChunks++;
             }
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
-            foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.Cells[(int)a[0]], (JArray)a, LiquidsOf(ch));
+            foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.CellAt((int)a[0]), (JArray)a, LiquidsOf(ch));
         }
 
         // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.

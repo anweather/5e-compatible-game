@@ -177,7 +177,7 @@ namespace Chem.Tests
                 var w = ChangedWorld(width, height, seed);
                 w.ApplyDragon(new DragonCommand());
                 FlyOut(w);
-                Assert.That(w.Cells.All(c => c.Height == 0), $"seed {seed}");
+                Assert.That(w.AllCells().All(c => c.Height == 0), $"seed {seed}");
                 Assert.That(w.ChangedCount, Is.EqualTo(0));
             }
         }
@@ -196,9 +196,9 @@ namespace Chem.Tests
             Run(w, 30);
             w.ApplyDragon(new DragonCommand());
             Run(w, R.Sim.Dragon.WarningTicks + 1);
-            Assert.That(w.Cells.All(c => c.Fire == 0));
+            Assert.That(w.AllCells().All(c => c.Fire == 0));
             FlyOut(w);
-            Assert.That(w.Cells.All(c => c.Fire == 0 && c.T == "grass" && c.Cover == null));
+            Assert.That(w.AllCells().All(c => c.Fire == 0 && c.T == "grass" && c.Cover == null));
             Assert.That(w.ChangedCount, Is.EqualTo(0));
         }
 
@@ -570,7 +570,7 @@ namespace Chem.Tests
             }
             TestContext.Progress.WriteLine($"DRAGON SWEEP {ticks} ticks ({ticks / 6.0:0} s), mean tick {sum / ticks:0.0} ms, worst tick {worstTick:0.0} ms (budget 166.7), worst dragon slice {worstSlice:0.00} ms (budget 6), worst dragon stage {worstDragon:0.00} ms");
             TestContext.Progress.WriteLine($"DRAGON START {size * size} cells in {w.StartShapes} shapes, KeepStart {keep.Elapsed.TotalMilliseconds:0} ms");
-            Assert.That(w.Cells.All(c => c.Height == 0 && c.Cover == null));
+            Assert.That(w.AllCells().All(c => c.Height == 0 && c.Cover == null));
             return worstTick;
         }
 

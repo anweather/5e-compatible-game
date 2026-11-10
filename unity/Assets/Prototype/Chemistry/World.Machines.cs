@@ -117,7 +117,7 @@ namespace Chem
             MachineDef def = null;
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var t = cells[i].T;
@@ -177,7 +177,7 @@ namespace Chem
             bool changed = false;
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
+                var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];

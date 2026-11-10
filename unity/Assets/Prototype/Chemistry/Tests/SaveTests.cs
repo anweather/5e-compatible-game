@@ -85,7 +85,7 @@ namespace Chem.Tests
             var straight = new World(rules, W, H, 11);
             straight.MakeFrom(source);
             for (int i = 0; i < 120; i++) straight.Step();
-            Assert.That(straight.Cells.Any(c => c.Gas == "fog"), "it's foggy when saved");
+            Assert.That(straight.AllCells().Any(c => c.Gas == "fog"), "it's foggy when saved");
             var loaded = World.Load(straight.Save(source), rules, source);
             for (int i = 0; i < 60; i++)
             {

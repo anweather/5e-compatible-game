@@ -29,7 +29,7 @@ namespace Chem.Tests
             return said.Split('\n').First(l => l.StartsWith("Draft ", System.StringComparison.Ordinal)).Substring(6).TrimEnd(':');
         }
 
-        static int Trees(World w) => w.Cells.Count(c => c.T == "tree");
+        static int Trees(World w) => w.AllCells().Count(c => c.T == "tree");
 
         [Test]
         public void DefinedOnceItFiresAtAPlaceAndAgainAtAnother()
@@ -137,7 +137,7 @@ namespace Chem.Tests
         {
             var (b, tools) = Tools();
             On(tools, "[{\"act\": \"crate\", \"count\": 1, \"within\": 0}, {\"act\": \"barrel\", \"count\": 1, \"within\": 0}]");
-            int wet = System.Array.FindIndex(b.LiveWorld.Cells.ToArray(), c => c.Water > 0);
+            int wet = System.Array.FindIndex(b.LiveWorld.AllCells().ToArray(), c => c.Water > 0);
             string said = tools.CallAct("my-camp", near: $"[{wet % b.LiveWorld.W}, {wet / b.LiveWorld.W}]");
             StringAssert.Contains("None of my-camp landed", said);
             StringAssert.DoesNotContain("It's done", said);

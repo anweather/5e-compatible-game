@@ -19,7 +19,7 @@ namespace Chem.Tests
         /// <summary>A 7x7 dirt room ringed by bedrock.</summary>
         static World Room() => ChemistryTests.Room(7, 7);
 
-        static int Burning(World w) => w.Cells.Count(c => c.Fire > 0);
+        static int Burning(World w) => w.AllCells().Count(c => c.Fire > 0);
 
         [Test]
         public void EntitiesLoadFromRules()

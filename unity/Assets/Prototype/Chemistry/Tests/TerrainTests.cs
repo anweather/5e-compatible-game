@@ -26,7 +26,7 @@ namespace Chem.Tests
             var w = Meadow();
             var rng = new Random(seed);
             string[] terrains = { "grass", "pit", "rock", "dirt", "tree" };
-            foreach (var c in w.Cells)
+            foreach (var c in w.AllCells())
             {
                 c.T = terrains[rng.Next(terrains.Length)];
                 c.Height = rng.Next(R.Sim.Height.Min, R.Sim.Height.Max + 1);
@@ -287,7 +287,7 @@ namespace Chem.Tests
             // Reset reads each cell's numbers once (its cache); Compute reads the cells themselves, as Update does.
             var w = Rugged(seed);
             var rng = new Random(seed);
-            foreach (var c in w.Cells)
+            foreach (var c in w.AllCells())
             {
                 if (rng.Next(8) == 0) c.Cover = World.BankCover;
                 else if (rng.Next(12) == 0) c.Height = R.Sim.Height.BlockAt;
@@ -581,7 +581,7 @@ namespace Chem.Tests
         {
             var w = Rugged(11);
             var rng = new Random(12);
-            foreach (var c in w.Cells)
+            foreach (var c in w.AllCells())
             {
                 int roll = rng.Next(10);
                 if (roll == 0) c.Cover = "ash";

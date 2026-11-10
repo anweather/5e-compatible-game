@@ -18,7 +18,7 @@ namespace Chem.Tests
             return (b, new RulesTools(b));
         }
 
-        static int Trees(World w) => w.Cells.Count(c => c.T == "tree");
+        static int Trees(World w) => w.AllCells().Count(c => c.T == "tree");
 
         [Test]
         public void TwentyTreesTwiceIsFortyTreesAndNoMods()
