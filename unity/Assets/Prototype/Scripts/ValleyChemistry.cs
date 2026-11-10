@@ -339,21 +339,46 @@ public partial class ValleyChemistry : MonoBehaviour
         if (s.Active) startTrees?.Read(s.CX, s.CY);
     }
 
-    // The walls of the scene's cabins and houses (none on a generated map): a log wall anywhere goes to the nearest.
+    // The walls of the scene's cabins and houses: on the valley a log wall anywhere goes to the nearest. On a generated map
+    // (the nine's valley in its middle) only the chunks round the houses are looked at, never every cell of the map (#206):
+    // a wall further than that is a generated village's, none of the scene's.
     void CountBuildingWalls(World world)
     {
-        var all = world.Cells;
-        for (int y = 0; y < world.H; y++)
-            for (int x = 0; x < world.W; x++)
-            {
-                int key = world.Idx(x, y);
-                string t = all[key].T;
-                if (t != TerrainIds.LogWall && t != TerrainIds.Stone) continue;
-                int k = BuildingWallAt(t, x, y);
-                if (k < 0) continue;
-                cabinCells[k]++;
-                buildingCells[k].Add(key);
-            }
+        if (!ground.Lazy)
+        {
+            for (int y = 0; y < world.H; y++)
+                for (int x = 0; x < world.W; x++) CountWall(world, x, y);
+            return;
+        }
+        var near = new SortedSet<(int cy, int cx)>();
+        foreach (var cabin in cabins)
+        {
+            if (cabin == null) continue;
+            var c = grid.CellAt(cabin.position);
+            for (int y = c.y - HouseReach; y <= c.y + HouseReach; y += Chunks.Size / 2)
+                for (int x = c.x - HouseReach; x <= c.x + HouseReach; x += Chunks.Size / 2)
+                    if (world.InBounds(x, y)) near.Add((y >> Chunks.Shift, x >> Chunks.Shift));
+        }
+        foreach (var (cy, cx) in near)
+        {
+            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+            for (int y = y0; y < Mathf.Min(world.H, y0 + Chunks.Size); y++)
+                for (int x = x0; x < Mathf.Min(world.W, x0 + Chunks.Size); x++) CountWall(world, x, y);
+        }
+    }
+
+    // How far round a scene house its walls are looked for on a generated map, in cells.
+    const int HouseReach = 32;
+
+    void CountWall(World world, int x, int y)
+    {
+        int key = world.Idx(x, y);
+        string t = world.Cells[key].T;
+        if (t != TerrainIds.LogWall && t != TerrainIds.Stone) return;
+        int k = BuildingWallAt(t, x, y);
+        if (k < 0) return;
+        cabinCells[k]++;
+        buildingCells[k].Add(key);
     }
 
     // A generated map's chunk made for this world (#205): its trees indexed, its layers wet, its grass tinted as the rest.
