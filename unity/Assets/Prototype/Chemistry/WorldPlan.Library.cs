@@ -129,6 +129,12 @@ namespace Chem
         public int[] FillerOption = Array.Empty<int>(), WallOption = { -1, -1, -1 };
         /// <summary>The village intent, to name a site's form by biome; null if world/landmarks has none.</summary>
         public LandmarkIntent Village;
+        /// <summary>
+        /// world/biomes.json, which the land's biome comes from (J-085): with it, the plan weighs each template by how much
+        /// of its world square the world's biome field puts in the template's biome; null (a library read from text) for
+        /// latitude's weights alone.
+        /// </summary>
+        public BiomeTable Biomes;
 
         readonly List<string> sigs = new List<string>();
         readonly Dictionary<string, int> sigIds = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -136,13 +142,30 @@ namespace Chem
 
         public int Lands => BandIds.Length;
 
-        /// <summary>world/bands.json, world/squares/*.json and world/landmarks/ under <paramref name="worldDir"/>.</summary>
+        /// <summary>The lowest and highest land or sea band a biome's templates come in, or (−1, −1) for a biome none has.</summary>
+        public (int lo, int hi) BandsOf(string biome)
+        {
+            int lo = int.MaxValue, hi = -1;
+            foreach (var t in Templates)
+                if (t.Biome == biome)
+                    foreach (int b in t.Bands)
+                        if (b < Lands)
+                        {
+                            lo = Math.Min(lo, b);
+                            hi = Math.Max(hi, b);
+                        }
+            return hi < 0 ? (-1, -1) : (lo, hi);
+        }
+
+        /// <summary>world/bands.json, world/squares/*.json, world/landmarks/ and world/biomes.json under <paramref name="worldDir"/>.</summary>
         public static SquareLibrary Load(string worldDir)
         {
             var files = Directory.GetFiles(Path.Combine(worldDir, Folder), "*.json").OrderBy(f => f, StringComparer.Ordinal);
             var lib = Parse(File.ReadAllText(Path.Combine(worldDir, "bands.json")), files.Select(File.ReadAllText));
             string village = Path.Combine(worldDir, LandmarkIntent.Folder, WorldPlan.VillageIntent + ".json");
             if (File.Exists(village)) lib.Village = LandmarkIntent.Parse(File.ReadAllText(village));
+            string biomes = Path.Combine(worldDir, BiomeTable.FileName);
+            if (File.Exists(biomes)) lib.Biomes = BiomeTable.Load(biomes);
             return lib;
         }
 

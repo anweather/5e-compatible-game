@@ -44,7 +44,7 @@ namespace Chem.Tests
         static StreamingParams Streaming => ChemistryTests.R.Sim.Streaming;
 
         // The plan's golden: a change that alters it is a new WorldPlan.Version, or a change to the files it reads.
-        const uint PlanGolden = 0x3e847c28u;
+        const uint PlanGolden = 0x9a65cab9u;
 
         [Test]
         public void TheWorldFileSaysItsShape()
@@ -156,10 +156,14 @@ namespace Chem.Tests
             Assert.That(valleyStep, Is.LessThanOrEqualTo(8));
         }
 
+        // The .NET suite's, where the landing gates run it (about 1 s). Under the Editor's Mono the ring's fill alone is 14 s
+        // and the whole test passed 180 s (#187), so EditMode skips it, saying why (docs/TESTING_LAYERS.md).
         [Test]
         [NonParallelizable] // it times itself: it needs the machine to itself
         public void TheKnownRingOverEveryChunk()
         {
+            if (Type.GetType("Mono.Runtime") != null)
+                Assert.Ignore("The whole 12 x 10's known ring is proved in the .NET suite (dotnet test core, the landing gates): under Mono it takes minutes (#187).");
             var gen = World.Gen;
             int count = gen.ChunksW * gen.ChunksH;
             Assert.That(Known.Length, Is.EqualTo(count));
@@ -179,7 +183,9 @@ namespace Chem.Tests
                 $"{perChunk:F2} ms a chunk on one; the ring from one character {ringMs:F0} ms, {ring.Chunks.Count} shown ({seaOnly} all sea)");
             Assert.That(ring.Chunks.Count, Is.GreaterThan(count * 3 / 4).And.LessThan(count));
             Assert.That(ring.Chunks.Select(k => (k.X, k.Y)), Is.Unique);
-            foreach (var k in ring.Chunks) Assert.That(k.Heights, Is.EqualTo(Known[k.Y * gen.ChunksW + k.X].Heights), $"chunk ({k.X}, {k.Y})");
+            // One assertion over every chunk, not one each: NUnit's array comparison and its message, 9,000 times, were most of the cost.
+            var differ = ring.Chunks.Where(k => !k.Heights.AsSpan().SequenceEqual(Known[k.Y * gen.ChunksW + k.X].Heights)).Select(k => (k.X, k.Y)).Take(5).ToList();
+            Assert.That(differ, Is.Empty, "chunks whose ring heights aren't their known heights");
             Assert.That(perChunk, Is.LessThan(5), "a known chunk costs well under a made one");
         }
 

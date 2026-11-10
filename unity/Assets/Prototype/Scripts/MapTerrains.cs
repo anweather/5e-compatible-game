@@ -71,6 +71,10 @@ public sealed class MapTerrains : MonoBehaviour
             float dx = p.x + half - eye.x, dz = p.z + half - eye.z;
             bool draw = dx * dx + dz * dz <= reachSq && (far == null || far.TerrainDraws(k % layout.ChunksX, k / layout.ChunksX));
             if (draw) drawing++;
+            // On a generated map a chunk that doesn't draw is switched off, not only hidden: Unity culls every enabled
+            // Terrain each frame whether it draws or not (729 on the nine, 8 ms of TerrainManager.CullAllTerrains in the
+            // Editor, #182). Its collider stays on, and SampleHeight still reads it. The valley's 81 stay as they were.
+            if (far != null && t.enabled != draw) t.enabled = draw;
             if (t.drawHeightmap == draw) continue;
             t.drawHeightmap = draw;
             t.drawTreesAndFoliage = draw;

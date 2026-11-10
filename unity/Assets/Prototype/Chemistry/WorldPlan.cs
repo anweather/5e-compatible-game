@@ -45,6 +45,8 @@ namespace Chem
         /// solve gives one square inside the map a template whose village comes out as it, and keeps that village.
         /// </summary>
         public List<string> Musts = new List<string>();
+        /// <summary>The world sketch the land's biome follows where it's drawn (map.json's "sketch"); null for none.</summary>
+        public WorldSketch Sketch;
         /// <summary>Backtracks in all, and per contradiction, before a filler takes a square.</summary>
         public int Budget = 3000, LocalBacktracks = 40;
 
@@ -192,7 +194,7 @@ namespace Chem
         public const int SquareCells = 576, ChunkCells = 64, ChunksPerSquare = SquareCells / ChunkCells;
         public const string VillageIntent = "village-with-landmark", MainRoad = "main road";
         /// <summary>The generator's version, in the hash: a change that alters plans is a new version.</summary>
-        public const int Version = 2;
+        public const int Version = 3;
         /// <summary>sim.json streaming's `sight`, in chunks: an outcrop is placed within it of its road.</summary>
         const int Sight = 4;
 
@@ -236,6 +238,13 @@ namespace Chem
         public int[] MustSquares = Array.Empty<int>();
         /// <summary>Why a must-have has no square (empty when every one has).</summary>
         public List<string> MustMisses = new List<string>();
+        /// <summary>The world's biome field (WorldBiomes), when the library has biomes.json; else null.</summary>
+        public BiomeField Biomes;
+        /// <summary>
+        /// Per land square: how many of its 81 chunk middles the biome field makes each biome (by biomes.json row), what
+        /// the solve weighs its templates by; null without a field, and for the sea and the walls.
+        /// </summary>
+        public int[][] BiomeCounts;
         /// <summary>FNV-1a over the plan in a fixed order: squares, coasts, landmarks, crossings, roads, sights, spawns.</summary>
         public uint Hash;
 
@@ -266,6 +275,7 @@ namespace Chem
             var plan = new WorldPlan(inputs, lib);
             plan.LayBands();
             plan.LayCoasts();
+            plan.ReadBiomes();
             new PlanSolver(plan).Run();
             plan.Finish();
             return plan;
@@ -377,7 +387,8 @@ namespace Chem
             }
             Raw[Valley] = 1;
             foreach (var (i, band) in vLand) Raw[i] = Math.Max(Raw[i], i == Valley ? 1 : band);
-            PlaceInlandSeas(i => (wrap == PlanWrap.None && (Grid.X(i) == 0 || Grid.Y(i) == h - 1)) || Wall[i] != 0 || ForcedSea[i]);
+            ReadSketch(vLand); // a world sketch, if any, sets the raw band where it's drawn
+            PlaceInlandSeas(i => (wrap == PlanWrap.None && (Grid.X(i) == 0 || Grid.Y(i) == h - 1)) || Wall[i] != 0 || ForcedSea[i] || SketchOn(i));
             // The envelope: band(s) = min over t of raw(t) + step × distance(s, t), so neighbours differ by at most a step.
             Band = new int[n];
             for (int i = 0; i < n; i++)
@@ -464,6 +475,28 @@ namespace Chem
                 if (owner[i] != 0)
                     foreach (int j in Ring(i))
                         if (j >= 0 && owner[j] == 0) Raw[j] = Math.Max(Raw[j], 1);
+        }
+
+        // ---------- the world's biomes ----------
+
+        // The land's biome comes from the world (J-085): the field over the whole plan, then what it puts under each land
+        // square, read at its 81 chunk middles.
+        void ReadBiomes()
+        {
+            if (Library.Biomes == null) return;
+            Biomes = WorldBiomes.Field(Library.Biomes, this);
+            BiomeCounts = new int[Count][];
+            int rows = Library.Biomes.Rows.Count, top = Grid.H * SquareCells - 1;
+            for (int i = 0; i < Count; i++)
+            {
+                if (!IsLand(i)) continue;
+                var counts = new int[rows];
+                int x0 = Grid.X(i) * SquareCells, y0 = Grid.Y(i) * SquareCells;
+                for (int b = 0; b < ChunksPerSquare; b++)
+                    for (int a = 0; a < ChunksPerSquare; a++)
+                        counts[Biomes.At(x0 + a * ChunkCells + ChunkCells / 2, top - (y0 + b * ChunkCells + ChunkCells / 2)).Dominant]++;
+                BiomeCounts[i] = counts;
+            }
         }
 
         // ---------- coasts ----------

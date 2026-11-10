@@ -531,7 +531,8 @@ The valley's cells and every golden are unchanged (it adds data, it changes no c
 ## Draw first: a world sketch (paper, 2026-11-09)
 
 Andrew (2026-11-09): turn it round, draw the biomes first and fit the world squares to them. On paper in
-`tools/world-paper/`, panel **World sketch** (shots in `docs/design/world-sketch/`). Nothing in the core yet.
+`tools/world-paper/`, panel **World sketch** (shots in `docs/design/world-sketch/`). In the core since biome-from-sketch
+(below, "As built").
 
 **The sketch** is a small JSON: `{ worldSketch: 1, name, world: {w, h, wrap}, soft, fit, follow, shapes: [{ biome,
 pts }] }`, points in world squares from the grid's north-west corner (wall rows included), one closed outline per shape,
@@ -664,3 +665,46 @@ plan itself is unchanged, so is its hash.
 
 Then the goldens (chunk hashes, the nine's `expects`) and a heights picture of the 12 × 10 beside
 `world-12x10/heights.png`.
+
+## As built: the biome comes from the world (biome-from-sketch, u2, 2026-11-09; J-085)
+
+Andrew (J-085): big forests, deserts and lakes should span many world squares, not a patchwork. The land's biome no
+longer follows the square template's anchor; it comes from a **world biome field** (`Chem.WorldBiomes`, read by
+`BiomeField`), and the template's biome only weighs the plan's roll. World plan version 3, generator version 7.
+
+- **The field.** Without a sketch, each region's climate reads latitude (the plan's coldness by row, 0.75 warmth at the
+  desert's edge to 0 at the ice, so the valley's row is mid-temperate; the world's `Latitude` share of it, noise the
+  rest) and the plan's bands (an altitude per band, interpolated between world square centres, a quarter of the old
+  noise on top), and a biome must stand on the bands its templates come in (`SquareLibrary.BandsOf`: tundra hills to
+  peaks, salt-flat low...), so its base and relief sit on the land they were shaped for. A biome is held to its climate
+  twice as tightly as Punchy's field, and its race draws are smooth noise three regions across, so neighbouring
+  regions of one climate agree. The only anchor left is the pinned valley's own biome, at the region nearest its middle.
+- **The sketch** is a world file's `generated.sketch`, the paper's JSON as it is (`Chem.WorldSketch`; the 12 x 10
+  carries the paper's default). Points are kept in hundredths of a world square and placed in sixteenths of a cell; the
+  inside test and distances are longs; the warp is the paper's (144-cell lattice, 300 cells across) on `BiomeMath`
+  noise. Each shape's membership is a smoothstep over its soft edge (at least the blend asked: 80 cells for the
+  ground, 300 for the land's shape), and the shapes are laid over the regions top first, each taking its share of what
+  the ones above left; water shapes are drawn through. With the E-W wrap a shape is read a world east and west too.
+- **Bands** (the paper's readSketch, `WorldPlan.Sketch.cs`): as in "Draw first" step 2, with each biome's bands read
+  from the templates rather than a table, and a 0.5 membership instead of the paper's noisy threshold. Drawn squares
+  are kept out of inland seas. Drawn lakes become sea squares where half a square is drawn as water; a lake's water at
+  a lake level inside land (step 5's second half) isn't built.
+- **Templates.** A land square's 81 chunk middles are read in the field before the solve (`WorldPlan.BiomeCounts`), and
+  each template weighs `0.02 + 4 × the share of its biome` (in place of latitude's weight; a library without
+  `biomes.json` keeps latitude's). The 3-square rule and the quarter weight per repeat are unchanged.
+- **Spawn clearings** now level a road through them too (its cells stay road): a spawn beside a road climbing hills
+  starts on flat ground (seed-9's nine needed it once tundra stood there).
+
+Measured: with one big forest drawn over 30 world squares of the 12 x 10, every one is 100% forest land, and 15 of them
+took a template of another biome (`BiomeSketchTests`). On the default 12 x 10 sketch, 89 of the 93 drawn land squares
+are mostly the drawn biome (the paper's 41% was the templates'; 26 of 93 took a template of it). Across the seam no
+biome's weight moves more than 1.3% from one cell to the next. Fillers on the 12 x 10 (seeds valley-1, 1-5): 17-26
+before, 19-25 with the field, 23-28 with the default sketch; the nine's unchanged.
+
+What moved: the nine's land (golden `0xc1dc3e94`; its plan, `0xa9add9e6`, is unchanged), its highest cell 1372 to 1319,
+the plan goldens, and the 12 x 10's plan (`0x9a65cab9`) and expects (land share 89% to 97%: the default sketch draws
+land nearly everywhere, so only its two lakes and the forced sea stay sea; highest 9886 to 9515). The valley is its own
+map, byte for byte. Biome maps, before and after (`BIOME_PNG_OUT=<folder> dotnet test core --filter
+"FullyQualifiedName~BiomeSketchTests"`): `world-sketch/biomes-world-12x10-before.png` and `-after.png`,
+`world-sketch/biomes-nine-before.png` and `-after.png`. The nine comes out tundra and marsh north, grassland, and dry
+country east of the valley (its humidity there is low), where the templates made a patch per square.
