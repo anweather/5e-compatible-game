@@ -20,6 +20,18 @@ public sealed class MapTerrains : MonoBehaviour
     /// <summary>How far a chunk terrain draws its details (grass), in metres, as made.</summary>
     public const float DetailMetres = 120f;
 
+    /// <summary>How far a chunk terrain draws its trees, in metres (900 as made; the tree impostors' trial draws them nearer, TreeImpostors).</summary>
+    public static float TreeDistance { get; private set; } = 900f;
+
+    /// <summary>Sets TreeDistance, on every terrain made now and on those made after.</summary>
+    public static void SetTreeDistance(float metres)
+    {
+        TreeDistance = metres;
+        if (Instance == null || Instance.chunks == null) return;
+        foreach (var t in Instance.chunks)
+            if (t != null) t.treeDistance = metres;
+    }
+
     /// <summary>The scene's chunk terrains (null before one starts).</summary>
     public static MapTerrains Instance { get; private set; }
 
@@ -535,7 +547,7 @@ public sealed class MapTerrains : MonoBehaviour
     // resolution, so full-detail and coarse chunks are two groups (their shared edges match by construction).
     static Terrain Configure(Terrain terrain, bool fullDetail, Material material)
     {
-        terrain.treeDistance = 900f;
+        terrain.treeDistance = TreeDistance;
         terrain.treeBillboardDistance = 160f;
         terrain.detailObjectDistance = DetailMetres;
         terrain.heightmapPixelError = 4f;
