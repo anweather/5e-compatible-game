@@ -167,9 +167,23 @@ change.
 - The view tells the core which chunks it draws (the hint above), so they aren't packed under it.
 - Drawn chunks are unpacked by those reads, not activated.
 
-**`World.Cells` itself goes in step 2.** The view's 57 reads of it (below) move first: a read by key becomes
-`CellAt(key)`, a pass over every cell becomes a pass over the drawn or active chunks, and a probe's count becomes
-`AllCells()`. Drawing whole-map passes would unpack the whole map, so those are the ones that matter.
+**`World.Cells` itself goes in step 2.** Step 1b moved the view's 57 reads of it (below): a read by key became
+`CellAt(key)`, a pass over the active chunks reads `At(x, y)` chunk by chunk (`FireLightPool`), and a probe's count
+became `AllCells()`. Nothing under `Scripts/` reads `World.Cells` now. Drawing whole-map passes would unpack the
+whole map, so those are the ones that matter.
+
+**The whole-map walks left after 1b**, each on the valley only (a generated map, `ValleyGround.Lazy`, already
+works by chunk), and what each needs under step 2:
+- `ValleyGround.Bind` (the valley's eager path): every cell through `At` into `cellBase` / `bakedPaint`. Under
+  step 2 it unpacks every chunk once at bind, ~30 MB on the valley; it should take the lazy path's per-chunk
+  `ReadCells` as each chunk's terrain is made (#4, #5).
+- `ValleyChemistry.CountBuildingWalls` (not lazy): every cell's `T` through `At` for the scene's cabin walls.
+  Under step 2: the chunks round the houses, as the lazy path does (`ChunksNearHouses`).
+- `ValleyChemistry` start trees (not lazy): `StartTrees.Read` over every `ChunkCoords`. Under step 2: on the drawn
+  chunks as they're made, as the lazy path does on `ChunkSwitched`.
+- The probes, perf, showcase and `DragonViewTests` (17 files): counts and sweeps over `AllCells()`, by index with
+  `CellAt`. Under step 2 they unpack the world they run on, fine on the yard and the valley; a probe on a big map
+  should count over `ActiveChunks` instead.
 
 ## Threading
 
@@ -238,7 +252,7 @@ No behaviour changes: the goldens are unchanged, and the tick allocates nothing 
 
 After this branch the only reads of `World.Cells` in the core are the two lines that build it.
 
-**The view's callers (`Scripts/`, not changed here: the PC's).** 57 reads of `World.Cells` in 29 files, plus about
+**The view's callers (`Scripts/`, moved in step 1b; the line numbers are from before it).** 57 reads of `World.Cells` in 29 files, plus about
 480 calls of `World.At`.
 
 The game's own (12 files):
