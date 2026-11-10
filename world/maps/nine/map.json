@@ -5,11 +5,11 @@
   "size": [1728, 1728],
   "seaLevel": -4,
   "spawn": [292, 1480],
-  "expects": { "landShare": 94, "highest": 1319, "lowest": -320 },
+  "expects": { "landShare": 94, "highest": 1319, "lowest": -174 },
   "generated": {
     "seed": "valley-1",
     "squares": [3, 3],
-    "generator": 7,
+    "generator": 8,
     "musts": ["volcano"],
     "pinned": [ { "map": "valley", "square": [0, 2] } ]
   }

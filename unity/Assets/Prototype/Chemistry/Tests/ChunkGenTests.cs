@@ -64,8 +64,8 @@ namespace Chem.Tests
 
         // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
         // (ChunkGen.Version), or a change to the world files the plan reads.
-        const uint NineGolden = 0xc1dc3e94u;
-        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xf3fe1169u), (9, 20, 0x04dcf363u), (4, 4, 0x8ba5599du), (26, 0, 0xf8076225u) };
+        const uint NineGolden = 0x69abb343u;
+        static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xf3fe1169u), (9, 20, 0xaae09923u), (4, 4, 0x8ba5599du), (26, 0, 0xf8076225u) };
 
         [Test]
         public void TheNinesWorldFileSaysItsShape()
@@ -234,6 +234,46 @@ namespace Chem.Tests
             Assert.That(meet.Worst, Is.LessThanOrEqualTo(8), $"the meet's worst bend at ({meet.X}, {meet.Y})");
             Assert.That(meet.Over2 * 1000, Is.LessThanOrEqualTo(meet.Cells * 2), "bends over 2 land units are rare in the meet");
             Assert.That(near.Worst, Is.LessThanOrEqualTo(rim), $"by the rim, no bend sharper than the rim's own, at ({near.X}, {near.Y})");
+        }
+
+        [Test]
+        public void TheFirstCellOutMeetsItsPinnedNeighbour()
+        {
+            // #193: along the valley's north and east sides (and round the corner between them), the first generated cell is
+            // within a height step (0.5 m, 4 land units) of the valley's rim cell beside it. The meet once read the rim as a
+            // mean over three cells for that first cell, so a rough rim stepped up to 8 land units (1 m) onto the generated
+            // land at x 107 on the north side. Printed too: the steepest step out across the next 16 cells, against the
+            // steepest along the rim itself (the valley's own hillside, up to 3 m a cell, which the meet carries on).
+            var gen = Nine.Gen;
+            var land = Whole;
+            int w = gen.CellsW, x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square, e = sq - 1;
+            int worst = 0, worstX = 0, worstY = 0, out16 = 0, alongRim = 0;
+            void Pair(int ix, int iy, int ox, int oy)
+            {
+                int step = Math.Abs(land[oy * w + ox] - land[iy * w + ix]);
+                if (step > worst) (worst, worstX, worstY) = (step, ox, oy);
+                int dx = ox - ix, dy = oy - iy;
+                for (int k = 0; k < 16; k++)
+                    out16 = Math.Max(out16, Math.Abs(land[(oy + (k + 1) * dy) * w + ox + (k + 1) * dx] - land[(oy + k * dy) * w + ox + k * dx]));
+            }
+            foreach (int side in OpenSides(gen))
+                for (int t = 0; t < sq; t++)
+                {
+                    var (a, b) = Across(gen, side, t);
+                    Pair(a % w, a / w, b % w, b / w);
+                    if (t > 0)
+                    {
+                        var (prev, _) = Across(gen, side, t - 1);
+                        alongRim = Math.Max(alongRim, Math.Abs(land[a] - land[prev]));
+                    }
+                }
+            // The north-east corner's cell out, against the valley's corner cell.
+            int cornerStep = Math.Abs(land[(y0 - 1) * w + x0 + e + 1] - land[y0 * w + x0 + e]);
+            TestContext.Out.WriteLine($"SEAM the biggest step onto the valley {worst} land units at ({worstX}, {worstY}); the corner {cornerStep}; " +
+                $"out across the next 16 cells {out16}; along the valley's rim {alongRim}");
+            Assert.That(OpenSides(gen).ToList(), Is.EqualTo(new[] { 0, 1 }), "the nine's valley has its north and east sides open");
+            Assert.That(worst, Is.LessThanOrEqualTo(4), $"a step of {worst} onto the valley at ({worstX}, {worstY})");
+            Assert.That(cornerStep, Is.LessThanOrEqualTo(4), "at the north-east corner");
         }
 
         static int Bend(int[] land, int w, int x, int y, bool alongX)

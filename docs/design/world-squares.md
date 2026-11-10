@@ -708,3 +708,31 @@ map, byte for byte. Biome maps, before and after (`BIOME_PNG_OUT=<folder> dotnet
 "FullyQualifiedName~BiomeSketchTests"`): `world-sketch/biomes-world-12x10-before.png` and `-after.png`,
 `world-sketch/biomes-nine-before.png` and `-after.png`. The nine comes out tundra and marsh north, grassland, and dry
 country east of the valley (its humidity there is low), where the templates made a patch per square.
+
+## As built: the seam and the sea floor meet without a step (seam-and-sea-steps, u2, 2026-11-10; #193, #176)
+
+Generator version 8. Two steps in the generated land, both in `ChunkGen.Land.cs`:
+
+- **The valley's seam (#193).** `MeetPinned` read the valley's rim as a mean over as many cells either side as the cell
+  is out from it, so the first cell out took the mean of three rim cells and stepped off its own pinned neighbour where
+  the rim is rough: up to 8 land units (1.0 m) on the nine's north side at x 107, 3 on the east. Now the mean's reach is
+  half a cell for each cell beyond the first (read between whole cells), so the first cell out is its neighbour's
+  height and the rim's roughness fades over a few cells, half of it a cell at most. On the nine the step onto the valley
+  is 0 everywhere along both sides and at the corner; the steepest step in the 16 cells out is 5 (6 before), against
+  22 along the valley's own rim (`ChunkGenTests.TheFirstCellOutMeetsItsPinnedNeighbour`). The valley is unchanged byte
+  for byte. The 3.1 m the PC saw on the east side (rows 1418-1431) isn't in the land, which met within 3 units there:
+  that is the valley's own hillside, about 3 m a cell in its last columns, and its drawn ground (`ground/`) stands up
+  to 1.9 m off its land at the rim, which the view eases over 24 cells (`PinnedGround`).
+- **The sea floor (#176).** The floor fell from 1.5 m to the sea band's 40 m over 90 cells from the coast square's own
+  shore, and an open-sea square was the full depth to its side: 55 land units in one cell on today's 12 × 10 (175 on
+  the plan the issue was found on). Now, as on paper, it shelves over 360 cells by the distance out from the shore, a
+  chamfer over a 16-cell grid of the plan laid once with the generator (`SetUpShelf`; land samples at 0, a coast
+  square's sea at its own shore's distance, the open sea the nearest of those plus the way) and read bilinearly
+  between samples. The steepest step across any side between two of the 12 × 10's squares is now 2 land units (0.25 m)
+  (`WorldTwelveTests.TheSeaFloorShelvesIntoTheOpenSea`; the seam test holds the sea floor too). The shoreline
+  itself is unchanged; the field, lakes, deltas and marsh above are still to build.
+
+What moved: the nine's golden `0xc1dc3e94` to `0x69abb343` (chunk (9, 20) `0x04dcf363` to `0xaae09923`; (13, 13),
+(4, 4) and (26, 0) unchanged) and its lowest cell -320 to -174 (its sea is never 360 cells from a shore). The plans are
+not the generator's, so their goldens (the nine's `0xa9add9e6`, the 12 × 10's `0x9a65cab9`) and the 12 × 10's expects
+are unchanged.

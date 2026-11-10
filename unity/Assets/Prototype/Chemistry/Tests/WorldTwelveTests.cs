@@ -120,8 +120,8 @@ namespace Chem.Tests
         {
             // The chunks either side of the seam, made: the step from the east column to the west is no bigger than the
             // land makes inside those chunks, and beside the valley (pinned at the west edge) no bigger than its own meet.
-            // Under the sea it isn't held: where a coast's sea ramp meets an open-sea square the floor drops to the deep at
-            // once, at every such border (about 170 land units between squares (6, 6) and (7, 6) too), seam or not.
+            // The sea floor is held too: it shelves by the distance from the shore, so it has no step at the seam either
+            // (#176; TheSeaFloorShelvesIntoTheOpenSea).
             var gen = World.Gen;
             int n = ChunkGen.Size, rows = gen.ChunksH;
             var east = new GeneratedChunk[rows];
@@ -147,13 +147,67 @@ namespace Chem.Tests
                     }
                     for (int i = 0; i + 1 < n; i++) inside = Math.Max(inside, Math.Abs(wl[j * n + i + 1] - wl[j * n + i]));
                     if (e[j * n + n - 1] < ChunkGen.SeaLevel && wl[j * n] < ChunkGen.SeaLevel) seaFloor = Math.Max(seaFloor, step);
-                    else if (step > across) (across, worst) = (step, cy * n + j);
+                    if (step > across) (across, worst) = (step, cy * n + j);
                 }
             TestContext.Out.WriteLine($"SEAM the biggest step across it {across} land units at row {worst}; inside its chunks {inside}; " +
                 $"onto the valley {valleyStep} more than the valley's own; on the sea floor {seaFloor}");
             Assert.That(west.Count(c => c.Pinned), Is.EqualTo(WorldPlan.ChunksPerSquare), "the valley's west side is on the seam");
             Assert.That(across, Is.LessThanOrEqualTo(inside), $"a step of {across} across the seam at row {worst}");
             Assert.That(valleyStep, Is.LessThanOrEqualTo(8));
+            Assert.That(seaFloor, Is.LessThanOrEqualTo(4), "the sea floor across the seam");
+        }
+
+        [Test]
+        public void TheSeaFloorShelvesIntoTheOpenSea()
+        {
+            // #176: across every side between two world squares, 16 cells either side of it at every fourth cell along, no
+            // step from one sea cell to the next is over a height step (0.5 m, 4 land units); the sides where a coast
+            // square's sea meets an open-sea square are counted. The floor once ramped over 90 cells from the coast square's
+            // own shore and was the open sea's full 40 m at once past its side: 55 land units in one cell on this plan, up to
+            // 175 on the plan the issue was found on. Sides by the pinned valley (its own land, met over 90 cells and more)
+            // and the wall rows are left out.
+            var gen = World.Gen;
+            var plan = World.Plan;
+            var grid = plan.Grid;
+            int sq = ChunkGen.Square;
+            var sides = new System.Collections.Generic.List<(int i, int s)>();
+            for (int i = 0; i < grid.W * grid.H; i++)
+                for (int s = 1; s <= 2; s++)
+                {
+                    int j = grid.Neighbour(i, s);
+                    if (j < 0 || i == plan.Valley || j == plan.Valley || plan.Wall[i] != 0 || plan.Wall[j] != 0) continue;
+                    sides.Add((i, s));
+                }
+            bool CoastFacing((int i, int s) p)
+            {
+                int j = grid.Neighbour(p.i, p.s);
+                return (plan.Band[j] == 0 && plan.Band[p.i] != 0 && plan.Coasts[p.i].Open[p.s]) || (plan.Band[p.i] == 0 && plan.Band[j] != 0 && plan.Coasts[j].Open[(p.s + 2) % 4]);
+            }
+            var worst = new (int step, int x, int y)[sides.Count];
+            Parallel.For(0, sides.Count, k =>
+            {
+                var (i, s) = sides[k];
+                int bx = (grid.X(i) - gen.OriginX + (s == 1 ? 1 : 0)) * sq, by = (grid.Y(i) - gen.OriginY + (s == 2 ? 1 : 0)) * sq;
+                var best = (0, 0, 0);
+                for (int t = 0; t < sq; t += 4)
+                {
+                    int prev = int.MaxValue;
+                    for (int o = -16; o < 16; o++)
+                    {
+                        int x = gen.WrapCell(s == 1 ? bx + o : bx + t), y = s == 1 ? by + t : by + o;
+                        int h = gen.LandAt(x, y);
+                        if (h < ChunkGen.SeaLevel && prev < ChunkGen.SeaLevel && Math.Abs(h - prev) > best.Item1) best = (Math.Abs(h - prev), x, y);
+                        prev = h;
+                    }
+                }
+                worst[k] = best;
+            });
+            var top = worst.OrderByDescending(w => w.step).FirstOrDefault();
+            var facing = Enumerable.Range(0, sides.Count).Where(k => CoastFacing(sides[k])).ToList();
+            TestContext.Out.WriteLine($"SHELF {sides.Count} sides, {facing.Count} where a coast's sea meets an open-sea square; the sea floor's biggest step " +
+                $"across one {top.step} land units at ({top.x}, {top.y}), across those {facing.Max(k => worst[k].step)}");
+            Assert.That(facing, Is.Not.Empty, "a coast meets the open sea");
+            Assert.That(top.step, Is.LessThanOrEqualTo(4), $"a step of {top.step} on the sea floor at ({top.x}, {top.y})");
         }
 
         // The .NET suite's, where the landing gates run it (about 1 s). Under the Editor's Mono the ring's fill alone is 14 s
