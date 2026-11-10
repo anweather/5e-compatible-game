@@ -17,9 +17,10 @@ using UnityEngine.Rendering;
 // Looks only: the sea's cells are the lake's kind of water (ValleyBuilder),
 // and the currents that push swimmers live in WaterCurrents. WaveOffset works
 // out the swell's rise and fall at a point the same way the shader does, so a
-// swimmer (SurfaceEffects) rides the waves they see.
+// swimmer (SurfaceEffects) rides the waves they see. On a generated map the fine sea is laid in tiles
+// round the drawn tier and a coarse sea past them (Ocean.Tiles.cs, #214), so its cost never follows the map's size.
 [ExecuteAlways]
-public class Ocean : MonoBehaviour
+public partial class Ocean : MonoBehaviour
 {
     public Material material;
     [Tooltip("The sea's surface height, from the map (MapLand): the lake's, so the cells' water is one level.")]
@@ -41,6 +42,7 @@ public class Ocean : MonoBehaviour
     /// <summary>The rules switched: the sea's colours, tinted from its art (ChemGrid.WorldLook.cs).</summary>
     public void Recolour(Color tint)
     {
+        this.tint = tint;
         foreach (var r in GetComponentsInChildren<MeshRenderer>())
         {
             var block = new MaterialPropertyBlock();
@@ -66,10 +68,11 @@ public class Ocean : MonoBehaviour
         Build();
     }
 
-    // The map changed (a host's map): its own sea.
+    // The map changed (a host's map): its own sea. On a generated map the tiles follow the drawn tier.
     void Update()
     {
         if (MapLand.Current != builtFor) Build();
+        else if (tiled) StreamTiles();
     }
 
     void OnDisable()
@@ -81,33 +84,59 @@ public class Ocean : MonoBehaviour
     void Clear()
     {
         if (surface != null) DestroyNow(surface);
-        if (mesh != null) DestroyNow(mesh);
+        surface = null;
+        ReleaseTiles(destroy: true);
+        ClearCoarse();
     }
 
     /// <summary>Builds the sea's mesh again (after the terrain under it changed shape, or the map did).</summary>
     public void Build()
     {
-        Clear();
+        var map = MapLand.Current;
+        bool wantTiles = WantsTiles();
+        // A generated map's coarse sea reads no terrain: it stays, and only the tiles are measured again.
+        if (!(wantTiles && tiled && map == coarseFor && coarse != null)) Clear();
         terrains = null;
-        builtFor = MapLand.Current;
+        builtFor = map;
+        tiled = wantTiles;
         if (builtFor != null) FromMap(builtFor);
+        if (tiled)
+        {
+            BuildTiled();
+            return;
+        }
+        var (us, vs) = Grid(fineStep);
+        mesh = Lay(us, vs, Depth, "Ocean");
+        if (mesh != null) surface = Surface("Sea surface", mesh, material, swell: true);
+    }
+
+    // The sea's grid, along the coast and out from it: `step` apart over the map and the near sea, growing past them.
+    (List<float> us, List<float> vs) Grid(float step)
+    {
         var out_ = seaward.normalized;
         var along = Vector2.Perpendicular(out_);
-        var (farAlong, farInland) = MapSpan(out_, along);
+        var (farAlong, farInland) = MapSpan(out_, along, step);
         float fineSide = Mathf.Max(fineAlong, farAlong), back = Mathf.Max(inland, farInland);
-        var us = Stops(-alongHalf, alongHalf, -fineSide, fineSide);
-        var vs = Stops(-back, outFar, -back, fineOut);
+        return (Stops(-alongHalf, alongHalf, -fineSide, fineSide, step), Stops(-back, outFar, -back, fineOut, step));
+    }
+
+    // A mesh over a grid's squares with a wet corner (us along the coast and vs out from it; with `square`, x and z), its
+    // points numbered as they're first used, each carrying the water's depth there; null where no square is wet. Laid
+    // into `reuse` when given.
+    Mesh Lay(List<float> us, List<float> vs, System.Func<Vector2, float, float> depth, string name, Mesh reuse = null, bool square = false)
+    {
+        var out_ = seaward.normalized;
+        var along = Vector2.Perpendicular(out_);
         var points = new Vector2[us.Count * vs.Count];
         var wet = new bool[points.Length];
         int n = 0;
         foreach (float v in vs)
             foreach (float u in us)
             {
-                points[n] = shoreOrigin + along * u + out_ * v;
+                points[n] = square ? new Vector2(u, v) : shoreOrigin + along * u + out_ * v;
                 wet[n] = Wet(points[n]);
                 n++;
             }
-        // Only the squares over the water: a square with a wet corner, its points numbered as they're first used.
         var index = new int[points.Length];
         System.Array.Fill(index, -1);
         var positions = new List<Vector3>();
@@ -119,7 +148,7 @@ public class Ocean : MonoBehaviour
             var xz = points[k];
             index[k] = positions.Count;
             positions.Add(new Vector3(xz.x, level, xz.y) - transform.position);
-            water.Add(new Vector2(Depth(xz, vs[k / us.Count]), 0f));
+            water.Add(new Vector2(depth(xz, Vector2.Dot(xz - shoreOrigin, out_)), 0f));
             return index[k];
         }
         for (int j = 0; j + 1 < vs.Count; j++)
@@ -128,6 +157,11 @@ public class Ocean : MonoBehaviour
                 int a = j * us.Count + i, b = a + 1, c = a + us.Count, d = c + 1;
                 if (!(wet[a] || wet[b] || wet[c] || wet[d])) continue;
                 int ia = Use(a), ib = Use(b), ic = Use(c), id = Use(d);
+                // Wound to face up either way: along and out turn the other way round from x and z.
+                if (square)
+                {
+                    (ib, ic) = (ic, ib);
+                }
                 triangles.Add(ia);
                 triangles.Add(ib);
                 triangles.Add(ic);
@@ -135,33 +169,53 @@ public class Ocean : MonoBehaviour
                 triangles.Add(id);
                 triangles.Add(ic);
             }
-        if (triangles.Count == 0) return;
-        mesh = new Mesh { name = "Ocean", indexFormat = IndexFormat.UInt32, hideFlags = HideFlags.DontSave };
-        mesh.SetVertices(positions);
-        mesh.SetUVs(1, water);
-        mesh.SetTriangles(triangles, 0);
+        if (triangles.Count == 0) return null;
+        var m = reuse != null ? reuse : new Mesh { indexFormat = IndexFormat.UInt32, hideFlags = HideFlags.DontSave };
+        m.name = name;
+        m.SetVertices(positions);
+        m.SetUVs(1, water);
+        m.SetTriangles(triangles, 0);
         var up = new Vector3[positions.Count];
         System.Array.Fill(up, Vector3.up);
-        mesh.normals = up;
+        m.normals = up;
         // The swell lifts the surface: keep it from being culled at the edges of the view.
-        var bounds = mesh.bounds;
+        var bounds = m.bounds;
         bounds.Expand(new Vector3(4f, 4f, 4f));
-        mesh.bounds = bounds;
+        m.bounds = bounds;
+        return m;
+    }
 
-        surface = new GameObject("Sea surface") { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
-        surface.transform.SetParent(transform, false);
-        surface.AddComponent<MeshFilter>().sharedMesh = mesh;
-        var r = surface.AddComponent<MeshRenderer>();
-        r.sharedMaterial = material;
+    // A surface of the sea: a mesh drawn with a material, the shore map and the swell (or none).
+    GameObject Surface(string name, Mesh m, Material with, bool swell)
+    {
+        var go = new GameObject(name) { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
+        go.transform.SetParent(transform, false);
+        go.AddComponent<MeshFilter>().sharedMesh = m;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = with;
         r.shadowCastingMode = ShadowCastingMode.Off;
+        Look(r, swell);
+        return go;
+    }
+
+    // A surface's shore map, its swell (none on the coarse sea) and the rules' tint.
+    void Look(MeshRenderer r, bool swell)
+    {
+        if (shoreMap == null && swell && tint == Color.white) return;
+        var block = new MaterialPropertyBlock();
         if (shoreMap != null)
         {
-            var block = new MaterialPropertyBlock();
             block.SetTexture(ShoreMapId, shoreMap.texture);
             block.SetVector(ShoreMapRectId, shoreMap.Rect);
             block.SetVector(ShoreDirId, ShoreDir);
-            r.SetPropertyBlock(block);
         }
+        if (!swell) block.SetFloat(SwellId, 0f);
+        if (tint != Color.white)
+        {
+            block.SetColor(DeepId, r.sharedMaterial.GetColor(DeepId) * tint);
+            block.SetColor(ShallowId, r.sharedMaterial.GetColor(ShallowId) * tint);
+        }
+        r.SetPropertyBlock(block);
     }
 
     static readonly int ShoreMapId = Shader.PropertyToID("_ShoreMap"), ShoreMapRectId = Shader.PropertyToID("_ShoreMapRect");
@@ -176,11 +230,17 @@ public class Ocean : MonoBehaviour
         shoreOrigin = map.Shore;
         seaward = map.Seaward;
         shoreMap = map.ShoreMap;
+        // Once a map (it's a pass over every cell), kept a bit a cell: on the Scale Island 40 million cells.
+        if (wetFor == map && wetInland == inland) return;
         bool lake = System.Array.IndexOf(map.Map.Dresses, "lake") >= 0;
-        wetCells = map.Sea.Near(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: !lake);
+        wetCells = new System.Collections.BitArray(map.Sea.Near(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: !lake));
+        wetFor = map;
+        wetInland = inland;
     }
 
-    bool[] wetCells;
+    System.Collections.BitArray wetCells;
+    MapLand wetFor;
+    float wetInland;
 
     // Whether the surface spans a point: over the map, near its water; off it, where the map's edge is sea.
     bool Wet(Vector2 xz)
@@ -193,7 +253,7 @@ public class Ocean : MonoBehaviour
     }
 
     // How far along the coast either way, and how far inland of it, the map's corners are (m): the fine mesh spans them all.
-    (float along, float inland) MapSpan(Vector2 out_, Vector2 along)
+    (float along, float inland) MapSpan(Vector2 out_, Vector2 along, float step)
     {
         if (builtFor == null) return (0f, 0f);
         var layout = builtFor.Layout;
@@ -205,8 +265,8 @@ public class Ocean : MonoBehaviour
             most = Mathf.Max(most, Mathf.Abs(Vector2.Dot(d, along)));
             back = Mathf.Max(back, -Vector2.Dot(d, out_));
         }
-        // On fine steps from the shore, as the near sea's are.
-        return (Mathf.Ceil(most / fineStep) * fineStep, Mathf.Ceil(back / fineStep) * fineStep);
+        // On whole steps from the shore, as the near sea's are.
+        return (Mathf.Ceil(most / step) * step, Mathf.Ceil(back / step) * step);
     }
 
     /// <summary>Whether a point is under the sea's mesh: over the map's water or a beach's width from it, or off the map by the sea.</summary>
@@ -244,29 +304,38 @@ public class Ocean : MonoBehaviour
     }
 
     // The water's depth at a point: the sea level less the terrain there; past the terrain, a bed
-    // shelving away from the coast.
+    // shelving away from the coast. Tiled, the ground drawn there (MapTerrains.HeightAt: its terrain's, or its land's
+    // where none is made), as the tile under it was measured.
     float Depth(Vector2 xz, float outward)
     {
         var p = new Vector3(xz.x, 0f, xz.y);
+        if (tiled)
+        {
+            var ground = MapTerrains.Instance != null ? MapTerrains.Instance.HeightAt(p) : null;
+            return ground is { } g ? level - g : Shelf(outward);
+        }
         var terrain = (terrains ??= new TerrainTiles()).At(p);
         if (terrain != null) return level - (terrain.SampleHeight(p) + terrain.transform.position.y);
-        return Mathf.Clamp(3f + outward * 0.12f, 3f, 60f);
+        return Shelf(outward);
     }
+
+    // A sea bed shelving away from the coast, `outward` metres out to sea of it.
+    static float Shelf(float outward) => Mathf.Clamp(3f + outward * 0.12f, 3f, 60f);
 
     TerrainTiles terrains;
 
-    // Coordinates from lo to hi: fineStep apart between fineLo and fineHi, growing by a sixth each
+    // Coordinates from lo to hi: `fine` apart between fineLo and fineHi, growing by a sixth each
     // step beyond them.
-    List<float> Stops(float lo, float hi, float fineLo, float fineHi)
+    static List<float> Stops(float lo, float hi, float fineLo, float fineHi, float fine)
     {
         var stops = new List<float>();
         float x = Mathf.Max(lo, fineLo);
         var below = new List<float>();
-        for (float step = fineStep, y = x - step; y > lo; step *= 1.17f, y -= step) below.Add(y);
+        for (float step = fine, y = x - step; y > lo; step *= 1.17f, y -= step) below.Add(y);
         below.Add(lo);
         for (int i = below.Count - 1; i >= 0; i--) stops.Add(below[i]);
-        for (; x < Mathf.Min(hi, fineHi); x += fineStep) stops.Add(x);
-        for (float step = fineStep; x < hi; step *= 1.17f, x += step) stops.Add(x);
+        for (; x < Mathf.Min(hi, fineHi); x += fine) stops.Add(x);
+        for (float step = fine; x < hi; step *= 1.17f, x += step) stops.Add(x);
         stops.Add(hi);
         // No two the same (where a fine run starts at an end).
         stops.Sort();

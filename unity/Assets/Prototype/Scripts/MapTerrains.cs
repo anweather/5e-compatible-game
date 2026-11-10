@@ -283,8 +283,8 @@ public sealed class MapTerrains : MonoBehaviour
         MakeSome(whole: false);
     }
 
-    // The far ring's drawn dial (sim.json's streaming sight until it's read).
-    static int Sight()
+    /// <summary>The far ring's drawn dial in chunks (sim.json's streaming sight until it's read): how far round a character the terrains, and the sea's tiles, are made.</summary>
+    public static int Sight()
     {
         var far = FarRing.Instance;
         int sight = far != null ? far.Dials.drawn : 0;
