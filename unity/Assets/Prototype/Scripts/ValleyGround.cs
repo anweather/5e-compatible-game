@@ -63,6 +63,9 @@ public sealed class ValleyGround
     readonly List<(int x, int y)> reshaped = new();
     CellHeightfield heightfield;
     World world;
+
+    /// <summary>The world the ground was last bound to (null before the first Bind).</summary>
+    public World World => world;
     // Each cell's base height, a block a chunk terrain (#207): a cell of a generated map's unmade chunk stands on the map's land.
     CellsByChunk<float> cellBase;
     // Each cell's paint as baked (CellPaint.Mix of the starting world); a cell still painting
