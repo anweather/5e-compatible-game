@@ -31,31 +31,32 @@ namespace Chem
             for (int k = from; k < to; k++) CheckWater(chunks[k], kinds);
         }
 
-        // Whether a chunk changed since the last pass, refreshing its snapshot.
+        // Whether a chunk changed since the last pass, refreshing its snapshot (kept in its block).
         static void CheckWater(Chunk ch, bool kinds)
         {
-            int n = ch.ActiveCells.Length;
-            if (ch.SnapWater == null)
+            var b = ch.Block;
+            var cells = b.Cells;
+            int n = cells.Length;
+            if (b.SnapWater == null)
             {
-                ch.SnapWater = new int[n];
-                ch.SnapHeight = new int[n];
-                ch.SnapFrozen = new bool[n];
-                ch.SnapT = new string[n];
-                ch.SnapKind = new byte[n];
+                b.SnapWater = new int[n];
+                b.SnapHeight = new int[n];
+                b.SnapFrozen = new bool[n];
+                b.SnapT = new string[n];
+                b.SnapKind = new byte[n];
             }
             bool same = ch.SnapValid;
-            var cells = ch.ActiveCells;
             for (int i = 0; i < n; i++)
             {
                 var c = cells[i];
                 if (c == null) continue;
-                if (same && (ch.SnapWater[i] != c.Water || ch.SnapHeight[i] != c.Height || ch.SnapFrozen[i] != c.Frozen || !ReferenceEquals(ch.SnapT[i], c.T)))
+                if (same && (b.SnapWater[i] != c.Water || b.SnapHeight[i] != c.Height || b.SnapFrozen[i] != c.Frozen || !ReferenceEquals(b.SnapT[i], c.T)))
                     same = false;
-                if (kinds) same = SnapKind(ch, i, c) && same;
-                ch.SnapWater[i] = c.Water;
-                ch.SnapHeight[i] = c.Height;
-                ch.SnapFrozen[i] = c.Frozen;
-                ch.SnapT[i] = c.T;
+                if (kinds) same = SnapKind(b, i, c) && same;
+                b.SnapWater[i] = c.Water;
+                b.SnapHeight[i] = c.Height;
+                b.SnapFrozen[i] = c.Frozen;
+                b.SnapT[i] = c.T;
             }
             ch.Unchanged = same;
             ch.UnchangedFor = same ? ch.UnchangedFor + 1 : 0;
@@ -64,11 +65,11 @@ namespace Chem
         }
 
         // A cell's kind against the snapshot's, refreshing it: true if the same.
-        static bool SnapKind(Chunk ch, int i, Cell c)
+        static bool SnapKind(ChunkBlock b, int i, Cell c)
         {
             byte kind = (byte)c.Kind;
-            bool same = ch.SnapKind[i] == kind;
-            ch.SnapKind[i] = kind;
+            bool same = b.SnapKind[i] == kind;
+            b.SnapKind[i] = kind;
             return same;
         }
 

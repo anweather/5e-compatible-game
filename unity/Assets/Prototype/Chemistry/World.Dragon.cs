@@ -148,7 +148,7 @@ namespace Chem
             var made = new Cell();
             Cell last = null;
             int shape = 0;
-            for (var run = new RowCells(this, 0, W * H); run.MoveNext();)
+            for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();)
             {
                 int i = run.Index;
                 var c = run.Cell;
@@ -357,12 +357,12 @@ namespace Chem
         // chunks already reset (a burning valley of grass ended a third burnt without this). One tick, cheaply: it's a test on each cell.
         void SnuffFires()
         {
-            foreach (var c in AllCells())
+            WriteEveryCell(c =>
             {
-                if (c.Fire == 0) continue;
+                if (c.Fire == 0) return;
                 c.Fire = 0;
                 c.Fuel = 0;
-            }
+            });
         }
 
         // Everyone the breath catches goes down (sim.json downed), unless they already are.
@@ -427,6 +427,7 @@ namespace Chem
         // inactive chunk forgets the ticks it missed, so it doesn't catch up on what the breath wiped.
         void Freshen(Chunk ch)
         {
+            if (ch.Packed != null) UnpackChunk(ch); // a write, not a read: it packs again once its hold is up (World.Pack.cs)
             for (int i = 0; i < Chunks.Area; i++)
             {
                 var c = ch.CellAt(i);
@@ -480,9 +481,10 @@ namespace Chem
         void Recount(Chunk ch)
         {
             int count = 0;
+            var read = new ChunkReader(this, ch, walkScratch);
             for (int i = 0; i < Chunks.Area; i++)
             {
-                var c = ch.CellAt(i);
+                var c = read.At(i);
                 if (c != null && Differs(c, startShapes[startAt[Idx(CellX(ch, i), CellY(ch, i))]])) count++;
             }
             ChangedCount += count - ch.Changed;

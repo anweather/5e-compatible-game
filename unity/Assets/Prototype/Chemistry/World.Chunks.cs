@@ -33,20 +33,15 @@ namespace Chem
             }
         }
 
-        /// <summary>Creates the chunks covering the world's extent and fills them with fresh cells.</summary>
+        /// <summary>
+        /// Creates the chunks covering the world's extent, every one packed against a source of the fill (World.Pack.cs):
+        /// no Cell objects until something reads a chunk or it ticks.
+        /// </summary>
         void BuildChunks(string fill)
         {
             for (int cy = 0; cy <= Chunks.ChunkOf(H - 1); cy++)
                 for (int cx = 0; cx <= Chunks.ChunkOf(W - 1); cx++) AddChunk(cx, cy);
-            for (int y = 0; y < H; y++)
-            {
-                for (int x = 0; x < W; x++)
-                {
-                    var c = new Cell(fill);
-                    FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)).Put(LocalIndex(x, y), c);
-                    Cells[y * W + x] = c;
-                }
-            }
+            PackAllEmpty(new FillSource(fill));
         }
 
         void AddChunk(int cx, int cy)
@@ -88,8 +83,10 @@ namespace Chem
         /// <summary>Like Locate, but null for a cell in a paused chunk too.</summary>
         Cell LocateActive(int x, int y, out Chunk ch, out int i)
         {
-            var c = Locate(x, y, out ch, out i);
-            return c != null && ch.Active ? c : null;
+            // The chunk is checked before its cell is read, so an inactive chunk's packed cells stay packed.
+            i = LocalIndex(x, y);
+            ch = InBounds(x, y) ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) : null;
+            return ch != null && ch.Active ? ch.CellAt(i) : null;
         }
 
         /// <summary>Whether (x, y) is a cell the simulation may change: on the world, in an active chunk.</summary>
@@ -160,6 +157,7 @@ namespace Chem
             // (ChunkPlanner) isn't let go as settled before it arrives.
             if (active)
             {
+                UnpackAround(ch); // an active chunk is unpacked, and those round it (World.Pack.cs)
                 MakeFit(ch);
                 Resume(ch);
             }
@@ -257,7 +255,11 @@ namespace Chem
             return ch == null ? ReadOnlySpan<Cell>.Empty : ch.ActiveCells;
         }
 
-        /// <summary>Every cell of the world in row order (Idx), through their chunks. Not for the tick: it allocates its enumerator.</summary>
+        /// <summary>
+        /// Every cell of the world in row order (Idx), through their chunks, to read or change. Not for the tick: it
+        /// allocates its enumerator, and it unpacks every packed chunk it passes (World.Pack.cs), so on a big map it holds
+        /// the whole map unpacked: count over ActiveChunks there.
+        /// </summary>
         public IEnumerable<Cell> AllCells()
         {
             var run = new RowCells(this, 0, W * H);
@@ -266,18 +268,24 @@ namespace Chem
 
         /// <summary>
         /// Walks the cells of world indices [from, to) in row order through their chunks, finding a chunk once
-        /// for each row of it crossed: no allocation, so the tick's passes (HashSlice) use it.
+        /// for each row of it crossed: no allocation, so the tick's passes (HashSlice) use it. Given a scratch cell it
+        /// only reads, and reads a packed chunk where it lies (ChunkReader), into the scratch, never unpacking it; without
+        /// one, its cells are the chunks' own objects, a packed chunk unpacked for them.
         /// </summary>
         struct RowCells
         {
             readonly World world;
             readonly int to;
+            readonly Cell scratch;
+            ChunkReader reader;
             int index, x, y;
 
-            public RowCells(World world, int from, int to)
+            public RowCells(World world, int from, int to, Cell scratch = null)
             {
                 this.world = world;
                 this.to = to;
+                this.scratch = scratch;
+                reader = default;
                 index = from - 1;
                 x = from % world.W - 1;
                 y = from / world.W;
@@ -300,11 +308,20 @@ namespace Chem
                     Chunk = null;
                 }
                 else if (Chunks.LocalOf(x) == 0) Chunk = null;
-                Chunk ??= world.FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
-                Cell = Chunk.CellAt(LocalIndex(x, y));
+                int i = LocalIndex(x, y);
+                if (Chunk == null)
+                {
+                    Chunk = world.FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
+                    if (scratch != null) reader = new ChunkReader(world, Chunk, scratch, i);
+                }
+                Cell = scratch != null ? reader.At(i) : Chunk.CellAt(i);
                 return true;
             }
         }
+
+        // The cell the hash's and the starting state's walks read a packed chunk's cells into (RowCells): the World is
+        // read on the main thread only.
+        readonly Cell walkScratch = new Cell();
 
         /// <summary>Sets one of the per-tick marks (FlowMark, ...) on a cell.</summary>
         void Mark(int x, int y, byte mark)
@@ -334,7 +351,7 @@ namespace Chem
         public string CellText()
         {
             var sb = new StringBuilder();
-            for (var run = new RowCells(this, 0, W * H); run.MoveNext();) AppendCell(sb, run.Cell, LiquidsIn(run.Chunk, run.Cell));
+            for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();) AppendCell(sb, run.Cell, LiquidsIn(run.Chunk, run.Cell));
             foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return sb.Append(FitText()).ToString();
         }
@@ -349,7 +366,7 @@ namespace Chem
         // Adds the cells of world indices [from, to) to a running hash, in row order.
         void HashCells(ref Fnv1aSum sum, int from, int to)
         {
-            for (var run = new RowCells(this, from, to); run.MoveNext();) AddCell(ref sum, run.Cell, LiquidsIn(run.Chunk, run.Cell));
+            for (var run = new RowCells(this, from, to, walkScratch); run.MoveNext();) AddCell(ref sum, run.Cell, LiquidsIn(run.Chunk, run.Cell));
         }
 
         /// <summary>What a hash of the cells ends with: the things cracked so far, then the chunks not yet made to fit the rules (FitText).</summary>
@@ -369,7 +386,8 @@ namespace Chem
         {
             var sum = Fnv1aSum.Start();
             var ch = ChunkOrThrow(cx, cy);
-            for (int i = 0; i < Chunks.Area; i++) if (ch.CellAt(i) is Cell c) AddCell(ref sum, c, LiquidsOf(ch));
+            var read = new ChunkReader(this, ch, new Cell());
+            for (int i = 0; i < Chunks.Area; i++) if (read.At(i) is Cell c) AddCell(ref sum, c, LiquidsOf(ch));
             return sum.ToString();
         }
 

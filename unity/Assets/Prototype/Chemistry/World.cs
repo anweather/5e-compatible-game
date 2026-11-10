@@ -26,7 +26,6 @@ namespace Chem
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
-            Cells = new Cell[w * h];
             BuildChunks(fill);
         }
 
@@ -34,13 +33,6 @@ namespace Chem
         public int W { get; }
         public int H { get; }
         public int Tick { get; private set; }
-        /// <summary>
-        /// Every cell of the world's extent, row-major (index Idx(x, y)), the same objects its chunks hold
-        /// (World.Chunks.cs). Only the view reads it now, until it moves to At, CellAt and AllCells: the core
-        /// reaches cells through their chunks, and the sparse World drops this array
-        /// (docs/design/sparse-world.md, step 2).
-        /// </summary>
-        public Cell[] Cells { get; }
 
         /// <summary>The event log, oldest first, capped at LogCap entries. The last entry's Count/Tick may grow.</summary>
         public IReadOnlyList<LogEntry> Log => log;
@@ -249,12 +241,8 @@ namespace Chem
                 return;
             }
             land = (int[])units.Clone();
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    var c = At(x, y);
-                    if (IsWaterBody(c)) land[Idx(x, y)] = NoLand;
-                }
+            for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();)
+                if (IsWaterBody(run.Cell)) land[run.Index] = NoLand;
             PutStampsOnLand();
         }
 

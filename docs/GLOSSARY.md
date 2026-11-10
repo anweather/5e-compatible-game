@@ -74,6 +74,9 @@ touch them.
   cells come from before play, an `IChunkSource`: for a generated map, its bake) and its **changes** (the cells that
   differ from the source). A chunk **packs** and **unpacks**; neither shows in its cells, the hash or a save.
   Not the same as active / inactive: an inactive chunk may be either.
+  An unpacked chunk's cells and per-cell arrays are its **block**, from the World's pool. Every world has a source:
+  its fill, or what `MakeFrom` made it from (`BakedSource`, a baked map's `cells.txt`). The view's **drawn hint**
+  (`World.SetDrawn`) names the chunks it draws so they aren't packed under it: memory only, never a command.
 
 **The world**
 : `Chem.World`: the cells, the chunk store and everything that ticks.

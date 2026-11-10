@@ -378,6 +378,13 @@ out a chunk is generated, and `sim.streaming.know` (7, at least `sight`) how
 far it is known: its biome and coarse land for the far view
 (`docs/design/world-squares.md` section 3, `Chem.KnownRing`).
 
+An inactive chunk the world hasn't needed for `sim.streaming.packTicks` (300
+ticks, 50 s) is packed: held as the cells that differ from the map's source,
+without its cell objects (D17, `docs/design/sparse-world.md`). It is needed
+while it's active, beside an active chunk or drawn. At most
+`sim.streaming.packsPerTick` (2) pack a tick; 0 never packs. Packing changes
+memory only, never what happens, so these can be tuned freely.
+
 ## Products (`sim.fire`, `sim.water`)
 
 What fire and water leave is data, never a name in code (`docs/design/primitives.md` P3):

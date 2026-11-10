@@ -1,7 +1,9 @@
 # The sparse World (#204)
 
 2026-11-10, u2. The plan for the World to hold `Cell` objects only for the chunks near the players, and the
-census of who reads cells today. The ADR is D17 (`docs/adr/0017-the-sparse-world.md`, proposed). The rule it serves
+census of who reads cells today. The ADR is D17 (`docs/adr/0017-the-sparse-world.md`, accepted). Step 2, packed chunks
+in the core, is in (`sparse-world-2`): see "Step 2: packed chunks in the core" at the end for what landed, where it
+differs from the plan below, and what it measured. The rule it serves
 is J-086: cost follows the active region and the drawn tier, never the map's size.
 
 ## What's true now
@@ -283,7 +285,8 @@ over the active chunks instead.
 |---|---|---|---|
 | 1 | This note, D17 proposed, the core's callers through accessors | u2 (this branch) | S, done |
 | 1b | The view's 57 `World.Cells` reads to `CellAt` / `AllCells` / per-chunk passes (the table above); the whole-map binds wait for #205 | the PC | S for the by-index reads, M with the binds |
-| 2 | Packed chunks in the core: the block pool, pack and unpack, the hold time and the view's draw hint, the hash and save reading packed chunks, `BakedSource` with the legend table moved into the core, loading saves packed; `World.Cells` dropped once 1b lands. Goldens unchanged; tests that pack and unpack mid-fire, mid-flow and across a rule switch, and that a peer packing differently hashes the same | u2 | L (about a week) |
+| 2 | Packed chunks in the core: the block pool, pack and unpack, the hold time and the view's draw hint, the hash and save reading packed chunks, `BakedSource` with the legend table moved into the core, loading saves packed; `World.Cells` dropped once 1b lands. Goldens unchanged; tests that pack and unpack mid-fire, mid-flow and across a rule switch, and that a peer packing differently hashes the same | u2 | L, done (`sparse-world-2`) |
+| 2b | The view's drawn hint: `World.SetDrawn` from the drawn tier (below) | the PC | S |
 | 3 | The core's other map-sized arrays per chunk: `land`, `startAt`, `landMoved` / `landLaid` / `landCrag`, `bareCells` | u2 | M |
 | 4 | The view's map-sized arrays and binds per drawn chunk (scale doc #3-#5, #7), with #205's terrains for the drawn tier | the PC | L (#205) + M |
 | 5 | The scale island loads in a player: the probe's scenarios on it, `PERF MEMORY` against this budget | the PC | S |
@@ -292,7 +295,8 @@ Steps 2 and 3 can go in either order. The island needs 2, 3 and 4 before it can 
 
 ## Measured (`sparse-world-bench`, 2026-11-10)
 
-u2, before step 2, so the lead can read the numbers before D17 is decided. The questions were what the hash and the
+u2, before step 2, so the lead can read the numbers before D17 is decided. (The prototype's API, `Pack(cx, cy, source,
+strings)`, `PackedCellHash`, `SavePacked` and the rest, was replaced in step 2: see the last section.) The questions were what the hash and the
 save cost reading packed cells, what packing and unpacking cost (five chunks at once when a character crosses a chunk
 edge), how big the changes get, whether option A is needed as a fallback, and what the hold time should be.
 
@@ -421,3 +425,127 @@ anything. The read hook in `Chunk.CellAt` can stay as a counted safety net: a `P
   lookup a row).
 - The island itself, which can't load until step 2.
 - The view's reads that would unpack drawn chunks (step 1b).
+
+## Step 2: packed chunks in the core (`sparse-world-2`, 2026-11-10)
+
+u2. The prototype (`World.Pack.cs`) is wired in. Every golden stands: the CellHash and FNV-1a goldens, the save's
+(`c1737215` today, with the rules' fingerprint left out), `ChunkTests.AHashSliceAllocatesNothing`.
+
+**What a World is now.**
+- **Every world has a source** (`World.Source`): a `FillSource` of the terrain it was made with, until `MakeFrom` gives
+  it another (a `BakedSource` for a baked map, a test's own). Not in the plan above, which had only baked maps
+  packing; with a source on every world, packing runs on every world the tests make, and the yard's too.
+- **Its chunks start packed with no changes**, so `new World` and `MakeFrom` make no `Cell` objects: a 1920 x 1920
+  world is 900 empty `PackedChunk`s until something reads it. A read unpacks a chunk; a tick unpacks what it runs.
+- **An active chunk is unpacked, and so are the eight round it.** `SetActive` unpacks a chunk that activates and its
+  ring; `BeginTick` does the same for any active chunk still packed (a world just made, `MakeFrom`, a load). That's
+  stronger than the bench's "a chunk next to an active one never packs": a chunk becomes next to an active one when its
+  neighbour activates, and it might be packed then. With it, the tick never unpacks a chunk by reading it.
+- **An unpacked chunk's block** (`ChunkBlock`, `Chunk.cs`): its `Cell[4096]`, `FireGeneration`, `Marks` and the
+  still-water snapshot (`Snap*`). The pool keeps at most `World.PoolKeep` (32) blocks; a pooled block keeps its `Cell`
+  objects and snapshot arrays for the next unpack.
+- **`World.Cells` is gone.** Nothing read it after 1b.
+
+**Packing** (`World.PackDue`, at the end of `EndTick`, between whole ticks):
+- A chunk is **needed** while it's active, beside an active chunk (any of eight) or in the view's drawn hint; its
+  `Chunk.Needed` is the last tick it was, or was unpacked.
+- Once it has gone `sim.json` `streaming.packTicks` (300) ticks unneeded it may pack: at most `streaming.packsPerTick`
+  (2) a tick, the longest unneeded first, then by row and column. `packsPerTick: 0` never packs.
+- Both are rules (`StreamingParams`) so a mod can tune them. They change memory only: the peer tests run peers with
+  different values.
+
+**Reading a chunk where it lies.** `RowCells` with a scratch cell, and `ChunkReader` for one chunk, read a packed chunk's
+cells from its source and changes without unpacking it: `CellHash`, `HashSlice` (no allocation still), `CellText`,
+`ChunkHash`, the save, `ChangedChunks`, `KeepStart`, the dragon's audit (`Recount`) and `SetLand`'s pass. A save
+against the world's own source writes a packed chunk's record from its changes (`SavePacked`); against another source
+it diffs the chunk read where it lies.
+
+**Writes to a packed chunk unpack it,** as the plan says (map building, the lays, a rule switch's `LayBuildings` /
+`LayCells`, the dragon's `Freshen`), and it packs again once its hold is up. The two passes over every cell,
+`SnuffFires` and a lapse's `Sweep`, go a chunk at a time (`WriteEveryCell`), packing each packed inactive chunk again
+straight after, so they never hold the whole map unpacked.
+
+**Loading.** `Load` makes every chunk from the source (packed, no cells), lays each saved chunk's cells in (unpacking
+that chunk), then packs it again at once if it's inactive. So a load unpacks only the chunks with changes, one at a
+time, and an inactive chunk ends up packed. (The plan said "straight in as packed chunks": this goes through the cells,
+which keeps `LoadCell` the one reader of a saved cell.)
+
+**`AllCells()` unpacks** every packed chunk it passes, and leaves it to `PackDue`. It's for the probes, tests and the
+MCP's simulator on small maps; on a big map, count over `ActiveChunks`, or read a chunk with `ChunkCells` (which also
+unpacks, one chunk).
+
+**`BakedSource`** (`BakedSource.cs`): a baked map's `cells.txt` by chunk, a chunk of one character held as that one
+byte. The legend (`BakedSource.Legend`) and the painting (`World.PaintLegend`) moved from `ChemGrid.PaintCell` into the
+core. A legend character's cell is made by painting it on a one-cell world under the map's rules, so it's exactly the
+cell `PaintCell` made (a terrain the rules lack stays dirt, as before). It holds no heights: a map's land is
+`World.land` (`SetLand`), step 3's. `BakedSource.Read(dir, rules)` reads `cells.txt` a row at a time, so a big map's
+text is never held whole; `FromText` takes the text, as `ChemGrid.MapWorld` has it. Its `Version` is the cells' FNV-1a.
+
+**The view (changed here, not compiled: the PC's to check).** `ChemGrid.MapWorld` now makes its world from
+`BakedSource.FromText(map, rules)` with `MakeFrom` instead of painting every cell, and `ChemGrid.Legend` /
+`PaintCell` are gone. The cells it makes are the same; a map's start is `source.Start` (the last `@`, as before).
+
+**The drawn hint, for the PC (step 2b).** The view calls, from the main thread, whenever its drawn tier changes (or
+every frame, it's cheap):
+
+```csharp
+world.SetDrawn(IEnumerable<(int cx, int cy)> chunks); // the chunks it draws; null or empty for none
+```
+
+Each call replaces the last. A chunk in the hint isn't packed, and its hold counts from when it leaves. It's not a
+command and not shared: a peer with no view gives none. Until the view calls it, a drawn chunk outside the active ring
+packs 300 ticks after it was last read and unpacks again at the view's next read (0.1 ms): correct, only slower, and
+counted in `World.ReadUnpacks`. The view must not keep `Cell` objects across frames for chunks it doesn't hint: a
+packed chunk's objects go back to the pool and come out as another chunk's cells. Numbers for `PERF MEMORY`:
+`UnpackedCount`, `PackPoolCount`, `Packs`, `Unpacks`, `ReadUnpacks` (should stay 0: reads of unhinted inactive chunks),
+`PackMs`, `UnpackMs`, `DrawnCount`, `MapArrayBytes` (step 3's arrays).
+
+**Tests** (`PackTests`, in CI): a new world makes no cells until read; pack then unpack gives back every field, the hash
+and every save record (against its own source and another); the hash, `CellText`, `ChunkHash`, the save, the audit and
+`KeepStart` read packed chunks without unpacking them; a chunk packs once its hold is up and not beside an active chunk
+or in the hint, two a tick by row; a load lays its inactive chunks in packed and runs on the same; the dragon's dive
+snuffs fires in packed chunks and leaves them packed; **a peer packing differently hashes the same** at every tick, now
+against the real path (`Pack`, `Unpack` and `PackDue` with its own hold) and across a rule switch that unfits the
+inactive chunks; and **a late joiner replays the host's history to the host's state** (the hash every 30 ticks, the RNG,
+the active chunks, the save, every field) whether the host packs after 40 ticks, the joiner never, or at once.
+
+**Measured** (`Tests/SparseWorldBench.cs`, Explicit; `dotnet` Release on the worker VM, 2 cores; the nine baked, 1728 x
+1728, 729 chunks, built as `MapWorld` builds it; heap after a full collection, the rules loaded first):
+
+| The nine's World | Before (`origin/dev`) | After |
+|---|---|---|
+| As built, then the start plan and 360 ticks | **317.6 MB** | **84.5 MB** |
+| ... of which `Cell` objects and chunk arrays | ~258 MB (729 chunks) | ~20 MB (72 unpacked: 25 active, the ring, the drawn tier read) |
+| ... the source | (the view's map text) | 2.8 MB (14 chunks all one character) |
+| ... changes held by the 657 packed chunks | | 0.12 MB |
+| ... the map-sized arrays (`land`, `startAt`, `landMoved` / `landLaid` / `landCrag`, `bareCells`) | 57 MB | 57 MB: step 3 |
+| Every chunk unpacked | | 282 MB, 396 KB a chunk with the arrays (305 MB with `World.Cells` added back) |
+
+The scale probe's 254 MB was Unity's; .NET measures more (317.6 MB) for the same World. After step 2 the World is the
+design's ~80 MB, and two thirds of it is step 3's arrays. Built from scratch the nine takes 0.3-1.3 s (VM noise),
+with 23 chunks unpacked by its lays.
+
+**A walk across the nine** (`AWalkAcrossTheNine`): a character walks east 10 chunks at walking pace (half a cell a tick)
+and back, 3,600 ticks, casting a Fire Bolt ahead every 60, its reach planned each tick (`ChunkPlanner`), the drawn tier
+hinted. One world packs; the other is the World before step 2, every chunk unpacked and none packed. Two runs:
+
+| | Packing on | Before (every chunk unpacked) |
+|---|---|---|
+| A tick (planning, switches, the step), mean / p99 | 3.7-5.2 ms / 5.8-8.3 ms | 3.9-5.4 ms / 6.1-8.7 ms |
+| The 161 ticks chunks activated on: the switches, median | 0.15-0.19 ms | 0.14-0.16 ms |
+| Worst tick | 166-190 ms | 165-191 ms: a lingering chunk catching up its missed ticks (`catchUpTicks`), the same either way |
+| Packs / unpacks in the walk | 192 at 0.20 ms / 213 at 0.11 ms: 62 ms over 3,600 ticks | |
+| Read unpacks | 0 | |
+| Chunks unpacked at most | 139 | 729 |
+
+Packing costs about 0.02 ms a tick on average, and at most 2 packs (~0.4 ms) on any tick. That's within the step
+budget (`ChemGrid.StepBudgetMs`, 6 ms), and the VM's noise between runs is larger. The hashes of the two worlds agree
+every 300 ticks.
+
+**Not done here:**
+- The view's call of `SetDrawn` (2b).
+- Step 3's arrays: 57 MB on the nine. On the scale island they're `land`, `startAt`, `landMoved`, `landLaid` and
+  `landCrag` at 160 MB each and `bareCells` at 40 MB: about 0.8 GB before a single cell, so the island may load in a
+  player now (its cells are ~100 MB packed), but it isn't the design's budget until step 3.
+- Mono and IL2CPP aren't measured.
+
