@@ -434,12 +434,15 @@ public partial class ChemGrid
         RedrawSomeLooks();
         RenderSwept();
         DrawSome();
-        foreach (var (cx, cy) in World.ActiveChunks)
-        {
-            if (turn++ % RenderTurns != renderTurn) continue;
-            // A chunk not drawn yet draws whole, in its turn (DrawSome); a new world's chunks are all active at first.
-            if (IsChunkDrawn(cx, cy)) RenderChunk(cx, cy);
-        }
+        using (CellsMarker.Auto())
+            foreach (var (cx, cy) in World.ActiveChunks)
+            {
+                if (turn++ % RenderTurns != renderTurn) continue;
+                // A chunk not drawn yet draws whole, in its turn (DrawSome); a new world's chunks are all active at first.
+                if (!IsChunkDrawn(cx, cy)) continue;
+                PerfCounts.Add("render.chunks");
+                RenderChunk(cx, cy);
+            }
         RenderFresh(out int fresh);
         FinishRender();
         AnnounceFresh(fresh);
@@ -652,7 +655,8 @@ public partial class ChemGrid
         SlickMeshMarker = new("ChemGrid.SlickMesh"), ShapingMarker = new("ChemGrid.Shaping"), RecycleMarker = new("ChemGrid.RecycleFx"),
         DrawNearMarker = new("ChemGrid.DrawNear"), DrawSomeMarker = new("ChemGrid.DrawSome"), QueueMarker = new("ChemGrid.QueueToDraw"),
         SweptMarker = new("ChemGrid.RenderSwept"), LooksMarker = new("ChemGrid.RedrawLooks"), MarkDrawnMarker = new("ChemGrid.MarkDrawn"),
-        RecolourMarker = new("ChemGrid.RecolourWorld");
+        RecolourMarker = new("ChemGrid.RecolourWorld"), CellsMarker = new("ChemGrid.RenderCells"),
+        LavaMarker = new("ChemGrid.CracksLava"), FxMarker = new("ChemGrid.LightsFx"), OthersMarker = new("ChemGrid.RenderOthers");
 
     void FinishRender()
     {
@@ -662,19 +666,28 @@ public partial class ChemGrid
         bool busy = !ExactFrames && StepMs >= BusyStepMs;
         using (WaterMeshMarker.Auto()) waterSurface.Rebuild(busy);
         using (SlickMeshMarker.Auto()) slicks.Rebuild(busy);
-        cracks.Rebuild();
-        lava.Rebuild();
-        spellLights.Place();
-        cellFx.Advance(Time.deltaTime);
-        WatchAcidCells();
-        ForgetLookFire();
-        RenderWhirls();
-        RenderTriggered();
-        RenderStars();
-        RenderFlashes();
-        RenderMovers();
-        RenderChargeRun();
-        RenderShedStrikes();
+        using (LavaMarker.Auto())
+        {
+            cracks.Rebuild();
+            lava.Rebuild();
+        }
+        using (FxMarker.Auto())
+        {
+            spellLights.Place();
+            cellFx.Advance(Time.deltaTime);
+        }
+        using (OthersMarker.Auto())
+        {
+            WatchAcidCells();
+            ForgetLookFire();
+            RenderWhirls();
+            RenderTriggered();
+            RenderStars();
+            RenderFlashes();
+            RenderMovers();
+            RenderChargeRun();
+            RenderShedStrikes();
+        }
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
         using (ShapingMarker.Auto()) AnimateShaping();

@@ -275,7 +275,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     // Beyond this (40 m, squared) from the camera an animal thinks every other frame.
     const float FarThinkingSq = 40f * 40f;
-    static readonly ProfilerMarker BrainMarker = new("ValleyFauna.Think"), DrawMarker = new("ValleyFauna.Draw");
+    static readonly ProfilerMarker BrainMarker = new("ValleyFauna.Think"), DrawMarker = new("ValleyFauna.Draw"),
+        PoseMarker = new("ValleyFauna.Pose"), SendMarker = new("ValleyFauna.Send");
 
     // --- the ground (ICreatureGround) -----------------------------------------
 
@@ -552,13 +553,16 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         if (instances.Length < total) instances = new SegmentInstance[Mathf.NextPowerOfTwo(total)];
         int offset = 0;
         AtLens = 0;
-        foreach (var c in creatures)
-        {
-            var b = bodies[c.species];
-            int shown = animator.Evaluate(b, c.state, in c.traits, this, instances, offset);
-            if (CreatureDrawer.HideAtLens(instances, offset, shown, cam)) AtLens++;
-            offset += shown;
-        }
-        drawer.Draw(instances, offset, cam.transform.position);
+        using (PoseMarker.Auto())
+            foreach (var c in creatures)
+            {
+                var b = bodies[c.species];
+                int shown = animator.Evaluate(b, c.state, in c.traits, this, instances, offset);
+                if (CreatureDrawer.HideAtLens(instances, offset, shown, cam)) AtLens++;
+                offset += shown;
+            }
+        PerfCounts.Add("fauna.creatures", creatures.Count);
+        PerfCounts.Add("fauna.segments", offset);
+        using (SendMarker.Auto()) drawer.Draw(instances, offset, cam.transform.position);
     }
 }
