@@ -1014,8 +1014,8 @@ that long, and doesn't march.
   with no dragon (`EventLog.RebuildYard`): the way out of a world gone wrong.
 
 **Starting state**
-: The world as built, kept by `World.KeepStart` before the first tick: a palette of the distinct cells
-  and each cell's index in it, with the ball as built. A world with none has no dragon.
+: The world as built, kept by `World.KeepStart` before the first tick: each chunk's cells as their changes
+  against the world's source (as a packed chunk's are), with the ball as built. A world with none has no dragon.
 
 **Fresh**
 : A chunk the dragon's breath has reached: back in its starting state, active or not (`ChunkFreshened`).

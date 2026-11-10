@@ -163,12 +163,34 @@ namespace Chem
         public int ReadUnpacks { get; private set; }
 
         /// <summary>
-        /// What the core's other map-sized arrays hold, which step 3 of the sparse World moves to the chunks: the land
-        /// (SetLand), the starting state (KeepStart), the land the stamps and the map moved, and the bare cells.
+        /// What the core's per-cell state beside the cells holds outside the blocks (the sparse World, step 3; before it,
+        /// arrays the size of the map): the packed chunks' land (SetLand), the starting state's changes (KeepStart) where
+        /// they aren't the chunk's own packed changes, the land the stamps and the map moved, and the bare cells.
         /// </summary>
-        public long MapArrayBytes =>
-            4L * ((land?.LongLength ?? 0) + (startAt?.LongLength ?? 0) + (landMoved?.LongLength ?? 0) + (landLaid?.LongLength ?? 0) + (landCrag?.LongLength ?? 0))
-            + (bareCells?.LongLength ?? 0);
+        public long MapArrayBytes
+        {
+            get
+            {
+                long bytes = (landMoved?.Bytes(4) ?? 0) + (landLaid?.Bytes(4) ?? 0) + (landCrag?.Bytes(4) ?? 0) + (bareCells?.Bytes(1) ?? 0);
+                foreach (var ch in chunks.Values)
+                {
+                    if (ch.PackedLand != null) bytes += 24 + ch.PackedLand.Length;
+                    if (ch.Start != null && ch.Start != ch.Packed) bytes += ch.Start.Bytes;
+                }
+                return bytes;
+            }
+        }
+
+        /// <summary>Of MapArrayBytes, what the packed chunks' land holds (LandCodec's bytes).</summary>
+        public long PackedLandBytes
+        {
+            get
+            {
+                long bytes = 0;
+                foreach (var ch in chunks.Values) if (ch.PackedLand != null) bytes += 24 + ch.PackedLand.Length;
+                return bytes;
+            }
+        }
 
         /// <summary>Lets the pool's blocks go, but for <paramref name="keep"/> of them.</summary>
         public void TrimPackPool(int keep)
@@ -236,6 +258,7 @@ namespace Chem
             foreach (var ch in unpackedChunks)
             {
                 var b = ch.Held;
+                PackLand(ch, b);
                 ch.Hold(null);
                 if (blockPool.Count < PoolKeep) blockPool.Push(b);
                 Packs++;
@@ -272,6 +295,7 @@ namespace Chem
                 b.Cells[i] = c;
             }
             for (int f = 0; f < p.FireAt.Length; f++) b.FireGeneration[p.FireAt[f]] = p.FireGen[f];
+            UnpackLand(ch, b);
             ch.Packed = null;
             ch.Hold(b);
             ch.SnapValid = false;
@@ -286,6 +310,7 @@ namespace Chem
             long started = Stopwatch.GetTimestamp();
             var b = ch.Held;
             ch.Packed = Changes(ch, b);
+            PackLand(ch, b);
             ch.Hold(null);
             ch.SnapValid = false;
             unpackedChunks.Remove(ch);
@@ -488,6 +513,31 @@ namespace Chem
             c.Cracked = r.Cracked;
         }
 
+        // Some changes with the cell at local index i (world x, y) made c: a new PackedChunk, the old one left as it was (a
+        // packed chunk's changes may be shared, as a chunk's starting state is). A cell the source makes so is no change.
+        PackedChunk WithChange(PackedChunk p, int i, Cell c, int x, int y, IChunkSource source)
+        {
+            var made = new Cell();
+            source.Make(x, y, made);
+            bool same = SameCell(c, made) && c.Liquid == made.Liquid && c.Sets == made.Sets;
+            var at = new List<int>(p.At);
+            var cells = new List<PackedCell>(p.Cells);
+            var rares = new List<PackedRare>(p.Rares);
+            int k = Array.BinarySearch(p.At, i);
+            if (k >= 0)
+            {
+                at.RemoveAt(k);
+                cells.RemoveAt(k);
+            }
+            else k = ~k;
+            if (!same)
+            {
+                at.Insert(k, i);
+                cells.Insert(k, PackCell(c, made, rares));
+            }
+            return new PackedChunk { X = p.X, Y = p.Y, At = at.ToArray(), Cells = cells.ToArray(), Rares = rares.ToArray(), FireAt = p.FireAt, FireGen = p.FireGen };
+        }
+
         // ---------- reading a chunk where it lies ----------
 
         /// <summary>
@@ -501,6 +551,7 @@ namespace Chem
             readonly Chunk chunk;
             readonly ChunkBlock held;
             readonly PackedChunk packed;
+            readonly IChunkSource source;
             readonly Cell scratch;
             int k;
 
@@ -511,7 +562,20 @@ namespace Chem
                 this.scratch = scratch;
                 held = chunk.Held;
                 packed = chunk.Packed;
+                source = world.Source;
                 k = held == null ? packed.From(from) : 0;
+            }
+
+            /// <summary>A chunk's cells as some changes against a source make them (the starting state, World.Dragon), whatever the chunk holds now.</summary>
+            public ChunkReader(World world, Chunk chunk, PackedChunk changes, IChunkSource source, Cell scratch, int from = 0)
+            {
+                this.world = world;
+                this.chunk = chunk;
+                this.scratch = scratch;
+                this.source = source;
+                held = null;
+                packed = changes;
+                k = changes.From(from);
             }
 
             /// <summary>Its cell at local index i, at or past the last one read (null outside the world's extent).</summary>
@@ -521,7 +585,7 @@ namespace Chem
                 int x = CellX(chunk, i), y = CellY(chunk, i);
                 if (!world.InBounds(x, y)) return null;
                 scratch.Reset();
-                world.Source.Make(x, y, scratch);
+                source.Make(x, y, scratch);
                 var p = packed;
                 while (k < p.At.Length && p.At[k] < i) k++;
                 if (k < p.At.Length && p.At[k] == i) world.LayPacked(p, k, scratch);

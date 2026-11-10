@@ -61,6 +61,8 @@ namespace Chem
         public bool[] SnapFrozen;
         public byte[] SnapKind;
         public string[] SnapT;
+        /// <summary>The land under each cell (World.SetLand), made at the first unpack of a world with land; meaningless without.</summary>
+        public int[] Land;
     }
 
     /// <summary>
@@ -78,6 +80,10 @@ namespace Chem
 
         /// <summary>Its changes against the world's source while it's packed, else null (World.Pack.cs).</summary>
         public PackedChunk Packed;
+        /// <summary>Its land while it's packed, as LandCodec's bytes; null while it's unpacked (the block holds it) or the world has none.</summary>
+        public byte[] PackedLand;
+        /// <summary>Its starting state (World.KeepStart) as changes against the starting state's source; null when none is kept.</summary>
+        public PackedChunk Start;
         /// <summary>The world it's a chunk of, for unpacking it on a read.</summary>
         public World Owner;
         /// <summary>

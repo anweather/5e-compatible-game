@@ -95,17 +95,15 @@ public class DragonProbe : ProbeScenario
     {
         Check("world_keeps_a_start", World.HasStart, "ChemGrid.StartWorld");
         Metric("keep_start_ms", ChemGrid.KeepStartMs);
-        Metric("palette", World.StartShapes);
+        Metric("start_cells", World.StartShapes);
         Metric("cells", World.W * World.H);
         Metric("chunks", World.ChunkCoords.Count());
         Metric("changed_at_the_start", World.ChangedCount);
-        // CellBytes each in the palette (Cell.cs's fields and an object's header), and an int a cell for the index.
-        Metric("start_state_kb", (World.StartShapes * CellBytes + World.W * World.H * sizeof(int)) / 1024.0);
+        // Each chunk's changes against the source (the sparse World, step 3).
+        Metric("start_state_kb", World.StartBytes / 1024.0);
         int deep = World.AllCells().Count(c => c.Water >= World.Rules.Sim.Dragon.ShelterWater && !c.Frozen);
         Metric("cells_deep_enough_to_shelter", deep);
     }
-
-    const int CellBytes = 120;
 
     IEnumerator Flight()
     {

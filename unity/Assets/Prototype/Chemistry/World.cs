@@ -221,9 +221,10 @@ namespace Chem
         bool BlocksSight(Cell c) => IsBlocking(c) && !HasTag(c, "seeThrough");
         /// <summary>Raised height.blockAt steps or more: a wall of earth, whatever the terrain.</summary>
         public bool IsRaisedWall(Cell c) => HeightOf(c) >= Rules.Sim.Height.BlockAt;
-        // The land under each cell in water units (the valley's baked ground: hills the cells don't
-        // hold), or NoLand for a cell of a water body; null for flat land. Only the water reads it.
-        int[] land;
+        // The land under each cell in water units (the valley's baked ground: hills the cells don't hold), or NoLand for a
+        // cell of a water body; false for flat land. Only the water reads it. Held a chunk at a time (the sparse World, step
+        // 3): an unpacked chunk's in its block (ChunkBlock.Land), a packed chunk's as LandCodec's bytes (Chunk.PackedLand).
+        bool hasLand;
         public const int NoLand = int.MinValue;
 
         /// <summary>
@@ -235,22 +236,133 @@ namespace Chem
         public void SetLand(int[] units)
         {
             if (units != null && units.Length != W * H) throw new ArgumentException($"land needs {W * H} cells, got {units.Length}");
-            if (units == null)
+            if (units == null) SetLand((Action<int, int[]>)null);
+            else SetLand((y, row) => Array.Copy(units, y * W, row, 0, W));
+        }
+
+        /// <summary>
+        /// SetLand a row at a time, north to south, so a big map's land is never held whole: <paramref name="row"/> fills
+        /// row y's W cells, once a row. Null makes the land flat again.
+        /// </summary>
+        public void SetLand(Action<int, int[]> row)
+        {
+            DropLandPeek();
+            if (row == null)
             {
-                land = null;
+                hasLand = false;
+                foreach (var ch in chunks.Values) ch.PackedLand = null;
                 return;
             }
-            land = (int[])units.Clone();
-            for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();)
-                if (IsWaterBody(run.Cell)) land[run.Index] = NoLand;
-            PutStampsOnLand();
+            hasLand = true;
+            var rows = new int[Chunks.Size * W];
+            var one = new int[W];
+            var land = new int[Chunks.Area];
+            for (int cy = 0; cy <= Chunks.ChunkOf(H - 1); cy++)
+            {
+                int y0 = cy << Chunks.Shift;
+                for (int j = 0; j < Chunks.Size && y0 + j < H; j++)
+                {
+                    row(y0 + j, one);
+                    Array.Copy(one, 0, rows, j * W, W);
+                }
+                for (int cx = 0; cx <= Chunks.ChunkOf(W - 1); cx++)
+                {
+                    var ch = FindChunk(cx, cy);
+                    var b = ch.Held;
+                    if (b != null) b.Land ??= new int[Chunks.Area];
+                    var at = b?.Land ?? land;
+                    var read = new ChunkReader(this, ch, walkScratch);
+                    for (int i = 0; i < Chunks.Area; i++)
+                    {
+                        int x = CellX(ch, i), y = CellY(ch, i);
+                        var c = read.At(i);
+                        int units = c == null ? NoLand : rows[(y - y0) * W + x];
+                        // A water body's cell is NoLand; on the rest goes what's been stamped.
+                        if (units == NoLand || IsWaterBody(c)) at[i] = NoLand;
+                        else at[i] = units + (landMoved?[x, y] ?? 0);
+                    }
+                    if (b == null) ch.PackedLand = LandCodec.Encode(land, LandBytes);
+                }
+            }
         }
 
         // A cell SetLand marks NoLand: none, or one with water or a spring now.
         bool IsWaterBody(Cell c) => c == null || c.Water > 0 || TerrainOf(c).Spring > 0;
 
-        int LandOf(Chunk ch, int i) =>
-            land == null ? NoLand : land[Idx((ch.X << Chunks.Shift) + (i & Chunks.Mask), (ch.Y << Chunks.Shift) + (i >> Chunks.Shift))];
+        int LandOf(Chunk ch, int i)
+        {
+            if (!hasLand) return NoLand;
+            return ch.Held is ChunkBlock b ? b.Land[i] : PackedLand(ch)[i];
+        }
+
+        // The land at a cell on the world, NoLand for none.
+        int LandAtCell(int x, int y) => LandOf(FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)), LocalIndex(x, y));
+
+        /// <summary>The land under a cell as SetLand and the stamps left it, in water units; NoLand on water, for flat land or off the world. Reads a packed chunk where it lies.</summary>
+        public int LandUnitsAt(int x, int y) => InBounds(x, y) ? LandAtCell(x, y) : NoLand;
+
+        // Moves the land at a cell on the world (a stamp, a road's cut), but not on water.
+        void MoveLand(int x, int y, int by)
+        {
+            if (!hasLand) return;
+            var ch = FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
+            int[] at;
+            if (ch.Held is ChunkBlock b) at = b.Land;
+            else
+            {
+                at = PackedLand(ch);
+                landPeekEdited = true;
+            }
+            int i = LocalIndex(x, y);
+            if (at[i] != NoLand) at[i] += by;
+        }
+
+        // One packed chunk's land read out of its bytes, for reading and moving a packed chunk's land without unpacking it.
+        // Moved, it goes back into the chunk's bytes when another chunk's is read out, or as the chunk unpacks.
+        readonly int[] landPeek = new int[Chunks.Area];
+        Chunk landPeekChunk;
+        bool landPeekEdited;
+        byte[] landBytes;
+
+        byte[] LandBytes => landBytes ??= new byte[LandCodec.MostBytes];
+
+        int[] PackedLand(Chunk ch)
+        {
+            if (landPeekChunk == ch) return landPeek;
+            DropLandPeek();
+            LandCodec.Decode(ch.PackedLand, landPeek);
+            landPeekChunk = ch;
+            return landPeek;
+        }
+
+        // The peek's chunk given its land back, if it was moved, and the peek let go.
+        void DropLandPeek()
+        {
+            if (landPeekEdited) landPeekChunk.PackedLand = LandCodec.Encode(landPeek, LandBytes);
+            landPeekEdited = false;
+            landPeekChunk = null;
+        }
+
+        // As a chunk unpacks: its land into the block.
+        void UnpackLand(Chunk ch, ChunkBlock b)
+        {
+            if (!hasLand) return;
+            b.Land ??= new int[Chunks.Area];
+            if (landPeekChunk == ch)
+            {
+                Array.Copy(landPeek, b.Land, Chunks.Area);
+                landPeekEdited = false;
+                landPeekChunk = null;
+            }
+            else LandCodec.Decode(ch.PackedLand, b.Land);
+            ch.PackedLand = null;
+        }
+
+        // As a chunk packs: its land out of the block.
+        void PackLand(Chunk ch, ChunkBlock b)
+        {
+            if (hasLand) ch.PackedLand = LandCodec.Encode(b.Land, LandBytes);
+        }
 
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + HeightOf(c)) * Rules.Sim.WaterUnitsPerStep;

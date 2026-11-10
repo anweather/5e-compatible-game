@@ -347,24 +347,27 @@ namespace Chem
         public void SetLandRange((int low, int high) range) => LandRange = range;
 
         readonly List<LandStamp> landStamps = new List<LandStamp>();
-        int[] landMoved;
-        int[] landLaid;
+        // What the stamps and the map moved, a chunk at a time and only where they reached (ChunkCells); null until any did.
+        ChunkCells<int> landMoved;
+        ChunkCells<int> landLaid;
+
+        ChunkCells<int> NewMoved() => new ChunkCells<int>(W, H);
 
         /// <summary>Land the map itself lays when the world is made, a road's cut: under the stamps, and no reset takes it.</summary>
         public void LayLand(IEnumerable<(int x, int y, int by)> cells)
         {
-            landMoved ??= new int[W * H];
-            landLaid ??= new int[W * H];
+            landMoved ??= NewMoved();
+            landLaid ??= NewMoved();
             foreach (var (x, y, by) in cells)
             {
-                int i = Idx(x, y);
-                landMoved[i] += by;
-                landLaid[i] += by;
-                if (land != null && land[i] != NoLand) land[i] += by;
+                landMoved.Cell(x, y) += by;
+                landLaid.Cell(x, y) += by;
+                MoveLand(x, y, by);
             }
+            DropLandPeek();
         }
 
-        int[] landCrag;
+        ChunkCells<int> landCrag;
 
         /// <summary>
         /// Land the map lays as a crag's face (a row's pad dropping off as rock, RowPad): moved as a stamp's land is, so it's
@@ -374,15 +377,15 @@ namespace Chem
         {
             var list = cells.ToList();
             if (list.Count == 0) return;
-            landMoved ??= new int[W * H];
-            landCrag ??= new int[W * H];
+            landMoved ??= NewMoved();
+            landCrag ??= NewMoved();
             foreach (var (x, y, by) in list)
             {
-                int i = Idx(x, y);
-                landMoved[i] += by;
-                landCrag[i] += by;
-                if (land != null && land[i] != NoLand) land[i] += by;
+                landMoved.Cell(x, y) += by;
+                landCrag.Cell(x, y) += by;
+                MoveLand(x, y, by);
             }
+            DropLandPeek();
             foreach (var (x, y, _) in list)
                 for (int v = y - LandFaceReach; v <= y + LandFaceReach; v++)
                     for (int u = x - LandFaceReach; u <= x + LandFaceReach; u++)
@@ -392,10 +395,7 @@ namespace Chem
         /// <summary>The cells the map laid as a crag's face (LayCrag), row by row.</summary>
         public IEnumerable<(int x, int y)> LandCragCells()
         {
-            if (landCrag == null) yield break;
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                    if (landCrag[Idx(x, y)] != 0) yield return (x, y);
+            return landCrag?.Cells() ?? Enumerable.Empty<(int, int)>();
         }
 
         readonly List<LandStamp> mapStamps = new List<LandStamp>();
@@ -440,23 +440,23 @@ namespace Chem
         }
 
         // The cells a bare map stamp painted (MapStamps' "bare"), null until one does: map data, the same on every peer.
-        bool[] bareCells;
+        ChunkCells<bool> bareCells;
 
         internal void MarkBare(int x, int y)
         {
-            bareCells ??= new bool[W * H];
-            bareCells[Idx(x, y)] = true;
+            bareCells ??= new ChunkCells<bool>(W, H);
+            bareCells.Cell(x, y) = true;
         }
 
         /// <summary>Whether a bare map stamp left this cell bare (a volcano's rock): no tree is drawn on it.</summary>
-        public bool IsStampedBare(int x, int y) => bareCells != null && InBounds(x, y) && bareCells[Idx(x, y)];
+        public bool IsStampedBare(int x, int y) => bareCells != null && InBounds(x, y) && bareCells[x, y];
 
         /// <summary>Whether the stamps left a cell bare rock: a crag's face, or a floor cut a crag deep (CellPaint paints them so).</summary>
         public bool IsStampedRock(int x, int y) =>
             landMoved != null && (LandStampedAt(x, y) <= -LandCrag || (LandDrop(x, y) >= LandSteep && LandFace(x, y) >= LandCrag));
 
         string LaidRefusal(LandStamp s) =>
-            landLaid != null && Reach(s).Any(c => landLaid[Idx(c.x, c.y)] != 0) ? "that would move a row's or a road's laid land" : null;
+            landLaid != null && Reach(s).Any(c => landLaid[c.x, c.y] != 0) ? "that would move a row's or a road's laid land" : null;
 
         /// <summary>A stamp moved the land, or one was taken back: the middle and the reach of the cells to draw again.</summary>
         public event Action<int, int, int> LandMoved;
@@ -468,13 +468,13 @@ namespace Chem
         public bool LandHasMoved => landMoved != null;
 
         /// <summary>How far the stamps have moved a cell's land, in land units; 0 off the world.</summary>
-        public int LandMovedAt(int x, int y) => landMoved != null && InBounds(x, y) ? landMoved[Idx(x, y)] : 0;
+        public int LandMovedAt(int x, int y) => landMoved != null && InBounds(x, y) ? landMoved[x, y] : 0;
 
         /// <summary>The most the stamps put between a cell and a cell beside it, in land units; 0 until land is stamped. What the map laid is no stamp: a road's bank is grass.</summary>
         public int LandDrop(int x, int y)
         {
             if (landMoved == null || !InBounds(x, y)) return 0;
-            int here = Stamped(Idx(x, y));
+            int here = Stamped(x, y);
             return Math.Max(Math.Max(Beside(x + 1, y, here), Beside(x - 1, y, here)), Math.Max(Beside(x, y + 1, here), Beside(x, y - 1, here)));
         }
 
@@ -482,46 +482,43 @@ namespace Chem
         public int LandFace(int x, int y)
         {
             if (landMoved == null || !InBounds(x, y)) return 0;
-            int here = Stamped(Idx(x, y)), most = 0;
+            int here = Stamped(x, y), most = 0;
             for (int v = y - LandFaceReach; v <= y + LandFaceReach; v++)
                 for (int u = x - LandFaceReach; u <= x + LandFaceReach; u++)
                     most = Math.Max(most, Beside(u, v, here));
             return most;
         }
 
-        int Beside(int x, int y, int here) => InBounds(x, y) ? Math.Abs(Stamped(Idx(x, y)) - here) : 0;
+        int Beside(int x, int y, int here) => InBounds(x, y) ? Math.Abs(Stamped(x, y) - here) : 0;
 
         /// <summary>What the stamps alone have moved a cell by, in land units: the map's laid land left out.</summary>
-        public int LandStampedAt(int x, int y) => landMoved != null && InBounds(x, y) ? Stamped(Idx(x, y)) : 0;
+        public int LandStampedAt(int x, int y) => landMoved != null && InBounds(x, y) ? Stamped(x, y) : 0;
 
         /// <summary>The cells the map's laid land moved, row by row.</summary>
         public IEnumerable<(int x, int y)> LandLaidCells()
         {
-            if (landLaid == null) yield break;
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                    if (landLaid[Idx(x, y)] != 0) yield return (x, y);
+            return landLaid?.Cells() ?? Enumerable.Empty<(int, int)>();
         }
 
         /// <summary>Whether a road's cut leaves this cell a bank: the most it moved past a cell beside it is steep.</summary>
         public bool LandBank(int x, int y)
         {
             if (landLaid == null || !InBounds(x, y)) return false;
-            int here = landLaid[Idx(x, y)];
+            int here = landLaid[x, y];
             for (int v = -1; v <= 1; v++)
                 for (int u = -1; u <= 1; u++)
-                    if (InBounds(x + u, y + v) && Math.Abs(landLaid[Idx(x + u, y + v)] - here) >= LandSteep) return true;
+                    if (InBounds(x + u, y + v) && Math.Abs(landLaid[x + u, y + v] - here) >= LandSteep) return true;
             return false;
         }
 
-        int Stamped(int i) => landMoved[i] - (landLaid?[i] ?? 0);
+        int Stamped(int x, int y) => landMoved[x, y] - (landLaid?[x, y] ?? 0);
 
         // Null when it's stamped; why not otherwise.
         string StampLand(ActDone act, JObject ask)
         {
             var stamp = LandStamp.Read(ask["stamp"]);
             if (stamp == null || !stamp.Known) return "that isn't a land stamp";
-            if (land == null) SetLand(new int[W * H]);
+            if (!hasLand) SetLand((_, row) => Array.Clear(row, 0, row.Length));
             string why = LandRefusal(stamp);
             if (why != null) return why;
             Press(stamp, 1);
@@ -551,7 +548,7 @@ namespace Chem
         {
             foreach (var (x, y, by) in Reach(s))
             {
-                int now = land[Idx(x, y)];
+                int now = LandAtCell(x, y);
                 if (now == NoLand) return Wet;
                 if (by == 0) continue;
                 int then = now - by;
@@ -564,9 +561,8 @@ namespace Chem
         // so a stamp asked of a dry world is refused on the lake as it would be after (#156: a spot search took one there).
         int LandNow(int x, int y)
         {
-            int i = Idx(x, y);
-            if (land != null) return land[i];
-            return IsWaterBody(At(x, y)) ? NoLand : landMoved?[i] ?? 0;
+            if (hasLand) return LandAtCell(x, y);
+            return IsWaterBody(At(x, y)) ? NoLand : landMoved?[x, y] ?? 0;
         }
 
         const string Wet = "that would cross water, and land stamps keep off it for now";
@@ -601,13 +597,13 @@ namespace Chem
 
         void Press(LandStamp s, int sign)
         {
-            landMoved ??= new int[W * H];
+            landMoved ??= NewMoved();
             foreach (var (x, y, by) in Reach(s))
             {
-                int i = Idx(x, y);
-                landMoved[i] += sign * by;
-                if (land != null && land[i] != NoLand) land[i] += sign * by;
+                landMoved.Cell(x, y) += sign * by;
+                MoveLand(x, y, sign * by);
             }
+            DropLandPeek();
         }
 
         // Taken back, in any order: the same integers off. Null when it's done, else why not.
@@ -636,20 +632,12 @@ namespace Chem
             acts.RemoveAll(a => a.Kind == ActCalled && a.Parts.Count == 0);
         }
 
-        // SetLand reads the map's land afresh: what's been stamped goes back on it.
-        void PutStampsOnLand()
-        {
-            if (landMoved == null) return;
-            for (int i = 0; i < land.Length; i++)
-                if (land[i] != NoLand) land[i] += landMoved[i];
-        }
-
         void SaveLand(JObject save)
         {
             if (landStamps.Count > 0) save["land"] = new JArray(landStamps.Select(s => (object)s.Row).ToArray());
             if (mapStamps.Count > 0) save["mapStamps"] = new JArray(mapStamps.Select(s => (object)s.Row).ToArray());
-            if (landLaid != null) save["landLaid"] = new JArray(LandLaidCells().SelectMany(c => new object[] { c.x, c.y, landLaid[Idx(c.x, c.y)] }).ToArray());
-            if (landCrag != null) save["landCrag"] = new JArray(LandCragCells().SelectMany(c => new object[] { c.x, c.y, landCrag[Idx(c.x, c.y)] }).ToArray());
+            if (landLaid != null) save["landLaid"] = new JArray(LandLaidCells().SelectMany(c => new object[] { c.x, c.y, landLaid[c.x, c.y] }).ToArray());
+            if (landCrag != null) save["landCrag"] = new JArray(LandCragCells().SelectMany(c => new object[] { c.x, c.y, landCrag[c.x, c.y] }).ToArray());
         }
 
         void LoadLand(JObject s)

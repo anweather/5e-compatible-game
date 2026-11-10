@@ -3,7 +3,8 @@
 2026-11-10, u2. The plan for the World to hold `Cell` objects only for the chunks near the players, and the
 census of who reads cells today. The ADR is D17 (`docs/adr/0017-the-sparse-world.md`, accepted). Step 2, packed chunks
 in the core, is in (`sparse-world-2`): see "Step 2: packed chunks in the core" at the end for what landed, where it
-differs from the plan below, and what it measured. The rule it serves
+differs from the plan below, and what it measured. Step 3, the core's other map-sized arrays per chunk, is in
+(`sparse-world-3`): see "Step 3" at the end. The rule it serves
 is J-086: cost follows the active region and the drawn tier, never the map's size.
 
 ## What's true now
@@ -287,7 +288,7 @@ over the active chunks instead.
 | 1b | The view's 57 `World.Cells` reads to `CellAt` / `AllCells` / per-chunk passes (the table above); the whole-map binds wait for #205 | the PC | S for the by-index reads, M with the binds |
 | 2 | Packed chunks in the core: the block pool, pack and unpack, the hold time and the view's draw hint, the hash and save reading packed chunks, `BakedSource` with the legend table moved into the core, loading saves packed; `World.Cells` dropped once 1b lands. Goldens unchanged; tests that pack and unpack mid-fire, mid-flow and across a rule switch, and that a peer packing differently hashes the same | u2 | L, done (`sparse-world-2`) |
 | 2b | The view's drawn hint: `World.SetDrawn` from the drawn tier (below) | the PC | S |
-| 3 | The core's other map-sized arrays per chunk: `land`, `startAt`, `landMoved` / `landLaid` / `landCrag`, `bareCells` | u2 | M |
+| 3 | The core's other map-sized arrays per chunk: `land`, `startAt`, `landMoved` / `landLaid` / `landCrag`, `bareCells` | u2 | M, done (`sparse-world-3`) |
 | 4 | The view's map-sized arrays and binds per drawn chunk (scale doc #3-#5, #7), with #205's terrains for the drawn tier | the PC | L (#205) + M |
 | 5 | The scale island loads in a player: the probe's scenarios on it, `PERF MEMORY` against this budget | the PC | S |
 
@@ -498,7 +499,7 @@ packs 300 ticks after it was last read and unpacks again at the view's next read
 counted in `World.ReadUnpacks`. The view must not keep `Cell` objects across frames for chunks it doesn't hint: a
 packed chunk's objects go back to the pool and come out as another chunk's cells. Numbers for `PERF MEMORY`:
 `UnpackedCount`, `PackPoolCount`, `Packs`, `Unpacks`, `ReadUnpacks` (should stay 0: reads of unhinted inactive chunks),
-`PackMs`, `UnpackMs`, `DrawnCount`, `MapArrayBytes` (step 3's arrays).
+`PackMs`, `UnpackMs`, `DrawnCount`, `MapArrayBytes` (what step 3 left of the map-sized arrays; `PackedLandBytes` of it).
 
 **Tests** (`PackTests`, in CI): a new world makes no cells until read; pack then unpack gives back every field, the hash
 and every save record (against its own source and another); the hash, `CellText`, `ChunkHash`, the save, the audit and
@@ -548,4 +549,68 @@ every 300 ticks.
   `landCrag` at 160 MB each and `bareCells` at 40 MB: about 0.8 GB before a single cell, so the island may load in a
   player now (its cells are ~100 MB packed), but it isn't the design's budget until step 3.
 - Mono and IL2CPP aren't measured.
+
+## Step 3: the core's other map-sized arrays (`sparse-world-3`, 2026-11-10)
+
+u2. Each array the World held the size of the map is per chunk now, and none had to stay whole. Every golden stands
+(the CellHash and FNV-1a goldens, the dragon's, the save's), and the packing, late-join and peer tests pass unchanged.
+
+**Where each went:**
+
+| Was | Now | On the island |
+|---|---|---|
+| `land` (`SetLand`, an int a cell) | An unpacked chunk's in its block (`ChunkBlock.Land`); a packed chunk's as `LandCodec`'s bytes (`Chunk.PackedLand`): each cell's difference from left + up − up-left, zigzag varints, a run the prediction gets exactly as one varint. Exact for any ints, `NoLand` too | 160 MB → **7.5 MB** (~0.8 KB a chunk; the sea's chunks a few bytes) |
+| `startAt` and the palette (`KeepStart`) | A chunk's starting cells as a `PackedChunk` against the starting state's source (`Chunk.Start`). A chunk packed when the start is kept shares its own changes (a `PackedChunk` never changes); an unpacked one's are diffed from its block. Read with `ChunkReader` over those changes (`StartOf`, `StartCell`) | 160 MB → **0.2 MB** (7,048 cells held apart from the source: the lays) |
+| `landMoved` / `landLaid` / `landCrag` (int) and `bareCells` (bool) | `ChunkCells<T>`: an array a chunk, made at the first write to that chunk, the rest reading as 0 | 3 x 160 MB + 40 MB → **~0.9 MB** (the chunks the rows' pads, the roads' cuts and the map stamps reached) |
+
+**The land, read and moved where it lies.** `LandOf` reads an unpacked chunk's block, or a packed chunk's bytes read out
+into one chunk's peek (`PackedLand`), so neither a read nor a stamp's or a road's cut (`MoveLand`) unpacks a chunk. A
+moved peek goes back into its chunk's bytes when another chunk's is read out, as it unpacks, or at the end of the
+write (`DropLandPeek`). `SetLand(Action<int, int[]> row)` takes the land a row at a time, north to south, so a big map's
+land needn't be held whole to set it; `SetLand(int[])` goes through it. `LandUnitsAt(x, y)` reads it (for tests and
+the view).
+
+**The start's one difference.** The palette gave every cell that hashed and saved the same one shared copy, so a
+dry cell's `Liquid` and a waterless cell's `Sets` (which mean nothing and aren't hashed) came back from the first
+such cell. Now each cell's own come back. Nothing that's hashed, saved or ticked reads them, and the dragon's goldens
+agree. `StartShapes` now counts the cells the start holds apart from its source (it counted the palette), and
+`StartBytes` is what they hold. The view's probe and perf lines (changed here, not compiled: the PC's to check) say
+`start_cells` for `palette`, and `ProbeDragon`'s `start_state_kb` is `StartBytes` (it added an int a cell).
+
+**Measured** (`SparseWorldBench`, Explicit; `dotnet` Release on the worker VM, 2 cores; heap after a full collection;
+before and after run back to back from two worktrees, `origin/sparse-world-2` with this bench and this branch). The
+island is the Scale Island baked in full by the lean bake (81 s, a row of chunks at a time), then built as `MapWorld`
+builds it:
+
+| The World | Before (step 2) | After (step 3) |
+|---|---|---|
+| The nine as built | 67.9 MB | 13.0 MB |
+| The nine in play (25 active, 72 unpacked, 360 ticks) | **84.4 MB** | **30.2 MB** |
+| ... the map-sized arrays | 57.0 MB | 1.7 MB |
+| The Scale Island as built (9,720 chunks, 52 unpacked by its lays) | 802 MB | 52.3 MB |
+| The Scale Island in play (25 active, 81 unpacked) | **812 MB** | **63.0 MB** |
+| ... the blocks | ~22.5 MB | ~22.5 MB |
+| ... the source (`BakedSource`, 4,251 chunks of one character) | 21.4 MB | 21.4 MB |
+| ... the packed chunks' changes | 1.6 MB | 1.6 MB |
+| ... the map-sized arrays (`MapArrayBytes`) | 759.4 MB | 8.6 MB, of which 7.5 MB land |
+| ... the rest: the chunk headers and their empty changes | ~8 MB | ~9 MB |
+| Built in | 9.0-9.6 s | 8.4-8.6 s |
+| The walk across the nine: a tick mean / p99 | 4.79 / 8.21 ms | 4.15 / 6.39 ms (VM noise between runs is larger) |
+| A pack / an unpack | 0.206 / 0.116 ms | 0.186 / 0.146 ms: an unpack reads the land out of its bytes |
+
+**What still grows with the map** (core, the island's numbers):
+- The source: 21.4 MB, ~2.3 KB a chunk (a chunk of one character is one byte).
+- The packed chunks' land: 7.5 MB, ~0.8 KB a chunk.
+- The chunk headers: ~9 MB, ~1 KB a chunk (`Chunk`, its edge arrays and an empty `PackedChunk`).
+- The index arrays of `ChunkCells` and the chunk store: 8 bytes a chunk each.
+- Each grows by its chunk count, as the design's budget allows (a source and headers of a few KB a chunk).
+
+**Not done here (map-sized, transient, at build):**
+- `WorldBuildings.LayInto` reads the map's `land.json` whole (an int a cell, 160 MB on the island, and the file's
+  text) to cut the pads and roads on it, then lets it go. Moving it onto the World's own land, or reading the file a
+  chunk at a time, changes what the cuts read beside water (the World's land is `NoLand` there), so it wants a golden
+  check of its own.
+- The view's `ValleyChemistry.landFromFile` holds the same array for the life of the map, and `LandFile` has no reader
+  a row at a time yet. With `SetLand(row)` the view can stream it once there is one (step 4).
+- `SetLand` walks every cell once (40 M on the island, in the build's time above), reading packed chunks where they lie.
 
