@@ -24,7 +24,8 @@ using Debug = UnityEngine.Debug;
 // counts every 2 s are taken out of the frame they fall in.
 //
 // In a development build each frame's Profiler markers are read too: a
-// "PERF MARKERS" line with each one's mean and peak, and a "PERF SPIKE" line for
+// "PERF MARKERS" line with each one's mean and peak, a "PERF RENDER" line of what
+// was drawn (draw calls, batches, SetPass calls, triangles, shadow casters), and a "PERF SPIKE" line for
 // every frame over 50 ms (written after the run: logging is itself slow).
 // -perf-list-markers also writes every marker there is to perf-markers.txt.
 // The wildfire ends with shots with and without FlameBank's flames (FlameShots),
@@ -360,6 +361,7 @@ public class PerfScenario : MonoBehaviour
         Debug.Log(ResultLine(elapsed));
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
+        Debug.Log($"PERF RENDER scenario={scenario}{markers.RenderSummary()}");
         var inv = CultureInfo.InvariantCulture;
         Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
