@@ -198,10 +198,8 @@ public class MeteorFall : MonoBehaviour
     void Blast(GameObject prefab, float scale)
     {
         if (prefab == null) return;
-        var fx = SpellVisuals.Spawn(prefab, to, Quaternion.identity);
-        fx.transform.localScale = Vector3.one * scale;
-        SpellVisuals.Scale(fx, blastScale);
-        look?.Dress(fx);
-        Destroy(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
+        var kept = look != null ? look.BlastOf(prefab) : new ShowPool.Look(prefab, default, Color.clear);
+        var fx = ShowPool.Take(kept, to, Quaternion.identity, look != null ? look.Dress : null, blastScale, scale);
+        ShowPool.Release(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
     }
 }

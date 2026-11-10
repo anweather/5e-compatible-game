@@ -26,6 +26,9 @@ public sealed class BiomeGround
     readonly int layers, across, down, grass;
     [System.ThreadStatic] static float[] buffer;
     readonly float[] samples;
+    // Each sample's strongest biome, and each biome's own ground (Looks) by its id.
+    readonly string[] strongest;
+    readonly Dictionary<string, float[]> ownGround = new();
     readonly bool[] pinnedChunks;
     readonly int chunksW;
 
@@ -39,7 +42,9 @@ public sealed class BiomeGround
         across = gen.CellsW / Step + 2;
         down = gen.CellsH / Step + 2;
         var looks = LooksOf(table);
+        for (int b = 0; b < looks.Length; b++) ownGround[table.Rows[b].Id] = looks[b];
         samples = new float[across * down * layers];
+        strongest = new string[across * down];
         int fieldH = map.Plan.Grid.H * WorldPlan.SquareCells, ox = gen.OriginX * WorldPlan.SquareCells, oy = gen.OriginY * WorldPlan.SquareCells;
         System.Threading.Tasks.Parallel.For(0, down, j =>
         {
@@ -48,6 +53,7 @@ public sealed class BiomeGround
                 // The plan's field the way ChunkGen reads it: from the plan's corner, its rows from the south.
                 var blend = field.At(i * Step + ox, fieldH - 1 - (j * Step + oy), table.BlendCells);
                 Add(blend, looks, (j * across + i) * layers);
+                strongest[j * across + i] = table.Rows[Strongest(blend)].Id;
             }
         });
         chunksW = gen.ChunksW;
@@ -82,12 +88,54 @@ public sealed class BiomeGround
         }
     }
 
+    static int Strongest(BiomeBlend blend)
+    {
+        int best = 0;
+        for (int s = 1; s < 4; s++)
+            if (blend.Weight(s) > blend.Weight(best)) best = s;
+        return blend.Id(best);
+    }
+
+    /// <summary>
+    /// Each biome's ground as the near ground draws it, as weights over CellPaint's layers: the mean of the paint of the
+    /// map's dry cells where that biome is strongest (their own terrain's paint, their grass turned to the biome's ground),
+    /// read every Step cells; a biome with no such cell on the map has its own ground (Looks). For the far ring
+    /// (FarMeshes.Palette), so a known chunk's colour comes from the same paint as the drawn chunk beside it.
+    /// </summary>
+    public Dictionary<string, float[]> Grounds(World world)
+    {
+        var sums = new Dictionary<string, float[]>();
+        var counts = new Dictionary<string, int>();
+        var mix = new float[layers];
+        for (int j = 0; j < down; j++)
+            for (int i = 0; i < across; i++)
+            {
+                int x = i * Step, y = j * Step;
+                if (x >= world.W || y >= world.H || Pinned(x, y) || world.At(x, y) is not { } cell || cell.Water > 0) continue;
+                var paint = CellPaint.Mix(world, x, y);
+                for (int k = 0; k < layers; k++) mix[k] = paint[k];
+                Repaint(x, y, mix);
+                string id = strongest[j * across + i];
+                if (!sums.TryGetValue(id, out var sum)) sums[id] = sum = new float[layers];
+                for (int k = 0; k < layers; k++) sum[k] += mix[k];
+                counts[id] = counts.TryGetValue(id, out int n) ? n + 1 : 1;
+            }
+        foreach (var (id, sum) in sums)
+            for (int k = 0; k < layers; k++) sum[k] /= counts[id];
+        foreach (var (id, own) in ownGround)
+            if (!sums.ContainsKey(id)) sums[id] = (float[])own.Clone();
+        return sums;
+    }
+
     static int Index(string layer)
     {
         for (int k = 0; k < CellPaint.Layers.Count; k++)
             if (CellPaint.Layers[k] == layer) return k;
         return 0;
     }
+
+    /// <summary>The biome ground of a generated map already read.</summary>
+    public static BiomeGround Of(GeneratedMap map) => new(map);
 
     /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated.</summary>
     public static BiomeGround For(string mapSource)
