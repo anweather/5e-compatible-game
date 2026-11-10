@@ -212,11 +212,43 @@ public partial class ChemGrid
         AnnouncedAt = Time.realtimeSinceStartup;
         // A room's change has its own line in the world log.
         if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
+        var part = System.Diagnostics.Stopwatch.StartNew();
         RedrawLooks(before.Effective);
         RedrawLookFire();
+        double redrawMs = part.Elapsed.TotalMilliseconds;
+        part.Restart();
         // Every colour drawn from the rules is as it was unless a look changed: most switches change none (#181).
-        if (!before.Effective.SameLooks(CurrentRules.Effective)) RecolourWorld();
-        RulesChanged?.Invoke();
+        bool recoloured = !before.Effective.SameLooks(CurrentRules.Effective);
+        if (recoloured) RecolourWorld();
+        double recolourMs = part.Elapsed.TotalMilliseconds;
+        part.Restart();
+        string slowest = TellRulesChanged();
+        // What the switch cost on this frame, by part (#210): composing, the looks queued, the recolour, the listeners.
+        Debug.Log(string.Format(CultureInfo.InvariantCulture, "RULE SWITCH compose_ms={0:0.0} redraw_ms={1:0.0} recolour_ms={2:0.0} recoloured={3} listeners_ms={4:0.0}{5}",
+            ComposeMs, redrawMs, recolourMs, recoloured, part.Elapsed.TotalMilliseconds, slowest));
+    }
+
+    // RulesChanged, each listener timed in a development build: the slowest named, for the RULE SWITCH line.
+    string TellRulesChanged()
+    {
+        if (RulesChanged == null) return "";
+        if (!Debug.isDebugBuild)
+        {
+            RulesChanged();
+            return "";
+        }
+        var timer = new System.Diagnostics.Stopwatch();
+        var cost = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var listener in RulesChanged.GetInvocationList())
+        {
+            timer.Restart();
+            ((System.Action)listener).Invoke();
+            string name = listener.Method.DeclaringType?.Name + "." + listener.Method.Name;
+            cost.TryGetValue(name, out double had);
+            cost[name] = had + timer.Elapsed.TotalMilliseconds;
+        }
+        return string.Concat(cost.OrderByDescending(kv => kv.Value).Take(3)
+            .Select(kv => string.Format(CultureInfo.InvariantCulture, " {0}={1:0.0}", kv.Key, kv.Value)));
     }
 
     // What stands on the cells of a terrain whose look changed, drawn again from the rules now in

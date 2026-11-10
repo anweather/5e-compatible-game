@@ -54,8 +54,10 @@ public partial class PerfStage : ShowcaseScript
             StartCoroutine(Fireball());
             yield break; // Ready once the chunks round the forest are drawn
         }
-        else Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
+        else if (Scenario != "walkout") Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
+        if (Scenario == "walkout") StartCoroutine(WalkOut());
+        if (Asked("-perf-switches")) StartCoroutine(Switches());
         if (Scenario == "forestload") ForestLoadStage();
         if (Scenario == "aim") StartCoroutine(Aim());
         if (Scenario == "flamewall") StartCoroutine(FlameWall());

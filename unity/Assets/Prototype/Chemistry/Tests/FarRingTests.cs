@@ -21,6 +21,13 @@ namespace Chem.Tests
 
         static GeneratedMap Nine => nine ??= GeneratedMap.Load(NineDir);
 
+        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
+        [OneTimeTearDown]
+        public void DropTheMap()
+        {
+            nine = null;
+        }
+
         static StreamingParams Streaming => ChemistryTests.R.Sim.Streaming;
 
         // The valley's middle chunk (the valley is chunks 0..8, 18..26 of the nine).

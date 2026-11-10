@@ -120,7 +120,7 @@ namespace Chem
             long lowest = long.MaxValue;
             for (int i = 0; i < n; i++)
             {
-                string lm = Options[i].Template.Lm;
+                string lm = held[i] >= 0 ? null : Options[i].Template.Lm;
                 if ((lm == "land" || lm == "water") && TownRoll(i) < lowest && Array.IndexOf(MustSquares, i) < 0)
                 {
                     lowest = TownRoll(i);
@@ -131,7 +131,7 @@ namespace Chem
             {
                 var t = Options[i].Template;
                 string lm = t.Lm;
-                if (lm == null) continue;
+                if (lm == null || held[i] >= 0) continue; // a held square's landmarks are its own plan's
                 if ((lm == "land" || lm == "water") && TownRoll(i) >= towns && i != firstTown && Array.IndexOf(MustSquares, i) < 0) continue;
                 var r = new PlanRng(H(Seed, i, 77));
                 int sx = 150 + r.Below(277), sy = 150 + r.Below(277);

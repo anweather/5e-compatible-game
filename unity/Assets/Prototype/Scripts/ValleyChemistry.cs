@@ -72,7 +72,7 @@ public partial class ValleyChemistry : MonoBehaviour
 
     void QueueGrassAt((int i, int j) at)
     {
-        if (!ground.HasChunk(at) || TintedAlready(ground.Data(at)) || !grassQueued.Add(at)) return;
+        if (!ground.HasChunk(at) || !ground.IsReady(at) || TintedAlready(ground.Data(at)) || !grassQueued.Add(at)) return;
         grassToTint.Enqueue(at);
     }
 
@@ -85,6 +85,8 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             var at = grassToTint.Dequeue();
             grassQueued.Remove(at);
+            // A generated map's chunk whose terrain went meanwhile takes the tint when it's made again (ChunkMade).
+            if (!ground.IsReady(at)) continue;
             var data = ground.Data(at);
             if (TintedAlready(data)) continue;
             var kinds = data.detailPrototypes;
@@ -175,7 +177,7 @@ public partial class ValleyChemistry : MonoBehaviour
         if (terrains.Builder != null) return terrains.Builder;
         var template = terrains.template;
         var land = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
-        var pack = GroundFromLand.Build(new GroundFromLand.Source
+        var source = new GroundFromLand.Source
         {
             World = world,
             Land = land,
@@ -188,7 +190,9 @@ public partial class ValleyChemistry : MonoBehaviour
             TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
             DetailResolution = template.detailResolution,
             Biomes = BiomeGround.For(ChemGrid.MapSource),
-        });
+        };
+        if (terrains.Lazy) return LazyGround(source, template);
+        var pack = GroundFromLand.Build(source);
         // A generated map's pinned squares (the nine's valley) draw their own map's shaped ground, as that map does.
         if (GroundSwitch.Mode == GroundSwitch.On)
         {
@@ -197,6 +201,24 @@ public partial class ValleyChemistry : MonoBehaviour
         }
         return new GroundBuilder(pack, template, layout.ChunkSize);
     }
+
+    // A generated map's ground made a chunk at a time, as its terrains are (#205): the same arrays GroundFromLand.Build and
+    // PinnedGround.Lay make, chunk by chunk, from the world the source holds when asked (each Bind sets it).
+    GroundBuilder LazyGround(GroundFromLand.Source source, TerrainData template)
+    {
+        lazySource = source;
+        var (pack, make) = GroundFromLand.Lazy(source);
+        if (GroundSwitch.Mode == GroundSwitch.On)
+        {
+            int laid;
+            (laid, make) = PinnedGround.LayLazily(pack, layout, ChemGrid.MapSource, make);
+            if (laid > 0) Debug.Log($"PINNED GROUND: {laid} chunks from the pinned map's ground/, the seam eased over {PinnedGround.SeamCells} cells, made as they're wanted");
+        }
+        var shape = layout;
+        return new GroundBuilder(pack, template, layout.ChunkSize, make, at => shape.HasChunk(at.i, at.j));
+    }
+
+    GroundFromLand.Source lazySource;
 
     /// <summary>The rocks on stamped land; null until the ground is bound.</summary>
     public LandRocks Rocks => rocks;
@@ -219,10 +241,14 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             builder = BuiltGround(world);
-            if (builder != terrains.Builder) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land ready in {timer.Elapsed.TotalMilliseconds:0} ms");
-            ground = new ValleyGround(layout, terrains.Chunks, builder, built: builder == terrains.Builder);
-            // The chunks waited blank for the land (no ground/, or land mode): the sea measures its depth again on them.
-            if (builder != terrains.Builder && Ocean.Instance != null) Ocean.Instance.Build();
+            if (builder.Lazy) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land made a chunk at a time, as the terrains are");
+            else if (builder != terrains.Builder) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land ready in {timer.Elapsed.TotalMilliseconds:0} ms");
+            ground = builder.Lazy ? new ValleyGround(layout, builder) : new ValleyGround(layout, terrains.Chunks, builder, built: builder == terrains.Builder);
+            ground.ChunkReady += ChunkMade;
+            ground.ChunkGone += ChunkGone;
+            // The chunks waited blank for the land (no ground/, or land mode): the sea measures its depth again on them
+            // (once the drawn tier's are made, on a generated map).
+            if (!builder.Lazy && builder != terrains.Builder && Ocean.Instance != null) Ocean.Instance.Build();
             rocks = new LandRocks(grid);
             rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).
@@ -234,7 +260,11 @@ public partial class ValleyChemistry : MonoBehaviour
         grid.ChunkFreshened += BuildingsBack;
         grid.ChunkDrawn -= QueueGrass;
         grid.ChunkDrawn += QueueGrass;
+        if (lazySource != null) lazySource.World = world;
+        if (ground.Lazy) ground.Land = LandOf(world);
+        binding = true;
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
+        binding = false;
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         var (channelCells, channelDepths) = builder.Channel;
@@ -275,6 +305,36 @@ public partial class ValleyChemistry : MonoBehaviour
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
         panesByCell.Clear();
         foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
+        // A generated map's first world: the drawn tier's terrains, made now (the rest as the characters move), and the sea
+        // measured on them.
+        if (ground.Lazy && !served)
+        {
+            served = true;
+            terrains.Serve(ground);
+            if (Ocean.Instance != null) Ocean.Instance.Build();
+        }
+    }
+
+    bool served, binding;
+
+    // A generated map's chunk made for this world (#205): its trees indexed, its layers wet, its grass tinted as the rest.
+    void ChunkMade((int i, int j) at, TerrainData data)
+    {
+        IndexTrees(at, data);
+        // A chunk made as a new world binds is wet with the rest, by the new world's WetGround.
+        if (!binding) wet?.Add(data);
+        if (grassTint != Color.white) QueueGrassAt(at);
+    }
+
+    // A generated map's chunk nothing changed gave its data back: what was kept by it goes.
+    void ChunkGone((int i, int j) at, TerrainData data)
+    {
+        trees.Remove(at);
+        bakedTrees.Remove(at);
+        treesChanged.Remove(at);
+        foreach (var (x, y) in layout.CellsIn(at.i, at.j)) treesByCell.Remove(grid.World.Idx(x, y));
+        tintedWith.Remove(data);
+        grassColors.Remove(data);
     }
 
     // A row laid over the cells at the start (WorldBuildings.LayInto) stands where the bake drew trees and grass: they go,
@@ -320,21 +380,23 @@ public partial class ValleyChemistry : MonoBehaviour
         bakedTrees.Clear();
         treesByCell.Clear();
         treesChanged.Clear();
-        foreach (var (at, data) in ground.Chunks())
+        foreach (var (at, data) in ground.Chunks()) IndexTrees(at, data);
+    }
+
+    void IndexTrees((int i, int j) at, TerrainData data)
+    {
+        var list = data.treeInstances;
+        trees[at] = list;
+        bakedTrees[at] = (TreeInstance[])list.Clone();
+        var (cx, cz) = layout.ChunkCorner(at.i, at.j);
+        for (int n = 0; n < list.Length; n++)
         {
-            var list = data.treeInstances;
-            trees[at] = list;
-            bakedTrees[at] = (TreeInstance[])list.Clone();
-            var (cx, cz) = layout.ChunkCorner(at.i, at.j);
-            for (int n = 0; n < list.Length; n++)
-            {
-                var p = list[n].position;
-                var (x, y) = layout.CellAt(cx + p.x * data.size.x, cz + p.z * data.size.z);
-                if (!layout.InGrid(x, y)) continue;
-                int key = grid.World.Idx(x, y);
-                if (!treesByCell.TryGetValue(key, out var mine)) treesByCell[key] = mine = new();
-                mine.Add((at, n));
-            }
+            var p = list[n].position;
+            var (x, y) = layout.CellAt(cx + p.x * data.size.x, cz + p.z * data.size.z);
+            if (!layout.InGrid(x, y)) continue;
+            int key = grid.World.Idx(x, y);
+            if (!treesByCell.TryGetValue(key, out var mine)) treesByCell[key] = mine = new();
+            mine.Add((at, n));
         }
     }
 
@@ -413,7 +475,10 @@ public partial class ValleyChemistry : MonoBehaviour
         if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
     }
 
-    static void SetLand(World world)
+    static void SetLand(World world) => world.SetLand(LandOf(world));
+
+    // The map's land.json, read once a map.
+    static int[] LandOf(World world)
     {
         if (landFromFile == null || landFromFile.Length != world.W * world.H)
         {
@@ -422,7 +487,7 @@ public partial class ValleyChemistry : MonoBehaviour
             if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
             if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
         }
-        world.SetLand(landFromFile);
+        return landFromFile;
     }
 
     /// <summary>
@@ -536,6 +601,13 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (palmsByCell.TryGetValue(grid.World.Idx(x, y), out var palms))
             foreach (var palm in palms) palm.Burn(charred);
+        // A generated map's chunk not made yet: its trees burn as it's made.
+        if (!ground.WhenReady(layout.ChunkOfCell(x, y), () => BurnTreesOnly(x, y))) return;
+        BurnTreesOnly(x, y);
+    }
+
+    void BurnTreesOnly(int x, int y)
+    {
         if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list)) return;
         foreach (var (at, n) in list)
         {
@@ -544,6 +616,7 @@ public partial class ValleyChemistry : MonoBehaviour
             t.widthScale = 0f;
             trees[at][n] = t;
             treesChanged.Add(at);
+            ground.Touch(at);
         }
     }
 
@@ -560,11 +633,18 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (palmsByCell.TryGetValue(grid.World.Idx(x, y), out var palms))
             foreach (var palm in palms) palm.Regrow();
+        if (!ground.WhenReady(layout.ChunkOfCell(x, y), () => StandTreesOnly(x, y))) return;
+        StandTreesOnly(x, y);
+    }
+
+    void StandTreesOnly(int x, int y)
+    {
         if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list)) return;
         foreach (var (at, n) in list)
         {
             trees[at][n] = bakedTrees[at][n];
             treesChanged.Add(at);
+            ground.Touch(at);
         }
     }
 
@@ -709,7 +789,7 @@ public partial class ValleyChemistry : MonoBehaviour
         scale = Vector3.one;
         var at = layout.ChunkOfCell(x, y);
         if (!ground.HasChunk(at)) return false;
-        var protos = ground.Data(at).treePrototypes;
+        var protos = ground.TreePrototypes(at);
         if (protos.Length == 0) return false;
         prefab = protos[(int)((uint)(x * 73856093 ^ y * 19349663) % (uint)protos.Length)].prefab;
         return prefab != null;
@@ -725,7 +805,7 @@ public partial class ValleyChemistry : MonoBehaviour
         prefab = null;
         var at = layout.ChunkOfCell(x, y);
         if (!string.IsNullOrEmpty(kind) && ground.HasChunk(at))
-            prefab = ground.Data(at).treePrototypes.Select(p => p.prefab).FirstOrDefault(p => p != null && p.name == kind);
+            prefab = ground.TreePrototypes(at).Select(p => p.prefab).FirstOrDefault(p => p != null && p.name == kind);
         return prefab != null || TreeModel(x, y, out prefab, out scale);
     }
 
@@ -733,7 +813,7 @@ public partial class ValleyChemistry : MonoBehaviour
     public IEnumerable<GameObject> TreeKinds(int x, int y)
     {
         var at = layout.ChunkOfCell(x, y);
-        return ground.HasChunk(at) ? ground.Data(at).treePrototypes.Select(p => p.prefab).Where(p => p != null) : Enumerable.Empty<GameObject>();
+        return ground.HasChunk(at) ? ground.TreePrototypes(at).Select(p => p.prefab).Where(p => p != null) : Enumerable.Empty<GameObject>();
     }
 
     // Terrain edits are batched once per frame.

@@ -9,6 +9,7 @@
 // 18..26; its own rows are shifted 1152 cells south when the nine is put together, NineWorld).
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
@@ -33,18 +34,28 @@ namespace Chem
         public uint Hash;
     }
 
-    /// <summary>ap world square laid from a map folder as it is (the valley): its land, its cells and its things.</summary>
+    /// <summary>
+    /// ap world square laid from a map folder as it is (the valley): its land, its cells and its things. Or a pinned block,
+    /// a generated map pinned whole (the nine in the scale map): <see cref="W"/> × <see cref="H"/> world squares made by its
+    /// own generator, <see cref="Inner"/>, and moved.
+    /// </summary>
     public sealed class PinnedSquare
     {
-        /// <summary>The square in the plan.</summary>
+        /// <summary>The square in the plan (a block's north-west one).</summary>
         public int Square;
         public string Map;
-        /// <summary>576² land units, row-major.</summary>
+        /// <summary>Its size in world squares: 1 × 1 but for a block.</summary>
+        public int W = 1, H = 1;
+        /// <summary>A block's own generator, whose chunks its chunks are; null for a map folder's square.</summary>
+        public ChunkGen Inner;
+        /// <summary>576² land units, row-major (none for a block).</summary>
         public int[] Land;
-        /// <summary>576 rows of 576 Legend characters.</summary>
+        /// <summary>576 rows of 576 Legend characters (none for a block).</summary>
         public string[] Rows;
         /// <summary>things.json's chunk lists by the square's own chunk (0..8, 0..8).</summary>
         public Dictionary<(int x, int y), JArray> Things = new Dictionary<(int, int), JArray>();
+        /// <summary>The place ids its places.json has (none for a block: its generator's <see cref="ChunkGen.PlaceIds"/>).</summary>
+        public List<string> PlaceIds = new List<string>();
     }
 
     public sealed partial class ChunkGen
@@ -72,6 +83,9 @@ namespace Chem
         /// <summary>The landmarks' rows, by the plan's landmark index (null for one made elsewhere: the castle is the valley's).</summary>
         public IReadOnlyList<LandmarkRows> LandmarkRows => landmarkRows;
         readonly LandmarkRows[] landmarkRows;
+        /// <summary>The place ids taken on the map: the pinned map's, then each made landmark's and village's, none twice.</summary>
+        public IReadOnlyCollection<string> PlaceIds => placeIds;
+        readonly HashSet<string> placeIds = new HashSet<string>(StringComparer.Ordinal);
         readonly List<(LandStamp stamp, char bare, int landmark)> stamps = new List<(LandStamp, char, int)>();
 
         public int ChunksW => SquaresW * WorldPlan.ChunksPerSquare;
@@ -102,16 +116,26 @@ namespace Chem
             SetUpLand();
             SetUpSpawns();
             landmarkRows = new LandmarkRows[plan.Landmarks.Count];
+            if (pinned != null) placeIds.UnionWith(pinned.Inner?.PlaceIds ?? pinned.PlaceIds);
             for (int k = 0; k < plan.Landmarks.Count; k++)
             {
                 var l = plan.Landmarks[k];
-                if (l.Intent != WorldPlan.VillageIntent || plan.Library.Village == null || (pinned != null && l.Square == pinned.Square)) continue;
+                if (l.Intent != WorldPlan.VillageIntent || plan.Library.Village == null || InPinnedSquare(l.Square)) continue;
                 var (x, y) = MapCell(l.Square, l.SiteX, l.SiteY);
                 if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) continue;
-                var rows = plan.Library.Village.Make(l.Biome, x, y, unchecked((int)WorldPlan.H(seed, 0x1a4d, k)), Buildable);
+                var rows = plan.Library.Village.Make(l.Biome, x, y, unchecked((int)WorldPlan.H(seed, 0x1a4d, k)), Buildable,
+                    new PlaceNames { Taken = placeIds, Quarter = SquareTitle(l.Square) });
                 landmarkRows[k] = rows;
                 foreach (var s in MapStamps.FromJson(rows.StampsJson).All) stamps.Add((s.Stamp, BareChar(s.Bare), k));
             }
+        }
+
+        /// <summary>A plan square's name in words: its template's ("Downs"), a filler's biome ("Grassland").</summary>
+        public string SquareTitle(int square)
+        {
+            var t = Plan.TemplateAt(square);
+            string words = (t.Filler ? t.Biome : t.Id) ?? "land";
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(words.Replace('-', ' '));
         }
 
         /// <summary>ap plan site (cells within square <paramref name="i"/>) as a map cell.</summary>
@@ -144,10 +168,19 @@ namespace Chem
         }
 
         /// <summary>Whether the pinned square holds map chunk (<paramref name="cx"/>, <paramref name="cy"/>).</summary>
-        public bool IsPinned(int cx, int cy) => Pinned != null && SquareOfChunk(cx, cy) == Pinned.Square;
+        public bool IsPinned(int cx, int cy) => InPinned(WrapCell(cx * Size), cy * Size);
 
-        int SquareOfChunk(int cx, int cy) =>
-            Plan.Grid.Index(OriginX + Chunks.ChunkOf(cx * Size) / WorldPlan.ChunksPerSquare, OriginY + Chunks.ChunkOf(cy * Size) / WorldPlan.ChunksPerSquare);
+        /// <summary>Whether plan square <paramref name="i"/> is the pinned square's (one of a block's).</summary>
+        public bool InPinnedSquare(int i)
+        {
+            if (Pinned == null) return false;
+            int dx = Plan.Grid.X(i) - Plan.Grid.X(Pinned.Square), dy = Plan.Grid.Y(i) - Plan.Grid.Y(Pinned.Square);
+            return dx >= 0 && dy >= 0 && dx < Pinned.W && dy < Pinned.H;
+        }
+
+        /// <summary>The pinned square's size in cells (a block's whole size).</summary>
+        public int PinnedW => Pinned == null ? 0 : Pinned.W * Square;
+        public int PinnedH => Pinned == null ? 0 : Pinned.H * Square;
 
         /// <summary>Makes map chunk (<paramref name="cx"/>, <paramref name="cy"/>): safe from any thread, the same whatever was made before.</summary>
         public GeneratedChunk Make(int cx, int cy)
@@ -163,13 +196,23 @@ namespace Chem
         void MakePinned(GeneratedChunk c)
         {
             int px = c.X * Size - PinnedX, py = c.Y * Size - PinnedY;
+            c.Pinned = true;
+            if (Pinned.Inner != null)
+            {
+                // A block's chunk is its own generator's, as it makes it there.
+                var own = Pinned.Inner.Make(px / Size, py / Size);
+                c.Land = own.Land;
+                c.Cells = own.Cells;
+                c.Things = own.Things;
+                c.Biome = own.Biome;
+                return;
+            }
             for (int j = 0; j < Size; j++)
                 for (int i = 0; i < Size; i++)
                 {
                     c.Land[j * Size + i] = Pinned.Land[(py + j) * Square + px + i];
                     c.Cells[j * Size + i] = Pinned.Rows[py + j][px + i];
                 }
-            c.Pinned = true;
             c.Biome = Pinned.Map;
             if (Pinned.Things.TryGetValue((px / Size, py / Size), out var things)) c.Things = (JArray)things.DeepClone();
         }
@@ -178,17 +221,37 @@ namespace Chem
         public int PinnedX => Pinned == null ? 0 : (Plan.Grid.X(Pinned.Square) - OriginX) * Square;
         public int PinnedY => Pinned == null ? 0 : (Plan.Grid.Y(Pinned.Square) - OriginY) * Square;
 
+        const int Apron = Size + 2; // one cell of apron round the chunk, for slopes: land is a function of position
+
+        // A chunk's working arrays, one set a thread and used again for every chunk it makes, so a bake's garbage is its
+        // chunks' own land, cells and things, not a quarter of a megabyte more a chunk (bake-lean). Every one is written
+        // whole before it's read, but bare (only ever set) and counts, cleared at the start.
+        sealed class Scratch
+        {
+            public readonly int[] Land = new int[Apron * Apron];
+            public readonly byte[] Wet = new byte[Apron * Apron];
+            public readonly bool[] Road = new bool[Apron * Apron];
+            public readonly bool[] Clear = new bool[Size * Size], Steep = new bool[Size * Size], Bare = new bool[Size * Size];
+            public readonly BiomeBlend[] Blend = new BiomeBlend[Size * Size];
+            public readonly Dictionary<int, long> Counts = new Dictionary<int, long>();
+        }
+
+        [ThreadStatic] static Scratch scratch;
+
+        static Scratch Work() => scratch ??= new Scratch();
+
         void MakeGenerated(GeneratedChunk c)
         {
             int x0 = c.X * Size, y0 = c.Y * Size;
-            const int ap = Size + 2; // one cell of apron round the chunk, for slopes: land is a function of position
-            var land = new int[ap * ap];
-            var wet = new byte[ap * ap];
-            var road = new bool[ap * ap];
-            var clear = new bool[Size * Size];
-            var steep = new bool[Size * Size];
+            const int ap = Apron;
+            var work = Work();
+            var land = work.Land;
+            var wet = work.Wet;
+            var road = work.Road;
+            var clear = work.Clear;
+            var steep = work.Steep;
             var near = Nearby(x0 - 1, y0 - 1, x0 + Size, y0 + Size);
-            var blend = new BiomeBlend[Size * Size];
+            var blend = work.Blend;
             for (int j = 0; j < ap; j++)
                 for (int i = 0; i < ap; i++)
                 {
@@ -204,7 +267,8 @@ namespace Chem
                     clear[(j - 1) * Size + i - 1] = p.Clear;
                 }
             // The landmarks' stamps whose footprint reaches it.
-            var bare = new bool[Size * Size];
+            var bare = work.Bare;
+            Array.Clear(bare, 0, bare.Length);
             for (int k = 0; k < stamps.Count; k++)
             {
                 var (s, bareChar, landmark) = stamps[k];
@@ -230,7 +294,8 @@ namespace Chem
                 if (lx + r.Reach >= x0 && lx - r.Reach < x0 + Size && ly + r.Reach >= y0 && ly - r.Reach < y0 + Size) c.Landmarks.Add(k);
             }
             c.Landmarks.Sort();
-            var counts = new Dictionary<int, long>();
+            var counts = work.Counts;
+            counts.Clear();
             for (int j = 0; j < Size; j++)
                 for (int i = 0; i < Size; i++)
                 {
@@ -246,7 +311,15 @@ namespace Chem
                     steep[j * Size + i] = slope >= SteepUnits;
                     c.Cells[j * Size + i] = CellOf(x0 + i, y0 + j, h, wet[k], mark, slope, b);
                 }
-            int top = counts.OrderByDescending(p => p.Value).ThenBy(p => p.Key).First().Key;
+            // The most cells, the lowest id of those tied.
+            int top = -1;
+            long most = -1;
+            foreach (var p in counts)
+                if (p.Value > most || (p.Value == most && p.Key < top))
+                {
+                    top = p.Key;
+                    most = p.Value;
+                }
             c.Biome = table.Rows[top].Id;
             // Things: the landmarks' rows for this chunk first, then the seeded ones, so every id holds.
             foreach (int k in c.Landmarks)

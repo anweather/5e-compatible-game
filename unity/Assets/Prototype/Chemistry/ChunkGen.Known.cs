@@ -38,6 +38,14 @@ namespace Chem
         public KnownChunk Know(int cx, int cy)
         {
             if (cx < 0 || cy < 0 || cx >= ChunksW || cy >= ChunksH) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the map");
+            if (Pinned?.Inner != null && IsPinned(cx, cy))
+            {
+                // A block's chunk is known as its own generator knows it.
+                var own = Pinned.Inner.Know(cx - PinnedX / Size, cy - PinnedY / Size);
+                own.X = cx;
+                own.Y = cy;
+                return own;
+            }
             var k = new KnownChunk { X = cx, Y = cy };
             int x0 = cx * Size, y0 = cy * Size;
             var near = Nearby(x0, y0, x0 + Size, y0 + Size);
@@ -58,6 +66,17 @@ namespace Chem
                     // The east edge's samples of the last column are the first column's west edge, round a world that wraps.
                     int x = WrapX ? x0 + i * KnownChunk.Step : Math.Min(CellsW - 1, x0 + i * KnownChunk.Step);
                     int y = Math.Min(CellsH - 1, y0 + j * KnownChunk.Step), q = j * KnownChunk.Side + i, xw = WrapCell(x);
+                    if (InPinned(xw, y) && Pinned.Inner != null)
+                    {
+                        // A sample on a block's rim: its edge chunk's, as its generator knows it.
+                        int bx = xw - PinnedX, by = y - PinnedY;
+                        var edge = blockKnown[(bx / Size, by / Size)];
+                        int e = (by % Size) / KnownChunk.Step * KnownChunk.Side + (bx % Size) / KnownChunk.Step;
+                        k.Heights[q] = edge.Heights[e];
+                        k.Water[q] = edge.Water[e];
+                        k.Biomes[q] = edge.Biomes[e];
+                        continue;
+                    }
                     if (InPinned(xw, y))
                     {
                         int at = (y - PinnedY) * Square + xw - PinnedX;
@@ -107,6 +126,6 @@ namespace Chem
             return cell == Pond ? KnownChunk.Lake : KnownChunk.Dry;
         }
 
-        bool InPinned(int x, int y) => Pinned != null && x >= PinnedX && y >= PinnedY && x < PinnedX + Square && y < PinnedY + Square;
+        bool InPinned(int x, int y) => Pinned != null && x >= PinnedX && y >= PinnedY && x < PinnedX + PinnedW && y < PinnedY + PinnedH;
     }
 }

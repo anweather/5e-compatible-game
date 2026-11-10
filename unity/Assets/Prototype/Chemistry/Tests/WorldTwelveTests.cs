@@ -23,6 +23,14 @@ namespace Chem.Tests
 
         static GeneratedMap World => world ??= GeneratedMap.Load(Dir);
 
+        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
+        [OneTimeTearDown]
+        public void DropTheMap()
+        {
+            world = null;
+            known = null;
+        }
+
         static KnownChunk[] known;
         static double knownMs;
 
@@ -63,6 +71,14 @@ namespace Chem.Tests
             Assert.That(GeneratedMap.IsBaked(Dir), Is.False);
             Assert.That(() => GeneratedMap.EnsureBaked(Dir), Throws.InvalidOperationException.With.Message.Contains("too big to bake"));
             Assert.That(() => m.Bake(Path.Combine(Path.GetTempPath(), "never")), Throws.InvalidOperationException);
+        }
+
+        [Test]
+        public void NoPlaceIdIsTakenTwice()
+        {
+            var ids = ScaleIslandTests.PlaceIds(World);
+            Assert.That(ids.GroupBy(i => i).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "place ids taken twice (#203)");
+            Assert.That(World.Gen.PlaceIds, Is.EquivalentTo(ids));
         }
 
         [Test]

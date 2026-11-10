@@ -217,6 +217,61 @@ public class GroundBuilderTests
         ground.Destroy();
     }
 
+    // A generated map's ground is made a chunk at a time, as its terrains are (#205): the same arrays as made whole.
+    [Test]
+    public void ChunksMadeOneAtATimeAreTheSameAsMadeWhole()
+    {
+        var (world, land) = Hilly();
+        var whole = GroundFromLand.Build(Source(world, land));
+        var (shared, make) = GroundFromLand.Lazy(Source(world, land));
+        Assert.That((shared.Bottom, shared.Top), Is.EqualTo((whole.Bottom, whole.Top)));
+        Assert.That(shared.Chunks, Is.Empty, "no chunk made until asked");
+        foreach (var c in whole.Chunks)
+        {
+            var one = make((c.I, c.J));
+            Assert.That(one.Heights, Is.EqualTo(c.Heights), $"heights {c.I},{c.J}");
+            Assert.That(one.Paint, Is.EqualTo(c.Paint), $"paint {c.I},{c.J}");
+            Assert.That(one.Details, Is.EqualTo(c.Details), $"grass {c.I},{c.J}");
+            Assert.That(one.Trees.Select(t => (t.X, t.Y, t.Z, t.Prototype)), Is.EqualTo(c.Trees.Select(t => (t.X, t.Y, t.Z, t.Prototype))), $"trees {c.I},{c.J}");
+        }
+    }
+
+    // A ground made a chunk at a time makes only the chunks given terrains, stands the rest on the land, and draws the
+    // same ground as one made whole where it is made; an untouched chunk whose terrain goes gives its data back.
+    [Test]
+    public void AGroundMadeAChunkAtATimeMakesOnlyWhatItIsAsked()
+    {
+        var (world, land) = Hilly();
+        var (eager, _) = Built(world, land);
+        var (shared, make) = GroundFromLand.Lazy(Source(world, land));
+        var builder = new GroundBuilder(shared, Template(), Small.ChunkSize, make, at => Small.HasChunk(at.i, at.j));
+        var ground = new ValleyGround(Small, builder) { Land = land };
+        ground.Bind(world, Step, 1000f);
+        Assert.That(builder.Held, Is.Zero, "nothing made at Bind without a terrain");
+        var at = Small.ChunkOfCell(45, 45);
+        var go = new GameObject("Chunk", typeof(Terrain), typeof(TerrainCollider));
+        made.Add(go);
+        var (cx, cz) = Small.ChunkCorner(at.i, at.j);
+        go.transform.position = new Vector3(cx, 0f, cz);
+        ground.Attach(at, go.GetComponent<Terrain>());
+        Assert.That(builder.Held, Is.EqualTo(1), "only the chunk given a terrain");
+        Assert.That(ground.IsReady(at), Is.True);
+        Assert.That(go.GetComponent<TerrainCollider>().terrainData, Is.SameAs(go.GetComponent<Terrain>().terrainData));
+        var (wx, wz) = Small.CellCenter(45, 45);
+        Assert.That(ground.GroundAt(wx, wz), Is.EqualTo(eager.GroundAt(wx, wz)).Within(1e-3f), "the same ground as made whole");
+        Assert.That(ground.BaseHeight(45, 45), Is.EqualTo(eager.BaseHeight(45, 45)).Within(1e-3f));
+        Assert.That(ground.Data(at).treeInstances.Length, Is.EqualTo(eager.Data(at).treeInstances.Length));
+        var other = Small.ChunkOfCell(100, 100);
+        Assert.That(other, Is.Not.EqualTo(at));
+        Assert.That(ground.IsReady(other), Is.False);
+        Assert.That(ground.BaseHeight(100, 100), Is.EqualTo(land[100 * 128 + 100] * Unit).Within(1e-4f), "a chunk not made stands on the land");
+        ground.Release(at);
+        Assert.That(ground.IsReady(at), Is.False, "untouched, it gives its data back");
+        Assert.That(builder.Held, Is.Zero);
+        ground.Destroy();
+        eager.Destroy();
+    }
+
     [TestCase(new[] { "-ground-builder", "on" }, null, null, "on")]
     [TestCase(new[] { "-ground-builder", "land" }, "on", null, "land")]
     [TestCase(new string[0], "land", null, "land")]

@@ -2,7 +2,7 @@
 // the seed, the size in world squares, the generator's version and the squares pinned to a map folder (the valley), and
 // the rest is solved (WorldPlan) and made a chunk at a time (ChunkGen). Its identity is a hash of its inputs, never its
 // output: the world file, every committed file the plan and the chunks read, each pinned map's folder hash and the
-// versions. Bake writes the whole map as a map folder the game already loads (cells.txt, land.json, things.json and the
+// versions. Bake (GeneratedMap.Bake.cs) writes the whole map as a map folder the game already loads (cells.txt, land.json, things.json and the
 // rows), with the pinned valley's own rows moved to where it lies in the map, and a "spawn" place for each square's
 // spawn point (SpawnPlaces).
 //
@@ -20,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    public sealed class GeneratedMap
+    public sealed partial class GeneratedMap
     {
         /// <summary>map.json's key for a map made from a world file.</summary>
         public const string Key = "generated";
@@ -62,6 +62,8 @@ namespace Chem
         public string PinnedDir => Path.Combine(WorldDir, "maps", PinnedMap);
         /// <summary>The pinned map's name (its map.json's), what its spawn is called.</summary>
         public string PinnedName { get; private set; }
+        /// <summary>A pinned block's own map (the nine in the scale map), when the pinned map is a generated one; else null.</summary>
+        public GeneratedMap Inner { get; private set; }
 
         FarLandmarks far;
 
@@ -73,8 +75,8 @@ namespace Chem
 
         /// <summary>
         /// The maps a world file pins, without solving its plan: each one's folder (world/maps/id) and the map cell its
-        /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY). Empty for a
-        /// map that isn't generated.
+        /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY), each followed
+        /// by the maps a pinned block pins in turn, where they lie in this one. Empty for a map that isn't generated.
         /// </summary>
         public static List<(string dir, int x, int y)> PinnedSquares(string mapDir)
         {
@@ -83,7 +85,13 @@ namespace Chem
             if (!File.Exists(path) || !(JObject.Parse(File.ReadAllText(path))[Key] is JObject o) || !(o["pinned"] is JArray pins)) return found;
             string worldDir = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
             foreach (var pin in pins.OfType<JObject>())
-                found.Add((Path.Combine(worldDir, "maps", (string)pin["map"]), (int)pin["square"][0] * WorldPlan.SquareCells, (int)pin["square"][1] * WorldPlan.SquareCells));
+            {
+                string dir = Path.Combine(worldDir, "maps", (string)pin["map"]);
+                int x = (int)pin["square"][0] * WorldPlan.SquareCells, y = (int)pin["square"][1] * WorldPlan.SquareCells;
+                found.Add((dir, x, y));
+                // A pinned block's own pinned maps, where they lie in this one (the valley in the nine in the scale map).
+                foreach (var (inner, ix, iy) in PinnedSquares(dir)) found.Add((inner, x + ix, y + iy));
+            }
             return found;
         }
 
@@ -122,23 +130,80 @@ namespace Chem
             m.PinnedMap = (string)pin["map"];
             m.PinnedAt = ((int)pin["square"][0], (int)pin["square"][1]);
             var lib = SquareLibrary.Load(m.WorldDir);
-            var pinned = ReadPinned(m.PinnedDir);
             var valleyMap = MapFile.Load(m.PinnedDir);
-            var sides = ValleySides.Read(pinned.Land, WorldPlan.SquareCells, valleyMap.SeaLevel, 0.125, lib);
-            var inputs = PlanInputs.For(m.Seed, m.SquaresW, landRows, m.Wrap, sides);
-            inputs.ValleySpawn = valleyMap.Spawn;
+            PinnedSquare pinned;
+            PlanInputs inputs;
+            if (IsGenerated(m.PinnedDir))
+            {
+                // A pinned block: a generated map pinned whole, its squares held as its plan has them and its chunks its own.
+                if (m.Wrap != PlanWrap.None) throw new FormatException($"{MapFile.FileName}: a world that wraps can't pin a generated map");
+                m.Inner = Load(m.PinnedDir);
+                var held = m.Inner.Plan;
+                pinned = new PinnedSquare { Map = m.PinnedMap, W = m.Inner.SquaresW, H = m.Inner.SquaresH, Inner = m.Inner.Gen };
+                inputs = PlanInputs.For(m.Seed, m.SquaresW, landRows, m.Wrap, held.Inputs.Valley);
+                inputs.ValleySpawn = held.Inputs.ValleySpawn;
+                inputs.Held = held;
+                inputs.HeldAt = (m.PinnedAt.x + 1, m.PinnedAt.y);
+            }
+            else
+            {
+                pinned = ReadPinned(m.PinnedDir);
+                var sides = ValleySides.Read(pinned.Land, WorldPlan.SquareCells, valleyMap.SeaLevel, 0.125, lib);
+                inputs = PlanInputs.For(m.Seed, m.SquaresW, landRows, m.Wrap, sides);
+                inputs.ValleySpawn = valleyMap.Spawn;
+            }
             if (o["musts"] is JArray musts) inputs.Musts.AddRange(musts.Select(x => (string)x));
+            if (o["towns"] != null) inputs.Towns = (int)o["towns"];
             inputs.Sketch = WorldSketch.Read(o["sketch"]);
+            ReadForced(o["forced"] as JObject, inputs, lib, m);
             m.Plan = WorldPlan.Solve(inputs, lib);
             m.PinnedName = valleyMap.Name;
-            pinned.Square = m.Plan.Valley;
-            int ox = m.Plan.Grid.X(m.Plan.Valley) - m.PinnedAt.x, oy = m.Plan.Grid.Y(m.Plan.Valley) - m.PinnedAt.y;
+            pinned.Square = m.Inner != null ? m.Plan.Grid.Index(inputs.HeldAt.x, inputs.HeldAt.y) : m.Plan.Valley;
+            int ox = m.Plan.Grid.X(pinned.Square) - m.PinnedAt.x, oy = m.Plan.Grid.Y(pinned.Square) - m.PinnedAt.y;
             if (m.Wrap != PlanWrap.None && (ox != 0 || oy != 0 || m.SquaresW != m.Plan.Grid.W || m.SquaresH != m.Plan.Grid.H))
                 throw new FormatException($"{MapFile.FileName}: a world that wraps is its whole plan, so the valley's square is " +
                     $"[{m.Plan.Grid.X(m.Plan.Valley)}, {m.Plan.Grid.Y(m.Plan.Valley)}], not [{m.PinnedAt.x}, {m.PinnedAt.y}]");
             var biomes = BiomeTable.Load(Path.Combine(m.WorldDir, BiomeTable.FileName));
             m.Gen = new ChunkGen(m.Plan, biomes, pinned, ox, oy, m.SquaresW, m.SquaresH);
             return m;
+        }
+
+        /// <summary>A world file's "forced": the character that marks a pinned block's squares in its rows.</summary>
+        public const string ForcedPinned = "pinned";
+
+        // map.json's "forced" (a test map's: scale-12x10): "rows", the map's world squares from the north-west, a
+        // character each, and "legend", what each character is: a template id ("filler" for the band's filler), "@" and
+        // the band it asks (its first band without), or "pinned" for the pinned block's squares, which must be where
+        // "pinned" puts them. Forced squares are plan squares from the map's north-west one.
+        static void ReadForced(JObject forced, PlanInputs inputs, SquareLibrary lib, GeneratedMap m)
+        {
+            if (forced == null) return;
+            var legend = (JObject)forced["legend"] ?? throw new FormatException($"{MapFile.FileName}: \"forced\" needs a \"legend\"");
+            var rows = ((JArray)forced["rows"] ?? throw new FormatException($"{MapFile.FileName}: \"forced\" needs \"rows\"")).Select(r => (string)r).ToList();
+            if (rows.Count != m.SquaresH || rows.Any(r => r.Length != m.SquaresW))
+                throw new FormatException($"{MapFile.FileName}: \"forced\" is {m.SquaresW} x {m.SquaresH} world squares, a character each");
+            int ox = m.Wrap == PlanWrap.None ? 1 : 0;
+            for (int y = 0; y < rows.Count; y++)
+                for (int x = 0; x < rows[y].Length; x++)
+                {
+                    string key = rows[y][x].ToString();
+                    string what = (string)legend[key] ?? throw new FormatException($"{MapFile.FileName}: \"forced\" has no legend for '{key}'");
+                    bool inBlock = m.Inner != null && x >= m.PinnedAt.x && y >= m.PinnedAt.y && x < m.PinnedAt.x + m.Inner.SquaresW && y < m.PinnedAt.y + m.Inner.SquaresH;
+                    if (what == ForcedPinned)
+                    {
+                        if (!inBlock) throw new FormatException($"{MapFile.FileName}: \"forced\" marks [{x}, {y}] pinned, outside the pinned map's squares");
+                        continue;
+                    }
+                    if (inBlock) throw new FormatException($"{MapFile.FileName}: \"forced\" puts {what} at [{x}, {y}], one of the pinned map's squares");
+                    string[] parts = what.Split('@');
+                    string id = parts[0];
+                    var t = lib.Templates.FirstOrDefault(q => q.Id == id);
+                    if (id != ForcedSquare.Filler && t == null) throw new FormatException($"{MapFile.FileName}: \"forced\" names {id}, no square template");
+                    int band = parts.Length > 1 ? Array.IndexOf(lib.BandIds, parts[1]) : t?.Bands[0] ?? -1;
+                    if (band < 0 || band >= lib.Lands || (t != null && !t.Filler && Array.IndexOf(t.Bands, band) < 0))
+                        throw new FormatException($"{MapFile.FileName}: \"forced\" asks {what}, a band {id} doesn't come in");
+                    inputs.Forced[(x + ox, y)] = new ForcedSquare { Template = id, Band = band };
+                }
         }
 
         static PlanWrap WrapOf(string wrap) => wrap switch
@@ -163,6 +228,7 @@ namespace Chem
             if (File.Exists(things))
                 foreach (var list in ((JArray)JObject.Parse(File.ReadAllText(things))["chunks"]).OfType<JObject>())
                     p.Things[((int)list["chunk"][0], (int)list["chunk"][1])] = (JArray)list["things"];
+            p.PlaceIds.AddRange(WorldPlaces.Load(dir).All.Select(q => q.Id));
             return p;
         }
 
@@ -256,52 +322,6 @@ namespace Chem
 
         string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): it's planned and known only, until the sparse World";
 
-        /// <summary>
-        /// Writes the whole map as a map folder into <paramref name="outDir"/> (its map.json too, unless it's the map's own
-        /// folder): the chunks' land and cells, the pinned valley's in its place, every chunk's things, and the valley's
-        /// rows moved to the valley's place with the landmarks' rows added.
-        /// </summary>
-        public BakeReport Bake(string outDir, GeneratedChunk[] chunks = null)
-        {
-            if (!Bakes) throw new InvalidOperationException(NoBake);
-            var timer = System.Diagnostics.Stopwatch.StartNew();
-            chunks ??= MakeAll();
-            var report = new BakeReport { MakeMs = timer.Elapsed.TotalMilliseconds };
-            Directory.CreateDirectory(outDir);
-            int w = Gen.CellsW, h = Gen.CellsH, size = ChunkGen.Size;
-            var land = new int[w * h];
-            var cells = new char[w * h];
-            var things = new JArray();
-            foreach (var c in chunks)
-            {
-                for (int j = 0; j < size; j++)
-                {
-                    Array.Copy(c.Land, j * size, land, (c.Y * size + j) * w + c.X * size, size);
-                    Array.Copy(c.Cells, j * size, cells, (c.Y * size + j) * w + c.X * size, size);
-                }
-                if (c.Things.Count > 0) things.Add(new JObject { ["chunk"] = new JArray(c.X, c.Y), ["things"] = c.Things });
-            }
-            var rows = new StringBuilder(w * h + h);
-            for (int y = 0; y < h; y++)
-            {
-                if (y > 0) rows.Append('\n');
-                rows.Append(cells, y * w, w);
-            }
-            MapFile.WriteCells(outDir, rows.ToString());
-            Write(outDir, MapFile.LandName, LandFile.Write(land, w, h, 0.125));
-            Write(outDir, "things.json", Json(new JObject { ["about"] = $"Made by ChunkGen {ChunkGen.Version} from {MapFile.FileName}: the valley's things in its chunks, then each chunk's landmarks' and seeded things.", ["chunks"] = things }));
-            WriteRows(outDir);
-            if (Path.GetFullPath(outDir).TrimEnd('/', '\\') != Path.GetFullPath(MapDir).TrimEnd('/', '\\'))
-                Write(outDir, MapFile.FileName, OwnMapFile());
-            Write(outDir, WorldPlaces.FileName, WorldPlaces.Generate(outDir));
-            Write(outDir, BakeName, Json(new JObject { ["inputs"] = InputHash(MapDir), ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture), ["generator"] = ChunkGen.Version, ["format"] = BakeFormat }));
-            report.TotalMs = timer.Elapsed.TotalMilliseconds;
-            report.Land = land;
-            report.W = w;
-            report.H = h;
-            return report;
-        }
-
         static void Write(string dir, string name, string text) => File.WriteAllText(Path.Combine(dir, name), text);
 
         static string Json(JToken o) => o.ToString(Formatting.Indented) + "\n";
@@ -326,10 +346,14 @@ namespace Chem
         {
             var list = new List<JObject>();
             var names = new HashSet<string>(StringComparer.Ordinal);
+            // A pinned block's spawn places come with its own rows (WriteRows), named already: none here takes their names.
+            if (Inner != null && TryReadPinned(WorldPlaces.FileName, out var own))
+                foreach (var p in ((JArray)own["places"]).OfType<JObject>().Where(p => (string)p["kind"] == "spawn")) names.Add((string)p["name"]);
             foreach (var s in Gen.Spawns)
             {
+                if (s.Held) continue;
                 int sx = s.X / ChunkGen.Square, sy = s.Y / ChunkGen.Square;
-                string name = s.Pinned ? PinnedName : VillageIn(s.Square) ?? SquareTitle(s.Square);
+                string name = s.Pinned ? PinnedName : VillageIn(s.Square) ?? Gen.SquareTitle(s.Square);
                 if (!names.Add(name))
                 {
                     string first = name + " (" + Compass(sx, sy) + ")";
@@ -358,13 +382,6 @@ namespace Chem
             for (int k = 0; k < Gen.LandmarkRows.Count; k++)
                 if (Gen.LandmarkRows[k]?.VillageName is string v && Plan.Landmarks[k].Square == square) return v;
             return null;
-        }
-
-        string SquareTitle(int square)
-        {
-            var t = Plan.TemplateAt(square);
-            string words = (t.Filler ? t.Biome : t.Id) ?? "land";
-            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(words.Replace('-', ' '));
         }
 
         // Where a map square lies in the map, as a compass word ("north-west", "middle", "east").
@@ -485,11 +502,11 @@ namespace Chem
         }
     }
 
-    /// <summary>What a bake took, and the land it wrote (for pictures).</summary>
+    /// <summary>What a bake took, and the size of the map it wrote.</summary>
     public sealed class BakeReport
     {
+        /// <summary>The time making its chunks (written as the next row is made) and the whole bake's.</summary>
         public double MakeMs, TotalMs;
-        public int[] Land;
         public int W, H;
     }
 }
