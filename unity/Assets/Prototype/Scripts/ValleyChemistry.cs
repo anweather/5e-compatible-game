@@ -151,8 +151,9 @@ public partial class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<GeneratedProp>> palmsByCell = new();
     // Cells whose tree grew from a sapling in this world (Grown).
     readonly HashSet<int> grown = new();
-    // The tree cells of the world as it started, by index: the land's, drawn by the terrain (or, for a few, not at all).
-    bool[] startTrees = System.Array.Empty<bool>();
+    // The tree cells of the world as it started, a block a chunk (StartTrees): the land's, drawn by the terrain (or, for a
+    // few, not at all).
+    StartTrees startTrees;
     // Every window pane by its cell (a world index).
     readonly Dictionary<int, WindowPanes> panesByCell = new();
     int[] cabinCells, cabinBurnt, cabinWrecked;
@@ -292,20 +293,8 @@ public partial class ValleyChemistry : MonoBehaviour
         cabinCharred = new bool[n];
         BindRoofs(n);
         HookRows(world);
-        if (startTrees.Length != world.W * world.H) startTrees = new bool[world.W * world.H];
-        var all = world.Cells;
-        for (int y = 0; y < world.H; y++)
-            for (int x = 0; x < world.W; x++)
-            {
-                int key = world.Idx(x, y);
-                string t = all[key].T;
-                startTrees[key] = t == TerrainIds.Tree;
-                if (t != TerrainIds.LogWall && t != TerrainIds.Stone) continue;
-                int k = BuildingWallAt(t, x, y);
-                if (k < 0) continue;
-                cabinCells[k]++;
-                buildingCells[k].Add(key);
-            }
+        BindStartTrees(world);
+        if (n > 0) CountBuildingWalls(world);
         steps.Mark("cells");
         ClearLaidRows(world);
         BindStampedLand(world);
@@ -322,10 +311,49 @@ public partial class ValleyChemistry : MonoBehaviour
             if (Ocean.Instance != null) Ocean.Instance.Build();
         }
         steps.Mark("panes_terrains");
-        Debug.Log($"VALLEY BIND steps (ms): {steps}");
+        Debug.Log($"VALLEY BIND steps (ms): {steps}; heightfield chunks worked {ground.HeightfieldChunks}, start trees read {startTrees.Read()}");
     }
 
     bool served, binding;
+
+    // The world's starting trees, a chunk at a time (#206, J-086): every cell of the map at the start was a loop over 3
+    // million cells on the nine. A chunk is read when it first activates, or when a tree's drawing first asks about it;
+    // until then nothing has changed it (an inactive chunk is held as it is), so it's read as it started. The valley,
+    // drawn whole from the start, reads all of its chunks now.
+    void BindStartTrees(World world)
+    {
+        startTrees = new StartTrees(world);
+        grid.ChunkSwitched -= ReadStartTrees;
+        grid.ChunkSwitched += ReadStartTrees;
+        if (!ground.Lazy)
+        {
+            foreach (var (cx, cy) in world.ChunkCoords) startTrees.Read(cx, cy);
+            return;
+        }
+        foreach (var (cx, cy) in world.ActiveChunks) startTrees.Read(cx, cy);
+    }
+
+    void ReadStartTrees(ChunkSwitch s)
+    {
+        if (s.Active) startTrees?.Read(s.CX, s.CY);
+    }
+
+    // The walls of the scene's cabins and houses (none on a generated map): a log wall anywhere goes to the nearest.
+    void CountBuildingWalls(World world)
+    {
+        var all = world.Cells;
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+            {
+                int key = world.Idx(x, y);
+                string t = all[key].T;
+                if (t != TerrainIds.LogWall && t != TerrainIds.Stone) continue;
+                int k = BuildingWallAt(t, x, y);
+                if (k < 0) continue;
+                cabinCells[k]++;
+                buildingCells[k].Add(key);
+            }
+    }
 
     // A generated map's chunk made for this world (#205): its trees indexed, its layers wet, its grass tinted as the rest.
     void ChunkMade((int i, int j) at, TerrainData data)
@@ -785,7 +813,7 @@ public partial class ValleyChemistry : MonoBehaviour
     public bool NeedsTreeDrawn(int x, int y)
     {
         int key = grid.World.Idx(x, y);
-        return grown.Contains(key) || (key < startTrees.Length && !startTrees[key] && !TreeStands(x, y));
+        return grown.Contains(key) || (startTrees != null && !startTrees.At(x, y) && !TreeStands(x, y));
     }
 
     /// <summary>
