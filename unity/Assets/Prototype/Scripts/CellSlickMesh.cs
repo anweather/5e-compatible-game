@@ -272,16 +272,26 @@ public sealed class CellSlickMesh
         }
     }
 
-    // The rules switched and some look's glow came, went or changed: every cell is looked over again for it
-    // (a ground terrain's glow reaches cells nothing redraws), once that switch.
+    // The rules switched and some look's glow came, went or changed: the drawn chunks' cells are looked over again for it
+    // (a ground terrain's glow reaches cells nothing redraws), once that switch. A chunk not drawn yet takes the glow in
+    // force as it draws (Changed), so the map's other cells aren't visited (#210, J-086).
     void RescanGlow(Dictionary<string, Color> before)
     {
         var after = GlowLooks;
         if (after.Count == before.Count && after.All(kv => before.TryGetValue(kv.Key, out var was) && was == kv.Value)) return;
         var world = grid.World;
-        for (int i = 0; i < world.Cells.Length; i++)
-            if (world.Cells[i] is Cell c) GlowChanged(i, i % world.W, i / world.W, c);
+        grid.DrawnChunksNearestFirst(rescanChunks);
+        foreach (var ch in rescanChunks)
+        {
+            int x0 = ch.x << Chem.Chunks.Shift, x1 = Mathf.Min(world.W, x0 + Chem.Chunks.Size);
+            int y0 = ch.y << Chem.Chunks.Shift, y1 = Mathf.Min(world.H, y0 + Chem.Chunks.Size);
+            for (int y = y0; y < y1; y++)
+                for (int x = x0; x < x1; x++)
+                    if (world.At(x, y) is Cell c) GlowChanged(world.Idx(x, y), x, y, c);
+        }
     }
+
+    readonly List<Vector2Int> rescanChunks = new();
 
     /// <summary>The glow drawn at a cell now (its colour times its strength times the light), black for none; for a probe.</summary>
     public Color GlowAt(int x, int y)
