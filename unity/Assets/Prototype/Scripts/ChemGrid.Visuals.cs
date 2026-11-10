@@ -560,7 +560,7 @@ public partial class ChemGrid
             int index = y * World.W + x;
             var v = views[index];
             if (v?.terrain == null || !looksOwed.Contains(v.terrain)) continue;
-            var c = World.Cells[index];
+            var c = World.CellAt(index);
             if (c != null) Redress(v, c, x, y, false);
         }
     }
@@ -593,8 +593,13 @@ public partial class ChemGrid
     void RenderRows(int cx, int y0, int y1)
     {
         int x0 = cx << Chunks.Shift, x1 = Mathf.Min(World.W, x0 + Chunks.Size);
+        var cells = World.ChunkCells(cx, Chunks.ChunkOf(y0));
+        if (cells.IsEmpty) return;
         for (int y = y0; y < y1; y++)
-            for (int x = x0; x < x1; x++) RenderCell(x, y);
+        {
+            int row = Chunks.LocalOf(y) << Chunks.Shift;
+            for (int x = x0; x < x1; x++) RenderCell(x, y, cells[row + x - x0]);
+        }
     }
 
     // A chunk's views, made as it first draws (a drawn chunk's are all there). They draw from the looks in force.
@@ -707,10 +712,9 @@ public partial class ChemGrid
         SurfacesMs = finishTimer.Elapsed.TotalMilliseconds;
     }
 
-    void RenderCell(int x, int y)
+    void RenderCell(int x, int y, Cell c)
     {
         int index = y * World.W + x;
-        var c = World.Cells[index];
         var v = views[index];
         int key = Key(c);
         if (key == v.key && v.terrain == c.T && v.height == c.Height) return;

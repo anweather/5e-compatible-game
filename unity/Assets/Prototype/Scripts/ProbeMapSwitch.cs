@@ -145,7 +145,7 @@ public class MapSwitchProbe : ProbeScenario
     static string CellPrint(World world, bool terrain)
     {
         uint h = 2166136261;
-        foreach (var c in world.Cells)
+        foreach (var c in world.AllCells())
         {
             if (terrain)
                 foreach (char ch in c.T) h = (h ^ ch) * 16777619;

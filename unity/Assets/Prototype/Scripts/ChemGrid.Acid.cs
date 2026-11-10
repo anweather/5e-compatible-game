@@ -37,7 +37,7 @@ public partial class ChemGrid
         for (int i = acidWatch.Count - 1; i >= 0; i--)
         {
             var (index, terrain, cover, until) = acidWatch[i];
-            var c = World.Cells[index];
+            var c = World.CellAt(index);
             bool eaten = c.T != terrain || c.Cover != cover;
             if (!eaten && Time.time < until) continue;
             if (eaten) slicks.Eaten(index % World.W, index / World.W, Time.time + EatenSeconds);

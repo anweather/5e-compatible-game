@@ -34,14 +34,14 @@ public class FogCostProbe : ProbeScenario
         for (; waited < MostFogSeconds; waited += 3f)
         {
             yield return Wait(3f);
-            int now = World.Cells.Count(c => c.Gas == GasIds.Fog);
+            int now = World.AllCells().Count(c => c.Gas == GasIds.Fog);
             if (now <= gas * 1.03f && now > 0) break;
             gas = now;
         }
-        gas = World.Cells.Count(c => c.Gas == GasIds.Fog);
+        gas = World.AllCells().Count(c => c.Gas == GasIds.Fog);
         Metric("fog_settle_s", waited);
         Metric("fog_cells", gas);
-        Metric("cells_held", World.Cells.Count());
+        Metric("cells_held", World.AllCells().Count());
         int drawn = grid.Fog != null ? grid.Fog.SquaresShown : 0;
         Metric("fog_squares_drawn", drawn);
         Check("fog_lies", World.Weather.Kind == WeatherKind.Fog && gas > 500, $"{World.Weather.Kind}, {gas} cells of fog gas");

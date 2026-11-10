@@ -127,7 +127,7 @@ public sealed class CellWaterMesh
         if (same) return;
         var world = grid.World;
         foreach (int key in wet)
-            if (world.Cells[key].Kind != 0) MarkAround(key % world.W, key / world.W, "water.mark.kind");
+            if (world.CellAt(key).Kind != 0) MarkAround(key % world.W, key / world.W, "water.mark.kind");
     }
 
     static Color[] LiquidColors(Rules rules)
@@ -148,7 +148,7 @@ public sealed class CellWaterMesh
     public void Changed(int x, int y, bool isWet)
     {
         int key = grid.World.Idx(x, y);
-        var c = grid.World.Cells[key];
+        var c = grid.World.CellAt(key);
         int level = isWet ? c.Water : 0;
         levels.TryGetValue(key, out int was);
         levels[key] = level;
@@ -501,7 +501,7 @@ public sealed class CellWaterMesh
             if (TimeToStop(over)) return false;
             int key = nextTopped[stepAt];
             int x = key % world.W, y = key / world.W;
-            var c = world.Cells[key];
+            var c = world.CellAt(key);
             float ground = Ground(key);
             float top = Mathf.Min(ground + c.Water * perUnit, caps[key] - Inset);
             if (MeetsLowGround(key, ground)) top = Mathf.Min(top, ground + Film);
@@ -555,10 +555,10 @@ public sealed class CellWaterMesh
     // Grounds closer than this count as level.
     const float Level = 0.01f;
 
-    float OwnGround(int key) => grid.GroundTop(key % grid.World.W, key / grid.World.W, grid.World.Cells[key]);
+    float OwnGround(int key) => grid.GroundTop(key % grid.World.W, key / grid.World.W, grid.World.CellAt(key));
 
     // Where a wet cell's water stands: its ground and its water's depth.
-    float Standing(int key, float perUnit) => Ground(key) + grid.World.Cells[key].Water * perUnit;
+    float Standing(int key, float perUnit) => Ground(key) + grid.World.CellAt(key).Water * perUnit;
 
     // --- the mesh --------------------------------------------------------------------
 
@@ -835,7 +835,7 @@ public sealed class CellWaterMesh
         int key = world.Idx(x, y);
         if (flowRead[key] == flowPass) return flowOf[key];
         PerfCounts.Add("water.flow_misses");
-        var c = world.Cells[key];
+        var c = world.CellAt(key);
         var at = grid.CellCenter(x, y);
         at.y = grid.GroundTop(x, y, c);
         var current = WaterCurrents.Instance != null ? WaterCurrents.Instance.At(at) : Vector3.zero;
@@ -1001,7 +1001,7 @@ public sealed class CellWaterMesh
         var world = grid.World;
         if (!world.InBounds(x, y)) return false;
         int key = world.Idx(x, y);
-        return wetCell[key] && world.Cells[key].Frozen == frozen;
+        return wetCell[key] && world.CellAt(key).Frozen == frozen;
     }
 
     // In, a bank or the other kind where it meets this kind (water beside ice: they meet under each

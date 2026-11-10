@@ -379,7 +379,7 @@ public partial class ValleyChemistry : MonoBehaviour
     void CountWall(World world, int x, int y)
     {
         int key = world.Idx(x, y);
-        string t = world.Cells[key].T;
+        string t = world.At(x, y).T;
         if (t != TerrainIds.LogWall && t != TerrainIds.Stone) return;
         int k = BuildingWallAt(t, x, y);
         if (k < 0) return;

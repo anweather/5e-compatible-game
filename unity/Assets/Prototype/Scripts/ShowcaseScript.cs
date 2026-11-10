@@ -69,7 +69,7 @@ public abstract class ShowcaseScript : MonoBehaviour
     // Puts out every fire in the world, between chapters, while the camera is elsewhere.
     protected void PutOutFires()
     {
-        foreach (var cell in grid.World.Cells) cell.Fire = 0;
+        foreach (var cell in grid.World.AllCells()) cell.Fire = 0;
     }
 
     // Moves the wizard to a yard cell at once (off camera).

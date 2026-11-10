@@ -591,7 +591,7 @@ public class FeelProbe : SpellLooksProbe
         Shot("frost-over-swimmer");
         yield return null;
         yield return null;
-        foreach (var c in World.Cells.Where(c => c.Frozen && c.Water > 0)) c.Frozen = false;
+        foreach (var c in World.AllCells().Where(c => c.Frozen && c.Water > 0)) c.Frozen = false;
         yield return Wait(1f);
         Check("back_up_after_a_thaw", surface.Swimming && !surface.UnderIce, $"swimming {surface.Swimming}, under ice {surface.UnderIce}");
 

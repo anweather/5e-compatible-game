@@ -22,8 +22,8 @@ public class SnowProbe : ProbeScenario
             "'snow': { 'freezeEvery': 2, 'coverChance': 0.5, 'bankChance': 0.5 } }");
         yield return Wait(10f);
 
-        int snowy = World.Cells.Count(Snowy);
-        int banks = World.Cells.Count(c => c.Cover == World.BankCover);
+        int snowy = World.AllCells().Count(Snowy);
+        int banks = World.AllCells().Count(c => c.Cover == World.BankCover);
         Metric("snowy_squares", snowy);
         Metric("banks", banks);
         Check("snow_lies", snowy > 500, $"{snowy} squares under snow");
