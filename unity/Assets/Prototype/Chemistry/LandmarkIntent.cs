@@ -80,13 +80,24 @@ namespace Chem
         /// <summary>
         /// The rows of this intent in <paramref name="biome"/>, at a site (a world cell), from a seed. A village's house laid
         /// out here (a climb's, a shore's) goes only where <paramref name="buildable"/> takes every cell of it; without one,
-        /// anywhere.
+        /// anywhere. Its two names' place ids go into <paramref name="names"/>' taken ones (the map's so far), never one
+        /// already there; without, the rolled names.
         /// </summary>
-        public LandmarkRows Make(string biome, int siteX, int siteY, int seed, Func<int, int, bool> buildable = null)
+        public LandmarkRows Make(string biome, int siteX, int siteY, int seed, Func<int, int, bool> buildable = null, PlaceNames names = null)
         {
             string form = FormFor(biome);
-            return new LandmarkMaker(Id, form, (JObject)by[form], siteX, siteY, seed, buildable).Run();
+            return new LandmarkMaker(Id, form, (JObject)by[form], siteX, siteY, seed, buildable) { Names = names }.Run();
         }
+    }
+
+    /// <summary>
+    /// The place ids a map has taken, and the words for where a landmark is ("Downs"). A name taken is the list's next
+    /// unused one, else the rolled one "of the" quarter ("the Elder Oak of the Downs"), numbered from 2 if that's taken too.
+    /// </summary>
+    public sealed class PlaceNames
+    {
+        public ISet<string> Taken { get; set; }
+        public string Quarter { get; set; }
     }
 
     /// <summary>What an intent made: rows in the map files' own shapes, and the texts of those files holding only them.</summary>
@@ -152,6 +163,7 @@ namespace Chem
         readonly int siteX, siteY, key, turn;
         readonly LandmarkRows rows;
         readonly Func<int, int, bool> buildable;
+        internal PlaceNames Names { get; set; }
         readonly List<(int x, int y, int w, int h)> docks = new List<(int, int, int, int)>();
         readonly List<(int x, int y, JObject thing)> things = new List<(int, int, JObject)>();
         int rolls;
@@ -180,11 +192,30 @@ namespace Chem
             return lo + (int)(Roll(SaltRange) % (uint)(Math.Max(lo, hi) - lo + 1));
         }
 
+        // One roll whatever is taken, so the rolls after it (and a map with no repeats) stay as they were.
         string PickName(string listKey, string fallback)
         {
             var names = (row[listKey] as JArray)?.Select(t => (string)t).ToList();
-            if (names == null || names.Count == 0) return fallback;
-            return names[(int)(Roll(SaltName) % (uint)names.Count)];
+            if (names == null || names.Count == 0) return Unused(new[] { fallback });
+            int at = (int)(Roll(SaltName) % (uint)names.Count);
+            return Unused(names.Skip(at).Concat(names.Take(at)).ToList());
+        }
+
+        // The first of the names whose place id isn't taken (and takes it), else the first "of the" quarter, numbered.
+        string Unused(IList<string> names)
+        {
+            var taken = Names?.Taken;
+            if (taken == null) return names[0];
+            string name = names.FirstOrDefault(n => !taken.Contains(Slug(n)));
+            if (name == null)
+            {
+                string qualified = Names.Quarter == null ? names[0] : $"{names[0]} of the {Names.Quarter}";
+                name = qualified;
+                int n = 2;
+                while (taken.Contains(Slug(name))) name = $"{qualified} {n++}";
+            }
+            taken.Add(Slug(name));
+            return name;
         }
 
         // An offset from the site turned with the form: a quarter turn clockwise per step, y south.
@@ -235,7 +266,7 @@ namespace Chem
             return rows;
         }
 
-        static string Slug(string name)
+        internal static string Slug(string name)
         {
             var sb = new StringBuilder();
             foreach (char c in name.ToLowerInvariant())

@@ -198,6 +198,43 @@ namespace Chem.Tests
             Assert.That(others.Select(Quarter).Distinct().Count(), Is.EqualTo(4), "some in every quarter");
         }
 
+        [Test]
+        public void NoPlaceIdIsTakenTwiceAndTheFarRingFollowsTheNames()
+        {
+            // #203: two lake villages both rolled Dunmere (and two great trees the Elder Oak), and the bake's places.json
+            // was refused. Every place id on the map once: the pinned maps', each landmark's and each village's.
+            var m = Island;
+            var ids = PlaceIds(m);
+            TestContext.Out.WriteLine("NAMES " + string.Join(", ", m.Gen.LandmarkRows.Where(r => r != null).Select(r => $"{r.Name} by {r.VillageName}")));
+            Assert.That(ids.GroupBy(i => i).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "place ids taken twice");
+            Assert.That(m.Gen.PlaceIds, Is.EquivalentTo(ids), "the generator's set is the map's ids");
+            // The far ring's labels are the landmarks' names as they were made, so none shows twice either.
+            var named = m.Far.All.Where(l => l.Name != null).ToList();
+            foreach (var l in named.Where(l => l.From == "landmark" && !m.Gen.InPinnedSquare(l.Square)))
+                Assert.That(l.Name, Is.EqualTo(m.Gen.LandmarkRows[l.Index].Name), $"landmark {l.Index}");
+            var names = m.Gen.LandmarkRows.Concat(m.Inner.Gen.LandmarkRows).Where(r => r != null).Select(r => r.Name).ToList();
+            Assert.That(named.Select(l => l.Name), Is.EquivalentTo(names), "a label for each landmark made, by its name");
+            Assert.That(named.Select(l => l.Name).Distinct().Count(), Is.EqualTo(named.Count), "no label twice");
+        }
+
+        /// <summary>
+        /// The place ids a generated map's places.json would hold but its spawns' (which are named apart): its pinned map's
+        /// (a block's, the same way; a map folder's, its places.json's), then each landmark's place and its village's.
+        /// </summary>
+        internal static List<string> PlaceIds(GeneratedMap m)
+        {
+            var ids = m.Inner != null ? PlaceIds(m.Inner) : WorldPlaces.Load(m.PinnedDir).All.Select(p => p.Id).ToList();
+            foreach (var r in m.Gen.LandmarkRows.Where(r => r != null))
+            {
+                ids.Add((string)r.Place["id"]);
+                ids.Add(r.VillagePlace != null ? (string)r.VillagePlace["id"] : Slug(r.VillageName));
+            }
+            return ids;
+        }
+
+        static string Slug(string name) =>
+            string.Join("-", new string(name.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : ' ').ToArray()).Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
         [Test, Explicit("makes all 9720 chunks (minutes on two threads): run it by name")]
         public void ItsExpectsAreWhatItsChunksMake()
         {
