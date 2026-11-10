@@ -8,6 +8,7 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
@@ -20,21 +21,102 @@ namespace Chem
         public static string Write(int[] land, int w, int h, double unitMetres)
         {
             if (land.Length != w * h) throw new ArgumentException($"land needs {w * h} cells, got {land.Length}");
-            using var packed = new MemoryStream();
-            using (var deflate = new DeflateStream(packed, CompressionLevel.Optimal, true))
+            using var text = new MemoryStream();
+            using (var rows = new Writer(text, w, h, unitMetres))
             {
-                for (int k = 0; k < land.Length; k++)
-                    WriteVarint(deflate, Zigzag(land[k] - Previous(land, k, w)));
+                for (int y = 0; y < h; y++) rows.Row(new ReadOnlySpan<int>(land, y * w, w));
+                rows.Finish();
             }
-            var o = new JObject
+            return new UTF8Encoding(false).GetString(text.ToArray());
+        }
+
+        /// <summary>
+        /// land.json written a row at a time, north to south, so a map's land is never held whole (a bake's, bake-lean):
+        /// the same bytes as <see cref="Write"/>. <see cref="Finish"/> after the last row.
+        /// </summary>
+        public sealed class Writer : IDisposable
+        {
+            // Where the data goes in the file's JSON: the rest is written by Newtonsoft as Write's always was.
+            const string Hole = "@land-data@";
+            readonly Stream to;
+            readonly string tail;
+            readonly Base64Out base64;
+            readonly DeflateStream deflate;
+            readonly int w, h;
+            readonly byte[] packed;
+            int y, above;
+
+            public Writer(Stream to, int w, int h, double unitMetres)
             {
-                ["version"] = Version,
-                ["w"] = w,
-                ["h"] = h,
-                ["unitMetres"] = unitMetres,
-                ["data"] = Convert.ToBase64String(packed.ToArray()),
-            };
-            return o.ToString(Newtonsoft.Json.Formatting.Indented) + "\n";
+                this.to = to;
+                this.w = w;
+                this.h = h;
+                var o = new JObject
+                {
+                    ["version"] = Version,
+                    ["w"] = w,
+                    ["h"] = h,
+                    ["unitMetres"] = unitMetres,
+                    ["data"] = Hole,
+                };
+                string json = o.ToString(Newtonsoft.Json.Formatting.Indented) + "\n";
+                int at = json.IndexOf(Hole, StringComparison.Ordinal);
+                Ascii(to, json.Substring(0, at));
+                tail = json.Substring(at + Hole.Length);
+                base64 = new Base64Out(to);
+                deflate = new DeflateStream(base64, CompressionLevel.Optimal, true);
+                packed = new byte[w * 5]; // a varint is 5 bytes at most
+            }
+
+            /// <summary>The next row's <c>w</c> cells.</summary>
+            public void Row(ReadOnlySpan<int> row)
+            {
+                if (row.Length != w) throw new ArgumentException($"a row of land needs {w} cells, got {row.Length}");
+                if (y >= h) throw new InvalidOperationException($"land.json is {h} rows");
+                int n = 0, before = above;
+                for (int x = 0; x < w; x++)
+                {
+                    // Each cell as its difference from the one before it, the row's first from the row above's first.
+                    n = PutVarint(packed, n, Zigzag(row[x] - before));
+                    before = row[x];
+                }
+                above = row[0];
+                y++;
+                deflate.Write(packed, 0, n);
+            }
+
+            /// <summary>Ends the data and the file; every row written.</summary>
+            public void Finish()
+            {
+                if (y != h) throw new InvalidOperationException($"land.json has {y} of its {h} rows");
+                deflate.Dispose();
+                base64.Finish();
+                Ascii(to, tail);
+            }
+
+            public void Dispose()
+            {
+                deflate.Dispose();
+            }
+
+            static uint Zigzag(int v) => (uint)((v << 1) ^ (v >> 31));
+
+            static int PutVarint(byte[] into, int at, uint v)
+            {
+                while (v >= 0x80)
+                {
+                    into[at++] = (byte)(v | 0x80);
+                    v >>= 7;
+                }
+                into[at++] = (byte)v;
+                return at;
+            }
+
+            static void Ascii(Stream s, string text)
+            {
+                var bytes = Encoding.UTF8.GetBytes(text);
+                s.Write(bytes, 0, bytes.Length);
+            }
         }
 
         /// <summary>The land in land.json's text, for a w × h world; empty if it's for another size.</summary>
@@ -63,18 +145,7 @@ namespace Chem
             return k % w == 0 ? land[k - w] : land[k - 1];
         }
 
-        static uint Zigzag(int v) => (uint)((v << 1) ^ (v >> 31));
         static int Unzigzag(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
-
-        static void WriteVarint(Stream s, uint v)
-        {
-            while (v >= 0x80)
-            {
-                s.WriteByte((byte)(v | 0x80));
-                v >>= 7;
-            }
-            s.WriteByte((byte)v);
-        }
 
         static uint ReadVarint(byte[] bytes, ref int at)
         {
@@ -89,5 +160,55 @@ namespace Chem
             }
             return v;
         }
+    }
+
+    // Bytes in, their base64 out to a stream, as Convert.ToBase64String of them all would give it.
+    internal sealed class Base64Out : Stream
+    {
+        readonly Stream to;
+        readonly byte[] left = new byte[3];
+        int held;
+
+        public Base64Out(Stream to) => this.to = to;
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            while (count > 0 && held > 0 && held < 3)
+            {
+                left[held++] = buffer[offset++];
+                count--;
+            }
+            if (held == 3)
+            {
+                Put(left, 0, 3);
+                held = 0;
+            }
+            int whole = count / 3 * 3;
+            if (whole > 0) Put(buffer, offset, whole);
+            for (int k = whole; k < count; k++) left[held++] = buffer[offset + k];
+        }
+
+        /// <summary>The last one or two bytes, padded.</summary>
+        public void Finish()
+        {
+            if (held > 0) Put(left, 0, held);
+            held = 0;
+        }
+
+        void Put(byte[] bytes, int offset, int count)
+        {
+            var chars = Encoding.ASCII.GetBytes(Convert.ToBase64String(bytes, offset, count));
+            to.Write(chars, 0, chars.Length);
+        }
+
+        public override void Flush() => to.Flush();
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
     }
 }

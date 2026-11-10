@@ -198,3 +198,26 @@ looks not to scale, for the PC to confirm: the World's 288 KB a chunk (2.7 GB fo
 today), the bake's allocation (9.5 MB a chunk, 90 GB a bake), and the bake holding every chunk before it writes.
 The far ring's landmarks repeat names across the map (two great trees are both "the Elder Oak"): its names come from
 a small list.
+
+### The bake that doesn't grow with the map (bake-lean, u2, 2026-11-10)
+
+The bake now makes a row of chunks on every thread while the row before is written on one, and drops each row once
+it's written (`GeneratedMap.Bake.cs`): `cells.txt`, `land.json` and `things.json` stream out a row at a time
+(`LandFile.Writer`), and the water bodies for `places.json` are found from the land rows as they go (`WaterRuns`,
+runs of water joined row to row) instead of reading `land.json` back and flood-filling a set of every cell. The files
+are the same bytes (`BakeTests`: one thread, four, and the old whole-map writer kept as the reference). The garbage
+was closures and small arrays on every land point: `BiomeTable.IndexOf`'s `FindIndex` lambda (3.7 GB on the nine),
+`WorldBiomes.Between`'s delegate and its closure (2.2 GB), `Shore`'s two `int[4]` (340 KB a chunk), then the chunk's
+working arrays (256 KB, now one set a thread).
+
+| On the VM (2 threads) | Before | After |
+|---|---|---|
+| The nine (729 chunks): allocated a chunk | 8.9 MB | 48 KB |
+| The 6 x 6 copy (2916 chunks): allocated a chunk | 9.5 MB (27.8 GB) | 41 KB (117 MB) |
+| The 6 x 6 copy: the process's peak working set | 704 MB | 102 MB |
+| The 6 x 6 copy: the bake's time | 25.7 to 27.4 s | 22.0 to 23.7 s |
+| **The full map (9720 chunks)** | not bakeable here | **76 s, 31 KB a chunk, peak 120 MB** |
+
+The full map's bake still stops at `places.json`: two villages are both "Dunmere", and a place's id may be listed
+once (the names above, from a small list). It did before too, as the last step; its cells, land and things are
+written by then.

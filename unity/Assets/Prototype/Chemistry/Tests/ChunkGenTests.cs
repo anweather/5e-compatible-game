@@ -492,7 +492,7 @@ namespace Chem.Tests
             return (iy * w + ix, oy * w + ox);
         }
 
-        static (int[] land, char[] cells) WholeOf(ChunkGen gen, IEnumerable<GeneratedChunk> chunks)
+        internal static (int[] land, char[] cells) WholeOf(ChunkGen gen, IEnumerable<GeneratedChunk> chunks)
         {
             int w = gen.CellsW, n = ChunkGen.Size;
             var land = new int[w * gen.CellsH];
@@ -639,7 +639,7 @@ namespace Chem.Tests
             {
                 var report = Nine.Bake(dir, All);
                 TestContext.Out.WriteLine($"BAKE writing the nine's folder {report.TotalMs - report.MakeMs:F0} ms");
-                PictureOf(report);
+                PictureOf(dir, report);
                 Assert.That(MapCheck.Errors(dir), Is.Empty);
                 var map = MapFile.Load(dir);
                 // This folder is away from the map's own, as a build's bake is (the player's data), and the pinned map
@@ -723,10 +723,11 @@ namespace Chem.Tests
 
         // The nine's heights, a pixel for every three cells: sea blue by depth, land green to brown to white by height,
         // shaded from the north-west; rivers and lakes light blue, roads brown, the valley's edge drawn.
-        static void PictureOf(BakeReport r)
+        static void PictureOf(string dir, BakeReport r)
         {
             string folder = Environment.GetEnvironmentVariable("CHUNK_GEN_PNG_OUT");
             if (string.IsNullOrEmpty(folder)) return;
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), r.W, r.H);
             Directory.CreateDirectory(folder);
             const int scale = 3;
             int w = r.W / scale, h = r.H / scale;
@@ -738,9 +739,9 @@ namespace Chem.Tests
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++)
                 {
-                    int cx = x * scale + 1, cy = y * scale + 1, v = r.Land[cy * r.W + cx];
+                    int cx = x * scale + 1, cy = y * scale + 1, v = land[cy * r.W + cx];
                     char cell = cells[cy * r.W + cx];
-                    int shade = v - r.Land[(cy - 1) * r.W + cx - 1];
+                    int shade = v - land[(cy - 1) * r.W + cx - 1];
                     var col = WorldPlanPicture.Height(v);
                     if (v >= ChunkGen.SeaLevel && (cell == 'r' || cell == 'w')) col = (90, 160, 230);
                     else if (v >= ChunkGen.SeaLevel && cell == 'T') col = (col.R * 3 / 4, col.G * 3 / 4, col.B * 3 / 4);
@@ -754,7 +755,7 @@ namespace Chem.Tests
                         for (int k = 0; k < 3; k++) rgb[(y * w + x) * 3 + k] = (byte)(rgb[(y * w + x) * 3 + k] * 3 / 4);
             string path = Path.Combine(folder, $"nine-{Nine.Seed}-heights.png");
             File.WriteAllBytes(path, LandmarkPicture.Png(rgb, w, h));
-            TestContext.Out.WriteLine($"PICTURE {path} ({w} x {h}): land {r.Land.Min()}..{r.Land.Max()} land units");
+            TestContext.Out.WriteLine($"PICTURE {path} ({w} x {h}): land {land.Min()}..{land.Max()} land units");
             CellsOf(folder, cells, r.W, 1, 0, "north-middle");
             CellsOf(folder, cells, r.W, 1, 1, "middle");
         }

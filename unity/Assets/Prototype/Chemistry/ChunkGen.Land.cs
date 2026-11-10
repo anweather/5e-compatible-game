@@ -511,8 +511,9 @@ namespace Chem
             if (Plan.Band[i] == 0) return -SeaRamp * One;
             var c = Plan.Coasts[i];
             int lx = px - sx * Square, ly = py - sy * Square;
-            int[] from = { ly, Square - 1 - lx, Square - 1 - ly, lx };
-            int[] along = { lx, ly, lx, ly };
+            // On the stack: every land point reads its shore, and two arrays a point were most of a chunk's garbage.
+            Span<int> from = stackalloc int[] { ly, Square - 1 - lx, Square - 1 - ly, lx };
+            Span<int> along = stackalloc int[] { lx, ly, lx, ly };
             long best = long.MaxValue / 4;
             for (int s = 0; s < 4; s++)
             {

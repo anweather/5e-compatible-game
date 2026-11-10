@@ -153,7 +153,13 @@ touch them.
 : A **generated map** is made from a **world file**, its `map.json` with a `generated` section: the seed, its size in
   world squares, the generator's version and the world squares pinned to another map's folder (the nine pins the
   valley). Its other files are a **bake** (`GeneratedMap.Bake`), written beside it and never committed; its map hash is
-  over its inputs, not the bake.
+  over its inputs, not the bake. A bake is made and written a **row of chunks** at a time, each dropped once written
+  (`GeneratedMap.Bake.cs`), so it holds two rows whatever the map's size.
+
+**Water run**
+: A row's unbroken stretch of cells below the water level, west to east. A place's water bodies (`places.json`'s
+  generated seas and lakes) are runs joined to the runs of the row above that share a column with them (`WaterRuns`),
+  found a row at a time as a bake writes its land.
 
 **Wrap / seam / wall row**
 : A world that **wraps** east-west (map.json's `"wrap": "ew"`, `PlanWrap.EastWest`) joins its east edge to its west:
