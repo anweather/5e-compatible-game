@@ -26,11 +26,13 @@ using Debug = UnityEngine.Debug;
 // In a development build each frame's Profiler markers are read too: a
 // "PERF MARKERS" line with each one's mean and peak, a "PERF RENDER" line of what
 // was drawn (draw calls, batches, SetPass calls, triangles, shadow casters), and a "PERF SPIKE" line for
-// every frame over 50 ms (written after the run: logging is itself slow).
+// every frame over 50 ms (written after the run: logging is itself slow), and "PERF SLOW" lines: the markers of the
+// frames at the run's p95 and over beside every frame's, and the chunks the wizard was in for them.
 // -perf-list-markers also writes every marker there is to perf-markers.txt.
 // Every run logs a "PERF LOAD" line as it starts (the map, the seconds since start-up, its chunks); -perf-memory adds
 // "PERF MEMORY" lines (PerfMemory) at the start, as measuring begins and at the end. walkout walks the wizard east from
-// the nine's spawn out of the nine (onto the grass on the scale island); -perf-switches makes a sim-only rule switch
+// the nine's spawn out of the nine (onto the grass on the scale island); stand puts the wizard in one chunk
+// (-perf-at CX,CY, -perf-camera-off: PerfStage.Stand.cs); -perf-switches makes a sim-only rule switch
 // and a look-changing one during a fixed-camera run (PerfStage.Scale.cs, docs/perf/2026-11-10-scale.md).
 // The wildfire ends with shots with and without FlameBank's flames (FlameShots),
 // so a script can count the pixels Prototype/Flame really drew.
@@ -39,7 +41,7 @@ using Debug = UnityEngine.Debug;
 // lines and a "PERF COUNTS" line of name=sum/peak/frames; "PERF EARLY" lines for
 // frames over 100 ms before measuring starts, from the first frame here;
 // -perf-spike-ms N for a lower bar than 50; -perf-wide (PerfMarkers); -perf-hour H;
-// -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
+// -perf-step-ms N, a tick's allowance a frame (slices in proportion with ExactFrames); -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
 // (the bot turns it on; compare a budget in work units with one in milliseconds);
 // -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
 // <file>, which lists what a -pso-trace file has that the shipped collection hasn't;
@@ -68,7 +70,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout", "stand" };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast", "draw", "blockers", "chunk" };
 
@@ -76,6 +78,9 @@ public class PerfScenario : MonoBehaviour
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
     readonly List<(float ms, string line)> spikes = new();
     readonly List<float> shotMs = new();
+    // Every measured frame in the order PerfMarkers sampled it (NaN for the bot's shots), and the chunk the wizard was in.
+    readonly List<float> sampledMs = new();
+    readonly List<Vector2Int> sampledChunk = new();
     string scenario;
     float seconds;
     ChemGrid grid;
@@ -128,6 +133,13 @@ public class PerfScenario : MonoBehaviour
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
         if (Has("-perf-exact")) ChemGrid.ExactFrames = true;
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
+        if (float.TryParse(Arg("-perf-step-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float stepMs) && stepMs > 0f)
+        {
+            // The slices a frame in a playtest run, in proportion to the game's 6 ms and 256.
+            int slices = Mathf.Max(1, Mathf.RoundToInt(stepMs / 6f * 256f));
+            ChemGrid.Current?.Grid.SetStepBudget(stepMs, slices);
+            Debug.Log($"PERF STEP BUDGET ms={stepMs.ToString("0.0", CultureInfo.InvariantCulture)} slices={slices}");
+        }
         if (Has("-perf-same-check")) CellWaterMesh.CheckKeptPoints = ValleyGround.CheckKeptNoise = true;
         yield return WaitToHost();
         grid = ChemGrid.Current?.Grid;
@@ -282,6 +294,8 @@ public class PerfScenario : MonoBehaviour
         quietFrames = markers.BotShotLastFrame ? ShotQuietFrames : Math.Max(0, quietFrames - 1);
         if (quietFrames > 0) shotMs.Add(ms);
         else frameMs.Add(ms);
+        sampledMs.Add(quietFrames > 0 ? float.NaN : ms);
+        sampledChunk.Add(wizard != null ? grid.ChunkAt(wizard.transform.position) : default);
         int hadMain = mainMs.Count, hadGpu = gpuMs.Count;
         FpsProbe.ReadTiming(mainMs, renderMs, gpuMs);
         windows.Frame(ms, mainMs.Count > hadMain ? mainMs[^1] : -1f, gpuMs.Count > hadGpu ? gpuMs[^1] : -1f);
@@ -371,6 +385,7 @@ public class PerfScenario : MonoBehaviour
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
         Debug.Log($"PERF RENDER scenario={scenario}{markers.RenderSummary()}");
+        LogSlow();
         var inv = CultureInfo.InvariantCulture;
         Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
@@ -389,6 +404,23 @@ public class PerfScenario : MonoBehaviour
                 $"points_delegates_ms={perPointMs.ToString("0.0", inv)} paint_strips={strips} different={stripsDifferent}");
         }
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
+    }
+
+    // The frames at the run's p95 and over: what their markers were made of, and where the wizard was.
+    void LogSlow()
+    {
+        if (frameMs.Count == 0) return;
+        float at = (float)FrameStats.Of(frameMs).P95Ms;
+        Debug.Log($"PERF SLOW scenario={scenario}{markers.SlowSummary(sampledMs, at)}");
+        var where = new Dictionary<Vector2Int, (int slow, int all)>();
+        for (int f = 0; f < sampledMs.Count; f++)
+        {
+            if (float.IsNaN(sampledMs[f])) continue;
+            where.TryGetValue(sampledChunk[f], out var had);
+            where[sampledChunk[f]] = (had.slow + (sampledMs[f] >= at ? 1 : 0), had.all + 1);
+        }
+        Debug.Log($"PERF SLOW CHUNKS scenario={scenario} chunk=slow/all" + string.Concat(where.OrderByDescending(w => w.Value.slow).Take(12)
+            .Select(w => $" {w.Key.x},{w.Key.y}={w.Value.slow}/{w.Value.all}")));
     }
 
     // The times a player feels: each as seconds into the run, then ms.

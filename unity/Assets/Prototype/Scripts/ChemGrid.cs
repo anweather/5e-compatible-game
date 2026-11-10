@@ -206,16 +206,18 @@ public partial class ChemGrid : MonoBehaviour
             using (BuildValleyMarker.Auto()) valley.Bind(World);
         double valleyMs = phase.Elapsed.TotalMilliseconds;
         phase.Restart();
+        double initMs;
         using (BuildDrawMarker.Auto())
         {
             InitVisuals();
+            initMs = phase.Elapsed.TotalMilliseconds;
             RenderAll();
         }
         double drawMs = phase.Elapsed.TotalMilliseconds;
         phase.Restart();
         using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
         // What a world costs to build, by part (cell-memory: a big map's start and every reset pay it).
-        Debug.Log($"WORLD BUILT {World.W} x {World.H}: cells {cellsMs:0} ms, valley {valleyMs:0} ms, draw {drawMs:0} ms, listeners {phase.Elapsed.TotalMilliseconds:0} ms");
+        Debug.Log($"WORLD BUILT {World.W} x {World.H}: cells {cellsMs:0} ms (keep start {KeepStartMs:0}), valley {valleyMs:0} ms, draw {drawMs:0} ms (visuals {initMs:0}, near {drawMs - initMs:0}), listeners {phase.Elapsed.TotalMilliseconds:0} ms");
     }
 
     // Where the map's cells stand in the world (map.json's yard: its south-west cell at world 0, 0), when this grid plays a
@@ -410,7 +412,7 @@ public partial class ChemGrid : MonoBehaviour
         using (StepMarker.Auto()) stepped = StepWithinBudget();
         StepMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
-        using (RenderMarker.Auto()) Render();
+        using (RenderMarker.Auto()) Render(stepped);
         RenderMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         if (stepped) fireLights.Place();
@@ -637,6 +639,9 @@ public partial class ChemGrid : MonoBehaviour
     // In a playtest run, slices instead (ExactFrames): a quiet valley tick is a hundred or so.
     const int ExactStepSlices = 256;
     readonly FrameBudget stepBudget = new(StepBudgetMs, ExactStepSlices);
+
+    /// <summary>A tick's allowance a frame from now on, for a performance pass (PerfScenario's -perf-step-ms); the game's own is 6 ms or 256 slices.</summary>
+    public void SetStepBudget(double ms, int exactSlices) => stepBudget.Set(ms, exactSlices);
 
     // Runs the ticks that are due, a tick in progress first, within the frame's budget: rule
     // switches and the chunk plan apply only between whole ticks. True if a tick finished.

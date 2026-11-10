@@ -54,6 +54,11 @@ public partial class PerfStage : ShowcaseScript
             StartCoroutine(Fireball());
             yield break; // Ready once the chunks round the forest are drawn
         }
+        else if (Scenario == "stand")
+        {
+            yield return Stand();
+            yield break; // Ready once the chunks round it are drawn
+        }
         else if (Scenario != "walkout") Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
         if (Scenario == "walkout") StartCoroutine(WalkOut());

@@ -104,6 +104,52 @@ namespace Chem.Tests
         [Test]
         public void ThreadedResetIsTheSameOnTheValley() => SameBothWays(FogTickBench.Valley(R), "the valley");
 
+        // A chunk at a time (#206): each chunk worked out as it's first asked for, through its own small cache, gives the same
+        // bits as the whole Reset; none is worked out until asked; one let go and asked again is the same again.
+        [TestCase(1), TestCase(42)]
+        public void ALazyResetIsTheSameChunkByChunk(int seed)
+        {
+            var w = Seeded(seed);
+            foreach (bool flat in new[] { false, true })
+            {
+                var whole = ResetWith(w, true, flat);
+                var f = new CellHeightfield(TerrainGrid.Valley()) { FlatUnderWalls = flat };
+                f.ResetLazily(w);
+                Assert.That(f.Worked, Is.EqualTo(0), "nothing worked out before it's asked for");
+                _ = f.Current(4, 3);
+                Assert.That(f.Worked, Is.EqualTo(1), "only the chunk asked for");
+                Assert.That(Heights(f).SequenceEqual(whole), Is.True, $"seed {seed}, flat under walls {flat}: lazy heights differ");
+                Assert.That(f.Forget(4, 3), Is.True);
+                Assert.That(Heights(f).SequenceEqual(whole), Is.True, $"seed {seed}: a chunk let go and worked out again differs");
+                var batch = new CellHeightfield(TerrainGrid.Valley()) { FlatUnderWalls = flat };
+                batch.ResetLazily(w);
+                batch.Prepare(batch.Chunks.ToList());
+                Assert.That(batch.Worked, Is.EqualTo(81), "a Prepare works out every chunk asked for");
+                Assert.That(Heights(batch).SequenceEqual(whole), Is.True, $"seed {seed}, flat under walls {flat}: prepared side by side, the heights differ");
+            }
+        }
+
+        // An Update after a lazy Reset (cells dug where no chunk was worked out yet) ends where it does after a whole one.
+        [Test]
+        public void AnUpdateAfterALazyResetEndsTheSame()
+        {
+            var w = Seeded(7);
+            var whole = new CellHeightfield(TerrainGrid.Valley());
+            whole.Reset(w);
+            var lazy = new CellHeightfield(TerrainGrid.Valley());
+            lazy.ResetLazily(w);
+            var dug = new List<(int x, int y)>();
+            for (int y = 200; y < 210; y++)
+                for (int x = 300; x < 312; x++)
+                {
+                    w.At(x, y).Height -= 2;
+                    dug.Add((x, y));
+                }
+            whole.Update(w, dug, snap: true);
+            lazy.Update(w, dug, snap: true);
+            Assert.That(Heights(lazy).SequenceEqual(Heights(whole)), Is.True);
+        }
+
         [Test]
         public void ItIsOnUnlessSwitchedOff()
         {
