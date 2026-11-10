@@ -44,13 +44,53 @@ public class FarMeshesTests
     [Test]
     public void AFlatKnownChunkIsItsBiomesColour()
     {
-        var d = FarMeshes.Known(Chunk((_, _) => 40), Cell);
-        var want = FarMeshes.BiomeColour("tundra");
+        var palette = Drawn();
+        var d = FarMeshes.Known(Chunk((_, _) => 40), Cell, palette);
+        var want = palette.Of("tundra");
         foreach (Color c in d.Colors.Take(81))
             Assert.That(Mathf.Abs(c.r - want.r) < 0.1f && Mathf.Abs(c.b - want.b) < 0.1f, $"{c} is near {want}");
-        Assert.AreNotEqual(FarMeshes.BiomeColour("tundra"), FarMeshes.BiomeColour("ashlands"));
-        Assert.AreEqual(FarMeshes.BiomeColour("temperate"), FarMeshes.BiomeColour("valley"), "the pinned map's name is grass");
+        Assert.AreNotEqual(palette.Of("tundra"), palette.Of("ashlands"));
+        Assert.AreEqual(palette.Of("temperate"), palette.Of("valley"), "the pinned map's name is grass");
     }
+
+    // A biome's far colour is its ground's layers' colours by their weights, as the near ground draws them (#191): dry
+    // country mostly bare earth with a little sand and snow is brown, not the white of its snow.
+    [Test]
+    public void ABiomesColourIsItsGroundsLayersMixed()
+    {
+        var palette = Drawn();
+        var dry = palette.Of("salt-flat");
+        var want = 0.75f * Earth + 0.2f * Sand + 0.05f * Snow;
+        Assert.AreEqual(want.r, dry.r, 1e-4f);
+        Assert.AreEqual(want.g, dry.g, 1e-4f);
+        Assert.AreEqual(want.b, dry.b, 1e-4f);
+        Assert.That(dry.b, Is.LessThan(dry.r - 0.1f), "brown, not white");
+        Assert.AreEqual(Rock, palette.Rock);
+    }
+
+    static readonly Color Grass = new(0.29f, 0.41f, 0.13f), Rock = new(0.32f, 0.31f, 0.29f), Earth = new(0.32f, 0.24f, 0.15f),
+        Sand = new(0.66f, 0.6f, 0.48f), Snow = new(0.95f, 0.95f, 0.97f), Charred = new(0.13f, 0.11f, 0.09f);
+
+    static float[] Weights(params (string layer, float weight)[] parts)
+    {
+        var w = new float[CellPaint.Layers.Count];
+        foreach (var (layer, weight) in parts) w[CellPaint.Layers.ToList().IndexOf(layer)] = weight;
+        return w;
+    }
+
+    static FarMeshes.Palette Drawn() => FarMeshes.Palette.Drawn(
+        new System.Collections.Generic.Dictionary<string, float[]>
+        {
+            ["temperate"] = Weights((CellPaint.Grass, 1f)),
+            ["tundra"] = Weights((CellPaint.Snow, 0.85f), (CellPaint.Rock, 0.15f)),
+            ["ashlands"] = Weights((CellPaint.Charred, 0.75f), (CellPaint.Rock, 0.25f)),
+            ["salt-flat"] = Weights((CellPaint.Earth, 0.75f), (CellPaint.Sand, 0.2f), (CellPaint.Snow, 0.05f)),
+        },
+        new System.Collections.Generic.Dictionary<string, Color>
+        {
+            [CellPaint.Grass] = Grass, [CellPaint.Rock] = Rock, [CellPaint.Earth] = Earth, [CellPaint.Sand] = Sand,
+            [CellPaint.Snow] = Snow, [CellPaint.Charred] = Charred,
+        });
 
     [Test]
     public void EveryHorizonShapeIsDrawnWithinItsSize()
