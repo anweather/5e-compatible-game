@@ -598,7 +598,23 @@ public partial class ChemGrid
         undrawn--;
         drawnChunks.Add(n);
         PerfCounts.Add("draw.chunks");
+        ChunkDrawn?.Invoke(n % ChunksAcross, n / ChunksAcross);
     }
+
+    /// <summary>A chunk of this world (cx, cy) has drawn for the first time: what follows the look in force catches it up then (J-086).</summary>
+    public event System.Action<int, int> ChunkDrawn;
+
+    /// <summary>The chunks drawn so far (cx, cy), nearest a focus first: what a look change walks (J-086).</summary>
+    public void DrawnChunksNearestFirst(List<Vector2Int> into)
+    {
+        into.Clear();
+        if (drawnChunks.Count == 0) return;
+        DrawnNearestFirst(lookOrder, false);
+        int across = ChunksAcross;
+        foreach (int n in lookOrder) into.Add(new Vector2Int(n % across, n / across));
+    }
+
+    readonly List<int> lookOrder = new();
 
     /// <summary>Inactive chunks redrawn because the dragon's breath reset them, for the probe.</summary>
     public int FreshInactiveDrawn { get; private set; }
