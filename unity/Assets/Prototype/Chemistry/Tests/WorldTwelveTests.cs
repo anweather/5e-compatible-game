@@ -66,6 +66,14 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void NoPlaceIdIsTakenTwice()
+        {
+            var ids = ScaleIslandTests.PlaceIds(World);
+            Assert.That(ids.GroupBy(i => i).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "place ids taken twice (#203)");
+            Assert.That(World.Gen.PlaceIds, Is.EquivalentTo(ids));
+        }
+
+        [Test]
         public void ItsPlanIsGolden()
         {
             TestContext.Out.WriteLine($"PLAN GOLDEN world-12x10 0x{World.Plan.Hash:x8}");

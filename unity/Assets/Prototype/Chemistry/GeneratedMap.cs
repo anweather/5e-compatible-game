@@ -228,6 +228,7 @@ namespace Chem
             if (File.Exists(things))
                 foreach (var list in ((JArray)JObject.Parse(File.ReadAllText(things))["chunks"]).OfType<JObject>())
                     p.Things[((int)list["chunk"][0], (int)list["chunk"][1])] = (JArray)list["things"];
+            p.PlaceIds.AddRange(WorldPlaces.Load(dir).All.Select(q => q.Id));
             return p;
         }
 
@@ -400,7 +401,7 @@ namespace Chem
             {
                 if (s.Held) continue;
                 int sx = s.X / ChunkGen.Square, sy = s.Y / ChunkGen.Square;
-                string name = s.Pinned ? PinnedName : VillageIn(s.Square) ?? SquareTitle(s.Square);
+                string name = s.Pinned ? PinnedName : VillageIn(s.Square) ?? Gen.SquareTitle(s.Square);
                 if (!names.Add(name))
                 {
                     string first = name + " (" + Compass(sx, sy) + ")";
@@ -429,13 +430,6 @@ namespace Chem
             for (int k = 0; k < Gen.LandmarkRows.Count; k++)
                 if (Gen.LandmarkRows[k]?.VillageName is string v && Plan.Landmarks[k].Square == square) return v;
             return null;
-        }
-
-        string SquareTitle(int square)
-        {
-            var t = Plan.TemplateAt(square);
-            string words = (t.Filler ? t.Biome : t.Id) ?? "land";
-            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(words.Replace('-', ' '));
         }
 
         // Where a map square lies in the map, as a compass word ("north-west", "middle", "east").

@@ -9,6 +9,7 @@
 // 18..26; its own rows are shifted 1152 cells south when the nine is put together, NineWorld).
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
@@ -53,6 +54,8 @@ namespace Chem
         public string[] Rows;
         /// <summary>things.json's chunk lists by the square's own chunk (0..8, 0..8).</summary>
         public Dictionary<(int x, int y), JArray> Things = new Dictionary<(int, int), JArray>();
+        /// <summary>The place ids its places.json has (none for a block: its generator's <see cref="ChunkGen.PlaceIds"/>).</summary>
+        public List<string> PlaceIds = new List<string>();
     }
 
     public sealed partial class ChunkGen
@@ -80,6 +83,9 @@ namespace Chem
         /// <summary>The landmarks' rows, by the plan's landmark index (null for one made elsewhere: the castle is the valley's).</summary>
         public IReadOnlyList<LandmarkRows> LandmarkRows => landmarkRows;
         readonly LandmarkRows[] landmarkRows;
+        /// <summary>The place ids taken on the map: the pinned map's, then each made landmark's and village's, none twice.</summary>
+        public IReadOnlyCollection<string> PlaceIds => placeIds;
+        readonly HashSet<string> placeIds = new HashSet<string>(StringComparer.Ordinal);
         readonly List<(LandStamp stamp, char bare, int landmark)> stamps = new List<(LandStamp, char, int)>();
 
         public int ChunksW => SquaresW * WorldPlan.ChunksPerSquare;
@@ -110,16 +116,26 @@ namespace Chem
             SetUpLand();
             SetUpSpawns();
             landmarkRows = new LandmarkRows[plan.Landmarks.Count];
+            if (pinned != null) placeIds.UnionWith(pinned.Inner?.PlaceIds ?? pinned.PlaceIds);
             for (int k = 0; k < plan.Landmarks.Count; k++)
             {
                 var l = plan.Landmarks[k];
                 if (l.Intent != WorldPlan.VillageIntent || plan.Library.Village == null || InPinnedSquare(l.Square)) continue;
                 var (x, y) = MapCell(l.Square, l.SiteX, l.SiteY);
                 if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) continue;
-                var rows = plan.Library.Village.Make(l.Biome, x, y, unchecked((int)WorldPlan.H(seed, 0x1a4d, k)), Buildable);
+                var rows = plan.Library.Village.Make(l.Biome, x, y, unchecked((int)WorldPlan.H(seed, 0x1a4d, k)), Buildable,
+                    new PlaceNames { Taken = placeIds, Quarter = SquareTitle(l.Square) });
                 landmarkRows[k] = rows;
                 foreach (var s in MapStamps.FromJson(rows.StampsJson).All) stamps.Add((s.Stamp, BareChar(s.Bare), k));
             }
+        }
+
+        /// <summary>A plan square's name in words: its template's ("Downs"), a filler's biome ("Grassland").</summary>
+        public string SquareTitle(int square)
+        {
+            var t = Plan.TemplateAt(square);
+            string words = (t.Filler ? t.Biome : t.Id) ?? "land";
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(words.Replace('-', ' '));
         }
 
         /// <summary>ap plan site (cells within square <paramref name="i"/>) as a map cell.</summary>
