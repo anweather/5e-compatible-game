@@ -229,6 +229,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
+        var steps = new StepTimes();
         lakeSought = false; // a new world: the lake (or none) is looked for again at the next recolour
         if (ground == null && MapLand.Current is { } map)
         {
@@ -255,6 +256,7 @@ public partial class ValleyChemistry : MonoBehaviour
             grid.DetailDistance = ground.DetailDistance;
             grid.DetailChunksChanged += ground.DrawDetails;
             if (grid.DetailChunks.Count > 0) ground.DrawDetails(grid.DetailChunks);
+            steps.Mark("ground_made");
         }
         grid.ChunkFreshened -= BuildingsBack;
         grid.ChunkFreshened += BuildingsBack;
@@ -265,20 +267,24 @@ public partial class ValleyChemistry : MonoBehaviour
         binding = true;
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         binding = false;
+        steps.Mark("ground_bind");
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         var (channelCells, channelDepths) = builder.Channel;
         ground.RaiseBase(channelCells, channelDepths);
         SetLand(world);
         CheckGround(world);
+        steps.Mark("land");
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
         if (grid.CurrentRules != null) RecolourGround(grid.CurrentRules.Base, grid.CurrentRules.Effective);
         scorched.Clear();
         grown.Clear();
+        steps.Mark("wet");
         IndexTrees();
         IndexPalms();
+        steps.Mark("trees");
         int n = cabins?.Length ?? 0;
         cabinCells = new int[n];
         cabinBurnt = new int[n];
@@ -300,8 +306,10 @@ public partial class ValleyChemistry : MonoBehaviour
                 cabinCells[k]++;
                 buildingCells[k].Add(key);
             }
+        steps.Mark("cells");
         ClearLaidRows(world);
         BindStampedLand(world);
+        steps.Mark("rows_stamps");
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
         panesByCell.Clear();
         foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
@@ -313,6 +321,8 @@ public partial class ValleyChemistry : MonoBehaviour
             terrains.Serve(ground);
             if (Ocean.Instance != null) Ocean.Instance.Build();
         }
+        steps.Mark("panes_terrains");
+        Debug.Log($"VALLEY BIND steps (ms): {steps}");
     }
 
     bool served, binding;

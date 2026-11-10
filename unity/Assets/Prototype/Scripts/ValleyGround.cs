@@ -387,6 +387,9 @@ public sealed class ValleyGround
         ch.touched = false;
     }
 
+    /// <summary>What working out the cells' height offsets took at the last Bind (ms).</summary>
+    public double HeightfieldMs { get; private set; }
+
     /// <summary>What making the chunks took at the last Bind (ms): the probe compares built with baked.</summary>
     public double BindMs { get; private set; }
 
@@ -406,7 +409,10 @@ public sealed class ValleyGround
         world = w;
         landUnit = stepHeight / w.Rules.Sim.WaterUnitsPerStep;
         heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
+        var reset = System.Diagnostics.Stopwatch.StartNew();
         heightfield.Reset(w);
+        HeightfieldMs = reset.Elapsed.TotalMilliseconds;
+        Debug.Log($"GROUND HEIGHTFIELD reset: {HeightfieldMs:0} ms");
         repaint.Clear();
         cleared.Clear();
         pendingDetail.Clear();
