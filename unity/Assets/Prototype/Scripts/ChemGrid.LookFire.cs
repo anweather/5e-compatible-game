@@ -130,7 +130,7 @@ public partial class ChemGrid
         while (litByCheck.Count > 0 && litByCheck.Peek().until <= Time.time)
         {
             int index = litByCheck.Dequeue().index;
-            var c = World.Cells[index];
+            var c = World.CellAt(index);
             if (c != null && (c.Fire > 0 || c.Cover == CoverIds.Embers || (noteCasters && (c.Gas != null || c.Cover != null)))) litByCheck.Enqueue((Time.time + LookFireWait, index));
             else litBy.Remove(index);
         }

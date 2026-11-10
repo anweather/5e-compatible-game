@@ -85,7 +85,6 @@ public sealed class FireLightPool
     void CollectBurning()
     {
         var world = grid.World;
-        var cells = world.Cells;
         burning.Clear();
         foreach (var (cx, cy) in world.ActiveChunks)
         {
@@ -95,7 +94,7 @@ public sealed class FireLightPool
             {
                 for (int x = x0; x < x1; x++)
                 {
-                    var c = cells[y * world.W + x];
+                    var c = world.At(x, y);
                     if (c.Fire > 0) burning.Add((x, y, c.Fire));
                     else if (CellLavaMesh.IsLava(c)) burning.Add((x, y, 1));
                 }

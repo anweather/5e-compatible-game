@@ -560,7 +560,7 @@ public partial class ChemGrid
             int index = y * World.W + x;
             var v = views[index];
             if (v?.terrain == null || !looksOwed.Contains(v.terrain)) continue;
-            var c = World.Cells[index];
+            var c = World.CellAt(index);
             if (c != null) Redress(v, c, x, y, false);
         }
     }
@@ -710,7 +710,7 @@ public partial class ChemGrid
     void RenderCell(int x, int y)
     {
         int index = y * World.W + x;
-        var c = World.Cells[index];
+        var c = World.CellAt(index);
         var v = views[index];
         int key = Key(c);
         if (key == v.key && v.terrain == c.T && v.height == c.Height) return;

@@ -241,7 +241,7 @@ public partial class ChemGrid
         floesThawed.Clear();
         foreach (var kv in floes)
         {
-            var c = World.Cells[kv.Key];
+            var c = World.CellAt(kv.Key);
             if (!c.Frozen || c.Water <= 0) floesThawed.Add(kv.Key);
         }
         foreach (int key in floesThawed)
