@@ -28,6 +28,10 @@ using Debug = UnityEngine.Debug;
 // was drawn (draw calls, batches, SetPass calls, triangles, shadow casters), and a "PERF SPIKE" line for
 // every frame over 50 ms (written after the run: logging is itself slow).
 // -perf-list-markers also writes every marker there is to perf-markers.txt.
+// Every run logs a "PERF LOAD" line as it starts (the map, the seconds since start-up, its chunks); -perf-memory adds
+// "PERF MEMORY" lines (PerfMemory) at the start, as measuring begins and at the end. walkout walks the wizard east from
+// the nine's spawn out of the nine (onto the grass on the scale island); -perf-switches makes a sim-only rule switch
+// and a look-changing one during a fixed-camera run (PerfStage.Scale.cs, docs/perf/2026-11-10-scale.md).
 // The wildfire ends with shots with and without FlameBank's flames (FlameShots),
 // so a script can count the pixels Prototype/Flame really drew.
 //
@@ -64,7 +68,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout" };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast", "draw", "blockers", "chunk" };
 
@@ -105,6 +109,9 @@ public class PerfScenario : MonoBehaviour
         early = new PerfMarkers();
         earlyFrom = Time.realtimeSinceStartupAsDouble;
         scenario = Arg("-perf-scenario");
+        // The scene is up and the map made: the load, and what it holds (-perf-memory, slow).
+        Debug.Log($"PERF LOAD map={ChemGrid.MapId} since_start_s={Time.realtimeSinceStartup.ToString("0.00", CultureInfo.InvariantCulture)} keep_start_ms={ChemGrid.KeepStartMs.ToString("0", CultureInfo.InvariantCulture)} chunks={ChemGrid.Current?.World.ChunkCoords.Count ?? 0} active_chunks={ChemGrid.Current?.World.ActiveChunks.Count ?? 0}");
+        if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("start"));
         ReadTimes();
         DrawOffscreenIfAsked();
         if (Arg("-perf-pso-diff") != null)
@@ -131,6 +138,7 @@ public class PerfScenario : MonoBehaviour
         if (scenario != Wildfire && scenario != Fog) yield return new WaitForSecondsRealtime(SettleSeconds);
         if (stage != null) stage.Go = true;
 
+        if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("measure"));
         early.Dispose();
         early = null;
         markers = new PerfMarkers(Has("-perf-wide"));
@@ -359,6 +367,7 @@ public class PerfScenario : MonoBehaviour
         double elapsed = Time.realtimeSinceStartupAsDouble - startedAt;
         CountCells();
         Debug.Log(ResultLine(elapsed));
+        if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("end"));
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
         Debug.Log($"PERF RENDER scenario={scenario}{markers.RenderSummary()}");
