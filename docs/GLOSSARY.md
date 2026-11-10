@@ -160,7 +160,13 @@ touch them.
 : A **generated map** is made from a **world file**, its `map.json` with a `generated` section: the seed, its size in
   world squares, the generator's version and the world squares pinned to another map's folder (the nine pins the
   valley). Its other files are a **bake** (`GeneratedMap.Bake`), written beside it and never committed; its map hash is
-  over its inputs, not the bake.
+  over its inputs, not the bake. A bake is made and written a **row of chunks** at a time, each dropped once written
+  (`GeneratedMap.Bake.cs`), so it holds two rows whatever the map's size.
+
+**Water run**
+: A row's unbroken stretch of cells below the water level, west to east. A place's water bodies (`places.json`'s
+  generated seas and lakes) are runs joined to the runs of the row above that share a column with them (`WaterRuns`),
+  found a row at a time as a bake writes its land.
 
 **Wrap / seam / wall row**
 : A world that **wraps** east-west (map.json's `"wrap": "ew"`, `PlanWrap.EastWest`) joins its east edge to its west:
@@ -172,6 +178,19 @@ touch them.
 : Where a generated map's land comes round to a pinned map's own (the valley's) outside its rim: over at least 90 cells,
   wider (up to 240) where the rim stands far above or below the land beside it, reading the rim as a mean along it so the
   land is smooth both ways (`ChunkGen.MeetPinned`).
+
+**Pinned block**
+: A generated map pinned whole into a bigger one (a world file's `pinned` naming a generated map: the scale island pins
+  the nine). Its world squares are **held**: they keep the templates, turns and bands its own plan gave them
+  (`PlanInputs.Held`), its valley is the bigger plan's, and its chunks, known chunks, spawns and far landmarks are its
+  own generator's, moved (`PinnedSquare.Inner`). The land round it meets its rim as round a pinned square.
+
+**Forced square**
+: A world square whose template a world file sets instead of the solve (`generated.forced`: a picture of the map, a
+  character a world square, and a legend of templates and bands; `PlanInputs.Forced`): the sea's open water, the
+  band's filler, a landmark's template. The solve keeps J-080's rules round it, and one whose template can't stand
+  there takes its band's filler and says so (`WorldPlan.ForcedMisses`). A test map's tool (the scale island), not how
+  the real world is made.
 
 **Massif / grain**
 : High ground in a generated map shaped as mountains, not one cap (`ChunkGen.Massif`): land more than 60 m up is

@@ -98,7 +98,7 @@ namespace Chem
         }
     }
 
-    /// <summary>The plan's far landmarks, in the plan's order: its landmarks, then outcrops, then waystations.</summary>
+    /// <summary>The plan's far landmarks, in the plan's order: its landmarks, then outcrops, then waystations, then a pinned block's.</summary>
     public sealed class FarLandmarks
     {
         public readonly IReadOnlyList<FarLandmark> All;
@@ -144,6 +144,17 @@ namespace Chem
                 var w = plan.Waystations[k];
                 Add(w.Kind, "waystation", k, w.Square, w.SiteX, w.SiteY, null);
             }
+            // A pinned block's are its own plan's (its index in that plan's lists) on its own map, moved to where it lies.
+            var inner = gen.Pinned?.Inner;
+            if (inner != null)
+                foreach (var l in Make(inner, table).All)
+                {
+                    if (l.X < 0 || l.Y < 0 || l.X >= inner.CellsW || l.Y >= inner.CellsH) continue;
+                    l.X += gen.PinnedX;
+                    l.Y += gen.PinnedY;
+                    l.Square = plan.Grid.Index(gen.OriginX + l.X / ChunkGen.Square, gen.OriginY + l.Y / ChunkGen.Square);
+                    all.Add(l);
+                }
             return new FarLandmarks(all);
         }
 

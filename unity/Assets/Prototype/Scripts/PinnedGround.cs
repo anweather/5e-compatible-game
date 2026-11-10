@@ -36,29 +36,60 @@ public static class PinnedGround
     /// </summary>
     public static int Lay(GroundPack ground, TerrainGrid layout, GroundPack pinned, int pinnedW, int pinnedH, int atX, int atY)
     {
+        var index = ground.Chunks.Select((c, n) => (c, n)).ToDictionary(p => (p.c.I, p.c.J), p => p.n);
+        GroundChunk Own((int i, int j) at) => ground.Chunks[index[at]];
+        var (laid, make) = Over(ground, layout, pinned, pinnedW, pinnedH, atX, atY, Own, at => index.ContainsKey(at), at => (Own(at).Resolution, Own(at).Texels));
+        foreach (var (at, n) in index) ground.Chunks[n] = make(at);
+        return laid;
+    }
+
+    /// <summary>
+    /// Lays every pinned map's ground/ pack into a generated map's ground made a chunk at a time (#205): what
+    /// <paramref name="make"/> makes, as Lay would leave it. <paramref name="ground"/> holds what the chunks share and takes
+    /// the pinned maps' range and river now. Returns how many chunks are pinned, and the new way to make one.
+    /// </summary>
+    public static (int laid, Func<(int i, int j), GroundChunk> make) LayLazily(GroundPack ground, TerrainGrid layout, string mapDir, Func<(int i, int j), GroundChunk> make)
+    {
+        int laid = 0;
+        foreach (var (dir, x, y) in GeneratedMap.PinnedSquares(mapDir))
+        {
+            if (!GroundPack.In(dir)) continue;
+            var pinnedMap = MapFile.Load(dir);
+            var (n, over) = Over(ground, layout, GroundPack.Load(dir), pinnedMap.W, pinnedMap.H, x, y, make, at => layout.HasChunk(at.i, at.j),
+                at => (layout.Resolution(at.i, at.j), layout.TexelResolution(at.i, at.j)));
+            laid += n;
+            make = over;
+        }
+        return (laid, make);
+    }
+
+    // One pinned pack over the ground <paramref name="under"/> makes (its chunks in ground's range as it is now): the pinned
+    // chunks moved to their square, every other chunk in the two's range, and those beside the square eased to meet it. The
+    // ground takes the range and the river now; the function returned may be called side by side.
+    static (int laid, Func<(int i, int j), GroundChunk> make) Over(GroundPack ground, TerrainGrid layout, GroundPack pinned, int pinnedW, int pinnedH, int atX, int atY,
+        Func<(int i, int j), GroundChunk> under, Func<(int i, int j), bool> has, Func<(int i, int j), (int res, int texels)> sizeOf)
+    {
         var (di, dj) = MapFile.ChunkShift(layout.GridH, pinnedH, atX, atY);
         // One height range for both, so each keeps its metres.
+        double was0 = ground.Bottom, was1 = ground.Top;
         double bottom = Math.Min(ground.Bottom, pinned.Bottom), top = Math.Max(ground.Top, pinned.Top);
-        foreach (var c in ground.Chunks) Rescale(c, ground.Bottom, ground.Top, bottom, top);
         var paint = Remap(pinned.Layers, ground.Layers, "paint layer");
         var grass = Remap(pinned.Grasses, ground.Grasses, "grass");
         var trees = Remap(pinned.TreeKinds, ground.TreeKinds, "tree kind");
-        var index = ground.Chunks.Select((c, n) => (c, n)).ToDictionary(p => (p.c.I, p.c.J), p => p.n);
-        var square = new HashSet<(int i, int j)>();
+        var square = new Dictionary<(int i, int j), GroundChunk>();
         foreach (var from in pinned.Chunks)
         {
             var at = (from.I + di, from.J + dj);
-            if (!index.TryGetValue(at, out int n)) continue;
+            if (!has(at)) continue;
             // The layout's chunk must be the pinned one's size: the terrain is made at the chunk's and the cells drawn on
             // it at the layout's (#183: a build's layout had lost the pinned map's full detail, and no world was made).
-            var over = ground.Chunks[n];
-            if (over.Resolution != from.Resolution || over.Texels != from.Texels)
+            var (res, texels) = sizeOf(at);
+            if (res != from.Resolution || texels != from.Texels)
                 throw new InvalidDataException($"The pinned ground's chunk ({from.I}, {from.J}) is {from.Resolution} samples and {from.Texels} texels a side, " +
-                    $"and this map draws its chunk ({at.Item1}, {at.Item2}) at {over.Resolution} and {over.Texels}: the map's full detail isn't its pinned map's");
+                    $"and this map draws its chunk ({at.Item1}, {at.Item2}) at {res} and {texels}: the map's full detail isn't its pinned map's");
             var c = Moved(from, at, ground.Layers.Length, ground.Grasses.Length, paint, grass, trees);
             Rescale(c, pinned.Bottom, pinned.Top, bottom, top);
-            ground.Chunks[n] = c;
-            square.Add(at);
+            square[at] = c;
         }
         ground.Bottom = bottom;
         ground.Top = top;
@@ -73,8 +104,16 @@ public static class PinnedGround
         }
         ground.ChannelCells = cells.ToArray();
         ground.ChannelDepths = depths.ToArray();
-        if (square.Count > 0) Seam(ground, square);
-        return square.Count;
+        var box = square.Count > 0 ? new Square(square.Keys) : null;
+        GroundChunk Make((int i, int j) at)
+        {
+            if (square.TryGetValue(at, out var pinnedChunk)) return pinnedChunk;
+            var c = under(at);
+            Rescale(c, was0, was1, bottom, top);
+            if (box != null && box.Beside(at.i, at.j)) Ease(bottom, top, c, box, square);
+            return c;
+        }
+        return (square.Count, Make);
     }
 
     // A pinned chunk as this map's chunk (i, j): its heights as they are, its paint, grass and trees by this map's lists.
@@ -115,16 +154,9 @@ public static class PinnedGround
         for (int k = 0; k < c.Heights.Length; k++) c.Heights[k] = Step(Metres(c.Heights[k], fromBottom, fromTop), bottom, top);
     }
 
-    // The generated chunks round the square eased to meet it: a sample SeamCells or nearer moves by the difference between
-    // the square's ground and its own chunk's at the nearest point of the square's edge, all of it at the edge and none at
-    // SeamCells (smoothly), so the shared edge is the square's and nothing inside the square changes.
-    static void Seam(GroundPack ground, HashSet<(int i, int j)> square)
-    {
-        var box = new Square(square);
-        var byAt = ground.Chunks.ToDictionary(c => (c.I, c.J));
-        foreach (var c in ground.Chunks)
-            if (!square.Contains((c.I, c.J)) && box.Beside(c.I, c.J)) Ease(ground, c, box, byAt);
-    }
+    // The generated chunks round the square are eased to meet it (Ease): a sample SeamCells or nearer moves by the difference
+    // between the square's ground and its own chunk's at the nearest point of the square's edge, all of it at the edge and
+    // none at SeamCells (smoothly), so the shared edge is the square's and nothing inside the square changes.
 
     // The pinned square's chunks as a box, in chunks and in cells (u east, v north).
     sealed class Square
@@ -132,7 +164,7 @@ public static class PinnedGround
         public readonly int I0, I1, J0, J1;
         public readonly double U0, U1, V0, V1;
 
-        public Square(HashSet<(int i, int j)> chunks)
+        public Square(ICollection<(int i, int j)> chunks)
         {
             int cells = TerrainGrid.ChunkCells;
             I0 = chunks.Min(s => s.i);
@@ -150,7 +182,7 @@ public static class PinnedGround
     }
 
     // One generated chunk beside the square, eased to meet it.
-    static void Ease(GroundPack ground, GroundChunk c, Square box, Dictionary<(int, int), GroundChunk> byAt)
+    static void Ease(double bottom, double top, GroundChunk c, Square box, Dictionary<(int, int), GroundChunk> byAt)
     {
         int cells = TerrainGrid.ChunkCells, res = c.Resolution;
         var own = (ushort[])c.Heights.Clone();
@@ -164,22 +196,22 @@ public static class PinnedGround
                 var (pi, pj) = box.ChunkAt(bu, bv);
                 if (d >= SeamCells || !byAt.TryGetValue((pi, pj), out var p)) continue;
                 // The square's ground at the edge point, and this chunk's own there (the point is on its rim).
-                double mine = Sample(own, res, (bu - c.I * cells) * per, (bv - c.J * cells) * per, ground);
+                double mine = Sample(own, res, (bu - c.I * cells) * per, (bv - c.J * cells) * per, bottom, top);
                 double across = (p.Resolution - 1) / (double)cells;
-                double theirs = Sample(p.Heights, p.Resolution, (bu - pi * cells) * across, (bv - pj * cells) * across, ground);
+                double theirs = Sample(p.Heights, p.Resolution, (bu - pi * cells) * across, (bv - pj * cells) * across, bottom, top);
                 double t = d / SeamCells, ease = 1 - t * t * (3 - 2 * t);
-                c.Heights[sz * res + sx] = Step(Metres(own[sz * res + sx], ground.Bottom, ground.Top) + (theirs - mine) * ease, ground.Bottom, ground.Top);
+                c.Heights[sz * res + sx] = Step(Metres(own[sz * res + sx], bottom, top) + (theirs - mine) * ease, bottom, top);
             }
     }
 
     // A chunk's ground in metres at sample position (x, z), between its samples.
-    static double Sample(ushort[] heights, int res, double x, double z, GroundPack ground)
+    static double Sample(ushort[] heights, int res, double x, double z, double bottom, double top)
     {
         x = Math.Max(0, Math.Min(res - 1, x));
         z = Math.Max(0, Math.Min(res - 1, z));
         int x0 = Math.Min(res - 2, (int)Math.Floor(x)), z0 = Math.Min(res - 2, (int)Math.Floor(z));
         double fx = x - x0, fz = z - z0;
-        double H(int a, int b) => Metres(heights[b * res + a], ground.Bottom, ground.Top);
+        double H(int a, int b) => Metres(heights[b * res + a], bottom, top);
         return (H(x0, z0) * (1 - fx) + H(x0 + 1, z0) * fx) * (1 - fz) + (H(x0, z0 + 1) * (1 - fx) + H(x0 + 1, z0 + 1) * fx) * fz;
     }
 }

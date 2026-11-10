@@ -106,7 +106,9 @@ public class MapSwitchProbe : ProbeScenario
         var terrains = FindAnyObjectByType<MapTerrains>();
         int chunks = terrains != null ? terrains.Chunks.Length : 0, wanted = land.Layout.ChunksX * land.Layout.ChunksZ;
         int allChunks = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
-        Check($"{name}_chunks_are_the_maps", chunks == wanted && allChunks == wanted, $"{chunks} chunks of {wanted}, {allChunks} terrains in the scene");
+        // A generated map makes terrains only for the drawn tier (#205): as many as stand and wait in the pool, none more.
+        int terrainsWanted = terrains != null && terrains.Lazy ? terrains.Counts.created : wanted;
+        Check($"{name}_chunks_are_the_maps", chunks == wanted && allChunks == terrainsWanted && allChunks > 0, $"{chunks} chunks of {wanted}, {allChunks} terrains in the scene ({terrainsWanted} made)");
         var ocean = Ocean.Instance;
         Check($"{name}_sea_level_is_the_maps", ocean == null || Mathf.Abs(ocean.level - land.WaterLevel) < 1e-4f, $"sea {(ocean != null ? ocean.level : float.NaN)}, map {land.WaterLevel}");
 

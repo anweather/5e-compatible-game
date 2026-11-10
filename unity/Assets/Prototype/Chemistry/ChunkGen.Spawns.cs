@@ -12,7 +12,8 @@ namespace Chem
     {
         public int Square, X, Y;
         public string Near;
-        public bool Pinned;
+        /// <summary>The pinned valley's (its own map's spawn); <see cref="Held"/>, a pinned block's own, from its generator.</summary>
+        public bool Pinned, Held;
     }
 
     public sealed partial class ChunkGen
@@ -33,12 +34,20 @@ namespace Chem
             {
                 var (x, y) = MapCell(s.Square, s.SiteX, s.SiteY);
                 if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) continue;
-                bool pinned = Pinned != null && s.Square == Pinned.Square;
+                bool pinned = InPinnedSquare(s.Square);
                 spawns.Add(new MapSpawn { Square = s.Square, X = x, Y = y, Near = s.Near, Pinned = pinned });
                 // The land at the spot as it would be with no clearing (none is laid yet).
                 if (!pinned) level.Add((x, y, (long)LandAt(x, y) * Q));
             }
             clearings.AddRange(level);
+            if (Pinned?.Inner == null) return;
+            // A block's spawns are its own, moved; its chunks hold their clearings already. In the plan's order.
+            foreach (var s in Pinned.Inner.Spawns)
+            {
+                int x = s.X + PinnedX, y = s.Y + PinnedY;
+                spawns.Add(new MapSpawn { Square = Plan.Grid.Index(OriginX + x / Square, OriginY + y / Square), X = x, Y = y, Near = s.Near, Pinned = s.Pinned, Held = true });
+            }
+            spawns.Sort((a, b) => a.Square.CompareTo(b.Square));
         }
 
         // Levels a cell in a spawn's clearing to the spot's land, and leans its bank back; whether it is in a clearing.

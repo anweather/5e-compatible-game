@@ -53,6 +53,29 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ANewWorldStartsWithOnlyTheReachActiveTheSameOnEveryPeer()
+        {
+            // #209: a world just built has every chunk active; the start plan leaves only the start's reach.
+            var host = Meadow(3, 9);
+            var joiner = Meadow(3, 9);
+            var start = new[] { Middle(1, 7) };
+            var plan = ChunkStreaming.StartPlan(host, start);
+            Assert.That(plan.All(s => !s.Active), "the start plan only deactivates");
+            ChunkStreaming.Apply(host, plan);
+            ChunkStreaming.Apply(joiner, ChunkStreaming.StartPlan(joiner, start));
+            Assert.That(Active(host), Is.EquivalentTo(Square(0, 5, 3, 8)), "the reach of 2, clipped to the world");
+            Assert.That(Active(joiner), Is.EquivalentTo(Active(host)), "a late joiner starts with the same chunks");
+            Assert.That(ChunkStreaming.StartPlan(host, start), Is.Empty, "a second start plan changes nothing");
+            Assert.That(ChunkStreaming.StartPlan(Meadow(3, 9), System.Array.Empty<(int, int)>()), Is.Empty, "with no characters nothing changes");
+            for (int t = 0; t < 30; t++)
+            {
+                host.Step();
+                joiner.Step();
+            }
+            Assert.That(joiner.CellHash(), Is.EqualTo(host.CellHash()), "the two peers run the same ticks");
+        }
+
+        [Test]
         public void StreamingDistancesAreChecked()
         {
             IReadOnlyList<string> Errors(string streaming) =>

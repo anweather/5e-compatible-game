@@ -37,6 +37,8 @@ namespace Chem
         bool[] col;
         Dictionary<string, int> used = new Dictionary<string, int>(StringComparer.Ordinal);
         readonly List<int> fillers = new List<int>();
+        // Forced squares no turn of whose template fits their band and coast.
+        readonly HashSet<int> unfit = new HashSet<int>();
         readonly Stack<Frame> stack = new Stack<Frame>();
         int steps, picks, backtracks;
 
@@ -66,6 +68,8 @@ namespace Chem
             col = new bool[n];
             for (int i = 0; i < n; i++)
             {
+                int h = plan.HeldSquare(i);
+                if (h >= 0) { dom[i] = new[] { plan.Inputs.Held.Options[h].Index }; continue; }
                 if (i == plan.Valley) { dom[i] = new[] { lib.ValleyOption }; continue; }
                 if (plan.Wall[i] != 0)
                 {
@@ -74,10 +78,38 @@ namespace Chem
                     continue;
                 }
                 var c = plan.Coasts[i];
+                var forced = plan.ForcedAt(i);
+                if (forced != null && IsFiller(forced.Template))
+                {
+                    Fill(i);
+                    continue;
+                }
                 var keep = new List<int>();
                 foreach (int id in lib.ByBand[plan.Band[i]])
-                    if (Fits(lib.Options[id], i, c)) keep.Add(id);
+                    if ((forced == null || lib.Options[id].Template.Id == forced.Template) && Fits(lib.Options[id], i, c)) keep.Add(id);
+                if (forced != null && keep.Count == 0)
+                {
+                    plan.ForcedMisses.Add($"({grid.X(i)}, {grid.Y(i)}) {forced.Template}: no turn of it fits the {lib.BandIds[plan.Band[i]]} band and its coast");
+                    unfit.Add(i);
+                    Fill(i);
+                    continue;
+                }
                 dom[i] = keep.ToArray();
+            }
+        }
+
+        // A forced square's "filler", or a filler's own id: the square takes its band's.
+        bool IsFiller(string template) => template == ForcedSquare.Filler || lib.Templates.Exists(t => t.Id == template && t.Filler);
+
+        // The held squares (a pinned block's) are settled before anything else, as their own plan has them, so the
+        // squares round them meet them and no copy of their templates stands within 3 of them.
+        void Hold()
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (plan.HeldSquare(i) < 0 || col[i]) continue;
+                int bad = Collapse(i, dom[i][0]);
+                if (bad >= 0) Resolve(bad);
             }
         }
 
@@ -105,11 +137,21 @@ namespace Chem
             for (int i = 0; i < n; i++) all.Add(i);
             int bad = Propagate(all, false);
             if (bad >= 0) Resolve(bad);
+            Hold();
             PlaceMusts();
             bool more = true;
             while (more) more = Step();
             plan.Options = new SquareOption[n];
-            for (int i = 0; i < n; i++) plan.Options[i] = lib.Options[dom[i][0]];
+            for (int i = 0; i < n; i++)
+            {
+                plan.Options[i] = lib.Options[dom[i][0]];
+                var f = plan.ForcedAt(i);
+                if (f != null && !IsFiller(f.Template) && plan.Options[i].Template.Id != f.Template && !unfit.Contains(i))
+                    plan.ForcedMisses.Add($"({grid.X(i)}, {grid.Y(i)}) {f.Template}: took {plan.Options[i].Template.Id}, its neighbours or a copy within {RepeatGap} squares leaving it nothing");
+                int h = plan.HeldSquare(i);
+                if (h >= 0 && plan.Options[i].Index != plan.Inputs.Held.Options[h].Index)
+                    plan.Problems.Add($"({grid.X(i)}, {grid.Y(i)}): a held square took {plan.Options[i].Template.Id}, not its own plan's {plan.Inputs.Held.Options[h].Template.Id}");
+            }
             plan.Fillers.AddRange(fillers);
             plan.Steps = steps;
             plan.Picks = picks;

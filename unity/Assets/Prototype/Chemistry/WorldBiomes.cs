@@ -103,21 +103,23 @@ namespace Chem
         internal int PlanRow(int fy) => gridH * Square - 1 - fy;
 
         /// <summary>The bands' altitude at a plan point (Q16 cells, y south), between world square centres.</summary>
-        internal long Altitude(long xq, long yq) => Between(xq, yq, (x, y) => altitude[y * gridW + x]);
+        internal long Altitude(long xq, long yq) => Between(xq, yq, altitude, gridW);
 
         /// <summary>Latitude's coldness at a plan point, 0 desert to 1 ice, between row centres.</summary>
-        internal long Cold(long xq, long yq) => Between(xq, yq, (x, y) => cold[y]);
+        internal long Cold(long xq, long yq) => Between(xq, yq, cold, 0);
 
         // Bilinear between the four world square centres round a point, round the seam where the world wraps, held at the
-        // edge rows and columns where it doesn't.
-        long Between(long xq, long yq, Func<int, int, long> at)
+        // edge rows and columns where it doesn't. The values are per square (a row <paramref name="stride"/> long) or, with
+        // a stride of 0, per row; an array, not a lambda, so a point allocates nothing.
+        long Between(long xq, long yq, long[] values, int stride)
         {
             long u = xq / Square - One / 2, v = yq / Square - One / 2;
             long ix = BiomeMath.FloorDiv(u, One), iy = BiomeMath.FloorDiv(v, One);
             long fx = u - ix * One, fy = v - iy * One;
             int X(long a) => wrapX ? (int)BiomeMath.Mod(a, gridW) : (int)Math.Max(0, Math.Min(gridW - 1, a));
             int Y(long a) => (int)Math.Max(0, Math.Min(gridH - 1, a));
-            long a0 = at(X(ix), Y(iy)), b0 = at(X(ix + 1), Y(iy)), c0 = at(X(ix), Y(iy + 1)), d0 = at(X(ix + 1), Y(iy + 1));
+            long At(int x, int y) => stride == 0 ? values[y] : values[y * stride + x];
+            long a0 = At(X(ix), Y(iy)), b0 = At(X(ix + 1), Y(iy)), c0 = At(X(ix), Y(iy + 1)), d0 = At(X(ix + 1), Y(iy + 1));
             long top = a0 + (b0 - a0) * fx / One, bottom = c0 + (d0 - c0) * fx / One;
             return top + (bottom - top) * fy / One;
         }

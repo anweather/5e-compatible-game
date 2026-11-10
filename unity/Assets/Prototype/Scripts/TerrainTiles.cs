@@ -39,6 +39,8 @@ public sealed class TerrainTiles
     // The first terrain holding the point, as asking each in turn would find it (a shared edge goes to either).
     public Terrain At(Vector3 p)
     {
+        // A generated map's terrains come and go with the drawn tier (#205): asked of MapTerrains, by tile, each time.
+        if (Pooled is { } map) return map.TerrainAt(p);
         if (!tiled) return First(all, p);
         int i = Mathf.FloorToInt((p.x - x0) / w), j = Mathf.FloorToInt((p.z - z0) / d);
         for (int dj = 0; dj >= -1; dj--)
@@ -62,11 +64,14 @@ public sealed class TerrainTiles
     }
 
     /// <summary>Whether it found any terrain to hold.</summary>
-    public bool Any => all.Length > 0;
+    public bool Any => all.Length > 0 || Pooled != null;
+
+    static MapTerrains Pooled => MapTerrains.Instance != null && MapTerrains.Instance.Lazy ? MapTerrains.Instance : null;
 
     /// <summary>The drawn ground's height under a point, or null off every terrain.</summary>
     public float? HeightAt(Vector3 p)
     {
+        if (Pooled is { } map) return map.HeightAt(p);
         var t = At(p);
         return t != null ? t.SampleHeight(p) + t.transform.position.y : null;
     }

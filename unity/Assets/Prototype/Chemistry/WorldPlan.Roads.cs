@@ -45,7 +45,8 @@ namespace Chem
                         if (f.Kind == EdgeKind.Range) ranges++;
                         else if (f.Kind == EdgeKind.River) rivers++;
                         else if (f.Kind == EdgeKind.Canyon) canyons++;
-                roadOk[i] = Band[i] >= 1 && Band[i] <= 3 && Wall[i] == 0 && !Options[i].Sea && (ranges < 2 || Options[i].Template.Pass);
+                // A held square's roads are its own plan's: none comes in from this one.
+                roadOk[i] = Band[i] >= 1 && Band[i] <= 3 && Wall[i] == 0 && !Options[i].Sea && (ranges < 2 || Options[i].Template.Pass) && held[i] < 0;
                 if (Band[i] == 0 || Options[i].Sea) continue;
                 barRiver[i] = rivers >= 2;
                 barCanyon[i] = canyons >= 2;

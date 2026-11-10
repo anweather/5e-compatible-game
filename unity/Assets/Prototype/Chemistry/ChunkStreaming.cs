@@ -85,6 +85,33 @@ namespace Chem
             return near;
         }
 
+        /// <summary>
+        /// The switches that leave only the chunks within reach of these characters active, for a
+        /// world just built (every chunk starts active): every active chunk further than the reach
+        /// from every character deactivates, by row then column. The keep distance and lingering
+        /// don't come in, since nothing has moved or burned yet. Every peer builds its world from
+        /// the same map and start, so each applies the same switches before the first tick (#209).
+        /// With no characters nothing changes.
+        /// </summary>
+        public static List<ChunkSwitch> StartPlan(World world, IReadOnlyList<(int x, int y)> characters)
+        {
+            if (world == null) throw new ArgumentNullException(nameof(world));
+            return StartPlan(world.ChunkCoords, world.IsActive, characters, world.Rules.Sim.Streaming.Reach);
+        }
+
+        /// <summary>StartPlan against a set of chunks and which are active (for a host planning a reset it hasn't run yet).</summary>
+        public static List<ChunkSwitch> StartPlan(IReadOnlyList<(int cx, int cy)> chunks, Func<int, int, bool> isActive,
+            IReadOnlyList<(int x, int y)> characters, int reach)
+        {
+            if (chunks == null) throw new ArgumentNullException(nameof(chunks));
+            if (isActive == null) throw new ArgumentNullException(nameof(isActive));
+            var plan = new List<ChunkSwitch>();
+            if (characters == null || characters.Count == 0) return plan;
+            foreach (var (cx, cy) in chunks)
+                if (isActive(cx, cy) && Nearest(characters, cx, cy) > reach) plan.Add(new ChunkSwitch(cx, cy, false));
+            return plan;
+        }
+
         /// <summary>Applies switches to the world (unknown chunks are skipped). Between ticks, the same on every peer.</summary>
         public static void Apply(World world, IEnumerable<ChunkSwitch> switches)
         {

@@ -36,7 +36,7 @@ namespace Chem
         {
             for (int i = 0; i < Count; i++)
             {
-                if (!IsLand(i) || Options[i].Sea || Band[i] >= Library.Lands - 1) continue;
+                if (!IsLand(i) || Options[i].Sea || Band[i] >= Library.Lands - 1 || held[i] >= 0) continue; // a held square's are its own plan's
                 PlanSpawn spawn;
                 if (i == Valley && Inputs.ValleySpawn.HasValue)
                 {
