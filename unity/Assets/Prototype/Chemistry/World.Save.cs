@@ -355,6 +355,17 @@ namespace Chem
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
         JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
         {
+            var o = SaveChunkHeader(ch);
+            var fire = Enumerable.Range(0, Chunks.Area).Where(i => ch.FireGeneration[i] != 0).Select(i => new JArray(i, ch.FireGeneration[i])).ToList();
+            if (fire.Count > 0) o["fireGen"] = new JArray(fire);
+            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.CellAt(i), LiquidsOf(ch))).ToList();
+            if (cells.Count > 0) o["cells"] = new JArray(cells);
+            return o;
+        }
+
+        // A chunk's coordinates and streaming state (SaveChunk's, and a packed chunk's, World.Pack.cs).
+        JObject SaveChunkHeader(Chunk ch)
+        {
             var o = new JObject { ["x"] = ch.X, ["y"] = ch.Y };
             if (!ch.Active) o["inactive"] = true;
             if (ch.LastLive != NeverLive) o["live"] = ch.LastLive;
@@ -363,10 +374,6 @@ namespace Chem
             if (ch.CaughtUp != 0) o["caughtUp"] = ch.CaughtUp;
             if (ch.Changed != 0) o["changed"] = ch.Changed;
             if (ch.Fit != fits) o["fit"] = ch.Fit;
-            var fire = Enumerable.Range(0, Chunks.Area).Where(i => ch.FireGeneration[i] != 0).Select(i => new JArray(i, ch.FireGeneration[i])).ToList();
-            if (fire.Count > 0) o["fireGen"] = new JArray(fire);
-            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.CellAt(i), LiquidsOf(ch))).ToList();
-            if (cells.Count > 0) o["cells"] = new JArray(cells);
             return o;
         }
 

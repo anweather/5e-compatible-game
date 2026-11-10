@@ -57,15 +57,18 @@ namespace Chem.Tests
 
         internal static void ValleyScript(World w, int ticks)
         {
-            for (int t = 0; t < ticks; t++)
-            {
-                if (t == 20) w.Cast("gust-of-wind", 100, 64, 1);
-                if (t == 40) w.Cast("ray-of-frost", 60, 60, 2);
-                if (t == 60) w.Cast("shocking-grasp", 65, 65, 0);
-                if (t == 80) w.Cast("move-earth", 64, 127, 0);
-                if (t == 90) w.Cast("thunderwave", 128, 64, 0);
-                w.Step();
-            }
+            for (int t = 0; t < ticks; t++) ValleyScriptTick(w, t);
+        }
+
+        /// <summary>Tick t of ValleyScript: its cast for that tick, if any, then the step.</summary>
+        internal static void ValleyScriptTick(World w, int t)
+        {
+            if (t == 20) w.Cast("gust-of-wind", 100, 64, 1);
+            if (t == 40) w.Cast("ray-of-frost", 60, 60, 2);
+            if (t == 60) w.Cast("shocking-grasp", 65, 65, 0);
+            if (t == 80) w.Cast("move-earth", 64, 127, 0);
+            if (t == 90) w.Cast("thunderwave", 128, 64, 0);
+            w.Step();
         }
 
         // ---------- all chunks active: exactly the old behaviour ----------
