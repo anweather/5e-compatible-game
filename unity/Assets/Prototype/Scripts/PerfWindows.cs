@@ -83,6 +83,7 @@ public sealed class PerfWindows
         line.Append($" weather={world.Weather.Kind} chunks={world.ActiveChunks.Count} burning={burning} flames={grid.Flames.CellsBurning}");
         line.Append($" near_fire={BurningNearWizard()}");
         line.Append($" lights={LightsOn()} particles={ParticlesAlive()} gen0={GC.CollectionCount(0) - collectionsAtOpen}");
+        line.Append($" at={WizardChunk()} drawn_chunks={grid.ChunksDrawn} blockers={grid.BlockersStanding}{Bodies()}");
         foreach (var pair in counted.OrderBy(c => c.Key, StringComparer.Ordinal)) line.Append($" {pair.Key}={pair.Value.ToString(Plain)}");
         line.Append(markers);
         lines.Add(line.ToString());
@@ -97,6 +98,15 @@ public sealed class PerfWindows
     }
 
     // Cells burning within 10 of the wizard: whether a walk really goes through the fire.
+    // The chunk the wizard stands in, so a cost that follows the place can be told from one that grows with the walk.
+    string WizardChunk()
+    {
+        var wizard = WizardRig.FindLocal();
+        if (wizard == null) return "none";
+        var at = grid.CellAt(wizard.transform.position);
+        return $"{at.x / Chem.Chunks.Size},{at.y / Chem.Chunks.Size}";
+    }
+
     int BurningNearWizard()
     {
         var wizard = WizardRig.FindLocal();
@@ -114,6 +124,14 @@ public sealed class PerfWindows
     static int LightsOn() => UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Count(l => l.type != LightType.Directional);
 
     static int ParticlesAlive() => UnityEngine.Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None).Sum(p => p.particleCount);
+
+    // What physics has to carry: every collider and body in the scene, and how many bodies are awake (#184).
+    static string Bodies()
+    {
+        var bodies = UnityEngine.Object.FindObjectsByType<Rigidbody>(FindObjectsSortMode.None);
+        int colliders = UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsSortMode.None).Length;
+        return $" colliders={colliders} bodies={bodies.Length} bodies_awake={bodies.Count(b => !b.IsSleeping())} bodies_kinematic={bodies.Count(b => b.isKinematic)}";
+    }
 
     static string Num(double value) => value.ToString("0.0", Plain);
 }

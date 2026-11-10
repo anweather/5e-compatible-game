@@ -220,7 +220,9 @@ public partial class ChemGrid
     }
 
     // What stands on the cells of a terrain whose look changed, drawn again from the rules now in
-    // force: every peer runs this at the same switch, with no scene load and no asset. Only the view moves.
+    // force: every peer runs this at the same switch, with no scene load and no asset. Only the view moves. The
+    // chunks drawn so far are queued, nearest first, and built again a few rows a frame (RedrawSomeLooks); a chunk
+    // drawn later takes the look in force then. Every view of the map at once was 300 to 345 ms on the nine (#186).
     void RedrawLooks(Rules before)
     {
         var after = CurrentRules.Effective;
@@ -228,13 +230,7 @@ public partial class ChemGrid
             .Where(t => before.Terrain.TryGetValue(t.Id, out var was) && !LookDef.Same(was.Look, t.Look))
             .Select(t => t.Id));
         if (changed.Count == 0 || views == null) return;
-        for (int i = 0; i < views.Length; i++)
-        {
-            var v = views[i];
-            if (v?.terrain == null || !changed.Contains(v.terrain)) continue;
-            var c = World.Cells[i];
-            if (c != null) Redress(v, c, i % World.W, i / World.W, false);
-        }
+        QueueLooks(changed);
     }
 
     /// <summary>"Wildfire on", "Damp world off", "Wildfire reloaded", "Base rules reloaded", joined.</summary>

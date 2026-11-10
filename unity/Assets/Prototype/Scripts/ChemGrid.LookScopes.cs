@@ -173,12 +173,35 @@ public partial class ChemGrid
         groundScoped || (c.Fire > 0 && !fireLooks.Plain) || (c.Cover == CoverIds.Embers && !emberLooks.Plain)
         || (c.Gas != null && gasLooks.ContainsKey(c.Gas)) || (c.Cover != null && coverLooks.ContainsKey(c.Cover));
 
-    // Everything drawn from a colour, drawn again: a rule switch, or a player coming or going.
+    // Everything drawn from a colour, drawn again: a rule switch, or a player coming or going. Nothing is walked here:
+    // each drawn chunk marks its own views the next time its cells are looked over (CatchUpLooks), which is when the
+    // marks are first read. Marking every view of the map at once was 12 to 46 ms on the nine (#186).
     void MarkAllDrawn()
     {
-        if (views == null) return;
-        foreach (var v in views)
-            if (v != null && (groundScoped || v.fireLevel > 0 || v.gasKind != null || v.fogged || v.coverId != null)) v.key = int.MinValue;
+        lookStamp++;
+        if (groundScoped) groundStamp = lookStamp;
+    }
+
+    // How many times everything drawn from a colour has been asked to draw again (MarkAllDrawn), the last of them that
+    // took the ground along, and the count each chunk's views were last marked at.
+    int lookStamp, groundStamp;
+    int[] chunkLooks = System.Array.Empty<int>();
+
+    // A drawn chunk about to be looked over: its views drawn from a colour are marked, if MarkAllDrawn has run since.
+    void CatchUpLooks(int n, int cx, int cy)
+    {
+        if (chunkLooks[n] == lookStamp) return;
+        using var marked = MarkDrawnMarker.Auto();
+        bool ground = groundStamp > chunkLooks[n];
+        chunkLooks[n] = lookStamp;
+        int x0 = cx << Chunks.Shift, x1 = Mathf.Min(World.W, x0 + Chunks.Size);
+        int y0 = cy << Chunks.Shift, y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+        for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
+            {
+                var v = views[y * World.W + x];
+                if (v != null && (ground || v.fireLevel > 0 || v.gasKind != null || v.fogged || v.coverId != null)) v.key = int.MinValue;
+            }
     }
 
     // What a cast left on a cell: its own colour if a spell chose one or a fire caught a mix, and who cast it.
