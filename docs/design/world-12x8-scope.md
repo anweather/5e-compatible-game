@@ -184,3 +184,17 @@ The whole map's cells are more than this VM holds, so the costs come from a 6 x 
 a ring of grass with a village, the sea round it; 2916 chunks), baked in a world folder of its own in
 `ASmallCopyBakesAndMeetsTheSpawnsChecks`, and from making every chunk of the full map one at a time.
 
+| What | The 6 x 6 copy (2916 chunks) | The full map, carried at the same rate (9720 chunks) |
+|---|---|---|
+| Making its chunks (the bake's work) | 28.7 s, 9.8 ms a chunk | 96 s; **measured: 93 s** for every chunk made (`ItsExpectsAreWhatItsChunksMake`) |
+| Allocated by the bake | 27.8 GB (9.5 MB a chunk) | **90 GB** of garbage: the collector's work, not memory held |
+| The process's peak working set | 966 MB | not carried (the bake keeps every chunk's arrays until it writes) |
+| The baked files | 13 MB | 43 MB |
+| **The World a chunk** (cells, a `Cell` an object, and land) | **288 KB**, over the nine's 729 chunks | **2.7 GB** for the World alone, before the view |
+| Load (plan, the nine's plan, the block's rim) | 1.9 s | about the same: the plan solves in under a second |
+
+These are rates carried from a smaller map, not the full map measured; the PC bakes and loads the full map next. What
+looks not to scale, for the PC to confirm: the World's 288 KB a chunk (2.7 GB for 9720 chunks, all held at once
+today), the bake's allocation (9.5 MB a chunk, 90 GB a bake), and the bake holding every chunk before it writes.
+The far ring's landmarks repeat names across the map (two great trees are both "the Elder Oak"): its names come from
+a small list.
