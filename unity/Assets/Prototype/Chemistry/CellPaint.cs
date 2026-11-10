@@ -173,7 +173,14 @@ namespace Chem
         public static IReadOnlyList<float> Mix(World world, int x, int y, bool scorched = false)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
-            var c = world.At(x, y);
+            return Mix(world, x, y, world.At(x, y), scorched);
+        }
+
+        /// <summary>Weights at cell (x, y) as Mix(world, x, y) gives them, for <paramref name="c"/> standing there: a cell read some other way (a packed chunk's cell as made, World.Source) than through world.At.</summary>
+        public static IReadOnlyList<float> Mix(World world, int x, int y, Cell c, bool scorched = false)
+        {
+            if (world == null) throw new ArgumentNullException(nameof(world));
+            if (c == null) throw new ArgumentNullException(nameof(c));
             if (scorched || c.Cover != null) return Mix(world, c, scorched);
             // A floor a stamp cut a crag deep, a canyon's, is bare rock where it would grow grass, however rough: a trail on it keeps its earth.
             if (world.LandStampedAt(x, y) <= -World.LandCrag)
