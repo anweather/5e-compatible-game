@@ -246,6 +246,17 @@ namespace Chem
         /// <summary>The cell at a world index (Idx(x, y)), through its chunk; null off the world.</summary>
         public Cell CellAt(int index) => index >= 0 && index < W * H ? Locate(index % W, index / W, out _, out _) : null;
 
+        /// <summary>
+        /// The cells of chunk (cx, cy), read-only, by local index (ly * Chunks.Size + lx; null outside the world's
+        /// extent), or empty for a chunk not loaded. For a view's pass over a whole chunk (drawing its cells, the fire
+        /// lights), found once per chunk instead of per cell: a per-cell At there costs the frame ~0.6 ms on the nine.
+        /// </summary>
+        public ReadOnlySpan<Cell> ChunkCells(int cx, int cy)
+        {
+            var ch = FindChunk(cx, cy);
+            return ch == null ? ReadOnlySpan<Cell>.Empty : ch.ActiveCells;
+        }
+
         /// <summary>Every cell of the world in row order (Idx), through their chunks. Not for the tick: it allocates its enumerator.</summary>
         public IEnumerable<Cell> AllCells()
         {

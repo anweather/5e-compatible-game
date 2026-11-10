@@ -242,7 +242,7 @@ public class PerfScenario : MonoBehaviour
     void LookAtFire()
     {
         var world = grid.World;
-        var burning = Enumerable.Range(0, world.Cells.Length).Where(i => world.Cells[i].Fire > 0).ToList();
+        var burning = Enumerable.Range(0, world.W * world.H).Where(i => world.CellAt(i).Fire > 0).ToList();
         if (burning.Count == 0) return;
         int cell = burning[burning.Count / 2];
         var at = grid.CellCenter(cell % world.W, cell / world.W);
@@ -344,7 +344,7 @@ public class PerfScenario : MonoBehaviour
     {
         long from = Stopwatch.GetTimestamp();
         burningNow = fogNow = 0;
-        foreach (var c in grid.World.Cells)
+        foreach (var c in grid.World.AllCells())
         {
             if (c.Fire > 0) burningNow++;
             if (c.Gas == GasIds.Fog) fogNow++;

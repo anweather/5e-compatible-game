@@ -161,7 +161,7 @@ public partial class ChemGrid
 
     void Remark(int index)
     {
-        var c = World.Cells[index];
+        var c = World.CellAt(index);
         if (c == null || !LookReaches(c)) return;
         if (remarking.Add(index)) toRemark.Enqueue(index);
     }

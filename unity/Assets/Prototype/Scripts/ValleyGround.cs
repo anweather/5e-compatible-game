@@ -241,12 +241,11 @@ public sealed class ValleyGround
     // A made chunk's cells: their base from its heights (and the river's extra), their paint as it was made.
     void ReadCells(Chunk ch)
     {
-        var all = world.Cells;
         foreach (var (x, y) in layout.CellsIn(ch.at.i, ch.at.j))
         {
             int k = world.Idx(x, y);
             cellBase[k] = SampleBase(x, y) + (raised.TryGetValue(k, out float more) ? more : 0f);
-            bakedPaint[k] = paintedMix[k] = CellPaint.Mix(world, all[k]);
+            bakedPaint[k] = paintedMix[k] = CellPaint.Mix(world, world.At(x, y));
         }
     }
 
@@ -449,14 +448,13 @@ public sealed class ValleyGround
         Debug.Log($"GROUND BIND {(builder != null ? "built" : "baked")}: {chunks.Count} chunks in {BindMs:0} ms");
         // The valley's every cell, drawn whole from the start.
         NewCellArrays();
-        var all = w.Cells;
         for (int y = 0; y < w.H; y++)
         {
             for (int x = 0; x < w.W; x++)
             {
                 int k = w.Idx(x, y);
                 cellBase[k] = SampleBase(x, y);
-                bakedPaint[k] = paintedMix[k] = CellPaint.Mix(w, all[k]);
+                bakedPaint[k] = paintedMix[k] = CellPaint.Mix(w, w.At(x, y));
             }
         }
     }

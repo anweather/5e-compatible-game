@@ -29,13 +29,13 @@ public class SlantProbe : ProbeScenario
             at.y = grid.GroundAt(at);
             Cut(me + V(-4f, 5f, 1.5f), at);
             for (int i = 0; i < 3; i++) yield return null;
-            var before = World.Cells.Select(c => c.Height).ToArray();
+            var before = World.AllCells().Select(c => c.Height).ToArray();
             InputSystem.QueueStateEvent(pad, new GamepadState { rightTrigger = 1f });
             for (int i = 0; i < 2; i++) yield return null;
             InputSystem.QueueStateEvent(pad, new GamepadState());
             yield return Wait(1.5f);
 
-            var dug = Enumerable.Range(0, World.W * World.H).Where(i => World.Cells[i].Height < before[i]).Select(i => (x: i % World.W, y: i / World.W)).ToList();
+            var dug = Enumerable.Range(0, World.W * World.H).Where(i => World.CellAt(i).Height < before[i]).Select(i => (x: i % World.W, y: i / World.W)).ToList();
             Metric("dug_squares", dug.Count);
             int rows = dug.Select(c => c.y).Distinct().Count(), cols = dug.Select(c => c.x).Distinct().Count();
             Metric("rows", rows);
