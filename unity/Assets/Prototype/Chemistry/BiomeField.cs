@@ -138,7 +138,13 @@ namespace Chem
         /// <summary>The anchor biome's row index per square, [x, y] with y north; −1 for none.</summary>
         public int[,] Layout;
 
-        public int IndexOf(string id) => Rows.FindIndex(r => r.Id == id);
+        public int IndexOf(string id)
+        {
+            // A loop, not FindIndex with a lambda: a field reads a row's index for every cell it blends (bake-lean).
+            for (int i = 0; i < Rows.Count; i++)
+                if (Rows[i].Id == id) return i;
+            return -1;
+        }
 
         public static BiomeTable Load(string path) => Parse(File.ReadAllText(path));
 

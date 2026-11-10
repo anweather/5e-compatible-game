@@ -221,17 +221,37 @@ namespace Chem
         public int PinnedX => Pinned == null ? 0 : (Plan.Grid.X(Pinned.Square) - OriginX) * Square;
         public int PinnedY => Pinned == null ? 0 : (Plan.Grid.Y(Pinned.Square) - OriginY) * Square;
 
+        const int Apron = Size + 2; // one cell of apron round the chunk, for slopes: land is a function of position
+
+        // A chunk's working arrays, one set a thread and used again for every chunk it makes, so a bake's garbage is its
+        // chunks' own land, cells and things, not a quarter of a megabyte more a chunk (bake-lean). Every one is written
+        // whole before it's read, but bare (only ever set) and counts, cleared at the start.
+        sealed class Scratch
+        {
+            public readonly int[] Land = new int[Apron * Apron];
+            public readonly byte[] Wet = new byte[Apron * Apron];
+            public readonly bool[] Road = new bool[Apron * Apron];
+            public readonly bool[] Clear = new bool[Size * Size], Steep = new bool[Size * Size], Bare = new bool[Size * Size];
+            public readonly BiomeBlend[] Blend = new BiomeBlend[Size * Size];
+            public readonly Dictionary<int, long> Counts = new Dictionary<int, long>();
+        }
+
+        [ThreadStatic] static Scratch scratch;
+
+        static Scratch Work() => scratch ??= new Scratch();
+
         void MakeGenerated(GeneratedChunk c)
         {
             int x0 = c.X * Size, y0 = c.Y * Size;
-            const int ap = Size + 2; // one cell of apron round the chunk, for slopes: land is a function of position
-            var land = new int[ap * ap];
-            var wet = new byte[ap * ap];
-            var road = new bool[ap * ap];
-            var clear = new bool[Size * Size];
-            var steep = new bool[Size * Size];
+            const int ap = Apron;
+            var work = Work();
+            var land = work.Land;
+            var wet = work.Wet;
+            var road = work.Road;
+            var clear = work.Clear;
+            var steep = work.Steep;
             var near = Nearby(x0 - 1, y0 - 1, x0 + Size, y0 + Size);
-            var blend = new BiomeBlend[Size * Size];
+            var blend = work.Blend;
             for (int j = 0; j < ap; j++)
                 for (int i = 0; i < ap; i++)
                 {
@@ -247,7 +267,8 @@ namespace Chem
                     clear[(j - 1) * Size + i - 1] = p.Clear;
                 }
             // The landmarks' stamps whose footprint reaches it.
-            var bare = new bool[Size * Size];
+            var bare = work.Bare;
+            Array.Clear(bare, 0, bare.Length);
             for (int k = 0; k < stamps.Count; k++)
             {
                 var (s, bareChar, landmark) = stamps[k];
@@ -273,7 +294,8 @@ namespace Chem
                 if (lx + r.Reach >= x0 && lx - r.Reach < x0 + Size && ly + r.Reach >= y0 && ly - r.Reach < y0 + Size) c.Landmarks.Add(k);
             }
             c.Landmarks.Sort();
-            var counts = new Dictionary<int, long>();
+            var counts = work.Counts;
+            counts.Clear();
             for (int j = 0; j < Size; j++)
                 for (int i = 0; i < Size; i++)
                 {
@@ -289,7 +311,15 @@ namespace Chem
                     steep[j * Size + i] = slope >= SteepUnits;
                     c.Cells[j * Size + i] = CellOf(x0 + i, y0 + j, h, wet[k], mark, slope, b);
                 }
-            int top = counts.OrderByDescending(p => p.Value).ThenBy(p => p.Key).First().Key;
+            // The most cells, the lowest id of those tied.
+            int top = -1;
+            long most = -1;
+            foreach (var p in counts)
+                if (p.Value > most || (p.Value == most && p.Key < top))
+                {
+                    top = p.Key;
+                    most = p.Value;
+                }
             c.Biome = table.Rows[top].Id;
             // Things: the landmarks' rows for this chunk first, then the seeded ones, so every id holds.
             foreach (int k in c.Landmarks)

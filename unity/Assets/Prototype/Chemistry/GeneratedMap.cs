@@ -2,7 +2,7 @@
 // the seed, the size in world squares, the generator's version and the squares pinned to a map folder (the valley), and
 // the rest is solved (WorldPlan) and made a chunk at a time (ChunkGen). Its identity is a hash of its inputs, never its
 // output: the world file, every committed file the plan and the chunks read, each pinned map's folder hash and the
-// versions. Bake writes the whole map as a map folder the game already loads (cells.txt, land.json, things.json and the
+// versions. Bake (GeneratedMap.Bake.cs) writes the whole map as a map folder the game already loads (cells.txt, land.json, things.json and the
 // rows), with the pinned valley's own rows moved to where it lies in the map, and a "spawn" place for each square's
 // spawn point (SpawnPlaces).
 //
@@ -20,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    public sealed class GeneratedMap
+    public sealed partial class GeneratedMap
     {
         /// <summary>map.json's key for a map made from a world file.</summary>
         public const string Key = "generated";
@@ -322,54 +322,6 @@ namespace Chem
 
         string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): it's planned and known only, until the sparse World";
 
-        /// <summary>
-        /// Writes the whole map as a map folder into <paramref name="outDir"/> (its map.json too, unless it's the map's own
-        /// folder): the chunks' land and cells, the pinned valley's in its place, every chunk's things, and the valley's
-        /// rows moved to the valley's place with the landmarks' rows added.
-        /// </summary>
-        public BakeReport Bake(string outDir, GeneratedChunk[] chunks = null)
-        {
-            if (!Bakes) throw new InvalidOperationException(NoBake);
-            var timer = System.Diagnostics.Stopwatch.StartNew();
-            // A pinned block's rows are read from its own bake, as a pinned map's are from its folder.
-            if (Inner != null && !IsBaked(PinnedDir)) Inner.Bake(PinnedDir);
-            chunks ??= MakeAll();
-            var report = new BakeReport { MakeMs = timer.Elapsed.TotalMilliseconds };
-            Directory.CreateDirectory(outDir);
-            int w = Gen.CellsW, h = Gen.CellsH, size = ChunkGen.Size;
-            var land = new int[w * h];
-            var cells = new char[w * h];
-            var things = new JArray();
-            foreach (var c in chunks)
-            {
-                for (int j = 0; j < size; j++)
-                {
-                    Array.Copy(c.Land, j * size, land, (c.Y * size + j) * w + c.X * size, size);
-                    Array.Copy(c.Cells, j * size, cells, (c.Y * size + j) * w + c.X * size, size);
-                }
-                if (c.Things.Count > 0) things.Add(new JObject { ["chunk"] = new JArray(c.X, c.Y), ["things"] = c.Things });
-            }
-            var rows = new StringBuilder(w * h + h);
-            for (int y = 0; y < h; y++)
-            {
-                if (y > 0) rows.Append('\n');
-                rows.Append(cells, y * w, w);
-            }
-            MapFile.WriteCells(outDir, rows.ToString());
-            Write(outDir, MapFile.LandName, LandFile.Write(land, w, h, 0.125));
-            Write(outDir, "things.json", Json(new JObject { ["about"] = $"Made by ChunkGen {ChunkGen.Version} from {MapFile.FileName}: the valley's things in its chunks, then each chunk's landmarks' and seeded things.", ["chunks"] = things }));
-            WriteRows(outDir);
-            if (Path.GetFullPath(outDir).TrimEnd('/', '\\') != Path.GetFullPath(MapDir).TrimEnd('/', '\\'))
-                Write(outDir, MapFile.FileName, OwnMapFile());
-            Write(outDir, WorldPlaces.FileName, WorldPlaces.Generate(outDir));
-            Write(outDir, BakeName, Json(new JObject { ["inputs"] = InputHash(MapDir), ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture), ["generator"] = ChunkGen.Version, ["format"] = BakeFormat }));
-            report.TotalMs = timer.Elapsed.TotalMilliseconds;
-            report.Land = land;
-            report.W = w;
-            report.H = h;
-            return report;
-        }
-
         static void Write(string dir, string name, string text) => File.WriteAllText(Path.Combine(dir, name), text);
 
         static string Json(JToken o) => o.ToString(Formatting.Indented) + "\n";
@@ -550,11 +502,11 @@ namespace Chem
         }
     }
 
-    /// <summary>What a bake took, and the land it wrote (for pictures).</summary>
+    /// <summary>What a bake took, and the size of the map it wrote.</summary>
     public sealed class BakeReport
     {
+        /// <summary>The time making its chunks (written as the next row is made) and the whole bake's.</summary>
         public double MakeMs, TotalMs;
-        public int[] Land;
         public int W, H;
     }
 }

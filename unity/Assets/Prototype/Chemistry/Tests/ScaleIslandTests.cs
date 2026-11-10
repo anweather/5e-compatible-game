@@ -313,14 +313,20 @@ namespace Chem.Tests
         // file, and the copy's, so its bakes (the nine's too) never touch the game's.
         static string CopyWorld(string root)
         {
-            foreach (string f in new[] { "bands.json", BiomeTable.FileName, HorizonTable.FileName }) File.Copy(Path.Combine(WorldDir, f), Path.Combine(root, f));
-            foreach (string d in new[] { SquareLibrary.Folder, LandmarkIntent.Folder, Path.Combine("maps", "valley") }) CopyTree(Path.Combine(WorldDir, d), Path.Combine(root, d));
-            Directory.CreateDirectory(Path.Combine(root, "maps", "nine"));
-            File.Copy(Path.Combine(NineDir, MapFile.FileName), Path.Combine(root, "maps", "nine", MapFile.FileName));
+            CopyInputs(root);
             string dir = Path.Combine(root, "maps", "scale-copy");
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, MapFile.FileName), CopyFile().ToString());
             return dir;
+        }
+
+        /// <summary>Into a world folder of a test's own: the files a plan and its chunks read, the valley and the nine's world file.</summary>
+        internal static void CopyInputs(string root)
+        {
+            foreach (string f in new[] { "bands.json", BiomeTable.FileName, HorizonTable.FileName }) File.Copy(Path.Combine(WorldDir, f), Path.Combine(root, f));
+            foreach (string d in new[] { SquareLibrary.Folder, LandmarkIntent.Folder, Path.Combine("maps", "valley") }) CopyTree(Path.Combine(WorldDir, d), Path.Combine(root, d));
+            Directory.CreateDirectory(Path.Combine(root, "maps", "nine"));
+            File.Copy(Path.Combine(NineDir, MapFile.FileName), Path.Combine(root, "maps", "nine", MapFile.FileName));
         }
 
         static void CopyTree(string from, string to)
@@ -363,6 +369,8 @@ namespace Chem.Tests
                 Assert.That(rows[map.Spawn.y][map.Spawn.x], Is.EqualTo('@'), "the valley's spawn, moved with the nine");
                 Assert.That(rows.Sum(r => r.Count(ch => ch == '@')), Is.EqualTo(1));
                 int w = report.W, chunks = m.Gen.ChunksW * m.Gen.ChunksH;
+                // The land as it was written: the bake holds none of it once it's done (bake-lean).
+                var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), report.W, report.H);
                 // A spawn place a square below the peaks, each named once; the nine's own nine among them, the valley's
                 // the map's start.
                 var spawns = WorldPlaces.Load(dir).All.Where(p => p.Kind == "spawn").ToList();
@@ -387,8 +395,8 @@ namespace Chem.Tests
                             if (dx * dx + dy * dy >= ChunkGen.ClearCells * ChunkGen.ClearCells) continue;
                             int x = s.X + dx, y = s.Y + dy;
                             Assert.That(rows[y][x] == ',' || rows[y][x] == '.', $"{name}: ({x}, {y}) is '{rows[y][x]}', not open ground");
-                            lo = Math.Min(lo, report.Land[y * w + x]);
-                            hi = Math.Max(hi, report.Land[y * w + x]);
+                            lo = Math.Min(lo, land[y * w + x]);
+                            hi = Math.Max(hi, land[y * w + x]);
                         }
                     Assert.That(hi - lo, Is.LessThanOrEqualTo(2), $"{name}: its clearing is level");
                     Assert.That(lo, Is.GreaterThan(ChunkGen.SeaLevel + 8), $"{name}: above the sea");
@@ -403,16 +411,16 @@ namespace Chem.Tests
                 int x0 = m.Gen.PinnedX, y0 = m.Gen.PinnedY, pw = m.Gen.PinnedW, ph = m.Gen.PinnedH, worst = 0;
                 for (int t = 0; t < pw; t++)
                 {
-                    worst = Math.Max(worst, Math.Abs(report.Land[(y0 - 1) * w + x0 + t] - report.Land[y0 * w + x0 + t]));
-                    worst = Math.Max(worst, Math.Abs(report.Land[(y0 + ph) * w + x0 + t] - report.Land[(y0 + ph - 1) * w + x0 + t]));
+                    worst = Math.Max(worst, Math.Abs(land[(y0 - 1) * w + x0 + t] - land[y0 * w + x0 + t]));
+                    worst = Math.Max(worst, Math.Abs(land[(y0 + ph) * w + x0 + t] - land[(y0 + ph - 1) * w + x0 + t]));
                 }
                 for (int t = 0; t < ph; t++)
                 {
-                    worst = Math.Max(worst, Math.Abs(report.Land[(y0 + t) * w + x0 - 1] - report.Land[(y0 + t) * w + x0]));
-                    worst = Math.Max(worst, Math.Abs(report.Land[(y0 + t) * w + x0 + pw] - report.Land[(y0 + t) * w + x0 + pw - 1]));
+                    worst = Math.Max(worst, Math.Abs(land[(y0 + t) * w + x0 - 1] - land[(y0 + t) * w + x0]));
+                    worst = Math.Max(worst, Math.Abs(land[(y0 + t) * w + x0 + pw] - land[(y0 + t) * w + x0 + pw - 1]));
                 }
-                TestContext.Out.WriteLine($"MEET the biggest step onto the nine's rim {worst} land units; the copy's land {report.Land.Min()}..{report.Land.Max()}, " +
-                    $"{report.Land.Count(v => v >= ChunkGen.SeaLevel) * 100 / report.Land.Length}% at or above the sea");
+                TestContext.Out.WriteLine($"MEET the biggest step onto the nine's rim {worst} land units; the copy's land {land.Min()}..{land.Max()}, " +
+                    $"{land.Count(v => v >= ChunkGen.SeaLevel) * 100 / land.Length}% at or above the sea");
                 Assert.That(worst, Is.LessThanOrEqualTo(4), "the biggest step onto the nine's rim");
 
                 // What it cost, and the full map's at the same rates (its 9720 chunks; the World is cells, a Cell an object).
