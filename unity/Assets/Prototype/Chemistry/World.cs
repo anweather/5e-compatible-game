@@ -94,12 +94,11 @@ namespace Chem
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             ForgetWaterSnapshots(); // terrain may mean something else now
             Weather = SkyNow();
-            RemapLiquids(before, rules);
-            // Every cell's cached terrain is now stale (TerrainOf reads it again), without a pass over the cells; the
-            // pass is only for a switch that leaves cells something the new rules don't define (#181).
+            // Every cell's cached terrain is now stale (TerrainOf reads it again), without a pass over the cells (#181).
+            // A switch that can leave cells something the new rules don't define makes the active chunks' cells fit
+            // now and every other chunk's when it activates (World.Fit.cs, #190).
             rulesStamp++;
-            if (Unfits(before, rules))
-                foreach (var c in Cells) Sanitize(c);
+            if (Unfits(before, rules)) Refit(before);
             SanitizeRaiders();
             LayBuildings(before, rules);
             LayCells(before, rules);
@@ -109,11 +108,11 @@ namespace Chem
         int rulesStamp = 1;
 
         // Whether a cell that fits the rules before can fail to fit the rules after (Sanitize): a terrain, cover or gas
-        // they no longer define, fewer liquids, or another height range. Most switches (a sim value, a spell, a rate)
+        // they no longer define, liquids moved (a cell's kind is an index), or another height range. Most switches (a sim value, a spell, a rate)
         // are none of those.
         static bool Unfits(Rules before, Rules after) =>
             before.Sim.Height.Min != after.Sim.Height.Min || before.Sim.Height.Max != after.Sim.Height.Max
-            || after.Liquids.Count < before.Liquids.Count
+            || !SameLiquids(before, after)
             || before.Terrain.Keys.Any(id => !after.Terrain.ContainsKey(id))
             || before.Covers.Keys.Any(id => !after.Covers.ContainsKey(id))
             || before.Gases.Keys.Any(id => !after.Gases.ContainsKey(id));
@@ -163,10 +162,11 @@ namespace Chem
         {
             // Every tick asks each wet or burning cell about its terrain several times; looking the
             // id up only when it changes keeps that cheap (Cell.T drops the cache when it's replaced).
+            // A cell of a chunk not yet made to fit the rules (World.Fit.cs) reads as fitting would make it.
             var def = c.Def;
             if (def != null && c.DefRules == rulesStamp) return def;
             c.DefRules = rulesStamp;
-            return c.Def = Rules.Terrain[c.T];
+            return c.Def = Rules.Terrain.TryGetValue(c.T, out def) ? def : Rules.Terrain[RetiredInto(c.T) ?? "dirt"];
         }
         public bool HasTag(Cell c, string tag) => TerrainOf(c).Has(tag);
         public bool IsBlocking(Cell c) => TerrainOf(c).Blocking || IsRaisedWall(c);
@@ -227,7 +227,7 @@ namespace Chem
 
         bool BlocksSight(Cell c) => IsBlocking(c) && !HasTag(c, "seeThrough");
         /// <summary>Raised height.blockAt steps or more: a wall of earth, whatever the terrain.</summary>
-        public bool IsRaisedWall(Cell c) => c.Height >= Rules.Sim.Height.BlockAt;
+        public bool IsRaisedWall(Cell c) => HeightOf(c) >= Rules.Sim.Height.BlockAt;
         // The land under each cell in water units (the valley's baked ground: hills the cells don't
         // hold), or NoLand for a cell of a water body; null for flat land. Only the water reads it.
         int[] land;
@@ -264,7 +264,7 @@ namespace Chem
             land == null ? NoLand : land[Idx((ch.X << Chunks.Shift) + (i & Chunks.Mask), (ch.Y << Chunks.Shift) + (i >> Chunks.Shift))];
 
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
-        public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + c.Height) * Rules.Sim.WaterUnitsPerStep;
+        public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + HeightOf(c)) * Rules.Sim.WaterUnitsPerStep;
         /// <summary>Whether the cell's cover burns (oil, grease, thorns).</summary>
         public bool CoverBurns(Cell c) => CoverOf(c)?.Burns == true;
 

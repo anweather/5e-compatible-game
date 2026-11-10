@@ -3,7 +3,8 @@
 // lapsed, every cell holding one is swept at that tick: a terrain turns into its
 // lapse.into (else dirt), a cover or gas goes (or turns into its into), and its Life
 // is cleared. The sweep goes over every loaded cell in row-major order, inactive
-// chunks too, as ApplyRules' Sanitize already does, so no chunk wakes holding one.
+// chunks too (ApplyRules makes those fit only when they activate, World.Fit.cs; the
+// sweep's intos aren't kept that long), so no chunk wakes holding one.
 // The room keeps a retired list (id, into, mod, tick; in the save and CastHash) so a
 // cell that comes back later naming one (the dragon's starting state, an older save)
 // turns into the same. A mod whose row gives lapse.after goes off by itself that
