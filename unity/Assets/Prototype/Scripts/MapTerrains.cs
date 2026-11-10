@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -161,7 +162,7 @@ public sealed class MapTerrains : MonoBehaviour
     readonly HashSet<int> made = new();
     readonly List<(int i, int j)> toMake = new();
     readonly HashSet<(int i, int j)> wantedNow = new(), activeNow = new();
-    readonly List<(int i, int j)> focus = new(), batch = new();
+    readonly List<(int i, int j)> focus = new();
     readonly List<int> leaving = new();
     float nextPlan;
     bool planNow;
@@ -170,8 +171,8 @@ public sealed class MapTerrains : MonoBehaviour
     // A chunk terrain is made within the drawn dial plus Margin of a character, and goes back to the pool past it plus
     // KeepMargin (the two apart so a character on a chunk's edge doesn't make and drop the same row each step).
     const int Margin = 1, KeepMargin = 2;
-    // About this many ms a frame go to making terrains in play (at least one a frame while any is wanted); the arrays of up
-    // to MostAtOnce chunks are made side by side.
+    // About this many ms a frame go to making terrains in play (at least one a frame while any is wanted and its arrays are
+    // made); the arrays of up to MostAtOnce chunks are made side by side on a worker.
     const double MakeBudgetMs = 4.0;
     const int MostAtOnce = 8;
 
@@ -180,6 +181,9 @@ public sealed class MapTerrains : MonoBehaviour
 
     /// <summary>How many chunk terrains stand now, how many wait in the pool, and how many were ever made (the pool's size).</summary>
     public (int standing, int pooled, int created) Counts => lazy ? (made.Count, pool.Count, createdEver) : (chunks?.Length ?? 0, 0, chunks?.Length ?? 0);
+
+    /// <summary>What the first frame's terrains' arrays took (ms), made side by side.</summary>
+    public double ArraysMs { get; private set; }
 
     /// <summary>How many chunk terrains are wanted and not made yet.</summary>
     public int Waiting => toMake.Count;
@@ -195,7 +199,8 @@ public sealed class MapTerrains : MonoBehaviour
         var timer = System.Diagnostics.Stopwatch.StartNew();
         Plan();
         MakeSome(whole: true);
-        Debug.Log($"GROUND TERRAINS for the drawn tier: {made.Count} of {chunks.Length} chunks made in {timer.Elapsed.TotalMilliseconds:0} ms (sight {Sight()} + {Margin})");
+        Debug.Log($"GROUND TERRAINS for the drawn tier: {made.Count} of {chunks.Length} chunks made in {timer.Elapsed.TotalMilliseconds:0} ms " +
+                  $"({ArraysMs:0} ms of it their arrays, side by side; sight {Sight()} + {Margin})");
     }
 
     void Stream()
@@ -280,29 +285,73 @@ public sealed class MapTerrains : MonoBehaviour
         return best;
     }
 
-    // The waiting terrains, nearest first: all of them (before the first frame), or as many as fit the frame's budget.
+    // The waiting terrains, nearest first: all of them (before the first frame), or as many as fit the frame's budget. In
+    // play their arrays are made on a worker, a few chunks side by side, while the frames go on: only a terrain whose
+    // arrays are made is made in a frame (or one under an active chunk, which waits for nothing).
     void MakeSome(bool whole)
     {
+        TakeArrays();
         if (toMake.Count == 0) return;
         var timer = System.Diagnostics.Stopwatch.StartNew();
+        if (whole)
+        {
+            ground.Builder.Prepare(toMake);
+            ArraysMs = timer.Elapsed.TotalMilliseconds;
+        }
         int next = 0;
-        if (whole) ground.Builder.Prepare(toMake);
-        while (next < toMake.Count && (whole || next == 0 || timer.Elapsed.TotalMilliseconds < MakeBudgetMs))
+        bool any = false;
+        while (next < toMake.Count && (whole || !any || timer.Elapsed.TotalMilliseconds < MakeBudgetMs))
         {
             var at = toMake[next];
             if (!ground.Builder.Holds(at))
             {
-                batch.Clear();
-                for (int m = next; m < toMake.Count && batch.Count < MostAtOnce; m++) batch.Add(toMake[m]);
-                ground.Builder.Prepare(batch);
+                if (activeNow.Contains(at)) ground.Builder.Prepare(new[] { at });
+                else
+                {
+                    StartArrays(next);
+                    break;
+                }
             }
             Attach(at);
+            any = true;
             next++;
         }
         toMake.RemoveRange(0, next);
+        // The next ones' arrays start now, so they're likely made by the time their turn comes.
+        if (toMake.Count > 0 && !whole) StartArrays(0);
+        if (!any) return;
         Terrain.SetConnectivityDirty();
         nextReach = 0f;
     }
+
+    // The next chunks' arrays, made on a worker (one batch at a time).
+    void StartArrays(int from)
+    {
+        if (arrays != null) return;
+        var missing = ground.Builder.Missing(toMake.Skip(from).Take(MostAtOnce * 2));
+        if (missing.Count > MostAtOnce) missing.RemoveRange(MostAtOnce, missing.Count - MostAtOnce);
+        if (missing.Count == 0) return;
+        var builder = ground.Builder;
+        arraysFor = missing;
+        arrays = System.Threading.Tasks.Task.Run(() => builder.MakeArrays(missing));
+    }
+
+    // A worker's arrays, kept on the main thread once they're done.
+    void TakeArrays()
+    {
+        if (arrays == null || !arrays.IsCompleted) return;
+        var job = arrays;
+        arrays = null;
+        if (job.IsFaulted)
+        {
+            Debug.LogError($"GROUND TERRAINS: a chunk's arrays failed: {job.Exception?.GetBaseException().Message}");
+            return;
+        }
+        ground.Builder.Keep(arraysFor, job.Result);
+    }
+
+    System.Threading.Tasks.Task<GroundChunk[]> arrays;
+    List<(int i, int j)> arraysFor;
 
     // A terrain from the pool (or a new one) for chunk (i, j), given the chunk's ground.
     void Attach((int i, int j) at)

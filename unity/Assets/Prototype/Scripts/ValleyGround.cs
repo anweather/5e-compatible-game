@@ -75,7 +75,8 @@ public sealed class ValleyGround
     readonly HashSet<(int i, int j)> attached = new();
     readonly Dictionary<(int res, int texels), Stack<TerrainData>> spare = new();
     // The offsets the arrays were made with (the baked ground's: no laid land), and the river's extra under its cells.
-    CellHeightfield bakedField;
+    // Kept only for the chunks the map's laid land moves (the rest are the heightfield's own until a cell there changes).
+    readonly Dictionary<(int i, int j), float[,]> bakedOffsets = new();
     readonly Dictionary<int, float> raised = new();
     HashSet<(int i, int j)> detailNear = new();
     const int MostSpare = 16;
@@ -208,7 +209,7 @@ public sealed class ValleyGround
         var data = ch.data;
         int res = data.heightmapResolution;
         var heights = data.GetHeights(0, 0, res, res);
-        var baked = bakedField.Compute(world, ch.at.i, ch.at.j);
+        var baked = bakedOffsets.TryGetValue(ch.at, out var kept) ? kept : heightfield.Current(ch.at.i, ch.at.j);
         float size = data.size.y;
         ch.baseHeights = new float[res, res];
         for (int z = 0; z < res; z++)
@@ -413,7 +414,7 @@ public sealed class ValleyGround
         reshaped.Clear();
         if (lazy)
         {
-            BindLazily(w, stepHeight, shapeSpeed, flatUnderWalls);
+            BindLazily(w);
             return;
         }
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -446,10 +447,9 @@ public sealed class ValleyGround
     // A generated map's Bind (#205): no chunk is made for the new world until its terrain is or something changes it. One
     // made for the last world keeps its data if nothing changed it (made afresh from it), else gives it up; those with a
     // terrain now are made at once. Every other cell stands on the map's land until its chunk is made.
-    void BindLazily(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls)
+    void BindLazily(World w)
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        bakedField = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls, LaidLandDrawn = false };
         raised.Clear();
         syncQueue.Clear();
         paintQueue.Clear();
@@ -467,8 +467,14 @@ public sealed class ValleyGround
                 ch.touched = false;
             }
         }
+        // The offsets the arrays were made with are the heightfield's as it's reset (no laid land): kept for the chunks the
+        // laid land moves, before it's drawn.
+        bakedOffsets.Clear();
+        var laid = w.LandLaidCells().ToList();
+        foreach (var r in heightfield.DirtyRects(laid))
+            if (!bakedOffsets.ContainsKey((r.I, r.J))) bakedOffsets[(r.I, r.J)] = (float[,])heightfield.Current(r.I, r.J).Clone();
         heightfield.LaidLandDrawn = true;
-        heightfield.Update(w, w.LandLaidCells(), snap: true);
+        heightfield.Update(w, laid, snap: true);
         int cells = w.W * w.H;
         if (cellBase == null || cellBase.Length != cells)
         {

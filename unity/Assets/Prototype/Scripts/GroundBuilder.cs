@@ -77,13 +77,30 @@ public sealed class GroundBuilder
     /// </summary>
     public void Prepare(IReadOnlyList<(int i, int j)> wanted)
     {
-        if (make == null) return;
-        var missing = wanted.Where(at => !chunks.ContainsKey(at) && has(at)).Distinct().ToList();
-        if (missing.Count == 0) return;
+        var missing = Missing(wanted);
+        if (missing.Count > 0) Keep(missing, MakeArrays(missing));
+    }
+
+    /// <summary>Those of <paramref name="wanted"/> whose arrays aren't made yet (none for a pack read whole).</summary>
+    public List<(int i, int j)> Missing(IEnumerable<(int i, int j)> wanted) =>
+        make == null ? new List<(int i, int j)>() : wanted.Where(at => !chunks.ContainsKey(at) && has(at)).Distinct().ToList();
+
+    /// <summary>
+    /// Makes these chunks' arrays side by side and returns them, keeping none: safe off the main thread (each reads the
+    /// world, the land and the layout, and writes only its own chunk; Keep them on the main thread).
+    /// </summary>
+    public GroundChunk[] MakeArrays(IReadOnlyList<(int i, int j)> missing)
+    {
         var made = new GroundChunk[missing.Count];
         if (missing.Count == 1) made[0] = make(missing[0]);
         else System.Threading.Tasks.Parallel.For(0, missing.Count, n => made[n] = make(missing[n]));
-        for (int n = 0; n < missing.Count; n++) chunks[missing[n]] = made[n];
+        return made;
+    }
+
+    /// <summary>Keeps arrays MakeArrays made (any made meanwhile are kept as they were).</summary>
+    public void Keep(IReadOnlyList<(int i, int j)> at, GroundChunk[] made)
+    {
+        for (int n = 0; n < at.Count; n++) chunks.TryAdd(at[n], made[n]);
     }
 
     /// <summary>Whether this chunk's arrays are made.</summary>
