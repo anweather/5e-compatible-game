@@ -344,10 +344,18 @@ public class PerfScenario : MonoBehaviour
     {
         long from = Stopwatch.GetTimestamp();
         burningNow = fogNow = 0;
-        foreach (var c in grid.World.AllCells())
+        // The unpacked chunks only (D17): a read of a packed one unpacks it, and this every second unpacked the whole map.
+        // A packed chunk is inactive and has been for streaming.packTicks, so nothing in it burns or drifts meanwhile.
+        var world = grid.World;
+        foreach (var (cx, cy) in world.ChunkCoords)
         {
-            if (c.Fire > 0) burningNow++;
-            if (c.Gas == GasIds.Fog) fogNow++;
+            if (world.IsPacked(cx, cy)) continue;
+            foreach (var c in world.ChunkCells(cx, cy))
+            {
+                if (c == null) continue;
+                if (c.Fire > 0) burningNow++;
+                if (c.Gas == GasIds.Fog) fogNow++;
+            }
         }
         burningPeak = Math.Max(burningPeak, burningNow);
         fogPeak = Math.Max(fogPeak, fogNow);
@@ -476,6 +484,9 @@ public class PerfScenario : MonoBehaviour
         Add("gfx_used_mb", markers.GfxUsedBytes / BytesPerMb, "0");
         Add("system_used_mb", markers.SystemUsedBytes / BytesPerMb, "0");
         line.Append($" active_chunks={grid.World.ActiveChunks.Count} ticks={grid.World.Tick - tickAtStart}");
+        // The sparse World (D17): chunks unpacked now, the drawn hint, and the packing since the world was made.
+        var w = grid.World;
+        line.Append($" unpacked={w.UnpackedCount} drawn_hint={w.DrawnCount} packs={w.Packs} unpacks={w.Unpacks} read_unpacks={w.ReadUnpacks} pack_ms={w.PackMs.ToString("0.0", inv)} unpack_ms={w.UnpackMs.ToString("0.0", inv)}");
         line.Append($" burning_peak={burningPeak} burning_end={burningNow} fog_cells_peak={fogPeak} fog_cells_end={fogNow} fog_drawn={grid.Fog.SquaresShown}");
         line.Append($" hour={(grid.World.Minutes / 60.0 % 24.0).ToString("0.0", inv)} weather={grid.World.Weather.Kind}");
         line.Append($" worst={(frameMs.Count > 0 ? frameMs.Max() : 0f).ToString("0.0", inv)} over_30ms={frameMs.Count(ms => ms > Over30Ms)}");

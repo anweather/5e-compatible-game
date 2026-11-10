@@ -194,6 +194,10 @@ public partial class ValleyChemistry : MonoBehaviour
             Biomes = BiomeGround.For(ChemGrid.MapSource),
         };
         if (terrains.Lazy) return LazyGround(source, template);
+        // Build reads every chunk's cells side by side, and a read of a packed chunk unpacks it (D17), which is never safe
+        // off the main thread: so every chunk is unpacked here first. Only a map built whole comes here (the valley's size);
+        // those not needed pack again in the world's own time.
+        foreach (var (cx, cy) in world.ChunkCoords) world.At(cx << Chem.Chunks.Shift, cy << Chem.Chunks.Shift);
         var pack = GroundFromLand.Build(source);
         // A generated map's pinned squares (the nine's valley) draw their own map's shaped ground, as that map does.
         if (GroundSwitch.Mode == GroundSwitch.On)

@@ -96,6 +96,7 @@ namespace Chem
             Ticked();
             tickRows = Spans;
             tickChunks = activeChunks;
+            UnpackActive(tickChunks); // a chunk the tick runs is unpacked (World.Pack.cs)
             CollectBurning(tickRows);
             stage = TickStage.Burn;
             stagePos = 0;
@@ -222,6 +223,7 @@ namespace Chem
             tickChunks = null;
             LapseDue(); // between whole ticks, as a rule switch lands
             MixDue();
+            PackDue(); // between whole ticks too: inactive chunks long unneeded pack (World.Pack.cs)
         }
 
         /// <summary>

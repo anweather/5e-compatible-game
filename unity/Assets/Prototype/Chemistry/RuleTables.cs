@@ -476,6 +476,11 @@ namespace Chem
         public int LingerTicks = 1800;
         /// <summary>A chunk let go while live runs at most this many of the ticks it missed when it next activates.</summary>
         public int CatchUpTicks = 720;
+        /// <summary>
+        /// The sparse World (World.Pack.cs): a chunk packs once it has been inactive, not beside an active chunk and not
+        /// drawn for this many ticks, at most PacksPerTick a tick (0: never). Memory only: nothing shared follows them.
+        /// </summary>
+        public int PackTicks = 300, PacksPerTick = 2;
     }
 
     /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
@@ -1345,6 +1350,8 @@ namespace Chem
                 s.Streaming.LingerChunks = Int(so["lingerChunks"]) ?? s.Streaming.LingerChunks;
                 s.Streaming.LingerTicks = Int(so["lingerTicks"]) ?? s.Streaming.LingerTicks;
                 s.Streaming.CatchUpTicks = Int(so["catchUpTicks"]) ?? s.Streaming.CatchUpTicks;
+                s.Streaming.PackTicks = Int(so["packTicks"]) ?? s.Streaming.PackTicks;
+                s.Streaming.PacksPerTick = Int(so["packsPerTick"]) ?? s.Streaming.PacksPerTick;
             }
             if (o["weather"] is JObject wo) ParseWeather(wo, s.Weather);
             return s;

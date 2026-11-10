@@ -178,7 +178,7 @@ namespace Chem
             int keep = (int)(roomBudgets?.Number("materials.maxLive", 32) ?? 32);
             if (Room.Retired.Count > keep) Room.Retired.RemoveRange(0, Room.Retired.Count - keep);
             var into = Rules.MaterialTables.Select(table => gone.Where(t => t.Table == table).ToDictionary(t => t.Id, t => t.Lapse.Into)).ToArray();
-            foreach (var c in AllCells()) Sweep(c, into[0], into[1], into[2]);
+            WriteEveryCell(c => Sweep(c, into[0], into[1], into[2]));
         }
 
         // The rows the mods added before this switch that aren't materials and no mod adds now: kept, with who added them,

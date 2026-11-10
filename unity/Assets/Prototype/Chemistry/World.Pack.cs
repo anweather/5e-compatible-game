@@ -1,10 +1,23 @@
-// Packing one chunk: a prototype for the sparse World (docs/design/sparse-world.md, "Measured"; D17, proposed). An
-// inactive chunk is packed to its changes against its source and gives its Cell objects back to a pool; it is read cell
-// by cell from the two for the hash and the save, and unpacked into pooled objects again. Not wired in and behind no
-// switch: nothing in the game packs a chunk. It is here so the benches (SparseWorldBench) and the tests (PackTests)
-// measure the real thing; step 2 builds on it or replaces it.
+// The sparse World (D17, docs/design/sparse-world.md): an inactive chunk may be packed, held as its changes against the
+// world's source (the cells that differ from what the source makes there) with no Cell objects; an unpacked chunk holds
+// its cells in a block from a pool. Every world has a source: the fill it was made with, or what MakeFrom made it from (a
+// BakedSource for a baked map), and its chunks start packed with no changes, so a world never builds the Cell objects of
+// chunks nothing reads.
+//
+// How a chunk is held never shows. Every reach for a cell goes through its chunk, and a read of a packed chunk's cell
+// (Chunk.CellAt, Block) unpacks it first; the hash, the save, the dragon's audit and the starting state read a packed
+// chunk where it lies (RowCells' read mode, ChunkReader) without unpacking it. Packing and unpacking change memory and
+// time only, never shared state, so peers needn't agree on them; to make that easy to check, the core still decides
+// packing between whole ticks from tick-driven facts (PackDue), and only the view's drawn hint (SetDrawn) differs.
+//
+// A chunk packs at the end of a tick once, for sim.json's streaming.packTicks ticks, it has been inactive, not beside an
+// active chunk (the tick reads one chunk out: SoakIn, NearHeat, a spell's line) and not in the drawn hint; at most
+// streaming.packsPerTick a tick, the longest unneeded first, then by row and column. A chunk that activates unpacks
+// with the eight round it (SetActive), and before each tick so does any active chunk still packed (a world just made,
+// MakeFrom, a load: BeginTick), so the tick never reads a packed chunk.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
@@ -54,9 +67,9 @@ namespace Chem
     }
 
     /// <summary>
-    /// One chunk's cells as their changes against its source (sparse-world.md, "A chunk, unpacked and packed"): the local
-    /// indices of the cells that differ, ascending, and each one's state; its fire generations that aren't 0. Its header
-    /// (Active, LastLive, Fit...) stays on the Chunk.
+    /// One chunk's cells as their changes against its world's source (sparse-world.md, "A chunk, unpacked and packed"):
+    /// the local indices of the cells that differ, ascending, and each one's state; its fire generations that aren't 0.
+    /// Its header (Active, LastLive, Fit...) stays on the Chunk.
     /// </summary>
     public sealed class PackedChunk
     {
@@ -66,6 +79,18 @@ namespace Chem
         internal PackedCell[] Cells;
         internal PackedRare[] Rares;
         internal int[] FireAt, FireGen;
+
+        /// <summary>A chunk no different from its source, with no fire: how every chunk of a new world starts.</summary>
+        internal static PackedChunk Empty(int x, int y) => new PackedChunk
+        {
+            X = x,
+            Y = y,
+            At = Array.Empty<int>(),
+            Cells = Array.Empty<PackedCell>(),
+            Rares = Array.Empty<PackedRare>(),
+            FireAt = Array.Empty<int>(),
+            FireGen = Array.Empty<int>(),
+        };
 
         /// <summary>The cells that differ from the source.</summary>
         public int Count => At.Length;
@@ -79,62 +104,113 @@ namespace Chem
 
         static long Arr(long payload) => 24 + payload;
 
-        /// <summary>The changed cell at local index i, or -1 (a binary search: the hash reads any cell of a packed chunk).</summary>
-        internal int Find(int i) => Array.BinarySearch(At, i) is int k && k >= 0 ? k : -1;
+        /// <summary>The first changed cell at local index i or after it (a binary search: a walk may start anywhere in a chunk).</summary>
+        internal int From(int i) => Array.BinarySearch(At, i) is int k && k >= 0 ? k : ~k;
+    }
+
+    /// <summary>Every cell one terrain, as a world is made (new World's fill): its source until MakeFrom gives it another.</summary>
+    public sealed class FillSource : IChunkSource
+    {
+        readonly string fill;
+
+        public FillSource(string fill) => this.fill = fill ?? throw new ArgumentNullException(nameof(fill));
+
+        public string Version => "fill:" + fill;
+
+        public void Make(int x, int y, Cell cell) => cell.T = fill;
     }
 
     public sealed partial class World
     {
-        // Cell[] blocks of Chunks.Area that packed chunks gave back, for the next unpack (the design's block pool).
-        readonly Stack<Cell[]> packPool = new Stack<Cell[]>();
-        // What the packed chunks are against and their strings' ids, from the last Pack: one of each a world.
-        IChunkSource packSource;
-        PackStrings packStrings;
+        // Blocks packed chunks gave back, for the next unpack (the design's block pool), at most PoolKeep of them.
+        readonly Stack<ChunkBlock> blockPool = new Stack<ChunkBlock>();
+        // The chunks that hold a block now, for PackDue.
+        readonly List<Chunk> unpackedChunks = new List<Chunk>();
+        readonly PackStrings packStrings = new PackStrings();
+        // The view's drawn hint (SetDrawn): chunks it draws, kept unpacked.
+        readonly HashSet<long> drawnHint = new HashSet<long>();
+
+        /// <summary>Blocks the pool keeps for the next unpacks: the design's packing slack (~32 chunks behind a sprinter).</summary>
+        public const int PoolKeep = 32;
+
+        /// <summary>Where the world's cells come from before play: what a packed chunk's changes are against.</summary>
+        public IChunkSource Source { get; private set; }
 
         /// <summary>Blocks the pool holds now.</summary>
-        public int PackPoolCount => packPool.Count;
+        public int PackPoolCount => blockPool.Count;
 
-        /// <summary>Lets the pool's blocks go, but for <paramref name="keep"/> of them (the design's pool holds the most ever in use).</summary>
+        /// <summary>Chunks unpacked now: each holds a block of Cell objects (~356 KB).</summary>
+        public int UnpackedCount => unpackedChunks.Count;
+
+        /// <summary>Chunks packed since the world was made (by PackDue, Pack, MakeFrom or a load).</summary>
+        public int Packs { get; private set; }
+
+        /// <summary>Chunks unpacked since the world was made, for a read, a write or a tick.</summary>
+        public int Unpacks { get; private set; }
+
+        /// <summary>The time spent packing and unpacking since the world was made, in milliseconds: for a performance pass, never shared state.</summary>
+        public double PackMs => packTime * 1000.0 / Stopwatch.Frequency;
+        public double UnpackMs => unpackTime * 1000.0 / Stopwatch.Frequency;
+
+        long packTime, unpackTime;
+
+        /// <summary>
+        /// Inactive chunks a read unpacked (anyone's, through Chunk.CellAt or a per-cell array) that weren't in the view's
+        /// drawn hint, since the world was made: a safety net that should stay 0 in play, since the chunks round an active
+        /// one unpack with it and never pack, and the view reads the chunks it hints. The view's reads of its hinted
+        /// chunks, and an active chunk read before its first tick, aren't counted.
+        /// </summary>
+        public int ReadUnpacks { get; private set; }
+
+        /// <summary>
+        /// What the core's other map-sized arrays hold, which step 3 of the sparse World moves to the chunks: the land
+        /// (SetLand), the starting state (KeepStart), the land the stamps and the map moved, and the bare cells.
+        /// </summary>
+        public long MapArrayBytes =>
+            4L * ((land?.LongLength ?? 0) + (startAt?.LongLength ?? 0) + (landMoved?.LongLength ?? 0) + (landLaid?.LongLength ?? 0) + (landCrag?.LongLength ?? 0))
+            + (bareCells?.LongLength ?? 0);
+
+        /// <summary>Lets the pool's blocks go, but for <paramref name="keep"/> of them.</summary>
         public void TrimPackPool(int keep)
         {
-            while (packPool.Count > keep) packPool.Pop();
+            while (blockPool.Count > Math.Max(0, keep)) blockPool.Pop();
         }
-
-        /// <summary>Packed chunks a read unpacked (a tick's or anyone's, through Chunk.CellAt), since the world was made.</summary>
-        public int ReadUnpacks { get; private set; }
 
         /// <summary>Whether a chunk is packed now.</summary>
         public bool IsPacked(int cx, int cy) => ChunkOrThrow(cx, cy).Packed != null;
 
+        /// <summary>A packed chunk's changes now, or null when it's unpacked: for tests and benches.</summary>
+        public PackedChunk PackedOf(int cx, int cy) => ChunkOrThrow(cx, cy).Packed;
+
         /// <summary>
-        /// Packs an inactive chunk: its changes against the source kept, its Cell objects given back to the pool and its slots
-        /// left empty. Between ticks only. Any read of its cells through Chunk.CellAt (World.At, a tick's neighbour) unpacks it.
+        /// The view's drawn hint: the chunks it draws now (the drawn tier), so they aren't packed under it and their cells
+        /// stay the objects it read. Not a command and not shared state: it changes memory only, so a peer with no view
+        /// gives none and peers needn't agree on it. Each call replaces the last; a chunk's hold (streaming.packTicks)
+        /// counts from when it leaves the hint. Call it from the main thread, between ticks or not.
         /// </summary>
-        public PackedChunk Pack(int cx, int cy, IChunkSource source, PackStrings strings)
+        public void SetDrawn(IEnumerable<(int cx, int cy)> chunks)
+        {
+            drawnHint.Clear();
+            if (chunks == null) return;
+            foreach (var (cx, cy) in chunks)
+            {
+                drawnHint.Add(Chunks.Key(cx, cy));
+                // A chunk that comes into the hint is needed from now, whether or not it's unpacked yet.
+                if (FindChunk(cx, cy) is Chunk ch) ch.Needed = Tick;
+            }
+        }
+
+        /// <summary>The chunks in the view's drawn hint, as it last gave them.</summary>
+        public int DrawnCount => drawnHint.Count;
+
+        /// <summary>Packs an inactive chunk now (as PackDue would once its hold is up), between ticks. A read of its cells unpacks it again.</summary>
+        public PackedChunk Pack(int cx, int cy)
         {
             FinishTick();
             var ch = ChunkOrThrow(cx, cy);
             if (ch.Active) throw new InvalidOperationException($"Chunk ({cx}, {cy}) is active: only an inactive chunk packs");
-            if (ch.Packed != null) throw new InvalidOperationException($"Chunk ({cx}, {cy}) is packed already");
-            if (packSource != null && (packSource != source || packStrings != strings)) throw new InvalidOperationException("One source and one string table a world");
-            packSource = source;
-            packStrings = strings;
-            var p = Changes(ch, source, strings);
-            var block = new Cell[Chunks.Area];
-            for (int i = 0; i < Chunks.Area; i++)
-            {
-                block[i] = ch.HeldAt(i);
-                ch.Put(i, null);
-                // World.Cells (the view's, until step 1b) lets them go too; Unpack puts the new ones back.
-                int x = CellX(ch, i), y = CellY(ch, i);
-                if (InBounds(x, y)) Cells[y * W + x] = null;
-            }
-            packPool.Push(block);
-            Array.Clear(ch.FireGeneration, 0, Chunks.Area);
-            Array.Clear(ch.Marks, 0, Chunks.Area);
-            ch.SnapValid = false;
-            ch.Packed = p;
-            return p;
+            if (ch.Packed == null) PackChunk(ch);
+            return ch.Packed;
         }
 
         /// <summary>Unpacks a packed chunk between ticks: a block from the pool (or a new one), each cell made by the source, the changes laid over.</summary>
@@ -145,42 +221,161 @@ namespace Chem
             if (ch.Packed != null) UnpackChunk(ch);
         }
 
-        // A read of a packed chunk's cell (Chunk.CellAt), mid-tick or not: the chunk unpacks, and the read gets its cell.
-        internal Cell UnpackOnRead(Chunk ch, int i)
+        // A read of a packed chunk (Chunk.Block), mid-tick or not: it unpacks, and the read gets its block.
+        internal ChunkBlock UnpackOnRead(Chunk ch)
         {
-            ReadUnpacks++;
+            if (!ch.Active && !drawnHint.Contains(Chunks.Key(ch.X, ch.Y))) ReadUnpacks++;
             UnpackChunk(ch);
-            return ch.HeldAt(i);
+            return ch.Held;
+        }
+
+        // Every chunk packed with no changes, against a source that makes every cell (new World, MakeFrom): no Cell objects.
+        void PackAllEmpty(IChunkSource source)
+        {
+            Source = source;
+            foreach (var ch in unpackedChunks)
+            {
+                var b = ch.Held;
+                ch.Hold(null);
+                if (blockPool.Count < PoolKeep) blockPool.Push(b);
+                Packs++;
+            }
+            unpackedChunks.Clear();
+            foreach (var ch in chunks.Values)
+            {
+                ch.Packed = PackedChunk.Empty(ch.X, ch.Y);
+                ch.SnapValid = false;
+            }
         }
 
         void UnpackChunk(Chunk ch)
         {
+            long started = Stopwatch.GetTimestamp();
             var p = ch.Packed;
-            ch.Packed = null;
-            var block = packPool.Count > 0 ? packPool.Pop() : new Cell[Chunks.Area];
+            var b = blockPool.Count > 0 ? blockPool.Pop() : new ChunkBlock();
+            Array.Clear(b.FireGeneration, 0, Chunks.Area);
+            Array.Clear(b.Marks, 0, Chunks.Area);
             int k = 0;
             for (int i = 0; i < Chunks.Area; i++)
             {
                 int x = CellX(ch, i), y = CellY(ch, i);
-                if (!InBounds(x, y)) continue;
-                var c = block[i] ?? new Cell();
+                if (!InBounds(x, y))
+                {
+                    b.Cells[i] = null;
+                    continue;
+                }
+                var c = b.Cells[i] ?? new Cell();
                 c.Reset();
-                packSource.Make(x, y, c);
-                if (k < p.At.Length && p.At[k] == i) LayPacked(p, k++, packStrings, c);
+                Source.Make(x, y, c);
+                if (k < p.At.Length && p.At[k] == i) LayPacked(p, k++, c);
                 c.ForgetDef();
-                ch.Put(i, c);
-                Cells[y * W + x] = c;
+                b.Cells[i] = c;
             }
-            for (int f = 0; f < p.FireAt.Length; f++) ch.FireGeneration[p.FireAt[f]] = p.FireGen[f];
+            for (int f = 0; f < p.FireAt.Length; f++) b.FireGeneration[p.FireAt[f]] = p.FireGen[f];
+            ch.Packed = null;
+            ch.Hold(b);
+            ch.SnapValid = false;
+            ch.Needed = Tick;
+            unpackedChunks.Add(ch);
+            Unpacks++;
+            unpackTime += Stopwatch.GetTimestamp() - started;
         }
 
-        /// <summary>SaveChunk's record of a chunk as it stands (unpacked), for comparing with SavePacked.</summary>
-        public JObject SaveChunkOf(int cx, int cy, IChunkSource source) => SaveChunk(ChunkOrThrow(cx, cy), source, new Cell());
+        void PackChunk(Chunk ch)
+        {
+            long started = Stopwatch.GetTimestamp();
+            var b = ch.Held;
+            ch.Packed = Changes(ch, b);
+            ch.Hold(null);
+            ch.SnapValid = false;
+            unpackedChunks.Remove(ch);
+            if (blockPool.Count < PoolKeep) blockPool.Push(b);
+            Packs++;
+            packTime += Stopwatch.GetTimestamp() - started;
+        }
 
-        /// <summary>A chunk's changes against the source and its fire generations, leaving the chunk as it is (Pack's diff).</summary>
-        public PackedChunk ChangesOf(int cx, int cy, IChunkSource source, PackStrings strings) => Changes(ChunkOrThrow(cx, cy), source, strings);
+        // Before a tick reads them: the active chunks still packed (a world just made, MakeFrom, a load) and the chunks
+        // round them (the tick reads one chunk out), between ticks rather than by the tick's reads.
+        void UnpackActive(Chunk[] active)
+        {
+            foreach (var ch in active) UnpackAround(ch);
+        }
 
-        static PackedChunk Changes(Chunk ch, IChunkSource source, PackStrings strings)
+        // A chunk and the eight round it unpacked, those that are packed.
+        void UnpackAround(Chunk ch)
+        {
+            if (ch.Packed != null) UnpackChunk(ch);
+            var n = ch.North;
+            var s = ch.South;
+            UnpackIfPacked(n);
+            UnpackIfPacked(n?.East);
+            UnpackIfPacked(n?.West);
+            UnpackIfPacked(s);
+            UnpackIfPacked(s?.East);
+            UnpackIfPacked(s?.West);
+            UnpackIfPacked(ch.East);
+            UnpackIfPacked(ch.West);
+        }
+
+        void UnpackIfPacked(Chunk ch)
+        {
+            if (ch?.Packed != null) UnpackChunk(ch);
+        }
+
+        /// <summary>
+        /// Between whole ticks (EndTick): packs up to streaming.packsPerTick chunks whose hold is up, the longest unneeded
+        /// first, then by row and column. A chunk is needed while it's active, beside an active chunk (one of eight) or in
+        /// the view's drawn hint.
+        /// </summary>
+        void PackDue()
+        {
+            var s = Rules.Sim.Streaming;
+            if (s.PacksPerTick <= 0 || unpackedChunks.Count == 0) return;
+            foreach (var ch in unpackedChunks)
+                if (ch.Active || BesideActive(ch) || drawnHint.Contains(Chunks.Key(ch.X, ch.Y))) ch.Needed = Tick;
+            for (int n = 0; n < s.PacksPerTick; n++)
+            {
+                Chunk due = null;
+                foreach (var ch in unpackedChunks)
+                {
+                    if (ch.Needed == Tick || Tick - ch.Needed < s.PackTicks) continue;
+                    if (due == null || ch.Needed < due.Needed || (ch.Needed == due.Needed && (ch.Y < due.Y || (ch.Y == due.Y && ch.X < due.X)))) due = ch;
+                }
+                if (due == null) return;
+                PackChunk(due);
+            }
+        }
+
+        // Whether any of the eight chunks round it is active.
+        static bool BesideActive(Chunk ch)
+        {
+            var n = ch.North;
+            var s = ch.South;
+            return (n != null && (n.Active || (n.East?.Active ?? false) || (n.West?.Active ?? false)))
+                || (s != null && (s.Active || (s.East?.Active ?? false) || (s.West?.Active ?? false)))
+                || (ch.East?.Active ?? false) || (ch.West?.Active ?? false);
+        }
+
+        /// <summary>
+        /// A write to every cell (SnuffFires, a material's lapse): each chunk in turn, a packed one unpacked for it and packed
+        /// again straight after if it's inactive, so a pass over a big map never holds it all unpacked.
+        /// </summary>
+        void WriteEveryCell(Action<Cell> write)
+        {
+            foreach (var ch in SortedChunks(false))
+            {
+                bool repack = ch.Packed != null && !ch.Active;
+                if (repack) UnpackChunk(ch);
+                var cells = ch.Block.Cells;
+                for (int i = 0; i < Chunks.Area; i++) if (cells[i] is Cell c) write(c);
+                if (repack) PackChunk(ch);
+            }
+        }
+
+        // ---------- the changes ----------
+
+        // A chunk's changes against the source and its fire generations, from its block (Pack's diff).
+        PackedChunk Changes(Chunk ch, ChunkBlock b)
         {
             var made = new Cell();
             var at = new List<int>();
@@ -188,21 +383,21 @@ namespace Chem
             var rares = new List<PackedRare>();
             for (int i = 0; i < Chunks.Area; i++)
             {
-                var c = ch.CellAt(i);
+                var c = b.Cells[i];
                 if (c == null) continue;
                 made.Reset();
-                source.Make(CellX(ch, i), CellY(ch, i), made);
+                Source.Make(CellX(ch, i), CellY(ch, i), made);
                 if (SameCell(c, made) && c.Liquid == made.Liquid && c.Sets == made.Sets) continue;
                 at.Add(i);
-                cells.Add(PackCell(c, made, strings, rares));
+                cells.Add(PackCell(c, made, rares));
             }
             var fireAt = new List<int>();
             var fireGen = new List<int>();
             for (int i = 0; i < Chunks.Area; i++)
             {
-                if (ch.FireGeneration[i] == 0) continue;
+                if (b.FireGeneration[i] == 0) continue;
                 fireAt.Add(i);
-                fireGen.Add(ch.FireGeneration[i]);
+                fireGen.Add(b.FireGeneration[i]);
             }
             return new PackedChunk
             {
@@ -218,12 +413,12 @@ namespace Chem
 
         // A changed cell, against the cell the source makes there: with a PackedRare if either has a field few cells hold,
         // so laying it over the source's cell clears what the source had.
-        static PackedCell PackCell(Cell c, Cell made, PackStrings strings, List<PackedRare> rares)
+        PackedCell PackCell(Cell c, Cell made, List<PackedRare> rares)
         {
             var p = new PackedCell
             {
-                T = strings.Id(c.T),
-                Cover = strings.Id(c.Cover),
+                T = packStrings.Id(c.T),
+                Cover = packStrings.Id(c.Cover),
                 Liquid = checked((byte)c.Liquid),
                 Frozen = c.Frozen,
                 Water = (short)c.Water,
@@ -237,7 +432,7 @@ namespace Chem
             p.Rare = rares.Count;
             rares.Add(new PackedRare
             {
-                Gas = strings.Id(c.Gas),
+                Gas = packStrings.Id(c.Gas),
                 Water = c.Water,
                 Fire = c.Fire,
                 Height = c.Height,
@@ -260,13 +455,13 @@ namespace Chem
             c.Gas != null || c.Sets != 0 || c.Fuel != 0 || c.GasAmt != 0 || c.Charge != 0 || c.Life != 0 || c.Rust != 0 || c.Heat != 0 || c.Lit != 0 || c.Slick != 0 || c.Star != 0 || c.Cracked != 0;
 
         // Lays a changed cell's state over a cell the source made.
-        static void LayPacked(PackedChunk p, int k, PackStrings strings, Cell c)
+        void LayPacked(PackedChunk p, int k, Cell c)
         {
             var pc = p.Cells[k];
-            c.T = strings.Of(pc.T);
+            c.T = packStrings.Of(pc.T);
             c.Liquid = pc.Liquid;
             c.Frozen = pc.Frozen;
-            c.Cover = strings.Of(pc.Cover);
+            c.Cover = packStrings.Of(pc.Cover);
             c.DampUntil = pc.DampUntil;
             if (pc.Rare < 0)
             {
@@ -279,7 +474,7 @@ namespace Chem
             c.Water = r.Water;
             c.Fire = r.Fire;
             c.Height = r.Height;
-            c.Gas = strings.Of(r.Gas);
+            c.Gas = packStrings.Of(r.Gas);
             c.Sets = r.Sets;
             c.Fuel = r.Fuel;
             c.GasAmt = r.GasAmt;
@@ -293,65 +488,54 @@ namespace Chem
             c.Cracked = r.Cracked;
         }
 
-        /// <summary>A packed chunk's cell at local index i, into <paramref name="into"/>: the source's, with its change laid over.</summary>
-        static void ReadPacked(PackedChunk p, int i, IChunkSource source, PackStrings strings, Cell into)
-        {
-            into.Reset();
-            source.Make((p.X << Chunks.Shift) + (i & Chunks.Mask), (p.Y << Chunks.Shift) + (i >> Chunks.Shift), into);
-            int k = p.Find(i);
-            if (k >= 0) LayPacked(p, k, strings, into);
-        }
+        // ---------- reading a chunk where it lies ----------
 
-        /// <summary>ChunkHash of a packed chunk, read from its source and changes: the same text, without unpacking it.</summary>
-        public string PackedChunkHash(PackedChunk p, IChunkSource source, PackStrings strings)
+        /// <summary>
+        /// Reads a chunk's cells in ascending local index without unpacking it (the hash, the save, the dragon's audit, the
+        /// starting state): an unpacked chunk's own objects; a packed chunk's from the source and its changes into one
+        /// scratch cell, keeping its place in the changes. What it returns is for reading only, and only until the next At.
+        /// </summary>
+        struct ChunkReader
         {
-            var sum = Fnv1aSum.Start();
-            var ch = ChunkOrThrow(p.X, p.Y);
-            var c = new Cell();
-            int k = 0;
-            for (int i = 0; i < Chunks.Area; i++)
+            readonly World world;
+            readonly Chunk chunk;
+            readonly ChunkBlock held;
+            readonly PackedChunk packed;
+            readonly Cell scratch;
+            int k;
+
+            public ChunkReader(World world, Chunk chunk, Cell scratch, int from = 0)
             {
-                int x = CellX(ch, i), y = CellY(ch, i);
-                if (!InBounds(x, y)) continue;
-                c.Reset();
-                source.Make(x, y, c);
-                if (k < p.At.Length && p.At[k] == i) LayPacked(p, k++, strings, c);
-                AddCell(ref sum, c, LiquidsOf(ch));
+                this.world = world;
+                this.chunk = chunk;
+                this.scratch = scratch;
+                held = chunk.Held;
+                packed = chunk.Packed;
+                k = held == null ? packed.From(from) : 0;
             }
-            return sum.ToString();
+
+            /// <summary>Its cell at local index i, at or past the last one read (null outside the world's extent).</summary>
+            public Cell At(int i)
+            {
+                if (held != null) return held.Cells[i];
+                int x = CellX(chunk, i), y = CellY(chunk, i);
+                if (!world.InBounds(x, y)) return null;
+                scratch.Reset();
+                world.Source.Make(x, y, scratch);
+                var p = packed;
+                while (k < p.At.Length && p.At[k] < i) k++;
+                if (k < p.At.Length && p.At[k] == i) world.LayPacked(p, k, scratch);
+                return scratch;
+            }
         }
 
         /// <summary>
-        /// CellHash of a world some of whose chunks are packed: the cells in row order as CellHash walks them, a packed
-        /// chunk's read from its source and changes into one scratch cell, never unpacked. The same bits as CellHash.
+        /// A packed chunk's save record, made from its changes when the save is against the world's own source: the cells
+        /// SaveChunk would write, without diffing the chunk's every cell against the source.
         /// </summary>
-        public string PackedCellHash()
+        JObject SavePacked(Chunk ch)
         {
-            var sum = Fnv1aSum.Start();
-            var scratch = new Cell();
-            for (int y = 0; y < H; y++)
-            {
-                Chunk ch = null;
-                for (int x = 0; x < W; x++)
-                {
-                    if (ch == null || Chunks.LocalOf(x) == 0) ch = FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
-                    int i = LocalIndex(x, y);
-                    var c = ch.HeldAt(i);
-                    if (c == null)
-                    {
-                        ReadPacked(ch.Packed, i, packSource, packStrings, scratch);
-                        c = scratch;
-                    }
-                    AddCell(ref sum, c, LiquidsIn(ch, c));
-                }
-            }
-            return CloseHash(sum);
-        }
-
-        /// <summary>SaveChunk of a packed chunk: its record made from its changes, without the diff against the source.</summary>
-        public JObject SavePacked(PackedChunk p, IChunkSource source, PackStrings strings)
-        {
-            var ch = ChunkOrThrow(p.X, p.Y);
+            var p = ch.Packed;
             var o = SaveChunkHeader(ch);
             if (p.FireAt.Length > 0)
             {
@@ -366,15 +550,18 @@ namespace Chem
             {
                 int i = p.At[k], x = CellX(ch, i), y = CellY(ch, i);
                 made.Reset();
-                source.Make(x, y, made);
+                Source.Make(x, y, made);
                 c.Reset();
-                source.Make(x, y, c);
-                LayPacked(p, k, strings, c);
+                Source.Make(x, y, c);
+                LayPacked(p, k, c);
                 // A cell kept only for its Liquid or Sets on dry ground (SameCell doesn't see them) is no change to a save.
                 if (!SameCell(c, made)) cells.Add(SaveCell(i, c, LiquidsOf(ch)));
             }
             if (cells.Count > 0) o["cells"] = cells;
             return o;
         }
+
+        /// <summary>SaveChunk's record of one chunk, packed or not, against a source: for comparing the two paths in tests.</summary>
+        public JObject SaveChunkOf(int cx, int cy, IChunkSource source) => SaveChunk(ChunkOrThrow(cx, cy), source, new Cell());
     }
 }

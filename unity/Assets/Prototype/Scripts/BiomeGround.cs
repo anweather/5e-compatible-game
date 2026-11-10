@@ -111,8 +111,8 @@ public sealed class BiomeGround
             for (int i = 0; i < across; i++)
             {
                 int x = i * Step, y = j * Step;
-                if (x >= world.W || y >= world.H || Pinned(x, y) || world.At(x, y) is not { } cell || cell.Water > 0) continue;
-                var paint = CellPaint.Mix(world, x, y);
+                if (x >= world.W || y >= world.H || Pinned(x, y) || CellAsIs(world, x, y) is not { } cell || cell.Water > 0) continue;
+                var paint = CellPaint.Mix(world, x, y, cell);
                 for (int k = 0; k < layers; k++) mix[k] = paint[k];
                 Repaint(x, y, mix);
                 string id = strongest[j * across + i];
@@ -126,6 +126,19 @@ public sealed class BiomeGround
             if (!sums.ContainsKey(id)) sums[id] = (float[])own.Clone();
         return sums;
     }
+
+    // A cell as the world holds it, without unpacking its chunk (D17): a packed chunk's cell is made from the world's source,
+    // as it started (a packed chunk's changes since aren't read: Grounds runs once, as the far ring starts). Reading every
+    // Step cells through world.At unpacked every chunk of the map.
+    static Cell CellAsIs(World world, int x, int y)
+    {
+        if (world.Source == null || !world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift)) return world.At(x, y);
+        made.Reset();
+        world.Source.Make(x, y, made);
+        return made;
+    }
+
+    static readonly Cell made = new();
 
     static int Index(string layer)
     {

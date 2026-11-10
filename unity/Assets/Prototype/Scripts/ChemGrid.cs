@@ -110,19 +110,6 @@ public partial class ChemGrid : MonoBehaviour
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
 
-    // One character per cell, the same legend as the web sandbox's scenarios.
-    static readonly Dictionary<char, (string t, int water, bool frozen, string cover)> Legend = new()
-    {
-        ['%'] = ("bedrock", 0, false, null), ['#'] = ("stone", 0, false, null),
-        ['.'] = ("dirt", 0, false, null), [','] = ("grass", 0, false, null),
-        ['"'] = ("brush", 0, false, null), ['T'] = ("tree", 0, false, null),
-        ['='] = ("wood", 0, false, null), ['_'] = ("pit", 0, false, null),
-        ['w'] = ("pit", 4, false, null), ['*'] = ("pit", 4, true, null), ['r'] = ("river", 4, false, null),
-        ['~'] = ("dirt", 2, false, null), ['m'] = ("metal", 0, false, null),
-        ['o'] = ("dirt", 0, false, "oil"), ['@'] = ("grass", 0, false, null),
-        ['L'] = ("logwall", 0, false, null), ['P'] = ("pane", 0, false, null),
-    };
-
     float tickTimer;
     int lastLitTick = -1;
     LogEntry lastLog;
@@ -271,26 +258,17 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     /// <summary>
-    /// A new world from a map (one Legend character per cell, rows top to bottom). The editor's
-    /// ValleyBuilder bakes the terrain from the same starting world.
+    /// A new world from a map (one BakedSource.Legend character per cell, rows top to bottom), made from the map as its
+    /// source (the sparse World, D17): no chunk's cells are made until something reads it. The editor's ValleyBuilder
+    /// bakes the terrain from the same starting world.
     /// </summary>
     public static World MapWorld(Rules rules, string map, uint seed, out Vector2Int start)
     {
-        var rows = map.Replace("\r", "").Trim('\n').Split('\n');
-        int h = rows.Length, w = 0;
-        foreach (var r in rows) w = Mathf.Max(w, r.Length);
-        var world = new World(rules, w, h, seed);
+        var source = BakedSource.FromText(map, rules);
+        var world = new World(rules, source.W, source.H, seed);
         world.SetLandRange(MapFile.Load(Folders.World).LandRange);
-        start = Vector2Int.zero;
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                char ch = x < rows[y].Length ? rows[y][x] : '.';
-                if (ch == '@') start = new Vector2Int(x, y);
-                PaintCell(world, x, y, ch);
-            }
-        }
+        world.MakeFrom(source);
+        start = new Vector2Int(source.Start.x, source.Start.y);
         LayPuzzles(world);
         // The map's stamps before its rows: a row's pad is cut level on the stamped land (a village up a volcano's slope).
         LayStamps(world);
@@ -371,16 +349,6 @@ public partial class ChemGrid : MonoBehaviour
         {
             Debug.LogError($"world/{WorldHold.FileName} can't be read, so no Hold: {e.Message}");
         }
-    }
-
-    // Sets up one cell from its map character (see Legend); unknown characters are dirt.
-    static void PaintCell(World world, int x, int y, char ch)
-    {
-        if (!Legend.TryGetValue(ch, out var spec)) spec = Legend['.'];
-        world.Paint(x, y, spec.t);
-        if (spec.water > 0) world.AddWater(x, y, spec.water);
-        if (spec.frozen) world.At(x, y).Frozen = true;
-        if (spec.cover != null) world.SetCover(x, y, spec.cover);
     }
 
     // From the start of Play to the grid's first frame: what a start-up costs (view-rebuild's target).

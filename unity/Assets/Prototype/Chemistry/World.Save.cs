@@ -38,19 +38,16 @@ namespace Chem
         /// <summary>The save format; a save of another is refused.</summary>
         public const int SaveFormat = 1;
 
-        /// <summary>Makes every cell as the source says (as a fresh world starts, or a load before its changes).</summary>
+        /// <summary>
+        /// Makes every cell as the source says (as a fresh world starts, or a load before its changes), and takes the
+        /// source as the world's own (Source): every chunk is packed with no changes against it, so no cell is made
+        /// until something reads its chunk (World.Pack.cs). Fire generations go with the cells.
+        /// </summary>
         public void MakeFrom(IChunkSource source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             FinishTick();
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    var c = At(x, y);
-                    c.Reset();
-                    source.Make(x, y, c);
-                    c.ForgetDef();
-                }
+            PackAllEmpty(source);
             AllFitted();
             ForgetWaterSnapshots();
         }
@@ -59,8 +56,8 @@ namespace Chem
         public IReadOnlyList<(int cx, int cy)> ChangedChunks(IChunkSource source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
-            var made = new Cell();
-            return SortedChunks(false).Where(ch => ChangedCells(ch, source, made).Any()).Select(ch => (ch.X, ch.Y)).ToList();
+            Cell made = new Cell(), scratch = new Cell();
+            return SortedChunks(false).Where(ch => ChangedCells(ch, source, made, scratch).Any()).Select(ch => (ch.X, ch.Y)).ToList();
         }
 
         /// <summary>The world as play left it, against the source it was made from (finishing the tick in progress first).</summary>
@@ -335,12 +332,15 @@ namespace Chem
             foreach (var f in s["fitLiquids"] ?? new JArray()) fitLiquids[(int)f[0]] = f[1].Select(id => (string)id).ToArray();
         }
 
-        // The local indices of a chunk's cells that differ from the source's.
-        static IEnumerable<int> ChangedCells(Chunk ch, IChunkSource source, Cell made)
+        // The local indices of a chunk's cells that differ from the source's, read where they lie (a packed chunk isn't
+        // unpacked: none of them when it has no changes against a source that is the world's own).
+        IEnumerable<int> ChangedCells(Chunk ch, IChunkSource source, Cell made, Cell scratch)
         {
+            if (ch.Packed != null && source == Source && ch.Packed.Count == 0) yield break;
+            var read = new ChunkReader(this, ch, scratch);
             for (int i = 0; i < Chunks.Area; i++)
             {
-                var c = ch.CellAt(i);
+                var c = read.At(i);
                 if (c == null) continue;
                 made.Reset();
                 source.Make(ch.X * Chunks.Size + (i & Chunks.Mask), ch.Y * Chunks.Size + (i >> Chunks.Shift), made);
@@ -352,14 +352,27 @@ namespace Chem
             a.T == b.T && a.Water == b.Water && a.Kind == b.Kind && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
             && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Cracked == b.Cracked && a.Lit == b.Lit && a.Slick == b.Slick && a.Setting == b.Setting;
 
-        // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
+        // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither). A packed
+        // chunk is read where it lies: against the world's own source its record is its changes (SavePacked).
         JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
         {
+            if (ch.Packed != null && source == Source) return SavePacked(ch);
             var o = SaveChunkHeader(ch);
-            var fire = Enumerable.Range(0, Chunks.Area).Where(i => ch.FireGeneration[i] != 0).Select(i => new JArray(i, ch.FireGeneration[i])).ToList();
+            var fire = ch.Held is ChunkBlock b
+                ? Enumerable.Range(0, Chunks.Area).Where(i => b.FireGeneration[i] != 0).Select(i => new JArray(i, b.FireGeneration[i])).ToList()
+                : ch.Packed.FireAt.Select((i, f) => new JArray(i, ch.Packed.FireGen[f])).ToList();
             if (fire.Count > 0) o["fireGen"] = new JArray(fire);
-            var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.CellAt(i), LiquidsOf(ch))).ToList();
-            if (cells.Count > 0) o["cells"] = new JArray(cells);
+            var cells = new JArray();
+            var read = new ChunkReader(this, ch, new Cell());
+            for (int i = 0; i < Chunks.Area; i++)
+            {
+                var c = read.At(i);
+                if (c == null) continue;
+                made.Reset();
+                source.Make(CellX(ch, i), CellY(ch, i), made);
+                if (!SameCell(c, made)) cells.Add(SaveCell(i, c, LiquidsOf(ch)));
+            }
+            if (cells.Count > 0) o["cells"] = cells;
             return o;
         }
 
@@ -420,6 +433,8 @@ namespace Chem
             }
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
             foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.CellAt((int)a[0]), (JArray)a, LiquidsOf(ch));
+            // An inactive chunk goes in packed (World.Pack.cs): a load unpacks one chunk at a time, only those with changes.
+            if (!ch.Active && ch.Packed == null) PackChunk(ch);
         }
 
         // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.

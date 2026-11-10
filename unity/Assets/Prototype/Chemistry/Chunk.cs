@@ -41,36 +41,13 @@ namespace Chem
     }
 
     /// <summary>
-    /// One chunk's cells (row-major, local index = ly * Size + lx) and the per-cell sim state
-    /// kept outside Cell. Slots outside the world's extent are null.
+    /// An unpacked chunk's cells and the per-cell state that only matters while it's unpacked (the sparse World,
+    /// docs/design/sparse-world.md): its Cell objects, fire generations, per-tick marks and still-water snapshot. Taken from
+    /// the World's pool as a chunk unpacks and given back as it packs (World.Pack.cs), so unpacking makes no garbage.
     /// </summary>
-    internal sealed class Chunk
+    internal sealed class ChunkBlock
     {
-        public readonly int X, Y;
-        // Its cells, reached through CellAt and Put, or ActiveCells for the tick's own passes, so how an inactive
-        // chunk holds them can change under its callers (the sparse World, docs/design/sparse-world.md).
-        readonly Cell[] cells = new Cell[Chunks.Area];
-
-        /// <summary>The cell at local index i, or null outside the world's extent. A packed chunk unpacks to be read (World.Pack.cs).</summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Cell CellAt(int i) => cells[i] ?? (Packed == null ? null : Owner.UnpackOnRead(this, i));
-
-        /// <summary>The cell at local index i as held: null in a packed chunk too (for the reads that mustn't unpack it, World.Pack.cs).</summary>
-        public Cell HeldAt(int i) => cells[i];
-
-        /// <summary>Its changes while it's packed, else null: the sparse World's prototype (World.Pack.cs), which nothing in the game uses.</summary>
-        public PackedChunk Packed;
-        /// <summary>The world it's a chunk of, for unpacking it on a read.</summary>
-        public World Owner;
-
-        /// <summary>Puts the cell at local index i (as the world is built).</summary>
-        public void Put(int i, Cell c) => cells[i] = c;
-
-        /// <summary>
-        /// Its cells as one array by local index, for the tick's hot passes over an active chunk (World.Sim, Weather,
-        /// Machines, StillWater): only ever read for a chunk the tick simulates.
-        /// </summary>
-        public Cell[] ActiveCells => cells;
+        public readonly Cell[] Cells = new Cell[Chunks.Area];
         /// <summary>
         /// How many spreads each burning cell is from where its fire started (see FireParams.FadeCells).
         /// Kept outside Cell so cell state, checksums and the TS parity tests are unaffected.
@@ -78,6 +55,66 @@ namespace Chem
         public readonly int[] FireGeneration = new int[Chunks.Area];
         /// <summary>Per-tick marks machines read in the TS (World.Mark*); cleared at the end of each tick.</summary>
         public readonly byte[] Marks = new byte[Chunks.Area];
+        // Still water (World.StillWater): what the water pass reads of each cell as it was at the last pass, made at a
+        // chunk's first pass and kept with the block.
+        public int[] SnapWater, SnapHeight;
+        public bool[] SnapFrozen;
+        public byte[] SnapKind;
+        public string[] SnapT;
+    }
+
+    /// <summary>
+    /// One chunk's cells (row-major, local index = ly * Size + lx) and the per-cell sim state
+    /// kept outside Cell. Slots outside the world's extent are null. Unpacked, it holds them in a
+    /// block (ChunkBlock); packed (an inactive chunk only, World.Pack.cs), as its changes against the
+    /// world's source. How it holds them never shows: every read of a packed chunk through CellAt
+    /// (or its per-cell arrays) unpacks it first.
+    /// </summary>
+    internal sealed class Chunk
+    {
+        public readonly int X, Y;
+        // Its block while it's unpacked, else null (and Packed holds its changes).
+        ChunkBlock block;
+
+        /// <summary>Its changes against the world's source while it's packed, else null (World.Pack.cs).</summary>
+        public PackedChunk Packed;
+        /// <summary>The world it's a chunk of, for unpacking it on a read.</summary>
+        public World Owner;
+        /// <summary>
+        /// The last tick it was active, beside an active chunk or in the view's drawn hint, or was unpacked: when it may pack
+        /// (World.PackDue). Storage, not shared state: never hashed or saved.
+        /// </summary>
+        public int Needed;
+
+        /// <summary>Its block, unpacking it first if it's packed.</summary>
+        internal ChunkBlock Block
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => block ?? Owner.UnpackOnRead(this);
+        }
+
+        /// <summary>Its block as held: null while it's packed (for the reads that mustn't unpack it, World.Pack.cs).</summary>
+        internal ChunkBlock Held => block;
+
+        /// <summary>Gives it a block (unpacking) or takes it away (packing), for World.Pack.cs alone.</summary>
+        internal void Hold(ChunkBlock b) => block = b;
+
+        /// <summary>The cell at local index i, or null outside the world's extent. A packed chunk unpacks to be read (World.Pack.cs).</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Cell CellAt(int i) => Block.Cells[i];
+
+        /// <summary>
+        /// Its cells as one array by local index, for the tick's hot passes over an active chunk (World.Sim, Weather,
+        /// Machines, StillWater) and a view's pass over a chunk it draws (World.ChunkCells).
+        /// </summary>
+        public Cell[] ActiveCells => Block.Cells;
+        /// <summary>
+        /// How many spreads each burning cell is from where its fire started (see FireParams.FadeCells).
+        /// Kept outside Cell so cell state, checksums and the TS parity tests are unaffected.
+        /// </summary>
+        public int[] FireGeneration => Block.FireGeneration;
+        /// <summary>Per-tick marks machines read in the TS (World.Mark*); cleared at the end of each tick.</summary>
+        public byte[] Marks => Block.Marks;
         /// <summary>Loaded neighbours, or null at the edge of what is loaded.</summary>
         public Chunk North, East, South, West;
         public bool Active = true;
@@ -102,15 +139,10 @@ namespace Chem
         /// </summary>
         public int Fit = 1;
 
-        // Still water (World.StillWater): what the water pass reads of each cell (water, height,
-        // frozen, terrain) as it was at the last pass, and the neighbours' active state then.
-        public int[] SnapWater, SnapHeight;
-        public bool[] SnapFrozen;
-        /// <summary>Each cell's liquid kind (Cell.Kind; at most Rules.MaxLiquids, so a byte).</summary>
-        public byte[] SnapKind;
-        public string[] SnapT;
+        // Still water (World.StillWater): the neighbours' active state at the last water pass (the cells' snapshot is in
+        // the block).
         public readonly bool[] SnapNeighbourActive = new bool[4];
-        /// <summary>The snapshot is from the last water pass (false after activating or a rule switch).</summary>
+        /// <summary>The snapshot is from the last water pass (false after activating, unpacking or a rule switch).</summary>
         public bool SnapValid;
         /// <summary>Nothing the water pass reads changed since the last pass.</summary>
         public bool Unchanged;
