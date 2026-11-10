@@ -85,7 +85,7 @@ of the volcano is hidden by a nearer hill (a viewpoint or landmark placement que
 
 ## Open questions for Andrew
 
-- **D17, the sparse World (proposed on `sparse-world-1`, `docs/adr/0017-the-sparse-world.md`):** inactive chunks packed as their source (the bake) plus their changes, unpacked from a block pool when active or drawn; ~100-210 MB at 9,720 chunks against 3.4 GB; no protocol or save-format change, goldens unchanged. Step 2 is about a week of u2. Asked 2026-11-10 ~06:10; u2 benches its main risk (`sparse-world-bench`) meanwhile.
+- **D17, the sparse World (proposed on `sparse-world-1`, `docs/adr/0017-the-sparse-world.md`):** inactive chunks packed as their source (the bake) plus their changes, unpacked from a block pool when active or drawn; ~100-210 MB at 9,720 chunks against 3.4 GB; no protocol or save-format change, goldens unchanged. Step 2 is about a week of u2. **Andrew: accept after the bench (J-089).** If `sparse-world-bench` fits the tick budget, the lead marks D17 accepted and starts step 2; if not, the fallback goes to Andrew.
 - Terrain trees on the nine's walk (13 M triangles, the biggest render cost left): bring the billboard distance nearer than 160 m? It changes how far trees look full; the lead recommends a same-spot still comparison at 80 m and 120 m first.
 
 ## Telemetry
