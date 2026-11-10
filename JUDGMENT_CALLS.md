@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-091: Tree impostors: near trees' wind and impostor shadows (2026-11-10)
+
+- **Asked:** the lead, from the tree impostor trial (d3d4ca21, off by default): with impostors on, our renderer
+  draws near trees without SpeedTree's wind; impostors cast shadows out to 500 m.
+- **Also comes up when:** the impostor rollout, any far vegetation.
+- **Answer (Andrew):** near trees (within ~60 m) as SpeedTree GameObjects with LOD groups, so wind is back;
+  impostors cast shadows within the drawn tier only (~256 m), none beyond.
+- **Revisited:** 0.
+
 ### J-090: Realistic trees cheaply: our own impostors or a bought tool? (2026-11-10)
 
 - **Asked:** the lead, after Andrew asked for realistic trees at distance without the cost (the trees are the biggest
