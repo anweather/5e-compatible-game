@@ -154,8 +154,13 @@ public sealed partial class CellDressing
         float smoothness = look.Roughness < 0f ? BlockSmoothness : 1f - look.Roughness;
         string name = $"Stone {smoothness:0.00}{(look.Glow > 0f ? " glow" : "")}";
         r.sharedMaterial = materials.Lit(name, Color.white, smoothness, look.Glow > 0f ? Color.black : null);
-        Shade(r, color, x, y);
-        if (look.Glow <= 0f) return;
+        if (look.Glow <= 0f)
+        {
+            Shade(r, color, x, y);
+            return;
+        }
+        // A glowing block keeps its shade and glow in a property block: there are few of them.
+        UrpMaterials.SetColor(r, tint, color * Jitter(x, y));
         r.GetPropertyBlock(tint);
         tint.SetColor(EmissionColorId, color * look.Glow);
         r.SetPropertyBlock(tint);
@@ -204,18 +209,26 @@ public sealed partial class CellDressing
         return go;
     }
 
-    // Shared material, with a per-cell shade so neighbouring parts don't read as one flat sheet.
+    // A shared material, in a per-cell shade so neighbouring parts don't read as one flat sheet.
     void Paint(Renderer r, string mat, Color color, float smoothness, int x, int y)
     {
         r.sharedMaterial = materials.Lit(mat, Color.white, smoothness);
         Shade(r, color, x, y);
     }
 
+    // The renderer's material in the cell's shade: a shared copy (MaterialCache.Shaded), so the dressing batches.
     void Shade(Renderer r, Color color, int x, int y)
     {
+        var shade = color * Jitter(x, y);
+        var shaded = materials.Shaded(r.sharedMaterial, shade);
+        if (shaded != null) r.sharedMaterial = shaded;
+        else UrpMaterials.SetColor(r, tint, shade);
+    }
+
+    static float Jitter(int x, int y)
+    {
         float n = Mathf.PerlinNoise(x * 0.37f + 0.11f, y * 0.37f + 0.53f);
-        float jitter = 0.86f + 0.24f * n + 0.04f * (((x * 73856093) ^ (y * 19349663)) & 7) / 7f;
-        UrpMaterials.SetColor(r, tint, color * jitter);
+        return 0.86f + 0.24f * n + 0.04f * (((x * 73856093) ^ (y * 19349663)) & 7) / 7f;
     }
 
     // A shared material's name for a part in a look's colour: its own name in the family's usual

@@ -80,6 +80,15 @@ public sealed class PerfMarkers : IDisposable
         "Trigger Overlaps", "Narrowphase Touches",
     };
 
+    // What the frame drew, read as they stand each frame (#201): the draw's size, not its time.
+    static readonly string[] RenderGauges =
+    {
+        "SetPass Calls Count", "Draw Calls Count", "Batches Count", "Triangles Count", "Vertices Count",
+        "Shadow Casters Count", "Visible Skinned Meshes Count",
+    };
+
+    readonly List<ProfilerRecorder> renderGauges = new();
+    readonly double[] renderSum = new double[RenderGauges.Length], renderPeak = new double[RenderGauges.Length];
     readonly List<string> names = new();
     readonly List<ProfilerRecorder> gauges = new();
     readonly double[] gaugeWindow = new double[Gauges.Length];
@@ -103,6 +112,7 @@ public sealed class PerfMarkers : IDisposable
                 recorders.Add(ProfilerRecorder.StartNew(category, name));
             }
         foreach (string gauge in Gauges) gauges.Add(ProfilerRecorder.StartNew(ProfilerCategory.Physics, gauge));
+        foreach (string gauge in RenderGauges) renderGauges.Add(ProfilerRecorder.StartNew(ProfilerCategory.Render, gauge));
         if (wide) WatchEverything();
         sum = new double[names.Count];
         peak = new double[names.Count];
@@ -162,6 +172,31 @@ public sealed class PerfMarkers : IDisposable
         }
         for (int i = 0; i < gauges.Count; i++)
             if (gauges[i].Valid) gaugeWindow[i] += gauges[i].LastValue;
+        for (int i = 0; i < renderGauges.Count; i++)
+        {
+            if (!renderGauges[i].Valid) continue;
+            double value = renderGauges[i].LastValue;
+            renderSum[i] += value;
+            renderPeak[i] = Math.Max(renderPeak[i], value);
+        }
+    }
+
+    /// <summary>What the frames drew over the run, as name=mean/peak pairs (counts, not times).</summary>
+    public string RenderSummary()
+    {
+        var line = new StringBuilder();
+        var inv = CultureInfo.InvariantCulture;
+        for (int i = 0; i < renderGauges.Count; i++)
+        {
+            string name = RenderGauges[i].Replace(" Count", "").Replace(' ', '_').ToLowerInvariant();
+            if (!renderGauges[i].Valid)
+            {
+                line.Append(' ').Append(name).Append("=na");
+                continue;
+            }
+            line.Append(' ').Append(name).Append('=').Append((renderSum[i] / Math.Max(1, frames)).ToString("0", inv)).Append('/').Append(renderPeak[i].ToString("0", inv));
+        }
+        return line.ToString();
     }
 
     /// <summary>The last frame's markers of half a millisecond or more, as name=ms pairs, then its garbage.</summary>
@@ -210,6 +245,7 @@ public sealed class PerfMarkers : IDisposable
     {
         foreach (var recorder in recorders) recorder.Dispose();
         foreach (var gauge in gauges) gauge.Dispose();
+        foreach (var gauge in renderGauges) gauge.Dispose();
         allocated.Dispose();
         systemUsed.Dispose();
         gfxUsed.Dispose();
