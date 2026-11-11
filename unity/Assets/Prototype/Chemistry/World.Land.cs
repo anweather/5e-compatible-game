@@ -641,6 +641,49 @@ namespace Chem
             if (mapStamps.Count > 0) save["mapStamps"] = new JArray(mapStamps.Select(s => (object)s.Row).ToArray());
             if (landLaid != null) save["landLaid"] = new JArray(LandLaidCells().SelectMany(c => new object[] { c.x, c.y, landLaid[c.x, c.y] }).ToArray());
             if (landCrag != null) save["landCrag"] = new JArray(LandCragCells().SelectMany(c => new object[] { c.x, c.y, landCrag[c.x, c.y] }).ToArray());
+            SaveLandSet(save);
+        }
+
+        // Land given by SetLand (a baked map's land.json, or flat land a stamp needed): not the land itself, which is the
+        // map's, but the hash of the rows it was given and the cells it marked NoLand for their water then, as runs of
+        // [first Idx, how many]. With the same rows, a load makes the same land whatever water stands where now (#119).
+        void SaveLandSet(JObject save)
+        {
+            if (landRowsHash == null) return;
+            var marks = new JArray();
+            for (int k = 0; k < landMarks.Count;)
+            {
+                int first = landMarks[k], n = 1;
+                while (k + n < landMarks.Count && landMarks[k + n] == first + n) n++;
+                marks.Add(first);
+                marks.Add(n);
+                k += n;
+            }
+            save["landSet"] = new JObject { ["rows"] = landRowsHash, ["marks"] = marks };
+        }
+
+        // After a load's state and cells (the stamps have pressed landMoved): the land SetLand made, from the rows given
+        // (the map's land.json) or, if the save's land was flat, from none, with the save's marks. Refused if the rows
+        // aren't the ones it was saved over.
+        void LoadLandSet(JObject s, int[] land)
+        {
+            if (!(s["landSet"] is JObject set)) return;
+            string rows = (string)set["rows"];
+            var flat = new int[W];
+            if (land == null)
+            {
+                uint hash = LandRowsSeed;
+                for (int y = 0; y < H; y++) hash = HashLandRow(hash, flat);
+                if (hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture) != rows)
+                    throw new SaveException("This save doesn't fit: it was saved with the map's land, so it loads given it");
+            }
+            else if (land.Length != W * H) throw new SaveException($"This save doesn't fit: land for {W * H} cells, not {land.Length}");
+            var marked = new HashSet<int>();
+            var saved = set["marks"] as JArray ?? new JArray();
+            for (int k = 0; k + 1 < saved.Count; k += 2)
+                for (int n = 0; n < (int)saved[k + 1]; n++) marked.Add((int)saved[k] + n);
+            SpreadLand(land == null ? (_, row) => Array.Copy(flat, row, W) : (y, row) => Array.Copy(land, y * W, row, 0, W), (i, _) => marked.Contains(i));
+            if (landRowsHash != rows) throw new SaveException("This save doesn't fit: saved over other land");
         }
 
         void LoadLand(JObject s)

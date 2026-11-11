@@ -313,10 +313,16 @@ namespace Chem
         /// SetLand a row at a time, north to south, so a big map's land is never held whole: <paramref name="row"/> fills
         /// row y's W cells, once a row. Null makes the land flat again.
         /// </summary>
-        public void SetLand(Action<int, int[]> row)
+        public void SetLand(Action<int, int[]> row) => SpreadLand(row, (_, c) => IsWaterBody(c));
+
+        // SetLand's work: the rows, less the cells marked NoLand (a water body's when it's set; the saved marks on a load),
+        // plus what's been stamped. What was marked and the rows' hash are kept for a save (World.Save.cs, SaveLandSet).
+        void SpreadLand(Action<int, int[]> row, Func<int, Cell, bool> marked)
         {
             DropLandPeek();
             landFromSource = false;
+            landMarks = null;
+            landRowsHash = null;
             if (row == null)
             {
                 hasLand = false;
@@ -327,6 +333,8 @@ namespace Chem
             var rows = new int[Chunks.Size * W];
             var one = new int[W];
             var land = new int[Chunks.Area];
+            var marks = new List<int>();
+            uint hash = LandRowsSeed;
             for (int cy = 0; cy <= Chunks.ChunkOf(H - 1); cy++)
             {
                 int y0 = cy << Chunks.Shift;
@@ -334,6 +342,7 @@ namespace Chem
                 {
                     row(y0 + j, one);
                     Array.Copy(one, 0, rows, j * W, W);
+                    hash = HashLandRow(hash, one);
                 }
                 for (int cx = 0; cx <= Chunks.ChunkOf(W - 1); cx++)
                 {
@@ -348,16 +357,39 @@ namespace Chem
                         var c = read.At(i);
                         int units = c == null ? NoLand : rows[(y - y0) * W + x];
                         // A water body's cell is NoLand; on the rest goes what's been stamped.
-                        if (units == NoLand || IsWaterBody(c)) at[i] = NoLand;
+                        if (units == NoLand) at[i] = NoLand;
+                        else if (marked(Idx(x, y), c))
+                        {
+                            at[i] = NoLand;
+                            if (c != null) marks.Add(Idx(x, y));
+                        }
                         else at[i] = units + (landMoved?[x, y] ?? 0);
                     }
                     if (b == null) ch.PackedLand = LandCodec.Encode(land, LandBytes);
                 }
             }
+            marks.Sort();
+            landMarks = marks;
+            landRowsHash = hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         // A cell SetLand marks NoLand: none, or one with water or a spring now.
         bool IsWaterBody(Cell c) => c == null || c.Water > 0 || TerrainOf(c).Spring > 0;
+
+        // The cells SetLand marked NoLand for their water (Idx order), and the hash of the rows it was given (FNV-1a over
+        // the integers): what a save keeps of land it was given, so a load given the same rows makes the same land. Null
+        // when the land is flat or the source's (LandFromSource).
+        List<int> landMarks;
+        string landRowsHash;
+
+        const uint LandRowsSeed = 0x811c9dc5;
+
+        static uint HashLandRow(uint hash, int[] row)
+        {
+            foreach (int v in row)
+                for (int k = 0; k < 32; k += 8) hash = (hash ^ (uint)((v >> k) & 0xff)) * 0x01000193;
+            return hash;
+        }
 
         // Whether the land is the source's (LandFromSource): then an untouched chunk's (no PackedLand while packed) is
         // made from the source as it's read, with what the stamps and the map moved since.
@@ -376,6 +408,8 @@ namespace Chem
             DropLandPeek();
             hasLand = true;
             landFromSource = true;
+            landMarks = null;
+            landRowsHash = null;
             foreach (var ch in chunks.Values)
             {
                 ch.PackedLand = null;

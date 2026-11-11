@@ -188,31 +188,34 @@ namespace Chem.Tests
         static IEnumerable<string> DiffersNames() => Differs.Keys.OrderBy(k => k, StringComparer.Ordinal);
 
         // A real map's world (the valley, as ChemGrid builds it from its folder over its BakedSource: puzzles, stamps,
-        // buildings, golf, the Hold), played, saved at a tick, loaded over the same source: the same cells, tick and RNG,
-        // the same save text again, and the same as the world never saved after more ticks of the same play. The Meadow
-        // above is made up; this is what a player plays. Its land (land.json, which only the water reads) is left flat:
-        // the save doesn't hold the land, and SetLand marks a cell NoLand by the water in it when it's called, so a load
-        // can't make the same land yet (docs/design/player-saves.md, "The land"; a question for Andrew).
-        [Test]
-        public void TheValleyComesBackFromASaveTheSame()
+        // buildings, golf, the Hold, then its land.json), played, saved at a tick, loaded over the same source and land:
+        // the same cells, tick and RNG, the same save text again, and the same as the world never saved after more ticks,
+        // its water (the Gauntlet's pits among it) running on the same land. The Meadow above is made up; this is what a
+        // player plays.
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TheValleyComesBackFromASaveTheSame(bool cast)
         {
             string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
-            var straight = SparseWorldBench.Build(dir, R, out var source);
-            straight.SetLand((int[])null);
+            var straight = GameValley(dir, out var source, out var land);
             int mx = straight.W / 2, my = straight.H / 2;
-            straight.Cast("fireball", mx, my, 1);
-            straight.Cast("create-water", mx + 20, my, 1);
-            straight.Cast("move-earth", mx, my + 20, 1);
+            if (cast)
+            {
+                straight.Cast("fireball", mx, my, 1);
+                straight.Cast("create-water", mx + 20, my, 1);
+                straight.Cast("move-earth", mx, my + 20, 1);
+            }
             for (int t = 0; t < 30; t++) straight.Step();
 
             string save = straight.Save(source);
-            var loaded = World.Load(save, R, source);
+            var loaded = World.Load(save, R, source, land: land);
             Assert.That(State(loaded), Is.EqualTo(State(straight)), "as saved");
             Assert.That(loaded.Save(source), Is.EqualTo(save), "a save of the load is the save again");
+            Assert.That(LandOf(loaded), Is.EqualTo(LandOf(straight)), "the same land, NoLand where it was");
 
             for (int t = 0; t < 60; t++)
             {
-                if (t == 10)
+                if (cast && t == 10)
                 {
                     straight.Cast("fire-bolt", mx - 20, my, 1);
                     loaded.Cast("fire-bolt", mx - 20, my, 1);
@@ -221,6 +224,44 @@ namespace Chem.Tests
                 loaded.Step();
             }
             Assert.That(State(loaded), Is.EqualTo(State(straight)), $"tick {straight.Tick}");
+        }
+
+        [Test]
+        public void ASaveGivenLandIsRefusedWithoutItOrWithOther()
+        {
+            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var w = GameValley(dir, out var source, out _);
+            string save = w.Save(source);
+            Assert.That(save, Does.Contain("\"landSet\""));
+            Assert.Throws<SaveException>(() => World.Load(save, R, source));
+            var other = ValleyLand(dir);
+            other[other.Length / 2] += 1;
+            Assert.Throws<SaveException>(() => World.Load(save, R, source, land: other));
+        }
+
+        // The valley as the game has it: Build lays the map, and the land goes on last, as ValleyChemistry sets it once the
+        // ground binds, so the water the lays put down (the Gauntlet's pits) is NoLand. Build sets it before the lays, as
+        // a generated map's land is made (LandFromSource, GeneratedSourceTests); SetLand again makes it the game's.
+        static World GameValley(string dir, out BakedSource source, out int[] land)
+        {
+            var w = SparseWorldBench.Build(dir, R, out source);
+            land = ValleyLand(dir);
+            w.SetLand(land);
+            return w;
+        }
+
+        static int[] ValleyLand(string dir)
+        {
+            var map = MapFile.Load(dir);
+            return LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+        }
+
+        static string LandOf(World w)
+        {
+            uint hash = 0x811c9dc5;
+            for (int y = 0; y < w.H; y++)
+                for (int x = 0; x < w.W; x++) hash = (hash ^ (uint)w.LandUnitsAt(x, y)) * 0x01000193;
+            return hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         [Test]
