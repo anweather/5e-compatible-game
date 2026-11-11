@@ -5,6 +5,8 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
+**Update 2026-11-10 ~22:30 MST (lead on the anweather3 account).** `playtest-looks` LANDED (trees to 150 m, pop-in cut at the haze, butterflies by biome; bushes partly: 739 of 34,940 still 0.25 m+ over the ground). **Left of #220 for the PC (not mechanical, stills first):** water chunks vanishing and the lake/sea jump (CellWaterMesh, Ocean.Tiles), the blue haze band, the white cube and far ring past the nine's edge (FarRing), the biome seam. `playtest-tools` (Mac, 9ba0fd8d) conflicts with dev in BiomeGround.cs: the Mac was asked to merge dev in and land it. **u2 is shut down** (Andrew); **u1** (anweather3, Remote Control up) is the core worker on this account; `test-isolation-219` landed from it. The `bridge-watch` watcher is stopped on the PC and out of Startup (Andrew): nothing pauses a worker on low RAM. Next for the PC: seam-view, #221, #218.
+
 **HANDOFF 2026-11-10 ~21:30 MST (this lead stops; Andrew moves to the Pro account). Read this block first.**
 Start the new lead with the `unity-lead` skill in `.claude/worktrees/coordinator`, then `bash .claude/skills/status/status.sh`.
 - **`playtest-looks` LANDED 6afbe900** (#220: trees to 150 m, cuts end at the haze's 99% (728 m), bushes on the ground, butterflies by biome; the nine walk 9.41/14.96). Left on #220, needing Andrew's F8 marks with position once `playtest-tools` lands: water chunks vanishing, the white cube, the biome seam; and his eye on the 728 m cut and the blue sea band past the nine's edge. The PC is free.
