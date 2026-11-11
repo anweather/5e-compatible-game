@@ -27,7 +27,7 @@ public sealed class TreeImpostors : MonoBehaviour
     /// <summary>Whether the impostors draw (on unless turned off).</summary>
     public static bool On { get; set; } = true;
     /// <summary>Nearer than this (m) a tree is its prefab, with wind; from here out the impostor.</summary>
-    public static float Near { get; set; } = 60f;
+    public static float Near { get; set; } = DefaultNear;
     /// <summary>How far out the impostors draw (m).</summary>
     public static float Far { get; set; } = 500f;
     /// <summary>How far out the impostors cast shadows (m): the drawn tier (J-091).</summary>
@@ -55,8 +55,11 @@ public sealed class TreeImpostors : MonoBehaviour
     // Cell-made chunks read a frame, terrain chunks re-read a frame (a burnt tree drops out within a second or so).
     const int ReadsPerFrame = 4, RefreshesPerFrame = 2, Batch = 1023;
     const float TerrainTreeDistance = 900f;
+    // Out to here a tree is its prefab (#220: at 60 m the swap showed in a sparse wood, where nothing in front hides it;
+    // SpeedTree's own LODs are meshes to past 500 m for the grown trees, so 150 m is still a full tree, not its billboard).
+    const float DefaultNear = 150f;
     // A near tree keeps its prefab out to Near + Keep, so one on the edge doesn't swap each step.
-    const float Keep = 4f;
+    const float Keep = 8f;
     // About this many ms a frame go to making near trees' prefabs (at least one a frame); all of them when none stands.
     const double SpawnBudgetMs = 1.0;
 
@@ -65,7 +68,7 @@ public sealed class TreeImpostors : MonoBehaviour
     static void Reset()
     {
         On = true;
-        Near = 60f;
+        Near = DefaultNear;
         Far = 500f;
         ShadowFar = 256f;
         Shadows = true;
