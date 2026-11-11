@@ -157,6 +157,7 @@ public sealed class BiomeGround
         if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return null;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var ground = new BiomeGround(GeneratedMap.Load(mapSource));
+        StartupTimeline.Mark("biome ground read");
         UnityEngine.Debug.Log($"BIOME GROUND: the plan's biomes read in {timer.Elapsed.TotalMilliseconds:0} ms");
         Last = ground;
         return ground;

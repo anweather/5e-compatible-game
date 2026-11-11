@@ -118,9 +118,12 @@ public partial class ChemGrid : MonoBehaviour
     void Awake()
     {
         TakeCurrent();
+        StartupTimeline.Mark("grid awake (start of the world build)");
         BuildWorld();
         StandAtSpawn();
+        StartupTimeline.Mark("stood at spawn");
         LoadThings();
+        StartupTimeline.Mark("things loaded");
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
         if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
@@ -165,20 +168,25 @@ public partial class ChemGrid : MonoBehaviour
         using var built = BuildMarker.Auto();
         Rules rules;
         using (BuildRulesMarker.Auto()) rules = StartRules();
+        StartupTimeline.Mark("rules loaded and composed");
         var roomWas = World?.Room;
 
         CheckMap();
+        StartupTimeline.Mark("map checked");
         TakeYard();
         Vector2Int start;
         var phase = System.Diagnostics.Stopwatch.StartNew();
         using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
+        StartupTimeline.Mark("world cells built (incl. keep start)");
         double cellsMs = phase.Elapsed.TotalMilliseconds;
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
+        StartupTimeline.Mark("room and mods");
         // The spawn the host picked (SpawnPoints), else the map's own.
         PlayerStart = SpawnPoints.StartCell(start);
         // Only the start's reach starts active (#209), before anything is drawn or spawned for the
         // chunks: every peer builds from the same map and start, so all start alike.
         if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.StartPlan(World, new[] { (PlayerStart.x, PlayerStart.y) }));
+        StartupTimeline.Mark("start reach active");
         World.ChunkSwitched += OnChunkSwitched;
         World.LandMoved += (x, y, reach) =>
         {
@@ -191,18 +199,22 @@ public partial class ChemGrid : MonoBehaviour
         phase.Restart();
         if (valley != null)
             using (BuildValleyMarker.Auto()) valley.Bind(World);
+        StartupTimeline.Mark("valley bound");
         double valleyMs = phase.Elapsed.TotalMilliseconds;
         phase.Restart();
         double initMs;
         using (BuildDrawMarker.Auto())
         {
             InitVisuals();
+            StartupTimeline.Mark("visuals made");
             initMs = phase.Elapsed.TotalMilliseconds;
             RenderAll();
+            StartupTimeline.Mark("near cells drawn");
         }
         double drawMs = phase.Elapsed.TotalMilliseconds;
         phase.Restart();
         using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
+        StartupTimeline.Mark("world-reset listeners");
         // What a world costs to build, by part (cell-memory: a big map's start and every reset pay it).
         Debug.Log($"WORLD BUILT {World.W} x {World.H}: cells {cellsMs:0} ms (keep start {KeepStartMs:0}), valley {valleyMs:0} ms, draw {drawMs:0} ms (visuals {initMs:0}, near {drawMs - initMs:0}), listeners {phase.Elapsed.TotalMilliseconds:0} ms");
     }
@@ -361,6 +373,7 @@ public partial class ChemGrid : MonoBehaviour
         {
             readyLogged = true;
             Debug.Log($"PLAY READY {World.W} x {World.H}: first frame {SincePlay.Elapsed.TotalMilliseconds:0} ms after Play started");
+            StartupTimeline.Done("first frame (PLAY READY)");
         }
         using (DetailChunksMarker.Auto()) UpdateDetailChunks();
         FollowLooks();
@@ -566,6 +579,7 @@ public partial class ChemGrid : MonoBehaviour
             into = Path.Combine(game.PlayerData, "worlds", GeneratedMap.InputHash(dir), id);
             baked = GeneratedMap.EnsureBakedInto(dir, into);
         }
+        StartupTimeline.Mark("map baked or found");
         Debug.Log($"MAP: {id} {(baked ? "baked" : "already baked")} in {into} ({timer.Elapsed.TotalMilliseconds:0} ms)");
         return into;
     }

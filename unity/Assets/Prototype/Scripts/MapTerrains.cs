@@ -226,6 +226,7 @@ public sealed class MapTerrains : MonoBehaviour
         // ground is served (ValleyChemistry's first Bind), none now.
         lazy = builder == null && Application.isPlaying && GeneratedMap.IsGenerated(ChemGrid.MapSource);
         chunks = lazy ? new Terrain[layout.ChunksX * layout.ChunksZ] : Place(transform, layout, builder, material);
+        StartupTimeline.Mark("ground terrains placed");
         Debug.Log(lazy
             ? $"GROUND TERRAINS for the drawn tier: none of {chunks.Length} chunks made yet, they're made as they're wanted"
             : $"GROUND TERRAINS {(builder != null ? "built" : "waiting for the land")}: {chunks.Length} chunks in {timer.Elapsed.TotalMilliseconds:0} ms");
@@ -276,6 +277,7 @@ public sealed class MapTerrains : MonoBehaviour
         var timer = System.Diagnostics.Stopwatch.StartNew();
         Plan();
         MakeSome(whole: true);
+        StartupTimeline.Mark("ground terrains for the drawn tier made");
         Debug.Log($"GROUND TERRAINS for the drawn tier: {made.Count} of {chunks.Length} chunks made in {timer.Elapsed.TotalMilliseconds:0} ms " +
                   $"({ArraysMs:0} ms of it their arrays and height offsets, side by side; sight {Sight()} + {Margin})");
     }
