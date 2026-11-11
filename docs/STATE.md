@@ -7,7 +7,7 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 **Handoff 2026-11-10 ~20:30 MST (lead out of usage; the other account picks up). Start: `unity-lead` skill in
 `.claude/worktrees/coordinator`, read this section, then `bash .claude/skills/status/status.sh`.**
-- **`view-map-arrays` LANDED 3459b5a1: the Scale Island loads in a player on dev.** Its nine `online` failures all fail on dev too (#218: water, things, reset checksums on the nine; needs its own job). The PC is free.
+- **`view-map-arrays` LANDED 3459b5a1: the Scale Island loads in a player on dev.** Its nine `online` failures all fail on dev too (#218: water, things, reset checksums on the nine; needs its own job). **The PC now compiles `sim-across-the-seam`** (a71402d5; EditMode, smoke, online, the nine walk); land it if clean, then give u2's view list for the seam to the PC as the next job.
 - **Was running on the PC:** a `unity-task` comparing `tools/probe.sh online` on the nine, dev against
   `view-map-arrays` (85ec9b74). It may have finished, been stopped, or pushed a fix on that branch: check
   `git log origin/view-map-arrays` and the work log. Land `view-map-arrays` (`land.sh auto view-map-arrays --compiled`)
