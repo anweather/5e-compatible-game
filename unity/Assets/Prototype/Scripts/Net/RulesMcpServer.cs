@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Chem.Mcp;
 using UnityEngine;
 
@@ -26,7 +27,8 @@ public class RulesMcpServer : MonoBehaviour
 
     readonly ConcurrentQueue<Action> onMainThread = new();
     HttpListener listener;
-    McpRpc rpc;
+    // The tools, made off the main thread: they read every rule file (most of a second at a big map's start).
+    Task<McpRpc> rpc;
 
     /// <summary>The server, or null where the game doesn't serve (a virtual player).</summary>
     public static RulesMcpServer Instance { get; private set; }
@@ -91,8 +93,15 @@ public class RulesMcpServer : MonoBehaviour
             return;
         }
         var desk = new GameRoomDesk(this);
-        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.Folders) { Desk = desk, WorldDesk = desk, Here = here, Applied = ChatTelemetry.Patched, SaveRefused = GameChat.SaveRefusal }), "spell-chemistry-valley", Application.version);
-        rpc.Called = McpLog.Write;
+        var folders = ChemGrid.Folders;
+        var at = here;
+        string version = Application.version;
+        rpc ??= Task.Run(() =>
+        {
+            var made = new McpRpc(new RulesTools(new Workbench(folders) { Desk = desk, WorldDesk = desk, Here = at, Applied = ChatTelemetry.Patched, SaveRefused = GameChat.SaveRefusal }), "spell-chemistry-valley", version);
+            made.Called = McpLog.Write;
+            return made;
+        });
         McpLog.Folder = ChatTelemetry.Home;
         var serving = listener;
         var tools = rpc;
@@ -142,8 +151,19 @@ public class RulesMcpServer : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    static void Serve(HttpListener listener, McpRpc rpc)
+    static void Serve(HttpListener listener, Task<McpRpc> making)
     {
+        McpRpc rpc;
+        try
+        {
+            rpc = making.GetAwaiter().GetResult();
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e); // as the main thread did when it made them: no tools, so nothing is served
+            listener.Close();
+            return;
+        }
         while (listener.IsListening)
         {
             HttpListenerContext context;
