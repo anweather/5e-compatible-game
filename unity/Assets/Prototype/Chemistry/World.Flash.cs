@@ -62,7 +62,7 @@ namespace Chem
                 Apply(cx, cy, "fire", flash.Fire, -1, false);
                 flashHistory.Add((cx, cy, flash.Push, Tick));
                 var r = flash.Push > 0 ? RaiderAt(cx, cy) : null;
-                if (r != null) ShoveRaider(r, AwayDir(cx - x, cy - y), flash.Push);
+                if (r != null) ShoveRaider(r, AwayDir(DeltaX(x, cx), cy - y), flash.Push);
             }
         }
     }

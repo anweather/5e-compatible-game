@@ -68,7 +68,7 @@ namespace Chem
             if (s == null) return output;
             (aimX, aimY) = SnapAim(aimX, aimY);
             bool slant = aimX != 0 && aimY != 0;
-            void Add(int cx, int cy) { if (InBounds(cx, cy)) output.Add((cx, cy)); }
+            void Add(int cx, int cy) { if (InBounds(cx, cy)) output.Add((FoldX(cx), cy)); }
             switch (s.Shape)
             {
                 case "point":
@@ -132,7 +132,7 @@ namespace Chem
                 if (k % 4 == 1) side = 1;
                 else if (k % 4 == 3) side = -1;
                 int cx = cells[k].x + px * side * s.Jagged, cy = cells[k].y + py * side * s.Jagged;
-                if (InBounds(cx, cy)) jagged.Add((cx, cy));
+                if (InBounds(cx, cy)) jagged.Add((FoldX(cx), cy));
             }
             cells.Clear();
             cells.AddRange(jagged);
@@ -169,7 +169,7 @@ namespace Chem
                     for (int dx = -arc; dx <= arc; dx++)
                     {
                         int cx = lx + dx, cy = ly + dy;
-                        var r = !IsActiveAt(cx, cy) || !reached.Add((cx, cy)) ? null : RaiderAt(cx, cy);
+                        var r = !IsActiveAt(cx, cy) || !reached.Add((FoldX(cx), cy)) ? null : RaiderAt(cx, cy);
                         if (r == null || !r.Alive || !Flying(r)) continue;
                         if (s.Element != "lightning") ApplyRaiderElement(r, s.Element, true);
                         LandOnRaider(s, cx, cy);
@@ -201,7 +201,7 @@ namespace Chem
                 if (c == null) break;
                 if (overWall && IsBlocking(c)) continue;
                 overWall = false;
-                output.Add((cx, cy));
+                output.Add((FoldX(cx), cy));
                 if (IsBlocking(c) && !overhead) break;
             }
         }
@@ -214,7 +214,7 @@ namespace Chem
             if (c == null) return false;
             if (overWall && IsBlocking(c)) return true;
             overWall = false;
-            output.Add((cx, cy));
+            output.Add((FoldX(cx), cy));
             return overhead || !IsBlocking(c);
         }
 
@@ -306,7 +306,7 @@ namespace Chem
         // False when it didn't go off.
         bool Release(SpellDef s, (int x, int y) at, int dir, int charge, (int x, int y) aim, int delay, string log)
         {
-            var (x, y) = at;
+            var (x, y) = (FoldX(at.x), at.y); // a cast past the seam lands where it folds to
             var (aimX, aimY) = aim;
             var zone = ZoneAgainst(s, x, y);
             if (zone != null)
@@ -444,16 +444,16 @@ namespace Chem
             if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny))) return;
             // What it holds up round its eye goes with it, the furthest along the way first.
             int dx = nx - ww.X, dy = ny - ww.Y;
-            var held = raiders.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(r.X - ww.X), System.Math.Abs(r.Y - ww.Y)) <= EyeOf(ww))
-                .OrderByDescending(r => (r.X - ww.X) * dx + (r.Y - ww.Y) * dy).ThenBy(r => r.Id).ToList();
+            var held = raiders.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(DeltaX(ww.X, r.X)), System.Math.Abs(r.Y - ww.Y)) <= EyeOf(ww))
+                .OrderByDescending(r => DeltaX(ww.X, r.X) * dx + (r.Y - ww.Y) * dy).ThenBy(r => r.Id).ToList();
             foreach (var r in held)
             {
                 int hx = r.X + dx, hy = r.Y + dy;
                 if (!IsActiveAt(hx, hy) || IsBlocking(At(hx, hy)) || RaiderAt(hx, hy) != null) continue;
-                r.X = hx;
+                r.X = FoldX(hx);
                 r.Y = hy;
             }
-            ww.X = nx;
+            ww.X = FoldX(nx);
             ww.Y = ny;
         }
 
@@ -542,7 +542,7 @@ namespace Chem
 
         void WhirlCreatures(Whirl ww)
         {
-            int Ring(Raider r) => System.Math.Max(System.Math.Abs(r.X - ww.X), System.Math.Abs(r.Y - ww.Y));
+            int Ring(Raider r) => System.Math.Max(System.Math.Abs(DeltaX(ww.X, r.X)), System.Math.Abs(r.Y - ww.Y));
             var pulled = raiders.Where(r =>
             {
                 var def = Rules.Entity(r.Kind);
@@ -551,10 +551,10 @@ namespace Chem
             foreach (var r in raiders.Where(r => r.Alive && Ring(r) <= EyeOf(ww)).ToList()) LiftInTheEye(ww, r);
             foreach (var r in pulled)
             {
-                int dir = InwardDir(r.X - ww.X, r.Y - ww.Y);
+                int dir = InwardDir(DeltaX(ww.X, r.X), r.Y - ww.Y);
                 int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                 if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) continue;
-                r.X = nx;
+                r.X = FoldX(nx);
                 r.Y = ny;
             }
         }
@@ -599,7 +599,7 @@ namespace Chem
                 {
                     int d = dx * dx + dy * dy;
                     if (d >= bestD || !IsActiveAt(x + dx, y + dy) || !Matches(At(x + dx, y + dy), s.SeekIf)) continue;
-                    best = (x + dx, y + dy);
+                    best = (FoldX(x + dx), y + dy);
                     bestD = d;
                 }
             return best;
@@ -611,6 +611,7 @@ namespace Chem
         /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
         void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
+            x = FoldX(x); // every landing (a cast, a star, a meteor, a prop's blast) is on the world's own cells
             var cells = SpellCells(s, x, y, dir, charge, aimX, aimY);
             // Squares in paused chunks are left alone (World.Chunks.cs).
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));

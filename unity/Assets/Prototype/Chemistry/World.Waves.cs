@@ -62,6 +62,7 @@ namespace Chem
                 if (s != null && IsActiveAt(nx, ny) && !IsBlocking(At(nx, ny)))
                 {
                     wv.Advance();
+                    wv.X = FoldX(wv.X); // its line runs on past the seam; the cell it's on folds
                     wv.Left--;
                     Wash(wv, s);
                 }
@@ -83,7 +84,7 @@ namespace Chem
             for (int o = -wv.Width; o <= wv.Width; o++)
             {
                 int cx = wv.X + px * o, cy = wv.Y + py * o;
-                if (IsActiveAt(cx, cy) && !IsBlocking(At(cx, cy))) cells.Add((cx, cy));
+                if (IsActiveAt(cx, cy) && !IsBlocking(At(cx, cy))) cells.Add((FoldX(cx), cy));
             }
             return cells;
         }

@@ -17,6 +17,8 @@ namespace Chem
         public string Name { get; private set; }
         public int W { get; private set; }
         public int H { get; private set; }
+        /// <summary>Whether the map joins east to west (its generated "wrap": "ew"): a World made for it wraps (World.WrapX).</summary>
+        public bool WrapX { get; private set; }
         /// <summary>In land units: land below this is under water.</summary>
         public int SeaLevel { get; private set; }
         public (int x, int y) Spawn { get; private set; }
@@ -124,6 +126,7 @@ namespace Chem
                 Name = (string)o["name"],
                 W = (int)o["size"][0],
                 H = (int)o["size"][1],
+                WrapX = (string)o["generated"]?["wrap"] == "ew",
                 SeaLevel = (int)o["seaLevel"],
                 Spawn = ((int)o["spawn"][0], (int)o["spawn"][1]),
                 LandShare = (int)expects["landShare"],

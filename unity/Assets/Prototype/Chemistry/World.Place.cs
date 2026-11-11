@@ -107,6 +107,7 @@ namespace Chem
         {
             int salt = unchecked((int)WorldHash.Hash4(unchecked((int)Seed), PlaceSalt, Tick, placeActions));
             placeActions++;
+            if (WrapX) area = area.ConvertAll(c => (FoldX(c.x), c.y)); // cells past the seam are where they fold to
             var picks = Placement.Pick(area, p.Count, p.Spacing, PlaceOpen(p.Onto), unchecked((int)Seed), salt);
             foreach (var (cx, cy) in picks)
             {
@@ -147,6 +148,7 @@ namespace Chem
 
         void SummonAnimal(string species, int x, int y)
         {
+            x = FoldX(x);
             int n = placedCount++;
             uint individual = WorldHash.Hash4(unchecked((int)Seed), SummonSalt, n, 0) | 1u;
             var summon = new Summon(n, species, x, y, individual, Tick);
@@ -176,6 +178,7 @@ namespace Chem
             var things = new HashSet<(int, int)>(ThingsNow.All.Select(t => (t.CellX, t.CellY)));
             return (x, y) =>
             {
+                x = FoldX(x);
                 if (!InBounds(x, y) || (activeOnly && !IsActiveAt(x, y)) || built.Contains((x, y)) || things.Contains((x, y))) return false;
                 var c = At(x, y);
                 if (c.Water > 0 || c.Frozen || IsBlocking(c)) return false;
