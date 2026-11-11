@@ -120,8 +120,10 @@ namespace Chem
         /// A world from a save: made from the source, then the save's changes and state laid over.
         /// Refused (SaveException) unless the save's format, source and rules are these. A room's save
         /// takes the room's base rules and the budgets (rules/budgets.json), and composes its mods again.
+        /// A world that was given land (SetLand: a baked map's land.json) loads given the same rows in
+        /// <paramref name="land"/>, and is refused without them or with others.
         /// </summary>
-        public static World Load(string save, Rules rules, IChunkSource source, ModBudgets budgets = null)
+        public static World Load(string save, Rules rules, IChunkSource source, ModBudgets budgets = null, int[] land = null)
         {
             if (rules == null) throw new ArgumentNullException(nameof(rules));
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -148,6 +150,7 @@ namespace Chem
             w.LoadState(s);
             w.LoadFits(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
+            w.LoadLandSet(s, land);
             w.BuildingsIntoStart();
             w.TotalChanged();
             w.spans = null;

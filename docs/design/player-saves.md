@@ -104,6 +104,38 @@ silently dropped from saves. `SameCell` lists 20 fields by hand today. Step 1 be
 An autosave that writes only the chunks changed since the last save would need dirty tracking, and so #168's
 change. A full save of a packed world is cheap enough to do without it: the changes are already held per chunk.
 
+## The land (found building step 1, fixed in `save-land`)
+
+A baked map's land (`land.json`, the hills under the cells that only the water reads) wasn't in the world save, and
+`World.Load` didn't take it, so a loaded valley had flat land and its water ran differently from the first tick (the
+Gauntlet's pits). Setting the land again after a load didn't fix it: `SetLand` marks a cell NoLand by the water
+standing in it *when it's called*, and a load has the water of play, not of the build. A generated map's land comes
+from its source (`LandFromSource`) and was never affected.
+
+**Done (B, the lead's call, 2026-11-11):** `SetLand` keeps the cells it marked NoLand for their water and an FNV-1a
+hash of the rows it was given. The save writes them as `landSet` (`rows`: the hash; `marks`: runs of
+`[first Idx, count]`), only for a world given land, so saves without land, the Meadow's goldened format among them,
+are as they were. `World.Load(..., land: rows)` lays the save's state and cells, then makes the land from the rows
+with the saved marks plus what the stamps moved. That's the same land whatever water stands where now. A save given
+land is refused without the rows or with other rows; one whose land was flat (a stamp's) needs none. The valley test
+loads with the map's land, with and without casts, and matches the world never saved 60 ticks on, its land too.
+
+**The build order (answered):** they differ, and it matters.
+- **The game, baked map:** `ChemGrid.MapWorld` makes the cells, lays the puzzles, stamps, rows, golf and Hold, and
+  `StartWorld` keeps the start. `ValleyChemistry` sets the land later, as the ground binds, so the water the lays put
+  down is NoLand.
+- **`SparseWorldBench.Build`:** it sets the land right after making the cells, before the lays, so that water gets
+  land. That's also how a **generated map's** land is made (`LandFromSource` marks NoLand by the water the source
+  makes), and `GeneratedSourceTests.ItsWorldIsTheBakesWorld` relies on it, so `Build` is left as it is.
+- **For the hash:** on the valley, the two orders differ in 38 cells of land (the Gauntlet's pits), and the
+  `CellHash` splits on the first tick. The valley save test sets the land again after `Build`, which gives the
+  game's land, and loads that.
+- **New question for the lead:** the same map played baked (land set after the lays) and played generated (land as
+  the source makes it) disagree on the land under laid water. So the generate switch isn't the same world as the bake
+  in water that a lay put down. Should laid water be NoLand (the baked game's way) or keep its land (the generated way
+  and the bench's)?
+- A game load will have to give `Load` the land rows itself (step 5). The marks make it not care when.
+
 ## The smallest first slice
 
 **A world save of a real map round-trips to the same hash: core only, with a golden.**
@@ -111,12 +143,18 @@ change. A full save of a packed world is cheap enough to do without it: the chan
 - A test loads the valley's `BakedSource` (and a generated map's source) and plays a fixed scripted run: casts,
   an act, a land stamp and a placed thing. It saves at tick T, loads, and asserts the same `CellHash`, the same save
   text, and the same hash after 200 more ticks of the same commands.
-- A golden pins the save text's FNV-1a for that run, as `ASaveOfALoadIsTheSaveAgain` pins the Meadow's.
+- No hex pinned for the valley: any edit to its map data would move it. The run checks equality (the load against
+  the world never saved), and the Meadow's `c1737215` still pins the format.
 - Plus the field guard: a reflection test that every public field of `Cell` and `Cell.Rare` changes the outcome of
   `SameCell` and survives a save and load. It fails when someone adds a field and forgets the save.
 
 That proves the world save on the maps players play, before any file, menu or command exists, and every later step
 stands on it.
+
+**Built (`saves-guard`):** the guard, as `SaveTests.CellMembersAreAllInTheGuard` and
+`EveryCellMemberComesThroughASave` (20 members, the Rare ones included). Also the valley's round trip, with casts,
+30 ticks before the save and 60 after, on the map's land (see "The land"). Not yet covered: a generated map, an act, a
+land stamp and a placed thing.
 
 ## Build steps
 
@@ -127,6 +165,18 @@ stands on it.
 3. **(M)** The player save file in the core (`PlayerSave.cs`): it takes over `ProgressFile`'s points and adds
    `known`. It writes atomically (`.tmp`, rename, `.bak`, as `ProgressFile` does). Tests: a save of a load is the
    save again, an unknown format is refused, a broken file falls back to the `.bak`.
+   **Built (`player-save-file`):**
+   - **The file:** `PlayerSave` is the Hold's `progress.json` grown into the player save. It keeps the name and
+     `ProgressFile`'s care with bad files (`.broken`, `.bak`, points never lower), so `ProgressFile` is now a thin
+     wrapper and `ProgressKeeper` is unchanged.
+   - **The format:** version 2 is `version`, `id` (when given), `points` and `known` (sorted), indented, in that
+     order, so the same progress is the same text. Version 1 (points alone) still loads.
+   - **The write:** whole to `.new`, then put in place by `File.Replace`, keeping the last good file as `.bak`. A
+     crash mid-write leaves the last save.
+   - **The id:** an opaque string the caller gives, or none; step 2 decides what it is.
+   - **`known`:** kept and round-tripped, but not brought to a world (step 4).
+   - **Downgrade:** an older build reads a version-2 file as bad. It keeps it as `.broken` and falls back to the
+     `.bak`, which is version 1 only if the first version-2 write replaced it.
 4. **(M)** The grimoire joins `ComboCommand.Bring`: brought known combos are unioned in at a tick every peer runs,
    with a golden. The world save keeps writing `Known` for a while so older builds still load.
 5. **(M)** Solo save and load in the game (`Scripts/`): a save slot under `persistentDataPath/worlds/`, written from
@@ -150,3 +200,5 @@ stands on it.
    starts dev builds with everything, so the switch exists in part.
 6. **Grimoire, world or player:** may it move to the player save (step 4)? Then a discovery made in a friend's
    world goes home with you.
+7. **The land in a save:** resolved, B (the lead, 2026-11-11). The save keeps the NoLand marks and the rows' hash, and
+   `Load` takes the map's land rows. Built in `save-land`; see "The land".
