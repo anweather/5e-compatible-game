@@ -137,7 +137,7 @@ namespace Chem
         /// <summary>After a rule switch the terrain's meaning may have changed: no snapshot holds.</summary>
         void ForgetWaterSnapshots()
         {
-            foreach (var ch in chunks.Values) ch.SnapValid = false;
+            foreach (var ch in ChunksInOrder) ch.SnapValid = false;
         }
     }
 }

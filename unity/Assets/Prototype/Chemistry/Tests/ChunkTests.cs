@@ -10,6 +10,57 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class ChunkTests
     {
+        // ---------- the store's order (core-guards) ----------
+
+        // The World's chunks remade in its store in another order, as a world that made them as they were wanted, in an
+        // order of its own, would hold them: every pass over all the chunks must walk them by row then column instead
+        // (World.ChunksInOrder). The store is private and its chunks internal, so this reaches it by reflection.
+        static void MadeInAnotherOrder(World w)
+        {
+            const System.Reflection.BindingFlags own = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            var store = (System.Collections.IDictionary)typeof(World).GetField("chunks", own).GetValue(w);
+            var keys = store.Keys.Cast<long>().ToList();
+            var held = keys.ToDictionary(k => k, k => store[k]);
+            store.Clear();
+            foreach (long k in keys.OrderBy(k => (k * 2654435761L) & 0xffff).ThenByDescending(k => k)) store.Add(k, held[k]);
+            Assert.That(store.Keys.Cast<long>(), Is.Not.EqualTo(keys), "the store's order changed");
+            typeof(World).GetField("sortedChunks", own).SetValue(w, null);
+        }
+
+        /// <summary>
+        /// Two peers whose stores hold the same chunks in different orders: the same script (fires, frost, earth), chunks
+        /// let go and taken back, a rule switch that unfits the inactive ones, packing, and the dragon's reset, with the
+        /// same CellHash every tick.
+        /// </summary>
+        [Test]
+        public void ChunksMadeInAnotherOrderRunTheSame()
+        {
+            var plain = Valley();
+            var reordered = Valley();
+            MadeInAnotherOrder(reordered);
+            var high = RuleSet.Plain(plain.Rules).WithMods(new[] { new ActiveMod("high", "{ \"patch\": { \"sim\": { \"height\": { \"max\": 12, \"blockAt\": 12 } } } }") }).Effective;
+            var low = plain.Rules;
+            foreach (var w in new[] { plain, reordered }) w.KeepStart();
+            for (int t = 0; t < 400; t++)
+            {
+                foreach (var w in new[] { plain, reordered })
+                {
+                    if (t == 30) w.SetActive(3, 1, false);
+                    if (t == 50) w.SetActive(0, 2, false);
+                    if (t == 60) w.ApplyRules(high);
+                    if (t == 90) w.Pack(3, 1);
+                    if (t == 120) w.SetActive(3, 1, true);
+                    if (t == 140) w.ApplyRules(low);
+                    if (t == 160) w.ApplyDragon(new DragonCommand());
+                    if (t == 300) w.SetActive(0, 2, true);
+                    ValleyScriptTick(w, t);
+                }
+                Assert.That(reordered.CellHash(), Is.EqualTo(plain.CellHash()), $"tick {t}");
+            }
+            Assert.That(reordered.RngState, Is.EqualTo(plain.RngState));
+            Assert.That(reordered.Save(reordered.Source).Replace(reordered.Rules.Fingerprint, "rules"), Is.EqualTo(plain.Save(plain.Source).Replace(plain.Rules.Fingerprint, "rules")));
+        }
+
         static Rules R => ChemistryTests.R;
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }

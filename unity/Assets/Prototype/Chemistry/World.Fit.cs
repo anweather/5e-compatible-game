@@ -39,7 +39,7 @@ namespace Chem
             foreach (var ch in SortedChunks(true)) MakeFit(ch);
             unfitChunks = 0;
             var held = new HashSet<int>();
-            foreach (var ch in chunks.Values)
+            foreach (var ch in ChunksInOrder)
             {
                 if (ch.Fit == fits) continue;
                 unfitChunks++;
@@ -75,7 +75,7 @@ namespace Chem
         // Every chunk's cells made afresh under the rules in force (World.MakeFrom).
         void AllFitted()
         {
-            foreach (var ch in chunks.Values) ch.Fit = fits;
+            foreach (var ch in ChunksInOrder) ch.Fit = fits;
             unfitChunks = 0;
             fitLiquids.Clear();
         }

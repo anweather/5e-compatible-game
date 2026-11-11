@@ -908,6 +908,12 @@ that long, and doesn't march.
 : A peer joining a running session: today it replays every tick batch
   from tick 0 (`Timeline`); per-chunk snapshots are planned.
 
+**Player id**
+: A player's stable id, the same from session to session and host to
+  host, kept in their player save (`PlayerId`). Made once from random
+  bytes, never from a client number. Not used yet: the game names players
+  by session (`p0`, `solo`) until profiles are decided.
+
 **Player save**
 : One player's progress, on their own machine: their stable id, Hold
   points (`ProgressFile`), later the grimoire, kept items and look. It

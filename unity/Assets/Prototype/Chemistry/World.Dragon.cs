@@ -130,10 +130,10 @@ namespace Chem
         public bool HasStart => startSource != null;
 
         /// <summary>The cells the starting state holds apart from its source (each chunk's changes), for the memory it takes.</summary>
-        public int StartShapes => startSource == null ? 0 : chunks.Values.Sum(ch => ch.Start.Count);
+        public int StartShapes => startSource == null ? 0 : ChunksInOrder.Sum(ch => ch.Start.Count);
 
         /// <summary>What the starting state holds, its chunks' changes, in bytes (those a packed chunk shares with it counted too).</summary>
-        public long StartBytes => startSource == null ? 0 : chunks.Values.Sum(ch => ch.Start.Bytes);
+        public long StartBytes => startSource == null ? 0 : ChunksInOrder.Sum(ch => ch.Start.Bytes);
 
         /// <summary>Raised for each chunk reset, in the tick's dragon stage. For the view: a handler must not change the world.</summary>
         public event Action<ChunkFresh> ChunkFreshened;
@@ -149,7 +149,7 @@ namespace Chem
             // Given a source, every chunk is as it makes it; else a packed chunk's changes are its start as they stand (a
             // PackedChunk never changes), and an unpacked chunk's are diffed from its block.
             startSource = source ?? Source;
-            foreach (var ch in chunks.Values)
+            foreach (var ch in ChunksInOrder)
                 ch.Start = source != null ? PackedChunk.Empty(ch.X, ch.Y) : ch.Packed ?? Changes(ch, ch.Held);
             startGolf = Golf?.Copy();
             auditChunks = SortedChunks(false).ToArray();
@@ -523,12 +523,80 @@ namespace Chem
             var start = new JObject();
             if (startGolf != null) start["golf"] = GolfRow(startGolf);
             save["start"] = start;
+            SaveStarts(start);
             save["audit"] = new JArray(DragonFlights, auditAt);
             var d = Dragon;
             if (d != null) save["dragon"] = new JArray((int)d.Phase, d.Until, d.AlongX, d.FromFar, d.Back, d.Pass, d.Passes, d.Travelled, d.Done);
         }
 
-        // Before the save's cells are laid over: the world has just been made from the source, so it's the starting state.
+        // The start's own cells, where they aren't what its source makes: what the map laid before KeepStart (puzzles, map
+        // stamps, rows) and what mods' buildings put in since, by chunk, in SavePacked's form. A load can't make them again
+        // from the source alone (late-join-snapshot, question 8: the save keeps them). None when the start is the source's,
+        // so those saves read as they did.
+        void SaveStarts(JObject start)
+        {
+            var chunksOut = new JArray();
+            Cell c = new Cell(), made = new Cell();
+            foreach (var ch in SortedChunks(false))
+            {
+                var p = ch.Start;
+                if (p == null || (p.Count == 0 && p.FireAt.Length == 0)) continue;
+                var o = new JObject { ["x"] = ch.X, ["y"] = ch.Y };
+                var cells = new JArray();
+                for (int k = 0; k < p.Count; k++)
+                {
+                    int i = p.At[k], x = CellX(ch, i), y = CellY(ch, i);
+                    made.Reset();
+                    startSource.Make(x, y, made);
+                    c.Reset();
+                    startSource.Make(x, y, c);
+                    LayPacked(p, k, c);
+                    cells.Add(SaveCell(i, c, LiquidsOf(ch)));
+                }
+                if (cells.Count > 0) o["cells"] = cells;
+                if (p.FireAt.Length > 0) o["fireGen"] = new JArray(p.FireAt.Select((i, f) => new JArray(i, p.FireGen[f])));
+                chunksOut.Add(o);
+            }
+            if (chunksOut.Count > 0) start["chunks"] = chunksOut;
+        }
+
+        // Once the chunks are laid and fit: each chunk's start made from the save's record of it, one pass a chunk.
+        void LoadStarts(JObject s)
+        {
+            if (!(s["start"]?["chunks"] is JArray saved)) return;
+            Cell c = new Cell(), made = new Cell();
+            foreach (var o in saved.OfType<JObject>())
+            {
+                var ch = FindChunk((int)o["x"], (int)o["y"]) ?? throw new SaveException($"This save doesn't fit: no chunk ({o["x"]}, {o["y"]}) for its start");
+                var at = new List<int>();
+                var cells = new List<PackedCell>();
+                var rares = new List<PackedRare>();
+                foreach (var a in (o["cells"] as JArray ?? new JArray()).OfType<JArray>())
+                {
+                    int i = (int)a[0];
+                    made.Reset();
+                    startSource.Make(CellX(ch, i), CellY(ch, i), made);
+                    c.Reset();
+                    LoadCell(c, a, LiquidsOf(ch));
+                    at.Add(i);
+                    cells.Add(PackCell(c, made, rares));
+                }
+                var fire = (o["fireGen"] as JArray ?? new JArray()).OfType<JArray>().ToList();
+                ch.Start = new PackedChunk
+                {
+                    X = ch.X,
+                    Y = ch.Y,
+                    At = at.ToArray(),
+                    Cells = cells.ToArray(),
+                    Rares = rares.ToArray(),
+                    FireAt = fire.Select(f => (int)f[0]).ToArray(),
+                    FireGen = fire.Select(f => (int)f[1]).ToArray(),
+                };
+            }
+        }
+
+        // Before the save's cells are laid over: the world has just been made from the source, so it's the starting state
+        // (each chunk's own start, where the map laid more, comes after the cells: LoadStarts).
         void LoadStart(JObject s)
         {
             if (!(s["start"] is JObject start)) return;
@@ -544,7 +612,7 @@ namespace Chem
         void TotalChanged()
         {
             ChangedCount = 0;
-            foreach (var ch in chunks.Values) ChangedCount += ch.Changed;
+            foreach (var ch in ChunksInOrder) ChangedCount += ch.Changed;
         }
     }
 }
