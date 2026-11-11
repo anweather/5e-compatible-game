@@ -58,6 +58,8 @@ namespace Chem
             if (ch.East != null) ch.East.West = ch;
             spans = null;
             activeCoords = null;
+            chunkCoords = null;
+            sortedChunks = null;
         }
 
         // Lookups come in runs inside one chunk, so the last chunk found is checked first.
@@ -110,11 +112,17 @@ namespace Chem
         {
             get
             {
+                if (chunkCoords != null) return chunkCoords;
                 var list = new List<(int cx, int cy)>();
                 foreach (var ch in SortedChunks(false)) list.Add((ch.X, ch.Y));
-                return list;
+                return chunkCoords = list.AsReadOnly();
             }
         }
+
+        // The chunks never change once the world is made (BuildChunks): their coordinates and their order, kept, as the
+        // planner reads them every frame (9,720 of them on the 12 x 10).
+        IReadOnlyList<(int cx, int cy)> chunkCoords;
+        Chunk[] sortedChunks;
 
         public bool HasChunk(int cx, int cy) => FindChunk(cx, cy) != null;
 
@@ -219,9 +227,14 @@ namespace Chem
         /// <summary>Loaded chunks (or only the active ones) by row then column, never in the store's own order.</summary>
         List<Chunk> SortedChunks(bool activeOnly)
         {
-            var list = new List<Chunk>();
-            foreach (var ch in chunks.Values) if (ch.Active || !activeOnly) list.Add(ch);
-            list.Sort((a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.X.CompareTo(b.X));
+            if (sortedChunks == null)
+            {
+                var all = new List<Chunk>(chunks.Values);
+                all.Sort((a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.X.CompareTo(b.X));
+                sortedChunks = all.ToArray();
+            }
+            var list = new List<Chunk>(activeOnly ? 16 : sortedChunks.Length);
+            foreach (var ch in sortedChunks) if (ch.Active || !activeOnly) list.Add(ch);
             return list;
         }
 
@@ -354,7 +367,11 @@ namespace Chem
         public string CellText()
         {
             var sb = new StringBuilder();
-            for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();) AppendCell(sb, run.Cell, LiquidsIn(run.Chunk, run.Cell));
+            if (HashesChanges)
+                for (var run = new ChangedRun(this, 0, W * H, walkScratch, hashMade); run.MoveNext();)
+                    AppendCell(sb.Append('@').Append(run.Index.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(':'), run.Cell, LiquidsIn(run.Chunk, run.Cell));
+            else
+                for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();) AppendCell(sb, run.Cell, LiquidsIn(run.Chunk, run.Cell));
             foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return sb.Append(FitText()).Append(WrapText).ToString();
         }
@@ -369,7 +386,126 @@ namespace Chem
         // Adds the cells of world indices [from, to) to a running hash, in row order.
         void HashCells(ref Fnv1aSum sum, int from, int to)
         {
+            if (HashesChanges)
+            {
+                for (var run = new ChangedRun(this, from, to, walkScratch, hashMade); run.MoveNext();)
+                {
+                    sum.Add('@');
+                    sum.Add(run.Index);
+                    sum.Add(':');
+                    AddCell(ref sum, run.Cell, LiquidsIn(run.Chunk, run.Cell));
+                }
+                return;
+            }
             for (var run = new RowCells(this, from, to, walkScratch); run.MoveNext();) AddCell(ref sum, run.Cell, LiquidsIn(run.Chunk, run.Cell));
+        }
+
+        /// <summary>
+        /// Whether the cell hash is the changes hash: on a world whose source makes its chunks when they're read (a generated
+        /// map's, IGeneratedSource), a walk over every cell would make the whole map, so the hash covers only the cells that
+        /// differ from the source ("@index:" and the cell, in row order), which is the same fingerprint of the cells when
+        /// every peer has the source. A packed chunk's are its changes as they lie; an unpacked chunk's cells are each
+        /// compared with the source, as packing it would. Other worlds hash every cell, as they always have.
+        /// </summary>
+        public bool HashesChanges => Source is IGeneratedSource;
+
+        // The cell the changes hash makes the source's into, to compare an unpacked chunk's with.
+        readonly Cell hashMade = new Cell();
+
+        /// <summary>
+        /// Walks the cells of world indices [from, to) that differ from the world's source, in row order, through their
+        /// chunks a row of each at a time, never unpacking one or reading the source for a packed chunk: a packed chunk's
+        /// are its changes (each differs from the source: Changes and WithChange keep no other), laid into the scratch on a
+        /// reset cell, which is the cell the source and the change make (a change holds every field the source makes, and
+        /// all the rest when either has any); an unpacked chunk's are its own objects that packing would keep.
+        /// </summary>
+        struct ChangedRun
+        {
+            readonly World world;
+            readonly int to;
+            readonly Cell scratch, made;
+            int x, y, end, k, i;
+            PackedChunk packed;
+            ChunkBlock held;
+
+            public ChangedRun(World world, int from, int to, Cell scratch, Cell made)
+            {
+                this.world = world;
+                this.to = to;
+                this.scratch = scratch;
+                this.made = made;
+                x = from % world.W;
+                y = from / world.W;
+                end = -1;
+                k = i = 0;
+                packed = null;
+                held = null;
+                Chunk = null;
+                Cell = null;
+                Index = 0;
+            }
+
+            /// <summary>The changed cell walked to, its chunk and its world index.</summary>
+            public Cell Cell;
+            public Chunk Chunk;
+            public int Index;
+
+            public bool MoveNext()
+            {
+                while (true)
+                {
+                    if (end < 0 && !NextSegment()) return false;
+                    if (packed != null)
+                    {
+                        if (k < packed.At.Length && packed.At[k] < end)
+                        {
+                            Cell = scratch;
+                            scratch.Reset();
+                            world.LayPacked(packed, k, scratch);
+                            Done(packed.At[k++]);
+                            return true;
+                        }
+                    }
+                    else
+                        for (; i < end; i++)
+                        {
+                            var c = held.Cells[i];
+                            if (c == null) continue;
+                            made.Reset();
+                            world.Source.Make(CellX(Chunk, i), CellY(Chunk, i), made);
+                            if (SameCell(c, made) && c.Liquid == made.Liquid && c.Sets == made.Sets) continue;
+                            Cell = c;
+                            Done(i++);
+                            return true;
+                        }
+                    end = -1;
+                }
+            }
+
+            void Done(int local) => Index = ((Chunk.Y << Chunks.Shift) + (local >> Chunks.Shift)) * world.W + (Chunk.X << Chunks.Shift) + (local & Chunks.Mask);
+
+            // The next run of a row inside one chunk, up to the walk's end; false past it.
+            bool NextSegment()
+            {
+                int at = y * world.W + x;
+                if (at >= to || y >= world.H) return false;
+                int lx = Chunks.LocalOf(x), ly = Chunks.LocalOf(y);
+                int run = Math.Min(Math.Min(Chunks.Size - lx, world.W - x), to - at);
+                Chunk = world.FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
+                held = Chunk.Held;
+                packed = held == null ? Chunk.Packed : null;
+                int start = (ly << Chunks.Shift) | lx;
+                end = start + run;
+                if (packed != null) k = packed.From(start);
+                else i = start;
+                x += run;
+                if (x == world.W)
+                {
+                    x = 0;
+                    y++;
+                }
+                return true;
+            }
         }
 
         /// <summary>What a hash of the cells ends with: the things cracked so far, then the chunks not yet made to fit the rules (FitText).</summary>
