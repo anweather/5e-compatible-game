@@ -213,17 +213,48 @@ namespace Chem.Tests
             Assert.That(small.MadeAgain, Is.GreaterThan(0), "the small source let chunks go and made them again");
         }
 
-        // core-guards, a bug (not lockstep): MakeNow, which ChunkStreaming.Apply calls for the chunks about to activate,
-        // holds what it makes without letting the oldest go, so the hold is passed until a chunk made on a read or the
-        // worker trims it (Finish). On a peer that doesn't plan (a client: the planner's Ahead is the host's), nothing
-        // else trims, and the held chunks grow with every chunk a character activates.
+        // core-guards: MakeNow, which ChunkStreaming.Apply calls for the chunks about to activate, keeps to the hold as a read
+        // does, but never lets go of a chunk it was just asked for: those are about to be read.
         [Test]
-        [Explicit("a bug: GeneratedSource.MakeNow doesn't keep to the hold (core-guards, docs/design/core-review-0.md)")]
         public void MakeNowKeepsToTheHold()
         {
             var src = new GeneratedSource(GeneratedMap.Load(map), R, 24);
             src.MakeNow(Enumerable.Range(0, 40).Select(k => (k % 9, k / 9)));
+            Assert.That(src.HeldCount, Is.EqualTo(40), "a call's own chunks are kept, even past the hold");
+            var next = Enumerable.Range(40, 10).Select(k => (k % 9, k / 9)).ToList();
+            src.MakeNow(next);
             Assert.That(src.HeldCount, Is.LessThanOrEqualTo(24));
+            Assert.That(next.All(c => src.IsMade(c.Item1, c.Item2)), Is.True, "the chunks just asked for are still held");
+        }
+
+        // core-guards: a client never plans (the host's planner asks its own source to make ahead), so its chunks are made
+        // only by MakeNow and on reads. Walked across many chunks with a small hold, it keeps to the hold and runs as the host.
+        [Test]
+        public void AClientsSourceKeepsToItsHold()
+        {
+            const int hold = 24;
+            var small = new GeneratedSource(GeneratedMap.Load(map), R, hold);
+            var host = Peer(Source());
+            var client = Peer(small);
+            var walk = new Walk(small.Start, 4 * Chunks.Size);
+            var planner = new ChunkPlanner();
+            int most = 0;
+            for (int t = 0; t < 900; t++)
+            {
+                var me = new[] { walk.At(t) };
+                var plan = planner.Plan(host, me);
+                foreach (var w in new[] { host, client })
+                {
+                    ChunkStreaming.Apply(w, plan);
+                    if (t % 90 == 45) w.Cast("fire-bolt", me[0].x + 6, me[0].y, 1);
+                    w.Step();
+                }
+                if (t > 0) most = Math.Max(most, small.HeldCount);
+                if (t % 50 == 49) Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()), $"tick {t}");
+            }
+            TestContext.Out.WriteLine($"GENERATE a client's hold: {hold}, held at most {most} after the build, made {small.Made}, {small.MadeAgain} again");
+            Assert.That(most, Is.LessThanOrEqualTo(hold));
+            Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()));
         }
 
         [Test]

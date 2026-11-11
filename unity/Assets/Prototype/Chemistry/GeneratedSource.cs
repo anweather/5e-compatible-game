@@ -205,12 +205,19 @@ namespace Chem
             lock (gate)
             {
                 h.Chunk = c;
-                if (held.Count <= holds) return;
-                var old = new List<Held>();
-                foreach (var e in held.Values) if (e.Chunk != null && e != h) old.Add(e);
-                old.Sort((a, b) => a.Used.CompareTo(b.Used));
-                for (int k = 0; k < old.Count && held.Count > holds * 3 / 4; k++) held.Remove(old[k].Key);
+                Trim(e => e == h);
             }
+        }
+
+        // Past the hold, the chunks made longest unused let go, down to three quarters of it; never one being made, or one
+        // the caller is about to read (kept). Under the gate.
+        void Trim(Func<Held, bool> kept)
+        {
+            if (held.Count <= holds) return;
+            var old = new List<Held>();
+            foreach (var e in held.Values) if (e.Chunk != null && !kept(e)) old.Add(e);
+            old.Sort((a, b) => a.Used.CompareTo(b.Used));
+            for (int k = 0; k < old.Count && held.Count > holds * 3 / 4; k++) held.Remove(old[k].Key);
         }
 
         public void Ahead(IEnumerable<(int cx, int cy)> chunks)
@@ -284,16 +291,26 @@ namespace Chem
             var seen = new HashSet<long>();
             lock (gate)
                 foreach (var (cx, cy) in chunks)
-                    if (cx >= 0 && cy >= 0 && cx < cw && cy < ch && !held.ContainsKey(Chunks.Key(cx, cy)) && seen.Add(Chunks.Key(cx, cy))) want.Add((cx, cy));
+                {
+                    if (cx < 0 || cy < 0 || cx >= cw || cy >= ch || !seen.Add(Chunks.Key(cx, cy))) continue;
+                    if (held.TryGetValue(Chunks.Key(cx, cy), out var h)) h.Used = ++uses; // asked for again: kept
+                    else want.Add((cx, cy));
+                }
             var got = new GeneratedChunk[want.Count];
             Parallel.For(0, want.Count, k => got[k] = MakeTimed(want[k].cx, want[k].cy));
             lock (gate)
+            {
                 for (int k = 0; k < want.Count; k++)
                 {
                     long key = Chunks.Key(want[k].cx, want[k].cy);
                     if (held.ContainsKey(key)) continue;
                     held.Add(key, new Held { Key = key, Chunk = got[k], Used = ++uses });
                 }
+                // Kept to the hold as a chunk made on a read is (Finish), but none of these: they're about to be read. A
+                // client's chunks come only this way and on reads (the worker's are the host's planner's), so without it
+                // the held chunks grew with every chunk a character activated (core-guards).
+                Trim(e => seen.Contains(e.Key));
+            }
         }
 
         /// <summary>
