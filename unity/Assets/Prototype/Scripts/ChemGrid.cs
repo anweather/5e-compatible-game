@@ -602,7 +602,7 @@ public partial class ChemGrid : MonoBehaviour
     static void CheckMap()
     {
         if (checkedMap == Folders.World) return;
-        var errors = MapCheck.Errors(Folders.World);
+        var errors = MapCheck.Errors(Folders.World, Application.isEditor || Folders.PlayerData == null ? null : Path.Combine(Folders.PlayerData, "map-checks", Path.GetFileName(Folders.World) + ".check"));
         if (errors.Count > 0) throw new InvalidDataException($"{Folders.World} can't be played:\n{string.Join("\n", errors)}");
         checkedMap = Folders.World;
     }

@@ -557,7 +557,12 @@ public partial class ValleyChemistry : MonoBehaviour
         if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
     }
 
-    static void SetLand(World world) => world.SetLand(LandOf(world));
+    static void SetLand(World world)
+    {
+        var land = LandOf(world);
+        if (land == null) world.SetLand((int[])null);
+        else world.SetLandByChunk(land);
+    }
 
     /// <summary>
     /// The map's land.json, read once a map, or null when it has none: the one copy the view holds (MapLand's, which the
