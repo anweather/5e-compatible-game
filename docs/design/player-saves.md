@@ -165,6 +165,18 @@ land stamp and a placed thing.
 3. **(M)** The player save file in the core (`PlayerSave.cs`): it takes over `ProgressFile`'s points and adds
    `known`. It writes atomically (`.tmp`, rename, `.bak`, as `ProgressFile` does). Tests: a save of a load is the
    save again, an unknown format is refused, a broken file falls back to the `.bak`.
+   **Built (`player-save-file`):**
+   - **The file:** `PlayerSave` is the Hold's `progress.json` grown into the player save. It keeps the name and
+     `ProgressFile`'s care with bad files (`.broken`, `.bak`, points never lower), so `ProgressFile` is now a thin
+     wrapper and `ProgressKeeper` is unchanged.
+   - **The format:** version 2 is `version`, `id` (when given), `points` and `known` (sorted), indented, in that
+     order, so the same progress is the same text. Version 1 (points alone) still loads.
+   - **The write:** whole to `.new`, then put in place by `File.Replace`, keeping the last good file as `.bak`. A
+     crash mid-write leaves the last save.
+   - **The id:** an opaque string the caller gives, or none; step 2 decides what it is.
+   - **`known`:** kept and round-tripped, but not brought to a world (step 4).
+   - **Downgrade:** an older build reads a version-2 file as bad. It keeps it as `.broken` and falls back to the
+     `.bak`, which is version 1 only if the first version-2 write replaced it.
 4. **(M)** The grimoire joins `ComboCommand.Bring`: brought known combos are unioned in at a tick every peer runs,
    with a golden. The world save keeps writing `Known` for a while so older builds still load.
 5. **(M)** Solo save and load in the game (`Scripts/`): a save slot under `persistentDataPath/worlds/`, written from

@@ -3,9 +3,6 @@
 // what's unlocked follows from those and the rows, so it can't disagree with the rules and a peer needs only the one number.
 using System;
 using System.Collections.Generic;
-using System.IO;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
@@ -72,75 +69,24 @@ namespace Chem
     /// </summary>
     public sealed class ProgressFile
     {
-        public const string FileName = "progress.json";
-        const string Backup = ".bak", Broken = ".broken", Fresh = ".new";
-        const int Version = 1;
+        public const string FileName = PlayerSave.FileName;
 
-        readonly string path;
+        readonly PlayerSave save;
 
         /// <summary>The player's points.</summary>
-        public int Points { get; private set; }
+        public int Points => save.Points;
         /// <summary>What went wrong loading, for the player to hear; null if nothing did.</summary>
-        public string Trouble { get; private set; }
+        public string Trouble => save.Trouble;
 
-        public ProgressFile(string folder) => path = Path.Combine(folder, FileName);
+        public ProgressFile(string folder) => save = new PlayerSave(folder);
 
         /// <summary>Reads the save, or failing that its last good copy.</summary>
-        public void Load()
-        {
-            Trouble = null;
-            if (!File.Exists(path) && !File.Exists(path + Backup)) return;
-            if (Read(path, out int points))
-            {
-                Points = points;
-                return;
-            }
-            if (File.Exists(path)) File.Copy(path, Unused(path + Broken));
-            if (Read(path + Backup, out points))
-            {
-                Points = points;
-                Trouble = "Your progress save wouldn't load: the last good copy was used, and the bad one kept.";
-                return;
-            }
-            Trouble = "Your progress save wouldn't load, and it's been kept beside the new one.";
-        }
+        public void Load() => save.Load();
 
-        /// <summary>Writes this many points, if it's more: a whole new file put in place, with the last one kept as the copy.</summary>
+        /// <summary>Writes this many points, if it's more: the player save, whole, with what else it holds kept.</summary>
         public void Save(int points)
         {
-            if (points <= Points) return;
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            File.WriteAllText(path + Fresh, new JObject { ["version"] = Version, ["points"] = points }.ToString());
-            if (File.Exists(path) && Read(path, out _)) File.Copy(path, path + Backup, true);
-            File.Copy(path + Fresh, path, true);
-            File.Delete(path + Fresh);
-            Points = points;
-        }
-
-        static bool Read(string file, out int points)
-        {
-            points = 0;
-            try
-            {
-                if (!File.Exists(file)) return false;
-                var o = JObject.Parse(File.ReadAllText(file));
-                if ((int?)o["version"] != Version || !(o["points"] is JValue v) || v.Type != JTokenType.Integer) return false;
-                points = (int)v;
-                return points >= 0;
-            }
-            catch (Exception e) when (e is JsonException || e is IOException || e is OverflowException || e is InvalidCastException)
-            {
-                return false;
-            }
-        }
-
-        // The first free name: bad saves are never overwritten.
-        static string Unused(string name)
-        {
-            string file = name;
-            int n = 1;
-            while (File.Exists(file)) file = name + (n++).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            return file;
+            if (save.Raise(points)) save.Save();
         }
     }
 }
