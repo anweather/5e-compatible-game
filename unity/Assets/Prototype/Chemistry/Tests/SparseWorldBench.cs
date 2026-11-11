@@ -144,6 +144,42 @@ namespace Chem.Tests
             Assert.That(joined.CellHash(), Is.EqualTo(w.CellHash()));
         }
 
+        // island-startup: two parts of the Scale Island's start the PC's player timed (STARTUP lines): the map check (4.0 s)
+        // and setting its land (3.7 s), here under .NET on the baked island.
+        [Test]
+        public void TheIslandsStartUp()
+        {
+            // The bake's folder by the map's own name, as a player build has it (MapCheck checks the two agree).
+            string bake = IslandBaked(), dir = Path.Combine(Path.GetDirectoryName(bake), "scale-12x10");
+            if (!Directory.Exists(dir)) Directory.CreateSymbolicLink(dir, bake);
+            var check = Stopwatch.StartNew();
+            var errors = MapCheck.Errors(dir);
+            double checkMs = check.Elapsed.TotalMilliseconds;
+            var w = Build(dir, R, out _);
+            var map = MapFile.Load(dir);
+            var read = Stopwatch.StartNew();
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            double readMs = read.Elapsed.TotalMilliseconds;
+            var set = Stopwatch.StartNew();
+            w.SetLand(land);
+            double setMs = set.Elapsed.TotalMilliseconds;
+            var built = Build(dir, R, out _);
+            var byChunk = Stopwatch.StartNew();
+            built.SetLandByChunk(land);
+            double byChunkMs = byChunk.Elapsed.TotalMilliseconds;
+            string record = Path.Combine(Path.GetTempPath(), "island-startup-mapcheck-" + Guid.NewGuid().ToString("N"));
+            var first = Stopwatch.StartNew();
+            MapCheck.Errors(dir, record);
+            double firstMs = first.Elapsed.TotalMilliseconds;
+            var again = Stopwatch.StartNew();
+            var none = MapCheck.Errors(dir, record);
+            double againMs = again.Elapsed.TotalMilliseconds;
+            File.Delete(record);
+            TestContext.Out.WriteLine($"ISLAND {w.W} x {w.H}: MapCheck.Errors {checkMs:0} ms ({errors.Count} errors); with a record, first {firstMs:0} ms, again {againMs:0} ms ({none.Count}); "
+                + $"land.json read {readMs:0} ms; SetLand {setMs:0} ms; SetLandByChunk {byChunkMs:0} ms ({built.LandUnmadeChunks} of {built.ChunkCoords.Count} chunks left for later)");
+            Assert.That(errors, Is.Empty);
+        }
+
         [Test]
         public void TheNinesWorldMemory()
         {

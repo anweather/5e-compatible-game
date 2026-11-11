@@ -649,6 +649,7 @@ namespace Chem
         // [first Idx, how many]. With the same rows, a load makes the same land whatever water stands where now (#119).
         void SaveLandSet(JObject save)
         {
+            LandSetLater();
             if (landRowsHash == null) return;
             var marks = new JArray();
             for (int k = 0; k < landMarks.Count;)
