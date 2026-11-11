@@ -261,7 +261,7 @@ land stamp and a placed thing.
 | 3. The player save file | **Built** (`player-save-file`, with `"\n"` on every machine; on dev) | |
 | 4. The grimoire brought by `ComboCommand.Bring` | Not started: it *is* the grimoire moving to the player save | Question 6 (and question 5: whether a host may ignore what's brought) |
 | 5. Solo save and load in the game | Not started (`Scripts/`) | Question 1 (slots), question 2 (rules drift); question 4 for whose player save |
-| 6. Late join from a snapshot | Not started; no question blocks it | Question 3 (whose world) only for what a guest keeps |
+| 6. Late join from a snapshot | **Core half built** (`late-join-snapshot`, `snapshot-start`; question 8 resolved (a)); the net layer not (`docs/handoffs/briefs/snapshot-join-net.md`) | Question 3 (whose world) only for what a guest keeps |
 | 7. Autosave | Not started; after step 5 | Question 1 |
 | 8. Kept items, the wizard's look | Not started | Inventory (BACKLOG 5) |
 
