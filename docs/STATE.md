@@ -5,6 +5,22 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
+**Handoff 2026-11-10 ~19:30 MST: Andrew is rebooting the PC.** After the restart:
+1. **`view-map-arrays`** (85ec9b74, pushed, not landed) **makes the Scale Island load in a player**: first frame 20.6 s,
+   2.74 GB private; standing 5.03/12.67, bot walk 10.17/23.59 (69 frames over 30 ms, the next thing to profile),
+   walkout 7.14/14.89. It passes EditMode 1965/1968, smoke on both maps, `online` on the valley 38/38. **Before
+   landing:** run `online` on the nine on dev (b2c6a656 or later) and on the branch with the fresh Editor: on the branch
+   it failed 7 (client_water_matches wet counts 0 on both peers, thing_ids 25/205, a client IndexOutOfRange at
+   TreeImpostors.cs:204, shape_taken_online, shape_ended_by_choice, reset_checksums_equal, fell 828 m); dev's run
+   ran out of RAM. Land if dev fails the same; otherwise fix on the branch.
+2. With the fresh Editor, #145's next step: find which job sets the Mono heap's peak (snapshots after each kind).
+3. **u2** was on `sim-across-the-seam` (the 12 x 10's east-west wrap in the World; brief in the queue's taken/). Check
+   its VM came back and its session continued (`tools/workers/peek.sh u2`); if not, re-brief with -FollowUp.
+4. Open: #212 the frame after a Fireball lands; #215 swell/swim on the nine; #216 solo map pick; #217 frame readout;
+   #202 seam paint; the tick allowance a frame (3 ms) is Andrew's call (old play logs replay differently).
+5. A playtest build of dev: `host-ux/unity/Builds/Playtest-2026-11-10/Play the Nine.cmd`.
+
+
 **The 3 x 3 world (the nine) plays, and the far ring shows.** Andrew doesn't need a Windows build or a playtest yet:
 keep working without his play (J-082). dev is at 5b79241c.
 
