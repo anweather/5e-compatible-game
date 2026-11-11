@@ -20,6 +20,7 @@ namespace Chem
         public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt")
         {
             if (w <= 0 || h <= 0) throw new ArgumentException("World size must be positive");
+            ownerThread = Environment.CurrentManagedThreadId;
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             W = w;
             H = h;

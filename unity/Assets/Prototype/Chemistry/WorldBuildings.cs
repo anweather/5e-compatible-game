@@ -59,41 +59,55 @@ namespace Chem
         /// </summary>
         public void LayInto(World world)
         {
+            int[] fileLand = null;
             foreach (var r in LaidRows)
             {
                 var row = BuildingRow.Read((string)r["id"], r, world.Rules.Buildings);
                 var cells = BuildingRaster.Cells(row, world.Rules.Buildings);
                 if (!cells.All(c => world.InBounds(c.X, c.Y))) continue;
                 foreach (var c in cells) world.Paint(c.X, c.Y, c.Terrain);
-                GradeRoads(world, row, cells);
+                GradeRoads(world, row, cells, ref fileLand);
             }
         }
 
         // The graded roads' cuts and the pads, from the map's land as its file has it with all that's been stamped and laid
         // on it so far: the map's own stamps go down first (ChemGrid), so a pad on a stamp's slope is cut level on that
         // slope, and a later row's pad is level over an earlier row's graded road.
-        // A world without that land keeps its ground.
-        void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells)
+        // A world without that land keeps its ground. The file's land is read once for all the rows (fileLand), and the
+        // land as it stands now is it with what the world says moved (LandMovedAt), cell by cell as asked: never a copy
+        // of the whole map a row (a big map's land.json is 40 M cells).
+        void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells, ref int[] fileLand)
         {
             var pad = row.Json["pad"];
             if ((pad == null && row.Roads.All(r => !r.Graded)) || folder == null) return;
             string path = Path.Combine(folder, MapFile.LandName);
-            if (!File.Exists(path)) return;
-            var land = LandFile.Read(File.ReadAllText(path), world.W, world.H);
-            if (land.Length == 0) return;
-            if (world.LandHasMoved)
-                for (int y = 0; y < world.H; y++)
-                    for (int x = 0; x < world.W; x++) land[world.Idx(x, y)] += world.LandMovedAt(x, y);
+            if (fileLand == null)
+            {
+                if (!File.Exists(path)) return;
+                fileLand = LandFile.Read(File.ReadAllText(path), world.W, world.H);
+            }
+            if (fileLand.Length == 0) return;
+            var file = fileLand;
+            // The row's roads are graded on the land as the pad left it, not on each other: their grades are left out.
+            var graded = new Dictionary<(int x, int y), int>();
+            int Land(int x, int y)
+            {
+                int at = file[world.Idx(x, y)] + world.LandMovedAt(x, y);
+                return graded.TryGetValue((x, y), out int by) ? at - by : at;
+            }
             var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));
             if (pad != null)
             {
-                var (moved, crag) = RowPad.Of(building, (int)pad["margin"], (int)pad["bank"], (x, y) => land[world.Idx(x, y)], world.InBounds, PadAreas(row));
+                var (moved, crag) = RowPad.Of(building, (int)pad["margin"], (int)pad["bank"], Land, world.InBounds, PadAreas(row));
                 world.LayLand(moved);
                 world.LayCrag(crag);
-                foreach (var (x, y, by) in moved.Concat(crag)) land[world.Idx(x, y)] += by;
             }
             foreach (var road in row.Roads.Where(r => r.Graded))
-                world.LayLand(RoadGrade.Of(road, row.X, row.Y, (x, y) => land[world.Idx(x, y)], building));
+            {
+                var grade = RoadGrade.Of(road, row.X, row.Y, Land, building);
+                world.LayLand(grade);
+                foreach (var (x, y, by) in grade) graded[(x, y)] = graded.TryGetValue((x, y), out int was) ? was + by : by;
+            }
         }
 
         /// <summary>

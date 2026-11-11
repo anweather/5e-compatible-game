@@ -125,18 +125,44 @@ namespace Chem
             var o = JObject.Parse(json);
             if ((int?)o["version"] != Version || (int?)o["w"] != w || (int?)o["h"] != h) return Array.Empty<int>();
             var land = new int[w * h];
-            // Inflated whole first: a byte at a time from the DeflateStream took 3.6 s for the 1728 x 1728 test map (cell-memory).
-            byte[] bytes;
+            // Inflated a buffer at a time: a byte at a time from the DeflateStream took 3.6 s for the 1728 x 1728 test map
+            // (cell-memory), and inflating it whole held a big map's every byte twice over (the sparse World's guard).
             using (var deflate = new DeflateStream(new MemoryStream(Convert.FromBase64String((string)o["data"])), CompressionMode.Decompress))
-            using (var inflated = new MemoryStream())
             {
-                deflate.CopyTo(inflated);
-                bytes = inflated.ToArray();
+                var bytes = new Inflated(deflate);
+                for (int k = 0; k < land.Length; k++)
+                    land[k] = Previous(land, k, w) + Unzigzag(bytes.Varint());
             }
-            int at = 0;
-            for (int k = 0; k < land.Length; k++)
-                land[k] = Previous(land, k, w) + Unzigzag(ReadVarint(bytes, ref at));
             return land;
+        }
+
+        // The inflated bytes in a buffer's worth at a time.
+        sealed class Inflated
+        {
+            readonly Stream from;
+            readonly byte[] buffer = new byte[1 << 16];
+            int at, have;
+
+            public Inflated(Stream from) => this.from = from;
+
+            public uint Varint()
+            {
+                uint v = 0;
+                int shift = 0, b = 0x80;
+                while (b >= 0x80)
+                {
+                    if (at == have)
+                    {
+                        have = from.Read(buffer, 0, buffer.Length);
+                        at = 0;
+                        if (have <= 0) throw new EndOfStreamException("land.json ends early");
+                    }
+                    b = buffer[at++];
+                    v |= (uint)(b & 0x7f) << shift;
+                    shift += 7;
+                }
+                return v;
+            }
         }
 
         static int Previous(int[] land, int k, int w)
@@ -146,20 +172,6 @@ namespace Chem
         }
 
         static int Unzigzag(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
-
-        static uint ReadVarint(byte[] bytes, ref int at)
-        {
-            uint v = 0;
-            int shift = 0, b = 0x80;
-            while (b >= 0x80)
-            {
-                b = at < bytes.Length ? bytes[at++] : -1;
-                if (b < 0) throw new EndOfStreamException("land.json ends early");
-                v |= (uint)(b & 0x7f) << shift;
-                shift += 7;
-            }
-            return v;
-        }
     }
 
     // Bytes in, their base64 out to a stream, as Convert.ToBase64String of them all would give it.

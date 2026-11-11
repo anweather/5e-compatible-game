@@ -154,6 +154,26 @@ namespace Chem
 
         long packTime, unpackTime;
 
+        // The thread that made the world: the only one that may pack or unpack its chunks (OwnThread).
+        readonly int ownerThread;
+
+        /// <summary>
+        /// Whether the calling thread is the one that made the world. Only it may pack or unpack a chunk: the pool and the
+        /// unpacked list aren't thread-safe, so a view worker reading a packed chunk's cells would corrupt them silently.
+        /// A worker reads only unpacked chunks (IsPacked), or has the owner unpack them first.
+        /// </summary>
+        public bool OnOwnThread => Environment.CurrentManagedThreadId == ownerThread;
+
+        // Packing and unpacking only on the owner's thread: anything else throws rather than corrupt the world.
+        void OwnThread(Chunk ch, string what)
+        {
+            if (Environment.CurrentManagedThreadId == ownerThread) return;
+            throw new InvalidOperationException(
+                $"Chunk ({ch.X}, {ch.Y}) {what} on thread {Environment.CurrentManagedThreadId}, not the world's own ({ownerThread}): "
+                + "only the thread that made the world packs or unpacks its chunks. A worker that reads cells must read unpacked "
+                + "chunks only (World.IsPacked), or have the main thread unpack them first (World.Unpack).");
+        }
+
         /// <summary>
         /// Inactive chunks a read unpacked (anyone's, through Chunk.CellAt or a per-cell array) that weren't in the view's
         /// drawn hint, since the world was made: a safety net that should stay 0 in play, since the chunks round an active
@@ -246,6 +266,7 @@ namespace Chem
         // A read of a packed chunk (Chunk.Block), mid-tick or not: it unpacks, and the read gets its block.
         internal ChunkBlock UnpackOnRead(Chunk ch)
         {
+            OwnThread(ch, "would unpack for a read");
             if (!ch.Active && !drawnHint.Contains(Chunks.Key(ch.X, ch.Y))) ReadUnpacks++;
             UnpackChunk(ch);
             return ch.Held;
@@ -273,6 +294,7 @@ namespace Chem
 
         void UnpackChunk(Chunk ch)
         {
+            OwnThread(ch, "would unpack");
             long started = Stopwatch.GetTimestamp();
             var p = ch.Packed;
             var b = blockPool.Count > 0 ? blockPool.Pop() : new ChunkBlock();
@@ -307,6 +329,7 @@ namespace Chem
 
         void PackChunk(Chunk ch)
         {
+            OwnThread(ch, "would pack");
             long started = Stopwatch.GetTimestamp();
             var b = ch.Held;
             ch.Packed = Changes(ch, b);

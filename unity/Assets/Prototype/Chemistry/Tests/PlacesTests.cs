@@ -77,6 +77,21 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void RowsAloneGiveTheCellsTheyWouldOneByOne()
+        {
+            // Out of order, overlapping, touching, a row twice, an empty pair and a gap: rows alone read as spans; the
+            // same rows with a cell already in them (a one-cell area) take the cell-at-a-time way.
+            const string rows = @"""rows"": [[12, 9, 11, 2, 4], [10, 5, 3, 8, 8], [12, 5, 6, 3, 7], [10, 1, 2], [14, 0, 0, 20, 30]]";
+            var places = WorldPlaces.FromJson(@"{ ""places"": [ { ""id"": ""spans"", " + rows + @" },
+                { ""id"": ""cells"", ""area"": [8, 10, 8, 10], " + rows + @" } ] }");
+            var spans = places.Find("spans");
+            Assert.That(spans.Cells().ToList(), Is.EqualTo(places.Find("cells").Cells().ToList()));
+            Assert.That((spans.Count, spans.Bounds), Is.EqualTo((2 + 1 + 6 + 3 + 1 + 11, new CellRect(0, 10, 31, 5))));
+            Assert.That(spans.Contains(7, 12) && !spans.Contains(8, 12) && spans.Contains(9, 12) && !spans.Contains(3, 10) && !spans.Contains(5, 13), Is.True);
+            Assert.Throws<FormatException>(() => WorldPlaces.FromJson(@"{ ""places"": [ { ""id"": ""a"", ""rows"": [[3, 5, 4]] } ] }"), "no cells");
+        }
+
+        [Test]
         public void ABadFileSaysWhy()
         {
             Assert.Throws<FormatException>(() => WorldPlaces.FromJson(@"{ ""places"": [ { ""id"": ""a"" } ] }"), "no cells");
