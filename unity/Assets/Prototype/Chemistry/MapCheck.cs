@@ -42,8 +42,10 @@ namespace Chem
             if (map.W <= 0 || map.H <= 0 || map.W % Chunks.Size != 0 || map.H % Chunks.Size != 0)
                 errors.Add($"the map is {map.W} x {map.H}, and a map is a whole number of {Chunks.Size}-cell chunks each way");
             CheckDresses(map, errors);
-            CheckCells(worldDir, map, errors);
-            int[] land = ReadLand(worldDir, map, errors);
+            // A generated map's rows alone (GeneratedMap.EnsureRows) hold no cells or land: they're made as play reads them.
+            bool rowsOnly = GeneratedMap.IsRowsOnly(worldDir);
+            if (!rowsOnly) CheckCells(worldDir, map, errors);
+            int[] land = rowsOnly ? Array.Empty<int>() : ReadLand(worldDir, map, errors);
             CheckRange(map, land, errors);
             if (land.Length > 0)
             {

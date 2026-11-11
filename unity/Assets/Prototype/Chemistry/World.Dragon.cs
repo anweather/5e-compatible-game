@@ -471,6 +471,13 @@ namespace Chem
         void Recount(Chunk ch)
         {
             int count = 0;
+            // A packed chunk whose changes are its start's, against the same source, is its start: none differ, read or not.
+            if (ch.Packed != null && ch.Packed == ch.Start && startSource == Source)
+            {
+                ChangedCount -= ch.Changed;
+                ch.Changed = 0;
+                return;
+            }
             var read = new ChunkReader(this, ch, walkScratch);
             var start = StartOf(ch, startScratch);
             for (int i = 0; i < Chunks.Area; i++)

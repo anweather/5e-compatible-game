@@ -19,7 +19,9 @@
   - The design and the steps are in `docs/design/sparse-world.md`.
   - **Not decided here:**
     - a hash cached per chunk (it would move every golden);
-    - regenerating chunks from the seed in play (the bake stays the source for generated maps).
+    - regenerating chunks from the seed in play (the bake stays the source for generated maps). *2026-11-11:* a map
+      too big to bake (`"bake": false`, the 12 x 10) takes its generator as its source, chunks made ahead and held,
+      with the changes hash on it (`generate-switch`, sparse-world.md "The generate switch"); baked maps are as they were.
 - **Why:**
   - **Memory stops following the map.** About 100-210 MB at 9,720 chunks against 3.4 GB. Only the source, a few KB a
     chunk, grows with the map.

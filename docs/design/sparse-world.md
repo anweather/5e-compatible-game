@@ -63,7 +63,8 @@ read cell by cell (it isn't: a baked source is an array lookup and a legend tabl
 
 Regenerating from the seed (`ChunkGen.Make`) as the source isn't an option on its own. It takes milliseconds and
 9.5 MB of scratch a chunk (the scale doc's #6), far too slow for a per-cell read. So the generated maps' source is
-their bake. ChunkGen stays the bake's job.
+their bake. ChunkGen stays the bake's job. (A map too big to bake, the 12 x 10, takes the generator as its source a
+chunk at a time, made ahead and held: see "The generate switch" at the end.)
 
 ## A chunk, unpacked and packed
 
@@ -650,3 +651,91 @@ one second of the build: the rows and the Hold were 3.2 GB of garbage between th
   view's or a row reader's job (step 4: `ChemGrid` can take `BakedSource.Read`, which reads cells.txt a row at a time,
   and `LandFile` a reader a row at a time for `SetLand(row)`).
 - The PC's 4.47 GB at 41 s is past the core's build: the view's ground and terrains, which this VM can't measure.
+
+## The generate switch (`generate-switch`, 2026-11-11)
+
+`world/maps/world-12x10/` says `"bake": false` (about 9-10 GB of cells baked whole), so until now it could only be
+planned and known. On the sparse World and the wrap it plays unbaked: its **source is its generator**.
+
+**`GeneratedSource`** (`GeneratedSource.cs`, `IGeneratedSource`) is the World's source for such a map:
+- A chunk's cells and land are made by `ChunkGen.Make` when the World first reads them, the same bytes on every peer.
+- The chunks are held made, at most `Holds` (768, about 24 KB each), the least recently read let go first.
+- Its `Version` is `"generated:"` and `GeneratedMap.InputHash`, so a save loads only over the same inputs.
+- Its cells come from the legend table `BakedSource` uses (`LegendCells`), so a chunk made on demand is the bake's cell
+  for cell, land and things (`GeneratedSourceTests.AChunkMadeOnDemandIsTheBakes`, on BakeTests' two squares).
+- A packed chunk with no changes is **untouched**: it holds nothing but its header.
+
+**The map's rows** (`GeneratedMap.EnsureRows`, `WriteRowsOnly`) are written like a bake, without `cells.txt`,
+`land.json` and `things.json`:
+- They hold the stamps, villages, buildings, golf, Gauntlet, puzzles, jobs, rocks, Hold and looks, plus `map.json`,
+  `places.json` and `bake.json`, the last with `"cells": "generated"`.
+- `places.json` has no water bodies, which only the whole map's land finds.
+- `GeneratedSource.MapWorld` builds the World from them as `ChemGrid.MapWorld` builds a baked one: `MakeFrom`, then
+  `LandFromSource`, puzzles, stamps, rows, golf and the Hold.
+- On the two squares that World equals the baked World chunk for chunk, land included (`ItsWorldIsTheBakesWorld`).
+- `MapCheck` takes a folder of rows alone (it skips the cells, land and things checks). `IsBaked` says no to one.
+- The 12 x 10's folder now ignores what's written into it, like the nine's.
+
+**What would read the whole map, and doesn't now.** Making a chunk takes milliseconds, so on a world whose source is
+an `IGeneratedSource`:
+- **The hash is the changes hash** (`World.HashesChanges`, `ChangedRun`). `CellHash`, `HashSlice` (the rolling hash)
+  and `CellText` cover only the cells that differ from the source, each as `@index:` and the cell, in row order.
+  - A packed chunk's changes are read as they lie, laid on a reset cell. A change holds every field the source makes,
+    and all the rest when either side has any, so that is the cell.
+  - An unpacked chunk's cells are compared with the source, as packing would.
+  - So the hash never makes a chunk, and how a chunk is held still never shows.
+  - Every peer has the same source (the map's inputs are its hash), so it fingerprints the cells as well as the full
+    walk does.
+  - Baked maps and every golden are unchanged.
+- **The land is the source's** (`World.LandFromSource`, in place of `SetLand`).
+  - A chunk's land is made from the source as it's first read: `NoLand` on a water body as the map makes it, plus
+    what `landMoved` holds.
+  - A move on a chunk whose land isn't made yet is left to `landMoved`.
+  - Once made (unpacked, or peeked and moved) the land is held and moved as before.
+  - So it's the same land however late a chunk is read, and on a World loaded from a save.
+  - `WorldBuildings.GradeRoads` reads the source's land where a bake reads `land.json`.
+- **Writes to every cell** (`SnuffFires`, a lapse) skip untouched chunks. A map as made holds no fire and none of a
+  mod's materials.
+- **`KeepStart`'s recount** skips a packed chunk whose changes are its start (true for any source).
+- **`ChunkCoords` and the sorted chunks** are kept once the World is made. The planner read them every frame, a sort
+  of every chunk each time.
+
+**Made ahead.** Five chunks unpacking at a chunk edge, made there, take **126-149 ms** on the 2-core VM (a chunk is
+15-22 ms), against a step budget of 6 ms. So they're made ahead:
+- `ChunkPlanner.Plan` asks for the inactive chunks within keep + `AheadChunks` (2) of a character, nearest first
+  (`World.MakeAhead`).
+- `World.SetDrawn` asks for the drawn hint's chunks.
+- A worker on the source makes them, one thread, and stops when there are none.
+- `ChunkStreaming.Apply`, and the World before a tick (`MakeAround`), make on every core at once (`MakeNow`) whatever
+  is about to unpack and isn't made yet: a teleport, the spawn's reach, a load.
+- Made ahead, the same five unpack in **0.37-0.54 ms**.
+- Which chunks are made when, and on which thread, changes time only, never shared state.
+
+**Measured** (`GeneratedSourceTests`, dotnet Release on the 2-core VM):
+
+| | |
+|---|---|
+| The 12 x 10's `GeneratedMap.Load` / its rows written | 142-187 ms / 41-48 ms |
+| Its World built (`MapWorld`) | 1.3-1.6 s, making **75 of 9,720 chunks** (the ones its lays touch) |
+| `KeepStart` | 18-25 ms |
+| A walk of 512 ticks across the seam (1 cell a tick, twice walking pace) | 134 chunks made: 129 ahead, 0 on a read, 0 waits |
+| Frames on the walk (planner, switches, hint, tick) | median 4.49 ms, p99 10.1, worst 30.4; the 8 that activated chunks median 6.2, worst 6.8 |
+| The planner's share | median 3.1 ms (was 4.4 before `ChunkCoords` was kept) |
+
+Two peers that make and pack chunks at different times agree tick by tick on the running hash (`TwoPeersAndLateJoinersAgree`).
+So do a late joiner replaying the history and one loading the host's save, and the cells round the walk match too.
+
+**Left:**
+- **The view (the PC).** The core builds and plays the 12 x 10; the game doesn't load it yet.
+  - `ChemGrid.Maps` hides `"bake": false` maps. `FoldersFor` / `Baked` should write the rows instead (`EnsureRows`,
+    into the map's folder in the Editor and `worlds/<inputs>/<id>` in a build).
+  - `MapWorld` should build on `GeneratedSource.MapWorld` when the folder holds rows alone (`GeneratedMap.IsRowsOnly`).
+  - `ValleyChemistry.SetLand` mustn't read a `land.json` there: `MapWorld` already took the source's land.
+  - The things come a chunk at a time from `GeneratedSource.ThingsOf`, not `things.json`.
+  - The ground and terrains must read a chunk's land from the source, not `land.json`.
+- **The planner** still looks at every chunk each frame (distance, `IsActive`, `Knocked`): about 3 ms on the VM on
+  the 12 x 10, less on the PC, and the same on any big map. Visiting only the chunks near characters and the active
+  ones would make it follow the active region (J-086).
+- **Water-body places** on an unbaked map: they need the whole map's land. They could come from the known ring
+  instead.
+

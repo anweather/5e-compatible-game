@@ -37,23 +37,7 @@ namespace Chem
             ['P'] = ("pane", 0, false, null),
         };
 
-        // A legend character's cell under the rules, as painting it makes it.
-        readonly struct Made
-        {
-            public readonly string T, Cover;
-            public readonly int Water;
-            public readonly bool Frozen;
-
-            public Made(Cell c)
-            {
-                T = c.T;
-                Cover = c.Cover;
-                Water = c.Water;
-                Frozen = c.Frozen;
-            }
-        }
-
-        readonly Made[] made = new Made[256];
+        readonly LegendCells made;
         readonly int cw;
         // Each chunk's legend bytes (row-major, local index), or null when it's all one: then uniform holds it.
         readonly byte[][] blocks;
@@ -106,13 +90,7 @@ namespace Chem
                 }
             Bytes = bytes;
             UniformChunks = one;
-            var paint = new World(rules, 1, 1);
-            for (int c = 0; c < 256; c++)
-            {
-                paint.At(0, 0).Reset();
-                paint.PaintLegend(0, 0, (char)c);
-                made[c] = new Made(paint.At(0, 0));
-            }
+            made = new LegendCells(rules);
         }
 
         static bool IsUniform(byte[] b)
@@ -152,11 +130,7 @@ namespace Chem
         {
             int k = (y >> Chunks.Shift) * cw + (x >> Chunks.Shift);
             var b = blocks[k];
-            var m = made[b == null ? uniform[k] : b[(Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x)]];
-            cell.T = m.T;
-            cell.Water = m.Water;
-            cell.Frozen = m.Frozen;
-            if (m.Cover != null) cell.Cover = m.Cover;
+            made.Make(b == null ? uniform[k] : b[(Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x)], cell);
         }
 
         /// <summary>
@@ -215,6 +189,51 @@ namespace Chem
                 if (H == 0 || W == 0) throw new FormatException("A map needs at least one cell");
                 return this;
             }
+        }
+    }
+
+    /// <summary>
+    /// Each legend character's cell under the rules a map is made with, as painting it makes it (World.PaintLegend): the
+    /// table a baked map's and a generated map's source (BakedSource, GeneratedSource) make their cells by.
+    /// </summary>
+    internal sealed class LegendCells
+    {
+        readonly struct Made
+        {
+            public readonly string T, Cover;
+            public readonly int Water;
+            public readonly bool Frozen;
+
+            public Made(Cell c)
+            {
+                T = c.T;
+                Cover = c.Cover;
+                Water = c.Water;
+                Frozen = c.Frozen;
+            }
+        }
+
+        readonly Made[] made = new Made[256];
+
+        public LegendCells(Rules rules)
+        {
+            var paint = new World(rules, 1, 1);
+            for (int c = 0; c < 256; c++)
+            {
+                paint.At(0, 0).Reset();
+                paint.PaintLegend(0, 0, (char)c);
+                made[c] = new Made(paint.At(0, 0));
+            }
+        }
+
+        /// <summary>Sets a freshly reset cell to legend character <paramref name="c"/>'s (one past 255 is dirt, as the map text reads it).</summary>
+        public void Make(int c, Cell cell)
+        {
+            var m = made[c < 256 ? c : '.'];
+            cell.T = m.T;
+            cell.Water = m.Water;
+            cell.Frozen = m.Frozen;
+            if (m.Cover != null) cell.Cover = m.Cover;
         }
     }
 

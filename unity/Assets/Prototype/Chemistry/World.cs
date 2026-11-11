@@ -316,6 +316,7 @@ namespace Chem
         public void SetLand(Action<int, int[]> row)
         {
             DropLandPeek();
+            landFromSource = false;
             if (row == null)
             {
                 hasLand = false;
@@ -358,6 +359,54 @@ namespace Chem
         // A cell SetLand marks NoLand: none, or one with water or a spring now.
         bool IsWaterBody(Cell c) => c == null || c.Water > 0 || TerrainOf(c).Spring > 0;
 
+        // Whether the land is the source's (LandFromSource): then an untouched chunk's (no PackedLand while packed) is
+        // made from the source as it's read, with what the stamps and the map moved since.
+        bool landFromSource;
+
+        /// <summary>
+        /// SetLand from the world's own source (a generated map's, IGeneratedSource.LandAt), without reading the whole map:
+        /// a chunk's land is made as it's first read, NoLand on a water body as the map makes it, with what the stamps and
+        /// the map have moved. So it's the same land however late it's read, and on a world loaded from a save. Between
+        /// ticks, once the world is made from the source (or loaded).
+        /// </summary>
+        public void LandFromSource()
+        {
+            if (!(Source is IGeneratedSource)) throw new InvalidOperationException($"The world's source ({Source.Version}) holds no land: SetLand takes it");
+            FinishTick();
+            DropLandPeek();
+            hasLand = true;
+            landFromSource = true;
+            foreach (var ch in chunks.Values)
+            {
+                ch.PackedLand = null;
+                if (ch.Held is ChunkBlock b) SourceLand(ch, b.Land ??= new int[Chunks.Area]);
+            }
+        }
+
+        // A chunk's land as the source makes it, with what's moved since.
+        void SourceLand(Chunk ch, int[] at)
+        {
+            var source = (IGeneratedSource)Source;
+            for (int i = 0; i < Chunks.Area; i++)
+            {
+                int x = CellX(ch, i), y = CellY(ch, i);
+                if (!InBounds(x, y))
+                {
+                    at[i] = NoLand;
+                    continue;
+                }
+                landCell.Reset();
+                source.Make(x, y, landCell);
+                at[i] = IsWaterBody(landCell) ? NoLand : source.LandAt(x, y) + (landMoved?[x, y] ?? 0);
+            }
+        }
+
+        // The cell SourceLand makes the source's cells into: its own, as it runs inside other walks (a chunk unpacking for a read).
+        readonly Cell landCell = new Cell();
+
+        // Whether a chunk's land is still the source's, made as it's read: it's packed and has never been unpacked since LandFromSource.
+        bool LandUnmade(Chunk ch) => landFromSource && ch.Held == null && ch.PackedLand == null;
+
         int LandOf(Chunk ch, int i)
         {
             if (!hasLand) return NoLand;
@@ -377,6 +426,12 @@ namespace Chem
             var ch = FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
             int[] at;
             if (ch.Held is ChunkBlock b) at = b.Land;
+            else if (LandUnmade(ch))
+            {
+                // Made from the source with what landMoved holds, this move among it: a peek of it made before is stale.
+                if (landPeekChunk == ch) landPeekChunk = null;
+                return;
+            }
             else
             {
                 at = PackedLand(ch);
@@ -399,7 +454,8 @@ namespace Chem
         {
             if (landPeekChunk == ch) return landPeek;
             DropLandPeek();
-            LandCodec.Decode(ch.PackedLand, landPeek);
+            if (LandUnmade(ch)) SourceLand(ch, landPeek);
+            else LandCodec.Decode(ch.PackedLand, landPeek);
             landPeekChunk = ch;
             return landPeek;
         }
@@ -423,6 +479,7 @@ namespace Chem
                 landPeekEdited = false;
                 landPeekChunk = null;
             }
+            else if (landFromSource && ch.PackedLand == null) SourceLand(ch, b.Land);
             else LandCodec.Decode(ch.PackedLand, b.Land);
             ch.PackedLand = null;
         }

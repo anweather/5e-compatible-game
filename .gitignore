@@ -37,3 +37,5 @@ tools/punchy-sync/obj/
 !/world/maps/nine/map.json
 /world/maps/scale-12x10/*
 !/world/maps/scale-12x10/map.json
+/world/maps/world-12x10/*
+!/world/maps/world-12x10/map.json

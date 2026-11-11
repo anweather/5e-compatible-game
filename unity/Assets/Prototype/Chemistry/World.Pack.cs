@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
@@ -240,6 +241,24 @@ namespace Chem
                 // A chunk that comes into the hint is needed from now, whether or not it's unpacked yet.
                 if (FindChunk(cx, cy) is Chunk ch) ch.Needed = Tick;
             }
+            // The view reads what it draws: on a generated map, made ahead.
+            if (Source is IGeneratedSource g) g.Ahead(drawnHint.Select(k => ((int)(uint)k, (int)(k >> 32))));
+        }
+
+        /// <summary>
+        /// On a world whose source makes its chunks as they're read (a generated map's, IGeneratedSource): asks for these
+        /// chunks to be made ahead on a worker, nearest first, as they'll be read soon (ChunkPlanner's next chunks, the
+        /// view's drawn hint). Not a command and not shared state: it changes time only. Nothing on another source.
+        /// </summary>
+        public void MakeAhead(IEnumerable<(int cx, int cy)> chunks)
+        {
+            if (Source is IGeneratedSource g && chunks != null) g.Ahead(chunks.Select(c => (FoldChunkX(c.cx), c.cy)));
+        }
+
+        /// <summary>MakeAhead, waiting for them: made now on every core, the chunks about to activate (ChunkStreaming.Apply).</summary>
+        public void MakeNow(IEnumerable<(int cx, int cy)> chunks)
+        {
+            if (Source is IGeneratedSource g && chunks != null) g.MakeNow(chunks.Select(c => (FoldChunkX(c.cx), c.cy)));
         }
 
         /// <summary>The chunks in the view's drawn hint, as it last gave them.</summary>
@@ -346,8 +365,40 @@ namespace Chem
         // round them (the tick reads one chunk out), between ticks rather than by the tick's reads.
         void UnpackActive(Chunk[] active)
         {
+            if (Source is IGeneratedSource g) MakeAround(g, active);
             foreach (var ch in active) UnpackAround(ch);
         }
+
+        // On a generated map, the packed chunks about to unpack (the active ones and those round them) made first on every
+        // core, rather than one at a time as each unpacks: a world just made, or loaded, has its reach to make at once.
+        static void MakeAround(IGeneratedSource g, Chunk[] active)
+        {
+            List<(int cx, int cy)> packed = null;
+            void Add(Chunk ch)
+            {
+                if (ch?.Packed == null) return;
+                packed ??= new List<(int cx, int cy)>();
+                packed.Add((ch.X, ch.Y));
+            }
+            foreach (var ch in active)
+            {
+                if (ch.Packed == null && !BesidePacked(ch)) continue;
+                Add(ch);
+                Add(ch.North);
+                Add(ch.North?.East);
+                Add(ch.North?.West);
+                Add(ch.South);
+                Add(ch.South?.East);
+                Add(ch.South?.West);
+                Add(ch.East);
+                Add(ch.West);
+            }
+            if (packed != null) g.MakeNow(packed);
+        }
+
+        static bool BesidePacked(Chunk ch) =>
+            ch.North?.Packed != null || ch.South?.Packed != null || ch.East?.Packed != null || ch.West?.Packed != null
+            || ch.North?.East?.Packed != null || ch.North?.West?.Packed != null || ch.South?.East?.Packed != null || ch.South?.West?.Packed != null;
 
         // A chunk and the eight round it unpacked, those that are packed.
         void UnpackAround(Chunk ch)
@@ -406,12 +457,16 @@ namespace Chem
 
         /// <summary>
         /// A write to every cell (SnuffFires, a material's lapse): each chunk in turn, a packed one unpacked for it and packed
-        /// again straight after if it's inactive, so a pass over a big map never holds it all unpacked.
+        /// again straight after if it's inactive, so a pass over a big map never holds it all unpacked. On a source that
+        /// makes its chunks as they're read (IGeneratedSource) an untouched chunk is left as it is: its cells are the map's
+        /// as made, which hold no fire and none of a mod's materials, so the write would change none of them.
         /// </summary>
         void WriteEveryCell(Action<Cell> write)
         {
+            bool skipUntouched = Source is IGeneratedSource;
             foreach (var ch in SortedChunks(false))
             {
+                if (skipUntouched && ch.Packed != null && ch.Packed.Count == 0) continue;
                 bool repack = ch.Packed != null && !ch.Active;
                 if (repack) UnpackChunk(ch);
                 var cells = ch.Block.Cells;

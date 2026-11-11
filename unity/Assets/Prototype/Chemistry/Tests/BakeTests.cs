@@ -20,7 +20,7 @@ namespace Chem.Tests
     public class BakeTests
     {
         // The valley at [0, 0] and a square east of it, in a world folder of the test's own.
-        static string TwoSquares(string root)
+        internal static string TwoSquares(string root)
         {
             ScaleIslandTests.CopyInputs(root);
             var o = JObject.Parse(File.ReadAllText(Path.Combine(root, "maps", "nine", MapFile.FileName)));

@@ -10,6 +10,7 @@
 // the same tick. C# only: the sandbox has no chunks.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Chem
 {
@@ -117,7 +118,20 @@ namespace Chem
         public static void Apply(World world, IEnumerable<ChunkSwitch> switches)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
-            foreach (var s in switches ?? Array.Empty<ChunkSwitch>())
+            switches ??= Array.Empty<ChunkSwitch>();
+            // On a generated map, the chunks that activate and those round them (they unpack with it) made first on every
+            // core, those not made ahead: the time it takes, never what's made.
+            if (world.Source is IGeneratedSource)
+            {
+                var near = new List<(int cx, int cy)>();
+                foreach (var s in switches)
+                    if (s.Active && world.HasChunk(s.CX, s.CY) && !world.IsActive(s.CX, s.CY))
+                        for (int dy = -1; dy <= 1; dy++)
+                            for (int dx = -1; dx <= 1; dx++)
+                                if (world.HasChunk(s.CX + dx, s.CY + dy)) near.Add((world.FoldChunkX(s.CX + dx), s.CY + dy));
+                world.MakeNow(near);
+            }
+            foreach (var s in switches)
                 if (world.HasChunk(s.CX, s.CY)) world.SetActive(s.CX, s.CY, s.Active);
         }
 
@@ -193,9 +207,12 @@ namespace Chem
             var s = world.Rules.Sim.Streaming;
             // Lingering candidates: (distance, cy, cx, active now).
             var linger = new List<(int near, int cy, int cx, bool active)>();
+            // On a generated map, the chunks a character may come to next, to be made ahead (World.MakeAhead).
+            var ahead = world.Source is IGeneratedSource ? new List<(int near, int cy, int cx)>() : null;
             foreach (var (cx, cy) in world.ChunkCoords)
             {
                 int near = ChunkStreaming.Distance(characters, cx, cy, world.WrapChunks);
+                if (ahead != null && near <= s.Keep + AheadChunks && !world.IsActive(cx, cy)) ahead.Add((near, cy, cx));
                 bool active = isActive(cx, cy);
                 if (near <= s.Keep)
                 {
@@ -206,8 +223,19 @@ namespace Chem
             }
             Cap(linger, s.LingerChunks, world.Tick, plan);
             plan.Sort((a, b) => a.CY != b.CY ? a.CY.CompareTo(b.CY) : a.CX.CompareTo(b.CX));
+            if (ahead != null)
+            {
+                ahead.Sort();
+                world.MakeAhead(ahead.Select(a => (a.cx, a.cy)));
+            }
             return plan;
         }
+
+        /// <summary>
+        /// How far past the keep distance a generated map's chunks are made ahead of a character (World.MakeAhead): the
+        /// ring that unpacks with an activating chunk, and one more for a character running.
+        /// </summary>
+        public const int AheadChunks = 2;
 
         // Whether a chunk within a keep distance activates. Nothing lingers there; the reach
         // activates (and lifts a cut off), and between reach and keep only something crossing in does.
