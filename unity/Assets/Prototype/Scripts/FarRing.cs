@@ -111,7 +111,7 @@ public sealed partial class FarRing : MonoBehaviour
 
     static Loaded Load(string source, float water, float cell)
     {
-        var m = GeneratedMap.Load(source);
+        var m = LoadedMaps.Get(source);
         var far = m.Far;
         var gen = m.Gen;
         var ground = new float[far.All.Count];
