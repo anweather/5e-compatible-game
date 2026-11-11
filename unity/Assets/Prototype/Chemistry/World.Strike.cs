@@ -281,5 +281,19 @@ namespace Chem
                   .Append(s.Hp.ToString(inv)).Append(':').Append(s.NextStrike.ToString(inv));
             return sb.ToString();
         }
+
+        // The stands in a save (World.Save.cs): what a late joiner loading a snapshot needs, as they're in the checksum.
+        // Only when there are some, so saves without them read as they did.
+        void SaveStands(JObject save)
+        {
+            if (stands.Count == 0) return;
+            save["stands"] = new JArray(stands.Values.Select(s => new JArray(s.Player, s.X, s.Y, s.Hp, s.NextStrike)));
+        }
+
+        void LoadStands(JObject s)
+        {
+            foreach (var a in s["stands"] as JArray ?? new JArray())
+                stands[(string)a[0]] = new WizardStand { Player = (string)a[0], X = (int)a[1], Y = (int)a[2], Hp = (int)a[3], NextStrike = (int)a[4] };
+        }
     }
 }

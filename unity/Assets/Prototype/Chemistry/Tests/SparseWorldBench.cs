@@ -109,6 +109,41 @@ namespace Chem.Tests
                     if (w.HasChunk(i, j)) yield return (i, j);
         }
 
+        // late-join-snapshot (docs/design/player-saves.md, step 6): what a snapshot costs on the valley and the nine, taken
+        // after 60 ticks of play (casts at the spawn's middle, the reach active), and joined over the same map and land.
+        [TestCase("valley")]
+        [TestCase("nine")]
+        public void ASnapshotsBytesAndTime(string map)
+        {
+            string dir = map == "nine" ? Baked() : Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var w = Build(dir, R, out var source);
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), w.W, w.H);
+            int mx = w.W / 2, my = w.H / 2;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { (mx, my) }));
+            w.Cast("fireball", mx, my, 1);
+            w.Cast("create-water", mx + 20, my, 1);
+            for (int t = 0; t < 60; t++) w.Step();
+            var rules = RuleSet.Plain(R);
+            JoinSnapshot.Take(w, source, rules); // warm
+            var take = Stopwatch.StartNew();
+            string text = JoinSnapshot.Take(w, source, rules).Text();
+            double takeMs = take.Elapsed.TotalMilliseconds;
+            JoinSnapshot.Parse(text).Join(R, source, land); // warm
+            var join = Stopwatch.StartNew();
+            var (joined, _) = JoinSnapshot.Parse(text).Join(R, source, land);
+            double joinMs = join.Elapsed.TotalMilliseconds;
+            byte[] utf8 = System.Text.Encoding.UTF8.GetBytes(text);
+            long gz;
+            using (var mem = new MemoryStream())
+            {
+                using (var zip = new System.IO.Compression.GZipStream(mem, System.IO.Compression.CompressionLevel.Optimal, true)) zip.Write(utf8, 0, utf8.Length);
+                gz = mem.Length;
+            }
+            TestContext.Out.WriteLine($"SNAPSHOT {map} ({w.ChunkCoords.Count} chunks, {w.ActiveChunks.Count} active) at tick {w.Tick}: {utf8.Length / 1024.0:0.0} KB, "
+                + $"{gz / 1024.0:0.0} KB gzipped; taken in {takeMs:0.0} ms, joined (parsed, loaded, checked) in {joinMs:0.0} ms");
+            Assert.That(joined.CellHash(), Is.EqualTo(w.CellHash()));
+        }
+
         [Test]
         public void TheNinesWorldMemory()
         {
