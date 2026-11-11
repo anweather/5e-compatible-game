@@ -914,6 +914,11 @@ that long, and doesn't march.
   travels with them into any world and past a reset, and reaches the world
   only as a command (J-038, `docs/design/player-saves.md`).
 
+**Cause** *(proposed, D18)*
+: Who or what set off an effect on a cell: a player's cast, an act, a
+  trigger, or the world (0). A small integer per world, carried along as
+  fire and the rest spread, so a kill or a burnt house can name a player.
+
 **Room**
 : A session as its peers share it: one world, its host, its change mode
   and the mods on in it (`World.Room`, `World.Room.cs`). Solo play is a
