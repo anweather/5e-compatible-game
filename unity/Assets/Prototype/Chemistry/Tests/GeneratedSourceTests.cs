@@ -103,6 +103,27 @@ namespace Chem.Tests
             Assert.That(source.Made, Is.EqualTo(made.Gen.ChunksW * made.Gen.ChunksH), "each chunk made once");
         }
 
+        // core-review-0: GeneratedSource makes chunks on its worker and on many threads at once (Ahead, Parallel.For), so
+        // ChunkGen.Make must be a pure function of the chunk: no state it writes as it makes one. Every chunk made at once on
+        // many threads, in no order, is the chunk made alone on one, its hash, things and biome alike.
+        [Test]
+        public void ChunksMadeAtOnceOnManyThreadsAreTheSameAsOneAtATime()
+        {
+            var gen = GeneratedMap.Load(map).Gen;
+            int w = gen.ChunksW, n = gen.ChunksW * gen.ChunksH;
+            var alone = Enumerable.Range(0, n).Select(k => Text(gen.Make(k % w, k / w))).ToArray();
+            var fresh = GeneratedMap.Load(map).Gen;
+            var together = new string[n];
+            System.Threading.Tasks.Parallel.For(0, n, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 8 }, k =>
+            {
+                int at = (n - 1 - k) * 37 % n; // not in order
+                together[at] = Text(fresh.Make(at % w, at / w));
+            });
+            Assert.That(together, Is.EqualTo(alone));
+
+            static string Text(GeneratedChunk c) => $"{c.Hash} {c.Biome} {c.Pinned} {c.Things.ToString(Newtonsoft.Json.Formatting.None)}";
+        }
+
         [Test]
         public void ItsWorldIsTheBakesWorld()
         {
