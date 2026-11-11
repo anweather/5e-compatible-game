@@ -151,6 +151,7 @@ namespace Chem
             w.LoadState(s);
             w.LoadFits(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
+            w.LoadStarts(s);
             w.LoadLandSet(s, land);
             w.BuildingsIntoStart();
             w.TotalChanged();

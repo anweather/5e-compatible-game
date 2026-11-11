@@ -377,10 +377,19 @@ namespace Chem.Tests
         public void AJoinerFromASnapshotRunsAsAPeerThereFromTheStart()
         {
             const int ticks = 420, size = Chunks.Size;
+            // Laid the game's way: cells written over the source before the start is kept, as ChemGrid lays a map's
+            // puzzles, stamps and rows before StartWorld keeps it. Trees, and pits with water standing in them.
             Func<World> build = () =>
             {
                 var w = new World(R, 12 * size, 2 * size, 5, "grass", wrapX: true);
-                w.MakeFrom(new Trees());
+                for (int y = 0; y < w.H; y += 6)
+                    for (int x = (y * 5) % 13; x < w.W; x += 13) w.Paint(x, y, "tree");
+                for (int x = 100; x < 110; x++)
+                    for (int y = 20; y < 26; y++)
+                    {
+                        w.Paint(x, y, "pit");
+                        w.AddWater(x, y, 4);
+                    }
                 w.KeepStart();
                 return w;
             };
@@ -408,27 +417,16 @@ namespace Chem.Tests
             Assert.That(dragonCame, Is.True, "the dragon came");
             Assert.That(host.World.TriggeredCasts, Is.GreaterThan(10), "the walks fire triggers");
             foreach (int t in at)
-                Assert.That(SnapshotDifference(host, host.Snapshots[t], new Trees()), Is.Null, $"snapshot at {t}");
+                Assert.That(SnapshotDifference(host, host.Snapshots[t], new FillSource("grass")), Is.Null, $"snapshot at {t}");
             AssertJoinersMatch(host, build, new[] { 1, 200, ticks });
         }
 
-        // A meadow with trees, made so by its source: its start is the source's, all a save keeps of it (see below).
-        sealed class Trees : IChunkSource
-        {
-            public string Version => "test-trees-1";
-
-            public void Make(int x, int y, Cell cell) => cell.T = y % 6 == 0 && (x - (y * 5) % 13) % 13 == 0 ? "tree" : "grass";
-        }
-
         /// <summary>
-        /// A bug (docs/design/player-saves.md, step 6, "The start"): a world save doesn't keep the dragon's starting state.
-        /// A load takes it to be the source as made, with the buildings and golf put back (LoadStart, BuildingsIntoStart),
-        /// but a world that changed cells before it kept its start (the trees here; the game's puzzles and map stamps,
-        /// laid before StartWorld keeps it) loads with another start. Its audit then counts other changes, the dragon part
-        /// of the checksum moves the next tick, and a dragon's reset would put back the source, not the map's start.
+        /// docs/design/player-saves.md, question 8: a world that changed cells before it kept its start (the trees here; the
+        /// game's puzzles and map stamps, laid before StartWorld keeps it) comes back from a snapshot with that start, so
+        /// the dragon's audit counts the same changes and its checksum part runs on the same.
         /// </summary>
         [Test]
-        [Explicit("a bug: a world save doesn't keep a start that isn't the source's (late-join-snapshot)")]
         public void AStartLaidBeforeKeepStartComesBackFromASnapshot()
         {
             Func<World> build = () =>

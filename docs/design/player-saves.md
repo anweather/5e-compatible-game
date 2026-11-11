@@ -214,15 +214,29 @@ land stamp and a placed thing.
 
      Taking it is a hitch on the host's frame (the save's diff against the source), so it wants a frame of its own or
      a worker. Join's time is the joiner's.
-   - **Found: a world save doesn't keep the dragon's start** (`[Explicit]`
-     `AStartLaidBeforeKeepStartComesBackFromASnapshot`).
-     - A load takes the start to be the source as made, with buildings and golf put back.
-     - The game keeps its start *after* laying the map's puzzles, map stamps and rows (`ChemGrid.MapWorld`, then
-       `StartWorld`'s `KeepStart`), so a loaded world's start lacks the puzzles' and stamps' cells.
-     - Its audit counts other changes, and the dragon's checksum part moves the next tick: a desync for a snapshot
-       joiner. The same bug in a solo load: a reset would put back the source, not the map.
-     - Until it's fixed, a snapshot join is right only on a world whose start is its source plus buildings and golf.
-       **Question for Andrew (or the lead), 8 below.**
+   - **Found, then fixed (`snapshot-start`, question 8 (a)): a world save didn't keep the dragon's start.**
+     - **The bug:** a load took the start to be the source as made, with mods' buildings and golf put back. The game
+       keeps its start *after* laying the map's puzzles, map stamps and rows (`ChemGrid.MapWorld`, then
+       `StartWorld`'s `KeepStart`). So a loaded world's start lacked them, its audit counted other changes, and the
+       dragon's checksum part moved the next tick. A dragon's reset after a solo load would have put back the source,
+       not the map.
+     - **The fix:** the save keeps each chunk's start where it isn't what its source makes (`start.chunks`: cells,
+       and fire generations, in `SavePacked`'s form). A load makes each start from that, in one pass a chunk, once the
+       chunks are laid and fit. It's written only when some chunk's start differs, so other saves, and every golden,
+       are as they were.
+     - **Tests:** `AStartLaidBeforeKeepStartComesBackFromASnapshot` (now a normal test). The main snapshot test, with
+       its trees and water-filled pits laid before `KeepStart` as the game lays a map.
+       `SaveTests.ADragonAfterALoadPutsBackWhatTheMapLaid`: the valley saved after play, loaded with its land, the
+       dragon summoned on both, and the same world after the reset, the Gauntlet's pits included. All three fail
+       without the fix.
+     - **Cost** (Release, `SparseWorldBench.ASnapshotsBytesAndTime`, two runs; the start is the map's laid rows,
+       puzzles and stamps):
+
+       | Map | Size | Gzipped | Taken in | Joined in |
+       |---|---|---|---|---|
+       | The valley | 400 KB | 53 KB | 86 to 88 ms | 141 to 196 ms |
+       | The nine | 533 KB | 75 KB | 115 to 221 ms | 214 to 237 ms |
+
    - **What the net layer (`Scripts/Net/NetChem.cs`) would need** (not built):
      1. **The host:** when a peer joins, take a `JoinSnapshot` between ticks (`World`, `world.Source`, the `RuleSet`
         it runs) and send its text gzipped. It's 40 to 60 KB, past one NGO message, so it goes as a fragmented
@@ -252,9 +266,6 @@ land stamp and a placed thing.
    world goes home with you.
 7. **The land in a save:** resolved, B (the lead, 2026-11-11). The save keeps the NoLand marks and the rows' hash, and
    `Load` takes the map's land rows. Built in `save-land`; see "The land".
-8. **The dragon's start in a save:** a world save doesn't keep the start when it isn't the source's (step 6). Either
-   (a) **the save keeps the start's changes** against the source, per chunk, as it keeps the cells' (bigger saves: the
-   map's lays, a few KB a chunk where they are; always right), or (b) **the load re-runs the map's lays** (puzzles,
-   map stamps, rows) before it keeps the start, as the build does (small saves; needs the map's folder at load, as land
-   does, and the lays to run the same before the save's state goes on). I'd pick (a): it's how cells and land are
-   kept, and it doesn't depend on a build order (the land showed what that costs).
+8. **The dragon's start in a save:** resolved, (a) (the lead's call, 2026-11-11; open for Andrew to veto). The save
+   keeps each chunk's start where it isn't what the source makes (`start.chunks`, cells in `SavePacked`'s form), and a
+   load makes each chunk's start from it. Built in `snapshot-start`; see step 6.
