@@ -69,8 +69,10 @@ public class SoloMapTests
     [Test]
     public void ANameThatIsNotAMapIsOneErrorThenTheValley()
     {
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("MAP: test-fixtures/maps/nowhere-at-all isn't a map"));
-        string folder = ChemGrid.PlayFolder("test-fixtures/maps/nowhere-at-all");
+        // The error is said once per name (so the Editor's every look doesn't repeat it): a name of this run's own.
+        string name = "test-fixtures/maps/nowhere-" + System.Guid.NewGuid().ToString("N");
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("MAP: " + name + " isn't a map"));
+        string folder = ChemGrid.PlayFolder(name);
         Assert.That(folder, Is.EqualTo(ChemGrid.PlayFolder("")));
     }
 }
