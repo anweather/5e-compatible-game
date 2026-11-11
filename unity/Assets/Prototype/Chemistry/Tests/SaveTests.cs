@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -112,6 +116,111 @@ namespace Chem.Tests
             }
             Assert.That(State(loaded), Is.EqualTo(State(straight)));
             Assert.That(loaded.Log.Count, Is.GreaterThan(0), "and it goes on logging");
+        }
+
+        // How to make a cell differ from the source in just one member, and what it reads back as. Every public member of
+        // Cell that can be set is here, so a new one fails CellMembersAreAllInTheGuard until it is: then this test says
+        // whether SameCell, SaveCell and LoadCell know it. Liquid and Sets mean something only while a liquid other than
+        // water stands in the cell (Kind, Setting), so theirs set that too.
+        static readonly Dictionary<string, (Action<Cell> set, object value)> Differs = new Dictionary<string, (Action<Cell>, object)>
+        {
+            ["T"] = (c => c.T = "sand", "sand"),
+            ["Water"] = (c => c.Water = 5, 5),
+            ["Liquid"] = (c => { c.Water = 5; c.Liquid = MagmaIndex; }, MagmaIndex),
+            ["Sets"] = (c => { c.Water = 5; c.Liquid = MagmaIndex; c.Sets = 77; }, 77),
+            ["Frozen"] = (c => { c.Water = 5; c.Frozen = true; }, true),
+            ["Cover"] = (c => c.Cover = "oil", "oil"),
+            ["Fire"] = (c => c.Fire = 2, 2),
+            ["Fuel"] = (c => c.Fuel = 7, 7),
+            ["Gas"] = (c => { c.Gas = "steam"; c.GasAmt = 3; }, "steam"),
+            ["GasAmt"] = (c => { c.Gas = "steam"; c.GasAmt = 3; }, 3),
+            ["Charge"] = (c => c.Charge = 2, 2),
+            ["Height"] = (c => c.Height = 3, 3),
+            ["Life"] = (c => c.Life = 9, 9),
+            ["DampUntil"] = (c => c.DampUntil = 50, 50),
+            ["Rust"] = (c => c.Rust = 4, 4),
+            ["Heat"] = (c => c.Heat = 5, 5),
+            ["Lit"] = (c => c.Lit = 6, 6),
+            ["Slick"] = (c => c.Slick = 7, 7),
+            ["Star"] = (c => c.Star = 8, 8),
+            ["Cracked"] = (c => c.Cracked = 9, 9),
+        };
+
+        // The public members of Cell a save must keep: its fields, and its properties that can be set.
+        static IEnumerable<MemberInfo> CellMembers() =>
+            typeof(Cell).GetFields(BindingFlags.Public | BindingFlags.Instance).Cast<MemberInfo>()
+                .Concat(typeof(Cell).GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.SetMethod?.IsPublic == true))
+                .OrderBy(m => m.Name, StringComparer.Ordinal);
+
+        static object ValueOf(MemberInfo m, Cell c) => m is FieldInfo f ? f.GetValue(c) : ((PropertyInfo)m).GetValue(c);
+
+        const string MagmaRow = @"""magma"": { ""name"": ""Magma"", ""thick"": 2, ""heap"": 3, ""soaks"": false, ""floats"": false,
+            ""sets"": { ""into"": ""rock"", ""after"": 300 } }";
+
+        static Rules magma;
+        static Rules Magma => magma ??= R.WithMods(new[] { ModPatch.Parse(@"{ ""liquids"": { " + MagmaRow + " } }") });
+        static int MagmaIndex => Magma.Liquids.First(l => l.Id == "magma").Index;
+
+        [Test]
+        public void CellMembersAreAllInTheGuard()
+        {
+            var missing = CellMembers().Select(m => m.Name).Where(n => !Differs.ContainsKey(n)).ToList();
+            Assert.That(missing, Is.Empty, "a new Cell member: add it to World.SameCell, SaveCell and LoadCell, then to Differs here");
+        }
+
+        // A cell that differs from its source in one member only comes back from a save with it: so SameCell sees it (or
+        // the cell isn't saved at all), and SaveCell and LoadCell carry it.
+        [TestCaseSource(nameof(DiffersNames))]
+        public void EveryCellMemberComesThroughASave(string member)
+        {
+            var w = new World(Magma, 64, 64, 5);
+            var source = new ComboTests.Blank();
+            w.MakeFrom(source);
+            var cell = w.At(20, 20);
+            Differs[member].set(cell);
+            var info = CellMembers().Single(m => m.Name == member);
+            Assert.That(ValueOf(info, cell), Is.EqualTo(Differs[member].value), "set as the guard says");
+            var back = World.Load(w.Save(source), Magma, source).At(20, 20);
+            Assert.That(ValueOf(info, back), Is.EqualTo(Differs[member].value), $"Cell.{member} is lost in a save");
+            Assert.That(back.Kind, Is.EqualTo(cell.Kind));
+        }
+
+        static IEnumerable<string> DiffersNames() => Differs.Keys.OrderBy(k => k, StringComparer.Ordinal);
+
+        // A real map's world (the valley, as ChemGrid builds it from its folder over its BakedSource: puzzles, stamps,
+        // buildings, golf, the Hold), played, saved at a tick, loaded over the same source: the same cells, tick and RNG,
+        // the same save text again, and the same as the world never saved after more ticks of the same play. The Meadow
+        // above is made up; this is what a player plays. Its land (land.json, which only the water reads) is left flat:
+        // the save doesn't hold the land, and SetLand marks a cell NoLand by the water in it when it's called, so a load
+        // can't make the same land yet (docs/design/player-saves.md, "The land"; a question for Andrew).
+        [Test]
+        public void TheValleyComesBackFromASaveTheSame()
+        {
+            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var straight = SparseWorldBench.Build(dir, R, out var source);
+            straight.SetLand((int[])null);
+            int mx = straight.W / 2, my = straight.H / 2;
+            straight.Cast("fireball", mx, my, 1);
+            straight.Cast("create-water", mx + 20, my, 1);
+            straight.Cast("move-earth", mx, my + 20, 1);
+            for (int t = 0; t < 30; t++) straight.Step();
+
+            string save = straight.Save(source);
+            var loaded = World.Load(save, R, source);
+            Assert.That(State(loaded), Is.EqualTo(State(straight)), "as saved");
+            Assert.That(loaded.Save(source), Is.EqualTo(save), "a save of the load is the save again");
+
+            for (int t = 0; t < 60; t++)
+            {
+                if (t == 10)
+                {
+                    straight.Cast("fire-bolt", mx - 20, my, 1);
+                    loaded.Cast("fire-bolt", mx - 20, my, 1);
+                }
+                straight.Step();
+                loaded.Step();
+            }
+            Assert.That(State(loaded), Is.EqualTo(State(straight)), $"tick {straight.Tick}");
         }
 
         [Test]

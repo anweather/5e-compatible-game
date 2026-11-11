@@ -104,6 +104,29 @@ silently dropped from saves. `SameCell` lists 20 fields by hand today. Step 1 be
 An autosave that writes only the chunks changed since the last save would need dirty tracking, and so #168's
 change. A full save of a packed world is cheap enough to do without it: the changes are already held per chunk.
 
+## The land (found building step 1)
+
+A baked map's land (`land.json`, the hills under the cells that only the water reads) isn't in the world save, and
+`World.Load` doesn't take it. A loaded valley has flat land, so its water runs differently: the Gauntlet's pits
+slosh one way in the world never saved and settle in the loaded one, the first tick after the load. Setting the land
+again after a load doesn't fix it. `SetLand` marks a cell NoLand by the water standing in it *when it's called*,
+and the map's build lays the pits' water after the land, so a load (water already there) marks them differently.
+A generated map's land comes from its source (`LandFromSource`) and isn't affected.
+
+`SaveTests.TheValleyComesBackFromASaveTheSame` covers everything else on the valley (cells, puzzles, buildings,
+golf, the Hold) with its land left flat until this is decided. Two ways to fix it:
+
+- **A. The save keeps the land as it is:** each chunk's land, as `LandCodec` bytes, for the chunks whose land isn't
+  flat. Saves are self-contained and right whatever order a map was built in, but bigger: up to the map's land again
+  on a valley-sized map, though it compresses well.
+- **B. The save keeps only where the water marked NoLand:** with a hash of the land rows. `World.Load` takes the
+  map's land rows (as it takes the source) and rebuilds the same land, refusing a save made over other land. Saves
+  stay small and the land stays map data, but the load needs `land.json` and a new `SetLand` path that takes its
+  marks from the save rather than from the cells.
+
+I'd pick B: it's how cells already work (map data plus changes). Either way, the bench's `Build` and the game
+(`ChemGrid` lays the puzzles, `ValleyChemistry` sets the land) should be checked to build in the same order.
+
 ## The smallest first slice
 
 **A world save of a real map round-trips to the same hash: core only, with a golden.**
@@ -111,12 +134,18 @@ change. A full save of a packed world is cheap enough to do without it: the chan
 - A test loads the valley's `BakedSource` (and a generated map's source) and plays a fixed scripted run: casts,
   an act, a land stamp and a placed thing. It saves at tick T, loads, and asserts the same `CellHash`, the same save
   text, and the same hash after 200 more ticks of the same commands.
-- A golden pins the save text's FNV-1a for that run, as `ASaveOfALoadIsTheSaveAgain` pins the Meadow's.
+- No hex pinned for the valley: any edit to its map data would move it. The run checks equality (the load against
+  the world never saved), and the Meadow's `c1737215` still pins the format.
 - Plus the field guard: a reflection test that every public field of `Cell` and `Cell.Rare` changes the outcome of
   `SameCell` and survives a save and load. It fails when someone adds a field and forgets the save.
 
 That proves the world save on the maps players play, before any file, menu or command exists, and every later step
 stands on it.
+
+**Built (`saves-guard`):** the guard, as `SaveTests.CellMembersAreAllInTheGuard` and
+`EveryCellMemberComesThroughASave` (20 members, the Rare ones included). Also the valley's round trip, with casts,
+30 ticks before the save and 60 after, its land flat (see "The land"). Not yet covered: a generated map, an act, a
+land stamp and a placed thing.
 
 ## Build steps
 
@@ -150,3 +179,5 @@ stands on it.
    starts dev builds with everything, so the switch exists in part.
 6. **Grimoire, world or player:** may it move to the player save (step 4)? Then a discovery made in a friend's
    world goes home with you.
+7. **The land in a save:** A (the save keeps the land) or B (the save keeps where water marked NoLand, and the load
+   takes the map's land)? See "The land" above. Until it's decided, a baked map's save loses the land under its water.
