@@ -9,7 +9,7 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 Start the new lead with the `unity-lead` skill in `.claude/worktrees/coordinator`, then `bash .claude/skills/status/status.sh`.
 - **The PC (host-ux) was mid-job on `playtest-looks`** (brief `docs/handoffs/briefs/playtest-looks.md`, #220: trees switch
   too close, pop-in vs fog at the dock, water chunks vanishing, a blue haze band, a white cube at the nine's edge, biome
-  seams, floating bushes, butterflies by biome). That subagent dies with this session: check `git log origin/playtest-looks`
+  seams, floating bushes, butterflies by biome). Its 6 commits so far (trees to 150 m, pop-in cut at the haze, bushes on the ground, butterflies by biome, the playtestlooks probe; not yet checked with EditMode or a player) were pushed by the lead as a safety net to `origin/playtest-looks` (0549243b). That subagent dies with this session: check `git log origin/playtest-looks`
   and host-ux's tree (`git -C .claude/worktrees/host-ux status`); commit or keep any WIP there, then hand the rest to a
   new `unity-task` with the same brief. Don't discard host-ux changes.
 - **The Mac** is on `playtest-tools` (F8 marks with position, HUD coordinates and biome, a dev fly mode); it self-lands.
