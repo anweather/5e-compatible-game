@@ -37,4 +37,26 @@ public class PlaytestToolsTests
         if (Camera.main != null) Assert.Ignore("a scene camera is open");
         Assert.That(PlaytestTools.Heading(), Is.EqualTo(""));
     }
+
+    [Test]
+    public void AHopGoesRoundTheSpawnsBothWays()
+    {
+        Assert.That(PlaytestTools.HopTo(0, 1, 9), Is.EqualTo(1));
+        Assert.That(PlaytestTools.HopTo(8, 1, 9), Is.EqualTo(0));
+        Assert.That(PlaytestTools.HopTo(0, -1, 9), Is.EqualTo(8));
+        Assert.That(PlaytestTools.HopTo(4, -1, 9), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void AHopStartsFromTheSpawnNearestTheWizard()
+    {
+        var spawns = new System.Collections.Generic.List<SpawnPoints.Spawn>
+        {
+            new("start", "The Valley", new Vector2Int(100, 100)),
+            new("a", "Ash", new Vector2Int(5000, 100)),
+            new("b", "Bog", new Vector2Int(100, 5000)),
+        };
+        Assert.That(PlaytestTools.NearestSpawn(spawns, new Vector2Int(4900, 200)), Is.EqualTo(1));
+        Assert.That(PlaytestTools.NearestSpawn(spawns, new Vector2Int(0, 4000)), Is.EqualTo(2));
+    }
 }

@@ -283,6 +283,9 @@ public static class ProbeScenarios
             "Films the castle on its cliff from the town, then an eye-height walk from the castle's gate past the stable to the cliff's lip and the view down its face, into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: filmed.", films: true),
         new Entry("farringclip", typeof(FarRingClipProbe), 120f,
             "On the nine (unity/Temp/map = nine): films the far ring from over the valley's spawn at 11 in clear weather, the eye turning from the valley to the tallest far landmark (the spire or the volcano, else the village's great tree) and gliding toward it past its seenFrom (the haze, the known chunks, the landmark coming through the fog), into --shots: frames and sound.wav, for ffmpeg (ClipFilm). Checks: the far ring up, a landmark to film and shown, filmed.", films: true),
+        new Entry("spawnhops", typeof(SpawnHopsProbe), 180f,
+            "On the nine (unity/Temp/map = nine): presses N through every spawn point and back (PlaytestTools.Hop), each time waiting for the wizard to be set on drawn ground. " +
+            "Metrics per hop: where it stood (cell, metres) and how far above the ground. Checks: more than one spawn, each hop landed standing within 2 m above the ground (no fall, no void), Shift+N goes back, no console errors."),
         new Entry("playtestlooks", typeof(PlaytestLooksProbe), 240f,
             "On the nine (unity/Temp/map = nine): the places of Andrew's playtest of 2026-11-10 (#220) from fixed eyes at 11 in clear weather, into --shots: a sparse wood at eye height, the coast's dock from the mountain by the falls at the near-layer cut and either side, the lake and the sea, the far view to the four quarters and the edge from above, the valley's edge where the biome ground starts, a brush patch. " +
             "Metrics: the cuts in force, brush dressing off its ground, butterfly homes. Checks: on the nine, each place found."),

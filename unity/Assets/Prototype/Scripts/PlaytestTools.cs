@@ -8,7 +8,7 @@ using UnityEngine.InputSystem.Controls;
 
 // Playtest tools (#220): "where am I" at the HUD's top right (cell, chunk, biome; F6, or Esc > Settings), a record of every
 // F8 mark's place in marks-<time>.txt beside the play log so the lead can go to each one, and a dev fly mode (F4, or
-// Esc > Settings) to cross the nine in a minute. All of it is the player's own view: the readout choice lives in
+// Esc > Settings) to cross the nine in a minute, and N / Shift+N to hop to the next / previous spawn point (SpawnPoints). All of it is the player's own view: the readout choice lives in
 // PlayerPrefs and flying in memory, never in shared state, and the fly mode refuses online (a peer's place is shared).
 public sealed class PlaytestTools : MonoBehaviour
 {
@@ -27,6 +27,14 @@ public sealed class PlaytestTools : MonoBehaviour
     CharacterController frozenBody;
     Behaviour frozenDriver;
     int speed = 1;
+    int hopped = -1;      // the spawn last hopped to, in SpawnPoints order
+    float landWaitUntil;  // a hop's wizard waits (body off) for ground to stand on, until then
+    bool landing;
+    Behaviour landDriver; // the wizard's movement script, off with its body while a hop waits for ground
+
+    /// <summary>Whether a hop's wizard is still waiting for ground (for the probe).</summary>
+    public bool Landing => landing;
+    const float LandWaitSeconds = 4f, ProbeHeight = 400f;
 
     /// <summary>Whether the where-am-I line shows: on in a player build, off in the Editor, until the player chooses.</summary>
     public bool Shown { get; private set; }
@@ -111,6 +119,91 @@ public sealed class PlaytestTools : MonoBehaviour
         if (keyboard.f6Key.wasPressedThisFrame) Show(!Shown);
         if (keyboard.f4Key.wasPressedThisFrame) Fly(!Flying);
         if (Flying) FlyStep(keyboard);
+        if (keyboard.nKey.wasPressedThisFrame) Hop(keyboard.shiftKey.isPressed ? -1 : 1);
+        if (landing) Land();
+    }
+
+    /// <summary>The spawn after (or, with a negative step, before) <paramref name="from"/> among <paramref name="count"/>, wrapping.</summary>
+    public static int HopTo(int from, int step, int count) => ((from + step) % count + count) % count;
+
+    /// <summary>The spawn nearest a cell, by index: where the hop order starts from.</summary>
+    public static int NearestSpawn(System.Collections.Generic.IReadOnlyList<SpawnPoints.Spawn> spawns, Vector2Int cell)
+    {
+        int best = 0;
+        long bestD = long.MaxValue;
+        for (int i = 0; i < spawns.Count; i++)
+        {
+            long dx = spawns[i].Cell.x - cell.x, dy = spawns[i].Cell.y - cell.y, d = dx * dx + dy * dy;
+            if (d >= bestD) continue;
+            bestD = d;
+            best = i;
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// N / Shift+N: stands the wizard at the next / previous spawn point. A view-side move like fly's (a peer's place is
+    /// shared state, so online it is refused), after the destination's chunks are made active as a fresh start makes its own.
+    /// </summary>
+    public void Hop(int step)
+    {
+        var chem = ChemGrid.Current?.Grid;
+        var wizard = WizardRig.FindLocal();
+        if (chem == null || wizard == null || chem.World == null) return;
+        if (NetWizard.Local != null)
+        {
+            EventLog.Add("Spawn hops are for solo play");
+            return;
+        }
+        var spawns = SpawnPoints.Current;
+        if (spawns.Count < 2)
+        {
+            EventLog.Add("This map has only one spawn point");
+            return;
+        }
+        var before = wizard.transform.position;
+        if (hopped < 0 || hopped >= spawns.Count) hopped = NearestSpawn(spawns, chem.CellAt(before));
+        hopped = HopTo(hopped, step, spawns.Count);
+        var spawn = spawns[hopped];
+        // As a fresh start does (ChemGrid.Build): the destination's reach active before anything stands there.
+        ChunkStreaming.Apply(chem.World, ChunkStreaming.StartPlan(chem.World, new[] { (spawn.Cell.x, spawn.Cell.y) }));
+        var at = chem.CellCenter(spawn.Cell.x, spawn.Cell.y);
+        at.y = Mathf.Max(chem.SurfaceY(spawn.Cell.x, spawn.Cell.y), chem.GroundAt(at)) + 1f;
+        var body = wizard.GetComponent<CharacterController>();
+        if (body != null && !Flying) body.enabled = false;
+        landDriver = Flying ? null : wizard.GetComponent(WizardRig.ControllerComponent) as Behaviour;
+        if (landDriver != null) landDriver.enabled = false;
+        wizard.transform.position = at;
+        Physics.SyncTransforms();
+        landing = !Flying;
+        landWaitUntil = Time.unscaledTime + LandWaitSeconds;
+        EventLog.Add($"Spawn {hopped + 1} of {spawns.Count}: {spawn.Name}");
+        PlayLog.Instance?.Note($"hop to {spawn.Name} from {before.x:0},{before.y:0},{before.z:0} to {at.x:0},{at.y:0},{at.z:0}");
+    }
+
+    // After a hop the wizard waits, body off, until the ground under it can be stood on (its collider is drawn), then
+    // is set on it: a hop of hundreds of metres must not drop the wizard into a chunk not yet drawn.
+    void Land()
+    {
+        var wizard = WizardRig.FindLocal();
+        if (wizard == null || Flying)
+        {
+            landing = false;
+            if (landDriver != null) landDriver.enabled = !Flying;
+            landDriver = null;
+            return;
+        }
+        var p = wizard.transform.position;
+        bool found = Physics.Raycast(p + Vector3.up * ProbeHeight, Vector3.down, out var hit, ProbeHeight * 2f, ~0, QueryTriggerInteraction.Ignore);
+        if (!found && Time.unscaledTime < landWaitUntil) return;
+        landing = false;
+        if (found) wizard.transform.position = new Vector3(p.x, hit.point.y + 0.1f, p.z);
+        else Debug.LogWarning("HOP: no ground drawn under the wizard after " + LandWaitSeconds + " s");
+        Physics.SyncTransforms();
+        var body = wizard.GetComponent<CharacterController>();
+        if (body != null) body.enabled = true;
+        if (landDriver != null) landDriver.enabled = true;
+        landDriver = null;
     }
 
     // F8's place, appended to marks-<time>.txt (one file a session, made at the first mark), with a toast.
