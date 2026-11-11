@@ -443,7 +443,8 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // The map this copy starts on, its own pick: the host's map when it hosts. A player takes -map <id>; the open Editor,
-    // which a shell can't pass a flag to, reads Temp/map (a probe on a second map). One picked in play comes first.
+    // which a shell can't pass a flag to, reads Temp/map (a probe on a second map). One picked in play comes first; a player build
+    // with no -map starts on the map its player last picked (SoloMap, #216).
     static string OwnMap
     {
         get
@@ -451,6 +452,7 @@ public partial class ChemGrid : MonoBehaviour
             if (testMap != null) return testMap;
             if (chosenMap != null) return chosenMap;
             var args = System.Environment.GetCommandLineArgs();
+            if (!Application.isEditor && System.Array.IndexOf(args, "-map") < 0 && SoloMap.Saved() is { } saved) return saved;
             if (System.Array.IndexOf(args, "-map") >= 0 || !Application.isEditor || !File.Exists(EditorMapFile)) return MapIdentity.Named(args);
             string named = File.ReadAllText(EditorMapFile).Trim();
             return named.Length > 0 ? named : GameFolders.DefaultMap;
