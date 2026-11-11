@@ -100,7 +100,10 @@ node --test tools/chat-report.test.mjs        # the chat report, on real records
 cd sandbox && npm ci && npm run typecheck && npm test && npm run build
 
 # In the open Unity Editor (see unity/CLAUDE.md)
-unity command test run --mode EditMode --result-only
+unity command test run --mode EditMode --filter <FixtureOrTest> --result-only   # the tests for what you changed: the default
+tools/editmode.sh                  # all the Unity-only EditMode tests (~440, 4 min on the Mac), before landing a wide Scripts/ change
+# The Chemistry tests are not re-run in the Editor: `dotnet test core` runs them (CI and the landing gate too). Only a
+# Chemistry/ change adds `tools/editmode.sh chem` (Mono, ~40 min on the Mac). See docs/TESTING_LAYERS.md.
 tools/probe.sh smoke
 ```
 

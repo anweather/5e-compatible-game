@@ -14,8 +14,9 @@ package is in the manifest). Pass `--project-path` (or set
 ```sh
 unity status --until-ready                      # wait out imports and domain reloads
 unity command editor invoke_menu --path "Prototype/Build Chemistry Yard"
-unity command test run --mode EditMode --result-only
-unity command test run --mode EditMode --filter <TestName> --result-only
+unity command test run --mode EditMode --filter <FixtureOrTest> --result-only   # the tests for what you changed: the default
+tools/editmode.sh                               # all the Unity-only tests (Assembly-CSharp-Editor): ~440, 4 min on the Mac
+tools/editmode.sh chem                          # the Chemistry tests under Mono: only for a Chemistry/ change or the sweep; ~40 min on the Mac, in the background
 unity command console status --result-only      # compile failure flag, error and warning counts
 unity command console get --level error --result-only
 unity command script eval -- --code '<C#>'      # read or poke live state

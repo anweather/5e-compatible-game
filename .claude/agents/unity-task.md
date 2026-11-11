@@ -21,7 +21,7 @@ message, so the work stays here and only the result goes back.
 
 ## How you work
 
-- Tests: `unity command test run --mode EditMode --result-only` (add `--filter <Name>` for one test).
+- Tests: `unity command test run --mode EditMode --filter <Name> --result-only` for the tests of what you changed (new or touched); `tools/editmode.sh` for all the Unity-only ones when the change is wide. Don't re-run the Chemistry tests in the Editor: `dotnet test core` covers them.
   Core-only checks: `dotnet build core -c Release -warnaserror` and `dotnet test core`.
 - Probes: `tools/probe.sh <scenario>`.
 - Scenes are generated: change the builder and run its menu item. Never hand-edit `.unity` or `.prefab` YAML.
@@ -40,8 +40,8 @@ Tonight's PC jobs spent about half their time testing: full EditMode runs (~14 m
 600 s timeout) and long probe lists. So:
 
 - **EditMode: run the Unity-side tests, not the whole suite.** `dotnet test core` already runs the Chemistry tests in
-  3 min. In the Editor run the Unity-only tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) and the fixtures
-  for what you changed (`--filter`). Run the full EditMode suite (the Chemistry tests under Mono) **only when the
+  3 min. In the Editor run the fixtures for what you changed (`--filter`), or `tools/editmode.sh` (the Unity-only
+  tests, ~4 min on the Mac) when the change is wide. Run `tools/editmode.sh chem` (the Chemistry tests under Mono) **only when the
   branch changes `Chemistry/` code**, because Mono can round differently from .NET; then run it in the background and
   read `Library/TestResults.xml`.
 - **Probes: only the ones your change touches,** plus `smoke`. Don't rerun a probe that passed unless you changed what
