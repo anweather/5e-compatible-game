@@ -46,6 +46,39 @@ namespace Chem.Tests
             Assert.That((string)next["content"][0]["text"], Is.EqualTo("the game's room"));
         }
 
+        // #153: the game makes its tools when Claude first calls one, so start-up doesn't load the rules for them.
+        [Test]
+        public void DeferredToolsAreMadeAtTheFirstCallOnly()
+        {
+            int made = 0;
+            var rpc = McpRpc.Deferred(() =>
+            {
+                made++;
+                return new RulesTools(new Workbench(ChemistryTests.Folders) { Desk = new Desk() });
+            }, "test", "1");
+            Ask(rpc, "initialize", new JObject { ["protocolVersion"] = "2025-06-18" });
+            Ask(rpc, "ping");
+            Assert.That(Ask(rpc, "tools/list")["result"]["tools"].Count(), Is.GreaterThan(0));
+            Assert.That(made, Is.EqualTo(0), "nothing made before a tool is called");
+            Assert.That((string)Call(rpc, "room")["content"][0]["text"], Is.EqualTo("the game's room"));
+            Call(rpc, "room");
+            Assert.That(made, Is.EqualTo(1), "made once, then kept");
+        }
+
+        [Test]
+        public void DeferredToolsThatFailToBeMadeAreTriedAgain()
+        {
+            int tries = 0;
+            var rpc = McpRpc.Deferred(() => ++tries == 1
+                ? throw new System.IO.IOException("rules not there yet")
+                : new RulesTools(new Workbench(ChemistryTests.Folders) { Desk = new Desk() }), "test", "1");
+            var failed = Call(rpc, "room");
+            Assert.That((bool)failed["isError"], Is.True);
+            Assert.That((string)failed["content"][0]["text"], Does.Contain("rules not there yet"));
+            Assert.That((string)Call(rpc, "room")["content"][0]["text"], Is.EqualTo("the game's room"));
+            Assert.That(tries, Is.EqualTo(2));
+        }
+
         static Workbench Bench() => new Workbench(ChemistryTests.Folders);
 
         static McpRpc Rpc(Workbench bench) => new McpRpc(new RulesTools(bench), "test", "1");
