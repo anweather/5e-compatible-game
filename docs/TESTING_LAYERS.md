@@ -12,9 +12,9 @@ reach them.
 | Layer | Who | Runs | Doesn't run |
 |---|---|---|---|
 | 1. **Author** | the worker writing the change (u2, the Mac, a PC job) | New or changed tests for what it changed; `dotnet build core -c Release -warnaserror` and the tests nearest the change while working | The whole suite on every edit |
-| 2. **Unity check** | a `unity-task` on the PC, or the Mac | Compile with 0 errors; the Unity-side tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) and the touched fixtures; `smoke` and the probes the change can reach; a clip only when asked. **The full EditMode suite (Chemistry under Mono) only when `Chemistry/` code changed** | Core tests under Mono for view-only changes; unrelated probes |
+| 2. **Unity check** | a `unity-task` on the PC, or the Mac | Compile with 0 errors; the Unity-side tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) and the touched fixtures; `smoke` and the probes the change can reach; a clip only when asked. **`tools/editmode.sh chem` (the Chemistry tests under Mono) only when `Chemistry/` code changed** | Core tests under Mono for view-only changes; unrelated probes |
 | 3. **Landing gates** | `land.sh` | Core build, format, duplicate code, **the core suite once** (.NET) but the `Sweep` category (`gates.sh`: `--filter "TestCategory!=Sweep"`), the workers and chat tests | Unity, probes, the `Sweep` category |
-| 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | Full EditMode under Mono with the `Timing` tests (`test run --include_explicit true`), the core's `Sweep` category (`dotnet test core --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
+| 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | `tools/editmode.sh sweep`: all of EditMode, the Chemistry tests under Mono and the `Timing` tests (`--include_explicit true`), the core's `Sweep` category (`dotnet test core --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
 | 5. **Release** | the release steps (`docs/RELEASING.md`) | `smoke`, `online`, the release's own probes, install from the draft, the PC joining a Mac host | Anything a sweep already covered on that commit |
 
 The holes, on purpose:
@@ -41,6 +41,25 @@ The holes, on purpose:
 - **u2's core-only landings have no Unity check:** the next Unity check or sweep compiles them.
 
 A failure in the sweep goes to whoever landed the change that broke it, found by bisecting the day's landings.
+
+## Running EditMode (`tools/editmode.sh`)
+
+Measured on the Mac 2026-11-10: a full EditMode run was 1987 tests in 42.6 minutes, and 98% of that (1555 tests, 2476 s)
+was `Chemistry.Tests`, the same tests `dotnet test core` runs under .NET (core/Game.Core.Tests compiles that folder).
+Every Chemistry test method the Editor ran also exists in the `dotnet test core` list, so none is Unity-only. The
+Unity-only tests (`Assembly-CSharp-Editor`: `Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) are 438 tests in
+about 4 minutes. So the Editor's default is the Unity-only group, and the Mono pass over the Chemistry tests is asked for:
+
+| Command | Runs | Time (Mac) | When |
+|---|---|---|---|
+| `tools/editmode.sh` (`unity`) | the Unity-only tests, ~440 | ~4 min | any change under `Scripts/` or `Net/`; layer 2 |
+| `tools/editmode.sh chem` | `Chemistry.Tests` under Mono, ~1570 | ~40 min (PC ~14), background | a change to `Chemistry/`; the sweep |
+| `tools/editmode.sh all` | both, as a bare `unity command test run --mode EditMode` | ~45 min | rarely |
+| `tools/editmode.sh sweep` | all, plus the Explicit `Timing` tests | ~45 min | the sweep, on an idle Editor |
+
+What the Editor no longer re-proves by default is only that Mono gives the same answer as .NET (the 2026-11-08 rounding
+case); `chem` and the sweep keep that. The landing gates (`gates.sh`: `dotnet test core`, all but `Sweep`) and CI's
+quality workflow still run every Chemistry test under .NET, unchanged.
 
 ## The core's categories
 
