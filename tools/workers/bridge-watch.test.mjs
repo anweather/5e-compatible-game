@@ -28,6 +28,11 @@ case "$*" in
   *Get-VM*) echo "$STUB_VMS" | tr ' ' '\\n' ;;
 esac
 `);
+  // Nothing here may reach a live host: ssh is a stand-in that fails loudly (done() throws if it was ever run).
+  stub(join(bin, "ssh"), `#!/usr/bin/env bash
+echo "$*" >> "${dir}/ssh-called"
+exit 255
+`);
   stub(join(work, "linux.sh"), `#!/usr/bin/env bash
 echo "$*" >> "${dir}/said"
 [[ "$1" == "$STUB_HANG" ]] && sleep 30
@@ -60,7 +65,11 @@ esac
   const pm = () => { const d = join(bridge, "pm"); return existsSync(d) ? readdirSync(d).filter(f => f.endsWith(".md")).map(f => readFileSync(join(d, f), "utf8")) : []; };
   const left = () => readdirSync(guest);
   const log = () => readFileSync(join(bridge, "bridge.log"), "utf8");
-  return { dir, bridge, pass, live, report, pm, left, log, done: () => rmSync(dir, { recursive: true, force: true }) };
+  return { dir, bridge, pass, live, report, pm, left, log, done: () => {
+    const leaked = existsSync(join(dir, "ssh-called"));
+    rmSync(dir, { recursive: true, force: true });
+    assert.ok(!leaked, "a test reached for ssh: it must stay on its stand-ins");
+  } };
 }
 
 test("a Linux worker's reports reach the PM's mailbox, and leave the worker once mailed", { skip: !bash4 }, () => {
