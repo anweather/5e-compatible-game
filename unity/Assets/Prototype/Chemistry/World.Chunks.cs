@@ -61,8 +61,10 @@ namespace Chem
         }
 
         // Lookups come in runs inside one chunk, so the last chunk found is checked first.
+        // A chunk x past the seam folds round (FoldChunkX), so the links, the planner and every lookup cross it.
         Chunk FindChunk(int cx, int cy)
         {
+            cx = FoldChunkX(cx);
             var last = lastChunk;
             if (last != null && last.X == cx && last.Y == cy) return last;
             if (!chunks.TryGetValue(Chunks.Key(cx, cy), out var ch)) return null;
@@ -75,6 +77,7 @@ namespace Chem
         /// <summary>The cell at (x, y) with its chunk and local index, or null off the world.</summary>
         Cell Locate(int x, int y, out Chunk ch, out int i)
         {
+            x = FoldX(x);
             i = LocalIndex(x, y);
             ch = InBounds(x, y) ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) : null;
             return ch?.CellAt(i);
@@ -84,6 +87,7 @@ namespace Chem
         Cell LocateActive(int x, int y, out Chunk ch, out int i)
         {
             // The chunk is checked before its cell is read, so an inactive chunk's packed cells stay packed.
+            x = FoldX(x);
             i = LocalIndex(x, y);
             ch = InBounds(x, y) ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) : null;
             return ch != null && ch.Active ? ch.CellAt(i) : null;
@@ -164,7 +168,7 @@ namespace Chem
             else Stop(ch);
             spans = null;
             activeCoords = null;
-            ChunkSwitched?.Invoke(new ChunkSwitch(cx, cy, active));
+            ChunkSwitched?.Invoke(new ChunkSwitch(ch.X, ch.Y, active)); // its own (folded) coordinates
         }
 
         /// <summary>Activates or deactivates every loaded chunk (no catching up, but made to fit the rules), raising ChunkSwitched for each that changed, by row then column.</summary>
@@ -352,7 +356,7 @@ namespace Chem
             var sb = new StringBuilder();
             for (var run = new RowCells(this, 0, W * H, walkScratch); run.MoveNext();) AppendCell(sb, run.Cell, LiquidsIn(run.Chunk, run.Cell));
             foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            return sb.Append(FitText()).ToString();
+            return sb.Append(FitText()).Append(WrapText).ToString();
         }
 
         /// <summary>Adds one of <paramref name="slices"/> slices of the cells to a running hash (RollingHash): row-major, by the world's size alone.</summary>
@@ -377,8 +381,13 @@ namespace Chem
                 sum.AddDigits(thing);
             }
             sum.Add(FitText());
+            sum.Add(WrapText);
             return sum.ToString();
         }
+
+        // What a hash of the cells ends with on a world that wraps, after FitText: "~ew", so it differs from the same cells
+        // on a world that doesn't (they behave apart at the edges). Nothing on one that doesn't, so its hash is as it was.
+        string WrapText => WrapX ? "~ew" : "";
 
         /// <summary>The same fingerprint over one chunk's cells (those inside the world), row by row.</summary>
         public string ChunkHash(int cx, int cy)

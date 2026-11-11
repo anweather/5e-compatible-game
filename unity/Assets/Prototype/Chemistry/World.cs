@@ -17,13 +17,21 @@ namespace Chem
         // Per-tick marks machines read in the TS, kept in Chunk.Marks.
         const byte FlowMark = 1, SteamMark = 2, WindMark = 4;
 
-        public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt")
+        /// <summary>
+        /// A world of w x h cells. With <paramref name="wrapX"/> its east edge joins its west (map.json's "wrap": "ew", the
+        /// seam): a cell or chunk x outside [0, W) folds into it (FoldX), so everything reaches across; north and south stay
+        /// walls. A world that wraps is a whole number of chunks wide.
+        /// </summary>
+        public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt", bool wrapX = false)
         {
             if (w <= 0 || h <= 0) throw new ArgumentException("World size must be positive");
+            if (wrapX && (w & Chunks.Mask) != 0) throw new ArgumentException($"A world that wraps is a whole number of chunks wide ({Chunks.Size} cells a chunk), not {w}");
             ownerThread = Environment.CurrentManagedThreadId;
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             W = w;
             H = h;
+            WrapX = wrapX;
+            wrapChunks = wrapX ? w >> Chunks.Shift : 0;
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
@@ -33,6 +41,10 @@ namespace Chem
         public Rules Rules { get; private set; }
         public int W { get; }
         public int H { get; }
+        /// <summary>Whether east joins west (the seam): x is taken modulo W everywhere (FoldX).</summary>
+        public bool WrapX { get; }
+        // Chunks across a world that wraps, 0 for one that doesn't.
+        readonly int wrapChunks;
         public int Tick { get; private set; }
 
         /// <summary>The event log, oldest first, capped at LogCap entries. The last entry's Count/Tick may grow.</summary>
@@ -138,8 +150,64 @@ namespace Chem
 
         // ---------- cells ----------
 
-        public bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
-        public int Idx(int x, int y) => y * W + x;
+        /// <summary>Whether (x, y) is on the world: any x on one that wraps (it folds), north and south walls either way.</summary>
+        public bool InBounds(int x, int y) => WrapX ? y >= 0 && y < H : x >= 0 && y >= 0 && x < W && y < H;
+        /// <summary>The world index of (x, y), its x folded across the seam first.</summary>
+        public int Idx(int x, int y) => y * W + FoldX(x);
+
+        // ---------- the seam ----------
+        // Every reach across the seam goes through these: a cell or chunk x outside [0, W) folds into it on a world that
+        // wraps, and is left as it is on one that doesn't (so a world without wrap reads and hashes as it always has).
+
+        /// <summary>A cell x folded into [0, W) on a world that wraps; unchanged on one that doesn't.</summary>
+        public int FoldX(int x)
+        {
+            if (!WrapX || (uint)x < (uint)W) return x;
+            int f = x % W;
+            return f < 0 ? f + W : f;
+        }
+
+        /// <summary>A chunk x folded into [0, W / Chunks.Size) on a world that wraps; unchanged on one that doesn't.</summary>
+        public int FoldChunkX(int cx)
+        {
+            if (wrapChunks == 0 || (uint)cx < (uint)wrapChunks) return cx;
+            int f = cx % wrapChunks;
+            return f < 0 ? f + wrapChunks : f;
+        }
+
+        /// <summary>
+        /// The cells from x0 east to x1: x1 - x0, or on a world that wraps the short way round the seam (in -W/2 .. W/2,
+        /// east positive; exactly half way round counts east).
+        /// </summary>
+        public int DeltaX(int x0, int x1)
+        {
+            int d = x1 - x0;
+            if (!WrapX) return d;
+            d = FoldX(d);
+            return d > W / 2 ? d - W : d;
+        }
+
+        /// <summary>The chunks from cx0 east to cx1, the short way round on a world that wraps (DeltaX in chunks).</summary>
+        public int DeltaChunkX(int cx0, int cx1) => ChunkDelta(cx0, cx1, wrapChunks);
+
+        /// <summary>Chunks from cx0 east to cx1 on a world <paramref name="wrapChunks"/> chunks round (0: no wrap), the short way.</summary>
+        public static int ChunkDelta(int cx0, int cx1, int wrapChunks)
+        {
+            int d = cx1 - cx0;
+            if (wrapChunks <= 0) return d;
+            d %= wrapChunks;
+            if (d < 0) d += wrapChunks;
+            return d > wrapChunks / 2 ? d - wrapChunks : d;
+        }
+
+        /// <summary>
+        /// The columns [x0, x1] of a box on the world, to walk: clipped to [0, W) on a world that doesn't wrap; on one that
+        /// does left as they are (whoever reads a cell folds it) but at most W of them, so no cell is walked twice.
+        /// </summary>
+        internal (int from, int to) XSpan(int x0, int x1) => WrapX ? (x0, Math.Min(x1, x0 + W - 1)) : (Math.Max(0, x0), Math.Min(W - 1, x1));
+
+        /// <summary>The chunks round a world that wraps (W / Chunks.Size), 0 for one that doesn't: for ChunkStreaming's distances.</summary>
+        public int WrapChunks => wrapChunks;
         public Cell At(int x, int y) => Locate(x, y, out _, out _);
 
         /// <summary>Neighbours in fixed N, E, S, W order, so the simulation stays deterministic.</summary>
@@ -148,7 +216,7 @@ namespace Chem
             for (int d = 0; d < 4; d++)
             {
                 int nx = x + DirX(d), ny = y + DirY(d);
-                if (InBounds(nx, ny)) yield return (nx, ny, d);
+                if (InBounds(nx, ny)) yield return (FoldX(nx), ny, d);
             }
         }
 

@@ -64,31 +64,32 @@ namespace Chem
         {
             FinishTick(); // effects land between whole ticks (StepSome)
             if (!InBounds(effect.X, effect.Y)) return;
+            int x = FoldX(effect.X), y = effect.Y; // a prop past the seam acts where it folds to
             switch (effect.Kind)
             {
                 case EffectKind.Burn:
-                    Apply(effect.X, effect.Y, "fire", 1, -1, false);
+                    Apply(x, y, "fire", 1, -1, false);
                     break;
                 case EffectKind.Embers:
-                    LeaveEmbers(effect.X, effect.Y, Rules.Entity(effect.Entity));
+                    LeaveEmbers(x, y, Rules.Entity(effect.Entity));
                     break;
                 case EffectKind.Explode:
-                    Explode(effect.X, effect.Y, Rules.Entity(effect.Entity));
+                    Explode(x, y, Rules.Entity(effect.Entity));
                     break;
                 case EffectKind.Spill:
-                    Spill(effect.X, effect.Y, Rules.Item(effect.Entity));
+                    Spill(x, y, Rules.Item(effect.Entity));
                     break;
                 case EffectKind.Shatter:
-                    Shatter(effect.X, effect.Y);
+                    Shatter(x, y);
                     break;
                 case EffectKind.Dig:
-                    Dig(effect.X, effect.Y, Rules.Item(effect.Entity));
+                    Dig(x, y, Rules.Item(effect.Entity));
                     break;
                 case EffectKind.Crack:
                     if (!effect.Thing.Equals(ThingId.None)) crackedThings.Add(effect.Thing.Value);
                     break;
                 case EffectKind.Swing:
-                    Swing(effect.X, effect.Y);
+                    Swing(x, y);
                     break;
             }
         }

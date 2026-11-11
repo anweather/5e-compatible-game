@@ -37,7 +37,7 @@ namespace Chem
                 for (int x = tower.X - reach; x <= tower.X + reach; x++)
                     if (At(x, y) is { } c && !IsBlocking(c)) cells.Add((x, y));
             var (hx, hy) = HoldSite.Heart;
-            return cells.OrderBy(c => System.Math.Abs(c.x - hx) + System.Math.Abs(c.y - hy)).ThenBy(c => c.y).ThenBy(c => c.x).ToList();
+            return cells.Select(c => (x: FoldX(c.x), c.y)).OrderBy(c => System.Math.Abs(DeltaX(hx, c.x)) + System.Math.Abs(c.y - hy)).ThenBy(c => c.y).ThenBy(c => c.x).ToList();
         }
 
         /// <summary>The tower this wizard stands up at, whose element its hands may attune to; null at none (hold-batch).</summary>

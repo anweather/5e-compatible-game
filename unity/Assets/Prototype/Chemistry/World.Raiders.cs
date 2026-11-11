@@ -27,6 +27,7 @@ namespace Chem
         /// <summary>The raider standing on a square, or null (entityAt in the TS).</summary>
         public Raider RaiderAt(int x, int y)
         {
+            x = FoldX(x);
             foreach (var r in raiders) if (r.X == x && r.Y == y) return r;
             return null;
         }
@@ -39,7 +40,7 @@ namespace Chem
         public Raider SpawnRaider(string kind, int x, int y, int hp)
         {
             if (!InBounds(x, y) || RaiderAt(x, y) != null || Rules.Entity(kind) == null) return null;
-            var r = new Raider { Id = NextEntityId++, Kind = kind, X = x, Y = y, Hp = hp, MaxHp = hp };
+            var r = new Raider { Id = NextEntityId++, Kind = kind, X = FoldX(x), Y = y, Hp = hp, MaxHp = hp };
             raiders.Add(r);
             return r;
         }
@@ -186,7 +187,8 @@ namespace Chem
             }
             hit.Sort((a, b) =>
             {
-                int da = (a.X - x) * (a.X - x) + (a.Y - y) * (a.Y - y), db = (b.X - x) * (b.X - x) + (b.Y - y) * (b.Y - y);
+                int ax = DeltaX(x, a.X), bx = DeltaX(x, b.X);
+                int da = ax * ax + (a.Y - y) * (a.Y - y), db = bx * bx + (b.Y - y) * (b.Y - y);
                 return db != da ? db.CompareTo(da) : a.Id.CompareTo(b.Id);
             });
             foreach (var r in hit)
@@ -230,7 +232,7 @@ namespace Chem
             {
                 int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                 if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
-                r.X = nx;
+                r.X = FoldX(nx);
                 r.Y = ny;
             }
         }
@@ -256,7 +258,7 @@ namespace Chem
                 {
                     int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                     if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) break;
-                    r.X = nx;
+                    r.X = FoldX(nx);
                     r.Y = ny;
                 }
                 LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
@@ -300,7 +302,7 @@ namespace Chem
                 int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                 if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
                 bool over = GroundUnits(r.X, r.Y) - GroundUnits(nx, ny) >= Rules.Sim.CliffSteps * step;
-                r.X = nx;
+                r.X = FoldX(nx);
                 r.Y = ny;
                 if (!over) continue;
                 int dropped = (from - GroundUnits(nx, ny)) / step;

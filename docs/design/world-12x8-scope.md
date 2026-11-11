@@ -221,3 +221,124 @@ working arrays (256 KB, now one set a thread).
 The full map's bake still stops at `places.json`: two villages are both "Dunmere", and a place's id may be listed
 once (the names above, from a small list). It did before too, as the last step; its cells, land and things are
 written by then.
+
+## The sim across the seam (sim-across-the-seam, u2, 2026-11-11)
+
+The World now wraps east to west when it's made so (`new World(rules, w, h, seed, fill, wrapX: true)`; `MapFile.WrapX` is
+map.json's generated `"wrap": "ew"`, true for the 12 x 10). A world that wraps is a whole number of chunks wide (the 12 x
+10 is 108). North and south stay walls. A world made without wrap reads, ticks, hashes and saves as it did: every
+existing golden holds (the nine 0x7c681170, the valley, the cell hashes in `TerrainTests`/`ChemistryTests`), with all
+1576 tests passing unchanged.
+
+**One place folds.** `World.FoldX` (a cell x into [0, W)), `FoldChunkX` (a chunk x into [0, W / 64)) and `DeltaX` /
+`DeltaChunkX` (the signed short way round, east positive, exactly half way counting east) are the seam; on a world
+without wrap they return what they're given. Everything else goes through them:
+
+- `InBounds` takes any x on a world that wraps (only y is checked), `Idx` folds x, `Locate` / `LocateActive` (so `At`,
+  `IsActiveAt` and every reach for a cell) fold x, and `FindChunk` folds the chunk x, so `HasChunk`, `IsActive`,
+  `SetActive`, `IsSettled`, `IsLiveAtEdge` and `SetDrawn` take a chunk past the seam as the one it folds to.
+- **Chunk links** wrap: `AddChunk` links through `FindChunk`, so the far east column's `East` is the west column and
+  back. The tick's neighbour reads (`Chunk.Next`: fire, water, lava, gas, wind, snow, liquids), still water's
+  neighbour snapshot, catching up (`World.CatchUp`), unpacking round an activated chunk and `BesideActive` (packing,
+  D17) all go by the links, so they cross with no change of their own.
+- `ChunkCells` (the stamps' and the map's moved land, the bare cells) folds its chunk index on a world that wraps.
+- `Neighbours` yields folded cells; a spell's shape cells (`ShapeCells`, `LineCells`, `VisitSlant`, `Jag`), a
+  wave's front, a seek's pick and a step trigger's cell are folded; `Release` and `Land` fold where a cast lands, so a
+  star, a whirlwind or a wave starts on the world's own cells.
+- Anything that moves folds its new x (raiders shoved, hurled, whirled or walking a hold or defense path; whirlwinds;
+  waves and boulders, whose line runs on unfolded from its origin while the cell it's on folds; the golf ball; a
+  wizard's stand and a punch's knock-back), and distances between two things go the short way (`DeltaX`: a punch's
+  target, a stand's step for triggers, a whirlwind's ring and eye, a blast's nearest-first order, a gas flash's shove,
+  a wave's power falling off, golf's cup, the hold's reach).
+- The planner and streaming measure round the seam: `ChunkStreaming.Plan` / `StartPlan` (`wrapChunks`, which the World
+  overloads pass), `ChunkPlanner` (reach, keep, linger, and a live edge knocking the chunk over the seam active), and
+  `ChunkStreaming.Within` for the view (`wrapCells`).
+- `StandKeeper` takes the World's `DeltaX` (optional, x1 - x0 without), so a step over the seam is one step.
+
+**The tick's order** doesn't move with the seam. Active chunks are visited as row segments in world row-major order by
+their folded coordinates: chunk rows north to south, and in each row chunk x from 0 east to W / 64 - 1, whatever the
+characters' places. A character standing on the seam has chunks 106, 107, 0, 1, 2 active, visited 0, 1, 2, 106, 107.
+That's the order every peer uses (it's the World's, not the planner's), so lockstep holds; it isn't symmetric (a fire
+running east over the seam is met in another order from one running west), which only matters to rules whose outcome
+depends on the order inside a tick, as it always has away from the seam.
+
+**Hashes, saves, late join.** A world without wrap hashes, saves and replays as before. A world that wraps hashes its
+cells the same way (row-major over [0, W) x [0, H), the things cracked, then FitText) and ends with `~ew`, so it never
+equals the same cells on a world that doesn't wrap; the rolling hash (`HashSlice` + `CloseHash`) agrees with it. Its
+save has `"wrap": "ew"` and `World.Load` makes it wrap again. Tests (`SeamTests`, and
+`LateJoinTests.PeersAndJoinersAgreeWithCharactersCrossingTheSeam`):
+
+- A fire lit at x = W - 2 on a strip of grass round the seam burns east over it to x = 1; the same strip lit at x = 1
+  burns west, and at every tick every cell matches its mirror (x to W - 1 - x). The catches are made certain by a mod
+  (spread 1000, no smoke, heat or boiling) since the draw count follows the tick's row order, not the fire. The wrapped
+  world's golden after 80 ticks: `2ae46b89`.
+- Water poured east of the seam runs west over it in a channel, keeping as much as the same channel in the middle of a
+  world without wrap; smoke along x = 0 drifts into the far east column; a Fireball on the seam burns both sides; a
+  raider spawned at x = -1 is at W - 1 and a gust shoves it east over the seam.
+- A character at x = 10 on a world 12 chunks round keeps chunks 10 and 11 active (reach 2), the same world without wrap
+  doesn't; walking west the keep holds and the far side lets go; a fire on chunk 0's west edge knocks chunk 7 of 8
+  active; the chunk over the seam from an active one stays unpacked, two away packs.
+- Two players walking back and forth over the seam on a world 12 x 2 chunks round, stands sometimes given unfolded,
+  step triggers casting bolts and meteors, a Fireball on the seam and the host's planner stamping chunk switches: a
+  peer from the first tick and joiners at nine later ticks match the host part by part at every tick.
+
+### The bounds checks, and what each became
+
+Found with `>= W`, `< W`, `W - 1`, `% W`, `/ W`, `W * H`, `InBounds(`, `x < 0`, `Math.Max(0, x...)` and the like over
+`Chemistry/` (the generator, plan and baked-map files are left out: generator 6 already wraps). By file:
+
+| File | Checks | What it became |
+|---|---|---|
+| World.cs | `InBounds`, `Idx`, `Neighbours`, `LandUnitsAt`, `LiftAt`, `SetLand`'s rows and chunk loop (`W * H`, `ChunkOf(W - 1)`) | `InBounds` checks y only when wrapping; `Idx` and `Neighbours` fold; new `FoldX`, `FoldChunkX`, `DeltaX`, `DeltaChunkX`, `ChunkDelta`, `XSpan`, `WrapChunks`. The rest read through `InBounds` and the chunks, unchanged |
+| World.Chunks.cs | `BuildChunks` (`ChunkOf(W - 1)`), `Locate`, `LocateActive`, `BuildSpans`' clip (`W - x0`), `CellAt(index)` (`W * H`, `% W`), `RowCells`, the hashes' `W * H` | `FindChunk` folds (so do the links); `Locate*` fold x; `SetActive` raises the chunk's own coordinates; the hash ends `~ew` when wrapping. The spans, `CellAt`, `RowCells` and the hash walk stay: they walk [0, W) |
+| ChunkCells.cs | the chunk index | folds on a map that wraps |
+| ChunkStreaming.cs | `Nearest`'s `Math.Abs(cx - ...)`, `Knocked`'s sides, `Within`'s distance | short way round (`ChunkDelta`, `FoldChunkX`, `wrapCells`) |
+| World.Pack.cs | `UnpackChunk`'s and `ChunkReader.At`'s `InBounds`, `SetDrawn`'s keys | unchanged (they test the chunk's own cells, inside [0, W)); `SetDrawn` folds |
+| World.Spells.cs | `ShapeCells`' `Add`, `Jag`, `LineCells`, `VisitSlant`, `Cast`'s and `MarkStar`'s `InBounds`, `Seek`, a whirlwind's moves and rings | shapes and seeks fold; `Release` and `Land` fold; whirlwind moves fold, rings and eye by `DeltaX`. `Cast` and `MarkStar` stay |
+| World.Raiders.cs | `RaiderAt`, `SpawnRaider`'s `InBounds`, the shoves' and hurl's moves, `BlastRaiders`' nearest order | `RaiderAt` and spawn fold; moves fold; order by `DeltaX` |
+| World.Strike.cs | `ApplyStrike`'s `InBounds`, the stand's x, the knock-back's way and steps, `Target`'s offsets | the stand folds, knock-back steps fold, ways and offsets by `DeltaX`; the `InBounds` stays |
+| World.Triggers.cs | `Stepped`'s way, `ActionCell`'s `InBounds`, the around pick's `InBounds` | way by `DeltaX`; the action's cell folds; the pick stays |
+| StandKeeper.cs | `Step`'s `s.X - r.X`, same-cell test | the World's `DeltaX`, given (optional) |
+| World.Waves.cs, World.Boulders.cs | the mover's cell after a step; the wave front | fold |
+| World.Golf.cs | `ApplyGolf`'s and the roll's `InBounds`, the ball's moves, the stroke's offset, the cup's reach | moves fold, offset and reach by `DeltaX`; the `InBounds` stay |
+| World.Land.cs | stamps' boxes (`Math.Max(0, ..)` to `Math.Min(W - 1, ..)`, three), the land-face, drop, bank and stamped reads' `InBounds` | boxes walk `XSpan` (unclipped but at most W columns when wrapping) and yield folded cells; the reads stay (`ChunkCells` folds) |
+| MapStamps.cs | `Bare`'s box; the trail's `InBounds` | `XSpan`; the trail stays |
+| World.Place.cs | `PlaceOpen`'s `InBounds` and cell sets, `SummonAnimal` | fold (the area folds before the pick when wrapping) |
+| Effects.cs | `ApplyEffect`'s `InBounds` | stays, and the effect's x folds |
+| World.Machines.cs | `LeavesFrom`'s flood, the gate link's `InBounds`, `% W` decodes | the flood folds (a ring of pipe round the world ends); the rest stay (`Idx` folds) |
+| World.Flash.cs, World.React.cs, World.Terraform.cs | flood fills by `Idx`, `% W` decodes, a wave's power by distance, `React`'s fire beside | the floods stay (`Idx` and `Neighbours` fold); a gas flash's shove and a wave's power by `DeltaX` |
+| World.Dragon.cs | `StartCell(index)`'s `% W`, `InChunk`, the pass lengths (`W`, `H`), `BreathBox`' clip | `CaughtByBreath` folds its x; the rest stay: a pass still sweeps [0, W) once, which covers a world that wraps |
+| World.Hold.cs | the site's box (`Math.Max(0, ..)`, `Math.Min(W - 1, ..)`), road `InBounds`, `Fly`, `InReach`, the path's moves | `Fly`, `InReach` and moves go round; the box stays (a site is laid inside [0, W)) |
+| World.Hands.cs | `TowerGround`'s nearest order | folded cells, `DeltaX` order |
+| World.Defense.cs | the field's box (`Math.Min(W - 1, ..)`), `InBounds`, a raider's move | the move folds; the box stays (a field is laid inside [0, W)) |
+| World.Buildings.cs, World.Lay.cs, WorldBuildings.cs | `InBounds` and `Idx` round laid cells, `% W` decodes | unchanged: `Idx` folds, so a building laid over the seam lays on the world's cells |
+| World.Weather.cs | random x in [0, W), the fog regions' last-column clip (`Math.Min(W, ..)`) | unchanged (deterministic; a fog patch spreads over the seam through the cells) |
+| World.Night.cs | the light block | unchanged (reads through `Locate`, which folds) |
+| World.Entities.cs, World.Acts.cs | `InBounds` | unchanged |
+| World.Save.cs | the save's size | adds `"wrap": "ew"` only when wrapping |
+| WorldPuzzles.cs, World.Course.cs | a puzzle's box, a course's zones | unchanged: they're laid inside [0, W) |
+
+Left as they are on purpose: a defense field, a hold site, a course zone and a puzzle are rectangles inside [0, W) (the
+12 x 10 lays none over the seam; one that wants to would need its box split); the dragon's passes run 0 to W along x.
+
+### What the view needs (for the PC)
+
+1. **Make the World wrap** (an hour): `ChemGrid.MapWorld` builds `new World(rules, source.W, source.H, seed)`; it wants
+   `wrapX: MapFile.Load(Folders.World).WrapX`. The 12 x 10 is still `"bake": false`, so this lands with whatever loads
+   it unbaked (the sparse World's generate switch).
+2. **The stand keeper** (a line): `NetChem`'s `new StandKeeper<StrikeIntent>(..., HoldReads)` adds `grid.World.DeltaX`.
+3. **The camera and the origin re-centre across the seam** (2-3 days, as scoped): the world is 6912 cells, 10 368 m,
+   round. Keep the eye's and the wizard's positions unfolded and continuous in the view; re-centre the origin on the
+   player (within about 5.2 km east-west, 4.3 km north-south on the 12 x 10's 6912 x 5760 cells); send the core any x
+   (it folds) and read cells by any x (`At`, `IsActiveAt` fold). Chunks the view lays out go at the copy nearest the
+   eye: `DeltaChunkX(eyeChunk, cx)` chunks from the eye's chunk, so chunk 107 draws just west of chunk 0.
+4. **Terrains and dressing near the seam**: `ChemGrid.DetailChunks` passes `wrapCells: world.W` to
+   `ChunkStreaming.Within` (grass and detail); `SetDrawn` folds, so the drawn hint can name chunks either side. Props and
+   items crossing the seam: their cell is the folded one (`ThingSpawn` chunk and local cell), their transform the copy
+   nearest the eye.
+5. **The far ring and landmarks**: the core's `KnownRing` and `FarLandmark.DxTo` already measure round (world-12x10-plan);
+   the view's `FarRing` must put each known mesh and landmark at the copy within half a world (± 10 368 m) of the eye,
+   for up to the whole ring (9111 chunks shown when one character knows the whole 12 x 10), and move them when the eye
+   crosses the seam or the origin re-centres.
+6. **Anything the view measures between two places** (a wizard to a raider, the dragon's flight line drawn from
+   `PassLine`, the breath box, a cast's aim) should take `DeltaX` near the seam; the dragon's breath box never spans it.

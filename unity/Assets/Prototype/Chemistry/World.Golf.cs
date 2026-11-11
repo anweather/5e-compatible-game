@@ -138,8 +138,8 @@ namespace Chem
             var g = Golf;
             if (g == null || s.ForcePush > 0 || s.ForceThrow > 0 || !cells.Contains((g.X, g.Y))) return;
             var p = Rules.Sim.Golf;
-            int off = Math.Max(Math.Abs(g.X - landed.x), Math.Abs(g.Y - landed.y));
-            StrokeBall(s, g.X, g.Y, DirOf(g.X - landed.x, g.Y - landed.y, dir), Math.Max(1, (p.PushRoll + s.Level * p.LevelRoll) * charge - off), 0);
+            int off = Math.Max(Math.Abs(DeltaX(landed.x, g.X)), Math.Abs(g.Y - landed.y));
+            StrokeBall(s, g.X, g.Y, DirOf(DeltaX(landed.x, g.X), g.Y - landed.y, dir), Math.Max(1, (p.PushRoll + s.Level * p.LevelRoll) * charge - off), 0);
         }
 
         void StrokeBall(SpellDef s, int x, int y, int dir, int roll, int carry)
@@ -213,7 +213,7 @@ namespace Chem
             if (IsBlocking(At(nx, ny))) g.Dir = (g.Dir + 2) % 4;
             else
             {
-                g.X = nx;
+                g.X = FoldX(nx);
                 g.Y = ny;
             }
             if (--g.Carry == 0) Arrive(g);
@@ -243,7 +243,7 @@ namespace Chem
                 if (cost > g.Roll) g.Roll = 0;
                 else
                 {
-                    g.X = nx;
+                    g.X = FoldX(nx);
                     g.Y = ny;
                     g.Roll += -cost + (rise < 0 ? -rise / step : 0);
                     if (Arrive(g)) return;
@@ -261,7 +261,7 @@ namespace Chem
                 return true;
             }
             int reach = g.Placed ? Rules.Sim.Golf.CupReach : 0;
-            if (g.NoCup || Math.Abs(g.X - g.HoleX) > reach || Math.Abs(g.Y - g.HoleY) > reach) return false;
+            if (g.NoCup || Math.Abs(DeltaX(g.HoleX, g.X)) > reach || Math.Abs(g.Y - g.HoleY) > reach) return false;
             (g.X, g.Y) = (g.HoleX, g.HoleY);
             g.Holed = true;
             g.Roll = g.Carry = 0;

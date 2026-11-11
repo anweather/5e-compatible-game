@@ -71,7 +71,7 @@ namespace Chem
             for (int i = 0; i < leaves.Count; i++)
                 foreach (var (dx, dy) in new[] { (0, -1), (1, 0), (0, 1), (-1, 0) })
                 {
-                    var n = (leaves[i].x + dx, leaves[i].y + dy);
+                    var n = (FoldX(leaves[i].x + dx), leaves[i].y + dy);
                     if (InBounds(n.Item1, n.Item2) && At(n.Item1, n.Item2).T == terrain && seen.Add(n)) leaves.Add(n);
                 }
             return leaves;

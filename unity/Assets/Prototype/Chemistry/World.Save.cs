@@ -84,6 +84,7 @@ namespace Chem
                 ["defense"] = SaveDefense(),
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
+            if (WrapX) save["wrap"] = "ew"; // only a world that wraps says so: other saves are as they were
             if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
             if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
@@ -139,7 +140,7 @@ namespace Chem
             var roomRules = room == null ? null : SavedRoomRules(room, rules, budgets);
             if (roomRules != null) rules = roomRules.Effective;
             Expect((string)s["rules"] == rules.Fingerprint, "saved under other rules (or mods)");
-            var w = new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"]);
+            var w = new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"], wrapX: (string)s["wrap"] == "ew");
             if (room != null) w.LoadRoom(room, roomRules, budgets);
             w.MakeFrom(source);
             w.LoadStart(s);

@@ -236,7 +236,7 @@ namespace Chem
             if (chunks == null) return;
             foreach (var (cx, cy) in chunks)
             {
-                drawnHint.Add(Chunks.Key(cx, cy));
+                drawnHint.Add(Chunks.Key(FoldChunkX(cx), cy)); // a chunk past the seam is the one it folds to
                 // A chunk that comes into the hint is needed from now, whether or not it's unpacked yet.
                 if (FindChunk(cx, cy) is Chunk ch) ch.Needed = Tick;
             }
