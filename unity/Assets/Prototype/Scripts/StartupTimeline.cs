@@ -29,6 +29,11 @@ public static class StartupTimeline
     {
         SceneManager.sceneLoaded -= SceneLoaded;
         Mark($"scene {scene.name} loaded (its Awakes done)");
+        if (done) return;
+        // The first frame's Starts and Updates, apart: the first and the last of them mark the timeline.
+        var marks = new GameObject("Startup marks") { hideFlags = HideFlags.HideAndDontSave };
+        marks.AddComponent<StartupFirst>();
+        marks.AddComponent<StartupLast>();
     }
 
     /// <summary>A step done: logged with the time since start and since the last step, until the first frame.</summary>

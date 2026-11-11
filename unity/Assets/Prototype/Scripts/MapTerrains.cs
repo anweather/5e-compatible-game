@@ -85,6 +85,7 @@ public sealed class MapTerrains : MonoBehaviour
     void Update()
     {
         if (lazy && ground != null) Stream();
+        StartupTimeline.Mark("first frame: ground terrains streamed", 20);
         if (!Application.isPlaying || chunks == null || Time.unscaledTime < nextReach) return;
         nextReach = Time.unscaledTime + ReachEvery;
         var cam = Camera.main;

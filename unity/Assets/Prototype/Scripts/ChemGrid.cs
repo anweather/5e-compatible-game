@@ -131,6 +131,7 @@ public partial class ChemGrid : MonoBehaviour
         if (!TryGetComponent<HoldBarricades>(out _)) gameObject.AddComponent<HoldBarricades>();
         if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
         if (!TryGetComponent<Waystones>(out _)) gameObject.AddComponent<Waystones>();
+        StartupTimeline.Mark("grid's parts added (rule switcher, mods, row houses, holds, waystones)");
     }
 
     // The things file is read once: it is the same for every world this scene starts (and online
