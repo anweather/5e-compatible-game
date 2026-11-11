@@ -153,11 +153,24 @@ public sealed class BiomeGround
     /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated.</summary>
     public static BiomeGround For(string mapSource)
     {
+        Last = null;
         if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return null;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var ground = new BiomeGround(GeneratedMap.Load(mapSource));
         UnityEngine.Debug.Log($"BIOME GROUND: the plan's biomes read in {timer.Elapsed.TotalMilliseconds:0} ms");
+        Last = ground;
         return ground;
+    }
+
+    /// <summary>The biome ground For read last, for the map in play (null on a map that isn't generated).</summary>
+    public static BiomeGround Last { get; private set; }
+
+    /// <summary>The biome strongest at a cell (its nearest sample's), or null in the pinned square, which keeps its own.</summary>
+    public string BiomeAt(int x, int y)
+    {
+        if (Pinned(x, y)) return null;
+        int i = System.Math.Clamp((x + Step / 2) / Step, 0, across - 1), j = System.Math.Clamp((y + Step / 2) / Step, 0, down - 1);
+        return strongest[j * across + i];
     }
 
     bool Pinned(int x, int y)
