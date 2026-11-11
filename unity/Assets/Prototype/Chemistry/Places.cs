@@ -116,6 +116,9 @@ namespace Chem
         internal static Place Parse(JObject o)
         {
             string id = Str(o["id"]) ?? throw Bad("a place needs an id");
+            // Rows alone (the water bodies places.json generates: the island's sea is millions of cells) straight to spans,
+            // never a cell at a time.
+            if (o["rows"] != null && o["area"] == null && o["line"] == null && o["circle"] == null) return FromRows(o["rows"], o, id);
             var cells = new SortedSet<(int y, int x)>();
             if (o["area"] != null) AddArea(cells, o["area"], id);
             if (o["line"] != null) AddLine(cells, o["line"], Num(o["width"]) ?? 1, id);
@@ -221,14 +224,58 @@ namespace Chem
 
         static void AddRows(SortedSet<(int y, int x)> cells, JToken t, string id)
         {
+            foreach (var (y, x0, x1) in RowSpans(t, id))
+                for (int x = x0; x <= x1; x++) cells.Add((y, x));
+        }
+
+        // places.json's rows, [y, x0, x1, ...] each, as their spans.
+        static IEnumerable<(int y, int x0, int x1)> RowSpans(JToken t, string id)
+        {
             if (!(t is JArray rows)) throw Bad($"place {id}: rows needs a list of [y, x0, x1, ...]");
             foreach (var r in rows)
             {
                 if (!(r is JArray row) || row.Count < 3 || row.Count % 2 == 0) throw Bad($"place {id}: each row is [y, x0, x1, ...]");
                 int y = (int)row[0];
-                for (int k = 1; k < row.Count; k += 2)
-                    for (int x = (int)row[k]; x <= (int)row[k + 1]; x++) cells.Add((y, x));
+                for (int k = 1; k < row.Count; k += 2) yield return (y, (int)row[k], (int)row[k + 1]);
             }
+        }
+
+        // A place of rows alone, as FromCells would make it from their cells: each row's spans sorted, and joined where
+        // they overlap or touch.
+        static Place FromRows(JToken t, JObject o, string id)
+        {
+            var byRow = new SortedDictionary<int, List<(int x0, int x1)>>();
+            foreach (var (y, x0, x1) in RowSpans(t, id))
+            {
+                if (x0 > x1) continue;
+                if (!byRow.TryGetValue(y, out var list))
+                {
+                    list = new List<(int, int)>();
+                    byRow.Add(y, list);
+                }
+                list.Add((x0, x1));
+            }
+            if (byRow.Count == 0) throw Bad($"place {id} has no cells (give area, line, circle or rows)");
+            int top = byRow.Keys.First();
+            var spans = new int[byRow.Keys.Last() - top + 1][];
+            for (int i = 0; i < spans.Length; i++) spans[i] = Array.Empty<int>();
+            var row = new List<int>();
+            foreach (var (y, list) in byRow)
+            {
+                list.Sort();
+                row.Clear();
+                foreach (var (x0, x1) in list)
+                {
+                    if (row.Count > 0 && x0 <= row[row.Count - 1] + 1) row[row.Count - 1] = Math.Max(row[row.Count - 1], x1);
+                    else
+                    {
+                        row.Add(x0);
+                        row.Add(x1);
+                    }
+                }
+                spans[y - top] = row.ToArray();
+            }
+            return FromSpans(top, spans, o);
         }
 
         internal static FormatException Bad(string message) => new FormatException($"{WorldPlaces.FileName}: {message}");

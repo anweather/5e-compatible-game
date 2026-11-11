@@ -126,7 +126,16 @@ namespace Chem
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             var rows = new Rows();
-            foreach (var row in map.Replace("\r", "").Split('\n')) rows.Add(row);
+            // A line at a time where it lies in the text, never the text split into rows (a big map's is 40 M characters).
+            for (var rest = map.AsSpan(); ;)
+            {
+                int end = rest.IndexOf('\n');
+                var line = end < 0 ? rest : rest.Slice(0, end);
+                if (line.IndexOf('\r') >= 0) rows.Add(line.ToString().Replace("\r", ""));
+                else rows.Add(line);
+                if (end < 0) break;
+                rest = rest.Slice(end + 1);
+            }
             return new BakedSource(rules ?? throw new ArgumentNullException(nameof(rules)), rows.Finish());
         }
 
@@ -162,7 +171,7 @@ namespace Chem
             public uint Hash = 0x811c9dc5;
             int blank;
 
-            public void Add(string row)
+            public void Add(ReadOnlySpan<char> row)
             {
                 if (row.Length == 0)
                 {
@@ -174,7 +183,7 @@ namespace Chem
                 Put(row);
             }
 
-            void Put(string row)
+            void Put(ReadOnlySpan<char> row)
             {
                 int y = H++;
                 if (y > 0) Mix('\n');

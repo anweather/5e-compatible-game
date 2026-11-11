@@ -159,6 +159,64 @@ namespace Chem.Tests
             Assert.That(() => w.Pack(0, 0), Throws.InvalidOperationException);
         }
 
+        // On another thread than the world's (a view worker: the terrains' arrays, the ground's Parallel.For).
+        static Exception OffThread(Action act)
+        {
+            Exception caught = null;
+            var t = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    act();
+                }
+                catch (Exception e)
+                {
+                    caught = e;
+                }
+            });
+            t.Start();
+            t.Join();
+            return caught;
+        }
+
+        [Test]
+        public void AReadOfAPackedChunkOffTheWorldsThreadThrowsAndLeavesItPacked()
+        {
+            var w = Worked(10);
+            w.SetAllActive(false);
+            string fields = Fields(w.At(70, 70)), hash = w.CellHash();
+            w.Pack(1, 1);
+            int unpacked = w.UnpackedCount, unpacks = w.Unpacks;
+            var e = OffThread(() => w.At(70, 70));
+            Assert.That(e, Is.InstanceOf<InvalidOperationException>().With.Message.Contains("only the thread that made the world"));
+            Assert.That((w.IsPacked(1, 1), w.UnpackedCount, w.Unpacks, w.ReadUnpacks), Is.EqualTo((true, unpacked, unpacks, 0)), "nothing changed");
+            Assert.That(OffThread(() => w.Unpack(1, 1)), Is.InstanceOf<InvalidOperationException>(), "nor does Unpack");
+            Assert.That(w.IsPacked(1, 1));
+            Assert.That(Fields(w.At(70, 70)), Is.EqualTo(fields), "the world's own thread reads it");
+            Assert.That(w.CellHash(), Is.EqualTo(hash));
+        }
+
+        [Test]
+        public void AnUnpackedChunkReadsOffTheWorldsThread()
+        {
+            var w = Worked(10);
+            w.SetAllActive(false);
+            string fields = Fields(w.At(70, 70));
+            string read = null;
+            bool own = true;
+            Assert.That(OffThread(() =>
+            {
+                own = w.OnOwnThread;
+                read = Fields(w.At(70, 70));
+            }), Is.Null);
+            Assert.That((own, w.OnOwnThread, read), Is.EqualTo((false, true, fields)));
+            w.Pack(1, 1);
+            Assert.That(OffThread(() => w.Pack(1, 1)), Is.Null, "a packed chunk packs to nothing on any thread");
+            w.Unpack(1, 1);
+            Assert.That(OffThread(() => w.Pack(1, 1)), Is.InstanceOf<InvalidOperationException>(), "packing off the thread throws too");
+            Assert.That(w.IsPacked(1, 1), Is.False);
+        }
+
         // ---------- packing as play goes (PackDue) ----------
 
         [Test]

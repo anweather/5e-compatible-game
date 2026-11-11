@@ -47,7 +47,7 @@ namespace Chem.Tests
         // own, the nine baked first for its rows.
         static string islandBaked;
 
-        static string IslandBaked()
+        internal static string IslandBaked()
         {
             if (islandBaked != null) return islandBaked;
             string root = Path.Combine(Path.GetTempPath(), "sparse-world-island");

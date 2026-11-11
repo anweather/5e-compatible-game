@@ -614,3 +614,39 @@ builds it:
   a row at a time yet. With `SetLand(row)` the view can stream it once there is one (step 4).
 - `SetLand` walks every cell once (40 M on the island, in the build's time above), reading packed chunks where they lie.
 
+
+## The guard and the build's peak (`sparse-world-guard`, 2026-11-10)
+
+**An unpack off the World's thread throws.** A World remembers the thread that made it; `UnpackChunk`, `PackChunk`
+and a read's unpack (`UnpackOnRead`) throw `InvalidOperationException` on any other, before anything changes, so a
+view worker that reads a packed chunk's cells fails loudly instead of putting a chunk in the unpacked list twice. The
+check is on the unpack and pack only: a read of an unpacked chunk (the tick's every read) costs nothing more, and reads
+fine from a worker. `World.OnOwnThread` says which side a caller is on. (`PackTests`: a read and an `Unpack` off the
+thread throw and leave the chunk packed; an unpacked chunk reads off the thread; a pack off it throws.)
+
+**What the island's World build allocated** (`WorldBuildBench`, under dotnet on the VM: each phase's bytes allocated,
+garbage included, since a player's Mono heap keeps what it grows to). The PC saw private memory go 2.06 -> 3.62 GB in
+one second of the build: the rows and the Hold were 3.2 GB of garbage between them, and step 3 didn't touch either.
+
+| Phase (the island, 39.8 M cells) | Before | After |
+|---|---|---|
+| cells.txt read whole (`ChemGrid.CellMap`, view) | 152 MB | 152 MB |
+| `BakedSource.FromText` | 115 MB | 39 MB: lines read where they lie, not `Split` |
+| MakeFrom, puzzles, stamps | 8 MB | 8 MB |
+| the rows (`WorldBuildings.LayInto`) | **1,951 MB** | 243 MB: land.json read once, not once a graded row |
+| the Hold (`WorldHold.Load` reads places.json) | **1,262 MB** | 20 MB: a place of rows read as spans, not a set of its cells |
+| KeepStart (step 3) | 1 MB | 1 MB |
+| land.json read (`ValleyChemistry.LandOf`, view) | 385 MB | 220 MB: inflated a buffer at a time, not whole |
+| SetLand | 10 MB | 10 MB |
+| **All** | **3,884 MB** | **694 MB** |
+
+- `GradeRoads` read and inflated land.json (385 MB) for each graded row and added `LandMovedAt` over all 40 M cells.
+  It reads the file once for all the rows and asks the land as it stands cell by cell (the file's, plus what moved,
+  less the row's own road grades, as the copy it made held it): the same cuts, goldens unchanged.
+- `Place.Parse` turned a place given as rows (the generated water bodies: the island's sea is millions of cells) into
+  a `SortedSet` of every cell and back into spans. Rows alone go straight to sorted, joined spans now.
+- What's left that grows with the map is the land itself (an int a cell, 160 MB, read twice: the rows' copy goes,
+  the view's `landFromFile` stays for the map's life) and the view's cells.txt read whole (80 MB of text). Both are the
+  view's or a row reader's job (step 4: `ChemGrid` can take `BakedSource.Read`, which reads cells.txt a row at a time,
+  and `LandFile` a reader a row at a time for `SetLand(row)`).
+- The PC's 4.47 GB at 41 s is past the core's build: the view's ground and terrains, which this VM can't measure.
