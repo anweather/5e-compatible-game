@@ -5,6 +5,27 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
+**Handoff 2026-11-10 ~20:30 MST (lead out of usage; the other account picks up). Start: `unity-lead` skill in
+`.claude/worktrees/coordinator`, read this section, then `bash .claude/skills/status/status.sh`.**
+- **Running on the PC when handed off:** a `unity-task` comparing `tools/probe.sh online` on the nine, dev against
+  `view-map-arrays` (85ec9b74). It may have finished, been stopped, or pushed a fix on that branch: check
+  `git log origin/view-map-arrays` and the work log. Land `view-map-arrays` (`land.sh auto view-map-arrays --compiled`)
+  if the branch fails nothing dev doesn't; it makes the Scale Island load in a player. If unclear, rerun that comparison
+  (the Editor was fresh after a reboot, ~13 GB free).
+- **Next for the PC, in order:** compile u2's `sim-across-the-seam` (a71402d5: the 12 x 10's east-west wrap in the World;
+  then land it and give the view list in its report to the PC); #145 (find the job that sets the Mono heap's peak, on a
+  fresh Editor); profile the Scale Island's bot-walk spikes (10.17/23.59 ms, 69 frames over 30 ms; leave the Mac's cast
+  redraw alone).
+- **The Mac** was sent `mac-landing-frame` (#212, #217; brief `docs/handoffs/briefs/mac-landing-frame-and-readout.md`)
+  at ~20:15; no read receipt; it self-lands. **u2** is idle: queue its next core job (the seam's follow-ups, or #168).
+- **Andrew has:** a playtest build of dev (`host-ux/unity/Builds/Playtest-2026-11-10/Play the Nine.cmd`); his play logs
+  (`play-log-*.csv` beside Player.log, F8 marks) come first for any lag report. Open calls of his: the tick allowance
+  (3 ms a frame) and whether to tune the nine's dry country greener.
+- **Rules learned today:** read cells only on the main thread (an unpack off the World's thread throws); rebuild the
+  yard before every full EditMode run (an Untitled-scene save dialog blocks the Editor); never run `dotnet test` beside
+  EditMode; one player at a time; workers must not wait on ScheduleWakeup (headless sessions never wake); a landed
+  branch's claim in `queue/taken/` sometimes stays and blocks the queue: delete it.
+
 **Handoff 2026-11-10 ~19:30 MST: Andrew is rebooting the PC.** After the restart:
 1. **`view-map-arrays`** (85ec9b74, pushed, not landed) **makes the Scale Island load in a player**: first frame 20.6 s,
    2.74 GB private; standing 5.03/12.67, bot walk 10.17/23.59 (69 frames over 30 ms, the next thing to profile),
