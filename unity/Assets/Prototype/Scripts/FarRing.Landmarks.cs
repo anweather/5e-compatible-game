@@ -115,9 +115,10 @@ public sealed partial class FarRing
     public const float SeeMetres = 15000f;
 
     /// <summary>
-    /// How far everything on the Default layer still draws (m), as the follow camera's old far plane of 500 m let it: the
-    /// cells' dressing is a GameObject a cell over the whole map (32,000 brush spheres on the nine), which drawn to the
-    /// horizon cost 45 ms a frame, and to 700 m still 25 ms. Past 500 m the haze is over 85%.
+    /// How far everything on the Default layer still drew before the far ring's haze set it (m), as the follow camera's old
+    /// far plane of 500 m let it: the cells' dressing is a GameObject a cell over the whole map, which drawn to the horizon
+    /// cost 45 ms a frame. Now the layer stops where the haze hides it (HazeHides, ~730 m on the nine), and the Resident
+    /// Drawer's small-mesh cull (MaterialCache) still drops a brush sphere about 500 m off.
     /// </summary>
     public const float NearMetres = 500f;
 
@@ -127,16 +128,18 @@ public sealed partial class FarRing
 
     // The player's follow camera comes from the Starter Assets with a far plane of 500 m, which cut the known ring and the
     // landmarks off; on a generated map the cameras (and Cinemachine's lenses, which override them) see to the horizon,
-    // and the Default layer stops where the old plane did. Checked a few times a second, so
-    // a camera made later (online, a cut) gets it too.
-    static void SeeFar(Camera cam)
+    // and the Default layer stops where the haze hides it (HazeHides). The cut is flat, a plane at that depth like the
+    // camera's far plane, as URP's fog is by depth: a sphere stopped things at the edges of the view before the haze had
+    // them. Checked a few times a second, so a camera made later (online, a cut) gets it too, and a new known dial moves it.
+    void SeeFar(Camera cam)
     {
-        if (cam.farClipPlane >= SeeMetres) return;
+        float cut = HazeMetres > 0f ? HazeHides : NearMetres;
+        if (cam.farClipPlane >= SeeMetres && !cam.layerCullSpherical && Mathf.Approximately(cam.layerCullDistances[0], cut)) return;
         cam.farClipPlane = SeeMetres;
         var cull = new float[32];
-        cull[0] = NearMetres;
+        cull[0] = cut;
         cam.layerCullDistances = cull;
-        cam.layerCullSpherical = true;
+        cam.layerCullSpherical = false;
         foreach (var v in FindObjectsByType<Unity.Cinemachine.CinemachineCamera>(FindObjectsSortMode.None))
         {
             var lens = v.Lens;

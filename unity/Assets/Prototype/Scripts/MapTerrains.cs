@@ -477,6 +477,20 @@ public sealed class MapTerrains : MonoBehaviour
         int k = at.j * layout.ChunksX + at.i;
         chunks[k] = t;
         made.Add(k);
+        SeatBushes(at, t);
+    }
+
+    // The bushes of the cells under a terrain just made, put on it (CellDressing.SeatBushes).
+    void SeatBushes((int i, int j) at, Terrain t)
+    {
+        var grid = ChemGrid.Current?.Grid;
+        if (grid == null || t.terrainData == null) return;
+        for (int b = 0; b < TerrainGrid.ChunkCells; b++)
+            for (int a = 0; a < TerrainGrid.ChunkCells; a++)
+            {
+                var (x, y) = layout.GridCell(at.i * TerrainGrid.ChunkCells + a, at.j * TerrainGrid.ChunkCells + b);
+                CellDressing.SeatBushes(grid.DressingAt(x, y), t);
+            }
     }
 
     // Chunk k's terrain back to the pool (its ground keeps what was changed on it).

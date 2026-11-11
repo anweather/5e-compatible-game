@@ -27,6 +27,16 @@ public sealed partial class FarRing : MonoBehaviour
     /// <summary>Where the haze reaches ~98% in clear weather (m): the known ring's edge. SkyLight closes it in for rain and fog.</summary>
     public float HazeMetres { get; private set; }
 
+    /// <summary>
+    /// Where the clear haze reaches 99% (m), at a depth from the eye as URP's fog measures it: past here nothing shows, so
+    /// it's where the Default layer stops drawing and the tree impostors end (#220: at the old 500 m the haze was ~89% and
+    /// the coast's dock popped in and out from the mountain by the falls). Rain and fog only close the haze in.
+    /// </summary>
+    public float HazeHides => HazeMetres * HideK / HazeK;
+
+    // sqrt(ln 100): exponential-squared haze is 99% where density × depth is this.
+    const float HideK = 2.146f;
+
     /// <summary>The last known-chunk build: how many chunks, the worker's milliseconds and the main thread's (meshes to Unity).</summary>
     public static (int chunks, double workerMs, double mainMs) LastBuild { get; private set; }
 

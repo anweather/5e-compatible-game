@@ -19,6 +19,8 @@ public sealed partial class CellDressing
 {
     // The look families this file draws (rules/looks.json), with their forms.
     const string Block = "block", Plant = "plant", Debris = "debris", Deck = "deck", PlateFamily = "plate", Machine = "machine", Wall = "wall", Ground = "ground";
+    // How far a bush follows the drawn ground off its cell's height (m): further, the ground there is a wall or a cliff.
+    const float MostBushDrop = 2.5f;
     const string Bush = "bush", Sapling = "sapling", Stump = "stump", Rubble = "rubble";
     const string RustedForm = "rusted", Coil = "coil", GateShut = "gate", GateOpen = "gate-open", Built = "built";
     // The smoothness of a block whose look doesn't say.
@@ -166,13 +168,45 @@ public sealed partial class CellDressing
         r.SetPropertyBlock(tint);
     }
 
+    /// <summary>
+    /// A brush cell's bushes put on a terrain made after them: on a generated map a cell can be dressed before its chunk's
+    /// terrain stands, on the cell's own ground, and the terrain's smoothed heights then left bushes up to a metre off it
+    /// (#220). MapTerrains calls this for each cell under a terrain it makes.
+    /// </summary>
+    public static void SeatBushes(GameObject dressing, Terrain t)
+    {
+        if (dressing == null || !dressing.name.StartsWith(BrushPrefix, System.StringComparison.Ordinal)) return;
+        float baseY = t.transform.position.y, cellY = dressing.transform.position.y;
+        foreach (Transform bush in dressing.transform)
+        {
+            var p = bush.position;
+            float drawn = baseY + t.SampleHeight(p);
+            if (Mathf.Abs(drawn - cellY) >= MostBushDrop) continue;
+            p.y = drawn + bush.localScale.y * 0.5f;
+            bush.position = p;
+        }
+    }
+
+    static readonly string BrushPrefix = TerrainIds.Brush + " ";
+
+    // The ground drawn at a point: the chunk terrain's where one stands (its own sampling, as it draws), else the grid's.
+    float DrawnGround(Vector3 at) =>
+        MapTerrains.Instance != null && MapTerrains.Instance.TerrainAt(at) is { terrainData: not null } t
+            ? t.transform.position.y + t.SampleHeight(at)
+            : grid.GroundAt(at);
+
+    // Each bush sits on the ground drawn under it, not the cell's middle: on a slope a bush half a cell off the middle
+    // floated or sank by up to a metre (#220), and the drawn ground can stand off the cell's own height.
     void DressBrush(Transform root, Vector3 surface, System.Random rng, Color color, int x, int y)
     {
         for (int i = 0; i < 5; i++)
         {
             var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * (CellSize * 0.7f);
             float r = 0.55f + 0.35f * (float)rng.NextDouble();
-            var bush = Part(root, PrimitiveType.Sphere, surface + off + Vector3.up * (r * 0.35f), new Vector3(r, r * 0.7f, r), "Leaves", color);
+            var at = surface + off;
+            float drawn = DrawnGround(at);
+            if (Mathf.Abs(drawn - surface.y) < MostBushDrop) at.y = drawn;
+            var bush = Part(root, PrimitiveType.Sphere, at + Vector3.up * (r * 0.35f), new Vector3(r, r * 0.7f, r), "Leaves", color);
             Paint(bush.GetComponent<Renderer>(), "Leaves", color, 0.1f, x + i * 17, y);
         }
     }
