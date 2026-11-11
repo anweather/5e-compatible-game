@@ -908,6 +908,12 @@ that long, and doesn't march.
 : A peer joining a running session: today it replays every tick batch
   from tick 0 (`Timeline`); per-chunk snapshots are planned.
 
+**Player save**
+: One player's progress, on their own machine: their stable id, Hold
+  points (`ProgressFile`), later the grimoire, kept items and look. It
+  travels with them into any world and past a reset, and reaches the world
+  only as a command (J-038, `docs/design/player-saves.md`).
+
 **Room**
 : A session as its peers share it: one world, its host, its change mode
   and the mods on in it (`World.Room`, `World.Room.cs`). Solo play is a
@@ -965,6 +971,12 @@ that long, and doesn't march.
 : A **game mode** is a snapshot: copies of a set of mods in their order, and maybe a map, packaged and shared the way a mod is. In a
   mode you edit only that mode's copies. **Free play** is where you load any mods and snapshot the setup into a mode. Not built
   (backlog 28). Never "sandbox", which is the frozen TS prototype.
+
+**World save**
+: A world's state as text: what play changed from its source, by chunk,
+  with the tick, RNG, room mods and everything else the tick reads
+  (`World.Save`). The world's, kept by the host; a player's progress is
+  their player save.
 
 ## The Dragon
 
