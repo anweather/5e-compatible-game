@@ -236,7 +236,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
-        var steps = new StepTimes();
+        var steps = new StepTimes("valley bind");
         lakeSought = false; // a new world: the lake (or none) is looked for again at the next recolour
         if (ground == null && MapLand.Current is { } map)
         {
@@ -249,14 +249,17 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             builder = BuiltGround(world);
+            steps.Mark("ground_builder");
             if (builder.Lazy) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land made a chunk at a time, as the terrains are");
             else if (builder != terrains.Builder) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land ready in {timer.Elapsed.TotalMilliseconds:0} ms");
             ground = builder.Lazy ? new ValleyGround(layout, builder) : new ValleyGround(layout, terrains.Chunks, builder, built: builder == terrains.Builder);
             ground.ChunkReady += ChunkMade;
             ground.ChunkGone += ChunkGone;
+            steps.Mark("ground_new");
             // The chunks waited blank for the land (no ground/, or land mode): the sea measures its depth again on them
             // (once the drawn tier's are made, on a generated map).
             if (!builder.Lazy && builder != terrains.Builder && Ocean.Instance != null) Ocean.Instance.Build();
+            steps.Mark("sea_remeasured");
             rocks = new LandRocks(grid);
             rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).
@@ -279,7 +282,9 @@ public partial class ValleyChemistry : MonoBehaviour
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         var (channelCells, channelDepths) = builder.Channel;
         ground.RaiseBase(channelCells, channelDepths);
+        steps.Mark("raise_base");
         SetLand(world);
+        steps.Mark("set_land");
         CheckGround(world);
         steps.Mark("land");
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
@@ -303,6 +308,7 @@ public partial class ValleyChemistry : MonoBehaviour
         if (n > 0) CountBuildingWalls(world);
         steps.Mark("cells");
         ClearLaidRows(world);
+        steps.Mark("clear_rows");
         BindStampedLand(world);
         steps.Mark("rows_stamps");
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
@@ -314,6 +320,7 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             served = true;
             terrains.Serve(ground);
+            steps.Mark("terrains_served");
             if (Ocean.Instance != null) Ocean.Instance.Build();
         }
         steps.Mark("panes_terrains");
@@ -550,7 +557,12 @@ public partial class ValleyChemistry : MonoBehaviour
         if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
     }
 
-    static void SetLand(World world) => world.SetLand(LandOf(world));
+    static void SetLand(World world)
+    {
+        var land = LandOf(world);
+        if (land == null) world.SetLand((int[])null);
+        else world.SetLandByChunk(land);
+    }
 
     /// <summary>
     /// The map's land.json, read once a map, or null when it has none: the one copy the view holds (MapLand's, which the

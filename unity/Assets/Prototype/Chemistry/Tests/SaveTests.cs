@@ -257,6 +257,39 @@ namespace Chem.Tests
             Assert.That(loaded.At(285, 433).T, Is.EqualTo(straight.At(285, 433).T));
         }
 
+        // island-startup: land set a chunk at a time (SetLandByChunk: the chunks still their source's get theirs when first
+        // read) is the land SetLand makes: the same save (its landSet's hash and marks) before any of it is read, the same
+        // cells as water runs over it for 200 ticks, and the same land under every cell after.
+        [Test]
+        public void LandSetAChunkAtATimeIsTheSameLand()
+        {
+            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var eager = GameValley(dir, out var source, out var land);
+            var lazy = SparseWorldBench.Build(dir, R, out _);
+            lazy.SetLandByChunk(land);
+            int unmade = lazy.LandUnmadeChunks;
+            Assert.That(unmade, Is.GreaterThan(lazy.ChunkCoords.Count / 2), "most chunks' land left for later");
+            Assert.That(lazy.Save(source), Is.EqualTo(eager.Save(source)), "the save, before any land is read");
+            Assert.That(lazy.LandUnmadeChunks, Is.EqualTo(unmade), "and the save made none");
+            int mx = eager.W / 2, my = eager.H / 2;
+            foreach (var w in new[] { eager, lazy })
+            {
+                ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { (mx, my), (100, 100), (500, 480) }));
+                w.Cast("create-water", mx, my, 1);
+                w.Cast("create-water", 100, 100, 1);
+                w.Cast("fireball", 500, 480, 1);
+            }
+            for (int t = 0; t < 200; t++)
+            {
+                eager.Step();
+                lazy.Step();
+                if (t % 20 == 0) Assert.That(lazy.CellHash(), Is.EqualTo(eager.CellHash()), $"tick {t}");
+            }
+            Assert.That(State(lazy), Is.EqualTo(State(eager)));
+            Assert.That(LandOf(lazy), Is.EqualTo(LandOf(eager)), "the land under every cell");
+            Assert.That(lazy.Save(source), Is.EqualTo(eager.Save(source)));
+        }
+
         [Test]
         public void ASaveGivenLandIsRefusedWithoutItOrWithOther()
         {

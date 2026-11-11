@@ -111,7 +111,7 @@ public sealed partial class FarRing : MonoBehaviour
 
     static Loaded Load(string source, float water, float cell)
     {
-        var m = GeneratedMap.Load(source);
+        var m = LoadedMaps.Get(source);
         var far = m.Far;
         var gen = m.Gen;
         var ground = new float[far.All.Count];
@@ -203,6 +203,7 @@ public sealed partial class FarRing : MonoBehaviour
         MakeSea();
         MakeLandmarks(loaded);
         palette = Palette(loaded.Biomes, grid.World, terrains);
+        StartupTimeline.Mark("far ring map read, landmarks made");
         Debug.Log($"FAR RING: know {know} (haze 98% at {HazeMetres:0} m, density {RenderSettings.fogDensity:0.00000}/m), {loaded.Far.All.Count} far landmarks");
         return true;
     }
@@ -281,6 +282,7 @@ public sealed partial class FarRing : MonoBehaviour
                     break;
                 }
         var palette = FarMeshes.Palette.Drawn(biomes.Grounds(world), colours);
+        StartupTimeline.Mark("far ring colours");
         Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms");
         return palette;
     }
@@ -335,6 +337,7 @@ public sealed partial class FarRing : MonoBehaviour
             drawn.Remove(id);
         }
         if (terrains != null) terrains.ReachNow();
+        StartupTimeline.Mark("far ring known chunks built");
         LastBuild = (job.Result.Count, workerMs, timer.Elapsed.TotalMilliseconds);
         if (job.Result.Count > 0)
             Debug.Log($"FAR RING: {job.Result.Count} known chunks built ({workerMs:0.0} ms on a worker, {LastBuild.mainMs:0.0} ms to hand to Unity, " +
