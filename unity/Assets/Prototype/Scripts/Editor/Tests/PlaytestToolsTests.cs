@@ -27,7 +27,7 @@ public class PlaytestToolsTests
     [Test]
     public void WithoutGeneratedBiomesTheBiomeIsTheValley()
     {
-        Assert.That(BiomeGround.Current, Is.Null);
+        Assert.That(BiomeGround.Last, Is.Null);
         Assert.That(PlaytestTools.BiomeAt(10, 10), Is.EqualTo("valley"));
     }
 

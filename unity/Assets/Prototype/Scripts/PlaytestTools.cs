@@ -81,8 +81,8 @@ public sealed class PlaytestTools : MonoBehaviour
         if (PauseMenu.Button($"Fly mode: {(Flying ? "On" : "Off")} (F4)", PauseMenu.ButtonStyle)) Fly(!Flying);
     }
 
-    /// <summary>The biome at a cell: the generated map's strongest, else "valley" (the hand-made map).</summary>
-    public static string BiomeAt(int x, int y) => BiomeGround.Current?.NameAt(x, y) ?? "valley";
+    /// <summary>The biome at a cell: the generated map's strongest, "pinned" in its hand-made square, else "valley" (the hand-made map).</summary>
+    public static string BiomeAt(int x, int y) => BiomeGround.Last == null ? "valley" : BiomeGround.Last.BiomeAt(x, y) ?? "pinned";
 
     /// <summary>"cell 3012,4410  chunk 47,68  grassland" for a world point, or null with no grid.</summary>
     public static string Where(Vector3 p, out Vector2Int cell, out Vector2Int chunk)

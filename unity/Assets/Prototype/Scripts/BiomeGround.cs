@@ -147,28 +147,30 @@ public sealed class BiomeGround
         return 0;
     }
 
-    /// <summary>The biome ground of the generated map in play, or null (the valley, or no map yet), for the HUD's "where am I".</summary>
-    public static BiomeGround Current { get; private set; }
-
-    /// <summary>The strongest biome's id at a cell; "pinned" in a chunk the map holds as made by hand.</summary>
-    public string NameAt(int x, int y)
-    {
-        if (Pinned(x, y)) return "pinned";
-        int i = System.Math.Clamp((x + Step / 2) / Step, 0, across - 1), j = System.Math.Clamp((y + Step / 2) / Step, 0, down - 1);
-        return strongest[j * across + i];
-    }
-
     /// <summary>The biome ground of a generated map already read.</summary>
     public static BiomeGround Of(GeneratedMap map) => new(map);
 
     /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated.</summary>
     public static BiomeGround For(string mapSource)
     {
-        if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return Current = null;
+        Last = null;
+        if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return null;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var ground = new BiomeGround(GeneratedMap.Load(mapSource));
         UnityEngine.Debug.Log($"BIOME GROUND: the plan's biomes read in {timer.Elapsed.TotalMilliseconds:0} ms");
-        return Current = ground;
+        Last = ground;
+        return ground;
+    }
+
+    /// <summary>The biome ground For read last, for the map in play (null on a map that isn't generated).</summary>
+    public static BiomeGround Last { get; private set; }
+
+    /// <summary>The biome strongest at a cell (its nearest sample's), or null in the pinned square, which keeps its own.</summary>
+    public string BiomeAt(int x, int y)
+    {
+        if (Pinned(x, y)) return null;
+        int i = System.Math.Clamp((x + Step / 2) / Step, 0, across - 1), j = System.Math.Clamp((y + Step / 2) / Step, 0, down - 1);
+        return strongest[j * across + i];
     }
 
     bool Pinned(int x, int y)

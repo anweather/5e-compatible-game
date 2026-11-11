@@ -7,8 +7,8 @@ using UnityEngine.Rendering;
 // Fireflies at night and butterflies by day, around the camera. Adapted from
 // Punchy's CritterSystem (Zachary Franklin, ThirdParty/Punchy): each tile of
 // TileSize metres gets a fixed set of home spots, picked from the cells under
-// it (butterflies over dry grass and brush, fireflies there too and thicker by
-// water; none where snow lies), and the shaders fly each one around its home, so nothing moves on
+// it (butterflies over dry grass and brush, as many as the biome has (Punchy's numbers), fireflies there too and
+// thicker by water; none where snow lies), and the shaders fly each one around its home, so nothing moves on
 // the CPU. How many are out comes from the rules' hours (Chem.Sky.InHours over
 // sim.json's dawn and dusk) and the weather: each critter has its own threshold, so they come and go
 // gradually. Presentation only; a tile's homes are picked when it streams in.
@@ -209,11 +209,29 @@ public class AmbientCritters : MonoBehaviour
         if (butterfly)
         {
             if (!green || wet) return 0f;
-            return c.T == TerrainIds.Brush ? 8f : 5f;
+            float here = ButterfliesIn(BiomeGround.Last?.BiomeAt(cell.x, cell.y));
+            return c.T == TerrainIds.Brush ? here * BrushMore : here;
         }
         if (wet || NearWater(world, cell)) return 6f;
         return green ? 2f : 0f;
     }
+
+    // Butterflies per 100 m² by biome, Punchy's (its Biomes/*.asset): 5 over grassland, 1.5 in temperate country (the
+    // valley, and a cell of a map that isn't generated), 2 in the sparkling forest, a few in the mountains, the sonoran
+    // and on the tundra, none in the other dry, burnt, frozen or wet country. #220: at 5 everywhere (8 over brush) they
+    // were everywhere.
+    static float ButterfliesIn(string biome) => biome switch
+    {
+        null or "temperate" => 1.5f,
+        "grassland" => 5f,
+        "sparkling-forest" => 2f,
+        "mountains" or "sonoran" => 0.6f,
+        "tundra" => 0.1f,
+        _ => 0f,
+    };
+
+    // Brush draws more of them than grass.
+    const float BrushMore = 1.5f;
 
     static bool NearWater(World world, Vector2Int cell)
     {

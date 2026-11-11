@@ -13,8 +13,9 @@ rollout (`docs/handoffs/briefs/tree-impostors-rollout.md`) turned it on for ever
   is baked by the baker when its impostor is missing or was baked by an older baker (`TreeImpostorBaker.BakeVersion`
   on each material): when the Editor starts, after the yard builds itself, and before a player build. The atlases stay
   under `Generated/` (ignored); the menu item is Prototype > Bake Tree Impostors (every species, 12 x 12).
-- **Near trees (within 60 m) are their species' prefab**, a GameObject with its LOD group and SpeedTree's wind, from a
-  pool: a tree that leaves Near (plus 4 m, so one on the edge doesn't swap each step) gives its GameObject to one that
+- **Near trees (within 150 m since #220; 60 m before, where the swap showed in a sparse wood) are their species' prefab**,
+  a GameObject with its LOD group and SpeedTree's wind, from a pool: a tree that leaves Near (plus 8 m, so one on the edge
+  doesn't swap each step) gives its GameObject to one that
   enters, nearest first; new ones are made at about 1 ms a frame, and a tree waiting for one is drawn as its impostor
   meanwhile. Their colliders are taken off (the terrain's tree colliders stand there). The instanced near meshes are
   gone. On the nine's spawn about 30-50 trees stand as prefabs.
