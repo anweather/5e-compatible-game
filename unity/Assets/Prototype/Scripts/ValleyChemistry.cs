@@ -552,13 +552,19 @@ public partial class ValleyChemistry : MonoBehaviour
 
     static void SetLand(World world) => world.SetLand(LandOf(world));
 
-    // The map's land.json, read once a map.
-    static int[] LandOf(World world)
+    /// <summary>
+    /// The map's land.json, read once a map, or null when it has none: the one copy the view holds (MapLand's, which the
+    /// sea and the shore read too), shared by the ground, the land check and the folk's walks. Three copies were an int a
+    /// cell each, 477 MB on the 12 x 10 (J-086). Never written to: the World takes its own (SetLand).
+    /// </summary>
+    public static int[] LandOf(World world)
     {
         if (landFromFile == null || landFromFile.Length != world.W * world.H)
         {
             string path = Path.Combine(ChemGrid.Folders.World, "land.json");
-            landFromFile = File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
+            var map = MapLand.Current;
+            landFromFile = map != null && map.FromFile && map.Land.Length == world.W * world.H ? map.Land
+                : File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
             if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
             if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
         }
@@ -581,6 +587,7 @@ public partial class ValleyChemistry : MonoBehaviour
         string path = Path.Combine(ChemGrid.Folders.World, "land.json");
         File.WriteAllText(path, LandFile.Write(land, world.W, world.H, unit));
         landFromFile = null;
+        MapLand.Forget();
         SetLand(world);
         return $"wrote {path} ({new FileInfo(path).Length / 1024} KB)";
     }

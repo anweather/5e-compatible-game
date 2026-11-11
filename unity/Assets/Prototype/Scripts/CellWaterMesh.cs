@@ -48,10 +48,12 @@ public sealed class CellWaterMesh
     readonly Material waterMaterial, iceMaterial;
     readonly Color ownColor;
     readonly HashSet<int> wet = new();
-    // By cell, for the levels' work over every wet cell: whether it's wet, and its drawn top (NaN for none).
-    readonly bool[] wetCell;
-    float[] tops, nextTops;
-    // The cells with a top now, and those with one in nextTops.
+    // By cell, held a block a chunk (WaterCells): whether it's wet, its drawn top (NaN for none) and the next pass's, its
+    // kind, cap, ground and flow as last read, and whether it's a bank or calm. Only chunks that drew water, or stand
+    // within two cells of some, have a block: eleven arrays a cell of the map were 36 bytes a cell, 1.43 GB on the 12 x 10
+    // (J-086).
+    readonly WaterCells cells;
+    // The cells with a top now, and those with one in nextTop.
     List<int> topped = new(), nextTopped = new();
     // Tiles to redraw at the next Rebuild (a tile key: ty * tilesX + tx), and each tile's surfaces.
     readonly HashSet<int> dirtyTiles = new();
@@ -59,16 +61,98 @@ public sealed class CellWaterMesh
     // Each liquid's colour by Cell.Liquid (alpha 0: drawn as water, as water itself and a liquid with
     // no look are), and each cell's liquid as last seen.
     Color[] liquidColors;
-    readonly byte[] kindOf;
     readonly int tilesX;
     readonly GameObject root;
-    // By cell, for the outline's reads: what FindBanks found, and the cells it marked, to clear them.
-    readonly bool[] bankCell;
+    // The cells FindBanks marked (WaterCell.bank), to clear them.
     List<int> banks = new(), nextBanks = new();
-    // Banks and the wet cells beside them: the outline doesn't wobble there, or it would pull
+    // Banks and the wet cells beside them (WaterCell.calm): the outline doesn't wobble there, or it would pull
     // back off the bank's slope (a gap) or climb over it (water showing through the ground).
-    readonly bool[] calmCell;
     List<int> calm = new(), nextCalm = new();
+
+    // A cell's state, as the arrays a cell held it.
+    struct WaterCell
+    {
+        public float top, nextTop, cap, ground;
+        public Vector2 flow;
+        public int groundPass, flowRead;
+        public byte kind;
+        public bool wet, bank, calm;
+    }
+
+    /// <summary>
+    /// The cells' state a block a world chunk (64 x 64 cells, 144 KB), each made the first time one of its cells is
+    /// written; a cell of a chunk with none reads as a dry cell with no top. Blocks go back to a pool with the mesh, so a
+    /// world built again (a reset, a map switch) takes them from there.
+    /// </summary>
+    sealed class WaterCells
+    {
+        const int Mask = Chunks.Size - 1;
+        static readonly WaterCell Blank = new() { top = float.NaN };
+        static readonly Stack<WaterCell[]> Pool = new();
+        const int MostPooled = 256;
+        readonly WaterCell[][] blocks;
+        readonly int w, across;
+
+        public WaterCells(int width, int height)
+        {
+            w = width;
+            across = (width + Mask) >> Chunks.Shift;
+            blocks = new WaterCell[across * ((height + Mask) >> Chunks.Shift)][];
+        }
+
+        /// <summary>How many chunks have a block, for a performance pass.</summary>
+        public int Made { get; private set; }
+
+        public ref readonly WaterCell Read(int key) => ref Read(key % w, key / w);
+
+        public ref readonly WaterCell Read(int x, int y)
+        {
+            var block = blocks[(y >> Chunks.Shift) * across + (x >> Chunks.Shift)];
+            if (block == null) return ref Blank;
+            return ref block[((y & Mask) << Chunks.Shift) | (x & Mask)];
+        }
+
+        public bool Has(int key) => blocks[(key / w >> Chunks.Shift) * across + (key % w >> Chunks.Shift)] != null;
+
+        public ref WaterCell Write(int key)
+        {
+            int x = key % w, y = key / w, n = (y >> Chunks.Shift) * across + (x >> Chunks.Shift);
+            var block = blocks[n] ??= Take();
+            return ref block[((y & Mask) << Chunks.Shift) | (x & Mask)];
+        }
+
+        WaterCell[] Take()
+        {
+            Made++;
+            PerfCounts.Add("water.cell_blocks_made");
+            if (Pool.Count == 0) return Filled(new WaterCell[Chunks.Area]);
+            return Filled(Pool.Pop());
+        }
+
+        static WaterCell[] Filled(WaterCell[] block)
+        {
+            System.Array.Fill(block, Blank);
+            return block;
+        }
+
+        /// <summary>Every block back to the pool (up to MostPooled kept).</summary>
+        public void Release()
+        {
+            for (int n = 0; n < blocks.Length; n++)
+            {
+                if (blocks[n] != null && Pool.Count < MostPooled) Pool.Push(blocks[n]);
+                blocks[n] = null;
+            }
+            Made = 0;
+        }
+
+        // Each Play mode starts with none, with the domain reload off too, so the Editor holds no blocks out of play.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPool()
+        {
+            Pool.Clear();
+        }
+    }
 
     public CellWaterMesh(ChemGrid grid, Material waterMaterial, Material iceMaterial)
     {
@@ -78,20 +162,8 @@ public sealed class CellWaterMesh
         ownColor = this.waterMaterial.HasProperty(ColorId) ? this.waterMaterial.GetColor(ColorId) : Color.white;
         this.iceMaterial = iceMaterial;
         tilesX = (grid.World.W + TileCells - 1) / TileCells;
-        int cells = grid.World.W * grid.World.H;
         liquidColors = LiquidColors(grid.World.Rules);
-        kindOf = new byte[cells];
-        wetCell = new bool[cells];
-        tops = new float[cells];
-        nextTops = new float[cells];
-        System.Array.Fill(tops, float.NaN);
-        caps = new float[cells];
-        groundOf = new float[cells];
-        groundPass = new int[cells];
-        bankCell = new bool[cells];
-        calmCell = new bool[cells];
-        flowOf = new Vector2[cells];
-        flowRead = new int[cells];
+        cells = new WaterCells(grid.World.W, grid.World.H);
         // Read for every cell and point of a tile, so made once: a lambda here would be garbage each call.
         levelOver = levelBudget.Over;
         waterValue = (x, y) => Value(x, y, false);
@@ -102,7 +174,7 @@ public sealed class CellWaterMesh
         iceHeight = (gx, gy) => ContourSurface.BlendAround(gx, gy, iceTop, 0f);
         waterColor = (gx, gy, v) => Worn(gx, gy, Mathf.Max(Opacity(v, false), RunoffOpacity(gx, gy, v)));
         iceColor = (gx, gy, v) => new Color(1f, 1f, 1f, Mathf.Max(Opacity(v, true), RunoffOpacity(gx, gy, v)));
-        calmness = (x, y) => grid.World.InBounds(x, y) && calmCell[grid.World.Idx(x, y)] ? 0f : 1f;
+        calmness = (x, y) => grid.World.InBounds(x, y) && cells.Read(x, y).calm ? 0f : 1f;
         flowX = (x, y) => FlowOf(x, y).x;
         flowY = (x, y) => FlowOf(x, y).y;
         ownAt = (x, y) => Holds(x, y, false) ? (float?)LiquidColor(x, y).a : null;
@@ -155,12 +227,12 @@ public sealed class CellWaterMesh
         // An outline moves only when a cell turns wet, dry, or to or from ice. A level alone (the
         // river's changes on most ticks) moves the surface where its top moves: Recompute marks those.
         bool outline = isWet ? wet.Add(key) : wet.Remove(key);
-        wetCell[key] = isWet;
+        if (isWet || cells.Has(key)) cells.Write(key).wet = isWet;
         outline |= isWet && c.Frozen ? ice.Add(key) : ice.Remove(key);
         int kind = isWet ? c.Kind : 0;
-        if (kind != kindOf[key])
+        if (kind != cells.Read(key).kind)
         {
-            kindOf[key] = (byte)kind;
+            cells.Write(key).kind = (byte)kind;
             MarkAround(x, y, "water.mark.kind");
         }
         if (PerfCounts.On) CountChange(c, outline, was != level);
@@ -218,13 +290,13 @@ public sealed class CellWaterMesh
     /// <summary>The water surface drawn at a wet cell after the last Rebuild, or <paramref name="fallback"/>.</summary>
     public float Top(int x, int y, float fallback)
     {
-        float top = tops[grid.World.Idx(x, y)];
+        float top = cells.Read(x, y).top;
         return float.IsNaN(top) ? fallback : top;
     }
 
     /// <summary>The top of the water or ice as drawn at a point in grid units, blended between the cells as its mesh is, or <paramref name="fallback"/>.</summary>
     public float TopAt(float gx, float gy, float fallback) => ContourSurface.BlendAround(gx, gy,
-        (x, y) => grid.World.InBounds(x, y) && !float.IsNaN(tops[grid.World.Idx(x, y)]) ? tops[grid.World.Idx(x, y)] : null, fallback);
+        (x, y) => grid.World.InBounds(x, y) && !float.IsNaN(cells.Read(x, y).top) ? cells.Read(x, y).top : null, fallback);
 
     /// <summary>Drifts the water's ripples, as the lake's do (once a frame).</summary>
     public void Scroll(float time)
@@ -334,14 +406,21 @@ public sealed class CellWaterMesh
     {
         var world = grid.World;
         foreach (int key in nextTopped)
-            if (!Mathf.Approximately(tops[key], nextTops[key]))
+        {
+            ref readonly var c = ref cells.Read(key);
+            if (!Mathf.Approximately(c.top, c.nextTop))
             {
                 MarkAround(key % world.W, key / world.W, "water.mark.top");
                 PerfCounts.Add("water.tops_moved");
-                if (PerfCounts.On && Mathf.Abs(tops[key] - nextTops[key]) < 0.02f) PerfCounts.Add("water.tops_moved_under_2cm");
+                if (PerfCounts.On && Mathf.Abs(c.top - c.nextTop) < 0.02f) PerfCounts.Add("water.tops_moved_under_2cm");
             }
-        foreach (int key in topped) tops[key] = float.NaN;
-        foreach (int key in nextTopped) tops[key] = nextTops[key];
+        }
+        foreach (int key in topped) cells.Write(key).top = float.NaN;
+        foreach (int key in nextTopped)
+        {
+            ref var c = ref cells.Write(key);
+            c.top = c.nextTop;
+        }
         (topped, nextTopped) = (nextTopped, topped);
         NextStep(LevelStep.Banks);
     }
@@ -437,16 +516,14 @@ public sealed class CellWaterMesh
         var world = grid.World;
         for (int y = box.yMin - 1; y <= box.yMax; y++)
             for (int x = box.xMin - 1; x <= box.xMax; x++)
-                if (world.InBounds(x, y) && wetCell[world.Idx(x, y)]) return true;
+                if (world.InBounds(x, y) && cells.Read(x, y).wet) return true;
         return false;
     }
 
     // --- heights -------------------------------------------------------------------
 
-    // Reused by ComputeTops, so working out the levels allocates nothing: the cap on each wet
+    // Kept in the cells, so working out the levels allocates nothing (past a chunk's first block): the cap on each wet
     // cell, and each cell's ground, read once a pass (groundPass says which pass read it).
-    readonly float[] caps, groundOf;
-    readonly int[] groundPass;
     int pass;
     readonly Queue<int> queueWork = new();
 
@@ -456,7 +533,8 @@ public sealed class CellWaterMesh
         {
             if (TimeToStop(over)) return false;
             int key = nextTopped[stepAt];
-            caps[key] = LowestBank(key);
+            float lowest = LowestBank(key);
+            cells.Write(key).cap = lowest;
             queueWork.Enqueue(key);
         }
         NextStep(LevelStep.Flood);
@@ -469,7 +547,6 @@ public sealed class CellWaterMesh
     bool Flood(System.Func<bool> over)
     {
         var world = grid.World;
-        var cap = caps;
         var queue = queueWork;
         float perUnit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         while (queue.Count > 0)
@@ -478,13 +555,15 @@ public sealed class CellWaterMesh
             if (TimeToStop(over)) return false;
             int key = queue.Dequeue();
             int x = key % world.W, y = key / world.W;
+            float cap = cells.Read(x, y).cap;
             for (int d = 0; d < 4; d++)
             {
                 int nx = x + World.DirX(d), ny = y + World.DirY(d);
                 if (!world.InBounds(nx, ny)) continue;
                 int n = world.Idx(nx, ny);
-                if (!wetCell[n] || cap[n] <= cap[key] || Standing(n, perUnit) > Standing(key, perUnit) + perUnit) continue;
-                cap[n] = cap[key];
+                ref readonly var c = ref cells.Read(nx, ny);
+                if (!c.wet || c.cap <= cap || Standing(n, perUnit) > Standing(key, perUnit) + perUnit) continue;
+                cells.Write(n).cap = cap;
                 queue.Enqueue(n);
             }
         }
@@ -503,10 +582,10 @@ public sealed class CellWaterMesh
             int x = key % world.W, y = key / world.W;
             var c = world.CellAt(key);
             float ground = Ground(key);
-            float top = Mathf.Min(ground + c.Water * perUnit, caps[key] - Inset);
+            float top = Mathf.Min(ground + c.Water * perUnit, cells.Read(x, y).cap - Inset);
             if (MeetsLowGround(key, ground)) top = Mathf.Min(top, ground + Film);
             // Ice on the lake floats at the lake's surface, however deep the water under it.
-            nextTops[key] = Mathf.Max(Mathf.Max(ground + Film, top), grid.LakeLevelAt(x, y, c) + Film);
+            cells.Write(key).nextTop = Mathf.Max(Mathf.Max(ground + Film, top), grid.LakeLevelAt(x, y, c) + Film);
         }
         return true;
     }
@@ -514,9 +593,12 @@ public sealed class CellWaterMesh
     // A cell's ground, read once a pass: every wet cell asks after all 8 cells round it.
     float Ground(int key)
     {
-        if (groundPass[key] == pass) return groundOf[key];
-        groundPass[key] = pass;
-        return groundOf[key] = OwnGround(key);
+        ref readonly var was = ref cells.Read(key);
+        if (was.groundPass == pass) return was.ground;
+        float ground = OwnGround(key);
+        ref var c = ref cells.Write(key);
+        c.groundPass = pass;
+        return c.ground = ground;
     }
 
     // The lowest bank: a dry neighbour (of 8) higher than the cell's own ground.
@@ -530,7 +612,7 @@ public sealed class CellWaterMesh
             int nx = x + Ring[d].dx, ny = y + Ring[d].dy;
             if (!world.InBounds(nx, ny)) continue;
             int n = world.Idx(nx, ny);
-            if (wetCell[n]) continue;
+            if (cells.Read(nx, ny).wet) continue;
             float ground = Ground(n);
             if (ground > own + Level && ground < lowest) lowest = ground;
         }
@@ -547,7 +629,7 @@ public sealed class CellWaterMesh
             int nx = x + Ring[d].dx, ny = y + Ring[d].dy;
             if (!world.InBounds(nx, ny)) continue;
             int n = world.Idx(nx, ny);
-            if (!wetCell[n] && Ground(n) <= own + Level) return true;
+            if (!cells.Read(nx, ny).wet && Ground(n) <= own + Level) return true;
         }
         return false;
     }
@@ -571,12 +653,13 @@ public sealed class CellWaterMesh
             if (TimeToStop(over)) return false;
             int key = topped[stepAt];
             int x = key % world.W, y = key / world.W;
+            float top = cells.Read(x, y).top;
             for (int d = 0; d < 8; d++)
             {
                 int nx = x + Ring[d].dx, ny = y + Ring[d].dy;
                 if (!world.InBounds(nx, ny)) continue;
                 int n = world.Idx(nx, ny);
-                if (wetCell[n] || Ground(n) <= tops[key]) continue;
+                if (cells.Read(nx, ny).wet || Ground(n) <= top) continue;
                 nextBanks.Add(n);
                 nextCalm.Add(n);
                 nextCalm.Add(key);
@@ -588,8 +671,8 @@ public sealed class CellWaterMesh
     // The pass's banks take over, whole, so no tile draws from a half-found set.
     void SetBanks()
     {
-        Replace(banks, nextBanks, bankCell);
-        Replace(calm, nextCalm, calmCell);
+        Replace(banks, nextBanks, true);
+        Replace(calm, nextCalm, false);
         (banks, nextBanks) = (nextBanks, banks);
         (calm, nextCalm) = (nextCalm, calm);
         nextBanks.Clear();
@@ -600,20 +683,20 @@ public sealed class CellWaterMesh
 
     // Sets the marks to the new list. A cell that gained or lost one moves the outline round it,
     // with no level moving, so those tiles are redrawn too.
-    void Replace(List<int> was, List<int> now, bool[] marks)
+    void Replace(List<int> was, List<int> now, bool bank)
     {
         var world = grid.World;
         foreach (int key in now)
         {
-            if (marks[key]) continue;
-            marks[key] = true;
+            if (Marked(key, bank)) continue;
+            Mark(key, bank, true);
             changedMarks.Add(key);
         }
         foreach (int key in was) goneMarks.Add(key);
         foreach (int key in now) goneMarks.Remove(key);
         foreach (int key in goneMarks)
         {
-            marks[key] = false;
+            Mark(key, bank, false);
             changedMarks.Add(key);
         }
         foreach (int key in changedMarks) MarkAround(key % world.W, key / world.W, "water.mark.bank");
@@ -622,6 +705,16 @@ public sealed class CellWaterMesh
     }
 
     readonly HashSet<int> goneMarks = new(), changedMarks = new();
+
+    // A cell's bank mark, or its calm one.
+    bool Marked(int key, bool bank) => bank ? cells.Read(key).bank : cells.Read(key).calm;
+
+    void Mark(int key, bool bank, bool on)
+    {
+        ref var c = ref cells.Write(key);
+        if (bank) c.bank = on;
+        else c.calm = on;
+    }
 
     static readonly (int dx, int dy)[] Ring = { (-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1) };
 
@@ -812,11 +905,9 @@ public sealed class CellWaterMesh
 
     // ---------- flow (Prototype/CellWater: its ripples move with the water, foam where it's broken) ----------
 
-    // Each wet cell's flow (world x, z in m/s): the river's current along its course, or water on a
-    // hillside running down it; kept until the ground changes (the river's line doesn't).
-    readonly Vector2[] flowOf;
-    // Which reading of the ground each cell's flow is from: GroundChanged starts a new one.
-    readonly int[] flowRead;
+    // Each wet cell's flow (world x, z in m/s; WaterCell.flow): the river's current along its course, or water on a
+    // hillside running down it; kept until the ground changes (the river's line doesn't). WaterCell.flowRead says which
+    // reading of the ground it's from: GroundChanged starts a new one.
     int flowPass = 1;
     RockWake[] rocks;
     // The rocks near the tile being drawn, read once a draw: where each stands, the way its wake runs
@@ -833,7 +924,8 @@ public sealed class CellWaterMesh
         var world = grid.World;
         if (!world.InBounds(x, y)) return Vector2.zero;
         int key = world.Idx(x, y);
-        if (flowRead[key] == flowPass) return flowOf[key];
+        ref readonly var kept = ref cells.Read(x, y);
+        if (kept.flowRead == flowPass) return kept.flow;
         PerfCounts.Add("water.flow_misses");
         var c = world.CellAt(key);
         var at = grid.CellCenter(x, y);
@@ -841,8 +933,9 @@ public sealed class CellWaterMesh
         var current = WaterCurrents.Instance != null ? WaterCurrents.Instance.At(at) : Vector3.zero;
         var flow = new Vector2(current.x, current.z);
         if (flow.sqrMagnitude < 0.0001f && c.T != TerrainIds.River) flow = Downhill(x, y);
-        flowRead[key] = flowPass;
-        flowOf[key] = flow;
+        ref var read = ref cells.Write(key);
+        read.flowRead = flowPass;
+        read.flow = flow;
         return flow;
     }
 
@@ -1000,8 +1093,7 @@ public sealed class CellWaterMesh
     {
         var world = grid.World;
         if (!world.InBounds(x, y)) return false;
-        int key = world.Idx(x, y);
-        return wetCell[key] && world.CellAt(key).Frozen == frozen;
+        return cells.Read(x, y).wet && world.CellAt(world.Idx(x, y)).Frozen == frozen;
     }
 
     // In, a bank or the other kind where it meets this kind (water beside ice: they meet under each
@@ -1011,7 +1103,7 @@ public sealed class CellWaterMesh
     {
         if (Holds(x, y, frozen)) return 1f;
         if (Holds(x, y, !frozen)) return Beside(x, y, frozen) ? ShoreValue : 0f;
-        return grid.World.InBounds(x, y) && bankCell[grid.World.Idx(x, y)] ? BankValue : 0f;
+        return grid.World.InBounds(x, y) && cells.Read(x, y).bank ? BankValue : 0f;
     }
 
     // Whether one of the 8 cells round (x, y) holds this kind.
@@ -1027,7 +1119,7 @@ public sealed class CellWaterMesh
     {
         if (!Holds(x, y, frozen)) return null;
         // Wet since the pass under way began: it has no level yet, and the cells round it speak for it.
-        float top = tops[grid.World.Idx(x, y)];
+        float top = cells.Read(x, y).top;
         return float.IsNaN(top) ? null : top + (frozen ? IceLift : 0f);
     }
 
@@ -1045,6 +1137,7 @@ public sealed class CellWaterMesh
         }
         tiles.Clear();
         checkSurface?.Destroy();
+        cells.Release();
         Object.Destroy(waterMaterial);
         Object.Destroy(root);
     }
