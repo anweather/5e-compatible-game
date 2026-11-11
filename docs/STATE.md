@@ -7,11 +7,7 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 **HANDOFF 2026-11-10 ~21:30 MST (this lead stops; Andrew moves to the Pro account). Read this block first.**
 Start the new lead with the `unity-lead` skill in `.claude/worktrees/coordinator`, then `bash .claude/skills/status/status.sh`.
-- **The PC (host-ux) was mid-job on `playtest-looks`** (brief `docs/handoffs/briefs/playtest-looks.md`, #220: trees switch
-  too close, pop-in vs fog at the dock, water chunks vanishing, a blue haze band, a white cube at the nine's edge, biome
-  seams, floating bushes, butterflies by biome). Its 6 commits so far (trees to 150 m, pop-in cut at the haze, bushes on the ground, butterflies by biome, the playtestlooks probe; not yet checked with EditMode or a player) were pushed by the lead as a safety net to `origin/playtest-looks` (0549243b). That subagent dies with this session: check `git log origin/playtest-looks`
-  and host-ux's tree (`git -C .claude/worktrees/host-ux status`); commit or keep any WIP there, then hand the rest to a
-  new `unity-task` with the same brief. Don't discard host-ux changes.
+- **`playtest-looks` LANDED 6afbe900** (#220: trees to 150 m, cuts end at the haze's 99% (728 m), bushes on the ground, butterflies by biome; the nine walk 9.41/14.96). Left on #220, needing Andrew's F8 marks with position once `playtest-tools` lands: water chunks vanishing, the white cube, the biome seam; and his eye on the 728 m cut and the blue sea band past the nine's edge. The PC is free.
 - **The Mac** moved to the new account too: its handoff is `docs/handoffs/mac-2026-11-10.md` (6131ebe8). Nothing in flight there; `playtest-tools` (F8 marks with position, HUD coordinates and biome, a dev fly mode) is not started: give it to the new Mac session; it self-lands.
   `mac-landing-frame` landed cc86a149 (#212 #217 closed; F9 shows the frame readout).
 - **u2** is on `generate-switch` (queue: a `"bake": false` map's chunks made on demand, so the 12 x 10 loads). Check
