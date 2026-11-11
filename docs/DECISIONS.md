@@ -24,6 +24,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D15 | [Workers land and pull their own work](adr/0015-workers-land-and-pull-their-own-work.md) | Accepted (2026-11-06) |
 | D16 | [One way to cast: two hands, with a charge](adr/0016-one-way-to-cast-hands-with-a-charge.md) | Accepted (2026-11-07) |
 | D17 | [The sparse World: inactive chunks as their source plus their changes](adr/0017-the-sparse-world.md) | Accepted (2026-11-10) |
+| D18 | [Who did what: the core records an effect's cause](adr/0018-who-did-what.md) | Proposed (2026-11-11) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 
