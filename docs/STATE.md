@@ -12,7 +12,7 @@ Start the new lead with the `unity-lead` skill in `.claude/worktrees/coordinator
   seams, floating bushes, butterflies by biome). Its 6 commits so far (trees to 150 m, pop-in cut at the haze, bushes on the ground, butterflies by biome, the playtestlooks probe; not yet checked with EditMode or a player) were pushed by the lead as a safety net to `origin/playtest-looks` (0549243b). That subagent dies with this session: check `git log origin/playtest-looks`
   and host-ux's tree (`git -C .claude/worktrees/host-ux status`); commit or keep any WIP there, then hand the rest to a
   new `unity-task` with the same brief. Don't discard host-ux changes.
-- **The Mac** is on `playtest-tools` (F8 marks with position, HUD coordinates and biome, a dev fly mode); it self-lands.
+- **The Mac** moved to the new account too: its handoff is `docs/handoffs/mac-2026-11-10.md` (6131ebe8). Nothing in flight there; `playtest-tools` (F8 marks with position, HUD coordinates and biome, a dev fly mode) is not started: give it to the new Mac session; it self-lands.
   `mac-landing-frame` landed cc86a149 (#212 #217 closed; F9 shows the frame readout).
 - **u2** is on `generate-switch` (queue: a `"bake": false` map's chunks made on demand, so the 12 x 10 loads). Check
   with `tools/workers/peek.sh u2`; it can stall waiting on a wakeup (see the rules below); re-brief with -FollowUp.
