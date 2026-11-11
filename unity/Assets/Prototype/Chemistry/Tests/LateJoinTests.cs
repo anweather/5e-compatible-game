@@ -26,6 +26,7 @@ namespace Chem.Tests
             public readonly List<StrikeCommand> Strikes = new List<StrikeCommand>();
             public readonly List<ChunkSwitch> Chunks = new List<ChunkSwitch>();
             public IReadOnlyList<ActiveMod> Mods;
+            public bool Dragon;
         }
 
         /// <summary>A world's checksum at a tick, part by part (NetChem.Checksum's order), the stands apart from the rest of the casts.</summary>
@@ -48,6 +49,7 @@ namespace Chem.Tests
             public readonly Dictionary<int, StampedStrike[]> KeptAt = new Dictionary<int, StampedStrike[]>();
             public readonly Dictionary<int, string[]> Seen = new Dictionary<int, string[]>();
             public readonly List<StampedStrike> AllStrikes = new List<StampedStrike>();
+            public readonly Dictionary<int, JoinSnapshot> Snapshots = new Dictionary<int, JoinSnapshot>();
             public World World;
             public int Ticks;
         }
@@ -57,7 +59,7 @@ namespace Chem.Tests
         /// world as it stands), the stands go through a StandKeeper into the history, the batch runs, then the keeper hears
         /// the tick ran. The history is kept as it stood at each tick, for joiners arriving then.
         /// </summary>
-        static HostRun Host(Func<World> build, int ticks, Action<int, World, Stamp> script)
+        static HostRun Host(Func<World> build, int ticks, Action<int, World, Stamp> script, ICollection<int> snapshotAt = null)
         {
             var run = new HostRun { World = build(), Ticks = ticks };
             var w = run.World;
@@ -81,6 +83,8 @@ namespace Chem.Tests
                 keeper.Ran(t, w.StandReads, RollingHash.WindowFor(w));
                 run.KeptAt[t] = history.ToArray();
                 run.Seen[t] = Parts(w);
+                // Taken between ticks, after this one ran: what a joiner arriving now loads (step 6).
+                if (snapshotAt?.Contains(t) == true) run.Snapshots[t] = JoinSnapshot.Parse(JoinSnapshot.Take(w, w.Source, set).Text());
             }
             return run;
         }
@@ -91,6 +95,7 @@ namespace Chem.Tests
             batch.Combos.AddRange(stamp.Combos);
             batch.Chunks.AddRange(stamp.Chunks);
             batch.Strikes.AddRange(strikes);
+            if (stamp.Dragon) batch.Dragon.Add(new DragonCommand());
             return batch;
         }
 
@@ -339,6 +344,156 @@ namespace Chem.Tests
             Assert.That(bothSides, Is.True, "the chunks either side of the seam active together, the far side of the world not");
             Assert.That(host.World.StrikeText(), Does.Not.Contain(":-").And.Not.Contain($"|wp0:{12 * size + 1}"), "the stands folded");
             AssertJoinersMatch(host, build, new[] { 1, 45, 50, 51, 90, 91, 150, 181, 240, ticks });
+        }
+
+        // ---------- late join from a snapshot (docs/design/player-saves.md, step 6) ----------
+
+        /// <summary>
+        /// A joiner arriving with the host's snapshot at its tick: the world loaded from it, then every batch after it (every
+        /// strike stamped after it too: the stands are in the snapshot), compared with the host's checksum part by part at
+        /// every tick to the end. The first difference, or null.
+        /// </summary>
+        static string SnapshotDifference(HostRun host, JoinSnapshot snapshot, IChunkSource source, int[] land = null)
+        {
+            var (w, set) = snapshot.Join(R, source, land);
+            var strikes = host.AllStrikes.Where(s => s.Tick > snapshot.Tick).ToLookup(s => s.Tick, s => s.Command);
+            for (int t = snapshot.Tick + 1; t <= host.Ticks; t++)
+            {
+                set = Batch(t, host.Stamped[t], strikes[t]).RunOn(w, set, out _);
+                var seen = Parts(w);
+                for (int p = 0; p < seen.Length; p++)
+                    if (seen[p] != host.Seen[t][p]) return $"joined at {snapshot.Tick}: tick {t}, {PartNames[p]}: host {host.Seen[t][p]}, joiner {seen[p]}";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// A world that wraps (12 x 2 chunks, its start kept, so the dragon can come): two players walking over the seam with
+        /// step triggers on, Fireballs, water poured, chunks switched round them by the host's planner, a rule switch that
+        /// raises the height range and back, and the dragon summoned mid-play. Joiners load the host's snapshot at ticks
+        /// before, during and after each, and run as a peer there from the start; so do joiners replaying from tick 0.
+        /// </summary>
+        [Test]
+        public void AJoinerFromASnapshotRunsAsAPeerThereFromTheStart()
+        {
+            const int ticks = 420, size = Chunks.Size;
+            // Laid the game's way: cells written over the source before the start is kept, as ChemGrid lays a map's
+            // puzzles, stamps and rows before StartWorld keeps it. Trees, and pits with water standing in them.
+            Func<World> build = () =>
+            {
+                var w = new World(R, 12 * size, 2 * size, 5, "grass", wrapX: true);
+                for (int y = 0; y < w.H; y += 6)
+                    for (int x = (y * 5) % 13; x < w.W; x += 13) w.Paint(x, y, "tree");
+                for (int x = 100; x < 110; x++)
+                    for (int y = 20; y < 26; y++)
+                    {
+                        w.Paint(x, y, "pit");
+                        w.AddWater(x, y, 4);
+                    }
+                w.KeepStart();
+                return w;
+            };
+            var high = Mod("high", "{ 'sim': { 'height': { 'max': 12, 'blockAt': 12 } } }");
+            var steps = Mod("steps", BoltsAndMeteors);
+            var planner = new ChunkPlanner();
+            var at = new[] { 1, 49, 50, 60, 120, 121, 150, 200, 201, 260, 300, 380 };
+            bool dragonCame = false;
+            var host = Host(build, ticks, (t, w, s) =>
+            {
+                if (t == 1) s.Mods = steps;
+                if (t == 120) s.Mods = steps.Concat(high).ToArray();
+                if (t == 200) s.Mods = steps;
+                int k = t % 180, off = k < 90 ? 2 * k : 360 - 2 * k;
+                var stands = new[] { (w.W - 90 + off, 40), (90 - off, 90) };
+                s.Strikes.Add(StrikeCommand.Stand("p0", stands[0].Item1, stands[0].Item2, 12));
+                s.Strikes.Add(StrikeCommand.Stand("p1", stands[1].Item1, stands[1].Item2, 12));
+                if (t == 50) s.Casts.Add(new CastCommand("fireball", 0, 64, 1, by: "p0"));
+                if (t == 60) s.Casts.Add(new CastCommand("create-water", 20, 30, 1, by: "p1"));
+                if (t == 150) s.Casts.Add(new CastCommand("fire-bolt", w.W - 4, 100, 1, by: "p1"));
+                if (t == 260) s.Dragon = true;
+                s.Chunks.AddRange(t == 1 ? ChunkStreaming.StartPlan(w, stands) : planner.Plan(w, stands));
+                dragonCame |= w.Dragon != null;
+            }, at);
+            Assert.That(dragonCame, Is.True, "the dragon came");
+            Assert.That(host.World.TriggeredCasts, Is.GreaterThan(10), "the walks fire triggers");
+            foreach (int t in at)
+                Assert.That(SnapshotDifference(host, host.Snapshots[t], new FillSource("grass")), Is.Null, $"snapshot at {t}");
+            AssertJoinersMatch(host, build, new[] { 1, 200, ticks });
+        }
+
+        /// <summary>
+        /// docs/design/player-saves.md, question 8: a world that changed cells before it kept its start (the trees here; the
+        /// game's puzzles and map stamps, laid before StartWorld keeps it) comes back from a snapshot with that start, so
+        /// the dragon's audit counts the same changes and its checksum part runs on the same.
+        /// </summary>
+        [Test]
+        public void AStartLaidBeforeKeepStartComesBackFromASnapshot()
+        {
+            Func<World> build = () =>
+            {
+                var w = new World(R, 2 * Chunks.Size, Chunks.Size, 5, "grass");
+                for (int y = 0; y < w.H; y += 6)
+                    for (int x = (y * 5) % 13; x < w.W; x += 13) w.Paint(x, y, "tree");
+                w.KeepStart();
+                return w;
+            };
+            var host = Host(build, 30, (t, w, s) => { }, new[] { 1 });
+            Assert.That(SnapshotDifference(host, host.Snapshots[1], new FillSource("grass")), Is.Null);
+        }
+
+        [Test]
+        public void ASnapshotThatDoesntFitIsRefusedSayingWhy()
+        {
+            const int size = Chunks.Size;
+            Func<World> build = () => new World(R, 3 * size, size, 5, "grass");
+            var high = Mod("high", "{ 'sim': { 'height': { 'max': 12, 'blockAt': 12 } } }");
+            var host = Host(build, 20, (t, w, s) =>
+            {
+                if (t == 2) s.Mods = high;
+                if (t == 5) s.Casts.Add(new CastCommand("fireball", 40, 30, 1, by: "p0"));
+            }, new[] { 20 });
+            var snapshot = host.Snapshots[20];
+            Assert.That(snapshot.Join(R, new FillSource("grass")).world.CellHash(), Is.EqualTo(host.World.CellHash()), "it fits as it is");
+
+            // Another map: the source isn't the host's.
+            var map = Assert.Throws<SaveException>(() => snapshot.Join(R, new FillSource("sand")));
+            StringAssert.Contains("made by", map.Message);
+            // Other base rules: its mods composed on them aren't what it was saved under.
+            var otherRules = R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"strike\": { \"reach\": 3 } } }") });
+            var rules = Assert.Throws<SaveException>(() => snapshot.Join(otherRules, new FillSource("grass")));
+            StringAssert.Contains("rules", rules.Message);
+            // A world that doesn't come back to the checksum it was taken with (a part the save misses would show here).
+            var tampered = JoinSnapshot.Parse(snapshot.Text().Replace("\"checksum\":[\"" + snapshot.Checksum[0], "\"checksum\":[\"00000000"));
+            var drift = Assert.Throws<SaveException>(() => tampered.Join(R, new FillSource("grass")));
+            StringAssert.Contains("doesn't come back to the host's world", drift.Message);
+            // Not a snapshot at all, or another format.
+            Assert.Throws<SaveException>(() => JoinSnapshot.Parse("{ not json"));
+            Assert.Throws<SaveException>(() => JoinSnapshot.Parse("{ \"format\": 9 }"));
+        }
+
+        [Test]
+        public void ASnapshotOverOtherLandIsRefused()
+        {
+            const int size = Chunks.Size;
+            int[] Land() => Enumerable.Range(0, 2 * size * size).Select(i => (i % 7) - 3).ToArray();
+            Func<World> build = () =>
+            {
+                var w = new World(R, 2 * size, size, 5, "grass");
+                w.SetLand(Land());
+                return w;
+            };
+            var host = Host(build, 10, (t, w, s) =>
+            {
+                if (t == 3) s.Casts.Add(new CastCommand("create-water", 30, 30, 1, by: "p0"));
+            }, new[] { 10 });
+            var snapshot = host.Snapshots[10];
+            Assert.That(SnapshotDifference(host, snapshot, new FillSource("grass"), Land()), Is.Null, "given the host's land");
+            var none = Assert.Throws<SaveException>(() => snapshot.Join(R, new FillSource("grass")));
+            StringAssert.Contains("map's land", none.Message);
+            var other = Land();
+            other[5] += 1;
+            var wrong = Assert.Throws<SaveException>(() => snapshot.Join(R, new FillSource("grass"), other));
+            StringAssert.Contains("other land", wrong.Message);
         }
 
         [Test]

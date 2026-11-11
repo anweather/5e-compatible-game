@@ -523,12 +523,80 @@ namespace Chem
             var start = new JObject();
             if (startGolf != null) start["golf"] = GolfRow(startGolf);
             save["start"] = start;
+            SaveStarts(start);
             save["audit"] = new JArray(DragonFlights, auditAt);
             var d = Dragon;
             if (d != null) save["dragon"] = new JArray((int)d.Phase, d.Until, d.AlongX, d.FromFar, d.Back, d.Pass, d.Passes, d.Travelled, d.Done);
         }
 
-        // Before the save's cells are laid over: the world has just been made from the source, so it's the starting state.
+        // The start's own cells, where they aren't what its source makes: what the map laid before KeepStart (puzzles, map
+        // stamps, rows) and what mods' buildings put in since, by chunk, in SavePacked's form. A load can't make them again
+        // from the source alone (late-join-snapshot, question 8: the save keeps them). None when the start is the source's,
+        // so those saves read as they did.
+        void SaveStarts(JObject start)
+        {
+            var chunksOut = new JArray();
+            Cell c = new Cell(), made = new Cell();
+            foreach (var ch in SortedChunks(false))
+            {
+                var p = ch.Start;
+                if (p == null || (p.Count == 0 && p.FireAt.Length == 0)) continue;
+                var o = new JObject { ["x"] = ch.X, ["y"] = ch.Y };
+                var cells = new JArray();
+                for (int k = 0; k < p.Count; k++)
+                {
+                    int i = p.At[k], x = CellX(ch, i), y = CellY(ch, i);
+                    made.Reset();
+                    startSource.Make(x, y, made);
+                    c.Reset();
+                    startSource.Make(x, y, c);
+                    LayPacked(p, k, c);
+                    cells.Add(SaveCell(i, c, LiquidsOf(ch)));
+                }
+                if (cells.Count > 0) o["cells"] = cells;
+                if (p.FireAt.Length > 0) o["fireGen"] = new JArray(p.FireAt.Select((i, f) => new JArray(i, p.FireGen[f])));
+                chunksOut.Add(o);
+            }
+            if (chunksOut.Count > 0) start["chunks"] = chunksOut;
+        }
+
+        // Once the chunks are laid and fit: each chunk's start made from the save's record of it, one pass a chunk.
+        void LoadStarts(JObject s)
+        {
+            if (!(s["start"]?["chunks"] is JArray saved)) return;
+            Cell c = new Cell(), made = new Cell();
+            foreach (var o in saved.OfType<JObject>())
+            {
+                var ch = FindChunk((int)o["x"], (int)o["y"]) ?? throw new SaveException($"This save doesn't fit: no chunk ({o["x"]}, {o["y"]}) for its start");
+                var at = new List<int>();
+                var cells = new List<PackedCell>();
+                var rares = new List<PackedRare>();
+                foreach (var a in (o["cells"] as JArray ?? new JArray()).OfType<JArray>())
+                {
+                    int i = (int)a[0];
+                    made.Reset();
+                    startSource.Make(CellX(ch, i), CellY(ch, i), made);
+                    c.Reset();
+                    LoadCell(c, a, LiquidsOf(ch));
+                    at.Add(i);
+                    cells.Add(PackCell(c, made, rares));
+                }
+                var fire = (o["fireGen"] as JArray ?? new JArray()).OfType<JArray>().ToList();
+                ch.Start = new PackedChunk
+                {
+                    X = ch.X,
+                    Y = ch.Y,
+                    At = at.ToArray(),
+                    Cells = cells.ToArray(),
+                    Rares = rares.ToArray(),
+                    FireAt = fire.Select(f => (int)f[0]).ToArray(),
+                    FireGen = fire.Select(f => (int)f[1]).ToArray(),
+                };
+            }
+        }
+
+        // Before the save's cells are laid over: the world has just been made from the source, so it's the starting state
+        // (each chunk's own start, where the map laid more, comes after the cells: LoadStarts).
         void LoadStart(JObject s)
         {
             if (!(s["start"] is JObject start)) return;

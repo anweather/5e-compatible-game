@@ -226,6 +226,37 @@ namespace Chem.Tests
             Assert.That(State(loaded), Is.EqualTo(State(straight)), $"tick {straight.Tick}");
         }
 
+        // Question 8 (late-join-snapshot): the valley keeps its start after its puzzles, map stamps and rows are laid
+        // (ChemGrid), and a save keeps that start. Loaded, then summoned, the dragon puts back the map as laid (the
+        // Gauntlet's pits with their water, the rows, the puzzles), as it does in the world never saved.
+        [Test]
+        public void ADragonAfterALoadPutsBackWhatTheMapLaid()
+        {
+            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var straight = GameValley(dir, out var source, out var land);
+            straight.KeepStart();
+            int mx = straight.W / 2, my = straight.H / 2;
+            straight.Cast("fireball", 285, 433, 1); // in the Gauntlet: its pits are laid by puzzles.json
+            straight.Cast("fireball", mx, my, 1);
+            for (int t = 0; t < 30; t++) straight.Step();
+            string save = straight.Save(source);
+            Assert.That(save, Does.Contain("\"chunks\":[{\"x\""), "the save keeps the laid start");
+            var loaded = World.Load(save, R, source, land: land);
+            Assert.That(loaded.DragonText(), Is.EqualTo(straight.DragonText()));
+            foreach (var w in new[] { straight, loaded }) w.ApplyDragon(new DragonCommand());
+            bool came = false;
+            for (int t = 0; t < 6000 && (!came || straight.Dragon != null); t++)
+            {
+                straight.Step();
+                loaded.Step();
+                came |= straight.Dragon != null;
+                if (t % 200 == 0) Assert.That(loaded.DragonText(), Is.EqualTo(straight.DragonText()), $"tick {straight.Tick}");
+            }
+            Assert.That(came && straight.Dragon == null, Is.True, "the dragon came and went");
+            Assert.That(State(loaded), Is.EqualTo(State(straight)));
+            Assert.That(loaded.At(285, 433).T, Is.EqualTo(straight.At(285, 433).T));
+        }
+
         [Test]
         public void ASaveGivenLandIsRefusedWithoutItOrWithOther()
         {

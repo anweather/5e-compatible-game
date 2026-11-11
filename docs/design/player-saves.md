@@ -184,6 +184,70 @@ land stamp and a placed thing.
    rules still match, else start fresh and say why.
 6. **(L)** Late join from a snapshot: the host's world save at tick T, then replay from T, checked by hash on join.
    A two-peer probe.
+   **Built, core half (`late-join-snapshot`):**
+   - **`JoinSnapshot`** (`Chemistry/JoinSnapshot.cs`) holds:
+     - the host's world save at tick T, taken between ticks;
+     - the mods in force outside a room (a room's mods are in its save);
+     - the host's checksum at T, part by part, in `NetChem.Checksum`'s order.
+
+     Its text is one line of JSON, the same on every machine.
+   - **`Join(baseRules, source, land)`:**
+     - loads the save over the joiner's own map, rules and land, and rebuilds the `RuleSet` to run batches with;
+     - checks the loaded world against the host's checksum before any tick, so a part the save misses shows at once,
+       named, not ticks later as a desync;
+     - is refused, saying why, for another map ("made by ..."), other rules ("saved under other rules"), land missing
+       or different ("the map's land", "other land"), or a world that doesn't come back to the checksum.
+   - **The stands:** the world save now keeps them (`stands`, written only when there are some, so other saves read
+     as before). They're in the checksum, and a snapshot joiner doesn't have the strike history to rebuild them.
+   - **Tests** (`LateJoinTests`):
+     - `AJoinerFromASnapshotRunsAsAPeerThereFromTheStart`: a wrapping world, two players walking over the seam with
+       step triggers, Fireballs, water, the planner's chunk switches, a rule switch and back, and the dragon.
+       Snapshots taken at 12 ticks before, during and after each join and replay to tick 420. Every checksum part
+       equals the host's at every tick.
+     - `ASnapshotThatDoesntFitIsRefusedSayingWhy`, `ASnapshotOverOtherLandIsRefused`.
+   - **Cost** (Release, `SparseWorldBench.ASnapshotsBytesAndTime`, after 60 ticks of play):
+
+     | Map | Size | Gzipped | Taken in | Joined in |
+     |---|---|---|---|---|
+     | The valley (81 chunks) | 258 KB | 40 KB | 77 ms | 148 ms |
+     | The nine (729 chunks) | 354 KB | 60 KB | 310 ms | 229 ms |
+
+     Taking it is a hitch on the host's frame (the save's diff against the source), so it wants a frame of its own or
+     a worker. Join's time is the joiner's.
+   - **Found, then fixed (`snapshot-start`, question 8 (a)): a world save didn't keep the dragon's start.**
+     - **The bug:** a load took the start to be the source as made, with mods' buildings and golf put back. The game
+       keeps its start *after* laying the map's puzzles, map stamps and rows (`ChemGrid.MapWorld`, then
+       `StartWorld`'s `KeepStart`). So a loaded world's start lacked them, its audit counted other changes, and the
+       dragon's checksum part moved the next tick. A dragon's reset after a solo load would have put back the source,
+       not the map.
+     - **The fix:** the save keeps each chunk's start where it isn't what its source makes (`start.chunks`: cells,
+       and fire generations, in `SavePacked`'s form). A load makes each start from that, in one pass a chunk, once the
+       chunks are laid and fit. It's written only when some chunk's start differs, so other saves, and every golden,
+       are as they were.
+     - **Tests:** `AStartLaidBeforeKeepStartComesBackFromASnapshot` (now a normal test). The main snapshot test, with
+       its trees and water-filled pits laid before `KeepStart` as the game lays a map.
+       `SaveTests.ADragonAfterALoadPutsBackWhatTheMapLaid`: the valley saved after play, loaded with its land, the
+       dragon summoned on both, and the same world after the reset, the Gauntlet's pits included. All three fail
+       without the fix.
+     - **Cost** (Release, `SparseWorldBench.ASnapshotsBytesAndTime`, two runs; the start is the map's laid rows,
+       puzzles and stamps):
+
+       | Map | Size | Gzipped | Taken in | Joined in |
+       |---|---|---|---|---|
+       | The valley | 400 KB | 53 KB | 86 to 88 ms | 141 to 196 ms |
+       | The nine | 533 KB | 75 KB | 115 to 221 ms | 214 to 237 ms |
+
+   - **What the net layer (`Scripts/Net/NetChem.cs`) would need** (not built):
+     1. **The host:** when a peer joins, take a `JoinSnapshot` between ticks (`World`, `world.Source`, the `RuleSet`
+        it runs) and send its text gzipped. It's 40 to 60 KB, past one NGO message, so it goes as a fragmented
+        reliable message or a named message stream. The batches from T + 1 follow, not the timeline from tick 0.
+     2. **The joiner:** `JoinSnapshot.Parse(...).Join(baseRules, source, ValleyChemistry.LandOf(world), budgets)`, then
+        bind the view to the loaded World as a reset does (cells, things, stands, the drawn tier), then run batches
+        from T + 1 with the usual checksums. On a `SaveException`, show why and fall back to today's full replay.
+     3. **The timeline:** the host may then keep batches only since its last snapshot, and `StandKeeper` the strike
+        history only since then.
+     4. **Taking it off the frame:** at worst ~300 ms on the nine, so a frame of its own, or done on a worker from a
+        copy taken between ticks.
 7. **(M)** Autosave, every few minutes and on a discovery. Writes are off the main thread for the file, but the save
    text is made between ticks.
 8. **(S, later)** Kept items and the wizard's look in the player save, once inventory (BACKLOG 5) lands.
@@ -231,3 +295,6 @@ land stamp and a placed thing.
    world goes home with you.
 7. **The land in a save:** resolved, B (the lead, 2026-11-11). The save keeps the NoLand marks and the rows' hash, and
    `Load` takes the map's land rows. Built in `save-land`; see "The land".
+8. **The dragon's start in a save:** resolved, (a) (the lead's call, 2026-11-11; open for Andrew to veto). The save
+   keeps each chunk's start where it isn't what the source makes (`start.chunks`, cells in `SavePacked`'s form), and a
+   load makes each chunk's start from it. Built in `snapshot-start`; see step 6.
