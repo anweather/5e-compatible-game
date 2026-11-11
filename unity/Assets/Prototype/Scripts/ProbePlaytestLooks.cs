@@ -150,19 +150,26 @@ public class PlaytestLooksProbe : ProbeScenario
         var falls = GameObject.Find("Falls water");
         var dock = GameObject.Find("Dock");
         if (falls == null || dock == null) yield break;
-        var eye = Mountain(dock, falls);
+        var eye = Mountain(falls);
         var ahead = dock.transform.position - eye;
         for (int i = 0; i < 3; i++)
             yield return View($"water-{i}", eye, eye + Quaternion.Euler(0f, -35f + 35f * i, 0f) * ahead, i == 0 ? Settle : 1.5f);
     }
 
-    // The mountain by the falls: 20 m past the falls from the dock, 30 m over its ground.
-    Vector3 Mountain(GameObject dock, GameObject falls)
+    // The mountain by the falls: the highest ground within 300 m of the falls, 3 m over it (a follow camera's eye).
+    Vector3 Mountain(GameObject falls)
     {
-        var d = dock.transform.position;
-        var away = falls.transform.position - d;
-        away.y = 0f;
-        return OnGround(d + away.normalized * (away.magnitude + 20f), Up);
+        var f = falls.transform.position;
+        var top = f;
+        top.y = float.MinValue;
+        for (float dz = -300f; dz <= 300f; dz += 12f)
+            for (float dx = -300f; dx <= 300f; dx += 12f)
+            {
+                var p = f + new Vector3(dx, 0f, dz);
+                float y = grid.GroundAt(p);
+                if (y > top.y) top = new Vector3(p.x, y, p.z);
+            }
+        return top + Vector3.up * 3f;
     }
 
     // Far off: the four quarters from the mountain by the falls, a little down; then the nine's edge from 250 m up.
@@ -171,7 +178,7 @@ public class PlaytestLooksProbe : ProbeScenario
         var falls = GameObject.Find("Falls water");
         var dock = GameObject.Find("Dock");
         if (falls == null || dock == null) yield break;
-        var eye = Mountain(dock, falls);
+        var eye = Mountain(falls);
         string[] names = { "north", "east", "south", "west" };
         for (int i = 0; i < 4; i++)
         {
@@ -179,6 +186,7 @@ public class PlaytestLooksProbe : ProbeScenario
             yield return View($"far-{names[i]}", eye, eye + dir * 1000f + Vector3.down * 60f, i == 0 ? Settle : 2f);
         }
         var high = eye + Vector3.up * 250f;
+        Metric("mountain_top_y", eye.y);
         yield return View("far-edge-high", high, high + new Vector3(-1000f, -300f, -1000f), 3f);
     }
 
@@ -204,7 +212,7 @@ public class PlaytestLooksProbe : ProbeScenario
         Floating();
     }
 
-    // The first cell with a biome of its own (out of the pinned square) going east of a cell, else north, west, south.
+    // The first cell of a biome other than the valley's temperate going east of a cell, else north, west, south.
     Vector2Int FirstBiomeCell(BiomeGround biomes, Vector2Int from)
     {
         foreach (var step in new[] { new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(-1, 0), new Vector2Int(0, 1) })
@@ -212,7 +220,7 @@ public class PlaytestLooksProbe : ProbeScenario
             {
                 var c = from + step * k;
                 if (!World.InBounds(c.x, c.y)) break;
-                if (biomes.BiomeAt(c.x, c.y) != null) return c;
+                if (biomes.BiomeAt(c.x, c.y) is { } b && b != "temperate") return c;
             }
         return new Vector2Int(-1, -1);
     }
