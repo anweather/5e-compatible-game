@@ -59,6 +59,68 @@ namespace Chem
             return errors;
         }
 
+        /// <summary>
+        /// Errors, unless this folder is byte for byte one a clean check of this build recorded in <paramref name="record"/>
+        /// (a file the caller keeps, in the player's own data): then none, for the cost of hashing the folder (island-startup).
+        /// A check that finds nothing records it. An edited map, a new build of the game, or no record runs the whole check;
+        /// tests call Errors(worldDir), which always does.
+        /// </summary>
+        public static List<string> Errors(string worldDir, string record)
+        {
+            if (string.IsNullOrEmpty(record)) return Errors(worldDir);
+            string key = RecordKey(worldDir);
+            try
+            {
+                if (File.Exists(record) && File.ReadAllText(record).Trim() == key) return new List<string>();
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                // No record to read: check it all.
+            }
+            var errors = Errors(worldDir);
+            if (errors.Count > 0) return errors;
+            try
+            {
+                string folder = Path.GetDirectoryName(Path.GetFullPath(record));
+                if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
+                File.WriteAllText(record, key);
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                // Not recorded: the next start checks it all again.
+            }
+            return errors;
+        }
+
+        // What a clean check is recorded under: the folder's hash and this build of the checks (a new build checks again).
+        static string RecordKey(string worldDir) => FolderHash(worldDir) + " " + typeof(MapCheck).Assembly.ManifestModule.ModuleVersionId.ToString("N");
+
+        /// <summary>
+        /// The bytes of every file in a map's folder, and their names relative to it, in order: FNV-1a, 64 bits, as hex. Any
+        /// edit to the map, its land or its rows changes it.
+        /// </summary>
+        public static string FolderHash(string worldDir)
+        {
+            string root = Path.GetFullPath(worldDir);
+            var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories)
+                .Select(f => (path: f, name: f.Substring(root.Length).TrimStart('/', '\\').Replace('\\', '/')))
+                .OrderBy(f => f.name, StringComparer.Ordinal);
+            ulong hash = 14695981039346656037UL;
+            var buffer = new byte[1 << 20];
+            foreach (var (path, name) in files)
+            {
+                foreach (char c in name) hash = (hash ^ c) * 1099511628211UL;
+                hash = (hash ^ 0) * 1099511628211UL;
+                using (var stream = File.OpenRead(path))
+                {
+                    int n;
+                    while ((n = stream.Read(buffer, 0, buffer.Length)) > 0)
+                        for (int k = 0; k < n; k++) hash = (hash ^ buffer[k]) * 1099511628211UL;
+                }
+            }
+            return hash.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         // The places a map dresses are named once each, in the place names' form (lower case, words joined by '-').
         static void CheckDresses(MapFile map, List<string> errors)
         {
