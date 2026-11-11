@@ -159,8 +159,11 @@ public sealed class TreeImpostors : MonoBehaviour
         var layout = MapLand.Current?.Layout;
         var cam = Camera.main;
         if (!Ready(terrains, layout, cam)) return;
-        var eye = cam.transform.position;
         var chunks = terrains.Chunks;
+        // The terrains are made for the map the scene started on: a joiner that takes the host's map has the new map's
+        // layout before its terrains, and the old map's chunks can't be read by the new layout's numbers.
+        if (chunks.Length != layout.ChunksX * layout.ChunksZ) return;
+        var eye = cam.transform.position;
         wanted.Clear();
         stale.Clear();
         toStand.Clear();

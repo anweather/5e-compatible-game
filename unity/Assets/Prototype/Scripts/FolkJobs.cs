@@ -60,32 +60,30 @@ public sealed class FolkJobs
     /// <summary>The quickest way on foot between two cells, cell by cell; empty if there's none.</summary>
     public static List<(int x, int y)> Way(Land land, (int x, int y) from, (int x, int y) to)
     {
-        var cost = new float[land.Cells];
-        var came = new int[land.Cells];
-        Array.Fill(cost, float.MaxValue);
+        // The cells reached so far, by index: their cost from the start, the cell they were reached from, and where they
+        // are. Only those the search reaches, never an array a cell of the map (8 bytes a cell, 318 MB a walk on the
+        // 12 x 10; J-086).
         var open = new SortedSet<(float rank, int key, int x, int y)>();
         int start = land.Index(from.x, from.y), goal = land.Index(to.x, to.y);
-        cost[start] = 0f;
-        came[start] = -1;
         open.Add((0f, start, from.x, from.y));
-        var cells = new Dictionary<int, (int x, int y)> { [start] = from };
+        var reached = new Dictionary<int, (float cost, int came, int x, int y)> { [start] = (0f, -1, from.x, from.y) };
         while (open.Count > 0)
         {
             var now = open.Min;
             open.Remove(now);
-            if (now.key == goal) return Back(came, cells, goal);
+            if (now.key == goal) return Back(reached, goal);
+            float here = reached[now.key].cost;
             for (int v = now.y - 1; v <= now.y + 1; v++)
                 for (int u = now.x - 1; u <= now.x + 1; u++)
                 {
                     if ((u == now.x && v == now.y) || !land.Inside(u, v) || !land.Open(u, v)) continue;
                     if (u != now.x && v != now.y && (!land.Open(u, now.y) || !land.Open(now.x, v))) continue;
                     int key = land.Index(u, v);
-                    float through = cost[now.key] + land.Step(now.x, now.y, u, v);
-                    if (through >= cost[key]) continue;
-                    if (cost[key] < float.MaxValue) open.Remove((cost[key] + Left(land, u, v, to), key, u, v));
-                    cost[key] = through;
-                    came[key] = now.key;
-                    cells[key] = (u, v);
+                    float through = here + land.Step(now.x, now.y, u, v);
+                    bool seen = reached.TryGetValue(key, out var was);
+                    if (seen && through >= was.cost) continue;
+                    if (seen) open.Remove((was.cost + Left(land, u, v, to), key, u, v));
+                    reached[key] = (through, now.key, u, v);
                     open.Add((through + Left(land, u, v, to), key, u, v));
                 }
         }
@@ -96,10 +94,10 @@ public sealed class FolkJobs
     static float Left(Land land, int x, int y, (int x, int y) to) =>
         land.CellMetres * math.sqrt((x - to.x) * (x - to.x) + (y - to.y) * (y - to.y)) / RoadPace;
 
-    static List<(int x, int y)> Back(int[] came, Dictionary<int, (int x, int y)> cells, int goal)
+    static List<(int x, int y)> Back(Dictionary<int, (float cost, int came, int x, int y)> reached, int goal)
     {
         var way = new List<(int x, int y)>();
-        for (int k = goal; k >= 0; k = came[k]) way.Add(cells[k]);
+        for (int k = goal; k >= 0; k = reached[k].came) way.Add((reached[k].x, reached[k].y));
         way.Reverse();
         return way;
     }
