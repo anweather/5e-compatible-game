@@ -23,16 +23,23 @@ namespace Chem.Tests
         {
             readonly List<string> lines = new List<string>();
             readonly long before = Live();
-            long allocated = GC.GetTotalAllocatedBytes(true);
+            long allocated = Allocated();
             readonly Stopwatch watch = Stopwatch.StartNew();
 
             public void Mark(string phase)
             {
-                long now = GC.GetTotalAllocatedBytes(true), made = now - allocated, live = Live() - before;
+                long now = Allocated(), made = now - allocated, live = Live() - before;
                 allocated = now;
                 lines.Add($"BUILD {phase,-28} {watch.Elapsed.TotalMilliseconds,7:0} ms  allocated {Mb(made),8:0.0} MB  live after {Mb(live),8:0.0} MB");
                 watch.Restart();
             }
+
+            // Bytes allocated so far. Unity's .NET profile has no GC.GetTotalAllocatedBytes (dotnet has), so it's found by
+            // reflection, and is 0 in the Editor, where only the live column means anything.
+            static readonly System.Reflection.MethodInfo TotalAllocated =
+                typeof(GC).GetMethod("GetTotalAllocatedBytes", new[] { typeof(bool) });
+
+            static long Allocated() => TotalAllocated == null ? 0 : (long)TotalAllocated.Invoke(null, new object[] { true });
 
             // What's live on the heap, collected first: a measuring test's only use of the collector (as ScaleIslandTests).
 #pragma warning disable S1215
