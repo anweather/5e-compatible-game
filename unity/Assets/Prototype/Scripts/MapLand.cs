@@ -12,6 +12,8 @@ public sealed class MapLand
     public readonly TerrainGrid Layout;
     /// <summary>The land, row by row, in land units; all at the sea level when the map has no land.json.</summary>
     public readonly int[] Land;
+    /// <summary>Whether Land is the map's land.json (not the sea level all over for want of one).</summary>
+    public readonly bool FromFile;
     public readonly SeaMask Sea;
     /// <summary>The height the sea and the lakes are drawn at (m).</summary>
     public readonly float WaterLevel;
@@ -49,11 +51,20 @@ public sealed class MapLand
         Map = MapFile.Load(dir);
         Layout = Map.Layout();
         string path = Path.Combine(dir, MapFile.LandName);
-        Land = File.Exists(path) ? LandFile.Read(File.ReadAllText(path), Map.W, Map.H) : Filled(Map.W * Map.H, Map.SeaLevel);
+        FromFile = File.Exists(path);
+        Land = FromFile ? LandFile.Read(File.ReadAllText(path), Map.W, Map.H) : Filled(Map.W * Map.H, Map.SeaLevel);
         Sea = SeaMask.Of(Land, Map.W, Map.H, Map.SeaLevel);
         WaterLevel = (float)Map.WaterMetres;
         Seaward = Map.Seaward is { } s ? new Vector2((float)s.x, (float)s.z).normalized : LowWay();
         Shore = Map.SeaShore is { } o ? new Vector2((float)o.x, (float)o.z) : Middle;
+    }
+
+    /// <summary>The map's land.json was written again (Bake Valley Land): the next Current reads it afresh.</summary>
+    public static void Forget()
+    {
+        current?.Release();
+        current = null;
+        currentDir = null;
     }
 
     static int[] Filled(int n, int value)
