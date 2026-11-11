@@ -17,19 +17,40 @@ namespace Chem.Mcp
         const string LatestProtocol = "2025-06-18";
         const int NoMethod = -32601, BadParams = -32602, BadRequest = -32600, BadJson = -32700;
 
-        readonly RulesTools tools;
+        readonly Func<RulesTools> make;
+        readonly object making = new object();
+        RulesTools tools;
         readonly string name, version;
         readonly Dictionary<string, MethodInfo> methods = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
 
-        public McpRpc(RulesTools tools, string name, string version)
+        public McpRpc(RulesTools tools, string name, string version) : this(() => tools, name, version)
         {
-            this.tools = tools;
+        }
+
+        McpRpc(Func<RulesTools> make, string name, string version)
+        {
+            this.make = make;
             this.name = name;
             this.version = version;
             foreach (var m in typeof(RulesTools).GetMethods())
             {
                 var tool = m.GetCustomAttribute<RulesToolAttribute>();
                 if (tool != null) methods[tool.Name] = m;
+            }
+        }
+
+        /// <summary>
+        /// One whose tools are made at the first tool call, not before: initialize, ping and tools/list need only their
+        /// names, so a game starts up without loading the rules for the chat until Claude asks for something (#153).
+        /// A make that throws is tried again at the next call.
+        /// </summary>
+        public static McpRpc Deferred(Func<RulesTools> make, string name, string version) => new McpRpc(make, name, version);
+
+        RulesTools Tools
+        {
+            get
+            {
+                lock (making) return tools ??= make();
             }
         }
 
@@ -116,10 +137,20 @@ namespace Chem.Mcp
             tool = (string)given["name"];
             if (tool == null || !methods.TryGetValue(tool, out var method)) return Failure(id, BadParams, $"There's no tool {tool}.");
             var arguments = given["arguments"] as JObject ?? new JObject();
+            RulesTools made;
+            try
+            {
+                made = Tools;
+            }
+            catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException || e is JsonException || e is ModException)
+            {
+                // The rules couldn't be read just now: an error for this call, and the next one tries again.
+                return Result(id, ToolResult($"The game's tools couldn't start: {e.Message}", true));
+            }
             try
             {
                 var values = method.GetParameters().Select(p => ValueOf(p, arguments)).ToArray();
-                string said = (string)method.Invoke(tools, values);
+                string said = (string)method.Invoke(made, values);
                 ok = !said.Contains(" refused:");
                 return Result(id, ToolResult(said, false));
             }
