@@ -31,6 +31,11 @@ public class PlaytestLooksProbe : ProbeScenario
         Metric("terrains_drawn_chunks", MapTerrains.Sight());
 
         var spawn = wizard.transform.position;
+        yield return Places(spawn);
+    }
+
+    protected virtual IEnumerator Places(Vector3 spawn)
+    {
         yield return Trees(spawn);
         yield return Dock();
         yield return Water();
@@ -40,7 +45,7 @@ public class PlaytestLooksProbe : ProbeScenario
     }
 
     // Puts the wizard under the eye (the rings and tiles follow it), cuts to the view, waits for it to settle, shoots.
-    IEnumerator View(string label, Vector3 eye, Vector3 at, float settle = Settle)
+    protected IEnumerator View(string label, Vector3 eye, Vector3 at, float settle = Settle)
     {
         Teleport(new Vector3(eye.x, grid.GroundAt(eye) + 0.05f, eye.z));
         for (float t = 0f; t < settle; t += Time.deltaTime)
@@ -53,7 +58,7 @@ public class PlaytestLooksProbe : ProbeScenario
         yield return null;
     }
 
-    Vector3 OnGround(Vector3 p, float up) => new(p.x, grid.GroundAt(p) + up, p.z);
+    protected Vector3 OnGround(Vector3 p, float up) => new(p.x, grid.GroundAt(p) + up, p.z);
 
     // A sparse wood: of points round the spawn, the one with the fewest trees within 150 m but some past 60 m, and none
     // within 12 m; looked at toward those trees.
@@ -270,5 +275,38 @@ public class PlaytestLooksProbe : ProbeScenario
         var critters = FindAnyObjectByType<AmbientCritters>();
         if (critters == null) return;
         Metric("butterfly_homes_last_view", critters.Homes().butterflies);
+    }
+}
+
+// The lake and the sea on the nine (#220, look-water): the eye walked from the valley's lake east to the sea on the coast
+// 20 m over the water, a still every 40 m of the way looking along it and one looking back; per stop, the water's level
+// under the eye as the lake's mesh draws it and the sea's, and the sea's tiles laid (a tile gone missing or a lake at
+// its own level beside the sea shows here and in the stills).
+public class PlaytestWaterProbe : PlaytestLooksProbe
+{
+    protected override IEnumerator Places(Vector3 spawn)
+    {
+        var ocean = Ocean.Instance;
+        Check("ocean_up", ocean != null, ocean == null ? "no ocean" : "up");
+        if (ocean == null) yield break;
+        Metric("sea_level_m", ocean.level);
+        Metric("lake_level_m", grid.valley != null ? grid.valley.lakeLevel : float.NaN);
+        var dock = GameObject.Find("Dock");
+        Check("dock_found", dock != null, "the coast's Dock");
+        if (dock == null) yield break;
+        var d = dock.transform.position;
+        var out_ = new Vector3(ocean.seaward.x, 0f, ocean.seaward.y).normalized;
+        Metric("seaward_x", out_.x);
+        Metric("seaward_z", out_.z);
+        foreach (var (label, up, back, look) in new[] { ("low", 4f, 0f, 400f), ("mid", 60f, 80f, 400f), ("high", 250f, 150f, 600f), ("flat", 20f, 0f, 3000f) })
+        {
+            var eye = new Vector3(d.x, Mathf.Max(ocean.level, grid.GroundAt(d)) + up, d.z) - out_ * back;
+            yield return View($"dock-{label}", eye, eye + out_ * look + Vector3.down * (label == "flat" ? 10f : up * 0.4f), 6f);
+            var (tiles, _, coarse) = ocean.Counts;
+            Metric($"{label}_sea_tiles", tiles);
+            Metric($"{label}_coarse_vertices", coarse);
+        }
+        yield return View("dock-turn-a", new Vector3(d.x, ocean.level + 30f, d.z), new Vector3(d.x, ocean.level, d.z) + out_ * 200f + Vector3.Cross(Vector3.up, out_) * 150f, 3f);
+        yield return View("dock-turn-b", new Vector3(d.x, ocean.level + 30f, d.z), new Vector3(d.x, ocean.level, d.z) + out_ * 200f - Vector3.Cross(Vector3.up, out_) * 150f, 3f);
     }
 }

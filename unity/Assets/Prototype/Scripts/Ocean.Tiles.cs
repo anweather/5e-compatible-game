@@ -1,3 +1,4 @@
+using Chem;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -80,12 +81,24 @@ public partial class Ocean
         ClearCoarse();
         coarseFor = builtFor;
         var (us, vs) = Grid(CoarseStep);
-        var m = Lay(us, vs, (_, outward) => Shelf(outward), "Sea far");
+        var m = Lay(us, vs, CoarseDepth, "Sea far");
         if (m == null) return;
         mesh = m;
         coarseMaterial = new Material(material) { name = "Sea far", renderQueue = material.renderQueue - 1, hideFlags = HideFlags.DontSave };
         coarse = Surface("Sea far", m, coarseMaterial, swell: false);
         coarse.transform.localPosition = Vector3.down * CoarseBelow;
+    }
+
+    // The depth the coarse sea carries (its colour and its see-through): the bed's under it from the land, as the tile beside
+    // it is measured, not the shelf's 3 m. Off the map, or on the map's shoals, the tile's is no deeper than the land says, so the
+    // sea doesn't change colour where the tiles end (#220).
+    float CoarseDepth(Vector2 xz, float outward)
+    {
+        var map = builtFor;
+        if (map == null) return Shelf(outward);
+        var c = map.CellOf(xz);
+        if (c.x < 0 || c.y < 0 || c.x >= map.Map.W || c.y >= map.Map.H) return Shelf(outward);
+        return Mathf.Max(level - (float)(map.Land[c.y * map.Map.W + c.x] * MapFile.LandUnitMetres), 0f);
     }
 
     void ClearCoarse()

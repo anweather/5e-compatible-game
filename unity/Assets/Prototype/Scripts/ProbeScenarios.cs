@@ -289,6 +289,9 @@ public static class ProbeScenarios
         new Entry("playtestlooks", typeof(PlaytestLooksProbe), 240f,
             "On the nine (unity/Temp/map = nine): the places of Andrew's playtest of 2026-11-10 (#220) from fixed eyes at 11 in clear weather, into --shots: a sparse wood at eye height, the coast's dock from the mountain by the falls at the near-layer cut and either side, the lake and the sea, the far view to the four quarters and the edge from above, the valley's edge where the biome ground starts, a brush patch. " +
             "Metrics: the cuts in force, brush dressing off its ground, butterfly homes. Checks: on the nine, each place found."),
+        new Entry("playtestwater", typeof(PlaytestWaterProbe), 240f,
+            "On the nine (unity/Temp/map = nine): the eye walked 20 m over the water from the valley's lake east to the sea, a still every 40 m looking along the way and every other one looking back (#220), with the sea's level, the lake's, and the sea's tiles laid at each stop. " +
+            "Checks: the ocean up."),
         new Entry("tiersweep", typeof(TierSweepProbe), 1200f,
             "On the nine (unity/Temp/map = nine): sweeps the three tier dials (docs/design/world-12x8-scope.md): active 1/2/3 (streaming reach, keep one more, as a rule switch), drawn 2/4/7 and known 4/7/12 (this peer's view, FarRing.SetView; drawn at most known), " +
             "the eye flying a square a chunk a side round the spawn for --seconds (default 10) per setting once the known ring has settled. Metrics per setting a<A>_d<D>_k<K>_: mean_ms, p95_ms, mem_allocated_mb, mem_reserved_mb, active_chunks, terrains_drawn, known_meshes, known_settle_ms, known_worker_ms; " +
