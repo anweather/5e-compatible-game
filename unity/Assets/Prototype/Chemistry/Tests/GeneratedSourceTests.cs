@@ -203,6 +203,81 @@ namespace Chem.Tests
 
         static Rules With(string streaming) => R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"streaming\": " + streaming + " } }") });
 
+        // core-guards: a source that holds far fewer chunks than the walk passes lets them go and makes them again as they're
+        // read once more (GeneratedSource's eviction); the World it feeds must run as one whose source never lets a chunk go.
+        // Each peer plans for itself, as a host would: the planner asks its own world's source to make ahead.
+        [Test]
+        public void AChunkLetGoAndMadeAgainRunsTheSame()
+        {
+            var small = new GeneratedSource(GeneratedMap.Load(map), R, 48);
+            var whole = Source();
+            var tight = Peer(small);
+            var roomy = Peer(whole);
+            var walk = new Walk(small.Start, 4 * Chunks.Size);
+            var planners = new[] { new ChunkPlanner(), new ChunkPlanner() };
+            var peers = new[] { roomy, tight };
+            for (int t = 0; t < 900; t++)
+            {
+                var me = new[] { walk.At(t) };
+                for (int k = 0; k < 2; k++)
+                {
+                    var w = peers[k];
+                    ChunkStreaming.Apply(w, planners[k].Plan(w, me));
+                    if (t % 90 == 45) w.Cast("fire-bolt", me[0].x + 6, me[0].y, 1);
+                    w.Step();
+                }
+                if (t % 50 == 49) Assert.That(tight.CellHash(), Is.EqualTo(roomy.CellHash()), $"tick {t}");
+            }
+            Assert.That(tight.CellHash(), Is.EqualTo(roomy.CellHash()));
+            foreach (var (cx, cy) in roomy.ActiveChunks) Assert.That(tight.ChunkHash(cx, cy), Is.EqualTo(roomy.ChunkHash(cx, cy)), $"chunk ({cx}, {cy})");
+            TestContext.Out.WriteLine($"GENERATE eviction: held at most 48, made {small.Made} chunks, {small.MadeAgain} of them again; never letting go, {whole.Made}");
+            Assert.That(small.MadeAgain, Is.GreaterThan(0), "the small source let chunks go and made them again");
+        }
+
+        // core-guards: MakeNow, which ChunkStreaming.Apply calls for the chunks about to activate, keeps to the hold as a read
+        // does, but never lets go of a chunk it was just asked for: those are about to be read.
+        [Test]
+        public void MakeNowKeepsToTheHold()
+        {
+            var src = new GeneratedSource(GeneratedMap.Load(map), R, 24);
+            src.MakeNow(Enumerable.Range(0, 40).Select(k => (k % 9, k / 9)));
+            Assert.That(src.HeldCount, Is.EqualTo(40), "a call's own chunks are kept, even past the hold");
+            var next = Enumerable.Range(40, 10).Select(k => (k % 9, k / 9)).ToList();
+            src.MakeNow(next);
+            Assert.That(src.HeldCount, Is.LessThanOrEqualTo(24));
+            Assert.That(next.All(c => src.IsMade(c.Item1, c.Item2)), Is.True, "the chunks just asked for are still held");
+        }
+
+        // core-guards: a client never plans (the host's planner asks its own source to make ahead), so its chunks are made
+        // only by MakeNow and on reads. Walked across many chunks with a small hold, it keeps to the hold and runs as the host.
+        [Test]
+        public void AClientsSourceKeepsToItsHold()
+        {
+            const int hold = 24;
+            var small = new GeneratedSource(GeneratedMap.Load(map), R, hold);
+            var host = Peer(Source());
+            var client = Peer(small);
+            var walk = new Walk(small.Start, 4 * Chunks.Size);
+            var planner = new ChunkPlanner();
+            int most = 0;
+            for (int t = 0; t < 900; t++)
+            {
+                var me = new[] { walk.At(t) };
+                var plan = planner.Plan(host, me);
+                foreach (var w in new[] { host, client })
+                {
+                    ChunkStreaming.Apply(w, plan);
+                    if (t % 90 == 45) w.Cast("fire-bolt", me[0].x + 6, me[0].y, 1);
+                    w.Step();
+                }
+                if (t > 0) most = Math.Max(most, small.HeldCount);
+                if (t % 50 == 49) Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()), $"tick {t}");
+            }
+            TestContext.Out.WriteLine($"GENERATE a client's hold: {hold}, held at most {most} after the build, made {small.Made}, {small.MadeAgain} again");
+            Assert.That(most, Is.LessThanOrEqualTo(hold));
+            Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()));
+        }
+
         [Test]
         public void TwoPeersAndLateJoinersAgree()
         {

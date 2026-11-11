@@ -227,16 +227,31 @@ namespace Chem
         /// <summary>Loaded chunks (or only the active ones) by row then column, never in the store's own order.</summary>
         List<Chunk> SortedChunks(bool activeOnly)
         {
-            if (sortedChunks == null)
-            {
-                var all = new List<Chunk>(chunks.Values);
-                all.Sort((a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.X.CompareTo(b.X));
-                sortedChunks = all.ToArray();
-            }
-            var list = new List<Chunk>(activeOnly ? 16 : sortedChunks.Length);
-            foreach (var ch in sortedChunks) if (ch.Active || !activeOnly) list.Add(ch);
+            var all = ChunksInOrder;
+            var list = new List<Chunk>(activeOnly ? 16 : all.Length);
+            foreach (var ch in all) if (ch.Active || !activeOnly) list.Add(ch);
             return list;
         }
+
+        // Every chunk by row then column: what each pass over all of them walks, never the store's own order. A
+        // Dictionary's is the order its chunks were made in, which a world making them as they're wanted wouldn't share
+        // with its peers (core-review-0). Sorted once as chunks are added (AddChunk drops it), then read with no garbage.
+        Chunk[] ChunksInOrder
+        {
+            get
+            {
+                if (sortedChunks == null)
+                {
+                    var all = new Chunk[chunks.Count];
+                    chunks.Values.CopyTo(all, 0);
+                    Array.Sort(all, ByRowThenColumn);
+                    sortedChunks = all;
+                }
+                return sortedChunks;
+            }
+        }
+
+        static readonly Comparison<Chunk> ByRowThenColumn = (a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.X.CompareTo(b.X);
 
         /// <summary>Row segments for one row of chunks (active[first..last], left to right), clipped to the extent.</summary>
         void AddRowSpans(List<Chunk> active, int first, int last, List<RowSpan> list)

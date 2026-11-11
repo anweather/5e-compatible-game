@@ -77,6 +77,14 @@ namespace Chem
         public long Made => Interlocked.Read(ref made);
         public long MadeAhead => Interlocked.Read(ref madeAhead);
         public long Waits => Interlocked.Read(ref waits);
+        /// <summary>Chunks made again after being let go (the hold's eviction): the same chunk as the first time, made twice.</summary>
+        public long MadeAgain
+        {
+            get
+            {
+                lock (gate) return madeAgain;
+            }
+        }
 
         /// <summary>Chunks a read made one at a time on the World's thread, not made ahead or at once (MakeNow): each a stall of milliseconds.</summary>
         public long MadeOnRead => Interlocked.Read(ref madeOnRead);
@@ -95,8 +103,15 @@ namespace Chem
         }
 
         /// <summary>A generated map's source, under the rules it's played with.</summary>
-        public GeneratedSource(GeneratedMap map, Rules rules)
+        public GeneratedSource(GeneratedMap map, Rules rules) : this(map, rules, Holds)
         {
+        }
+
+        /// <summary>One holding at most <paramref name="holds"/> chunks made: a test's, to see chunks let go and made again.</summary>
+        public GeneratedSource(GeneratedMap map, Rules rules, int holds)
+        {
+            if (holds < 1) throw new ArgumentOutOfRangeException(nameof(holds), "it holds at least one chunk");
+            this.holds = holds;
             if (map == null) throw new ArgumentNullException(nameof(map));
             gen = map.Gen;
             legend = new LegendCells(rules ?? throw new ArgumentNullException(nameof(rules)));
@@ -172,21 +187,37 @@ namespace Chem
             var c = gen.Make(cx, cy);
             Interlocked.Add(ref makeTicks, Stopwatch.GetTimestamp() - started);
             Interlocked.Increment(ref made);
+            lock (gate)
+                if (!everMade.Add(Chunks.Key(cx, cy))) madeAgain++;
             return c;
         }
 
-        // A chunk made: held, and the oldest let go past Holds.
+        // Every chunk made once, to count those made again: at most the map's chunks (9,720 on the 12 x 10).
+        readonly HashSet<long> everMade = new HashSet<long>();
+        long madeAgain;
+
+        // How many chunks made it holds at most (Holds, unless a test says fewer).
+        readonly int holds;
+
+        // A chunk made: held, and the oldest let go past holds.
         void Finish(Held h, GeneratedChunk c)
         {
             lock (gate)
             {
                 h.Chunk = c;
-                if (held.Count <= Holds) return;
-                var old = new List<Held>();
-                foreach (var e in held.Values) if (e.Chunk != null && e != h) old.Add(e);
-                old.Sort((a, b) => a.Used.CompareTo(b.Used));
-                for (int k = 0; k < old.Count && held.Count > Holds * 3 / 4; k++) held.Remove(old[k].Key);
+                Trim(e => e == h);
             }
+        }
+
+        // Past the hold, the chunks made longest unused let go, down to three quarters of it; never one being made, or one
+        // the caller is about to read (kept). Under the gate.
+        void Trim(Func<Held, bool> kept)
+        {
+            if (held.Count <= holds) return;
+            var old = new List<Held>();
+            foreach (var e in held.Values) if (e.Chunk != null && !kept(e)) old.Add(e);
+            old.Sort((a, b) => a.Used.CompareTo(b.Used));
+            for (int k = 0; k < old.Count && held.Count > holds * 3 / 4; k++) held.Remove(old[k].Key);
         }
 
         public void Ahead(IEnumerable<(int cx, int cy)> chunks)
@@ -260,16 +291,26 @@ namespace Chem
             var seen = new HashSet<long>();
             lock (gate)
                 foreach (var (cx, cy) in chunks)
-                    if (cx >= 0 && cy >= 0 && cx < cw && cy < ch && !held.ContainsKey(Chunks.Key(cx, cy)) && seen.Add(Chunks.Key(cx, cy))) want.Add((cx, cy));
+                {
+                    if (cx < 0 || cy < 0 || cx >= cw || cy >= ch || !seen.Add(Chunks.Key(cx, cy))) continue;
+                    if (held.TryGetValue(Chunks.Key(cx, cy), out var h)) h.Used = ++uses; // asked for again: kept
+                    else want.Add((cx, cy));
+                }
             var got = new GeneratedChunk[want.Count];
             Parallel.For(0, want.Count, k => got[k] = MakeTimed(want[k].cx, want[k].cy));
             lock (gate)
+            {
                 for (int k = 0; k < want.Count; k++)
                 {
                     long key = Chunks.Key(want[k].cx, want[k].cy);
                     if (held.ContainsKey(key)) continue;
                     held.Add(key, new Held { Key = key, Chunk = got[k], Used = ++uses });
                 }
+                // Kept to the hold as a chunk made on a read is (Finish), but none of these: they're about to be read. A
+                // client's chunks come only this way and on reads (the worker's are the host's planner's), so without it
+                // the held chunks grew with every chunk a character activated (core-guards).
+                Trim(e => seen.Contains(e.Key));
+            }
         }
 
         /// <summary>

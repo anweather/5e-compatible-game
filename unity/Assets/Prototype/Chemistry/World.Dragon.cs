@@ -130,10 +130,10 @@ namespace Chem
         public bool HasStart => startSource != null;
 
         /// <summary>The cells the starting state holds apart from its source (each chunk's changes), for the memory it takes.</summary>
-        public int StartShapes => startSource == null ? 0 : chunks.Values.Sum(ch => ch.Start.Count);
+        public int StartShapes => startSource == null ? 0 : ChunksInOrder.Sum(ch => ch.Start.Count);
 
         /// <summary>What the starting state holds, its chunks' changes, in bytes (those a packed chunk shares with it counted too).</summary>
-        public long StartBytes => startSource == null ? 0 : chunks.Values.Sum(ch => ch.Start.Bytes);
+        public long StartBytes => startSource == null ? 0 : ChunksInOrder.Sum(ch => ch.Start.Bytes);
 
         /// <summary>Raised for each chunk reset, in the tick's dragon stage. For the view: a handler must not change the world.</summary>
         public event Action<ChunkFresh> ChunkFreshened;
@@ -149,7 +149,7 @@ namespace Chem
             // Given a source, every chunk is as it makes it; else a packed chunk's changes are its start as they stand (a
             // PackedChunk never changes), and an unpacked chunk's are diffed from its block.
             startSource = source ?? Source;
-            foreach (var ch in chunks.Values)
+            foreach (var ch in ChunksInOrder)
                 ch.Start = source != null ? PackedChunk.Empty(ch.X, ch.Y) : ch.Packed ?? Changes(ch, ch.Held);
             startGolf = Golf?.Copy();
             auditChunks = SortedChunks(false).ToArray();
@@ -612,7 +612,7 @@ namespace Chem
         void TotalChanged()
         {
             ChangedCount = 0;
-            foreach (var ch in chunks.Values) ChangedCount += ch.Changed;
+            foreach (var ch in ChunksInOrder) ChangedCount += ch.Changed;
         }
     }
 }
