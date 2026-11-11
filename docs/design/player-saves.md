@@ -188,6 +188,35 @@ land stamp and a placed thing.
    text is made between ticks.
 8. **(S, later)** Kept items and the wizard's look in the player save, once inventory (BACKLOG 5) lands.
 
+## Status (2026-11-11)
+
+| Step | State | Waits on |
+|---|---|---|
+| 1. Field guard, real-map round trip | **Built** (`saves-guard`, `save-land`; on dev) | |
+| 2. Glossary words, stable player id | **Words in** (**player save**, **world save**, **player id**). **`PlayerId` built as a type only** (`saves-glossary-id`), used nowhere yet | Question 4 (profiles), then `Scripts/` |
+| 3. The player save file | **Built** (`player-save-file`, with `"\n"` on every machine; on dev) | |
+| 4. The grimoire brought by `ComboCommand.Bring` | Not started: it *is* the grimoire moving to the player save | Question 6 (and question 5: whether a host may ignore what's brought) |
+| 5. Solo save and load in the game | Not started (`Scripts/`) | Question 1 (slots), question 2 (rules drift); question 4 for whose player save |
+| 6. Late join from a snapshot | Not started; no question blocks it | Question 3 (whose world) only for what a guest keeps |
+| 7. Autosave | Not started; after step 5 | Question 1 |
+| 8. Kept items, the wizard's look | Not started | Inventory (BACKLOG 5) |
+
+**`PlayerId`** (`Chemistry/PlayerId.cs`, `PlayerIdTests`):
+- **The value:** an opaque value type, 1 to 64 of a-z, 0-9, `-` and `_`, compared as written.
+- **Made once:** `PlayerId.New` makes one from 16 random bytes the caller brings, so the core draws no randomness.
+  It's never made from a client number or any other per-session value.
+- **Reading:** `TryParse` / `Parse` / `Problem` read one back and say what's wrong. A session's name for a player
+  (`"p"` and digits, `"solo"`) is refused, so the two can't be taken for each other.
+- **Where `p{clientId}` is made and read today:**
+  - It's made only in the view: `NetChem.PlayerName` (`Scripts/Net/NetChem.cs:314`). It's used there for the local
+    player (311), a player leaving (254), the strike and combo intents' senders (487, 495) and a cast's caster
+    (`CastIntent.ToCommand`, 785).
+  - The core carries it as an opaque string (`CastCommand.By`, `ComboCommand.Player`, `StrikeCommand`, the hands,
+    the Hold's points, course runs). It reads the form in one place: `TriggerDef.PeerOf` (`Rules.Triggers.cs:94`)
+    turns `"p<n>"` into "Player n+1", called from `World.Golf.cs:164` and `World.Triggers.cs:88, 102, 111, 145`.
+  - Swapping in a `PlayerId` touches `NetChem` (the view) and those `PeerOf` sites (a peer's name would come from
+    the id, not parsed from it). That waits on question 4.
+
 ## Open questions for Andrew
 
 1. **Slots:** one world save per map (it just continues), or named slots a player picks from?
