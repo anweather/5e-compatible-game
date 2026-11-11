@@ -150,6 +150,11 @@ namespace Chem
         public readonly bool[] SnapNeighbourActive = new bool[4];
         /// <summary>The snapshot is from the last water pass (false after activating, unpacking or a rule switch).</summary>
         public bool SnapValid;
+        /// <summary>
+        /// Its land is made when first read, from the rows SetLandByChunk was given and its cells as its source makes them
+        /// (World.cs): it was its source's when the land was set, so that's what SetLand would have seen.
+        /// </summary>
+        public bool LandLater;
         /// <summary>Nothing the water pass reads changed since the last pass.</summary>
         public bool Unchanged;
         /// <summary>How many passes in a row it has been Unchanged (a thick liquid must sit out its turn first).</summary>
