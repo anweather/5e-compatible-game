@@ -60,6 +60,23 @@ namespace Chem.Tests
             Assert.That(new PlayerSave(Temp()).Text(), Is.EqualTo("{\n  \"version\": 2,\n  \"points\": 0,\n  \"known\": []\n}\n"), "no id, none written");
         }
 
+        // The same progress is the same text on a Mac and a PC: "\n" whatever Environment.NewLine is, and a save written
+        // with "\r\n" (by hand, or by a build before this) still reads.
+        [Test]
+        public void TheTextIsTheSameOnEveryMachine()
+        {
+            var s = new PlayerSave(Temp(), "ann");
+            s.Raise(5);
+            s.Known.Add("mud-wall");
+            Assert.That(s.Text(), Does.Not.Contain("\r"));
+            string folder = Temp();
+            File.WriteAllText(FileIn(folder), s.Text().Replace("\n", "\r\n"));
+            var back = Read(folder);
+            Assert.That((back.Id, back.Points, back.Trouble), Is.EqualTo(("ann", 5, (string)null)));
+            Assert.That(back.Known, Is.EqualTo(new[] { "mud-wall" }));
+            Assert.That(back.Text(), Is.EqualTo(s.Text()), "and writes it back as \"\\n\"");
+        }
+
         [Test]
         public void TheHoldsOldProgressFileLoads()
         {

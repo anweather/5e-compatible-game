@@ -264,6 +264,19 @@ namespace Chem.Tests
             return hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        // A world save is one line of JSON (Formatting.None): no line ends at all, so nothing in it follows
+        // Environment.NewLine, and a Mac host's save is a Windows joiner's byte for byte. Its land too (landSet).
+        [Test]
+        public void AWorldSaveHasNoLineEnds()
+        {
+            var source = new Meadow(W, H);
+            var w = Played(source);
+            w.SetLand(new int[W * H]);
+            string save = w.Save(source);
+            Assert.That(save, Does.Contain("\"landSet\""));
+            Assert.That(save, Does.Not.Contain("\n").And.Not.Contain("\r"));
+        }
+
         [Test]
         public void ASaveOfALoadIsTheSaveAgain()
         {

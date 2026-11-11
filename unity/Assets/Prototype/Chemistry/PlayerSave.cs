@@ -83,7 +83,13 @@ namespace Chem
             if (Id != null) o["id"] = Id;
             o["points"] = Points;
             o["known"] = new JArray(Known.Cast<object>().ToArray());
-            return o.ToString(Formatting.Indented) + "\n";
+            // "\n" on every machine: Formatting.Indented alone writes Environment.NewLine, "\r\n" on Windows, and the same
+            // progress must be the same text on a Mac and a PC. Read either way (JObject.Parse takes both).
+            using (var text = new StringWriter(System.Globalization.CultureInfo.InvariantCulture) { NewLine = "\n" })
+            {
+                using (var json = new JsonTextWriter(text) { Formatting = Formatting.Indented, Indentation = 2 }) o.WriteTo(json);
+                return text + "\n";
+            }
         }
 
         // Reads a save into this one; false, and nothing changed, if it isn't a good save.
