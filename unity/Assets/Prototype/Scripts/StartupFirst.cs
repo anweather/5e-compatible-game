@@ -8,6 +8,8 @@ public sealed class StartupFirst : MonoBehaviour
 {
     void Start() => StartupTimeline.Mark("first frame: Starts begin");
 
+    void FixedUpdate() => StartupTimeline.Mark("first frame: first FixedUpdate");
+
     void Update()
     {
         StartupTimeline.Mark("first frame: Starts done, Updates begin");
