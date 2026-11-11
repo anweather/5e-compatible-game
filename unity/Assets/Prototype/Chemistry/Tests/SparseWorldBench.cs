@@ -151,7 +151,11 @@ namespace Chem.Tests
         {
             // The bake's folder by the map's own name, as a player build has it (MapCheck checks the two agree).
             string bake = IslandBaked(), dir = Path.Combine(Path.GetDirectoryName(bake), "scale-12x10");
+#if UNITY_5_3_OR_NEWER
+            if (!Directory.Exists(dir)) Assert.Ignore("Unity's .NET has no Directory.CreateSymbolicLink; dotnet test core runs this");
+#else
             if (!Directory.Exists(dir)) Directory.CreateSymbolicLink(dir, bake);
+#endif
             var check = Stopwatch.StartNew();
             var errors = MapCheck.Errors(dir);
             double checkMs = check.Elapsed.TotalMilliseconds;
