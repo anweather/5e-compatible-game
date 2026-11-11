@@ -95,11 +95,14 @@ namespace Chem
         {
             string title = TitleOf(c);
             RuleSet next = null;
+            Rules checkedRules = null;
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer)
                 ?? (c.Mod.Length == 0 ? "the mod has no id" : null)
                 ?? (Room.Mods.Any(m => m.Id == c.Mod) ? $"{title} is already on; revert it first" : null)
-                ?? Checks(title, c.Json)
-                ?? Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next)
+                ?? Checks(title, c.Json, out checkedRules)
+                ?? (checkedRules != null
+                    ? Composed(new ActiveMod(c.Mod, c.Json), checkedRules, out next)
+                    : Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next))
                 ?? SiteProblem(next.Effective, title)
                 ?? LiveProblem(next, title);
             if (why != null) return Refused(c, why);
@@ -144,12 +147,16 @@ namespace Chem
         }
 
         /// <summary>ModValidator on the patch against the rules in force here: null if it passes, else its first problem.</summary>
-        string Checks(string title, string json)
+        // Checks, handing back the rules the checks composed (the rules in force with the mod), when the rules in force are
+        // the room's own: then they're the rules switching it on puts in force, and aren't composed twice (#155).
+        string Checks(string title, string json, out Rules composed)
         {
+            composed = null;
             IReadOnlyList<ModProblem> problems;
             try
             {
-                problems = ModValidator.Validate(Rules, roomBudgets, json, TempMaterials.Owners(TemporaryMaterials));
+                problems = ModValidator.Validate(Rules, roomBudgets, json, TempMaterials.Owners(TemporaryMaterials), out var checkedRules);
+                if (ReferenceEquals(Rules, RoomRules?.Effective)) composed = checkedRules;
             }
             // InvalidOperationException is Newtonsoft reading a field of a string or a number (#79): the checks
             // refuse the shapes known to do that, and this keeps one they miss a refusal on every peer, not a throw.
@@ -161,6 +168,13 @@ namespace Chem
             if (OwnerProblem(title, json) is string owner) return owner;
             string more = problems.Count == 1 ? "" : $" (and {problems.Count - 1} more)";
             return $"{title} doesn't pass the checks: {problems[0].Message.TrimEnd('.')}{more}";
+        }
+
+        // The room's mods and this one, from the rules the checks composed: null, as they fit (the checks composed them).
+        string Composed(ActiveMod mod, Rules composed, out RuleSet next)
+        {
+            next = RoomRules.Adding(mod, composed);
+            return null;
         }
 
         /// <summary>The room's base rules with these mods over them, in order: null if they fit, else why not.</summary>

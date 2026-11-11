@@ -29,6 +29,34 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState} {Last(w)}";
 
+        // #155: switching a mod on puts in force the rules its checks composed (the rules in force with it), not a second
+        // compose of the base with every mod. They must be the same rules, to the byte, as that second compose made: every
+        // shipped mod switched on in turn, each check against RuleSet.Compose of the mods on so far.
+        [Test]
+        public void ASwitchPutsInForceTheSameRulesAsComposingThemAgain()
+        {
+            var w = Room(ChangeMode.Open);
+            var on = new List<ActiveMod>();
+            var names = Directory.GetFiles(Path.Combine(ChemistryTests.RulesDir(), "mods"), "*.json").Select(Path.GetFileNameWithoutExtension).OrderBy(n => n, System.StringComparer.Ordinal).ToList();
+            foreach (string name in names)
+            {
+                if (!w.ApplyRoom(RoomCommand.Apply("Ana", name, Mod(name))).Done) continue;
+                on.Add(new ActiveMod(name, Mod(name)));
+                var again = RuleSet.Compose(R, on);
+                Assert.That(w.RoomRules.Effective.Fingerprint, Is.EqualTo(again.Effective.Fingerprint), name);
+                Assert.That(w.RoomRules.Effective.ToJson(), Is.EqualTo(again.Effective.ToJson()), name);
+                Assert.That(w.Rules.Fingerprint, Is.EqualTo(again.Effective.Fingerprint), name);
+                Assert.That(w.RoomRules.Mods.Select(m => m.Id), Is.EqualTo(on.Select(m => m.Id)), name);
+                w.Step();
+            }
+            Assert.That(on.Count, Is.GreaterThanOrEqualTo(5), "most shipped mods switch on together");
+            // Taken off and on again, the same.
+            Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", on[0].Id)).Done, Is.True);
+            Assert.That(w.ApplyRoom(RoomCommand.Apply("Ana", on[0].Id, on[0].Json)).Done, Is.True);
+            var reordered = on.Skip(1).Append(on[0]).ToList();
+            Assert.That(w.RoomRules.Effective.ToJson(), Is.EqualTo(RuleSet.Compose(R, reordered).Effective.ToJson()));
+        }
+
         // ---------- a rebuilt world ----------
 
         [Test]
