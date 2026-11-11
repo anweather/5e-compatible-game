@@ -29,6 +29,54 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState} {Last(w)}";
 
+        // #155: a switch's checks and compose prepared ahead on a worker (World.PrepareSwitch, RoomSwitchPrep.Run) while the
+        // world ticks, then used at the tick the command lands, against a room doing it all in the tick: the same verdicts,
+        // rules, cells and save every tick. A prep made against rules that changed since (a revert in between) isn't used.
+        [Test]
+        public void APreparedSwitchIsTheSameAsOneDoneInTheTick()
+        {
+            var plain = Room(ChangeMode.Open);
+            var prepped = Room(ChangeMode.Open);
+            var commands = new Dictionary<int, RoomCommand>
+            {
+                [5] = RoomCommand.Apply("Ana", "moonstone", Mod("moonstone")),
+                [10] = RoomCommand.Apply("Ana", "nonsense", "{ \"nonsense\": 1 }"),
+                [15] = RoomCommand.Revert("Ana", "moonstone"),
+                [20] = RoomCommand.Apply("Ana", "wildfire", Mod("wildfire")),
+            };
+            // Each switch-on prepared three ticks ahead, but wildfire's before the revert at 15: stale by its tick.
+            var prepAt = new Dictionary<int, int> { [2] = 5, [7] = 10, [13] = 20 };
+            var preps = new Dictionary<int, (RoomSwitchPrep prep, System.Threading.Tasks.Task run)>();
+            for (int t = 0; t < 30; t++)
+            {
+                if (prepAt.TryGetValue(t, out int lands))
+                {
+                    var prep = prepped.PrepareSwitch(commands[lands]);
+                    preps[lands] = (prep, System.Threading.Tasks.Task.Run(prep.Run));
+                }
+                if (commands.TryGetValue(t, out var c))
+                {
+                    RoomSwitchPrep prep = null;
+                    if (preps.TryGetValue(t, out var p))
+                    {
+                        p.run.Wait();
+                        prep = p.prep;
+                    }
+                    var a = plain.ApplyRoom(c);
+                    var b = prepped.ApplyRoom(c, prep);
+                    Assert.That((b.Done, b.Reason, b.Line), Is.EqualTo((a.Done, a.Reason, a.Line)), $"tick {t}");
+                }
+                plain.Step();
+                prepped.Step();
+                Assert.That(State(prepped), Is.EqualTo(State(plain)), $"tick {t}");
+            }
+            Assert.That(preps[5].prep.Used, Is.True, "moonstone's prep was used");
+            Assert.That(preps[10].prep.Used, Is.True, "the refused mod's prep was used, and refused the same");
+            Assert.That(preps[20].prep.Used, Is.False, "wildfire's, made before the revert, wasn't");
+            Assert.That(prepped.RoomRules.Effective.ToJson(), Is.EqualTo(plain.RoomRules.Effective.ToJson()));
+            Assert.That(prepped.Save(prepped.Source), Is.EqualTo(plain.Save(plain.Source)));
+        }
+
         // #155: switching a mod on puts in force the rules its checks composed (the rules in force with it), not a second
         // compose of the base with every mod. They must be the same rules, to the byte, as that second compose made: every
         // shipped mod switched on in turn, each check against RuleSet.Compose of the mods on so far.
