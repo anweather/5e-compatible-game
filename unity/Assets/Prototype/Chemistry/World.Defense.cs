@@ -137,7 +137,7 @@ namespace Chem
             }
             if (RaiderAt(nx, ny) != null) return; // wait for the one ahead
             bool rough = Rough(p, At(r.X, r.Y), to);
-            r.X = nx;
+            r.X = FoldX(nx);
             r.Y = ny;
             r.Wait = PaceOf(def) - 1 + (rough ? p.RoughTicks : 0);
             Thorns(r, to);

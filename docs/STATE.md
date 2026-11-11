@@ -5,6 +5,28 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
+**Handoff 2026-11-10 ~20:30 MST (lead out of usage; the other account picks up). Start: `unity-lead` skill in
+`.claude/worktrees/coordinator`, read this section, then `bash .claude/skills/status/status.sh`.**
+- **`view-map-arrays` LANDED 3459b5a1: the Scale Island loads in a player on dev.** Its nine `online` failures all fail on dev too (#218: water, things, reset checksums on the nine; needs its own job). **Andrew's playtest of the nine (2026-11-10 ~21:00), #220:** looks to the PC (`docs/handoffs/briefs/playtest-looks.md`: trees switch too close, pop-in against the fog at the dock, water chunks vanishing, a blue haze band, a white cube at the edge, biome seams, floating bushes, butterflies by biome), tools to the Mac after its job (`playtest-tools.md`: F8 marks with position, HUD coordinates and biome, a dev fly mode). His play log is in the lead's scratchpad. **Next on the PC: playtest-looks, before seam-view.** **`sim-across-the-seam` LANDED 802f38e7** (the World wraps east-west; the nine walk 9.19/14.49). Next: **u2** `generate-switch` (queued: a `"bake": false` map's chunks made by ChunkGen on demand, so the 12 x 10 loads); **the PC** `docs/handoffs/briefs/seam-view.md` (the view across the seam: items 1-2 and the camera can start now). #219 a flaky landing-gate test. Was: **The PC now compiles `sim-across-the-seam`** (a71402d5; EditMode, smoke, online, the nine walk); land it if clean, then give u2's view list for the seam to the PC as the next job.
+- **Was running on the PC:** a `unity-task` comparing `tools/probe.sh online` on the nine, dev against
+  `view-map-arrays` (85ec9b74). It may have finished, been stopped, or pushed a fix on that branch: check
+  `git log origin/view-map-arrays` and the work log. Land `view-map-arrays` (`land.sh auto view-map-arrays --compiled`)
+  if the branch fails nothing dev doesn't; it makes the Scale Island load in a player. If unclear, rerun that comparison
+  (the Editor was fresh after a reboot, ~13 GB free).
+- **Next for the PC, in order:** compile u2's `sim-across-the-seam` (a71402d5: the 12 x 10's east-west wrap in the World;
+  then land it and give the view list in its report to the PC); #145 (find the job that sets the Mono heap's peak, on a
+  fresh Editor); profile the Scale Island's bot-walk spikes (10.17/23.59 ms, 69 frames over 30 ms; leave the Mac's cast
+  redraw alone).
+- **The Mac** was sent `mac-landing-frame` (#212, #217; brief `docs/handoffs/briefs/mac-landing-frame-and-readout.md`)
+  at ~20:15; no read receipt; it self-lands. **u2** is idle: queue its next core job (the seam's follow-ups, or #168).
+- **Andrew has:** a playtest build of dev (`host-ux/unity/Builds/Playtest-2026-11-10/Play the Nine.cmd`); his play logs
+  (`play-log-*.csv` beside Player.log, F8 marks) come first for any lag report. Open calls of his: the tick allowance
+  (3 ms a frame) and whether to tune the nine's dry country greener.
+- **Rules learned today:** read cells only on the main thread (an unpack off the World's thread throws); rebuild the
+  yard before every full EditMode run (an Untitled-scene save dialog blocks the Editor); never run `dotnet test` beside
+  EditMode; one player at a time; workers must not wait on ScheduleWakeup (headless sessions never wake); a landed
+  branch's claim in `queue/taken/` sometimes stays and blocks the queue: delete it.
+
 **Handoff 2026-11-10 ~19:30 MST: Andrew is rebooting the PC.** After the restart:
 1. **`view-map-arrays`** (85ec9b74, pushed, not landed) **makes the Scale Island load in a player**: first frame 20.6 s,
    2.74 GB private; standing 5.03/12.67, bot walk 10.17/23.59 (69 frames over 30 ms, the next thing to profile),
@@ -50,6 +72,16 @@ Waiting:
   `Temp/map` = nine); it asked Andrew to look. Rule for briefs: build the
   yard on the valley; point `Temp/map` at the nine only for the probe run.
 - Nothing waits on a compile. host-ux is clean (an untracked `unity/Assets/_Recovery/` stays); Editor pid 20380 open.
+
+## Who owns what now (no rework, Andrew 2026-11-10)
+
+- **The Mac:** `mac-landing-frame`: #212 (the redraw after a Fireball lands, `ChemGrid.Visuals.cs`'s cast redraw) and
+  #217 (the HUD frame readout, its Esc > Settings toggle, the play log's size). The PC and u2 stay out of those.
+  When the PC profiles the island's bot-walk spikes, it reads the Mac's branch first and leaves the cast redraw alone.
+- **The PC:** `view-map-arrays` (CellWaterMesh, FolkJobs, MapLand, ValleyChemistry), then u2's `sim-across-the-seam`
+  compile, #145's Mono peak, the island's walk spikes.
+- **u2:** the core: the seam (`sim-across-the-seam`, pushed), then the seam's view list goes to the PC.
+- A brief that's done starts with `Done:` so nobody picks it up again.
 
 ## Who runs where
 

@@ -62,6 +62,7 @@ namespace Chem
             if (to == NoRoll) return false;
             if (to == RollAhead) b.Advance();
             else b.Turn(to);
+            b.X = FoldX(b.X); // its line runs on past the seam; the cell it's on folds
             b.Left--;
             Strike(b, s);
             return !InWater(At(b.X, b.Y));

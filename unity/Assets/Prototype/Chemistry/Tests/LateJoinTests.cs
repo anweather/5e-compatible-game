@@ -65,7 +65,7 @@ namespace Chem.Tests
             var history = new List<StampedStrike>();
             Stamp now = null;
             // A rule switch stamped for a tick that hasn't run may switch on a trigger that reads stands (NetChem.StandsReadByTriggers).
-            var keeper = new StandKeeper<StampedStrike>(() => w.TriggersReadStands || now?.Mods != null, w.InBounds, w.HoldReadsStand);
+            var keeper = new StandKeeper<StampedStrike>(() => w.TriggersReadStands || now?.Mods != null, w.InBounds, w.HoldReadsStand, w.DeltaX);
             for (int t = 1; t <= ticks; t++)
             {
                 now = new Stamp();
@@ -306,6 +306,39 @@ namespace Chem.Tests
             Assert.That(waiting, Is.EqualTo("moonstone dirt"), "the switch made the active chunk fit and left the inactive one");
             Assert.That(after, Is.EqualTo("dirt"), "made to fit when it activated");
             AssertJoinersMatch(host, build, new[] { 1, 7, 8, 11, 12, 13, 29, 30, 31, 45 });
+        }
+
+        [Test]
+        public void PeersAndJoinersAgreeWithCharactersCrossingTheSeam()
+        {
+            // sim-across-the-seam: a world that wraps (12 x 2 chunks). Two players walk back and forth over the seam, their
+            // stands sometimes given past it (the core folds them), with step triggers casting behind and ahead of them, a
+            // Fireball on the seam, and the host's planner switching the chunks round them, stamped like any command. A
+            // joiner from the first tick is a second peer; the rest join late.
+            const int ticks = 300, size = Chunks.Size;
+            Func<World> build = () => new World(R, 12 * size, 2 * size, 5, "grass", wrapX: true);
+            var planner = new ChunkPlanner();
+            bool bothSides = false;
+            int switches = 0;
+            var host = Host(build, ticks, (t, w, s) =>
+            {
+                if (t == 1) s.Mods = Mod("steps", BoltsAndMeteors);
+                // p0 walks east from 90 cells short of the seam to 90 past it, given unfolded, and back; p1 the other way.
+                int k = t % 180, off = k < 90 ? 2 * k : 360 - 2 * k;
+                var stands = new[] { (w.W - 90 + off, 40), (90 - off, 90) };
+                s.Strikes.Add(StrikeCommand.Stand("p0", stands[0].Item1, stands[0].Item2, 12));
+                s.Strikes.Add(StrikeCommand.Stand("p1", stands[1].Item1, stands[1].Item2, 12));
+                if (t == 50) s.Casts.Add(new CastCommand("fireball", 0, 64, 1, by: "p0"));
+                var plan = t == 1 ? ChunkStreaming.StartPlan(w, stands) : planner.Plan(w, stands);
+                s.Chunks.AddRange(plan);
+                switches += plan.Count;
+                bothSides |= w.IsActive(11, 0) && w.IsActive(0, 0) && !w.IsActive(5, 0);
+            });
+            Assert.That(host.World.TriggeredCasts, Is.GreaterThan(10), "the walks fire triggers");
+            Assert.That(switches, Is.GreaterThan(10), "and switch chunks as they go");
+            Assert.That(bothSides, Is.True, "the chunks either side of the seam active together, the far side of the world not");
+            Assert.That(host.World.StrikeText(), Does.Not.Contain(":-").And.Not.Contain($"|wp0:{12 * size + 1}"), "the stands folded");
+            AssertJoinersMatch(host, build, new[] { 1, 45, 50, 51, 90, 91, 150, 181, 240, ticks });
         }
 
         [Test]

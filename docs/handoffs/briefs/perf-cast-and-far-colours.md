@@ -1,3 +1,4 @@
+Done: landed on dev (see git log); don't redo.
 Needs: unity
 Area: unity/Assets/Prototype/Scripts/ (ChemGrid.Effects.cs and the spell effects' set-up; FarRing*, KnownRing's colours in the view; not ChemGrid.Visuals.cs, ChemGrid.LookScopes.cs, ChemGrid.Rules.cs, CellDressing), docs/perf/2026-11-09-profile.md (a new heading only)
 Branch: perf-cast-and-far-colours

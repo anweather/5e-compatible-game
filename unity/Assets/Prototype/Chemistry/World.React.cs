@@ -241,7 +241,7 @@ namespace Chem
         {
             int n = eff.TicksMin;
             if (eff.TicksMax > eff.TicksMin) n += (int)Math.Floor(Rand() * (eff.TicksMax - eff.TicksMin + 1));
-            if (waveFrom.HasValue) n += eff.Wave * Math.Max(Math.Abs(x - waveFrom.Value.x), Math.Abs(y - waveFrom.Value.y));
+            if (waveFrom.HasValue) n += eff.Wave * Math.Max(Math.Abs(DeltaX(waveFrom.Value.x, x)), Math.Abs(y - waveFrom.Value.y));
             return Math.Max(1, n);
         }
 

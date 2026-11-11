@@ -17,13 +17,21 @@ namespace Chem
         // Per-tick marks machines read in the TS, kept in Chunk.Marks.
         const byte FlowMark = 1, SteamMark = 2, WindMark = 4;
 
-        public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt")
+        /// <summary>
+        /// A world of w x h cells. With <paramref name="wrapX"/> its east edge joins its west (map.json's "wrap": "ew", the
+        /// seam): a cell or chunk x outside [0, W) folds into it (FoldX), so everything reaches across; north and south stay
+        /// walls. A world that wraps is a whole number of chunks wide.
+        /// </summary>
+        public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt", bool wrapX = false)
         {
             if (w <= 0 || h <= 0) throw new ArgumentException("World size must be positive");
+            if (wrapX && (w & Chunks.Mask) != 0) throw new ArgumentException($"A world that wraps is a whole number of chunks wide ({Chunks.Size} cells a chunk), not {w}");
             ownerThread = Environment.CurrentManagedThreadId;
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             W = w;
             H = h;
+            WrapX = wrapX;
+            wrapChunks = wrapX ? w >> Chunks.Shift : 0;
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
@@ -33,6 +41,10 @@ namespace Chem
         public Rules Rules { get; private set; }
         public int W { get; }
         public int H { get; }
+        /// <summary>Whether east joins west (the seam): x is taken modulo W everywhere (FoldX).</summary>
+        public bool WrapX { get; }
+        // Chunks across a world that wraps, 0 for one that doesn't.
+        readonly int wrapChunks;
         public int Tick { get; private set; }
 
         /// <summary>The event log, oldest first, capped at LogCap entries. The last entry's Count/Tick may grow.</summary>
@@ -138,8 +150,64 @@ namespace Chem
 
         // ---------- cells ----------
 
-        public bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
-        public int Idx(int x, int y) => y * W + x;
+        /// <summary>Whether (x, y) is on the world: any x on one that wraps (it folds), north and south walls either way.</summary>
+        public bool InBounds(int x, int y) => WrapX ? y >= 0 && y < H : x >= 0 && y >= 0 && x < W && y < H;
+        /// <summary>The world index of (x, y), its x folded across the seam first.</summary>
+        public int Idx(int x, int y) => y * W + FoldX(x);
+
+        // ---------- the seam ----------
+        // Every reach across the seam goes through these: a cell or chunk x outside [0, W) folds into it on a world that
+        // wraps, and is left as it is on one that doesn't (so a world without wrap reads and hashes as it always has).
+
+        /// <summary>A cell x folded into [0, W) on a world that wraps; unchanged on one that doesn't.</summary>
+        public int FoldX(int x)
+        {
+            if (!WrapX || (uint)x < (uint)W) return x;
+            int f = x % W;
+            return f < 0 ? f + W : f;
+        }
+
+        /// <summary>A chunk x folded into [0, W / Chunks.Size) on a world that wraps; unchanged on one that doesn't.</summary>
+        public int FoldChunkX(int cx)
+        {
+            if (wrapChunks == 0 || (uint)cx < (uint)wrapChunks) return cx;
+            int f = cx % wrapChunks;
+            return f < 0 ? f + wrapChunks : f;
+        }
+
+        /// <summary>
+        /// The cells from x0 east to x1: x1 - x0, or on a world that wraps the short way round the seam (in -W/2 .. W/2,
+        /// east positive; exactly half way round counts east).
+        /// </summary>
+        public int DeltaX(int x0, int x1)
+        {
+            int d = x1 - x0;
+            if (!WrapX) return d;
+            d = FoldX(d);
+            return d > W / 2 ? d - W : d;
+        }
+
+        /// <summary>The chunks from cx0 east to cx1, the short way round on a world that wraps (DeltaX in chunks).</summary>
+        public int DeltaChunkX(int cx0, int cx1) => ChunkDelta(cx0, cx1, wrapChunks);
+
+        /// <summary>Chunks from cx0 east to cx1 on a world <paramref name="wrapChunks"/> chunks round (0: no wrap), the short way.</summary>
+        public static int ChunkDelta(int cx0, int cx1, int wrapChunks)
+        {
+            int d = cx1 - cx0;
+            if (wrapChunks <= 0) return d;
+            d %= wrapChunks;
+            if (d < 0) d += wrapChunks;
+            return d > wrapChunks / 2 ? d - wrapChunks : d;
+        }
+
+        /// <summary>
+        /// The columns [x0, x1] of a box on the world, to walk: clipped to [0, W) on a world that doesn't wrap; on one that
+        /// does left as they are (whoever reads a cell folds it) but at most W of them, so no cell is walked twice.
+        /// </summary>
+        internal (int from, int to) XSpan(int x0, int x1) => WrapX ? (x0, Math.Min(x1, x0 + W - 1)) : (Math.Max(0, x0), Math.Min(W - 1, x1));
+
+        /// <summary>The chunks round a world that wraps (W / Chunks.Size), 0 for one that doesn't: for ChunkStreaming's distances.</summary>
+        public int WrapChunks => wrapChunks;
         public Cell At(int x, int y) => Locate(x, y, out _, out _);
 
         /// <summary>Neighbours in fixed N, E, S, W order, so the simulation stays deterministic.</summary>
@@ -148,7 +216,7 @@ namespace Chem
             for (int d = 0; d < 4; d++)
             {
                 int nx = x + DirX(d), ny = y + DirY(d);
-                if (InBounds(nx, ny)) yield return (nx, ny, d);
+                if (InBounds(nx, ny)) yield return (FoldX(nx), ny, d);
             }
         }
 
@@ -248,6 +316,7 @@ namespace Chem
         public void SetLand(Action<int, int[]> row)
         {
             DropLandPeek();
+            landFromSource = false;
             if (row == null)
             {
                 hasLand = false;
@@ -290,6 +359,54 @@ namespace Chem
         // A cell SetLand marks NoLand: none, or one with water or a spring now.
         bool IsWaterBody(Cell c) => c == null || c.Water > 0 || TerrainOf(c).Spring > 0;
 
+        // Whether the land is the source's (LandFromSource): then an untouched chunk's (no PackedLand while packed) is
+        // made from the source as it's read, with what the stamps and the map moved since.
+        bool landFromSource;
+
+        /// <summary>
+        /// SetLand from the world's own source (a generated map's, IGeneratedSource.LandAt), without reading the whole map:
+        /// a chunk's land is made as it's first read, NoLand on a water body as the map makes it, with what the stamps and
+        /// the map have moved. So it's the same land however late it's read, and on a world loaded from a save. Between
+        /// ticks, once the world is made from the source (or loaded).
+        /// </summary>
+        public void LandFromSource()
+        {
+            if (!(Source is IGeneratedSource)) throw new InvalidOperationException($"The world's source ({Source.Version}) holds no land: SetLand takes it");
+            FinishTick();
+            DropLandPeek();
+            hasLand = true;
+            landFromSource = true;
+            foreach (var ch in chunks.Values)
+            {
+                ch.PackedLand = null;
+                if (ch.Held is ChunkBlock b) SourceLand(ch, b.Land ??= new int[Chunks.Area]);
+            }
+        }
+
+        // A chunk's land as the source makes it, with what's moved since.
+        void SourceLand(Chunk ch, int[] at)
+        {
+            var source = (IGeneratedSource)Source;
+            for (int i = 0; i < Chunks.Area; i++)
+            {
+                int x = CellX(ch, i), y = CellY(ch, i);
+                if (!InBounds(x, y))
+                {
+                    at[i] = NoLand;
+                    continue;
+                }
+                landCell.Reset();
+                source.Make(x, y, landCell);
+                at[i] = IsWaterBody(landCell) ? NoLand : source.LandAt(x, y) + (landMoved?[x, y] ?? 0);
+            }
+        }
+
+        // The cell SourceLand makes the source's cells into: its own, as it runs inside other walks (a chunk unpacking for a read).
+        readonly Cell landCell = new Cell();
+
+        // Whether a chunk's land is still the source's, made as it's read: it's packed and has never been unpacked since LandFromSource.
+        bool LandUnmade(Chunk ch) => landFromSource && ch.Held == null && ch.PackedLand == null;
+
         int LandOf(Chunk ch, int i)
         {
             if (!hasLand) return NoLand;
@@ -309,6 +426,12 @@ namespace Chem
             var ch = FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y));
             int[] at;
             if (ch.Held is ChunkBlock b) at = b.Land;
+            else if (LandUnmade(ch))
+            {
+                // Made from the source with what landMoved holds, this move among it: a peek of it made before is stale.
+                if (landPeekChunk == ch) landPeekChunk = null;
+                return;
+            }
             else
             {
                 at = PackedLand(ch);
@@ -331,7 +454,8 @@ namespace Chem
         {
             if (landPeekChunk == ch) return landPeek;
             DropLandPeek();
-            LandCodec.Decode(ch.PackedLand, landPeek);
+            if (LandUnmade(ch)) SourceLand(ch, landPeek);
+            else LandCodec.Decode(ch.PackedLand, landPeek);
             landPeekChunk = ch;
             return landPeek;
         }
@@ -355,6 +479,7 @@ namespace Chem
                 landPeekEdited = false;
                 landPeekChunk = null;
             }
+            else if (landFromSource && ch.PackedLand == null) SourceLand(ch, b.Land);
             else LandCodec.Decode(ch.PackedLand, b.Land);
             ch.PackedLand = null;
         }

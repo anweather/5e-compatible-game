@@ -48,7 +48,7 @@ namespace Chem
         public PlanWrap Wrap { get; private set; }
         /// <summary>
         /// Whether the map may be baked whole: map.json's "bake", true when absent. A world too big to hold every cell of
-        /// (the 12 × 10, about 9-10 GB) says false, and is known and planned only until the sparse World.
+        /// (the 12 × 10, about 9-10 GB) says false: its rows are written alone (EnsureRows) and its cells made as play reads them (GeneratedSource).
         /// </summary>
         public bool Bakes { get; private set; }
         /// <summary>The pinned map's id and its square in the map (squares from the north-west).</summary>
@@ -275,11 +275,66 @@ namespace Chem
             return all;
         }
 
-        /// <summary>Whether the folder holds a bake of these inputs.</summary>
+        /// <summary>Whether the folder holds a bake of these inputs (its cells too, not only its rows: EnsureRows).</summary>
         public static bool IsBaked(string mapDir)
         {
             string path = Path.Combine(mapDir, BakeName);
-            return File.Exists(path) && (string)JObject.Parse(File.ReadAllText(path))["inputs"] == InputHash(mapDir);
+            if (!File.Exists(path)) return false;
+            var note = JObject.Parse(File.ReadAllText(path));
+            return (string)note["inputs"] == InputHash(mapDir) && (string)note["cells"] != CellsGenerated;
+        }
+
+        /// <summary>bake.json's "cells" in a folder of a map's rows alone (EnsureRows): its cells are made as they're read (GeneratedSource).</summary>
+        public const string CellsGenerated = "generated";
+
+        /// <summary>The files a folder of a map's rows alone holds (EnsureRows): a bake's but its cells, land and things, which come from GeneratedSource.</summary>
+        public static IReadOnlyList<string> RowsBaked { get; } = Baked.Where(n => n != MapFile.CellsName && n != MapFile.LandName && n != "things.json").ToArray();
+
+        /// <summary>Whether a map folder holds a map's rows alone (EnsureRows): play makes its cells from its world file (GeneratedSource).</summary>
+        public static bool IsRowsOnly(string dir)
+        {
+            string path = Path.Combine(dir, BakeName);
+            return File.Exists(path) && (string)JObject.Parse(File.ReadAllText(path))["cells"] == CellsGenerated;
+        }
+
+        /// <summary>
+        /// Writes a map's rows into <paramref name="outDir"/> unless it holds this map's already: everything a bake writes
+        /// but its cells, land and things (cells.txt, land.json, things.json), which play makes a chunk at a time from the
+        /// world file (GeneratedSource), so a map too big to bake whole ("bake": false) can be played. Its map.json too,
+        /// unless it's the map's own folder; places.json without the water bodies, which only the whole map's land finds.
+        /// Whether it wrote them.
+        /// </summary>
+        public static bool EnsureRows(string mapDir, string outDir)
+        {
+            string path = Path.Combine(outDir, BakeName);
+            if (File.Exists(path))
+            {
+                var note = JObject.Parse(File.ReadAllText(path));
+                if ((string)note["inputs"] == InputHash(mapDir) && (int?)note["format"] == BakeFormat && (string)note["cells"] == CellsGenerated) return false;
+            }
+            Load(mapDir).WriteRowsOnly(outDir);
+            return true;
+        }
+
+        /// <summary>EnsureRows's writing, made already: a pinned block's own map is baked first, as Bake does.</summary>
+        public void WriteRowsOnly(string outDir)
+        {
+            if (Inner != null && !IsBaked(PinnedDir)) Inner.Bake(PinnedDir);
+            Directory.CreateDirectory(outDir);
+            foreach (string name in new[] { MapFile.CellsName, MapFile.LandName, "things.json" })
+                if (File.Exists(Path.Combine(outDir, name))) File.Delete(Path.Combine(outDir, name));
+            WriteRows(outDir);
+            if (Path.GetFullPath(outDir).TrimEnd('/', '\\') != Path.GetFullPath(MapDir).TrimEnd('/', '\\'))
+                Write(outDir, MapFile.FileName, OwnMapFile());
+            Write(outDir, WorldPlaces.FileName, WorldPlaces.Generate(outDir, null));
+            Write(outDir, BakeName, Json(new JObject
+            {
+                ["inputs"] = InputHash(MapDir),
+                ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture),
+                ["generator"] = ChunkGen.Version,
+                ["format"] = BakeFormat,
+                ["cells"] = CellsGenerated,
+            }));
         }
 
         /// <summary>Bakes the map into its own folder unless it already holds a bake of the same inputs; whether it baked.</summary>
@@ -320,7 +375,7 @@ namespace Chem
             return Json(o);
         }
 
-        string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): it's planned and known only, until the sparse World";
+        string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): its rows are laid out (EnsureRows) and its cells made as they're read (GeneratedSource)";
 
         static void Write(string dir, string name, string text) => File.WriteAllText(Path.Combine(dir, name), text);
 

@@ -14,19 +14,27 @@ namespace Chem
     internal sealed class ChunkCells<T> where T : struct
     {
         readonly int w, h, across;
+        readonly bool wrapX;
         readonly T[][] byChunk;
 
-        public ChunkCells(int w, int h)
+        // wrapX: the map wraps east-west (World.WrapX, a whole number of chunks wide), so an x past the seam folds.
+        public ChunkCells(int w, int h, bool wrapX = false)
         {
             this.w = w;
             this.h = h;
+            this.wrapX = wrapX;
             across = Chunks.ChunkOf(w - 1) + 1;
             byChunk = new T[across * (Chunks.ChunkOf(h - 1) + 1)][];
         }
 
         static int Local(int x, int y) => (Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x);
 
-        int ChunkIndex(int x, int y) => Chunks.ChunkOf(y) * across + Chunks.ChunkOf(x);
+        int ChunkIndex(int x, int y)
+        {
+            int cx = Chunks.ChunkOf(x);
+            if (wrapX && (uint)cx >= (uint)across) cx = ((cx % across) + across) % across;
+            return Chunks.ChunkOf(y) * across + cx;
+        }
 
         /// <summary>The value at a cell on the map: default where nothing was written.</summary>
         public T this[int x, int y]

@@ -84,7 +84,7 @@ namespace Chem
         {
             var list = Rules.TriggersOn(TriggerEvent.Step);
             if (list.Count == 0) return;
-            int dx = Math.Sign(me.X - fromX), dy = Math.Sign(me.Y - fromY);
+            int dx = Math.Sign(DeltaX(fromX, me.X)), dy = Math.Sign(me.Y - fromY);
             string peer = TriggerDef.PeerOf(me.Player);
             foreach (var t in list)
                 if (t.IsFor(me.Player, peer) && Due(t, me.Player)) Fire(t, me, dx, dy);
@@ -171,9 +171,10 @@ namespace Chem
                     int salt = unchecked((int)WorldHash.Hash4(unchecked((int)Seed), AroundSalt, Tick, triggerFirings));
                     var pick = Placement.Pick(Placement.Around(me.X, me.Y, a.Within), 1, 0, (px, py) => InBounds(px, py) && IsActiveAt(px, py), unchecked((int)Seed), salt);
                     if (pick.Count == 0) return false;
-                    (x, y) = pick[0];
+                    (x, y) = pick[0]; // folded below
                     break;
             }
+            x = FoldX(x); // a step's cell past the seam
             return InBounds(x, y);
         }
 

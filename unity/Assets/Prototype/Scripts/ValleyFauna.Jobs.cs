@@ -58,10 +58,10 @@ public partial class ValleyFauna
     {
         jobsWorld = world;
         int human = bodies.IndexOf(WorkerSpecies);
-        string landFile = Path.Combine(ChemGrid.Folders.World, MapFile.LandName);
-        if (human < 0 || !File.Exists(landFile)) return;
-        var units = LandFile.Read(File.ReadAllText(landFile), world.W, world.H);
-        if (units.Length == 0) return;
+        if (human < 0) return;
+        // The map's land as the ground reads it (one copy: ValleyChemistry.LandOf), none when the map has no land.json.
+        var units = ValleyChemistry.LandOf(world);
+        if (units == null) return;
         float2 Centre(int x, int y)
         {
             var p = grid.CellCenter(x, y);

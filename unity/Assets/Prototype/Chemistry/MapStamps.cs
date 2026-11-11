@@ -118,8 +118,9 @@ namespace Chem
         {
             var stamp = s.Stamp;
             int reach = stamp.Bound;
+            var (xFrom, xTo) = world.XSpan(stamp.X - reach, stamp.X + reach); // round the seam on a world that wraps
             for (int y = Math.Max(0, stamp.Y - reach); y <= Math.Min(world.H - 1, stamp.Y + reach); y++)
-                for (int x = Math.Max(0, stamp.X - reach); x <= Math.Min(world.W - 1, stamp.X + reach); x++)
+                for (int x = xFrom; x <= xTo; x++)
                 {
                     var c = world.At(x, y);
                     if (stamp.At(x - stamp.X, y - stamp.Y) == 0 || c.Water != 0) continue;

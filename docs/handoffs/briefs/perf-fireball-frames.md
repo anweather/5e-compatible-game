@@ -1,3 +1,4 @@
+Done: landed on dev (see git log); don't redo.
 Needs: unity
 Area: unity/Assets/Prototype/Scripts/ (Contour*, CellSlickMesh, ChemGrid.Effects.cs, the spell effect prefabs' set-up; not ChemGrid.Visuals.cs, not CellDressing), unity/Assets/Prototype/Chemistry/Tests/DragonTests.cs (the one timing test), docs/perf/2026-11-09-profile.md (a new heading only)
 Branch: perf-fireball-frames

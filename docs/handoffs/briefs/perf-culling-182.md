@@ -1,3 +1,4 @@
+Done: landed on dev (see git log); don't redo.
 Needs: unity
 Area: unity/Assets/Prototype/Chemistry/Tests/ (WorldTwelveTests only), unity/Assets/Prototype/Scripts/ (MapTerrains, FarRing, the terrain roots; not ChemGrid.Visuals.cs), docs/perf/2026-11-09-profile.md (a new heading only), docs/TESTING_LAYERS.md
 Branch: perf-culling-182

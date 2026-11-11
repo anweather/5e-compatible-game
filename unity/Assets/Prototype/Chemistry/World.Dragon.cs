@@ -259,7 +259,9 @@ namespace Chem
         /// Whether the breath catches what stands at (x, y) this tick: it's in the breath's cells and not sheltered.
         /// The core's raiders take it from here; the view asks for its wizards, whose health is their own (WizardDown).
         /// </summary>
-        public bool CaughtByBreath(int x, int y) =>
+        public bool CaughtByBreath(int x, int y) => CaughtInBox(FoldX(x), y);
+
+        bool CaughtInBox(int x, int y) =>
             BreathBox(out int x0, out int y0, out int x1, out int y1) && x >= x0 && x < x1 && y >= y0 && y < y1 && !ShelteredFromBreath(x, y);
 
         /// <summary>
@@ -469,6 +471,13 @@ namespace Chem
         void Recount(Chunk ch)
         {
             int count = 0;
+            // A packed chunk whose changes are its start's, against the same source, is its start: none differ, read or not.
+            if (ch.Packed != null && ch.Packed == ch.Start && startSource == Source)
+            {
+                ChangedCount -= ch.Changed;
+                ch.Changed = 0;
+                return;
+            }
             var read = new ChunkReader(this, ch, walkScratch);
             var start = StartOf(ch, startScratch);
             for (int i = 0; i < Chunks.Area; i++)
