@@ -5,9 +5,31 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
+**HANDOFF 2026-11-10 ~21:30 MST (this lead stops; Andrew moves to the Pro account). Read this block first.**
+Start the new lead with the `unity-lead` skill in `.claude/worktrees/coordinator`, then `bash .claude/skills/status/status.sh`.
+- **The PC (host-ux) was mid-job on `playtest-looks`** (brief `docs/handoffs/briefs/playtest-looks.md`, #220: trees switch
+  too close, pop-in vs fog at the dock, water chunks vanishing, a blue haze band, a white cube at the nine's edge, biome
+  seams, floating bushes, butterflies by biome). Its 6 commits so far (trees to 150 m, pop-in cut at the haze, bushes on the ground, butterflies by biome, the playtestlooks probe; not yet checked with EditMode or a player) were pushed by the lead as a safety net to `origin/playtest-looks` (0549243b). That subagent dies with this session: check `git log origin/playtest-looks`
+  and host-ux's tree (`git -C .claude/worktrees/host-ux status`); commit or keep any WIP there, then hand the rest to a
+  new `unity-task` with the same brief. Don't discard host-ux changes.
+- **The Mac** moved to the new account too: its handoff is `docs/handoffs/mac-2026-11-10.md` (6131ebe8). Nothing in flight there; `playtest-tools` (F8 marks with position, HUD coordinates and biome, a dev fly mode) is not started: give it to the new Mac session; it self-lands.
+  `mac-landing-frame` landed cc86a149 (#212 #217 closed; F9 shows the frame readout).
+- **u2** is on `generate-switch` (queue: a `"bake": false` map's chunks made on demand, so the 12 x 10 loads). Check
+  with `tools/workers/peek.sh u2`; it can stall waiting on a wakeup (see the rules below); re-brief with -FollowUp.
+- **Then for the PC:** `docs/handoffs/briefs/seam-view.md` (the view across the east-west seam; the core wraps since
+  802f38e7), #221 (TreeDistance not reset after Play), #218 (online on the nine on dev), #219 (a flaky gate test).
+- **Landed today (2026-11-10):** the sparse World (D17, steps 1-3 + guard), the Scale Island loads in a player
+  (`-map scale-12x10`, first frame 20.6 s, 2.7 GB), the east-west wrap in the core, tree impostors on by default, the sea
+  for the drawn tier, view arrays per chunk, the cast/landing frames, the far-ring colours. Player numbers: the nine
+  walk ~9.2/14.5 ms, standing ~5/9.
+- **Andrew's builds:** `host-ux/unity/Builds/SeamWalk/` (development, newest, has the island) and
+  `Playtest-2026-11-10/` (release-style, older). Next build for him should be release-style from dev after
+  playtest-looks and playtest-tools land, with launchers for the nine and the island.
+
+
 **Handoff 2026-11-10 ~20:30 MST (lead out of usage; the other account picks up). Start: `unity-lead` skill in
 `.claude/worktrees/coordinator`, read this section, then `bash .claude/skills/status/status.sh`.**
-- **`view-map-arrays` LANDED 3459b5a1: the Scale Island loads in a player on dev.** Its nine `online` failures all fail on dev too (#218: water, things, reset checksums on the nine; needs its own job). **Andrew's playtest of the nine (2026-11-10 ~21:00), #220:** looks to the PC (`docs/handoffs/briefs/playtest-looks.md`: trees switch too close, pop-in against the fog at the dock, water chunks vanishing, a blue haze band, a white cube at the edge, biome seams, floating bushes, butterflies by biome), tools to the Mac after its job (`playtest-tools.md`: F8 marks with position, HUD coordinates and biome, a dev fly mode). His play log is in the lead's scratchpad. **Next on the PC: playtest-looks, before seam-view.** **`sim-across-the-seam` LANDED 802f38e7** (the World wraps east-west; the nine walk 9.19/14.49). Next: **u2** `generate-switch` (queued: a `"bake": false` map's chunks made by ChunkGen on demand, so the 12 x 10 loads); **the PC** `docs/handoffs/briefs/seam-view.md` (the view across the seam: items 1-2 and the camera can start now). #219 a flaky landing-gate test. Was: **The PC now compiles `sim-across-the-seam`** (a71402d5; EditMode, smoke, online, the nine walk); land it if clean, then give u2's view list for the seam to the PC as the next job.
+- **`view-map-arrays` LANDED 3459b5a1: the Scale Island loads in a player on dev.** Its nine `online` failures all fail on dev too (#218: water, things, reset checksums on the nine; needs its own job). **Andrew's playtest of the nine (2026-11-10 ~21:00), #220:** looks to the PC (`docs/handoffs/briefs/playtest-looks.md`: trees switch too close, pop-in against the fog at the dock, water chunks vanishing, a blue haze band, a white cube at the edge, biome seams, floating bushes, butterflies by biome), tools to the Mac, on it now after `mac-landing-frame` landed cc86a149, #212 #217 closed, F9 shows the frame readout (`playtest-tools.md`: F8 marks with position, HUD coordinates and biome, a dev fly mode). His play log is in the lead's scratchpad. **Next on the PC: playtest-looks, before seam-view.** **`sim-across-the-seam` LANDED 802f38e7** (the World wraps east-west; the nine walk 9.19/14.49). Next: **u2** `generate-switch` (queued: a `"bake": false` map's chunks made by ChunkGen on demand, so the 12 x 10 loads); **the PC** `docs/handoffs/briefs/seam-view.md` (the view across the seam: items 1-2 and the camera can start now). #219 a flaky landing-gate test. Was: **The PC now compiles `sim-across-the-seam`** (a71402d5; EditMode, smoke, online, the nine walk); land it if clean, then give u2's view list for the seam to the PC as the next job.
 - **Was running on the PC:** a `unity-task` comparing `tools/probe.sh online` on the nine, dev against
   `view-map-arrays` (85ec9b74). It may have finished, been stopped, or pushed a fix on that branch: check
   `git log origin/view-map-arrays` and the work log. Land `view-map-arrays` (`land.sh auto view-map-arrays --compiled`)

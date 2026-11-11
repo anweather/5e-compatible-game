@@ -62,10 +62,13 @@ public sealed class CellLavaMesh
         return had && !now;
     }
 
-    /// <summary>Ground moved somewhere: the lava's tiles follow it at the next Rebuild.</summary>
-    public void GroundChanged()
+    /// <summary>
+    /// The ground moved at a cell: the lava tiles its outline reaches follow it at the next Rebuild, and no others. Every
+    /// tile was, so a Fireball's crater on the nine redrew the start's whole lava pool, 30 ms of points (#212).
+    /// </summary>
+    public void GroundChanged(int x, int y)
     {
-        foreach (int tile in tiles.Keys) dirtyTiles.Add(tile);
+        if (tiles.Count > 0) Dirty(x, y);
     }
 
     /// <summary>Rebuilds the tiles round any cell that changed since the last time.</summary>
@@ -78,7 +81,14 @@ public sealed class CellLavaMesh
         foreach (int tile in drawing) DrawTile(tile);
     }
 
-    int TilesX => tilesX > 0 ? tilesX : tilesX = (grid.World.W + TileCells - 1) / TileCells;
+    int TilesX
+    {
+        get
+        {
+            if (tilesX <= 0) tilesX = (grid.World.W + TileCells - 1) / TileCells;
+            return tilesX;
+        }
+    }
 
     // The tiles whose outline a change at (x, y) reaches: its own, and a neighbour's within the ring.
     void Dirty(int x, int y)

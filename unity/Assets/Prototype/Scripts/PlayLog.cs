@@ -119,8 +119,8 @@ public class PlayLog : MonoBehaviour
     {
         End();
         file = new PlayLogFile(folder, $"play-log-{DateTime.Now.ToString("yyyy-MM-dd-HHmmss", Plain)}");
-        file.Add($"# Spell Chemistry Valley {Application.version}, {SystemInfo.graphicsDeviceName}, {Screen.width}x{Screen.height}");
-        file.Add(Header);
+        headerOwed = true;
+        early.Clear();
         startedAt = Time.unscaledTime;
         nextSecond = startedAt + 1f;
         everySecond.Clear();
@@ -129,12 +129,34 @@ public class PlayLog : MonoBehaviour
         if (Debug.isDebugBuild) markers = new PerfMarkers();
     }
 
+    // The header waits for the first second's row: a player's window takes the size it was asked for only after its first
+    // frames, and the header said 640 x 480 for a 1280 x 720 window (#217). Lines from before then wait with it.
+    bool headerOwed;
+    readonly List<string> early = new();
+
+    void WriteHeader()
+    {
+        if (!headerOwed || file == null) return;
+        headerOwed = false;
+        file.Add($"# Spell Chemistry Valley {Application.version}, {SystemInfo.graphicsDeviceName}, {Screen.width}x{Screen.height}");
+        file.Add(Header);
+        foreach (string line in early) file.Add(line);
+        early.Clear();
+    }
+
+    void Add(string line)
+    {
+        if (headerOwed) early.Add(line);
+        else file.Add(line);
+    }
+
     /// <summary>Stops with the summary, and waits for the file to be written.</summary>
     public void End()
     {
         if (file == null) return;
         string summary = Summary();
-        file.Add(Line("summary", 0f, 0, 0, summary));
+        Add(Line("summary", 0f, 0, 0, summary));
+        WriteHeader();
         file.Close();
         Debug.Log("PLAY LOG: " + summary);
         file = null;
@@ -189,7 +211,8 @@ public class PlayLog : MonoBehaviour
         nextSecond = Time.unscaledTimeAsDouble + 1.0;
         float fps = elapsedMs > 0f ? frames * 1000f / elapsedMs : 0f;
         if (Time.unscaledTime - startedAt >= LoadingSeconds) everySecond.Add(fps);
-        file.Add(Line("second", fps, over33, over50, Happening()));
+        WriteHeader();
+        Add(Line("second", fps, over33, over50, Happening()));
         ClearSecond();
     }
 
@@ -206,14 +229,14 @@ public class PlayLog : MonoBehaviour
         hitches++;
         string what = Happening(false);
         if (markers != null) what = (what + " " + markers.Breakdown()).Trim();
-        file.Add(Line("hitch", 1000f / ms, 1, 1, what, ms));
+        Add(Line("hitch", 1000f / ms, 1, 1, what, ms));
     }
 
     /// <summary>A line of what's going on, to tie a hitch to it: not a mark, which says something felt bad.</summary>
     public void Note(string what)
     {
         if (file == null) return;
-        file.Add(Line("note", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, what));
+        Add(Line("note", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, what));
     }
 
     /// <summary>"That felt bad": a marked line, and a small picture of the moment. The playtest bot marks what it finds.</summary>
@@ -222,7 +245,7 @@ public class PlayLog : MonoBehaviour
         if (file == null) return;
         marks++;
         string shot = $"{file.Stem}-mark-{marks}.jpg";
-        file.Add(Line("mark", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, $"{why} {shot} {Happening(false)}".Trim()));
+        Add(Line("mark", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, $"{why} {shot} {Happening(false)}".Trim()));
         StartCoroutine(Shoot(Path.Combine(file.Folder, shot)));
         EventLog.Add("Noted");
     }

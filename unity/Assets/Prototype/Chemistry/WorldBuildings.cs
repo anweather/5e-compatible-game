@@ -80,19 +80,21 @@ namespace Chem
         {
             var pad = row.Json["pad"];
             if ((pad == null && row.Roads.All(r => !r.Graded)) || folder == null) return;
+            // A generated map played unbaked has no land.json: its land is its source's, a chunk at a time (GeneratedSource).
+            var made = world.Source as IGeneratedSource;
             string path = Path.Combine(folder, MapFile.LandName);
-            if (fileLand == null)
+            if (fileLand == null && made == null)
             {
                 if (!File.Exists(path)) return;
                 fileLand = LandFile.Read(File.ReadAllText(path), world.W, world.H);
             }
-            if (fileLand.Length == 0) return;
+            if (made == null && fileLand.Length == 0) return;
             var file = fileLand;
             // The row's roads are graded on the land as the pad left it, not on each other: their grades are left out.
             var graded = new Dictionary<(int x, int y), int>();
             int Land(int x, int y)
             {
-                int at = file[world.Idx(x, y)] + world.LandMovedAt(x, y);
+                int at = (made != null ? made.LandAt(x, y) : file[world.Idx(x, y)]) + world.LandMovedAt(x, y);
                 return graded.TryGetValue((x, y), out int by) ? at - by : at;
             }
             var building = new HashSet<(int x, int y)>(cells.Where(c => c.Part != BuildingPart.Road).Select(c => (c.X, c.Y)));

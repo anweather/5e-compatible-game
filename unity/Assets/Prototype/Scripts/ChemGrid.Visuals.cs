@@ -435,9 +435,11 @@ public partial class ChemGrid
         bool wait = ticked && !turnWaited;
         turnWaited = wait;
         StartDrawBudget();
+        StartRedrawBudget();
         RedrawSomeLooks();
         RenderSwept();
         DrawSome();
+        RenderCarried();
         if (!wait) RenderTurn();
         RenderFresh(out int fresh);
         FinishRender();
@@ -450,6 +452,7 @@ public partial class ChemGrid
         using var marked = CellsMarker.Auto();
         renderTurn = (renderTurn + 1) % RenderTurns;
         int turn = 0;
+        budgeted = true;
         foreach (var (cx, cy) in World.ActiveChunks)
         {
             if (turn++ % RenderTurns != renderTurn) continue;
@@ -458,6 +461,48 @@ public partial class ChemGrid
             PerfCounts.Add("render.chunks");
             RenderChunk(cx, cy);
         }
+        budgeted = false;
+    }
+
+    // A frame's redraw of the cells that changed (a Fireball's landing was 50-70 ms of it in one frame on the nine, #212):
+    // about RedrawBudgetMs of it, MinRedrawn cells at least, and the rest the next frame, those chunks first and nearest
+    // first. In a playtest run (ExactFrames) it's counted in cells instead, so a replay matches. Only the look-over is held
+    // to it (RenderTurn, RenderCarried): a new world's chunks, a sweep's and the dragon's still draw whole.
+    const double RedrawBudgetMs = 4.0;
+    const int MinRedrawn = 4, ExactRedrawn = 160;
+    // -no-redraw-budget: the redraw as it was, every changed cell in the frame it's seen (to measure the budget against).
+    static readonly bool RedrawUnbudgeted = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-no-redraw-budget") >= 0;
+    readonly System.Diagnostics.Stopwatch redrawTimer = new();
+    readonly List<Vector2Int> carried = new(), carrying = new();
+    int redrawn;
+    bool budgeted, redrawSpent, deferred;
+
+    /// <summary>Changed cells left for the next frame by the redraw budget, at the last frame's end (for the probe).</summary>
+    public int CarriedChunks => carried.Count;
+
+    void StartRedrawBudget()
+    {
+        redrawTimer.Reset();
+        redrawn = 0;
+        redrawSpent = false;
+    }
+
+    bool RedrawSpent() =>
+        redrawn >= MinRedrawn && (ExactFrames ? redrawn >= ExactRedrawn : redrawTimer.Elapsed.TotalMilliseconds >= RedrawBudgetMs);
+
+    // The chunks whose changed cells the last frame's budget left, nearest a focus first.
+    void RenderCarried()
+    {
+        if (carried.Count == 0) return;
+        carrying.Clear();
+        carrying.AddRange(carried);
+        carried.Clear();
+        var focus = Focus();
+        carrying.Sort((a, b) => FocusDistance(focus, a.x, a.y).CompareTo(FocusDistance(focus, b.x, b.y)));
+        budgeted = true;
+        foreach (var c in carrying)
+            if (IsChunkDrawn(c.x, c.y)) RenderChunk(c.x, c.y);
+        budgeted = false;
     }
 
     // The inactive chunks still to look over after a sweep (RedrawEveryChunk), and how many a frame at most: a cell
@@ -586,7 +631,10 @@ public partial class ChemGrid
         }
         else if (n < drawn.Length) CatchUpLooks(n, cx, cy);
         int y0 = cy << Chunks.Shift;
+        deferred = false;
         RenderRows(cx, y0, Mathf.Min(World.H, y0 + Chunks.Size));
+        if (deferred && !carried.Contains(new Vector2Int(cx, cy))) carried.Add(new Vector2Int(cx, cy));
+        deferred = false;
     }
 
     // Rows y0 to y1 (not included) of chunk column cx.
@@ -718,6 +766,20 @@ public partial class ChemGrid
         var v = views[index];
         int key = Key(c);
         if (key == v.key && v.terrain == c.T && v.height == c.Height) return;
+        if (budgeted && !redrawSpent && !RedrawUnbudgeted) redrawSpent = RedrawSpent();
+        if (budgeted && redrawSpent)
+        {
+            deferred = true; // left changed (its key unset): the next frame draws it
+            return;
+        }
+        redrawn++;
+        redrawTimer.Start();
+        RedrawCell(v, c, x, y, key);
+        redrawTimer.Stop();
+    }
+
+    void RedrawCell(View v, Cell c, int x, int y, int key)
+    {
         v.key = key;
 
         bool redressed = v.terrain != c.T || v.height != c.Height;
@@ -758,7 +820,7 @@ public partial class ChemGrid
         {
             waterSurface.GroundChanged(x, y);
             slicks.GroundChanged(x, y);
-            lava.GroundChanged();
+            lava.GroundChanged(x, y);
         }
         v.terrain = c.T;
         v.height = c.Height;

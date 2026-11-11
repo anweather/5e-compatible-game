@@ -71,8 +71,10 @@ touch them.
 **Packed chunk / unpacked chunk**
 : How a chunk holds its cells (the sparse World, D17, `docs/design/sparse-world.md`). An **unpacked** chunk holds
   them as `Cell` objects; every active chunk is unpacked. A **packed** chunk holds only its **source** (where its
-  cells come from before play, an `IChunkSource`: for a generated map, its bake) and its **changes** (the cells that
-  differ from the source). A chunk **packs** and **unpacks**; neither shows in its cells, the hash or a save.
+  cells come from before play, an `IChunkSource`: for a generated map, its bake, or for one too big to bake, its
+  generator, `GeneratedSource`) and its **changes** (the cells that differ from the source). A packed chunk with no
+  changes is **untouched**. On a generated source the cell hash is the **changes hash**: the cells that differ from
+  the source, each with its index, so it never makes an untouched chunk. A chunk **packs** and **unpacks**; neither shows in its cells, the hash or a save.
   Not the same as active / inactive: an inactive chunk may be either.
   An unpacked chunk's cells and per-cell arrays are its **block**, from the World's pool. Every world has a source:
   its fill, or what `MakeFrom` made it from (`BakedSource`, a baked map's `cells.txt`). The view's **drawn hint**
