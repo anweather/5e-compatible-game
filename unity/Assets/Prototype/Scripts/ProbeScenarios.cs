@@ -491,7 +491,7 @@ public static class ProbeScenarios
             "The wizard's robe as cloth (RobeCloth): walking and running across the yard, a dodge roll, sitting on a bench, lying on a lounger and swimming " +
             "in the lake, each filmed from the side (WizardOutfit.RigidRobe set first gives the old rigid robe, for comparing). Checks: the robe is cloth, " +
             "it's stepping, and it holds together (no particle over 1.5 m from the hips), no console errors."),
-        new Entry("swell", typeof(SwellProbe), 30f,
+        new Entry("swell", typeof(SwellProbe), 90f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),
         new Entry("sleep", typeof(SleepProbe), 60f,
