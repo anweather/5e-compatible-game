@@ -77,6 +77,14 @@ namespace Chem
         public long Made => Interlocked.Read(ref made);
         public long MadeAhead => Interlocked.Read(ref madeAhead);
         public long Waits => Interlocked.Read(ref waits);
+        /// <summary>Chunks made again after being let go (the hold's eviction): the same chunk as the first time, made twice.</summary>
+        public long MadeAgain
+        {
+            get
+            {
+                lock (gate) return madeAgain;
+            }
+        }
 
         /// <summary>Chunks a read made one at a time on the World's thread, not made ahead or at once (MakeNow): each a stall of milliseconds.</summary>
         public long MadeOnRead => Interlocked.Read(ref madeOnRead);
@@ -95,8 +103,15 @@ namespace Chem
         }
 
         /// <summary>A generated map's source, under the rules it's played with.</summary>
-        public GeneratedSource(GeneratedMap map, Rules rules)
+        public GeneratedSource(GeneratedMap map, Rules rules) : this(map, rules, Holds)
         {
+        }
+
+        /// <summary>One holding at most <paramref name="holds"/> chunks made: a test's, to see chunks let go and made again.</summary>
+        public GeneratedSource(GeneratedMap map, Rules rules, int holds)
+        {
+            if (holds < 1) throw new ArgumentOutOfRangeException(nameof(holds), "it holds at least one chunk");
+            this.holds = holds;
             if (map == null) throw new ArgumentNullException(nameof(map));
             gen = map.Gen;
             legend = new LegendCells(rules ?? throw new ArgumentNullException(nameof(rules)));
@@ -172,20 +187,29 @@ namespace Chem
             var c = gen.Make(cx, cy);
             Interlocked.Add(ref makeTicks, Stopwatch.GetTimestamp() - started);
             Interlocked.Increment(ref made);
+            lock (gate)
+                if (!everMade.Add(Chunks.Key(cx, cy))) madeAgain++;
             return c;
         }
 
-        // A chunk made: held, and the oldest let go past Holds.
+        // Every chunk made once, to count those made again: at most the map's chunks (9,720 on the 12 x 10).
+        readonly HashSet<long> everMade = new HashSet<long>();
+        long madeAgain;
+
+        // How many chunks made it holds at most (Holds, unless a test says fewer).
+        readonly int holds;
+
+        // A chunk made: held, and the oldest let go past holds.
         void Finish(Held h, GeneratedChunk c)
         {
             lock (gate)
             {
                 h.Chunk = c;
-                if (held.Count <= Holds) return;
+                if (held.Count <= holds) return;
                 var old = new List<Held>();
                 foreach (var e in held.Values) if (e.Chunk != null && e != h) old.Add(e);
                 old.Sort((a, b) => a.Used.CompareTo(b.Used));
-                for (int k = 0; k < old.Count && held.Count > Holds * 3 / 4; k++) held.Remove(old[k].Key);
+                for (int k = 0; k < old.Count && held.Count > holds * 3 / 4; k++) held.Remove(old[k].Key);
             }
         }
 

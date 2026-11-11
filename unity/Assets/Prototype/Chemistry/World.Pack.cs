@@ -193,7 +193,7 @@ namespace Chem
             get
             {
                 long bytes = (landMoved?.Bytes(4) ?? 0) + (landLaid?.Bytes(4) ?? 0) + (landCrag?.Bytes(4) ?? 0) + (bareCells?.Bytes(1) ?? 0);
-                foreach (var ch in chunks.Values)
+                foreach (var ch in ChunksInOrder)
                 {
                     if (ch.PackedLand != null) bytes += 24 + ch.PackedLand.Length;
                     if (ch.Start != null && ch.Start != ch.Packed) bytes += ch.Start.Bytes;
@@ -208,7 +208,7 @@ namespace Chem
             get
             {
                 long bytes = 0;
-                foreach (var ch in chunks.Values) if (ch.PackedLand != null) bytes += 24 + ch.PackedLand.Length;
+                foreach (var ch in ChunksInOrder) if (ch.PackedLand != null) bytes += 24 + ch.PackedLand.Length;
                 return bytes;
             }
         }
@@ -304,7 +304,7 @@ namespace Chem
                 Packs++;
             }
             unpackedChunks.Clear();
-            foreach (var ch in chunks.Values)
+            foreach (var ch in ChunksInOrder)
             {
                 ch.Packed = PackedChunk.Empty(ch.X, ch.Y);
                 ch.SnapValid = false;

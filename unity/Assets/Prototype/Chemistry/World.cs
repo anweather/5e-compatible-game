@@ -320,7 +320,7 @@ namespace Chem
             if (row == null)
             {
                 hasLand = false;
-                foreach (var ch in chunks.Values) ch.PackedLand = null;
+                foreach (var ch in ChunksInOrder) ch.PackedLand = null;
                 return;
             }
             hasLand = true;
@@ -376,7 +376,7 @@ namespace Chem
             DropLandPeek();
             hasLand = true;
             landFromSource = true;
-            foreach (var ch in chunks.Values)
+            foreach (var ch in ChunksInOrder)
             {
                 ch.PackedLand = null;
                 if (ch.Held is ChunkBlock b) SourceLand(ch, b.Land ??= new int[Chunks.Area]);
