@@ -27,7 +27,7 @@ public class PlaytestLooksProbe : ProbeScenario
         Metric("cut_spherical", cam.layerCullSpherical ? 1 : 0);
         Metric("haze_98_m", far.HazeMetres);
         Metric("tree_prefabs_m", TreeImpostors.Near);
-        Metric("tree_impostors_m", TreeImpostors.Far);
+        Metric("tree_impostors_m", TreeImpostors.FarNow);
         Metric("terrains_drawn_chunks", MapTerrains.Sight());
 
         var spawn = wizard.transform.position;
@@ -124,6 +124,24 @@ public class PlaytestLooksProbe : ProbeScenario
             var eye = OnGround(d + away * metres, High);
             yield return View(label, eye, d + Vector3.up * 2f, 3f);
         }
+        yield return DockSeen(dock, away);
+    }
+
+    // How far off along that line the dock still draws (the eye 120 m over the ground, looking at it): 440 to 900 m.
+    IEnumerator DockSeen(GameObject dock, Vector3 away)
+    {
+        var shown = dock.GetComponentInChildren<Renderer>();
+        if (shown == null) yield break;
+        var d = dock.transform.position;
+        float last = 0f;
+        for (float m = 440f; m <= 900f; m += 20f)
+        {
+            Cut(OnGround(d + away * m, High), d);
+            yield return null;
+            yield return null;
+            if (shown.isVisible) last = m;
+        }
+        Metric("dock_drawn_to_m", last);
     }
 
     // The lake and the sea from over the falls, panned across.

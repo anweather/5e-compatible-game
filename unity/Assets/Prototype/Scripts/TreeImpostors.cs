@@ -28,8 +28,22 @@ public sealed class TreeImpostors : MonoBehaviour
     public static bool On { get; set; } = true;
     /// <summary>Nearer than this (m) a tree is its prefab, with wind; from here out the impostor.</summary>
     public static float Near { get; set; } = DefaultNear;
-    /// <summary>How far out the impostors draw (m).</summary>
-    public static float Far { get; set; } = 500f;
+    /// <summary>How far out the impostors draw (m) on a map without the far ring's haze, or once set (-tree-impostors-far, a probe).</summary>
+    public static float Far
+    {
+        get => farMetres;
+        set
+        {
+            farMetres = value;
+            farSet = true;
+        }
+    }
+    // Unset, on a generated map the impostors draw out to where the haze hides them (#220).
+    static float farMetres = 500f;
+    static bool farSet;
+
+    /// <summary>How far out the impostors draw now (m).</summary>
+    public static float FarNow => !farSet && FarRing.Instance is { HazeMetres: > 0f } ring ? ring.HazeHides : Far;
     /// <summary>How far out the impostors cast shadows (m): the drawn tier (J-091).</summary>
     public static float ShadowFar { get; set; } = 256f;
     /// <summary>Trees this says yes to aren't drawn (a probe clears a view with it); null for none.</summary>
@@ -69,7 +83,8 @@ public sealed class TreeImpostors : MonoBehaviour
     {
         On = true;
         Near = DefaultNear;
-        Far = 500f;
+        farMetres = 500f;
+        farSet = false;
         ShadowFar = 256f;
         Shadows = true;
         Skip = null;
@@ -95,9 +110,12 @@ public sealed class TreeImpostors : MonoBehaviour
         var go = new GameObject("TreeImpostors");
         DontDestroyOnLoad(go);
         go.AddComponent<TreeImpostors>();
-        string shadows = Shadows ? $"within {ShadowFar} m" : "off";
-        Debug.Log(On ? $"TREE IMPOSTORS: on, prefabs within {Near} m, impostors to {Far} m, their shadows {shadows}" : "TREE IMPOSTORS: off");
+        Debug.Log(On ? $"TREE IMPOSTORS: on, prefabs within {Near} m, impostors to {ImpostorsTo()}, their shadows {ShadowsTo()}" : "TREE IMPOSTORS: off");
     }
+
+    static string ImpostorsTo() => farSet ? $"{Far} m" : "the haze";
+
+    static string ShadowsTo() => Shadows ? $"within {ShadowFar} m" : "off";
 
     static bool TryMetres(string s, out float m) => float.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out m);
 
@@ -171,7 +189,7 @@ public sealed class TreeImpostors : MonoBehaviour
         stale.Clear();
         toStand.Clear();
         GeometryUtility.CalculateFrustumPlanes(cam, planes);
-        float size = layout.ChunkSize, reach = Far + size;
+        float size = layout.ChunkSize, reach = FarNow + size;
         int i0 = Mathf.Max(0, Mathf.FloorToInt((eye.x - reach - layout.OriginX) / size)), i1 = Mathf.Min(layout.ChunksX - 1, Mathf.FloorToInt((eye.x + reach - layout.OriginX) / size));
         int j0 = Mathf.Max(0, Mathf.FloorToInt((eye.z - reach - layout.OriginZ) / size)), j1 = Mathf.Min(layout.ChunksZ - 1, Mathf.FloorToInt((eye.z + reach - layout.OriginZ) / size));
         for (int j = j0; j <= j1; j++)
@@ -201,7 +219,7 @@ public sealed class TreeImpostors : MonoBehaviour
     // Chunk (i, j): its trees drawn if it's within Far and they've been read; asked to be read (or read again) if not.
     void Visit(TerrainGrid layout, Terrain[] chunks, int i, int j, Vector3 eye)
     {
-        float size = layout.ChunkSize, keepSq = (Near + Keep) * (Near + Keep), farSq = Far * Far;
+        float size = layout.ChunkSize, keepSq = (Near + Keep) * (Near + Keep), farSq = FarNow * FarNow;
         int k = j * layout.ChunksX + i;
         var (cx, cz) = layout.ChunkCorner(i, j);
         float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
