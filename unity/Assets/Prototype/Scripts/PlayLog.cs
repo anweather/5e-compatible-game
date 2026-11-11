@@ -29,6 +29,9 @@ public class PlayLog : MonoBehaviour
     static readonly CultureInfo Plain = CultureInfo.InvariantCulture;
     static readonly FrameTiming[] Timing = new FrameTiming[1];
 
+    /// <summary>Raised by every mark, with its reason, even with the log off: PlaytestTools writes where it was (#220).</summary>
+    public static event Action<string> Marked;
+
     /// <summary>The log, which exists in every game; it may not be writing.</summary>
     public static PlayLog Instance { get; private set; }
 
@@ -242,12 +245,12 @@ public class PlayLog : MonoBehaviour
     /// <summary>"That felt bad": a marked line, and a small picture of the moment. The playtest bot marks what it finds.</summary>
     public void Mark(string why = "felt bad")
     {
+        Marked?.Invoke(why);
         if (file == null) return;
         marks++;
         string shot = $"{file.Stem}-mark-{marks}.jpg";
         Add(Line("mark", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, $"{why} {shot} {Happening(false)}".Trim()));
         StartCoroutine(Shoot(Path.Combine(file.Folder, shot)));
-        EventLog.Add("Noted");
     }
 
     // The frame as it's shown, read back without holding the game up, a quarter the size.
