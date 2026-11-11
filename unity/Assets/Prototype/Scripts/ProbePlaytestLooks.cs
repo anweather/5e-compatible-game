@@ -193,13 +193,13 @@ public class PlaytestLooksProbe : ProbeScenario
         Check("edge_found", edge.x >= 0, edge.x >= 0 ? $"cell {edge} ({biomes.BiomeAt(edge.x, edge.y)})" : "none");
         if (edge.x < 0) yield break;
         var at = OnGround(grid.CellCenter(edge.x, edge.y), 0f);
-        var back = OnGround(grid.CellCenter(edge.x - 40, edge.y + 15), 30f);
+        var back = OnGround(grid.CellCenter(edge.x - 60, edge.y + 20), 70f);
         yield return View("edge", back, at, Settle);
         var brush = NearestBrush(edge, 120);
         if (brush.x >= 0)
         {
             var b = OnGround(grid.CellCenter(brush.x, brush.y), 0f);
-            yield return View("bushes", OnGround(grid.CellCenter(brush.x - 6, brush.y + 3), Eye), b, 3f);
+            yield return View("bushes", OnGround(grid.CellCenter(brush.x - 5, brush.y + 2), 4f), b, 3f);
         }
         Floating();
     }
@@ -230,26 +230,30 @@ public class PlaytestLooksProbe : ProbeScenario
         return new Vector2Int(-1, -1);
     }
 
-    // Each brush cell's dressing against the drawn terrain under its middle: how many stand 0.25 m or more off it.
+    // Each brush bush (a sphere whose foot is its middle less half its height) against the drawn terrain under it: how many
+    // float 0.25 m or more over it, and the worst.
     void Floating()
     {
-        int all = 0, off = 0;
+        int all = 0, floating = 0;
         float worst = 0f;
         var terrains = MapTerrains.Instance;
         string prefix = TerrainIds.Brush + " ";
         foreach (Transform t in grid.transform)
         {
             if (!t.name.StartsWith(prefix, System.StringComparison.Ordinal)) continue;
-            var drawn = terrains != null ? terrains.HeightAt(t.position) : null;
-            if (drawn == null) continue;
-            all++;
-            float gap = t.position.y - drawn.Value;
-            if (Mathf.Abs(gap) >= 0.25f) off++;
-            if (Mathf.Abs(gap) > Mathf.Abs(worst)) worst = gap;
+            foreach (Transform bush in t)
+            {
+                var drawn = terrains != null ? terrains.HeightAt(bush.position) : null;
+                if (drawn == null) continue;
+                all++;
+                float gap = bush.position.y - bush.lossyScale.y * 0.5f - drawn.Value;
+                if (gap >= 0.25f) floating++;
+                worst = Mathf.Max(worst, gap);
+            }
         }
-        Metric("brush_dressings", all);
-        Metric("brush_off_ground", off);
-        Metric("brush_worst_gap_m", worst);
+        Metric("bushes", all);
+        Metric("bushes_floating", floating);
+        Metric("bushes_worst_float_m", worst);
     }
 
     // The butterflies' homes in the tiles drawn round the last view.
