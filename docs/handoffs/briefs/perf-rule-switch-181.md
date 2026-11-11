@@ -1,3 +1,4 @@
+Done: landed on dev (see git log); don't redo.
 Needs: unity
 Area: unity/Assets/Prototype/Chemistry/ (World.ApplyRules and what it rebuilds), unity/Assets/Prototype/Scripts/ (ChemGrid's ApplyQueuedRules, the mod switch), docs/perf/2026-11-09-profile.md (a new heading only)
 Branch: perf-rule-switch-181

@@ -51,6 +51,16 @@ Waiting:
   yard on the valley; point `Temp/map` at the nine only for the probe run.
 - Nothing waits on a compile. host-ux is clean (an untracked `unity/Assets/_Recovery/` stays); Editor pid 20380 open.
 
+## Who owns what now (no rework, Andrew 2026-11-10)
+
+- **The Mac:** `mac-landing-frame`: #212 (the redraw after a Fireball lands, `ChemGrid.Visuals.cs`'s cast redraw) and
+  #217 (the HUD frame readout, its Esc > Settings toggle, the play log's size). The PC and u2 stay out of those.
+  When the PC profiles the island's bot-walk spikes, it reads the Mac's branch first and leaves the cast redraw alone.
+- **The PC:** `view-map-arrays` (CellWaterMesh, FolkJobs, MapLand, ValleyChemistry), then u2's `sim-across-the-seam`
+  compile, #145's Mono peak, the island's walk spikes.
+- **u2:** the core: the seam (`sim-across-the-seam`, pushed), then the seam's view list goes to the PC.
+- A brief that's done starts with `Done:` so nobody picks it up again.
+
 ## Who runs where
 
 | Where | What it's for |
