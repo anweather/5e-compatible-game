@@ -71,6 +71,26 @@ These complete what was already covered: `PackTests.APeerPackingDifferentlyHashe
    chunk is ever evicted and remade in a test. Purity makes a remade chunk equal to the first, but nothing exercises
    it. A test would need the hold size to be settable.
 
+## Follow-up: `core-guards` (2026-11-11)
+
+- **(1) done:** every pass over all the World's chunks walks `ChunksInOrder` (by row then column, sorted once as
+  chunks are added, no garbage), never the store's creation order. `ChunkTests.ChunksMadeInAnotherOrderRunTheSame`
+  reorders one peer's store and keeps `CellHash` equal through switches, a rule switch, a pack and the dragon. The
+  nine's walk tick is unchanged within noise: 3.68 and 3.76 ms mean before, 3.72 and 3.58 ms after (Release,
+  `SparseWorldBench.AWalkAcrossTheNine`).
+- **(3) done:** `GeneratedSource` takes a hold size. `AChunkLetGoAndMadeAgainRunsTheSame` holds 48 of 162 chunks:
+  over 4,000 remade, `CellHash` equal to a peer that never lets a chunk go.
+- **A bug it found (memory, not lockstep), fixed there:**
+  - **What:** `GeneratedSource.MakeNow`, which `ChunkStreaming.Apply` calls for the chunks about to activate, held
+    what it made without trimming to the hold.
+  - **Why it grew:** only a chunk made on a read or by the worker trimmed it. A client never plans (the planner's
+    `Ahead` is the host's), so on a client the held chunks grew with every chunk a character activated: past `Holds`
+    (768, ~24 KB each), without bound on the 12 x 10.
+  - **The fix:** `MakeNow` trims as `Finish` does, but never a chunk the call asked for, since those are about to be
+    read.
+  - **Tests:** `MakeNowKeepsToTheHold`; and `AClientsSourceKeepsToItsHold`, a client walked with a hold of 24: held
+    at most 24, `CellHash` equal to the host's.
+
 ## Related, not a lockstep bug
 
 From `save-land` (docs/design/player-saves.md, "The land"): a baked map sets its land after the lays, while a generated
