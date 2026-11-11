@@ -7,7 +7,8 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 **Handoff 2026-11-10 ~20:30 MST (lead out of usage; the other account picks up). Start: `unity-lead` skill in
 `.claude/worktrees/coordinator`, read this section, then `bash .claude/skills/status/status.sh`.**
-- **Running on the PC when handed off:** a `unity-task` comparing `tools/probe.sh online` on the nine, dev against
+- **`view-map-arrays` LANDED 3459b5a1: the Scale Island loads in a player on dev.** Its nine `online` failures all fail on dev too (#218: water, things, reset checksums on the nine; needs its own job). The PC is free.
+- **Was running on the PC:** a `unity-task` comparing `tools/probe.sh online` on the nine, dev against
   `view-map-arrays` (85ec9b74). It may have finished, been stopped, or pushed a fix on that branch: check
   `git log origin/view-map-arrays` and the work log. Land `view-map-arrays` (`land.sh auto view-map-arrays --compiled`)
   if the branch fails nothing dev doesn't; it makes the Scale Island load in a player. If unclear, rerun that comparison
