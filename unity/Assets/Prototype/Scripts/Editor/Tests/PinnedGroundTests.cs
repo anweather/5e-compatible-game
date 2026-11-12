@@ -82,6 +82,36 @@ public class PinnedGroundTests
         Assert.That(ground.Metres(At(ground, 0, 0), 0, 0), Is.EqualTo(0).Within(0.01), "a far corner");
     }
 
+    // The island (scale-12x10, 2026-11-11): its generated chunks were moved into the pinned valley's wider height range and
+    // their trees weren't, so every tree off the valley stood 9 to 17 m under its ground. Every tree, generated, eased or
+    // pinned, stands where its ground is drawn at its spot.
+    [Test]
+    public void EveryTreeStandsOnItsGroundOnceLaid()
+    {
+        var ground = Generated();
+        var pinned = Pinned();
+        foreach (var c in ground.Chunks.Concat(pinned.Chunks)) c.Trees = Planted(c);
+        PinnedGround.Lay(ground, Layout, pinned, 64, 64, 64, 64);
+        int trees = 0;
+        foreach (var c in ground.Chunks)
+            foreach (var t in c.Trees)
+            {
+                trees++;
+                double foot = ground.Bottom + (ground.Top - ground.Bottom) * t.Y;
+                Assert.That(foot, Is.EqualTo(Surface(ground, c, t)).Within(0.05), $"chunk ({c.I}, {c.J}) tree at ({t.X:F2}, {t.Z:F2})");
+            }
+        Assert.That(trees, Is.EqualTo(10 * 9));
+    }
+
+    // Ten trees a chunk at a sample each, standing on the chunk's height there (as GroundFromLand stands them).
+    static GroundTree[] Planted(GroundChunk c) => Enumerable.Range(0, 10).Select(n =>
+    {
+        int x = 2 + n * 6, z = 60 - n * 6;
+        return new GroundTree { X = x / (float)(Res - 1), Z = z / (float)(Res - 1), Y = c.Heights[z * Res + x] / (float)GroundPack.HeightSteps, Width = 1, Height = 1 };
+    }).ToArray();
+
+    static double Surface(GroundPack p, GroundChunk c, GroundTree t) => p.Metres(c, (int)System.Math.Round(t.X * (Res - 1)), (int)System.Math.Round(t.Z * (Res - 1)));
+
     [Test]
     public void WithoutAPinnedMapNothingChanges()
     {

@@ -150,11 +150,15 @@ public static class PinnedGround
     static ushort Step(double metres, double bottom, double top) =>
         (ushort)Math.Max(0, Math.Min(GroundPack.HeightSteps, Math.Round((metres - bottom) / (top - bottom) * GroundPack.HeightSteps)));
 
-    // A chunk's heights from one range to another, the same metres.
+    // A chunk's heights from one range to another, the same metres; its trees too, whose heights are fractions of the range
+    // as the heights are (a generated chunk's trees kept the old fractions, so on the island, laid with a pinned valley's
+    // wider range, they stood 9 to 17 m under the ground they were made on).
     static void Rescale(GroundChunk c, double fromBottom, double fromTop, double bottom, double top)
     {
         if (Math.Abs(fromBottom - bottom) < 1e-9 && Math.Abs(fromTop - top) < 1e-9) return;
         for (int k = 0; k < c.Heights.Length; k++) c.Heights[k] = Step(Metres(c.Heights[k], fromBottom, fromTop), bottom, top);
+        for (int n = 0; n < c.Trees.Length; n++)
+            c.Trees[n].Y = (float)((fromBottom + (fromTop - fromBottom) * c.Trees[n].Y - bottom) / (top - bottom));
     }
 
     // The generated chunks round the square are eased to meet it (Ease): a sample SeamCells or nearer moves by the difference
@@ -205,6 +209,13 @@ public static class PinnedGround
                 double t = d / SeamCells, ease = 1 - t * t * (3 - 2 * t);
                 c.Heights[sz * res + sx] = Step(Metres(own[sz * res + sx], bottom, top) + (theirs - mine) * ease, bottom, top);
             }
+        // Its trees move with the ground under them, by as much as it was eased at their spot.
+        for (int n = 0; n < c.Trees.Length; n++)
+        {
+            double x = c.Trees[n].X * (res - 1), z = c.Trees[n].Z * (res - 1);
+            double by = Sample(c.Heights, res, x, z, bottom, top) - Sample(own, res, x, z, bottom, top);
+            c.Trees[n].Y = Math.Max(0f, Math.Min(1f, c.Trees[n].Y + (float)(by / (top - bottom))));
+        }
     }
 
     // A chunk's ground in metres at sample position (x, z), between its samples.
