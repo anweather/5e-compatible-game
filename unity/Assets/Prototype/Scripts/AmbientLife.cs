@@ -88,7 +88,7 @@ public class AmbientLife : MonoBehaviour
             for (int x = Step / 2; x < map.Map.W; x += Step)
             {
                 var (wx, wz) = layout.CellCenter(x, y);
-                float ground = map.Land.At(x, y) * unit, depth = sea - ground;
+                float ground = map.LandAt(x, y) * unit, depth = sea - ground;
                 bool water = map.Sea.IsSea(x, y) || map.Sea.IsBasin(x, y);
                 bool shore = !water && (map.Sea.IsSea(x + Step, y) || map.Sea.IsSea(x - Step, y) || map.Sea.IsSea(x, y + Step) || map.Sea.IsSea(x, y - Step));
                 if (shore && gulls.Count < 12 && pick.NextDouble() < 0.2) gulls.Add(new Vector3(wx, sea, wz));

@@ -156,16 +156,17 @@ public class MapSwitchProbe : ProbeScenario
 
     static string Print(LandChunks land) => land == null ? "none" : Fnv(land).ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
 
-    // Over the land row by row, as over the int a cell it was.
+    // Over the land row by row, as over the int a cell it was: a band of chunk rows at a time, so each chunk is decoded once.
     static uint Fnv(LandChunks land)
     {
         uint h = 2166136261;
         if (land == null) return h;
-        var row = new int[land.W];
-        for (int y = 0; y < land.H; y++)
+        var band = new int[Chunks.Size * land.W];
+        for (int cy = 0; cy * Chunks.Size < land.H; cy++)
         {
-            land.Row(y, row);
-            foreach (int v in row) h = (h ^ (uint)v) * 16777619;
+            land.Band(cy, band);
+            int rows = System.Math.Min(Chunks.Size, land.H - cy * Chunks.Size);
+            for (int k = 0; k < rows * land.W; k++) h = (h ^ (uint)band[k]) * 16777619;
         }
         return h;
     }

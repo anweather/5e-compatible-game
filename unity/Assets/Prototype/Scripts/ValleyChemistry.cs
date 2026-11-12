@@ -171,16 +171,20 @@ public partial class ValleyChemistry : MonoBehaviour
 
     GroundBuilder builder;
 
-    // The map's lowest land, a row at a time (the land is held a chunk at a time, never as an int a cell).
+    // The map's lowest land, a chunk at a time (the land is held a chunk at a time, never as an int a cell). Each chunk is
+    // decoded once: a row at a time through At decoded each chunk 64 times, 9 s on the Scale Island.
     static int Lowest(LandChunks land)
     {
         int least = int.MaxValue;
-        var row = new int[land.W];
-        for (int y = 0; y < land.H; y++)
-        {
-            land.Row(y, row);
-            foreach (int v in row) least = System.Math.Min(least, v);
-        }
+        var cells = new int[Chunks.Area];
+        for (int cy = 0; cy * Chunks.Size < land.H; cy++)
+            for (int cx = 0; cx * Chunks.Size < land.W; cx++)
+            {
+                land.ChunkInto(cx, cy, cells);
+                int rows = System.Math.Min(Chunks.Size, land.H - cy * Chunks.Size), cols = System.Math.Min(Chunks.Size, land.W - cx * Chunks.Size);
+                for (int ly = 0; ly < rows; ly++)
+                    for (int lx = 0; lx < cols; lx++) least = System.Math.Min(least, cells[ly * Chunks.Size + lx]);
+            }
         return least;
     }
 
