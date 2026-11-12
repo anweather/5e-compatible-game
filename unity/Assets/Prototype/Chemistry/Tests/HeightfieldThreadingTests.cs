@@ -150,6 +150,31 @@ namespace Chem.Tests
             Assert.That(Heights(lazy).SequenceEqual(Heights(whole)), Is.True);
         }
 
+        // island-startup-2: a sample's ground asked of a lazily reset heightfield (OffsetNow) is what working its chunk out
+        // gives (Current), and asking works out no chunk: the valley's spawns and a spread of cells round it.
+        [Test]
+        public void OneSamplesGroundIsItsChunksWithoutWorkingTheChunkOut()
+        {
+            string dir = ChemistryTests.WorldDir();
+            var w = SparseWorldBench.Build(dir, ChemistryTests.R, out _);
+            var grid = TerrainGrid.Valley();
+            var asked = new CellHeightfield(grid);
+            asked.ResetLazily(w);
+            var worked = new CellHeightfield(grid);
+            worked.ResetLazily(w);
+            var cells = WorldPlaces.Load(dir).All.Where(p => p.Kind == "spawn").Select(p => (p.Middle.x, p.Middle.y)).ToList();
+            cells.Add(MapFile.Load(dir).Spawn);
+            for (int y = 3; y < w.H; y += 37)
+                for (int x = 5; x < w.W; x += 41) cells.Add((x, y));
+            foreach (var (x, y) in cells)
+            {
+                var (i, j, sx, sz) = grid.CellSample(x, y);
+                Assert.That(asked.OffsetNow(i, j, sx, sz), Is.EqualTo(worked.Current(i, j)[sz, sx]), $"({x}, {y})");
+            }
+            Assert.That(asked.Worked, Is.Zero, "no chunk worked out to answer");
+            Assert.That(cells.Count, Is.GreaterThan(100));
+        }
+
         [Test]
         public void ItIsOnUnlessSwitchedOff()
         {

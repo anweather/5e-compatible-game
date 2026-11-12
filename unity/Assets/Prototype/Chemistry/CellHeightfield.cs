@@ -100,6 +100,19 @@ namespace Chem
         /// <summary>The offsets the cells ask for, [z, x], for one of Chunks. Call Reset first.</summary>
         public float[,] Target(int i, int j) => State(i, j).Target;
 
+        /// <summary>
+        /// A sample's offset drawn now, as Current(i, j)[sz, sx] reads it, without working out its chunk when a lazy Reset
+        /// hasn't yet (island-startup-2): an unworked chunk is what working it out from the cells now would make, one
+        /// sample at a time (SampleOffset), so asking a few cells' ground (the waystones at the start) costs those samples,
+        /// not a chunk each.
+        /// </summary>
+        public float OffsetNow(int i, int j, int sx, int sz)
+        {
+            if (!chunks.TryGetValue((i, j), out var s)) throw new ArgumentOutOfRangeException(nameof(i), $"The cells don't reach chunk ({i}, {j})");
+            if (s.Target == null && lazyWorld != null) return SampleOffset(lazyWorld, i, j, sx, sz);
+            return State(i, j).Current[sz, sx];
+        }
+
         ChunkState State(int i, int j)
         {
             if (!chunks.TryGetValue((i, j), out var s)) throw new ArgumentOutOfRangeException(nameof(i), $"The cells don't reach chunk ({i}, {j})");
