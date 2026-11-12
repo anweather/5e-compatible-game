@@ -10,7 +10,6 @@
 // the same tick. C# only: the sandbox has no chunks.
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Chem
 {
@@ -190,15 +189,26 @@ namespace Chem
         public List<ChunkSwitch> Plan(World world, IReadOnlyList<(int x, int y)> characters)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
-            return Plan(world, world.IsActive, characters);
+            return Plan(world, world.IsActive, characters, world.ActiveChunks);
         }
+
+        /// <summary>The plan against which chunks are planned to be active, every chunk visited (Plan with activeNow null).</summary>
+        public List<ChunkSwitch> Plan(World world, Func<int, int, bool> isActive, IReadOnlyList<(int x, int y)> characters) =>
+            Plan(world, isActive, characters, null);
 
         /// <summary>
         /// The switches for these characters, against which chunks are (or are planned to be)
         /// active; whether chunks are live is read from the world. Ordered by row then column.
         /// With no characters nothing changes.
         /// </summary>
-        public List<ChunkSwitch> Plan(World world, Func<int, int, bool> isActive, IReadOnlyList<(int x, int y)> characters)
+        /// <remarks>
+        /// With <paramref name="activeNow"/>, every chunk <paramref name="isActive"/> says is active, it visits only the chunks
+        /// a plan can touch (planner-reach; walking all 9,720 of the Scale Island's was 8-11 ms a tick): those within keep and
+        /// AheadChunks of a character, and the active ones and the four round each, which is how spread comes in. Each chunk's
+        /// part of the plan depends on that chunk alone, and the plan, the lingering and the chunks made ahead are sorted
+        /// after, so it's the plan visiting every chunk makes. Without it (null), every chunk is visited.
+        /// </remarks>
+        public List<ChunkSwitch> Plan(World world, Func<int, int, bool> isActive, IReadOnlyList<(int x, int y)> characters, IEnumerable<(int cx, int cy)> activeNow)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
             if (isActive == null) throw new ArgumentNullException(nameof(isActive));
@@ -206,10 +216,13 @@ namespace Chem
             if (characters == null || characters.Count == 0) return plan;
             var s = world.Rules.Sim.Streaming;
             // Lingering candidates: (distance, cy, cx, active now).
-            var linger = new List<(int near, int cy, int cx, bool active)>();
+            var linger = lingerScratch;
+            linger.Clear();
             // On a generated map, the chunks a character may come to next, to be made ahead (World.MakeAhead).
-            var ahead = world.Source is IGeneratedSource ? new List<(int near, int cy, int cx)>() : null;
-            foreach (var (cx, cy) in world.ChunkCoords)
+            var ahead = world.Source is IGeneratedSource ? aheadScratch : null;
+            ahead?.Clear();
+            var visit = activeNow == null ? world.ChunkCoords : Candidates(world, characters, activeNow, s.Keep + AheadChunks);
+            foreach (var (cx, cy) in visit)
             {
                 int near = ChunkStreaming.Distance(characters, cx, cy, world.WrapChunks);
                 if (ahead != null && near <= s.Keep + AheadChunks && !world.IsActive(cx, cy)) ahead.Add((near, cy, cx));
@@ -222,13 +235,49 @@ namespace Chem
                 else if (active) plan.Add(new ChunkSwitch(cx, cy, false));
             }
             Cap(linger, s.LingerChunks, world.Tick, plan);
-            plan.Sort((a, b) => a.CY != b.CY ? a.CY.CompareTo(b.CY) : a.CX.CompareTo(b.CX));
+            plan.Sort(ByRowThenColumn);
             if (ahead != null)
             {
                 ahead.Sort();
-                world.MakeAhead(ahead.Select(a => (a.cx, a.cy)));
+                aheadCells.Clear();
+                foreach (var a in ahead) aheadCells.Add((a.cx, a.cy));
+                world.MakeAhead(aheadCells);
             }
             return plan;
+        }
+
+        static readonly Comparison<ChunkSwitch> ByRowThenColumn = (a, b) => a.CY != b.CY ? a.CY.CompareTo(b.CY) : a.CX.CompareTo(b.CX);
+
+        // Kept from plan to plan, so a plan makes no garbage of its own but the plan it returns.
+        readonly List<(int near, int cy, int cx, bool active)> lingerScratch = new List<(int near, int cy, int cx, bool active)>();
+        readonly List<(int near, int cy, int cx)> aheadScratch = new List<(int near, int cy, int cx)>();
+        readonly List<(int cx, int cy)> aheadCells = new List<(int cx, int cy)>();
+        readonly List<(int cx, int cy)> candidates = new List<(int cx, int cy)>();
+        readonly HashSet<long> seen = new HashSet<long>();
+
+        // The chunks a plan can touch, each once: within `around` of a character (across the seam on a world that wraps),
+        // and the active ones and the four round each.
+        List<(int cx, int cy)> Candidates(World world, IReadOnlyList<(int x, int y)> characters, IEnumerable<(int cx, int cy)> activeNow, int around)
+        {
+            candidates.Clear();
+            seen.Clear();
+            void Visit(int cx, int cy)
+            {
+                cx = world.FoldChunkX(cx);
+                if (world.HasChunk(cx, cy) && seen.Add(Chunks.Key(cx, cy))) candidates.Add((cx, cy));
+            }
+            foreach (var (x, y) in characters)
+            {
+                int ccx = Chunks.ChunkOf(x), ccy = Chunks.ChunkOf(y);
+                for (int dy = -around; dy <= around; dy++)
+                    for (int dx = -around; dx <= around; dx++) Visit(ccx + dx, ccy + dy);
+            }
+            foreach (var (cx, cy) in activeNow)
+            {
+                Visit(cx, cy);
+                for (int d = 0; d < 4; d++) Visit(cx + Sides[d].dx, cy + Sides[d].dy);
+            }
+            return candidates;
         }
 
         /// <summary>

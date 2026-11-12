@@ -192,5 +192,52 @@ namespace Chem.Tests
             Assert.That(switches.Any(s => !s.Item2.Active), Is.True, "chunks deactivated behind the wizard");
             Assert.That(lingered, Is.True, "fires left behind lingered");
         }
+
+        // ---------- the plan visits only what it can touch (planner-reach) ----------
+
+        static string Text(List<ChunkSwitch> plan) => string.Join(" ", plan.Select(p => $"{p.CX},{p.CY}{(p.Active ? "+" : "-")}"));
+
+        static string Text(ChunkPlanner planner) => string.Join(" ", planner.Lingering.OrderBy(c => c.cy).ThenBy(c => c.cx).Select(c => $"{c.cx},{c.cy}"));
+
+        /// <summary>
+        /// A planner visiting every chunk and one visiting only the chunks round the characters and the active ones plan the
+        /// same, tick by tick, on one world: a world that wraps (12 x 3 chunks), two characters walking over the seam, grass
+        /// fires that linger and spread behind them; then as NetChem plans, against a set of chunks planned awake.
+        /// </summary>
+        [Test]
+        public void APlanVisitingOnlyWhatItCanTouchIsThePlanVisitingEveryChunk()
+        {
+            var w = new World(R, 12 * S, 3 * S, 3, "grass", wrapX: true);
+            var every = new ChunkPlanner();
+            var near = new ChunkPlanner();
+            var everyAwake = new ChunkPlanner();
+            var nearAwake = new ChunkPlanner();
+            var awake = new HashSet<(int cx, int cy)>(w.ChunkCoords.Where(c => w.IsActive(c.cx, c.cy)));
+            int switched = 0, lingered = 0;
+            for (int t = 0; t < 600; t++)
+            {
+                int k = t % 360, off = k < 180 ? 3 * k : 1080 - 3 * k;
+                var characters = new List<(int x, int y)> { (w.W - 300 + off, S + 10), (300 - off + 2 * S, 2 * S + 30) };
+                if (t % 40 == 5) w.Cast("fireball", characters[0].x + 40, characters[0].y, 1);
+                var a = every.Plan(w, w.IsActive, characters, null);
+                var b = near.Plan(w, characters);
+                Assert.That(Text(b), Is.EqualTo(Text(a)), $"tick {t}: the plan");
+                Assert.That(Text(near), Is.EqualTo(Text(every)), $"tick {t}: the lingering");
+                var c = everyAwake.Plan(w, (x, y) => awake.Contains((x, y)), characters, null);
+                var d = nearAwake.Plan(w, (x, y) => awake.Contains((x, y)), characters, awake);
+                Assert.That(Text(d), Is.EqualTo(Text(c)), $"tick {t}: the plan against the chunks planned awake");
+                foreach (var sw in d)
+                {
+                    if (sw.Active) awake.Add((sw.CX, sw.CY));
+                    else awake.Remove((sw.CX, sw.CY));
+                }
+                ChunkStreaming.Apply(w, b);
+                switched += b.Count;
+                lingered = System.Math.Max(lingered, near.Lingering.Count);
+                w.Step();
+            }
+            Assert.That(switched, Is.GreaterThan(30), "chunks switched as they walked");
+            Assert.That(lingered, Is.GreaterThan(0), "and fires lingered behind them");
+        }
     }
 }

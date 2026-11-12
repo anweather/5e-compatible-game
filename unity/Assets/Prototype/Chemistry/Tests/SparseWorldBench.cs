@@ -216,8 +216,16 @@ namespace Chem.Tests
             long laidBytes = Step();
             w.KeepStart();
             long startBytes = Step();
-            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            string landJson = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
+            long jsonBytes = Step();
+            var readWhole = Stopwatch.StartNew();
+            var land = LandFile.Read(landJson, map.W, map.H);
+            double wholeMs = readWhole.Elapsed.TotalMilliseconds;
             long rowsBytes = Step();
+            var readChunks = Stopwatch.StartNew();
+            var landChunks = LandChunks.Read(landJson, map.W, map.H);
+            double chunksMs = readChunks.Elapsed.TotalMilliseconds;
+            long chunksBytes = Step();
             w.SetLandByChunk(land);
             long setBytes = Step();
             var sea = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
@@ -232,6 +240,8 @@ namespace Chem.Tests
                 foreach (var (cx, cy) in drawn) _ = w.ChunkCells(cx, cy).Length;
             }
             long playBytes = Step();
+            TestContext.Out.WriteLine($"HOLDS {which} land: land.json text {Mb(jsonBytes):0.0} MB; as an int a cell {Mb(rowsBytes):0.0} MB, read in {wholeMs:0} ms; "
+                + $"a chunk at a time {Mb(chunksBytes):0.0} MB (held {Mb(landChunks.Bytes):0.0} MB), read in {chunksMs:0} ms");
             TestContext.Out.WriteLine($"HOLDS {which} {map.W} x {map.H} ({w.ChunkCoords.Count} chunks, {(long)map.W * map.H / 1e6:0.0} M cells): "
                 + $"source {Mb(sourceBytes):0.0} MB, World made {Mb(worldBytes):0.0} MB, lays {Mb(laidBytes):0.0} MB, start {Mb(startBytes):0.0} MB, "
                 + $"land rows {Mb(rowsBytes):0.0} MB, land set by chunk {Mb(setBytes):0.0} MB, sea mask {Mb(seaBytes):0.0} MB (held {Mb(sea.Bytes):0.00} MB), 120 ticks of play {Mb(playBytes):0.0} MB "
@@ -239,7 +249,45 @@ namespace Chem.Tests
             GC.KeepAlive(source);
             GC.KeepAlive(w);
             GC.KeepAlive(land);
+            GC.KeepAlive(landChunks);
             GC.KeepAlive(sea);
+        }
+
+        // planner-reach: ChunkPlanner.Plan visiting every chunk against only those it can touch, on the nine and the Scale
+        // Island, a character flying east from the spawn at ~10 cells a tick: the same plan every tick, its time and garbage.
+        [TestCase("nine")]
+        [TestCase("island")]
+        public void APlansCostByMapSize(string which)
+        {
+            string dir = which == "nine" ? Baked() : IslandBaked();
+            var w = Build(dir, R, out _);
+            var spawn = MapFile.Load(dir).Spawn;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
+            var every = new ChunkPlanner();
+            var near = new ChunkPlanner();
+            double everyMs = 0, nearMs = 0;
+            long everyBytes = 0, nearBytes = 0;
+            const int ticks = 300;
+            for (int t = 0; t < ticks; t++)
+            {
+                var me = new List<(int x, int y)> { (Math.Min(w.W - 1, spawn.x + t * 10), spawn.y) };
+                long b0 = GC.GetAllocatedBytesForCurrentThread();
+                var watch = Stopwatch.StartNew();
+                var a = every.Plan(w, w.IsActive, me, null);
+                everyMs += watch.Elapsed.TotalMilliseconds;
+                long b1 = GC.GetAllocatedBytesForCurrentThread();
+                watch.Restart();
+                var b = near.Plan(w, me);
+                nearMs += watch.Elapsed.TotalMilliseconds;
+                long b2 = GC.GetAllocatedBytesForCurrentThread();
+                everyBytes += b1 - b0;
+                nearBytes += b2 - b1;
+                Assert.That(string.Join(" ", b.Select(x => $"{x.CX},{x.CY},{x.Active}")), Is.EqualTo(string.Join(" ", a.Select(x => $"{x.CX},{x.CY},{x.Active}"))), $"tick {t}");
+                ChunkStreaming.Apply(w, b);
+                w.Step();
+            }
+            TestContext.Out.WriteLine($"PLAN {which} ({w.ChunkCoords.Count} chunks), {ticks} ticks: every chunk {everyMs / ticks:0.00} ms and {everyBytes / ticks / 1024.0:0.0} KB a plan; "
+                + $"what it can touch {nearMs / ticks:0.000} ms and {nearBytes / ticks / 1024.0:0.0} KB; the same plan every tick");
         }
 
         [Test]

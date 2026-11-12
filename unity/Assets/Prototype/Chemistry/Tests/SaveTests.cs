@@ -264,9 +264,10 @@ namespace Chem.Tests
         public void LandSetAChunkAtATimeIsTheSameLand()
         {
             string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
-            var eager = GameValley(dir, out var source, out var land);
+            var eager = GameValley(dir, out var source, out _);
             var lazy = SparseWorldBench.Build(dir, R, out _);
-            lazy.SetLandByChunk(land);
+            var map = MapFile.Load(dir);
+            lazy.SetLandByChunk(LandChunks.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H));
             int unmade = lazy.LandUnmadeChunks;
             Assert.That(unmade, Is.GreaterThan(lazy.ChunkCoords.Count / 2), "most chunks' land left for later");
             Assert.That(lazy.Save(source), Is.EqualTo(eager.Save(source)), "the save, before any land is read");
