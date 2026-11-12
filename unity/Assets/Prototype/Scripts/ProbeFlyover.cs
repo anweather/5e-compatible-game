@@ -54,6 +54,10 @@ public class FlyoverProbe : ProbeScenario
 
         // Loading settles at the start, as after a hop.
         var far = FarRing.Instance;
+        // The terrains plan a few times a second: until they've planned for where the wizard is now, none are waiting.
+        terrains.ReachNow();
+        yield return null;
+        yield return null;
         float settled = 0f;
         for (; settled < SettleMost && (terrains.Waiting > 0 || (far != null && !far.Settled)); settled += Time.unscaledDeltaTime)
         {
