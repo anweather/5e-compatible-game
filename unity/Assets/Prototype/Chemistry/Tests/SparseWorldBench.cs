@@ -184,6 +184,64 @@ namespace Chem.Tests
             Assert.That(errors, Is.Empty);
         }
 
+        // core-mem-scale: what the core holds, part by part, that grows with the map, on the nine and the Scale Island, as the
+        // game starts one: the source, the World (its chunks packed), the land rows, the land set a chunk at a time, the sea
+        // mask, the start kept for the dragon; then in play round the spawn.
+        [TestCase("nine")]
+        [TestCase("island")]
+        public void WhatTheCoreHoldsByMapSize(string which)
+        {
+            string dir = which == "nine" ? Baked() : IslandBaked();
+            Assert.That(R.Fingerprint, Is.Not.Empty);
+            var map = MapFile.Load(dir);
+            long at = Heap();
+            long Step()
+            {
+                long now = Heap();
+                long d = now - at;
+                at = now;
+                return d;
+            }
+            var source = BakedSource.Read(dir, R);
+            long sourceBytes = Step();
+            var w = new World(R, source.W, source.H, 7);
+            w.SetLandRange(map.LandRange);
+            w.MakeFrom(source);
+            long worldBytes = Step();
+            WorldPuzzles.Load(dir).LayInto(w);
+            MapStamps.Load(dir).LayInto(w);
+            WorldBuildings.Load(dir).LayInto(w);
+            if (GolfCommand.Load(dir) is { } hole) w.ApplyGolf(hole);
+            if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
+            long laidBytes = Step();
+            w.KeepStart();
+            long startBytes = Step();
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            long rowsBytes = Step();
+            w.SetLandByChunk(land);
+            long setBytes = Step();
+            var sea = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
+            long seaBytes = Step();
+            var spawn = map.Spawn;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
+            var drawn = Drawn(w, spawn.x, spawn.y, 4).ToList();
+            w.SetDrawn(drawn);
+            for (int t = 0; t < 120; t++)
+            {
+                w.Step();
+                foreach (var (cx, cy) in drawn) _ = w.ChunkCells(cx, cy).Length;
+            }
+            long playBytes = Step();
+            TestContext.Out.WriteLine($"HOLDS {which} {map.W} x {map.H} ({w.ChunkCoords.Count} chunks, {(long)map.W * map.H / 1e6:0.0} M cells): "
+                + $"source {Mb(sourceBytes):0.0} MB, World made {Mb(worldBytes):0.0} MB, lays {Mb(laidBytes):0.0} MB, start {Mb(startBytes):0.0} MB, "
+                + $"land rows {Mb(rowsBytes):0.0} MB, land set by chunk {Mb(setBytes):0.0} MB, sea mask {Mb(seaBytes):0.0} MB (held {Mb(sea.Bytes):0.00} MB), 120 ticks of play {Mb(playBytes):0.0} MB "
+                + $"({w.UnpackedCount} unpacked); the World's map-sized arrays {Mb(w.MapArrayBytes):0.0} MB");
+            GC.KeepAlive(source);
+            GC.KeepAlive(w);
+            GC.KeepAlive(land);
+            GC.KeepAlive(sea);
+        }
+
         [Test]
         public void TheNinesWorldMemory()
         {

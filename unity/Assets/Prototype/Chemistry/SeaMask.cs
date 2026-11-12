@@ -14,7 +14,12 @@ namespace Chem
 
         public int W { get; }
         public int H { get; }
-        readonly byte[] kind;
+
+        // Held a chunk at a time (core-mem-scale): a chunk all one kind (all sea, all dry: most of a map) is that byte alone;
+        // only a chunk that mixes them keeps a byte a cell. On the Scale Island 38 MB a byte a cell, a few MB this way.
+        readonly int chunksW;
+        readonly byte[] uniform;
+        readonly byte[][] mixed;
 
         /// <summary>How many cells are sea, and how many are in basins.</summary>
         public int SeaCells { get; }
@@ -24,11 +29,55 @@ namespace Chem
         {
             W = w;
             H = h;
-            this.kind = kind;
             foreach (byte k in kind)
             {
                 if (k == Sea) SeaCells++;
                 else if (k == Basin) BasinCells++;
+            }
+            chunksW = (w + Chunks.Size - 1) / Chunks.Size;
+            int chunksH = (h + Chunks.Size - 1) / Chunks.Size;
+            uniform = new byte[chunksW * chunksH];
+            mixed = new byte[chunksW * chunksH][];
+            for (int cy = 0; cy < chunksH; cy++)
+                for (int cx = 0; cx < chunksW; cx++)
+                {
+                    int x0 = cx * Chunks.Size, y0 = cy * Chunks.Size;
+                    byte first = kind[y0 * w + x0];
+                    bool same = true;
+                    for (int y = y0; y < Math.Min(h, y0 + Chunks.Size) && same; y++)
+                        for (int x = x0; x < Math.Min(w, x0 + Chunks.Size); x++)
+                            if (kind[y * w + x] != first)
+                            {
+                                same = false;
+                                break;
+                            }
+                    int c = cy * chunksW + cx;
+                    uniform[c] = first;
+                    if (same) continue;
+                    var cells = new byte[Chunks.Area];
+                    for (int y = y0; y < Math.Min(h, y0 + Chunks.Size); y++)
+                        for (int x = x0; x < Math.Min(w, x0 + Chunks.Size); x++) cells[(y - y0) * Chunks.Size + x - x0] = kind[y * w + x];
+                    mixed[c] = cells;
+                }
+        }
+
+        // A cell's kind, on the map.
+        byte KindAt(int x, int y)
+        {
+            int c = (y >> Chunks.Shift) * chunksW + (x >> Chunks.Shift);
+            var cells = mixed[c];
+            return cells == null ? uniform[c] : cells[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
+        }
+
+        /// <summary>The bytes the mask holds now: a byte a chunk, and a byte a cell of the chunks that mix sea, basin and dry.</summary>
+        public long Bytes
+        {
+            get
+            {
+                long b = uniform.Length + mixed.Length * 8L;
+                foreach (var m in mixed)
+                    if (m != null) b += m.Length;
+                return b;
             }
         }
 
@@ -71,10 +120,10 @@ namespace Chem
         bool In(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
 
         /// <summary>Whether a cell is sea: below the level and joined to the map's edge. Off the map is sea when any edge is.</summary>
-        public bool IsSea(int x, int y) => In(x, y) ? kind[y * W + x] == Sea : SeaCells > 0;
+        public bool IsSea(int x, int y) => In(x, y) ? KindAt(x, y) == Sea : SeaCells > 0;
 
         /// <summary>Whether a cell is in a basin: below the level, and walled off from the sea.</summary>
-        public bool IsBasin(int x, int y) => In(x, y) && kind[y * W + x] == Basin;
+        public bool IsBasin(int x, int y) => In(x, y) && KindAt(x, y) == Basin;
 
         /// <summary>
         /// The cells within <paramref name="reach"/> cells (a square's half side) of water: the sea's, and the basins' too
@@ -83,7 +132,12 @@ namespace Chem
         public bool[] Near(int reach, bool basins)
         {
             var wet = new bool[W * H];
-            for (int i = 0; i < wet.Length; i++) wet[i] = kind[i] == Sea || (basins && kind[i] == Basin);
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    byte k = KindAt(x, y);
+                    wet[y * W + x] = k == Sea || (basins && k == Basin);
+                }
             return Grow(Grow(wet, reach, true), reach, false);
         }
 
@@ -102,7 +156,7 @@ namespace Chem
             for (int y = 0; y < wh; y++)
                 for (int x = 0; x < ww; x++)
                 {
-                    byte k = kind[(wy0 + y) * W + wx0 + x];
+                    byte k = KindAt(wx0 + x, wy0 + y);
                     wet[y * ww + x] = k == Sea || (basins && k == Basin);
                 }
             var grown = Grow(Grow(wet, ww, wh, reach, true), ww, wh, reach, false);
