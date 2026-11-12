@@ -1,0 +1,86 @@
+{
+  "about": "Desert Canyons (Andrew, 2026-11-12): 12 x 10 world squares, 6912 x 5760 cells, baked whole like the Scale Island. Salt flats and ash fields with the plan's canyons cut into the land (generator 9: a floor 14 m down between steep walls) and its roads crossing them on wooden bridges (a deck at road height, log railings). The valley is pinned one square in from the west coast, an oasis to start from. A map choice, not the default.",
+  "id": "desert-canyons",
+  "name": "Desert Canyons",
+  "size": [
+    6912,
+    5760
+  ],
+  "seaLevel": -4,
+  "spawn": [
+    868,
+    2632
+  ],
+  "generated": {
+    "seed": "desert-canyons-1",
+    "squares": [
+      12,
+      10
+    ],
+    "generator": 9,
+    "towns": 40,
+    "pinned": [
+      {
+        "map": "valley",
+        "square": [
+          1,
+          4
+        ]
+      }
+    ],
+    "forced": {
+      "legend": {
+        "~": "open-water",
+        "S": "open-sea",
+        "p": "saltpan@low",
+        "a": "ash-fields@hills",
+        "N": "pinned"
+      },
+      "rows": [
+        "~~~~~~~~~~~S",
+        "~papapapapa~",
+        "~apapapapap~",
+        "~papapapapa~",
+        "~Napapapapa~",
+        "~apapapapap~",
+        "~papapapapa~",
+        "~apapapapap~",
+        "~papapapapa~",
+        "S~~~~~~~~~~~"
+      ]
+    },
+    "sketch": {
+      "worldSketch": 1,
+      "name": "Desert",
+      "world": {
+        "w": 13,
+        "h": 11,
+        "wrap": "none"
+      },
+      "soft": 96,
+      "shapes": [
+        {
+          "biome": "salt-flat",
+          "pts": [
+            [
+              -0.5,
+              -0.5
+            ],
+            [
+              13.5,
+              -0.5
+            ],
+            [
+              13.5,
+              11.5
+            ],
+            [
+              -0.5,
+              11.5
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}

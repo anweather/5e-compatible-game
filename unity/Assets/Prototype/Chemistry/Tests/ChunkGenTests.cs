@@ -796,5 +796,32 @@ namespace Chem.Tests
             File.WriteAllBytes(path, LandmarkPicture.Png(rgb, n, n));
             TestContext.Out.WriteLine($"PICTURE {path} ({n} x {n}): square ({sx}, {sy})'s cells");
         }
+
+        // desert-canyons: the map's plan (canyons, the bridges over them, its spawns), then its bake: MapCheck, and the
+        // canyons and bridges in its cells and land. A bake of the whole map: run it by name.
+        [Test]
+        [Explicit("bakes a 12 x 10 map: run it by name")]
+        public void TheDesertCanyonsMap()
+        {
+            string world = LandmarkIntentTests.GameWorldDir();
+            var m = GeneratedMap.Load(Path.Combine(world, "maps", "desert-canyons"));
+            int canyonEdges = 0;
+            for (int i = 0; i < m.Plan.Count; i++)
+                for (int side = 0; side < 4; side++) canyonEdges += m.Plan.Features[i][side].Count(f => f.Kind == EdgeKind.Canyon);
+            var bridges = m.Plan.Crossings.Where(x => x.Used && x.Kind == "bridge" && x.Over == "canyon").ToList();
+            TestContext.Out.WriteLine($"DESERT plan: {m.SquaresW} x {m.SquaresH} squares, canyon edges {canyonEdges / 2} (between squares), "
+                + $"bridges over canyons {bridges.Count}, spawns {m.Gen.Spawns.Count}, problems: {string.Join("; ", m.Plan.Problems)}");
+            string root = Path.Combine(Path.GetTempPath(), "desert-canyons-bake");
+            string dir = Path.Combine(root, "desert-canyons");
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+            Directory.CreateDirectory(root);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            m.Bake(dir);
+            var errors = MapCheck.Errors(dir);
+            string cells = File.ReadAllText(Path.Combine(dir, MapFile.CellsName));
+            int deck = cells.Count(c => c == '=' ), railing = cells.Count(c => c == 'L');
+            TestContext.Out.WriteLine($"DESERT baked in {watch.Elapsed.TotalSeconds:0} s: MapCheck {errors.Count} errors ({string.Join("; ", errors.Take(5))}); deck cells {deck}, railing cells {railing}");
+            Assert.That(canyonEdges, Is.GreaterThan(0));
+        }
     }
 }
