@@ -282,9 +282,14 @@ namespace Chem
             var o = JObject.Parse(json);
             if ((int?)o["version"] != LandFile.Version || (int?)o["w"] != w || (int?)o["h"] != h) return null;
             var land = new LandChunks(w, h);
-            var band = new int[Chunks.Size * w];
+            // Two bands: one encoded on a worker while the next is decoded into the other (each chunk's bytes are the
+            // same whichever thread encodes it; only the time changes).
+            var bands = new[] { new int[Chunks.Size * w], new int[Chunks.Size * w] };
             var cell = new int[Chunks.Area];
             var scratch = new byte[LandCodec.MostBytes];
+            System.Threading.Tasks.Task encoding = null;
+            int which = 0;
+            var band = bands[0];
             int rowStart = 0; // the first cell of the row above: 0 above the top row
             using (var deflate = new DeflateStream(new MemoryStream(Convert.FromBase64String((string)o["data"])), CompressionMode.Decompress))
             {
@@ -300,9 +305,19 @@ namespace Chem
                         if (low != null && band[r + x] < seaLevel) low[(long)y * w + x] = 1;
                     }
                     rowStart = band[r];
-                    if ((y & Chunks.Mask) == Chunks.Mask || y == h - 1) land.KeepBand(y >> Chunks.Shift, band, cell, scratch);
+                    if ((y & Chunks.Mask) == Chunks.Mask || y == h - 1)
+                    {
+                        encoding?.Wait();
+                        int cy = y >> Chunks.Shift;
+                        var done = band;
+                        encoding = System.Threading.Tasks.Task.Run(() => land.KeepBand(cy, done, cell, scratch));
+                        which ^= 1;
+                        band = bands[which];
+                    }
                 }
             }
+            encoding?.Wait();
+            land.cachedChunk = -1;
             return land;
         }
 
@@ -326,17 +341,19 @@ namespace Chem
         void KeepBand(int cy, int[] band, int[] cell, byte[] scratch)
         {
             int rows = Math.Min(Chunks.Size, H - cy * Chunks.Size);
-            for (int cx = 0; cx < chunksW; cx++)
-            {
-                Array.Clear(cell, 0, cell.Length);
-                int cols = Math.Min(Chunks.Size, W - cx * Chunks.Size);
-                for (int ly = 0; ly < rows; ly++) Array.Copy(band, ly * W + cx * Chunks.Size, cell, ly * Chunks.Size, cols);
-                chunks[cy * chunksW + cx] = LandCodec.Encode(cell, scratch);
-            }
+            for (int cx = 0; cx < chunksW; cx++) EncodeOne(cy, cx, rows, band, cell, scratch);
             cachedChunk = -1;
         }
 
         void KeepBand(int cy, int[] band) => KeepBand(cy, band, new int[Chunks.Area], new byte[LandCodec.MostBytes]);
+
+        void EncodeOne(int cy, int cx, int rows, int[] band, int[] cell, byte[] scratch)
+        {
+            Array.Clear(cell, 0, cell.Length);
+            int cols = Math.Min(Chunks.Size, W - cx * Chunks.Size);
+            for (int ly = 0; ly < rows; ly++) Array.Copy(band, ly * W + cx * Chunks.Size, cell, ly * Chunks.Size, cols);
+            chunks[cy * chunksW + cx] = LandCodec.Encode(cell, scratch);
+        }
 
         /// <summary>A chunk's land, Area ints by local index (row by row in the chunk); 0 past the map's edge.</summary>
         public void ChunkInto(int cx, int cy, int[] into)
