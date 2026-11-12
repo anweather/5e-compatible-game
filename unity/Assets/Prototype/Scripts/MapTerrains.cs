@@ -87,6 +87,7 @@ public sealed class MapTerrains : MonoBehaviour
         if (lazy && ground != null) Stream();
         StartupTimeline.Mark("first frame: ground terrains streamed", 20);
         if (!Application.isPlaying || chunks == null || Time.unscaledTime < nextReach) return;
+        using var marked = ReachMarker.Auto();
         nextReach = Time.unscaledTime + ReachEvery;
         var cam = Camera.main;
         if (cam == null) return;
@@ -253,6 +254,9 @@ public sealed class MapTerrains : MonoBehaviour
     // About this many ms a frame go to making terrains in play (at least one a frame while any is wanted and its arrays are
     // made); the arrays of up to MostAtOnce chunks are made side by side on a worker.
     const double MakeBudgetMs = 4.0;
+    const float BusyFrameSeconds = 0.022f;
+    const int MostWaits = 3;
+    int waited;
     const int MostAtOnce = 8;
 
     /// <summary>Whether the terrains are made only for the drawn tier (a generated map's), not one for every chunk.</summary>
@@ -301,6 +305,7 @@ public sealed class MapTerrains : MonoBehaviour
     // wanted go back to the pool now; those wanted and not made wait, nearest first.
     void Plan()
     {
+        using var marked = PlanMarker.Auto();
         planNow = false;
         nextPlan = Time.unscaledTime + ReachEvery;
         focus.Clear();
@@ -386,8 +391,18 @@ public sealed class MapTerrains : MonoBehaviour
     // arrays are made is made in a frame (or one under an active chunk, which waits for nothing).
     void MakeSome(bool whole)
     {
+        using var marked = MakeMarker.Auto();
         TakeArrays();
         if (toMake.Count == 0) return;
+        // After a slow frame a terrain not about to be stood on waits a frame (a few at most): making one is a few ms, and
+        // the far ring's mesh shows there until it's drawn (FarRing.LetGo).
+        if (!whole && Time.unscaledDeltaTime > BusyFrameSeconds && waited < MostWaits && Distance(toMake[0]) > 1)
+        {
+            waited++;
+            StartArrays(0);
+            return;
+        }
+        waited = 0;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         if (whole)
         {
@@ -419,7 +434,6 @@ public sealed class MapTerrains : MonoBehaviour
         // The next ones' arrays start now, so they're likely made by the time their turn comes.
         if (toMake.Count > 0 && !whole) StartArrays(0);
         if (!any) return;
-        Terrain.SetConnectivityDirty();
         nextReach = 0f;
     }
 
@@ -472,6 +486,7 @@ public sealed class MapTerrains : MonoBehaviour
     // A terrain from the pool (or a new one) for chunk (i, j), given the chunk's ground.
     void Attach((int i, int j) at)
     {
+        using var marked = AttachMarker.Auto();
         Terrain t;
         if (pool.Count > 0)
         {
@@ -489,15 +504,21 @@ public sealed class MapTerrains : MonoBehaviour
         var (cx, cz) = layout.ChunkCorner(at.i, at.j);
         t.transform.position = new Vector3(cx, 0f, cz);
         Configure(t, layout.IsHighRes(at.i, at.j), material);
+        t.allowAutoConnect = false;
         t.enabled = true;
         t.drawHeightmap = true;
         t.drawTreesAndFoliage = true;
-        ground.Attach(at, t);
+        using (AttachGroundMarker.Auto()) ground.Attach(at, t);
         int k = at.j * layout.ChunksX + at.i;
         chunks[k] = t;
         made.Add(k);
-        SeatBushes(at, t);
+        Connect(at);
+        using (BushesMarker.Auto()) SeatBushes(at, t);
     }
+
+    static readonly Unity.Profiling.ProfilerMarker ReachMarker = new("MapTerrains.Reach"), PlanMarker = new("MapTerrains.Plan"),
+        MakeMarker = new("MapTerrains.MakeSome"), AttachMarker = new("MapTerrains.Attach"), AttachGroundMarker = new("MapTerrains.Attach.Ground"),
+        BushesMarker = new("MapTerrains.Attach.Bushes"), ReleaseMarker = new("MapTerrains.Release");
 
     // The bushes of the cells under a terrain just made, put on it (CellDressing.SeatBushes).
     void SeatBushes((int i, int j) at, Terrain t)
@@ -515,17 +536,44 @@ public sealed class MapTerrains : MonoBehaviour
     // Chunk k's terrain back to the pool (its ground keeps what was changed on it).
     void Release(int k)
     {
+        using var marked = ReleaseMarker.Auto();
         var t = chunks[k];
         chunks[k] = null;
         made.Remove(k);
         drawn.Remove(k);
         ground.Release((k % layout.ChunksX, k / layout.ChunksX));
         if (t == null) return;
+        Connect((k % layout.ChunksX, k / layout.ChunksX));
+        t.SetNeighbors(null, null, null, null);
         t.terrainData = null;
         if (t.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = null;
         t.gameObject.SetActive(false);
         pool.Push(t);
     }
+
+    // A terrain made or let go: it and the four round it told their neighbours (those standing, of the same detail, which
+    // Unity stitches). Done here rather than by Terrain.SetConnectivityDirty, whose AutoConnect went over every terrain
+    // and made garbage each time one was made, a few a second in flight.
+    void Connect((int i, int j) at)
+    {
+        Neighbours(at);
+        Neighbours((at.i - 1, at.j));
+        Neighbours((at.i + 1, at.j));
+        Neighbours((at.i, at.j - 1));
+        Neighbours((at.i, at.j + 1));
+    }
+
+    void Neighbours((int i, int j) at)
+    {
+        var t = Standing(at);
+        if (t == null) return;
+        bool high = layout.IsHighRes(at.i, at.j);
+        t.SetNeighbors(Alike((at.i - 1, at.j), high), Alike((at.i, at.j + 1), high), Alike((at.i + 1, at.j), high), Alike((at.i, at.j - 1), high));
+    }
+
+    Terrain Standing((int i, int j) at) => layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] is { } t && t.terrainData != null ? t : null;
+
+    Terrain Alike((int i, int j) at, bool high) => Standing(at) is { } t && layout.IsHighRes(at.i, at.j) == high ? t : null;
 
     /// <summary>The chunk terrain standing under a world point, or null (none made there, or off the map).</summary>
     public Terrain TerrainAt(Vector3 p)

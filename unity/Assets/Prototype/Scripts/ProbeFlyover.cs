@@ -54,6 +54,10 @@ public class FlyoverProbe : ProbeScenario
 
         // Loading settles at the start, as after a hop.
         var far = FarRing.Instance;
+        // The terrains plan a few times a second: until they've planned for where the wizard is now, none are waiting.
+        terrains.ReachNow();
+        yield return null;
+        yield return null;
         float settled = 0f;
         for (; settled < SettleMost && (terrains.Waiting > 0 || (far != null && !far.Settled)); settled += Time.unscaledDeltaTime)
         {
@@ -80,12 +84,17 @@ public class FlyoverProbe : ProbeScenario
         var treeless = new HashSet<(int, int)>();
         var seenTerrains = new HashSet<(int, int)>();
         var holeAt = new SortedDictionary<int, int>();
+        var nearHoleAt = new List<string>();
         int closeHoleFrames = 0;
         float leg = end.x - start.x, total = Back ? 2f * leg : leg, flown = 0f;
         bool measuredKm = false, measuredHalf = false, skipFrame = false;
+        // With unity/Temp/flyprofile there, every timed marker is read each frame and the slow frames' are summed
+        // (FlyProfile): what a slow frame is made of. It costs a little itself, so the timing runs go without it.
+        using var profile = FlyProfile.Wanted() ? new FlyProfile() : null;
         while (flown < total)
         {
             float dt = Time.unscaledDeltaTime;
+            profile?.Frame(dt * 1000f, grid.CellAt(wizardT.position).x, !skipFrame);
             // The frame after a memory reading (a full collection and an object walk) isn't the flight's.
             if (skipFrame) skipFrame = false;
             else ms.Add(dt * 1000f);
@@ -108,7 +117,7 @@ public class FlyoverProbe : ProbeScenario
                 bool terrain = t != null && t.terrainData != null && t.isActiveAndEnabled && t.drawHeightmap;
                 var cell = land.CellOf(xz);
                 var mc = (cell.x / ChunkGen.Size, cell.y / ChunkGen.Size);
-                bool known = far != null && !far.LandIsTerrain(mc.Item1, mc.Item2);
+                bool known = far != null && (!far.LandIsTerrain(mc.Item1, mc.Item2) || far.MeshShows(mc.Item1, mc.Item2));
                 if (terrain)
                 {
                     if (seenTerrains.Add(mc)) terrainsSeen++;
@@ -128,6 +137,8 @@ public class FlyoverProbe : ProbeScenario
                 {
                     nearHole = true;
                     nearHoleChunks.Add(mc);
+                    if (nearHoleAt.Count < 12)
+                        nearHoleAt.Add($"frame {frames} wizard x {grid.CellAt(p).x} hole {d:0} m on at ({mc.Item1},{mc.Item2}): terrain {TerrainState(t)} far {(far != null ? far.Explain(mc.Item1, mc.Item2) : "none")}");
                 }
                 break;
             }
@@ -170,6 +181,7 @@ public class FlyoverProbe : ProbeScenario
         }
 
         tools.Fly(false);
+        if (profile != null) Debug.Log($"FLYOVER PROFILE {Speed:0} m/s{profile.Report()}");
         Memory("end");
         var stats = FrameStats.Of(ms);
         Metric("speed_m_s", Speed);
@@ -234,6 +246,7 @@ public class FlyoverProbe : ProbeScenario
         Check("worst_frames", true, worst.ToString());
         Check("over_33ms_by_x", true, bandText.Length > 0 ? bandText.ToString() : "none");
         Check("no_hole_within_sight", nearHoleChunks.Count == 0, $"{nearHoleChunks.Count} land chunks within the drawn dial ({terrainReach:0} m) seen with nothing drawn: {holeText}");
+        if (nearHoleAt.Count > 0) Debug.Log("FLYOVER HOLES " + string.Join(" | ", nearHoleAt));
     }
 
     // Memory readings by "<when>_<what>" (allocated, reserved, mono), after a full collection.
@@ -243,6 +256,11 @@ public class FlyoverProbe : ProbeScenario
     // A memory reading now: metrics mem_<when>_..., and a log line with what the view's caches hold (to find a leak).
     void Memory(string when)
     {
+        // The walk names every loaded object (hundreds of thousands, through a regex): gigabytes of garbage, which a
+        // collection in flight then paid for in the frames measured. So only before and after the flight, and before the
+        // collection here, which takes it.
+        bool walk = when is "start" or "end";
+        string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() : "";
         System.GC.Collect();
         const float mb = 1024f * 1024f;
         mem[when + "_allocated"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / mb;
@@ -260,8 +278,13 @@ public class FlyoverProbe : ProbeScenario
                   $"ground: {terrains.Ground?.Holdings()} world: unpacked={world?.UnpackedCount} pool={world?.PackPoolCount} " +
                   $"far_meshes={(far != null ? far.DrawnCount : 0)} impostor_blocks={(impostors != null ? impostors.Held : 0)} " +
                   $"cell_chunks_drawn={grid.ChunksHeldDrawn} undrawn_ever={grid.ChunksUndrawn} blockers={grid.BlockersStanding} " +
-                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() +
-                  System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>());
+                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + objects);
+    }
+
+    static string TerrainState(Terrain t)
+    {
+        if (t == null) return "none";
+        return t.isActiveAndEnabled ? "on" : "off";
     }
 
     // Loaded objects of a type by name (digits and commas taken out, so a chunk's or a cell's are one), the most first.
@@ -292,6 +315,82 @@ public class FlyoverProbe : ProbeScenario
 
     // The camera behind the wizard and over it, looking east and a little down.
     void Look(Vector3 p, float dir = 1f) => Cut(p + new Vector3(-8f * dir, 4f, 0f), p + new Vector3(40f * dir, -8f, 0f));
+}
+
+// What the flyover's slow frames are made of (unity/Temp/flyprofile there): every timed marker of every thread read each
+// frame (PerfMarkers, wide), each one's mean over the frames over SlowMs beside its mean over all, and the worst frames'
+// own breakdowns. The markers overlap (a parent and its children all show).
+sealed class FlyProfile : System.IDisposable
+{
+    const float SlowMs = 25f;
+    readonly PerfMarkers markers = new(wide: true, keep: false);
+    readonly double[] slow, all;
+    int slowFrames, frames;
+    long garbage, slowGarbage;
+    readonly List<(float ms, int x, string line)> worst = new(), typical = new();
+
+    // The frame's markers of a millisecond or more, and its garbage.
+    string Breakdown()
+    {
+        var line = new StringBuilder();
+        for (int i = 0; i < all.Length; i++)
+            if (markers.Last(i) >= 1.0) line.Append(' ').Append(markers.Names[i]).Append('=').Append(markers.Last(i).ToString("0.0", CultureInfo.InvariantCulture));
+        return line.Append(" gc_kb=").Append(markers.AllocatedLastFrame / 1024).ToString();
+    }
+
+    public static bool Wanted() => System.IO.File.Exists(System.IO.Path.Combine(Application.dataPath, "..", "Temp", "flyprofile"));
+
+    public FlyProfile()
+    {
+        slow = new double[markers.Names.Count];
+        all = new double[markers.Names.Count];
+    }
+
+    // The frame just ended: its time (ms) and the wizard's cell x.
+    public void Frame(float ms, int x, bool counted)
+    {
+        markers.Sample();
+        if (!counted) return;
+        frames++;
+        bool isSlow = ms >= SlowMs;
+        if (isSlow) slowFrames++;
+        garbage += markers.AllocatedLastFrame;
+        if (isSlow) slowGarbage += markers.AllocatedLastFrame;
+        for (int i = 0; i < all.Length; i++)
+        {
+            double v = markers.Last(i);
+            all[i] += v;
+            if (isSlow) slow[i] += v;
+        }
+        if (isSlow && ms < 45f && slowFrames % 40 == 0 && typical.Count < 15) typical.Add((ms, x, Breakdown()));
+        if (worst.Count < 12 || ms > worst[^1].ms)
+        {
+            worst.Add((ms, x, Breakdown()));
+            worst.Sort((a, b) => b.ms.CompareTo(a.ms));
+            if (worst.Count > 12) worst.RemoveAt(12);
+        }
+    }
+
+    public string Report()
+    {
+        var inv = CultureInfo.InvariantCulture;
+        var line = new StringBuilder($" slow_at={SlowMs} slow_frames={slowFrames} frames={frames} gc_kb_slow={slowGarbage / 1024 / Mathf.Max(1, slowFrames)} gc_kb_all={garbage / 1024 / Mathf.Max(1, frames)}\nslow/all means:");
+        var order = new List<int>();
+        for (int i = 0; i < all.Length; i++)
+            if (slow[i] / Mathf.Max(1, slowFrames) >= 0.1 || all[i] / Mathf.Max(1, frames) >= 0.1) order.Add(i);
+        order.Sort((a, b) => slow[b].CompareTo(slow[a]));
+        for (int k = 0; k < order.Count && k < 120; k++)
+        {
+            int i = order[k];
+            line.Append(' ').Append(markers.Names[i]).Append('=').Append((slow[i] / Mathf.Max(1, slowFrames)).ToString("0.00", inv))
+                .Append('/').Append((all[i] / Mathf.Max(1, frames)).ToString("0.00", inv));
+        }
+        foreach (var (ms, x, l) in typical) line.Append("\nTYPICAL ").Append(ms.ToString("0", inv)).Append(" ms at x ").Append(x).Append(':').Append(l);
+        foreach (var (ms, x, l) in worst) line.Append("\nWORST ").Append(ms.ToString("0", inv)).Append(" ms at x ").Append(x).Append(':').Append(l);
+        return line.ToString();
+    }
+
+    public void Dispose() => markers.Dispose();
 }
 
 // The flyover at 80 m/s (the fly mode's 40 with Shift held).

@@ -210,6 +210,7 @@ public class TreeImpostorsProbe : ProbeScenario
             foreach (var (data, was) in cleared) if (data != null) data.treeInstances = was;
             cleared.Clear();
             TreeImpostors.Skip = null;
+            ReadImpostorsAgain();
             return;
         }
         foreach (var t in MapTerrains.Instance.Chunks)
@@ -223,7 +224,15 @@ public class TreeImpostorsProbe : ProbeScenario
             data.treeInstances = kept;
         }
         TreeImpostors.Skip = InTheWay;
+        ReadImpostorsAgain();
         Metric("cleared_terrains", cleared.Count);
+    }
+
+    // The impostors read the terrains' trees again (they only do of themselves for a chunk the game changed).
+    static void ReadImpostorsAgain()
+    {
+        var impostors = TreeImpostors.Instance;
+        if (impostors != null) impostors.ReadAgain();
     }
 
     bool InTheWay(Vector3 p)

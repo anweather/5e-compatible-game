@@ -264,17 +264,43 @@ public sealed class TreeImpostors : MonoBehaviour
         Draw(b, eye, whole, shadows, farSq);
     }
 
-    // A few of the terrain chunks' trees read again, in turn.
+    // The terrain chunks whose trees changed (ValleyGround.TreesChanged: a fire, a felling) read again, a few a frame; and
+    // in turn, one every RefreshEvery frames, the rest (for a writer that doesn't say). Every chunk's twice a frame read
+    // all its trees into new arrays: a fifth of the flyover's garbage.
     void Refresh(Terrain[] chunks)
     {
-        if (stale.Count == 0) return;
-        for (int n = 0; n < RefreshesPerFrame && n < stale.Count; n++)
+        int read = 0;
+        while (read < RefreshesPerFrame && changed.Count > 0)
         {
-            int k = stale[(refreshAt + n) % stale.Count];
-            blocks[k] = FromTerrain(chunks[k]);
+            int k = changed[changed.Count - 1];
+            changed.RemoveAt(changed.Count - 1);
+            if (k < 0 || k >= chunks.Length || chunks[k] == null || chunks[k].terrainData == null || !blocks.TryGetValue(k, out var was)) continue;
+            blocks[k] = FromTerrain(chunks[k], was);
+            read++;
         }
-        refreshAt = (refreshAt + RefreshesPerFrame) % Math.Max(1, stale.Count);
+        if (stale.Count == 0 || frame % RefreshEvery != 0) return;
+        int s = stale[refreshAt % stale.Count];
+        blocks[s] = FromTerrain(chunks[s], ReadBefore(s));
+        refreshAt = (refreshAt + 1) % Math.Max(1, stale.Count);
     }
+
+    readonly List<int> changed = new();
+    const int RefreshEvery = 8;
+
+    void OnEnable() => ValleyGround.TreesChanged += TreesChanged;
+
+    void OnDisable() => ValleyGround.TreesChanged -= TreesChanged;
+
+    void TreesChanged((int i, int j) at)
+    {
+        var layout = MapLand.Current?.Layout;
+        if (layout == null) return;
+        int k = at.j * layout.ChunksX + at.i;
+        if (!changed.Contains(k)) changed.Add(k);
+    }
+
+    /// <summary>Every chunk's trees read again (a probe that changed the terrains' trees itself, or Skip).</summary>
+    public void ReadAgain() => blocks.Clear();
 
     // The squared distance from the eye to a chunk's farthest corner (in plan).
     static float Far2(Vector3 eye, float cx, float cz, float size)
@@ -353,14 +379,15 @@ public sealed class TreeImpostors : MonoBehaviour
         leaving.Clear();
         foreach (var (key, s) in standing)
             if (s.Seen != frame) leaving.Add(key);
-        var free = new List<Standing>();
+        var free = freed;
+        free.Clear();
         foreach (long key in leaving)
         {
             free.Add(standing[key]);
             standing.Remove(key);
         }
         bool all = standing.Count == 0;
-        toStand.Sort((a, b) => a.d2.CompareTo(b.d2));
+        toStand.Sort(ByDistance);
         var watch = System.Diagnostics.Stopwatch.StartNew();
         foreach (var (key, kind, m, _) in toStand)
         {
@@ -378,10 +405,15 @@ public sealed class TreeImpostors : MonoBehaviour
         NearDrawn = standing.Count;
     }
 
+    readonly List<Standing> freed = new();
+    static readonly Comparison<(long key, int kind, Matrix4x4 m, float d2)> ByDistance = (a, b) => a.d2.CompareTo(b.d2);
+
     // A tree of a species for a near tree: one just let go, else one from the pool, else a new one if it may be made.
     GameObject Take(int kind, List<Standing> free, bool make)
     {
-        int at = free.FindIndex(f => f.Kind == kind);
+        int at = -1;
+        for (int n = 0; n < free.Count && at < 0; n++)
+            if (free[n].Kind == kind) at = n;
         if (at >= 0)
         {
             var go = free[at].Tree;
@@ -429,7 +461,7 @@ public sealed class TreeImpostors : MonoBehaviour
         foreach (int k in list)
         {
             var t = chunks[k];
-            if (t != null && t.terrainData != null) blocks[k] = FromTerrain(t);
+            if (t != null && t.terrainData != null) blocks[k] = FromTerrain(t, ReadBefore(k));
             else
             {
                 if (budget-- <= 0) continue;
@@ -453,13 +485,12 @@ public sealed class TreeImpostors : MonoBehaviour
         return dx * dx + dz * dz;
     }
 
-    Block FromTerrain(Terrain t)
+    // A terrain's trees, into <paramref name="reuse"/>'s arrays when there's one (read again: no new garbage).
+    Block FromTerrain(Terrain t, Block reuse = null)
     {
         var data = t.terrainData;
-        var protos = data.treePrototypes;
-        var map = new int[protos.Length];
-        for (int p = 0; p < protos.Length; p++) map[p] = protos[p].prefab != null ? Array.IndexOf(kinds, protos[p].prefab.name) : -1;
-        var b = NewBlock();
+        var map = KindsOf(data.treePrototypes);
+        var b = reuse != null && reuse.ByKind.Length == kinds.Length ? Emptied(reuse) : NewBlock();
         b.Terrain = t;
         var origin = t.transform.position;
         var scale = data.size;
@@ -581,6 +612,27 @@ public sealed class TreeImpostors : MonoBehaviour
                 foreach (var c in cells) changes[(int)c[0]] = (string)c[1];
             return changes;
         }
+    }
+
+    int[] protoMap = Array.Empty<int>();
+
+    // Chunk k's block as read last (its arrays to read into again), or null.
+    Block ReadBefore(int k) => blocks.TryGetValue(k, out var b) ? b : null;
+
+    // A terrain's tree prototypes as indices into kinds (-1: none), in a kept array.
+    int[] KindsOf(TreePrototype[] protos)
+    {
+        if (protoMap.Length != protos.Length) protoMap = new int[protos.Length];
+        for (int p = 0; p < protos.Length; p++) protoMap[p] = protos[p].prefab != null ? Array.IndexOf(kinds, protos[p].prefab.name) : -1;
+        return protoMap;
+    }
+
+    static Block Emptied(Block b)
+    {
+        Array.Clear(b.Counts, 0, b.Counts.Length);
+        b.Any = false;
+        b.Bounds = default;
+        return b;
     }
 
     Block NewBlock()

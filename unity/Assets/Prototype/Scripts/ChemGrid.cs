@@ -394,6 +394,8 @@ public partial class ChemGrid : MonoBehaviour
         bool stepped;
         using (StepMarker.Auto()) stepped = StepWithinBudget();
         StepMs = timer.Elapsed.TotalMilliseconds;
+        // A frame whose ticks ran long (a big map's chunk plan) draws fewer new rows: they wait a frame or two.
+        drawBudgetMs = System.Math.Clamp(DrawFrameMs - StepMs, LeastDrawMs, DrawBudgetMs);
         timer.Restart();
         using (RenderMarker.Auto()) Render(stepped);
         RenderMs = timer.Elapsed.TotalMilliseconds;

@@ -73,6 +73,21 @@ public class WizardStrike : MonoBehaviour
         var grid = caster.grid;
         var world = grid != null ? grid.World : null;
         if (!Mine || world == null) return;
+        TakeHits(world, grid);
+        var at = grid.CellAt(transform.position);
+        int now = Mathf.CeilToInt(vitals.Health);
+        bool due = tellAt >= 0f && Time.time >= tellAt;
+        if (world == told && at == cell && now == health && !due) return;
+        if (Held(world, grid)) return;
+        told = world;
+        cell = at;
+        health = now;
+        if (due) tellAt = -1f;
+        Send(grid, StrikeCommand.Stand(caster.CastPlayer, at.x, at.y, now));
+    }
+
+    void TakeHits(World world, ChemGrid grid)
+    {
         foreach (var hit in world.TakeStrikeHits())
         {
             if (hit.Hit && hit.TargetPlayer == caster.CastPlayer) Take(hit, grid);
@@ -80,15 +95,6 @@ public class WizardStrike : MonoBehaviour
             else if (hit.Hit && hit.Attacker == caster.CastPlayer && !fist.Hit) hands.FistLanded(Fist(), fist.Way.sqrMagnitude > 0f ? fist.Way : transform.forward);
             Struck?.Invoke(hit);
         }
-        var at = grid.CellAt(transform.position);
-        int now = Mathf.CeilToInt(vitals.Health);
-        bool due = tellAt >= 0f && Time.time >= tellAt;
-        if (world == told && at == cell && now == health && !due) return;
-        told = world;
-        cell = at;
-        health = now;
-        if (due) tellAt = -1f;
-        Send(grid, StrikeCommand.Stand(caster.CastPlayer, at.x, at.y, now));
     }
 
     void Take(StrikeHit hit, ChemGrid grid)
@@ -113,6 +119,21 @@ public class WizardStrike : MonoBehaviour
 
     // Where the fist met them: the last landing's point, or just ahead at chest height before any.
     Vector3 Fist() => fist.Puncher != null ? fist.Point : transform.position + transform.forward * 0.9f + Vector3.up;
+
+    int heldFrames;
+    const int MostHeldFrames = 10;
+
+    // Solo, a command lands between whole ticks: sent while a tick is part done (ChemGrid steps one over frames within
+    // a budget), it finished the tick there and then, a few ms each cell a flying wizard crossed. It waits for the
+    // tick's end instead (a frame or two, MostHeldFrames at most); online the host stamps it into a tick batch anyway.
+    bool Held(World world, ChemGrid grid)
+    {
+        if (world.TickInProgress && !Online(grid) && heldFrames++ < MostHeldFrames) return true;
+        heldFrames = 0;
+        return false;
+    }
+
+    static bool Online(ChemGrid grid) => grid.TryGetComponent<NetChem>(out var online) && online.Online;
 
     static void Send(ChemGrid grid, StrikeCommand command)
     {

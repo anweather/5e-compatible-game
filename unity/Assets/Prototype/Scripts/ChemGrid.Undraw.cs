@@ -15,8 +15,8 @@ public partial class ChemGrid
     // Past the draw radius by this many chunks, a drawn chunk is let go; and how often the drawn ones are looked over.
     const int UndrawMargin = 2;
     const float UndrawEvery = 0.5f;
-    // At most this many chunks let go a frame (a chunk's dressings destroyed are a fraction of a millisecond).
-    const int UndrawAFrame = 2;
+    // At most this many chunks let go a frame (a forest chunk's dressings destroyed are a few ms, at the frame's end).
+    const int UndrawAFrame = 1;
 
     readonly List<int> toUndraw = new();
     float nextUndrawLook;

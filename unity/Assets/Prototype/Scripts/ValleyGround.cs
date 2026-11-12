@@ -259,6 +259,7 @@ public sealed class ValleyGround
     // what waited for it.
     void MakeReady(Chunk ch)
     {
+        using var marked = MakeReadyMarker.Auto();
         if (ch.data == null) ch.data = builder.Build(ch.at, Spared(ch.at));
         else builder.FreshLayers(ch.data);
         if (ch.terrain != null) Use(ch, ch.data);
@@ -794,7 +795,8 @@ public sealed class ValleyGround
         DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"), HeightQueueMarker = new("ValleyGround.HeightQueue"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
         SyncMarker = new("ValleyGround.SyncHeightmap"), TreeColliderMarker = new("ValleyGround.TreeCollider"), BlockMarker = new("ValleyGround.Paint.Block"),
-        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
+        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply"),
+        MakeReadyMarker = new("ValleyGround.MakeReady");
 
     // Each texel's noise, worked out the first time it paints and kept (CellPaint.Block): a shower's
     // ash repaints the same texels for minutes, and the noise was much of a texel's cost (#70).
@@ -899,7 +901,14 @@ public sealed class ValleyGround
     }
 
     /// <summary>A chunk's trees changed: its collider catches up, a chunk a frame.</summary>
-    public void TreesMoved((int i, int j) at) => treeColliders.Add(at);
+    public void TreesMoved((int i, int j) at)
+    {
+        treeColliders.Add(at);
+        TreesChanged?.Invoke(at);
+    }
+
+    /// <summary>A chunk's trees changed (TreesMoved): what draws them from the terrain reads them again (TreeImpostors).</summary>
+    public static event System.Action<(int i, int j)> TreesChanged;
 
     // A terrain's collider keeps the trees it was given: setting treeInstances draws the change and leaves the old trunks
     // standing unseen (#161). Only giving it its data again takes them, and a fire changes many chunks at once. Players
