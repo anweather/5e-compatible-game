@@ -302,6 +302,64 @@ namespace Chem.Tests
             return n;
         }
 
+        // ---------- a fast flight (core-mem-scale) ----------
+
+        /// <summary>
+        /// A character flying fast along a meadow of 40 x 3 chunks (about 10 cells a tick, 90 m/s), the planner switching
+        /// chunks round it and the view's drawn hint following it, under the shipped streaming rules (a 300-tick hold, 2
+        /// packs a tick). The chunks it leaves more than streaming.keep behind pack without waiting their hold, so the
+        /// only chunks still unpacked are those it needs (active, lingering, beside one, drawn) or near the drawn ones; the
+        /// lingering active chunks behind it are the planner's (streaming.linger*), not packing's. A peer that never packs
+        /// hashes the same.
+        /// </summary>
+        [Test]
+        public void ChunksLeftFarBehindAFastFlightPackWithoutWaitingTheirHold()
+        {
+            const int size = 64, ticks = 230;
+            // Grass only, so every chunk starts packed, as a map's do: painting would unpack them all before the flight.
+            World Meadow(Rules rules) => new World(rules, 40 * size, 3 * size, 9, "grass");
+            var flier = Meadow(R);
+            var still = Meadow(With("{ \"packsPerTick\": 0 }"));
+            var planner = new ChunkPlanner();
+            int most = 0, mostLeft = 0;
+            for (int t = 1; t <= ticks; t++)
+            {
+                (int x, int y) me = (40 + t * 10, size + 20);
+                var plan = planner.Plan(flier, new[] { me });
+                var drawn = new List<(int cx, int cy)>();
+                for (int cy = 0; cy < 3; cy++)
+                    for (int cx = Chunks.ChunkOf(me.x) - 4; cx <= Chunks.ChunkOf(me.x) + 4; cx++)
+                        if (flier.HasChunk(cx, cy)) drawn.Add((cx, cy));
+                foreach (var w in new[] { flier, still })
+                {
+                    ChunkStreaming.Apply(w, plan);
+                    if (t % 20 == 1) w.Cast("fire-bolt", me.x + 30, me.y, 1);
+                    w.Step();
+                }
+                flier.SetDrawn(drawn);
+                most = Math.Max(most, flier.UnpackedCount);
+                // Nothing far from the drawn chunks and unneeded stays unpacked past a few (a lingering column let go at once
+                // packs over the next ticks, 2 a tick); with the hold alone, these piled up behind for 300 ticks.
+                int left = flier.ChunkCoords.Count(c => !flier.IsPacked(c.cx, c.cy) && !Needed(flier, c.cx, c.cy)
+                    && drawn.All(d => Math.Max(Math.Abs(d.cx - c.cx), Math.Abs(d.cy - c.cy)) > 3));
+                Assert.That(left, Is.LessThanOrEqualTo(6), $"tick {t}: chunks left behind, unpacked");
+                mostLeft = Math.Max(mostLeft, left);
+                if (t % 30 == 0) Assert.That(flier.CellHash(), Is.EqualTo(still.CellHash()), $"tick {t}");
+            }
+            TestContext.Out.WriteLine($"PACK a fast flight over {ticks} ticks: at most {most} chunks unpacked ({mostLeft} left behind at most), {flier.UnpackedCount} at the end ({flier.ActiveChunks.Count} active), {flier.Packs} packs; never packing, {still.UnpackedCount}");
+            Assert.That(flier.CellHash(), Is.EqualTo(still.CellHash()));
+            Assert.That(still.UnpackedCount, Is.GreaterThan(flier.UnpackedCount), "where never packing piles them up");
+        }
+
+        // Active, or one of the eight round an active chunk: what the tick may read.
+        static bool Needed(World w, int cx, int cy)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                    if (w.HasChunk(cx + dx, cy + dy) && w.IsActive(cx + dx, cy + dy)) return true;
+            return false;
+        }
+
         // ---------- a peer packing differently (sparse-world.md, step 2's test) ----------
 
         /// <summary>

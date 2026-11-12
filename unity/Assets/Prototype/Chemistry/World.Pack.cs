@@ -424,7 +424,10 @@ namespace Chem
         /// <summary>
         /// Between whole ticks (EndTick): packs up to streaming.packsPerTick chunks whose hold is up, the longest unneeded
         /// first, then by row and column. A chunk is needed while it's active, beside an active chunk (one of eight) or in
-        /// the view's drawn hint.
+        /// the view's drawn hint. One left more than streaming.keep chunks from every drawn chunk (or, with no hint, every
+        /// active one: a character flying on) needn't wait its hold: it's due now, the farthest first (core-mem-scale; on a
+        /// fast flight the hold kept a few hundred unpacked behind, the lingering chunks' neighbours among them). Memory
+        /// only: nothing shared follows how a chunk is held.
         /// </summary>
         void PackDue()
         {
@@ -432,20 +435,55 @@ namespace Chem
             if (s.PacksPerTick <= 0 || unpackedChunks.Count == 0) return;
             foreach (var ch in unpackedChunks)
                 if (ch.Active || BesideActive(ch) || drawnHint.Contains(Chunks.Key(ch.X, ch.Y))) ch.Needed = Tick;
+            var near = NearChunks();
             for (int n = 0; n < s.PacksPerTick; n++)
             {
                 Chunk due = null;
+                int dueAway = 0;
                 foreach (var ch in unpackedChunks)
                 {
-                    if (ch.Needed == Tick || Tick - ch.Needed < s.PackTicks) continue;
-                    if (due == null || ch.Needed < due.Needed || (ch.Needed == due.Needed && (ch.Y < due.Y || (ch.Y == due.Y && ch.X < due.X)))) due = ch;
+                    if (ch.Needed == Tick) continue;
+                    int away = AwayFrom(ch, near);
+                    bool left = away > s.Keep;
+                    if (!left && Tick - ch.Needed < s.PackTicks) continue;
+                    int rank = left ? away : 0;
+                    if (due == null || rank > dueAway || (rank == dueAway && (ch.Needed < due.Needed || (ch.Needed == due.Needed && (ch.Y < due.Y || (ch.Y == due.Y && ch.X < due.X))))))
+                    {
+                        due = ch;
+                        dueAway = rank;
+                    }
                 }
                 if (due == null) return;
                 PackChunk(due);
             }
         }
 
-        // Whether any of the eight chunks round it is active.
+        // Where the players are, for packing: the view's drawn chunks, or the active ones when there's no hint (headless).
+        List<(int x, int y)> NearChunks()
+        {
+            var near = new List<(int x, int y)>();
+            if (drawnHint.Count > 0)
+                foreach (long k in drawnHint) near.Add(((int)(uint)k, (int)(k >> 32)));
+            else
+                foreach (var a in ActiveChunkArray) near.Add((a.X, a.Y));
+            return near;
+        }
+
+        // How many chunks a chunk is from the nearest of these (the larger of across and down, across the seam on a world
+        // that wraps); int.MaxValue with none.
+        int AwayFrom(Chunk ch, List<(int x, int y)> near)
+        {
+            int best = int.MaxValue, across = Chunks.ChunkOf(W - 1) + 1;
+            foreach (var a in near)
+            {
+                int dx = Math.Abs(a.x - ch.X), dy = Math.Abs(a.y - ch.Y);
+                if (WrapX) dx = Math.Min(dx, across - dx);
+                int d = Math.Max(dx, dy);
+                if (d < best) best = d;
+            }
+            return best;
+        }
+
         static bool BesideActive(Chunk ch)
         {
             var n = ch.North;
