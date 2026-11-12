@@ -67,5 +67,30 @@ namespace Chem.Tests
             Assert.That((float)map.WaterMetres, Is.EqualTo(-0.6f), "the lake's and the sea's level, as drawn");
             Assert.That(map.SeaShore, Is.EqualTo(((double, double)?)(225.0, -160.0)));
         }
+
+        // island-startup-2: Near a rectangle or a chunk at a time is Near, cell for cell (the valley's sea and lake).
+        [TestCase(3, true)]
+        [TestCase(12, false)]
+        public void NearByPartsIsNear(int reach, bool basins)
+        {
+            string dir = ChemistryTests.WorldDir();
+            var map = MapFile.Load(dir);
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            var mask = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
+            var whole = mask.Near(reach, basins);
+            var byChunk = mask.NearByChunk(reach, basins);
+            for (int y = 0; y < map.H; y++)
+                for (int x = 0; x < map.W; x++)
+                    if (byChunk[x, y] != whole[y * map.W + x]) Assert.Fail($"({x}, {y}): by chunk {byChunk[x, y]}, whole {whole[y * map.W + x]}");
+            Assert.That(byChunk.Chunks, Is.EqualTo((map.W / Chunks.Size) * (map.H / Chunks.Size)));
+            foreach (var (x0, y0, w, h) in new[] { (0, 0, 7, 9), (130, 300, 40, 3), (map.W - 5, map.H - 11, 5, 11), (200, 0, 1, map.H) })
+            {
+                var part = mask.NearIn(x0, y0, w, h, reach, basins);
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                        Assert.That(part[y * w + x], Is.EqualTo(whole[(y0 + y) * map.W + x0 + x]), $"({x0 + x}, {y0 + y})");
+            }
+            Assert.That(byChunk[-1, 3], Is.False);
+        }
     }
 }
