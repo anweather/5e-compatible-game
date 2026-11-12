@@ -80,6 +80,7 @@ public class FlyoverProbe : ProbeScenario
         var treeless = new HashSet<(int, int)>();
         var seenTerrains = new HashSet<(int, int)>();
         var holeAt = new SortedDictionary<int, int>();
+        var nearHoleAt = new List<string>();
         int closeHoleFrames = 0;
         float leg = end.x - start.x, total = Back ? 2f * leg : leg, flown = 0f;
         bool measuredKm = false, measuredHalf = false, skipFrame = false;
@@ -132,6 +133,8 @@ public class FlyoverProbe : ProbeScenario
                 {
                     nearHole = true;
                     nearHoleChunks.Add(mc);
+                    if (nearHoleAt.Count < 12)
+                        nearHoleAt.Add($"frame {frames} wizard x {grid.CellAt(p).x} hole {d:0} m on at ({mc.Item1},{mc.Item2}): terrain {(t != null ? (t.isActiveAndEnabled ? "on" : "off") : "none")} far {far?.Explain(mc.Item1, mc.Item2)}");
                 }
                 break;
             }
@@ -239,6 +242,7 @@ public class FlyoverProbe : ProbeScenario
         Check("worst_frames", true, worst.ToString());
         Check("over_33ms_by_x", true, bandText.Length > 0 ? bandText.ToString() : "none");
         Check("no_hole_within_sight", nearHoleChunks.Count == 0, $"{nearHoleChunks.Count} land chunks within the drawn dial ({terrainReach:0} m) seen with nothing drawn: {holeText}");
+        if (nearHoleAt.Count > 0) Debug.Log("FLYOVER HOLES " + string.Join(" | ", nearHoleAt));
     }
 
     // Memory readings by "<when>_<what>" (allocated, reserved, mono), after a full collection.

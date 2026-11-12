@@ -145,7 +145,9 @@ public class AmbientLife : MonoBehaviour
     {
 
         using var diagMarked = DIAG_UpdateMarker.Auto();
-        if (Time.unscaledTime >= nextLookup)
+        // Looked up by name (a walk of every object in the scene: ~10 ms once a map's chunks are drawn) only while it's not
+        // found; a wizard that goes is looked for again.
+        if (wizard == null && Time.unscaledTime >= nextLookup)
         {
             var go = GameObject.Find(WizardRig.Name);
             wizard = go != null ? go.transform : null;

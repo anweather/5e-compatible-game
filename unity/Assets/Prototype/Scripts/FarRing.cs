@@ -402,7 +402,7 @@ public sealed partial class FarRing : MonoBehaviour
     readonly Dictionary<int, (GameObject go, float since)> leaving = new();
     readonly List<int> letGo = new();
     // A leaving mesh goes after this long whatever the terrains do (one whose terrain stays off for another chunk's mesh).
-    const float MostLeavingSeconds = 3f;
+    const float MostLeavingSeconds = 6f;
 
     // The leaving meshes whose land the terrains draw now, or that are past sight again, or kept too long, dropped.
     void LetGo()
@@ -437,6 +437,10 @@ public sealed partial class FarRing : MonoBehaviour
         var t = terrains.Chunks[j * l.ChunksX + i];
         return t != null && t.terrainData != null && t.isActiveAndEnabled && t.drawHeightmap;
     }
+
+    /// <summary>For the flyover probe's holes: what the ring says of map chunk (cx, cy).</summary>
+    public string Explain(int cx, int cy) =>
+        ring == null ? "no ring" : $"nearest {Nearest(cx, cy)} know {know} sight {sight} drawn {drawn.ContainsKey(ring.Id(cx, cy))} leaving {leaving.ContainsKey(ring.Id(cx, cy))} known {ring.TryGet(cx, cy, out _)}";
 
     /// <summary>Whether map chunk (cx, cy) shows a known mesh now: one of the ring's, or one kept until its terrains draw.</summary>
     public bool MeshShows(int cx, int cy) => ring != null && (drawn.ContainsKey(ring.Id(cx, cy)) || leaving.ContainsKey(ring.Id(cx, cy)));

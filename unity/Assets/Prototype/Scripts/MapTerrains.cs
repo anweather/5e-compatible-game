@@ -258,6 +258,9 @@ public sealed class MapTerrains : MonoBehaviour
     // About this many ms a frame go to making terrains in play (at least one a frame while any is wanted and its arrays are
     // made); the arrays of up to MostAtOnce chunks are made side by side on a worker.
     const double MakeBudgetMs = 4.0;
+    const float BusyFrameSeconds = 0.022f;
+    const int MostWaits = 3;
+    int waited;
     const int MostAtOnce = 8;
 
     /// <summary>Whether the terrains are made only for the drawn tier (a generated map's), not one for every chunk.</summary>
@@ -395,6 +398,15 @@ public sealed class MapTerrains : MonoBehaviour
         using var marked = MakeMarker.Auto();
         TakeArrays();
         if (toMake.Count == 0) return;
+        // After a slow frame a terrain not about to be stood on waits a frame (a few at most): making one is a few ms, and
+        // the far ring's mesh shows there until it's drawn (FarRing.LetGo).
+        if (!whole && Time.unscaledDeltaTime > BusyFrameSeconds && waited < MostWaits && Distance(toMake[0]) > 1)
+        {
+            waited++;
+            StartArrays(0);
+            return;
+        }
+        waited = 0;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         if (whole)
         {
