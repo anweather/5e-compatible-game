@@ -263,7 +263,7 @@ public class FlyoverProbe : ProbeScenario
         // collection in flight then paid for in the frames measured. So only before and after the flight, and before the
         // collection here, which takes it.
         bool walk = when is "start" or "end";
-        string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() : "";
+        string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() + System.Environment.NewLine + ManagedCensus.Report("flyover " + when) : "";
         System.GC.Collect();
         const float mb = 1024f * 1024f;
         mem[when + "_allocated"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / mb;
