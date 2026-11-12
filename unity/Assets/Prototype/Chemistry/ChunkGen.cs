@@ -60,12 +60,24 @@ namespace Chem
 
     public sealed partial class ChunkGen
     {
-        /// <summary>The generator's version, in the map's input hash: a change that alters any chunk is a new version.</summary>
-        public const int Version = 8;
+        /// <summary>
+        /// The newest generator's version, in a map's input hash: a change that alters any chunk is a new version. A map says
+        /// which it was made by (map.json's "generator"), and is made by that one: Oldest and up, each keeping its chunks.
+        /// 9: the plan's canyons are cut into the land, and a road across one is a wooden bridge (desert-canyons).
+        /// </summary>
+        public const int Version = 9;
+        /// <summary>The oldest generator a map may still say it was made by.</summary>
+        public const int Oldest = 8;
+
+        /// <summary>The generator this map is made by (Oldest to Version).</summary>
+        public int Generator { get; }
+
+        // Legend characters for a bridge: its wooden deck, and the log railing either side.
+        internal const char DeckCell = '=', RailingCell = 'L';
         public const int Size = WorldPlan.ChunkCells, Square = WorldPlan.SquareCells;
 
         // Legend characters (ChemGrid.Legend).
-        const byte MarkRoad = 1, MarkBare = 2, MarkClear = 3;
+        const byte MarkRoad = 1, MarkBare = 2, MarkClear = 3, MarkDeck = 4, MarkRailing = 5;
         internal const char Grass = ',', Dirt = '.', Stone = '#', Tree = 'T', Brush = '"', Pond = 'w', Stream = 'r';
 
         public readonly WorldPlan Plan;
@@ -98,8 +110,11 @@ namespace Chem
         /// <paramref name="originY"/>), its land's biomes from the world's field over the plan (<see cref="WorldBiomes"/>), with the
         /// rows of <paramref name="biomes"/>.
         /// </summary>
-        public ChunkGen(WorldPlan plan, BiomeTable biomes, PinnedSquare pinned, int originX, int originY, int w, int h)
+#pragma warning disable S107 // the plan, the map's placing in it, and which generator: all a generator is made of
+        public ChunkGen(WorldPlan plan, BiomeTable biomes, PinnedSquare pinned, int originX, int originY, int w, int h, int generator = Version)
         {
+            if (generator < Oldest || generator > Version) throw new ArgumentOutOfRangeException(nameof(generator), $"generator {generator}: this one makes {Oldest} to {Version}");
+            Generator = generator;
             Plan = plan;
             Pinned = pinned;
             OriginX = originX;
@@ -129,6 +144,7 @@ namespace Chem
                 foreach (var s in MapStamps.FromJson(rows.StampsJson).All) stamps.Add((s.Stamp, BareChar(s.Bare), k));
             }
         }
+#pragma warning restore S107
 
         /// <summary>A plan square's name in words: its template's ("Downs"), a filler's biome ("Grassland").</summary>
         public string SquareTitle(int square)
@@ -231,6 +247,8 @@ namespace Chem
             public readonly int[] Land = new int[Apron * Apron];
             public readonly byte[] Wet = new byte[Apron * Apron];
             public readonly bool[] Road = new bool[Apron * Apron];
+            public readonly bool[] Deck = new bool[Apron * Apron];
+            public readonly bool[] Cut = new bool[Apron * Apron];
             public readonly bool[] Clear = new bool[Size * Size], Steep = new bool[Size * Size], Bare = new bool[Size * Size];
             public readonly BiomeBlend[] Blend = new BiomeBlend[Size * Size];
             public readonly Dictionary<int, long> Counts = new Dictionary<int, long>();
@@ -248,6 +266,8 @@ namespace Chem
             var land = work.Land;
             var wet = work.Wet;
             var road = work.Road;
+            var deck = work.Deck;
+            var cut = work.Cut;
             var clear = work.Clear;
             var steep = work.Steep;
             var near = Nearby(x0 - 1, y0 - 1, x0 + Size, y0 + Size);
@@ -262,6 +282,8 @@ namespace Chem
                     land[j * ap + i] = p.Land;
                     wet[j * ap + i] = p.Wet;
                     road[j * ap + i] = p.Road;
+                    deck[j * ap + i] = p.Deck;
+                    cut[j * ap + i] = p.Cut;
                     if (i <= 0 || j <= 0 || i > Size || j > Size) continue;
                     blend[(j - 1) * Size + i - 1] = b;
                     clear[(j - 1) * Size + i - 1] = p.Clear;
@@ -308,6 +330,9 @@ namespace Chem
                     byte mark = bare[j * Size + i] ? MarkBare : (byte)0;
                     if (clear[j * Size + i]) mark = MarkClear;
                     if (road[k]) mark = MarkRoad;
+                    // A bridge: the road's cells over a canyon are its deck; a cell in the cut beside the deck, its railing.
+                    if (deck[k]) mark = MarkDeck;
+                    else if (cut[k] && !road[k] && (deck[k - 1] || deck[k + 1] || deck[k - ap] || deck[k + ap])) mark = MarkRailing;
                     steep[j * Size + i] = slope >= SteepUnits;
                     c.Cells[j * Size + i] = CellOf(x0 + i, y0 + j, h, wet[k], mark, slope, b);
                 }
@@ -339,6 +364,8 @@ namespace Chem
         // grass at every pitch, and one too steep to climb stops a walker by its height, not by a wall on it.
         char CellOf(int x, int y, int h, byte wet, byte mark, int slope, BiomeBlend b)
         {
+            if (mark == MarkDeck) return DeckCell;
+            if (mark == MarkRailing) return RailingCell;
             bool road = mark == MarkRoad, bare = mark == MarkBare;
             if (wet == WetSea) return h < SeaLevel ? Pond : Dirt;
             if (wet == WetRiver) return Stream;

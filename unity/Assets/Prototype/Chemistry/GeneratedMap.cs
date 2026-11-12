@@ -122,7 +122,8 @@ namespace Chem
                 Wrap = WrapOf((string)o["wrap"]),
                 Bakes = (bool?)o["bake"] ?? true,
             };
-            if (m.Generator != ChunkGen.Version) throw new FormatException($"{MapFile.FileName}: made by generator {m.Generator}, and this is {ChunkGen.Version}");
+            if (m.Generator < ChunkGen.Oldest || m.Generator > ChunkGen.Version)
+                throw new FormatException($"{MapFile.FileName}: made by generator {m.Generator}, and this makes {ChunkGen.Oldest} to {ChunkGen.Version}");
             // An east-west world's map is its whole plan, the wall rows north and south included.
             int landRows = m.Wrap == PlanWrap.EastWest ? m.SquaresH - 2 : m.SquaresH;
             if (m.SquaresW < 1 || landRows < 1) throw new FormatException($"{MapFile.FileName}: squares {m.SquaresW} x {m.SquaresH} is too small{(m.Wrap == PlanWrap.EastWest ? " for an east-west world (its two wall rows)" : "")}");
@@ -164,7 +165,7 @@ namespace Chem
                 throw new FormatException($"{MapFile.FileName}: a world that wraps is its whole plan, so the valley's square is " +
                     $"[{m.Plan.Grid.X(m.Plan.Valley)}, {m.Plan.Grid.Y(m.Plan.Valley)}], not [{m.PinnedAt.x}, {m.PinnedAt.y}]");
             var biomes = BiomeTable.Load(Path.Combine(m.WorldDir, BiomeTable.FileName));
-            m.Gen = new ChunkGen(m.Plan, biomes, pinned, ox, oy, m.SquaresW, m.SquaresH);
+            m.Gen = new ChunkGen(m.Plan, biomes, pinned, ox, oy, m.SquaresW, m.SquaresH, m.Generator);
             return m;
         }
 
@@ -234,6 +235,10 @@ namespace Chem
 
         // ---------- identity ----------
 
+        // The generator a map's world file says it's made by.
+        static int GeneratorOf(string mapDir) =>
+            (int?)JObject.Parse(File.ReadAllText(Path.Combine(mapDir, MapFile.FileName)))[Key]?["generator"] ?? ChunkGen.Version;
+
         /// <summary>
         /// The map's hash from what it's made of: its world file, the committed files the plan and the chunks read (bands,
         /// biomes, square templates, landmark intents), each pinned map's folder hash and the generator's and the plan's versions.
@@ -243,7 +248,8 @@ namespace Chem
             string world = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
             var parts = new List<(string name, byte[] bytes)>
             {
-                ("versions", Encoding.UTF8.GetBytes($"chunk-gen {ChunkGen.Version} world-plan {WorldPlan.Version}")),
+                // The generator the map says it's made by (map.json's), so a map made by an older one keeps its hash.
+                ("versions", Encoding.UTF8.GetBytes($"chunk-gen {GeneratorOf(mapDir)} world-plan {WorldPlan.Version}")),
                 (MapFile.FileName, File.ReadAllBytes(Path.Combine(mapDir, MapFile.FileName))),
                 ("bands.json", File.ReadAllBytes(Path.Combine(world, "bands.json"))),
                 (BiomeTable.FileName, File.ReadAllBytes(Path.Combine(world, BiomeTable.FileName))),
@@ -331,7 +337,7 @@ namespace Chem
             {
                 ["inputs"] = InputHash(MapDir),
                 ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture),
-                ["generator"] = ChunkGen.Version,
+                ["generator"] = Generator,
                 ["format"] = BakeFormat,
                 ["cells"] = CellsGenerated,
             }));

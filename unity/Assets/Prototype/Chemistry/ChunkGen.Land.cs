@@ -119,6 +119,8 @@ namespace Chem
             public int Land;
             public byte Wet;
             public bool Road, Clear;
+            /// <summary>In a canyon's cut (generator 9); and a road's cell over one, a bridge's deck.</summary>
+            public bool Cut, Deck;
         }
 
         /// <summary>The land at a map cell, in land units, before any landmark's stamps: a pure function of position.</summary>
@@ -128,12 +130,16 @@ namespace Chem
         {
             long g = Wet(x, y, near, out byte wet, out blend);
             bool road = false;
+            // A canyon's cut (generator 9): its floor CanyonDepth below the land, its walls rising smoothly to the rim; where
+            // two meet, the deeper. A road's cells keep the land at its middle (Wet, uncut), so over a canyon it's a deck.
+            long drop = wet == 0 ? CanyonDrop(x, y, near) : 0;
+            g -= drop;
             if (wet == 0 || wet == WetShore)
             {
                 // A road's cells are levelled to the land at its middle, and the land either side leans back to where it was.
                 foreach (var s in near)
                 {
-                    if (s.River) continue;
+                    if (s.River || s.Canyon) continue;
                     long d = Distance(s, x, y, out long cx, out long cy);
                     long half = s.Half * One;
                     if (d >= (s.Half + RoadBank) * One) continue;
@@ -152,7 +158,24 @@ namespace Chem
             // A spawn's clearing levels a road through it too (a lay-by: its cells stay road), so a spawn beside a road
             // that climbs still starts on flat ground.
             bool clear = (wet == 0 || wet == WetShore) && Clearing(x, y, ref g);
-            return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road, Clear = clear };
+            return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road, Clear = clear, Cut = drop > 0, Deck = road && drop > 0 };
+        }
+
+        // How far a canyon cuts the land down at a cell (land units × Q): its full depth on the floor, easing to nothing at
+        // the rim across its walls; 0 off every canyon.
+        static long CanyonDrop(int x, int y, List<Segment> near)
+        {
+            long most = 0, depth = (long)CanyonDepthMetres * PerMetre * Q;
+            foreach (var s in near)
+            {
+                if (!s.Canyon) continue;
+                long d = Distance(s, x, y, out _, out _);
+                if (d >= (long)s.Reach * One) continue;
+                long half = (long)s.Half * One;
+                long drop = d <= half ? depth : depth * (One - BiomeMath.Smoothstep((d - half) / (s.Reach - s.Half))) / One;
+                if (drop > most) most = drop;
+            }
+            return most;
         }
 
         // The land with its coast, rivers and lakes, before roads and the pinned square.

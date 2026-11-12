@@ -30,10 +30,15 @@ namespace Chem
         // Half a river's width at a spring, and the widest it gets.
         const int SpringHalf = 2, WidestHalf = 8;
         const int SaltRiver = 0x0c65;
+        // A canyon (generator 9): half its floor's width, its walls' width, in cells; how deep it cuts, in metres (a land
+        // stamp's canyon cuts 14 m: World.Land's).
+        const int CanyonHalf = 7, CanyonWall = 7, CanyonDepthMetres = 14;
 
         sealed class Segment
         {
             public bool River, Lake;
+            /// <summary>A canyon (generator 9): a cut, Half cells of floor either side of its path, its walls out to Reach.</summary>
+            public bool Canyon;
             /// <summary>The path's points from the slot to the hub, Q16 map cells (one point for a lake).</summary>
             public long[] Px, Py;
             /// <summary>For water, at each point: its surface (land units × Q) and half its width (Q16 cells).</summary>
@@ -105,6 +110,22 @@ namespace Chem
                 for (int s = 0; s < 4; s++)
                     foreach (var f in Plan.Features[i][s])
                     {
+                        if (f.Kind == EdgeKind.Canyon && Generator >= 9)
+                        {
+                            // A canyon from its slot to the hub, as a road is laid: where canyons meet at a hub they join,
+                            // and where one ends there ("close"), it ends in a cove.
+                            var from = SlotCell(i, s, f.Slot);
+                            segments.Add(Bound(new Segment
+                            {
+                                Canyon = true,
+                                Px = new[] { Mid(from.x), Mid(hub.x) },
+                                Py = new[] { Mid(from.y), Mid(hub.y) },
+                                Half = CanyonHalf,
+                                Reach = CanyonHalf + CanyonWall,
+                                Home = i,
+                            }));
+                            continue;
+                        }
                         if (f.Kind != EdgeKind.River && f.Kind != EdgeKind.Road) continue;
                         var at = SlotCell(i, s, f.Slot);
                         if (f.Kind == EdgeKind.Road)
