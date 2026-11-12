@@ -84,6 +84,11 @@ public class WizardStrike : MonoBehaviour
         int now = Mathf.CeilToInt(vitals.Health);
         bool due = tellAt >= 0f && Time.time >= tellAt;
         if (world == told && at == cell && now == health && !due) return;
+        // Solo, a command lands between whole ticks: sent while a tick is part done (ChemGrid steps one over frames within
+        // a budget), it finished the tick there and then, a few ms each cell a flying wizard crossed. It waits for the
+        // tick's end instead (a frame or two); online the host stamps it into a tick batch anyway.
+        if (world.TickInProgress && !Online(grid) && heldFrames++ < MostHeldFrames) return;
+        heldFrames = 0;
         told = world;
         cell = at;
         health = now;
@@ -113,6 +118,11 @@ public class WizardStrike : MonoBehaviour
 
     // Where the fist met them: the last landing's point, or just ahead at chest height before any.
     Vector3 Fist() => fist.Puncher != null ? fist.Point : transform.position + transform.forward * 0.9f + Vector3.up;
+
+    int heldFrames;
+    const int MostHeldFrames = 10;
+
+    static bool Online(ChemGrid grid) => grid.TryGetComponent<NetChem>(out var online) && online.Online;
 
     static void Send(ChemGrid grid, StrikeCommand command)
     {
