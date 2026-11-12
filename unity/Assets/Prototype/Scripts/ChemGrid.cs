@@ -369,6 +369,8 @@ public partial class ChemGrid : MonoBehaviour
     static readonly System.Diagnostics.Stopwatch SincePlay = new();
     static bool readyLogged;
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_FollowMarker = new("ChemGrid.FollowLooks");
+
     void Update()
     {
         if (!readyLogged)
@@ -378,7 +380,7 @@ public partial class ChemGrid : MonoBehaviour
             StartupTimeline.Done("first frame (PLAY READY)");
         }
         using (DetailChunksMarker.Auto()) UpdateDetailChunks();
-        FollowLooks();
+        using (DIAG_FollowMarker.Auto()) FollowLooks();
         if (ExternalTicks)
         {
             Render();

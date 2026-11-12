@@ -223,8 +223,12 @@ public class SoundVoices : MonoBehaviour
         v.busy = false;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("SoundVoices.LateUpdate");
+
     void LateUpdate()
     {
+
+        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         float now = Time.unscaledTime, dt = Time.unscaledDeltaTime, setting = GameVolume.Effects;
         for (int i = 0; i < Count; i++)
         {

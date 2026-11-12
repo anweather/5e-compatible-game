@@ -112,8 +112,12 @@ public sealed class PlaytestTools : MonoBehaviour
         return $"{Points[Mathf.RoundToInt(deg / 45f) % 8]} {deg:0}";
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("PlaytestTools.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
         if (keyboard.f6Key.wasPressedThisFrame) Show(!Shown);

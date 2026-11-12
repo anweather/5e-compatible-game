@@ -190,8 +190,12 @@ public class FlameBank : MonoBehaviour
 
     static readonly Unity.Profiling.ProfilerMarker WriteMarker = new("FlameBank.Write"), LateMarker = new("FlameBank.LateUpdate");
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("FlameBank.LateUpdate");
+
     void LateUpdate()
     {
+
+        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         using var marked = LateMarker.Auto();
         while (dying.Count > 0 && dying.Peek().until <= Time.time)
         {

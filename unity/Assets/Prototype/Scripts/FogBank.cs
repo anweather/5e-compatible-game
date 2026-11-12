@@ -152,8 +152,12 @@ public class FogBank : MonoBehaviour
 
     static readonly Unity.Profiling.ProfilerMarker LateMarker = new("FogBank.LateUpdate"), MakeMarker = new("FogBank.MakePuffs");
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("FogBank.LateUpdate");
+
     void LateUpdate()
     {
+
+        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         using var marked = LateMarker.Auto();
         var cam = Camera.main;
         if (cam == null || squares.Count == 0) return;

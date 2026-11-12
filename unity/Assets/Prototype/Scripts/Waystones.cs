@@ -99,8 +99,10 @@ public sealed class Waystones : MonoBehaviour
     }
 
     // Every half second: the spawns any wizard here has walked up to are the party's.
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("Waystones.Update");
     void Update()
     {
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (Time.time < nextVisit || grid.World == null || !SpawnPoints.Several) return;
         nextVisit = Time.time + Every;
         // Every wizard here, the local one and the party's (each has its Vitals).

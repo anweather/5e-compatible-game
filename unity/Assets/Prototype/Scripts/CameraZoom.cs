@@ -17,8 +17,12 @@ public class CameraZoom : MonoBehaviour
 
     void Awake() => follow = GetComponent<CinemachineThirdPersonFollow>();
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("CameraZoom.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (controls == null) return;
         float input = controls.Zoom.ReadValue<float>();
         if (Mathf.Approximately(input, 0f)) return;

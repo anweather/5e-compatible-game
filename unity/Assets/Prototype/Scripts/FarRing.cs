@@ -149,8 +149,12 @@ public sealed partial class FarRing : MonoBehaviour
         return Mathf.Max(metres, water - 1f);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("FarRing.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (map == null && !Ready()) return;
         // A rule switch can move streaming sight or know (the dials unset follow it); nothing changes while they hold.
         var rules = ChemGrid.Current?.Rules;
@@ -171,6 +175,7 @@ public sealed partial class FarRing : MonoBehaviour
         ring.Handover();
         if (building == null && ring.Version != builtVersion) StartBuild();
         if (building != null && building.IsCompleted) FinishBuild();
+        LetGo();
         UpdateLandmarks();
     }
 
@@ -310,6 +315,7 @@ public sealed partial class FarRing : MonoBehaviour
     // The worker's meshes to Unity, the chunks no longer known taken away, and the terrains told what's drawn now.
     void FinishBuild()
     {
+        using var marked = FinishMarker.Auto();
         var job = building;
         building = null;
         if (job.IsFaulted)
@@ -322,6 +328,7 @@ public sealed partial class FarRing : MonoBehaviour
         {
             int id = ring.Id(k.X, k.Y);
             if (drawn.TryGetValue(id, out var old)) Drop(old.go);
+            if (leaving.Remove(id, out var was)) Drop(was.go);
             drawn[id] = (k, Show(k, data));
         }
         var gone = new List<int>();
@@ -329,7 +336,10 @@ public sealed partial class FarRing : MonoBehaviour
             if (!ring.TryGet(p.Key % chunksW, p.Key / chunksW, out var now) || now != p.Value.chunk) gone.Add(p.Key);
         foreach (int id in gone)
         {
-            Drop(drawn[id].go);
+            // Land come within sight is the terrains' now: its mesh stays until they draw there (LetGo), so the hand-off
+            // shows no hole while they're made and switched on.
+            if (terrains != null && Nearest(id % chunksW, id / chunksW) <= know) leaving[id] = (drawn[id].go, Time.unscaledTime);
+            else Drop(drawn[id].go);
             drawn.Remove(id);
         }
         if (terrains != null) terrains.ReachNow();
@@ -339,6 +349,8 @@ public sealed partial class FarRing : MonoBehaviour
             Debug.Log($"FAR RING: {job.Result.Count} known chunks built ({workerMs:0.0} ms on a worker, {LastBuild.mainMs:0.0} ms to hand to Unity, " +
                       $"{(Time.realtimeSinceStartupAsDouble - buildStarted) * 1000:0} ms in all), {drawn.Count} drawn");
     }
+
+    static readonly Unity.Profiling.ProfilerMarker FinishMarker = new("FarRing.FinishBuild");
 
     // A known chunk's object and its mesh (the object doesn't own the mesh: destroying it alone leaked the mesh).
     static void Drop(GameObject go)
@@ -385,6 +397,49 @@ public sealed partial class FarRing : MonoBehaviour
         foreach (var (x, y) in characters) near = Mathf.Min(near, Mathf.Max(Mathf.Abs(x - cx), Mathf.Abs(y - cy)));
         return near;
     }
+
+    // Known meshes of land now within sight, kept showing (and when they began to) until the chunk terrains draw there.
+    readonly Dictionary<int, (GameObject go, float since)> leaving = new();
+    readonly List<int> letGo = new();
+    // A leaving mesh goes after this long whatever the terrains do (one whose terrain stays off for another chunk's mesh).
+    const float MostLeavingSeconds = 3f;
+
+    // The leaving meshes whose land the terrains draw now, or that are past sight again, or kept too long, dropped.
+    void LetGo()
+    {
+        if (leaving.Count == 0) return;
+        letGo.Clear();
+        foreach (var p in leaving)
+        {
+            int cx = p.Key % chunksW, cy = p.Key / chunksW;
+            if (Nearest(cx, cy) > know || Time.unscaledTime - p.Value.since > MostLeavingSeconds || TerrainsDraw(cx, cy)) letGo.Add(p.Key);
+        }
+        foreach (int id in letGo)
+        {
+            Drop(leaving[id].go);
+            leaving.Remove(id);
+        }
+    }
+
+    // Whether every chunk terrain under map chunk (cx, cy) stands and draws (the terrains are offset from the map's
+    // chunks, so up to four meet it): its four corner cells' terrains.
+    bool TerrainsDraw(int cx, int cy)
+    {
+        var l = land.Layout;
+        int x0 = cx * ChunkGen.Size, y0 = cy * ChunkGen.Size, x1 = x0 + ChunkGen.Size - 1, y1 = y0 + ChunkGen.Size - 1;
+        return TerrainDrawsAt(l, x0, y0) && TerrainDrawsAt(l, x1, y0) && TerrainDrawsAt(l, x0, y1) && TerrainDrawsAt(l, x1, y1);
+    }
+
+    bool TerrainDrawsAt(TerrainGrid l, int x, int y)
+    {
+        var (i, j) = l.ChunkOfCell(x, y);
+        if (!l.HasChunk(i, j)) return true;
+        var t = terrains.Chunks[j * l.ChunksX + i];
+        return t != null && t.terrainData != null && t.isActiveAndEnabled && t.drawHeightmap;
+    }
+
+    /// <summary>Whether map chunk (cx, cy) shows a known mesh now: one of the ring's, or one kept until its terrains draw.</summary>
+    public bool MeshShows(int cx, int cy) => ring != null && (drawn.ContainsKey(ring.Id(cx, cy)) || leaving.ContainsKey(ring.Id(cx, cy)));
 
     /// <summary>How many known chunks are drawn as meshes now.</summary>
     public int DrawnCount => drawn.Count;

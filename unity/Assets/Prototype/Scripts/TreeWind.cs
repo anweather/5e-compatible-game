@@ -42,8 +42,12 @@ public sealed class TreeWind : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("TreeWind.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         var world = ChemGrid.Current?.World;
         int dir = world != null ? world.WindDir : -1;
         var kind = world?.Weather.Kind ?? Chem.WeatherKind.Clear;

@@ -68,8 +68,12 @@ public sealed class FrameReadout : MonoBehaviour
         if (PauseMenu.Button($"Frame readout: {(Shown ? "On" : "Off")} (F9)", PauseMenu.ButtonStyle)) Show(!Shown);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("FrameReadout.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         var keyboard = Keyboard.current;
         if (keyboard != null && keyboard.f9Key.wasPressedThisFrame) Show(!Shown);
         if (!Shown) return;

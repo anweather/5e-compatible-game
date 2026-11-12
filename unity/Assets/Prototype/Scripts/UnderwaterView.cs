@@ -39,8 +39,12 @@ public class UnderwaterView : MonoBehaviour
         grid = ChemGrid.Current?.Grid;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("UnderwaterView.LateUpdate");
+
     void LateUpdate()
     {
+
+        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         if (grid == null || grid.World == null) return;
         var eye = transform.position;
         float top = WaterTop(grid, eye);

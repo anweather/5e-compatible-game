@@ -244,7 +244,12 @@ public class ThingSpawner : MonoBehaviour
     /// <summary>Milliseconds the last change of things between switches took to show (a spell placed, or a placed thing lapsed), for the probe.</summary>
     public double PlacedMs { get; private set; }
 
-    void Update() => ShowPlaced();
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("ThingSpawner.Update");
+    void Update()
+    {
+        using var diagMarked = DIAG_UpdateMarker.Auto();
+        ShowPlaced();
+    }
 
     /// <summary>
     /// After a tick that placed things or let them lapse (the core's table is a new one), shows the difference; a switch

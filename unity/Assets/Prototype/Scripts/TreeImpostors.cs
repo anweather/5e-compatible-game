@@ -164,8 +164,12 @@ public sealed class TreeImpostors : MonoBehaviour
         if (quad != null) Destroy(quad);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("TreeImpostors.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         Drawn = 0;
         Calls = 0;
         frame++;

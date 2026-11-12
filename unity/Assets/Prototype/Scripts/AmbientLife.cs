@@ -139,8 +139,12 @@ public class AmbientLife : MonoBehaviour
         }
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("AmbientLife.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (Time.unscaledTime >= nextLookup)
         {
             var go = GameObject.Find(WizardRig.Name);

@@ -48,8 +48,12 @@ public class WaterSplashes : MonoBehaviour
         mist = MakeSystem(haze, "Surf mist", 0f);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("WaterSplashes.LateUpdate");
+
     void LateUpdate()
     {
+
+        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         if (grid == null || grid.World == null || Time.deltaTime <= 0f) return;
         if (Time.time >= nextFind) FindWaders();
         bool wake = Time.time >= nextWake;

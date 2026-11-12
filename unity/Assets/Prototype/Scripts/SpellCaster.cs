@@ -88,8 +88,12 @@ public partial class SpellCaster : MonoBehaviour
         return true;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("SpellCaster.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         // In an animal's shape, the cast buttons only change back (WhileShifted).
         if (controls == null || grid == null || grid.World == null) return;
         // Every spell's show copied ahead of its first cast, one copy a frame (ShowPool, #189).

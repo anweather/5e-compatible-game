@@ -217,8 +217,10 @@ public class PlayerControls : MonoBehaviour
     void Track(InputAction.CallbackContext ctx) => UsingGamepad = ctx.control.device is Gamepad;
 
     // Movement and look belong to Starter Assets, so watch the devices too.
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("PlayerControls.Update");
     void Update()
     {
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (swapLayout.WasPressedThisFrame())
         {
             ElementPad = !elementPad;

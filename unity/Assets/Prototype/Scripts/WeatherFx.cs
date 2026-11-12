@@ -55,8 +55,12 @@ public class WeatherFx : MonoBehaviour
         windLoop = MakeLoop("Wind", ProceduralSounds.WindLoop);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("WeatherFx.LateUpdate");
+
     void LateUpdate()
     {
+
+        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         var world = grid != null ? grid.World : null;
         var cam = Camera.main;
         if (world == null || cam == null) return;

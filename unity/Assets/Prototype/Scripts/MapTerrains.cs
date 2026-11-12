@@ -82,11 +82,16 @@ public sealed class MapTerrains : MonoBehaviour
     const float ReachEvery = 0.25f;
     float nextReach;
 
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("MapTerrains.Update");
+
     void Update()
     {
+
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (lazy && ground != null) Stream();
         StartupTimeline.Mark("first frame: ground terrains streamed", 20);
         if (!Application.isPlaying || chunks == null || Time.unscaledTime < nextReach) return;
+        using var marked = ReachMarker.Auto();
         nextReach = Time.unscaledTime + ReachEvery;
         var cam = Camera.main;
         if (cam == null) return;
@@ -301,6 +306,7 @@ public sealed class MapTerrains : MonoBehaviour
     // wanted go back to the pool now; those wanted and not made wait, nearest first.
     void Plan()
     {
+        using var marked = PlanMarker.Auto();
         planNow = false;
         nextPlan = Time.unscaledTime + ReachEvery;
         focus.Clear();
@@ -386,6 +392,7 @@ public sealed class MapTerrains : MonoBehaviour
     // arrays are made is made in a frame (or one under an active chunk, which waits for nothing).
     void MakeSome(bool whole)
     {
+        using var marked = MakeMarker.Auto();
         TakeArrays();
         if (toMake.Count == 0) return;
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -472,6 +479,7 @@ public sealed class MapTerrains : MonoBehaviour
     // A terrain from the pool (or a new one) for chunk (i, j), given the chunk's ground.
     void Attach((int i, int j) at)
     {
+        using var marked = AttachMarker.Auto();
         Terrain t;
         if (pool.Count > 0)
         {
@@ -492,12 +500,16 @@ public sealed class MapTerrains : MonoBehaviour
         t.enabled = true;
         t.drawHeightmap = true;
         t.drawTreesAndFoliage = true;
-        ground.Attach(at, t);
+        using (AttachGroundMarker.Auto()) ground.Attach(at, t);
         int k = at.j * layout.ChunksX + at.i;
         chunks[k] = t;
         made.Add(k);
-        SeatBushes(at, t);
+        using (BushesMarker.Auto()) SeatBushes(at, t);
     }
+
+    static readonly Unity.Profiling.ProfilerMarker ReachMarker = new("MapTerrains.Reach"), PlanMarker = new("MapTerrains.Plan"),
+        MakeMarker = new("MapTerrains.MakeSome"), AttachMarker = new("MapTerrains.Attach"), AttachGroundMarker = new("MapTerrains.Attach.Ground"),
+        BushesMarker = new("MapTerrains.Attach.Bushes"), ReleaseMarker = new("MapTerrains.Release");
 
     // The bushes of the cells under a terrain just made, put on it (CellDressing.SeatBushes).
     void SeatBushes((int i, int j) at, Terrain t)
@@ -515,6 +527,7 @@ public sealed class MapTerrains : MonoBehaviour
     // Chunk k's terrain back to the pool (its ground keeps what was changed on it).
     void Release(int k)
     {
+        using var marked = ReleaseMarker.Auto();
         var t = chunks[k];
         chunks[k] = null;
         made.Remove(k);

@@ -259,6 +259,7 @@ public sealed class ValleyGround
     // what waited for it.
     void MakeReady(Chunk ch)
     {
+        using var marked = MakeReadyMarker.Auto();
         if (ch.data == null) ch.data = builder.Build(ch.at, Spared(ch.at));
         else builder.FreshLayers(ch.data);
         if (ch.terrain != null) Use(ch, ch.data);
@@ -794,7 +795,8 @@ public sealed class ValleyGround
         DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"), HeightQueueMarker = new("ValleyGround.HeightQueue"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
         SyncMarker = new("ValleyGround.SyncHeightmap"), TreeColliderMarker = new("ValleyGround.TreeCollider"), BlockMarker = new("ValleyGround.Paint.Block"),
-        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
+        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply"),
+        MakeReadyMarker = new("ValleyGround.MakeReady");
 
     // Each texel's noise, worked out the first time it paints and kept (CellPaint.Block): a shower's
     // ash repaints the same texels for minutes, and the noise was much of a texel's cost (#70).

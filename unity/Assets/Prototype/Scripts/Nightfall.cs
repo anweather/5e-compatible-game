@@ -69,8 +69,10 @@ public class Nightfall : MonoBehaviour
     }
 
     // Twice a second: is the wizard in the dark with nothing to see by? Said once a night.
+    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("Nightfall.Update");
     void Update()
     {
+        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (Time.unscaledTime < nextLook) return;
         nextLook = Time.unscaledTime + 0.5f;
         if (grid == null) grid = ChemGrid.Current?.Grid;
