@@ -230,9 +230,9 @@ public partial class Ocean : MonoBehaviour
         shoreOrigin = map.Shore;
         seaward = map.Seaward;
         shoreMap = map.ShoreMap;
-        // Once a map (it's a pass over every cell), kept a bit a cell: on the Scale Island 40 million cells.
+        // Once a map; worked out a chunk at a time as the surface asks round the players, not a pass over every cell.
         if (wetFor == map && wetInland == inland) return;
-        wetCells = new System.Collections.BitArray(map.Sea.Near(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: DrawsBasins(map)));
+        wetCells = map.Sea.NearByChunk(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: DrawsBasins(map));
         wetFor = map;
         wetInland = inland;
     }
@@ -244,7 +244,7 @@ public partial class Ocean : MonoBehaviour
     static bool DrawsBasins(MapLand map) =>
         System.Array.IndexOf(map.Map.Dresses, "lake") < 0 && !Chem.GeneratedMap.IsGenerated(ChemGrid.MapSource);
 
-    System.Collections.BitArray wetCells;
+    Chem.SeaNear wetCells;
     MapLand wetFor;
     float wetInland;
 
@@ -255,7 +255,7 @@ public partial class Ocean : MonoBehaviour
         if (map == null || wetCells == null) return Vector2.Dot(xz - shoreOrigin, seaward.normalized) > -inland;
         var c = map.CellOf(xz);
         if (c.x < 0 || c.y < 0 || c.x >= map.Map.W || c.y >= map.Map.H) return map.Sea.SeaCells > 0;
-        return wetCells[c.y * map.Map.W + c.x];
+        return wetCells[c.x, c.y];
     }
 
     // How far along the coast either way, and how far inland of it, the map's corners are (m): the fine mesh spans them all.

@@ -644,7 +644,7 @@ public sealed class ValleyGround
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
         float drawnBase = cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
-        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
+        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.OffsetNow(i, j, sx, sz) : 0f);
     }
 
     /// <summary>The terrain's ground drawn now at a world point over the cells (0 off them).</summary>
