@@ -232,11 +232,17 @@ public partial class Ocean : MonoBehaviour
         shoreMap = map.ShoreMap;
         // Once a map (it's a pass over every cell), kept a bit a cell: on the Scale Island 40 million cells.
         if (wetFor == map && wetInland == inland) return;
-        bool lake = System.Array.IndexOf(map.Map.Dresses, "lake") >= 0;
-        wetCells = new System.Collections.BitArray(map.Sea.Near(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: !lake));
+        wetCells = new System.Collections.BitArray(map.Sea.Near(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: DrawsBasins(map)));
         wetFor = map;
         wetInland = inland;
     }
+
+    // Whether the sea also spans the map's basins (hollows below its level, walled off from the sea): only on a map that
+    // neither dresses a lake of its own nor is generated. A generated map's cells hold its lakes' and ponds' water, which
+    // the cells' own still surface draws; the sea over them too made a pond rise and fall with the swell (the Scale
+    // Island's playtest, 2026-11-11).
+    static bool DrawsBasins(MapLand map) =>
+        System.Array.IndexOf(map.Map.Dresses, "lake") < 0 && !Chem.GeneratedMap.IsGenerated(ChemGrid.MapSource);
 
     System.Collections.BitArray wetCells;
     MapLand wetFor;

@@ -238,8 +238,8 @@ public class PlaytestLooksProbe : ProbeScenario
         return new Vector2Int(-1, -1);
     }
 
-    // Each brush bush (a sphere whose foot is its middle less half its height) against the drawn terrain under it: how many
-    // float 0.25 m or more over it, and the worst.
+    // Each brush clump (its foot, an empty at the ground: CellDressing.DressBrush) against the drawn terrain under it: how
+    // many float 0.25 m or more over it, and the worst.
     void Floating()
     {
         int all = 0, floating = 0;
@@ -254,7 +254,7 @@ public class PlaytestLooksProbe : ProbeScenario
                 var drawn = terrains != null ? terrains.HeightAt(bush.position) : null;
                 if (drawn == null) continue;
                 all++;
-                float gap = bush.position.y - bush.lossyScale.y * 0.5f - drawn.Value;
+                float gap = bush.position.y - drawn.Value;
                 if (gap >= 0.25f) floating++;
                 worst = Mathf.Max(worst, gap);
             }
