@@ -369,7 +369,7 @@ public partial class ChemGrid : MonoBehaviour
     static readonly System.Diagnostics.Stopwatch SincePlay = new();
     static bool readyLogged;
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_FollowMarker = new("ChemGrid.FollowLooks");
+    static readonly Unity.Profiling.ProfilerMarker DIAG_FollowMarker = new("ChemGrid.FollowLooks"), DIAG_LightsMarker = new("ChemGrid.FireLights"), DIAG_LogMarker = new("ChemGrid.PumpLog");
 
     void Update()
     {
@@ -396,14 +396,19 @@ public partial class ChemGrid : MonoBehaviour
         bool stepped;
         using (StepMarker.Auto()) stepped = StepWithinBudget();
         StepMs = timer.Elapsed.TotalMilliseconds;
+        // A frame whose ticks ran long (a big map's chunk plan) draws fewer new rows: they wait a frame or two.
+        drawBudgetMs = System.Math.Clamp(DrawFrameMs - StepMs, LeastDrawMs, DrawBudgetMs);
         timer.Restart();
         using (RenderMarker.Auto()) Render(stepped);
         RenderMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
-        if (stepped) fireLights.Place();
-        fireLights.Flicker();
+        using (DIAG_LightsMarker.Auto())
+        {
+            if (stepped) fireLights.Place();
+            fireLights.Flicker();
+        }
         LightsMs = timer.Elapsed.TotalMilliseconds;
-        PumpLog();
+        using (DIAG_LogMarker.Auto()) PumpLog();
     }
 
     static GameFolders folders;

@@ -313,7 +313,16 @@ sealed class FlyProfile : System.IDisposable
     readonly double[] slow, all;
     int slowFrames, frames;
     long garbage, slowGarbage;
-    readonly List<(float ms, int x, string line)> worst = new();
+    readonly List<(float ms, int x, string line)> worst = new(), typical = new();
+
+    // The frame's markers of a millisecond or more, and its garbage.
+    string Breakdown()
+    {
+        var line = new StringBuilder();
+        for (int i = 0; i < all.Length; i++)
+            if (markers.Last(i) >= 1.0) line.Append(' ').Append(markers.Names[i]).Append('=').Append(markers.Last(i).ToString("0.0", CultureInfo.InvariantCulture));
+        return line.Append(" gc_kb=").Append(markers.AllocatedLastFrame / 1024).ToString();
+    }
 
     public static bool Wanted() => System.IO.File.Exists(System.IO.Path.Combine(Application.dataPath, "..", "Temp", "flyprofile"));
 
@@ -339,9 +348,10 @@ sealed class FlyProfile : System.IDisposable
             all[i] += v;
             if (isSlow) slow[i] += v;
         }
+        if (isSlow && ms < 45f && slowFrames % 40 == 0 && typical.Count < 15) typical.Add((ms, x, Breakdown()));
         if (worst.Count < 12 || ms > worst[^1].ms)
         {
-            worst.Add((ms, x, markers.Breakdown()));
+            worst.Add((ms, x, Breakdown()));
             worst.Sort((a, b) => b.ms.CompareTo(a.ms));
             if (worst.Count > 12) worst.RemoveAt(12);
         }
@@ -361,6 +371,7 @@ sealed class FlyProfile : System.IDisposable
             line.Append(' ').Append(markers.Names[i]).Append('=').Append((slow[i] / Mathf.Max(1, slowFrames)).ToString("0.00", inv))
                 .Append('/').Append((all[i] / Mathf.Max(1, frames)).ToString("0.00", inv));
         }
+        foreach (var (ms, x, l) in typical) line.Append("\nTYPICAL ").Append(ms.ToString("0", inv)).Append(" ms at x ").Append(x).Append(':').Append(l);
         foreach (var (ms, x, l) in worst) line.Append("\nWORST ").Append(ms.ToString("0", inv)).Append(" ms at x ").Append(x).Append(':').Append(l);
         return line.ToString();
     }

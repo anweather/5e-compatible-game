@@ -311,7 +311,9 @@ public partial class ChemGrid
     // instead, so a replay matches: a row of a new chunk is RowUnits (~0.08 ms on the PC), a dressing or a blocker one
     // (~0.02 ms), a row looked over for a changed look one, a drawn chunk hashed again SweptUnits. Two whole chunks a
     // frame, as it was, were 10 to 28 ms frames on the nine's walk (#185).
-    const double DrawBudgetMs = 3.0;
+    const double DrawBudgetMs = 3.0, DrawFrameMs = 6.0, LeastDrawMs = 0.5;
+    // This frame's: DrawBudgetMs, less what the frame's ticks took past DrawFrameMs less it (ChemGrid.Update).
+    double drawBudgetMs = DrawBudgetMs;
     const int ExactDrawUnits = 150, RowUnits = 4, SweptUnits = ExactDrawUnits / SweptChunksAFrame;
 
     void StartDrawBudget()
@@ -320,7 +322,7 @@ public partial class ChemGrid
         drawUnits = 0;
     }
 
-    bool DrawBudgetSpent() => ExactFrames ? drawUnits >= ExactDrawUnits : drawTimer.Elapsed.TotalMilliseconds >= DrawBudgetMs;
+    bool DrawBudgetSpent() => ExactFrames ? drawUnits >= ExactDrawUnits : drawTimer.Elapsed.TotalMilliseconds >= drawBudgetMs;
 
     // Where the chunks that must be drawn are: every wizard's (the solo one, or every player's online), the start's and the
     // camera's.
