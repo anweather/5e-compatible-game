@@ -253,6 +253,43 @@ namespace Chem.Tests
             GC.KeepAlive(sea);
         }
 
+        // planner-reach: ChunkPlanner.Plan visiting every chunk against only those it can touch, on the nine and the Scale
+        // Island, a character flying east from the spawn at ~10 cells a tick: the same plan every tick, its time and garbage.
+        [TestCase("nine")]
+        [TestCase("island")]
+        public void APlansCostByMapSize(string which)
+        {
+            string dir = which == "nine" ? Baked() : IslandBaked();
+            var w = Build(dir, R, out _);
+            var spawn = MapFile.Load(dir).Spawn;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
+            var every = new ChunkPlanner();
+            var near = new ChunkPlanner();
+            double everyMs = 0, nearMs = 0;
+            long everyBytes = 0, nearBytes = 0;
+            const int ticks = 300;
+            for (int t = 0; t < ticks; t++)
+            {
+                var me = new List<(int x, int y)> { (Math.Min(w.W - 1, spawn.x + t * 10), spawn.y) };
+                long b0 = GC.GetAllocatedBytesForCurrentThread();
+                var watch = Stopwatch.StartNew();
+                var a = every.Plan(w, w.IsActive, me, null);
+                everyMs += watch.Elapsed.TotalMilliseconds;
+                long b1 = GC.GetAllocatedBytesForCurrentThread();
+                watch.Restart();
+                var b = near.Plan(w, me);
+                nearMs += watch.Elapsed.TotalMilliseconds;
+                long b2 = GC.GetAllocatedBytesForCurrentThread();
+                everyBytes += b1 - b0;
+                nearBytes += b2 - b1;
+                Assert.That(string.Join(" ", b.Select(x => $"{x.CX},{x.CY},{x.Active}")), Is.EqualTo(string.Join(" ", a.Select(x => $"{x.CX},{x.CY},{x.Active}"))), $"tick {t}");
+                ChunkStreaming.Apply(w, b);
+                w.Step();
+            }
+            TestContext.Out.WriteLine($"PLAN {which} ({w.ChunkCoords.Count} chunks), {ticks} ticks: every chunk {everyMs / ticks:0.00} ms and {everyBytes / ticks / 1024.0:0.0} KB a plan; "
+                + $"what it can touch {nearMs / ticks:0.000} ms and {nearBytes / ticks / 1024.0:0.0} KB; the same plan every tick");
+        }
+
         [Test]
         public void TheNinesWorldMemory()
         {
