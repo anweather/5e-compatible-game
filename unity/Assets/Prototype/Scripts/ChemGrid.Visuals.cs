@@ -56,6 +56,9 @@ public partial class ChemGrid
         Rare rare;
         Rare Kept => rare ??= new Rare();
 
+        /// <summary>Whether nothing but its dressing stands on the cell (no cover, gas, fire, charge, thorns or vines).</summary>
+        public bool Plain => rare == null;
+
         public GameObject dressing;
         public string terrain;
         public int height, elevation;
@@ -439,6 +442,7 @@ public partial class ChemGrid
         RedrawSomeLooks();
         RenderSwept();
         DrawSome();
+        UndrawFar();
         RenderCarried();
         if (!wait) RenderTurn();
         RenderFresh(out int fresh);
@@ -1081,5 +1085,6 @@ public partial class ChemGrid
         vineClumps?.Destroy();
         DestroyMovers();
         if (plainDust != null) Destroy(plainDust);
+        if (Application.isPlaying) ForgetCellRoots();
     }
 }

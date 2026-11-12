@@ -119,6 +119,30 @@ public sealed class ValleyGround
     public int WithData => chunks.Values.Count(c => c.data != null);
 
     /// <summary>
+    /// What the ground holds now, for the flyover probe's memory line: chunks with data (and of those, without a terrain
+    /// and why they're kept), the cells' blocks, the spare data and the heightfield's chunks worked out.
+    /// </summary>
+    public string Holdings()
+    {
+        int data = 0, loose = 0, touched = 0, queued = 0, detail = 0, colliders = 0;
+        foreach (var ch in chunks.Values)
+        {
+            if (ch.data == null) continue;
+            data++;
+            if (attached.Contains(ch.at)) continue;
+            loose++;
+            if (ch.touched) touched++;
+            if (ch.syncQueued || ch.paintQueued) queued++;
+            if (pendingDetail.ContainsKey(ch.at)) detail++;
+            if (treeColliders.Contains(ch.at)) colliders++;
+        }
+        int spared = spare.Values.Sum(s => s.Count);
+        return $"data={data} attached={attached.Count} loose={loose} (touched={touched} queued={queued} detail={detail} colliders={colliders}) " +
+               $"spare={spared} arrays={builder?.Held ?? 0} heightfield={HeightfieldChunks} cellBase={cellBase?.Made() ?? 0} " +
+               $"bakedPaint={bakedPaint?.Made() ?? 0} paintedMix={paintedMix?.Made() ?? 0} repaint={repaint.Count} bakedOffsets={bakedOffsets.Count} raised={raised.Count}";
+    }
+
+    /// <summary>
     /// Runs <paramref name="then"/> once the chunk is made, and says false; true when it is already (the caller goes on).
     /// </summary>
     public bool WhenReady((int i, int j) at, System.Action then)
@@ -186,6 +210,25 @@ public sealed class ValleyGround
         cellBase.Drop(at.i, at.j);
         bakedPaint.Drop(at.i, at.j);
         paintedMix.Drop(at.i, at.j);
+    }
+
+    /// <summary>
+    /// A generated map's chunks with no data (no terrain stands for them) that <paramref name="far"/> says are far from
+    /// everyone: their height offsets and arrays let go, as a released chunk's are. The cells drawn round a character read
+    /// the offsets of chunks with no terrain (ShownGround, for what stands on them) and their terrains' arrays are made
+    /// ahead, and neither went again: a crossing of the island kept hundreds. Worked out again if they're wanted again.
+    /// </summary>
+    public int ForgetFar(System.Func<(int i, int j), bool> far)
+    {
+        if (!lazy || heightfield == null) return 0;
+        int forgot = 0;
+        foreach (var ch in chunks.Values)
+        {
+            if (ch.data != null || ch.ready || attached.Contains(ch.at) || !far(ch.at)) continue;
+            if (heightfield.Forget(ch.at.i, ch.at.j)) forgot++;
+            builder.Forget(ch.at);
+        }
+        return forgot;
     }
 
     void Spare(TerrainData data)

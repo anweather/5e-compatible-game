@@ -321,7 +321,7 @@ public sealed partial class FarRing : MonoBehaviour
         foreach (var (k, data) in job.Result)
         {
             int id = ring.Id(k.X, k.Y);
-            if (drawn.TryGetValue(id, out var old)) Destroy(old.go);
+            if (drawn.TryGetValue(id, out var old)) Drop(old.go);
             drawn[id] = (k, Show(k, data));
         }
         var gone = new List<int>();
@@ -329,11 +329,7 @@ public sealed partial class FarRing : MonoBehaviour
             if (!ring.TryGet(p.Key % chunksW, p.Key / chunksW, out var now) || now != p.Value.chunk) gone.Add(p.Key);
         foreach (int id in gone)
         {
-            if (drawn[id].go != null)
-            {
-                Destroy(drawn[id].go.GetComponent<MeshFilter>().sharedMesh);
-                Destroy(drawn[id].go);
-            }
+            Drop(drawn[id].go);
             drawn.Remove(id);
         }
         if (terrains != null) terrains.ReachNow();
@@ -342,6 +338,14 @@ public sealed partial class FarRing : MonoBehaviour
         if (job.Result.Count > 0)
             Debug.Log($"FAR RING: {job.Result.Count} known chunks built ({workerMs:0.0} ms on a worker, {LastBuild.mainMs:0.0} ms to hand to Unity, " +
                       $"{(Time.realtimeSinceStartupAsDouble - buildStarted) * 1000:0} ms in all), {drawn.Count} drawn");
+    }
+
+    // A known chunk's object and its mesh (the object doesn't own the mesh: destroying it alone leaked the mesh).
+    static void Drop(GameObject go)
+    {
+        if (go == null) return;
+        Destroy(go.GetComponent<MeshFilter>().sharedMesh);
+        Destroy(go);
     }
 
     GameObject Show(KnownChunk k, FarMeshes.Data data)
@@ -381,6 +385,9 @@ public sealed partial class FarRing : MonoBehaviour
         foreach (var (x, y) in characters) near = Mathf.Min(near, Mathf.Max(Mathf.Abs(x - cx), Mathf.Abs(y - cy)));
         return near;
     }
+
+    /// <summary>How many known chunks are drawn as meshes now.</summary>
+    public int DrawnCount => drawn.Count;
 
     /// <summary>Whether map chunk (cx, cy) is drawn as its chunk terrain: within the known ring and not as a known mesh.</summary>
     public bool LandIsTerrain(int cx, int cy) =>
