@@ -5,7 +5,7 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
-**PAUSED by Andrew 2026-11-12 ~12:30.** Stopped: the PC's view-mem job (cut by the usage limit mid-measurement, not resumed; branch view-mem if pushed, plus u1 sea-land-speed 81895272 still to merge with its MapLand edit), u1 told to push desert-canyons WIP and wait. Resume only when Andrew says.
+**PAUSED by Andrew 2026-11-12 ~12:30.** Stopped: the PC's view-mem job (cut by the usage limit mid-measurement, not resumed; branch view-mem if pushed, plus u1 sea-land-speed 81895272 still to merge with its MapLand edit), u1 paused: desert-canyons WIP 3be0d2ac (generator 9 canyon cuts, wooden-deck bridges with log railings, map.json; builds, untested, do not land; blocker: "forced" can mark only a pinned block, so the map does not load yet; generator 8 bakes not yet checked byte-identical). Resume only when Andrew says.
 
 **2026-11-12 morning.** LANDED: fly-60 2cc7e5ec (no holes in flight, >33 ms frames ~190 → 48), core-mem-land 4bf8ba6a (u1 island-startup-2 + core-mem-scale + LandChunks + planner-reach and view edits; island managed at flyover end 2.82 → 2.24 GB; Plan 17.8 → 0.3 ms; island first frame 9.8 s vs 8.5 s before). PC now on view-mem (map-sized view memory). u1: two core start-up fixes (SeaNear uniform chunks, sea 1490 ms vs 32; LandChunks.Read Parallel.For, 1252 vs 781 ms), then desert-canyons (generator 9: canyon cuts, causeway bridges, its own map; scope approved). For Andrew: lingerChunks/lingerTicks rules call.
 
