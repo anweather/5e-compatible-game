@@ -351,6 +351,46 @@ namespace Chem
             }
         }
 
+        /// <summary>The land, the same value everywhere (a map with no land.json: the sea level all over): a few bytes a chunk.</summary>
+        public static LandChunks Uniform(int w, int h, int value)
+        {
+            var land = new LandChunks(w, h);
+            var cell = new int[Chunks.Area];
+            for (int i = 0; i < cell.Length; i++) cell[i] = value;
+            var bytes = LandCodec.Encode(cell, new byte[LandCodec.MostBytes]);
+            for (int c = 0; c < land.chunks.Length; c++) land.chunks[c] = bytes;
+            return land;
+        }
+
+        /// <summary>
+        /// A reader with a chunk buffer of its own, for reading from more than one thread at once (a reader each): At on the
+        /// LandChunks itself keeps one buffer, so one reader at a time.
+        /// </summary>
+        public Reader NewReader() => new Reader(this);
+
+        /// <summary>LandChunks.At with a buffer of its own.</summary>
+        public sealed class Reader
+        {
+            readonly LandChunks land;
+            readonly int[] buffer = new int[Chunks.Area];
+            int chunk = -1;
+
+            internal Reader(LandChunks land) => this.land = land;
+
+            /// <summary>The land at a cell.</summary>
+            public int At(int x, int y)
+            {
+                if (x < 0 || y < 0 || x >= land.W || y >= land.H) throw new ArgumentOutOfRangeException(nameof(x), $"({x}, {y}) is off the land");
+                int c = (y >> Chunks.Shift) * land.chunksW + (x >> Chunks.Shift);
+                if (c != chunk)
+                {
+                    LandCodec.Decode(land.chunks[c], buffer);
+                    chunk = c;
+                }
+                return buffer[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
+            }
+        }
+
         /// <summary>One row of W cells.</summary>
         public void Row(int y, int[] into)
         {

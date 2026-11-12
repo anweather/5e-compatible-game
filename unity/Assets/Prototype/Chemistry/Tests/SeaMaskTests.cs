@@ -114,6 +114,12 @@ namespace Chem.Tests
             Assert.That(row, Is.EqualTo(whole.Skip(301 * map.W).Take(map.W)));
             Assert.That(land.Bytes, Is.LessThan(whole.Length * 4L / 2), "smaller than an int a cell");
             Assert.That(LandChunks.Read(json, map.W + 64, map.H), Is.Null, "another size isn't this land");
+            var reader = land.NewReader();
+            Assert.That(reader.At(300, 200), Is.EqualTo(whole[200 * map.W + 300]));
+            Assert.That(reader.At(5, 571), Is.EqualTo(whole[571 * map.W + 5]));
+            var sea = LandChunks.Uniform(map.W, map.H, map.SeaLevel);
+            Assert.That((sea.At(0, 0), sea.At(map.W - 1, map.H - 1)), Is.EqualTo((map.SeaLevel, map.SeaLevel)));
+            Assert.That(LandCheck.Disagreements((x, y) => 0f, land, 0.125, 1e9), Is.EqualTo(LandCheck.Disagreements((x, y) => 0f, whole, map.W, map.H, 0.125, 1e9)));
 
             var fromArray = SeaMask.Of(whole, map.W, map.H, map.SeaLevel);
             var fromChunks = SeaMask.Of(land, map.SeaLevel);
