@@ -79,12 +79,8 @@ public class RowHouses : MonoBehaviour
         order.Clear();
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("RowHouses.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         var world = grid.World;
         if (world == null) return;
         if (world != hooked) Hook(world);

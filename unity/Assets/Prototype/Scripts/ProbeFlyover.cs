@@ -138,7 +138,7 @@ public class FlyoverProbe : ProbeScenario
                     nearHole = true;
                     nearHoleChunks.Add(mc);
                     if (nearHoleAt.Count < 12)
-                        nearHoleAt.Add($"frame {frames} wizard x {grid.CellAt(p).x} hole {d:0} m on at ({mc.Item1},{mc.Item2}): terrain {(t != null ? (t.isActiveAndEnabled ? "on" : "off") : "none")} far {far?.Explain(mc.Item1, mc.Item2)}");
+                        nearHoleAt.Add($"frame {frames} wizard x {grid.CellAt(p).x} hole {d:0} m on at ({mc.Item1},{mc.Item2}): terrain {TerrainState(t)} far {(far != null ? far.Explain(mc.Item1, mc.Item2) : "none")}");
                 }
                 break;
             }
@@ -256,7 +256,11 @@ public class FlyoverProbe : ProbeScenario
     // A memory reading now: metrics mem_<when>_..., and a log line with what the view's caches hold (to find a leak).
     void Memory(string when)
     {
+        // The walk names every loaded object (hundreds of thousands, through a regex): gigabytes of garbage, which a
+        // collection in flight then paid for in the frames measured. So only before and after the flight, and before the
+        // collection here, which takes it.
         bool walk = when is "start" or "end";
+        string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() : "";
         System.GC.Collect();
         const float mb = 1024f * 1024f;
         mem[when + "_allocated"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / mb;
@@ -274,11 +278,13 @@ public class FlyoverProbe : ProbeScenario
                   $"ground: {terrains.Ground?.Holdings()} world: unpacked={world?.UnpackedCount} pool={world?.PackPoolCount} " +
                   $"far_meshes={(far != null ? far.DrawnCount : 0)} impostor_blocks={(impostors != null ? impostors.Held : 0)} " +
                   $"cell_chunks_drawn={grid.ChunksHeldDrawn} undrawn_ever={grid.ChunksUndrawn} blockers={grid.BlockersStanding} " +
-                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + (walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() +
-                  System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() : ""));
-        // The walk names every loaded object (hundreds of thousands, through a regex): gigabytes of garbage, which a
-        // collection in flight then paid for in the frames measured. So only before and after the flight, and collected.
-        if (walk) System.GC.Collect();
+                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + objects);
+    }
+
+    static string TerrainState(Terrain t)
+    {
+        if (t == null) return "none";
+        return t.isActiveAndEnabled ? "on" : "off";
     }
 
     // Loaded objects of a type by name (digits and commas taken out, so a chunk's or a cell's are one), the most first.

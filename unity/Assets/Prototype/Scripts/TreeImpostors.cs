@@ -164,12 +164,8 @@ public sealed class TreeImpostors : MonoBehaviour
         if (quad != null) Destroy(quad);
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("TreeImpostors.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         Drawn = 0;
         Calls = 0;
         frame++;
@@ -284,7 +280,7 @@ public sealed class TreeImpostors : MonoBehaviour
         }
         if (stale.Count == 0 || frame % RefreshEvery != 0) return;
         int s = stale[refreshAt % stale.Count];
-        blocks[s] = FromTerrain(chunks[s], blocks.TryGetValue(s, out var old) ? old : null);
+        blocks[s] = FromTerrain(chunks[s], ReadBefore(s));
         refreshAt = (refreshAt + 1) % Math.Max(1, stale.Count);
     }
 
@@ -465,7 +461,7 @@ public sealed class TreeImpostors : MonoBehaviour
         foreach (int k in list)
         {
             var t = chunks[k];
-            if (t != null && t.terrainData != null) blocks[k] = FromTerrain(t, blocks.TryGetValue(k, out var was) ? was : null);
+            if (t != null && t.terrainData != null) blocks[k] = FromTerrain(t, ReadBefore(k));
             else
             {
                 if (budget-- <= 0) continue;
@@ -493,10 +489,7 @@ public sealed class TreeImpostors : MonoBehaviour
     Block FromTerrain(Terrain t, Block reuse = null)
     {
         var data = t.terrainData;
-        var protos = data.treePrototypes;
-        if (protoMap.Length != protos.Length) protoMap = new int[protos.Length];
-        var map = protoMap;
-        for (int p = 0; p < protos.Length; p++) map[p] = protos[p].prefab != null ? Array.IndexOf(kinds, protos[p].prefab.name) : -1;
+        var map = KindsOf(data.treePrototypes);
         var b = reuse != null && reuse.ByKind.Length == kinds.Length ? Emptied(reuse) : NewBlock();
         b.Terrain = t;
         var origin = t.transform.position;
@@ -622,6 +615,17 @@ public sealed class TreeImpostors : MonoBehaviour
     }
 
     int[] protoMap = Array.Empty<int>();
+
+    // Chunk k's block as read last (its arrays to read into again), or null.
+    Block ReadBefore(int k) => blocks.TryGetValue(k, out var b) ? b : null;
+
+    // A terrain's tree prototypes as indices into kinds (-1: none), in a kept array.
+    int[] KindsOf(TreePrototype[] protos)
+    {
+        if (protoMap.Length != protos.Length) protoMap = new int[protos.Length];
+        for (int p = 0; p < protos.Length; p++) protoMap[p] = protos[p].prefab != null ? Array.IndexOf(kinds, protos[p].prefab.name) : -1;
+        return protoMap;
+    }
 
     static Block Emptied(Block b)
     {

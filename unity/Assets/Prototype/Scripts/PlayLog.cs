@@ -176,12 +176,8 @@ public class PlayLog : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("PlayLog.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (file == null) return;
         Frame(Time.unscaledDeltaTime * 1000f);
         ReadTiming();

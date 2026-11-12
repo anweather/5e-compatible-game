@@ -63,12 +63,8 @@ public class OccluderFade : MonoBehaviour
         TryGetComponent(out hands);
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("OccluderFade.LateUpdate");
-
     void LateUpdate()
     {
-
-        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         var cam = Camera.main;
         if (!body.enabled || cam == null)
         {

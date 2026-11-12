@@ -917,12 +917,8 @@ public partial class ValleyChemistry : MonoBehaviour
     public double TreesMs { get; private set; }
     public double GroundMs { get; private set; }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("ValleyChemistry.LateUpdate");
-
     void LateUpdate()
     {
-
-        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         if (ground == null) return;
         rocks.Tick(Time.deltaTime);
         timer.Restart();

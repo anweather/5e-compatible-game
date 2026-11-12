@@ -126,10 +126,8 @@ public class CloudSky : MonoBehaviour
     static Texture2D Texel(string name) => new(1, 1, TextureFormat.RGBA32, false, true) { name = name, hideFlags = HideFlags.DontSave };
 
     // After SkyLight has turned the sun and moon and set the haze for this frame.
-    static readonly Unity.Profiling.ProfilerMarker DIAG_LateUpdateMarker = new("CloudSky.LateUpdate");
     void LateUpdate()
     {
-        using var diagMarked = DIAG_LateUpdateMarker.Auto();
         var world = grid != null ? grid.World : null;
         var cam = Camera.main;
         if (world == null || cam == null || skyLight.sun == null) return;

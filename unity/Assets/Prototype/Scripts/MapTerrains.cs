@@ -82,12 +82,8 @@ public sealed class MapTerrains : MonoBehaviour
     const float ReachEvery = 0.25f;
     float nextReach;
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("MapTerrains.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (lazy && ground != null) Stream();
         StartupTimeline.Mark("first frame: ground terrains streamed", 20);
         if (!Application.isPlaying || chunks == null || Time.unscaledTime < nextReach) return;

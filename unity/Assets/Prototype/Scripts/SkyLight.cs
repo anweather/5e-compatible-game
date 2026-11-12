@@ -106,12 +106,8 @@ public class SkyLight : MonoBehaviour
         return shownClock;
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("SkyLight.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         var world = grid != null ? grid.World : null;
         if (world == null || sun == null || Held) return;
         if (!ambientBaked) BakeDaylight();

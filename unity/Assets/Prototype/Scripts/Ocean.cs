@@ -69,10 +69,8 @@ public partial class Ocean : MonoBehaviour
     }
 
     // The map changed (a host's map): its own sea. On a generated map the tiles follow the drawn tier.
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("Ocean.Update");
     void Update()
     {
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (MapLand.Current != builtFor) Build();
         else if (tiled) StreamTiles();
     }

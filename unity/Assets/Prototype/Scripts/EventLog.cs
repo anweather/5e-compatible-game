@@ -72,12 +72,8 @@ public class EventLog : MonoBehaviour
         if (list.Count > 8) list.RemoveAt(0);
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("EventLog.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         var controls = caster != null ? caster.controls : null;
         bool reset = controls != null ? controls.Reset.WasPressedThisFrame() : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
         bool held = controls != null ? controls.Reset.IsPressed() : Keyboard.current != null && Keyboard.current.rKey.isPressed;

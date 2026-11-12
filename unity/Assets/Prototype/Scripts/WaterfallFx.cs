@@ -36,12 +36,8 @@ public class WaterfallFx : MonoBehaviour
         roar.Play();
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("WaterfallFx.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         roar.volume = 0.9f * GameVolume.Ambience;
 
         var cam = Camera.main;

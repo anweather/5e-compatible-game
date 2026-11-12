@@ -42,12 +42,8 @@ public class Village : MonoBehaviour
         if (wellMesh != null) DestroyNow(wellMesh);
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("Village.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (sky == null && Time.unscaledTime >= nextSkyLookup)
         {
             sky = FindAnyObjectByType<SkyLight>();

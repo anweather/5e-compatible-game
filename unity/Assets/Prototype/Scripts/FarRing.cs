@@ -149,12 +149,8 @@ public sealed partial class FarRing : MonoBehaviour
         return Mathf.Max(metres, water - 1f);
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("FarRing.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (map == null && !Ready()) return;
         // A rule switch can move streaming sight or know (the dials unset follow it); nothing changes while they hold.
         var rules = ChemGrid.Current?.Rules;

@@ -369,8 +369,6 @@ public partial class ChemGrid : MonoBehaviour
     static readonly System.Diagnostics.Stopwatch SincePlay = new();
     static bool readyLogged;
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_FollowMarker = new("ChemGrid.FollowLooks"), DIAG_LightsMarker = new("ChemGrid.FireLights"), DIAG_LogMarker = new("ChemGrid.PumpLog");
-
     void Update()
     {
         if (!readyLogged)
@@ -380,7 +378,7 @@ public partial class ChemGrid : MonoBehaviour
             StartupTimeline.Done("first frame (PLAY READY)");
         }
         using (DetailChunksMarker.Auto()) UpdateDetailChunks();
-        using (DIAG_FollowMarker.Auto()) FollowLooks();
+        FollowLooks();
         if (ExternalTicks)
         {
             Render();
@@ -402,13 +400,10 @@ public partial class ChemGrid : MonoBehaviour
         using (RenderMarker.Auto()) Render(stepped);
         RenderMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
-        using (DIAG_LightsMarker.Auto())
-        {
-            if (stepped) fireLights.Place();
-            fireLights.Flicker();
-        }
+        if (stepped) fireLights.Place();
+        fireLights.Flicker();
         LightsMs = timer.Elapsed.TotalMilliseconds;
-        using (DIAG_LogMarker.Auto()) PumpLog();
+        PumpLog();
     }
 
     static GameFolders folders;

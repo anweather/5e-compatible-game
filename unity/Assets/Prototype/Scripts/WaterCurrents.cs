@@ -60,12 +60,8 @@ public class WaterCurrents : MonoBehaviour
         seaLevel = seaOf.WaterLevel;
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("WaterCurrents.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         if (MapLand.Current != seaOf) FromMap();
     }
 

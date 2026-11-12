@@ -98,12 +98,8 @@ public class Footprints : MonoBehaviour
         }
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("Footprints.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         var world = grid != null ? grid.World : null;
         if (world == null || drawn == null) return;
         if (Time.time >= nextLook)

@@ -139,12 +139,8 @@ public class AmbientLife : MonoBehaviour
         }
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("AmbientLife.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         // Looked up by name (a walk of every object in the scene: ~10 ms once a map's chunks are drawn) only while it's not
         // found; a wizard that goes is looked for again.
         if (wizard == null && Time.unscaledTime >= nextLookup)

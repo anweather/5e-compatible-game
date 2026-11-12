@@ -95,12 +95,8 @@ public class AmbientCritters : MonoBehaviour
         Shader.SetGlobalVector(CrittersId, Vector4.zero);
     }
 
-    static readonly Unity.Profiling.ProfilerMarker DIAG_UpdateMarker = new("AmbientCritters.Update");
-
     void Update()
     {
-
-        using var diagMarked = DIAG_UpdateMarker.Auto();
         var cam = Camera.main;
         var world = grid != null ? grid.World : null;
         if (cam == null || world == null || fireflyMaterial == null || butterflyMaterial == null) return;
