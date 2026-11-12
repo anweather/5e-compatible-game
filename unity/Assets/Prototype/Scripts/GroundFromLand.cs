@@ -12,7 +12,7 @@ public static class GroundFromLand
     public sealed class Source
     {
         public World World;
-        public int[] Land;
+        public LandChunks Land;
         public TerrainGrid Layout;
         public float StepHeight, Unit;
         /// <summary>The map's lowest land, in land units: the terrain reaches at least this far down.</summary>
@@ -95,13 +95,29 @@ public static class GroundFromLand
     /// <summary>Whether Build works the chunks out side by side (the default); off, one after another, for comparison: both give the same arrays.</summary>
     public static bool Threaded { get; set; } = true;
 
+    // A reader of the land for this thread (LandChunks.At keeps one chunk buffer, so one reader at a time): the chunks are
+    // made side by side.
+    [ThreadStatic] static LandChunks.Reader reader;
+    [ThreadStatic] static LandChunks readerOf;
+
+    /// <summary>The land at a cell, in land units, safe to read from any thread (a reader of its own each).</summary>
+    public static int LandUnits(LandChunks land, int x, int y)
+    {
+        if (!ReferenceEquals(readerOf, land))
+        {
+            reader = land.NewReader();
+            readerOf = land;
+        }
+        return reader.At(x, y);
+    }
+
     // The land at a world cell, the nearest on the grid past its edge.
     static float LandAt(Source s, int u, int v)
     {
         var (x, y) = s.Layout.GridCell(u, v);
         x = Math.Max(0, Math.Min(s.Layout.GridW - 1, x));
         y = Math.Max(0, Math.Min(s.Layout.GridH - 1, y));
-        return s.Land[y * s.Layout.GridW + x];
+        return LandUnits(s.Land, x, y);
     }
 
     // Between the cells' centres, in world cells.

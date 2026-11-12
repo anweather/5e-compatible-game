@@ -503,7 +503,7 @@ public partial class NetChem : NetworkBehaviour
     ChunkIntent[] PlanChunks()
     {
         if (!grid.streamChunks || hostTick % PlanEvery != 1) return System.Array.Empty<ChunkIntent>();
-        var plan = planner.Plan(grid.World, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells());
+        var plan = planner.Plan(grid.World, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells(), plannedAwake);
         var stamped = new ChunkIntent[plan.Count];
         for (int i = 0; i < plan.Count; i++)
         {

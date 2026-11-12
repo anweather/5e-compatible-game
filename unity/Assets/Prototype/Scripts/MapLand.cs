@@ -11,7 +11,7 @@ public sealed class MapLand
     public readonly MapFile Map;
     public readonly TerrainGrid Layout;
     /// <summary>The land, row by row, in land units; all at the sea level when the map has no land.json.</summary>
-    public readonly int[] Land;
+    public readonly LandChunks Land;
     /// <summary>Whether Land is the map's land.json (not the sea level all over for want of one).</summary>
     public readonly bool FromFile;
     public readonly SeaMask Sea;
@@ -52,8 +52,8 @@ public sealed class MapLand
         Layout = Map.Layout();
         string path = Path.Combine(dir, MapFile.LandName);
         FromFile = File.Exists(path);
-        Land = FromFile ? LandFile.Read(File.ReadAllText(path), Map.W, Map.H) : Filled(Map.W * Map.H, Map.SeaLevel);
-        Sea = SeaMask.Of(Land, Map.W, Map.H, Map.SeaLevel);
+        Land = (FromFile ? LandChunks.Read(File.ReadAllText(path), Map.W, Map.H) : null) ?? LandChunks.Uniform(Map.W, Map.H, Map.SeaLevel);
+        Sea = SeaMask.Of(Land, Map.SeaLevel);
         WaterLevel = (float)Map.WaterMetres;
         Seaward = Map.Seaward is { } s ? new Vector2((float)s.x, (float)s.z).normalized : LowWay();
         Shore = Map.SeaShore is { } o ? new Vector2((float)o.x, (float)o.z) : Middle;
@@ -65,13 +65,6 @@ public sealed class MapLand
         current?.Release();
         current = null;
         currentDir = null;
-    }
-
-    static int[] Filled(int n, int value)
-    {
-        var a = new int[n];
-        System.Array.Fill(a, value);
-        return a;
     }
 
     /// <summary>The map's middle, in world metres (x, z).</summary>
@@ -122,7 +115,7 @@ public sealed class MapLand
     {
         var c = CellOf(xz);
         int x = Mathf.Clamp(c.x, 0, Map.W - 1), y = Mathf.Clamp(c.y, 0, Map.H - 1);
-        return Land[y * Map.W + x] >= Map.SeaLevel;
+        return Land.At(x, y) >= Map.SeaLevel;
     }
 
     ShoreMap shoreMap;

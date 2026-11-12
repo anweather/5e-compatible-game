@@ -24,17 +24,17 @@ public sealed class FolkJobs
     public sealed class Land
     {
         readonly World world;
-        readonly int[] units;
+        readonly LandChunks units;
         readonly float cellMetres;
 
-        public Land(World world, int[] units, float cellMetres)
+        public Land(World world, LandChunks units, float cellMetres)
         {
             this.world = world;
             this.units = units;
             this.cellMetres = cellMetres;
         }
 
-        public float Metres(int x, int y) => (units[world.Idx(x, y)] + world.LandMovedAt(x, y)) * LandUnit;
+        public float Metres(int x, int y) => (units.At(x, y) + world.LandMovedAt(x, y)) * LandUnit;
 
         public bool Road(int x, int y) => world.At(x, y)?.T == TerrainIds.Dirt;
 

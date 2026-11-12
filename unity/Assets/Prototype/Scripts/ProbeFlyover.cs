@@ -33,7 +33,7 @@ public class FlyoverProbe : ProbeScenario
         int row = land.Map.Spawn.y, w = land.Map.W;
         int west = -1, east = -1;
         for (int x = 0; x < w; x++)
-            if (land.Land[row * w + x] > land.Map.SeaLevel && !land.Sea.IsSea(x, row))
+            if (land.Land.At(x, row) > land.Map.SeaLevel && !land.Sea.IsSea(x, row))
             {
                 if (west < 0) west = x;
                 east = x;
