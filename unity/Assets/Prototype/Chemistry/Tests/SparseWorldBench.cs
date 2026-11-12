@@ -216,8 +216,16 @@ namespace Chem.Tests
             long laidBytes = Step();
             w.KeepStart();
             long startBytes = Step();
-            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            string landJson = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
+            long jsonBytes = Step();
+            var readWhole = Stopwatch.StartNew();
+            var land = LandFile.Read(landJson, map.W, map.H);
+            double wholeMs = readWhole.Elapsed.TotalMilliseconds;
             long rowsBytes = Step();
+            var readChunks = Stopwatch.StartNew();
+            var landChunks = LandChunks.Read(landJson, map.W, map.H);
+            double chunksMs = readChunks.Elapsed.TotalMilliseconds;
+            long chunksBytes = Step();
             w.SetLandByChunk(land);
             long setBytes = Step();
             var sea = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
@@ -232,6 +240,8 @@ namespace Chem.Tests
                 foreach (var (cx, cy) in drawn) _ = w.ChunkCells(cx, cy).Length;
             }
             long playBytes = Step();
+            TestContext.Out.WriteLine($"HOLDS {which} land: land.json text {Mb(jsonBytes):0.0} MB; as an int a cell {Mb(rowsBytes):0.0} MB, read in {wholeMs:0} ms; "
+                + $"a chunk at a time {Mb(chunksBytes):0.0} MB (held {Mb(landChunks.Bytes):0.0} MB), read in {chunksMs:0} ms");
             TestContext.Out.WriteLine($"HOLDS {which} {map.W} x {map.H} ({w.ChunkCoords.Count} chunks, {(long)map.W * map.H / 1e6:0.0} M cells): "
                 + $"source {Mb(sourceBytes):0.0} MB, World made {Mb(worldBytes):0.0} MB, lays {Mb(laidBytes):0.0} MB, start {Mb(startBytes):0.0} MB, "
                 + $"land rows {Mb(rowsBytes):0.0} MB, land set by chunk {Mb(setBytes):0.0} MB, sea mask {Mb(seaBytes):0.0} MB (held {Mb(sea.Bytes):0.00} MB), 120 ticks of play {Mb(playBytes):0.0} MB "
@@ -239,6 +249,7 @@ namespace Chem.Tests
             GC.KeepAlive(source);
             GC.KeepAlive(w);
             GC.KeepAlive(land);
+            GC.KeepAlive(landChunks);
             GC.KeepAlive(sea);
         }
 

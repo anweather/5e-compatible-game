@@ -92,5 +92,55 @@ namespace Chem.Tests
             }
             Assert.That(byChunk[-1, 3], Is.False);
         }
+
+        // core-mem-scale: land.json held a chunk at a time (LandChunks) reads as LandFile.Read does, cell for cell, by At, by
+        // band and by row; and its sea mask is the one the whole array makes.
+        [Test]
+        public void TheValleysLandAChunkAtATimeIsItsLand()
+        {
+            string dir = ChemistryTests.WorldDir();
+            var map = MapFile.Load(dir);
+            string json = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
+            var whole = LandFile.Read(json, map.W, map.H);
+            var land = LandChunks.Read(json, map.W, map.H);
+            for (int y = 0; y < map.H; y++)
+                for (int x = 0; x < map.W; x++)
+                    if (land.At(x, y) != whole[y * map.W + x]) Assert.Fail($"({x}, {y}): {land.At(x, y)}, not {whole[y * map.W + x]}");
+            var band = new int[Chunks.Size * map.W];
+            land.Band(3, band);
+            Assert.That(band.Take(Chunks.Size * map.W), Is.EqualTo(whole.Skip(3 * Chunks.Size * map.W).Take(Chunks.Size * map.W)));
+            var row = new int[map.W];
+            land.Row(301, row);
+            Assert.That(row, Is.EqualTo(whole.Skip(301 * map.W).Take(map.W)));
+            Assert.That(land.Bytes, Is.LessThan(whole.Length * 4L / 2), "smaller than an int a cell");
+            Assert.That(LandChunks.Read(json, map.W + 64, map.H), Is.Null, "another size isn't this land");
+
+            var fromArray = SeaMask.Of(whole, map.W, map.H, map.SeaLevel);
+            var fromChunks = SeaMask.Of(land, map.SeaLevel);
+            Assert.That((fromChunks.SeaCells, fromChunks.BasinCells), Is.EqualTo((fromArray.SeaCells, fromArray.BasinCells)));
+            Assert.That(fromChunks.Near(5, true), Is.EqualTo(fromArray.Near(5, true)));
+        }
+
+        // A map that isn't a whole number of chunks, with NoLand and big steps: the same land back, by Of and by Read.
+        [Test]
+        public void LandNotAWholeNumberOfChunksComesBackTheSame()
+        {
+            const int w = 100, h = 70;
+            var units = new int[w * h];
+            var rng = new System.Random(5);
+            for (int i = 0; i < units.Length; i++)
+            {
+                int step = i % 3 == 0 ? rng.Next(-200, 3000) : 0;
+                units[i] = i % 97 == 0 ? World.NoLand : step + i / w;
+            }
+            var of = LandChunks.Of(units, w, h);
+            var read = LandChunks.Read(LandFile.Write(units, w, h, 0.125f), w, h);
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    Assert.That(of.At(x, y), Is.EqualTo(units[y * w + x]), $"Of ({x}, {y})");
+                    Assert.That(read.At(x, y), Is.EqualTo(units[y * w + x]), $"Read ({x}, {y})");
+                }
+        }
     }
 }

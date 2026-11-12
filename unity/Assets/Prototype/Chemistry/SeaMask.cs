@@ -87,6 +87,28 @@ namespace Chem
             if (land == null || land.Length != w * h) throw new ArgumentException($"the land is not {w} × {h}", nameof(land));
             var kind = new byte[w * h];
             for (int i = 0; i < kind.Length; i++) kind[i] = land[i] < seaLevel ? Basin : Dry;
+            return Flooded(kind, w, h);
+        }
+
+        /// <summary>The same, from land held a chunk at a time (LandChunks): read a band of rows at a time, never as an int a cell.</summary>
+        public static SeaMask Of(LandChunks land, int seaLevel)
+        {
+            if (land == null) throw new ArgumentNullException(nameof(land));
+            int w = land.W, h = land.H;
+            var kind = new byte[w * h];
+            var band = new int[Chunks.Size * w];
+            for (int cy = 0; cy * Chunks.Size < h; cy++)
+            {
+                land.Band(cy, band);
+                for (int ly = 0; ly < Chunks.Size && cy * Chunks.Size + ly < h; ly++)
+                    for (int x = 0; x < w; x++) kind[(cy * Chunks.Size + ly) * w + x] = band[ly * w + x] < seaLevel ? Basin : Dry;
+            }
+            return Flooded(kind, w, h);
+        }
+
+        // Low cells (Basin) joined to the edge through low cells become sea; the rest of the low cells stay basins.
+        static SeaMask Flooded(byte[] kind, int w, int h)
+        {
             // From every low cell on the edge, through the low cells beside each other: the sea.
             var open = new Queue<int>();
             void Reach(int x, int y)
