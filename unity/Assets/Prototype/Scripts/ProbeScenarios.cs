@@ -257,6 +257,9 @@ public static class ProbeScenarios
             "Checks: a rebuild's median under the Editor's budget, the blocker boxes kept across rebuilds, the mod on, its checks and compose under budget, no console errors. Metrics: rebuild_ms_best, rebuild_ms_median, switch_compose_ms_median, switch_worst_frame_ms."),
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
             "The chunk terrains the scene started with (MapTerrains, from the map's folder; unity/Temp/ground-builder saying land draws the land alone) and what the ground's Bind took. Checks: all 81 chunks built, none held by the scene, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
+        new Entry("treeseat", typeof(TreeSeatProbe), 60f,
+            "On any map (unity/Temp/map names one): every tree drawn now against the ground drawn under it: the terrains' trees (their kind's lowest point at the instance's scale, against the terrain at the trunk) and every tree model in the scene (near trees' prefabs, great trees, grown trees: the renderers' bottom against the drawn ground). " +
+            "Metrics: trees measured, sunk, floating, the worst of each. Checks: terrains drawn, some trees measured, none over 1 m under its ground, none over 0.75 m over it, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
             "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader.", speed: 3f),
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,
