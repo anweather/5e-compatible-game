@@ -429,6 +429,14 @@ namespace Chem
         {
             if (units == null) throw new ArgumentNullException(nameof(units));
             if (units.Length != W * H) throw new ArgumentException($"land needs {W * H} cells, got {units.Length}");
+            SetLandByChunk(LandChunks.Of(units, W, H));
+        }
+
+        /// <summary>SetLandByChunk from land held a chunk at a time (LandChunks.Read): no whole map's ints, here or in the caller.</summary>
+        public void SetLandByChunk(LandChunks units)
+        {
+            if (units == null) throw new ArgumentNullException(nameof(units));
+            if (units.W != W || units.H != H) throw new ArgumentException($"land needs {W} x {H}, got {units.W} x {units.H}");
             FinishTick();
             DropLandPeek();
             landFromSource = false;
@@ -439,11 +447,13 @@ namespace Chem
             landRowsHash = null;
             var marks = new List<int>();
             var land = new int[Chunks.Area];
+            var rows = new int[Chunks.Area];
             foreach (var ch in ChunksInOrder)
             {
                 ch.PackedLand = null;
                 ch.LandLater = ch.Held == null && ch.Packed != null && ch.Packed.Count == 0;
                 if (ch.LandLater) continue;
+                units.ChunkInto(ch.X, ch.Y, rows);
                 var b = ch.Held;
                 if (b != null) b.Land ??= new int[Chunks.Area];
                 var at = b?.Land ?? land;
@@ -452,7 +462,7 @@ namespace Chem
                 {
                     int x = CellX(ch, i), y = CellY(ch, i);
                     var c = read.At(i);
-                    int u = c == null ? NoLand : units[y * W + x];
+                    int u = c == null ? NoLand : rows[i];
                     if (u == NoLand) at[i] = NoLand;
                     else if (IsWaterBody(c))
                     {
@@ -472,7 +482,9 @@ namespace Chem
 
         // SetLandByChunk's rows and the rules the land was set under (a spring is a water body by those), and the marks it
         // made for the chunks that got their land at once; the save's landSet is worked out from them when it's wanted.
-        int[] landRowsLater;
+        LandChunks landRowsLater;
+        // LaterLand's buffer for a chunk's rows (it runs inside other walks, a chunk unpacking for a read).
+        int[] laterRows;
         Rules landRulesLater;
         List<int> landMarksNow;
 
@@ -495,6 +507,8 @@ namespace Chem
         // A chunk SetLandByChunk left for later: its land from the rows and its cells as the source makes them.
         void LaterLand(Chunk ch, int[] at)
         {
+            var rows = laterRows ??= new int[Chunks.Area];
+            landRowsLater.ChunkInto(ch.X, ch.Y, rows);
             for (int i = 0; i < Chunks.Area; i++)
             {
                 int x = CellX(ch, i), y = CellY(ch, i);
@@ -503,7 +517,7 @@ namespace Chem
                     at[i] = NoLand;
                     continue;
                 }
-                int u = landRowsLater[y * W + x];
+                int u = rows[i];
                 if (u == NoLand)
                 {
                     at[i] = NoLand;
@@ -521,20 +535,27 @@ namespace Chem
         {
             if (landRowsLater == null || landRowsHash != null) return;
             uint hash = LandRowsSeed;
+            var band = new int[Chunks.Size * W];
             var row = new int[W];
-            for (int y = 0; y < H; y++)
+            for (int cy = 0; cy * Chunks.Size < H; cy++)
             {
-                Array.Copy(landRowsLater, y * W, row, 0, W);
-                hash = HashLandRow(hash, row);
+                landRowsLater.Band(cy, band);
+                for (int ly = 0; ly < Chunks.Size && cy * Chunks.Size + ly < H; ly++)
+                {
+                    Array.Copy(band, ly * W, row, 0, W);
+                    hash = HashLandRow(hash, row);
+                }
             }
             var marks = new List<int>(landMarksNow);
+            var rows = new int[Chunks.Area];
             foreach (var ch in ChunksInOrder)
             {
                 if (!ch.LandLater) continue;
+                landRowsLater.ChunkInto(ch.X, ch.Y, rows);
                 for (int i = 0; i < Chunks.Area; i++)
                 {
                     int x = CellX(ch, i), y = CellY(ch, i);
-                    if (!InBounds(x, y) || landRowsLater[y * W + x] == NoLand) continue;
+                    if (!InBounds(x, y) || rows[i] == NoLand) continue;
                     landCell.Reset();
                     Source.Make(x, y, landCell);
                     if (WaterBodyAsSet(landCell)) marks.Add(Idx(x, y));

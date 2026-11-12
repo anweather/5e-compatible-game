@@ -45,7 +45,7 @@ public class GroundBuilderTests
         return new GroundFromLand.Source
         {
             World = world,
-            Land = land,
+            Land = LandChunks.Of(land, world.W, world.H),
             Layout = Small,
             StepHeight = Step,
             Unit = Unit,
@@ -245,7 +245,7 @@ public class GroundBuilderTests
         var (eager, _) = Built(world, land);
         var (shared, make) = GroundFromLand.Lazy(Source(world, land));
         var builder = new GroundBuilder(shared, Template(), Small.ChunkSize, make, at => Small.HasChunk(at.i, at.j));
-        var ground = new ValleyGround(Small, builder) { Land = land };
+        var ground = new ValleyGround(Small, builder) { Land = LandChunks.Of(land, world.W, world.H) };
         ground.Bind(world, Step, 1000f);
         Assert.That(builder.Held, Is.Zero, "nothing made at Bind without a terrain");
         var at = Small.ChunkOfCell(45, 45);

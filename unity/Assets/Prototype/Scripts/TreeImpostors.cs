@@ -520,8 +520,7 @@ public sealed class TreeImpostors : MonoBehaviour
             var spot = GroundFromLand.Spot(seed, x, y, kinds.Length);
             var (u, v) = layout.WorldCell(x, y);
             float wx = layout.OriginX + (u + spot.Inset) * layout.CellSize, wz = layout.OriginZ + (v + spot.Across) * layout.CellSize;
-            int idx = y * layout.GridW + x;
-            var at = new Vector3(wx, land != null && idx < land.Length ? land[idx] * unit : 0f, wz);
+            var at = new Vector3(wx, land != null && x < land.W && y < land.H ? GroundFromLand.LandUnits(land, x, y) * unit : 0f, wz);
             Add(b, spot.Kind, at, spot.Rotation, spot.Size, spot.Size);
         }
         return b;

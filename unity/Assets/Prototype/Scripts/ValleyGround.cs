@@ -104,7 +104,7 @@ public sealed class ValleyGround
     public GroundBuilder Builder => builder;
 
     /// <summary>The map's land, in land units by cell (land.json): a chunk not made yet stands on it. Set before Bind.</summary>
-    public int[] Land { get; set; }
+    public LandChunks Land { get; set; }
 
     /// <summary>A chunk was made for this world (its data, trees and paint read): what keeps a chunk's state takes it up.</summary>
     public event System.Action<(int i, int j), TerrainData> ChunkReady;
@@ -252,7 +252,7 @@ public sealed class ValleyGround
     }
 
     // A cell's ground while its chunk isn't made: the map's land (which the drawn ground matches to a unit, CheckGround).
-    float LandMetres(int k) => Land != null && k < Land.Length ? Land[k] * landUnit : 0f;
+    float LandMetres(int k) => Land != null && k < Land.W * Land.H ? GroundFromLand.LandUnits(Land, k % Land.W, k / Land.W) * landUnit : 0f;
 
     // A chunk made for this world (#205): its data from the arrays (data it kept, untouched, as it is), its base heights
     // under the offsets the arrays were made with, its cells' base and paint, the ground moved since drawn over it, and
@@ -644,7 +644,7 @@ public sealed class ValleyGround
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
         float drawnBase = cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
-        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
+        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.OffsetNow(i, j, sx, sz) : 0f);
     }
 
     /// <summary>The terrain's ground drawn now at a world point over the cells (0 off them).</summary>

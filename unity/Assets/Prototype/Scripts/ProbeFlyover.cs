@@ -33,7 +33,7 @@ public class FlyoverProbe : ProbeScenario
         int row = land.Map.Spawn.y, w = land.Map.W;
         int west = -1, east = -1;
         for (int x = 0; x < w; x++)
-            if (land.Land[row * w + x] > land.Map.SeaLevel && !land.Sea.IsSea(x, row))
+            if (land.LandAt(x, row) > land.Map.SeaLevel && !land.Sea.IsSea(x, row))
             {
                 if (west < 0) west = x;
                 east = x;
@@ -67,6 +67,7 @@ public class FlyoverProbe : ProbeScenario
         yield return Wait(1f);
         Metric("start_settle_s", settled);
         Memory("start");
+        yield return null;
 
         int sight = MapTerrains.Sight(), know = far != null ? far.Dials.known : sight;
         float chunkM = land.Layout.ChunkSize, terrainReach = sight * chunkM, knownReach = know * chunkM;
@@ -87,7 +88,9 @@ public class FlyoverProbe : ProbeScenario
         var nearHoleAt = new List<string>();
         int closeHoleFrames = 0;
         float leg = end.x - start.x, total = Back ? 2f * leg : leg, flown = 0f;
-        bool measuredKm = false, measuredHalf = false, skipFrame = false;
+        // The first frame is the one after the start's memory reading (Memory("start"): a full collection and an object walk,
+        // 0.8 to 1 s on the Scale Island): not the flight's, as after the readings on the way.
+        bool measuredKm = false, measuredHalf = false, skipFrame = true;
         // With unity/Temp/flyprofile there, every timed marker is read each frame and the slow frames' are summed
         // (FlyProfile): what a slow frame is made of. It costs a little itself, so the timing runs go without it.
         using var profile = FlyProfile.Wanted() ? new FlyProfile() : null;
