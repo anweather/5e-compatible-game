@@ -84,6 +84,32 @@ public static class ManagedCensus
         return s.ToString();
     }
 
+    /// <summary>
+    /// The world's unpacked chunks by how far (in chunks, the larger axis) they are from a cell, split by whether the
+    /// view's drawn hint holds them: who keeps them unpacked.
+    /// </summary>
+    public static string Unpacked(Chem.World world, Vector2Int cell)
+    {
+        if (world == null) return "UNPACKED none";
+        var list = typeof(Chem.World).GetField("unpackedChunks", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(world) as System.Collections.IEnumerable;
+        var hint = typeof(Chem.World).GetField("drawnHint", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(world) as HashSet<long>;
+        if (list == null) return "UNPACKED unreadable";
+        int fx = cell.x >> Chem.Chunks.Shift, fy = cell.y >> Chem.Chunks.Shift;
+        var byAway = new SortedDictionary<int, (int hinted, int not)>();
+        FieldInfo fX = null, fY = null;
+        foreach (object ch in list)
+        {
+            fX ??= ch.GetType().GetField("X");
+            fY ??= ch.GetType().GetField("Y");
+            int x = (int)fX.GetValue(ch), y = (int)fY.GetValue(ch);
+            int away = Mathf.Max(Mathf.Abs(x - fx), Mathf.Abs(y - fy));
+            bool hinted = hint != null && hint.Contains(Chem.Chunks.Key(x, y));
+            byAway.TryGetValue(away, out var n);
+            byAway[away] = hinted ? (n.hinted + 1, n.not) : (n.hinted, n.not + 1);
+        }
+        return $"UNPACKED tick={world.Tick} packs={world.Packs} unpacks={world.Unpacks} by chunks away (hinted/not): " + string.Join(" ", byAway.Select(kv => $"{kv.Key}:{kv.Value.hinted}/{kv.Value.not}"));
+    }
+
     static IEnumerable<Type> SafeTypes(Assembly asm)
     {
         try { return asm.GetTypes(); }

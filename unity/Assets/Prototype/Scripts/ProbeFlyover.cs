@@ -281,7 +281,8 @@ public class FlyoverProbe : ProbeScenario
                   $"ground: {terrains.Ground?.Holdings()} world: unpacked={world?.UnpackedCount} pool={world?.PackPoolCount} " +
                   $"far_meshes={(far != null ? far.DrawnCount : 0)} impostor_blocks={(impostors != null ? impostors.Held : 0)} " +
                   $"cell_chunks_drawn={grid.ChunksHeldDrawn} undrawn_ever={grid.ChunksUndrawn} blockers={grid.BlockersStanding} " +
-                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + objects);
+                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + System.Environment.NewLine +
+                  ManagedCensus.Unpacked(world, grid.CellAt(wizard.transform.position)) + objects);
     }
 
     static string TerrainState(Terrain t)
