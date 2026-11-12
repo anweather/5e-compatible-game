@@ -210,6 +210,7 @@ public class TreeImpostorsProbe : ProbeScenario
             foreach (var (data, was) in cleared) if (data != null) data.treeInstances = was;
             cleared.Clear();
             TreeImpostors.Skip = null;
+            TreeImpostors.Instance?.ReadAgain();
             return;
         }
         foreach (var t in MapTerrains.Instance.Chunks)
@@ -223,6 +224,7 @@ public class TreeImpostorsProbe : ProbeScenario
             data.treeInstances = kept;
         }
         TreeImpostors.Skip = InTheWay;
+        TreeImpostors.Instance?.ReadAgain();
         Metric("cleared_terrains", cleared.Count);
     }
 

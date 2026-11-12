@@ -248,6 +248,7 @@ public class FlyoverProbe : ProbeScenario
     // A memory reading now: metrics mem_<when>_..., and a log line with what the view's caches hold (to find a leak).
     void Memory(string when)
     {
+        bool walk = when is "start" or "end";
         System.GC.Collect();
         const float mb = 1024f * 1024f;
         mem[when + "_allocated"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / mb;
@@ -265,8 +266,11 @@ public class FlyoverProbe : ProbeScenario
                   $"ground: {terrains.Ground?.Holdings()} world: unpacked={world?.UnpackedCount} pool={world?.PackPoolCount} " +
                   $"far_meshes={(far != null ? far.DrawnCount : 0)} impostor_blocks={(impostors != null ? impostors.Held : 0)} " +
                   $"cell_chunks_drawn={grid.ChunksHeldDrawn} undrawn_ever={grid.ChunksUndrawn} blockers={grid.BlockersStanding} " +
-                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() +
-                  System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>());
+                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + (walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() +
+                  System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() : ""));
+        // The walk names every loaded object (hundreds of thousands, through a regex): gigabytes of garbage, which a
+        // collection in flight then paid for in the frames measured. So only before and after the flight, and collected.
+        if (walk) System.GC.Collect();
     }
 
     // Loaded objects of a type by name (digits and commas taken out, so a chunk's or a cell's are one), the most first.

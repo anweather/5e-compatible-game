@@ -901,7 +901,14 @@ public sealed class ValleyGround
     }
 
     /// <summary>A chunk's trees changed: its collider catches up, a chunk a frame.</summary>
-    public void TreesMoved((int i, int j) at) => treeColliders.Add(at);
+    public void TreesMoved((int i, int j) at)
+    {
+        treeColliders.Add(at);
+        TreesChanged?.Invoke(at);
+    }
+
+    /// <summary>A chunk's trees changed (TreesMoved): what draws them from the terrain reads them again (TreeImpostors).</summary>
+    public static event System.Action<(int i, int j)> TreesChanged;
 
     // A terrain's collider keeps the trees it was given: setting treeInstances draws the change and leaves the old trunks
     // standing unseen (#161). Only giving it its data again takes them, and a fire changes many chunks at once. Players

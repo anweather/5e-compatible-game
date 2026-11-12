@@ -426,7 +426,6 @@ public sealed class MapTerrains : MonoBehaviour
         // The next ones' arrays start now, so they're likely made by the time their turn comes.
         if (toMake.Count > 0 && !whole) StartArrays(0);
         if (!any) return;
-        Terrain.SetConnectivityDirty();
         nextReach = 0f;
     }
 
@@ -497,6 +496,7 @@ public sealed class MapTerrains : MonoBehaviour
         var (cx, cz) = layout.ChunkCorner(at.i, at.j);
         t.transform.position = new Vector3(cx, 0f, cz);
         Configure(t, layout.IsHighRes(at.i, at.j), material);
+        t.allowAutoConnect = false;
         t.enabled = true;
         t.drawHeightmap = true;
         t.drawTreesAndFoliage = true;
@@ -504,6 +504,7 @@ public sealed class MapTerrains : MonoBehaviour
         int k = at.j * layout.ChunksX + at.i;
         chunks[k] = t;
         made.Add(k);
+        Connect(at);
         using (BushesMarker.Auto()) SeatBushes(at, t);
     }
 
@@ -534,11 +535,37 @@ public sealed class MapTerrains : MonoBehaviour
         drawn.Remove(k);
         ground.Release((k % layout.ChunksX, k / layout.ChunksX));
         if (t == null) return;
+        Connect((k % layout.ChunksX, k / layout.ChunksX));
+        t.SetNeighbors(null, null, null, null);
         t.terrainData = null;
         if (t.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = null;
         t.gameObject.SetActive(false);
         pool.Push(t);
     }
+
+    // A terrain made or let go: it and the four round it told their neighbours (those standing, of the same detail, which
+    // Unity stitches). Done here rather than by Terrain.SetConnectivityDirty, whose AutoConnect went over every terrain
+    // and made garbage each time one was made, a few a second in flight.
+    void Connect((int i, int j) at)
+    {
+        Neighbours(at);
+        Neighbours((at.i - 1, at.j));
+        Neighbours((at.i + 1, at.j));
+        Neighbours((at.i, at.j - 1));
+        Neighbours((at.i, at.j + 1));
+    }
+
+    void Neighbours((int i, int j) at)
+    {
+        var t = Standing(at);
+        if (t == null) return;
+        bool high = layout.IsHighRes(at.i, at.j);
+        t.SetNeighbors(Alike((at.i - 1, at.j), high), Alike((at.i, at.j + 1), high), Alike((at.i + 1, at.j), high), Alike((at.i, at.j - 1), high));
+    }
+
+    Terrain Standing((int i, int j) at) => layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] is { } t && t.terrainData != null ? t : null;
+
+    Terrain Alike((int i, int j) at, bool high) => Standing(at) is { } t && layout.IsHighRes(at.i, at.j) == high ? t : null;
 
     /// <summary>The chunk terrain standing under a world point, or null (none made there, or off the map).</summary>
     public Terrain TerrainAt(Vector3 p)
