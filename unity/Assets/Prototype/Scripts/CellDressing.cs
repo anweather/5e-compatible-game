@@ -71,7 +71,7 @@ public sealed partial class CellDressing
         var center = grid.CellCenter(x, y);
         var surface = new Vector3(center.x, ground, center.z);
         var root = new GameObject($"{c.T} {x},{y}");
-        root.transform.SetParent(grid.transform, false);
+        root.transform.SetParent(grid.CellRoot(x, y), false);
         root.transform.position = surface;
         if (parts) Dress(root.transform, c.T, look, surface, x, y);
         if (wall) DressWall(root.transform, surface, c.Height, x, y);

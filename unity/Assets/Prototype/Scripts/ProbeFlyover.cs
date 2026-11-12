@@ -16,6 +16,8 @@ using UnityEngine;
 public class FlyoverProbe : ProbeScenario
 {
     protected virtual float Speed => 40f;
+    // Whether it flies back to the west coast after reaching the east (FlyoverBackProbe).
+    protected virtual bool Back => false;
     const float Height = 30f, Step = 48f, SettleMost = 30f;
 
     protected override IEnumerator Run()
@@ -60,10 +62,7 @@ public class FlyoverProbe : ProbeScenario
         }
         yield return Wait(1f);
         Metric("start_settle_s", settled);
-        System.GC.Collect();
-        Metric("mem_start_allocated_mb", UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f));
-        Metric("mem_start_reserved_mb", UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong() / (1024f * 1024f));
-        Metric("mem_start_mono_mb", UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() / (1024f * 1024f));
+        Memory("start");
 
         int sight = MapTerrains.Sight(), know = far != null ? far.Dials.known : sight;
         float chunkM = land.Layout.ChunkSize, terrainReach = sight * chunkM, knownReach = know * chunkM;
@@ -82,22 +81,26 @@ public class FlyoverProbe : ProbeScenario
         var seenTerrains = new HashSet<(int, int)>();
         var holeAt = new SortedDictionary<int, int>();
         int closeHoleFrames = 0;
-        float flown = 0f, total = end.x - start.x;
+        float leg = end.x - start.x, total = Back ? 2f * leg : leg, flown = 0f;
+        bool measuredKm = false, measuredHalf = false, skipFrame = false;
         while (flown < total)
         {
             float dt = Time.unscaledDeltaTime;
-            ms.Add(dt * 1000f);
+            // The frame after a memory reading (a full collection and an object walk) isn't the flight's.
+            if (skipFrame) skipFrame = false;
+            else ms.Add(dt * 1000f);
             var p = wizardT.position;
             at.Add(grid.CellAt(p).x);
             frames++;
 
-            // Along the line east: the drawn ground ahead, the holes in it.
+            // Along the line ahead (east, or west on the way back): the drawn ground ahead, the holes in it.
+            float heading = flown < leg ? 1f : -1f;
             float ahead = -1f;
             bool hole = false, nearHole = false, overLand = false;
             for (float d = 0f; d <= knownReach; d += Step)
             {
-                var q = new Vector3(p.x + d, 0f, p.z);
-                if (q.x > end.x + chunkM) break;
+                var q = new Vector3(p.x + d * heading, 0f, p.z);
+                if (q.x > end.x + chunkM || q.x < start.x - chunkM) break;
                 var xz = new Vector2(q.x, q.z);
                 if (!land.IsLand(xz) || land.IsSea(xz)) continue;
                 overLand = true;
@@ -139,16 +142,35 @@ public class FlyoverProbe : ProbeScenario
             mostWaiting = Mathf.Max(mostWaiting, terrains.Waiting);
             mostActive = Mathf.Max(mostActive, World.ActiveChunks.Count);
 
+            // Memory after the first kilometre: what the flight holds once the terrains round it stand, the baseline the end
+            // is held to (memory_flat).
+            if (!measuredKm && flown >= FirstKm)
+            {
+                measuredKm = true;
+                skipFrame = true;
+                Memory("km1");
+            }
+            // And half way, to tell what the flight still fills in after the first km from growth with distance.
+            if (!measuredHalf && flown >= total / 2f)
+            {
+                measuredHalf = true;
+                skipFrame = true;
+                Memory("half");
+            }
+
+            // There and back: past the east coast the wizard turns and flies west to where it started.
             float move = Speed * dt;
             flown += move;
-            var next = new Vector3(p.x + move, 0f, p.z);
+            float dir = flown <= leg ? 1f : -1f;
+            var next = new Vector3(start.x + (flown <= leg ? flown : 2f * leg - flown), 0f, p.z);
             next.y = Mathf.Lerp(p.y, FlyY(next, land), Mathf.Clamp01(dt * 2f));
             wizardT.position = next;
-            Look(next);
+            Look(next, dir);
             yield return null;
         }
 
         tools.Fly(false);
+        Memory("end");
         var stats = FrameStats.Of(ms);
         Metric("speed_m_s", Speed);
         Metric("frames", stats.Count);
@@ -174,9 +196,6 @@ public class FlyoverProbe : ProbeScenario
         Metric("terrains_treeless_within_sight", treelessSeen);
         Metric("most_terrains_waiting", mostWaiting);
         Metric("most_active_chunks", mostActive);
-        Metric("mem_end_allocated_mb", UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f));
-        Metric("mem_end_reserved_mb", UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong() / (1024f * 1024f));
-        Metric("mem_end_mono_mb", UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() / (1024f * 1024f));
         var c = terrains.Counts;
         Metric("terrains_standing_end", c.standing);
         Metric("terrains_created_ever", c.created);
@@ -196,10 +215,69 @@ public class FlyoverProbe : ProbeScenario
         var holeText = new StringBuilder();
         foreach (var h in nearHoleChunks) holeText.Append($"({h.Item1},{h.Item2}) ");
         Debug.Log($"FLYOVER {Speed:0} m/s: worst {worst}\nover 33 ms by x band: {bandText}\nholes within sight at map chunks: {holeText}");
-        Check("flew_coast_to_coast", flown >= total, $"{flown:0} of {total:0} m in {frames} frames");
+        Check("flew_coast_to_coast", flown >= total, $"{flown:0} of {total:0} m in {frames} frames{(Back ? ", there and back" : "")}");
+        // Memory stays flat however far the flight goes: what's held at the end within MostGrowth of what was held after
+        // the first kilometre (native allocated and managed used, after a full collection), and the terrains bounded. The
+        // managed figure is allowed MostManagedGrowth: it holds the core's unpacked chunks, which pack again only
+        // streaming.packTicks after they're last needed, so at 80 m/s a few hundred more wait behind the flight (bounded by
+        // speed times that hold, not by the distance flown). It also follows the scenery under the flight (half way, over
+        // the island's middle, holds less than either coast).
+        float grewNative = mem["end_allocated"] / Mathf.Max(1f, mem["km1_allocated"]) - 1f;
+        float grewManaged = mem["end_mono"] / Mathf.Max(1f, mem["km1_mono"]) - 1f;
+        Metric("mem_growth_allocated_pct", grewNative * 100f);
+        Metric("mem_growth_mono_pct", grewManaged * 100f);
+        Check("memory_flat", grewNative <= MostGrowth && grewManaged <= MostManagedGrowth,
+            $"after the first km -> the end: allocated {mem["km1_allocated"]:0} -> {mem["end_allocated"]:0} MB ({grewNative * 100f:+0;-0}%), " +
+            $"managed {mem["km1_mono"]:0} -> {mem["end_mono"]:0} MB ({grewManaged * 100f:+0;-0}%), at most +{MostGrowth * 100f:0}% and +{MostManagedGrowth * 100f:0}%");
+        int bound = (2 * (sight + 2) + 1) * (2 * (sight + 2) + 1) * 2;
+        Check("terrains_bounded", c.standing <= bound && c.created <= bound, $"{c.standing} standing, {c.created} made ever, at most {bound}");
         Check("worst_frames", true, worst.ToString());
         Check("over_33ms_by_x", true, bandText.Length > 0 ? bandText.ToString() : "none");
         Check("no_hole_within_sight", nearHoleChunks.Count == 0, $"{nearHoleChunks.Count} land chunks within the drawn dial ({terrainReach:0} m) seen with nothing drawn: {holeText}");
+    }
+
+    // Memory readings by "<when>_<what>" (allocated, reserved, mono), after a full collection.
+    readonly Dictionary<string, float> mem = new();
+    const float FirstKm = 1000f, MostGrowth = 0.10f, MostManagedGrowth = 0.15f;
+
+    // A memory reading now: metrics mem_<when>_..., and a log line with what the view's caches hold (to find a leak).
+    void Memory(string when)
+    {
+        System.GC.Collect();
+        const float mb = 1024f * 1024f;
+        mem[when + "_allocated"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / mb;
+        mem[when + "_reserved"] = UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong() / mb;
+        mem[when + "_mono"] = UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() / mb;
+        Metric($"mem_{when}_allocated_mb", mem[when + "_allocated"]);
+        Metric($"mem_{when}_reserved_mb", mem[when + "_reserved"]);
+        Metric($"mem_{when}_mono_mb", mem[when + "_mono"]);
+        var terrains = MapTerrains.Instance;
+        var c = terrains.Counts;
+        var world = grid.World;
+        var far = FarRing.Instance;
+        var impostors = TreeImpostors.Instance;
+        Debug.Log($"FLYOVER HOLDINGS at={when} terrains standing={c.standing} pooled={c.pooled} created={c.created} " +
+                  $"ground: {terrains.Ground?.Holdings()} world: unpacked={world?.UnpackedCount} pool={world?.PackPoolCount} " +
+                  $"far_meshes={(far != null ? far.DrawnCount : 0)} impostor_blocks={(impostors != null ? impostors.Held : 0)} " +
+                  $"cell_chunks_drawn={grid.ChunksHeldDrawn} undrawn_ever={grid.ChunksUndrawn} blockers={grid.BlockersStanding} " +
+                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() +
+                  System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>());
+    }
+
+    // Loaded objects of a type by name (digits and commas taken out, so a chunk's or a cell's are one), the most first.
+    static string Named<T>() where T : Object
+    {
+        var groups = new Dictionary<string, int>();
+        foreach (var o in Resources.FindObjectsOfTypeAll<T>())
+        {
+            string name = System.Text.RegularExpressions.Regex.Replace(o.name, "[0-9,.-]+", "#");
+            groups[name] = groups.TryGetValue(name, out int n) ? n + 1 : 1;
+        }
+        var list = new List<KeyValuePair<string, int>>(groups);
+        list.Sort((a, b) => b.Value.CompareTo(a.Value));
+        var text = new StringBuilder();
+        for (int i = 0; i < Mathf.Min(12, list.Count); i++) text.Append($"{list[i].Key}:{list[i].Value}; ");
+        return text.ToString();
     }
 
     static float Sum(List<float> xs)
@@ -213,11 +291,18 @@ public class FlyoverProbe : ProbeScenario
     float FlyY(Vector3 p, MapLand land) => Mathf.Max(grid.GroundAt(p), land.WaterLevel) + Height;
 
     // The camera behind the wizard and over it, looking east and a little down.
-    void Look(Vector3 p) => Cut(p + new Vector3(-8f, 4f, 0f), p + new Vector3(40f, -8f, 0f));
+    void Look(Vector3 p, float dir = 1f) => Cut(p + new Vector3(-8f * dir, 4f, 0f), p + new Vector3(40f * dir, -8f, 0f));
 }
 
 // The flyover at 80 m/s (the fly mode's 40 with Shift held).
 public class FlyoverFastProbe : FlyoverProbe
 {
     protected override float Speed => 80f;
+}
+
+// The flyover there and back at 40 m/s: east coast to coast, then west again to the start, so the terrains and their
+// data are let go behind and made again on the way back (turning back doesn't thrash or leak).
+public class FlyoverBackProbe : FlyoverProbe
+{
+    protected override bool Back => true;
 }

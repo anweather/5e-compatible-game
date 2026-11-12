@@ -197,7 +197,28 @@ public sealed class TreeImpostors : MonoBehaviour
         StandNear();
         Read(wanted, layout, chunks, eye, ReadsPerFrame);
         Refresh(chunks);
+        Forget(layout, eye, reach);
     }
+
+    // The chunks' trees held past Far and LetGoPast chunks more are let go, every LetGoEvery frames: kept, every chunk
+    // flown past stayed held (a crossing of the island held thousands, hundreds of MB). The margin is so turning back
+    // reads none again at once; one coming back within Far is read again, nearest first, as at the start.
+    void Forget(TerrainGrid layout, Vector3 eye, float reach)
+    {
+        if (frame % LetGoEvery != 0 || blocks.Count == 0) return;
+        float size = layout.ChunkSize, past = reach + LetGoPast * size, pastSq = past * past;
+        gone.Clear();
+        foreach (int k in blocks.Keys)
+        {
+            var (cx, cz) = layout.ChunkCorner(k % layout.ChunksX, k / layout.ChunksX);
+            float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
+            if (dx * dx + dz * dz > pastSq) gone.Add(k);
+        }
+        foreach (int k in gone) blocks.Remove(k);
+    }
+
+    readonly List<int> gone = new();
+    const int LetGoEvery = 30, LetGoPast = 2;
 
     // Whether there's a world, a map, a camera and a baked species to draw with; the terrains' trees off once there are.
     bool Ready(MapTerrains terrains, TerrainGrid layout, Camera cam)

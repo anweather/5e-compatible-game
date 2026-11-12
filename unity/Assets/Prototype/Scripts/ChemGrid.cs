@@ -156,6 +156,7 @@ public partial class ChemGrid : MonoBehaviour
         // The blockers stay, for the new world to take again (CellBlockers.ReleaseAll).
         foreach (Transform child in transform)
             if (blockers == null || child != blockers.Parent) Destroy(child.gameObject);
+        ForgetCellRoots();
         freshChunks.Clear();
         lastLog = null;
         tickTimer = 0f;

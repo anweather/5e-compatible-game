@@ -324,6 +324,7 @@ public sealed class MapTerrains : MonoBehaviour
             if (Distance(at) > keep && !activeNow.Contains(at)) leaving.Add(k);
         }
         foreach (int k in leaving) Release(k);
+        ForgetFar(keep);
         wantedNow.Clear();
         foreach (var (fi, fj) in focus)
             for (int j = fj - make; j <= fj + make; j++)
@@ -333,6 +334,21 @@ public sealed class MapTerrains : MonoBehaviour
         toMake.AddRange(wantedNow);
         toMake.Sort((a, b) => Distance(a).CompareTo(Distance(b)));
     }
+
+    // Every so often, what the ground holds for chunks with no terrain far past the drawn cells (the known radius, where
+    // the cells' dressings stop, and a margin) is let go (ValleyGround.ForgetFar): their height offsets and arrays.
+    void ForgetFar(int keep)
+    {
+        if (Time.unscaledTime < nextForget || arrays != null) return;
+        nextForget = Time.unscaledTime + ForgetEvery;
+        var far = FarRing.Instance;
+        int past = Mathf.Max(keep, far != null ? far.Dials.known : keep) + ForgetMargin;
+        ground.ForgetFar(at => Distance(at) > past);
+    }
+
+    float nextForget;
+    const float ForgetEvery = 2f;
+    const int ForgetMargin = 3;
 
     void AddFocus((int i, int j) at)
     {
