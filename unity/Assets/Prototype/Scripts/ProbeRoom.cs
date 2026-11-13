@@ -371,8 +371,17 @@ public class RoomProbeClient : MonoBehaviour
         walker.enabled = true;
         yield return new WaitForSecondsRealtime(0.5f);
         var hands = wizard.GetComponent<ItemHolder>();
-        hands.PickUp(item);
-        for (float t = 0f; t < 3f && hands.Held == null; t += Time.unscaledDeltaTime) yield return null;
+        // Asked again until it's in hand, as a player presses again: the host refuses while its copy of this wizard is
+        // still where it was (a peer just joined from a snapshot can be a second behind in sending where it is).
+        for (float t = 0f, asked = -1f; t < 3f && hands.Held == null; t += Time.unscaledDeltaTime)
+        {
+            if (t - asked >= 0.5f)
+            {
+                hands.PickUp(item);
+                asked = t;
+            }
+            yield return null;
+        }
         yield return new WaitForSecondsRealtime(1f);
     }
 

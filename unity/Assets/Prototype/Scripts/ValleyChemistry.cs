@@ -353,7 +353,7 @@ public partial class ValleyChemistry : MonoBehaviour
     // drawn whole from the start, reads all of its chunks now.
     void BindStartTrees(World world)
     {
-        startTrees = new StartTrees(world);
+        startTrees = new StartTrees(world, grid.WorldLoaded);
         grid.ChunkSwitched -= ReadStartTrees;
         grid.ChunkSwitched += ReadStartTrees;
         if (!ground.Lazy)
@@ -678,7 +678,7 @@ public partial class ValleyChemistry : MonoBehaviour
         // A wall that burned out is no longer alight (the core puts the fire out as it turns to rubble),
         // but it leaves ash; one that caved in under earth shaping doesn't.
         var now = grid.World.At(x, y);
-        if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane)) pane.Shatter(key);
+        if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane) && pane != null) pane.Shatter(key);
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
@@ -691,7 +691,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>A cell was redrawn: a pane on it shows its crack, or not.</summary>
     public void PaneCracked(int key, bool cracked)
     {
-        if (panesByCell.TryGetValue(key, out var pane)) pane.Cracked(key, cracked);
+        if (panesByCell.TryGetValue(key, out var pane) && pane != null) pane.Cracked(key, cracked);
     }
 
     void IndexPalms()
@@ -736,7 +736,7 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         int key = grid.World.Idx(x, y);
         if (to == TerrainIds.Tree && from != TerrainIds.Sapling) StandTrees(x, y);
-        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended)) mended.Mend(key);
+        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended) && mended != null) mended.Mend(key);
     }
 
     // The baked trees of a cell, and its palms, as they were.

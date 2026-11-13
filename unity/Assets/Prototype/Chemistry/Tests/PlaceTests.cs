@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
@@ -178,6 +179,43 @@ namespace Chem.Tests
             w.Cast("barrels", 10, 10, 0);
             loaded.Cast("barrels", 10, 10, 0);
             Assert.That(loaded.CastHash(), Is.EqualTo(w.CastHash()), "the counts carry on");
+        }
+
+        // A late joiner loads the host's world (JoinSnapshot): an animal brought out lately is still there for its view.
+        [Test]
+        public void TheAnimalsBroughtOutLatelySaveAndLoad()
+        {
+            var w = With(Spell("child-dock", Child));
+            w.Cast("child-dock", 20, 22, 0);
+            w.Step();
+            var source = new Flat();
+            var loaded = World.Load(w.Save(source), w.Rules, source);
+            string Of(World x) => string.Join(" ", x.SummonedAfter(-1).Select(a => $"{a.N}:{a.Species}:{a.X},{a.Y}:{a.Individual}:{a.Tick}"));
+            Assert.That(Of(loaded), Is.EqualTo(Of(w)).And.Not.Empty);
+            Assert.That(loaded.LastSummonN, Is.EqualTo(w.LastSummonN));
+        }
+
+        // A late joiner's view tells the trees grown since the start from the map's own (the valley's StartTrees).
+        [Test]
+        public void ALoadedWorldStillKnowsWhatItStartedAs()
+        {
+            var source = new Flat();
+            var w = new World(R, 64, 64, 3);
+            w.MakeFrom(source);
+            w.Paint(5, 5, "tree");
+            w.KeepStart();
+            w.Paint(9, 9, "tree");
+            w.Step();
+            var loaded = World.Load(w.Save(source), w.Rules, source);
+            string Trees(World x)
+            {
+                var at = new List<int>();
+                x.StartTerrainOf(0, 0, (i, t) => { if (t == "tree") at.Add(i); });
+                return string.Join(",", at);
+            }
+            Assert.That(Trees(w), Is.EqualTo((5 * Chunks.Size + 5).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            Assert.That(Trees(loaded), Is.EqualTo(Trees(w)));
+            Assert.That(loaded.At(9, 9).T, Is.EqualTo("tree"), "its cells now have the tree grown since");
         }
 
         sealed class Flat : IChunkSource

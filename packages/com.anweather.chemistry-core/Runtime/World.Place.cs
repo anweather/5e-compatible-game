@@ -222,6 +222,9 @@ namespace Chem
                 ["count"] = placedCount,
                 ["things"] = new JArray(placedThings.Select(t => new JArray(t.Id.PlacedN, t.Kind, t.CellX, t.CellY, t.Rotation, t.Lapses))),
             };
+            // The animals brought out lately, for a view that comes to the world later (a late joiner's) to bring out too.
+            if (summonHistory.Count > 0)
+                save["placedThings"]["summons"] = new JArray(summonHistory.Select(a => new JArray(a.N, a.Species, a.X, a.Y, (long)a.Individual, a.Tick)));
         }
 
         void LoadPlaced(JObject s)
@@ -231,6 +234,8 @@ namespace Chem
             placedCount = (int)p["count"];
             foreach (var t in (p["things"] as JArray ?? new JArray()).OfType<JArray>())
                 placedThings.Add(PlacedSpawn((int)t[0], (string)t[1], (int)t[2], (int)t[3], (int)t[4], (int)t[5]));
+            foreach (var a in (p["summons"] as JArray ?? new JArray()).OfType<JArray>())
+                summonHistory.Add(new Summon((int)a[0], (string)a[1], (int)a[2], (int)a[3], (uint)(long)a[4], (int)a[5]));
             placedVersion++;
         }
     }
