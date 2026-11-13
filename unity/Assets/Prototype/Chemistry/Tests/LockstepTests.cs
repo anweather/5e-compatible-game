@@ -357,6 +357,7 @@ namespace Chem.Tests
             var loop = new LockstepLoopback();
             var host = new LockstepSession(loop.AddHost(), new LockstepWorld(R, Meadow));
             host.Register(LockstepChannels.Casts(LockstepChannels.PlayerName));
+            host.MapId = "valley";
             loop.Host.Session = host;
             var link = loop.AddClient("other");
             var client = new LockstepSession(link, new LockstepWorld(R, Meadow), link.Id);
@@ -374,6 +375,7 @@ namespace Chem.Tests
             }
             Assert.That(failed.Single(), Does.Contain("channels (casts) aren't this peer's (casts, dragon)"));
             Assert.That(client.Synced, Is.False);
+            Assert.That(client.Hello?.Map, Is.EqualTo("valley"), "the hello is kept, so a peer on another map can go to the host's");
         }
     }
 }

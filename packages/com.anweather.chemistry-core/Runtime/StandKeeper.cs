@@ -1,5 +1,5 @@
 // Which of the wizards' stands a late joiner's strike history keeps: the compaction hook of NetChem's
-// strike channel (CommandChannel). A joiner replays the history from the world's start (or the last
+// strike channel. A joiner replays the history from the world's start (or the last
 // reset) on a fresh world, so every command it leaves out must change nothing the replay does, at any
 // tick: its past is the host's (#55, #164, #173), and only what no rule and no checksum reads may differ.
 //

@@ -66,9 +66,9 @@ public class OnlineReset : MonoBehaviour
 
     /// <summary>
     /// Whether a WorldReset now is a live online reset that the view follows: not going online
-    /// (a fresh world, no reset yet), and not a late joiner replaying one from its history.
+    /// (a fresh world, no reset yet), and not a late joiner loading the host's world.
     /// </summary>
-    public static bool Happened(NetChem net) => net != null && net.Online && net.LastResetTick > 0 && !net.ResetIsReplay;
+    public static bool Happened(NetChem net) => net != null && net.Online && net.Resetting;
 
     void Update()
     {
