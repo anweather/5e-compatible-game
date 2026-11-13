@@ -231,3 +231,41 @@ NetChem is the NGO adapter: `Scripts/Net/NgoLockstepTransport.cs` (the port) and
     `StartTrees` dresses the trees grown since;
   - `RowHouses` lets go of its houses at every new world and draws them afresh, and the valley skips a pane that's gone;
   - the probes' grab asks again until the item is in hand (a peer just joined can be a second behind in sending where it is).
+
+## Step 3 as built (Punchy `chemistry-lockstep`, local, 2026-11-13)
+
+No core change was needed: Punchy runs the package as it is on `dev`, through `LockstepWorld`.
+
+- **The adapter** is `Assets/Game/Scripts/ChemistryBridge/NfeLockstepTransport.cs` (one MonoBehaviour that is the
+  transport and its pump, about 250 lines). The session's bytes ride `ChemMsgRpc : IRpcCommand`: two `FixedBytes510`
+  (1020 bytes, `MaxMessageBytes`), a length and a sequence number per link; the assembly has no unsafe code, so the
+  bytes are copied through `MemoryMarshal` spans over the fixed buffers. Sends wait in an outbox per link and go at
+  most 24 pieces a frame (NfE retries a full send queue itself); what arrives is sorted back into each link's order
+  and handed to the session from the pump's Update, never inside a system.
+- **Peers:** on the host every connection in game except its own client's is a peer, its PeerId the NetworkId, and is
+  announced only once a session exists; the host's own client is sent nothing and drops anything that reaches it. The
+  bridge hooks `GameBootstrap.WorldsReplacing` (no change to GameBootstrap) and starts a new session on host, join or
+  solo. Solo runs through the core's loopback (`AddHost(solo: true)`).
+- **The shared region** (256 × 256, one per session) replaces the window per player. The host samples `TerrainSource`
+  as before and sends the cells' kinds in the hello's `Start` (`corner`, and `region`: run-length coded, base64, about
+  14 KB); a client builds the same cells from them (`RegionSource : IChunkSource`, whose `Version` carries a hash of the
+  kinds) and samples only heights for its view. The snapshot is then just the play's changes against that source. The
+  client logs how many cells it would have seeded differently from the floats: 0 of 65,536 on one PC.
+- **Channels:** `casts`, `combos` and `chunks`, in that order. Combos were added beside casts because Punchy's pad hands
+  (D16) keep their state in the world, and `CastHash` hashes it: a hand command applied locally would desync. Players
+  are named `p0` (host) and `p<NetworkId>`; a peer aims only what its own wizard sets off (`FiredCastsHeard`), and asks
+  for it on `casts`. The host stamps `ChunkPlanner`'s plan for every player's cell in `Stamping`.
+- **Catch-up:** a frame behind the batches by more than 6 ticks ticks for 8 ms instead of 2. Without it, a joiner's first
+  seconds at 10 fps ran fewer ticks than the host stamped, and its cast landed 37 ticks (6 s) after it was asked; with
+  it, 8 ticks.
+- **Results (Mono player, both peers; the Windows player is Mono, so no IL2CPP comparison was possible):** a `-host`
+  build and a `-join 127.0.0.1` copy, each with `-chem-demo` (a Fireball each): both casts land on the same tick on
+  both, and the checksums at every 60th tick agree for 3 minutes (20 of 20, `desync=False`). A third copy joining at
+  tick 436 with about 3,000 cells burnt and the fire still spreading loads the snapshot and agrees from then on
+  (15 of 15).
+- **What behaves differently from solo:** a cast lands on the host's next tick (a sixth of a second, plus the trip to
+  the host on a client) instead of at once; the hands' commands too. A host's region doesn't follow the player (solo
+  still re-centres 96 m out), and a host with peers keeps its region even if `TerrainSource` changes.
+- **Open:** a peer that leaves keeps its wizard's hand state in the world (Punchy stamps no Leave); the snapshot saves a
+  held cast as a tap, so a joiner arriving mid-charge may fail the snapshot's checksum (not seen; the NGO game shares
+  it). Next: PC and Mac over Relay.
