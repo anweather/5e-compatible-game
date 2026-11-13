@@ -223,3 +223,8 @@ NetChem is the NGO adapter: `Scripts/Net/NgoLockstepTransport.cs` (the port) and
   `DesyncSeen` stays true after a snapshot puts a desync right; `Desyncs` counts them.
 - **What behaves differently:** a late joiner's log starts at its join (no past log lines; roomopen's check says so),
   and `StrikeHistorySent` is gone (no history). The protocol and NET CONFIG change: one release on all three platforms.
+- **Open after step 2 (2026-11-13):** three two-player probes fail on what a snapshot-loaded world shows, not on
+  checksums: `roomruin` (the joiner draws only the mod's row, not hold#1, lake-house#1, stable#1: `World.BaseBuildings`
+  looks empty on a loaded world; and a `MissingReferenceException` on `WindowPanes` in `RowHouses` after the view is
+  dropped), `roomthing` (`in_hand_for_the_revert`) and `placeview` (a late joiner lacks the placed child and dresses 5 of
+  11 plants). Each is a part of the world `World.Save` / `ChemGrid.LoadSnapshot` doesn't carry yet.
