@@ -175,6 +175,30 @@ namespace Chem
 
         Cell StartCell(int index) => StartCell(index % W, index / W);
 
+        /// <summary>
+        /// A chunk's starting terrain, cell by cell in local index (row by row in the chunk), to <paramref name="each"/>;
+        /// none outside the world's extent. Without a start kept, the cells as they are. A view reads what the world began
+        /// as here, not its cells now: a world loaded from a save (a late joiner's) has its changes in already. A cell a
+        /// mod laid or built on, whose start follows it (so the dragon keeps it), gives what stood there before.
+        /// </summary>
+        public void StartTerrainOf(int cx, int cy, Action<int, string> each)
+        {
+            if (each == null) throw new ArgumentNullException(nameof(each));
+            var ch = FindChunk(cx, cy);
+            if (ch == null) return;
+            var reader = startSource != null ? StartOf(ch, new Cell()) : new ChunkReader(this, ch, new Cell());
+            for (int i = 0; i < Chunks.Area; i++)
+            {
+                var c = reader.At(i);
+                if (c == null) continue;
+                int idx = Idx(CellX(ch, i), CellY(ch, i));
+                string terrain = c.T;
+                if (underLaid.TryGetValue(idx, out var laid)) terrain = laid.terrain;
+                else if (underBuildings.TryGetValue(idx, out var built)) terrain = built.terrain;
+                each(i, terrain);
+            }
+        }
+
         /// <summary>The dragon's summons (a Reset): the warning starts now, unless one is flying or the world keeps no starting state.</summary>
         public void ApplyDragon(DragonCommand command)
         {

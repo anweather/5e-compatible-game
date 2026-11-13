@@ -152,6 +152,8 @@ namespace Chem
             w.LoadFits(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
             w.LoadStarts(s);
+            // The map's buildings by the starting cells as saved, not by the source's alone (a joiner's rows: roomruin).
+            w.NoteBaseBuildingsAgain();
             w.LoadLandSet(s, land);
             w.BuildingsIntoStart();
             w.TotalChanged();

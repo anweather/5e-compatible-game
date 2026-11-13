@@ -175,6 +175,31 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ATickRunOverFramesLosesNoBatch()
+        {
+            // A slice a frame (a busy frame, or the long one after a reset): each tick is still running, its world's
+            // tick already counted, when the host stamps the next. Every batch must still be held and run.
+            var net = new Net(Meadow);
+            var client = net.Join();
+            double tickSeconds = 1.0 / Math.Max(1, R.Sim.TicksPerSecond);
+            bool spanned = false;
+            int calls = 0;
+            bool Busy() => ++calls % 3 == 0;
+            for (int f = 0; f < 2000 && net.Host.Tick < 60; f++)
+            {
+                net.Host.Session.Update(tickSeconds, Busy);
+                spanned |= net.Host.World.TickInProgress;
+                client.Session.Update(0, Busy);
+                net.Loop.Pump();
+            }
+            Assert.That(spanned, Is.True, $"a tick ran over frames (host at {net.Host.Tick}, stamped {net.Host.Session.HostTick})");
+            Assert.That(net.Host.Tick, Is.GreaterThanOrEqualTo(60), "the host runs every tick it stamps");
+            net.Settle();
+            Assert.That(client.Tick, Is.EqualTo(net.Host.Tick));
+            Assert.That(FirstDifference(net, client, client.Joins[0] + 1), Is.Null);
+        }
+
+        [Test]
         public void AJoinerAtTick300BySnapshotReachesTheSameHash()
         {
             var net = new Net(Meadow);
@@ -357,6 +382,7 @@ namespace Chem.Tests
             var loop = new LockstepLoopback();
             var host = new LockstepSession(loop.AddHost(), new LockstepWorld(R, Meadow));
             host.Register(LockstepChannels.Casts(LockstepChannels.PlayerName));
+            host.MapId = "valley";
             loop.Host.Session = host;
             var link = loop.AddClient("other");
             var client = new LockstepSession(link, new LockstepWorld(R, Meadow), link.Id);
@@ -374,6 +400,7 @@ namespace Chem.Tests
             }
             Assert.That(failed.Single(), Does.Contain("channels (casts) aren't this peer's (casts, dragon)"));
             Assert.That(client.Synced, Is.False);
+            Assert.That(client.Hello?.Map, Is.EqualTo("valley"), "the hello is kept, so a peer on another map can go to the host's");
         }
     }
 }

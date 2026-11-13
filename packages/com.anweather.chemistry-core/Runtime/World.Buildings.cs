@@ -53,6 +53,14 @@ namespace Chem
         // Before a mod's building lands, so the rows read the world as it was made.
         internal void NoteBaseBuildings() => _ = BaseBuildings;
 
+        // A load's starting cells are in: the buildings are read from them again.
+        internal void NoteBaseBuildingsAgain()
+        {
+            if (startSource == null) return;
+            baseBuildings = null;
+            NoteBaseBuildings();
+        }
+
         string StartTerrain(int x, int y)
         {
             if (!InBounds(x, y)) return null;

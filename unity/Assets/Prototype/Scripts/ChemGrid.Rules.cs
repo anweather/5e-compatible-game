@@ -19,9 +19,8 @@ public partial class ChemGrid
     RuleSet queuedRules;
     readonly List<RoomCommand> queuedRoom = new();
     ModBudgets budgets;
-    // What the next world's room is: the host's chosen mode, or none yet for a client until the host says.
+    // What the next world's room is: the host's chosen mode, or the last world's.
     ChangeMode? plannedMode;
-    bool roomAwaited;
 
     /// <summary>The rules in force: base, the switched-on mods, and what they compose to.</summary>
     public RuleSet CurrentRules { get; private set; }
@@ -41,20 +40,6 @@ public partial class ChemGrid
     /// <summary>The next world built opens its room in this mode: the host's choice (the mods on stay).</summary>
     public void PlanRoom(ChangeMode mode) => plannedMode = mode;
 
-    /// <summary>The next world built opens no room: a client's, until the host says which (JoinRoom).</summary>
-    public void AwaitRoom() => roomAwaited = true;
-
-    /// <summary>A client: the host's room, as it stood when the history starts, opened on the world not yet stepped.</summary>
-    public void JoinRoom(ChangeMode mode, string host, IReadOnlyList<RoomMod> mods)
-    {
-        roomAwaited = false;
-        if (World.Room != null) return;
-        World.OpenRoom(mode, host, CurrentRules.Base, Budgets, mods);
-        CurrentRules = World.RoomRules;
-        RecolourWorld();
-        RulesChanged?.Invoke();
-    }
-
     /// <summary>Solo: a room command, decided before the next tick.</summary>
     public void QueueRoom(RoomCommand command) => queuedRoom.Add(command);
 
@@ -70,16 +55,7 @@ public partial class ChemGrid
     // Every world is a room, solo too (docs/RULES_MCP.md): a rebuilt one keeps the room it replaces.
     void OpenRoom(RoomState was)
     {
-        World.RoomDecided += (command, verdict) =>
-        {
-            if (command.Change == RoomChange.Revert && verdict.Done) Reverted();
-            RoomDecided?.Invoke(command, verdict);
-        };
-        if (roomAwaited)
-        {
-            World.AwaitRoom(Budgets);
-            return;
-        }
+        HearRoom();
         var mode = plannedMode ?? was?.Mode ?? ChangeMode.Open;
         plannedMode = null;
         string host = was?.Host ?? NetChem.PeerName(0);
@@ -94,6 +70,16 @@ public partial class ChemGrid
         }
         CurrentRules = World.RoomRules;
         RecolourWorld();
+    }
+
+    // The world's room decisions, passed on (a revert also sweeps its materials).
+    void HearRoom()
+    {
+        World.RoomDecided += (command, verdict) =>
+        {
+            if (command.Change == RoomChange.Revert && verdict.Done) Reverted();
+            RoomDecided?.Invoke(command, verdict);
+        };
     }
 
     /// <summary>Puts <paramref name="next"/> (already checked) in force before the next solo tick.</summary>

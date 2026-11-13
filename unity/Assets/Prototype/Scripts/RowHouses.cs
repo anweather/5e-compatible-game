@@ -69,10 +69,25 @@ public class RowHouses : MonoBehaviour
     /// <summary>The scene's own building this row hid, for the probe; null if none.</summary>
     public Transform Hidden(string id) => drawn.TryGetValue(id, out var d) ? d.hidden : null;
 
-    void Awake() => grid = GetComponent<ChemGrid>();
+    void Awake()
+    {
+        grid = GetComponent<ChemGrid>();
+        grid.WorldReset += Dropped;
+    }
+
+    // A new world (a reset, or one loaded from the host's snapshot) took the houses drawn with the grid's children: they're
+    // let go of now, their panes unbound before any cell is drawn again, and drawn afresh for the new world.
+    void Dropped()
+    {
+        foreach (var d in drawn.Values) Remove(d);
+        drawn.Clear();
+        order.Clear();
+        Hook(null);
+    }
 
     void OnDestroy()
     {
+        if (grid != null) grid.WorldReset -= Dropped;
         Hook(null);
         // The grid goes with this: it's no time to dress the cells again (a rejoin hit that).
         closing = true;

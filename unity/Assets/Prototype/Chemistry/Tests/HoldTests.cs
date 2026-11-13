@@ -500,6 +500,23 @@ namespace Chem.Tests
             Assert.That(w.BuildingRowOf("hold#1"), Is.Not.Null);
         }
 
+        // A late joiner loads the host's world (JoinSnapshot): the map's buildings must be its buildings, as they were the host's.
+        [Test]
+        public void ASavedRoomKeepsTheMapsBuildings()
+        {
+            var source = new Grass();
+            var budgets = ModBudgets.Load(ChemistryTests.RulesDir());
+            var w = new World(R, 576, 576, 7);
+            w.MakeFrom(source);
+            WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
+            w.KeepStart();
+            w.OpenRoom(ChangeMode.Open, "host", R, budgets);
+            var rows = w.RowsDrawn().Select(r => r.Id).ToList();
+            Assert.That(rows, Does.Contain("hold#1"));
+            var back = World.Load(w.Save(source), R, source, budgets);
+            Assert.That(back.RowsDrawn().Select(r => r.Id), Is.EqualTo(rows));
+        }
+
         [Test]
         public void ASaveKeepsTheRun()
         {

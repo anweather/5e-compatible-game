@@ -153,7 +153,59 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
     public void ResetWorld()
     {
-        // The blockers stay, for the new world to take again (CellBlockers.ReleaseAll).
+        DropWorldView();
+        BuildWorld();
+    }
+
+    /// <summary>
+    /// Online: plays on from the host's snapshot (a late joiner, or a desync put right; LockstepSession): the save loaded
+    /// over this map, base rules and budgets, and the world's view built as ResetWorld builds one. SaveException, saying
+    /// why, if it doesn't fit; the world in play is kept then.
+    /// </summary>
+    public void LoadSnapshot(JoinSnapshot snapshot)
+    {
+        var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, MapLandUnits(), Budgets);
+        // What the map gives a world that a save doesn't hold, as MapWorld gives it: the land's range, and the Hold's
+        // site (its run, saved, goes on over it: HoldTests.ASaveKeepsTheRun).
+        world.SetLandRange(MapFile.Load(Folders.World).LandRange);
+        SetHold(world);
+        DropWorldView();
+        WorldLoaded = true;
+        using var built = BuildMarker.Auto();
+        queuedRules = null;
+        TakeYard();
+        World = world;
+        HearRoom();
+        CurrentRules = world.Room != null ? world.RoomRules : rules;
+        RecolourWorld();
+        // The start the host picked (SpawnPoints, from its hello), on this map; the snapshot's chunks are active as the host's.
+        PlayerStart = SpawnPoints.StartCell(mapStart);
+        BindWorld(0);
+        RulesChanged?.Invoke();
+    }
+
+    /// <summary>Whether the world in play was loaded from a save (LoadSnapshot), not built from the map: it has its land already.</summary>
+    public bool WorldLoaded { get; private set; }
+
+    // The map's land (land.json, as the valley gives the world), an int a cell, for a save to load over; null for none.
+    int[] MapLandUnits()
+    {
+        var land = valley != null ? ValleyChemistry.LandOf(World) : null;
+        if (land == null) return null;
+        var units = new int[land.W * land.H];
+        var band = new int[Chunks.Size * land.W];
+        for (int cy = 0; cy * Chunks.Size < land.H; cy++)
+        {
+            land.Band(cy, band);
+            int rows = System.Math.Min(Chunks.Size, land.H - cy * Chunks.Size);
+            System.Array.Copy(band, 0, units, cy * Chunks.Size * land.W, rows * land.W);
+        }
+        return units;
+    }
+
+    // The world's view goes: the blockers stay, for the new world to take again (CellBlockers.ReleaseAll).
+    void DropWorldView()
+    {
         foreach (Transform child in transform)
             if (blockers == null || child != blockers.Parent) Destroy(child.gameObject);
         ForgetCellRoots();
@@ -162,8 +214,10 @@ public partial class ChemGrid : MonoBehaviour
         tickTimer = 0f;
         // The old world's views go before the new one is built, so both worlds' views aren't held at once at the peak.
         views = null;
-        BuildWorld();
     }
+
+    // The map's own start, as the last world built from it had it.
+    Vector2Int mapStart;
 
     void BuildWorld()
     {
@@ -179,16 +233,24 @@ public partial class ChemGrid : MonoBehaviour
         Vector2Int start;
         var phase = System.Diagnostics.Stopwatch.StartNew();
         using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
+        WorldLoaded = false;
         StartupTimeline.Mark("world cells built (incl. keep start)");
         double cellsMs = phase.Elapsed.TotalMilliseconds;
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
         StartupTimeline.Mark("room and mods");
         // The spawn the host picked (SpawnPoints), else the map's own.
+        mapStart = start;
         PlayerStart = SpawnPoints.StartCell(start);
         // Only the start's reach starts active (#209), before anything is drawn or spawned for the
         // chunks: every peer builds from the same map and start, so all start alike.
         if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.StartPlan(World, new[] { (PlayerStart.x, PlayerStart.y) }));
         StartupTimeline.Mark("start reach active");
+        BindWorld(cellsMs);
+    }
+
+    // The view's hold on a world just made or loaded: its events, the valley, the drawing, and WorldReset.
+    void BindWorld(double cellsMs)
+    {
         World.ChunkSwitched += OnChunkSwitched;
         World.LandMoved += (x, y, reach) =>
         {
@@ -198,7 +260,7 @@ public partial class ChemGrid : MonoBehaviour
         };
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
-        phase.Restart();
+        var phase = System.Diagnostics.Stopwatch.StartNew();
         if (valley != null)
             using (BuildValleyMarker.Auto()) valley.Bind(World);
         StartupTimeline.Mark("valley bound");

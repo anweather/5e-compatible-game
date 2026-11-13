@@ -15,7 +15,10 @@ namespace Chem.Lockstep
         /// <summary>Client: a snapshot of the host's world loaded, at this network tick; it plays on from there.</summary>
         public event Action<int> Joined;
 
-        /// <summary>Client: the host's hello, or null before it comes.</summary>
+        /// <summary>
+        /// Client: the host's hello, or null before it comes; set as it comes, so a game told it can't join (Failed) can
+        /// still read the host's map (a peer on another map goes there, then joins again).
+        /// </summary>
         public LockstepHello Hello { get; private set; }
 
         /// <summary>Client: asks the host for its world (AutoJoin does, as soon as the hello checks out).</summary>
@@ -64,13 +67,13 @@ namespace Chem.Lockstep
 
         void Greeted(LockstepHello hello)
         {
+            Hello = hello;
             string why = Mismatch(hello);
             if (why != null)
             {
                 Failed?.Invoke("Can't join: " + why);
                 return;
             }
-            Hello = hello;
             HelloReceived?.Invoke(hello);
             if (AutoJoin) Join();
         }

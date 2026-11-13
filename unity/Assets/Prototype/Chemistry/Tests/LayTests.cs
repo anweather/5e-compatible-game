@@ -91,6 +91,27 @@ namespace Chem.Tests
             Assert.That(loaded.CellHash(), Is.EqualTo(start));
         }
 
+        // A late joiner's view tells the map's trees from the laid ones by what the world began as (the valley's StartTrees).
+        [Test]
+        public void ALoadedWorldStartedWithoutTheLaidTrees()
+        {
+            var w = Meadow();
+            w.KeepStart();
+            var rules = With(Lay("tree", Grove));
+            w.ApplyRules(rules);
+            var source = new Flat();
+            var loaded = World.Load(w.Save(source), rules, source);
+            int Trees(World x)
+            {
+                int n = 0;
+                x.StartTerrainOf(0, 0, (i, t) => n += t == "tree" ? 1 : 0);
+                return n;
+            }
+            Assert.That(Count(loaded, "tree"), Is.EqualTo(Grove.Length), "the laid trees stand");
+            Assert.That(Trees(w), Is.Zero);
+            Assert.That(Trees(loaded), Is.Zero, "but the world began without them");
+        }
+
         sealed class Flat : IChunkSource
         {
             public string Version => "test-flat";
