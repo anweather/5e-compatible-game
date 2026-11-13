@@ -164,8 +164,9 @@ public partial class ChemGrid : MonoBehaviour
     /// </summary>
     public void LoadSnapshot(JoinSnapshot snapshot)
     {
-        var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, null, Budgets);
+        var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, MapLandUnits(), Budgets);
         DropWorldView();
+        WorldLoaded = true;
         using var built = BuildMarker.Auto();
         queuedRules = null;
         TakeYard();
@@ -177,6 +178,25 @@ public partial class ChemGrid : MonoBehaviour
         PlayerStart = SpawnPoints.StartCell(mapStart);
         BindWorld(0);
         RulesChanged?.Invoke();
+    }
+
+    /// <summary>Whether the world in play was loaded from a save (LoadSnapshot), not built from the map: it has its land already.</summary>
+    public bool WorldLoaded { get; private set; }
+
+    // The map's land (land.json, as the valley gives the world), an int a cell, for a save to load over; null for none.
+    int[] MapLandUnits()
+    {
+        var land = valley != null ? ValleyChemistry.LandOf(World) : null;
+        if (land == null) return null;
+        var units = new int[land.W * land.H];
+        var band = new int[Chunks.Size * land.W];
+        for (int cy = 0; cy * Chunks.Size < land.H; cy++)
+        {
+            land.Band(cy, band);
+            int rows = System.Math.Min(Chunks.Size, land.H - cy * Chunks.Size);
+            System.Array.Copy(band, 0, units, cy * Chunks.Size * land.W, rows * land.W);
+        }
+        return units;
     }
 
     // The world's view goes: the blockers stay, for the new world to take again (CellBlockers.ReleaseAll).
@@ -209,6 +229,7 @@ public partial class ChemGrid : MonoBehaviour
         Vector2Int start;
         var phase = System.Diagnostics.Stopwatch.StartNew();
         using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
+        WorldLoaded = false;
         StartupTimeline.Mark("world cells built (incl. keep start)");
         double cellsMs = phase.Elapsed.TotalMilliseconds;
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);

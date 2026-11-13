@@ -241,10 +241,11 @@ namespace Chem.Lockstep
             return batch;
         }
 
-        // A batch arrived: held until its tick, unless that tick has run or is running here.
+        // A batch arrived: held until its tick, unless that tick has run or is running here (a tick in progress is
+        // counted in the world's Tick already, so NetTick is it).
         void Hold(TickBatch batch)
         {
-            if (synced && batch.Tick <= NetTick + (World.World.TickInProgress ? 1 : 0)) return;
+            if (synced && batch.Tick <= NetTick) return;
             batches[batch.Tick] = batch;
             ExtendKnown();
         }

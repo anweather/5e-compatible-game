@@ -300,7 +300,8 @@ public partial class ValleyChemistry : MonoBehaviour
         var (channelCells, channelDepths) = builder.Channel;
         ground.RaiseBase(channelCells, channelDepths);
         steps.Mark("raise_base");
-        SetLand(world);
+        // A world loaded from a save (the host's snapshot) has the land it was saved with, marks and all.
+        if (!grid.WorldLoaded) SetLand(world);
         steps.Mark("set_land");
         CheckGround(world);
         steps.Mark("land");
