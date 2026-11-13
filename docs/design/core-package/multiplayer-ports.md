@@ -121,3 +121,81 @@ public interface ILockstepTransport          // reliable, ordered, bytes only
 - **Bandwidth:** a join snapshot of a 256 × 256 region is a few hundred KB; at ~1 KB per RPC that's a few hundred RPCs
   over a few seconds. Fine for the experiment; compress later.
 - **Mixing a game with another:** out of scope. Our game and Punchy never join each other.
+
+## Step 1 as built (`lockstep-core`, 2026-11-13)
+
+All of it is in the package's `Runtime/`, namespace `Chem.Lockstep`, with no Unity and no floats on the wire:
+
+| File | What it is |
+|---|---|
+| `LockstepPorts.cs` | `LockstepRole`, `PeerId`, `ILockstepTransport`, `ILockstepWorld`, and `LockstepWorld` (the world port for a world the core builds alone: tests, Punchy) |
+| `LockstepWire.cs` | `LockstepWriter` / `LockstepReader` (varints, UTF-8 strings with null apart from empty, fixed 64-bit hashes), `LockstepFrames` (splits past `MaxMessageBytes`, joins pieces by message number), `Fnv1a64` |
+| `LockstepMessages.cs` | the message kinds; `LockstepHello`, `LockstepDesync`, `LockstepRefusal`, `LockstepTaken` |
+| `LockstepChannels.cs` | `LockstepChannel<T>` and the standard channels, TickBatch's lists: casts, effects, chunks, defense, combos, dragon, course, strikes, room |
+| `LockstepSession*.cs` | the session: shared part, host, client |
+| `LockstepLoopback.cs` | N peers in one process, a delay in pumps per peer |
+| `CommandChannel.cs` | **moved** from `Scripts/Net/` with its `.meta` (same GUID, still the global namespace), so NetChem compiles unchanged. The session doesn't use it (below); it goes when step 2 retires NetChem |
+
+Tests: `Chemistry/Tests/LockstepWireTests.cs` (Unit) and `LockstepTests.cs` (Simulation): two peers equal for 600 ticks
+with casts from both, a joiner by snapshot at tick 300, a painted cell caught and put right by a snapshot, a cast 3
+ticks ahead (and one past the most) on the same tick everywhere, an online reset (and a joiner after it), refused
+commands, everything split at 256 bytes, solo, and a peer with other channels told why it can't join.
+
+### What changed from NetChem
+
+- **One message a tick.** The batch carries every channel's commands, so nothing arrives before its batch and
+  `CommandChannel`'s waiting and delivering aren't needed. The host runs its own batch from the bytes it broadcast.
+- **No history.** A joiner gets a snapshot (`JoinSnapshot`) taken between two ticks, then the batches the host had
+  stamped past it (it holds the ones its own world hasn't run), then the live ones. So `StandKeeper`'s compaction, the
+  reset's history truncation, the room's start and the history RPCs all go; a joiner no longer waits for a stamped
+  reset to arrive, only for a moment between ticks.
+- **Hash windows** go as their own message: 8 parts (`JoinSnapshot.PartNames`), each FNV-1a 64 of NetChem's string,
+  so `Desynced` names the parts that differ. Painting a cell shows in `cells` and `dragon` (its audit counts changes).
+- **Desync recovery**: the client asks for a fresh snapshot (`RecoverDesyncs`, on by default) and plays on from it.
+- **Any channel may take an input delay** (0 to 30, as casts did).
+- **Refusals go to everyone on every channel** (NetChem told everyone only of room refusals; it dropped a released
+  build's moment quietly). A client asking on a host-only channel (effects, chunks, dragon) is refused at once.
+- **A find** (`RoomChange.Found`) is the host's to stamp (`Stamp`); one asked for is refused.
+- **The hello** replaces the `hostMap` / `hostStart` NetworkVariables, and the client checks the protocol, the base
+  rules' fingerprint and the channel names before it asks to join.
+
+### The API the adapters call
+
+```csharp
+// Once, as the network starts (host, client or solo):
+var session = new LockstepSession(transport, world, localPeer);   // world: ChemGrid's port (NGO) or LockstepWorld (NfE)
+var casts = session.Register(LockstepChannels.Casts(LockstepChannels.PlayerName));   // same channels, same order, everywhere
+// ours also: Effects, Chunks, Defense, Combos(name, devBuild), Dragon, Course, Strikes, Room(LockstepChannels.PeerName)
+session.MapId = ChemGrid.MapId; session.Start["spawn"] = SpawnPoints.StartIn ?? "";   // host: the hello
+session.HelloReceived += hello => { /* client: on another map, load the host's, then session.Join() (AutoJoin = false) */ };
+
+// The transport's callbacks:
+session.PeerJoined(peer, name);          // host: a connection came (sends the hello)
+session.PeerLeft(peer);                  // then: session.Stamp(strikes, StrikeCommand.Leave(PlayerName(peer)))
+session.Received(peer, bytes);           // every message, either way
+
+// Every frame:
+session.Update(Time.deltaTime, over);    // only the host's elapsed paces ticks; over is the step budget
+
+// Game input:
+session.Request(casts, command, delayTicks);  // anyone; the host names the player and may refuse
+session.Stamp(effects, effect);               // host only, as is: effects, a Leave, a find (RoomCommand.Found)
+session.StampReset(ResetCountdownTicks);      // host only
+
+// Events: TickApplied(batch) (shoves, NoteTickDone, the probe's checksum: session.Checksum()), CaughtUp(tick),
+// Desynced(desync) (desync.Text for the log), Refused(refusal) (grid.NoteRefused for the room channel),
+// ResetComing(tick), Joined(tick), Failed(why), and on the host Taken(taken) and Stamping(tick).
+```
+
+Notes for the NGO adapter (step 2):
+
+- **The world port** wraps ChemGrid: `World`, `Rules` (CurrentRules), `Prepare` (`PrepareBatch`), `Rebuild`
+  (`ResetWorld`, with the room re-noted), `Snapshot` / `Load` (`JoinSnapshot` over the map's source and land).
+- **A cast's `From`** (a Vector3, the centre of its shove) is view-only and stays out of the command: send it beside the
+  request, and the host's `Taken` gives the tick it lands on, for `AnnounceCastRpc` and the shove after `TickApplied`.
+- **The chunk plan** goes in `Stamping(tick)`: plan, and `Stamp(chunks, ...)` each switch; it lands on that tick. On a
+  reset the plan starts again from the start's reach, as `StampResetRules` did.
+- **The dragon** is `Stamp(dragon, new DragonCommand())`, once a tick (`OnePerTick`).
+- **Strikes and swings** keep their reach checks in the adapter, then `Stamp(effects, ...)`.
+- `ResetIsReplay` goes: nothing is replayed any more.
+- NET CONFIG changes: one release on all three platforms, as planned.

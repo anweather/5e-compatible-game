@@ -908,6 +908,29 @@ that long, and doesn't march.
 : A peer joining a running session: today it replays every tick batch
   from tick 0 (`Timeline`); per-chunk snapshots are planned.
 
+**Lockstep session**
+: The core's lockstep (D19, `Chem.Lockstep`): one `LockstepSession` a
+  process, host, client or solo, over a **transport** (bytes between
+  peers: NGO, NfE, or the **loopback**, N peers in one process for tests
+  and solo) and the game's world. It stamps, sends and runs tick batches,
+  checks hash windows and serves joiners by snapshot.
+
+**Channel**
+: One kind of command a lockstep session carries, registered by name
+  (`LockstepChannel`): casts, effects, chunks, defense, combos, dragon,
+  course, strikes, room. Every peer registers the same, in the same
+  order; a game registers only the ones it has.
+
+**Hello**
+: The host's first message to a peer that connects: the protocol, the
+  base rules' fingerprint, the map, the start and the channels. The peer
+  checks it before it asks to join.
+
+**Hash window**
+: The ticks the checksum's cell hash is spread over, a slice a tick
+  (`RollingHash`; 30 ticks in the valley). At its end the host sends its
+  checksum's parts, and a client that differs has **desynced**.
+
 **Player id**
 : A player's stable id, the same from session to session and host to
   host, kept in their player save (`PlayerId`). Made once from random
