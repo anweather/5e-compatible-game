@@ -1,6 +1,6 @@
 # D19. Lockstep in the core, behind a transport port (2026-11-12)
 
-**Status:** Proposed
+**Status:** Accepted (Andrew, 2026-11-12)
 
 - **Context:** The chemistry is deterministic and our game already plays in lockstep over NGO (D7). But about 600-700
   lines of the lockstep logic live in the view's NGO layer (`Net/NetChem*.cs`, `CommandChannel.cs`):

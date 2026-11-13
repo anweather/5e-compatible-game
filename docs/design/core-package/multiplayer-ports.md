@@ -1,4 +1,4 @@
-# Multiplayer as ports and adapters (proposed, D19)
+# Multiplayer as ports and adapters (D19, accepted 2026-11-12)
 
 Andrew, 2026-11-12: "The real fun is gonna be playing with friends." The chemistry should keep in sync between
 players in our game and in Punchy alike. The transport is Netcode for GameObjects (NGO, ours) or Netcode for Entities
