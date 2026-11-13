@@ -69,6 +69,31 @@ namespace Chem
             return cells == null ? uniform[c] : cells[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
         }
 
+        /// <summary>
+        /// Whether every cell of a chunk and the eight round it (those on the map) is one kind, wet or dry alike (sea, and a
+        /// basin's when <paramref name="basins"/>): then every cell of the chunk is near water, for any reach up to a chunk,
+        /// exactly when it is wet itself (sea-land-speed: only coastal chunks need working out).
+        /// </summary>
+        internal bool UniformAround(int cx, int cy, bool basins, out bool wet)
+        {
+            wet = false;
+            int chunksH = uniform.Length / chunksW;
+            bool? seen = null;
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int x = cx + dx, y = cy + dy;
+                    if (x < 0 || y < 0 || x >= chunksW || y >= chunksH) continue;
+                    int c = y * chunksW + x;
+                    if (mixed[c] != null) return false;
+                    bool w = uniform[c] == Sea || (basins && uniform[c] == Basin);
+                    if (seen.HasValue && seen.Value != w) return false;
+                    seen = w;
+                }
+            wet = seen ?? false;
+            return true;
+        }
+
         /// <summary>The bytes the mask holds now: a byte a chunk, and a byte a cell of the chunks that mix sea, basin and dry.</summary>
         public long Bytes
         {
@@ -104,6 +129,13 @@ namespace Chem
                     for (int x = 0; x < w; x++) kind[(cy * Chunks.Size + ly) * w + x] = band[ly * w + x] < seaLevel ? Basin : Dry;
             }
             return Flooded(kind, w, h);
+        }
+
+        // The mask of land whose cells under the sea level are marked 1 (LandChunks.Read's pass): the same mask as Of.
+        internal static SeaMask OfLow(byte[] low, int w, int h)
+        {
+            for (int i = 0; i < low.Length; i++) low[i] = low[i] != 0 ? Basin : Dry;
+            return Flooded(low, w, h);
         }
 
         // Low cells (Basin) joined to the edge through low cells become sea; the rest of the low cells stay basins.
@@ -251,6 +283,8 @@ namespace Chem
             {
                 if (x < 0 || y < 0 || x >= sea.W || y >= sea.H) return false;
                 int cx = Chem.Chunks.ChunkOf(x), cy = Chem.Chunks.ChunkOf(y);
+                // Open sea or dry inland, all round: no chunk worked out or kept (the coarse sea asks nearly every chunk).
+                if (reach <= Chem.Chunks.Size && sea.UniformAround(cx, cy, basins, out bool wet)) return wet;
                 long key = Chem.Chunks.Key(cx, cy);
                 if (!made.TryGetValue(key, out var cells))
                     made[key] = cells = sea.NearIn(cx * Chem.Chunks.Size, cy * Chem.Chunks.Size, Chem.Chunks.Size, Chem.Chunks.Size, reach, basins);

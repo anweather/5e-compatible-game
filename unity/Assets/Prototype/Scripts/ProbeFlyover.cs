@@ -98,7 +98,10 @@ public class FlyoverProbe : ProbeScenario
         {
             float dt = Time.unscaledDeltaTime;
             profile?.Frame(dt * 1000f, grid.CellAt(wizardT.position).x, !skipFrame);
-            // The frame after a memory reading (a full collection and an object walk) isn't the flight's.
+            // The frame after a memory reading (a full collection and an object walk) isn't the flight's, and the wizard
+            // doesn't move on it: its time is the reading's (the start's, with ManagedCensus, several seconds), and flying
+            // it jumped the wizard hundreds of cells past terrains it hadn't asked for yet (holes at (17,50), view-mem).
+            float moveDt = skipFrame ? 0f : dt;
             if (skipFrame) skipFrame = false;
             else ms.Add(dt * 1000f);
             var p = wizardT.position;
@@ -173,7 +176,7 @@ public class FlyoverProbe : ProbeScenario
             }
 
             // There and back: past the east coast the wizard turns and flies west to where it started.
-            float move = Speed * dt;
+            float move = Speed * moveDt;
             flown += move;
             float dir = flown <= leg ? 1f : -1f;
             var next = new Vector3(start.x + (flown <= leg ? flown : 2f * leg - flown), 0f, p.z);
@@ -263,7 +266,7 @@ public class FlyoverProbe : ProbeScenario
         // collection in flight then paid for in the frames measured. So only before and after the flight, and before the
         // collection here, which takes it.
         bool walk = when is "start" or "end";
-        string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() : "";
+        string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() + System.Environment.NewLine + ManagedCensus.Report("flyover " + when) : "";
         System.GC.Collect();
         const float mb = 1024f * 1024f;
         mem[when + "_allocated"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / mb;
@@ -281,7 +284,8 @@ public class FlyoverProbe : ProbeScenario
                   $"ground: {terrains.Ground?.Holdings()} world: unpacked={world?.UnpackedCount} pool={world?.PackPoolCount} " +
                   $"far_meshes={(far != null ? far.DrawnCount : 0)} impostor_blocks={(impostors != null ? impostors.Held : 0)} " +
                   $"cell_chunks_drawn={grid.ChunksHeldDrawn} undrawn_ever={grid.ChunksUndrawn} blockers={grid.BlockersStanding} " +
-                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + objects);
+                  System.Environment.NewLine + PerfMemory.Line("flyover " + when) + System.Environment.NewLine +
+                  ManagedCensus.Unpacked(world, grid.CellAt(wizard.transform.position)) + objects);
     }
 
     static string TerrainState(Terrain t)

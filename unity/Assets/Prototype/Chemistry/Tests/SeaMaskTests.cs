@@ -82,7 +82,8 @@ namespace Chem.Tests
             for (int y = 0; y < map.H; y++)
                 for (int x = 0; x < map.W; x++)
                     if (byChunk[x, y] != whole[y * map.W + x]) Assert.Fail($"({x}, {y}): by chunk {byChunk[x, y]}, whole {whole[y * map.W + x]}");
-            Assert.That(byChunk.Chunks, Is.EqualTo((map.W / Chunks.Size) * (map.H / Chunks.Size)));
+            // Only chunks with a coast in or round them are worked out: open sea and dry land answer at once.
+            Assert.That(byChunk.Chunks, Is.LessThan((map.W / Chunks.Size) * (map.H / Chunks.Size)));
             foreach (var (x0, y0, w, h) in new[] { (0, 0, 7, 9), (130, 300, 40, 3), (map.W - 5, map.H - 11, 5, 11), (200, 0, 1, map.H) })
             {
                 var part = mask.NearIn(x0, y0, w, h, reach, basins);
@@ -125,6 +126,12 @@ namespace Chem.Tests
             var fromChunks = SeaMask.Of(land, map.SeaLevel);
             Assert.That((fromChunks.SeaCells, fromChunks.BasinCells), Is.EqualTo((fromArray.SeaCells, fromArray.BasinCells)));
             Assert.That(fromChunks.Near(5, true), Is.EqualTo(fromArray.Near(5, true)));
+            // Read with the sea from the same pass (sea-land-speed): the same land and the same mask.
+            var both = LandChunks.Read(json, map.W, map.H, map.SeaLevel, out var seaRead);
+            Assert.That(both.At(300, 200), Is.EqualTo(whole[200 * map.W + 300]));
+            Assert.That((seaRead.SeaCells, seaRead.BasinCells), Is.EqualTo((fromArray.SeaCells, fromArray.BasinCells)));
+            Assert.That(seaRead.Near(5, true), Is.EqualTo(fromArray.Near(5, true)));
+            Assert.That(seaRead.Near(9, false), Is.EqualTo(fromArray.Near(9, false)));
         }
 
         // A map that isn't a whole number of chunks, with NoLand and big steps: the same land back, by Of and by Read.

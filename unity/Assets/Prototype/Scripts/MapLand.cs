@@ -52,8 +52,13 @@ public sealed class MapLand
         Layout = Map.Layout();
         string path = Path.Combine(dir, MapFile.LandName);
         FromFile = File.Exists(path);
-        Land = (FromFile ? LandChunks.Read(File.ReadAllText(path), Map.W, Map.H) : null) ?? LandChunks.Uniform(Map.W, Map.H, Map.SeaLevel);
-        Sea = SeaMask.Of(Land, Map.SeaLevel);
+        // The land and its sea in one pass over the file (sea-land-speed); the sea level all over without one.
+        Land = FromFile ? LandChunks.Read(File.ReadAllText(path), Map.W, Map.H, Map.SeaLevel, out Sea) : null;
+        if (Land == null)
+        {
+            Land = LandChunks.Uniform(Map.W, Map.H, Map.SeaLevel);
+            Sea = SeaMask.Of(Land, Map.SeaLevel);
+        }
         WaterLevel = (float)Map.WaterMetres;
         Seaward = Map.Seaward is { } s ? new Vector2((float)s.x, (float)s.z).normalized : LowWay();
         Shore = Map.SeaShore is { } o ? new Vector2((float)o.x, (float)o.z) : Middle;

@@ -290,6 +290,43 @@ namespace Chem.Tests
                 + $"what it can touch {nearMs / ticks:0.000} ms and {nearBytes / ticks / 1024.0:0.0} KB; the same plan every tick");
         }
 
+        // sea-land-speed: on the Scale Island, land.json read a chunk at a time, its sea mask made from that, and the coarse
+        // sea asking near-water round 70,000 cells spread over every chunk (Ocean's vertices), each timed.
+        [Test]
+        public void TheIslandsSeaAndLandTimes()
+        {
+            string dir = IslandBaked();
+            var map = MapFile.Load(dir);
+            string json = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
+            LandChunks.Read(json, map.W, map.H); // warm
+            var read = Stopwatch.StartNew();
+            var land = LandChunks.Read(json, map.W, map.H);
+            double readMs = read.Elapsed.TotalMilliseconds;
+            var mask = Stopwatch.StartNew();
+            var sea = SeaMask.Of(land, map.SeaLevel);
+            double maskMs = mask.Elapsed.TotalMilliseconds;
+            var together = Stopwatch.StartNew();
+            var land2 = LandChunks.Read(json, map.W, map.H, map.SeaLevel, out var sea2);
+            double togetherMs = together.Elapsed.TotalMilliseconds;
+            Assert.That((sea2.SeaCells, sea2.BasinCells), Is.EqualTo((sea.SeaCells, sea.BasinCells)));
+            Assert.That(land2.At(1000, 2000), Is.EqualTo(land.At(1000, 2000)));
+            var near = Stopwatch.StartNew();
+            var byChunk = sea.NearByChunk(12, true);
+            int wet = 0, asked = 0;
+            for (int y = 3; y < map.H; y += 22)
+                for (int x = 5; x < map.W; x += 25)
+                {
+                    asked++;
+                    if (byChunk[x, y]) wet++;
+                }
+            double nearMs = near.Elapsed.TotalMilliseconds;
+            // The answers are Near's: a sample checked against the window worked out cell by cell.
+            for (int y = 3; y < map.H; y += 22 * 37)
+                for (int x = 5; x < map.W; x += 25 * 29)
+                    Assert.That(byChunk[x, y], Is.EqualTo(sea.NearIn(x, y, 1, 1, 12, true)[0]), $"({x}, {y})");
+            TestContext.Out.WriteLine($"SEALAND island: LandChunks.Read {readMs:0} ms, SeaMask.Of {maskMs:0} ms, the two in one pass {togetherMs:0} ms, near-water at {asked} cells {nearMs:0} ms ({byChunk.Chunks} chunks worked out, {wet} near)");
+        }
+
         [Test]
         public void TheNinesWorldMemory()
         {
