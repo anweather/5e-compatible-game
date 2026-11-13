@@ -165,6 +165,10 @@ public partial class ChemGrid : MonoBehaviour
     public void LoadSnapshot(JoinSnapshot snapshot)
     {
         var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, MapLandUnits(), Budgets);
+        // What the map gives a world that a save doesn't hold, as MapWorld gives it: the land's range, and the Hold's
+        // site (its run, saved, goes on over it: HoldTests.ASaveKeepsTheRun).
+        world.SetLandRange(MapFile.Load(Folders.World).LandRange);
+        SetHold(world);
         DropWorldView();
         WorldLoaded = true;
         using var built = BuildMarker.Auto();
