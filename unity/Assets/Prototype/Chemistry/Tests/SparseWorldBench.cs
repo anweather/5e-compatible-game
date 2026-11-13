@@ -26,7 +26,7 @@ namespace Chem.Tests
         // The nine's bake, made once into a folder of the bench's own (the inputs copied as ScaleIslandTests copies them).
         static string baked;
 
-        static string Baked()
+        internal static string Baked()
         {
             if (baked != null) return baked;
             string root = Path.Combine(Path.GetTempPath(), "sparse-world-nine");

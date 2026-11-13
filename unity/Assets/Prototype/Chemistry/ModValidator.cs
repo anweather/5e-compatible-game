@@ -91,8 +91,17 @@ namespace Chem
         /// temporary materials by id with the mod each is from (TempMaterials.Owners): another mod may name
         /// one, and goes when its owner does (World.Lapse.cs), but makes no thing of one and lapses into none.
         /// </summary>
-        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson, IReadOnlyDictionary<string, string> temporary = null)
+        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson, IReadOnlyDictionary<string, string> temporary = null) =>
+            Validate(baseRules, budgets, patchJson, temporary, out _);
+
+        /// <summary>
+        /// Validate, handing back the rules it composed to check the patch (<paramref name="baseRules"/> with it over them),
+        /// or null if they wouldn't compose: a room switching the mod on puts these in force rather than composing them a
+        /// second time (#155).
+        /// </summary>
+        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson, IReadOnlyDictionary<string, string> temporary, out Rules composedRules)
         {
+            composedRules = null;
             var problems = new List<ModProblem>();
             ModPatch mod;
             try
@@ -110,7 +119,8 @@ namespace Chem
             JObject composed = null;
             try
             {
-                composed = baseRules.WithMods(new[] { mod }).CopyDoc();
+                composedRules = baseRules.WithMods(new[] { mod });
+                composed = composedRules.CopyDoc();
             }
             catch (ModException e)
             {

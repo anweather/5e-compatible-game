@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace Chem
 {
@@ -181,5 +182,60 @@ namespace Chem
             if (mode == ChangeMode.HostOnly && peer != host) return "only the host can change this room";
             return null;
         }
+    }
+
+    /// <summary>
+    /// A mod's switch-on worked out ahead (World.PrepareSwitch; #155): the checks (ModValidator) and the rules they compose,
+    /// against the rules in force when it was made. A pure function of those, so the same on every peer; Run on any thread.
+    /// The verdict stays the world's, at the tick the command lands: this only saves it the work.
+    /// </summary>
+    public sealed class RoomSwitchPrep
+    {
+        readonly Rules rules;
+        readonly RuleSet roomRules;
+        readonly ModBudgets budgets;
+        readonly IReadOnlyDictionary<string, string> owners;
+        readonly string json;
+
+        internal RoomSwitchPrep(Rules rules, RuleSet roomRules, ModBudgets budgets, IReadOnlyDictionary<string, string> owners, string json)
+        {
+            this.rules = rules;
+            this.roomRules = roomRules;
+            this.budgets = budgets;
+            this.owners = owners;
+            this.json = json;
+        }
+
+        /// <summary>Whether Run has finished.</summary>
+        public bool Ran { get; private set; }
+        /// <summary>Whether a world used it (ApplyRoom), rather than doing the work again.</summary>
+        public bool Used { get; internal set; }
+
+        internal IReadOnlyList<ModProblem> Problems { get; private set; }
+        internal Rules Composed { get; private set; }
+        internal bool Unreadable { get; private set; }
+
+        /// <summary>The checks and the compose: the work a switch-on does, here, on whatever thread calls it.</summary>
+        public void Run()
+        {
+            if (Ran) return;
+            try
+            {
+                Problems = ModValidator.Validate(rules, budgets, json, owners, out var composed);
+                Composed = composed;
+            }
+            // As World.Room's Checks: a shape the checks miss is a refusal on every peer, not a throw.
+            catch (Exception e) when (e is FormatException || e is InvalidCastException || e is ArgumentException || e is OverflowException || e is InvalidOperationException)
+            {
+                Unreadable = true;
+            }
+            Ran = true;
+        }
+
+        // Made for this mod against these inputs, and run: the world's rules, room and temporary materials are the ones it
+        // was made against (the same objects: a switch or a lapse in between makes new ones).
+        internal bool Fits(Rules now, RuleSet room, ModBudgets roomBudgets, IReadOnlyDictionary<string, string> ownersNow, string patch) =>
+            Ran && ReferenceEquals(rules, now) && ReferenceEquals(roomRules, room) && ReferenceEquals(budgets, roomBudgets) && json == patch
+            && owners.Count == ownersNow.Count && owners.All(o => ownersNow.TryGetValue(o.Key, out var v) && v == o.Value);
     }
 }

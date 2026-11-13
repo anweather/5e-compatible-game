@@ -111,6 +111,13 @@ namespace Chem
         public RuleSet WithMods(IEnumerable<ActiveMod> mods) => Compose(Base, mods);
 
         /// <summary>
+        /// These mods and one more, given the rules already composed with it over <see cref="Effective"/>: what
+        /// WithMods(Mods + mod) would make, without composing it again (#155). A mod's patches apply over the rules as
+        /// written, in order, so the two are the same rules (RoomTests pins that).
+        /// </summary>
+        internal RuleSet Adding(ActiveMod mod, Rules composed) => new RuleSet(Base, Mods.Append(mod).ToArray(), composed);
+
+        /// <summary>
         /// The same mods over new base rules, e.g. after rules/*.json changed. The new base is
         /// checked too, even with no mods on, since it came from files someone just edited.
         /// </summary>

@@ -65,7 +65,14 @@ namespace Chem
         /// Decides a room command, between ticks: switches the mod on or reverts it, or refuses it with
         /// one sentence. Logs the verdict either way and returns it.
         /// </summary>
-        public RoomVerdict ApplyRoom(RoomCommand c)
+        public RoomVerdict ApplyRoom(RoomCommand c) => ApplyRoom(c, null);
+
+        /// <summary>
+        /// ApplyRoom, with the switch's checks and compose done ahead (PrepareSwitch, then Run on any thread): used if it
+        /// was prepared for this mod against the rules in force now, else done here as ApplyRoom does (#155). The verdict and
+        /// the rules put in force are the same either way.
+        /// </summary>
+        public RoomVerdict ApplyRoom(RoomCommand c, RoomSwitchPrep prep)
         {
             if (Room == null) throw new InvalidOperationException("This world has no room to change; OpenRoom makes one.");
             FinishTick(); // a rule switch lands between whole ticks
@@ -77,7 +84,7 @@ namespace Chem
                 RoomChange.SetWeather => SetWeather(c),
                 RoomChange.Act => DoAct(c),
                 RoomChange.Undo => UndoAct(c),
-                _ => SwitchOn(c),
+                _ => SwitchOn(c, prep),
             };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
             RoomDecided?.Invoke(c, verdict);
@@ -91,15 +98,18 @@ namespace Chem
         // The mods a revert took with it, for ApplyRoom to tell the view; null between commands.
         List<RoomMod> wentWith;
 
-        RoomVerdict SwitchOn(RoomCommand c)
+        RoomVerdict SwitchOn(RoomCommand c, RoomSwitchPrep prep)
         {
             string title = TitleOf(c);
             RuleSet next = null;
+            Rules checkedRules = null;
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer)
                 ?? (c.Mod.Length == 0 ? "the mod has no id" : null)
                 ?? (Room.Mods.Any(m => m.Id == c.Mod) ? $"{title} is already on; revert it first" : null)
-                ?? Checks(title, c.Json)
-                ?? Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next)
+                ?? Checks(title, c.Json, out checkedRules, prep)
+                ?? (checkedRules != null
+                    ? Composed(new ActiveMod(c.Mod, c.Json), checkedRules, out next)
+                    : Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next))
                 ?? SiteProblem(next.Effective, title)
                 ?? LiveProblem(next, title);
             if (why != null) return Refused(c, why);
@@ -144,23 +154,33 @@ namespace Chem
         }
 
         /// <summary>ModValidator on the patch against the rules in force here: null if it passes, else its first problem.</summary>
-        string Checks(string title, string json)
+        // Checks, handing back the rules the checks composed (the rules in force with the mod), when the rules in force are
+        // the room's own: then they're the rules switching it on puts in force, and aren't composed twice (#155).
+        string Checks(string title, string json, out Rules composed, RoomSwitchPrep prep)
         {
-            IReadOnlyList<ModProblem> problems;
-            try
+            composed = null;
+            var owners = TempMaterials.Owners(TemporaryMaterials);
+            var ready = prep != null && prep.Fits(Rules, RoomRules, roomBudgets, owners, json) ? prep : null;
+            if (ready == null)
             {
-                problems = ModValidator.Validate(Rules, roomBudgets, json, TempMaterials.Owners(TemporaryMaterials));
+                ready = new RoomSwitchPrep(Rules, RoomRules, roomBudgets, owners, json);
+                ready.Run();
             }
-            // InvalidOperationException is Newtonsoft reading a field of a string or a number (#79): the checks
-            // refuse the shapes known to do that, and this keeps one they miss a refusal on every peer, not a throw.
-            catch (Exception e) when (e is FormatException || e is InvalidCastException || e is ArgumentException || e is OverflowException || e is InvalidOperationException)
-            {
-                return $"{title} can't be read as a mod";
-            }
+            else ready.Used = true;
+            if (ready.Unreadable) return $"{title} can't be read as a mod";
+            var problems = ready.Problems;
+            if (ReferenceEquals(Rules, RoomRules?.Effective)) composed = ready.Composed;
             if (problems.Count == 0) return null;
             if (OwnerProblem(title, json) is string owner) return owner;
             string more = problems.Count == 1 ? "" : $" (and {problems.Count - 1} more)";
             return $"{title} doesn't pass the checks: {problems[0].Message.TrimEnd('.')}{more}";
+        }
+
+        // The room's mods and this one, from the rules the checks composed: null, as they fit (the checks composed them).
+        string Composed(ActiveMod mod, Rules composed, out RuleSet next)
+        {
+            next = RoomRules.Adding(mod, composed);
+            return null;
         }
 
         /// <summary>The room's base rules with these mods over them, in order: null if they fit, else why not.</summary>
@@ -176,6 +196,17 @@ namespace Chem
                 next = null;
                 return $"{what}: {e.Errors.FirstOrDefault()?.TrimEnd('.')}";
             }
+        }
+
+        /// <summary>
+        /// A switch-on's checks and compose, to be done ahead (#155): its inputs taken now, on the world's thread, so Run can
+        /// go on a worker while the world ticks. ApplyRoom(command, prep) uses it only if those inputs are still the world's.
+        /// </summary>
+        public RoomSwitchPrep PrepareSwitch(RoomCommand c)
+        {
+            if (Room == null) throw new InvalidOperationException("This world has no room to change; OpenRoom makes one.");
+            FinishTick();
+            return new RoomSwitchPrep(Rules, RoomRules, roomBudgets, TempMaterials.Owners(TemporaryMaterials), c.Json);
         }
 
         // ---------- the checksum ----------
