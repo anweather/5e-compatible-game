@@ -61,7 +61,7 @@ and `CA…`/`IDE…` at `learn.microsoft.com/dotnet/fundamentals/code-analysis/`
 (NuGet's packages cached, keyed on core's `.csproj` files):
 
 1. **Build and test.** `core/Game.Core` (netstandard2.1, C# 9: D3's
-   engine-free core) compiles `unity/Assets/Prototype/Chemistry/*.cs` from
+   engine-free core) compiles `packages/com.anweather.chemistry-core/Runtime/*.cs` from
    where Unity keeps them. `core/Game.Core.Tests` runs the same NUnit tests
    Unity runs in EditMode. Every warning is an error, except cognitive
    complexity (`S3776`, see the baseline). The build also runs .NET's

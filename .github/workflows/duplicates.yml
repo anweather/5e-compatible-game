@@ -9,6 +9,7 @@ on:
     branches: [main, dev]
     paths:
       - "core/**"
+      - "packages/**"
       - "unity/Assets/Prototype/**"
       - "unity/Assets/Default.globalconfig"
       - "rules/**"
@@ -22,6 +23,7 @@ on:
   pull_request:
     paths:
       - "core/**"
+      - "packages/**"
       - "unity/Assets/Prototype/**"
       - "unity/Assets/Default.globalconfig"
       - "rules/**"
@@ -45,6 +47,6 @@ jobs:
           cache: npm
           cache-dependency-path: tools/jscpd/package-lock.json
       # jscpd is pinned in tools/jscpd/package-lock.json; settings and threshold are in .jscpd.json.
-      - run: tools/jscpd/run.sh unity/Assets/Prototype sandbox/src
+      - run: tools/jscpd/run.sh unity/Assets/Prototype sandbox/src packages
       - run: node --test tools/chat-report.test.mjs
       - run: node --test tools/workers/gates.test.mjs
