@@ -12,4 +12,4 @@ Lead's amendments, agreed with Andrew:
   (PlayerSave, GameFolders paths, ...).
 - Punchy's licence and Andrew's friend's permission come before any fork.
 
-The audit report goes in `audit.md` here.
+The audit report is `audit.md` (Ticket 1, 2026-11-12): lift and shift first, at a quiet point; carving a true sim core later, on a real need.
