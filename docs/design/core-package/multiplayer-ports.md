@@ -199,3 +199,27 @@ Notes for the NGO adapter (step 2):
 - **Strikes and swings** keep their reach checks in the adapter, then `Stamp(effects, ...)`.
 - `ResetIsReplay` goes: nothing is replayed any more.
 - NET CONFIG changes: one release on all three platforms, as planned.
+
+## Step 2 as built (`lockstep-ngo`, 2026-11-13)
+
+NetChem is the NGO adapter: `Scripts/Net/NgoLockstepTransport.cs` (the port) and `NetChem.cs` / `NetChem.Room.cs`
+(the doors the view calls, the world port over ChemGrid, the view's glue). `CommandChannel` and its tests are gone.
+
+- **Bytes** ride two RPCs on NetChem (`ToHostRpc`, `ToClientRpc`), reliable and fragmented by NGO; the session splits at
+  16 KB. Host-to-client sends go through an outbox per client, 128 KB a frame each, so a snapshot never fills NGO's
+  send queue. What arrives is queued and handed to the session in NetChem's Update, never inside an RPC handler.
+- **A client is a peer once its NetChem has spawned** (`ReadyRpc`): the host's hello can't meet an object not spawned
+  yet. A client id is its `PeerId`; a disconnect is `PeerLeft` and a stamped Leave.
+- **The hello is kept when it doesn't check out** (`LockstepSession.Hello`, a core change), so a client on another map
+  goes to the host's (`NetSession.JoinOnHostMap`) even if that map's rules differ.
+- **Snapshots load with the map's land.** `ChemGrid.LoadSnapshot` hands `JoinSnapshot.Join` the map's land (land.json,
+  as an int a cell) and builds the world's view as `ResetWorld` does; a loaded world keeps the land it was saved with
+  (`ChemGrid.WorldLoaded`: the valley doesn't set it again, which would mark NoLand by today's water).
+- **A tick run over frames loses no batch** (core fix): the session dropped the batch after a tick in progress, since
+  the world counts a tick as it begins, so the host stalled after a reset's long frame (`ATickRunOverFramesLosesNoBatch`).
+- **A cast's From** goes in `CastFromRpc` just before the request; the host's `Taken` sends `AnnounceCastRpc` with the
+  tick, and every peer shoves when that tick has run.
+- `ResetIsReplay` is gone; `NetChem.Resetting` is true while WorldReset fires for a live reset (`OnlineReset.Happened`).
+  `DesyncSeen` stays true after a snapshot puts a desync right; `Desyncs` counts them.
+- **What behaves differently:** a late joiner's log starts at its join (no past log lines; roomopen's check says so),
+  and `StrikeHistorySent` is gone (no history). The protocol and NET CONFIG change: one release on all three platforms.
