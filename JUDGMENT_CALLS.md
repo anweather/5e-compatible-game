@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-092: How does Punchy's chemistry branch reach the Mac? (2026-11-13)
+
+- **Asked:** the lead, before the D19 step 3 PC + Mac Relay test: `chemistry-lockstep` lived only on the PC, and the
+  PC has no macOS build support, so the Mac builds Punchy itself.
+- **Also comes up when:** any Punchy chemistry work the Mac or a friend needs.
+- **Answer (Andrew):** push it as a branch on Skeleman/Punchy (`chemistry-lockstep`, pushed 2026-11-13 at dcbfaa7d).
+  Options passed over: a private repo, a public fork, a git bundle.
+- **Revisited:** 0.
+
 ### J-091: Tree impostors: near trees' wind and impostor shadows (2026-11-10)
 
 - **Asked:** the lead, from the tree impostor trial (d3d4ca21, off by default): with impostors on, our renderer
