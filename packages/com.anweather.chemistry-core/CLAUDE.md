@@ -1,4 +1,10 @@
-# The Chem core (`Chemistry/`)
+# The Chem core (`packages/com.anweather.chemistry-core/`)
+
+The Unity package `com.anweather.chemistry-core`; its sources are in `Runtime/`
+(the Chemistry assembly), and our game uses it by local path from
+`unity/Packages/manifest.json`. The rules MCP and chat tools
+(`unity/Assets/Prototype/Chemistry/Mcp/`, the Chemistry.Mcp assembly) and the
+tests (`unity/Assets/Prototype/Chemistry/Tests/`) stay in the game.
 
 The engine-free rules engine: cells in 64×64 chunks, one deterministic tick
 at a time, with behaviour read from `rules/*.json`. `docs/ARCHITECTURE.md`
@@ -6,7 +12,7 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
 ## Hard constraints
 
-- **No Unity.** `Chemistry.asmdef` sets `noEngineReferences`; only .NET and
+- **No Unity.** `Runtime/Chemistry.asmdef` sets `noEngineReferences`; only .NET and
   Newtonsoft.Json. `core/Game.Core` compiles these same files as
   netstandard2.1 with **C# 9** (Unity's limit), so no newer syntax.
 - **Deterministic everywhere** (lockstep, D3/D4): integer state, all
@@ -35,7 +41,7 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
 ## Tests
 
-`Tests/` holds NUnit 3 tests that run both in Unity's EditMode runner and
+`unity/Assets/Prototype/Chemistry/Tests/` holds NUnit 3 tests that run both in Unity's EditMode runner and
 under `dotnet test core` (via `core/Game.Core.Tests`). Run one with
 `dotnet test core --filter "FullyQualifiedName~<Name>"`. Tests read the real
 `rules/` folder through `ChemistryTests.RulesDir()`, and some read docs

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- docs/DECISIONS.md D3: the engine-free core. Compiles the Unity Chemistry
-       assembly's sources (not its tests) from where Unity keeps them. -->
+       assembly's sources (not its tests) from where Unity keeps them: the
+       com.anweather.chemistry-core package, plus the game's Chemistry.Mcp. -->
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Game.Core</AssemblyName>
@@ -8,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../../unity/Assets/Prototype/Chemistry/*.cs" Link="Chemistry/%(Filename)%(Extension)" />
+    <Compile Include="../../packages/com.anweather.chemistry-core/Runtime/*.cs" Link="Chemistry/%(Filename)%(Extension)" />
     <Compile Include="../../unity/Assets/Prototype/Chemistry/Mcp/*.cs" Link="Mcp/%(Filename)%(Extension)" />
     <!-- The playtest bot's Unity-free logic (unity/Assets/Prototype/Scripts/Playtest/Logic, playtest/DESIGN.md). -->
     <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Logic/*.cs" Link="Playtest/%(Filename)%(Extension)" />

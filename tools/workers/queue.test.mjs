@@ -27,7 +27,7 @@ test("needs: core and any run anywhere, unity where an Editor is, mac on the Mac
 test("areas overlap when one holds the other, globs by their folder", () => {
   assert.ok(overlaps(["tools/workers/**"], ["tools/workers/land.sh"]));
   assert.ok(overlaps(["tools/workers/*.cmd"], ["tools/workers/"]));
-  assert.ok(overlaps(["unity/Assets"], ["unity/Assets/Prototype/Chemistry/World.cs"]));
+  assert.ok(overlaps(["unity/Assets"], ["unity/Assets/Prototype/Scripts/ChemGrid.cs"]));
   assert.ok(!overlaps(["tools/workers/**"], ["tools/coordinator/**"]));
   assert.ok(!overlaps(["docs/a.md"], ["docs/ab.md"]));
   assert.ok(overlaps([], ["docs/a.md"]), "a brief naming no area could touch anything");
@@ -119,8 +119,8 @@ test("a claim that loses the push race fetches and picks again", () => {
 });
 
 test("globs keep their file-name prefix, so two files in one folder don't clash", () => {
-  assert.equal(overlaps(['unity/Assets/Prototype/Chemistry/MapCheck*.cs'], ['unity/Assets/Prototype/Chemistry/WorldPlan*.cs']), false);
-  assert.equal(overlaps(['unity/Assets/Prototype/Chemistry/'], ['unity/Assets/Prototype/Chemistry/WorldPlan*.cs']), true);
+  assert.equal(overlaps(['packages/com.anweather.chemistry-core/Runtime/MapCheck*.cs'], ['packages/com.anweather.chemistry-core/Runtime/WorldPlan*.cs']), false);
+  assert.equal(overlaps(['packages/com.anweather.chemistry-core/Runtime/'], ['packages/com.anweather.chemistry-core/Runtime/WorldPlan*.cs']), true);
   assert.equal(overlaps(['tools/workers/**'], ['tools/workers/*.cmd']), true);
   assert.equal(overlaps(['docs/x.md'], ['docs/xy.md']), false);
   assert.equal(overlaps(['world/maps/'], ['world/maps/valley/land.json']), true);
