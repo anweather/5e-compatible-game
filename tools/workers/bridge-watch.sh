@@ -21,12 +21,15 @@
 #   BRIDGE_WATCH_DRY=1    log what it would do, but stop no VM and wake nobody (testing)
 #   BRIDGE_WATCH_ONCE=1   one pass, then exit (testing)
 #   BRIDGE_WATCH_HOMES    override the accounts' config folders: "pro=<dir> max=<dir>" (testing)
+#   BRIDGE_WATCH_POWERSHELL  what to run for Hyper-V in place of powershell (testing: a stand-in, never the host's)
+#   BRIDGE_WATCH_LINUX    what to run in place of linux.sh (testing)
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="${BRIDGE:-$HOME/.agent-bridge}"
 state="$root/watch"; mkdir -p "$state"
 bridge="$here/bridge.sh"
 dry="${BRIDGE_WATCH_DRY:-}"
+ps="${BRIDGE_WATCH_POWERSHELL:-powershell}"
 # Always true: callers chain on it (mail's "&& log" is mail's status), and outside a test pass the
 # "[[ ONCE ]] && echo" was false, so every mail looked failed and no report ever left a worker (2026-11-06).
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') watch $*" >> "$root/bridge.log"; [[ -z "${BRIDGE_WATCH_ONCE:-}" ]] || echo "$*"; }
@@ -57,7 +60,7 @@ mail() { # mail <to> <subject> <body>
 # A guest or Hyper-V call, cut off if it hangs. Without coreutils' timeout (a Mac running the tests) it runs as is.
 bounded() { if command -v timeout >/dev/null; then timeout "${BRIDGE_WATCH_GUEST_SECS:-60}" "$@"; else "$@"; fi; }
 running_vms() { # the given VMs that are running, by Hyper-V
-  bounded powershell -NoProfile -Command "Get-VM -ErrorAction SilentlyContinue | Where-Object { \$_.State -eq 'Running' -and ('$*' -split ' ') -contains \$_.Name } | ForEach-Object Name" 2>/dev/null | tr -d '\r'
+  bounded "$ps" -NoProfile -Command "Get-VM -ErrorAction SilentlyContinue | Where-Object { \$_.State -eq 'Running' -and ('$*' -split ' ') -contains \$_.Name } | ForEach-Object Name" 2>/dev/null | tr -d '\r'
 }
 stop_vm() {
   [[ -n "$dry" ]] && { log "dry: would stop $1"; return 0; }
@@ -173,7 +176,7 @@ check_delivery() { # $1 = role
 }
 
 guest_ip() { # a Linux worker's IPv4, as Hyper-V reports it
-  bounded powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $1).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r'
+  bounded "$ps" -NoProfile -Command "(Get-VMNetworkAdapter -VMName $1).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r'
 }
 reached() { # reached <vm> <what> <problem, empty when it worked>: logs a worker the watcher can't reach, and when it can again
   # Removing mailed reports keeps its own record: a read that works between two failed removals mustn't log both every pass.
@@ -201,7 +204,7 @@ guest_attention() { # the worker's ~/.worker/attention.json (attention.mjs write
   if [[ "$vm" == u* ]]; then   # Linux workers over SSH
     linux attention "$vm"
   else                          # Windows workers over PowerShell Direct (the scripts' guest account)
-    bounded powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-Content \"\$env:USERPROFILE\\.worker\\attention.json\" -ErrorAction SilentlyContinue }" 2>/dev/null | tr -d '\r'
+    bounded "$ps" -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-Content \"\$env:USERPROFILE\\.worker\\attention.json\" -ErrorAction SilentlyContinue }" 2>/dev/null | tr -d '\r'
   fi
 }
 
@@ -227,7 +230,7 @@ guest_outbox() { # the worker's finished reports ("=== <file>" then its text eac
   if [[ "$vm" == u* ]]; then
     linux outbox "$vm"
   else
-    bounded powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-ChildItem \"\$env:USERPROFILE\\.worker\\outbox\\*.md\" -ErrorAction SilentlyContinue | ForEach-Object { '=== ' + \$_.Name; Get-Content -Raw \$_.FullName; Remove-Item \$_.FullName } }" 2>/dev/null | tr -d '\r'
+    bounded "$ps" -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-ChildItem \"\$env:USERPROFILE\\.worker\\outbox\\*.md\" -ErrorAction SilentlyContinue | ForEach-Object { '=== ' + \$_.Name; Get-Content -Raw \$_.FullName; Remove-Item \$_.FullName } }" 2>/dev/null | tr -d '\r'
   fi
 }
 
@@ -263,13 +266,13 @@ check_memory() { # free memory under the floor: pause the newest worker VM; resu
   # Pausing (Save-VM) keeps the guest's session, its work and its address, where stopping lost all three
   # (three stops and an hour lost to a new IP on 2026-11-08). Resume waits for resume_gb so it doesn't flap.
   local floor="${BRIDGE_WATCH_MIN_FREE_GB:-1.5}" resume_gb="${BRIDGE_WATCH_RESUME_GB:-6}" free vm
-  free="$(bounded powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB,2)" 2>/dev/null | tr -d '\r')"
+  free="$(bounded "$ps" -NoProfile -Command "[math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB,2)" 2>/dev/null | tr -d '\r')"
   [[ -n "$free" ]] || return 0
   if awk -v f="$free" -v m="$floor" 'BEGIN { exit !(f < m) }'; then
-    vm="$(bounded powershell -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
+    vm="$(bounded "$ps" -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
     [[ -n "$vm" ]] || { log "only $free GB free, and no worker VM to pause"; return 0; }
     log "only $free GB free (floor $floor): pausing $vm, the newest worker"
-    if [[ -z "$dry" ]] && bounded powershell -NoProfile -Command "Save-VM -Name '$vm' -ErrorAction Stop" >/dev/null 2>&1; then
+    if [[ -z "$dry" ]] && bounded "$ps" -NoProfile -Command "Save-VM -Name '$vm' -ErrorAction Stop" >/dev/null 2>&1; then
       echo "$vm" >> "$state/paused"
       mail pm "$vm paused: memory low" "Only $free GB was free (floor $floor GB), so the watcher paused $vm (Save-VM), the most recently started worker. Its session, work and address are kept; the watcher resumes it once $resume_gb GB are free."
     else
@@ -282,7 +285,7 @@ check_memory() { # free memory under the floor: pause the newest worker VM; resu
   awk -v f="$free" -v m="$resume_gb" 'BEGIN { exit !(f >= m) }' || return 0
   vm="$(head -1 "$state/paused")"
   log "$free GB free: resuming $vm"
-  if [[ -n "$dry" ]] || bounded powershell -NoProfile -Command "Start-VM -Name '$vm' -ErrorAction Stop" >/dev/null 2>&1; then
+  if [[ -n "$dry" ]] || bounded "$ps" -NoProfile -Command "Start-VM -Name '$vm' -ErrorAction Stop" >/dev/null 2>&1; then
     sed -i '1d' "$state/paused"; mail pm "$vm resumed" "$free GB free, so the watcher resumed $vm where it was paused."
   else log "  resuming $vm failed; will try again"; fi
 }
