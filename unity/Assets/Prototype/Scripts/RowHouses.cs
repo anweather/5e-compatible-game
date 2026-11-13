@@ -36,6 +36,8 @@ public class RowHouses : MonoBehaviour
         public System.Func<Vector2Int, RowRuin.CellNow> cells;
         public ParticleSystem[] smoke;
         public List<Vector2Int> walls;
+        // The chunks its cells are in (cx, cy): while every one is packed, nothing on it changes (LookAtOne).
+        public Vector2Int[] chunks;
     }
 
     readonly Dictionary<string, Drawn> drawn = new();
@@ -98,7 +100,7 @@ public class RowHouses : MonoBehaviour
         if (order.Count == 0) return;
         nextLook = (nextLook + 1) % order.Count;
         var d = order[nextLook];
-        if (d.ruin.Stretches == 0) return;
+        if (d.ruin.Stretches == 0 || AllPacked(d)) return;
         timer.Restart();
         if (!d.ruin.Look(d.cells, d.roofBurns)) return;
         Redraws++;
@@ -111,6 +113,19 @@ public class RowHouses : MonoBehaviour
         if (d.told || d.ruin.Down * 2 < d.ruin.Stretches) return;
         d.told = true;
         EventLog.Add($"The {d.row.Id} falls");
+    }
+
+    // Whether every chunk a house stands on is packed: its cells are as they were when it was last looked at unpacked, and
+    // reading them would unpack them. Read every frame by turns, the houses of a whole map kept their villages' chunks
+    // unpacked however far off they were (the island's, 7 or 8 chunks each, all the way across; view-mem). A house far off
+    // whose chunk packed is looked at again once something unpacks it (a character coming near, the view drawing it).
+    bool AllPacked(Drawn d)
+    {
+        var world = hooked;
+        if (world == null || d.chunks == null || d.chunks.Length == 0) return false;
+        foreach (var c in d.chunks)
+            if (!world.InBounds(c.x << Chunks.Shift, c.y << Chunks.Shift) || !world.IsPacked(c.x, c.y)) return false;
+        return true;
     }
 
     RowRuin.CellNow CellOf(BuildingRow row, Vector2Int at)
@@ -219,6 +234,7 @@ public class RowHouses : MonoBehaviour
             cells = at => CellOf(row, at),
             smoke = Smoke(root, made.chimneys),
             walls = walls,
+            chunks = laid.Select(c => new Vector2Int(Chunks.ChunkOf(c.X), Chunks.ChunkOf(c.Y))).Distinct().ToArray(),
         };
     }
 
