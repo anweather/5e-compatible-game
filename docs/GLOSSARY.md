@@ -60,6 +60,19 @@ touch them.
 : The world's map from chunk coordinates to chunks
   (`World.Chunks`). Nothing outside it assumes the world has a size.
 
+**Layer**
+: A sheet of terrain with its own cells, numbered by the host game: the surface 0, then caves, sky islands. Two
+  layers can hold cells at the same x, y; they don't touch (links between layers come later). A chunk's key is
+  (layer, cx, cy) (D20). *Avoid:* level (a row's level), floor, tier (the drawn tier).
+
+**Open world**
+: A world with no bounds: chunks keyed by (layer, cx, cy), each made only when it's **filled** (D20). Punchy's
+  chemistry. Our maps are **bounded** worlds.
+
+**Fill** (a chunk)
+: Making an open world's chunk from the host game's ground, as a `FillChunk` command on a tick, so every peer makes
+  it the same. A chunk not filled is a wall to its neighbours.
+
 **Active chunk / inactive chunk**
 : An active chunk is simulated every tick. An inactive chunk is held
   exactly as it is: nothing in it changes, and its active neighbours' fire,

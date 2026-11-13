@@ -26,6 +26,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D17 | [The sparse World: inactive chunks as their source plus their changes](adr/0017-the-sparse-world.md) | Accepted (2026-11-10) |
 | D18 | [Who did what: the core records an effect's cause](adr/0018-who-did-what.md) | Proposed (2026-11-11) |
 | D19 | [Lockstep in the core, behind a transport port](adr/0019-lockstep-in-the-core-behind-a-transport-port.md) | Accepted (2026-11-12) |
+| D20 | [The open world: chunks keyed by layer and place, made as players reach them](adr/0020-the-open-world.md) | Proposed (2026-11-13) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 
