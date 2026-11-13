@@ -223,7 +223,9 @@ public sealed class CellWaterMesh
         var c = grid.World.CellAt(key);
         int level = isWet ? c.Water : 0;
         levels.TryGetValue(key, out int was);
-        levels[key] = level;
+        // A dry cell keeps no level (every cell ever wet kept one: a crossing's rivers and lakes, held for good).
+        if (level != 0) levels[key] = level;
+        else levels.Remove(key);
         // An outline moves only when a cell turns wet, dry, or to or from ice. A level alone (the
         // river's changes on most ticks) moves the surface where its top moves: Recompute marks those.
         bool outline = isWet ? wet.Add(key) : wet.Remove(key);
@@ -496,6 +498,12 @@ public sealed class CellWaterMesh
             Draw(t.ice, box, true);
             t.ice.go.GetComponent<MeshCollider>().sharedMesh = t.ice.Empty ? null : t.ice.mesh;
         }
+        // A tile with nothing left to draw goes (its cells dried, or their chunk was let go far behind, ChemGrid.Undraw):
+        // kept, every tile that ever had water stayed, two meshes and two objects each. Made again if water comes back.
+        if (!t.water.Empty || !t.ice.Empty) return;
+        t.water.Destroy();
+        t.ice.Destroy();
+        tiles.Remove(tile);
     }
 
     // Whether ice could show in the box: the outline reads a ring round it, and a cell only scores

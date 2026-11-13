@@ -171,6 +171,23 @@ public partial class ValleyChemistry : MonoBehaviour
 
     GroundBuilder builder;
 
+    // The map's lowest land, a chunk at a time (the land is held a chunk at a time, never as an int a cell). Each chunk is
+    // decoded once: a row at a time through At decoded each chunk 64 times, 9 s on the Scale Island.
+    static int Lowest(LandChunks land)
+    {
+        int least = int.MaxValue;
+        var cells = new int[Chunks.Area];
+        for (int cy = 0; cy * Chunks.Size < land.H; cy++)
+            for (int cx = 0; cx * Chunks.Size < land.W; cx++)
+            {
+                land.ChunkInto(cx, cy, cells);
+                int rows = System.Math.Min(Chunks.Size, land.H - cy * Chunks.Size), cols = System.Math.Min(Chunks.Size, land.W - cx * Chunks.Size);
+                for (int ly = 0; ly < rows; ly++)
+                    for (int lx = 0; lx < cols; lx++) least = System.Math.Min(least, cells[ly * Chunks.Size + lx]);
+            }
+        return least;
+    }
+
     // The builder the terrains were made with (the map's ground/), or in land mode, or for a map with none, one from the
     // map's land and this world's cells, with any pinned map's own ground laid in (PinnedGround).
     GroundBuilder BuiltGround(World world)
@@ -178,7 +195,7 @@ public partial class ValleyChemistry : MonoBehaviour
         if (terrains.Builder != null) return terrains.Builder;
         var template = terrains.template;
         // The land the world reads too (LandOf, read once a map): a second copy was an int a cell more (#207).
-        var land = LandOf(world) ?? LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
+        var land = LandOf(world) ?? LandChunks.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
         var source = new GroundFromLand.Source
         {
             World = world,
@@ -186,7 +203,7 @@ public partial class ValleyChemistry : MonoBehaviour
             Layout = layout,
             StepHeight = grid.stepHeight,
             Unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep,
-            Lowest = land.Min(),
+            Lowest = Lowest(land),
             Layers = template.terrainLayers.Select(l => l.name).ToArray(),
             Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
             TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
@@ -236,7 +253,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
-        var steps = new StepTimes();
+        var steps = new StepTimes("valley bind");
         lakeSought = false; // a new world: the lake (or none) is looked for again at the next recolour
         if (ground == null && MapLand.Current is { } map)
         {
@@ -249,14 +266,17 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             builder = BuiltGround(world);
+            steps.Mark("ground_builder");
             if (builder.Lazy) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land made a chunk at a time, as the terrains are");
             else if (builder != terrains.Builder) Debug.Log($"GROUND BUILDER {GroundSwitch.Mode}: arrays from the land ready in {timer.Elapsed.TotalMilliseconds:0} ms");
             ground = builder.Lazy ? new ValleyGround(layout, builder) : new ValleyGround(layout, terrains.Chunks, builder, built: builder == terrains.Builder);
             ground.ChunkReady += ChunkMade;
             ground.ChunkGone += ChunkGone;
+            steps.Mark("ground_new");
             // The chunks waited blank for the land (no ground/, or land mode): the sea measures its depth again on them
             // (once the drawn tier's are made, on a generated map).
             if (!builder.Lazy && builder != terrains.Builder && Ocean.Instance != null) Ocean.Instance.Build();
+            steps.Mark("sea_remeasured");
             rocks = new LandRocks(grid);
             rocks.Lay(ChemGrid.Folders.World);
             // Details only on the terrains near the camera (ChemGrid.Detail).
@@ -279,7 +299,9 @@ public partial class ValleyChemistry : MonoBehaviour
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         var (channelCells, channelDepths) = builder.Channel;
         ground.RaiseBase(channelCells, channelDepths);
+        steps.Mark("raise_base");
         SetLand(world);
+        steps.Mark("set_land");
         CheckGround(world);
         steps.Mark("land");
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
@@ -303,6 +325,7 @@ public partial class ValleyChemistry : MonoBehaviour
         if (n > 0) CountBuildingWalls(world);
         steps.Mark("cells");
         ClearLaidRows(world);
+        steps.Mark("clear_rows");
         BindStampedLand(world);
         steps.Mark("rows_stamps");
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
@@ -314,6 +337,7 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             served = true;
             terrains.Serve(ground);
+            steps.Mark("terrains_served");
             if (Ocean.Instance != null) Ocean.Instance.Build();
         }
         steps.Mark("panes_terrains");
@@ -528,7 +552,7 @@ public partial class ValleyChemistry : MonoBehaviour
     // The water runs down the valley's hills (playtest #31), which only the baked ground holds. The
     // land comes from world/land.json, integers baked once from this terrain and committed, so every
     // peer on every platform has the same (BakeLand writes it); without it the land is flat.
-    static int[] landFromFile;
+    static LandChunks landFromFile;
 
     // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -546,26 +570,30 @@ public partial class ValleyChemistry : MonoBehaviour
         if (landFromFile == null) return;
         float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         // The map's own land: a loaded world's stamps are on the ground, not in the file.
-        var apart = LandCheck.Disagreements((x, y) => ground.BaseHeight(x, y) - world.LandMovedAt(x, y) * unit, landFromFile, world.W, world.H, unit, unit);
+        var apart = LandCheck.Disagreements((x, y) => ground.BaseHeight(x, y) - world.LandMovedAt(x, y) * unit, landFromFile, unit, unit);
         if (apart.Count > 0) Debug.LogError($"The drawn ground isn't this map's land on {apart.Count} of {LandCheck.Cells} cells: {string.Join("; ", apart.Take(4))}");
     }
 
-    static void SetLand(World world) => world.SetLand(LandOf(world));
+    static void SetLand(World world)
+    {
+        var land = LandOf(world);
+        if (land == null) world.SetLand((int[])null);
+        else world.SetLandByChunk(land);
+    }
 
     /// <summary>
     /// The map's land.json, read once a map, or null when it has none: the one copy the view holds (MapLand's, which the
     /// sea and the shore read too), shared by the ground, the land check and the folk's walks. Three copies were an int a
     /// cell each, 477 MB on the 12 x 10 (J-086). Never written to: the World takes its own (SetLand).
     /// </summary>
-    public static int[] LandOf(World world)
+    public static LandChunks LandOf(World world)
     {
-        if (landFromFile == null || landFromFile.Length != world.W * world.H)
+        if (landFromFile == null || landFromFile.W != world.W || landFromFile.H != world.H)
         {
             string path = Path.Combine(ChemGrid.Folders.World, "land.json");
             var map = MapLand.Current;
-            landFromFile = map != null && map.FromFile && map.Land.Length == world.W * world.H ? map.Land
-                : File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
-            if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
+            landFromFile = map != null && map.FromFile && map.Land.W == world.W && map.Land.H == world.H ? map.Land
+                : File.Exists(path) ? LandChunks.Read(File.ReadAllText(path), world.W, world.H) : null;
             if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
         }
         return landFromFile;

@@ -323,6 +323,7 @@ namespace Chem
             landFromSource = false;
             landMarks = null;
             landRowsHash = null;
+            NoLandLater();
             if (row == null)
             {
                 hasLand = false;
@@ -410,6 +411,7 @@ namespace Chem
             landFromSource = true;
             landMarks = null;
             landRowsHash = null;
+            NoLandLater();
             foreach (var ch in ChunksInOrder)
             {
                 ch.PackedLand = null;
@@ -417,9 +419,161 @@ namespace Chem
             }
         }
 
+        /// <summary>
+        /// SetLand, a chunk at a time (island-startup): the same land, NoLand marks and save as SetLand(units), but a chunk
+        /// that is still its source's (packed, with no changes) gets its land when it's first read, not now: its cells are
+        /// the source's then as now, so what SetLand would have marked is what the source makes. The rest get theirs now.
+        /// The rows are kept, not copied: the caller keeps them as they are. Between ticks.
+        /// </summary>
+        public void SetLandByChunk(int[] units)
+        {
+            if (units == null) throw new ArgumentNullException(nameof(units));
+            if (units.Length != W * H) throw new ArgumentException($"land needs {W * H} cells, got {units.Length}");
+            SetLandByChunk(LandChunks.Of(units, W, H));
+        }
+
+        /// <summary>SetLandByChunk from land held a chunk at a time (LandChunks.Read): no whole map's ints, here or in the caller.</summary>
+        public void SetLandByChunk(LandChunks units)
+        {
+            if (units == null) throw new ArgumentNullException(nameof(units));
+            if (units.W != W || units.H != H) throw new ArgumentException($"land needs {W} x {H}, got {units.W} x {units.H}");
+            FinishTick();
+            DropLandPeek();
+            landFromSource = false;
+            hasLand = true;
+            landRowsLater = units;
+            landRulesLater = Rules;
+            landMarks = null;
+            landRowsHash = null;
+            var marks = new List<int>();
+            var land = new int[Chunks.Area];
+            var rows = new int[Chunks.Area];
+            foreach (var ch in ChunksInOrder)
+            {
+                ch.PackedLand = null;
+                ch.LandLater = ch.Held == null && ch.Packed != null && ch.Packed.Count == 0;
+                if (ch.LandLater) continue;
+                units.ChunkInto(ch.X, ch.Y, rows);
+                var b = ch.Held;
+                if (b != null) b.Land ??= new int[Chunks.Area];
+                var at = b?.Land ?? land;
+                var read = new ChunkReader(this, ch, walkScratch);
+                for (int i = 0; i < Chunks.Area; i++)
+                {
+                    int x = CellX(ch, i), y = CellY(ch, i);
+                    var c = read.At(i);
+                    int u = c == null ? NoLand : rows[i];
+                    if (u == NoLand) at[i] = NoLand;
+                    else if (IsWaterBody(c))
+                    {
+                        at[i] = NoLand;
+                        marks.Add(Idx(x, y));
+                    }
+                    else at[i] = u + (landMoved?[x, y] ?? 0);
+                }
+                if (b == null) ch.PackedLand = LandCodec.Encode(land, LandBytes);
+            }
+            marks.Sort();
+            landMarksNow = marks;
+        }
+
+        /// <summary>The chunks whose land isn't made yet (SetLandByChunk's, or the source's): for the start's numbers and tests.</summary>
+        public int LandUnmadeChunks => ChunksInOrder.Count(LandUnmade);
+
+        // SetLandByChunk's rows and the rules the land was set under (a spring is a water body by those), and the marks it
+        // made for the chunks that got their land at once; the save's landSet is worked out from them when it's wanted.
+        LandChunks landRowsLater;
+        // LaterLand's buffer for a chunk's rows (it runs inside other walks, a chunk unpacking for a read).
+        int[] laterRows;
+        Rules landRulesLater;
+        List<int> landMarksNow;
+
+        void NoLandLater()
+        {
+            landRowsLater = null;
+            landRulesLater = null;
+            landMarksNow = null;
+            foreach (var ch in ChunksInOrder) ch.LandLater = false;
+        }
+
+        // A water body as SetLandByChunk would have marked it: by the rules it was set under.
+        bool WaterBodyAsSet(Cell c)
+        {
+            if (c.Water > 0) return true;
+            var terrain = landRulesLater.Terrain;
+            return (terrain.TryGetValue(c.T, out var def) ? def : terrain[RetiredInto(c.T) ?? "dirt"]).Spring > 0;
+        }
+
+        // A chunk SetLandByChunk left for later: its land from the rows and its cells as the source makes them.
+        void LaterLand(Chunk ch, int[] at)
+        {
+            var rows = laterRows ??= new int[Chunks.Area];
+            landRowsLater.ChunkInto(ch.X, ch.Y, rows);
+            for (int i = 0; i < Chunks.Area; i++)
+            {
+                int x = CellX(ch, i), y = CellY(ch, i);
+                if (!InBounds(x, y))
+                {
+                    at[i] = NoLand;
+                    continue;
+                }
+                int u = rows[i];
+                if (u == NoLand)
+                {
+                    at[i] = NoLand;
+                    continue;
+                }
+                landCell.Reset();
+                Source.Make(x, y, landCell);
+                at[i] = WaterBodyAsSet(landCell) ? NoLand : u + (landMoved?[x, y] ?? 0);
+            }
+        }
+
+        // For a save of land set a chunk at a time: the hash of the rows and every mark SetLand would have made, the left
+        // chunks' from their source, as SetLand(units) keeps them. Once; the rows don't change.
+        void LandSetLater()
+        {
+            if (landRowsLater == null || landRowsHash != null) return;
+            uint hash = LandRowsSeed;
+            var band = new int[Chunks.Size * W];
+            var row = new int[W];
+            for (int cy = 0; cy * Chunks.Size < H; cy++)
+            {
+                landRowsLater.Band(cy, band);
+                for (int ly = 0; ly < Chunks.Size && cy * Chunks.Size + ly < H; ly++)
+                {
+                    Array.Copy(band, ly * W, row, 0, W);
+                    hash = HashLandRow(hash, row);
+                }
+            }
+            var marks = new List<int>(landMarksNow);
+            var rows = new int[Chunks.Area];
+            foreach (var ch in ChunksInOrder)
+            {
+                if (!ch.LandLater) continue;
+                landRowsLater.ChunkInto(ch.X, ch.Y, rows);
+                for (int i = 0; i < Chunks.Area; i++)
+                {
+                    int x = CellX(ch, i), y = CellY(ch, i);
+                    if (!InBounds(x, y) || rows[i] == NoLand) continue;
+                    landCell.Reset();
+                    Source.Make(x, y, landCell);
+                    if (WaterBodyAsSet(landCell)) marks.Add(Idx(x, y));
+                }
+            }
+            marks.Sort();
+            landMarks = marks;
+            landRowsHash = hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         // A chunk's land as the source makes it, with what's moved since.
         void SourceLand(Chunk ch, int[] at)
         {
+            if (!landFromSource)
+            {
+                LaterLand(ch, at);
+                return;
+            }
             var source = (IGeneratedSource)Source;
             for (int i = 0; i < Chunks.Area; i++)
             {
@@ -439,7 +593,7 @@ namespace Chem
         readonly Cell landCell = new Cell();
 
         // Whether a chunk's land is still the source's, made as it's read: it's packed and has never been unpacked since LandFromSource.
-        bool LandUnmade(Chunk ch) => landFromSource && ch.Held == null && ch.PackedLand == null;
+        bool LandUnmade(Chunk ch) => (landFromSource || ch.LandLater) && ch.Held == null && ch.PackedLand == null;
 
         int LandOf(Chunk ch, int i)
         {
@@ -513,7 +667,7 @@ namespace Chem
                 landPeekEdited = false;
                 landPeekChunk = null;
             }
-            else if (landFromSource && ch.PackedLand == null) SourceLand(ch, b.Land);
+            else if ((landFromSource || ch.LandLater) && ch.PackedLand == null) SourceLand(ch, b.Land);
             else LandCodec.Decode(ch.PackedLand, b.Land);
             ch.PackedLand = null;
         }

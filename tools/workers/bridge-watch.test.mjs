@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -15,13 +15,19 @@ const tools = dirname(fileURLToPath(import.meta.url));
 const bash4 = spawnSync("bash", ["-c", "declare -A x"]).status === 0;
 const hasTimeout = spawnSync("bash", ["-c", "command -v timeout"]).status === 0;
 
+// A path as bash reads it on every machine: Git Bash takes C:/... but not C:\... inside a script or a variable.
+const posix = p => p.replace(/\\/g, "/");
+
 function scratch() {
-  const dir = mkdtempSync(join(tmpdir(), "watch-"));
+  const dir = posix(mkdtempSync(join(tmpdir(), "watch-")));
   const [bin, work, bridge, guest] = ["bin", "w", "bridge", "guest"].map(d => join(dir, d));
   for (const d of [bin, work, bridge, guest, join(dir, "pro"), join(dir, "max")]) mkdirSync(d, { recursive: true });
   for (const f of ["bridge-watch.sh", "bridge.sh"]) copyFileSync(join(tools, f), join(work, f));
   const stub = (f, text) => { writeFileSync(f, text); chmodSync(f, 0o755); };
+  // Hyper-V is a stand-in named outright (BRIDGE_WATCH_POWERSHELL), not found on PATH: on Windows a PATH joined wrongly
+  // let the host's powershell.exe answer, and the test reached the real VMs (#219). done() checks the stand-in was asked.
   stub(join(bin, "powershell"), `#!/usr/bin/env bash
+echo "$*" >> "${dir}/ps-called"
 case "$*" in
   *Get-VMNetworkAdapter*) echo "$STUB_IP" ;;
   *FreePhysicalMemory*) echo 20 ;;
@@ -43,7 +49,8 @@ case "$1" in
 esac
 `);
   const env = extra => ({
-    ...process.env, PATH: `${bin}:${process.env.PATH}`, BRIDGE: bridge, BRIDGE_WATCH_DRY: "1", BRIDGE_WATCH_ONCE: "1",
+    ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}`, BRIDGE: bridge, BRIDGE_WATCH_DRY: "1", BRIDGE_WATCH_ONCE: "1",
+    BRIDGE_WATCH_POWERSHELL: posix(join(bin, "powershell")), BRIDGE_WATCH_LINUX: posix(join(work, "linux.sh")),
     BRIDGE_WATCH_HOMES: `pro=${join(dir, "pro")} max=${join(dir, "max")}`, STUB_VMS: "u2", STUB_IP: "172.26.223.16", STUB_HANG: "", ...extra,
   });
   const pass = (extra = {}) => {
@@ -67,8 +74,10 @@ esac
   const log = () => readFileSync(join(bridge, "bridge.log"), "utf8");
   return { dir, bridge, pass, live, report, pm, left, log, done: () => {
     const leaked = existsSync(join(dir, "ssh-called"));
+    const standIn = existsSync(join(dir, "ps-called"));
     rmSync(dir, { recursive: true, force: true });
     assert.ok(!leaked, "a test reached for ssh: it must stay on its stand-ins");
+    assert.ok(standIn, "Hyper-V was asked of the stand-in, not the host's powershell");
   } };
 }
 

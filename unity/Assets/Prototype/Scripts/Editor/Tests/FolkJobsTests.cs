@@ -15,7 +15,7 @@ public class FolkJobsTests
     static (FolkJobs.Land land, World world) Valley()
     {
         var world = ChemGrid.MapWorld(Rules.Load(ChemGrid.Folders.Rules), ChemGrid.CellMap(), 1u, out _);
-        var units = LandFile.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
+        var units = LandChunks.Read(File.ReadAllText(Path.Combine(ChemGrid.Folders.World, MapFile.LandName)), world.W, world.H);
         return (new FolkJobs.Land(world, units, CellMetres), world);
     }
 

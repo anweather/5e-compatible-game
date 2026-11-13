@@ -71,6 +71,7 @@ public partial class Ocean
         PlanTiles();
         LayTiles(whole: true);
         var (n, v, c) = Counts;
+        StartupTimeline.Mark("sea tiles laid");
         Debug.Log($"SEA for the drawn tier: {n} tiles ({v} vertices; {tiles.Count - n} dry, {tilesWanted.Count} waiting for their " +
                   $"terrains, round {tileFocus.Count} focus) and the coarse sea ({c} vertices) in {timer.Elapsed.TotalMilliseconds:0} ms");
     }

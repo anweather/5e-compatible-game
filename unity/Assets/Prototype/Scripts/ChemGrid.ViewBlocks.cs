@@ -37,6 +37,9 @@ public partial class ChemGrid
             }
         }
 
+        /// <summary>Chunk (cx, cy)'s block goes (the chunk was undrawn): its views are made again as it next draws.</summary>
+        public void Drop(int cx, int cy) => blocks[cy * across + cx] = null;
+
         /// <summary>How many chunks have a block, for a check.</summary>
         public int Made
         {

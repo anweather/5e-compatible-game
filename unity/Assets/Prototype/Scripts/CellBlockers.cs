@@ -111,14 +111,26 @@ public sealed class CellBlockers
         box.transform.position = new Vector3(center.x, ground, center.z);
     }
 
+    /// <summary>A cell's blocker, if it has one, back to the pool (its chunk was undrawn, far from everyone).</summary>
+    public void Remove(int key) => Release(key);
+
     bool IsTrunk(Cell c) => c.T == TerrainIds.Tree && !grid.World.IsRaisedWall(c);
 
     void Release(int key)
     {
         if (!used.Remove(key, out var box)) return;
+        // The pool keeps at most MostSpare (chunks let go far behind hand back thousands, ChemGrid.Undraw): kept, it
+        // held the most ever placed for good.
+        if (spare.Count >= MostSpare)
+        {
+            Object.Destroy(box.gameObject);
+            return;
+        }
         box.gameObject.SetActive(false);
         spare.Push(box);
     }
+
+    const int MostSpare = 8192;
 
     BoxCollider Take()
     {

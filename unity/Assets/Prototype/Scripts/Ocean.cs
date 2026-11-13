@@ -230,15 +230,21 @@ public partial class Ocean : MonoBehaviour
         shoreOrigin = map.Shore;
         seaward = map.Seaward;
         shoreMap = map.ShoreMap;
-        // Once a map (it's a pass over every cell), kept a bit a cell: on the Scale Island 40 million cells.
+        // Once a map; worked out a chunk at a time as the surface asks round the players, not a pass over every cell.
         if (wetFor == map && wetInland == inland) return;
-        bool lake = System.Array.IndexOf(map.Map.Dresses, "lake") >= 0;
-        wetCells = new System.Collections.BitArray(map.Sea.Near(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: !lake));
+        wetCells = map.Sea.NearByChunk(Mathf.CeilToInt(inland / map.Layout.CellSize), basins: DrawsBasins(map));
         wetFor = map;
         wetInland = inland;
     }
 
-    System.Collections.BitArray wetCells;
+    // Whether the sea also spans the map's basins (hollows below its level, walled off from the sea): only on a map that
+    // neither dresses a lake of its own nor is generated. A generated map's cells hold its lakes' and ponds' water, which
+    // the cells' own still surface draws; the sea over them too made a pond rise and fall with the swell (the Scale
+    // Island's playtest, 2026-11-11).
+    static bool DrawsBasins(MapLand map) =>
+        System.Array.IndexOf(map.Map.Dresses, "lake") < 0 && !Chem.GeneratedMap.IsGenerated(ChemGrid.MapSource);
+
+    Chem.SeaNear wetCells;
     MapLand wetFor;
     float wetInland;
 
@@ -249,7 +255,7 @@ public partial class Ocean : MonoBehaviour
         if (map == null || wetCells == null) return Vector2.Dot(xz - shoreOrigin, seaward.normalized) > -inland;
         var c = map.CellOf(xz);
         if (c.x < 0 || c.y < 0 || c.x >= map.Map.W || c.y >= map.Map.H) return map.Sea.SeaCells > 0;
-        return wetCells[c.y * map.Map.W + c.x];
+        return wetCells[c.x, c.y];
     }
 
     // How far along the coast either way, and how far inland of it, the map's corners are (m): the fine mesh spans them all.

@@ -108,8 +108,9 @@ public sealed class PerfMarkers : IDisposable
     float[] kept = new float[1 << 16];
     int keptFrames;
 
-    public PerfMarkers(bool wide = false)
+    public PerfMarkers(bool wide = false, bool keep = true)
     {
+        keepFrames = keep;
         floorMs = wide ? WideFloorMs : BreakdownFloorMs;
         foreach (var (category, group) in Timed)
             foreach (string name in group)
@@ -141,6 +142,14 @@ public sealed class PerfMarkers : IDisposable
             recorders.Add(new ProfilerRecorder(handle));
         }
     }
+
+    readonly bool keepFrames;
+
+    /// <summary>The markers read, in the order Last takes.</summary>
+    public IReadOnlyList<string> Names => names;
+
+    /// <summary>Marker <paramref name="i"/>'s time in the frame Sample last read (ms).</summary>
+    public double Last(int i) => last[i];
 
     /// <summary>The last frame's garbage, in bytes (0 outside a development build).</summary>
     public long AllocatedLastFrame => allocated.Valid ? allocated.LastValue : 0;
@@ -176,7 +185,7 @@ public sealed class PerfMarkers : IDisposable
             peak[i] = Math.Max(peak[i], ms);
             if (ms > 0 && names[i] == Collect) collections++;
         }
-        Keep();
+        if (keepFrames) Keep();
         for (int i = 0; i < gauges.Count; i++)
             if (gauges[i].Valid) gaugeWindow[i] += gauges[i].LastValue;
         for (int i = 0; i < renderGauges.Count; i++)

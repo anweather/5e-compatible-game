@@ -14,7 +14,12 @@ namespace Chem
 
         public int W { get; }
         public int H { get; }
-        readonly byte[] kind;
+
+        // Held a chunk at a time (core-mem-scale): a chunk all one kind (all sea, all dry: most of a map) is that byte alone;
+        // only a chunk that mixes them keeps a byte a cell. On the Scale Island 38 MB a byte a cell, a few MB this way.
+        readonly int chunksW;
+        readonly byte[] uniform;
+        readonly byte[][] mixed;
 
         /// <summary>How many cells are sea, and how many are in basins.</summary>
         public int SeaCells { get; }
@@ -24,11 +29,80 @@ namespace Chem
         {
             W = w;
             H = h;
-            this.kind = kind;
             foreach (byte k in kind)
             {
                 if (k == Sea) SeaCells++;
                 else if (k == Basin) BasinCells++;
+            }
+            chunksW = (w + Chunks.Size - 1) / Chunks.Size;
+            int chunksH = (h + Chunks.Size - 1) / Chunks.Size;
+            uniform = new byte[chunksW * chunksH];
+            mixed = new byte[chunksW * chunksH][];
+            for (int cy = 0; cy < chunksH; cy++)
+                for (int cx = 0; cx < chunksW; cx++)
+                {
+                    int x0 = cx * Chunks.Size, y0 = cy * Chunks.Size;
+                    byte first = kind[y0 * w + x0];
+                    bool same = true;
+                    for (int y = y0; y < Math.Min(h, y0 + Chunks.Size) && same; y++)
+                        for (int x = x0; x < Math.Min(w, x0 + Chunks.Size); x++)
+                            if (kind[y * w + x] != first)
+                            {
+                                same = false;
+                                break;
+                            }
+                    int c = cy * chunksW + cx;
+                    uniform[c] = first;
+                    if (same) continue;
+                    var cells = new byte[Chunks.Area];
+                    for (int y = y0; y < Math.Min(h, y0 + Chunks.Size); y++)
+                        for (int x = x0; x < Math.Min(w, x0 + Chunks.Size); x++) cells[(y - y0) * Chunks.Size + x - x0] = kind[y * w + x];
+                    mixed[c] = cells;
+                }
+        }
+
+        // A cell's kind, on the map.
+        byte KindAt(int x, int y)
+        {
+            int c = (y >> Chunks.Shift) * chunksW + (x >> Chunks.Shift);
+            var cells = mixed[c];
+            return cells == null ? uniform[c] : cells[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
+        }
+
+        /// <summary>
+        /// Whether every cell of a chunk and the eight round it (those on the map) is one kind, wet or dry alike (sea, and a
+        /// basin's when <paramref name="basins"/>): then every cell of the chunk is near water, for any reach up to a chunk,
+        /// exactly when it is wet itself (sea-land-speed: only coastal chunks need working out).
+        /// </summary>
+        internal bool UniformAround(int cx, int cy, bool basins, out bool wet)
+        {
+            wet = false;
+            int chunksH = uniform.Length / chunksW;
+            bool? seen = null;
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int x = cx + dx, y = cy + dy;
+                    if (x < 0 || y < 0 || x >= chunksW || y >= chunksH) continue;
+                    int c = y * chunksW + x;
+                    if (mixed[c] != null) return false;
+                    bool w = uniform[c] == Sea || (basins && uniform[c] == Basin);
+                    if (seen.HasValue && seen.Value != w) return false;
+                    seen = w;
+                }
+            wet = seen ?? false;
+            return true;
+        }
+
+        /// <summary>The bytes the mask holds now: a byte a chunk, and a byte a cell of the chunks that mix sea, basin and dry.</summary>
+        public long Bytes
+        {
+            get
+            {
+                long b = uniform.Length + mixed.Length * 8L;
+                foreach (var m in mixed)
+                    if (m != null) b += m.Length;
+                return b;
             }
         }
 
@@ -38,6 +112,35 @@ namespace Chem
             if (land == null || land.Length != w * h) throw new ArgumentException($"the land is not {w} × {h}", nameof(land));
             var kind = new byte[w * h];
             for (int i = 0; i < kind.Length; i++) kind[i] = land[i] < seaLevel ? Basin : Dry;
+            return Flooded(kind, w, h);
+        }
+
+        /// <summary>The same, from land held a chunk at a time (LandChunks): read a band of rows at a time, never as an int a cell.</summary>
+        public static SeaMask Of(LandChunks land, int seaLevel)
+        {
+            if (land == null) throw new ArgumentNullException(nameof(land));
+            int w = land.W, h = land.H;
+            var kind = new byte[w * h];
+            var band = new int[Chunks.Size * w];
+            for (int cy = 0; cy * Chunks.Size < h; cy++)
+            {
+                land.Band(cy, band);
+                for (int ly = 0; ly < Chunks.Size && cy * Chunks.Size + ly < h; ly++)
+                    for (int x = 0; x < w; x++) kind[(cy * Chunks.Size + ly) * w + x] = band[ly * w + x] < seaLevel ? Basin : Dry;
+            }
+            return Flooded(kind, w, h);
+        }
+
+        // The mask of land whose cells under the sea level are marked 1 (LandChunks.Read's pass): the same mask as Of.
+        internal static SeaMask OfLow(byte[] low, int w, int h)
+        {
+            for (int i = 0; i < low.Length; i++) low[i] = low[i] != 0 ? Basin : Dry;
+            return Flooded(low, w, h);
+        }
+
+        // Low cells (Basin) joined to the edge through low cells become sea; the rest of the low cells stay basins.
+        static SeaMask Flooded(byte[] kind, int w, int h)
+        {
             // From every low cell on the edge, through the low cells beside each other: the sea.
             var open = new Queue<int>();
             void Reach(int x, int y)
@@ -71,10 +174,10 @@ namespace Chem
         bool In(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
 
         /// <summary>Whether a cell is sea: below the level and joined to the map's edge. Off the map is sea when any edge is.</summary>
-        public bool IsSea(int x, int y) => In(x, y) ? kind[y * W + x] == Sea : SeaCells > 0;
+        public bool IsSea(int x, int y) => In(x, y) ? KindAt(x, y) == Sea : SeaCells > 0;
 
         /// <summary>Whether a cell is in a basin: below the level, and walled off from the sea.</summary>
-        public bool IsBasin(int x, int y) => In(x, y) && kind[y * W + x] == Basin;
+        public bool IsBasin(int x, int y) => In(x, y) && KindAt(x, y) == Basin;
 
         /// <summary>
         /// The cells within <paramref name="reach"/> cells (a square's half side) of water: the sea's, and the basins' too
@@ -83,15 +186,57 @@ namespace Chem
         public bool[] Near(int reach, bool basins)
         {
             var wet = new bool[W * H];
-            for (int i = 0; i < wet.Length; i++) wet[i] = kind[i] == Sea || (basins && kind[i] == Basin);
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    byte k = KindAt(x, y);
+                    wet[y * W + x] = k == Sea || (basins && k == Basin);
+                }
             return Grow(Grow(wet, reach, true), reach, false);
         }
 
+        /// <summary>
+        /// Near for a rectangle only (island-startup-2): the same answers for its cells as Near's, from the cells within
+        /// reach of it, not a pass over the whole map. Row-major, w x h.
+        /// </summary>
+        public bool[] NearIn(int x0, int y0, int w, int h, int reach, bool basins)
+        {
+            int wx0 = Math.Max(0, x0 - reach), wy0 = Math.Max(0, y0 - reach);
+            int wx1 = Math.Min(W - 1, x0 + w - 1 + reach), wy1 = Math.Min(H - 1, y0 + h - 1 + reach);
+            var result = new bool[w * h];
+            if (wx1 < wx0 || wy1 < wy0) return result;
+            int ww = wx1 - wx0 + 1, wh = wy1 - wy0 + 1;
+            var wet = new bool[ww * wh];
+            for (int y = 0; y < wh; y++)
+                for (int x = 0; x < ww; x++)
+                {
+                    byte k = KindAt(wx0 + x, wy0 + y);
+                    wet[y * ww + x] = k == Sea || (basins && k == Basin);
+                }
+            var grown = Grow(Grow(wet, ww, wh, reach, true), ww, wh, reach, false);
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int gx = x0 + x - wx0, gy = y0 + y - wy0;
+                    if (gx >= 0 && gy >= 0 && gx < ww && gy < wh) result[y * w + x] = grown[gy * ww + gx];
+                }
+            return result;
+        }
+
+        /// <summary>
+        /// Near, a chunk at a time as its cells are asked (island-startup-2): each chunk worked out by NearIn the first time
+        /// one of its cells is, and kept; so a view asking round the players holds and works out those chunks, not the map.
+        /// </summary>
+        public SeaNear NearByChunk(int reach, bool basins) => new SeaNear(this, reach, basins);
+
         // Spreads each true cell `reach` cells either way along the rows, or along the columns.
-        bool[] Grow(bool[] wet, int reach, bool alongRows)
+        bool[] Grow(bool[] wet, int reach, bool alongRows) => Grow(wet, W, H, reach, alongRows);
+
+        // Grow, over a w x h block.
+        static bool[] Grow(bool[] wet, int width, int height, int reach, bool alongRows)
         {
             var grown = new bool[wet.Length];
-            int lines = alongRows ? H : W, along = alongRows ? W : H, step = alongRows ? 1 : W, lineStep = alongRows ? W : 1;
+            int lines = alongRows ? height : width, along = alongRows ? width : height, step = alongRows ? 1 : width, lineStep = alongRows ? width : 1;
             for (int line = 0; line < lines; line++)
             {
                 int last = int.MinValue / 2;
@@ -110,6 +255,41 @@ namespace Chem
                 }
             }
             return grown;
+        }
+    }
+
+    /// <summary>The cells near water (SeaMask.Near), worked out a chunk at a time as they're asked, and kept.</summary>
+    public sealed class SeaNear
+    {
+        readonly SeaMask sea;
+        readonly int reach;
+        readonly bool basins;
+        readonly Dictionary<long, bool[]> made = new Dictionary<long, bool[]>();
+
+        internal SeaNear(SeaMask sea, int reach, bool basins)
+        {
+            this.sea = sea;
+            this.reach = reach;
+            this.basins = basins;
+        }
+
+        /// <summary>How many chunks are worked out.</summary>
+        public int Chunks => made.Count;
+
+        /// <summary>Whether the cell is near water, as Near(reach, basins) says; false off the map.</summary>
+        public bool this[int x, int y]
+        {
+            get
+            {
+                if (x < 0 || y < 0 || x >= sea.W || y >= sea.H) return false;
+                int cx = Chem.Chunks.ChunkOf(x), cy = Chem.Chunks.ChunkOf(y);
+                // Open sea or dry inland, all round: no chunk worked out or kept (the coarse sea asks nearly every chunk).
+                if (reach <= Chem.Chunks.Size && sea.UniformAround(cx, cy, basins, out bool wet)) return wet;
+                long key = Chem.Chunks.Key(cx, cy);
+                if (!made.TryGetValue(key, out var cells))
+                    made[key] = cells = sea.NearIn(cx * Chem.Chunks.Size, cy * Chem.Chunks.Size, Chem.Chunks.Size, Chem.Chunks.Size, reach, basins);
+                return cells[(y - cy * Chem.Chunks.Size) * Chem.Chunks.Size + x - cx * Chem.Chunks.Size];
+            }
         }
     }
 }

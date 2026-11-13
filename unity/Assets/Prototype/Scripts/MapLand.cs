@@ -11,7 +11,7 @@ public sealed class MapLand
     public readonly MapFile Map;
     public readonly TerrainGrid Layout;
     /// <summary>The land, row by row, in land units; all at the sea level when the map has no land.json.</summary>
-    public readonly int[] Land;
+    public readonly LandChunks Land;
     /// <summary>Whether Land is the map's land.json (not the sea level all over for want of one).</summary>
     public readonly bool FromFile;
     public readonly SeaMask Sea;
@@ -52,8 +52,13 @@ public sealed class MapLand
         Layout = Map.Layout();
         string path = Path.Combine(dir, MapFile.LandName);
         FromFile = File.Exists(path);
-        Land = FromFile ? LandFile.Read(File.ReadAllText(path), Map.W, Map.H) : Filled(Map.W * Map.H, Map.SeaLevel);
-        Sea = SeaMask.Of(Land, Map.W, Map.H, Map.SeaLevel);
+        // The land and its sea in one pass over the file (sea-land-speed); the sea level all over without one.
+        Land = FromFile ? LandChunks.Read(File.ReadAllText(path), Map.W, Map.H, Map.SeaLevel, out Sea) : null;
+        if (Land == null)
+        {
+            Land = LandChunks.Uniform(Map.W, Map.H, Map.SeaLevel);
+            Sea = SeaMask.Of(Land, Map.SeaLevel);
+        }
         WaterLevel = (float)Map.WaterMetres;
         Seaward = Map.Seaward is { } s ? new Vector2((float)s.x, (float)s.z).normalized : LowWay();
         Shore = Map.SeaShore is { } o ? new Vector2((float)o.x, (float)o.z) : Middle;
@@ -67,11 +72,28 @@ public sealed class MapLand
         currentDir = null;
     }
 
-    static int[] Filled(int n, int value)
+    // The chunks LandAt decoded last, kept for the next reads: a scan along rows (the shore map, the ambient life) comes
+    // back to each chunk for every row through it, and LandChunks.At keeps only one, so it decoded each chunk 64 times.
+    const int KeptChunks = 256;
+    readonly System.Collections.Generic.Dictionary<int, int[]> keptChunks = new();
+    readonly System.Collections.Generic.Stack<int[]> spareChunks = new();
+
+    /// <summary>The land at a cell, in land units, with the chunks read lately kept decoded. The main thread only.</summary>
+    public int LandAt(int x, int y)
     {
-        var a = new int[n];
-        System.Array.Fill(a, value);
-        return a;
+        int cx = x >> Chunks.Shift, cy = y >> Chunks.Shift, key = cy * ((Map.W + Chunks.Size - 1) >> Chunks.Shift) + cx;
+        if (!keptChunks.TryGetValue(key, out var cells))
+        {
+            if (keptChunks.Count >= KeptChunks)
+            {
+                foreach (var spare in keptChunks.Values) spareChunks.Push(spare);
+                keptChunks.Clear();
+            }
+            cells = spareChunks.Count > 0 ? spareChunks.Pop() : new int[Chunks.Area];
+            Land.ChunkInto(cx, cy, cells);
+            keptChunks[key] = cells;
+        }
+        return cells[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
     }
 
     /// <summary>The map's middle, in world metres (x, z).</summary>
@@ -122,7 +144,7 @@ public sealed class MapLand
     {
         var c = CellOf(xz);
         int x = Mathf.Clamp(c.x, 0, Map.W - 1), y = Mathf.Clamp(c.y, 0, Map.H - 1);
-        return Land[y * Map.W + x] >= Map.SeaLevel;
+        return LandAt(x, y) >= Map.SeaLevel;
     }
 
     ShoreMap shoreMap;
@@ -134,6 +156,8 @@ public sealed class MapLand
     // forgets `current`), every one stayed in the Editor, 4 MB each (#145). Whoever drew with it builds again from Current.
     void Release()
     {
+        keptChunks.Clear();
+        spareChunks.Clear();
         if (shoreMap == null) return;
         Free(shoreMap.texture);
         Free(shoreMap);

@@ -132,7 +132,7 @@ public class MapSwitchProbe : ProbeScenario
             Check($"{name}_cells_are_a_fresh_start", at0.print == freshCells && at0.tick == 0, $"{at0.print} at tick {at0.tick}, fresh {freshCells}");
         }
         string landPath = Path.Combine(folder, "land.json");
-        var fileLand = File.Exists(landPath) ? LandFile.Read(File.ReadAllText(landPath), map.W, map.H) : null;
+        var fileLand = File.Exists(landPath) ? LandChunks.Read(File.ReadAllText(landPath), map.W, map.H) : null;
         string mapLand = Print(land.Land), freshLand = Print(fileLand);
         Metric($"{name}_land_hash", Fnv(land.Land));
         Check($"{name}_land_is_a_fresh_start", mapLand == freshLand, $"{mapLand}, land.json {freshLand}");
@@ -154,13 +154,20 @@ public class MapSwitchProbe : ProbeScenario
         return h.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    static string Print(int[] land) => land == null ? "none" : Fnv(land).ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
+    static string Print(LandChunks land) => land == null ? "none" : Fnv(land).ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
 
-    static uint Fnv(int[] values)
+    // Over the land row by row, as over the int a cell it was: a band of chunk rows at a time, so each chunk is decoded once.
+    static uint Fnv(LandChunks land)
     {
         uint h = 2166136261;
-        if (values == null) return h;
-        foreach (int v in values) h = (h ^ (uint)v) * 16777619;
+        if (land == null) return h;
+        var band = new int[Chunks.Size * land.W];
+        for (int cy = 0; cy * Chunks.Size < land.H; cy++)
+        {
+            land.Band(cy, band);
+            int rows = System.Math.Min(Chunks.Size, land.H - cy * Chunks.Size);
+            for (int k = 0; k < rows * land.W; k++) h = (h ^ (uint)band[k]) * 16777619;
+        }
         return h;
     }
 

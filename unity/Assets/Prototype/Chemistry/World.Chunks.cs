@@ -209,6 +209,16 @@ namespace Chem
             }
         }
 
+        // The active chunks by row then column, made with the spans.
+        Chunk[] ActiveChunkArray
+        {
+            get
+            {
+                if (spans == null) BuildSpans();
+                return activeChunks;
+            }
+        }
+
         void BuildSpans()
         {
             var active = SortedChunks(true);

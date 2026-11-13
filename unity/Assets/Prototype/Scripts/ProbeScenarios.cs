@@ -257,6 +257,9 @@ public static class ProbeScenarios
             "Checks: a rebuild's median under the Editor's budget, the blocker boxes kept across rebuilds, the mod on, its checks and compose under budget, no console errors. Metrics: rebuild_ms_best, rebuild_ms_median, switch_compose_ms_median, switch_worst_frame_ms."),
         new Entry("groundbuild", typeof(GroundBuildProbe), 30f,
             "The chunk terrains the scene started with (MapTerrains, from the map's folder; unity/Temp/ground-builder saying land draws the land alone) and what the ground's Bind took. Checks: all 81 chunks built, none held by the scene, each collider holds what's drawn, the terrains keep TerrainRock, no console errors."),
+        new Entry("treeseat", typeof(TreeSeatProbe), 60f,
+            "On any map (unity/Temp/map names one): every tree drawn now against the ground drawn under it: the terrains' trees (their kind's lowest point at the instance's scale, against the terrain at the trunk) and every tree model in the scene (near trees' prefabs, great trees, grown trees: the renderers' bottom against the drawn ground). " +
+            "Metrics: trees measured, sunk, floating, the worst of each. Checks: terrains drawn, some trees measured, none over 1 m under its ground, none over 0.75 m over it, no console errors."),
         new Entry("landshapes", typeof(LandShapesProbe), 240f,
             "A canyon and a cliff through the real MCP server with the wizard on them: the ground drops under the feet and comes back, the walls are walls, rocks grow on the faces and go with an undo, and the terrain draws with the rock shader.", speed: 3f),
         new Entry("stamplooks", typeof(StampLooksProbe), 480f,
@@ -293,6 +296,13 @@ public static class ProbeScenarios
             "On the nine (unity/Temp/map = nine): sweeps the three tier dials (docs/design/world-12x8-scope.md): active 1/2/3 (streaming reach, keep one more, as a rule switch), drawn 2/4/7 and known 4/7/12 (this peer's view, FarRing.SetView; drawn at most known), " +
             "the eye flying a square a chunk a side round the spawn for --seconds (default 10) per setting once the known ring has settled. Metrics per setting a<A>_d<D>_k<K>_: mean_ms, p95_ms, mem_allocated_mb, mem_reserved_mb, active_chunks, terrains_drawn, known_meshes, known_settle_ms, known_worker_ms; " +
             "the table in the log and Temp/Probe/tiersweep.md. Checks: the far ring up, every setting measured, the dials took, the rules' dials back at the end, no console errors."),
+        new Entry("flyover", typeof(FlyoverProbe), 900f,
+            "On a generated map (unity/Temp/map = scale-12x10, put back after): the wizard in fly mode (F4) from the west coast to the east coast along the spawn's row at 40 m/s, 30 m over the ground, the camera behind it looking east. " +
+            "Metrics: frame mean, p95, p99, worst, frames over 33 and 100 ms (where: the worst ten and the 33 ms frames by 200-cell band, in the checks), land ahead with nothing drawn (holes, within the drawn dial and to the known ring), how far the drawn ground reached ahead when short, terrains ahead with no trees, memory at the start, after the first km, half way and at the end (each with FLYOVER HOLDINGS, MESHES and OBJECTS log lines of what the view holds). Checks: generated map, coasts found, flew coast to coast, no hole within sight, memory_flat (native allocated at the end within 10% of after the first km, managed within 15%: it holds the core's unpacked chunks waiting to pack), terrains_bounded, no console errors."),
+        new Entry("flyoverfast", typeof(FlyoverFastProbe), 600f,
+            "The flyover at 80 m/s (fly mode's 40 with Shift held); the same metrics and checks."),
+        new Entry("flyoverback", typeof(FlyoverBackProbe), 1500f,
+            "The flyover there and back at 40 m/s: coast to coast east, then west again to the start, so what's let go behind is made again on the way back; the same metrics and checks."),
         new Entry("stampclip", typeof(StampClipProbe), 120f,
             "Films ten crates riding a dome stamp as it rises (#147; 15 cells across, 4 m high, so no crag boulders hide them), into --shots: frames and sound.wav, for ffmpeg (ClipFilm, not the Recorder). Checks: filmed, the crates rode up.", films: true),
         new Entry("act", typeof(ActProbe), 60f,

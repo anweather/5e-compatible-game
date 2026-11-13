@@ -137,7 +137,7 @@ namespace Chem
         }
 
         // The inflated bytes in a buffer's worth at a time.
-        sealed class Inflated
+        internal sealed class Inflated
         {
             readonly Stream from;
             readonly byte[] buffer = new byte[1 << 16];
@@ -171,7 +171,7 @@ namespace Chem
             return k % w == 0 ? land[k - w] : land[k - 1];
         }
 
-        static int Unzigzag(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
+        internal static int Unzigzag(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
     }
 
     // Bytes in, their base64 out to a stream, as Convert.ToBase64String of them all would give it.
@@ -222,5 +222,216 @@ namespace Chem
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// A map's land (land.json, an int a cell in land units) held a chunk at a time, each chunk's as LandCodec's bytes:
+    /// a byte or so a cell where it's smooth, a few bytes for a chunk of sea or flat land (core-mem-scale; on the Scale
+    /// Island 162 MB as an int[], a few MB this way). Read from land.json a band of chunk rows at a time, never whole.
+    /// Reading a cell decodes its chunk into a buffer kept for the next read: one reader at a time.
+    /// </summary>
+    public sealed class LandChunks
+    {
+        readonly int chunksW, chunksH;
+        readonly byte[][] chunks;
+        readonly int[] cached = new int[Chunks.Area];
+        int cachedChunk = -1;
+
+        LandChunks(int w, int h)
+        {
+            W = w;
+            H = h;
+            chunksW = (w + Chunks.Size - 1) / Chunks.Size;
+            chunksH = (h + Chunks.Size - 1) / Chunks.Size;
+            chunks = new byte[chunksW * chunksH][];
+        }
+
+        public int W { get; }
+        public int H { get; }
+
+        /// <summary>The bytes it holds: its chunks' encodings.</summary>
+        public long Bytes
+        {
+            get
+            {
+                long b = 0;
+                foreach (var c in chunks) b += (c?.Length ?? 0) + 24;
+                return b;
+            }
+        }
+
+        /// <summary>As LandFile.Read reads it, a chunk at a time; null where Read gives an empty array (another version or size).</summary>
+        public static LandChunks Read(string json, int w, int h) => Read(json, w, h, null, 0);
+
+        /// <summary>
+        /// Read, and the sea mask of the land at <paramref name="seaLevel"/> from the same pass (SeaMask.Of without reading the
+        /// land a second time); null for both where Read gives null.
+        /// </summary>
+        public static LandChunks Read(string json, int w, int h, int seaLevel, out SeaMask sea)
+        {
+            var low = new byte[(long)w * h];
+            var land = Read(json, w, h, low, seaLevel);
+            sea = land == null ? null : SeaMask.OfLow(low, w, h);
+            return land;
+        }
+
+        // The reading, a band of rows at a time, each encoded as it's finished. With `low`, a byte a cell marks the land
+        // under the sea level as it's decoded, so the sea mask needn't read the land again.
+        static LandChunks Read(string json, int w, int h, byte[] low, int seaLevel)
+        {
+            var o = JObject.Parse(json);
+            if ((int?)o["version"] != LandFile.Version || (int?)o["w"] != w || (int?)o["h"] != h) return null;
+            var land = new LandChunks(w, h);
+            // Two bands: one encoded on a worker while the next is decoded into the other (each chunk's bytes are the
+            // same whichever thread encodes it; only the time changes).
+            var bands = new[] { new int[Chunks.Size * w], new int[Chunks.Size * w] };
+            var cell = new int[Chunks.Area];
+            var scratch = new byte[LandCodec.MostBytes];
+            System.Threading.Tasks.Task encoding = null;
+            int which = 0;
+            var band = bands[0];
+            int rowStart = 0; // the first cell of the row above: 0 above the top row
+            using (var deflate = new DeflateStream(new MemoryStream(Convert.FromBase64String((string)o["data"])), CompressionMode.Decompress))
+            {
+                var bytes = new LandFile.Inflated(deflate);
+                for (int y = 0; y < h; y++)
+                {
+                    int r = (y & Chunks.Mask) * w;
+                    for (int x = 0; x < w; x++)
+                    {
+                        // LandFile's prediction: the cell before in the row, or at a row's start the row above's first (0 at the top).
+                        int previous = x > 0 ? band[r + x - 1] : rowStart;
+                        band[r + x] = previous + LandFile.Unzigzag(bytes.Varint());
+                        if (low != null && band[r + x] < seaLevel) low[(long)y * w + x] = 1;
+                    }
+                    rowStart = band[r];
+                    if ((y & Chunks.Mask) == Chunks.Mask || y == h - 1)
+                    {
+                        encoding?.Wait();
+                        int cy = y >> Chunks.Shift;
+                        var done = band;
+                        encoding = System.Threading.Tasks.Task.Run(() => land.KeepBand(cy, done, cell, scratch));
+                        which ^= 1;
+                        band = bands[which];
+                    }
+                }
+            }
+            encoding?.Wait();
+            land.cachedChunk = -1;
+            return land;
+        }
+
+        /// <summary>The same land from an int a cell (row by row, w × h).</summary>
+        public static LandChunks Of(int[] units, int w, int h)
+        {
+            if (units == null || units.Length != w * h) throw new ArgumentException($"land needs {w * h} cells", nameof(units));
+            var land = new LandChunks(w, h);
+            var band = new int[Chunks.Size * w];
+            for (int cy = 0; cy < land.chunksH; cy++)
+            {
+                int rows = Math.Min(Chunks.Size, h - cy * Chunks.Size);
+                Array.Copy(units, cy * Chunks.Size * w, band, 0, rows * w);
+                land.KeepBand(cy, band);
+            }
+            return land;
+        }
+
+        // A band of chunk rows (Size rows of W cells, those past the map's foot left as they are) into its chunks' bytes.
+        // A band's chunks into their bytes, one after another, through the buffers given.
+        void KeepBand(int cy, int[] band, int[] cell, byte[] scratch)
+        {
+            int rows = Math.Min(Chunks.Size, H - cy * Chunks.Size);
+            for (int cx = 0; cx < chunksW; cx++) EncodeOne(cy, cx, rows, band, cell, scratch);
+            cachedChunk = -1;
+        }
+
+        void KeepBand(int cy, int[] band) => KeepBand(cy, band, new int[Chunks.Area], new byte[LandCodec.MostBytes]);
+
+        void EncodeOne(int cy, int cx, int rows, int[] band, int[] cell, byte[] scratch)
+        {
+            Array.Clear(cell, 0, cell.Length);
+            int cols = Math.Min(Chunks.Size, W - cx * Chunks.Size);
+            for (int ly = 0; ly < rows; ly++) Array.Copy(band, ly * W + cx * Chunks.Size, cell, ly * Chunks.Size, cols);
+            chunks[cy * chunksW + cx] = LandCodec.Encode(cell, scratch);
+        }
+
+        /// <summary>A chunk's land, Area ints by local index (row by row in the chunk); 0 past the map's edge.</summary>
+        public void ChunkInto(int cx, int cy, int[] into)
+        {
+            if (cx < 0 || cy < 0 || cx >= chunksW || cy >= chunksH) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the land");
+            LandCodec.Decode(chunks[cy * chunksW + cx], into);
+        }
+
+        /// <summary>The land at a cell.</summary>
+        public int At(int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= W || y >= H) throw new ArgumentOutOfRangeException(nameof(x), $"({x}, {y}) is off the land");
+            int c = (y >> Chunks.Shift) * chunksW + (x >> Chunks.Shift);
+            if (c != cachedChunk)
+            {
+                LandCodec.Decode(chunks[c], cached);
+                cachedChunk = c;
+            }
+            return cached[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
+        }
+
+        /// <summary>A band of chunk rows, row by row: Size rows of W cells (those past the map's foot left as they were).</summary>
+        public void Band(int cy, int[] into)
+        {
+            var cell = new int[Chunks.Area];
+            int rows = Math.Min(Chunks.Size, H - cy * Chunks.Size);
+            for (int cx = 0; cx < chunksW; cx++)
+            {
+                ChunkInto(cx, cy, cell);
+                int cols = Math.Min(Chunks.Size, W - cx * Chunks.Size);
+                for (int ly = 0; ly < rows; ly++) Array.Copy(cell, ly * Chunks.Size, into, ly * W + cx * Chunks.Size, cols);
+            }
+        }
+
+        /// <summary>The land, the same value everywhere (a map with no land.json: the sea level all over): a few bytes a chunk.</summary>
+        public static LandChunks Uniform(int w, int h, int value)
+        {
+            var land = new LandChunks(w, h);
+            var cell = new int[Chunks.Area];
+            for (int i = 0; i < cell.Length; i++) cell[i] = value;
+            var bytes = LandCodec.Encode(cell, new byte[LandCodec.MostBytes]);
+            for (int c = 0; c < land.chunks.Length; c++) land.chunks[c] = bytes;
+            return land;
+        }
+
+        /// <summary>
+        /// A reader with a chunk buffer of its own, for reading from more than one thread at once (a reader each): At on the
+        /// LandChunks itself keeps one buffer, so one reader at a time.
+        /// </summary>
+        public Reader NewReader() => new Reader(this);
+
+        /// <summary>LandChunks.At with a buffer of its own.</summary>
+        public sealed class Reader
+        {
+            readonly LandChunks land;
+            readonly int[] buffer = new int[Chunks.Area];
+            int chunk = -1;
+
+            internal Reader(LandChunks land) => this.land = land;
+
+            /// <summary>The land at a cell.</summary>
+            public int At(int x, int y)
+            {
+                if (x < 0 || y < 0 || x >= land.W || y >= land.H) throw new ArgumentOutOfRangeException(nameof(x), $"({x}, {y}) is off the land");
+                int c = (y >> Chunks.Shift) * land.chunksW + (x >> Chunks.Shift);
+                if (c != chunk)
+                {
+                    LandCodec.Decode(land.chunks[c], buffer);
+                    chunk = c;
+                }
+                return buffer[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
+            }
+        }
+
+        /// <summary>One row of W cells.</summary>
+        public void Row(int y, int[] into)
+        {
+            for (int x = 0; x < W; x++) into[x] = At(x, y);
+        }
     }
 }

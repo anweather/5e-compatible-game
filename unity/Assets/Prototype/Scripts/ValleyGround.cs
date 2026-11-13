@@ -104,7 +104,7 @@ public sealed class ValleyGround
     public GroundBuilder Builder => builder;
 
     /// <summary>The map's land, in land units by cell (land.json): a chunk not made yet stands on it. Set before Bind.</summary>
-    public int[] Land { get; set; }
+    public LandChunks Land { get; set; }
 
     /// <summary>A chunk was made for this world (its data, trees and paint read): what keeps a chunk's state takes it up.</summary>
     public event System.Action<(int i, int j), TerrainData> ChunkReady;
@@ -117,6 +117,30 @@ public sealed class ValleyGround
 
     /// <summary>How many chunks have data now.</summary>
     public int WithData => chunks.Values.Count(c => c.data != null);
+
+    /// <summary>
+    /// What the ground holds now, for the flyover probe's memory line: chunks with data (and of those, without a terrain
+    /// and why they're kept), the cells' blocks, the spare data and the heightfield's chunks worked out.
+    /// </summary>
+    public string Holdings()
+    {
+        int data = 0, loose = 0, touched = 0, queued = 0, detail = 0, colliders = 0;
+        foreach (var ch in chunks.Values)
+        {
+            if (ch.data == null) continue;
+            data++;
+            if (attached.Contains(ch.at)) continue;
+            loose++;
+            if (ch.touched) touched++;
+            if (ch.syncQueued || ch.paintQueued) queued++;
+            if (pendingDetail.ContainsKey(ch.at)) detail++;
+            if (treeColliders.Contains(ch.at)) colliders++;
+        }
+        int spared = spare.Values.Sum(s => s.Count);
+        return $"data={data} attached={attached.Count} loose={loose} (touched={touched} queued={queued} detail={detail} colliders={colliders}) " +
+               $"spare={spared} arrays={builder?.Held ?? 0} heightfield={HeightfieldChunks} cellBase={cellBase?.Made() ?? 0} " +
+               $"bakedPaint={bakedPaint?.Made() ?? 0} paintedMix={paintedMix?.Made() ?? 0} repaint={repaint.Count} bakedOffsets={bakedOffsets.Count} raised={raised.Count}";
+    }
 
     /// <summary>
     /// Runs <paramref name="then"/> once the chunk is made, and says false; true when it is already (the caller goes on).
@@ -188,6 +212,25 @@ public sealed class ValleyGround
         paintedMix.Drop(at.i, at.j);
     }
 
+    /// <summary>
+    /// A generated map's chunks with no data (no terrain stands for them) that <paramref name="far"/> says are far from
+    /// everyone: their height offsets and arrays let go, as a released chunk's are. The cells drawn round a character read
+    /// the offsets of chunks with no terrain (ShownGround, for what stands on them) and their terrains' arrays are made
+    /// ahead, and neither went again: a crossing of the island kept hundreds. Worked out again if they're wanted again.
+    /// </summary>
+    public int ForgetFar(System.Func<(int i, int j), bool> far)
+    {
+        if (!lazy || heightfield == null) return 0;
+        int forgot = 0;
+        foreach (var ch in chunks.Values)
+        {
+            if (ch.data != null || ch.ready || attached.Contains(ch.at) || !far(ch.at)) continue;
+            if (heightfield.Forget(ch.at.i, ch.at.j)) forgot++;
+            builder.Forget(ch.at);
+        }
+        return forgot;
+    }
+
     void Spare(TerrainData data)
     {
         var key = (data.heightmapResolution, data.alphamapResolution);
@@ -209,13 +252,14 @@ public sealed class ValleyGround
     }
 
     // A cell's ground while its chunk isn't made: the map's land (which the drawn ground matches to a unit, CheckGround).
-    float LandMetres(int k) => Land != null && k < Land.Length ? Land[k] * landUnit : 0f;
+    float LandMetres(int k) => Land != null && k < Land.W * Land.H ? GroundFromLand.LandUnits(Land, k % Land.W, k / Land.W) * landUnit : 0f;
 
     // A chunk made for this world (#205): its data from the arrays (data it kept, untouched, as it is), its base heights
     // under the offsets the arrays were made with, its cells' base and paint, the ground moved since drawn over it, and
     // what waited for it.
     void MakeReady(Chunk ch)
     {
+        using var marked = MakeReadyMarker.Auto();
         if (ch.data == null) ch.data = builder.Build(ch.at, Spared(ch.at));
         else builder.FreshLayers(ch.data);
         if (ch.terrain != null) Use(ch, ch.data);
@@ -600,7 +644,7 @@ public sealed class ValleyGround
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
         float drawnBase = cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
-        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
+        return drawnBase + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.OffsetNow(i, j, sx, sz) : 0f);
     }
 
     /// <summary>The terrain's ground drawn now at a world point over the cells (0 off them).</summary>
@@ -751,7 +795,8 @@ public sealed class ValleyGround
         DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"), HeightQueueMarker = new("ValleyGround.HeightQueue"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
         SyncMarker = new("ValleyGround.SyncHeightmap"), TreeColliderMarker = new("ValleyGround.TreeCollider"), BlockMarker = new("ValleyGround.Paint.Block"),
-        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
+        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply"),
+        MakeReadyMarker = new("ValleyGround.MakeReady");
 
     // Each texel's noise, worked out the first time it paints and kept (CellPaint.Block): a shower's
     // ash repaints the same texels for minutes, and the noise was much of a texel's cost (#70).
@@ -856,7 +901,14 @@ public sealed class ValleyGround
     }
 
     /// <summary>A chunk's trees changed: its collider catches up, a chunk a frame.</summary>
-    public void TreesMoved((int i, int j) at) => treeColliders.Add(at);
+    public void TreesMoved((int i, int j) at)
+    {
+        treeColliders.Add(at);
+        TreesChanged?.Invoke(at);
+    }
+
+    /// <summary>A chunk's trees changed (TreesMoved): what draws them from the terrain reads them again (TreeImpostors).</summary>
+    public static event System.Action<(int i, int j)> TreesChanged;
 
     // A terrain's collider keeps the trees it was given: setting treeInstances draws the change and leaves the old trunks
     // standing unseen (#161). Only giving it its data again takes them, and a fire changes many chunks at once. Players

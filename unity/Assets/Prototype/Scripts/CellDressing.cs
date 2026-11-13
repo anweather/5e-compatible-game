@@ -71,7 +71,7 @@ public sealed partial class CellDressing
         var center = grid.CellCenter(x, y);
         var surface = new Vector3(center.x, ground, center.z);
         var root = new GameObject($"{c.T} {x},{y}");
-        root.transform.SetParent(grid.transform, false);
+        root.transform.SetParent(grid.CellRoot(x, y), false);
         root.transform.position = surface;
         if (parts) Dress(root.transform, c.T, look, surface, x, y);
         if (wall) DressWall(root.transform, surface, c.Height, x, y);
@@ -177,13 +177,14 @@ public sealed partial class CellDressing
     {
         if (dressing == null || !dressing.name.StartsWith(BrushPrefix, System.StringComparison.Ordinal)) return;
         float baseY = t.transform.position.y, cellY = dressing.transform.position.y;
-        foreach (Transform bush in dressing.transform)
+        // Each clump stands under a foot of its own, at the ground: the foot moves, the clump with it.
+        foreach (Transform foot in dressing.transform)
         {
-            var p = bush.position;
+            var p = foot.position;
             float drawn = baseY + t.SampleHeight(p);
             if (Mathf.Abs(drawn - cellY) >= MostBushDrop) continue;
-            p.y = drawn + bush.localScale.y * 0.5f;
-            bush.position = p;
+            p.y = drawn;
+            foot.position = p;
         }
     }
 
@@ -195,21 +196,55 @@ public sealed partial class CellDressing
             ? t.transform.position.y + t.SampleHeight(at)
             : grid.GroundAt(at);
 
-    // Each bush sits on the ground drawn under it, not the cell's middle: on a slope a bush half a cell off the middle
-    // floated or sank by up to a metre (#220), and the drawn ground can stand off the cell's own height.
+    // Brambles are tall grass: clumps of the terrain's own grass and ferns (its detail prototypes), not the round blobs they
+    // were (Andrew, 2026-11-11: from a little way off they read as lily pads). Each clump sits on the ground drawn under
+    // it, not the cell's middle: on a slope a clump half a cell off the middle floated or sank by up to a metre (#220),
+    // and the drawn ground can stand off the cell's own height. Its foot is an empty at the ground (SeatBushes moves it).
     void DressBrush(Transform root, Vector3 surface, System.Random rng, Color color, int x, int y)
     {
-        for (int i = 0; i < 5; i++)
+        var grasses = Grasses();
+        for (int i = 0; i < 6; i++)
         {
-            var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * (CellSize * 0.7f);
-            float r = 0.55f + 0.35f * (float)rng.NextDouble();
+            var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * (CellSize * 0.8f);
+            float wide = 1f + 0.5f * (float)rng.NextDouble(), tall = 0.9f + 0.5f * (float)rng.NextDouble();
             var at = surface + off;
             float drawn = DrawnGround(at);
             if (Mathf.Abs(drawn - surface.y) < MostBushDrop) at.y = drawn;
-            var bush = Part(root, PrimitiveType.Sphere, at + Vector3.up * (r * 0.35f), new Vector3(r, r * 0.7f, r), "Leaves", color);
-            Paint(bush.GetComponent<Renderer>(), "Leaves", color, 0.1f, x + i * 17, y);
+            var foot = new GameObject("Clump").transform;
+            foot.SetParent(root, false);
+            foot.position = at;
+            if (grasses.Length > 0)
+            {
+                var clump = Rock(foot, grasses[rng.Next(grasses.Length)], at, wide, tall, rng);
+                foreach (var col in clump.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+                continue;
+            }
+            // No terrain pack: a few blades of the look's colour.
+            for (int b = 0; b < 3; b++)
+            {
+                var blade = Part(foot, PrimitiveType.Cube, at + new Vector3(Jitter(rng, 0.15f), tall * 0.5f, Jitter(rng, 0.15f)), new Vector3(0.05f, tall, 0.12f), "Leaves", color);
+                blade.transform.rotation = Quaternion.Euler(Jitter(rng, 20f), rng.Next(360), Jitter(rng, 20f));
+                Paint(blade.GetComponent<Renderer>(), "Leaves", color, 0.1f, x + i * 17 + b, y);
+            }
         }
     }
+
+    // The terrain's grass and ferns (its detail prototypes' models: the pack's Grass_A..C and Fern_A), or none without the pack.
+    static GameObject[] Grasses()
+    {
+        var template = MapTerrains.Instance != null ? MapTerrains.Instance.template : null;
+        if (template == grassesOf && grasses != null) return grasses;
+        grassesOf = template;
+        var found = new System.Collections.Generic.List<GameObject>();
+        if (template != null)
+            foreach (var d in template.detailPrototypes)
+                if (d.prototype != null && d.usePrototypeMesh && (d.prototype.name.StartsWith("Grass", System.StringComparison.Ordinal) || d.prototype.name.StartsWith("Fern", System.StringComparison.Ordinal)))
+                    found.Add(d.prototype);
+        return grasses = found.ToArray();
+    }
+
+    static GameObject[] grasses;
+    static TerrainData grassesOf;
 
     // Broken stone: a few of the terrain pack's small stones when the grid has them (ChemGrid.wallStones), else rough cubes.
     void DressRubble(Transform root, Vector3 surface, System.Random rng, Color color)

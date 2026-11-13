@@ -109,6 +109,224 @@ namespace Chem.Tests
                     if (w.HasChunk(i, j)) yield return (i, j);
         }
 
+        // late-join-snapshot (docs/design/player-saves.md, step 6): what a snapshot costs on the valley and the nine, taken
+        // after 60 ticks of play (casts at the spawn's middle, the reach active), and joined over the same map and land.
+        [TestCase("valley")]
+        [TestCase("nine")]
+        public void ASnapshotsBytesAndTime(string map)
+        {
+            string dir = map == "nine" ? Baked() : Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var w = Build(dir, R, out var source);
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), w.W, w.H);
+            int mx = w.W / 2, my = w.H / 2;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { (mx, my) }));
+            w.Cast("fireball", mx, my, 1);
+            w.Cast("create-water", mx + 20, my, 1);
+            for (int t = 0; t < 60; t++) w.Step();
+            var rules = RuleSet.Plain(R);
+            JoinSnapshot.Take(w, source, rules); // warm
+            var take = Stopwatch.StartNew();
+            string text = JoinSnapshot.Take(w, source, rules).Text();
+            double takeMs = take.Elapsed.TotalMilliseconds;
+            JoinSnapshot.Parse(text).Join(R, source, land); // warm
+            var join = Stopwatch.StartNew();
+            var (joined, _) = JoinSnapshot.Parse(text).Join(R, source, land);
+            double joinMs = join.Elapsed.TotalMilliseconds;
+            byte[] utf8 = System.Text.Encoding.UTF8.GetBytes(text);
+            long gz;
+            using (var mem = new MemoryStream())
+            {
+                using (var zip = new System.IO.Compression.GZipStream(mem, System.IO.Compression.CompressionLevel.Optimal, true)) zip.Write(utf8, 0, utf8.Length);
+                gz = mem.Length;
+            }
+            TestContext.Out.WriteLine($"SNAPSHOT {map} ({w.ChunkCoords.Count} chunks, {w.ActiveChunks.Count} active) at tick {w.Tick}: {utf8.Length / 1024.0:0.0} KB, "
+                + $"{gz / 1024.0:0.0} KB gzipped; taken in {takeMs:0.0} ms, joined (parsed, loaded, checked) in {joinMs:0.0} ms");
+            Assert.That(joined.CellHash(), Is.EqualTo(w.CellHash()));
+        }
+
+        // island-startup: two parts of the Scale Island's start the PC's player timed (STARTUP lines): the map check (4.0 s)
+        // and setting its land (3.7 s), here under .NET on the baked island.
+        [Test]
+        public void TheIslandsStartUp()
+        {
+            // The bake's folder by the map's own name, as a player build has it (MapCheck checks the two agree).
+            string bake = IslandBaked(), dir = Path.Combine(Path.GetDirectoryName(bake), "scale-12x10");
+#if UNITY_5_3_OR_NEWER
+            if (!Directory.Exists(dir)) Assert.Ignore("Unity's .NET has no Directory.CreateSymbolicLink; dotnet test core runs this");
+#else
+            if (!Directory.Exists(dir)) Directory.CreateSymbolicLink(dir, bake);
+#endif
+            var check = Stopwatch.StartNew();
+            var errors = MapCheck.Errors(dir);
+            double checkMs = check.Elapsed.TotalMilliseconds;
+            var w = Build(dir, R, out _);
+            var map = MapFile.Load(dir);
+            var read = Stopwatch.StartNew();
+            var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
+            double readMs = read.Elapsed.TotalMilliseconds;
+            var set = Stopwatch.StartNew();
+            w.SetLand(land);
+            double setMs = set.Elapsed.TotalMilliseconds;
+            var built = Build(dir, R, out _);
+            var byChunk = Stopwatch.StartNew();
+            built.SetLandByChunk(land);
+            double byChunkMs = byChunk.Elapsed.TotalMilliseconds;
+            string record = Path.Combine(Path.GetTempPath(), "island-startup-mapcheck-" + Guid.NewGuid().ToString("N"));
+            var first = Stopwatch.StartNew();
+            MapCheck.Errors(dir, record);
+            double firstMs = first.Elapsed.TotalMilliseconds;
+            var again = Stopwatch.StartNew();
+            var none = MapCheck.Errors(dir, record);
+            double againMs = again.Elapsed.TotalMilliseconds;
+            File.Delete(record);
+            TestContext.Out.WriteLine($"ISLAND {w.W} x {w.H}: MapCheck.Errors {checkMs:0} ms ({errors.Count} errors); with a record, first {firstMs:0} ms, again {againMs:0} ms ({none.Count}); "
+                + $"land.json read {readMs:0} ms; SetLand {setMs:0} ms; SetLandByChunk {byChunkMs:0} ms ({built.LandUnmadeChunks} of {built.ChunkCoords.Count} chunks left for later)");
+            Assert.That(errors, Is.Empty);
+        }
+
+        // core-mem-scale: what the core holds, part by part, that grows with the map, on the nine and the Scale Island, as the
+        // game starts one: the source, the World (its chunks packed), the land rows, the land set a chunk at a time, the sea
+        // mask, the start kept for the dragon; then in play round the spawn.
+        [TestCase("nine")]
+        [TestCase("island")]
+        public void WhatTheCoreHoldsByMapSize(string which)
+        {
+            string dir = which == "nine" ? Baked() : IslandBaked();
+            Assert.That(R.Fingerprint, Is.Not.Empty);
+            var map = MapFile.Load(dir);
+            long at = Heap();
+            long Step()
+            {
+                long now = Heap();
+                long d = now - at;
+                at = now;
+                return d;
+            }
+            var source = BakedSource.Read(dir, R);
+            long sourceBytes = Step();
+            var w = new World(R, source.W, source.H, 7);
+            w.SetLandRange(map.LandRange);
+            w.MakeFrom(source);
+            long worldBytes = Step();
+            WorldPuzzles.Load(dir).LayInto(w);
+            MapStamps.Load(dir).LayInto(w);
+            WorldBuildings.Load(dir).LayInto(w);
+            if (GolfCommand.Load(dir) is { } hole) w.ApplyGolf(hole);
+            if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
+            long laidBytes = Step();
+            w.KeepStart();
+            long startBytes = Step();
+            string landJson = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
+            long jsonBytes = Step();
+            var readWhole = Stopwatch.StartNew();
+            var land = LandFile.Read(landJson, map.W, map.H);
+            double wholeMs = readWhole.Elapsed.TotalMilliseconds;
+            long rowsBytes = Step();
+            var readChunks = Stopwatch.StartNew();
+            var landChunks = LandChunks.Read(landJson, map.W, map.H);
+            double chunksMs = readChunks.Elapsed.TotalMilliseconds;
+            long chunksBytes = Step();
+            w.SetLandByChunk(land);
+            long setBytes = Step();
+            var sea = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
+            long seaBytes = Step();
+            var spawn = map.Spawn;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
+            var drawn = Drawn(w, spawn.x, spawn.y, 4).ToList();
+            w.SetDrawn(drawn);
+            for (int t = 0; t < 120; t++)
+            {
+                w.Step();
+                foreach (var (cx, cy) in drawn) _ = w.ChunkCells(cx, cy).Length;
+            }
+            long playBytes = Step();
+            TestContext.Out.WriteLine($"HOLDS {which} land: land.json text {Mb(jsonBytes):0.0} MB; as an int a cell {Mb(rowsBytes):0.0} MB, read in {wholeMs:0} ms; "
+                + $"a chunk at a time {Mb(chunksBytes):0.0} MB (held {Mb(landChunks.Bytes):0.0} MB), read in {chunksMs:0} ms");
+            TestContext.Out.WriteLine($"HOLDS {which} {map.W} x {map.H} ({w.ChunkCoords.Count} chunks, {(long)map.W * map.H / 1e6:0.0} M cells): "
+                + $"source {Mb(sourceBytes):0.0} MB, World made {Mb(worldBytes):0.0} MB, lays {Mb(laidBytes):0.0} MB, start {Mb(startBytes):0.0} MB, "
+                + $"land rows {Mb(rowsBytes):0.0} MB, land set by chunk {Mb(setBytes):0.0} MB, sea mask {Mb(seaBytes):0.0} MB (held {Mb(sea.Bytes):0.00} MB), 120 ticks of play {Mb(playBytes):0.0} MB "
+                + $"({w.UnpackedCount} unpacked); the World's map-sized arrays {Mb(w.MapArrayBytes):0.0} MB");
+            GC.KeepAlive(source);
+            GC.KeepAlive(w);
+            GC.KeepAlive(land);
+            GC.KeepAlive(landChunks);
+            GC.KeepAlive(sea);
+        }
+
+        // planner-reach: ChunkPlanner.Plan visiting every chunk against only those it can touch, on the nine and the Scale
+        // Island, a character flying east from the spawn at ~10 cells a tick: the same plan every tick, its time and garbage.
+        [TestCase("nine")]
+        [TestCase("island")]
+        public void APlansCostByMapSize(string which)
+        {
+            string dir = which == "nine" ? Baked() : IslandBaked();
+            var w = Build(dir, R, out _);
+            var spawn = MapFile.Load(dir).Spawn;
+            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
+            var every = new ChunkPlanner();
+            var near = new ChunkPlanner();
+            double everyMs = 0, nearMs = 0;
+            long everyBytes = 0, nearBytes = 0;
+            const int ticks = 300;
+            for (int t = 0; t < ticks; t++)
+            {
+                var me = new List<(int x, int y)> { (Math.Min(w.W - 1, spawn.x + t * 10), spawn.y) };
+                long b0 = GC.GetAllocatedBytesForCurrentThread();
+                var watch = Stopwatch.StartNew();
+                var a = every.Plan(w, w.IsActive, me, null);
+                everyMs += watch.Elapsed.TotalMilliseconds;
+                long b1 = GC.GetAllocatedBytesForCurrentThread();
+                watch.Restart();
+                var b = near.Plan(w, me);
+                nearMs += watch.Elapsed.TotalMilliseconds;
+                long b2 = GC.GetAllocatedBytesForCurrentThread();
+                everyBytes += b1 - b0;
+                nearBytes += b2 - b1;
+                Assert.That(string.Join(" ", b.Select(x => $"{x.CX},{x.CY},{x.Active}")), Is.EqualTo(string.Join(" ", a.Select(x => $"{x.CX},{x.CY},{x.Active}"))), $"tick {t}");
+                ChunkStreaming.Apply(w, b);
+                w.Step();
+            }
+            TestContext.Out.WriteLine($"PLAN {which} ({w.ChunkCoords.Count} chunks), {ticks} ticks: every chunk {everyMs / ticks:0.00} ms and {everyBytes / ticks / 1024.0:0.0} KB a plan; "
+                + $"what it can touch {nearMs / ticks:0.000} ms and {nearBytes / ticks / 1024.0:0.0} KB; the same plan every tick");
+        }
+
+        // sea-land-speed: on the Scale Island, land.json read a chunk at a time, its sea mask made from that, and the coarse
+        // sea asking near-water round 70,000 cells spread over every chunk (Ocean's vertices), each timed.
+        [Test]
+        public void TheIslandsSeaAndLandTimes()
+        {
+            string dir = IslandBaked();
+            var map = MapFile.Load(dir);
+            string json = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
+            LandChunks.Read(json, map.W, map.H); // warm
+            var read = Stopwatch.StartNew();
+            var land = LandChunks.Read(json, map.W, map.H);
+            double readMs = read.Elapsed.TotalMilliseconds;
+            var mask = Stopwatch.StartNew();
+            var sea = SeaMask.Of(land, map.SeaLevel);
+            double maskMs = mask.Elapsed.TotalMilliseconds;
+            var together = Stopwatch.StartNew();
+            var land2 = LandChunks.Read(json, map.W, map.H, map.SeaLevel, out var sea2);
+            double togetherMs = together.Elapsed.TotalMilliseconds;
+            Assert.That((sea2.SeaCells, sea2.BasinCells), Is.EqualTo((sea.SeaCells, sea.BasinCells)));
+            Assert.That(land2.At(1000, 2000), Is.EqualTo(land.At(1000, 2000)));
+            var near = Stopwatch.StartNew();
+            var byChunk = sea.NearByChunk(12, true);
+            int wet = 0, asked = 0;
+            for (int y = 3; y < map.H; y += 22)
+                for (int x = 5; x < map.W; x += 25)
+                {
+                    asked++;
+                    if (byChunk[x, y]) wet++;
+                }
+            double nearMs = near.Elapsed.TotalMilliseconds;
+            // The answers are Near's: a sample checked against the window worked out cell by cell.
+            for (int y = 3; y < map.H; y += 22 * 37)
+                for (int x = 5; x < map.W; x += 25 * 29)
+                    Assert.That(byChunk[x, y], Is.EqualTo(sea.NearIn(x, y, 1, 1, 12, true)[0]), $"({x}, {y})");
+            TestContext.Out.WriteLine($"SEALAND island: LandChunks.Read {readMs:0} ms, SeaMask.Of {maskMs:0} ms, the two in one pass {togetherMs:0} ms, near-water at {asked} cells {nearMs:0} ms ({byChunk.Chunks} chunks worked out, {wet} near)");
+        }
+
         [Test]
         public void TheNinesWorldMemory()
         {

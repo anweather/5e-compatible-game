@@ -1223,3 +1223,10 @@ Each entry has:
 - **Answer:** Andrew: hold the core half on its branch and land it together with the view half.
 - **Why:** dev and the playtest build stay playable.
 - **Times asked:** 1
+
+## The horizon's looks: far stand-ins, tree haze, the sea band (#220)
+- **Asked:** 2026-11-11, by the lead, after the PC's horizon stills from the summit by the falls (`look-edge` report): the white cube at the nine's edge is the far castle stand-in (a deliberate pale block, less hazed than the land), far tree impostors look airborne because they are less hazed than the land under them, and the sea is a flat pale-blue band with a straight horizon.
+- **Likely again:** any new far landmark kind, any change to the haze or the sea plane's colour (FarRing, `world/horizon.json`, `FarMeshes.Landmark`).
+- **Answer:** Andrew, three calls: (1) haze the far stand-ins like the land (a higher `HazeAtSeen` / `seenFrom` at the haze edge); real silhouettes can come later with art; (2) tree impostors take the land's haze; (3) tint the sea band to the haze colour toward the horizon.
+- **Why:** the stand-ins, trees and sea should read as sitting on the land, not floating over a pale band; the cheap fixes first.
+- **Times asked:** 1

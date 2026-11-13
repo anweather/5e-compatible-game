@@ -201,14 +201,21 @@ namespace Chem
         public const int Cells = 64;
 
         /// <summary>Every cell of the sample whose drawn ground is further than <paramref name="most"/> metres from its land.</summary>
-        public static List<string> Disagreements(Func<int, int, float> drawn, int[] land, int w, int h, double unit, double most)
+        public static List<string> Disagreements(Func<int, int, float> drawn, int[] land, int w, int h, double unit, double most) =>
+            Disagreements(drawn, (x, y) => land[y * w + x], w, h, unit, most);
+
+        /// <summary>The same, of land held a chunk at a time (LandChunks).</summary>
+        public static List<string> Disagreements(Func<int, int, float> drawn, LandChunks land, double unit, double most) =>
+            Disagreements(drawn, land.At, land.W, land.H, unit, most);
+
+        static List<string> Disagreements(Func<int, int, float> drawn, Func<int, int, int> land, int w, int h, double unit, double most)
         {
             var said = new List<string>();
             for (int k = 0; k < Cells; k++)
             {
                 uint at = WorldHash.Hash4(k, 1, 2, 3) % (uint)(w * h);
                 int x = (int)at % w, y = (int)at / w;
-                double metres = land[at] * unit, ground = drawn(x, y);
+                double metres = land(x, y) * unit, ground = drawn(x, y);
                 if (Math.Abs(metres - ground) > most) said.Add($"({x}, {y}): land {metres:0.00} m, drawn {ground:0.00} m");
             }
             return said;

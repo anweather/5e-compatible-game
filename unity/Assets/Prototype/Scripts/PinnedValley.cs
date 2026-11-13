@@ -40,7 +40,7 @@ public static class PinnedValley
         try
         {
             if (!GeneratedMap.IsGenerated(source)) return p;
-            var map = GeneratedMap.Load(source);
+            var map = LoadedMaps.Get(source);
             var valley = MapFile.Load(map.PinnedDir);
             var here = MapFile.Load(world);
             int x = map.Gen.PinnedX, y = map.Gen.PinnedY;

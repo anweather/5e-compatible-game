@@ -88,7 +88,7 @@ public class AmbientLife : MonoBehaviour
             for (int x = Step / 2; x < map.Map.W; x += Step)
             {
                 var (wx, wz) = layout.CellCenter(x, y);
-                float ground = map.Land[y * map.Map.W + x] * unit, depth = sea - ground;
+                float ground = map.LandAt(x, y) * unit, depth = sea - ground;
                 bool water = map.Sea.IsSea(x, y) || map.Sea.IsBasin(x, y);
                 bool shore = !water && (map.Sea.IsSea(x + Step, y) || map.Sea.IsSea(x - Step, y) || map.Sea.IsSea(x, y + Step) || map.Sea.IsSea(x, y - Step));
                 if (shore && gulls.Count < 12 && pick.NextDouble() < 0.2) gulls.Add(new Vector3(wx, sea, wz));
@@ -141,7 +141,9 @@ public class AmbientLife : MonoBehaviour
 
     void Update()
     {
-        if (Time.unscaledTime >= nextLookup)
+        // Looked up by name (a walk of every object in the scene: ~10 ms once a map's chunks are drawn) only while it's not
+        // found; a wizard that goes is looked for again.
+        if (wizard == null && Time.unscaledTime >= nextLookup)
         {
             var go = GameObject.Find(WizardRig.Name);
             wizard = go != null ? go.transform : null;

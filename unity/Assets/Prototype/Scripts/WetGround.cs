@@ -47,7 +47,10 @@ public sealed class WetGround
                 var wet = Object.Instantiate(own[i]);
                 wet.name = own[i].name;
                 float gloss = own[i].name.Contains("Grass") ? GrassGloss : Gloss;
-                copy = (wet, own[i].diffuseRemapMax, own[i].smoothness, own[i].maskMapRemapMin, own[i].maskMapRemapMax, gloss);
+                var (dryMin, dryMax) = Dry(own[i].maskMapRemapMin, own[i].maskMapRemapMax);
+                wet.maskMapRemapMin = dryMin;
+                wet.maskMapRemapMax = dryMax;
+                copy = (wet, own[i].diffuseRemapMax, own[i].smoothness, dryMin, dryMax, gloss);
                 layers[own[i]] = copy;
             }
             own[i] = copy.wet;
@@ -55,6 +58,18 @@ public sealed class WetGround
         }
         if (changed) data.terrainLayers = own;
     }
+
+    /// <summary>
+    /// Dry ground's mask remap: no metal and little shine. The chunk material draws without _MASKMAP, so TerrainLit
+    /// reads every mask as 0.5 put through the remap, and the packs' 0..1 remaps made all ground half metal and half
+    /// smooth: at a low angle it mirrored the sky, blue-grey like a sheet of water over the land with trees and bushes
+    /// standing in it (the Scale Island's playtest, 2026-11-11; in the Editor the scene's darker reflection hid it).
+    /// </summary>
+    public static (Vector4 min, Vector4 max) Dry(Vector4 min, Vector4 max) =>
+        (new Vector4(0f, min.y, min.z, Mathf.Min(min.w, DryShine)), new Vector4(0f, max.y, max.z, Mathf.Min(max.w, DryShine)));
+
+    // The most a dry layer's smoothness remap reaches (rain raises it toward Gloss).
+    const float DryShine = 0.2f;
 
     /// <summary>The rules switched: each layer's tint on top of its own, by the layer's name, drawn at the next Advance.</summary>
     public void Tint(System.Func<string, Color> tintOf)
