@@ -54,3 +54,12 @@ are fed back to each renderer.
 
 **Done when:** in a Punchy play session, a fire cast burns a patch of grass that spreads and leaves scorched ground,
 and a freeze cast turns pond water to ice. Removing the bridge assembly restores Punchy exactly as it was.
+
+## Controller-first casting (Andrew, 2026-11-12)
+
+D16's hands with a charge (`docs/adr/0016-*`, `docs/design/unified-casting.md`) on a pad, in Punchy's play mode:
+LT / LB the left hand's thrust / throw, RT / RB the right hand's, trigger + bumper on one hand the sweep, hold to
+charge, release to fire; both hands charging one gesture merge into their pair's spell. Hold D-pad up for an element
+radial (right stick picks, for the hand whose trigger is held, or the left by default). Punchy rebinds three things:
+inventory LB → D-pad down, doors RB → Interact (Y), the weather toggle RT → a long press of Select. Menus keep the
+bumpers for tabs. Keyboard keeps H / J / L for now.
