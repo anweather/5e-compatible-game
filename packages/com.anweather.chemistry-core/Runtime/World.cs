@@ -31,6 +31,7 @@ namespace Chem
             W = w;
             H = h;
             WrapX = wrapX;
+            edgeless = wrapX;
             wrapChunks = wrapX ? w >> Chunks.Shift : 0;
             RngState = seed;
             Seed = seed;
@@ -45,6 +46,9 @@ namespace Chem
         public bool WrapX { get; }
         // Chunks across a world that wraps, 0 for one that doesn't.
         readonly int wrapChunks;
+        // A world with no east and west edges: one that wraps, or an open one (no edges at all). InBounds tests it first,
+        // so a bounded world's test is the one it always was.
+        readonly bool edgeless;
         public int Tick { get; private set; }
 
         /// <summary>The event log, oldest first, capped at LogCap entries. The last entry's Count/Tick may grow.</summary>
@@ -150,10 +154,18 @@ namespace Chem
 
         // ---------- cells ----------
 
-        /// <summary>Whether (x, y) is on the world: any x on one that wraps (it folds), north and south walls either way.</summary>
-        public bool InBounds(int x, int y) => WrapX ? y >= 0 && y < H : x >= 0 && y >= 0 && x < W && y < H;
-        /// <summary>The world index of (x, y), its x folded across the seam first.</summary>
-        public int Idx(int x, int y) => y * W + FoldX(x);
+        /// <summary>
+        /// Whether (x, y) is on the world: any x on one that wraps (it folds), north and south walls either way.
+        /// On an open world (World.OpenWorld), whether it's in a filled chunk.
+        /// </summary>
+        public bool InBounds(int x, int y) => edgeless ? OnEdgeless(x, y) : x >= 0 && y >= 0 && x < W && y < H;
+
+        bool OnEdgeless(int x, int y) => IsOpen ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) != null : y >= 0 && y < H;
+        /// <summary>The world index of (x, y), its x folded across the seam first. An open world has none (it has no width): CellKey names a cell there.</summary>
+        public int Idx(int x, int y) => IsOpen ? NoIndexAt() : y * W + FoldX(x);
+
+        /// <summary>A cell's own number on any world, open or bounded, for a set of cells: its x folded across the seam first.</summary>
+        public long CellKey(int x, int y) => Chunks.Key(FoldX(x), y);
 
         // ---------- the seam ----------
         // Every reach across the seam goes through these: a cell or chunk x outside [0, W) folds into it on a world that

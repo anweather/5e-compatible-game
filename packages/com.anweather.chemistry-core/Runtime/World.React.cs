@@ -307,7 +307,7 @@ namespace Chem
         bool Conduct(int x, int y, int charge)
         {
             if (!IsConductive(At(x, y))) return false;
-            var seen = new HashSet<int> { Idx(x, y) };
+            var seen = new HashSet<long> { CellKey(x, y) };
             var queue = new Queue<(int x, int y)>();
             queue.Enqueue((x, y));
             int count = 0;
@@ -320,7 +320,7 @@ namespace Chem
                 count++;
                 foreach (var (nx, ny, _) in ActiveNeighbours(cx, cy))
                 {
-                    if (!seen.Add(Idx(nx, ny))) continue;
+                    if (!seen.Add(CellKey(nx, ny))) continue;
                     if (IsConductive(At(nx, ny))) queue.Enqueue((nx, ny));
                 }
             }

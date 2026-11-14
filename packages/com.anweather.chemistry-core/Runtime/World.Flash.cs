@@ -39,13 +39,13 @@ namespace Chem
         {
             var first = FlashOf(At(x, y));
             if (first == null) return;
-            var seen = new HashSet<int> { Idx(x, y) };
+            var seen = new HashSet<long> { CellKey(x, y) };
             var cloud = new List<(int x, int y, FlashDef flash)> { (x, y, first) };
             for (int k = 0; k < cloud.Count; k++)
                 foreach (var (nx, ny, _) in ActiveNeighbours(cloud[k].x, cloud[k].y))
                 {
                     var next = FlashOf(At(nx, ny));
-                    if (next != null && seen.Add(Idx(nx, ny))) cloud.Add((nx, ny, next));
+                    if (next != null && seen.Add(CellKey(nx, ny))) cloud.Add((nx, ny, next));
                 }
             foreach (var (cx, cy, _) in cloud)
             {

@@ -74,8 +74,10 @@ namespace Chem
         public IReadOnlyList<ActiveMod> Mods { get; set; }
         /// <summary>What physics props did to cells, applied after the casts, in order.</summary>
         public List<EffectCommand> Effects { get; }
-        /// <summary>Chunks waking or going to sleep (ChunkStreaming), applied first.</summary>
+        /// <summary>Chunks waking or going to sleep (ChunkStreaming), applied first (after the fills).</summary>
         public List<ChunkSwitch> Chunks { get; }
+        /// <summary>An open world's chunks filled from the host game's ground (World.FillChunk, D20), applied before everything, in order.</summary>
+        public List<ChunkFill> Fills { get; } = new List<ChunkFill>();
         /// <summary>Defense commands (the start pedestal: World.Defense.cs), applied after the effects, in order.</summary>
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
         /// <summary>Players' combo input (World.Combos.cs), applied after the defense, in order.</summary>
@@ -123,6 +125,7 @@ namespace Chem
             if (rules == null) throw new ArgumentNullException(nameof(rules));
             world.FinishTick(); // a batch's commands land between whole ticks
             errors = Array.Empty<string>();
+            foreach (var f in Fills) world.FillChunk(f.Key, f.Ground);
             ChunkStreaming.Apply(world, Chunks);
             // In a room only its commands change the rules (World.Room.cs); a reset's re-stamped list changes nothing.
             if (Mods != null && world.Room == null)

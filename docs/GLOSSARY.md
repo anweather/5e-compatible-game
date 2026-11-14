@@ -73,6 +73,21 @@ touch them.
 : Making an open world's chunk from the host game's ground, as a `FillChunk` command on a tick, so every peer makes
   it the same. A chunk not filled is a wall to its neighbours.
 
+**Chunk key**
+: An open world's address for a chunk, `ChunkKey(Layer, X, Y)`: plain ints, negative allowed, cells to chunks by floor
+  division. Keys sort by layer, then row, then column, the order every walk over an open world's chunks takes. Inside
+  the `World`, a layer's cells are a run of rows (`ChunkKey.Row(layer, y)`), so a cast or a read on layer 1 names its
+  row, not its y.
+
+**Ground** (an open world's chunk)
+: What the host game says a chunk is before play, cell by cell: a terrain, water and a height step (`ChunkGround`),
+  sampled on the host only and sent in its **fill**. A chunk's changes are against its ground. *Not* the **ground
+  pack** (a map's drawn detail).
+
+**Open plan**
+: The host's plan for an open world each tick (`OpenWorldPlanner`): from where the characters are (`IOpenGround`, by
+  layer), the chunks to **fill** (a character's **reach** and one ring more, nearest first) and the switches.
+
 **Active chunk / inactive chunk**
 : An active chunk is simulated every tick. An inactive chunk is held
   exactly as it is: nothing in it changes, and its active neighbours' fire,

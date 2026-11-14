@@ -154,8 +154,8 @@ namespace Chem
             int units = c.Water, max = Rules.Sim.WaterMaxLevel;
             c.Water = 0;
             c.Frozen = false;
-            var seen = new HashSet<int> { Idx(x, y) };
-            var ring = new List<int> { Idx(x, y) };
+            var seen = new HashSet<long> { CellKey(x, y) };
+            var ring = new List<(int x, int y)> { (x, y) };
             while (units > 0 && ring.Count > 0)
             {
                 var next = NextRing(ring, seen);
@@ -165,30 +165,29 @@ namespace Chem
         }
 
         // The open cells around a ring not yet seen, in N, E, S, W order round each cell.
-        List<int> NextRing(List<int> ring, HashSet<int> seen)
+        List<(int x, int y)> NextRing(List<(int x, int y)> ring, HashSet<long> seen)
         {
-            var next = new List<int>();
-            foreach (int i in ring)
-                foreach (var (nx, ny, _) in ActiveNeighbours(i % W, i / W))
+            var next = new List<(int x, int y)>();
+            foreach (var (x, y) in ring)
+                foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
                 {
-                    int k = Idx(nx, ny);
-                    var nc = CellAt(k);
-                    if (seen.Add(k) && !IsBlocking(nc) && !(nc.Frozen && nc.Water > 0)) next.Add(k);
+                    var nc = At(nx, ny);
+                    if (seen.Add(CellKey(nx, ny)) && !IsBlocking(nc) && !(nc.Frozen && nc.Water > 0)) next.Add((nx, ny));
                 }
             return next;
         }
 
         // Pours units onto a ring one at a time round and round until they're gone or it's full; returns what's left.
-        int PourRound(Cell from, List<int> next, int units, int max)
+        int PourRound(Cell from, List<(int x, int y)> next, int units, int max)
         {
             int kind = from.Liquid;
             for (bool moved = true; units > 0 && moved;)
             {
                 moved = false;
-                foreach (int k in next)
+                foreach (var (x, y) in next)
                 {
                     if (units == 0) break;
-                    var n = CellAt(k);
+                    var n = At(x, y);
                     if (n.Water >= max || (n.Water > 0 && n.Liquid != kind)) continue;
                     Pushed(from, n, kind);
                     n.Water++;

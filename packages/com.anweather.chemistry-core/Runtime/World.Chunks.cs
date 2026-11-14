@@ -263,17 +263,17 @@ namespace Chem
 
         static readonly Comparison<Chunk> ByRowThenColumn = (a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.X.CompareTo(b.X);
 
-        /// <summary>Row segments for one row of chunks (active[first..last], left to right), clipped to the extent.</summary>
+        /// <summary>Row segments for one row of chunks (active[first..last], left to right), clipped to the extent (an open world's chunks are whole).</summary>
         void AddRowSpans(List<Chunk> active, int first, int last, List<RowSpan> list)
         {
             int y0 = active[first].Y * Chunks.Size;
-            int lyFrom = Math.Max(0, -y0), lyTo = Math.Min(Chunks.Size, H - y0);
+            int lyFrom = IsOpen ? 0 : Math.Max(0, -y0), lyTo = IsOpen ? Chunks.Size : Math.Min(Chunks.Size, H - y0);
             for (int ly = lyFrom; ly < lyTo; ly++)
             {
                 for (int k = first; k <= last; k++)
                 {
                     int x0 = active[k].X * Chunks.Size;
-                    int lxFrom = Math.Max(0, -x0), lxTo = Math.Min(Chunks.Size, W - x0);
+                    int lxFrom = IsOpen ? 0 : Math.Max(0, -x0), lxTo = IsOpen ? Chunks.Size : Math.Min(Chunks.Size, W - x0);
                     if (lxFrom < lxTo) list.Add(new RowSpan(active[k], (ly << Chunks.Shift) + lxFrom, (ly << Chunks.Shift) + lxTo));
                 }
             }
@@ -284,7 +284,11 @@ namespace Chem
         // cells can change under these (the sparse World, docs/design/sparse-world.md).
 
         /// <summary>The cell at a world index (Idx(x, y)), through its chunk; null off the world.</summary>
-        public Cell CellAt(int index) => index >= 0 && index < W * H ? Locate(index % W, index / W, out _, out _) : null;
+        public Cell CellAt(int index)
+        {
+            if (IsOpen) throw NoIndex();
+            return index >= 0 && index < W * H ? Locate(index % W, index / W, out _, out _) : null;
+        }
 
         /// <summary>
         /// The cells of chunk (cx, cy), read-only, by local index (ly * Chunks.Size + lx; null outside the world's
@@ -304,6 +308,11 @@ namespace Chem
         /// </summary>
         public IEnumerable<Cell> AllCells()
         {
+            if (IsOpen)
+            {
+                foreach (var c in OpenCells()) yield return c;
+                yield break;
+            }
             var run = new RowCells(this, 0, W * H);
             while (run.MoveNext()) yield return run.Cell;
         }
@@ -383,6 +392,7 @@ namespace Chem
         /// </summary>
         public string CellHash()
         {
+            if (IsOpen) return OpenCellHash();
             var sum = Fnv1aSum.Start();
             HashCells(ref sum, 0, W * H);
             return CloseHash(sum);
@@ -391,6 +401,7 @@ namespace Chem
         /// <summary>What CellHash hashes, as text: for a test that the running hash agrees with it.</summary>
         public string CellText()
         {
+            if (IsOpen) return OpenCellText();
             var sb = new StringBuilder();
             if (HashesChanges)
                 for (var run = new ChangedRun(this, 0, W * H, walkScratch, hashMade); run.MoveNext();)
@@ -404,6 +415,11 @@ namespace Chem
         /// <summary>Adds one of <paramref name="slices"/> slices of the cells to a running hash (RollingHash): row-major, by the world's size alone.</summary>
         public void HashSlice(ref Fnv1aSum sum, int slice, int slices)
         {
+            if (IsOpen)
+            {
+                OpenHashSlice(ref sum, slice, slices);
+                return;
+            }
             long n = (long)W * H;
             HashCells(ref sum, (int)(n * slice / slices), (int)(n * (slice + 1) / slices));
         }
