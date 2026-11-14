@@ -298,3 +298,56 @@ that the main thread waited for it. The same code managed is 330 ms, and making 
 What's left on the main thread is 2-4 ms in the frame a tick stamps 16 fills (making each `ChunkGround` and its bytes),
 over the brief's 2 ms. Stamping fewer a tick, or a frame budget, would bring it down; that's the deferred next step. A
 client's first cast after its own teleport into new ground took 2.2 s (the host learns where it went from replication).
+
+## Spells in Punchy (Punchy `chemistry-spells` 8def43e0, 2026-11-14)
+
+The brief `punchy-cell-spells`: every spell whose effect is only on cells, cast in Punchy's open world and drawn with
+Punchy's own effects ("make sure we use Punchy effects"). No core or rules change. The bridge now casts 28 spells: the six
+it had and the 22 below. None needed bodies or buildings, so none were left out.
+
+**Casting.** The pad's radial (hold d-pad up) is the core's `SpellRadial`, with the groups as its top ring and each
+group's spells out round it (as D16's hands). Letting go casts the spell picked at the aim; with a trigger held, it
+attunes that hand to the group's element instead. On the keyboard, comma and period step through the spells and M casts
+the one shown. Casts are still session requests, and a landed cast's burst is drawn from its cells (`World.SpellCells`)
+on the tick every peer runs it.
+
+| Spell | Effect used | Punchy asset or new |
+|---|---|---|
+| Burning Hands, Flame Wave | a cone of flame rolling out from the hands | the standard fire (`FireSystem`) |
+| Meteor | embers thrown up, a smoke column, a ring of dust, a flash | fumarole embers and smoke (`LandmarkPlume`), breath puffs, `LightBudget` |
+| Falling Star | sparks over the mark, a falling star | `LandmarkPlume` sparks, the standard fire |
+| Scalding Steam | steam | hot springs' steam (`LandmarkPlume`), the skunk's gas puffs |
+| Lava Pool | molten ground, bubbles, embers, a glow | hot springs' bubbles and fumarole embers (`LandmarkPlume`), a fire light; the ground itself is **new** (overlay: a dark crust with churning glowing seams) |
+| Lava meeting water | rock and steam | hot springs' steam; the rock is **new** (overlay: dark basalt, standing out of the water) |
+| Ray of Frost | a beam | the arcing spires' bolt (`ArcBolt`), a pale straight copy |
+| Flood | spray where the water lands | the waterfall's landing spray (`LandmarkPlume`) |
+| Geyser | a spout | the geyser landmark's spout, steam and bubbles (`LandmarkPlume`) |
+| Iceberg | ice | the existing ice overlay, frost puffs |
+| Lightning Bolt, Shocking Grasp | a bolt to the nearest charged cell, arcs through every charged cell (water) | `ArcBolt`; the water's flicker is **new** (overlay) |
+| Thunder Strike | sparks over the mark, a column of bolts | `LandmarkPlume`, `ArcBolt` |
+| Rain Cloud | a dark cloud, rain | breath puffs, the weather's rain streaks and veils (`WeatherSystem.PrecipitationShader`) |
+| Dust Storm | dust | breath puffs, the weather's dust veils |
+| Sand Blast | sand flying along the line | breath puffs, dust veils; the sand left is **new** (overlay) |
+| Mud | wet earth | **new** (overlay; grass flattened), brown splashes |
+| Acid Splash | green bubbles and sparks | `LandmarkPlume` bubbles and sparks, tinted |
+| Plant Growth | green sparkles, lush ground | the fairy ring's sparkles (`LandmarkPlume`); the ground and taller grass are **new** (overlay) |
+| Spike Growth | thorns | **new** (overlay: grass tall and bramble-dark) |
+| Grease | a slick | **new** (overlay: an amber film with a sheen) |
+| Fog Cloud | fog | the skunk's gas puffs, the weather's veils, white |
+
+What's new is only the overlay's two more maps (`_PunchyChemMap3`: lava, mud, a slick, rock; `_PunchyChemMap4`: growth,
+thorns, sand, charge) and the lines that read them in the terrain, grass and water shaders. Every other look is a Punchy
+material or system driven with new settings: our own buffer of `LandmarkEffectSystem.Emitter`s on its plume material (a
+one-shot is a plume whose period starts now), `FloraSystem.BoltMesh` with `ArcBolt`, particle systems on the weather's
+precipitation shader. Looks come from the cells and from a cast's cells; placement within a cell is a hash of the cell.
+
+| Check (Windows, Mono development player, 1280 x 720) | Result |
+|---|---|
+| All 28 spells cast solo (`-chem-script "12:all"`) | all landed, 0 exceptions |
+| Reactions seen | lava in water set into rock with steam; grease caught fire (231 slick cells lit in the big scene); lightning ran through Create Water's sheet (80 water cells charged at once); a rain cloud put out 34 burning cells; thorns caught fire (78); acid ate grease (16); shoots came up through ash |
+| Two peers (`-host`, `-join 127.0.0.1`), each casting a mix every 9 s for 3 minutes | 19 of 19 sums agree (ticks 180-1,260), `desync=False`, 0 exceptions |
+| The big scene (grease over a 16 x 16 m meadow, flooded, a fog, a Meteor into it), 10 s from the Meteor, uncapped | frame 11.8 ms on average (p95 16.3) with `-chem-plain`, 12.3 ms (p95 20.5) with the spells' effects; the bridge 0.78 → 1.12 ms a frame |
+| Punchy's play-mode tests | 35 of 35 passed |
+
+Demo clip: `unity/Builds/demo-videos/punchy-cell-spells.mp4` (25 s, 720p) and `.png`: lava into water, a grease fire,
+lightning through flooded ground, a rain cloud on a grass fire, a Meteor into fog.
