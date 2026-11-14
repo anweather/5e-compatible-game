@@ -5,7 +5,7 @@ STATE before this handoff is at its end); calls are in `JUDGMENT_CALLS.md`.
 
 ## Now
 
-**2026-11-13: D20 the open world (proposed; Andrew agreed the shape).** Punchy's chemistry grows as players explore: chunks keyed by (layer, cx, cy), filled by the host on a tick, reach per player and layer (caves now, sky islands later), no size known to the core. Core half queued for u2: `docs/handoffs/briefs/queue/open-world-core.md` (branch open-world-core). Then the PC compiles, lands, and the Punchy half (open-world.md plan step 2).
+**2026-11-13: D20 the open world.** Core half LANDED 929cbc78 (u2's open-world-core 8f1f4d20; PC: EditMode 430/431, smoke and online pass; a bounded tick costs the same). Layers are runs of rows in one sheet (layers -15..15); an open world runs chemistry, casts, hands and strikes only. Now: the Punchy half on the PC (`docs/handoffs/briefs/open-world-punchy.md`, Punchy `chemistry-open-world` off chemistry-lockstep). Then the Mac and PC over Relay, far apart.
 
 **2026-11-13: D19 step 3 PC + Mac over Relay PASSED.** Punchy `chemistry-lockstep` pushed to Skeleman/Punchy (J-092). Mac hosted (`-hostonline -chem-demo`, Mono, Unity 6000.5.8f1), PC joined `-joincode` and loaded the host's snapshot at tick 166; both cast a Fireball; sums equal (t720 474883047de26874, t1020-1920 879644b398f7e6f8), desync=False on both for ~5 min, players=2. Rough edge: the Mac's first host timed out getting the Relay allocation (20 s, during world generation) and fell back to solo; a relaunch worked. Still open for Andrew: should the shared region follow the host's player once friends join (now it stays put)? Next: D19 step 4 (adaptive input delay, a 64-bit hash, open-play desync recovery) or more Punchy play.
 
