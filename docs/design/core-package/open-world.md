@@ -204,3 +204,69 @@ same path through the loopback (`AddHost(solo: true)`).
   decoded).
 - **Snapshot size:** the grounds go in the snapshot (~1-4 KB each before base64). A long session's join grows with
   what's been explored.
+
+## Punchy as built (`chemistry-open-world`, 2026-11-13)
+
+Plan step 2, on Punchy's `chemistry-open-world` (off `chemistry-lockstep`), against the core as it is on `dev`
+(929cbc78). No core change was needed. Punchy reads the package from the main checkout, as before.
+
+- **The region is gone.** The bridge's world is `World.OpenWorld(rules, 1)` through `LockstepWorld`. Solo, host and
+  client run the same session (solo over the loopback), with no hello region, no `RegionSource` and no re-centring.
+  The channels are `casts`, `combos`, `fills` and `chunks`, and `OpenWorldPlanner.Attach` runs on the host and in solo.
+- **`IOpenGround` over Punchy** (`PunchyGround`, in `ChemistryBridge.Lockstep.cs`):
+  - `Characters()` gives every `NetPlayer` on the server, or the one `PlayerTag` player in solo. Each has its layer and
+    its cell, `ChunkKey.CellOf(x, 1)` and `CellOf(z, 1)`. Punchy never shifts its origin (its positions are absolute;
+    the terrain streams round the camera), so the position is used as it is.
+  - `Sample(key)` runs one Burst job over the chunk's 4,096 cell centres. It decides each cell's kind as the region
+    did: grass where blades grow, water two steps down with 6 units, rock on steep slopes, dirt elsewhere.
+  - The first fill waits until `TerrainSource` has stayed the same for 3 s, because the first one at start-up is a
+    stand-in. If the terrain changes before any cast lands (and with no peers), the session starts again. After that,
+    filled chunks keep the ground they were filled with.
+- **Layers:** the surface is layer 0. A player more than 2 m under the surface, in a cave's air or the sunken temple's,
+  is on layer 1. A layer-1 chunk's ground is the first cave floor under the surface: dirt, cave pools as water, and rock
+  where there's no cave. Caves stacked over each other share layer 1 for now, and the first floor wins. Interiors
+  aren't enterable spaces yet (`docs/agents/interiors.md` is a design note), so they get no layer.
+- **The view** is a 256 × 256 window of 4 × 4 chunks round the local player, in its layer. It moves a chunk at a time as
+  the player walks, and only the view moves. Each tick it reads every filled chunk in the window by world position
+  (`World.At(x, ChunkKey.Row(layer, y))`), active or not, after `SetDrawn` for those chunks, so an inactive chunk keeps
+  its look. A chunk not yet filled is blank. The kinds the shaders compare against come from each chunk's
+  `GroundOf(key)`, not from local sampling, so a client samples only heights for its flames and puffs. Height edits
+  (`TerrainEdits`) are the window's, on the surface only: they're re-laid from the cells when the window moves. In a
+  cave the surface overlay is off, and flames and puffs sit on the cave floor.
+- **Casts** are still session requests, with the row at `ChunkKey.Row(layer, y)`. A cast at a cell whose chunk isn't
+  filled on the casting peer is **refused there** (logged, not sent): the player casts again a moment later. After a
+  teleport into new ground the chunk was filled within half a second, so this hardly shows.
+- **Tests without keys:** `-chem-script "<s>:<step>; ..."` (`ChemistryBridge.Script.cs`). The steps are demo, lake,
+  cast, goto, hop, back, walk and quit. The sum line every 60 ticks adds the chunks filled, active and unpacked, how many
+  were sampled and in how long, and Unity's reserved memory.
+- **Size:** the bridge went from 2,203 lines to 2,467. That includes the 162-line test script; without it, 2,305. The
+  view's chunk walk and the ground port replace the region's coding and re-centring.
+
+### Results (Windows, Mono development player, one PC)
+
+| Check | What happened |
+|---|---|
+| Solo: Fireball on a meadow, walk 320 m away and back | It spread to 5,304 burnt in 60 s. The fire's chunks went inactive while the walk was away; on the way back the burnt ground was there, and the fire spread on from where it had stopped (14,672 burnt). No chunk was sampled twice and there was no rebuild |
+| Solo: Sleet Storm on a lake | 85 cells of ice, still there after a 3 km walk out and back |
+| Teleport 2 km east into ground never filled | A Fire Bolt there was taken 0.5 s after the teleport (its chunk was filled and active), and it burned |
+| Two peers 2 km apart (`-host -place meadow`, a `-join 127.0.0.1` copy that hops to (1356, 1299)) | Each Fireball burned its own meadow (13,549 cells on the host's by tick 600). Then the host teleported to the client's meadow, where both areas met by key with no new fills, and back again. The checksums agreed 39 of 39 times over 6.3 minutes (ticks 180 to 2,460), `desync=False` on every line |
+| A late joiner at tick 654, after both fires | It loaded 147 filled chunks from the snapshot and agreed 24 of 24 times |
+| A cave (`-place cavepool`) | A Fireball in a cave pool on layer 1 boiled it (36 steam). On the surface above, 49 more chunks were filled on layer 0 and a Fireball burned the meadow. Back in the cave the view showed 0 burnt: the layers never touched |
+| Punchy's play-mode tests | 35 of 35 passed (in the Editor, `test run --mode playmode`) |
+
+**Memory (solo, a 5-minute walk 1.5 km out and back at 10 m/s):** 210 chunks filled, 63 unpacked at most, 581 ms of
+sampling in all (about 2.8 ms a chunk). Unity's reserved memory went from 1,041 MB to 1,143 MB, and the GC heap stayed
+at about 90-110 MB. The process was 2,038 MB working set and 2,888 MB private at the end, much of it Punchy's own
+streaming. The chemistry's share is small: a packed chunk is its ground plus its changes.
+
+**What behaves differently:**
+
+- Nothing is lost when a player walks away or teleports. A chunk outside every reach goes inactive and stops (a fire
+  there waits) until someone comes back.
+- The first fill waits for the terrain to settle (3 s). With a remote peer the host samples up to 16 chunks a tick at
+  about 6-16 ms each (16 under the load of three players and an Editor), so a teleport into new ground can hitch the
+  host's frame by 100-250 ms for a few ticks. If that shows, lower `OpenWorldPlanner.FillsPerTick`. The own chunk and its
+  ring need 9 fills, so 4 a tick still activates in 3 ticks.
+- The view is still a 256 × 256 window round the player. Burns further than 64-192 m away aren't drawn until the window
+  reaches them, and height edits outside the window come off the ground until it comes back.
+- A cast where nothing is filled yet is refused on the caster, not queued.
