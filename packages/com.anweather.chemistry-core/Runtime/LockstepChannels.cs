@@ -118,6 +118,30 @@ namespace Chem.Lockstep
             (b, s) => b.Chunks.Add(s))
         { HostOnly = true };
 
+        /// <summary>
+        /// An open world's chunks filled from the host game's ground (D20, World.FillChunk), from the host's plan
+        /// (OpenWorldPlanner): the key, then the ground's bytes.
+        /// </summary>
+        public static LockstepChannel<ChunkFill> Fills() => new LockstepChannel<ChunkFill>("fills", (w, f) =>
+            {
+                w.Number(f.Key.Layer);
+                w.Number(f.Key.X);
+                w.Number(f.Key.Y);
+                var bytes = f.Ground.Bytes();
+                w.Natural((uint)bytes.Length);
+                w.Bytes(bytes);
+            },
+            r => new ChunkFill(new ChunkKey(r.Number(), r.Number(), r.Number()), ReadGround(r)),
+            (b, f) => b.Fills.Add(f))
+        { HostOnly = true };
+
+        static ChunkGround ReadGround(LockstepReader r)
+        {
+            var bytes = new byte[r.Count()];
+            for (int i = 0; i < bytes.Length; i++) bytes[i] = r.Byte();
+            return ChunkGround.FromBytes(bytes);
+        }
+
         /// <summary>The defense field's commands (Defense.cs).</summary>
         public static LockstepChannel<DefenseCommand> Defense() => new LockstepChannel<DefenseCommand>("defense", (w, d) =>
             {

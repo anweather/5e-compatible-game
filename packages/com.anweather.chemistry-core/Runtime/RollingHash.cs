@@ -30,7 +30,8 @@ namespace Chem
         /// <summary>A world's window in ticks: Every, or longer for a world of more than CellsPerWindow cells, by its size alone.</summary>
         public static int WindowFor(int cells) => Math.Max(Every, (int)((Every * (long)cells + CellsPerWindow - 1) / CellsPerWindow));
 
-        public static int WindowFor(World world) => WindowFor(world.W * world.H);
+        /// <summary>An open world's is Every: its size grows as it's filled, and a window must be the same length all through.</summary>
+        public static int WindowFor(World world) => world.IsOpen ? Every : WindowFor(world.W * world.H);
 
         Fnv1aSum sum = Fnv1aSum.Start();
         int seen;

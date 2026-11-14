@@ -129,7 +129,7 @@ namespace Chem
 
         void Meteor()
         {
-            int x = (int)(Rand() * W), y = (int)(Rand() * H);
+            var (x, y) = AnyCell();
             var m = (x, y, Tick + Rules.Sim.Weather.MeteorFallTicks);
             falling.Add(m);
             newMeteors.Add(m);
@@ -259,7 +259,7 @@ namespace Chem
         {
             var p = Rules.Sim.Weather;
             int size = p.FogRegionChunks * Chunks.Size, x0 = rx * size, y0 = ry * size;
-            int w = Math.Min(W, x0 + size) - x0, h = Math.Min(H, y0 + size) - y0;
+            int w = IsOpen ? size : Math.Min(W, x0 + size) - x0, h = IsOpen ? size : Math.Min(H, y0 + size) - y0;
             x = y = 0;
             double best = double.NegativeInfinity;
             for (int t = 0; t < p.FogTries; t++)
@@ -346,7 +346,7 @@ namespace Chem
 
         void Strike()
         {
-            int x = (int)(Rand() * W), y = (int)(Rand() * H);
+            var (x, y) = AnyCell();
             strikes.Add((x, y));
             strikeHistory.Add((x, y, Tick));
             AddLog("Lightning strikes", LogKind.Notable);

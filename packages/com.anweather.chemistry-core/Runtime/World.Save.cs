@@ -46,6 +46,7 @@ namespace Chem
         public void MakeFrom(IChunkSource source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
+            if (IsOpen) throw new InvalidOperationException("An open world's chunks are made by fills (FillChunk), not from a source");
             FinishTick();
             PackAllEmpty(source);
             AllFitted();
@@ -85,6 +86,7 @@ namespace Chem
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
             if (WrapX) save["wrap"] = "ew"; // only a world that wraps says so: other saves are as they were
+            if (IsOpen) save["open"] = SaveFills(); // an open world's grounds, the chunks' sources
             if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
             if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
@@ -143,9 +145,11 @@ namespace Chem
             var roomRules = room == null ? null : SavedRoomRules(room, rules, budgets);
             if (roomRules != null) rules = roomRules.Effective;
             Expect((string)s["rules"] == rules.Fingerprint, "saved under other rules (or mods)");
-            var w = new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"], wrapX: (string)s["wrap"] == "ew");
+            var open = s["open"] as JArray;
+            var w = open != null ? OpenWorld(rules, (uint)s["seed"]) : new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"], wrapX: (string)s["wrap"] == "ew");
             if (room != null) w.LoadRoom(room, roomRules, budgets);
-            w.MakeFrom(source);
+            if (open != null) w.LoadFills(open);
+            else w.MakeFrom(source);
             w.LoadStart(s);
             w.NoteBaseBuildings();
             w.LoadState(s);
