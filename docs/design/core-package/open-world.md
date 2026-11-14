@@ -263,10 +263,38 @@ streaming. The chemistry's share is small: a packed chunk is its ground plus its
 
 - Nothing is lost when a player walks away or teleports. A chunk outside every reach goes inactive and stops (a fire
   there waits) until someone comes back.
-- The first fill waits for the terrain to settle (3 s). With a remote peer the host samples up to 16 chunks a tick at
-  about 6-16 ms each (16 under the load of three players and an Editor), so a teleport into new ground can hitch the
-  host's frame by 100-250 ms for a few ticks. If that shows, lower `OpenWorldPlanner.FillsPerTick`. The own chunk and its
-  ring need 9 fills, so 4 a tick still activates in 3 ticks.
+- The first fill waits for the terrain to settle (3 s). The host's hitch on a teleport into new ground (sampling up to
+  16 chunks a tick on the main thread) is gone: see "Fills off the main thread" below.
 - The view is still a 256 × 256 window round the player. Burns further than 64-192 m away aren't drawn until the window
   reaches them, and height edits outside the window come off the ground until it comes back.
 - A cast where nothing is filled yet is refused on the caster, not queued.
+
+### Fills off the main thread (Punchy `chemistry-fill-jobs`, 2026-11-13)
+
+No core change. A chunk cost 6-16 ms because of the work itself: about 3 µs a cell of Burst terrain sampling
+(`SampleGround`, `SampleNormal`'s heights, `SampleSurface`), 12 ms a chunk on one thread, 2.6 ms when the main thread
+waited for it across 15 workers, more when Punchy's own jobs held the workers. It was already one Burst job; the cost was
+that the main thread waited for it. The same code managed is 330 ms, and making the `ChunkGround` is 0.1 ms.
+
+- Each chunk's ground is now its own job, started as soon as a reach wants the chunk (the frame a character changes
+  chunk, nearest first, 16 under way at most). The bridge does `OpenWorldPlanner.Attach`'s stamping itself and sets
+  `FillsPerTick`, each tick, to the number of nearest unfilled chunks whose jobs are done, so the planner's own order
+  (nearest, then by key) holds and the planner never samples. A chunk still waiting is not filled yet, as before.
+- **Asked ahead:** the bridge's own teleports (the test script's goto, hop and back) start the jobs round the
+  destination before the player moves. Punchy's other teleports (debug locations, `-place`) set the player's position
+  directly, so the bridge sees those the frame after, as it sees a client's: the host never knows a client's
+  destination before the client's player has moved (movement is client-authoritative).
+- The jobs read Punchy's height edits (`TerrainEdits`), so the bridge waits for any under way before it writes the next
+  edits buffer.
+
+| Check (Windows, Mono development player, two Editors open) | Before → after |
+|---|---|
+| Job against main-thread sample, 300 chunks (150 on the cave layer, by a cave pool) | 0 cells differ |
+| Solo, 5 teleports 1.4-2.9 km into new ground: the fills' main-thread work in the worst frame | 40-245 ms → 2.4-3.8 ms |
+| The same: the worst whole frame | 60-423 ms → 45-430 ms: Punchy's own streaming after a teleport (a teleport back to filled ground costs the same) |
+| Time from the teleport to the first cast taken | 0.35-0.54 s → 0.26-0.57 s (the first teleport after start-up: 1.4 → 1.2 s) |
+| Two peers 2 km apart, the host to the client's meadow and back, then one teleport into new ground each | 19 of 19 sums agree over 3 minutes, `desync=False` |
+
+What's left on the main thread is 2-4 ms in the frame a tick stamps 16 fills (making each `ChunkGround` and its bytes),
+over the brief's 2 ms. Stamping fewer a tick, or a frame budget, would bring it down; that's the deferred next step. A
+client's first cast after its own teleport into new ground took 2.2 s (the host learns where it went from replication).
