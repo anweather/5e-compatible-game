@@ -1,8 +1,10 @@
 # Releasing an alpha
 
 Alphas are on GitHub Releases, marked **pre-release**, tagged `alpha-X.Y.Z`.
-Since 0.1.2 each release has Velopack installers and packages for Windows
-and macOS, and installed copies update themselves in place (see "Updates in
+Each release has Velopack installers and packages for Windows and a Linux
+zip. **No macOS builds** (J-049, Andrew 2026-11-23): releases 0.1.2 to 0.1.13
+had a macOS half; installed Mac copies stay on 0.1.13 and can't join newer
+hosts. Installed Windows copies update themselves in place (see "Updates in
 place" below). 0.1.0 and 0.1.1 were Windows zips, described in "What a
 release contains".
 
@@ -38,18 +40,15 @@ files players will get, tested before anyone can see it.
    `unity/ProjectSettings/ProjectSettings.asset` (Player Settings → Version)
    to `X.Y.Z`, committed as `chore: version X.Y.Z` and pushed. After a pull
    that changes ProjectSettings, restart the Editor before building.
-4. **Build the RC in two halves, at the same time** (J-025): the PC builds
-   Windows (its shader cache is warm; the Mac compiles every Direct3D
-   variant from scratch, about 35 minutes) and the Mac builds macOS (the PC
-   has no Mac Build Support). On each machine: Editor open on main's HEAD
-   (the same commit on both), a clean tree, the yard rebuilt, then
-   - the Mac: `tools/ship-update.sh X.Y.Z --mac-only`
-   - the PC: `tools/ship-update.sh X.Y.Z --windows-only`
+4. **Build the RC: Windows, then Linux.** No macOS (J-049). Windows on the PC
+   (its shader cache is warm): Editor open on main's HEAD, a clean tree, the
+   yard rebuilt, then `tools/ship-update.sh X.Y.Z`. `--mac-only` refuses.
 
    **Linux ships in the same release** (Andrew, J-051): the host refuses a
    join unless version and commit match exactly, so a release with no Linux
-   build locks Linux players out. The Mac builds it from the same commit,
-   because the PC has no Linux Build Support:
+   build locks Linux players out. Build it from the same commit on a machine
+   with Linux Build Support (Mono), the Mac until 2026-11-23; the PC needs the
+   module installed:
    `tools/ship-update.sh X.Y.Z --linux-only`, about 50 minutes, batch mode, so
    with no Editor open on the project (`LinuxBuild.cs`). It refuses a stamp of
    another version or commit, zips
@@ -58,18 +57,16 @@ files players will get, tested before anyone can see it.
    uploads it to the draft. There are no Linux in-place updates: Linux players
    download each release.
 
-   Each builds its player, packs it with Velopack (a delta from the last
-   *published* release on its channel, never the draft) and uploads only its own files (`releases.osx.json`
-   and the `osx` packages, or `releases.win.json` and the `win` ones) into
-   the one **draft** `alpha-X.Y.Z` (see "Updates in place" below). Start one
-   machine first and the other once it prints "Release alpha-X.Y.Z is ready":
-   whichever starts first creates the draft before building. The script
+   The Windows half packs its player with Velopack (a delta from the last
+   *published* release on its channel, never the draft) and uploads
+   `releases.win.json` and the `win` packages into the **draft** `alpha-X.Y.Z`
+   (see "Updates in place" below). Start Linux once Windows prints "Release
+   alpha-X.Y.Z is ready": whichever starts first creates the draft before building. The script
    refuses a draft that targets another commit, and stops if both made one
    (two releases with the tag: delete the extra, then `--skip-build`). Both
    halves must log the same `NET CONFIG` hash (`-host-online`).
    Rebuilding a half at a new commit replaces all its files on the draft (the
    old delta too). `--dry-run` says which release each delta would come from.
-   One machine can still build both: `tools/ship-update.sh X.Y.Z` on the Mac.
 5. **Notes:** player-facing, from the merges since the last release
    (`git log origin/main@{1}..origin/main --first-parent`, or
    `alpha-<last>..main`): new, faster, fixed, how to install. Then
@@ -79,9 +76,9 @@ files players will get, tested before anyone can see it.
      (not a local build); the Esc menu shows `alpha X.Y.Z (<sha>)`.
    - The playtest bot runs on the Windows RC (`-playtest`, J-018); findings
      are checked against dev before anything is filed.
-   - A quick human look, and a Mac↔PC Relay game: `players=2`,
+   - A quick human look, and a PC↔Linux (or two-PC) Relay game: `players=2`,
      `desync=False`, no exceptions in either `Player.log`.
-   - Mac: the portable zip into `~/Applications`, the right version shows.
+   - Linux: the zip unpacks and runs, and the right version shows.
    - When quitting has changed: the Velopack restart check under "Updates
      in place" (test channel).
 7. **Fix blockers on main** (a branch off main, merged into main, then main

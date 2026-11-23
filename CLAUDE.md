@@ -60,6 +60,8 @@ Since alpha 0.1.2 (published 2026-10-27) there are two long-lived branches:
   merge `dev` into `main` when Andrew says, then cut the release there. A
   fix for a released version goes on a branch off `main`, is merged to
   `main`, and `main` is then merged back into `dev`.
+- **No macOS builds** (Andrew, 2026-11-23, J-049): a release is Windows and
+  Linux. The Mac is a dev machine, not a build target.
 
 Docs-only changes (`.md` files, including `CLAUDE.md` files and ADRs) skip
 the feature branch: commit them on `dev` and push. Branch only when code,

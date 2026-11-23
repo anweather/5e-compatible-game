@@ -1,6 +1,6 @@
 # Unity builds in GitHub Actions: the plan
 
-Status: shelved, 2026-10-31 (Andrew: builds stay by hand for now; revisit later). Goal: player builds and release candidates run from GitHub, not by hand on the
+Status: shelved 2026-10-31 (Andrew: builds by hand for now); revisited 2026-11-23, below. Goal: player builds and release candidates run from GitHub, not by hand on the
 PC, so the PC stays free and a release is one button.
 
 ## What decides it
@@ -15,7 +15,33 @@ PC, so the PC stays free and a release is one button.
   there. On GitHub's machines it's a secret only Andrew can enter.
 - **The Windows player uses Mono**, so the Mac can build it (being proven now on `headless-build`).
 
-## The plan: a self-hosted runner on the Mac
+## Revisited 2026-11-23: GitHub-hosted, no Mac
+
+Andrew dropped macOS (J-049) and asked for a release cut by committing to `main`. With no macOS player, every
+build is Windows (Mono) and Linux, and both build on GitHub's own Ubuntu runners with GameCI
+(`game-ci/unity-builder`): a Linux runner makes a Windows Mono player, and GameCI has images for this exact
+Editor (`unityci/editor:ubuntu-6000.3.27f1-windows-mono-4`, `...-base-4` for Linux Mono). No machine of ours
+needs to be on.
+
+What it takes, in order:
+
+1. **The Asset Store packs** (the blocker): a private, licence-compliant copy the workflow can read, such as a
+   private repo or private release asset of the `.unitypackage` files in `unity/AssetPacks.json`, fetched with a
+   read-only token secret and imported before the build. Andrew's call: whether that copy meets the packs'
+   licence.
+2. **A Unity licence as secrets** (Andrew enters them): Personal is `UNITY_LICENSE` (the `.ulf` from a one-time
+   activation in Unity Hub), `UNITY_EMAIL`, `UNITY_PASSWORD`; Pro is `UNITY_SERIAL` instead of the `.ulf`.
+3. **Disk:** a hosted runner has about 14 GB free; free space first (`jlumbroso/free-disk-space`) and cache
+   `Library/` per target (`actions/cache`, keyed on `Assets/`, `Packages/`, `ProjectSettings/`). A cold build
+   compiles every shader (35 to 47 minutes on the Mac); a warm cache much less.
+4. **`release.yml`:** on push to `main` (and a manual button), never on `pull_request` (the repo is public).
+   Next version from the latest `alpha-*` tag, stamped with `-build-version` (no ProjectSettings commit), the
+   core gates, Windows and Linux in parallel, `vpk "[win]" pack` for the Windows half (cross-platform), all
+   onto one **draft** with `GITHUB_TOKEN`. Publish stays a click until the draft's checks are trusted.
+
+What still needs a person: the RC's install and online checks (`docs/RELEASING.md` step 6).
+
+## The earlier plan: a self-hosted runner on the Mac (superseded)
 
 The Mac already has Unity, the packs, a warm `Library/` and a GPU. GitHub Actions just tells it when to build.
 
