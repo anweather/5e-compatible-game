@@ -287,7 +287,8 @@ namespace Chem.Tests
         [Test]
         public void AFreshWizardHasOneHandOneElementAndTheThrust()
         {
-            var (w, left, right) = Attuned(0);
+            var w = RunningWith(0);
+            string left = w.HandsOf(Me).Holds[Left], right = w.HandsOf(Me).Holds[Right];
             Assert.That(left, Is.Null);
             Assert.That(right, Is.Not.Null);
             Assert.That(w.GestureOpen(Me, Thrust));
@@ -338,13 +339,41 @@ namespace Chem.Tests
         [Test]
         public void AttuningNeedsTheUnlock()
         {
-            var w = Attuned(CostTo("second-hand")).w;
+            var w = AtTheWaterTower(RunningWith(CostTo("second-hand")));
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "water")), Is.False);
-            w = Attuned(CostTo("water")).w;
+            w = AtTheWaterTower(RunningWith(CostTo("water")));
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "water")));
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "earth")), Is.False);
-            w = Attuned(0).w;
-            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, null)), Is.False, "no second hand to empty");
+        }
+
+        static World AtTheWaterTower(World w)
+        {
+            var at = w.TowerGround(w.HoldSite.Towers.First(t => t.Element == "water"))[0];
+            Stand(w, Me, at);
+            return w;
+        }
+
+        // The valley is a sandbox: outside a run nothing is locked, whatever the points (the-hold.md, "the sandbox's controls
+        // and spells don't change"). A run's start lets go of what the save hasn't unlocked.
+        [Test]
+        public void OutsideARunNothingIsLocked()
+        {
+            var w = Attuned(0).w;
+            Assert.That(w.PointsOf(Me), Is.Zero);
+            Assert.That(w.HandOpen(Me, Left) && w.GestureOpen(Me, Throw) && w.GestureOpen(Me, Sweep) && w.ElementOpen(Me, "earth"));
+            Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Left, "earth")), "attuning anything, anywhere");
+            Ticks(w, P.Hands.AttuneTicks + 1);
+            Assert.That(w.HandsOf(Me).Holds[Left], Is.EqualTo("earth"));
+            Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, Left, bumper: true)), "a throw with the second hand");
+            Assert.That(w.NextUnlock(Me), Is.Not.Null, "the save's progress still shows");
+            Assert.That(w.PointsAway(Me, P.Unlocks[0]), Is.EqualTo(P.Unlocks[0].Cost));
+
+            Ticks(w, 60);
+            Stand(w, Me, w.HoldSite.Plate);
+            Ticks(w, P.PlateTicks + 1);
+            Assert.That(w.HoldRunning);
+            Assert.That(w.HandOpen(Me, Left), Is.False, "in a run, the save's locks");
+            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "the locked hand let go as the run started");
+            Assert.That(w.HandsOf(Me).Holds[Right], Is.Not.Null);
         }
 
         [Test]

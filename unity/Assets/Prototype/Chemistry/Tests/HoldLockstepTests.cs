@@ -190,7 +190,7 @@ namespace Chem.Tests
             room.Until(x => x.Hold.Wave >= 2 && x.RunOf(Me)?.Picks.Count > 0, "a wave beaten and picked from");
             var late = room.Join(PeerOf(Cy, 9, 2, wave => 0));
             for (int i = 0; i < 30; i++) room.Tick();
-            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "a fresh wizard's attuning is refused on every peer");
+            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "a fresh wizard's second hand let go as the run started, on every peer");
             foreach (var p in room.Peers.Skip(1)) Assert.That(Checksum(p.W), Is.EqualTo(Checksum(w)), p.Me + "'s peer at the end");
             Assert.That(late.W.HoldText(), Is.EqualTo(w.HoldText()));
             Assert.That(late.W.HandsText(), Is.EqualTo(w.HandsText()));
@@ -212,9 +212,8 @@ namespace Chem.Tests
             var w = fresh.W;
             Assert.That(w.PointsOf(Me), Is.Zero);
             Assert.That(w.PointsOf(Bo), Is.EqualTo(World.AllPoints));
-            Assert.That(w.HandOpen(Me, Left), Is.False, "a fresh wizard has one hand");
-            Assert.That(w.HandOpen(Bo, Left));
-            Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "its attuning was refused, on every peer");
+            Assert.That(w.HandOpen(Me, Left), "outside a run nothing is locked");
+            Assert.That(all.W.HandsOf(Me).Holds[Left], Is.EqualTo("water"), "so a fresh wizard attunes, on every peer");
             Assert.That(all.W.HandsOf(Bo).Holds[Left], Is.EqualTo("water"));
 
             // Ana's peer starts the run from the plate; both wizards go to the wall.
@@ -222,6 +221,12 @@ namespace Chem.Tests
             room.History.Add((w.Tick, plate));
             foreach (var p in room.Peers) Apply(p.W, plate);
             room.Until(x => x.HoldRunning, "the run starts");
+            foreach (var p in room.Peers)
+            {
+                Assert.That(p.W.HandOpen(Me, Left), Is.False, "in a run a fresh wizard has one hand");
+                Assert.That(p.W.HandOpen(Bo, Left));
+                Assert.That(p.W.HandsOf(Me).Holds[Left], Is.Null, "it let go as the run started, on every peer");
+            }
             room.Until(x => x.Hold.Wave >= 3, "two waves beaten");
 
             var late = room.Join(PeerOf(Cy, 9, 2, wave => 1));
