@@ -1,19 +1,20 @@
 ---
 name: ship-update
-description: Push an in-place update of Spell Chemistry Valley to installed copies (Velopack) by building macOS and Windows, packing a delta and uploading it to GitHub Releases. Use when Andrew says "ship an update", "push an update", "test the updater", or wants installed clients to pick up what's on main.
+description: Push an in-place update of Spell Chemistry Valley to installed copies (Velopack) by building Windows, packing a delta and uploading it to GitHub Releases. Use when Andrew says "ship an update", "push an update", "test the updater", or wants installed clients to pick up what's on main.
 ---
 
 # Ship an update in place
 
 `docs/RELEASING.md`, "Updates in place", is the reference. The work is one
-script: `tools/ship-update.sh X.Y.Z [--test] [--mac-only | --windows-only]`.
-A real release is built in two halves (J-025): `--mac-only` on the Mac,
-`--windows-only` on the PC, the same commit, into one draft.
+script: `tools/ship-update.sh X.Y.Z [--test] [--linux-only]`.
+**No macOS builds** (J-049, Andrew 2026-11-23): Velopack ships Windows only, and
+`--mac-only` refuses. A real release is Windows plus the Linux zip
+(`--linux-only`, J-051), from the same commit, into one draft.
 
 ## Pick the mode
 
 - **`--test`**: an update-loop test. Published at once as
-  `update-test-X.Y.Z` on the channels `osx-test` / `win-test` under the
+  `update-test-X.Y.Z` on the channel `win-test` under the
   app id `SpellChemistryValleyTest`, which only test installs have (their own
   folder and update cache, so they never touch a real install). No player sees it. Fine to run without asking.
 - **No flag**: a real update for players, the draft `alpha-X.Y.Z`. Follow

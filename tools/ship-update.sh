@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the game for macOS and Windows at a version, packs both with Velopack
+# Builds the game for Windows at a version, packs it with Velopack
 # (a full package, a delta from the last published release, installers) and
 # uploads them to one GitHub release. Installed copies find it on their next
 # launch, download the delta and restart into it (SelfUpdate.cs).
@@ -8,10 +8,12 @@
 #   tools/ship-update.sh 0.1.3              # the alpha-0.1.3 release, left as a draft
 #   tools/ship-update.sh 0.1.3 --test       # update-test-0.1.3 on the test channels, published
 #   tools/ship-update.sh 0.1.3 --skip-build # pack and upload what Builds/Update already holds
-#   tools/ship-update.sh 0.1.3 --windows-only # no macOS (the PC's half of a release)
-#   tools/ship-update.sh 0.1.3 --mac-only     # no Windows (the Mac's half of a release)
+#   tools/ship-update.sh 0.1.3 --windows-only # the same: Windows is the only Velopack channel
 #   tools/ship-update.sh 0.1.3 --linux-only   # the Linux zip for the same release (J-051)
 #   tools/ship-update.sh 0.1.3 --dry-run      # say what each delta would be made from; change nothing
+#
+# No macOS builds (J-049, Andrew 2026-11-23): a release is Windows and Linux, and
+# --mac-only refuses. UpdateBuild.Players can still make one; this script never asks it.
 #
 # A release can be built in two halves on two machines from the same commit
 # (J-025): each uploads only its own platform's files into the one draft. The
@@ -45,30 +47,35 @@ VPK="${VPK:-$(command -v vpk || echo "$HOME/.dotnet/tools/vpk")}"
 export UNITY_NO_BANNER=1 UNITY_NO_PAGER=1 UNITY_NON_INTERACTIVE=1
 export UNITY_PROJECT_PATH="${UNITY_PROJECT_PATH:-$here/unity}"
 # The Editor itself, for batch mode (--linux-only): the wrapper above talks to an open one.
-UNITY_BIN="${UNITY_BIN:-/Applications/Unity/Hub/Editor/$(sed -n 's/^m_EditorVersion: //p' "$UNITY_PROJECT_PATH/ProjectSettings/ProjectVersion.txt")/Unity.app/Contents/MacOS/Unity}"
+editor_version="$(sed -n 's/^m_EditorVersion: //p' "$UNITY_PROJECT_PATH/ProjectSettings/ProjectVersion.txt")"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) default_unity_bin="/c/Program Files/Unity/Hub/Editor/$editor_version/Editor/Unity.exe" ;;
+  Linux) default_unity_bin="$HOME/Unity/Hub/Editor/$editor_version/Editor/Unity" ;;
+  *) default_unity_bin="/Applications/Unity/Hub/Editor/$editor_version/Unity.app/Contents/MacOS/Unity" ;;
+esac
+UNITY_BIN="${UNITY_BIN:-$default_unity_bin}"
 REPO=https://github.com/anweather/5e-compatible-game
 APP_ID=SpellChemistryValley
 TITLE="Spell Chemistry Valley"
 
 version="${1:-}"
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--dry-run] [--windows-only | --mac-only | --linux-only]" >&2
+  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--dry-run] [--windows-only | --linux-only]" >&2
   exit 2
 fi
 shift
-test=0; build=1; mac=1; win=1; linux=0; dry=0
+test=0; build=1; mac=0; win=1; linux=0; dry=0
 for arg in "$@"; do
   case "$arg" in
     --test) test=1 ;;
     --skip-build) build=0 ;;
     --dry-run) dry=1 ;;
     --windows-only) mac=0 ;;
-    --mac-only) win=0 ;;
+    --mac-only) echo "no macOS builds: macOS isn't released any more (J-049)" >&2; exit 2 ;;
     --linux-only) mac=0; win=0; linux=1 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
-if [ $mac = 0 ] && [ $win = 0 ] && [ $linux = 0 ]; then echo "--windows-only and --mac-only together leave nothing to ship" >&2; exit 2; fi
 if [ $test = 1 ] && [ $linux = 1 ]; then echo "--linux-only has no test channel" >&2; exit 2; fi
 case "$mac$win" in 11) platforms="macOS and Windows" ;; 10) platforms=macOS ;; 01) platforms=Windows ;; *) platforms=Linux ;; esac
 

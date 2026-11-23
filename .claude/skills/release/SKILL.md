@@ -60,24 +60,26 @@ The other machine: pull, then restart its Editor (a ProjectSettings change).
 
 ## 3. Build, pack and draft (two halves, J-025)
 
-On the Mac `tools/ship-update.sh X.Y.Z --mac-only`, on the PC
-`tools/ship-update.sh X.Y.Z --windows-only` (no `--test`), both at the release
-commit, run in the background (wait for its exit notification; don't poll or sleep);
-start the second once the first prints "Release alpha-X.Y.Z is ready". Each builds its player, packs it with Velopack
-(installer, portable zip, full package, a delta from the last published
-release) and uploads only its own files to the one **draft** `alpha-X.Y.Z`.
-Without either flag the Mac builds both. Details: `docs/RELEASING.md` step 4,
-"Updates in place", and the `ship-update` skill.
+**No macOS builds** (J-049, Andrew 2026-11-23): a release is Windows and Linux.
 
-Linux is the same release (J-051): the Mac builds it from the same commit and uploads
-`SpellChemistryValley-linux-x64.zip` to the draft. A release with no Linux build locks
-Linux players out. Steps: `docs/RELEASING.md` step 4.
+Windows: `tools/ship-update.sh X.Y.Z` (no `--test`) at the release commit, with the
+Editor open on it, run in the background (wait for its exit notification; don't
+poll or sleep). It builds the player, packs it with Velopack (installer, portable
+zip, full package, a delta from the last published release) and uploads it to the
+**draft** `alpha-X.Y.Z`. Details: `docs/RELEASING.md` step 4, "Updates in place",
+and the `ship-update` skill.
+
+Linux is the same release (J-051): `tools/ship-update.sh X.Y.Z --linux-only` from the
+same commit, in batch mode with no Editor open on the project, on a machine with Linux
+Build Support (Mono). It uploads `SpellChemistryValley-linux-x64.zip` to the draft. Start
+it once the Windows half prints "Release alpha-X.Y.Z is ready". A release with no Linux
+build locks Linux players out. Steps: `docs/RELEASING.md` step 4.
 
 Then the notes: `git log --no-merges --pretty='- %s' alpha-<previous>..HEAD`,
 rewritten as a short player-facing list (what's new, what's fixed, known
 issues, controls changes; plain words, no commit-speak), plus how to
-install: Windows `SpellChemistryValley-win-Setup.exe`; macOS the `.pkg` or
-the portable zip into Applications, "Open Anyway" in Privacy & Security.
+install: Windows `SpellChemistryValley-win-Setup.exe`; Linux the zip and its
+`README-LINUX.txt`. There's no macOS build.
 `gh release edit alpha-X.Y.Z --notes-file <scratchpad>/notes.md`.
 
 Both builds log `NET CONFIG: <hash>` at startup; the two must match or joins
@@ -89,9 +91,8 @@ are refused.
   warnings for the unsigned exe are expected (see RELEASING.md). Setup
   finishes without a 30 s wait or an "Install Partially Succeeded" dialog,
   and the Esc menu shows `alpha X.Y.Z (<sha>)`.
-- On the Mac: the portable zip into `~/Applications` (not Documents).
-- Mac app hosts or joins the PC over Relay: `players=2`, `desync=False`,
-  no exceptions in either `Player.log`.
+- A second player (the Linux zip, or a second Windows install) hosts or joins
+  the PC over Relay: `players=2`, `desync=False`, no exceptions in either `Player.log`.
 - Andrew checks anything that needs real hardware or eyes (the DualSense,
   new UI).
 

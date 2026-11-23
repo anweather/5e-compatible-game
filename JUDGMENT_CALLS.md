@@ -533,8 +533,9 @@ Each entry has:
 - **Asked:** 2026-11-01, by Andrew: "We should treat Linux and win the same release version".
 - **Also comes up when:** cutting any release, adding a platform, a friend on another OS.
 - **Answer:** every `alpha-X.Y.Z` ships Windows and Linux from the same commit, and the Linux zip goes on
-  that release. The Mac builds Linux, since the PC has no Linux Build Support. No Linux in-place updates
-  yet: Linux players download each release. macOS stays shelved (J-049).
+  that release. Linux builds in batch mode (`ship-update.sh --linux-only`) on a machine with Linux Build
+  Support: the Mac until 2026-11-23; the PC needs the module (or a CI build, `docs/CI_BUILDS.md`). No Linux
+  in-place updates yet: Linux players download each release. No macOS builds (J-049).
 - **Why:** the host refuses a join unless version and commit match exactly, so a release with no Linux
   build locks Linux players out.
 - **Revisited:** 0.
@@ -554,8 +555,11 @@ Each entry has:
 - **Asked:** 2026-10-31, by the PM (the Mac said it's about an hour plus one human test).
 - **Also comes up when:** every release; any Mac build or notarization question.
 - **Answer:** no. Windows only; the Mac app is shelved until Andrew brings it back up. Don't ask again.
+  **2026-11-23, Andrew: no more macOS builds for this project** ("We don't need a Mac release anymore.
+  Linux still important"). Releases had kept a macOS half (`--mac-only`) since; `tools/ship-update.sh`
+  now refuses it, and a release is Windows and Linux.
 - **Why:** Andrew's call.
-- **Revisited:** 0.
+- **Revisited:** 1.
 
 ### J-048: Does the game's MCP make mods, or only switch them?
 
