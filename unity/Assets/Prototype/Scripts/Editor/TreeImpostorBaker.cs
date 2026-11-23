@@ -14,7 +14,8 @@ using Debug = UnityEngine.Debug;
 // that TreeImpostors draws with. Everything it writes is under Generated/ (ignored): it is made from pack trees, which a
 // public repo can't hold, and the menu makes it again. Nothing here is used at run time but the files it writes. Every
 // species in Generated/Trees is baked when its impostor is missing or was baked by an older baker (BakeVersion): when the
-// Editor starts, after a yard build, and before a player build, as the yard itself is made when it's missing.
+// Editor starts, after a yard build, and before a player build, as the yard itself is made when it's missing. With no GPU
+// (CI, -nographics) it can't bake: AssetPackRestore lays the baked ones in from the private packs repo instead.
 [InitializeOnLoad]
 public static class TreeImpostorBaker
 {
@@ -50,18 +51,29 @@ public static class TreeImpostorBaker
             && mat.GetTexture("_AlbedoAtlas") != null && mat.GetTexture("_NormalAtlas") != null;
     }
 
-    /// <summary>Bakes every species whose impostor is missing or old; returns how many it baked.</summary>
+    /// <summary>
+    /// Bakes every species whose impostor is missing or old; returns how many it baked, or -1 (and logs why) when some
+    /// need baking and there's no GPU to bake them with (-nographics).
+    /// </summary>
     public static int BakeMissing()
     {
-        int baked = 0;
-        foreach (var species in Species())
+        var unbaked = Species().Where(s => !IsBaked(s)).ToArray();
+        string refused = NoGpuRefusal(unbaked, SystemInfo.graphicsDeviceType);
+        if (refused != null)
         {
-            if (IsBaked(species)) continue;
-            Debug.Log(Bake(species, Frames, AtlasPixels));
-            baked++;
+            Debug.LogError(refused);
+            return -1;
         }
-        return baked;
+        foreach (var species in unbaked) Debug.Log(Bake(species, Frames, AtlasPixels));
+        return unbaked.Length;
     }
+
+    /// <summary>Null when <paramref name="unbaked"/> can be baked on <paramref name="device"/>; otherwise why not.</summary>
+    internal static string NoGpuRefusal(IReadOnlyCollection<string> unbaked, GraphicsDeviceType device) =>
+        unbaked.Count == 0 || device != GraphicsDeviceType.Null ? null
+            : $"TREE IMPOSTORS: FAILED, {string.Join(", ", unbaked)} not baked (or baked by an older baker than {BakeVersion}) and there's " +
+              "no GPU to bake with (-nographics). Lay them in with AssetPackRestore.FromCommandLine -asset-cache (docs/RELEASING.md), " +
+              "or bake them on a machine with a GPU.";
 
     const string BakeVersionId = "_BakeVersion";
 

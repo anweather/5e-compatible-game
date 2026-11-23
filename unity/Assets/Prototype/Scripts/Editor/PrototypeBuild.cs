@@ -201,7 +201,12 @@ public static class PrototypeBuild
         }
         SoundBankBuilder.BuildIfOld();
         // The trees' impostors go into the player through Resources; made from pack trees, so made here when missing.
-        TreeImpostorBaker.BakeMissing();
+        if (TreeImpostorBaker.BakeMissing() < 0)
+        {
+            string refused = $"Build {target}: FAILED, the tree impostors aren't there and can't be baked without a GPU (see above).";
+            Debug.LogError(refused);
+            return refused;
+        }
         PlayerSettings.productName = ProductName;
         PlayerSettings.companyName = "anweather";
         PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.anweather.spellchemistryvalley");

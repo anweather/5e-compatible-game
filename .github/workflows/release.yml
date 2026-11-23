@@ -143,9 +143,9 @@ jobs:
       # The tree impostors need a GPU to bake (TreeImpostorBaker); if the packs repo carries them baked, use those.
       - name: Baked tree impostors, if the packs repo has them
         run: |
-          if [ -d _packs/impostors ]; then
+          if [ -d _packs/Generated/TreeImpostors ]; then
             mkdir -p unity/Assets/Prototype/Generated/Resources/TreeImpostors
-            cp -R _packs/impostors/. unity/Assets/Prototype/Generated/Resources/TreeImpostors/
+            cp -R _packs/Generated/TreeImpostors/. unity/Assets/Prototype/Generated/Resources/TreeImpostors/
             echo "impostors from the packs repo"
           else
             echo "no impostors in the packs repo: the build bakes them (needs a working GL under xvfb)"

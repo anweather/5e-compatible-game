@@ -21,6 +21,8 @@ using UnityEngine;
 // -asset-cache <folder> (laid out like it), never downloading, and exits.
 // ImportPackage only queues the import, so run it without -quit, and with
 // -ignorecompilererrors: the game's scripts don't compile without the packs.
+// It also lays in the baked tree impostors from the cache's Generated/TreeImpostors
+// (the private packs repo holds them): baking needs a GPU, which CI hasn't got.
 [InitializeOnLoad]
 public static class AssetPackRestore
 {
@@ -118,6 +120,12 @@ public static class AssetPackRestore
     public static void FromCommandLine()
     {
         string cache = CacheArgument(Environment.GetCommandLineArgs()) ?? CacheRoot;
+        int impostors = CopyImpostors(cache, ImpostorFolder);
+        if (impostors > 0)
+        {
+            AssetDatabase.Refresh();
+            Debug.Log($"Asset packs: laid in {impostors} baked tree impostor files from {Path.Combine(cache, ImpostorCache)}");
+        }
         var missing = Missing();
         string failed = CheckCache(missing, cache);
         if (failed != null || missing.Count == 0)
@@ -145,6 +153,30 @@ public static class AssetPackRestore
         if (!Directory.Exists(cache)) return $"no cache folder {cache}";
         var absent = missing.FindAll(p => !File.Exists(Path.Combine(cache, p.cache)));
         return absent.Count == 0 ? null : $"not in {cache}: {string.Join(", ", absent.ConvertAll(p => p.cache))}";
+    }
+
+    /// <summary>Where a cache folder keeps the baked tree impostors, and where they go (TreeImpostorBaker.Folder).</summary>
+    internal const string ImpostorCache = "Generated/TreeImpostors";
+    internal const string ImpostorFolder = "Assets/Prototype/Generated/Resources/TreeImpostors";
+
+    /// <summary>
+    /// Copies the baked impostors in <paramref name="cache"/>, .meta files and all (the materials find their atlases by
+    /// those GUIDs), into <paramref name="destination"/>, leaving any file already there; returns how many it copied.
+    /// </summary>
+    internal static int CopyImpostors(string cache, string destination)
+    {
+        string from = Path.Combine(cache, ImpostorCache);
+        if (!Directory.Exists(from)) return 0;
+        Directory.CreateDirectory(destination);
+        int copied = 0;
+        foreach (var file in Directory.GetFiles(from))
+        {
+            string to = Path.Combine(destination, Path.GetFileName(file));
+            if (File.Exists(to)) continue;
+            File.Copy(file, to);
+            copied++;
+        }
+        return copied;
     }
 
     static void EndCommandLine(string failed)
