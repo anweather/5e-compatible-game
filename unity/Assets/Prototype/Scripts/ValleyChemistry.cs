@@ -116,8 +116,8 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The rules switched: the lake's colour, tinted from its art.</summary>
     public void RecolourWater(Color tint)
     {
-        // Looked for once a world, not at every switch: GameObject.Find walks the whole scene, 20-50 ms on the nine,
-        // which has no lake (#181).
+        // Looked for once a world, not at every switch: GameObject.Find walks the whole scene, 20-50 ms on the nine
+        // (#181).
         if (!lakeSought)
         {
             lakeSought = true;
