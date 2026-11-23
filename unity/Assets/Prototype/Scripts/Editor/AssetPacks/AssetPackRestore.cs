@@ -17,10 +17,10 @@ using UnityEngine;
 // Importing a pack with scripts reloads the domain, so the restore keeps
 // its progress in SessionState and picks up again after each reload.
 //
-// With no Editor window (CI): -batchmode -quit -executeMethod
-// AssetPackRestore.FromCommandLine [-asset-cache <folder>] imports every
-// missing pack from the cache (or that folder, laid out like it), with no
-// download, and logs ASSET PACKS: OK or FAILED, exiting 0 or 1.
+// With no Editor window (CI), FromCommandLine restores from the cache or
+// -asset-cache <folder> (laid out like it), never downloading, and exits.
+// ImportPackage only queues the import, so run it without -quit, and with
+// -ignorecompilererrors: the game's scripts don't compile without the packs.
 [InitializeOnLoad]
 public static class AssetPackRestore
 {
@@ -28,6 +28,8 @@ public static class AssetPackRestore
     const string Active = "AssetPackRestore.active";
     const string Failed = "AssetPackRestore.failed";
     const string Attempted = "AssetPackRestore.attempted";
+    const string CommandLine = "AssetPackRestore.commandLine";
+    const string CacheOverride = "AssetPackRestore.cache";
     const double DownloadTimeout = 1800;
 
     [Serializable]
@@ -63,8 +65,10 @@ public static class AssetPackRestore
     }
 
     // Where the Editor keeps downloaded packs: ~/Library/Unity/Asset Store-5.x on macOS,
-    // %APPDATA%\Unity\Asset Store-5.x on Windows.
-    static string CacheRoot => Application.platform == RuntimePlatform.WindowsEditor
+    // %APPDATA%\Unity\Asset Store-5.x on Windows. FromCommandLine's -asset-cache replaces it.
+    static string CacheRoot => SessionState.GetString(CacheOverride, "") is { Length: > 0 } folder ? folder : EditorCache;
+
+    static string EditorCache => Application.platform == RuntimePlatform.WindowsEditor
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Unity", "Asset Store-5.x")
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library", "Unity", "Asset Store-5.x");
 
@@ -107,21 +111,24 @@ public static class AssetPackRestore
         EditorApplication.update += Pump;
     }
 
-    /// <summary>For -executeMethod: imports the missing packs from the cache, no network; exits 0 or 1 in batch mode.</summary>
+    /// <summary>
+    /// For -executeMethod (no -quit): restores the missing packs from the cache, with no download, then logs
+    /// ASSET PACKS: OK or FAILED and, in batch mode, exits 0 or 1.
+    /// </summary>
     public static void FromCommandLine()
     {
-        string failed;
-        try
+        string cache = CacheArgument(Environment.GetCommandLineArgs()) ?? CacheRoot;
+        var missing = Missing();
+        string failed = CheckCache(missing, cache);
+        if (failed != null || missing.Count == 0)
         {
-            failed = RestoreFromCache(Missing(), CacheArgument(Environment.GetCommandLineArgs()) ?? CacheRoot);
+            EndCommandLine(failed);
+            return;
         }
-        catch (Exception e)
-        {
-            Debug.LogException(e);
-            failed = e.Message;
-        }
-        Debug.Log(failed == null ? "ASSET PACKS: OK" : $"ASSET PACKS: FAILED {failed}");
-        if (Application.isBatchMode) EditorApplication.Exit(failed == null ? 0 : 1);
+        Debug.Log($"Asset packs: restoring {missing.Count} from {cache}");
+        SessionState.SetString(CacheOverride, cache);
+        SessionState.SetBool(CommandLine, true);
+        Restore();
     }
 
     /// <summary>The folder after -asset-cache, made absolute, or null without one.</summary>
@@ -131,20 +138,21 @@ public static class AssetPackRestore
         return at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : null;
     }
 
-    /// <summary>
-    /// Imports <paramref name="missing"/> from <paramref name="cache"/>; null when every pack is then
-    /// in the project, otherwise what failed. Nothing is imported unless every file is in the cache.
-    /// </summary>
-    internal static string RestoreFromCache(List<Pack> missing, string cache)
+    /// <summary>Null when every pack in <paramref name="missing"/> has its file in <paramref name="cache"/>, otherwise what isn't there.</summary>
+    internal static string CheckCache(List<Pack> missing, string cache)
     {
         if (missing.Count == 0) return null;
         if (!Directory.Exists(cache)) return $"no cache folder {cache}";
         var absent = missing.FindAll(p => !File.Exists(Path.Combine(cache, p.cache)));
-        if (absent.Count > 0) return $"not in {cache}: {string.Join(", ", absent.ConvertAll(p => p.cache))}";
-        foreach (var p in missing) Import(p, Path.Combine(cache, p.cache));
-        AssetDatabase.Refresh();
-        var still = Missing();
-        return still.Count == 0 ? null : $"imported but still missing: {string.Join(", ", still.ConvertAll(p => p.folder))}";
+        return absent.Count == 0 ? null : $"not in {cache}: {string.Join(", ", absent.ConvertAll(p => p.cache))}";
+    }
+
+    static void EndCommandLine(string failed)
+    {
+        SessionState.SetBool(CommandLine, false);
+        SessionState.EraseString(CacheOverride);
+        Debug.Log(failed == null ? "ASSET PACKS: OK" : $"ASSET PACKS: FAILED {failed}");
+        if (Application.isBatchMode) EditorApplication.Exit(failed == null ? 0 : 1);
     }
 
     static void Pump()
@@ -178,12 +186,24 @@ public static class AssetPackRestore
             SessionState.SetBool(Active, false);
             Debug.Log(failed.Length == 0 ? "Asset packs: restore finished." : "Asset packs: restore finished with failures; see the errors above.");
             Finished?.Invoke();
+            if (SessionState.GetBool(CommandLine, false))
+            {
+                var still = Missing();
+                EndCommandLine(still.Count == 0 ? null : $"still missing: {string.Join(", ", still.ConvertAll(p => p.folder))}");
+            }
             return;
         }
         started = lastChange = EditorApplication.timeSinceStartup;
         lastSize = -1;
         if (!File.Exists(Path.Combine(CacheRoot, current.cache)))
         {
+            if (SessionState.GetBool(CommandLine, false))
+            {
+                Debug.LogError($"Asset packs: {current.cache} isn't in {CacheRoot}, and the command line never downloads.");
+                SessionState.SetString(Failed, failed + $"[{current.id}]");
+                current = null;
+                return;
+            }
             Debug.Log($"Asset packs: downloading {current.name}...");
             AssetStoreTools.Download(current.id);
         }
@@ -212,24 +232,17 @@ public static class AssetPackRestore
         }
         if (EditorApplication.timeSinceStartup - lastChange < 3) return;
 
-        SessionState.SetString(Attempted, SessionState.GetString(Attempted, "") + $"[{current.id}]");
-        Import(current, file);
-        current = null;
-    }
-
-    // Imports a pack's file, or the subset its include asks for, with no dialog.
-    static void Import(Pack pack, string file)
-    {
-        if (pack.include != null && pack.include.Length > 0)
+        if (current.include != null && current.include.Length > 0)
         {
-            Directory.CreateDirectory("Temp");
-            var subset = Path.Combine("Temp", $"asset-pack-{pack.id}-subset.unitypackage");
-            int count = UnityPackageSubset.Create(file, subset, pack.include, IsInProject);
-            Debug.Log($"Asset packs: importing {count} assets from {pack.name} {pack.version} ({string.Join(", ", pack.include)})");
+            var subset = Path.Combine("Temp", $"asset-pack-{current.id}-subset.unitypackage");
+            int count = UnityPackageSubset.Create(file, subset, current.include, IsInProject);
+            Debug.Log($"Asset packs: importing {count} assets from {current.name} {current.version} ({string.Join(", ", current.include)})");
             file = subset;
         }
-        else Debug.Log($"Asset packs: importing {pack.name} {pack.version}");
+        else Debug.Log($"Asset packs: importing {current.name} {current.version}");
+        SessionState.SetString(Attempted, SessionState.GetString(Attempted, "") + $"[{current.id}]");
         AssetDatabase.ImportPackage(file, false);
+        current = null;
     }
 
     // Unity remembers deleted assets' GUIDs for a while, so check the file is really there.
