@@ -142,6 +142,7 @@ namespace Chem
             int peers = stands.Values.Count(s => !s.Down);
             Hold = new HoldState { Phase = HoldPhase.Running, Wave = 1, Health = p.Health, Peers = peers, ToSpawn = HoldWaveSize(p, 1, peers), NextSpawn = Tick + p.Warmup, Theme = ThemeOfWave(1) };
             Hold.NextWave = p.WaveTicks > 0 ? Hold.NextSpawn + p.WaveTicks : 0;
+            LetGoLockedAll();
             AddLog("Wave 1 is coming! Hold the keep", LogKind.Notable);
         }
 

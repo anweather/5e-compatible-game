@@ -1,7 +1,8 @@
 // Progress in the Hold (docs/design/the-hold.md, phase 5). Inside a run: as a wave is beaten each wizard is offered upgrades by the
 // seed, picks by command, and one that doesn't has one picked for it as the next wave starts. Between runs: a wizard's points say
 // what's unlocked, brought by a command so every peer agrees; a wizard with none brought has everything, as does anyone in a
-// moment, so a test, a bot or a playtest isn't held back.
+// moment, so a test, a bot or a playtest isn't held back. The locks hold only in a run: the valley stays a sandbox, and outside a
+// run every wizard has everything, whatever its points (#152's "the sandbox's controls and spells don't change").
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,11 @@ namespace Chem
         /// <summary>The points this player brought and has earned here; null if they brought none.</summary>
         public int? PointsOf(string player) => progress.TryGetValue(player, out int points) ? points : (int?)null;
 
-        bool AllOpen(string player) => !progress.ContainsKey(player) || Hold?.Moment != null;
+        // Whether this player's save holds nothing back: none brought, or in a moment. What it has earned, run or not.
+        bool NothingHeld(string player) => !progress.ContainsKey(player) || Hold?.Moment != null;
+
+        // Whether this player can use everything now: its save holds nothing back, or no run is on.
+        bool AllOpen(string player) => NothingHeld(player) || !HoldRunning;
 
         /// <summary>The unlocks this player has, in order.</summary>
         public IEnumerable<UnlockDef> UnlocksOf(string player)
@@ -32,10 +37,11 @@ namespace Chem
             }
         }
 
-        /// <summary>How many more points this player needs for a row: 0 if it's theirs. Rows unlock in order, so it counts those before it.</summary>
+        /// <summary>How many more points this player needs for a row: 0 if it's theirs. Rows unlock in order, so it counts those before it.
+        /// It's what the save says, run or not: outside a run the row is open all the same.</summary>
         public int PointsAway(string player, UnlockDef row)
         {
-            if (AllOpen(player)) return 0;
+            if (NothingHeld(player)) return 0;
             int through = 0;
             foreach (var u in Rules.Sim.Hold.Unlocks)
             {
@@ -68,11 +74,25 @@ namespace Chem
         {
             if (points < 0) return false;
             progress[player] = points;
+            LetGoLocked(player);
+            return true;
+        }
+
+        // As a run starts, each hand that holds what its wizard hasn't unlocked lets go of it, as when points are brought:
+        // outside the run it could hold anything.
+        void LetGoLockedAll()
+        {
+            foreach (var player in progress.Keys.ToList()) LetGoLocked(player);
+        }
+
+        // A hand that isn't open, or holds an element that isn't, lets go; with nothing left, the right hand holds the start's.
+        void LetGoLocked(string player)
+        {
+            if (AllOpen(player)) return;
             var h = OwnHands(player);
             for (int i = 0; i < HandsDef.Count; i++)
                 if (!HandOpen(player, i) || !ElementOpen(player, h.Holds[i])) h.Holds[i] = null;
             if (h.Holds.All(x => x == null)) h.Holds[HandsDef.Right] = HandRules.Start[HandsDef.Right];
-            return true;
         }
 
         // The run's end: each wizard keeps what it earned, but a moment earns nothing.
