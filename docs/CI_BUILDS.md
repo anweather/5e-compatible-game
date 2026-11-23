@@ -41,6 +41,34 @@ What it takes, in order:
 
 What still needs a person: the RC's install and online checks (`docs/RELEASING.md` step 6).
 
+**As built (2026-11-23): `.github/workflows/release.yml`.** Each push to `main` (not docs-only) or the Run workflow
+button makes the draft `alpha-X.Y.Z`, the next patch after the newest `alpha-*` tag (or the button's version).
+Skipped when a release already targets the commit, or the commit message says `[skip release]`.
+
+- **plan** picks the version; **gates** runs the core build (warnings fail) and the Unit tests.
+- **build**, Windows and Linux at once, on `ubuntu-latest`: free disk space, check out the game and
+  `anweather/5e-asset-packs` (`ASSET_PACKS_TOKEN`; its LFS objects cached by their ids), lay the packs into the project
+  with `tools/ci/unpack-asset-packs.py` (no Unity: `ImportPackage` doesn't finish under `-quit`), restore the cached
+  `Library/`, then Unity in GameCI's image (`unityci/editor:ubuntu-<version>-windows-mono-4.0.0`, `-linux-il2cpp-`) runs
+  `PrototypeBuild.BuildWindowsFromCommandLine` or `LinuxBuild.FromCommandLine` with `-build-version`, under xvfb
+  (no `-nographics`). The log is an artifact either way.
+- **draft**: `tools/ship-update.sh X.Y.Z --windows-only --skip-build` (Velopack 1.2.161, the delta from the last
+  published release), then `--linux-only --skip-build` (the zip), into one draft. Then test and publish by hand.
+
+**Not proven yet (the first runs will say):**
+- **Tree impostors without a GPU.** On the Mac a `-nographics` build fails baking them (`RenderTexture.Create
+  failed`). Here Unity has xvfb's software GL, which may bake them or may not. If not, bake them once on a machine
+  with a GPU and commit `Assets/Prototype/Generated/Resources/TreeImpostors/` (with its `.meta` files) to the packs
+  repo as `impostors/`: the workflow copies that folder in when it's there. They're made from pack trees, so they
+  never go in this public repo. Bake again when the trees or `TreeImpostorBaker.BakeVersion` change.
+- **The licence in a container:** the Personal `.ulf` is written where Unity looks
+  (`/root/.local/share/unity3d/Unity/Unity_lic.ulf`), as GameCI's builder does; Pro activates with the serial
+  and returns it after.
+- **Time and space:** a cold build compiled shaders for 42 minutes on the Mac; a runner is slower. The job's limit
+  is 3 hours. The repo's cache (10 GB) holds the packs' LFS objects (3.1 GB) and one `Library/` a platform; GitHub
+  evicts the oldest when it's full.
+- **LFS bandwidth:** a checkout of the packs without the cache is 3.1 GB of the account's LFS bandwidth.
+
 ## The earlier plan: a self-hosted runner on the Mac (superseded)
 
 The Mac already has Unity, the packs, a warm `Library/` and a GPU. GitHub Actions just tells it when to build.
