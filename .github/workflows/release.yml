@@ -140,16 +140,13 @@ jobs:
       - run: git -C _packs lfs pull
       - name: Lay the packs into the project
         run: python3 -I tools/ci/unpack-asset-packs.py --cache _packs --project unity
-      # The tree impostors need a GPU to bake (TreeImpostorBaker); if the packs repo carries them baked, use those.
-      - name: Baked tree impostors, if the packs repo has them
+      # The tree impostors need a GPU to bake (TreeImpostorBaker), and a runner has none: they come baked from the
+      # packs repo. Without them the build would fail later on ("TREE IMPOSTORS: FAILED"), so stop here.
+      - name: Baked tree impostors from the packs repo
         run: |
-          if [ -d _packs/Generated/TreeImpostors ]; then
-            mkdir -p unity/Assets/Prototype/Generated/Resources/TreeImpostors
-            cp -R _packs/Generated/TreeImpostors/. unity/Assets/Prototype/Generated/Resources/TreeImpostors/
-            echo "impostors from the packs repo"
-          else
-            echo "no impostors in the packs repo: the build bakes them (needs a working GL under xvfb)"
-          fi
+          [ -d _packs/Generated/TreeImpostors ] || { echo "no Generated/TreeImpostors in 5e-asset-packs: bake them on a machine with a GPU (docs/CI_BUILDS.md)" >&2; exit 1; }
+          mkdir -p unity/Assets/Prototype/Generated/Resources/TreeImpostors
+          cp -R _packs/Generated/TreeImpostors/. unity/Assets/Prototype/Generated/Resources/TreeImpostors/
       - uses: actions/cache@v4
         with:
           path: unity/Library
@@ -165,8 +162,8 @@ jobs:
         run: |
           set -euo pipefail
           docker pull "$IMAGE"
-          # unity-editor (the image's wrapper) runs Unity in batch mode under xvfb. No -nographics: the yard
-          # build bakes tree impostors, which need a graphics device.
+          # unity-editor (the image's wrapper) runs Unity in batch mode under xvfb. -nographics, as the Mac proved
+          # it from a fresh clone (HEADLESS BUILD: OK): the impostors came baked, so nothing needs a GPU.
           docker run --rm -v "$GITHUB_WORKSPACE:/w" -w /w \
             -e UNITY_LICENSE -e UNITY_SERIAL -e UNITY_EMAIL -e UNITY_PASSWORD -e VERSION \
             -e OWNER="$(id -u):$(id -g)" \
@@ -180,7 +177,7 @@ jobs:
                 mkdir -p /root/.local/share/unity3d/Unity
                 printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf
               fi
-              unity-editor -projectPath /w/unity -buildTarget ${{ matrix.target }} \
+              unity-editor -nographics -projectPath /w/unity -buildTarget ${{ matrix.target }} \
                 -executeMethod ${{ matrix.method }} -rebuild-yard -build-version "$VERSION" \
                 -expect-commit "$(git -C /w rev-parse --short=7 HEAD)" -logFile /w/build-${{ matrix.platform }}.log
               status=$?

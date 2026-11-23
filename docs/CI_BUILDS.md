@@ -50,8 +50,8 @@ Skipped when a release already targets the commit, or the commit message says `[
   `anweather/5e-asset-packs` (`ASSET_PACKS_TOKEN`; its LFS objects cached by their ids), lay the packs into the project
   with `tools/ci/unpack-asset-packs.py` (no Unity: `ImportPackage` doesn't finish under `-quit`), restore the cached
   `Library/`, then Unity in GameCI's image (`unityci/editor:ubuntu-<version>-windows-mono-4.0.0`, `-linux-il2cpp-`) runs
-  `PrototypeBuild.BuildWindowsFromCommandLine` or `LinuxBuild.FromCommandLine` with `-build-version`, under xvfb
-  (no `-nographics`). The log is an artifact either way.
+  `PrototypeBuild.BuildWindowsFromCommandLine` or `LinuxBuild.FromCommandLine` with `-build-version` and
+  `-nographics` (as proven on the Mac; the image's wrapper adds xvfb anyway). The log is an artifact either way.
 - **draft**: `tools/ship-update.sh X.Y.Z --windows-only --skip-build` (Velopack 1.2.161, the delta from the last
   published release), then `--linux-only --skip-build` (the zip), into one draft. Then test and publish by hand.
 
@@ -62,7 +62,7 @@ Skipped when a release already targets the commit, or the commit message says `[
   so the build finds every species baked and bakes nothing (`AssetPackRestore.FromCommandLine -asset-cache` does the
   same off CI). With them there a `-nographics` build on the Mac ends `HEADLESS BUILD: OK` (2026-11-23). If they're
   stale (a new `TreeImpostorBaker.BakeVersion`, a new species), a `-nographics` build fails with `TREE IMPOSTORS:
-  FAILED` naming the species; under xvfb's software GL it would try to bake, which isn't proven. Bake them again on
+  FAILED` naming the species, and the workflow stops before Unity when the folder is missing. Bake them again on
   a machine with a GPU and replace the folder in the packs repo. They're made from pack trees, so they never go in
   this public repo.
 - **The licence in a container:** the Personal `.ulf` is written where Unity looks
