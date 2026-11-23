@@ -91,10 +91,25 @@ files players will get, tested before anyone can see it.
 
 The Mac (or the PC) builds the Windows player in batch mode, with no Editor open
 on the project. It needs Windows Build Support (Mono) and the Asset Store packs,
-a clean tree, and makes the same `Builds/Update/win/` as `UpdateBuild.Players`:
+a clean tree, and makes the same `Builds/Update/win/` as `UpdateBuild.Players`.
+
+A clone with no packs gets them from the Editor's Asset Store cache, or from a
+checkout of the private `anweather/5e-asset-packs` (laid out like the cache), with
+no download. Leave out `-quit` (the imports run after the method returns) and keep
+`-ignorecompilererrors` (the game's scripts don't compile until the packs are in).
+It logs `ASSET PACKS: OK` or `FAILED <what>` and exits 0 or 1; about 4 minutes on
+the M2 Pro for all five into a fresh clone:
 
 ```sh
 U=/Applications/Unity/Hub/Editor/6000.3.27f1/Unity.app/Contents/MacOS/Unity
+$U -batchmode -nographics -ignorecompilererrors -projectPath unity \
+   -executeMethod AssetPackRestore.FromCommandLine \
+   -asset-cache ../5e-asset-packs -logFile restore.log
+```
+
+Then the build:
+
+```sh
 $U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
    -executeMethod PrototypeBuild.BuildWindowsFromCommandLine -rebuild-yard \
    -logFile build.log
@@ -110,7 +125,10 @@ $U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
   exited 132 after a good quit, so trust this method's code, not a bare quit's.
 - About 8 minutes with the shader cache warm, 47 from a cold one (M2 Pro). `-nographics`
   costs nothing: every shader came out the same size as a run with a graphics
-  device, and the player the same apart from stamps and ids. The log's
+  device, and the player the same apart from stamps and ids. **But not in a fresh
+  clone:** with no `Generated/` the build bakes the tree impostors, which needs a
+  graphics device, and under `-nographics` it fails (`RenderTexture.Create failed`,
+  2026-11-23). Leave `-nographics` out there, or bake once with a device first. The log's
   `SpeedTreeURP_Branch.shadergraph` exception and the ray-tracing shader warnings
   are expected (`unity/CLAUDE.md`).
 - **Not proven by a build:** nothing here has run it. Check a Mac-built player on
