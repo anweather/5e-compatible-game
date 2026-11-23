@@ -351,8 +351,13 @@ terrain or spell with no look, and any unknown family or form.
   neighbour deeper either (so not a lake's shore, the river, the sea or a
   filled pit), loses a unit every `soakEvery` ticks of its terrain, or
   `soakEveryWet` when the ground is damp: raining, or damp for
-  `sim.water.dampTicks` (600) after water soaked in there. A terrain
-  without them never soaks; `soakPass` 0 turns soaking off.
+  `sim.water.dampTicks` (600) after water soaked in there. A terrain without them never
+  soaks; `soakPass` 0 turns soaking off. `soak.leaves` (dirt to mud) only
+  takes ground water soaks into dry: not while it rains, nor where rain
+  fell within `dampTicks` (rain leaves a cell damp), so rain leaves a path a
+  path and water poured on dirt still churns it. `soak.slows` (grass 0.7) is how
+  fast a walker crosses the ground while it's wet: water on it, raining or
+  damp (`World.IsDamp`, read by `World.WalkSpeed`); a path (dirt) has none.
 - Time is in ticks, `sim.ticksPerSecond` (6) a second.
 - A day lasts `sim.day.lengthMinutes` (24) real minutes, so a game hour
   is a real minute; the world starts at `sim.day.startHour` (9:00).
@@ -418,9 +423,14 @@ comes). What it does to squares, at full strength:
 - **rain** (and storms): each tick a fire may burn down a step
   (`rain.douseChance`), fire spreads `rain.dampen` less, and every
   `rain.fillEvery` ticks each square may get a unit of water
-  (`rain.fillChance`), so hollows and trenches fill. Without rain, every
+  (`rain.fillChance`), so hollows and trenches fill; none falls on water
+  deeper than `water.thin` (a lake, the river, a pond: their way out carries
+  it off), and the hollows seep dry again after (`water.seep`). Without rain, every
   `rain.dryEvery` ticks a square two units deep or less may lose one
-  (`rain.dryChance`): puddles dry, ponds stay.
+  (`rain.dryChance`): puddles dry; deeper water on ground that soaks seeps
+  away `water.seep` (2) times slower, unless it or a neighbour is water on
+  ground that doesn't (a lake's, the river's or a pit's bed): hollows the
+  rain filled drain, lakes and ponds in pits stay.
 - **snow**: holds fire back half as much as rain does, and every
   `snow.freezeEvery` ticks the water on a square two units deep or less may
   freeze (`snow.freezeChance`): puddles and trenches ice over, ponds and

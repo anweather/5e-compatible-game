@@ -880,7 +880,7 @@ namespace Chem.Tests
             Assert.That(w.At(3, 2).Lit, Is.EqualTo(10800), "half way");
             Run(w, 10800);
             Assert.That(w.At(3, 2).Lit, Is.EqualTo(0), "and it fades");
-            Assert.That($"{half} {w.CellHash()} {w.RngState}", Is.EqualTo("53f7abc0 1e6d522 2668737540"), "the golden");
+            Assert.That($"{half} {w.CellHash()} {w.RngState}", Is.EqualTo("c022a8f5 b33ecaf0 364438357"), "the golden");
         }
 
         [Test]

@@ -286,11 +286,15 @@ touch them.
   Land) so every peer has the same integers; only the water reads it, so
   water runs down a hillside (`World.SetLand`).
 
-**Soak, damp**
-: Thin water on open ground **soaks** in (and dries up) a unit at a time,
+**Soak, damp, seep**
+: Water on open ground **soaks** in (and dries up) a unit at a time,
   at its terrain's rate (`soakEvery`); ground it soaked into is **damp**
-  for a while (`Cell.DampUntil`) and soaks more slowly, as in rain. Deep
-  water (lakes, the river, the sea, a filled pit) doesn't soak.
+  for a while (`Cell.DampUntil`) and soaks more slowly, as in rain. Deeper
+  water doesn't soak, but in dry weather it **seeps** away, `sim.water.seep`
+  times slower than a puddle dries (a hollow the rain ran into drains),
+  unless its bed holds it (lakes, the river, the sea, a filled pit: ground
+  that doesn't soak), and nor do the cells beside those. Wet grass slows walkers (`soak.slows`); a path
+  (dirt) never does, and rain never churns it to mud (water poured on it does).
 
 **Shore map**
 : Over the sea and out past the terrain, the way to the nearest land and

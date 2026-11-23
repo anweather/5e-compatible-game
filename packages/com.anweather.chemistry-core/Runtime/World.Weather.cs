@@ -151,9 +151,12 @@ namespace Chem
             falling.RemoveAll(m => m.lands <= Tick);
         }
 
+        // Rain on the cells: a unit here and there, leaving the cell damp (so it doesn't churn a path to mud as it soaks
+        // in, World.SoakIn), but none on water deeper than thin (a lake, the river, the sea, a pond): their way out
+        // carries it off, so rain never raises them.
         void Fill(RowSpan[] rows, double chance)
         {
-            int max = Rules.Sim.WaterMaxLevel;
+            int max = Math.Min(Rules.Sim.WaterMaxLevel, Rules.Sim.ThinWater + 1);
             foreach (var s in rows)
             {
                 var cells = s.Chunk.ActiveCells;
@@ -165,24 +168,62 @@ namespace Chem
                     {
                         c.Water++;
                         c.Liquid = 0;
+                        c.DampUntil = Tick + Rules.Sim.DampTicks;
                     }
                 }
             }
         }
 
-        /// <summary>A unit of water off squares two units deep or less (not ice): puddles dry, lakes stay.</summary>
+        /// <summary>
+        /// A unit of water off squares two units deep or less (not ice): puddles dry. Deeper water seeps away, a unit
+        /// every sim.water.seep / chance of these beats on each cell's own turn of the count (no draw on the world's
+        /// generator), where its ground soaks and nothing beside it is water its bed holds: a hollow the rain ran into
+        /// drains, the lake, the river, the sea and a filled pit stay (and their shores). Soaking off (soakPass 0), no seep.
+        /// </summary>
         void Dry(RowSpan[] rows, double chance)
         {
+            var p = Rules.Sim;
+            int turns = chance > 0 ? Math.Max(1, (int)Math.Round(p.Seep / chance)) : 0, beat = Tick / Math.Max(1, p.Weather.DryEvery);
             foreach (var s in rows)
             {
                 var cells = s.Chunk.ActiveCells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
-                    if (c.Water == 0 || c.Water > 2 || c.Frozen || c.Liquid != 0) continue;
-                    if (Rand() < chance) c.Water--;
+                    if (c.Water == 0 || c.Frozen || c.Liquid != 0) continue;
+                    if (c.Water <= 2)
+                    {
+                        if (Rand() < chance) c.Water--;
+                    }
+                    else if (turns > 0 && p.SoakPass > 0 && OnTurn(s.Chunk, i, beat, turns) && Seeps(s.Chunk, i, c)) c.Water--;
                 }
             }
+        }
+
+        // Whether it's a cell's turn of a count, by where it is: so a pool drains from all over, not cell by cell.
+        static bool OnTurn(Chunk ch, int i, int beat, int turns)
+        {
+            int x = (ch.X << Chunks.Shift) + (i & Chunks.Mask), y = (ch.Y << Chunks.Shift) + (i >> Chunks.Shift);
+            return ((beat + x * 7 + y * 13) % turns + turns) % turns == 0;
+        }
+
+        // Whether deep water on a cell seeps away: its ground soaks, and no neighbour holds water on ground that doesn't
+        // (a lake's bed, the river's, a pit's), else the lake would drain away through its shore.
+        bool Seeps(Chunk ch, int i, Cell c)
+        {
+            if (!SoaksIn(c)) return false;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out _, out _);
+                if (n != null && n.Water > 0 && !SoaksIn(n)) return false;
+            }
+            return true;
+        }
+
+        bool SoaksIn(Cell c)
+        {
+            var t = TerrainOf(c);
+            return (t.SoakEvery > 0 || t.SoakEveryWet > 0) && !c.Frozen && LiquidOf(c).Soaks;
         }
 
         /// <summary>Snow freezes the water on squares two units deep or less; without it, that ice thaws. Lakes are left alone.</summary>

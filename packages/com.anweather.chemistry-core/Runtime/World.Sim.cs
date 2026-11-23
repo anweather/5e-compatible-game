@@ -418,8 +418,10 @@ namespace Chem
         /// turns (waterTo) it freezes (arctic) or boils off a unit to steam (lava), any depth; thin water
         /// (it and its four neighbours no deeper than sim.water.thin, so not a lake's shore, the river,
         /// the sea or a filled pit) soaks in and dries up a unit every soakEvery ticks of its terrain,
-        /// soakEveryWet on damp ground (raining, or damp from water soaked in before), and leaves it damp
-        /// (and its soak.leaves: dirt turns to mud).
+        /// soakEveryWet on damp ground (raining, or damp from water soaked in before; deeper water seeps
+        /// away in dry weather, World.Dry), and leaves it damp; soaking into dry ground (not
+        /// raining, not damp: rain leaves what it wets damp, World.Fill) it leaves its soak.leaves too
+        /// (water poured on dirt churns it to mud; rain on a path doesn't).
         /// Each cell on its own turn of the count, so a puddle shrinks from all over. True if it changed.
         /// </summary>
         bool Soak(Chunk ch, int i, Cell c)
@@ -445,10 +447,11 @@ namespace Chem
             return l.Soaks && SoakIn(ch, i, c, t);
         }
 
-        // Thin water soaking in (Soak): a unit on its turn of the count, leaving the ground damp.
+        // Water soaking in (Soak): a unit on its turn of the count, leaving the ground damp.
         bool SoakIn(Chunk ch, int i, Cell c, TerrainDef t)
         {
-            int thin = Rules.Sim.ThinWater;
+            var p = Rules.Sim;
+            int thin = p.ThinWater;
             if (c.Frozen || c.Water > thin) return false;
             for (int d = 0; d < 4; d++)
             {
@@ -457,15 +460,17 @@ namespace Chem
             }
             int every = Raining || Tick < c.DampUntil ? t.SoakEveryWet : t.SoakEvery;
             if (every <= 0) return false;
-            int turns = Math.Max(1, every / Rules.Sim.SoakPass);
+            int turns = Math.Max(1, every / p.SoakPass);
             int x = (ch.X << Chunks.Shift) + (i & Chunks.Mask), y = (ch.Y << Chunks.Shift) + (i >> Chunks.Shift);
-            if ((Tick / Rules.Sim.SoakPass + x * 7 + y * 13) % turns != 0) return false;
+            if ((Tick / p.SoakPass + x * 7 + y * 13) % turns != 0) return false;
+            if (t.SoaksTo != null && !Raining && Tick >= c.DampUntil) c.T = t.SoaksTo;
             c.Water--;
-            c.DampUntil = Tick + Rules.Sim.DampTicks;
-            if (t.SoaksTo != null) c.T = t.SoaksTo;
+            c.DampUntil = Tick + p.DampTicks;
             WaterMoved(ch);
             return true;
         }
+
+
 
         /// <summary>
         /// Mud dries (materials.json soak.dries), on the soak pass: a cell whose terrain dries, with no water
