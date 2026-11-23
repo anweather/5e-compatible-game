@@ -714,9 +714,20 @@ namespace Chem
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
         /// <summary>
         /// The share of its speed a walker keeps on a cell: the slower of its cover's and its ground's (snow 0.85, a
-        /// snow bank 0.7, thorns and mud 0.5; 1 for most). Raiders are snagged by it (Thorns) and the wizard slowed.
+        /// snow bank 0.7, thorns and mud 0.5, wet grass its soak.slows; 1 for most, a path wet or dry). Raiders are snagged by it (Thorns) and the wizard slowed.
         /// </summary>
-        public double WalkSpeed(Cell c) => Math.Min(CoverOf(c)?.Speed ?? 1, TerrainOf(c).Speed);
+        public double WalkSpeed(Cell c)
+        {
+            var t = TerrainOf(c);
+            double ground = t.WetSpeed < 1 && IsDamp(c) ? Math.Min(t.Speed, t.WetSpeed) : t.Speed;
+            return Math.Min(CoverOf(c)?.Speed ?? 1, ground);
+        }
+
+        /// <summary>
+        /// Whether a cell's ground is wet: water on it (not ice), raining, or damp from water soaked in (Cell.DampUntil). Grass
+        /// is slow then (TerrainDef.WetSpeed, soak.slows); a path (dirt) isn't.
+        /// </summary>
+        public bool IsDamp(Cell c) => (c.Water > 0 && !c.Frozen) || Raining || Tick < c.DampUntil;
 
         /// <summary>Whether walkers can climb or cross a cell on its cover (vines: up a wall, over a pit or a stream), for the view.</summary>
         public bool IsClimbable(Cell c) => CoverHasTag(c, "climbable");

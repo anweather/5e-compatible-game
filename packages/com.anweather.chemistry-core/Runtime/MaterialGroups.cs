@@ -54,7 +54,7 @@ namespace Chem
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook"), ("ash", "burnAsh"), ("smoke", "burnSmoke") }),
             ("break", "breakable", new[] { ("leaves", "breaksTo") }),
             ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
-            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens"), ("leaves", "soaksTo"), ("dries", "driesTo") }),
+            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens"), ("leaves", "soaksTo"), ("dries", "driesTo"), ("slows", "wetSpeed") }),
             ("rust", null, new[] { ("every", "rustEvery"), ("leaves", "rustsTo") }),
             ("hot", null, new[] { ("for", "hotFor"), ("quench", "hotQuench") }),
             ("bake", "bakes", new[] { ("into", "bakesTo") }),

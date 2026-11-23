@@ -65,7 +65,7 @@ namespace Chem.Tests
         {
             var w = Room();
             Run(w, Batches(1000), 1, 1000);
-            Assert.That(w.CellHash(), Is.EqualTo("b03cfb2f"));
+            Assert.That(w.CellHash(), Is.EqualTo("c8d415c4"));
             Assert.That(w.SkyState(), Is.EqualTo("9661/-/-"));
         }
 

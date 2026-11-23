@@ -91,6 +91,11 @@ namespace Chem
         };
         /// <summary>How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, World.Thorns); 1 unhindered.</summary>
         public double Speed = 1;
+        /// <summary>
+        /// How fast a creature walks across it while it's wet (materials.json soak.slows: grass churned soft, 0.7), the
+        /// slower of this and Speed: water on it, raining, or damp from water soaked in (World.IsDamp); 1 unhindered.
+        /// </summary>
+        public double WetSpeed = 1;
         /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
         public string DissolvedBy, DissolvesTo;
         /// <summary>What a sand blast turns it into (materials.json scour.leaves: rusted metal back to metal, a log wall worn thin), or null; and whether raised ground of it wears down a step (scour.wears).</summary>
@@ -562,6 +567,11 @@ namespace Chem
         /// ground damp for DampTicks. SoakPass 0: no soaking.
         /// </summary>
         public int ThinWater = 2, SoakPass = 8, DampTicks = 600;
+        /// <summary>
+        /// In dry weather, water deeper than ThinWater on ground that soaks seeps away Seep times slower than a puddle dries
+        /// (World.Dry: a hollow the rain ran into drains; a lake on its bed doesn't).
+        /// </summary>
+        public int Seep = 2;
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
@@ -964,6 +974,7 @@ namespace Chem
             ChainsWet = Bool(o["chainsWet"]) ?? false,
             DriesTo = Str(o["driesTo"]),
             Speed = Num(o["speed"]) ?? 1,
+            WetSpeed = Num(o["wetSpeed"]) ?? 1,
             WaterTo = Str(o["waterTo"]),
             FreezesWater = Str(o["waterTo"]) == MaterialGroups.FreezesWater,
             BoilsWater = Str(o["waterTo"]) == MaterialGroups.BoilsWater,
@@ -1303,6 +1314,7 @@ namespace Chem
                 s.ThinWater = Int(w["thin"]) ?? s.ThinWater;
                 s.SoakPass = Int(w["soakPass"]) ?? s.SoakPass;
                 s.DampTicks = Int(w["dampTicks"]) ?? s.DampTicks;
+                s.Seep = Int(w["seep"]) ?? s.Seep;
             }
             if (o["height"] is JObject ht)
             {
