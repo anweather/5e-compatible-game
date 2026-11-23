@@ -441,8 +441,12 @@ public static class ProbeScenarios
         new Entry("sit", typeof(SitProbe), 40f,
             "The wizard sits on the bench nearest the yard, then lies back on the nearest beach lounger (Seat, Sitter, SitPose), and gets up from each. Checks: ten or more " +
             "seats in the world, the seat in reach beside it (E goes to it), held on the seat with the pose on and the hips within 0.2 m of the seat point, and free again after standing, no console errors."),
+        new Entry("sandbox", typeof(SandboxOpenProbe), 120f,
+            "Outside a Hold run, on the map played (the valley, the nine), a player whose save holds no points (PlayAsIf 0, as a released player's first launch): " +
+            "every row of rules/hold.json open, both hands, every gesture, element and kit spell (be205905; Andrew 2026-11-23: the nine is a sandbox too). Checks: not_in_a_run, " +
+            "plays_as_a_save_with_none, everything_open, both_hands_open, no console errors."),
         new Entry("swim", typeof(SwimProbe), 50f,
-            "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
+            "The wizard drops into the deepest part of the lake. Checks: deep water found, water drawn there at the surface (the lake's own, or the cells' on a generated map: #223), the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after; held, the dive takes the head under over 0.8 m down, breath runs down, and let go it comes back up with its breath full again; no console errors."),
         new Entry("flare", typeof(FlareProbe), 180f,

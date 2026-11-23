@@ -25,6 +25,9 @@ public class SwimProbe : ProbeScenario
         Metric("feet_below_surface_m", top - y);
         Check("afloat", surface.Swimming, "SurfaceEffects.Swimming");
         Check("at_the_surface", top - y > 1f && top - y < 1.9f, $"feet {top - y:0.00} m under the surface (the bed is {depth:0.0} m down)");
+        float drawn = DrawnWaterAt(deep, at);
+        Metric("drawn_surface_off_m", drawn - top);
+        Check("water_drawn", Mathf.Abs(drawn - top) < 0.3f, float.IsNaN(drawn) ? "no water drawn over the cell (#223)" : $"drawn {drawn - top:0.00} m from the surface");
         Shot("afloat");
 
         yield return Wait(3f);
@@ -118,6 +121,17 @@ public class SwimProbe : ProbeScenario
                 best = new Vector2Int(x, y);
             }
         return best;
+    }
+
+    // The height of the water drawn over a cell: the lake's own surface where one stands over it, else the cells' water
+    // surface (CellWaterMesh); NaN when neither draws it, as the valley's lake on the nine before #223.
+    float DrawnWaterAt(Vector2Int cell, Vector3 at)
+    {
+        var lake = GameObject.Find("Lake");
+        if (lake != null && lake.TryGetComponent<Renderer>(out var r) && r.enabled && r.bounds.min.x <= at.x && at.x <= r.bounds.max.x
+            && r.bounds.min.z <= at.z && at.z <= r.bounds.max.z)
+            return r.bounds.center.y;
+        return grid.DrawnWaterTopAt(cell.x + 0.5f, cell.y + 0.5f, float.NaN);
     }
 
     // Water over the ground in a lake square (one whose surface is the lake's), else 0.

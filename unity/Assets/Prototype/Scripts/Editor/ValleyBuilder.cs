@@ -153,13 +153,27 @@ public static class ValleyBuilder
     }
 
     // One material for every chunk: URP's terrain with rock mapped from the sides (TerrainRock.shader). Normal maps on, or a wall has no relief.
-    static Material RockMaterial() => EditorAssets.LoadOrCreate($"{Generated}/Ground/TerrainRock.mat", () =>
+    // Instancing on, set on every build, not only when made: the chunk terrains draw instanced (MapTerrains.Configure) but are
+    // made in play, so no terrain in the scene asks for the shader's instancing variants, and with the material's flag off a
+    // player build strips them (Graphics settings: instancing variants "strip unused"). The player then drew every chunk with
+    // no layer textures: white ground in 0.1.13 (and only in players; the Editor keeps every variant).
+    static Material RockMaterial()
     {
-        var material = new Material(Shader.Find("Prototype/TerrainRock"));
-        material.EnableKeyword("_TERRAIN_INSTANCED_PERPIXEL_NORMAL");
-        material.EnableKeyword("_NORMALMAP");
+        var material = EditorAssets.LoadOrCreate($"{Generated}/Ground/TerrainRock.mat", () =>
+        {
+            var made = new Material(Shader.Find("Prototype/TerrainRock"));
+            made.EnableKeyword("_TERRAIN_INSTANCED_PERPIXEL_NORMAL");
+            made.EnableKeyword("_NORMALMAP");
+            return made;
+        });
+        if (!material.enableInstancing)
+        {
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
+            AssetDatabase.SaveAssets();
+        }
         return material;
-    });
+    }
 
     // Grass on flat ground, moss in the meadows, rock on slopes, snow up high, sand at the lake.
     // ValleyShape.LayerWeights paints these; the cells also paint charred and bare earth

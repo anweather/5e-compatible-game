@@ -1,4 +1,5 @@
 using System.IO;
+using Chem;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -74,5 +75,27 @@ public class SoloMapTests
         LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("MAP: " + name + " isn't a map"));
         string folder = ChemGrid.PlayFolder(name);
         Assert.That(folder, Is.EqualTo(ChemGrid.PlayFolder("")));
+    }
+    // Andrew 2026-11-23: a player with no pick loads into the nine, the map with the valley in it.
+    [Test]
+    public void NothingSavedStartsOnTheNine()
+    {
+        PlayerPrefs.DeleteKey(Key);
+        Assert.That(SoloMap.Start(new[] { "game" }), Is.EqualTo("nine"));
+    }
+
+    [Test]
+    public void ASavedPickStillWins()
+    {
+        SoloMap.Save(GameFolders.DefaultMap);
+        Assert.That(SoloMap.Start(new[] { "game" }), Is.EqualTo(GameFolders.DefaultMap));
+    }
+
+    [Test]
+    public void AScriptedRunKeepsTheValley()
+    {
+        PlayerPrefs.DeleteKey(Key);
+        Assert.That(SoloMap.Start(new[] { "game", "-fps-probe" }), Is.EqualTo(GameFolders.DefaultMap));
+        Assert.That(SoloMap.Start(new[] { "game", "-playtest" }), Is.EqualTo(GameFolders.DefaultMap));
     }
 }
