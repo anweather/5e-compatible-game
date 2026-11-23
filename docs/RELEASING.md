@@ -26,6 +26,11 @@ startup and shows "alpha X.Y.Z (abc1234)" at the bottom of the Esc menu.
 
 ## Steps: the release candidate
 
+**From CI (2026-11-23, not proven yet):** a push to `main` runs `.github/workflows/release.yml`, which does steps 3
+and 4 on GitHub's runners (the version is stamped into the players, not committed) and leaves the draft for
+steps 5 to 8. `docs/CI_BUILDS.md`, "As built", says how, and what the first runs must show. Until it has made a
+good draft, the steps below are the way.
+
 A release about every 2 days, or sooner after a big fix (J-019 in
 `JUDGMENT_CALLS.md`). The Build lane runs it; the coordinator calls the
 freeze. The draft on GitHub *is* the release candidate (RC): the same
