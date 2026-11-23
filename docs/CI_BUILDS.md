@@ -56,11 +56,15 @@ Skipped when a release already targets the commit, or the commit message says `[
   published release), then `--linux-only --skip-build` (the zip), into one draft. Then test and publish by hand.
 
 **Not proven yet (the first runs will say):**
-- **Tree impostors without a GPU.** On the Mac a `-nographics` build fails baking them (`RenderTexture.Create
-  failed`). Here Unity has xvfb's software GL, which may bake them or may not. If not, bake them once on a machine
-  with a GPU and commit `Assets/Prototype/Generated/Resources/TreeImpostors/` (with its `.meta` files) to the packs
-  repo as `impostors/`: the workflow copies that folder in when it's there. They're made from pack trees, so they
-  never go in this public repo. Bake again when the trees or `TreeImpostorBaker.BakeVersion` change.
+- **Tree impostors without a GPU.** Baking them needs a graphics device. The packs repo carries them baked
+  (`Generated/TreeImpostors/`, BakeVersion 3, from the Mac on 2026-11-10, with their `.meta` files; its README says
+  how to redo them), and the workflow copies that folder into `Assets/Prototype/Generated/Resources/TreeImpostors/`,
+  so the build finds every species baked and bakes nothing (`AssetPackRestore.FromCommandLine -asset-cache` does the
+  same off CI). With them there a `-nographics` build on the Mac ends `HEADLESS BUILD: OK` (2026-11-23). If they're
+  stale (a new `TreeImpostorBaker.BakeVersion`, a new species), a `-nographics` build fails with `TREE IMPOSTORS:
+  FAILED` naming the species; under xvfb's software GL it would try to bake, which isn't proven. Bake them again on
+  a machine with a GPU and replace the folder in the packs repo. They're made from pack trees, so they never go in
+  this public repo.
 - **The licence in a container:** the Personal `.ulf` is written where Unity looks
   (`/root/.local/share/unity3d/Unity/Unity_lic.ulf`), as GameCI's builder does; Pro activates with the serial
   and returns it after.

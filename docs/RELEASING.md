@@ -102,8 +102,12 @@ A clone with no packs gets them from the Editor's Asset Store cache, or from a
 checkout of the private `anweather/5e-asset-packs` (laid out like the cache), with
 no download. Leave out `-quit` (the imports run after the method returns) and keep
 `-ignorecompilererrors` (the game's scripts don't compile until the packs are in).
-It logs `ASSET PACKS: OK` or `FAILED <what>` and exits 0 or 1; about 4 minutes on
-the M2 Pro for all five into a fresh clone:
+It logs `ASSET PACKS: OK` or `FAILED <what>` and exits 0 or 1; about 5 minutes on
+the M2 Pro for all five into a fresh clone. It also copies the baked tree impostors
+from the cache's `Generated/TreeImpostors/` (the packs repo has them; its README says
+how to redo them) into `Assets/Prototype/Generated/Resources/TreeImpostors/`, `.meta`
+files and all, leaving any already there, and logs `laid in N baked tree impostor
+files`. Baking needs a GPU, so this is what lets the build run with `-nographics`:
 
 ```sh
 U=/Applications/Unity/Hub/Editor/6000.3.27f1/Unity.app/Contents/MacOS/Unity
@@ -130,10 +134,13 @@ $U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
   exited 132 after a good quit, so trust this method's code, not a bare quit's.
 - About 8 minutes with the shader cache warm, 47 from a cold one (M2 Pro). `-nographics`
   costs nothing: every shader came out the same size as a run with a graphics
-  device, and the player the same apart from stamps and ids. **But not in a fresh
-  clone:** with no `Generated/` the build bakes the tree impostors, which needs a
-  graphics device, and under `-nographics` it fails (`RenderTexture.Create failed`,
-  2026-11-23). Leave `-nographics` out there, or bake once with a device first. The log's
+  device, and the player the same apart from stamps and ids. **The tree impostors:**
+  the build bakes any species not baked at the current `TreeImpostorBaker.BakeVersion`,
+  which needs a graphics device. In a fresh clone they come from the restore above;
+  without them (or with stale ones), under `-nographics` the build stops with
+  `TREE IMPOSTORS: FAILED, <species> not baked ...` and `HEADLESS BUILD: FAILED`. Then
+  bake them on a machine with a GPU (or leave `-nographics` out) and refresh the packs
+  repo's copy. The log's
   `SpeedTreeURP_Branch.shadergraph` exception and the ray-tracing shader warnings
   are expected (`unity/CLAUDE.md`).
 - **Not proven by a build:** nothing here has run it. Check a Mac-built player on
