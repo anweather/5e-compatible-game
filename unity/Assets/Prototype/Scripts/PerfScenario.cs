@@ -48,6 +48,9 @@ using Debug = UnityEngine.Debug;
 // and -perf-water-check, which redraws the water tiles at the end and counts any that differ;
 // -perf-same-check draws every water tile both ways and paints every ground strip with its noise
 // kept and afresh, counting any that differ bit for bit (#70; doubles that work, so not for timing).
+// PERF CENSUS lines (PerfCensus) say what the picture is made of as measuring starts and ends; PerfKnobs takes parts of
+// it away for a run (-perf-ssao-off, -perf-grass-off, ...); -perf-look-pair saves stills of the view now and as it drew
+// before the 2026-11-23 GPU fixes, with time stopped (docs/perf/2026-11-23-nine-gpu.md).
 // -perf-offscreen draws the camera into a 1080p texture of real play's colour and depth
 // formats: with no desktop session a camera bound for the window draws nothing, so frame
 // times mean nothing and no pipeline state is made (with -perf-offscreen-4k, 3840x2160).
@@ -151,6 +154,9 @@ public class PerfScenario : MonoBehaviour
         if (stage != null) stage.Go = true;
 
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("measure"));
+        PerfKnobs.Apply();
+        foreach (string line in PerfCensus.Lines("start")) Debug.Log(line);
+        yield return null; // the census's own frame isn't measured
         early.Dispose();
         early = null;
         markers = new PerfMarkers(Has("-perf-wide"));
@@ -162,6 +168,7 @@ public class PerfScenario : MonoBehaviour
 
         // Update ends the run, so the frame that crosses the end is counted, however long it took.
         while (measuring) yield return null;
+        if (Has("-perf-look-pair")) yield return LookPair();
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
         yield return new WaitForSecondsRealtime(ShotSavedSeconds); // quitting drops a shot still being written
@@ -249,6 +256,41 @@ public class PerfScenario : MonoBehaviour
         at.y = grid.GroundAt(at) + 0.8f;
         var eye = at + new Vector3(0f, 1.5f, -5f);
         Camera.main.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(at - eye));
+    }
+
+    // -perf-look-pair: with time stopped, the same view as it draws now and as it drew before the 2026-11-23 GPU fixes
+    // (PerfKnobs.AsBefore): from where the camera is, and from 60 m up looking out north, east, south and west. A fair
+    // still pair, as nothing moves between them.
+    IEnumerator LookPair()
+    {
+        Time.timeScale = 0f;
+        var cam = Camera.main.transform;
+        var eye = cam.position;
+        var forward = cam.forward;
+        string[] ways = { "n", "e", "s", "w" };
+        for (int i = 0; i < 2; i++)
+        {
+            string label = i == 0 ? "now" : "before";
+            if (i == 1)
+            {
+                PerfKnobs.AsBefore();
+                for (int f = 0; f < 5; f++) yield return null;
+            }
+            yield return LookFrom(eye, eye + forward * 50f, $"{scenario}-ground-{label}");
+            for (int w = 0; w < ways.Length; w++)
+            {
+                var ahead = Quaternion.Euler(0f, 90f * w, 0f) * Vector3.forward;
+                var high = eye + Vector3.up * 60f;
+                yield return LookFrom(high, high + ahead * 400f + Vector3.down * 60f, $"{scenario}-high-{ways[w]}-{label}");
+            }
+        }
+    }
+
+    IEnumerator LookFrom(Vector3 eye, Vector3 at, string name)
+    {
+        if (stage != null) stage.CutTo(eye, at);
+        for (int f = 0; f < 3; f++) yield return null;
+        yield return Shot(name);
     }
 
     // A screenshot is written at the end of the frame it was asked for.
@@ -393,6 +435,7 @@ public class PerfScenario : MonoBehaviour
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
         Debug.Log($"PERF RENDER scenario={scenario}{markers.RenderSummary()}");
+        foreach (string line in PerfCensus.Lines("end")) Debug.Log(line);
         LogSlow();
         var inv = CultureInfo.InvariantCulture;
         Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
