@@ -158,21 +158,26 @@ public static class PerfKnobs
         Debug.Log($"PERF KNOBS detail_metres={Text(metres, "0")}");
     }
 
-    static string GrassNoShadows()
+    static string GrassNoShadows() => Has("-perf-grass-no-shadows") ? $"grass_shadows_off={GrassShadows(ShadowCastingMode.Off)}" : null;
+
+    /// <summary>
+    /// The terrains' grass (their detail prototypes) cast shadows as <paramref name="mode"/> says: On is the grass as it was
+    /// before LightTufts turned its shadows off (for -perf-look-pair-grass-shadows). How many renderers it changed.
+    /// </summary>
+    public static int GrassShadows(ShadowCastingMode mode)
     {
-        if (!Has("-perf-grass-no-shadows")) return null;
-        int off = 0;
+        int changed = 0;
         foreach (var data in All<Terrain>().Select(t => t.terrainData).Where(d => d != null))
         {
             var renderers = data.detailPrototypes.Where(p => p.prototype != null).SelectMany(p => p.prototype.GetComponentsInChildren<Renderer>(true));
-            foreach (var r in renderers.Where(r => r.shadowCastingMode != ShadowCastingMode.Off))
+            foreach (var r in renderers.Where(r => r.shadowCastingMode != mode))
             {
-                r.shadowCastingMode = ShadowCastingMode.Off;
-                off++;
+                r.shadowCastingMode = mode;
+                changed++;
             }
             data.RefreshPrototypes();
         }
-        return $"grass_shadows_off={off}";
+        return changed;
     }
 
     static string PackTuftsKnob() => Has("-perf-pack-tufts") ? $"pack_tufts={PackTufts()}" : null;
