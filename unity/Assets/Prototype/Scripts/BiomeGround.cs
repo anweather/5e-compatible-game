@@ -214,8 +214,8 @@ public sealed class BiomeGround
         return 0;
     }
 
-    /// <summary>The biome ground of a generated map already read.</summary>
-    public static BiomeGround Of(GeneratedMap map) => new(map);
+    /// <summary>The biome ground of a generated map already read (null for a hills map: one biome, no field).</summary>
+    public static BiomeGround Of(GeneratedMap map) => map.Hills != null ? null : new(map);
 
     /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated (or is a hills map).</summary>
     public static BiomeGround For(string mapSource)

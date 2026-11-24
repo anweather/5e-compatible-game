@@ -172,6 +172,12 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     void Start()
     {
+        // A map with no animals (map.json's "off": "fauna", the hills) runs none.
+        if (MapFile.Load(ChemGrid.Folders.World).IsOff("fauna"))
+        {
+            enabled = false;
+            return;
+        }
         grid = ChemGrid.Current?.Grid;
         sky = FindAnyObjectByType<SkyLight>();
         drawer = new CreatureDrawer(material);

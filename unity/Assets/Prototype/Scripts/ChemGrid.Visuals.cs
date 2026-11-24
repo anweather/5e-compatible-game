@@ -194,12 +194,25 @@ public partial class ChemGrid
     {
         int across = ChunksAcross, down = drawn.Length / Mathf.Max(1, across);
         var f = focus[i];
-        for (int cy = Mathf.Max(0, f.y - reach); cy <= Mathf.Min(down - 1, f.y + reach); cy++)
-            for (int cx = Mathf.Max(0, f.x - reach); cx <= Mathf.Min(across - 1, f.x + reach); cx++)
+        var (cy0, cy1, cx0, cx1) = Round(f, reach, across, down);
+        for (int y = cy0; y <= cy1; y++)
+            for (int x = cx0; x <= cx1; x++)
             {
-                int n = cy * across + cx;
+                int cx = World.FoldChunkX(x), cy = World.FoldChunkY(y), n = cy * across + cx;
                 if (!drawn[n] && n != kept && !ReachedByEarlier(focus, i, cx, cy, reach)) toDraw.Add(n);
             }
+    }
+
+    // The chunk rows and columns within reach of a focus: clipped to the map, or round a seam of a world that wraps (whose
+    // chunks are taken where they fold to), at most the map's chunks either way.
+    (int cy0, int cy1, int cx0, int cx1) Round(Vector2Int f, int reach, int across, int down)
+    {
+        int cy0 = f.y - reach, cy1 = f.y + reach, cx0 = f.x - reach, cx1 = f.x + reach;
+        if (World.WrapY) cy1 = Mathf.Min(cy1, cy0 + down - 1);
+        else (cy0, cy1) = (Mathf.Max(0, cy0), Mathf.Min(down - 1, cy1));
+        if (World.WrapX) cx1 = Mathf.Min(cx1, cx0 + across - 1);
+        else (cx0, cx1) = (Mathf.Max(0, cx0), Mathf.Min(across - 1, cx1));
+        return (cy0, cy1, cx0, cx1);
     }
 
     // Whether a focus stands in an undrawn chunk other than this one.
@@ -218,10 +231,10 @@ public partial class ChemGrid
     }
 
     // Whether a focus before the i-th already reaches this chunk, so it's queued once.
-    static bool ReachedByEarlier(List<Vector2Int> focus, int i, int cx, int cy, int reach)
+    bool ReachedByEarlier(List<Vector2Int> focus, int i, int cx, int cy, int reach)
     {
         for (int j = 0; j < i; j++)
-            if (Mathf.Abs(focus[j].x - cx) <= reach && Mathf.Abs(focus[j].y - cy) <= reach) return true;
+            if (Mathf.Abs(World.DeltaChunkX(focus[j].x, cx)) <= reach && Mathf.Abs(World.DeltaChunkY(focus[j].y, cy)) <= reach) return true;
         return false;
     }
 
@@ -340,10 +353,10 @@ public partial class ChemGrid
         return focusChunks;
     }
 
-    static int FocusDistance(List<Vector2Int> focus, int cx, int cy)
+    int FocusDistance(List<Vector2Int> focus, int cx, int cy)
     {
         int best = int.MaxValue;
-        foreach (var f in focus) best = Mathf.Min(best, Mathf.Max(Mathf.Abs(f.x - cx), Mathf.Abs(f.y - cy)));
+        foreach (var f in focus) best = Mathf.Min(best, Mathf.Max(Mathf.Abs(World.DeltaChunkX(f.x, cx)), Mathf.Abs(World.DeltaChunkY(f.y, cy))));
         return best;
     }
 
@@ -356,13 +369,17 @@ public partial class ChemGrid
         using var marked = DrawNearMarker.Auto();
         int reach = World.Rules.Sim.Streaming.Reach, across = ChunksAcross, down = drawn.Length / Mathf.Max(1, across);
         foreach (var f in Focus())
-            for (int cy = Mathf.Max(0, f.y - reach); cy <= Mathf.Min(down - 1, f.y + reach); cy++)
-                for (int cx = Mathf.Max(0, f.x - reach); cx <= Mathf.Min(across - 1, f.x + reach); cx++)
-                    if (!drawn[cy * across + cx])
-                    {
-                        PerfCounts.Add("draw.near_chunks");
-                        RenderChunk(cx, cy);
-                    }
+        {
+            var (cy0, cy1, cx0, cx1) = Round(f, reach, across, down);
+            for (int y = cy0; y <= cy1; y++)
+                for (int x = cx0; x <= cx1; x++)
+                {
+                    int cx = World.FoldChunkX(x), cy = World.FoldChunkY(y);
+                    if (drawn[cy * across + cx]) continue;
+                    PerfCounts.Add("draw.near_chunks");
+                    RenderChunk(cx, cy);
+                }
+        }
     }
 
     // The rest a few rows a frame, nearest first, within the frame's budget.

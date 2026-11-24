@@ -43,8 +43,12 @@ public static class PinnedValley
         {
             if (!GeneratedMap.IsGenerated(source)) return p;
             var map = LoadedMaps.Get(source);
-            // A hills map pins nothing: it dresses no valley places.
-            if (map.PinnedDir == null) return p;
+            // A hills map pins nothing: it's generated (the far ring, the drawn tier), with no valley to dress or move.
+            if (map.PinnedDir == null)
+            {
+                p.Generated = true;
+                return p;
+            }
             var valley = MapFile.Load(map.PinnedDir);
             var here = MapFile.Load(world);
             int x = map.Gen.PinnedX, y = map.Gen.PinnedY;

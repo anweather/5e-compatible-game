@@ -37,6 +37,14 @@ namespace Chem
         /// and a root the map doesn't name switches itself off (PlaceRoot).
         /// </summary>
         public string[] Dresses { get; private set; } = System.Array.Empty<string>();
+        /// <summary>
+        /// The view's systems this map turns off (map.json's "off": "fauna", ...), for this map only: a map with nothing for
+        /// them (the hills) doesn't pay for them. Empty for none.
+        /// </summary>
+        public string[] Off { get; private set; } = System.Array.Empty<string>();
+
+        /// <summary>Whether map.json's "off" names this system.</summary>
+        public bool IsOff(string system) => System.Array.IndexOf(Off, system) >= 0;
         /// <summary>Whether map.json says its own range. The valley's doesn't hold its land: it's where stamps stop, and the sea bed lies below it.</summary>
         public bool OwnLandRange { get; private set; }
 
@@ -124,6 +132,7 @@ namespace Chem
                 SeaShore = Pair(sea?["shore"]),
                 Seaward = Pair(sea?["seaward"]),
                 Dresses = o["dresses"] is JArray dresses ? dresses.Select(d => (string)d).ToArray() : System.Array.Empty<string>(),
+                Off = o["off"] is JArray off ? off.Select(d => (string)d).ToArray() : System.Array.Empty<string>(),
                 Id = (string)o["id"],
                 Name = (string)o["name"],
                 W = (int)o["size"][0],
