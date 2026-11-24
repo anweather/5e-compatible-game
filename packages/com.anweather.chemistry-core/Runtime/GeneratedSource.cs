@@ -105,6 +105,12 @@ namespace Chem
         /// <summary>Chunks a read made one at a time on the World's thread, not made ahead or at once (MakeNow): each a stall of milliseconds.</summary>
         public long MadeOnRead => Interlocked.Read(ref madeOnRead);
 
+        /// <summary>
+        /// Told each chunk a read made (MadeOnRead), on the reading thread, just after: a probe's, to say which read it was
+        /// (its stack). Changes nothing; null for none.
+        /// </summary>
+        public Action<int, int> MadeOnReadAt { get; set; }
+
         /// <summary>The time spent making chunks on any thread, and the World's thread spent making or waiting for them, in milliseconds.</summary>
         public double MakeMs => Interlocked.Read(ref makeTicks) * 1000.0 / Stopwatch.Frequency;
         public double WaitMs => Interlocked.Read(ref waitTicks) * 1000.0 / Stopwatch.Frequency;
@@ -200,6 +206,7 @@ namespace Chem
             {
                 making.RunSynchronously();
                 Interlocked.Increment(ref madeOnRead);
+                MadeOnReadAt?.Invoke(cx, cy);
                 if (making.IsFaulted)
                 {
                     // Let the next read make it again, and say why here.

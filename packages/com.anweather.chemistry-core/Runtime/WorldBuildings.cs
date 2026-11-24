@@ -60,11 +60,23 @@ namespace Chem
         public void LayInto(World world)
         {
             int[] fileLand = null;
+            var laid = new List<(BuildingRow row, List<BuildingCell> cells)>();
             foreach (var r in LaidRows)
             {
                 var row = BuildingRow.Read((string)r["id"], r, world.Rules.Buildings);
                 var cells = BuildingRaster.Cells(row, world.Rules.Buildings);
-                if (!cells.All(c => world.InBounds(c.X, c.Y))) continue;
+                if (cells.All(c => world.InBounds(c.X, c.Y))) laid.Add((row, cells));
+            }
+            // A generated map's chunks under the rows made first, every core at once, not one a read (changes time only).
+            if (world.Source is IGeneratedSource)
+            {
+                var under = new SortedSet<(int cx, int cy)>();
+                foreach (var (_, cells) in laid)
+                    foreach (var c in cells) under.Add((Chunks.ChunkOf(c.X), Chunks.ChunkOf(c.Y)));
+                world.MakeNow(under);
+            }
+            foreach (var (row, cells) in laid)
+            {
                 foreach (var c in cells) world.Paint(c.X, c.Y, c.Terrain);
                 GradeRoads(world, row, cells, ref fileLand);
             }

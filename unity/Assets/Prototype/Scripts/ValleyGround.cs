@@ -81,6 +81,8 @@ public sealed class ValleyGround
     // The offsets the arrays were made with (the baked ground's: no laid land), and the river's extra under its cells.
     // Kept only for the chunks the map's laid land moves (the rest are the heightfield's own until a cell there changes).
     readonly Dictionary<(int i, int j), float[,]> bakedOffsets = new();
+    // The chunks the map's laid land reaches (a generated map's): their baked offsets are worked out as they're made.
+    readonly HashSet<(int i, int j)> laidChunks = new();
     readonly Dictionary<int, float> raised = new();
     HashSet<(int i, int j)> detailNear = new();
     const int MostSpare = 16;
@@ -269,7 +271,7 @@ public sealed class ValleyGround
         var data = ch.data;
         int res = data.heightmapResolution;
         var heights = data.GetHeights(0, 0, res, res);
-        var baked = bakedOffsets.TryGetValue(ch.at, out var kept) ? kept : heightfield.Current(ch.at.i, ch.at.j);
+        var baked = BakedOffsets(ch.at);
         float size = data.size.y;
         ch.baseHeights = new float[res, res];
         for (int z = 0; z < res; z++)
@@ -294,6 +296,15 @@ public sealed class ValleyGround
             cellBase[k] = SampleBase(x, y) + (raised.TryGetValue(k, out float more) ? more : 0f);
             bakedPaint[k] = paintedMix[k] = CellPaint.Mix(world, world.At(x, y));
         }
+    }
+
+    // The offsets a chunk's arrays were made with: without the laid land where it lies (worked out once, as the chunk is
+    // first made), else the heightfield's own.
+    float[,] BakedOffsets((int i, int j) at)
+    {
+        if (bakedOffsets.TryGetValue(at, out var kept)) return kept;
+        if (!laidChunks.Contains(at)) return heightfield.Current(at.i, at.j);
+        return bakedOffsets[at] = heightfield.ComputeUnlaid(world, at.i, at.j);
     }
 
     static bool Moved(float[,] now, float[,] baked)
@@ -529,14 +540,13 @@ public sealed class ValleyGround
                 ch.touched = false;
             }
         }
-        // The offsets the arrays were made with are the heightfield's as it's reset (no laid land): kept for the chunks the
-        // laid land moves, before it's drawn.
+        // The offsets the arrays were made with are the heightfield's without the laid land: worked out for a chunk the laid
+        // land moves only as it's made (MakeReady), so the laid land far away (a road across the map) makes no chunk now.
+        // A chunk's own offsets, worked out as it's wanted, have the laid land drawn.
         bakedOffsets.Clear();
-        var laid = w.LandLaidCells().ToList();
-        foreach (var r in heightfield.DirtyRects(laid))
-            if (!bakedOffsets.ContainsKey((r.I, r.J))) bakedOffsets[(r.I, r.J)] = (float[,])heightfield.Current(r.I, r.J).Clone();
+        laidChunks.Clear();
+        foreach (var r in heightfield.DirtyRects(w.LandLaidCells())) laidChunks.Add((r.I, r.J));
         heightfield.LaidLandDrawn = true;
-        heightfield.Update(w, laid, snap: true);
         // No chunk's cells yet: each block is made with its chunk (MakeReady), the rest stand on the land.
         if (cellBase == null) NewCellArrays();
         cellBase.Clear();

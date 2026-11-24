@@ -476,7 +476,29 @@ public sealed class MapTerrains : MonoBehaviour
             if (!ground.Builder.Holds(toMake[n])) break;
             ready.Add(toMake[n]);
         }
-        if (ready.Count > 1) ground.PrepareHeights(ready);
+        if (ready.Count < 2) return;
+        // Their heights read the cells of one box round them all (CellHeightfield.Prepare): on a map made from its source,
+        // the chunks in the box between them made first on every core, not one a read as the box is read.
+        MakeFirst(BoxOf(ready));
+        ground.PrepareHeights(ready);
+    }
+
+    // The terrains of the box round these (all of them, when it's no bigger than CellHeightfield.Prepare caches at once).
+    static List<(int i, int j)> BoxOf(List<(int i, int j)> terrains)
+    {
+        int i0 = int.MaxValue, j0 = int.MaxValue, i1 = int.MinValue, j1 = int.MinValue;
+        foreach (var (i, j) in terrains)
+        {
+            i0 = Mathf.Min(i0, i);
+            j0 = Mathf.Min(j0, j);
+            i1 = Mathf.Max(i1, i);
+            j1 = Mathf.Max(j1, j);
+        }
+        if ((long)(i1 - i0 + 1) * (j1 - j0 + 1) > Chem.CellHeightfield.MostCachedChunks) return terrains;
+        var box = new List<(int i, int j)>();
+        for (int j = j0; j <= j1; j++)
+            for (int i = i0; i <= i1; i++) box.Add((i, j));
+        return box;
     }
 
     const int HeightsAFrame = 8;

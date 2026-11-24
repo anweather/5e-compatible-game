@@ -210,8 +210,8 @@ namespace Chem
         // How far past a chunk's own cells its samples read: a seam's cell and a mound's reach (BankAt), with room.
         const int CacheMargin = 4;
 
-        // The most chunks one Prepare caches the cells of at once (a box round them all); more apart, they're worked one by one.
-        const int MostCachedChunks = 400;
+        /// <summary>The most chunks one Prepare caches the cells of at once (a box round them all); more apart, they're worked one by one.</summary>
+        public const int MostCachedChunks = 400;
 
         /// <summary>
         /// After a lazy Reset: works out those of these chunks not worked out yet, side by side (as Reset does, through one
@@ -500,6 +500,30 @@ namespace Chem
                 }
             }
             return c;
+        }
+
+        /// <summary>
+        /// A chunk's offsets as the baked ground has them, without the map's laid land (LaidLandDrawn off), worked out now
+        /// from the cells and leaving the chunk's own state alone: what a generated map's ground arrays were made with, asked
+        /// for a chunk only as it's made (#206), so the laid land far away is never worked out at the start. From the
+        /// caller's thread, never while Prepare works.
+        /// </summary>
+        public float[,] ComputeUnlaid(World world, int i, int j)
+        {
+            if (world == null) throw new ArgumentNullException(nameof(world));
+            bool was = LaidLandDrawn;
+            var wasCache = cache;
+            LaidLandDrawn = false;
+            try
+            {
+                cache = CacheRound(world, i, j, i, j);
+                return Compute(world, i, j);
+            }
+            finally
+            {
+                LaidLandDrawn = was;
+                cache = wasCache;
+            }
         }
 
         /// <summary>A whole chunk's offsets, [z, x].</summary>
