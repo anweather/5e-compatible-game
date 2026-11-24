@@ -74,6 +74,49 @@ cells and chunks, and only positions are moved by whole periods (W x 1.5 m, H x 
 Float precision: positions grow as the wizard walks on round the world (10 km is 1 mm steps in a float), so a floating
 origin isn't needed for a session; one re-centre would be the next step if long walks show jitter.
 
-## Results
+## Fixes the first runs found
 
-(Filled in from the player runs below.)
+- The hills didn't count as generated (`PinnedValley.InGenerated` read the pinned map), so there was no far ring and the
+  cell drawing's radius was the whole map: 7,000 chunks unpacked standing still, 6 GB. A hills map is generated now.
+- A batch of terrain heights was worked out in one box round them all (`MapTerrains.PrepareHeights`,
+  `CellHeightfield.Prepare`): terrains either side of a seam are a map's width apart by their folded chunks, so the box
+  ran the whole width (or height) and made 1,400 chunks on the main thread at the corner, 150 to 300 ms each time a step
+  crossed a chunk near a seam. Boxes now hold only terrains near each other, and the core never boxes over a seam.
+- A cell chunk the drawing came to before its source made it was made on the main thread (`ChemGrid.DrawSome`): now it
+  and the next few are made ahead on the worker and drawn the frame after.
+- `map.json`'s `"off": ["fauna"]` turns the animals off on this map only (`MapFile.Off`, `ValleyFauna`); 0.6 ms a frame.
+
+## Results (2026-11-24, M2 Pro, development player, 1920 x 1080, `-fps-probe -perf-offscreen -perf-memory`)
+
+Scripts and logs: `~/5e-logs/hills/` (`all.sh`, `table-r2.txt`, `r2-*.log`, `*.rss.csv`). Frame times in ms.
+
+| Run | mean | p95 | p99 | worst | made on a read in the run | peak RSS |
+|---|---|---|---|---|---|---|
+| stand at the spawn x3 (30 s) | 9.46-9.50 | 11.41-11.49 | 12.0-12.2 | 38-40 (first frame) | 0 | 1.56 GB |
+| seam walk x3 (150 s, legs of 2 chunks round the corner: 6 crossings each) | 9.71-9.72 | 11.90-12.03 | 12.6-12.7 | 42 | 0 | 1.63 GB |
+| bot walk seed 1 / 2 / 3 | 9.44 / 8.25 / 8.72 | **18.88** / 14.48 / **16.10** | 39.7 / 21.7 / 36.5 | 64 | 0 | 1.86-1.93 GB |
+| long walk (660 s, both seams twice) | 9.55 | 11.79 | 12.59 | 54 | 0 | 1.83 GB |
+
+- 0 exceptions and 0 errors of ours in every run (6 Metal pipeline errors for URP's Particles/Lit are in every map's
+  log, the nine's too). PLAY READY in 4.1-4.4 s in all 13 runs; no stall.
+- Chunks made: 231 at load (41 of them on a read, before the first frame), ~411 by the time a stand starts, then only
+  ahead on the worker: none on a read during any walk.
+- Worst frames near a crossing (within 3 s, 3 seam walks + the long walk): the first east crossing 41-43 ms every run
+  (+0.35 s after it); every other crossing 12-22 ms. The run means near crossings are 9.4-10.1 ms.
+- Memory over the long walk (RSS a minute): 1569, 1593, 1653, 1681, 1681, 1735, 1773, 1771, 1709, 1746, 1797 MB. Native
+  and graphics memory are flat; the managed heap rose 346 to 620 MB and drops back at times (a collection), so it isn't
+  shown flat yet. The Wide World's stand peaked at ~2.2 GB. Not compared with a smaller hills map.
+- The bot's p95 misses on seeds 1 and 3: its slow frames are where it burns (184 cells alight), waiting on the GPU
+  (gpu p95 34 ms) and its own screenshots (`PlaytestBot.Shot`, the 60-110 ms spikes). The nine's bot on the same Mac is
+  15.8 / 28.6 (mean / p95). It's the fire's look, not the hills.
+
+Stills (800 px): `~/5e-logs/hills/shots/spawn.jpg`, `seam.jpg` (past both seams at the corner), `high.jpg` (60 m up).
+
+## Left before roads
+
+- The first east crossing's 42 ms frame (once a run, 0.35 s after it).
+- The managed heap's slow rise over a long walk: walk 30 minutes and see whether it levels.
+- The fire's GPU cost (the bot's p95), shared with every map.
+- From 60 m the land is mostly haze past the known ring (672 m); the hills are gentle (5-38 m), so they read as nearly
+  flat from the ground. Stronger octaves are a map.json change.
+- `ChemGrid.Maps()` still hides `"bake": false` maps from the menu; `-map hills-12x10` plays it.

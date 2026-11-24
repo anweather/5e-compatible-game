@@ -28,20 +28,28 @@ public static class ViewWrap
     static void Reset() => Set(null, 1f);
 
     /// <summary>A new world in play (ChemGrid's): its wrap, at this cell size.</summary>
-    public static void Set(World world, float cellSize)
+    public static void Set(World world, float cellSize) =>
+        Set(world != null && world.WrapX ? world.W : 0, world != null && world.WrapY ? world.H : 0, cellSize);
+
+    /// <summary>A world <paramref name="wrapW"/> cells round east-west and <paramref name="wrapH"/> north-south (0: no wrap that way).</summary>
+    public static void Set(int wrapW, int wrapH, float cellSize)
     {
-        w = world != null && world.WrapX ? world.W : 0;
-        h = world != null && world.WrapY ? world.H : 0;
+        w = wrapW;
+        h = wrapH;
         periodX = w * cellSize;
         periodZ = h * cellSize;
         frame = -1;
     }
+
+    /// <summary>Where "near" is measured from instead of the camera (a test's); null for the camera.</summary>
+    public static Vector3? EyeAt { get; set; }
 
     /// <summary>The camera's position this frame (read once a frame): what "near" is measured from.</summary>
     public static Vector3 Eye
     {
         get
         {
+            if (EyeAt.HasValue) return EyeAt.Value;
             if (Time.frameCount != frame)
             {
                 frame = Time.frameCount;
