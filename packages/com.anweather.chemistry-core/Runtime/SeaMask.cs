@@ -25,6 +25,22 @@ namespace Chem
         public int SeaCells { get; }
         public int BasinCells { get; }
 
+        // Whether off the map is sea: when any of its cells is (the sea reaches the edge), unless the map says otherwise (OfKnown).
+        readonly bool offMapSea;
+
+        // A mask from its chunks as they're held: a kind each, and a byte a cell for those that mix.
+        SeaMask(int w, int h, byte[] uniform, byte[][] mixed, int seaCells, int basinCells, bool offMapSea)
+        {
+            W = w;
+            H = h;
+            chunksW = (w + Chunks.Size - 1) / Chunks.Size;
+            this.uniform = uniform;
+            this.mixed = mixed;
+            SeaCells = seaCells;
+            BasinCells = basinCells;
+            this.offMapSea = offMapSea;
+        }
+
         SeaMask(int w, int h, byte[] kind)
         {
             W = w;
@@ -34,6 +50,7 @@ namespace Chem
                 if (k == Sea) SeaCells++;
                 else if (k == Basin) BasinCells++;
             }
+            offMapSea = SeaCells > 0;
             chunksW = (w + Chunks.Size - 1) / Chunks.Size;
             int chunksH = (h + Chunks.Size - 1) / Chunks.Size;
             uniform = new byte[chunksW * chunksH];
@@ -131,6 +148,80 @@ namespace Chem
             return Flooded(kind, w, h);
         }
 
+        /// <summary>
+        /// A generated map's mask from its known chunks (ChunkGen.Know: 9 x 9 samples a chunk), not its land: a map too big
+        /// to bake whole (J-086) has no land to flood, and making every chunk to read it would be the whole map. The
+        /// generator knows its water already (the sea, a lake's or a pond's, which is a basin here), so nothing is flooded: a
+        /// chunk whose samples are all one kind is that kind, and one that mixes them takes each cell's nearest sample's, the
+        /// coast true to 8 cells. Off the map is never sea (the 12 x 10's north and south rows are ice and desert, and east
+        /// joins west). Every chunk is known side by side; the mask is the same on any number of threads.
+        /// </summary>
+        public static SeaMask OfKnown(ChunkGen gen)
+        {
+            if (gen == null) throw new ArgumentNullException(nameof(gen));
+            int cw = gen.ChunksW, ch = gen.ChunksH, w = gen.CellsW, h = gen.CellsH;
+            var uniform = new byte[cw * ch];
+            var mixed = new byte[cw * ch][];
+            var sea = new int[cw * ch];
+            var basin = new int[cw * ch];
+            System.Threading.Tasks.Parallel.For(0, cw * ch, c =>
+            {
+                var (kind, cells, seaHere, basinHere) = OfKnownChunk(gen.Know(c % cw, c / cw), Math.Min(Chunks.Size, w - c % cw * Chunks.Size), Math.Min(Chunks.Size, h - c / cw * Chunks.Size));
+                uniform[c] = kind;
+                mixed[c] = cells;
+                sea[c] = seaHere;
+                basin[c] = basinHere;
+            });
+            int seaCells = 0, basinCells = 0;
+            for (int c = 0; c < sea.Length; c++)
+            {
+                seaCells += sea[c];
+                basinCells += basin[c];
+            }
+            return new SeaMask(w, h, uniform, mixed, seaCells, basinCells, offMapSea: false);
+        }
+
+        // A known chunk's kinds: one for them all, or a byte a cell (its nearest sample's) where they mix; and its sea and
+        // basin cells, of the cols x rows of it on the map.
+        static (byte kind, byte[] cells, int sea, int basin) OfKnownChunk(KnownChunk k, int cols, int rows)
+        {
+            var kinds = new byte[KnownChunk.Side * KnownChunk.Side];
+            bool same = true;
+            for (int q = 0; q < kinds.Length; q++)
+            {
+                kinds[q] = KindOf(k.Water[q]);
+                same &= kinds[q] == kinds[0];
+            }
+            if (same) return (kinds[0], null, kinds[0] == Sea ? cols * rows : 0, kinds[0] == Basin ? cols * rows : 0);
+            var (cells, sea, basin) = Mixed(kinds, cols, rows);
+            return (kinds[0], cells, sea, basin);
+        }
+
+        // A chunk whose samples mix kinds: each cell its nearest sample's, and the sea and basin cells of those on the map.
+        static (byte[] cells, int sea, int basin) Mixed(byte[] kinds, int cols, int rows)
+        {
+            var cells = new byte[Chunks.Area];
+            int sea = 0, basin = 0;
+            for (int ly = 0; ly < Chunks.Size; ly++)
+                for (int lx = 0; lx < Chunks.Size; lx++)
+                {
+                    int i = (lx + KnownChunk.Step / 2) / KnownChunk.Step, j = (ly + KnownChunk.Step / 2) / KnownChunk.Step;
+                    byte kind = kinds[j * KnownChunk.Side + i];
+                    cells[ly * Chunks.Size + lx] = kind;
+                    bool on = lx < cols && ly < rows;
+                    if (on && kind == Sea) sea++;
+                    else if (on && kind == Basin) basin++;
+                }
+            return (cells, sea, basin);
+        }
+
+        // A known sample's water as the mask's kind: a lake's or a pond's is a basin, a river's is dry (its cells hold it).
+        static byte KindOf(byte water)
+        {
+            if (water == KnownChunk.Sea) return Sea;
+            return water == KnownChunk.Lake ? Basin : Dry;
+        }
+
         // The mask of land whose cells under the sea level are marked 1 (LandChunks.Read's pass): the same mask as Of.
         internal static SeaMask OfLow(byte[] low, int w, int h)
         {
@@ -174,7 +265,7 @@ namespace Chem
         bool In(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
 
         /// <summary>Whether a cell is sea: below the level and joined to the map's edge. Off the map is sea when any edge is.</summary>
-        public bool IsSea(int x, int y) => In(x, y) ? KindAt(x, y) == Sea : SeaCells > 0;
+        public bool IsSea(int x, int y) => In(x, y) ? KindAt(x, y) == Sea : offMapSea;
 
         /// <summary>Whether a cell is in a basin: below the level, and walled off from the sea.</summary>
         public bool IsBasin(int x, int y) => In(x, y) && KindAt(x, y) == Basin;

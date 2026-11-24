@@ -194,8 +194,11 @@ public sealed class BiomeGround
     // A cell as the world holds it, without unpacking its chunk (D17): a packed chunk's cell is made from the world's source,
     // as it started (a packed chunk's changes since aren't read: Grounds runs once, as the far ring starts). Reading every
     // Step cells through world.At unpacked every chunk of the map.
+    // On a map made from its source (the Wide World) only the chunks it has made already are read: making the others to read
+    // a cell of each was every chunk of the map, on this thread (523 s in the Editor). A biome none of them shows keeps its own.
     static Cell CellAsIs(World world, int x, int y)
     {
+        if (world.Source is GeneratedSource g && world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift) && !g.IsMade(x >> Chunks.Shift, y >> Chunks.Shift)) return null;
         if (world.Source == null || !world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift)) return world.At(x, y);
         made.Reset();
         world.Source.Make(x, y, made);

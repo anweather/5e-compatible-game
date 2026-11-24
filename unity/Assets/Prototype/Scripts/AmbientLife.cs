@@ -69,7 +69,14 @@ public class AmbientLife : MonoBehaviour
         crabFrames = new[] { CreatureMesher.Crab(0), CreatureMesher.Crab(1) };
         var silver = new Color(0.45f, 0.55f, 0.62f, 0f);
         fishFrames = new[] { CreatureMesher.Fish(-1f, silver), CreatureMesher.Fish(1f, silver) };
-        if (MapLand.Current is { } map && System.Array.IndexOf(map.Map.Dresses, "coast") < 0) FromLand(map);
+        // Not on a generated map played from its rows (the Wide World): a pass over its cells would make its every chunk.
+        if (MapLand.Current is { Generated: true })
+        {
+            gullAnchors = System.Array.Empty<Vector3>();
+            crabSpots = System.Array.Empty<Vector3>();
+            shoals = System.Array.Empty<Vector4>();
+        }
+        else if (MapLand.Current is { } map && System.Array.IndexOf(map.Map.Dresses, "coast") < 0) FromLand(map);
         Spawn();
     }
 

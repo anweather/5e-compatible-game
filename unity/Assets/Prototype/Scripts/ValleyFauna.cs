@@ -350,9 +350,13 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         fires.Clear();
         var mid = grid.CellAt(new Vector3(centre.x, 0f, centre.y));
         int reach = Mathf.CeilToInt(despawnDistance / grid.cellSize);
+        // On a map made from its source (the Wide World) a packed chunk isn't read: reading would make it on this thread,
+        // and a chunk held as it is burns nowhere.
+        bool skipPacked = world.Source is IGeneratedSource;
         for (int y = mid.y - reach; y <= mid.y + reach; y += 2)
             for (int x = mid.x - reach; x <= mid.x + reach; x += 2)
             {
+                if (skipPacked && world.InBounds(x, y) && world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift)) continue;
                 var c = world.At(x, y);
                 if (c != null && c.Fire > 0)
                 {

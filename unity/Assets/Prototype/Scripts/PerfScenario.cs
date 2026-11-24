@@ -120,6 +120,7 @@ public class PerfScenario : MonoBehaviour
         // The scene is up and the map made: the load, and what it holds (-perf-memory, slow).
         Debug.Log($"PERF LOAD map={ChemGrid.MapId} since_start_s={Time.realtimeSinceStartup.ToString("0.00", CultureInfo.InvariantCulture)} keep_start_ms={ChemGrid.KeepStartMs.ToString("0", CultureInfo.InvariantCulture)} chunks={ChemGrid.Current?.World.ChunkCoords.Count ?? 0} active_chunks={ChemGrid.Current?.World.ActiveChunks.Count ?? 0}");
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("start"));
+        LogSource("load");
         ReadTimes();
         DrawOffscreenIfAsked();
         if (Arg("-perf-pso-diff") != null)
@@ -154,6 +155,7 @@ public class PerfScenario : MonoBehaviour
         if (stage != null) stage.Go = true;
 
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("measure"));
+        LogSource("measure");
         PerfKnobs.Apply();
         foreach (string line in PerfCensus.Lines("start")) Debug.Log(line);
         yield return null; // the census's own frame isn't measured
@@ -430,6 +432,15 @@ public class PerfScenario : MonoBehaviour
         PerfCounts.On = false;
     }
 
+    // A map made from its source (the Wide World): the chunks its generator made so far, and how (on a read: a stall on the
+    // thread that read it; ahead on the worker; waited for). The walk's on-read count is end's less measure's.
+    static void LogSource(string at)
+    {
+        if (ChemGrid.Current?.World?.Source is not Chem.GeneratedSource g) return;
+        Debug.Log($"PERF SOURCE at={at} made={g.Made} made_on_read={g.MadeOnRead} made_ahead={g.MadeAhead} made_again={g.MadeAgain} waits={g.Waits} held={g.HeldCount} " +
+                  $"make_ms={g.MakeMs.ToString("0", CultureInfo.InvariantCulture)} wait_ms={g.WaitMs.ToString("0", CultureInfo.InvariantCulture)}");
+    }
+
     void Finish()
     {
         if (!measuring) return;
@@ -438,6 +449,7 @@ public class PerfScenario : MonoBehaviour
         CountCells();
         Debug.Log(ResultLine(elapsed));
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("end"));
+        LogSource("end");
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
         Debug.Log($"PERF RENDER scenario={scenario}{markers.RenderSummary()}");

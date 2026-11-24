@@ -59,6 +59,9 @@ public partial class ValleyFauna
         jobsWorld = world;
         int human = bodies.IndexOf(WorkerSpecies);
         if (human < 0) return;
+        // Not yet on a map made from its source (the Wide World): the jobs' walks are found over its cells and land, which
+        // would make every chunk the walks cross, on this thread.
+        if (world.Source is IGeneratedSource) return;
         // The map's land as the ground reads it (one copy: ValleyChemistry.LandOf), none when the map has no land.json.
         var units = ValleyChemistry.LandOf(world);
         if (units == null) return;

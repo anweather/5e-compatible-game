@@ -471,6 +471,7 @@ public sealed class TreeImpostors : MonoBehaviour
                     blocks[k] = FromPinned(layout, own);
                     PinnedRead++;
                 }
+                else if (NotMadeYet(layout, at.Item1, at.Item2)) continue;
                 else blocks[k] = FromCells(layout, at.Item1, at.Item2);
             }
             ChunksRead++;
@@ -503,6 +504,21 @@ public sealed class TreeImpostors : MonoBehaviour
             Add(b, kind, origin + Vector3.Scale(tree.position, scale), tree.rotation, tree.widthScale, tree.heightScale);
         }
         return b;
+    }
+
+    // On a map made from its source (the Wide World), whether the chunk under a terrain square isn't made yet: reading its
+    // cells and land here would make it on this thread (milliseconds a chunk), so it's asked for on the worker and read once
+    // it's made.
+    bool NotMadeYet(TerrainGrid layout, int i, int j)
+    {
+        if (world.Source is not GeneratedSource source) return false;
+        var (x0, z0) = layout.ChunkCorner(i, j);
+        var (x, y) = layout.CellAt(x0 + layout.ChunkSize * 0.5f, z0 + layout.ChunkSize * 0.5f);
+        if (!world.InBounds(x, y)) return false;
+        int cx = Chunks.ChunkOf(x), cy = Chunks.ChunkOf(y);
+        if (source.IsMade(cx, cy)) return false;
+        source.Ahead(new[] { (cx, cy) });
+        return true;
     }
 
     Block FromCells(TerrainGrid layout, int i, int j)

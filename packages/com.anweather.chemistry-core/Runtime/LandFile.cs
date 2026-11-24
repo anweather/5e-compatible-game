@@ -228,7 +228,8 @@ namespace Chem
     /// A map's land (land.json, an int a cell in land units) held a chunk at a time, each chunk's as LandCodec's bytes:
     /// a byte or so a cell where it's smooth, a few bytes for a chunk of sea or flat land (core-mem-scale; on the Scale
     /// Island 162 MB as an int[], a few MB this way). Read from land.json a band of chunk rows at a time, never whole.
-    /// Reading a cell decodes its chunk into a buffer kept for the next read: one reader at a time.
+    /// Reading a cell decodes its chunk into a buffer kept for the next read: one reader at a time. A generated map's
+    /// (FromSource) holds no bytes: each chunk's land is its source's, made as it's read.
     /// </summary>
     public sealed class LandChunks
     {
@@ -236,6 +237,14 @@ namespace Chem
         readonly byte[][] chunks;
         readonly int[] cached = new int[Chunks.Area];
         int cachedChunk = -1;
+        // A generated map's source, whose chunks' land this is (FromSource); null for land held as bytes.
+        readonly IGeneratedSource source;
+
+        LandChunks(IGeneratedSource source) : this(source.W, source.H)
+        {
+            this.source = source;
+            chunks = null;
+        }
 
         LandChunks(int w, int h)
         {
@@ -249,11 +258,29 @@ namespace Chem
         public int W { get; }
         public int H { get; }
 
-        /// <summary>The bytes it holds: its chunks' encodings.</summary>
+        /// <summary>
+        /// A generated map's land (a map too big to bake whole, IGeneratedSource), read a chunk at a time from its source,
+        /// which makes the chunk if it doesn't hold it and keeps it held for the World's reads too: nothing is read or held
+        /// here for the map's size (J-086). Safe from any thread with a reader each (NewReader, ChunkInto), as the source is.
+        /// </summary>
+        public static LandChunks FromSource(IGeneratedSource source) => new LandChunks(source ?? throw new ArgumentNullException(nameof(source)));
+
+        /// <summary>Whether its land is a generated map's source's (FromSource), made as it's read.</summary>
+        public bool IsFromSource => source != null;
+
+        // A chunk's land into a buffer: decoded from its bytes, or the source's.
+        void Fill(int c, int[] into)
+        {
+            if (source != null) source.LandInto(c % chunksW, c / chunksW, into);
+            else LandCodec.Decode(chunks[c], into);
+        }
+
+        /// <summary>The bytes it holds: its chunks' encodings (none for a source's).</summary>
         public long Bytes
         {
             get
             {
+                if (chunks == null) return 0;
                 long b = 0;
                 foreach (var c in chunks) b += (c?.Length ?? 0) + 24;
                 return b;
@@ -359,7 +386,7 @@ namespace Chem
         public void ChunkInto(int cx, int cy, int[] into)
         {
             if (cx < 0 || cy < 0 || cx >= chunksW || cy >= chunksH) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the land");
-            LandCodec.Decode(chunks[cy * chunksW + cx], into);
+            Fill(cy * chunksW + cx, into);
         }
 
         /// <summary>The land at a cell.</summary>
@@ -369,7 +396,7 @@ namespace Chem
             int c = (y >> Chunks.Shift) * chunksW + (x >> Chunks.Shift);
             if (c != cachedChunk)
             {
-                LandCodec.Decode(chunks[c], cached);
+                Fill(c, cached);
                 cachedChunk = c;
             }
             return cached[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
@@ -421,7 +448,7 @@ namespace Chem
                 int c = (y >> Chunks.Shift) * land.chunksW + (x >> Chunks.Shift);
                 if (c != chunk)
                 {
-                    LandCodec.Decode(land.chunks[c], buffer);
+                    land.Fill(c, buffer);
                     chunk = c;
                 }
                 return buffer[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];

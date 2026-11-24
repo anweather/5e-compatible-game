@@ -342,6 +342,8 @@ namespace Chem
             ch.SnapValid = false;
             ch.Needed = Tick;
             unpackedChunks.Add(ch);
+            // A generated map's source keeps it made while it's unpacked: packing it reads it there again.
+            if (Source is IGeneratedSource g) g.Keep(ch.X, ch.Y, true);
             Unpacks++;
             unpackTime += Stopwatch.GetTimestamp() - started;
         }
@@ -356,6 +358,7 @@ namespace Chem
             ch.Hold(null);
             ch.SnapValid = false;
             unpackedChunks.Remove(ch);
+            if (Source is IGeneratedSource g) g.Keep(ch.X, ch.Y, false);
             if (blockPool.Count < PoolKeep) blockPool.Push(b);
             Packs++;
             packTime += Stopwatch.GetTimestamp() - started;

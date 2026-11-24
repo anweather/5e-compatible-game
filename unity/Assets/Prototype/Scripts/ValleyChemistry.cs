@@ -203,7 +203,8 @@ public partial class ValleyChemistry : MonoBehaviour
             Layout = layout,
             StepHeight = grid.stepHeight,
             Unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep,
-            Lowest = Lowest(land),
+            // A generated map's land is made as it's read: its lowest is the one its map.json expects, not a pass over every chunk.
+            Lowest = land.IsFromSource ? MapLand.Current.Map.Lowest : Lowest(land),
             Layers = template.terrainLayers.Select(l => l.name).ToArray(),
             Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
             TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
@@ -568,7 +569,8 @@ public partial class ValleyChemistry : MonoBehaviour
     // The ground drawn and the land the core reads are one ground: a few cells' worth, as a probe can't see land.
     void CheckGround(World world)
     {
-        if (landFromFile == null) return;
+        // A map made from its source has no file to check against, and its sample cells over the whole map would make their chunks.
+        if (landFromFile == null || world.Source is IGeneratedSource) return;
         float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         // The map's own land: a loaded world's stamps are on the ground, not in the file.
         var apart = LandCheck.Disagreements((x, y) => ground.BaseHeight(x, y) - world.LandMovedAt(x, y) * unit, landFromFile, unit, unit);
@@ -577,6 +579,8 @@ public partial class ValleyChemistry : MonoBehaviour
 
     static void SetLand(World world)
     {
+        // A map made from its source (the Wide World) has its land from it already (World.LandFromSource).
+        if (world.Source is IGeneratedSource) return;
         var land = LandOf(world);
         if (land == null) world.SetLand((int[])null);
         else world.SetLandByChunk(land);
@@ -593,7 +597,7 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             string path = Path.Combine(ChemGrid.Folders.World, "land.json");
             var map = MapLand.Current;
-            landFromFile = map != null && map.FromFile && map.Land.W == world.W && map.Land.H == world.H ? map.Land
+            landFromFile = map != null && (map.FromFile || map.Land.IsFromSource) && map.Land.W == world.W && map.Land.H == world.H ? map.Land
                 : File.Exists(path) ? LandChunks.Read(File.ReadAllText(path), world.W, world.H) : null;
             if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
         }

@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using Chem;
 using UnityEngine;
 
 // A waystone at each spawn of a map with more than one (SpawnPoints), so players can find them: a standing stone with a
 // glowing cap beside the spawn's cell, and the party's reach of them noted as any wizard walks up to one (a wizard who goes
 // down comes back at the nearest one reached, WizardDown). Only drawn, and only on such a map: the valley on its own has
-// one spawn and no waystone. ChemGrid adds it.
+// one spawn and no waystone. ChemGrid adds it. On a map made from its source (the Wide World, a spawn in each of its 120
+// squares) a stone far from the start stands on the land its chunk is known to have (ChunkGen.Know) until a wizard comes
+// near, then on the ground drawn there: reading the drawn ground far off made every spawn's chunk at the start.
 [RequireComponent(typeof(ChemGrid))]
 public sealed class Waystones : MonoBehaviour
 {
@@ -37,15 +40,21 @@ public sealed class Waystones : MonoBehaviour
     {
         foreach (var s in stones) if (s != null) Destroy(s);
         stones.Clear();
+        unseated.Clear();
         if (!SpawnPoints.Several) return;
         foreach (var spawn in SpawnPoints.Current) stones.Add(MakeStone(spawn));
     }
+
+    // On a map made from its source: the stones standing on known land, by their cell, until a wizard comes within SeatCells.
+    readonly List<(GameObject standing, Vector2Int cell)> unseated = new();
+    const int SeatCells = 3 * Chunks.Size;
 
     GameObject MakeStone(SpawnPoints.Spawn spawn)
     {
         var cell = spawn.Cell + Beside;
         var at = grid.CellCenter(cell.x, cell.y);
-        at.y = grid.GroundAt(at);
+        bool far = grid.World?.Source is IGeneratedSource && Mathf.Max(Mathf.Abs(cell.x - grid.PlayerStart.x), Mathf.Abs(cell.y - grid.PlayerStart.y)) > SeatCells;
+        at.y = far ? KnownGround(cell) : grid.GroundAt(at);
         var root = new GameObject($"Waystone {spawn.Name}");
         root.transform.position = at;
         var body = Part(root, PrimitiveType.Cube, new Vector3(0f, Height * 0.5f - 0.15f, 0f), new Vector3(Width, Height, Width * 0.55f), Stone());
@@ -59,7 +68,36 @@ public sealed class Waystones : MonoBehaviour
         light.range = 5f;
         light.intensity = 1.2f;
         light.shadows = LightShadows.None;
+        if (far) unseated.Add((root, cell));
         return root;
+    }
+
+    // The land a generated map's chunk is known to have at its sample nearest the cell (m).
+    float KnownGround(Vector2Int cell)
+    {
+        if (!grid.World.InBounds(cell.x, cell.y)) return 0f;
+        var known = LoadedMaps.Get(ChemGrid.MapSource).Gen.Know(cell.x >> Chunks.Shift, cell.y >> Chunks.Shift);
+        int i = ((cell.x & Chunks.Mask) + KnownChunk.Step / 2) / KnownChunk.Step, j = ((cell.y & Chunks.Mask) + KnownChunk.Step / 2) / KnownChunk.Step;
+        return known.Heights[j * KnownChunk.Side + i] * (float)MapFile.LandUnitMetres;
+    }
+
+    // The stones a wizard has come near stand on the ground drawn there, once its chunk is made.
+    void Seat()
+    {
+        if (unseated.Count == 0 || grid.World?.Source is not GeneratedSource source) return;
+        var wizards = grid.PlayerCells();
+        for (int n = unseated.Count - 1; n >= 0; n--)
+        {
+            var (standing, cell) = unseated[n];
+            bool near = false;
+            foreach (var (x, y) in wizards) near |= Mathf.Max(Mathf.Abs(cell.x - x), Mathf.Abs(cell.y - y)) <= SeatCells;
+            if (!near || !source.IsMade(cell.x >> Chunks.Shift, cell.y >> Chunks.Shift)) continue;
+            unseated.RemoveAt(n);
+            if (standing == null) continue;
+            var at = standing.transform.position;
+            at.y = grid.GroundAt(at);
+            standing.transform.position = at;
+        }
     }
 
     static GameObject Part(GameObject root, PrimitiveType shape, Vector3 at, Vector3 size, Material material)
@@ -103,6 +141,7 @@ public sealed class Waystones : MonoBehaviour
     {
         if (Time.time < nextVisit || grid.World == null || !SpawnPoints.Several) return;
         nextVisit = Time.time + Every;
+        Seat();
         // Every wizard here, the local one and the party's (each has its Vitals).
         foreach (var wizard in FindObjectsByType<Vitals>(FindObjectsSortMode.None))
         {

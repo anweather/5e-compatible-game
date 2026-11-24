@@ -101,7 +101,7 @@ public class RowHouses : MonoBehaviour
         var world = grid.World;
         if (world == null) return;
         if (world != hooked) Hook(world);
-        if (world.Rules != seen)
+        if (world.Rules != seen || NearMoved(world))
         {
             seen = world.Rules;
             Sync(world);
@@ -169,9 +169,46 @@ public class RowHouses : MonoBehaviour
         if (hooked != null) grid.ChunkFreshened += PutBack;
     }
 
+    // On a map made from its source (the Wide World, 120 squares of villages) only the rows within NearCells of a character
+    // are drawn, and drawn or taken down as the characters move: every row of the map was tens of thousands of objects and
+    // their walls' blockers, far past the haze (J-086). Every other map draws all its rows, as it always has.
+    const int NearCells = 640, NearChunkMoved = 2;
+    const float NearEvery = 1f;
+    float nextNear;
+    readonly List<(int x, int y)> nearFrom = new();
+
+    static bool DrawsNearOnly(World world) => world.Source is IGeneratedSource;
+
+    // Whether a character has gone a couple of chunks from where the near rows were last picked.
+    bool NearMoved(World world)
+    {
+        if (!DrawsNearOnly(world) || Time.unscaledTime < nextNear) return false;
+        nextNear = Time.unscaledTime + NearEvery;
+        var now = grid.PlayerCells();
+        if (now.Count == 0) return false;
+        bool moved = now.Count != nearFrom.Count;
+        for (int n = 0; !moved && n < now.Count; n++)
+            moved = System.Math.Max(System.Math.Abs(now[n].x - nearFrom[n].x), System.Math.Abs(now[n].y - nearFrom[n].y)) >= NearChunkMoved * Chunks.Size;
+        return moved;
+    }
+
+    bool Near(BuildingRow row)
+    {
+        foreach (var (x, y) in nearFrom)
+            if (System.Math.Max(System.Math.Abs(row.X - x), System.Math.Abs(row.Y - y)) <= NearCells) return true;
+        return false;
+    }
+
     void Sync(World world)
     {
         var rows = world.RowsDrawn();
+        if (DrawsNearOnly(world))
+        {
+            nearFrom.Clear();
+            nearFrom.AddRange(grid.PlayerCells());
+            if (nearFrom.Count == 0) nearFrom.Add((grid.PlayerStart.x, grid.PlayerStart.y));
+            rows = rows.Where(Near).ToList();
+        }
         foreach (string id in drawn.Keys.Where(id => rows.All(r => r.Id != id)).ToList())
         {
             Remove(drawn[id]);

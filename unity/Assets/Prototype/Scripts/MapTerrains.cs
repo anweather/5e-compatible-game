@@ -202,6 +202,28 @@ public sealed class MapTerrains : MonoBehaviour
         foreach (var (cx, cy) in pinned) world.At(cx << Chem.Chunks.Shift, cy << Chem.Chunks.Shift);
     }
 
+    // On a map made from its source (the Wide World): the chemistry chunks under these terrains and one round them (what
+    // Warm reads) that are packed and not made by the source yet; none on any other map.
+    List<(int cx, int cy)> Unmade(IEnumerable<(int i, int j)> terrains)
+    {
+        var world = ground?.World;
+        if (world?.Source is not Chem.GeneratedSource source) return null;
+        unmadeScratch.Clear();
+        foreach (var (i, j) in terrains) CellChunksUnder(world, i, j, 1, unmadeScratch);
+        var unmade = new List<(int cx, int cy)>();
+        foreach (var (cx, cy) in unmadeScratch)
+            if (world.IsPacked(cx, cy) && !source.IsMade(cx, cy)) unmade.Add((cx, cy));
+        return unmade;
+    }
+
+    readonly HashSet<(int cx, int cy)> unmadeScratch = new();
+
+    // On a map made from its source, what these terrains read made first on every core, not one at a time as Warm reads it.
+    void MakeFirst(List<(int i, int j)> terrains)
+    {
+        if (Unmade(terrains) is { Count: > 0 } unmade) ground.World.MakeNow(unmade);
+    }
+
     void Unpin()
     {
         if (pinned.Count == 0) return;
@@ -412,6 +434,7 @@ public sealed class MapTerrains : MonoBehaviour
         var timer = System.Diagnostics.Stopwatch.StartNew();
         if (whole)
         {
+            MakeFirst(toMake);
             Warm(toMake);
             ground.Prepare(toMake);
             if (arrays == null) Unpin();
@@ -465,6 +488,13 @@ public sealed class MapTerrains : MonoBehaviour
         var missing = ground.Builder.Missing(toMake.Skip(from).Take(MostAtOnce * 2));
         if (missing.Count > MostAtOnce) missing.RemoveRange(MostAtOnce, missing.Count - MostAtOnce);
         if (missing.Count == 0) return;
+        // On a map made from its source, the chunks they read are made ahead on the worker first: warming them here would
+        // make each on this thread, a stall of milliseconds a chunk. They're asked again until they're made.
+        if (Unmade(missing) is { Count: > 0 } unmade)
+        {
+            ground.World.MakeAhead(unmade);
+            return;
+        }
         var builder = ground.Builder;
         arraysFor = missing;
         Warm(missing);

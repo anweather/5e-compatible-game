@@ -23,6 +23,10 @@ namespace Chem
     /// </summary>
     public interface IGeneratedSource : IChunkSource
     {
+        /// <summary>The map's size in cells.</summary>
+        int W { get; }
+        int H { get; }
+
         /// <summary>The land under a cell as the map makes it, in water units (land.json's, had it been baked).</summary>
         int LandAt(int x, int y);
 
@@ -31,6 +35,18 @@ namespace Chem
 
         /// <summary>Makes these chunks now, on every core, those not made yet: they're about to be read. Changes time only.</summary>
         void MakeNow(IEnumerable<(int cx, int cy)> chunks);
+
+        /// <summary>
+        /// A chunk's land as the map makes it, Chunks.Area ints by local index (LandAt for each of its cells), made now if it
+        /// isn't held: safe from any thread (the view's LandChunks.FromSource reads it beside the World).
+        /// </summary>
+        void LandInto(int cx, int cy, int[] into);
+
+        /// <summary>
+        /// Keeps a chunk made while <paramref name="kept"/> (the World holds it unpacked: packing it again reads its cells
+        /// here to find what changed), or lets the hold drop it again. Changes time only.
+        /// </summary>
+        void Keep(int cx, int cy, bool kept);
     }
 
     /// <summary>A generated map's chunks made on demand by its ChunkGen, under the rules the map is made with, and held a while.</summary>
@@ -131,6 +147,12 @@ namespace Chem
 
         public int LandAt(int x, int y) => ChunkOf(x >> Chunks.Shift, y >> Chunks.Shift).Land[(Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x)];
 
+        public void LandInto(int cx, int cy, int[] into)
+        {
+            if (into == null || into.Length < Chunks.Area) throw new ArgumentException($"a chunk's land is {Chunks.Area} ints", nameof(into));
+            Array.Copy(MadeChunk(cx, cy).Land, into, Chunks.Area);
+        }
+
         /// <summary>A chunk's things as the bake's things.json lists them (its "things"), made now if it isn't held: for the view.</summary>
         public JArray ThingsOf(int cx, int cy) => ChunkOf(cx, cy).Things;
 
@@ -140,44 +162,60 @@ namespace Chem
             lock (gate) return held.TryGetValue(Chunks.Key(cx, cy), out var h) && h.Chunk != null;
         }
 
-        // The chunk made, from the last read's, the held ones, the worker's (waited for) or made here now.
+        // The chunk made, from the last read's, the held ones, the worker's (waited for) or made here now. The World's thread.
         GeneratedChunk ChunkOf(int cx, int cy)
         {
             var l = last;
+            if (l != null && l.Key == Chunks.Key(cx, cy)) return l.Chunk;
+            var c = MadeChunk(cx, cy);
+            last = new Held { Key = Chunks.Key(cx, cy), Chunk = c };
+            return c;
+        }
+
+        // The chunk made, from the held ones, the worker's or another reader's (waited for) or made here now: from any thread.
+        // A chunk being made has its Making from the moment it's held, so a second reader waits for it rather than make it too.
+        GeneratedChunk MadeChunk(int cx, int cy)
+        {
             long key = Chunks.Key(cx, cy);
-            if (l != null && l.Key == key) return l.Chunk;
             if (cx < 0 || cy < 0 || cx >= cw || cy >= ch) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the map");
             Held h;
+            GeneratedChunk c;
+            Task<GeneratedChunk> making;
             bool mine = false;
             lock (gate)
             {
                 if (!held.TryGetValue(key, out h))
                 {
-                    h = new Held { Key = key };
+                    h = new Held { Key = key, Making = new Task<GeneratedChunk>(() => MakeTimed(cx, cy)) };
                     held.Add(key, h);
                     mine = true;
                 }
                 h.Used = ++uses;
+                c = h.Chunk;
+                making = h.Making;
             }
-            var c = h.Chunk;
-            if (c == null)
+            if (c != null) return c;
+            long started = Stopwatch.GetTimestamp();
+            if (mine)
             {
-                long started = Stopwatch.GetTimestamp();
-                if (mine)
+                making.RunSynchronously();
+                Interlocked.Increment(ref madeOnRead);
+                if (making.IsFaulted)
                 {
-                    c = MakeTimed(cx, cy);
-                    Interlocked.Increment(ref madeOnRead);
-                    Finish(h, c);
+                    // Let the next read make it again, and say why here.
+                    lock (gate) held.Remove(key);
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(making.Exception.InnerException ?? making.Exception).Throw();
                 }
-                else
-                {
-                    // Being made on the worker: waited for (a chunk the worker was asked for too late).
-                    Interlocked.Increment(ref waits);
-                    c = h.Making.Result;
-                }
-                Interlocked.Add(ref waitTicks, Stopwatch.GetTimestamp() - started);
+                c = making.Result;
+                Finish(h, c);
             }
-            last = new Held { Key = key, Chunk = c };
+            else
+            {
+                // Being made on the worker or by another reader: waited for (a chunk asked for ahead too late).
+                Interlocked.Increment(ref waits);
+                c = making.Result;
+            }
+            Interlocked.Add(ref waitTicks, Stopwatch.GetTimestamp() - started);
             return c;
         }
 
@@ -199,6 +237,27 @@ namespace Chem
         // How many chunks made it holds at most (Holds, unless a test says fewer).
         readonly int holds;
 
+        // The chunks the World holds unpacked (Keep): never let go, as packing one again reads it.
+        readonly HashSet<long> pinned = new HashSet<long>();
+
+        public void Keep(int cx, int cy, bool kept)
+        {
+            lock (gate)
+            {
+                if (kept) pinned.Add(Chunks.Key(cx, cy));
+                else pinned.Remove(Chunks.Key(cx, cy));
+            }
+        }
+
+        /// <summary>How many chunks are kept made for the World (Keep).</summary>
+        public int KeptCount
+        {
+            get
+            {
+                lock (gate) return pinned.Count;
+            }
+        }
+
         // A chunk made: held, and the oldest let go past holds.
         void Finish(Held h, GeneratedChunk c)
         {
@@ -209,15 +268,19 @@ namespace Chem
             }
         }
 
-        // Past the hold, the chunks made longest unused let go, down to three quarters of it; never one being made, or one
-        // the caller is about to read (kept). Under the gate.
+        // Past the hold (besides the chunks the World holds unpacked, pinned), the chunks made longest unused let go, down to
+        // three quarters of it; never one being made, one the caller is about to read (kept), or a pinned one. Under the gate.
         void Trim(Func<Held, bool> kept)
         {
-            if (held.Count <= holds) return;
+            // The chunks the World holds unpacked don't count toward the hold: they're kept besides it.
+            int besides = 0;
+            foreach (long key in pinned)
+                if (held.ContainsKey(key)) besides++;
+            if (held.Count - besides <= holds) return;
             var old = new List<Held>();
-            foreach (var e in held.Values) if (e.Chunk != null && !kept(e)) old.Add(e);
+            foreach (var e in held.Values) if (e.Chunk != null && !kept(e) && !pinned.Contains(e.Key)) old.Add(e);
             old.Sort((a, b) => a.Used.CompareTo(b.Used));
-            for (int k = 0; k < old.Count && held.Count > holds * 3 / 4; k++) held.Remove(old[k].Key);
+            for (int k = 0; k < old.Count && held.Count - besides > holds * 3 / 4; k++) held.Remove(old[k].Key);
         }
 
         public void Ahead(IEnumerable<(int cx, int cy)> chunks)

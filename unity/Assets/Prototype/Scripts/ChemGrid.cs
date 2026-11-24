@@ -188,8 +188,10 @@ public partial class ChemGrid : MonoBehaviour
     public bool WorldLoaded { get; private set; }
 
     // The map's land (land.json, as the valley gives the world), an int a cell, for a save to load over; null for none.
+    // A map made from its source (the Wide World) has none: the world's land is the source's, and a save loads over it so.
     int[] MapLandUnits()
     {
+        if (World?.Source is IGeneratedSource) return null;
         var land = valley != null ? ValleyChemistry.LandOf(World) : null;
         if (land == null) return null;
         var units = new int[land.W * land.H];
@@ -232,7 +234,7 @@ public partial class ChemGrid : MonoBehaviour
         TakeYard();
         Vector2Int start;
         var phase = System.Diagnostics.Stopwatch.StartNew();
-        using (BuildCellsMarker.Auto()) World = StartWorld(rules, CellMap(), seed, out start);
+        using (BuildCellsMarker.Auto()) World = StartWorld(rules, seed, out start);
         WorldLoaded = false;
         StartupTimeline.Mark("world cells built (incl. keep start)");
         double cellsMs = phase.Elapsed.TotalMilliseconds;
@@ -324,13 +326,60 @@ public partial class ChemGrid : MonoBehaviour
     /// way, a late joiner and an online reset too. Whatever lays cells at the start belongs in MapWorld (the puzzles, the
     /// Gauntlet's booths among them, and golf), or the dragon wipes it: nothing may write cells between here and the first tick.
     /// </summary>
-    public static World StartWorld(Rules rules, string map, uint seed, out Vector2Int start)
+    public static World StartWorld(Rules rules, string map, uint seed, out Vector2Int start) => Kept(MapWorld(rules, map, seed, out start));
+
+    /// <summary>StartWorld on the map being played: from its cells, or from its source when it's a folder of rows alone (the Wide World).</summary>
+    public static World StartWorld(Rules rules, uint seed, out Vector2Int start) =>
+        Kept(GeneratedMap.IsRowsOnly(Folders.World) ? SourceWorld(rules, seed, out start) : MapWorld(rules, CellMap(), seed, out start));
+
+    static World Kept(World world)
     {
-        var world = MapWorld(rules, map, seed, out start);
         var kept = System.Diagnostics.Stopwatch.StartNew();
         world.KeepStart();
         KeepStartMs = kept.Elapsed.TotalMilliseconds;
         return world;
+    }
+
+    /// <summary>
+    /// A new world on a map too big to bake whole, played from a folder of its rows alone (GeneratedMap.EnsureRows): made from
+    /// the map's generator as its source (PlayedSource), its land the source's, then the map's lays from the rows as MapWorld
+    /// lays them. Only the chunks the lays reach are made.
+    /// </summary>
+    public static World SourceWorld(Rules rules, uint seed, out Vector2Int start)
+    {
+        var source = PlayedSource;
+        var map = MapFile.Load(Folders.World);
+        var world = new World(rules, source.W, source.H, seed, wrapX: map.WrapX);
+        world.SetLandRange(map.LandRange);
+        world.MakeFrom(source);
+        world.LandFromSource();
+        start = new Vector2Int(source.Start.x, source.Start.y);
+        LayPuzzles(world);
+        LayStamps(world);
+        LayRows(world);
+        LayGolf(world);
+        SetHold(world);
+        return world;
+    }
+
+    static GeneratedSource playedSource;
+    static string playedSourceOf;
+
+    /// <summary>
+    /// The source the map being played is made from when it's a folder of rows alone (a map too big to bake whole), or null:
+    /// one a map, so each world built on it and the view's land (MapLand) share the chunks it holds made. Its cells are laid
+    /// under the rules' files (rules/), as the base rules lay them; a scene's tuning is the sim's only.
+    /// </summary>
+    public static GeneratedSource PlayedSource
+    {
+        get
+        {
+            string dir = Folders.World;
+            if (playedSourceOf == dir) return playedSource;
+            playedSourceOf = dir;
+            playedSource = GeneratedMap.IsRowsOnly(dir) ? new GeneratedSource(LoadedMaps.Get(MapSource), Rules.Load(Folders.Rules)) : null;
+            return playedSource;
+        }
     }
 
     /// <summary>
@@ -436,7 +485,8 @@ public partial class ChemGrid : MonoBehaviour
         if (!readyLogged)
         {
             readyLogged = true;
-            Debug.Log($"PLAY READY {World.W} x {World.H}: first frame {SincePlay.Elapsed.TotalMilliseconds:0} ms after Play started");
+            Debug.Log($"PLAY READY {World.W} x {World.H}: first frame {SincePlay.Elapsed.TotalMilliseconds:0} ms after Play started" +
+                      (World.Source is GeneratedSource g ? $"; {g.Made} chunks made ({g.MadeOnRead} on a read, {g.MadeAhead} ahead)" : ""));
             StartupTimeline.Done("first frame (PLAY READY)");
         }
         using (DetailChunksMarker.Auto()) UpdateDetailChunks();
@@ -481,6 +531,8 @@ public partial class ChemGrid : MonoBehaviour
         checkedMap = null;
         mapHashOf = null;
         chosenMap = null;
+        playedSource = null;
+        playedSourceOf = null;
         ValleyChemistry.ForgetLand();
     }
 
@@ -512,8 +564,6 @@ public partial class ChemGrid : MonoBehaviour
         {
             if (!File.Exists(Path.Combine(dir, MapFile.FileName))) continue;
             string id = Path.GetFileName(dir);
-            // A generated map too big to bake whole (world-12x10, "bake": false) can't be played yet: hosting it would throw.
-            if (GeneratedMap.IsGenerated(dir) && Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, MapFile.FileName)))[GeneratedMap.Key]?["bake"]?.ToObject<bool>() == false) continue;
             maps.Add((id, MapFile.Load(dir).Name ?? id));
         }
         // The valley first, then the rest by id.
@@ -611,10 +661,15 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>The folder a map by this id is played from (a generated one baked first when playing).</summary>
     public static string PlayFolder(string id) => FoldersFor(id).World;
 
+    /// <summary>PlayFolder as Play mode has it (<paramref name="playing"/>: a generated map baked first, or its rows written), or as the Editor outside it.</summary>
+    public static string PlayFolder(string id, bool playing) => FoldersFor(id, playing).World;
+
     // A map's folders from its name in -map, the menu or Temp/map: an id under world/maps, or a map folder's path (absolute,
     // or from the repo's root: test-fixtures/maps/flat-1728, #169). A generated map (the nine) is baked first when playing:
     // into its own folder in the Editor (out of git), and into the player's data folder in a build (worlds/<inputs>/<id>).
-    static GameFolders FoldersFor(string named)
+    static GameFolders FoldersFor(string named) => FoldersFor(named, Application.isPlaying);
+
+    static GameFolders FoldersFor(string named, bool playing)
     {
         var game = NewFolders(GameFolders.DefaultMap);
         if (string.IsNullOrEmpty(named) || named == GameFolders.DefaultMap) return game;
@@ -626,29 +681,33 @@ public partial class ChemGrid : MonoBehaviour
             if (NotMaps.Add(named)) Debug.LogError($"MAP: {named} isn't a map ({dir} has no {MapFile.FileName}), so this is {GameFolders.DefaultMap}");
             return game;
         }
-        string played = Application.isPlaying ? Baked(dir, id, game) : dir;
+        string played = playing ? Baked(dir, id, game) : dir;
         if (played != Path.Combine(game.Maps, id)) PlayedMaps[played] = (id, dir);
         return game.WithMap(played == Path.Combine(game.Maps, id) ? id : played);
     }
 
-    // The folder to play a map from: its own, or a generated map's bake (made now if there's none of its inputs yet).
+    // The folder to play a map from: its own, or a generated map's bake (made now if there's none of its inputs yet). A map
+    // too big to bake whole ("bake": false, the Wide World) gets its rows alone (GeneratedMap.EnsureRows): its cells, land and
+    // things are made as they're read (GeneratedSource), never written.
     static string Baked(string dir, string id, GameFolders game)
     {
         if (!GeneratedMap.IsGenerated(dir)) return dir;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         string into = dir;
+        bool rowsOnly = !BakesWhole(dir);
+        // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
+        if (!Application.isEditor && game.PlayerData != null) into = Path.Combine(game.PlayerData, "worlds", GeneratedMap.InputHash(dir), id);
         bool baked;
-        if (Application.isEditor || game.PlayerData == null) baked = GeneratedMap.EnsureBaked(dir);
-        else
-        {
-            // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
-            into = Path.Combine(game.PlayerData, "worlds", GeneratedMap.InputHash(dir), id);
-            baked = GeneratedMap.EnsureBakedInto(dir, into);
-        }
+        if (rowsOnly) baked = GeneratedMap.EnsureRows(dir, into);
+        else baked = into == dir ? GeneratedMap.EnsureBaked(dir) : GeneratedMap.EnsureBakedInto(dir, into);
         StartupTimeline.Mark("map baked or found");
-        Debug.Log($"MAP: {id} {(baked ? "baked" : "already baked")} in {into} ({timer.Elapsed.TotalMilliseconds:0} ms)");
+        Debug.Log($"MAP: {id} {(rowsOnly ? "its rows " : "")}{(baked ? "baked" : "already baked")} in {into} ({timer.Elapsed.TotalMilliseconds:0} ms)");
         return into;
     }
+
+    /// <summary>Whether a generated map is baked whole to be played (its map.json's "bake", true unless it says false).</summary>
+    public static bool BakesWhole(string dir) =>
+        Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, MapFile.FileName)))[GeneratedMap.Key]?["bake"]?.ToObject<bool>() != false;
 
     static string checkedMap;
 
