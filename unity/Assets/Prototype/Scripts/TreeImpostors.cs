@@ -42,6 +42,18 @@ public sealed class TreeImpostors : MonoBehaviour
     static float farMetres = 500f;
     static bool farSet;
 
+    /// <summary>
+    /// How near the prefabs draw and how far the impostors draw this frame (m): Near and FarNow, or nearer where the forest
+    /// is dense (TreeBudget, from the trees round the camera last frame).
+    /// </summary>
+    public static float PrefabsWithin { get; private set; } = DefaultNear;
+    public static float ImpostorsWithin { get; private set; } = 500f;
+    /// <summary>The trees within Near (and Keep) and those within FarNow, every way, round the camera last frame (TreeBudget's counts).</summary>
+    public static int NearAround { get; private set; }
+    public static int AllAround { get; private set; }
+    /// <summary>Whether the tree budget is kept (off with -no-tree-budget, to compare).</summary>
+    public static bool Budget { get; set; } = true;
+
     /// <summary>How far out the impostors draw now (m).</summary>
     public static float FarNow => !farSet && FarRing.Instance is { HazeMetres: > 0f } ring ? ring.HazeHides : Far;
     /// <summary>How far out the impostors cast shadows (m): the drawn tier (J-091).</summary>
@@ -56,6 +68,8 @@ public sealed class TreeImpostors : MonoBehaviour
     public static int Calls { get; private set; }
     /// <summary>The trees standing as their prefab now, and how many of those were ever made (the pool's size).</summary>
     public static int NearDrawn { get; private set; }
+    /// <summary>The trees within the prefabs' distance still drawn as impostors, waiting for their prefab (a still waits them out).</summary>
+    public static int NearWaiting { get; private set; }
     public static int NearMade { get; private set; }
     /// <summary>The chunks' trees read so far, and what reading them cost (ms) all told.</summary>
     public static int ChunksRead { get; private set; }
@@ -88,6 +102,9 @@ public sealed class TreeImpostors : MonoBehaviour
         ShadowFar = 256f;
         Shadows = true;
         Skip = null;
+        Budget = true;
+        PrefabsWithin = DefaultNear;
+        ImpostorsWithin = 500f;
         MapTerrains.SetTreeDistance(TerrainTreeDistance);
     }
 
@@ -105,6 +122,7 @@ public sealed class TreeImpostors : MonoBehaviour
             }
             else if (args[i] == "-tree-impostors-far" && i + 1 < args.Length && TryMetres(args[i + 1], out float far)) Far = far;
             else if (args[i] == "-tree-impostors-no-shadows") Shadows = false;
+            else if (args[i] == "-no-tree-budget") Budget = false;
         }
         if (Instance != null) return;
         var go = new GameObject("TreeImpostors");
@@ -189,12 +207,21 @@ public sealed class TreeImpostors : MonoBehaviour
         stale.Clear();
         toStand.Clear();
         GeometryUtility.CalculateFrustumPlanes(cam, planes);
+        nearD2.Clear();
+        around.Clear();
         float size = layout.ChunkSize, reach = FarNow + size;
         int i0 = Mathf.Max(0, Mathf.FloorToInt((eye.x - reach - layout.OriginX) / size)), i1 = Mathf.Min(layout.ChunksX - 1, Mathf.FloorToInt((eye.x + reach - layout.OriginX) / size));
         int j0 = Mathf.Max(0, Mathf.FloorToInt((eye.z - reach - layout.OriginZ) / size)), j1 = Mathf.Min(layout.ChunksZ - 1, Mathf.FloorToInt((eye.z + reach - layout.OriginZ) / size));
         for (int j = j0; j <= j1; j++)
             for (int i = i0; i <= i1; i++) Visit(layout, chunks, i, j, eye);
         StandNear();
+        // The next frame's distances from this frame's trees round the camera (counted out to Near and FarNow, so how far
+        // they draw never feeds back into the counts).
+        NearAround = nearD2.Count;
+        AllAround = 0;
+        foreach (var c in around) AllAround += c.trees;
+        PrefabsWithin = Budget ? TreeBudget.Near(nearD2, Near) : Near;
+        ImpostorsWithin = Budget ? TreeBudget.Far(around, FarNow) : FarNow;
         Read(wanted, layout, chunks, eye, ReadsPerFrame);
         Refresh(chunks);
         Forget(layout, eye, reach);
@@ -219,6 +246,10 @@ public sealed class TreeImpostors : MonoBehaviour
 
     readonly List<int> gone = new();
     const int LetGoEvery = 30, LetGoPast = 2;
+    // This frame's counts for the tree budget: the squared distance of each tree within Near and Keep, and each chunk's
+    // nearest squared distance and trees within FarNow.
+    readonly List<float> nearD2 = new();
+    readonly List<(float d2, int trees)> around = new();
 
     // Whether there's a world, a map, a camera and a baked species to draw with; the terrains' trees off once there are.
     bool Ready(MapTerrains terrains, TerrainGrid layout, Camera cam)
@@ -240,7 +271,7 @@ public sealed class TreeImpostors : MonoBehaviour
     // Chunk (i, j): its trees drawn if it's within Far and they've been read; asked to be read (or read again) if not.
     void Visit(TerrainGrid layout, Terrain[] chunks, int i, int j, Vector3 eye)
     {
-        float size = layout.ChunkSize, keepSq = (Near + Keep) * (Near + Keep), farSq = FarNow * FarNow;
+        float size = layout.ChunkSize, keepSq = (Near + Keep) * (Near + Keep), farSq = FarNow * FarNow, drawSq = ImpostorsWithin * ImpostorsWithin;
         int k = j * layout.ChunksX + i;
         var (cx, cz) = layout.ChunkCorner(i, j);
         float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
@@ -256,12 +287,16 @@ public sealed class TreeImpostors : MonoBehaviour
         }
         else if (hasTerrain) stale.Add(k);
         if (!b.Any) return;
+        int trees = 0;
+        foreach (int n in b.Counts) trees += n;
+        around.Add((nearestSq, trees));
+        if (nearestSq > drawSq) return;
         bool reachesNear = nearestSq < keepSq;
         // A chunk reaching into Near sorts its trees even out of sight: its near trees stand as they are.
         if (!reachesNear && !GeometryUtility.TestPlanesAABB(planes, b.Bounds)) return;
-        bool whole = !reachesNear && Far2(eye, cx, cz, size) <= farSq;
+        bool whole = !reachesNear && Far2(eye, cx, cz, size) <= drawSq;
         bool shadows = Shadows && nearestSq < ShadowFar * ShadowFar;
-        Draw(b, eye, whole, shadows, farSq);
+        Draw(b, eye, whole, shadows, drawSq);
     }
 
     // The terrain chunks whose trees changed (ValleyGround.TreesChanged: a fire, a felling) read again, a few a frame; and
@@ -332,13 +367,14 @@ public sealed class TreeImpostors : MonoBehaviour
     // impostors meanwhile), the rest out to Far are drawn as impostors.
     void Sorted(RenderParams rp, int kind, Matrix4x4[] all, int count, Vector3 eye, float farSq)
     {
-        float nearSq = Near * Near, keepSq = (Near + Keep) * (Near + Keep);
+        float near = PrefabsWithin, nearSq = near * near, keepSq = (near + Keep) * (near + Keep), countSq = (Near + Keep) * (Near + Keep);
         bool prefab = prefabs[kind] != null;
         int n = 0;
         for (int t = 0; t < count; t++)
         {
             var p = all[t].GetColumn(3);
             float dx = p.x - eye.x, dz = p.z - eye.z, d2 = dx * dx + dz * dz;
+            if (prefab && d2 < countSq) nearD2.Add(d2);
             if (d2 > farSq) continue;
             if (prefab && d2 < keepSq && Stands(kind, all[t], d2, nearSq)) continue;
             scratch[n++] = all[t];
@@ -389,10 +425,15 @@ public sealed class TreeImpostors : MonoBehaviour
         bool all = standing.Count == 0;
         toStand.Sort(ByDistance);
         var watch = System.Diagnostics.Stopwatch.StartNew();
+        int waiting = 0;
         foreach (var (key, kind, m, _) in toStand)
         {
             var go = Take(kind, free, all || watch.Elapsed.TotalMilliseconds <= SpawnBudgetMs);
-            if (go == null) continue;
+            if (go == null)
+            {
+                waiting++;
+                continue;
+            }
             go.transform.SetPositionAndRotation(m.GetColumn(3), m.rotation);
             go.transform.localScale = m.lossyScale;
             standing[key] = new Standing { Tree = go, Kind = kind, Seen = frame };
@@ -403,6 +444,7 @@ public sealed class TreeImpostors : MonoBehaviour
             pool[f.Kind].Push(f.Tree);
         }
         NearDrawn = standing.Count;
+        NearWaiting = waiting;
     }
 
     readonly List<Standing> freed = new();

@@ -121,7 +121,29 @@ public static class PerfCensus
     }
 
     static string Impostors() =>
-        $"impostors_on={TreeImpostors.On} impostors_drawn={TreeImpostors.Drawn} impostor_calls={TreeImpostors.Calls} near_trees={TreeImpostors.NearDrawn} near_trees_made={TreeImpostors.NearMade}";
+        $"impostors_on={TreeImpostors.On} impostors_drawn={TreeImpostors.Drawn} impostor_calls={TreeImpostors.Calls} near_trees={TreeImpostors.NearDrawn} near_trees_made={TreeImpostors.NearMade}" +
+        $" prefabs_within={TreeImpostors.PrefabsWithin:0} impostors_within={TreeImpostors.ImpostorsWithin:0} trees_near={TreeImpostors.NearAround} trees_around={TreeImpostors.AllAround} {Brush()}";
+
+    // The brush cells' clumps (CellDressing.DrawBrushNear's LOD groups): all of them, and those within their draw distance.
+    static string Brush()
+    {
+        var cam = Camera.main;
+        int all = 0, within = 0, clumps = 0, clumpsWithin = 0;
+        float reachSq = CellDressing.BrushDrawMetres * CellDressing.BrushDrawMetres;
+        foreach (var lod in UnityEngine.Object.FindObjectsByType<LODGroup>(FindObjectsSortMode.None))
+        {
+            if (!lod.name.StartsWith("brush ", StringComparison.Ordinal)) continue;
+            int n = lod.GetLODs() is { Length: > 0 } l ? l[0].renderers.Length : 0;
+            all++;
+            clumps += n;
+            if (cam == null) continue;
+            var d = lod.transform.position - cam.transform.position;
+            if (d.x * d.x + d.z * d.z > reachSq) continue;
+            within++;
+            clumpsWithin += n;
+        }
+        return $"brush_cells={all} brush_cells_within={within} brush_renderers={clumps} brush_renderers_within={clumpsWithin}";
+    }
 
     static string Urp()
     {
