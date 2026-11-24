@@ -39,6 +39,8 @@ public sealed class MapTerrains : MonoBehaviour
     public TerrainData template;
     [Tooltip("The terrains' material: URP's terrain with rock mapped from the sides (TerrainRock.shader).")]
     public Material material;
+    [Tooltip("The terrain pack's own tuft meshes, which the template's grass is made lighter from (LightTufts); for -perf-look-pair-tufts and -perf-pack-tufts only.")]
+    public Mesh[] packTufts;
 
     TerrainGrid layout;
     Terrain[] chunks;

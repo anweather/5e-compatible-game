@@ -14,7 +14,8 @@ using UnityEngine.Rendering.Universal;
 // (the terrains' heightmaps), -perf-impostors-off (every tree TreeImpostors draws), -perf-brush-far (brush clumps drawn
 // to the haze again, as before their LOD), -perf-gpu-occlusion and -perf-small-mesh P (the Resident Drawer's culling),
 // -perf-hide A,B,... (the renderers of the census groups that start with A or B, PerfCensus.Group, as they stand when
-// measuring starts) and -perf-hide-shader S [-perf-hide-beyond M].
+// measuring starts), -perf-hide-shader S [-perf-hide-beyond M], -perf-pack-tufts (the terrain pack's own grass tufts, as
+// before LightTufts) and -perf-grass-fade S,E (the grass material's dither fade).
 public static class PerfKnobs
 {
     /// <summary>The picture as it was before the 2026-11-23 GPU fixes: brush clumps to the haze and SSAO before the opaques.</summary>
@@ -47,7 +48,7 @@ public static class PerfKnobs
     static readonly Func<string>[] Knobs =
     {
         ShadowsOff, HardShadows, Cascades, PostOff, SsaoOff, SsaoWhen, Fog, RenderScale, Details, DetailSettings, GrassNoShadows,
-        ImpostorsOff, BrushFar, Resident, HideByShader, HideGroups,
+        ImpostorsOff, BrushFar, Resident, HideByShader, HideGroups, PackTuftsKnob, GrassFade,
     };
 
     /// <summary>Applies the knobs asked for and logs a "PERF KNOBS" line of what it did.</summary>
@@ -150,6 +151,13 @@ public static class PerfKnobs
         return $"detail_metres={Text(metres ? m : -1f, "0")} detail_density={Text(density ? d : -1f, "0.00")}";
     }
 
+    /// <summary>Every terrain that draws grass draws it to <paramref name="metres"/>.</summary>
+    public static void DetailMetres(float metres)
+    {
+        foreach (var t in All<Terrain>().Where(t => t.detailObjectDistance > 0f)) t.detailObjectDistance = metres;
+        Debug.Log($"PERF KNOBS detail_metres={Text(metres, "0")}");
+    }
+
     static string GrassNoShadows()
     {
         if (!Has("-perf-grass-no-shadows")) return null;
@@ -166,6 +174,59 @@ public static class PerfKnobs
         }
         return $"grass_shadows_off={off}";
     }
+
+    static string PackTuftsKnob() => Has("-perf-pack-tufts") ? $"pack_tufts={PackTufts()}" : null;
+
+    /// <summary>
+    /// The grass drawn with the terrain pack's own tufts again (MapTerrains.packTufts), as before LightTufts: the terrains'
+    /// detail prototypes and the brush clumps made from them. How many meshes it swapped.
+    /// </summary>
+    public static int PackTufts()
+    {
+        var packs = MapTerrains.Instance != null ? MapTerrains.Instance.packTufts : null;
+        if (packs == null || packs.Length == 0) return 0;
+        var swap = new System.Collections.Generic.Dictionary<Mesh, Mesh>();
+        foreach (var data in All<Terrain>().Select(t => t.terrainData).Where(d => d != null).Distinct())
+        {
+            foreach (var filter in data.detailPrototypes.Where(p => p.prototype != null).Select(p => p.prototype.GetComponent<MeshFilter>()).Where(f => f != null))
+            {
+                var pack = packs.FirstOrDefault(m => m != null && m != filter.sharedMesh && m.name == filter.sharedMesh.name);
+                if (pack == null) continue;
+                swap[filter.sharedMesh] = pack;
+                filter.sharedMesh = pack;
+            }
+        }
+        foreach (var data in All<Terrain>().Select(t => t.terrainData).Where(d => d != null).Distinct()) data.RefreshPrototypes();
+        int swapped = swap.Count;
+        foreach (var filter in All<MeshFilter>())
+        {
+            if (filter.sharedMesh == null || !swap.TryGetValue(filter.sharedMesh, out var pack)) continue;
+            filter.sharedMesh = pack;
+            swapped++;
+        }
+        return swapped;
+    }
+
+    // -perf-grass-fade S,E: the grass's own dither fade (the pack's TerrainGrass material, 40 to 80 m as it comes) from
+    // S to E metres, on the detail prototypes' materials.
+    static string GrassFade()
+    {
+        var range = Arg("-perf-grass-fade")?.Split(',');
+        if (range == null || range.Length != 2 || !float.TryParse(range[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float from)
+            || !float.TryParse(range[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float to)) return null;
+        var materials = All<Terrain>().Select(t => t.terrainData).Where(d => d != null)
+            .SelectMany(d => d.detailPrototypes).Where(p => p.prototype != null)
+            .SelectMany(p => p.prototype.GetComponentsInChildren<Renderer>(true)).SelectMany(r => r.sharedMaterials)
+            .Where(m => m != null && m.HasProperty(FadeStart)).Distinct().ToList();
+        foreach (var m in materials)
+        {
+            m.SetFloat(FadeStart, from);
+            m.SetFloat(FadeEnd, to);
+        }
+        return $"grass_fade={Text(from, "0")}-{Text(to, "0")}({materials.Count})";
+    }
+
+    static readonly int FadeStart = Shader.PropertyToID("Distance_Fade_Start"), FadeEnd = Shader.PropertyToID("Distance_Fade_End");
 
     static string ImpostorsOff()
     {

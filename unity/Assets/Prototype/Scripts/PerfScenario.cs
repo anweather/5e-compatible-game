@@ -168,7 +168,7 @@ public class PerfScenario : MonoBehaviour
 
         // Update ends the run, so the frame that crosses the end is counted, however long it took.
         while (measuring) yield return null;
-        if (Has("-perf-look-pair")) yield return LookPair();
+        if (Has("-perf-look-pair") || Has("-perf-look-pair-tufts") || Arg("-perf-look-pair-detail") != null) yield return LookPair();
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
         yield return new WaitForSecondsRealtime(ShotSavedSeconds); // quitting drops a shot still being written
@@ -260,7 +260,8 @@ public class PerfScenario : MonoBehaviour
 
     // -perf-look-pair: with time stopped, the same view as it draws now and as it drew before the 2026-11-23 GPU fixes
     // (PerfKnobs.AsBefore): from where the camera is, and from 60 m up looking out north, east, south and west. A fair
-    // still pair, as nothing moves between them.
+    // still pair, as nothing moves between them. -perf-look-pair-tufts: before is the pack's own tufts (PerfKnobs.PackTufts);
+    // -perf-look-pair-detail M: before is the grass drawn to M metres.
     IEnumerator LookPair()
     {
         Time.timeScale = 0f;
@@ -273,7 +274,10 @@ public class PerfScenario : MonoBehaviour
             string label = i == 0 ? "now" : "before";
             if (i == 1)
             {
-                PerfKnobs.AsBefore();
+                // -perf-look-pair-tufts: before is the terrain pack's own grass tufts (LightTufts), nothing else.
+                if (Has("-perf-look-pair-tufts")) Debug.Log($"PERF KNOBS pack_tufts={PerfKnobs.PackTufts()}");
+                else if (float.TryParse(Arg("-perf-look-pair-detail"), NumberStyles.Float, CultureInfo.InvariantCulture, out float metres)) PerfKnobs.DetailMetres(metres);
+                else PerfKnobs.AsBefore();
                 for (int f = 0; f < 5; f++) yield return null;
             }
             yield return LookFrom(eye, eye + forward * 50f, $"{scenario}-ground-{label}");

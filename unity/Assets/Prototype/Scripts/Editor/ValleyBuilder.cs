@@ -121,7 +121,8 @@ public static class ValleyBuilder
     {
         AssetDatabase.DeleteAsset(OldBake);
         EditorAssets.EnsureFolderFor(TemplatePath);
-        var template = GroundTemplate(LoadLayers(), LoadTrees(), LoadDetails());
+        var details = LoadDetails(out var packTufts);
+        var template = GroundTemplate(LoadLayers(), LoadTrees(), details);
         var material = RockMaterial();
         var (left, top) = EditorGround.Layout.CellAt(0f, (yardRows.Length - 1) * grid.cellSize);
         cellAt = at => CellOf(at, grid.cellSize, left, top, yardRows.Length);
@@ -129,6 +130,7 @@ public static class ValleyBuilder
         var terrains = new GameObject("Ground").AddComponent<MapTerrains>();
         terrains.template = template;
         terrains.material = material;
+        terrains.packTufts = packTufts;
         EditorGround.Open(template, material);
         return terrains;
     }
@@ -265,13 +267,18 @@ public static class ValleyBuilder
     // Grass (the first three) and ferns and plants (the rest), from the terrain pack.
     static readonly string[] DetailNames = { "Grass_A", "Grass_B", "Grass_C", "Fern_A", "Plant_A", "Plant_C" };
 
-    static List<DetailPrototype> LoadDetails()
+    // The pack's tufts as cheaper copies (LightTufts) where there is one; packTufts, the pack's own meshes of those, for
+    // -perf-look-pair-tufts's before still (MapTerrains.packTufts).
+    static List<DetailPrototype> LoadDetails(out Mesh[] packTufts)
     {
         var protos = new List<DetailPrototype>();
+        var packs = new List<Mesh>();
         foreach (var n in DetailNames)
         {
-            var prefab = EditorAssets.LoadPrefab($"{TerrainPack}/Prefabs/{n}.prefab");
-            if (prefab == null) continue;
+            var pack = EditorAssets.LoadPrefab($"{TerrainPack}/Prefabs/{n}.prefab");
+            if (pack == null) continue;
+            var prefab = LightTufts.For(pack);
+            if (prefab != pack) packs.Add(pack.GetComponent<MeshFilter>().sharedMesh);
             protos.Add(new DetailPrototype
             {
                 prototype = prefab,
@@ -282,6 +289,7 @@ public static class ValleyBuilder
                 noiseSpread = 0.3f,
             });
         }
+        packTufts = packs.ToArray();
         return protos;
     }
 
