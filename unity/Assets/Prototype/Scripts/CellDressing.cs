@@ -217,6 +217,8 @@ public sealed partial class CellDressing
             {
                 var clump = Rock(foot, grasses[rng.Next(grasses.Length)], at, wide, tall, rng);
                 foreach (var col in clump.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+                // The terrain's grass casts no shadows (LightTufts); a brush cell's clumps, taller and fewer, still do.
+                foreach (var r in clump.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 continue;
             }
             // No terrain pack: a few blades of the look's colour.

@@ -17,8 +17,12 @@ using UnityEngine;
 [DefaultExecutionOrder(-1000)]
 public sealed class MapTerrains : MonoBehaviour
 {
-    /// <summary>How far a chunk terrain draws its details (grass), in metres, as made.</summary>
-    public const float DetailMetres = 120f;
+    /// <summary>
+    /// How far a chunk terrain draws its details (grass), in metres, as made: where the grass material's own dither fade
+    /// ends (the pack's TerrainGrass, 40 to 80 m), so no tuft is drawn that shows no pixel. It was 120 m; 80 is 0.7 ms of
+    /// the nine's start on the Mac (docs/perf/2026-11-23-tufts.md, Andrew's choice with the grass's shadows off).
+    /// </summary>
+    public const float DetailMetres = 80f;
 
     /// <summary>How far a chunk terrain draws its trees, in metres (900 as made; the tree impostors' trial draws them nearer, TreeImpostors).</summary>
     public static float TreeDistance { get; private set; } = 900f;

@@ -10,6 +10,10 @@ using UnityEngine;
 // kept, at the same place with the same texture, as one quad from its foot to its tip, or two when the card is tall
 // and bent; so the tuft is as full as before, and only a card's bend is straightened. The copies are made by the valley's
 // build (ValleyBuilder.LoadDetails) into Generated/, out of git, with the pack's own materials.
+//
+// The terrains' grass casts no shadows (Andrew, 2026-11-23: with the grass drawn to 80 m, the nine's start reaches 60 fps
+// on the Mac; docs/perf/2026-11-23-tufts.md): every detail prototype is a copy here with its shadows off, the plants
+// too (their meshes the pack's own). The brush clumps made from the same prefabs keep theirs (CellDressing.DressBrush).
 public static class LightTufts
 {
     public const string Folder = "Assets/Prototype/Generated/Ground/Tufts";
@@ -31,24 +35,39 @@ public static class LightTufts
     /// <summary>The ground's template, which the valley's build makes (ValleyBuilder).</summary>
     public const string Template = "Assets/Prototype/Generated/Ground/Template.asset";
 
+    /// <summary>Whether a detail prototype of the ground's template still casts shadows (from before they were turned off).</summary>
+    public static bool GroundGrassCastsShadows()
+    {
+        var template = AssetDatabase.LoadAssetAtPath<TerrainData>(Template);
+        return template != null && template.detailPrototypes.Any(d => d.prototype != null && CastsShadows(d.prototype));
+    }
+
+    /// <summary>Whether any renderer of a prefab casts shadows.</summary>
+    public static bool CastsShadows(GameObject prefab) =>
+        prefab.GetComponentsInChildren<Renderer>(true).Any(r => r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off);
+
     /// <summary>
-    /// The light copy of a pack tuft prefab (made or brought up to date in Folder), or the pack's own when it isn't one
-    /// of Lightened.
+    /// The terrains' copy of a pack tuft prefab (made or brought up to date in Folder), casting no shadows: lighter when
+    /// it is one of Lightened, else with the pack's own mesh. The pack's own when it isn't a single mesh.
     /// </summary>
     public static GameObject For(GameObject pack)
     {
-        if (pack == null || !Lightened.TryGetValue(pack.name, out int segments)) return pack;
+        if (pack == null) return pack;
         var filter = pack.GetComponent<MeshFilter>();
         var renderer = pack.GetComponent<MeshRenderer>();
         if (filter == null || filter.sharedMesh == null || renderer == null) return pack;
         EditorAssets.EnsureFolderFor($"{Folder}/x");
-        string meshPath = $"{Folder}/{pack.name}.asset", prefabPath = $"{Folder}/{pack.name}.prefab";
-        var light = Lighten(filter.sharedMesh, segments);
-        var mesh = EditorAssets.LoadOrCreate(meshPath, () => new Mesh());
-        EditorUtility.CopySerialized(light, mesh);
-        mesh.name = pack.name;
-        Object.DestroyImmediate(light);
-        EditorUtility.SetDirty(mesh);
+        string prefabPath = $"{Folder}/{pack.name}.prefab";
+        var mesh = filter.sharedMesh;
+        if (Lightened.TryGetValue(pack.name, out int segments))
+        {
+            var light = Lighten(filter.sharedMesh, segments);
+            mesh = EditorAssets.LoadOrCreate($"{Folder}/{pack.name}.asset", () => new Mesh());
+            EditorUtility.CopySerialized(light, mesh);
+            mesh.name = pack.name;
+            Object.DestroyImmediate(light);
+            EditorUtility.SetDirty(mesh);
+        }
 
         var go = new GameObject(pack.name);
         try
@@ -56,7 +75,7 @@ public static class LightTufts
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();
             r.sharedMaterials = renderer.sharedMaterials;
-            r.shadowCastingMode = renderer.shadowCastingMode;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = renderer.receiveShadows;
             return PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
         }

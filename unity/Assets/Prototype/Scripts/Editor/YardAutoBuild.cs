@@ -49,10 +49,10 @@ public static class YardAutoBuild
         {
             var unstable = ChemYardBuilder.UnstableNetworkIds();
             bool assetFolk = File.ReadAllText(ScenePath).Contains("residents: {fileID", System.StringComparison.Ordinal);
-            bool heavyGrass = LightTufts.GroundHasPackTufts();
+            bool heavyGrass = LightTufts.GroundHasPackTufts() || LightTufts.GroundGrassCastsShadows();
             if (unstable.Count == 0 && !assetFolk && !heavyGrass) return;
             if (assetFolk) why = "The yard's villages name their folk by asset, from before rules/fauna.json";
-            else if (heavyGrass) why = "The ground's grass is the terrain pack's own heavy tufts, from before LightTufts";
+            else if (heavyGrass) why = "The ground's grass is the terrain pack's own heavy tufts or casts shadows, from before LightTufts";
             else why = $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
         }
         if (AssetPackRestore.Busy) return; // Finished calls back when it's done

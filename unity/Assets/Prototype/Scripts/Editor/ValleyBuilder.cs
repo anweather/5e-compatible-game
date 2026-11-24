@@ -267,7 +267,7 @@ public static class ValleyBuilder
     // Grass (the first three) and ferns and plants (the rest), from the terrain pack.
     static readonly string[] DetailNames = { "Grass_A", "Grass_B", "Grass_C", "Fern_A", "Plant_A", "Plant_C" };
 
-    // The pack's tufts as cheaper copies (LightTufts) where there is one; packTufts, the pack's own meshes of those, for
+    // The pack's tufts as the terrains' copies (LightTufts: no shadows, and lighter where there is a lighter one); packTufts, the pack's own meshes of those, for
     // -perf-look-pair-tufts's before still (MapTerrains.packTufts).
     static List<DetailPrototype> LoadDetails(out Mesh[] packTufts)
     {
@@ -278,7 +278,7 @@ public static class ValleyBuilder
             var pack = EditorAssets.LoadPrefab($"{TerrainPack}/Prefabs/{n}.prefab");
             if (pack == null) continue;
             var prefab = LightTufts.For(pack);
-            if (prefab != pack) packs.Add(pack.GetComponent<MeshFilter>().sharedMesh);
+            if (LightTufts.Lightened.ContainsKey(n)) packs.Add(pack.GetComponent<MeshFilter>().sharedMesh);
             protos.Add(new DetailPrototype
             {
                 prototype = prefab,

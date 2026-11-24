@@ -12,8 +12,8 @@ using UnityEngine;
 // world of another size there are no chunk terrains to tell.
 public partial class ChemGrid
 {
-    /// <summary>How far the terrains draw details, in metres (ValleyGround sets it from them; MapTerrains makes them at 120).</summary>
-    public float DetailDistance { get; set; } = 120f;
+    /// <summary>How far the terrains draw details, in metres (ValleyGround sets it from them; MapTerrains makes them at DetailMetres).</summary>
+    public float DetailDistance { get; set; } = MapTerrains.DetailMetres;
 
     /// <summary>The chunk terrains, as TerrainGrid (i, j), that should draw details now.</summary>
     public IReadOnlyCollection<(int i, int j)> DetailChunks => detailChunks;
