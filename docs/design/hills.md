@@ -238,3 +238,8 @@ Stills (800 px): `~/5e-logs/hills/shots/spawn.jpg`, `seam.jpg` (past both seams 
 - For Andrew: roads are dirt, 9 m (main) and 6 m (lesser) wide, levelled across with 9 m banks; the hills are gentle
   enough (1 unit a cell at most along any road) that no cut, switchback or bridge is needed. Steeper land (the
   mountains, step 4) will need a grade limit along a road, a cut through the crest or switchbacks: a choice then.
+
+## The alpine massif (step 4)
+
+The mountains in the middle, their passes and foothills, the roads' grade limit, the far massif and their results are in
+docs/design/alpine.md; the rivers wait on where they end (a choice there).
