@@ -195,6 +195,12 @@ touch them.
   View only: the trees it draws are the terrain's where a terrain is made, else a tree a tree cell
   (`docs/design/tree-impostors.md`).
 
+**Tree budget**
+: The most trees `TreeImpostors` draws round the camera: as their prefab (`TreeBudget.MostNear`) and every way, impostors
+  too (`MostAround`). Where the forest is denser the prefabs and the impostors draw to a shorter distance so about that
+  many are drawn, never nearer than a floor (60 m prefabs, 400 m impostors); where it's sparse (the nine) they draw as far
+  as ever. The forest is as generated: only how far each way of drawing it goes changes.
+
 **Tree tiers** *(proposed)*
 : How far out each way of drawing a tree goes: the **full mesh** near (within 60 m in the trial), the **impostor**
   from there, a small atlas farther, and forest colour (groves) at the horizon (`docs/design/tree-impostors.md`).

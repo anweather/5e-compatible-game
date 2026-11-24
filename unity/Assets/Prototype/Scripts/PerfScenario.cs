@@ -170,7 +170,7 @@ public class PerfScenario : MonoBehaviour
 
         // Update ends the run, so the frame that crosses the end is counted, however long it took.
         while (measuring) yield return null;
-        if (Has("-perf-look-pair") || Has("-perf-look-pair-tufts") || Arg("-perf-look-pair-detail") != null || Has("-perf-look-pair-grass-shadows")) yield return LookPair();
+        if (Has("-perf-look-pair") || Has("-perf-look-pair-tufts") || Arg("-perf-look-pair-detail") != null || Has("-perf-look-pair-grass-shadows") || Has("-perf-look-pair-tree-budget")) yield return LookPair();
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
         yield return new WaitForSecondsRealtime(ShotSavedSeconds); // quitting drops a shot still being written
@@ -281,6 +281,12 @@ public class PerfScenario : MonoBehaviour
                 if (Has("-perf-look-pair-tufts")) Debug.Log($"PERF KNOBS pack_tufts={PerfKnobs.PackTufts()}");
                 else if (float.TryParse(Arg("-perf-look-pair-detail"), NumberStyles.Float, CultureInfo.InvariantCulture, out float metres)) PerfKnobs.DetailMetres(metres);
                 else if (Has("-perf-look-pair-grass-shadows")) Debug.Log($"PERF KNOBS grass_shadows_on={PerfKnobs.GrassShadows(UnityEngine.Rendering.ShadowCastingMode.On)}");
+                // -perf-look-pair-tree-budget: before is the trees without their budget (TreeBudget), as far as ever.
+                else if (Has("-perf-look-pair-tree-budget"))
+                {
+                    TreeImpostors.Budget = false;
+                    Debug.Log("PERF KNOBS tree_budget=off");
+                }
                 else PerfKnobs.AsBefore();
                 for (int f = 0; f < 5; f++) yield return null;
             }
@@ -298,6 +304,9 @@ public class PerfScenario : MonoBehaviour
     {
         if (stage != null) stage.CutTo(eye, at);
         for (int f = 0; f < 3; f++) yield return null;
+        // The near trees stood as their prefabs first (a few a frame), so both of a pair show what each draws.
+        for (int f = 0; f < 600 && TreeImpostors.NearWaiting > 0; f++) yield return null;
+        Debug.Log($"PERF LOOK {name} prefabs={TreeImpostors.NearDrawn} prefabs_within={TreeImpostors.PrefabsWithin:0} impostors={TreeImpostors.Drawn} impostors_within={TreeImpostors.ImpostorsWithin:0}");
         yield return Shot(name);
     }
 
@@ -437,6 +446,17 @@ public class PerfScenario : MonoBehaviour
     static void LogSource(string at)
     {
         if (ChemGrid.Current?.World?.Source is not Chem.GeneratedSource g) return;
+        // -perf-trace-reads: from the measure on, the stack of each chunk a read makes (the first 40), to find the reader.
+        if (at == "measure" && Has("-perf-trace-reads"))
+        {
+            int traced = 0;
+            g.MadeOnReadAt = (cx, cy) =>
+            {
+                if (System.Threading.Interlocked.Increment(ref traced) <= 40)
+                    Debug.Log($"PERF READ MADE {cx},{cy} on thread {System.Threading.Thread.CurrentThread.ManagedThreadId}\n{System.Environment.StackTrace}");
+            };
+        }
+        if (at == "end") g.MadeOnReadAt = null;
         Debug.Log($"PERF SOURCE at={at} made={g.Made} made_on_read={g.MadeOnRead} made_ahead={g.MadeAhead} made_again={g.MadeAgain} waits={g.Waits} held={g.HeldCount} " +
                   $"make_ms={g.MakeMs.ToString("0", CultureInfo.InvariantCulture)} wait_ms={g.WaitMs.ToString("0", CultureInfo.InvariantCulture)}");
     }
