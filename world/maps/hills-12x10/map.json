@@ -4,9 +4,10 @@
   "name": "The Rolling Hills",
   "size": [6912, 5760],
   "seaLevel": -4,
+  "drawable": [-136, 3600],
   "spawn": [6880, 5601],
   "off": ["fauna"],
-  "expects": { "landShare": 100, "highest": 305, "lowest": 41 },
+  "expects": { "landShare": 100, "highest": 3079, "lowest": 45 },
   "generated": {
     "seed": "hills-1",
     "squares": [12, 10],
@@ -14,6 +15,8 @@
     "bake": false,
     "generator": 8,
     "hills": { "base": 8, "biome": "grassland", "octaves": [[1152, 200], [384, 96], [128, 24], [64, 6]],
-      "roads": { "mainRows": [4, 9], "mainColumns": [5, 11], "loops": 12 } }
+      "roads": { "mainRows": [4, 9], "mainColumns": [5, 11], "loops": 12, "grade": 12 },
+      "massif": { "centre": [3456, 2880], "meadow": 700, "crest": 1050, "foot": 1450, "reach": 2650, "warp": 220,
+        "meadowHeight": 1000, "peaks": 2000, "foothills": 160, "passWidth": 260, "passKeep": 12 } }
   }
 }

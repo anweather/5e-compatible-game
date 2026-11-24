@@ -66,7 +66,7 @@ namespace Chem
 
         // Legend characters (ChemGrid.Legend).
         const byte MarkRoad = 1, MarkBare = 2, MarkClear = 3;
-        internal const char Grass = ',', Dirt = '.', Stone = '#', Tree = 'T', Brush = '"', Pond = 'w', Stream = 'r';
+        internal const char Grass = ',', Dirt = '.', Stone = '#', Tree = 'T', Brush = '"', Pond = 'w', Stream = 'r', Rock = '^', Scree = ':';
 
         public readonly WorldPlan Plan;
         /// <summary>The plan square at the map's north-west corner, and the map's size in squares.</summary>

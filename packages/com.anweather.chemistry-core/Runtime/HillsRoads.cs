@@ -45,7 +45,31 @@ namespace Chem
             /// <summary>Its line's bounding box in cells from the square's corner.</summary>
             public int MinX, MinY, MaxX, MaxY;
             public int Half => Kind == Main ? MainHalf : LesserHalf;
+            /// <summary>
+            /// Where the land along it is steeper than the grade limit, its graded height along its line (Q16 land units,
+            /// <see cref="Sub"/> samples a piece, both ends at the land there); null where the land is gentle enough to follow.
+            /// </summary>
+            public long[] Profile;
+            /// <summary>The deepest cut and the highest fill its profile makes, in land units.</summary>
+            public int Cut, Fill;
+            /// <summary>Its grade in percent where its ends are too far apart for the grade limit (0 where it keeps to it).</summary>
+            public int Over;
+
+            /// <summary>The road's height at a point on its line (piece <paramref name="k"/>, Q16 <paramref name="t"/> along it), from its profile.</summary>
+            public int ProfileAt(int k, long t)
+            {
+                long q = t * Sub;
+                int s = (int)(q / One), i = k * Sub + s;
+                if (i >= Profile.Length - 1) return (int)BiomeMath.FloorDiv(Profile[Profile.Length - 1] + One / 2, One);
+                long v = Profile[i] + (Profile[i + 1] - Profile[i]) * (q - (long)s * One) / One;
+                return (int)BiomeMath.FloorDiv(v + One / 2, One);
+            }
         }
+
+        /// <summary>Samples of a graded arm's profile a piece.</summary>
+        public const int Sub = 4;
+        /// <summary>How far from either end, in cells, a graded road still keeps to the land, so it meets the roads there.</summary>
+        public const int EndCells = 16;
 
         public readonly int SquaresW, SquaresH;
         // Per world square, its hub in cells from its north-west corner; the road across its east side and its south side,
@@ -62,8 +86,10 @@ namespace Chem
         public (int x, int y) HubOf(int square) => hub[square];
         readonly List<Arm>[] arms;
         readonly int seed;
+        // Where only main roads go (a massif's ring): a lesser road is never laid where it would reach it.
+        readonly Func<int, int, bool> wild;
 
-        public HillsRoads(int seed, int squaresW, int squaresH, int[] mainRows, int[] mainColumns, int loopPercent)
+        public HillsRoads(int seed, int squaresW, int squaresH, int[] mainRows, int[] mainColumns, int loopPercent, Func<int, int, bool> wild = null)
         {
             if (squaresW < 3 || squaresH < 3) throw new FormatException($"{MapFile.FileName}: a hills map's roads need at least 3 x 3 world squares, not {squaresW} x {squaresH}");
             this.seed = seed;
@@ -90,13 +116,14 @@ namespace Chem
                 eastSlot[i] = 1 + (int)(WorldHash.Hash4(seed, SaltSlot, i, 1) % (Slots - 2));
                 southSlot[i] = 1 + (int)(WorldHash.Hash4(seed, SaltSlot, i, 2) % (Slots - 2));
             }
+            this.wild = wild;
             Network(loopPercent);
             arms = new List<Arm>[n];
             for (int i = 0; i < n; i++) arms[i] = LayArms(i);
         }
 
         /// <summary>map.json's generated "hills" "roads": { "mainRows": [..], "mainColumns": [..], "loops": percent }, or null.</summary>
-        public static HillsRoads Read(JObject o, int seed, int squaresW, int squaresH)
+        public static HillsRoads Read(JObject o, int seed, int squaresW, int squaresH, Func<int, int, bool> wild = null)
         {
             if (o == null) return null;
             int[] Ints(string key)
@@ -107,7 +134,10 @@ namespace Chem
                 for (int k = 0; k < a.Count; k++) list[k] = (int)a[k];
                 return list;
             }
-            return new HillsRoads(seed, squaresW, squaresH, Ints("mainRows"), Ints("mainColumns"), (int?)o["loops"] ?? 12);
+            return new HillsRoads(seed, squaresW, squaresH, Ints("mainRows"), Ints("mainColumns"), (int?)o["loops"] ?? 12, wild)
+            {
+                GradePercent = (int?)o["grade"] ?? 12,
+            };
         }
 
         int Index(int sx, int sy) => PlanGrid.Mod(sy, SquaresH) * SquaresW + PlanGrid.Mod(sx, SquaresW);
@@ -156,11 +186,148 @@ namespace Chem
                 bool isEast = k % 2 == 0;
                 if ((isEast ? east[i] : south[i]) != None) continue;
                 int j = isEast ? Index(i % SquaresW + 1, i / SquaresW) : Index(i % SquaresW, i / SquaresW + 1);
+                if (Wild(i, isEast ? 1 : 2) || Wild(j, isEast ? 3 : 0)) continue;
                 bool road = Join(i, j) || (key >> 8) % 100 < (uint)loopPercent;
                 if (!road) continue;
                 if (isEast) east[i] = Lesser;
                 else south[i] = Lesser;
             }
+        }
+
+        // Whether a lesser road from square i's side to its hub would reach wild land: the straight line from the slot to
+        // the hub, every 16 cells, with a margin for the arm's wander.
+        bool Wild(int i, int side)
+        {
+            if (wild == null) return false;
+            int ox = i % SquaresW * Square, oy = i / SquaresW * Square;
+            int qx = i % SquaresW, qy = i / SquaresW;
+            int slot = side switch { 0 => southSlot[Index(qx, qy - 1)], 1 => eastSlot[i], 2 => southSlot[i], _ => eastSlot[Index(qx - 1, qy)] };
+            var (sx, sy) = SlotPoint(side, slot);
+            long ax = sx / One, ay = sy / One, bx = hub[i].x, by = hub[i].y;
+            long len = Math.Max(1, BiomeMath.Length((bx - ax) * One, (by - ay) * One) / One);
+            for (long d = 0; d <= len; d += 16)
+            {
+                int x = (int)(ox + ax + (bx - ax) * d / len), y = (int)(oy + ay + (by - ay) * d / len);
+                for (int m = -1; m <= 1; m++)
+                    if (wild(x + m * WanderCells, y) || wild(x, y + m * WanderCells)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>The grade limit along a road, in percent (map.json's "roads" "grade"): steeper land is cut and filled.</summary>
+        public int GradePercent { get; private set; } = 12;
+
+        /// <summary>The main roads' arms' lines, Q16 map cells from each square's corner on the map: what a massif's passes follow.</summary>
+        public List<(long[] x, long[] y)> MainLines()
+        {
+            var lines = new List<(long[], long[])>();
+            for (int i = 0; i < arms.Length; i++)
+            {
+                long ox = (long)(i % SquaresW) * Square * One, oy = (long)(i / SquaresW) * Square * One;
+                foreach (var a in arms[i])
+                {
+                    if (a.Kind != Main) continue;
+                    var x = new long[a.X.Length];
+                    var y = new long[a.Y.Length];
+                    for (int k = 0; k < x.Length; k++)
+                    {
+                        x[k] = a.X[k] + ox;
+                        y[k] = a.Y[k] + oy;
+                    }
+                    lines.Add((x, y));
+                }
+            }
+            return lines;
+        }
+
+        /// <summary>
+        /// Grades every arm over <paramref name="land"/> (map cells to land units): an arm whose land is steeper than the
+        /// grade limit anywhere along its line gets a profile within it (only arms reaching where <paramref name="steepAt"/>
+        /// says the land may be steep are looked at, when it's given), half way between the deepest cut and the highest fill
+        /// that would keep to it, held to the land at both ends so arms meet. Call it once, before any chunk is made.
+        /// </summary>
+        public void Grade(Func<int, int, int> land, Func<int, int, bool> steepAt = null)
+        {
+            long g = (long)GradePercent * 12 * One / 100; // land units a cell, Q16: a cell is 1.5 m, a unit 0.125 m
+            for (int i = 0; i < arms.Length; i++)
+            {
+                int ox = i % SquaresW * Square, oy = i / SquaresW * Square;
+                foreach (var a in arms[i])
+                {
+                    // Only an arm that reaches land that may be steep (a massif's) is looked at: the rolling hills never are.
+                    bool may = steepAt == null;
+                    for (int k = 0; k < a.X.Length && !may; k++) may = steepAt(ox + (int)BiomeMath.FloorDiv(a.X[k], One), oy + (int)BiomeMath.FloorDiv(a.Y[k], One));
+                    if (may) GradeArm(a, ox, oy, land, g);
+                }
+            }
+        }
+
+        static void GradeArm(Arm a, int ox, int oy, Func<int, int, int> land, long g)
+        {
+            int n = Pieces * Sub + 1;
+            var h = new long[n];
+            var s = new long[n];
+            long px = 0, py = 0;
+            for (int q = 0; q < n; q++)
+            {
+                int k = Math.Min(Pieces - 1, q / Sub), f = q - k * Sub;
+                long x = a.X[k] + (a.X[k + 1] - a.X[k]) * f / Sub, y = a.Y[k] + (a.Y[k + 1] - a.Y[k]) * f / Sub;
+                h[q] = (long)land(ox + (int)BiomeMath.FloorDiv(x, One), oy + (int)BiomeMath.FloorDiv(y, One)) * One;
+                s[q] = q == 0 ? 0 : s[q - 1] + BiomeMath.Length(x - px, y - py);
+                px = x;
+                py = y;
+            }
+            bool steep = false;
+            for (int q = 1; q < n && !steep; q++) steep = Math.Abs(h[q] - h[q - 1]) > (s[q] - s[q - 1]) * g / One;
+            a.Profile = null;
+            if (!steep) return;
+            // Within EndCells of either end the road keeps to the land, so it meets the arms at its hub and over its side
+            // whatever they do; between, it's half way from the cut to the fill, within the grade of both held ends.
+            int a0 = 0, b0 = n - 1;
+            while (a0 + 1 < n && s[a0 + 1] <= (long)EndCells * One) a0++;
+            while (b0 - 1 > a0 && s[n - 1] - s[b0 - 1] <= (long)EndCells * One) b0--;
+            // Where the held ends are further apart than the grade allows, this arm's grade is what it takes (a little over it).
+            long need = s[b0] - s[a0] <= 0 ? 0 : Math.Abs(h[b0] - h[a0]) * One / (s[b0] - s[a0]) * 21 / 20 + 1;
+            if (need > g)
+            {
+                a.Over = (int)(need * 100 / (12 * One));
+                g = need;
+            }
+            // The highest profile under the land that keeps to the grade (a cut), and the lowest over it (a fill).
+            var up = (long[])h.Clone();
+            var down = (long[])h.Clone();
+            for (int q = 1; q < n; q++)
+            {
+                long ds = (s[q] - s[q - 1]) * g / One;
+                up[q] = Math.Min(up[q], up[q - 1] + ds);
+                down[q] = Math.Max(down[q], down[q - 1] - ds);
+            }
+            for (int q = n - 2; q >= 0; q--)
+            {
+                long ds = (s[q + 1] - s[q]) * g / One;
+                up[q] = Math.Min(up[q], up[q + 1] + ds);
+                down[q] = Math.Max(down[q], down[q + 1] - ds);
+            }
+            var p = new long[n];
+            int cut = 0, fill = 0;
+            for (int q = 0; q < n; q++)
+            {
+                if (q <= a0 || q >= b0) p[q] = h[q];
+                else
+                {
+                    long mid = (up[q] + down[q]) / 2;
+                    long lo = Math.Max(h[a0] - (s[q] - s[a0]) * g / One, h[b0] - (s[b0] - s[q]) * g / One);
+                    long hi = Math.Min(h[a0] + (s[q] - s[a0]) * g / One, h[b0] + (s[b0] - s[q]) * g / One);
+                    p[q] = Math.Min(hi, Math.Max(lo, mid));
+                }
+                cut = Math.Max(cut, (int)((h[q] - p[q]) / One));
+                fill = Math.Max(fill, (int)((p[q] - h[q]) / One));
+            }
+            // Land that only just steps past the grade somewhere keeps its own line (the hills' roads as they were).
+            if (cut == 0 && fill == 0) return;
+            a.Profile = p;
+            a.Cut = cut;
+            a.Fill = fill;
         }
 
         /// <summary>The road across a side of a world square (0 north, 1 east, 2 south, 3 west) and the slot it crosses at.</summary>
@@ -297,15 +464,37 @@ namespace Chem
             return near;
         }
 
+        /// <summary>The nearest point on a road line to a cell, and where on which arm it is.</summary>
+        public struct Hit
+        {
+            /// <summary>Its distance in Q16 cells (long.MaxValue for none within its bank), and the point in map cells (unwrapped).</summary>
+            public long Distance;
+            public int X, Y, Half;
+            public Arm Arm;
+            /// <summary>The arm's piece it's on and how far along that, Q16.</summary>
+            public int Piece;
+            public long Along;
+        }
+
         /// <summary>
         /// The nearest road line to a map cell's middle among <paramref name="near"/>: its distance in Q16 cells (long.MaxValue
         /// when none is within its bank), the nearest point on it in map cells (unwrapped) and that road's half width.
         /// </summary>
         public static long Nearest(List<Placed> near, int x, int y, out int cx, out int cy, out int half)
         {
+            var hit = Nearest(near, x, y);
+            cx = hit.X;
+            cy = hit.Y;
+            half = hit.Half;
+            return hit.Distance;
+        }
+
+        /// <summary>The nearest road line to a map cell's middle among <paramref name="near"/>, as a <see cref="Hit"/>.</summary>
+        public static Hit Nearest(List<Placed> near, int x, int y)
+        {
             long qx = (long)x * One + One / 2, qy = (long)y * One + One / 2;
             long best = long.MaxValue;
-            cx = cy = half = 0;
+            var hit = new Hit { Distance = long.MaxValue };
             foreach (var p in near)
             {
                 var a = p.Arm;
@@ -321,12 +510,10 @@ namespace Chem
                     long d = BiomeMath.Length(qx - px, qy - py);
                     if (d >= best || d >= reach) continue;
                     best = d;
-                    cx = (int)BiomeMath.FloorDiv(px, One);
-                    cy = (int)BiomeMath.FloorDiv(py, One);
-                    half = a.Half;
+                    hit = new Hit { Distance = d, X = (int)BiomeMath.FloorDiv(px, One), Y = (int)BiomeMath.FloorDiv(py, One), Half = a.Half, Arm = a, Piece = k, Along = t };
                 }
             }
-            return best;
+            return hit;
         }
 
         /// <summary>

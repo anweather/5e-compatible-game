@@ -24,6 +24,7 @@ Shader "Prototype/FarLand"
         _Top ("Its height (m)", Float) = 1
         _SkyFadeFrom ("Into the sky from (m)", Float) = 0
         _SkyFadeTo ("Into the sky by (m), 0 for never", Float) = 0
+        _NearClip ("Not drawn nearer than (m), 0 for everywhere", Float) = 0
         [HideInInspector] _SrcBlend ("", Float) = 1
         [HideInInspector] _DstBlend ("", Float) = 0
         [HideInInspector] _ZWrite ("", Float) = 1
@@ -57,6 +58,7 @@ Shader "Prototype/FarLand"
             float _Top;
             float _SkyFadeFrom;
             float _SkyFadeTo;
+            float _NearClip;
             CBUFFER_END
 
             // Set by FarRing each frame: the land's haze density now and in clear weather (per metre), where the generated
@@ -135,6 +137,11 @@ Shader "Prototype/FarLand"
                 half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);
                 half3 albedo = input.color.rgb;
                 half3 color = albedo * (light.color * diffuse + SampleSH(n));
+                UNITY_BRANCH if (_NearClip > 0)
+                {
+                    // A far mesh of land the chunk terrains and known meshes draw nearer (the hills' massif).
+                    if (length(input.positionWS.xz - _WorldSpaceCameraPos.xz) < _NearClip) discard;
+                }
                 UNITY_BRANCH if (_OwnHaze > 0.5)
                 {
                     // Far off, a landmark reads as a silhouette: the sun only shades it a little.

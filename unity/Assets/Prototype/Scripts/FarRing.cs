@@ -173,6 +173,7 @@ public sealed partial class FarRing : MonoBehaviour
         if (building != null && building.IsCompleted) FinishBuild();
         LetGo();
         UpdateLandmarks();
+        UpdateMassif();
     }
 
     // The first frame the worker's load is done: the ring, the haze, the materials, the sea plane and the landmarks.
@@ -205,6 +206,7 @@ public sealed partial class FarRing : MonoBehaviour
         if (!(ViewWrap.EastWest && ViewWrap.NorthSouth)) MakeSea();
         MakeLandmarks(loaded);
         palette = Palette(loaded.Biomes, grid.World, terrains);
+        StartMassif(map);
         StartupTimeline.Mark("far ring map read, landmarks made");
         Debug.Log($"FAR RING: know {know} (haze 98% at {HazeMetres:0} m, density {RenderSettings.fogDensity:0.00000}/m), {loaded.Far.All.Count} far landmarks");
         return true;

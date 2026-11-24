@@ -65,8 +65,22 @@ namespace Chem.Tests
                 for (int s = 0; s < 4; s++)
                     if (roads.SideOf(i, s).kind != HillsRoads.None && seen.Add(Neighbour(i, s))) open.Enqueue(Neighbour(i, s));
             }
-            Assert.That(seen.Count, Is.EqualTo(Squares), "every world square is on the network");
-            for (int i = 0; i < Squares; i++) Assert.That(roads.ArmsOf(i).Count, Is.GreaterThan(0), $"square {i} has a road");
+            // Every world square but the massif's wild ones, which no lesser road reaches (HillsMassifTests).
+            var massif = map.Hills.Massif;
+            int wild = 0;
+            for (int i = 0; i < Squares; i++)
+            {
+                if (seen.Contains(i)) continue;
+                wild++;
+                Assert.That(roads.ArmsOf(i), Is.Empty, $"square {i} is off the network and has no road");
+                bool ring = false;
+                int ox = i % roads.SquaresW * WorldPlan.SquareCells, oy = i / roads.SquaresW * WorldPlan.SquareCells;
+                for (int y = 0; y < WorldPlan.SquareCells && !ring; y += 32)
+                    for (int x = 0; x < WorldPlan.SquareCells && !ring; x += 32) ring = massif.InRing(ox + x, oy + y);
+                Assert.That(ring, Is.True, $"square {i} off the network is in the massif's ring");
+            }
+            TestContext.Out.WriteLine($"ROADS {Squares - wild} world squares on the network, {wild} wild in the massif's ring");
+            Assert.That(wild, Is.LessThanOrEqualTo(12));
             // Main roads: every side along their row (column), the seam's too.
             foreach (int r in roads.MainRows)
                 for (int sx = 0; sx < roads.SquaresW; sx++) Assert.That(roads.SideOf(r * roads.SquaresW + sx, 1).kind, Is.EqualTo(HillsRoads.Main), $"row {r} at {sx}");
@@ -141,7 +155,9 @@ namespace Chem.Tests
                 }
                 TestContext.Out.WriteLine($"ROADS main {(alongRow ? "row" : "column")} {index}: {cells} cells ({cells * 1.5 / 1000:0.0} km), {off} off the road, steepest {steepest} land units a cell, {crossedSeam} seam crossings");
                 Assert.That(off, Is.Zero, "every cell on its line is road");
-                Assert.That(steepest, Is.LessThanOrEqualTo(2), "gentle along");
+                // The grade limit is 12% (1.44 land units a cell); a diagonal step of the walk can move the line's nearest
+                // point two cells, so up to 4 between neighbours where the land climbs at nearly the limit.
+                Assert.That(steepest, Is.LessThanOrEqualTo(4), "within the grade along, through the massif's passes too");
                 Assert.That(crossedSeam, Is.EqualTo(1), "once round: over its seam once");
             }
         }
@@ -193,7 +209,7 @@ namespace Chem.Tests
             TestContext.Out.WriteLine($"ROADS the main roads cross {edges} chunk edges, {seams} of them seams; the land steps at most {worst} units over them");
             Assert.That(disagree, Is.Zero, "a chunk's edges are the land as a cell alone works it out");
             Assert.That(seams, Is.EqualTo(roads.MainRows.Count + roads.MainColumns.Count), "each main road over its seam once");
-            Assert.That(worst, Is.LessThanOrEqualTo(1));
+            Assert.That(worst, Is.LessThanOrEqualTo(2), "within the grade over an edge");
         }
 
         [Test]

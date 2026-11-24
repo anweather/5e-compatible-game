@@ -22,6 +22,8 @@ public partial class PerfStage
         Debug.Log($"PERF STAND chunk={chunk.x},{chunk.y} cell={cell.x},{cell.y}");
         yield return null;
         while (grid.ChunksLeftToDraw > 0) yield return null;
+        // Again once its ground is drawn: a wizard put down far from the start before its ground stood fell through it.
+        PlaceCell(cell.x, cell.y);
         Ready = true;
         while (!Go) yield return null;
         if (Asked("-perf-camera-off") && Camera.main != null)

@@ -59,6 +59,11 @@ public partial class PerfStage : ShowcaseScript
             yield return Stand();
             yield break; // Ready once the chunks round it are drawn
         }
+        else if (Scenario == "roadwalk" && Pair("-perf-from") != null)
+        {
+            StartCoroutine(RoadWalk());
+            yield break; // Ready once the chunks round its start are drawn
+        }
         else if (Scenario is not ("walkout" or "seamwalk" or "roadwalk")) Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
         if (Scenario == "walkout") StartCoroutine(WalkOut());

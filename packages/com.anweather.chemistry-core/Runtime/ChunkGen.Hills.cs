@@ -21,6 +21,8 @@ namespace Chem
         public readonly string Biome;
         /// <summary>Its roads (map.json's "hills" "roads", HillsRoads), or null for hills with none.</summary>
         public HillsRoads Roads { get; private set; }
+        /// <summary>Its alpine massif (map.json's "hills" "massif", HillsMassif), or null for hills with none.</summary>
+        public HillsMassif Massif { get; private set; }
         readonly int seed, w, h;
 
         // Fixed point for the blend between lattice points.
@@ -51,7 +53,7 @@ namespace Chem
             {
                 int top = Base;
                 foreach (var o in Octaves) top += o.amplitude;
-                return top;
+                return top + (Massif?.Highest ?? 0);
             }
         }
 
@@ -62,12 +64,22 @@ namespace Chem
             foreach (var oct in (JArray)o["octaves"] ?? throw new FormatException($"{MapFile.FileName}: \"hills\" needs \"octaves\""))
                 list.Add(((int)oct[0], (int)oct[1]));
             var land = new HillsLand(seed, cellsW, cellsH, (int?)o["base"] ?? 8, list, (string)o["biome"] ?? "grassland");
-            land.Roads = HillsRoads.Read(o["roads"] as JObject, seed, cellsW / WorldPlan.SquareCells, cellsH / WorldPlan.SquareCells);
+            var massif = HillsMassif.Read(o["massif"] as JObject, seed, cellsW, cellsH);
+            // The massif's shape first, then the roads (no lesser one into its ring), then its passes along the main roads,
+            // then the roads graded over the whole land.
+            land.Roads = HillsRoads.Read(o["roads"] as JObject, seed, cellsW / WorldPlan.SquareCells, cellsH / WorldPlan.SquareCells,
+                massif != null ? massif.InRing : (Func<int, int, bool>)null);
+            if (massif != null) massif.SetPasses(land.Roads?.MainLines() ?? new List<(long[], long[])>());
+            land.Massif = massif;
+            land.Roads?.Grade(land.At, massif != null ? massif.Touches : (Func<int, int, bool>)null);
             return land;
         }
 
         /// <summary>The land at any cell, x and y taken round the torus: the same at (x, y) and (x + k W, y + m H).</summary>
-        public int At(int x, int y)
+        public int At(int x, int y) => Massif == null ? Rolling(x, y) : Rolling(x, y) + Massif.At(x, y);
+
+        /// <summary>The rolling hills' own land at a cell, without the massif.</summary>
+        public int Rolling(int x, int y)
         {
             x = PlanGrid.Mod(x, w);
             y = PlanGrid.Mod(y, h);
@@ -137,18 +149,45 @@ namespace Chem
             return Math.Min(d, n - d);
         }
 
-        // Every cell grass on the hills' land, but its roads' dirt; no things.
+        /// <summary>Land this steep across a cell (land units to a neighbour) is bare rock on a hills map, and this steep scree.</summary>
+        public const int HillsRock = 7, HillsScree = 4;
+
+        // Every cell grass on the hills' land, but its roads' dirt, and rock or scree where it's steep; no things. The land is
+        // worked out a cell past the chunk's edge for the slopes, so a cell's ground is the same in either chunk.
         void MakeHills(GeneratedChunk c)
         {
             int x0 = c.X * Size, y0 = c.Y * Size;
-            var near = Hills.Roads?.Near(x0, y0, x0 + Size - 1, y0 + Size - 1);
+            const int ap = Size + 2;
+            var near = Hills.Roads?.Near(x0 - 1, y0 - 1, x0 + Size, y0 + Size);
+            var land = new int[ap * ap];
+            var road = new bool[ap * ap];
+            for (int j = 0; j < ap; j++)
+                for (int i = 0; i < ap; i++)
+                {
+                    land[j * ap + i] = HillsPoint(x0 + i - 1, y0 + j - 1, near, out bool r);
+                    road[j * ap + i] = r;
+                }
             for (int j = 0; j < Size; j++)
                 for (int i = 0; i < Size; i++)
                 {
-                    c.Land[j * Size + i] = HillsPoint(x0 + i, y0 + j, near, out bool road);
-                    c.Cells[j * Size + i] = road ? Dirt : Grass;
+                    int k = (j + 1) * ap + i + 1, h = land[k];
+                    c.Land[j * Size + i] = h;
+                    c.Cells[j * Size + i] = road[k] ? Dirt : HillsGround(Slope(land, k, ap));
                 }
             c.Biome = Hills.Biome;
+        }
+
+        static int Slope(int[] land, int k, int ap)
+        {
+            int h = land[k];
+            return Math.Max(Math.Max(Math.Abs(land[k - 1] - h), Math.Abs(land[k + 1] - h)), Math.Max(Math.Abs(land[k - ap] - h), Math.Abs(land[k + ap] - h)));
+        }
+
+        // A hills cell off the road by its slope: grass, scree or bare rock.
+        static char HillsGround(int slope)
+        {
+            if (slope >= HillsRock) return Rock;
+            return slope >= HillsScree ? Scree : Grass;
         }
 
         // A hills cell's land with its roads: on a road, the land at the road's line (level across it); on its bank, leaning
@@ -159,9 +198,11 @@ namespace Chem
             int land = Hills.At(x, y);
             road = false;
             if (near == null || near.Count == 0) return land;
-            long d = HillsRoads.Nearest(near, x, y, out int cx, out int cy, out int half);
+            var hit = HillsRoads.Nearest(near, x, y);
+            long d = hit.Distance;
             if (d == long.MaxValue) return land;
-            int centre = Hills.At(cx, cy);
+            int half = hit.Half;
+            int centre = hit.Arm.Profile != null ? hit.Arm.ProfileAt(hit.Piece, hit.Along) : Hills.At(hit.X, hit.Y);
             long halfQ = (long)half * One;
             if (d < halfQ)
             {

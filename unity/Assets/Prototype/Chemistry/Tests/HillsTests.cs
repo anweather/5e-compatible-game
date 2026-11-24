@@ -69,12 +69,15 @@ namespace Chem.Tests
             int worst = 0;
             for (int y = 0; y < ht; y += 7)
                 for (int x = 0; x < w; x += 7) worst = Math.Max(worst, Math.Max(Math.Abs(h.At(x + 1, y) - h.At(x, y)), Math.Abs(h.At(x, y + 1) - h.At(x, y))));
+            int rolling = 0;
+            for (int y = 0; y < ht; y += 7)
+                for (int x = 0; x < w; x += 7) rolling = Math.Max(rolling, Math.Max(Math.Abs(h.Rolling(x + 1, y) - h.Rolling(x, y)), Math.Abs(h.Rolling(x, y + 1) - h.Rolling(x, y))));
             int seam = 0;
             for (int y = 0; y < ht; y++) seam = Math.Max(seam, Math.Abs(h.At(0, y) - h.At(w - 1, y)));
             for (int x = 0; x < w; x++) seam = Math.Max(seam, Math.Abs(h.At(x, 0) - h.At(x, ht - 1)));
-            TestContext.Out.WriteLine($"HILLS the steepest step between neighbours {worst} land units; over the seams {seam}");
-            Assert.That(seam, Is.LessThanOrEqualTo(Math.Max(worst, 2)));
-            Assert.That(worst, Is.LessThan(10), "rolling: nowhere as steep as a generated map's bare slopes (ChunkGen's SteepUnits)");
+            TestContext.Out.WriteLine($"HILLS the steepest step between neighbours {worst} land units ({rolling} without the massif); over the seams {seam}");
+            Assert.That(seam, Is.LessThanOrEqualTo(2), "the massif is in the middle: over the seams the hills roll as anywhere");
+            Assert.That(rolling, Is.LessThan(10), "rolling: nowhere as steep as a generated map's bare slopes (ChunkGen's SteepUnits)");
         }
 
         [Test]
@@ -104,7 +107,7 @@ namespace Chem.Tests
             foreach (var (cx, cy) in new[] { (0, 0), (107, 89), (54, 45), (12, 70), (99, 3) })
             {
                 var c = gen.Make(cx, cy);
-                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.'), Is.True, $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests)");
+                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.' || ch == ':' || ch == '^'), Is.True, $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests) and the massif's scree and rock (HillsMassifTests)");
                 Assert.That(c.Things, Is.Empty);
                 Assert.That(c.Biome, Is.EqualTo("grassland"));
                 Assert.That(c.Land.Min(), Is.GreaterThanOrEqualTo(map.Hills.Base));
@@ -133,7 +136,8 @@ namespace Chem.Tests
                 Assert.That(again.Gen.Make(cx, cy).Hash, Is.EqualTo(map.Gen.Make(cx, cy).Hash));
             var other = GeneratedMap.Load(HillsDir, "hills-2");
             Assert.That(other.Gen.Make(54, 45).Hash, Is.Not.EqualTo(map.Gen.Make(54, 45).Hash), "another seed, other hills");
-            Assert.That(map.Gen.Make(54, 45).Hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("4ceac909"), "the hills' golden: a change to the land is a new generator version");
+            // Chunk (54, 45) is the middle of the massif's meadow (it was 4ceac909 before the massif).
+            Assert.That(map.Gen.Make(54, 45).Hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("8e975151"), "the hills' golden: a change to the land is a new generator version");
         }
 
         [Test]

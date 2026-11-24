@@ -258,6 +258,22 @@ touch them.
   ranges, the saddles between them and shoulders on their slopes. The **grain** is the way a world's ranges run, a
   direction from its seed. *Not* a biome's own relief.
 
+**Alpine massif** (a hills map's)
+: The mountains in the middle of a hills map (`HillsMassif`, map.json's `"hills"` `"massif"`, docs/design/alpine.md):
+  the **alpine meadow** (a high plateau of grass inside it), the **ring** of mountains round the meadow, the
+  **mountain passes** through the ring (a valley along each main road where it crosses, its **col** at the crest) and
+  the **foothills** that carry the land down from the ring's foot to the rolling hills. *Not* a plan map's **massif**
+  (above), and a mountain pass is *not* the dragon's **pass**.
+
+**Rock / scree** (on a hills map)
+: A hills cell's ground by its slope (`ChunkGen.HillsRock`, `HillsScree`, in land units to a neighbour): bare rock
+  (`rock`, `'^'` in a chunk's cells) where it's steep, **scree** below that (bare `dirt`, `':'`, so it's told from a
+  road's `'.'`), grass on gentler land.
+
+**Grade limit**
+: The steepest a hills map's road climbs, in percent (map.json's `"roads"` `"grade"`, 12): an arm whose land is steeper
+  is **graded**, cut and filled to a profile within it (`HillsRoads.Grade`). *Not* a switchback (none are built).
+
 **Spawn point**
 : Where a player may start in a generated map, one per world square below the peaks (`WorldPlan.Spawns`, in the plan
   hash): the valley's is its own map's spawn, every other one a seeded spot beside the world square's road near its inn,

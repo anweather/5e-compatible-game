@@ -20,6 +20,8 @@ namespace Chem
         {
             ['%'] = ("bedrock", 0, false, null),
             ['#'] = ("stone", 0, false, null),
+            ['^'] = ("rock", 0, false, null),
+            [':'] = ("dirt", 0, false, null),
             ['.'] = ("dirt", 0, false, null),
             [','] = ("grass", 0, false, null),
             ['"'] = ("brush", 0, false, null),
