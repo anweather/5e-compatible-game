@@ -1,0 +1,16 @@
+kit dea4701 (origin/main, 2026-11-24; copied from a read-only export, so copy.mjs could not read the commit)
+copied 2026-11-24
+from andrew-claude-kit plugins/project-shape/lint-pack/lint; compare with: node <kit>/lint-pack/copy.mjs <project> --compare
+
+README.md e985f2230c48e581
+install.mjs 10f7dce80254cbea
+languages.mjs ec552ffe9ec67c2f
+languages.test.mjs ff1f3ec622fc1e24
+lint.config.example.json 27fa5d2b38dd4163
+lint.mjs 48b1b16f4966c633
+lint.test.mjs 583496aefd7db0a7
+rules/comments.mjs 09f7c557b0c78054
+rules/modules.mjs effc0a99aff5327e
+rules/own-data.mjs 69a299848b25864f
+rules/paths.mjs 6ac7796e852e44c6
+rules/rules.test.mjs f6762d4e98e3a7e8
