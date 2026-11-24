@@ -53,6 +53,9 @@ public sealed class TreeImpostors : MonoBehaviour
     public static int AllAround { get; private set; }
     /// <summary>Whether the tree budget is kept (off with -no-tree-budget, to compare).</summary>
     public static bool Budget { get; set; } = true;
+    /// <summary>The budget's counts (TreeBudget.MostNear, MostAround), or a run's (-tree-budget near around).</summary>
+    public static int MostNear { get; set; } = TreeBudget.MostNear;
+    public static int MostAround { get; set; } = TreeBudget.MostAround;
 
     /// <summary>How far out the impostors draw now (m).</summary>
     public static float FarNow => !farSet && FarRing.Instance is { HazeMetres: > 0f } ring ? ring.HazeHides : Far;
@@ -103,6 +106,8 @@ public sealed class TreeImpostors : MonoBehaviour
         Shadows = true;
         Skip = null;
         Budget = true;
+        MostNear = TreeBudget.MostNear;
+        MostAround = TreeBudget.MostAround;
         PrefabsWithin = DefaultNear;
         ImpostorsWithin = 500f;
         MapTerrains.SetTreeDistance(TerrainTreeDistance);
@@ -123,12 +128,17 @@ public sealed class TreeImpostors : MonoBehaviour
             else if (args[i] == "-tree-impostors-far" && i + 1 < args.Length && TryMetres(args[i + 1], out float far)) Far = far;
             else if (args[i] == "-tree-impostors-no-shadows") Shadows = false;
             else if (args[i] == "-no-tree-budget") Budget = false;
+            else if (args[i] == "-tree-budget" && i + 2 < args.Length && int.TryParse(args[i + 1], out int most) && int.TryParse(args[i + 2], out int all))
+            {
+                MostNear = most;
+                MostAround = all;
+            }
         }
         if (Instance != null) return;
         var go = new GameObject("TreeImpostors");
         DontDestroyOnLoad(go);
         go.AddComponent<TreeImpostors>();
-        Debug.Log(On ? $"TREE IMPOSTORS: on, prefabs within {Near} m, impostors to {ImpostorsTo()}, their shadows {ShadowsTo()}" : "TREE IMPOSTORS: off");
+        Debug.Log(On ? $"TREE IMPOSTORS: on, prefabs within {Near} m, impostors to {ImpostorsTo()}, their shadows {ShadowsTo()}, budget {(Budget ? $"{MostNear} prefabs, {MostAround} trees round" : "off")}" : "TREE IMPOSTORS: off");
     }
 
     static string ImpostorsTo() => farSet ? $"{Far} m" : "the haze";
@@ -220,8 +230,8 @@ public sealed class TreeImpostors : MonoBehaviour
         NearAround = nearD2.Count;
         AllAround = 0;
         foreach (var c in around) AllAround += c.trees;
-        PrefabsWithin = Budget ? TreeBudget.Near(nearD2, Near) : Near;
-        ImpostorsWithin = Budget ? TreeBudget.Far(around, FarNow) : FarNow;
+        PrefabsWithin = Budget ? TreeBudget.Near(nearD2, Near, MostNear) : Near;
+        ImpostorsWithin = Budget ? TreeBudget.Far(around, FarNow, MostAround) : FarNow;
         Read(wanted, layout, chunks, eye, ReadsPerFrame);
         Refresh(chunks);
         Forget(layout, eye, reach);
