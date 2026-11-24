@@ -234,7 +234,9 @@ namespace Chem
             }
             if (todo.Count == 0) return;
             var world = lazyWorld;
-            if (todo.Count == 1 || (long)(i1 - i0 + 1) * (j1 - j0 + 1) > MostCachedChunks)
+            // Round a world that wraps, chunks either side of a seam are a map's width apart by their indices: no box over them.
+            bool overSeam = (world.WrapX && i1 - i0 > grid.ChunksX / 2) || (world.WrapY && j1 - j0 > grid.ChunksZ / 2);
+            if (todo.Count == 1 || overSeam || (long)(i1 - i0 + 1) * (j1 - j0 + 1) > MostCachedChunks)
             {
                 foreach (var at in todo) Work(world, at, chunks[at]);
                 return;

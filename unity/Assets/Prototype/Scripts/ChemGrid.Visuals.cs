@@ -407,6 +407,9 @@ public partial class ChemGrid
                 continue;
             }
             int cx = n % across, cy = n / across, y0 = cy << Chunks.Shift, y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+            // On a map made from its source, a chunk not made yet is asked for on the worker, with the next few, and drawn
+            // when it's made: reading it here would make it on this thread, a stall of milliseconds.
+            if (partRow == 0 && NotMadeYet(n, across)) break;
             int from = y0 + partRow, to = Mathf.Min(y1, from + RowsAStep);
             if (partRow == 0) MakeViews(cx, cy);
             RenderRows(cx, from, to);
@@ -422,6 +425,22 @@ public partial class ChemGrid
         }
         drawTimer.Stop();
         HideSpareOnceDrawn();
+    }
+
+    readonly List<(int cx, int cy)> drawAhead = new();
+    const int DrawAhead = 8;
+
+    // Whether queued chunk n is packed and its source hasn't made it yet: then it and the next few undrawn are made ahead.
+    bool NotMadeYet(int n, int across)
+    {
+        if (World.Source is not GeneratedSource g) return false;
+        int cx = n % across, cy = n / across;
+        if (!World.IsPacked(cx, cy) || g.IsMade(cx, cy)) return false;
+        drawAhead.Clear();
+        for (int k = nextToDraw; k < toDraw.Count && drawAhead.Count < DrawAhead; k++)
+            if (!drawn[toDraw[k]]) drawAhead.Add((toDraw[k] % across, toDraw[k] / across));
+        World.MakeAhead(drawAhead);
+        return true;
     }
 
     // How many of its rows DrawSome has drawn of the chunk it's on (partChunk), and how many it draws a step.

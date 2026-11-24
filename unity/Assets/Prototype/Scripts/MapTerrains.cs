@@ -507,6 +507,9 @@ public sealed class MapTerrains : MonoBehaviour
         for (int n = 0; n < toMake.Count && ready.Count < HeightsAFrame; n++)
         {
             if (!ground.Builder.Holds(toMake[n])) break;
+            // On a world that wraps, terrains either side of a seam are far apart by their folded chunks: their box would
+            // run the map's width. Only those near the first go together; the rest come in a later frame's box.
+            if (ready.Count > 0 && Mathf.Max(Mathf.Abs(toMake[n].i - ready[0].i), Mathf.Abs(toMake[n].j - ready[0].j)) > NearBox) continue;
             ready.Add(toMake[n]);
         }
         if (ready.Count < 2) return;
@@ -515,6 +518,9 @@ public sealed class MapTerrains : MonoBehaviour
         MakeFirst(BoxOf(ready));
         ground.PrepareHeights(ready);
     }
+
+    // How far apart (chunks) terrains whose heights are worked out in one box may be.
+    const int NearBox = 6;
 
     // The terrains of the box round these (all of them, when it's no bigger than CellHeightfield.Prepare caches at once).
     static List<(int i, int j)> BoxOf(List<(int i, int j)> terrains)

@@ -432,11 +432,31 @@ public class PerfScenario : MonoBehaviour
         PerfCounts.On = false;
     }
 
+    static readonly Dictionary<string, int> madeStacks = new();
+
+    // The read's callers past the source and the World's own frames, a few, as one key.
+    static void CountMadeStack()
+    {
+        var frames = new StackTrace(2, false).GetFrames();
+        var mine = frames.Select(f => f.GetMethod()).Where(m => m?.DeclaringType != null && m.DeclaringType.Namespace != "Chem" && !m.DeclaringType.FullName.StartsWith("System", StringComparison.Ordinal))
+            .Take(4).Select(m => m.DeclaringType.Name + "." + m.Name);
+        string key = string.Join(" < ", mine);
+        lock (madeStacks) madeStacks[key] = (madeStacks.TryGetValue(key, out int n) ? n : 0) + 1;
+    }
+
     // A map made from its source (the Wide World): the chunks its generator made so far, and how (on a read: a stall on the
     // thread that read it; ahead on the worker; waited for). The walk's on-read count is end's less measure's.
     static void LogSource(string at)
     {
         if (ChemGrid.Current?.World?.Source is not Chem.GeneratedSource g) return;
+        // -perf-made-stacks: which reads made the chunks made on a read, by their callers' frames (the heaviest first).
+        if (Has("-perf-made-stacks"))
+        {
+            if (at == "load") g.MadeOnReadAt = (_, _) => CountMadeStack();
+            else
+                lock (madeStacks)
+                    foreach (var p in madeStacks.OrderByDescending(p => p.Value).Take(8)) Debug.Log($"PERF MADE STACK at={at} n={p.Value} {p.Key}");
+        }
         Debug.Log($"PERF SOURCE at={at} made={g.Made} made_on_read={g.MadeOnRead} made_ahead={g.MadeAhead} made_again={g.MadeAgain} waits={g.Waits} held={g.HeldCount} " +
                   $"make_ms={g.MakeMs.ToString("0", CultureInfo.InvariantCulture)} wait_ms={g.WaitMs.ToString("0", CultureInfo.InvariantCulture)}");
     }
