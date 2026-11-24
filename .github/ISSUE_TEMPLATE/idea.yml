@@ -1,0 +1,18 @@
+name: Idea
+description: Something the game could have or do (a spell, a reaction, a place, a mini game). Not yet a task; it is groomed into the backlog later.
+title: "Idea: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: In your own words. A picture or a link helps.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why, or what made you think of it
+    validations:
+      required: false
