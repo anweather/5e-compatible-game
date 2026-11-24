@@ -83,6 +83,8 @@ public sealed class PerfWindows
         line.Append($" weather={world.Weather.Kind} chunks={world.ActiveChunks.Count} burning={burning} flames={grid.Flames.CellsBurning}");
         line.Append($" near_fire={BurningNearWizard()}");
         line.Append($" lights={LightsOn()} particles={ParticlesAlive()} gen0={GC.CollectionCount(0) - collectionsAtOpen}");
+        // The managed heap as the window closes: what's live (used) and what the collector holds (heap), for a long walk's trend.
+        line.Append($" mono_used_mb={UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() >> 20} mono_heap_mb={UnityEngine.Profiling.Profiler.GetMonoHeapSizeLong() >> 20}");
         line.Append($" at={WizardChunk()} drawn_chunks={grid.ChunksDrawn} blockers={grid.BlockersStanding}{Bodies()}");
         foreach (var pair in counted.OrderBy(c => c.Key, StringComparer.Ordinal)) line.Append($" {pair.Key}={pair.Value.ToString(Plain)}");
         line.Append(markers);

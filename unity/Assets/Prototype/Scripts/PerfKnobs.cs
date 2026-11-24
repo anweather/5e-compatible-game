@@ -15,7 +15,7 @@ using UnityEngine.Rendering.Universal;
 // to the haze again, as before their LOD), -perf-gpu-occlusion and -perf-small-mesh P (the Resident Drawer's culling),
 // -perf-hide A,B,... (the renderers of the census groups that start with A or B, PerfCensus.Group, as they stand when
 // measuring starts), -perf-hide-shader S [-perf-hide-beyond M], -perf-pack-tufts (the terrain pack's own grass tufts, as
-// before LightTufts) and -perf-grass-fade S,E (the grass material's dither fade).
+// before LightTufts), -perf-grass-fade S,E (the grass material's dither fade), -perf-gc-off and -perf-gc-slice-ms N.
 public static class PerfKnobs
 {
     /// <summary>The picture as it was before the 2026-11-23 GPU fixes: brush clumps to the haze and SSAO before the opaques.</summary>
@@ -48,7 +48,7 @@ public static class PerfKnobs
     static readonly Func<string>[] Knobs =
     {
         ShadowsOff, HardShadows, Cascades, PostOff, SsaoOff, SsaoWhen, Fog, RenderScale, Details, DetailSettings, GrassNoShadows,
-        ImpostorsOff, BrushFar, Resident, HideByShader, HideGroups, PackTuftsKnob, GrassFade,
+        ImpostorsOff, BrushFar, Resident, HideByShader, HideGroups, PackTuftsKnob, GrassFade, Gc,
     };
 
     /// <summary>Applies the knobs asked for and logs a "PERF KNOBS" line of what it did.</summary>
@@ -63,6 +63,24 @@ public static class PerfKnobs
             if (did != null) done.Append(' ').Append(did);
         }
         if (done.Length > 0) Debug.Log("PERF KNOBS" + done);
+    }
+
+    // -perf-gc-off: no garbage collection for the run (to tell a collection's pause from anything else);
+    // -perf-gc-slice-ms N: the incremental collector's slice a frame.
+    static string Gc()
+    {
+        string did = null;
+        if (Has("-perf-gc-off"))
+        {
+            UnityEngine.Scripting.GarbageCollector.GCMode = UnityEngine.Scripting.GarbageCollector.Mode.Disabled;
+            did = "gc_off";
+        }
+        if (Number("-perf-gc-slice-ms", out float slice) && slice > 0f)
+        {
+            UnityEngine.Scripting.GarbageCollector.incrementalTimeSliceNanoseconds = (ulong)(slice * 1e6f);
+            did = (did == null ? "" : did + " ") + $"gc_slice_ms={Text(slice, "0.0")}";
+        }
+        return did;
     }
 
     static string ShadowsOff()

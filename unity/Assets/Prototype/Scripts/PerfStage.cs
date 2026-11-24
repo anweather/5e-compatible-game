@@ -59,10 +59,11 @@ public partial class PerfStage : ShowcaseScript
             yield return Stand();
             yield break; // Ready once the chunks round it are drawn
         }
-        else if (Scenario is not ("walkout" or "seamwalk")) Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
+        else if (Scenario is not ("walkout" or "seamwalk" or "roadwalk")) Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
         if (Scenario == "walkout") StartCoroutine(WalkOut());
         if (Scenario == "seamwalk") StartCoroutine(SeamWalk());
+        if (Scenario == "roadwalk") StartCoroutine(RoadWalk());
         if (Asked("-perf-switches")) StartCoroutine(Switches());
         if (Scenario == "forestload") ForestLoadStage();
         if (Scenario == "aim") StartCoroutine(Aim());

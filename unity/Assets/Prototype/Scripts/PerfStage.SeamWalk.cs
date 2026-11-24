@@ -65,7 +65,7 @@ public partial class PerfStage
     /// <summary>The "PERF SEAM" lines: per crossing, the frames round it (logged as the run ends).</summary>
     public void LogSeams()
     {
-        if (Scenario != "seamwalk") return;
+        if (Scenario is not ("seamwalk" or "roadwalk")) return;
         Debug.Log($"PERF SEAM crossings={crossings.Count} frames={seamFrames.Count}");
         foreach (var (at, seam, cell) in crossings)
         {
