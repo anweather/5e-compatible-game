@@ -1,6 +1,6 @@
 // The rolling hills (world/maps/hills-12x10, docs/design/hills.md): a generated map of nothing but grass on gentle hills,
 // wrapping both ways. Its land tiles round the torus (the same at x and x + W, y and y + H, and smooth over both seams),
-// is the same on every load (a golden), is all grass with no water or things, and the map loads from its rows alone into
+// is the same on every load (a golden), is all grass (and its roads) with no water or things, and the map loads from its rows alone into
 // a World of all its chunks that makes only what it lays on, and walks a character over the east seam with the chunks
 // ahead made on the worker.
 using System;
@@ -104,7 +104,7 @@ namespace Chem.Tests
             foreach (var (cx, cy) in new[] { (0, 0), (107, 89), (54, 45), (12, 70), (99, 3) })
             {
                 var c = gen.Make(cx, cy);
-                Assert.That(c.Cells.All(ch => ch == ','), Is.True, $"chunk ({cx}, {cy}) all grass");
+                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.'), Is.True, $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests)");
                 Assert.That(c.Things, Is.Empty);
                 Assert.That(c.Biome, Is.EqualTo("grassland"));
                 Assert.That(c.Land.Min(), Is.GreaterThanOrEqualTo(map.Hills.Base));
@@ -148,7 +148,7 @@ namespace Chem.Tests
             var w = GeneratedSource.MapWorld(source, dir, R, 7, out var start);
             Assert.That((w.W, w.H, w.WrapX), Is.EqualTo((6912, 5760, true)));
             Assert.That(w.ChunkCoords.Count, Is.EqualTo(108 * 90));
-            Assert.That(start, Is.EqualTo((6880, 5728)));
+            Assert.That(start, Is.EqualTo((6880, 5601)));
             Assert.That(source.Made, Is.LessThan(20), "nothing is laid, so the build makes next to nothing");
             w.KeepStart();
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));

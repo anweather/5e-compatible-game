@@ -1,5 +1,5 @@
 // A hills map's generator (docs/design/hills.md): nothing but grass on gentle rolling hills, with no plan squares, pinned
-// map, sea, water, roads, villages, trees or things. Its land is a few octaves of integer value noise; each octave's
+// map, sea, water, villages, trees or things; roads where map.json asks (HillsRoads). Its land is a few octaves of integer value noise; each octave's
 // lattice period divides the map's width and height, so the land at x and x + CellsW (and y and y + CellsH) is the same
 // and the map tiles round a torus with no seam in it. A cell's land is a pure function of its position and the seed, in
 // integers only, so every peer makes the same chunk.
@@ -19,6 +19,8 @@ namespace Chem
         public readonly IReadOnlyList<(int period, int amplitude)> Octaves;
         /// <summary>The biome the whole map is (biomes.json's id).</summary>
         public readonly string Biome;
+        /// <summary>Its roads (map.json's "hills" "roads", HillsRoads), or null for hills with none.</summary>
+        public HillsRoads Roads { get; private set; }
         readonly int seed, w, h;
 
         // Fixed point for the blend between lattice points.
@@ -59,7 +61,9 @@ namespace Chem
             var list = new List<(int, int)>();
             foreach (var oct in (JArray)o["octaves"] ?? throw new FormatException($"{MapFile.FileName}: \"hills\" needs \"octaves\""))
                 list.Add(((int)oct[0], (int)oct[1]));
-            return new HillsLand(seed, cellsW, cellsH, (int?)o["base"] ?? 8, list, (string)o["biome"] ?? "grassland");
+            var land = new HillsLand(seed, cellsW, cellsH, (int?)o["base"] ?? 8, list, (string)o["biome"] ?? "grassland");
+            land.Roads = HillsRoads.Read(o["roads"] as JObject, seed, cellsW / WorldPlan.SquareCells, cellsH / WorldPlan.SquareCells);
+            return land;
         }
 
         /// <summary>The land at any cell, x and y taken round the torus: the same at (x, y) and (x + k W, y + m H).</summary>
@@ -133,30 +137,58 @@ namespace Chem
             return Math.Min(d, n - d);
         }
 
-        // Every cell grass on the hills' land; no things.
+        // Every cell grass on the hills' land, but its roads' dirt; no things.
         void MakeHills(GeneratedChunk c)
         {
             int x0 = c.X * Size, y0 = c.Y * Size;
+            var near = Hills.Roads?.Near(x0, y0, x0 + Size - 1, y0 + Size - 1);
             for (int j = 0; j < Size; j++)
                 for (int i = 0; i < Size; i++)
                 {
-                    c.Land[j * Size + i] = Hills.At(x0 + i, y0 + j);
-                    c.Cells[j * Size + i] = Grass;
+                    c.Land[j * Size + i] = HillsPoint(x0 + i, y0 + j, near, out bool road);
+                    c.Cells[j * Size + i] = road ? Dirt : Grass;
                 }
             c.Biome = Hills.Biome;
         }
+
+        // A hills cell's land with its roads: on a road, the land at the road's line (level across it); on its bank, leaning
+        // back from that to the hills' own over HillsRoads.Bank cells. A pure function of the cell, the same either side of a
+        // chunk's edge and a seam.
+        int HillsPoint(int x, int y, List<HillsRoads.Placed> near, out bool road)
+        {
+            int land = Hills.At(x, y);
+            road = false;
+            if (near == null || near.Count == 0) return land;
+            long d = HillsRoads.Nearest(near, x, y, out int cx, out int cy, out int half);
+            if (d == long.MaxValue) return land;
+            int centre = Hills.At(cx, cy);
+            long halfQ = (long)half * One;
+            if (d < halfQ)
+            {
+                road = true;
+                return centre;
+            }
+            long bank = (long)HillsRoads.Bank * One;
+            if (d >= halfQ + bank) return land;
+            long lean = BiomeMath.Smoothstep((d - halfQ) / HillsRoads.Bank);
+            return centre + (int)BiomeMath.FloorDiv((land - centre) * lean + One / 2, One);
+        }
+
+        /// <summary>A hills cell's land with its roads, and whether it is road: what its chunk makes there.</summary>
+        public int HillsLandAt(int x, int y, out bool road) => HillsPoint(x, y, Hills.Roads?.Near(x, y, x, y), out road);
 
         // The known chunk's samples: the hills' land at each, all dry, all the hills' biome.
         KnownChunk KnowHills(int cx, int cy)
         {
             var k = new KnownChunk { X = cx, Y = cy, Biome = Hills.Biome };
             int x0 = cx * Size, y0 = cy * Size;
+            var near = Hills.Roads?.Near(x0, y0, x0 + Size, y0 + Size);
             for (int j = 0; j < KnownChunk.Side; j++)
                 for (int i = 0; i < KnownChunk.Side; i++)
                 {
                     int q = j * KnownChunk.Side + i;
                     // The last samples are the next chunk's first, across the seams too: the land tiles.
-                    k.Heights[q] = Hills.At(x0 + i * KnownChunk.Step, y0 + j * KnownChunk.Step);
+                    k.Heights[q] = HillsPoint(x0 + i * KnownChunk.Step, y0 + j * KnownChunk.Step, near, out _);
                     k.Water[q] = KnownChunk.Dry;
                     k.Biomes[q] = Hills.Biome;
                 }

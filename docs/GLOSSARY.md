@@ -221,9 +221,19 @@ touch them.
 
 **Hills map / rolling hills**
 : A generated map of nothing but grass on gentle **rolling hills** (map.json's generated `"hills"`, `HillsLand`): no
-  plan squares, no pinned valley, no sea, water, roads, villages, trees or things. Its land is a sum of a few octaves of
-  integer value noise whose lattices divide the map's size, so it tiles round a torus. The first rung of the sparse world
-  (`docs/design/hills.md`): proven stable at 60 FPS before roads, forest and other biomes are added to it.
+  plan squares, no pinned valley, no sea, water, villages, trees or things; roads where its map.json asks (**hills
+  roads**). Its land is a sum of a few octaves of integer value noise whose lattices divide the map's size, so it tiles
+  round a torus. The first rung of the sparse world (`docs/design/hills.md`): proven stable at 60 FPS before roads,
+  forest and other biomes are added to it.
+
+**Hills roads (main road, lesser road, hub, arm, road slot)**
+: A hills map's roads, made in the generator from map.json alone (`HillsRoads`, `docs/design/hills.md` "Roads"), so
+  every peer, save and late joiner has them with no shared state and nothing is laid at load. **Main roads** run the
+  whole way round the torus along the rows and columns of world squares map.json names; **lesser roads** join every
+  other world square to them. Each world square has a **hub** (a seeded point inside it, where its roads meet); a road
+  crosses a side of a world square at a **road slot**, one of the side's 9 chunks (not the corners), the same seen from
+  both squares; an **arm** is a road's curve from a road slot to its square's hub. A cell near an arm's line is road
+  (dirt), levelled across to the land at the line, with banks leaning back to the hills.
 
 **Meet**
 : Where a generated map's land comes round to a pinned map's own (the valley's) outside its rim: over at least 90 cells,
