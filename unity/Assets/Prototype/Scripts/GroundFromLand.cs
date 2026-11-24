@@ -111,13 +111,22 @@ public static class GroundFromLand
         return reader.At(x, y);
     }
 
-    // The land at a world cell, the nearest on the grid past its edge.
+    // The land at a world cell, the nearest on the grid past its edge (or, over a seam of a world that wraps, the land
+    // it folds to: the ground runs on over the seam).
     static float LandAt(Source s, int u, int v)
     {
         var (x, y) = s.Layout.GridCell(u, v);
-        x = Math.Max(0, Math.Min(s.Layout.GridW - 1, x));
-        y = Math.Max(0, Math.Min(s.Layout.GridH - 1, y));
+        (x, y) = OnGrid(s, x, y);
         return LandUnits(s.Land, x, y);
+    }
+
+    // A cell on the grid: folded over a seam where the world wraps, else the nearest at its edge.
+    static (int x, int y) OnGrid(Source s, int x, int y)
+    {
+        var g = s.Layout;
+        x = s.World.WrapX ? s.World.FoldX(x) : Math.Max(0, Math.Min(g.GridW - 1, x));
+        y = s.World.WrapY ? s.World.FoldY(y) : Math.Max(0, Math.Min(g.GridH - 1, y));
+        return (x, y);
     }
 
     // Between the cells' centres, in world cells.
@@ -179,8 +188,7 @@ public static class GroundFromLand
             for (int x = 0; x < texels; x++)
             {
                 var (cx, cy) = g.CellOfTexel(i, j, x, z);
-                cx = Math.Max(0, Math.Min(g.GridW - 1, cx));
-                cy = Math.Max(0, Math.Min(g.GridH - 1, cy));
+                (cx, cy) = OnGrid(s, cx, cy);
                 var own = CellPaint.Mix(s.World, cx, cy);
                 float cover = block.Cover[z, x];
                 for (int k = 0; k < slots.Length; k++) mix[k] = cover * block.Mix[z, x, k] + (1f - cover) * own[k];

@@ -661,6 +661,9 @@ public sealed class ValleyGround
     public float GroundAt(float wx, float wz)
     {
         var (x, y) = layout.CellAt(wx, wz);
+        // Past a seam the cell is the one it folds to; its terrain stands at the copy near the camera, as wx does.
+        x = ViewWrap.FoldX(x);
+        y = ViewWrap.FoldY(y);
         if (!chunks.TryGetValue(layout.ChunkOfCell(x, y), out var ch)) return 0f;
         // A generated map's chunk not made: the cell's ground as it stands (the land and its offset), nothing made for it.
         if (lazy && !ch.ready) return world != null && world.InBounds(x, y) ? ShownGround(x, y) : 0f;
@@ -671,6 +674,9 @@ public sealed class ValleyGround
             return p.y + data.GetInterpolatedHeight((wx - p.x) / data.size.x, (wz - p.z) / data.size.z);
         }
         var (cx, cz) = layout.ChunkCorner(ch.at.i, ch.at.j);
+        float half = layout.ChunkSize * 0.5f;
+        cx = ViewWrap.NearX(cx + half) - half;
+        cz = ViewWrap.NearZ(cz + half) - half;
         return ch.bottom + data.GetInterpolatedHeight((wx - cx) / data.size.x, (wz - cz) / data.size.z);
     }
 

@@ -77,7 +77,7 @@ namespace Chem
         readonly Func<bool> readByTriggers;
         readonly Func<int, int, bool> inBounds;
         readonly Func<int, int, bool> keeps;
-        readonly Func<int, int, int> deltaX;
+        readonly Func<int, int, int> deltaX, deltaY;
         // The players whose last stand was one kept whatever else is true: their next one says when they left.
         readonly List<T> leaving = new List<T>();
 
@@ -95,12 +95,14 @@ namespace Chem
         /// <param name="inBounds">Whether a cell is in the world: the core ignores a stand off it.</param>
         /// <param name="keeps">Whether a stand on this cell, now, must stay in the history whatever else is true (World.HoldReadsStand); null for none.</param>
         /// <param name="deltaX">The cells from one x east to another as the core takes them (World.DeltaX: the short way round the seam on a world that wraps); null for x1 - x0.</param>
-        public StandKeeper(Func<bool> readByTriggers, Func<int, int, bool> inBounds, Func<int, int, bool> keeps = null, Func<int, int, int> deltaX = null)
+        /// <param name="deltaY">The same for y (World.DeltaY: the short way round the south seam on a torus); null for y1 - y0.</param>
+        public StandKeeper(Func<bool> readByTriggers, Func<int, int, bool> inBounds, Func<int, int, bool> keeps = null, Func<int, int, int> deltaX = null, Func<int, int, int> deltaY = null)
         {
             this.readByTriggers = readByTriggers;
             this.inBounds = inBounds;
             this.keeps = keeps;
             this.deltaX = deltaX ?? ((x0, x1) => x1 - x0);
+            this.deltaY = deltaY ?? ((y0, y1) => y1 - y0);
         }
 
         /// <summary>
@@ -184,8 +186,8 @@ namespace Chem
         // How the core takes s after r (World.ApplyStrike): a step's signs, or null when it's no step (the same cell, or either down).
         (int, int)? Step(T r, T s)
         {
-            int dx = deltaX(r.X, s.X);
-            return r.Hp <= 0 || s.Hp <= 0 || (dx == 0 && r.Y == s.Y) ? null : (Math.Sign(dx), Math.Sign(s.Y - r.Y));
+            int dx = deltaX(r.X, s.X), dy = deltaY(r.Y, s.Y);
+            return r.Hp <= 0 || s.Hp <= 0 || (dx == 0 && dy == 0) ? null : (Math.Sign(dx), Math.Sign(dy));
         }
 
         static int FirstMultipleFrom(int tick, int n) => (tick + n - 1) / n * n;

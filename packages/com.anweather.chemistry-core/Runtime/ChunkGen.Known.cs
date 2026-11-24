@@ -38,6 +38,7 @@ namespace Chem
         public KnownChunk Know(int cx, int cy)
         {
             if (cx < 0 || cy < 0 || cx >= ChunksW || cy >= ChunksH) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the map");
+            if (Hills != null) return KnowHills(cx, cy);
             if (Pinned?.Inner != null && IsPinned(cx, cy))
             {
                 // A block's chunk is known as its own generator knows it.

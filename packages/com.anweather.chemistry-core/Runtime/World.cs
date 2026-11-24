@@ -20,19 +20,24 @@ namespace Chem
         /// <summary>
         /// A world of w x h cells. With <paramref name="wrapX"/> its east edge joins its west (map.json's "wrap": "ew", the
         /// seam): a cell or chunk x outside [0, W) folds into it (FoldX), so everything reaches across; north and south stay
-        /// walls. A world that wraps is a whole number of chunks wide.
+        /// walls. A world that wraps is a whole number of chunks wide. With <paramref name="wrapY"/> too (a torus, map.json's
+        /// "wrap": "torus") its south edge joins its north the same way (FoldY), and it's a whole number of chunks high.
         /// </summary>
-        public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt", bool wrapX = false)
+        public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt", bool wrapX = false, bool wrapY = false)
         {
             if (w <= 0 || h <= 0) throw new ArgumentException("World size must be positive");
             if (wrapX && (w & Chunks.Mask) != 0) throw new ArgumentException($"A world that wraps is a whole number of chunks wide ({Chunks.Size} cells a chunk), not {w}");
+            if (wrapY && !wrapX) throw new ArgumentException("A world wraps north-south only as a torus: east-west too");
+            if (wrapY && (h & Chunks.Mask) != 0) throw new ArgumentException($"A torus is a whole number of chunks high ({Chunks.Size} cells a chunk), not {h}");
             ownerThread = Environment.CurrentManagedThreadId;
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             W = w;
             H = h;
             WrapX = wrapX;
+            WrapY = wrapY;
             edgeless = wrapX;
             wrapChunks = wrapX ? w >> Chunks.Shift : 0;
+            wrapChunksY = wrapY ? h >> Chunks.Shift : 0;
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
@@ -44,8 +49,10 @@ namespace Chem
         public int H { get; }
         /// <summary>Whether east joins west (the seam): x is taken modulo W everywhere (FoldX).</summary>
         public bool WrapX { get; }
-        // Chunks across a world that wraps, 0 for one that doesn't.
-        readonly int wrapChunks;
+        /// <summary>Whether south joins north too (a torus, the south seam): y is taken modulo H everywhere (FoldY).</summary>
+        public bool WrapY { get; }
+        // Chunks across (and down) a world that wraps that way, 0 for one that doesn't.
+        readonly int wrapChunks, wrapChunksY;
         // A world with no east and west edges: one that wraps, or an open one (no edges at all). InBounds tests it first,
         // so a bounded world's test is the one it always was.
         readonly bool edgeless;
@@ -160,12 +167,12 @@ namespace Chem
         /// </summary>
         public bool InBounds(int x, int y) => edgeless ? OnEdgeless(x, y) : x >= 0 && y >= 0 && x < W && y < H;
 
-        bool OnEdgeless(int x, int y) => IsOpen ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) != null : y >= 0 && y < H;
+        bool OnEdgeless(int x, int y) => IsOpen ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) != null : WrapY || (y >= 0 && y < H);
         /// <summary>The world index of (x, y), its x folded across the seam first. An open world has none (it has no width): CellKey names a cell there.</summary>
-        public int Idx(int x, int y) => IsOpen ? NoIndexAt() : y * W + FoldX(x);
+        public int Idx(int x, int y) => IsOpen ? NoIndexAt() : FoldY(y) * W + FoldX(x);
 
         /// <summary>A cell's own number on any world, open or bounded, for a set of cells: its x folded across the seam first.</summary>
-        public long CellKey(int x, int y) => Chunks.Key(FoldX(x), y);
+        public long CellKey(int x, int y) => Chunks.Key(FoldX(x), FoldY(y));
 
         // ---------- the seam ----------
         // Every reach across the seam goes through these: a cell or chunk x outside [0, W) folds into it on a world that
@@ -178,6 +185,37 @@ namespace Chem
             int f = x % W;
             return f < 0 ? f + W : f;
         }
+
+        /// <summary>A cell y folded into [0, H) on a torus; unchanged on any other world.</summary>
+        public int FoldY(int y)
+        {
+            if (!WrapY || (uint)y < (uint)H) return y;
+            int f = y % H;
+            return f < 0 ? f + H : f;
+        }
+
+        /// <summary>A chunk y folded into [0, H / Chunks.Size) on a torus; unchanged on any other world.</summary>
+        public int FoldChunkY(int cy)
+        {
+            if (wrapChunksY == 0 || (uint)cy < (uint)wrapChunksY) return cy;
+            int f = cy % wrapChunksY;
+            return f < 0 ? f + wrapChunksY : f;
+        }
+
+        /// <summary>The cells from y0 south to y1: y1 - y0, or on a torus the short way round the south seam (DeltaX's way).</summary>
+        public int DeltaY(int y0, int y1)
+        {
+            int d = y1 - y0;
+            if (!WrapY) return d;
+            d = FoldY(d);
+            return d > H / 2 ? d - H : d;
+        }
+
+        /// <summary>The chunks from cy0 south to cy1, the short way round on a torus (DeltaY in chunks).</summary>
+        public int DeltaChunkY(int cy0, int cy1) => ChunkDelta(cy0, cy1, wrapChunksY);
+
+        /// <summary>The rows [y0, y1] of a box on the world, to walk: XSpan's way, round the south seam on a torus.</summary>
+        internal (int from, int to) YSpan(int y0, int y1) => WrapY ? (y0, Math.Min(y1, y0 + H - 1)) : (Math.Max(0, y0), Math.Min(H - 1, y1));
 
         /// <summary>A chunk x folded into [0, W / Chunks.Size) on a world that wraps; unchanged on one that doesn't.</summary>
         public int FoldChunkX(int cx)
@@ -220,6 +258,9 @@ namespace Chem
 
         /// <summary>The chunks round a world that wraps (W / Chunks.Size), 0 for one that doesn't: for ChunkStreaming's distances.</summary>
         public int WrapChunks => wrapChunks;
+
+        /// <summary>The chunks down a torus (H / Chunks.Size), 0 for any other world: for ChunkStreaming's distances.</summary>
+        public int WrapChunksY => wrapChunksY;
         public Cell At(int x, int y) => Locate(x, y, out _, out _);
 
         /// <summary>Neighbours in fixed N, E, S, W order, so the simulation stays deterministic.</summary>
@@ -228,7 +269,7 @@ namespace Chem
             for (int d = 0; d < 4; d++)
             {
                 int nx = x + DirX(d), ny = y + DirY(d);
-                if (InBounds(nx, ny)) yield return (FoldX(nx), ny, d);
+                if (InBounds(nx, ny)) yield return (FoldX(nx), FoldY(ny), d);
             }
         }
 

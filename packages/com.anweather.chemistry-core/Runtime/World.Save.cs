@@ -85,7 +85,7 @@ namespace Chem
                 ["defense"] = SaveDefense(),
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
-            if (WrapX) save["wrap"] = "ew"; // only a world that wraps says so: other saves are as they were
+            if (WrapX) save["wrap"] = WrapY ? "torus" : "ew"; // only a world that wraps says so: other saves are as they were
             if (IsOpen) save["open"] = SaveFills(); // an open world's grounds, the chunks' sources
             if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
             if (progress.Count > 0) save["progress"] = SaveProgress();
@@ -146,7 +146,7 @@ namespace Chem
             if (roomRules != null) rules = roomRules.Effective;
             Expect((string)s["rules"] == rules.Fingerprint, "saved under other rules (or mods)");
             var open = s["open"] as JArray;
-            var w = open != null ? OpenWorld(rules, (uint)s["seed"]) : new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"], wrapX: (string)s["wrap"] == "ew");
+            var w = open != null ? OpenWorld(rules, (uint)s["seed"]) : new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"], wrapX: (string)s["wrap"] is "ew" or "torus", wrapY: (string)s["wrap"] == "torus");
             if (room != null) w.LoadRoom(room, roomRules, budgets);
             if (open != null) w.LoadFills(open);
             else w.MakeFrom(source);

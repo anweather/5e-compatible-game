@@ -351,7 +351,7 @@ namespace Chem
         ChunkCells<int> landMoved;
         ChunkCells<int> landLaid;
 
-        ChunkCells<int> NewMoved() => new ChunkCells<int>(W, H, WrapX);
+        ChunkCells<int> NewMoved() => new ChunkCells<int>(W, H, WrapX, WrapY);
 
         /// <summary>Land the map itself lays when the world is made, a road's cut: under the stamps, and no reset takes it.</summary>
         public void LayLand(IEnumerable<(int x, int y, int by)> cells)
@@ -433,7 +433,8 @@ namespace Chem
             {
                 int reach = s.Bound + LandFaceReach + 1;
                 var (xFrom, xTo) = XSpan(s.X - reach, s.X + reach);
-                for (int y = Math.Max(0, s.Y - reach); y <= Math.Min(H - 1, s.Y + reach); y++)
+                var (yFrom, yTo) = YSpan(s.Y - reach, s.Y + reach);
+                for (int y = yFrom; y <= yTo; y++)
                     for (int x = xFrom; x <= xTo; x++)
                         if (At(x, y).T == StandingTree && IsStampedRock(x, y)) Paint(x, y, ClearedGround);
             }
@@ -445,7 +446,7 @@ namespace Chem
 
         internal void MarkBare(int x, int y)
         {
-            bareCells ??= new ChunkCells<bool>(W, H, WrapX);
+            bareCells ??= new ChunkCells<bool>(W, H, WrapX, WrapY);
             bareCells.Cell(x, y) = true;
         }
 
@@ -581,21 +582,23 @@ namespace Chem
             int x0 = s.X + s.Path.Min(p => p.x) - s.Radius, x1 = s.X + s.Path.Max(p => p.x) + s.Radius;
             int y0 = s.Y + s.Path.Min(p => p.y) - s.Radius, y1 = s.Y + s.Path.Max(p => p.y) + s.Radius;
             var (xFrom, xTo) = XSpan(x0, x1);
-            for (int y = Math.Max(0, y0); y <= Math.Min(H - 1, y1); y++)
+            var (yFrom, yTo) = YSpan(y0, y1);
+            for (int y = yFrom; y <= yTo; y++)
                 for (int x = xFrom; x <= xTo; x++)
                 {
                     int by = s.At(x - s.X, y - s.Y);
-                    if (by != 0) yield return (FoldX(x), y, by);
+                    if (by != 0) yield return (FoldX(x), FoldY(y), by);
                 }
         }
 
         IEnumerable<(int x, int y, int by)> ReachRound(LandStamp s)
         {
             var (xFrom, xTo) = XSpan(s.X - s.Radius, s.X + s.Radius);
-            for (int y = Math.Max(0, s.Y - s.Radius); y <= Math.Min(H - 1, s.Y + s.Radius); y++)
+            var (yFrom, yTo) = YSpan(s.Y - s.Radius, s.Y + s.Radius);
+            for (int y = yFrom; y <= yTo; y++)
                 for (int x = xFrom; x <= xTo; x++)
                     if ((long)(x - s.X) * (x - s.X) + (long)(y - s.Y) * (y - s.Y) <= (long)s.Radius * s.Radius)
-                        yield return (FoldX(x), y, s.At(x - s.X, y - s.Y));
+                        yield return (FoldX(x), FoldY(y), s.At(x - s.X, y - s.Y));
         }
 
         void Press(LandStamp s, int sign)

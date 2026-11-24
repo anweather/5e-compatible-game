@@ -217,13 +217,16 @@ public sealed class BiomeGround
     /// <summary>The biome ground of a generated map already read.</summary>
     public static BiomeGround Of(GeneratedMap map) => new(map);
 
-    /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated.</summary>
+    /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated (or is a hills map).</summary>
     public static BiomeGround For(string mapSource)
     {
         Last = null;
         if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return null;
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        var ground = new BiomeGround(LoadedMaps.Get(mapSource));
+        var map = LoadedMaps.Get(mapSource);
+        // A hills map is one biome with no plan's field: each cell's own ground is its look.
+        if (map.Hills != null) return null;
+        var ground = new BiomeGround(map);
         StartupTimeline.Mark("biome ground read");
         UnityEngine.Debug.Log($"BIOME GROUND: the plan's biomes read in {timer.Elapsed.TotalMilliseconds:0} ms");
         Last = ground;

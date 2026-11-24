@@ -64,7 +64,7 @@ namespace Chem
         {
             FinishTick(); // effects land between whole ticks (StepSome)
             if (!InBounds(effect.X, effect.Y)) return;
-            int x = FoldX(effect.X), y = effect.Y; // a prop past the seam acts where it folds to
+            int x = FoldX(effect.X), y = FoldY(effect.Y); // a prop past the seam acts where it folds to
             switch (effect.Kind)
             {
                 case EffectKind.Burn:

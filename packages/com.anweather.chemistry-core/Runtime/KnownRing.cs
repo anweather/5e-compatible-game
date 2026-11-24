@@ -51,7 +51,7 @@ namespace Chem
         public bool TryGet(int cx, int cy, out KnownChunk chunk) => shown.TryGetValue(Id(cx, cy), out chunk);
 
         /// <summary>The chunk id the ring keys by: <c>cy × ChunksW + cx</c>, cx taken modulo the width where the map wraps.</summary>
-        public int Id(int cx, int cy) => cy * gen.ChunksW + gen.WrapChunk(cx);
+        public int Id(int cx, int cy) => gen.WrapChunkY(cy) * gen.ChunksW + gen.WrapChunk(cx);
 
         /// <summary>
         /// Where the characters stand now (map chunks), at a tick boundary: the chunks they know follow, worked out on the
@@ -59,14 +59,14 @@ namespace Chem
         /// </summary>
         public void Want(IEnumerable<(int x, int y)> characterChunks)
         {
-            var now = characterChunks.Select(c => (x: gen.WrapChunk(c.x), c.y)).Distinct().OrderBy(c => c.y).ThenBy(c => c.x).ToArray();
+            var now = characterChunks.Select(c => (x: gen.WrapChunk(c.x), y: gen.WrapChunkY(c.y))).Distinct().OrderBy(c => c.y).ThenBy(c => c.x).ToArray();
             if (now.SequenceEqual(characters)) return;
             characters = now;
             var near = new SortedSet<int>();
             foreach (var (x, y) in characters)
-                for (int cy = Math.Max(0, y - Know); cy <= Math.Min(gen.ChunksH - 1, y + Know); cy++)
+                for (int cy = gen.WrapY ? y - Know : Math.Max(0, y - Know); cy <= (gen.WrapY ? y + Know : Math.Min(gen.ChunksH - 1, y + Know)); cy++)
                     for (int cx = gen.WrapX ? x - Know : Math.Max(0, x - Know); cx <= (gen.WrapX ? x + Know : Math.Min(gen.ChunksW - 1, x + Know)); cx++)
-                        if (Nearest(gen.WrapChunk(cx), cy) > Sight) near.Add(Id(cx, cy));
+                        if (Nearest(gen.WrapChunk(cx), gen.WrapChunkY(cy)) > Sight) near.Add(Id(cx, cy));
             wanted = near.ToList();
             // Forget what's past every character's ring and the chunk beyond it.
             foreach (int id in made.Keys.Where(id => Nearest(id % gen.ChunksW, id / gen.ChunksW) > Know + 1).ToList()) made.Remove(id);
@@ -147,7 +147,7 @@ namespace Chem
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
                 {
-                    int nx = gen.WrapChunk(cx + dx), ny = cy + dy;
+                    int nx = gen.WrapChunk(cx + dx), ny = gen.WrapChunkY(cy + dy);
                     if ((dx != 0 || dy != 0) && nx >= 0 && ny >= 0 && nx < gen.ChunksW && ny < gen.ChunksH) yield return (nx, ny);
                 }
         }

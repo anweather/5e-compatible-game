@@ -13,18 +13,21 @@ namespace Chem
     /// </summary>
     internal sealed class ChunkCells<T> where T : struct
     {
-        readonly int w, h, across;
-        readonly bool wrapX;
+        readonly int w, h, across, down;
+        readonly bool wrapX, wrapY;
         readonly T[][] byChunk;
 
-        // wrapX: the map wraps east-west (World.WrapX, a whole number of chunks wide), so an x past the seam folds.
-        public ChunkCells(int w, int h, bool wrapX = false)
+        // wrapX: the map wraps east-west (World.WrapX, a whole number of chunks wide), so an x past the seam folds; wrapY,
+        // north-south too (a torus, World.WrapY), so a y past the south seam folds.
+        public ChunkCells(int w, int h, bool wrapX = false, bool wrapY = false)
         {
             this.w = w;
             this.h = h;
             this.wrapX = wrapX;
+            this.wrapY = wrapY;
             across = Chunks.ChunkOf(w - 1) + 1;
-            byChunk = new T[across * (Chunks.ChunkOf(h - 1) + 1)][];
+            down = Chunks.ChunkOf(h - 1) + 1;
+            byChunk = new T[across * down][];
         }
 
         static int Local(int x, int y) => (Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x);
@@ -33,7 +36,9 @@ namespace Chem
         {
             int cx = Chunks.ChunkOf(x);
             if (wrapX && (uint)cx >= (uint)across) cx = ((cx % across) + across) % across;
-            return Chunks.ChunkOf(y) * across + cx;
+            int cy = Chunks.ChunkOf(y);
+            if (wrapY && (uint)cy >= (uint)down) cy = ((cy % down) + down) % down;
+            return cy * across + cx;
         }
 
         /// <summary>The value at a cell on the map: default where nothing was written.</summary>

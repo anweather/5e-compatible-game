@@ -393,7 +393,7 @@ namespace Chem
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             var map = MapFile.Load(rowsDir);
-            var world = new World(rules, source.W, source.H, seed, wrapX: map.WrapX);
+            var world = new World(rules, source.W, source.H, seed, wrapX: map.WrapX, wrapY: map.WrapY);
             world.SetLandRange(map.LandRange);
             world.MakeFrom(source);
             world.LandFromSource();

@@ -45,7 +45,7 @@ namespace Chem
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
             var s = world.Rules.Sim.Streaming;
-            return Plan(world.ChunkCoords, world.IsActive, characters, s.Reach, s.Keep, world.WrapChunks);
+            return Plan(world.ChunkCoords, world.IsActive, characters, s.Reach, s.Keep, world.WrapChunks, world.WrapChunksY);
         }
 
         /// <summary>
@@ -55,10 +55,11 @@ namespace Chem
         /// <paramref name="keep"/> from every character deactivate. Distances are in chunks, the
         /// larger of the two axes. Ordered by row then column, so the plan is the same however the
         /// characters are listed. With no characters nothing changes. On a world <paramref name="wrapChunks"/> chunks
-        /// round (World.WrapChunks; 0 for none) east-west distances go the short way round the seam.
+        /// round (World.WrapChunks; 0 for none) east-west distances go the short way round the seam, and on a torus
+        /// <paramref name="wrapChunksY"/> chunks down (World.WrapChunksY) north-south ones too.
         /// </summary>
         public static List<ChunkSwitch> Plan(IReadOnlyList<(int cx, int cy)> chunks, Func<int, int, bool> isActive,
-            IReadOnlyList<(int x, int y)> characters, int reach, int keep, int wrapChunks = 0)
+            IReadOnlyList<(int x, int y)> characters, int reach, int keep, int wrapChunks = 0, int wrapChunksY = 0)
         {
             if (chunks == null) throw new ArgumentNullException(nameof(chunks));
             if (isActive == null) throw new ArgumentNullException(nameof(isActive));
@@ -66,7 +67,7 @@ namespace Chem
             if (characters == null || characters.Count == 0) return plan;
             foreach (var (cx, cy) in chunks)
             {
-                int near = Nearest(characters, cx, cy, wrapChunks);
+                int near = Nearest(characters, cx, cy, wrapChunks, wrapChunksY);
                 bool active = isActive(cx, cy);
                 if (!active && near <= reach) plan.Add(new ChunkSwitch(cx, cy, true));
                 else if (active && near > keep) plan.Add(new ChunkSwitch(cx, cy, false));
@@ -74,13 +75,14 @@ namespace Chem
             return plan;
         }
 
-        // How many chunks the nearest character is from a chunk (the short way round a world wrapChunks round).
-        static int Nearest(IReadOnlyList<(int x, int y)> characters, int cx, int cy, int wrapChunks)
+        // How many chunks the nearest character is from a chunk (the short way round a world wrapChunks round, and
+        // wrapChunksY down).
+        static int Nearest(IReadOnlyList<(int x, int y)> characters, int cx, int cy, int wrapChunks, int wrapChunksY)
         {
             int near = int.MaxValue;
             foreach (var (x, y) in characters)
             {
-                int d = Math.Max(Math.Abs(World.ChunkDelta(Chunks.ChunkOf(x), cx, wrapChunks)), Math.Abs(Chunks.ChunkOf(y) - cy));
+                int d = Math.Max(Math.Abs(World.ChunkDelta(Chunks.ChunkOf(x), cx, wrapChunks)), Math.Abs(World.ChunkDelta(Chunks.ChunkOf(y), cy, wrapChunksY)));
                 if (d < near) near = d;
             }
             return near;
@@ -97,19 +99,19 @@ namespace Chem
         public static List<ChunkSwitch> StartPlan(World world, IReadOnlyList<(int x, int y)> characters)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
-            return StartPlan(world.ChunkCoords, world.IsActive, characters, world.Rules.Sim.Streaming.Reach, world.WrapChunks);
+            return StartPlan(world.ChunkCoords, world.IsActive, characters, world.Rules.Sim.Streaming.Reach, world.WrapChunks, world.WrapChunksY);
         }
 
         /// <summary>StartPlan against a set of chunks and which are active (for a host planning a reset it hasn't run yet; wrapChunks as Plan's).</summary>
         public static List<ChunkSwitch> StartPlan(IReadOnlyList<(int cx, int cy)> chunks, Func<int, int, bool> isActive,
-            IReadOnlyList<(int x, int y)> characters, int reach, int wrapChunks = 0)
+            IReadOnlyList<(int x, int y)> characters, int reach, int wrapChunks = 0, int wrapChunksY = 0)
         {
             if (chunks == null) throw new ArgumentNullException(nameof(chunks));
             if (isActive == null) throw new ArgumentNullException(nameof(isActive));
             var plan = new List<ChunkSwitch>();
             if (characters == null || characters.Count == 0) return plan;
             foreach (var (cx, cy) in chunks)
-                if (isActive(cx, cy) && Nearest(characters, cx, cy, wrapChunks) > reach) plan.Add(new ChunkSwitch(cx, cy, false));
+                if (isActive(cx, cy) && Nearest(characters, cx, cy, wrapChunks, wrapChunksY) > reach) plan.Add(new ChunkSwitch(cx, cy, false));
             return plan;
         }
 
@@ -127,7 +129,7 @@ namespace Chem
                     if (s.Active && world.HasChunk(s.CX, s.CY) && !world.IsActive(s.CX, s.CY))
                         for (int dy = -1; dy <= 1; dy++)
                             for (int dx = -1; dx <= 1; dx++)
-                                if (world.HasChunk(s.CX + dx, s.CY + dy)) near.Add((world.FoldChunkX(s.CX + dx), s.CY + dy));
+                                if (world.HasChunk(s.CX + dx, s.CY + dy)) near.Add((world.FoldChunkX(s.CX + dx), world.FoldChunkY(s.CY + dy)));
                 world.MakeNow(near);
             }
             foreach (var s in switches)
@@ -139,9 +141,10 @@ namespace Chem
         /// in cell units (cell (0, 0) spans 0 to 1), by row then column. For what a view draws by
         /// distance from its camera, such as the terrains' grass (ChemGrid.DetailChunks): a chunk
         /// left out has no part near enough to draw any. On a world <paramref name="wrapCells"/> cells round (World.W
-        /// when it wraps; 0 for none) a chunk is measured the short way round the seam.
+        /// when it wraps; 0 for none) a chunk is measured the short way round the seam; on a torus <paramref name="wrapCellsY"/>
+        /// cells down (World.H) the short way round the south seam too.
         /// </summary>
-        public static List<(int cx, int cy)> Within(IReadOnlyList<(int cx, int cy)> chunks, double x, double y, double radius, int wrapCells = 0)
+        public static List<(int cx, int cy)> Within(IReadOnlyList<(int cx, int cy)> chunks, double x, double y, double radius, int wrapCells = 0, int wrapCellsY = 0)
         {
             if (chunks == null) throw new ArgumentNullException(nameof(chunks));
             var near = new List<(int cx, int cy)>();
@@ -150,6 +153,7 @@ namespace Chem
                 double x0 = cx * Chunks.Size, y0 = cy * Chunks.Size;
                 // The copy of the chunk nearest x: its middle within half a world of it.
                 if (wrapCells > 0) x0 += wrapCells * Math.Round((x - (x0 + Chunks.Size / 2.0)) / wrapCells);
+                if (wrapCellsY > 0) y0 += wrapCellsY * Math.Round((y - (y0 + Chunks.Size / 2.0)) / wrapCellsY);
                 double dx = Math.Max(0, Math.Max(x0 - x, x - (x0 + Chunks.Size)));
                 double dy = Math.Max(0, Math.Max(y0 - y, y - (y0 + Chunks.Size)));
                 if (dx * dx + dy * dy <= radius * radius) near.Add((cx, cy));
@@ -159,7 +163,7 @@ namespace Chem
         }
 
         // How many chunks the nearest character is from a chunk (for ChunkPlanner).
-        internal static int Distance(IReadOnlyList<(int x, int y)> characters, int cx, int cy, int wrapChunks) => Nearest(characters, cx, cy, wrapChunks);
+        internal static int Distance(IReadOnlyList<(int x, int y)> characters, int cx, int cy, int wrapChunks, int wrapChunksY) => Nearest(characters, cx, cy, wrapChunks, wrapChunksY);
     }
 
     /// <summary>
@@ -224,7 +228,7 @@ namespace Chem
             var visit = activeNow == null ? world.ChunkCoords : Candidates(world, characters, activeNow, s.Keep + AheadChunks);
             foreach (var (cx, cy) in visit)
             {
-                int near = ChunkStreaming.Distance(characters, cx, cy, world.WrapChunks);
+                int near = ChunkStreaming.Distance(characters, cx, cy, world.WrapChunks, world.WrapChunksY);
                 if (ahead != null && near <= s.Keep + AheadChunks && !world.IsActive(cx, cy)) ahead.Add((near, cy, cx));
                 bool active = isActive(cx, cy);
                 if (near <= s.Keep)
@@ -264,6 +268,7 @@ namespace Chem
             void Visit(int cx, int cy)
             {
                 cx = world.FoldChunkX(cx);
+                cy = world.FoldChunkY(cy);
                 if (world.HasChunk(cx, cy) && seen.Add(Chunks.Key(cx, cy))) candidates.Add((cx, cy));
             }
             foreach (var (x, y) in characters)
@@ -317,7 +322,7 @@ namespace Chem
             if (cutOff.Contains((cx, cy))) return false;
             for (int d = 0; d < 4; d++)
             {
-                int nx = world.FoldChunkX(cx + Sides[d].dx), ny = cy + Sides[d].dy; // across the seam on a world that wraps
+                int nx = world.FoldChunkX(cx + Sides[d].dx), ny = world.FoldChunkY(cy + Sides[d].dy); // across the seam on a world that wraps
                 // The neighbour's edge facing back this way is the opposite side, (d + 2) % 4.
                 if (world.HasChunk(nx, ny) && isActive(nx, ny) && world.IsLiveAtEdge(nx, ny, (d + 2) % 4)) return true;
             }

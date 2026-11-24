@@ -216,6 +216,14 @@ touch them.
   walking off one side comes on at the other, and land, noise and distances are taken modulo its width (generator 6).
   The **seam** is where the two edges meet; nothing about the land marks it. Its north and south rows are **wall
   rows**, an ice row and a desert row the plan fills with `ice-wall` and `dune-sea` (the 12 × 10 world).
+  A **torus** (`"wrap": "torus"`, `PlanWrap.Torus`) wraps north-south too: it has two seams, an **east seam** (x = 0)
+  and a **south seam** (y = 0), and no wall rows (the hills, `world/maps/hills-12x10`).
+
+**Hills map / rolling hills**
+: A generated map of nothing but grass on gentle **rolling hills** (map.json's generated `"hills"`, `HillsLand`): no
+  plan squares, no pinned valley, no sea, water, roads, villages, trees or things. Its land is a sum of a few octaves of
+  integer value noise whose lattices divide the map's size, so it tiles round a torus. The first rung of the sparse world
+  (`docs/design/hills.md`): proven stable at 60 FPS before roads, forest and other biomes are added to it.
 
 **Meet**
 : Where a generated map's land comes round to a pinned map's own (the valley's) outside its rim: over at least 90 cells,

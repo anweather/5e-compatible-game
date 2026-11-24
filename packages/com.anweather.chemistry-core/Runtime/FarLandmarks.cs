@@ -109,6 +109,8 @@ namespace Chem
         {
             var plan = gen.Plan;
             var all = new List<FarLandmark>();
+            // A hills map has no plan, so nothing shows from far off.
+            if (plan == null) return new FarLandmarks(all);
             void Add(string type, string from, int index, int square, int siteX, int siteY, LandmarkRows rows)
             {
                 if (type == null || !table.Rows.TryGetValue(type, out var row)) return;

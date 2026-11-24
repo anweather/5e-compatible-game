@@ -122,7 +122,7 @@ namespace Chem
         }
 
         /// <summary>The land at a map cell, in land units, before any landmark's stamps: a pure function of position.</summary>
-        public int LandAt(int x, int y) => Point(x, y, Nearby(x, y, x, y), out _).Land;
+        public int LandAt(int x, int y) => Hills != null ? Hills.At(x, y) : Point(x, y, Nearby(x, y, x, y), out _).Land;
 
         LandPoint Point(int x, int y, List<Segment> near, out BiomeBlend blend)
         {

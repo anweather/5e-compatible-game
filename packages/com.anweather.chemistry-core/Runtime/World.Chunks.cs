@@ -67,6 +67,7 @@ namespace Chem
         Chunk FindChunk(int cx, int cy)
         {
             cx = FoldChunkX(cx);
+            cy = FoldChunkY(cy);
             var last = lastChunk;
             if (last != null && last.X == cx && last.Y == cy) return last;
             if (!chunks.TryGetValue(Chunks.Key(cx, cy), out var ch)) return null;
@@ -80,6 +81,7 @@ namespace Chem
         Cell Locate(int x, int y, out Chunk ch, out int i)
         {
             x = FoldX(x);
+            y = FoldY(y);
             i = LocalIndex(x, y);
             ch = InBounds(x, y) ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) : null;
             return ch?.CellAt(i);
@@ -90,6 +92,7 @@ namespace Chem
         {
             // The chunk is checked before its cell is read, so an inactive chunk's packed cells stay packed.
             x = FoldX(x);
+            y = FoldY(y);
             i = LocalIndex(x, y);
             ch = InBounds(x, y) ? FindChunk(Chunks.ChunkOf(x), Chunks.ChunkOf(y)) : null;
             return ch != null && ch.Active ? ch.CellAt(i) : null;
@@ -562,9 +565,16 @@ namespace Chem
             return sum.ToString();
         }
 
-        // What a hash of the cells ends with on a world that wraps, after FitText: "~ew", so it differs from the same cells
+        // What a hash of the cells ends with on a world that wraps, after FitText: "~ew" ("~torus" both ways), so it differs from the same cells
         // on a world that doesn't (they behave apart at the edges). Nothing on one that doesn't, so its hash is as it was.
-        string WrapText => WrapX ? "~ew" : "";
+        string WrapText
+        {
+            get
+            {
+                if (WrapY) return "~torus";
+                return WrapX ? "~ew" : "";
+            }
+        }
 
         /// <summary>The same fingerprint over one chunk's cells (those inside the world), row by row.</summary>
         public string ChunkHash(int cx, int cy)

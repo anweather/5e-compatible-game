@@ -201,7 +201,8 @@ public sealed partial class FarRing : MonoBehaviour
         landMaterial = new Material(shader) { name = "Far land" };
         landmarkMaterial = new Material(shader) { name = "Far landmarks" };
         landmarkMaterial.SetFloat(OwnHazeId, 1f);
-        MakeSea();
+        // A torus has no edge to see the sea past (the hills: all land), so it has no sea to the horizon.
+        if (!(ViewWrap.EastWest && ViewWrap.NorthSouth)) MakeSea();
         MakeLandmarks(loaded);
         palette = Palette(loaded.Biomes, grid.World, terrains);
         StartupTimeline.Mark("far ring map read, landmarks made");
@@ -224,7 +225,7 @@ public sealed partial class FarRing : MonoBehaviour
         {
             var p = Camera.main.transform.position;
             var (x, y) = land.Layout.CellAt(p.x, p.z);
-            AddChunkOf(x, y);
+            AddChunkOf(ViewWrap.FoldX(x), ViewWrap.FoldY(y));
         }
         if (wanted.Count == 0) return false;
         bool same = wanted.Count == characters.Count;
@@ -233,6 +234,7 @@ public sealed partial class FarRing : MonoBehaviour
         characters.Clear();
         characters.AddRange(wanted);
         if (terrains != null) terrains.ReachNow();
+        if (ViewWrap.EastWest) Replace();
         return true;
     }
 
@@ -378,19 +380,38 @@ public sealed partial class FarRing : MonoBehaviour
         r.reflectionProbeUsage = ReflectionProbeUsage.Off;
     }
 
-    // World x, z of map chunk (cx, cy)'s north-west corner: the line between cells, as the chunk terrains' edges run.
+    // World x, z of map chunk (cx, cy)'s north-west corner: the line between cells, as the chunk terrains' edges run. On a
+    // world that wraps, the copy nearest the camera (ViewWrap).
     Vector3 Corner(int cx, int cy)
     {
         var l = land.Layout;
         int x = cx * ChunkGen.Size, y = cy * ChunkGen.Size;
-        return new Vector3(l.OriginX + (x + l.U0) * l.CellSize, 0f, l.OriginZ + (l.V0 + 1 - y) * l.CellSize);
+        float half = l.ChunkSize * 0.5f, wx = l.OriginX + (x + l.U0) * l.CellSize, wz = l.OriginZ + (l.V0 + 1 - y) * l.CellSize;
+        return new Vector3(ViewWrap.NearX(wx + half) - half, 0f, ViewWrap.NearZ(wz - half) + half);
     }
 
-    // Chebyshev chunks from map chunk (cx, cy) to the nearest character.
+    // On a world that wraps, the known meshes moved to the copy of their place nearest the camera where that changed (the
+    // characters went half a world round: none in sight ever moves).
+    void Replace()
+    {
+        foreach (var p in drawn) Place(p.Value.go, p.Key);
+        foreach (var p in leaving) Place(p.Value.go, p.Key);
+    }
+
+    void Place(GameObject go, int id)
+    {
+        if (go == null) return;
+        var to = Corner(id % chunksW, id / chunksW);
+        var at = go.transform.position;
+        if (Mathf.Abs(at.x - to.x) > 1f || Mathf.Abs(at.z - to.z) > 1f) go.transform.position = new Vector3(to.x, at.y, to.z);
+    }
+
+    // Chebyshev chunks from map chunk (cx, cy) to the nearest character (the short way round a world that wraps).
     int Nearest(int cx, int cy)
     {
         int near = int.MaxValue;
-        foreach (var (x, y) in characters) near = Mathf.Min(near, Mathf.Max(Mathf.Abs(x - cx), Mathf.Abs(y - cy)));
+        foreach (var (x, y) in characters)
+            near = Mathf.Min(near, Mathf.Max(ViewWrap.ChunkDistance(x, cx, chunksW, true), ViewWrap.ChunkDistance(y, cy, chunksH, false)));
         return near;
     }
 

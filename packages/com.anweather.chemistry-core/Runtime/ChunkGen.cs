@@ -155,8 +155,11 @@ namespace Chem
         public int WrapChunk(int cx) => WrapX ? PlanGrid.Mod(cx, ChunksW) : cx;
 
         /// <summary>Chebyshev distance in chunks between two map chunks, the short way round where the map wraps.</summary>
-        public int ChunkDistance(int ax, int ay, int bx, int by) =>
-            WrapX ? Plan.Grid.ChunkDistance(ax, ay, bx, by) : Math.Max(Math.Abs(ax - bx), Math.Abs(ay - by));
+        public int ChunkDistance(int ax, int ay, int bx, int by)
+        {
+            if (Hills != null) return Math.Max(Along(ax, bx, ChunksW, WrapX), Along(ay, by, ChunksH, WrapY));
+            return WrapX ? Plan.Grid.ChunkDistance(ax, ay, bx, by) : Math.Max(Math.Abs(ax - bx), Math.Abs(ay - by));
+        }
 
         // x − from in cells, the short way round where the map wraps.
         int Dx(int x, int from)
@@ -187,7 +190,8 @@ namespace Chem
         {
             if (cx < 0 || cy < 0 || cx >= ChunksW || cy >= ChunksH) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the map");
             var c = new GeneratedChunk { X = cx, Y = cy, Land = new int[Size * Size], Cells = new char[Size * Size] };
-            if (IsPinned(cx, cy)) MakePinned(c);
+            if (Hills != null) MakeHills(c);
+            else if (IsPinned(cx, cy)) MakePinned(c);
             else MakeGenerated(c);
             c.Hash = HashOf(c);
             return c;

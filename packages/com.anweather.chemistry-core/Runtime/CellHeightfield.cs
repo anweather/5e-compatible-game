@@ -330,6 +330,8 @@ namespace Chem
         float LandAt(World world, int u, int v)
         {
             var (x, y) = grid.GridCell(u, v);
+            x = world.FoldX(x); // over a seam of a world that wraps, the cell it folds to
+            y = world.FoldY(y);
             if (cache != null && cache.Holds(x, y)) return cache.Land[cache.Index(x, y)];
             if (cache != null && !grid.InGrid(x, y)) return 0f;
             return LandOf(world, x, y);
@@ -436,6 +438,8 @@ namespace Chem
         bool Read(World world, int u, int v, out float offset, out bool raised, out bool bank)
         {
             var (x, y) = grid.GridCell(u, v);
+            x = world.FoldX(x); // over a seam of a world that wraps, the cell it folds to
+            y = world.FoldY(y);
             if (!grid.InGrid(x, y))
             {
                 offset = 0f;

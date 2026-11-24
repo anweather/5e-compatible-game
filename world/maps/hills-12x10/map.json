@@ -1,0 +1,17 @@
+{
+  "about": "The rolling hills (docs/design/hills.md): the Wide World's size (12 x 10 world squares, 6912 x 5760 cells, 108 x 90 chunks) and nothing but grass on gentle rolling hills, wrapping both ways (\"wrap\": \"torus\"). No plan, no pinned valley, no sea, water, roads, villages, trees or things: generated \"hills\" is its land, octaves of value noise ([period in cells, height in land units of 0.125 m]) whose periods divide the map's size so it tiles. Too big to bake whole: \"bake\": false, played from its rows alone (GeneratedSource). Spawn is 32 cells from the east and south seams, so a short walk crosses both. \"systems\" turns off, for this map only, the view's systems a hills map has nothing for.",
+  "id": "hills-12x10",
+  "name": "The Rolling Hills",
+  "size": [6912, 5760],
+  "seaLevel": -4,
+  "spawn": [6880, 5728],
+  "expects": { "landShare": 100, "highest": 305, "lowest": 41 },
+  "generated": {
+    "seed": "hills-1",
+    "squares": [12, 10],
+    "wrap": "torus",
+    "bake": false,
+    "generator": 8,
+    "hills": { "base": 8, "biome": "grassland", "octaves": [[1152, 200], [384, 96], [128, 24], [64, 6]] }
+  }
+}

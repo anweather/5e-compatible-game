@@ -361,7 +361,7 @@ namespace Chem
         void Fly(Raider r, EntityDef def)
         {
             r.X = FoldX(r.X + Math.Sign(DeltaX(r.X, HoldSite.Heart.x)));
-            r.Y += Math.Sign(HoldSite.Heart.y - r.Y);
+            r.Y = FoldY(r.Y + Math.Sign(DeltaY(r.Y, HoldSite.Heart.y)));
             r.Wait = PaceOf(def) - 1;
         }
 
@@ -380,7 +380,7 @@ namespace Chem
             if (keeps != null) r.Status[keeps] = Math.Max(r.StatusOf(keeps), 2);
         }
 
-        bool InReach(int x0, int y0, int x1, int y1, int reach) => Math.Max(Math.Abs(DeltaX(x0, x1)), Math.Abs(y0 - y1)) <= reach;
+        bool InReach(int x0, int y0, int x1, int y1, int reach) => Math.Max(Math.Abs(DeltaX(x0, x1)), Math.Abs(DeltaY(y0, y1))) <= reach;
 
         // The 5E attack roll a punch uses: a d20, the Strength modifier and the proficiency bonus against the wizard's AC, then its dice.
         bool BlowAtWizard(Raider r, EntityDef def)
@@ -440,7 +440,7 @@ namespace Chem
             if (ahead != null && !Flying(ahead) && !Swap(p, r, ahead)) return; // wait for the one ahead
             bool rough = Rough(Rules.Sim.Defense, At(r.X, r.Y), to);
             r.X = FoldX(nx);
-            r.Y = ny;
+            r.Y = FoldY(ny);
             r.Wait = PaceOf(def) - 1 + (rough ? Rules.Sim.Defense.RoughTicks : 0);
             Thorns(r, to);
             if (r.Alive && Rules.AdjectiveOf(r.Kind)?.Lights == true) Apply(r.X, r.Y, "fire", 1, -1, false);

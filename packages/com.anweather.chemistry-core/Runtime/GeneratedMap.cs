@@ -59,7 +59,9 @@ namespace Chem
         /// <summary>The map folder (world/maps/id) and the game's world folder above it.</summary>
         public string MapDir { get; private set; }
         public string WorldDir { get; private set; }
-        public string PinnedDir => Path.Combine(WorldDir, "maps", PinnedMap);
+        public string PinnedDir => PinnedMap == null ? null : Path.Combine(WorldDir, "maps", PinnedMap);
+        /// <summary>A hills map's land (generated "hills", docs/design/hills.md): no plan and no pinned map; else null.</summary>
+        public HillsLand Hills => Gen?.Hills;
         /// <summary>The pinned map's name (its map.json's), what its spawn is called.</summary>
         public string PinnedName { get; private set; }
         /// <summary>A pinned block's own map (the nine in the scale map), when the pinned map is a generated one; else null.</summary>
@@ -123,6 +125,7 @@ namespace Chem
                 Bakes = (bool?)o["bake"] ?? true,
             };
             if (m.Generator != ChunkGen.Version) throw new FormatException($"{MapFile.FileName}: made by generator {m.Generator}, and this is {ChunkGen.Version}");
+            if (o["hills"] is JObject hills) return LoadHills(m, hills);
             // An east-west world's map is its whole plan, the wall rows north and south included.
             int landRows = m.Wrap == PlanWrap.EastWest ? m.SquaresH - 2 : m.SquaresH;
             if (m.SquaresW < 1 || landRows < 1) throw new FormatException($"{MapFile.FileName}: squares {m.SquaresW} x {m.SquaresH} is too small{(m.Wrap == PlanWrap.EastWest ? " for an east-west world (its two wall rows)" : "")}");
@@ -168,6 +171,19 @@ namespace Chem
             return m;
         }
 
+        // A hills map: no plan solved and nothing pinned; its land is the hills' noise, its seed the world file's.
+        static GeneratedMap LoadHills(GeneratedMap m, JObject hills)
+        {
+            if (m.Wrap == PlanWrap.EastWest) throw new FormatException($"{MapFile.FileName}: a hills map wraps both ways (\"torus\") or not at all, not \"ew\" (it has no wall rows)");
+            if (m.SquaresW < 1 || m.SquaresH < 1) throw new FormatException($"{MapFile.FileName}: squares {m.SquaresW} x {m.SquaresH} is too small");
+            int seed = (int)WorldPlan.Fnv("hills|" + m.Seed);
+            int w = m.SquaresW * WorldPlan.SquareCells, h = m.SquaresH * WorldPlan.SquareCells;
+            var biomes = BiomeTable.Load(Path.Combine(m.WorldDir, BiomeTable.FileName));
+            m.Gen = new ChunkGen(HillsLand.Read(hills, seed, w, h), biomes, seed, m.SquaresW, m.SquaresH, m.Wrap == PlanWrap.Torus);
+            m.PinnedName = MapFile.Load(m.MapDir).Name;
+            return m;
+        }
+
         /// <summary>A world file's "forced": the character that marks a pinned block's squares in its rows.</summary>
         public const string ForcedPinned = "pinned";
 
@@ -210,7 +226,8 @@ namespace Chem
         {
             null => PlanWrap.None,
             "ew" => PlanWrap.EastWest,
-            _ => throw new FormatException($"{MapFile.FileName}: wrap \"{wrap}\" isn't one of \"ew\" (or none)"),
+            "torus" => PlanWrap.Torus,
+            _ => throw new FormatException($"{MapFile.FileName}: wrap \"{wrap}\" isn't one of \"ew\" or \"torus\" (or none)"),
         };
 
         static PinnedSquare ReadPinned(string dir)
@@ -252,7 +269,7 @@ namespace Chem
                 foreach (string f in Directory.GetFiles(Path.Combine(world, folder), "*.json").OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal))
                     parts.Add((folder + "/" + Path.GetFileName(f), File.ReadAllBytes(f)));
             var o = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(mapDir, MapFile.FileName)))[Key];
-            foreach (var pin in ((JArray)o["pinned"]).OfType<JObject>())
+            foreach (var pin in (o["pinned"] as JArray ?? new JArray()).OfType<JObject>())
             {
                 string id = (string)pin["map"];
                 parts.Add(("maps/" + id, Encoding.UTF8.GetBytes(MapIdentity.Hash(Path.Combine(world, "maps", id)))));
@@ -330,7 +347,7 @@ namespace Chem
             Write(outDir, BakeName, Json(new JObject
             {
                 ["inputs"] = InputHash(MapDir),
-                ["plan"] = Plan.Hash.ToString("x8", CultureInfo.InvariantCulture),
+                ["plan"] = (Plan?.Hash ?? 0u).ToString("x8", CultureInfo.InvariantCulture),
                 ["generator"] = ChunkGen.Version,
                 ["format"] = BakeFormat,
                 ["cells"] = CellsGenerated,
@@ -386,9 +403,9 @@ namespace Chem
 
         bool TryReadPinned(string name, out JObject o)
         {
-            string path = Path.Combine(PinnedDir, name);
-            o = File.Exists(path) ? JObject.Parse(File.ReadAllText(path)) : new JObject();
-            return File.Exists(path);
+            string path = PinnedDir == null ? null : Path.Combine(PinnedDir, name);
+            o = path != null && File.Exists(path) ? JObject.Parse(File.ReadAllText(path)) : new JObject();
+            return path != null && File.Exists(path);
         }
 
         /// <summary>
@@ -400,6 +417,7 @@ namespace Chem
         public List<JObject> SpawnPlaces()
         {
             var list = new List<JObject>();
+            if (Hills != null) return new List<JObject> { HillsSpawn() };
             var names = new HashSet<string>(StringComparer.Ordinal);
             // A pinned block's spawn places come with its own rows (WriteRows), named already: none here takes their names.
             if (Inner != null && TryReadPinned(WorldPlaces.FileName, out var own))
@@ -430,6 +448,23 @@ namespace Chem
                 list.Add(o);
             }
             return list;
+        }
+
+        // A hills map's one spawn place: its map.json's spawn, named for the map.
+        JObject HillsSpawn()
+        {
+            var spawn = MapFile.Load(MapDir).Spawn;
+            return new JObject
+            {
+                ["id"] = "spawn-" + WorldPlaces.Slug(PinnedName),
+                ["name"] = PinnedName,
+                ["kind"] = "spawn",
+                ["from"] = MapFile.FileName,
+                ["square"] = new JArray(spawn.x / ChunkGen.Square, spawn.y / ChunkGen.Square),
+                ["near"] = "hills",
+                ["circle"] = new JObject { ["at"] = new JArray(spawn.x, spawn.y), ["radius"] = ChunkGen.ClearCells },
+                ["start"] = true,
+            };
         }
 
         string VillageIn(int square)

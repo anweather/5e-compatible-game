@@ -237,7 +237,7 @@ namespace Chem
             if (chunks == null) return;
             foreach (var (cx, cy) in chunks)
             {
-                drawnHint.Add(Chunks.Key(FoldChunkX(cx), cy)); // a chunk past the seam is the one it folds to
+                drawnHint.Add(Chunks.Key(FoldChunkX(cx), FoldChunkY(cy))); // a chunk past the seam is the one it folds to
                 // A chunk that comes into the hint is needed from now, whether or not it's unpacked yet.
                 if (FindChunk(cx, cy) is Chunk ch) ch.Needed = Tick;
             }
@@ -252,13 +252,13 @@ namespace Chem
         /// </summary>
         public void MakeAhead(IEnumerable<(int cx, int cy)> chunks)
         {
-            if (Source is IGeneratedSource g && chunks != null) g.Ahead(chunks.Select(c => (FoldChunkX(c.cx), c.cy)));
+            if (Source is IGeneratedSource g && chunks != null) g.Ahead(chunks.Select(c => (FoldChunkX(c.cx), FoldChunkY(c.cy))));
         }
 
         /// <summary>MakeAhead, waiting for them: made now on every core, the chunks about to activate (ChunkStreaming.Apply).</summary>
         public void MakeNow(IEnumerable<(int cx, int cy)> chunks)
         {
-            if (Source is IGeneratedSource g && chunks != null) g.MakeNow(chunks.Select(c => (FoldChunkX(c.cx), c.cy)));
+            if (Source is IGeneratedSource g && chunks != null) g.MakeNow(chunks.Select(c => (FoldChunkX(c.cx), FoldChunkY(c.cy))));
         }
 
         /// <summary>The chunks in the view's drawn hint, as it last gave them.</summary>
@@ -476,11 +476,12 @@ namespace Chem
         // that wraps); int.MaxValue with none.
         int AwayFrom(Chunk ch, List<(int x, int y)> near)
         {
-            int best = int.MaxValue, across = Chunks.ChunkOf(W - 1) + 1;
+            int best = int.MaxValue, across = Chunks.ChunkOf(W - 1) + 1, down = Chunks.ChunkOf(H - 1) + 1;
             foreach (var a in near)
             {
                 int dx = Math.Abs(a.x - ch.X), dy = Math.Abs(a.y - ch.Y);
                 if (WrapX) dx = Math.Min(dx, across - dx);
+                if (WrapY) dy = Math.Min(dy, down - dy);
                 int d = Math.Max(dx, dy);
                 if (d < best) best = d;
             }

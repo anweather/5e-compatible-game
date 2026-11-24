@@ -84,7 +84,7 @@ namespace Chem
         {
             var list = Rules.TriggersOn(TriggerEvent.Step);
             if (list.Count == 0) return;
-            int dx = Math.Sign(DeltaX(fromX, me.X)), dy = Math.Sign(me.Y - fromY);
+            int dx = Math.Sign(DeltaX(fromX, me.X)), dy = Math.Sign(DeltaY(fromY, me.Y));
             string peer = TriggerDef.PeerOf(me.Player);
             foreach (var t in list)
                 if (t.IsFor(me.Player, peer) && Due(t, me.Player)) Fire(t, me, dx, dy);
@@ -175,6 +175,7 @@ namespace Chem
                     break;
             }
             x = FoldX(x); // a step's cell past the seam
+            y = FoldY(y);
             return InBounds(x, y);
         }
 

@@ -30,7 +30,17 @@ public partial class ChemGrid : MonoBehaviour
     [Tooltip("How many connected conductive cells one lightning strike can reach.")]
     public int conductLimit;
 
-    public World World { get; private set; }
+    public World World
+    {
+        get => played;
+        private set
+        {
+            played = value;
+            ViewWrap.Set(value, cellSize); // the view draws across the seams of a world that wraps
+        }
+    }
+
+    World played;
     /// <summary>The world's props and items (world/things.json) with their stable ids; ThingSpawner spawns them.</summary>
     public WorldThings Things { get; private set; } = WorldThings.Empty;
     public Vector2Int PlayerStart { get; private set; }
@@ -349,7 +359,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         var source = PlayedSource;
         var map = MapFile.Load(Folders.World);
-        var world = new World(rules, source.W, source.H, seed, wrapX: map.WrapX);
+        var world = new World(rules, source.W, source.H, seed, wrapX: map.WrapX, wrapY: map.WrapY);
         world.SetLandRange(map.LandRange);
         world.MakeFrom(source);
         world.LandFromSource();
@@ -834,13 +844,15 @@ public partial class ChemGrid : MonoBehaviour
     public Vector3 CellCenter(int x, int y)
     {
         var yard = Yard;
-        return new Vector3((x - yard.x) * cellSize, 0f, (yard.y + yard.height - 1 - y) * cellSize);
+        // On a world that wraps, the copy of the cell nearest the camera (ViewWrap).
+        return ViewWrap.Near(new Vector3((x - yard.x) * cellSize, 0f, (yard.y + yard.height - 1 - y) * cellSize));
     }
 
     public Vector2Int CellAt(Vector3 p)
     {
         var yard = Yard;
-        return new Vector2Int(Mathf.RoundToInt(p.x / cellSize) + yard.x, yard.y + yard.height - 1 - Mathf.RoundToInt(p.z / cellSize));
+        // Folded into the world where it wraps: the view walks on past a seam, the cells don't.
+        return new Vector2Int(ViewWrap.FoldX(Mathf.RoundToInt(p.x / cellSize) + yard.x), ViewWrap.FoldY(yard.y + yard.height - 1 - Mathf.RoundToInt(p.z / cellSize)));
     }
 
     /// <summary>Top of what stands on a cell: its ground, plus a stone block's or a tree's height.</summary>

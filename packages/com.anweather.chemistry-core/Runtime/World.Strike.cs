@@ -161,7 +161,7 @@ namespace Chem
             int fromX = me.X, fromY = me.Y;
             bool wasDown = me.Down;
             me.X = FoldX(command.X); // a stand past the seam is where it folds to
-            me.Y = command.Y;
+            me.Y = FoldY(command.Y);
             if (command.Kind != StrikeKind.Stand) Strike(me, command.AimX, command.AimY);
             else
             {
@@ -201,7 +201,7 @@ namespace Chem
             int damage = Math.Max(0, 1 + str);
             result.Damage = damage;
             AddLog($"{me.Player} punches {name}: {damage} bludgeoning damage", LogKind.Hurt);
-            int dx = Math.Sign(DeltaX(me.X, raider != null ? raider.X : foe.X)), dy = Math.Sign(raider != null ? raider.Y - me.Y : foe.Y - me.Y);
+            int dx = Math.Sign(DeltaX(me.X, raider != null ? raider.X : foe.X)), dy = Math.Sign(DeltaY(me.Y, raider != null ? raider.Y : foe.Y));
             if (raider != null)
             {
                 (raider.X, raider.Y) = KnockBack(raider.X, raider.Y, dx, dy, p.KnockBack);
@@ -227,7 +227,7 @@ namespace Chem
             foreach (var s in stands.Values)
             {
                 if (s == me || s.Down) continue;
-                long key = TargetKey(DeltaX(me.X, s.X), s.Y - me.Y, aimX, aimY, reach);
+                long key = TargetKey(DeltaX(me.X, s.X), DeltaY(me.Y, s.Y), aimX, aimY, reach);
                 if (key >= best) continue;
                 best = key;
                 foe = s;
@@ -235,7 +235,7 @@ namespace Chem
             foreach (var r in raiders)
             {
                 if (!r.Alive) continue;
-                long key = TargetKey(DeltaX(me.X, r.X), r.Y - me.Y, aimX, aimY, reach);
+                long key = TargetKey(DeltaX(me.X, r.X), DeltaY(me.Y, r.Y), aimX, aimY, reach);
                 if (key >= best) continue;
                 best = key;
                 foe = null;
@@ -259,7 +259,7 @@ namespace Chem
         {
             for (int i = 0; i < n; i++)
             {
-                int nx = FoldX(x + dx), ny = y + dy;
+                int nx = FoldX(x + dx), ny = FoldY(y + dy);
                 var c = At(nx, ny);
                 if (c == null || IsBlocking(c) || RaiderAt(nx, ny) != null || stands.Values.Any(s => s.X == nx && s.Y == ny)) break;
                 (x, y) = (nx, ny);

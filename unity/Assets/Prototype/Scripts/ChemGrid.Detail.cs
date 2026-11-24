@@ -51,11 +51,25 @@ public partial class ChemGrid
     List<(int i, int j)> ChunksWithin(TerrainGrid layout, int x, int y, double radius)
     {
         double px = x + layout.U0 + 0.5, py = layout.V0 - y + 0.5;
-        int i0 = Mathf.Max(0, (int)Math.Floor((px - radius) / TerrainGrid.ChunkCells)), i1 = Mathf.Min(layout.ChunksX - 1, (int)Math.Floor((px + radius) / TerrainGrid.ChunkCells));
-        int j0 = Mathf.Max(0, (int)Math.Floor((py - radius) / TerrainGrid.ChunkCells)), j1 = Mathf.Min(layout.ChunksZ - 1, (int)Math.Floor((py + radius) / TerrainGrid.ChunkCells));
+        int i0 = (int)Math.Floor((px - radius) / TerrainGrid.ChunkCells), i1 = (int)Math.Floor((px + radius) / TerrainGrid.ChunkCells);
+        int j0 = (int)Math.Floor((py - radius) / TerrainGrid.ChunkCells), j1 = (int)Math.Floor((py + radius) / TerrainGrid.ChunkCells);
+        // Over a seam of a world that wraps the box runs on, and the chunks it finds are the ones they fold to (ViewWrap).
+        if (!ViewWrap.EastWest)
+        {
+            i0 = Mathf.Max(0, i0);
+            i1 = Mathf.Min(layout.ChunksX - 1, i1);
+        }
+        if (!ViewWrap.NorthSouth)
+        {
+            j0 = Mathf.Max(0, j0);
+            j1 = Mathf.Min(layout.ChunksZ - 1, j1);
+        }
         detailBox.Clear();
         for (int j = j0; j <= j1; j++)
             for (int i = i0; i <= i1; i++) detailBox.Add((i, j));
-        return ChunkStreaming.Within(detailBox, px, py, radius);
+        var near = ChunkStreaming.Within(detailBox, px, py, radius);
+        if (ViewWrap.EastWest || ViewWrap.NorthSouth)
+            for (int k = 0; k < near.Count; k++) near[k] = ViewWrap.FoldChunk(near[k], layout.ChunksX, layout.ChunksZ);
+        return near;
     }
 }

@@ -28,6 +28,7 @@ namespace Chem
         public Raider RaiderAt(int x, int y)
         {
             x = FoldX(x);
+            y = FoldY(y);
             foreach (var r in raiders) if (r.X == x && r.Y == y) return r;
             return null;
         }
@@ -187,8 +188,8 @@ namespace Chem
             }
             hit.Sort((a, b) =>
             {
-                int ax = DeltaX(x, a.X), bx = DeltaX(x, b.X);
-                int da = ax * ax + (a.Y - y) * (a.Y - y), db = bx * bx + (b.Y - y) * (b.Y - y);
+                int ax = DeltaX(x, a.X), bx = DeltaX(x, b.X), ay = DeltaY(y, a.Y), by = DeltaY(y, b.Y);
+                int da = ax * ax + ay * ay, db = bx * bx + by * by;
                 return db != da ? db.CompareTo(da) : a.Id.CompareTo(b.Id);
             });
             foreach (var r in hit)
@@ -233,7 +234,7 @@ namespace Chem
                 int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                 if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
                 r.X = FoldX(nx);
-                r.Y = ny;
+                r.Y = FoldY(ny);
             }
         }
 
@@ -259,7 +260,7 @@ namespace Chem
                     int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
                     if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) break;
                     r.X = FoldX(nx);
-                    r.Y = ny;
+                    r.Y = FoldY(ny);
                 }
                 LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
             }
@@ -303,7 +304,7 @@ namespace Chem
                 if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
                 bool over = GroundUnits(r.X, r.Y) - GroundUnits(nx, ny) >= Rules.Sim.CliffSteps * step;
                 r.X = FoldX(nx);
-                r.Y = ny;
+                r.Y = FoldY(ny);
                 if (!over) continue;
                 int dropped = (from - GroundUnits(nx, ny)) / step;
                 AddLog($"The {by} throws {def.Name} over the edge", LogKind.Notable);

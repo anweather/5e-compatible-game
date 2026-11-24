@@ -346,6 +346,37 @@ namespace Chem.Tests
             AssertJoinersMatch(host, build, new[] { 1, 45, 50, 51, 90, 91, 150, 181, 240, ticks });
         }
 
+        [Test]
+        public void PeersAndJoinersAgreeWithCharactersCrossingBothSeamsOfATorus()
+        {
+            // A torus (the hills, docs/design/hills.md: 8 x 6 chunks here): one player walks a diagonal back and forth over the
+            // corner where the east and south seams meet, another north-south over the south seam, both given unfolded, with
+            // step triggers, a Fireball on the corner and the host's planner switching chunks round them.
+            const int ticks = 300, size = Chunks.Size;
+            Func<World> build = () => new World(R, 8 * size, 6 * size, 5, "grass", wrapX: true, wrapY: true);
+            var planner = new ChunkPlanner();
+            bool corners = false;
+            int switches = 0;
+            var host = Host(build, ticks, (t, w, s) =>
+            {
+                if (t == 1) s.Mods = Mod("steps", BoltsAndMeteors);
+                int k = t % 180, off = k < 90 ? 2 * k : 360 - 2 * k;
+                var stands = new[] { (w.W - 90 + off, w.H - 90 + off), (200, 90 - off) };
+                s.Strikes.Add(StrikeCommand.Stand("p0", stands[0].Item1, stands[0].Item2, 12));
+                s.Strikes.Add(StrikeCommand.Stand("p1", stands[1].Item1, stands[1].Item2, 12));
+                if (t == 50) s.Casts.Add(new CastCommand("fireball", 0, 0, 1, by: "p0"));
+                var plan = t == 1 ? ChunkStreaming.StartPlan(w, stands) : planner.Plan(w, stands);
+                s.Chunks.AddRange(plan);
+                switches += plan.Count;
+                corners |= w.IsActive(7, 5) && w.IsActive(0, 0) && w.IsActive(7, 0) && w.IsActive(0, 5);
+            });
+            Assert.That(host.World.TriggeredCasts, Is.GreaterThan(10), "the walks fire triggers");
+            Assert.That(switches, Is.GreaterThan(10), "and switch chunks as they go");
+            Assert.That(corners, Is.True, "the four chunks round the corner active together");
+            Assert.That(host.World.StrikeText(), Does.Not.Contain(":-"), "the stands folded");
+            AssertJoinersMatch(host, build, new[] { 1, 45, 50, 51, 90, 91, 150, 181, 240, ticks });
+        }
+
         // ---------- late join from a snapshot (docs/design/player-saves.md, step 6) ----------
 
         /// <summary>
