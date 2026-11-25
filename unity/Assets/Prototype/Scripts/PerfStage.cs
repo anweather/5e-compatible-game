@@ -43,7 +43,7 @@ public partial class PerfStage : ShowcaseScript
 
     protected override IEnumerator Play()
     {
-        yield return Sky(Scenario is "storm" or "rain" or "snow" or "fog" ? Scenario : "clear");
+        yield return Sky(Scenario is "storm" or "rain" or "snow" or "fog" ? Scenario : WeatherAsked ?? "clear");
         if (Scenario == "wildfire") yield return Wildfire();
         else if (Scenario == "village") Hollowmere();
         else if (Scenario == "showerstorm") yield return ShowerStorm();
@@ -267,6 +267,9 @@ public partial class PerfStage : ShowcaseScript
     }
 
     static bool Asked(string flag) => System.Environment.GetCommandLineArgs().Contains(flag);
+
+    // -perf-weather KIND (clear, cloudy, windy, fog, rain, storm, snow): the weather held, for the haze's stills.
+    static string WeatherAsked => System.Environment.GetCommandLineArgs().SkipWhile(a => a != "-perf-weather").Skip(1).FirstOrDefault();
 
     // What else a wall of flames brings, taken away for a run: the fire lights and the smoke (every particle).
     void LateUpdate()
