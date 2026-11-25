@@ -327,3 +327,120 @@ is missed).
 
 The mountains in the middle, their passes and foothills, the roads' grade limit, the far massif and their results are in
 docs/design/alpine.md, and so are its rivers (step 3: a lake in the meadow, a gorge, a river down to a lake in the grassland).
+
+## Forest (step 5)
+
+Andrew, 2026-11-24: "Then let's add patches of forest if we can get that stable." The last step of the night's plan: woods
+on the grassland and the foothills, thinning toward the tree line on the massif, made in the generator like the roads.
+
+**Where the woods are** (`HillsForest`, map.json's `"hills"` `"forest"`):
+
+```json
+"forest": { "octaves": [[576, 55], [192, 30], [64, 15]], "wood": 64, "edge": 10, "least": 10, "most": 30, "lone": 1,
+  "foothills": 12, "treeLine": [900, 1400] }
+```
+
+- A cell's chance of a tree, per thousand, is a pure function of the cell, the seed and map.json, in integers: value noise
+  that repeats round the torus (`BiomeMath.Noise` with the map's periods; three octaves weighted to 0..100). Over `wood`
+  (64) it's a wood: the chance rises from `least` (10) at the wood's edge to `most` (30) `edge` (10) points further in
+  (smoothstep), so a wood thins out into the grassland. Elsewhere a lone tree `lone` (1) in a thousand.
+- The foothills' band (`HillsMassif.FootBand`, nothing at the foot or the reach, most half way) adds `foothills` (12)
+  points: woods climb the foothills more. Over `treeLine[0]` land units (112 m) the chance falls off, to none at
+  `treeLine[1]` (175 m): the woods thin up the massif's flanks, the meadow (133 to 151 m) has next to none, the ring's
+  mountains none. A pass (`HillsMassif.PassAt`) has none either.
+- **A tree** is a cell (`'T'`, the `tree` terrain: blocking, it burns) where the cell's own roll (`WorldHash`, folded
+  cell) is under its chance, on grass only: never on rock or scree, never on a road, river, lake or ford, nor within a
+  road's bank (6 cells), a river's bank and a cell more, or a lake's shore (land within 6 units of its level). Each chunk
+  makes its own cells (`ChunkGen.MakeHills`), so the woods meet at every edge and over both seams, every peer and late
+  joiner makes the same trees, and nothing is made for the whole map: cost follows the active region (J-086).
+- 19.4% of the map is wooded (samples every 16 cells with a chance of `least` or more): 37 woods of 3.6 ha or more, the
+  largest 579 ha, then 376, 139, 131, 128 ha and down. The grassland is 20.6% wooded, the foothills' middle 35.3%. The
+  densest wood's chunk (`HillsForest.Heart`) is (27, 6).
+
+**Far off**: a known chunk's samples carry a `Wood` cover (0..255, the chance over `most`; none on a road or water). The
+known meshes and the far land paint it darker (`FarMeshes.Palette.Wooded`: toward the grass darkened as the crowns read,
+85% of the way in a wood's heart), under the one air. Inside the impostors' reach (the haze's, about 730 m) the trees
+themselves stand.
+
+**The view** reuses the tree system as it is (`TreeImpostors`: a tree cell's tree is its prefab near, an impostor farther,
+placed by `GroundFromLand.Spot`; the chunk terrains place the same trees), with what the hills needed:
+
+- **Across the seams.** `TreeImpostors` visited only chunks inside the map, so on a torus a wood over a seam had no trees
+  on the far side and past the seam none at all. It now runs on over the seams to the chunks they fold to, and stands each
+  chunk's trees at the copy of its place nearest the camera (`ViewWrap`), moving them when the copy changes.
+- **The tree budget** (Andrew's "shorter reach on dense forest", from the Wide World, `feat/wide-world-lazy-start`,
+  cherry-picked: `TreeBudget`, `-tree-budget`, `-no-tree-budget`): prefabs and impostors draw nearer where the trees round
+  the camera are many. At the hills' density it barely bites (prefabs to 147 to 150 m at the heart of a wood).
+- **Flat impostors.** The impostor shader wrote each pixel's depth (`SV_Depth`), which stops the GPU testing depth
+  before shading: in a dense wood every tree behind another was shaded too. Past `FlatFrom` (100 m, beyond the sun's 50 m
+  shadow distance) a chunk's impostors use a copy of the material with `_IMPOSTOR_FLAT` (the quad's own depth, no shadow
+  map read), drawn nearest chunk first. At the heart of a wood at 70 per thousand: 28.9 to 20.3 ms a frame.
+- **A low sun's shadows.** In the last game minutes before sunset the trees' shadows run along the ground through a wood
+  and the frame doubled (31 ms walking out of a wood toward the sun). `SkyLight` now fades the sun's shadows out between
+  a height of 0.12 and 0.06 (7 to 3.4 degrees) and turns them off under it, on every map.
+- **The density.** What's left scales with the trees round the camera. At the heart of a wood: 140 per thousand, 2,300
+  trees within 158 m (before flat impostors 35 ms a frame); 70, 28.6 then 20.3 with flat impostors; 35, 13.3 / 16.3
+  (mean / p95, a stand); so `most` is 30. A wood's heart is about 130 trees a hectare (a tree every 8.7 m), its edge 45.
+- Tried and dropped (stand at the heart, 70 per thousand): fewer prefabs (more large impostors near: worse), more prefabs
+  (3,000: no better), impostor shadows off or to 90 m (no change at noon), the prefabs' LODs taken sooner (`lodBias` is
+  2; no change), prefabs past 25 m casting their impostor's shadow instead (worse: alpha-tested quads in the shadow map),
+  2 cascades (0.5 to 1 ms), a 200 m floor on the impostors' reach (no change).
+
+The perf knobs on the way: `-perf-forest` (the forest walk: through the densest wood's middle row, 900 m either side, and
+back, keeping to the gaps between trees; a `PERF FORESTWALK` line every 600 frames with the trees round the camera),
+`-tree-impostors-flat-from M`, `-tree-impostors-shadow-far M`, `-tree-budget-floor M`.
+
+Tests (`HillsForestTests`): the woods are patches (8 to 35% of the map, a dozen woods or more, none most of the forest,
+varied sizes); the foothills more wooded than the grassland, none over the tree line, the meadow thinner than the
+foothills; no tree within two cells of a road, river, lake or ford, nor in a pass; every edge cell of the chunks along the
+main roads, the rivers, round the densest wood and along both seams is what the cell alone works out, and a cell and its
+copies a world off read the same; the same trees on a second load and in reverse on many threads; known chunks' cover dense
+in the heart, open where there's no tree, never on water; the golden (the densest wood's chunk (27, 6) `436ef221`); and two
+peers walking through the densest wood with fire bolts into its trees, a joiner replaying and a joiner loading the save at
+tick 200, agree chunk by chunk. The roads', massif's and rivers' goldens changed where trees now stand (the spawn's chunk
+(107, 87) `9c6c171b`, (0, 87) `5f49a928`, (102, 89) `fa458485`; the foothills' (86, 45) `27ec6765`; a river reach's (64,
+56) `ec5db057`); the meadow's (54, 45) `8e975151` and the ring's (70, 45) `9061c639` are unchanged.
+
+### Forest: results (2026-11-25, M2 Pro, development player, 1920 x 1080, `-fps-probe -perf-offscreen -perf-memory`)
+
+Scripts and logs: `~/5e-logs/forest/` (`perf.sh`, `table-a1.txt`, `a1-*.log`, `*.rss.csv`; the attribution runs
+`knobs.sh`, `hknobs.sh`, `stands.sh` and their `*.out`). Frame times in ms. The **forest walk** is new (`-perf-scenario
+roadwalk -perf-forest`): from the west edge of the densest wood along its middle row (y 416) to 900 m past its heart,
+out into the grassland and back, 3.3 km in 480 s. The seam walk is `e2,s2,w2,n2`.
+
+| Run (x3) | mean | p95 | p99 | worst | made on a read in the run | peak RSS | PLAY READY |
+|---|---|---|---|---|---|---|---|
+| stand at the spawn (30 s) | 12.66-12.70 | 15.88-15.98 | 16.4-16.5 | 31.8-37.3 | 0 | 1.72 GB | 5.24-5.46 s |
+| seam walk (150 s) | 12.76-12.83 | 16.17-16.25 | 17.1-17.3 | 43.3-45.7 | 0 | 1.87 GB | 5.25-5.66 s |
+| road walk (480 s) | 10.29-10.36 | 13.04-13.38 | 15.3-15.5 | 51.9-54.7 | 0 | 2.12 GB | 5.05-5.45 s |
+| pass walk (480 s) | 9.56-9.57 | 12.86-12.88 | 13.9-14.1 | 51.8-56.0 | 0 | 1.97 GB | 5.25-5.45 s |
+| river walk (480 s) | 8.62-8.71 | 12.21-12.73 | 14.5-15.3 | 50.8-58.3 | 0 | 2.22 GB | 5.03-5.41 s |
+| forest walk (480 s) | 10.88-10.92 | 15.35-15.43 | 18.5-19.1 | 62.4-74.5 | 0 | 2.15 GB | 5.18-5.52 s |
+
+- 0 exceptions in all 18 runs (the 6 errors in each are the Metal pipeline errors every map has). Chunks made on a read:
+  the 41 at load (47 to 53 for the walks that start away from the spawn, put down before measuring starts); none during
+  any walk. The second stand was run again (`a1-stand-2b`): the first had a `dotnet test` beside it.
+- Against the haze's numbers (hills.md "One air"): every walk is 1 to 3 ms dearer on the mean and 1 to 4 on the p95; the
+  stand and seam walk most (the spawn has a wood round it). PLAY READY 5.0 to 5.7 s (4.8 to 5.1 before); peak RSS 1.72 to
+  2.22 GB (1.52 to 2.01 before): the trees' blocks and blockers (26,000 tree blockers at a wood's heart).
+- The worst frames are single frames of 50 to 75 ms, one or two a walk, where the render thread waits on the GPU
+  (`Gfx.WaitForGfxCommandsFromMainThread`), some at a chunk crossing; before the woods the walks' worst were 30 to 43.
+  Not chased tonight.
+- At the heart of the wood (a stand, `hknobs.sh`, 35 per thousand) the frame is 13.3 / 16.3; at 30 per thousand the
+  forest walk's slowest windows (5 s) there are about 15 / 19.
+
+Stills (800 px), `~/5e-logs/forest/shots/`: `wood-outside.jpg` (the densest wood from the grassland 850 m east of its
+heart), `wood-inside.jpg` (from its heart looking east along it), `wood-edge.jpg` (its east edge with the grassland),
+`tree-line.jpg` (from open ground high on the north foothills, over the tree line, down to where the wood starts below it),
+`far-woods.jpg` (40 m up on the south-west foothills: a wood near, darker woods painted on the land beyond), `high.jpg` (60 m up over the wood's heart).
+
+### Left after the forest
+
+- The single 50 to 75 ms frames (GPU waits) in every walk.
+- The tree blockers: every tree cell of a drawn chunk is a box collider (`CellBlockers`), 26,000 at a wood's heart.
+- Denser woods: 30 per thousand is what the bar allows now. The next lever is the near trees themselves (the prefabs'
+  shadow casting, 4 to 6 ms at a heart; the impostors past 160 m, about 6 ms there even flat).
+- The sun's shadows now fade out under 7 degrees on every map (`SkyLight.LowSunShadows`): Andrew may want that only where
+  there are woods.
+- `TreeImpostors.ShadowFar` (256 m, J-091) is past the sun's 50 m shadow distance: the impostors past it cast into no
+  visible shadow (no cost measured at noon).

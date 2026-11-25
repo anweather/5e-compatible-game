@@ -286,6 +286,27 @@ namespace Chem.Tests
                 if (known.Water[q] != KnownChunk.Dry) Assert.That(known.Wood[q], Is.EqualTo(0));
         }
 
+        [Test, Explicit("places in the woods, for stills and walks")]
+        public void Places()
+        {
+            var m = map.Hills.Massif;
+            // Round the massif: where a wood stands highest on the foothills' way up (the tree line), by bearing.
+            for (int a = 0; a < 360; a += 15)
+            {
+                double ang = a * Math.PI / 180;
+                int best = -1, bx = 0, by = 0, bh = 0;
+                for (int r = m.Reach; r > m.Meadow; r -= 16)
+                {
+                    int x = m.CentreX + (int)Math.Round(r * Math.Cos(ang)), y = m.CentreY + (int)Math.Round(r * Math.Sin(ang));
+                    int h = map.Hills.At(x, y), d = forest.Density(x, y, h);
+                    if (d >= forest.Least && h > best)
+                        (best, bx, by, bh) = (h, x, y, d);
+                }
+                if (best > 0) TestContext.Out.WriteLine($"PLACES tree line at bearing {a}: ({bx}, {by}) land {best / 8} m, chance {bh}");
+            }
+            Assert.Pass();
+        }
+
         [Test]
         public void TheWoodsGolden()
         {
