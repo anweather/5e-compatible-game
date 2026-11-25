@@ -1,7 +1,7 @@
 Shader "Prototype/FarLand"
 {
     // The far ring (FarRing, docs/design/world-squares.md section 4): the known chunks' coarse land, a hills map's far land
-    // out to the horizon (FarRing.FarLand.cs, drawn instanced at each copy of the torus), the sea plane to the horizon and
+    // out to the horizon (FarRing.FarLand.cs, drawn at each copy of the torus), the sea plane to the horizon and
     // the far landmarks' stand-in meshes. The colour is in the vertices (linear), lit softly by the main light and the
     // ambient, no shadows. Everything takes the one air (Air.hlsl, docs/design/hills.md "One air"): toward the sky's
     // horizon on its bearing, by its distance from the eye. The far land pales toward the sky's colour past 3 km (_Dulls,
@@ -133,9 +133,11 @@ Shader "Prototype/FarLand"
             {
                 half3 n = normalize(input.normalWS);
                 Light light = GetMainLight();
-                half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);
                 half3 albedo = input.color.rgb;
-                half3 color = albedo * (light.color * diffuse + SampleSH(n));
+                // The land lit as URP's terrain lights it (Lambert and the ambient, no shadows), so it meets the chunk
+                // terrains in one colour (tools/handover.py); a landmark keeps its soft wrapped light.
+                half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);
+                half3 color = albedo * (light.color * saturate(dot(n, light.direction)) + SampleSH(n));
                 UNITY_BRANCH if (_NearClip > 0)
                 {
                     // A far mesh of land the chunk terrains and known meshes draw nearer (the hills' far land).

@@ -21,13 +21,11 @@ static const float AirGlowPower = 12.0;
 
 half AirSeen(float dist)
 {
-    UNITY_BRANCH if (_Air.w > 0.0)
-        return (half)saturate((_Air.w - dist) / max(_Air.w - _Air.z, 1e-3));
     float thick = dist * _Air.y;
     float seen = exp(-dist * _Air.x) * exp(-thick * thick);
-    UNITY_BRANCH if (_AirFar.y > 0.0)
-        seen *= 1.0 - smoothstep(_AirFar.x, _AirFar.y, dist);
-    return (half)seen;
+    if (_AirFar.y > 0.0) seen *= 1.0 - smoothstep(_AirFar.x, _AirFar.y, dist);
+    float faded = saturate((_Air.w - dist) / max(_Air.w - _Air.z, 1e-3));
+    return (half)(_Air.w > 0.0 ? faded : seen);
 }
 
 half3 AirToward(float3 toward)

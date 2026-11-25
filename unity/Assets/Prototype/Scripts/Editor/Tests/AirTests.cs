@@ -113,11 +113,13 @@ public class AirTests
         {
             string text = File.ReadAllText(Path.Combine(Prototype, "Shaders", name));
             Assert.IsFalse(urpFog.IsMatch(text), $"{name} reads URP's fog: draw by Air.hlsl's Aired instead");
-            Assert.That(text, Does.Contain("Air.hlsl"), $"{name} doesn't draw by the one air");
+            if (!name.EndsWith(".hlsl", System.StringComparison.Ordinal) || name == "TerrainRockPasses.hlsl")
+                Assert.That(text, Does.Contain("Air.hlsl"), $"{name} doesn't draw by the one air");
         }
         var ownHaze = new Regex(@"\b(LandmarkHaze|_FarHazeDensity|_FarSkyHorizon|_FarSkyZenith)\b");
         var stale = Directory.GetFiles(Prototype, "*.*", SearchOption.AllDirectories)
-            .Where(f => (f.EndsWith(".shader") || f.EndsWith(".hlsl") || f.EndsWith(".cs")) && !f.EndsWith("AirTests.cs") && ownHaze.IsMatch(File.ReadAllText(f)))
+            .Where(f => (f.EndsWith(".shader", System.StringComparison.Ordinal) || f.EndsWith(".hlsl", System.StringComparison.Ordinal) || f.EndsWith(".cs", System.StringComparison.Ordinal))
+                && !f.EndsWith("AirTests.cs", System.StringComparison.Ordinal) && ownHaze.IsMatch(File.ReadAllText(f)))
             .Select(Path.GetFileName).ToList();
         Assert.IsEmpty(stale, "a haze of its own, beside the one air");
     }

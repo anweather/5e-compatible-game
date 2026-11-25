@@ -267,11 +267,12 @@ public sealed partial class FarRing : MonoBehaviour
     FarMeshes.Palette palette = FarMeshes.Palette.Plain;
 
     // The known chunks' colours from what the near ground draws (#191): each biome's ground as the map's cells paint it,
-    // in the colours of the chunk terrains' own layers. Once, as the ring starts.
+    // in the colours of the chunk terrains' own layers. Once, as the ring starts. A hills map has no plan's biomes (its
+    // cells are all one biome's ground): its land is the grass layer's colour, its steep land the rock's.
     static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains)
     {
         var layers = terrains != null && terrains.template != null ? terrains.template.terrainLayers : null;
-        if (biomes == null || world == null || layers == null) return FarMeshes.Palette.Plain;
+        if (world == null || layers == null) return FarMeshes.Palette.Plain;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var colours = new Dictionary<string, Color>();
         foreach (string name in CellPaint.Layers)
@@ -283,9 +284,10 @@ public sealed partial class FarRing : MonoBehaviour
                     colours[name] = new Color(mean.r * tint.x, mean.g * tint.y, mean.b * tint.z);
                     break;
                 }
-        var palette = FarMeshes.Palette.Drawn(biomes.Grounds(world), colours);
+        var palette = FarMeshes.Palette.Drawn(biomes != null ? biomes.Grounds(world) : new Dictionary<string, float[]>(), colours);
         StartupTimeline.Mark("far ring colours");
-        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms");
+        var layersSaid = string.Join(", ", System.Linq.Enumerable.Select(colours, c => $"{c.Key} {c.Value.r:0.000},{c.Value.g:0.000},{c.Value.b:0.000}"));
+        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms: {layersSaid}; grass {palette.Grass}");
         return palette;
     }
 

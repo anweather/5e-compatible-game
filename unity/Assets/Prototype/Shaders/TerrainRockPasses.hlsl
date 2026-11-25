@@ -388,10 +388,8 @@ Varyings SplatmapVert(Attributes v)
         OUTPUT_SH4(Attributes.positionWS, o.normal.xyz, GetWorldSpaceNormalizeViewDir(Attributes.positionWS), o.vertexSH, o.probeOcclusion);
     #endif
 
+    // The air is worked out per pixel from the distance (SplatmapFinalColor, Air.hlsl), not URP's fog factor.
     half fogFactor = 0;
-    #if !defined(_FOG_FRAGMENT)
-        fogFactor = ComputeFogFactor(Attributes.positionCS.z);
-    #endif
 
     #ifdef _ADDITIONAL_LIGHTS_VERTEX
         o.fogFactorAndVertexLight.x = fogFactor;

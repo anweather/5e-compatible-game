@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Chem;
 using UnityEngine;
@@ -8,8 +7,8 @@ using UnityEngine.Rendering;
 // the horizon, so its air can be clear for kilometres (the boat game's one air, B166/B167) and the massif stands on
 // land, not over a band of haze. Every known chunk of the map (ChunkGen.Know, as the known meshes are made) gives its
 // heights every FarStep cells, painted as the known meshes paint them (FarMeshes.LandColour, the high massif's rock
-// too), sunk FarSink under them; the map is cut into tiles, and each tile is drawn instanced at every copy of the torus
-// within the air's reach. It isn't drawn nearer than the known ring's edge (FarLand.shader's _NearClip): there the
+// too), sunk FarSink under them; the map is cut into tiles, and each tile is drawn at every copy of the torus within
+// the air's reach (an object a copy: an instanced draw's variant is stripped from a player, as no material asks for it). It isn't drawn nearer than the known ring's edge (FarLand.shader's _NearClip): there the
 // chunk terrains and known meshes are the land. Made on a worker once the far ring is up. All view: nothing shared
 // reads it.
 public sealed partial class FarRing
@@ -32,7 +31,9 @@ public sealed partial class FarRing
     Material farMaterial;
     bool hasFarLand;
     float periodX, periodZ, tileX, tileZ;
-    readonly List<Matrix4x4> farCopies = new();
+    GameObject[] farCopies;
+    // Copies of each tile drawn at most, each way from the nearest: two maps' widths (20 km) past the air's reach.
+    const int Copies = 2;
     System.Func<int, int, float> rockAt;
 
     /// <summary>
@@ -90,10 +91,19 @@ public sealed partial class FarRing
         var h = new float[gw * gh];
         var water = new byte[gw * gh];
         var biome = new string[gw * gh];
+        // Every known sample's height too (8 cells apart), for the normals: lit and painted as the known meshes are.
+        int fw = gen.CellsW / KnownChunk.Step, fh = gen.CellsH / KnownChunk.Step, fine = KnownChunk.Side - 1;
+        var f = new float[fw * fh];
         for (int cy = 0; cy < gen.ChunksH; cy++)
             for (int cx = 0; cx < gen.ChunksW; cx++)
             {
                 var k = gen.Know(cx, cy);
+                for (int j = 0; j < fine; j++)
+                    for (int i = 0; i < fine; i++)
+                    {
+                        int q = j * KnownChunk.Side + i;
+                        f[(cy * fine + j) * fw + cx * fine + i] = k.Heights[q] * unit - (k.Water[q] is KnownChunk.Lake or KnownChunk.River ? 0.4f : 0f);
+                    }
                 for (int j = 0; j < per; j++)
                     for (int i = 0; i < per; i++)
                     {
@@ -104,6 +114,8 @@ public sealed partial class FarRing
                     }
             }
         float H(int i, int j) => h[(j % gh + gh) % gh * gw + (i % gw + gw) % gw];
+        float F(int i, int j) => f[(j % fh + fh) % fh * fw + (i % fw + fw) % fw];
+        float fineStep = KnownChunk.Step * cell;
         int tw = TileW / FarStep, th = TileH / FarStep, tilesX = gen.CellsW / TileW, tilesY = gen.CellsH / TileH;
         var tiles = new FarMeshes.Data[tilesX * tilesY];
         for (int ty = 0; ty < tilesY; ty++)
@@ -114,7 +126,8 @@ public sealed partial class FarRing
                     for (int i = 0; i <= tw; i++)
                     {
                         int gi = tx * tw + i, gj = ty * th + j, g = gj % gh * gw + gi % gw;
-                        float dx = (H(gi + 1, gj) - H(gi - 1, gj)) / (2f * step), dz = (H(gi, gj - 1) - H(gi, gj + 1)) / (2f * step);
+                        int fi = gi * every, fj = gj * every;
+                        float dx = (F(fi + 1, fj) - F(fi - 1, fj)) / (2f * fineStep), dz = (F(fi, fj - 1) - F(fi, fj + 1)) / (2f * fineStep);
                         var normal = new Vector3(-dx, 1f, -dz).normalized;
                         int x = gi % gw * FarStep, y = gj % gh * FarStep;
                         var c = FarMeshes.LandColour(colours.Of(biome[g]), colours.Rock, normal, water[g], x, y, rockAt?.Invoke(x, y) ?? 0f);
@@ -131,7 +144,8 @@ public sealed partial class FarRing
         return tiles;
     }
 
-    // The worker's tiles to Unity when they're done; then, every frame, each tile drawn at its copies within the air's reach.
+    // The worker's tiles to Unity when they're done; then, every frame, each tile's copies within the air's reach shown
+    // where they stand (the copy of the tile nearest the eye and the copies round it, up to Copies a side each way).
     void UpdateFarLand()
     {
         if (farLandWork != null && farLandWork.IsCompleted) FinishFarLand();
@@ -140,32 +154,25 @@ public sealed partial class FarRing
         var cam = Camera.main;
         if (cam == null) return;
         var eye = cam.transform.position;
-        var rp = new RenderParams(farMaterial)
-        {
-            layer = Layer,
-            shadowCastingMode = ShadowCastingMode.Off,
-            receiveShadows = false,
-            lightProbeUsage = LightProbeUsage.Off,
-            reflectionProbeUsage = ReflectionProbeUsage.Off,
-            worldBounds = new Bounds(new Vector3(eye.x, 0f, eye.z), new Vector3(2f * HillsFarTo + 2f * tileX, 4000f, 2f * HillsFarTo + 2f * tileZ)),
-        };
+        int side = 2 * Copies + 1;
         for (int t = 0; t < farTiles.Length; t++)
         {
-            farCopies.Clear();
             var c = farCorners[t];
-            // The copy of the tile's middle nearest the eye, then the copies round it within reach.
             float mx = c.x + tileX * 0.5f, mz = c.y - tileZ * 0.5f;
             mx += Mathf.Round((eye.x - mx) / periodX) * periodX;
             mz += Mathf.Round((eye.z - mz) / periodZ) * periodZ;
-            for (int a = -2; a <= 2; a++)
-                for (int b = -2; b <= 2; b++)
+            for (int a = -Copies; a <= Copies; a++)
+                for (int b = -Copies; b <= Copies; b++)
                 {
+                    var go = farCopies[(t * side + a + Copies) * side + b + Copies];
                     float x = mx + a * periodX, z = mz + b * periodZ;
                     float nx = Mathf.Max(0f, Mathf.Abs(eye.x - x) - tileX * 0.5f), nz = Mathf.Max(0f, Mathf.Abs(eye.z - z) - tileZ * 0.5f);
-                    if (nx * nx + nz * nz > HillsFarTo * HillsFarTo) continue;
-                    farCopies.Add(Matrix4x4.Translate(new Vector3(x - tileX * 0.5f, 0f, z + tileZ * 0.5f)));
+                    bool show = nx * nx + nz * nz <= HillsFarTo * HillsFarTo;
+                    if (go.activeSelf != show) go.SetActive(show);
+                    if (!show) continue;
+                    var at = new Vector3(x - tileX * 0.5f, 0f, z + tileZ * 0.5f);
+                    if ((go.transform.position - at).sqrMagnitude > 1f) go.transform.position = at;
                 }
-            if (farCopies.Count > 0) Graphics.RenderMeshInstanced(rp, farTiles[t], 0, farCopies);
         }
     }
 
@@ -193,8 +200,19 @@ public sealed partial class FarRing
             farCorners[t] = new Vector2(l.OriginX + (x + l.U0) * l.CellSize, l.OriginZ + (l.V0 + 1 - y) * l.CellSize);
         }
         FarLandVertices = vertices;
-        farMaterial = new Material(landMaterial) { name = "Far land", enableInstancing = true, renderQueue = (int)RenderQueue.AlphaTest };
+        farMaterial = new Material(landMaterial) { name = "Far land", renderQueue = (int)RenderQueue.AlphaTest };
         farMaterial.SetFloat(DullsId, FarDulls);
+        int side = 2 * Copies + 1;
+        farCopies = new GameObject[tiles.Length * side * side];
+        for (int i = 0; i < farCopies.Length; i++)
+        {
+            var go = new GameObject($"Far land {i / (side * side)} copy {i % (side * side)}");
+            go.transform.SetParent(transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = farTiles[i / (side * side)];
+            Quiet(go.AddComponent<MeshRenderer>(), farMaterial);
+            go.SetActive(false);
+            farCopies[i] = go;
+        }
         Debug.Log($"FAR RING: the far land, {tiles.Length} tiles, {vertices} vertices ({ms:0} ms on a worker, {timer.Elapsed.TotalMilliseconds:0} ms to hand to Unity)");
     }
 
