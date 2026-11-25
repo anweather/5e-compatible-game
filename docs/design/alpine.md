@@ -74,7 +74,8 @@ the massif a chunk is what it was (the spawn's and the east seam's road goldens 
 The known ring ends about 670 m out (its haze 98% there), so from the spawn, 6.5 km away, the known chunks never reach
 the massif. `FarRing.Massif.cs` draws the massif whole as one mesh: its land every 16 cells (24 m) wherever the massif
 rises 15 m or more, rock where it's steep and high on the ring (from 31 m over the meadow, all rock by 112 m), with a far
-landmark's own thin haze (FarLand.shader; 90% at 12 km), so its mountains stand on the horizon from anywhere. It's made on
+landmark's own thin haze (FarLand.shader; 90% at 12 km), so its mountains stand on the horizon from anywhere. (Since
+"One air" in hills.md: the whole map is drawn past the known ring and the massif with it, in the one air.) It's made on
 a worker once the far ring is up. It stands 3 m under the land and isn't drawn nearer than the known ring's edge (the shader's new
 `_NearClip`), so inside the known ring the chunk terrains and known meshes are the land and it never shows through
 them. On the torus it stands at the copy nearest the camera.

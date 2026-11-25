@@ -239,6 +239,90 @@ Stills (800 px): `~/5e-logs/hills/shots/spawn.jpg`, `seam.jpg` (past both seams 
   enough (1 unit a cell at most along any road) that no cut, switchback or bridge is needed. Steeper land (the
   mountains, step 4) will need a grade limit along a road, a cut through the crest or switchbacks: a choice then.
 
+## One air (the far view, 2026-11-24)
+
+Andrew: "the haze in the mountains ... the horizon haze and then the mountains aren't lining up". On the hills the land
+stopped at the known ring (672 m), a pale band lay past it and the massif stood beyond with a thin haze of its own. Three
+causes, found on the way:
+
+- **Two hazes.** The land took URP's exponential-squared fog (98% at the known ring's edge); the massif had its own,
+  about 1% at 670 m, cut off hard there (`_NearClip`), hazing to a sky colour copied a frame late. Two writers set the
+  fog colour each frame (SkyLight, then CloudSky).
+- **No fog at all in a player.** A player keeps only the fog modes of the scenes it's built from (the yard's linear),
+  so URP's exponential-squared fog drew nothing on a generated map in a player: the nine showed no haze and its sea
+  plane past the known ring; the Editor showed the haze.
+- **Stand-in colours.** A hills map has no plan's biomes (`BiomeGround.Of` is null), so the far ring painted with
+  `Palette.Plain`, a pale grass: the pale band was the known meshes' colour, not haze.
+
+The pattern, from the boat game (its B166/B167, `Air.cs`, `Air.hlsl`, `AirInPlay`, I16's hand-over test):
+
+- **One model.** `Air` (C#) and `Shaders/Air.hlsl` are the same sums: what's left of a shape at a distance from the eye
+  is clear air (exponential, `_Air.x`) times the weather's gaussian (`_Air.y`), or a linear fade (the valley, under
+  water); it goes toward the sky's horizon on its bearing (`AirToward`: the skybox's horizon colour and the sun's glow,
+  as Punchy's Sky.hlsl draws them at the horizon line). `AirTests` reads the shader's sums back from a compute shader
+  and holds them to the C#'s.
+- **One writer.** `AirInPlay` (late, order 1100) makes the air each frame from the weather (SkyLight's rain and fog),
+  the sky (CloudSky's horizon and sun) and the map's dials (`FarRing.AirDials`), and alone writes the scene's fog and
+  the shaders' `_Air*`. URP's fog, for the things drawn with URP's own shaders, is linear (the mode a player keeps),
+  fitted to the air at 200 and 800 m. `AirTests` fails if another script writes the fog or a land, water or far-ring
+  shader reads URP's fog.
+- **Every land shader by it.** FarLand (known meshes, far land, sea plane), TerrainRock, Ocean, CellWater and
+  TreeImpostor draw by `Aired`; the massif's own haze is gone.
+- **Land under the air.** Clear air shows land far off, so a hills map now draws its whole map past the known ring
+  (`FarRing.FarLand.cs`): every known chunk's heights every 16 cells (normals and paint from every 8), as the known
+  meshes paint them (now with the massif's high rock too), 20 tiles of 159,140 vertices in all, made on a worker in
+  about 850 ms at load, each tile an object at each copy of the torus within 14.5 km. It's sunk 3 m and not drawn
+  nearer than the known ring's edge. It replaces the massif's own mesh.
+- **The hills' air.** Clear air reaches 15 km (`FarRing.HillsReach`), its gaussian 98% at 25 km, rain closes it to
+  1.5 km, fog to 90 m; all of it gives way between 12.5 and 14.5 km. So 4% at the known ring's edge, about 30% at 4 km,
+  80% at 12 km (the massif's far side still reads). Past 3 km the far land pales toward the sky at its own brightness
+  (`DulledFar`, the boat game's I17).
+- **Maps with no far land** (the nine, the world maps) keep their air (98% at the known ring's edge), now drawn in a
+  player too. Their far landmarks still see through it past the land (`LandmarkSeen` in FarLand.shader), since no land
+  is drawn under that air; that goes when those maps draw far land.
+
+### Results (M2 Pro, development player, 1920 x 1080; scripts and logs `~/5e-logs/haze/`)
+
+Walks (`-fps-probe -perf-offscreen -perf-memory`, seam walk `e2,s2,w2,n2`), mean / p95 ms:
+
+| Walk | before (b0, x1) | after (a1, x3) |
+|---|---|---|
+| stand at the spawn (30 s) | 9.94 / 12.06 | 10.07 / 12.23, 6.86 / 7.45, 6.86 / 7.43 |
+| seam walk (150 s) | 9.81 / 12.12 | 9.91 / 12.34, 6.79 / 8.32, 6.79 / 8.31 |
+| road walk (480 s) | 9.92 / 12.25 | 8.36 / 11.99, 6.88 / 8.17, 6.92 / 8.42 |
+| pass walk (480 s) | 9.41 / 12.47 | 6.59 / 8.79, 6.59 / 8.81, 6.59 / 8.77 |
+| river walk (480 s) | 8.36 / 12.02 | 6.04 / 9.53, 6.03 / 9.38, 6.04 / 9.30 |
+
+0 exceptions in every run (the 6 errors are the Metal pipeline errors every map has); no chunk made on a read during
+any walk (the counts at measuring's start and end are equal). Halfway through the first road walk every frame got
+about 3 ms cheaper and stayed so (the Mac, not the change: the first stand and seam walk match the before runs); the
+bar holds either way. Peak RSS 1.52 to 2.01 GB, as before.
+
+Hand-overs (`-perf-scenario handover`, `tools/handover.py`: the same eye, the wizard one chunk either side of each
+hand-over, the mean colour of a box round a target, the step as a share of its brightness; four targets):
+
+| | known meshes to far land | chunk terrains to known meshes |
+|---|---|---|
+| clear | 0.2 to 2.2% | 0.2 to 7.0% |
+| overcast | 0.3 to 1.5% | 0.2 to 6.2% |
+| dusk (17:54) | 0.7 to 10.4% | 1.7 to 18.1% |
+
+The known-to-far-land step is under the boat game's 5% but at dusk on one target (3 to 4 levels of 255 at a brightness
+of 30). The terrain-to-known step was there before, hidden by the 98% haze: the terrain draws a little bluer and duller
+than its layers' mean colour (3 to 10 levels), and at dusk the terrain's shadows darken it where the known meshes have
+none.
+
+Stills (800 px, before and after): `~/5e-logs/haze/shots/{before,after}-*.jpg`: the massif from the grassland
+(`massif2` 2 km past the ring's crest, `massif4` 4 km, `massif5` the map's far corner, 5 km: 8 km isn't on this torus),
+`horizon`, each clear, overcast and dusk; `high-clear` (60 m up in the meadow); the nine and the valley (`nine-*`,
+`nine-wide*` 80 m up, `valley-*`). The band is gone: the land runs on to the massif in one air. The valley is unchanged;
+the nine is now hazed in a player as it always was in the Editor (98% at its known ring's edge).
+
+Left: the terrain-to-known step (match the known meshes' paint to the terrain as drawn, or the terrain's distant look
+to its layers); shadows on the far tiers at dusk; far land for the nine and the world maps, so their air can clear too
+and the landmarks' see-through can go; roads, rivers and lakes on the far land (coarse: a river narrower than 16 cells
+is missed).
+
 ## The alpine massif (step 4)
 
 The mountains in the middle, their passes and foothills, the roads' grade limit, the far massif and their results are in
