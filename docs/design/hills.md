@@ -28,7 +28,7 @@ This is step 1: a generated map of nothing but grass on rolling hills, the Wide 
   steep enough to be bare dirt. Roads (below) level and bank it where they run. Golden: chunk (54, 45) hashes `4ceac909` (`HillsTests`).
 - **Spawn** is cell (6880, 5601), on the main road 32 cells (48 m) from the east seam and 159 from the south one (it was
   (6880, 5728) before roads).
-- Selectable with `-map hills-12x10`; the nine stays the default start map.
+- The map a player loads into with none picked (Andrew 2026-11-25: "Let's make the sparse island the default thing you load into"; `SoloMap.Start`, the nine before it, then the valley for a copy without either). `-map hills-12x10` picks it too; scripted runs (`-fps-probe`, `-playtest`) stay on the valley.
 
 ## The torus in the core
 

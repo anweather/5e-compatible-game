@@ -583,7 +583,7 @@ public partial class ChemGrid : MonoBehaviour
 
     // The map this copy starts on, its own pick: the host's map when it hosts. A player takes -map <id>; the open Editor,
     // which a shell can't pass a flag to, reads Temp/map (a probe on a second map). One picked in play comes first; a player build
-    // with no -map starts on the map its player last picked, else the nine (SoloMap.Start, #216).
+    // with no -map starts on the map its player last picked, else the hills (SoloMap.Start, #216).
     static string OwnMap
     {
         get
