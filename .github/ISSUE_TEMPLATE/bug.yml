@@ -1,0 +1,60 @@
+name: Bug report
+description: Something went wrong in the game. Leave out anything personal (your name, your folders, your saves).
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What you saw, heard or got.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you are playing (as on the releases page), and the commit if you know it.
+      placeholder: "alpha-0.1.13 (a1b2c3d)"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen again
+      description: As far as you know them. "Once, can't say how" is a fine answer.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: A picture, a film or a log
+      description: Drag files here. A clip shows what a still can't; Player.log helps (strip your user name from its paths).
+    validations:
+      required: false
+  - type: textarea
+    id: telemetry
+    attributes:
+      label: The report's telemetry
+      description: Filled by the report tool from a report bundle's report.json (docs/observability.md; the game has no report key yet). Leave it empty when filing by hand.
+      render: json
+    validations:
+      required: false
+  - type: input
+    id: discovery-cost
+    attributes:
+      label: Discovery cost
+      description: For an agent that found it, what finding it cost (the agent-cost skills' Discovery-Cost line). Leave it empty otherwise.
+      placeholder: "Discovery-Cost: 180k tokens, 25 min, playtest 2026-11-24"
+    validations:
+      required: false

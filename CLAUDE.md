@@ -89,6 +89,8 @@ stable), not something to commit or keep reverting.
 
 ## Commands
 
+The andrew-claude-kit skills read their project settings from `docs/KIT_SETTINGS.md` (D21).
+
 ```sh
 # C# core (what CI's "quality" workflow runs); the Editor isn't needed
 dotnet build core -c Release -warnaserror   # on a many-core Mac add -m:1: a parallel build can turn Rules.Mcp's S3776 into an error
@@ -98,6 +100,7 @@ dotnet test core --filter TestCategory=Unit    # the quick fixtures, in seconds 
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
 tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%); jscpd pinned in its lockfile
 node --test tools/chat-report.test.mjs        # the chat report, on real records
+node tools/lint/lint.mjs                      # the kit's lint: dead tools/ and docs/ paths fail; comments only warn until #226
 
 # Sandbox (CI's "sandbox" workflow)
 cd sandbox && npm ci && npm run typecheck && npm test && npm run build

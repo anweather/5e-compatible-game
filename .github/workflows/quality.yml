@@ -1,7 +1,8 @@
 name: quality
 
-# C# quality gate (docs/QUALITY.md). The duplicate-code job is duplicates.yml (it scans the sandbox too, so it triggers
-# on sandbox/src; these jobs don't). The sandbox's own tests run in sandbox.yml.
+# C# quality gate (docs/QUALITY.md), and the kit's lint as a report that never fails the job (D21). The duplicate-code
+# job is duplicates.yml (it scans the sandbox too, so it triggers on sandbox/src; these jobs don't).
+# The sandbox's own tests run in sandbox.yml.
 
 on:
   push:
@@ -14,6 +15,7 @@ on:
       - "rules/**"
       - ".editorconfig"
       - ".github/workflows/quality.yml"
+      - "tools/lint/**"
   pull_request:
     paths:
       - "core/**"
@@ -23,6 +25,7 @@ on:
       - "rules/**"
       - ".editorconfig"
       - ".github/workflows/quality.yml"
+      - "tools/lint/**"
 
 jobs:
   build-and-test:
@@ -55,3 +58,11 @@ jobs:
             core/**/*.csproj
             core/Directory.Build.props
       - run: dotnet format core --verify-no-changes --verbosity diagnostic
+
+  lint:
+    name: The kit's lint (prints, never fails)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - run: node tools/lint/lint.mjs
+        continue-on-error: true

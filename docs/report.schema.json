@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit-report/1",
+  "title": "An in-product report bundle's report.json",
+  "type": "object",
+  "required": ["schema", "id", "made", "product", "reporter", "where", "log", "files"],
+  "properties": {
+    "schema": { "const": "kit-report/1" },
+    "id": { "type": "string", "description": "yyyyMMdd-HHmmss and four letters, also the bundle folder's name after report-" },
+    "made": { "type": "string", "description": "UTC time, ISO 8601" },
+    "product": {
+      "type": "object",
+      "required": ["name", "version", "commit"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "commit": { "type": "string" },
+        "build": { "type": "string", "description": "release, test, dev, editor, server" },
+        "platform": { "type": "string" }
+      }
+    },
+    "reporter": {
+      "type": "object",
+      "properties": {
+        "said": { "type": "string", "description": "what the reporter typed, if anything" },
+        "role": { "type": "string", "description": "player, tester, user, agent, automatic" }
+      }
+    },
+    "where": {
+      "type": "object",
+      "description": "the snapshot: one object a provider, named by its module, its fields the project's own",
+      "additionalProperties": { "type": "object" }
+    },
+    "session": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string", "description": "host, client, solo, server" },
+        "peers": { "type": "integer" }
+      }
+    },
+    "log": {
+      "type": "object",
+      "required": ["file", "seconds"],
+      "properties": {
+        "file": { "type": "string", "description": "log.jsonl: one JSON object a line, {t, level, src, msg, ...}" },
+        "seconds": { "type": "number" },
+        "lines": { "type": "integer" }
+      }
+    },
+    "spikes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ms", "budgetMs", "cause"],
+        "properties": {
+          "kind": { "enum": ["frame", "request", "load"] },
+          "at": { "type": "string" },
+          "ms": { "type": "number" },
+          "budgetMs": { "type": "number" },
+          "cause": { "type": "string", "description": "the labelled part that took the time, or unknown" }
+        }
+      }
+    },
+    "requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "the correlation id, the same in the client's and the server's log" },
+          "method": { "type": "string" },
+          "route": { "type": "string", "description": "the route's pattern, not the full URL with its query" },
+          "status": { "type": "integer" },
+          "ms": { "type": "number" }
+        }
+      }
+    },
+    "files": { "type": "array", "items": { "type": "string" }, "description": "the bundle's other files: picture.png, log.jsonl, ..." },
+    "cost": { "type": ["string", "null"], "description": "for a report an agent made: its Discovery-Cost line" }
+  }
+}
