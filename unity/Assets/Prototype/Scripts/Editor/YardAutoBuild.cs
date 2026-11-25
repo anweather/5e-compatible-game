@@ -13,7 +13,7 @@ using UnityEngine.SceneManagement;
 // scene deleted (a pull that removes it doesn't always reload scripts).
 // It also rebuilds a yard whose network ids aren't the stable ones
 // (StableNetworkIds: one built before them), or other machines can't join it,
-// and one built before the species were rows, whose villages name no folk.
+// one built before the species were rows, whose villages name no folk, and one whose grass is the pack's heavy tufts.
 [InitializeOnLoad]
 public static class YardAutoBuild
 {
@@ -49,9 +49,11 @@ public static class YardAutoBuild
         {
             var unstable = ChemYardBuilder.UnstableNetworkIds();
             bool assetFolk = File.ReadAllText(ScenePath).Contains("residents: {fileID", System.StringComparison.Ordinal);
-            if (unstable.Count == 0 && !assetFolk) return;
-            why = assetFolk ? "The yard's villages name their folk by asset, from before rules/fauna.json"
-                : $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
+            bool heavyGrass = LightTufts.GroundHasPackTufts() || LightTufts.GroundGrassCastsShadows();
+            if (unstable.Count == 0 && !assetFolk && !heavyGrass) return;
+            if (assetFolk) why = "The yard's villages name their folk by asset, from before rules/fauna.json";
+            else if (heavyGrass) why = "The ground's grass is the terrain pack's own heavy tufts or casts shadows, from before LightTufts";
+            else why = $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
         }
         if (AssetPackRestore.Busy) return; // Finished calls back when it's done
         if (!AssetPackRestore.AllPresent)

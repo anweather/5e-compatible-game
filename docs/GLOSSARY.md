@@ -60,6 +60,34 @@ touch them.
 : The world's map from chunk coordinates to chunks
   (`World.Chunks`). Nothing outside it assumes the world has a size.
 
+**Layer**
+: A sheet of terrain with its own cells, numbered by the host game: the surface 0, then caves, sky islands. Two
+  layers can hold cells at the same x, y; they don't touch (links between layers come later). A chunk's key is
+  (layer, cx, cy) (D20). *Avoid:* level (a row's level), floor, tier (the drawn tier).
+
+**Open world**
+: A world with no bounds: chunks keyed by (layer, cx, cy), each made only when it's **filled** (D20). Punchy's
+  chemistry. Our maps are **bounded** worlds.
+
+**Fill** (a chunk)
+: Making an open world's chunk from the host game's ground, as a `FillChunk` command on a tick, so every peer makes
+  it the same. A chunk not filled is a wall to its neighbours.
+
+**Chunk key**
+: An open world's address for a chunk, `ChunkKey(Layer, X, Y)`: plain ints, negative allowed, cells to chunks by floor
+  division. Keys sort by layer, then row, then column, the order every walk over an open world's chunks takes. Inside
+  the `World`, a layer's cells are a run of rows (`ChunkKey.Row(layer, y)`), so a cast or a read on layer 1 names its
+  row, not its y.
+
+**Ground** (an open world's chunk)
+: What the host game says a chunk is before play, cell by cell: a terrain, water and a height step (`ChunkGround`),
+  sampled on the host only and sent in its **fill**. A chunk's changes are against its ground. *Not* the **ground
+  pack** (a map's drawn detail).
+
+**Open plan**
+: The host's plan for an open world each tick (`OpenWorldPlanner`): from where the characters are (`IOpenGround`, by
+  layer), the chunks to **fill** (a character's **reach** and one ring more, nearest first) and the switches.
+
 **Active chunk / inactive chunk**
 : An active chunk is simulated every tick. An inactive chunk is held
   exactly as it is: nothing in it changes, and its active neighbours' fire,
@@ -161,11 +189,34 @@ touch them.
   whose type `world/horizon.json` names. Its **seenFrom** is how far off it shows, a radius in chunks (not a square),
   at least `know` + 2.
 
+**The air / far land**
+: **The air** is the view's haze, the one model of what's left of a shape at a distance and the colour the rest goes
+  to (the sky's horizon on its bearing): `Air` and `Air.hlsl`, written once a frame by `AirInPlay` alone
+  (docs/design/hills.md "One air"). Not the element air (Chemistry). The **far land** is a hills map drawn whole and
+  coarse past the known ring to the horizon (`FarRing.FarLand.cs`), so its air can be clear for kilometres.
+
 **Tree impostor** *(a trial, off by default: J-090)*
 : A tree drawn far off as one camera-facing quad coloured from an atlas of the tree baked from 12 × 12 directions over
   the upper hemisphere (an **octahedral impostor**: `TreeImpostorBaker`, `Prototype/TreeImpostor`, `TreeImpostors`).
   View only: the trees it draws are the terrain's where a terrain is made, else a tree a tree cell
   (`docs/design/tree-impostors.md`).
+
+**Wood**
+: A patch of forest on a hills map (`HillsForest`, map.json's `"forest"`): where its tiling noise is over `wood`, a
+  cell's chance of a tree rises from `least` at the wood's edge to `most` per thousand in its heart, thinning up to the
+  tree line; made in the generator, cell by cell, like the roads. Far off a wood is its known samples' `Wood` cover,
+  painted darker (`FarMeshes.Palette.Wooded`).
+
+**Tree budget**
+: The most trees `TreeImpostors` draws round the camera: as their prefab (`TreeBudget.MostNear`) and every way, impostors
+  too (`MostAround`). Where the forest is denser the prefabs and the impostors draw to a shorter distance so about that
+  many are drawn, never nearer than a floor (60 m prefabs, 400 m impostors); where it's sparse (the nine) they draw as far
+  as ever. The forest is as generated: only how far each way of drawing it goes changes.
+
+**Flat impostor**
+: A tree impostor far enough off (past `TreeImpostors.FlatFrom`, 100 m) that it keeps its quad's own depth instead of
+  working out each pixel's: the GPU then tests depth before shading it, so in a dense wood the trees hidden behind nearer
+  ones cost next to nothing (the `_IMPOSTOR_FLAT` variant of Prototype/TreeImpostor, no shadow map read either).
 
 **Tree tiers** *(proposed)*
 : How far out each way of drawing a tree goes: the **full mesh** near (within 60 m in the trial), the **impostor**
@@ -188,6 +239,24 @@ touch them.
   walking off one side comes on at the other, and land, noise and distances are taken modulo its width (generator 6).
   The **seam** is where the two edges meet; nothing about the land marks it. Its north and south rows are **wall
   rows**, an ice row and a desert row the plan fills with `ice-wall` and `dune-sea` (the 12 × 10 world).
+  A **torus** (`"wrap": "torus"`, `PlanWrap.Torus`) wraps north-south too: it has two seams, an **east seam** (x = 0)
+  and a **south seam** (y = 0), and no wall rows (the hills, `world/maps/hills-12x10`).
+
+**Hills map / rolling hills**
+: A generated map of nothing but grass on gentle **rolling hills** (map.json's generated `"hills"`, `HillsLand`): no
+  plan squares, no pinned valley, no sea, water, villages, trees or things; roads where its map.json asks (**hills
+  roads**). Its land is a sum of a few octaves of integer value noise whose lattices divide the map's size, so it tiles
+  round a torus. The first rung of the sparse world (`docs/design/hills.md`): proven stable at 60 FPS before roads,
+  forest and other biomes are added to it.
+
+**Hills roads (main road, lesser road, hub, arm, road slot)**
+: A hills map's roads, made in the generator from map.json alone (`HillsRoads`, `docs/design/hills.md` "Roads"), so
+  every peer, save and late joiner has them with no shared state and nothing is laid at load. **Main roads** run the
+  whole way round the torus along the rows and columns of world squares map.json names; **lesser roads** join every
+  other world square to them. Each world square has a **hub** (a seeded point inside it, where its roads meet); a road
+  crosses a side of a world square at a **road slot**, one of the side's 9 chunks (not the corners), the same seen from
+  both squares; an **arm** is a road's curve from a road slot to its square's hub. A cell near an arm's line is road
+  (dirt), levelled across to the land at the line, with banks leaning back to the hills.
 
 **Meet**
 : Where a generated map's land comes round to a pinned map's own (the valley's) outside its rim: over at least 90 cells,
@@ -211,6 +280,35 @@ touch them.
 : High ground in a generated map shaped as mountains, not one cap (`ChunkGen.Massif`): land more than 60 m up is
   ranges, the saddles between them and shoulders on their slopes. The **grain** is the way a world's ranges run, a
   direction from its seed. *Not* a biome's own relief.
+
+**Alpine massif** (a hills map's)
+: The mountains in the middle of a hills map (`HillsMassif`, map.json's `"hills"` `"massif"`, docs/design/alpine.md):
+  the **alpine meadow** (a high plateau of grass inside it), the **ring** of mountains round the meadow, the
+  **mountain passes** through the ring (a valley along each main road where it crosses, its **col** at the crest) and
+  the **foothills** that carry the land down from the ring's foot to the rolling hills. *Not* a plan map's **massif**
+  (above), and a mountain pass is *not* the dragon's **pass**.
+
+**Gorge** (a massif's)
+: The cut through a hills massif's ring that its rivers leave the meadow by (`HillsMassif.SetGorge`): from the meadow's
+  lowest point out the way farthest from every pass, its floor a little over that point (the meadow lake's level), then
+  falling past the crest. *Not* a **mountain pass** (a road's).
+
+**Drainage** (a hills map's rivers, `HillsRivers`)
+: Worked out once on a coarse **grid** of the land (every 16 cells): the **fill level** of each node (priority-flood:
+  no pit left), its **flow line** (the neighbour it drains to, D8) and its **catchment** (the nodes draining through
+  it). A **spring** starts a river; a filled depression on its way big enough is a **lake** at its fill level (it
+  spills on), a smaller one the river cuts through; the first big enough past the massif is its **end lake**, filled
+  from its hollow and standing under its spill. A road over a river is a **ford** (the road comes down to the water at
+  its grade); over a lake, a **causeway** a land unit over the water.
+
+**Rock / scree** (on a hills map)
+: A hills cell's ground by its slope (`ChunkGen.HillsRock`, `HillsScree`, in land units to a neighbour): bare rock
+  (`rock`, `'^'` in a chunk's cells) where it's steep, **scree** below that (bare `dirt`, `':'`, so it's told from a
+  road's `'.'`), grass on gentler land.
+
+**Grade limit**
+: The steepest a hills map's road climbs, in percent (map.json's `"roads"` `"grade"`, 12): an arm whose land is steeper
+  is **graded**, cut and filled to a profile within it (`HillsRoads.Grade`). *Not* a switchback (none are built).
 
 **Spawn point**
 : Where a player may start in a generated map, one per world square below the peaks (`WorldPlan.Spawns`, in the plan
@@ -258,11 +356,15 @@ touch them.
   Land) so every peer has the same integers; only the water reads it, so
   water runs down a hillside (`World.SetLand`).
 
-**Soak, damp**
-: Thin water on open ground **soaks** in (and dries up) a unit at a time,
+**Soak, damp, seep**
+: Water on open ground **soaks** in (and dries up) a unit at a time,
   at its terrain's rate (`soakEvery`); ground it soaked into is **damp**
-  for a while (`Cell.DampUntil`) and soaks more slowly, as in rain. Deep
-  water (lakes, the river, the sea, a filled pit) doesn't soak.
+  for a while (`Cell.DampUntil`) and soaks more slowly, as in rain. Deeper
+  water doesn't soak, but in dry weather it **seeps** away, `sim.water.seep`
+  times slower than a puddle dries (a hollow the rain ran into drains),
+  unless its bed holds it (lakes, the river, the sea, a filled pit: ground
+  that doesn't soak), and nor do the cells beside those. Wet grass slows walkers (`soak.slows`); a path
+  (dirt) never does, and rain never churns it to mud (water poured on it does).
 
 **Shore map**
 : Over the sea and out past the terrain, the way to the nearest land and
@@ -907,6 +1009,29 @@ that long, and doesn't march.
 **Late join**
 : A peer joining a running session: today it replays every tick batch
   from tick 0 (`Timeline`); per-chunk snapshots are planned.
+
+**Lockstep session**
+: The core's lockstep (D19, `Chem.Lockstep`): one `LockstepSession` a
+  process, host, client or solo, over a **transport** (bytes between
+  peers: NGO, NfE, or the **loopback**, N peers in one process for tests
+  and solo) and the game's world. It stamps, sends and runs tick batches,
+  checks hash windows and serves joiners by snapshot.
+
+**Channel**
+: One kind of command a lockstep session carries, registered by name
+  (`LockstepChannel`): casts, effects, chunks, defense, combos, dragon,
+  course, strikes, room. Every peer registers the same, in the same
+  order; a game registers only the ones it has.
+
+**Hello**
+: The host's first message to a peer that connects: the protocol, the
+  base rules' fingerprint, the map, the start and the channels. The peer
+  checks it before it asks to join.
+
+**Hash window**
+: The ticks the checksum's cell hash is spread over, a slice a tick
+  (`RollingHash`; 30 ticks in the valley). At its end the host sends its
+  checksum's parts, and a client that differs has **desynced**.
 
 **Player id**
 : A player's stable id, the same from session to session and host to

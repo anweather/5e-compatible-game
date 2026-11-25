@@ -48,6 +48,9 @@ using Debug = UnityEngine.Debug;
 // and -perf-water-check, which redraws the water tiles at the end and counts any that differ;
 // -perf-same-check draws every water tile both ways and paints every ground strip with its noise
 // kept and afresh, counting any that differ bit for bit (#70; doubles that work, so not for timing).
+// PERF CENSUS lines (PerfCensus) say what the picture is made of as measuring starts and ends; PerfKnobs takes parts of
+// it away for a run (-perf-ssao-off, -perf-grass-off, ...); -perf-look-pair saves stills of the view now and as it drew
+// before the 2026-11-23 GPU fixes, with time stopped (docs/perf/2026-11-23-nine-gpu.md).
 // -perf-offscreen draws the camera into a 1080p texture of real play's colour and depth
 // formats: with no desktop session a camera bound for the window draws nothing, so frame
 // times mean nothing and no pipeline state is made (with -perf-offscreen-4k, 3840x2160).
@@ -70,7 +73,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout", "stand" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout", "stand", "seamwalk", "roadwalk", "handover" };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast", "draw", "blockers", "chunk" };
 
@@ -117,6 +120,7 @@ public class PerfScenario : MonoBehaviour
         // The scene is up and the map made: the load, and what it holds (-perf-memory, slow).
         Debug.Log($"PERF LOAD map={ChemGrid.MapId} since_start_s={Time.realtimeSinceStartup.ToString("0.00", CultureInfo.InvariantCulture)} keep_start_ms={ChemGrid.KeepStartMs.ToString("0", CultureInfo.InvariantCulture)} chunks={ChemGrid.Current?.World.ChunkCoords.Count ?? 0} active_chunks={ChemGrid.Current?.World.ActiveChunks.Count ?? 0}");
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("start"));
+        LogSource("load");
         ReadTimes();
         DrawOffscreenIfAsked();
         if (Arg("-perf-pso-diff") != null)
@@ -151,6 +155,10 @@ public class PerfScenario : MonoBehaviour
         if (stage != null) stage.Go = true;
 
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("measure"));
+        LogSource("measure");
+        PerfKnobs.Apply();
+        foreach (string line in PerfCensus.Lines("start")) Debug.Log(line);
+        yield return null; // the census's own frame isn't measured
         early.Dispose();
         early = null;
         markers = new PerfMarkers(Has("-perf-wide"));
@@ -162,6 +170,7 @@ public class PerfScenario : MonoBehaviour
 
         // Update ends the run, so the frame that crosses the end is counted, however long it took.
         while (measuring) yield return null;
+        if (Has("-perf-look-pair") || Has("-perf-look-pair-tufts") || Arg("-perf-look-pair-detail") != null || Has("-perf-look-pair-grass-shadows") || Has("-perf-look-pair-tree-budget")) yield return LookPair();
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
         yield return new WaitForSecondsRealtime(ShotSavedSeconds); // quitting drops a shot still being written
@@ -251,8 +260,58 @@ public class PerfScenario : MonoBehaviour
         Camera.main.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(at - eye));
     }
 
+    // -perf-look-pair: with time stopped, the same view as it draws now and as it drew before the 2026-11-23 GPU fixes
+    // (PerfKnobs.AsBefore): from where the camera is, and from 60 m up looking out north, east, south and west. A fair
+    // still pair, as nothing moves between them. -perf-look-pair-tufts: before is the pack's own tufts (PerfKnobs.PackTufts);
+    // -perf-look-pair-detail M: before is the grass drawn to M metres; -perf-look-pair-grass-shadows: before is the grass
+    // casting shadows again (PerfKnobs.GrassShadows).
+    IEnumerator LookPair()
+    {
+        Time.timeScale = 0f;
+        var cam = Camera.main.transform;
+        var eye = cam.position;
+        var forward = cam.forward;
+        string[] ways = { "n", "e", "s", "w" };
+        for (int i = 0; i < 2; i++)
+        {
+            string label = i == 0 ? "now" : "before";
+            if (i == 1)
+            {
+                // -perf-look-pair-tufts: before is the terrain pack's own grass tufts (LightTufts), nothing else.
+                if (Has("-perf-look-pair-tufts")) Debug.Log($"PERF KNOBS pack_tufts={PerfKnobs.PackTufts()}");
+                else if (float.TryParse(Arg("-perf-look-pair-detail"), NumberStyles.Float, CultureInfo.InvariantCulture, out float metres)) PerfKnobs.DetailMetres(metres);
+                else if (Has("-perf-look-pair-grass-shadows")) Debug.Log($"PERF KNOBS grass_shadows_on={PerfKnobs.GrassShadows(UnityEngine.Rendering.ShadowCastingMode.On)}");
+                // -perf-look-pair-tree-budget: before is the trees without their budget (TreeBudget), as far as ever.
+                else if (Has("-perf-look-pair-tree-budget"))
+                {
+                    TreeImpostors.Budget = false;
+                    Debug.Log("PERF KNOBS tree_budget=off");
+                }
+                else PerfKnobs.AsBefore();
+                for (int f = 0; f < 5; f++) yield return null;
+            }
+            yield return LookFrom(eye, eye + forward * 50f, $"{scenario}-ground-{label}");
+            for (int w = 0; w < ways.Length; w++)
+            {
+                var ahead = Quaternion.Euler(0f, 90f * w, 0f) * Vector3.forward;
+                var high = eye + Vector3.up * 60f;
+                yield return LookFrom(high, high + ahead * 400f + Vector3.down * 60f, $"{scenario}-high-{ways[w]}-{label}");
+            }
+        }
+    }
+
+    IEnumerator LookFrom(Vector3 eye, Vector3 at, string name)
+    {
+        if (stage != null) stage.CutTo(eye, at);
+        for (int f = 0; f < 3; f++) yield return null;
+        // The near trees stood as their prefabs first (a few a frame), so both of a pair show what each draws.
+        for (int f = 0; f < 600 && TreeImpostors.NearWaiting > 0; f++) yield return null;
+        Debug.Log($"PERF LOOK {name} prefabs={TreeImpostors.NearDrawn} prefabs_within={TreeImpostors.PrefabsWithin:0} impostors={TreeImpostors.Drawn} impostors_within={TreeImpostors.ImpostorsWithin:0}");
+        yield return Shot(name);
+    }
+
     // A screenshot is written at the end of the frame it was asked for.
-    static IEnumerator Shot(string name)
+    internal static IEnumerator Shot(string name)
     {
         var file = Path.Combine(ChemGrid.Folders.PlayerData, $"perf-{name}.png");
         ScreenCapture.CaptureScreenshot(file);
@@ -382,6 +441,35 @@ public class PerfScenario : MonoBehaviour
         PerfCounts.On = false;
     }
 
+    static readonly Dictionary<string, int> madeStacks = new();
+
+    // The read's callers past the source and the World's own frames, a few, as one key.
+    static void CountMadeStack()
+    {
+        var frames = new StackTrace(2, false).GetFrames();
+        var mine = frames.Select(f => f.GetMethod()).Where(m => m?.DeclaringType != null && m.DeclaringType.Namespace != "Chem" && !m.DeclaringType.FullName.StartsWith("System", StringComparison.Ordinal))
+            .Take(4).Select(m => m.DeclaringType.Name + "." + m.Name);
+        string key = string.Join(" < ", mine);
+        lock (madeStacks) madeStacks[key] = (madeStacks.TryGetValue(key, out int n) ? n : 0) + 1;
+    }
+
+    // A map made from its source (the Wide World): the chunks its generator made so far, and how (on a read: a stall on the
+    // thread that read it; ahead on the worker; waited for). The walk's on-read count is end's less measure's.
+    static void LogSource(string at)
+    {
+        if (ChemGrid.Current?.World?.Source is not Chem.GeneratedSource g) return;
+        // -perf-made-stacks: which reads made the chunks made on a read, by their callers' frames (the heaviest first).
+        if (Has("-perf-made-stacks"))
+        {
+            if (at == "load") g.MadeOnReadAt = (_, _) => CountMadeStack();
+            else
+                lock (madeStacks)
+                    foreach (var p in madeStacks.OrderByDescending(p => p.Value).Take(8)) Debug.Log($"PERF MADE STACK at={at} n={p.Value} {p.Key}");
+        }
+        Debug.Log($"PERF SOURCE at={at} made={g.Made} made_on_read={g.MadeOnRead} made_ahead={g.MadeAhead} made_again={g.MadeAgain} waits={g.Waits} held={g.HeldCount} " +
+                  $"make_ms={g.MakeMs.ToString("0", CultureInfo.InvariantCulture)} wait_ms={g.WaitMs.ToString("0", CultureInfo.InvariantCulture)}");
+    }
+
     void Finish()
     {
         if (!measuring) return;
@@ -390,15 +478,23 @@ public class PerfScenario : MonoBehaviour
         CountCells();
         Debug.Log(ResultLine(elapsed));
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("end"));
+        LogSource("end");
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
         Debug.Log($"PERF RENDER scenario={scenario}{markers.RenderSummary()}");
+        foreach (string line in PerfCensus.Lines("end")) Debug.Log(line);
         LogSlow();
+        if (stage != null)
+        {
+            stage.LogSeams();
+            stage.LogRoadWalk();
+        }
         var inv = CultureInfo.InvariantCulture;
         Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
         foreach (string line in windows.Lines) Debug.Log(line);
         if (stage != null && scenario == "forestload") LogLatency(inv);
+        if (grid != null) Debug.Log($"PERF WATER {grid.WaterSummary}");
         if (grid != null && Environment.GetCommandLineArgs().Contains("-perf-water-check"))
         {
             var (tiles, different) = grid.CheckWaterTiles();

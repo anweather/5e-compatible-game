@@ -4,11 +4,10 @@ using UnityEngine;
 
 // The far ring's landmarks (docs/design/world-squares.md section 4 and its "On paper (2026-11-09)" notes): every landmark
 // the plan places that shows from far off (GeneratedMap.Far, world/horizon.json) is a stand-in mesh of its shape and size,
-// drawn while the camera is within its seenFrom radius. Its haze is its own (FarLand.shader): the land's within sight,
-// then thinner, about 90% at its seenFrom, fading into the sky's colour over its last chunk and a half, so a volcano or
-// the spire shows through the fog past the known ring without popping in. Over a known chunk it stands a little proud of
-// the coarse land (which has a stamp's rise in it); where its chunk is drawn as a chunk terrain it gives way to what's
-// really there (the stamp, the valley's own castle), at the same haze, since its haze is the land's inside sight. Past
+// drawn while the camera is within its seenFrom radius. It's in the one air (FarLand.shader, docs/design/hills.md "One
+// air"), fading wholly into it over its last chunk and a half, so it never pops out. Over a known chunk it stands a little
+// proud of the coarse land (which has a stamp's rise in it); where its chunk is drawn as a chunk terrain it gives way to
+// what's really there (the stamp, the valley's own castle), in the same air. Past
 // where it can give way, its horizon.json "far" look comes in (FarLand.shader): the volcano stands taller, its rim shows
 // the eye a notch, and an apron of land runs from its foot down to the water, since no land is drawn past the known ring;
 // so it's its true size wherever it meets the land. All view: nothing shared reads it.
@@ -18,16 +17,13 @@ public sealed partial class FarRing
     const float CoverRadius = 1.02f, CoverMetres = 1f;
     // How far below the ground at it a far mesh's foot reaches (m), so it never floats on a slope.
     const float SinkMetres = 8f;
-    /// <summary>The haze a landmark has at its seenFrom (the paper's 90%).</summary>
-    public const float HazeAtSeen = 0.9f;
     // Visibility is worked out a few times a second: the camera crosses a chunk in seconds.
     const float LandmarkEvery = 0.25f;
 
     readonly List<(FarLandmark landmark, GameObject go)> landmarks = new();
     float nextLandmarks;
 
-    static readonly int SeenMetresId = Shader.PropertyToID("_SeenMetres"), HazeAtSeenId = Shader.PropertyToID("_HazeAtSeen"),
-        FadeMetresId = Shader.PropertyToID("_FadeMetres"), StretchId = Shader.PropertyToID("_Stretch"), NotchId = Shader.PropertyToID("_Notch"),
+    static readonly int SeenMetresId = Shader.PropertyToID("_SeenMetres"), FadeMetresId = Shader.PropertyToID("_FadeMetres"), StretchId = Shader.PropertyToID("_Stretch"), NotchId = Shader.PropertyToID("_Notch"),
         TopId = Shader.PropertyToID("_Top"), StretchFromId = Shader.PropertyToID("_FarStretchFrom"), StretchToId = Shader.PropertyToID("_FarStretchTo");
 
     /// <summary>
@@ -82,7 +78,6 @@ public sealed partial class FarRing
             Quiet(r, landmarkMaterial);
             var block = new MaterialPropertyBlock();
             block.SetFloat(SeenMetresId, f.SeenFrom * chunkMetres);
-            block.SetFloat(HazeAtSeenId, HazeAtSeen);
             block.SetFloat(FadeMetresId, 1.5f * chunkMetres);
             block.SetFloat(StretchId, look.Stretch);
             block.SetFloat(NotchId, look.Notch);

@@ -1,121 +1,62 @@
 using System.Collections.Generic;
-using System.Linq;
 using Chem;
-using Unity.Collections;
+using Chem.Lockstep;
 using Unity.Netcode;
 using UnityEngine;
 
-// Lockstep chemistry over the network, the same design as the web
-// sandbox's (docs/LIVE_LAB.md, docs/MULTIPLAYER.md). Only cast intents
-// travel; every machine steps its own Chem.World, and because the world is
-// deterministic they all stay identical.
+// Lockstep chemistry over the network (D7, D19): the core's LockstepSession over NGO (NgoLockstepTransport), with the
+// grid as its world. Only commands travel; every machine steps its own Chem.World, and because the world is
+// deterministic they all stay identical. The session holds the protocol (the host's clock, stamping, the tick batches,
+// hash windows, joiners by snapshot, the reset; docs/design/core-package/multiplayer-ports.md); this is the adapter and
+// the view's glue around it:
 //
-// - Anyone casting sends a request to the host.
-// - The host owns the clock: each sim tick it stamps the casts due and
-//   broadcasts the batch (empty batches too, so clients know a tick is
-//   complete). Everyone, the host included, applies a batch and steps.
-// - A rule change (a mod on or off; RuleSwitcher, the room's change mode) travels
-//   the same way (NetChem.Room.cs): anyone asks with the patch, the host stamps it
-//   for the next tick, and every machine decides it there itself (World.Room.cs).
-// - A batch every 5 s carries the host's checksum of the window just ended: the
-//   cells' hash, a slice a tick (RollingHash), the rules' fingerprint, the world's
-//   things' (the props' stable ids) and the sky's (the time spells' clock and
-//   weather); a client that disagrees logs a desync. The time spells are casts like any other, so a
-//   late joiner's replay rebuilds the clock and the held weather too.
-// - What physics props do to cells (a barrel's blast, a lantern's spill;
-//   ChemEffects) is seen by the host, whose physics is the only one that
-//   counts, and stamped into the next batch like a cast.
-// - When a batch's casts are applied, their shoves are too (SpellForces): the
-//   host moves the props, and each player moves their own wizard, from the
-//   caster's position carried in the cast.
-// - Which chunks are simulated follows the players (ChunkStreaming): the host
-//   plans it from every wizard's position and stamps the switches into its
-//   batches, so every machine pauses the same chunks at the same tick.
-// - The defense field's start command (DefenseField) travels like a cast:
-//   anyone asks the host, which sends it for the next tick just before that
-//   tick's batch (a CommandChannel holds it on the way), so the waves start
-//   on the same tick everywhere. The waves and raiders are then pure
-//   chemistry: every machine runs them, and the checksum's last part is
-//   their hash (World.DefenseHash).
-// - Players' combo input (ComboCommand: an element loaded, a cast cancelled, the d-pad's spells)
-//   travels like a cast: anyone asks, the host names the player and stamps it into the next
-//   batch (a CommandChannel holds it on the way), and every machine drains the same meters. A
-//   cast that goes off is then aimed by the player whose it is (SpellCaster.Combos), as an
-//   ordinary cast.
-// - The host can reset the world for everyone (J-014, StampReset): every machine hears
-//   ResetComing at once (a countdown), and at that tick rebuilds the world from its seed
-//   (ChemGrid.ResetWorld), the mods in force re-stamped in the same batch. The network's ticks
-//   keep counting; the rebuilt world's own tick starts again at 0 (tickBase), and so do its clock
-//   and weather. The host keeps the history from the last reset on only.
-// - A late joiner asks for the history (casts, rule switches, prop effects, defense commands,
-//   combo input, the dragon's summons and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
-// - The host alone summons the dragon (SummonDragon): stamped for the next tick like a defense command,
-//   then it's rules (World.Dragon.cs): every machine flies the same flight from there.
-// - A wizard's stands and unarmed strikes (WizardStrike, World.Strike.cs) travel as combo input
-//   does (a CommandChannel holds them on the way): its owner asks, the host names the player and
-//   stamps them into the next tick. The host sends a leaving player's Leave. A late joiner gets them
-//   with the history, without the stands its replay doesn't need (Chem.StandKeeper): a stand no rule
-//   read and no checksum saw before the next replaced it, and while a trigger reads stands, one that
-//   also fired nothing and leaves the next step as it was. Its past is the host's, tick for tick.
+// - Every door the view calls (casts, prop effects, defense, combos, strikes, the room in NetChem.Room.cs, the dragon,
+//   the reset) asks or stamps on the session's channel for it.
+// - A cast's From (where its caster stood, the centre of its shove) is the view's, so it travels beside the request;
+//   when the host takes the cast it tells everyone the tick it lands on (AnnounceCastRpc: the gesture early), and each
+//   machine shoves after that tick runs (SpellForces): the host the props, each player its own wizard.
+// - The host's physics props' effects, the chunk plan around every wizard (ChunkStreaming, in Stamping) and the
+//   dragon's summons are the host's alone, stamped straight in. Strikes and swings keep their reach checks here.
+// - A late joiner, and a client whose hash window differs from the host's, loads the host's world from a snapshot
+//   (ChemGrid.LoadSnapshot) and plays on from it. A desync is logged as it was.
+// - The host can reset the world for everyone (J-014, StampReset): every machine hears ResetComing at once (a
+//   countdown), and at that tick rebuilds the world from its seed (ChemGrid.ResetWorld), the mods re-stamped.
 [RequireComponent(typeof(ChemGrid))]
 public partial class NetChem : NetworkBehaviour
 {
-    // Which map the host is on (docs/design/maps-as-data.md, section 2).
-    readonly NetworkVariable<FixedString64Bytes> hostMap = new();
-    // The spawn the host started in (SpawnPoints): joiners start beside the host.
-    readonly NetworkVariable<FixedString64Bytes> hostStart = new();
-
-    const int HashEvery = RollingHash.Every, HashesKept = 4;
-    // A late joiner replays the whole history; spread it so no frame spends more than this.
+    const int HashEvery = RollingHash.Every;
+    // A joiner's held batches, or a busy frame's: no frame spends more than this stepping.
     const double CatchUpBudgetMs = 8.0;
-
-    ChemGrid grid;
-
-    // Host only.
-    float clock;
-    int hostTick;
-    readonly List<CastIntent> scheduled = new();
-    readonly List<CastIntent> history = new();
-    readonly List<RuleChangeMsg> ruleHistory = new();
-    readonly List<EffectIntent> pendingEffects = new();
-    readonly List<EffectIntent> effectHistory = new();
-    readonly List<ChunkIntent> chunkHistory = new();
-    // Which stands the strike history keeps for joiners (#83), and the last tick a room command was stamped for.
-    StandKeeper<StrikeIntent> standKeeper;
-    int roomStampedFor;
-    bool dragonAsked;
-    readonly List<int> dragonHistory = new();
-    // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
-    readonly HashSet<(int cx, int cy)> plannedAwake = new();
-    // Plans the switches, lingering chunks still live; host only, since only the switches are shared.
-    ChunkPlanner planner = new();
     // Chunks are planned every few ticks: players move a chunk in seconds, not ticks.
     const int PlanEvery = 3;
+    // How far from a client's wizard a punch may land, in cells (ChemEffects.Strike).
+    const int StrikeReachCells = 4;
 
-    // Everyone.
-    readonly Dictionary<int, TickBatch> batches = new();
-    // The casts of batches that arrived live (not replayed history), for their shoves.
-    readonly Dictionary<int, CastIntent[]> liveCasts = new();
-    // Commands on a CommandChannel (made in Awake: they add to batches): defense commands, players'
-    // combo input, wizards' stands and strikes, and room commands (NetChem.Room.cs).
-    CommandChannel<DefenseIntent> defense;
-    CommandChannel<ComboIntent> combos;
-    CommandChannel<StrikeIntent> strikes;
-    // And the dragon's summons, by the tick they're stamped for.
-    readonly HashSet<int> dragonFor = new();
-    // Joining: the ticks of the dragon's summons in the history, sent just before the rest of it.
-    int[] pastDragon = System.Array.Empty<int>();
-    // Windows of the desync check (RollingHash) still waiting for the other side's: either can come first.
-    readonly Dictionary<int, string> hostHashes = new(), ownHashes = new();
-    RollingHash rolling = new();
-    // On the host: the last finished window, until a batch takes it.
-    int windowTick;
-    string windowHash = "";
-    int knownUpTo;
-    bool synced;
-    bool desyncReported;
+    ChemGrid grid;
+    LockstepSession session;
+    NgoLockstepTransport transport;
+    LockstepChannel<CastCommand> casts;
+    LockstepChannel<EffectCommand> effects;
+    LockstepChannel<ChunkSwitch> chunks;
+    LockstepChannel<DefenseCommand> defense;
+    LockstepChannel<ComboCommand> combos;
+    LockstepChannel<DragonCommand> dragon;
+    LockstepChannel<StrikeCommand> strikes;
+    readonly System.Diagnostics.Stopwatch budget = new();
+    System.Func<bool> over;
 
-    public bool Online => IsSpawned;
+    // Host only: the chunks active once every stamped switch has run, the planner, and the tick a reset is stamped for.
+    readonly HashSet<(int cx, int cy)> plannedAwake = new();
+    ChunkPlanner planner = new();
+    int resetAt;
+    // Host only: where each client's casts were cast from, in the order sent, and the host's own cast's.
+    readonly Dictionary<ulong, Queue<Vector3>> castFrom = new();
+    Vector3 hostFrom;
+    // Everyone: the shoves of the casts announced, by the tick they land on.
+    readonly Dictionary<int, List<(CastCommand cast, ulong caster, Vector3 from)>> shoves = new();
+    int desyncs;
+
+    public bool Online => IsSpawned && session != null;
 
     /// <summary>
     /// Raised on every machine after a tick is applied, with the tick; at every HashEvery'th tick
@@ -123,32 +64,26 @@ public partial class NetChem : NetworkBehaviour
     /// </summary>
     public event System.Action<int, string> TickApplied;
 
-    /// <summary>True once this client has found a checksum that differs from the host's.</summary>
-    public bool DesyncSeen => desyncReported;
+    /// <summary>True once this client has found a checksum that differs from the host's (it stays true after a snapshot puts it right).</summary>
+    public bool DesyncSeen => desyncs > 0;
 
-    // The network tick the world's tick 0 sits at: 0 until an online reset rebuilds the world
-    // (J-014), after which the world counts from 0 again (so its clock and weather start again)
-    // while the network's ticks keep counting.
-    int tickBase;
-    // Joining, the history up to this tick was replayed: a reset in it is a replay, not live.
-    int replayedUpTo;
-    // Host only: the tick a stamped reset happens at (0: none coming), and where the kept history starts.
-    int resetAt, historyFrom = 1;
+    /// <summary>How many hash windows this client has found differing from the host's, each put right by a snapshot.</summary>
+    public int Desyncs => desyncs;
 
     /// <summary>The network's tick: the world's own, plus the ticks before the last online reset.</summary>
-    public int NetTick => tickBase + grid.World.Tick;
+    public int NetTick => session != null ? session.NetTick : grid.World.Tick;
+
+    /// <summary>The last tick this machine holds the batch of: NetTick plus the ticks it knows of and hasn't run.</summary>
+    public int KnownUpTo => session != null ? session.KnownUpTo : NetTick;
 
     /// <summary>
-    /// Whether this machine is playing live: the host always; a client once it has the history
-    /// (SendHistoryRpc) and has replayed all of it. Joining, the replay
-    /// runs CatchUpBudgetMs a frame, so for a while the world is in the past; a probe or a
-    /// scenario waits on this before it acts. It stays true after (live batches keep it within a
-    /// tick or two of the host), so it doesn't flicker with each batch's arrival.
+    /// Whether this machine is playing live: the host always; a client once it has loaded the host's snapshot and run
+    /// the batches the host had stamped past it. A probe or a scenario waits on this before it acts.
     /// </summary>
-    public bool CaughtUp => synced && NetTick >= replayedUpTo;
+    public bool CaughtUp => session != null && session.IsCaughtUp;
 
-    /// <summary>The tick a late joiner's history went up to: it replayed the ticks to it and ran those after it live; 0 for the host.</summary>
-    public int ReplayedUpTo => replayedUpTo;
+    /// <summary>The tick a late joiner's snapshot was taken at: it ran the ticks after it; 0 for the host.</summary>
+    public int ReplayedUpTo { get; private set; }
 
     /// <summary>The countdown to an online reset, in seconds (J-014).</summary>
     public const float ResetCountdownSeconds = 3f;
@@ -162,96 +97,164 @@ public partial class NetChem : NetworkBehaviour
     /// </summary>
     public event System.Action<int> ResetComing;
 
-    /// <summary>
-    /// While ChemGrid.WorldReset fires for an online reset: true for a late joiner replaying the
-    /// history (the reset that heads it), false for a reset happening now.
-    /// </summary>
-    public bool ResetIsReplay { get; private set; }
+    /// <summary>True while ChemGrid.WorldReset fires for an online reset happening now (not a snapshot loading).</summary>
+    public bool Resetting { get; private set; }
 
     /// <summary>The network tick of the last online reset (0 for none).</summary>
-    public int LastResetTick { get; private set; }
+    public int LastResetTick => session != null ? session.LastResetTick : 0;
 
     void Awake()
     {
         grid = GetComponent<ChemGrid>();
-        defense = new CommandChannel<DefenseIntent>(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
-        combos = ComboChannel(batches, HoldMoments.Offered);
-        standKeeper = new StandKeeper<StrikeIntent>(StandsReadByTriggers, (x, y) => grid.World.InBounds(x, y), HoldReads);
-        strikes = new CommandChannel<StrikeIntent>(batches, (batch, s) => batch.Strikes.Add(s.ToCommand()), standKeeper.Record);
-        roomCommands = new CommandChannel<RoomIntent>(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
+        over = () => budget.Elapsed.TotalMilliseconds >= CatchUpBudgetMs;
     }
 
     public override void OnNetworkSpawn()
     {
-        // The host's map, before any world is built: a late joiner builds the right one, then replays the history.
-        // On another map than the host's, a joiner loads the host's (the scene is built for the map it starts on) and joins again.
-        if (IsServer) hostMap.Value = new FixedString64Bytes(ChemGrid.MapId);
-        else if (hostMap.Value.ToString() != ChemGrid.MapId)
-        {
-            NetSession.JoinOnHostMap(hostMap.Value.ToString());
-            return;
-        }
-        if (IsServer) hostStart.Value = new FixedString64Bytes(SpawnPoints.StartIn ?? "");
-        else SpawnPoints.StartIn = hostStart.Value.ToString();
-        // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
-        if (IsServer) grid.PlanRoom(NetSession.RoomMode);
-        else grid.AwaitRoom();
         grid.ExternalTicks = true;
-        grid.ResetWorld();
-        ClearRoom();
-        batches.Clear();
-        liveCasts.Clear();
-        history.Clear();
-        ruleHistory.Clear();
-        pendingEffects.Clear();
-        effectHistory.Clear();
-        chunkHistory.Clear();
-        defense.Clear();
-        combos.Clear();
-        strikes.Clear();
-        standKeeper.Clear();
-        roomStampedFor = 0;
-        dragonAsked = false;
-        dragonHistory.Clear();
-        dragonFor.Clear();
-        pastDragon = System.Array.Empty<int>();
-        plannedAwake.Clear();
-        foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
-        planner = new ChunkPlanner();
-        hostHashes.Clear();
-        ownHashes.Clear();
-        rolling = new RollingHash();
-        windowHash = "";
-        knownUpTo = 0;
-        desyncReported = false;
-        tickBase = 0;
-        replayedUpTo = 0;
-        resetAt = 0;
-        historyFrom = 1;
-        LastResetTick = 0;
+        // The host keeps the mods it had on solo, as the room's starting mods; a client loads the host's world.
         if (IsServer)
         {
-            hostTick = 0;
-            clock = 0f;
-            synced = true;
-            NetworkManager.OnClientDisconnectCallback += PlayerLeft;
-            NoteRoomStart();
+            grid.PlanRoom(NetSession.RoomMode);
+            grid.ResetWorld();
+        }
+        transport = new NgoLockstepTransport(IsServer ? LockstepRole.Host : LockstepRole.Client, bytes => ToHostRpc(bytes),
+            (client, bytes) => ToClientRpc(bytes, RpcTarget.Single(client, RpcTargetUse.Temp)));
+        session = new LockstepSession(transport, new GridWorld(this), NgoLockstepTransport.PeerOf(NetworkManager.LocalClientId))
+        {
+            MostOwedSeconds = ChemGrid.MostOwedSeconds,
+        };
+        Register();
+        session.TickApplied += Applied;
+        session.Desynced += Desynced;
+        session.Refused += Refused;
+        session.ResetComing += tick => ResetComing?.Invoke(tick);
+        session.Failed += Failed;
+        session.Joined += Joined;
+        shoves.Clear();
+        castFrom.Clear();
+        desyncs = 0;
+        ReplayedUpTo = 0;
+        if (IsServer)
+        {
+            // The map the host is on and the spawn it started in (SpawnPoints) go in the hello: joiners start beside it.
+            session.MapId = ChemGrid.MapId;
+            session.Start["spawn"] = SpawnPoints.StartIn ?? "";
+            session.Stamping += PlanChunks;
+            session.Taken += Taken;
+            session.ResetComing += tick => resetAt = tick;
+            resetAt = 0;
+            ResetPlan(false);
+            NetworkManager.OnClientDisconnectCallback += transport.Left;
         }
         else
         {
-            synced = false;
-            RequestHistoryRpc();
+            session.AutoJoin = false;
+            session.HelloReceived += Greeted;
+            ReadyRpc();
         }
     }
 
     public override void OnNetworkDespawn()
     {
         grid.ExternalTicks = false;
-        if (NetworkManager != null) NetworkManager.OnClientDisconnectCallback -= PlayerLeft;
+        if (NetworkManager != null && transport != null) NetworkManager.OnClientDisconnectCallback -= transport.Left;
+        session = null;
+        transport = null;
     }
 
-    // Host only: the core forgets a wizard whose player has gone.
-    void PlayerLeft(ulong clientId) => strikes.Request(StrikeIntent.From(StrikeCommand.Leave(PlayerName(clientId)), 0));
+    // The same channels in the same order on every peer (the hello checks them).
+    void Register()
+    {
+        casts = session.Register(LockstepChannels.Casts(LockstepChannels.PlayerName));
+        effects = session.Register(LockstepChannels.Effects());
+        chunks = session.Register(LockstepChannels.Chunks());
+        defense = session.Register(LockstepChannels.Defense());
+        combos = session.Register(LockstepChannels.Combos(LockstepChannels.PlayerName, HoldMoments.Offered));
+        dragon = session.Register(LockstepChannels.Dragon());
+        session.Register(LockstepChannels.Course(LockstepChannels.PlayerName));
+        strikes = session.Register(LockstepChannels.Strikes(LockstepChannels.PlayerName));
+        room = session.Register(LockstepChannels.Room(LockstepChannels.PeerName));
+    }
+
+    // --- the transport's RPCs ------------------------------------------------------
+
+    // A client's NetChem has spawned: the host sends it the hello (before, an RPC could meet an object not spawned yet).
+    [Rpc(SendTo.Server)]
+    void ReadyRpc(RpcParams rpc = default) => transport?.Ready(rpc.Receive.SenderClientId);
+
+    [Rpc(SendTo.Server)]
+    void ToHostRpc(byte[] bytes, RpcParams rpc = default) => transport?.Arrived(rpc.Receive.SenderClientId, bytes);
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void ToClientRpc(byte[] bytes, RpcParams rpc = default) => transport?.Arrived(NetworkManager.ServerClientId, bytes);
+
+    // Host: a client is a peer; it hears the hello.
+    void PeerJoined(ulong client) => session.PeerJoined(NgoLockstepTransport.PeerOf(client), PeerName(client));
+
+    // Host: the core forgets a wizard whose player has gone.
+    void PeerLeft(ulong client)
+    {
+        session.PeerLeft(NgoLockstepTransport.PeerOf(client));
+        castFrom.Remove(client);
+        session.Stamp(strikes, StrikeCommand.Leave(PlayerName(client)));
+    }
+
+    // Client: the host's hello. On another map than the host's, a joiner loads the host's (the scene is built for the
+    // map it starts on) and joins again; else it starts where the host did and asks for the host's world.
+    void Greeted(LockstepHello hello)
+    {
+        if (hello.Map != ChemGrid.MapId)
+        {
+            NetSession.JoinOnHostMap(hello.Map);
+            return;
+        }
+        SpawnPoints.StartIn = hello.Start.TryGetValue("spawn", out var spawn) ? spawn : "";
+        session.Join();
+    }
+
+    void Failed(string why)
+    {
+        // A host on another map may run other rules: go there first.
+        if (!IsServer && session?.Hello != null && session.Hello.Map != ChemGrid.MapId && !session.Synced)
+        {
+            NetSession.JoinOnHostMap(session.Hello.Map);
+            return;
+        }
+        EventLog.Add($"<color=#ff8a80>{why}</color>");
+        Debug.LogWarning("NetChem: " + why);
+    }
+
+    void Joined(int tick)
+    {
+        if (desyncs > 0)
+        {
+            EventLog.Add($"Put right from the host's world at tick {tick}");
+            return;
+        }
+        ReplayedUpTo = tick;
+        EventLog.Add($"Joined the yard at tick {tick}; catching up");
+    }
+
+    void Desynced(LockstepDesync desync)
+    {
+        desyncs++;
+        EventLog.Add($"<color=#ff8a80>{desync.Text}</color>");
+        Debug.LogWarning($"NetChem {desync.Text}");
+    }
+
+    void Refused(LockstepRefusal refusal)
+    {
+        if (refusal.Channel == room)
+        {
+            var command = (RoomCommand)refusal.Command;
+            grid.NoteRefused(command, new RoomVerdict(false, refusal.Why, RoomPolicy.RefusedLine(command.Change, refusal.Why)));
+            return;
+        }
+        Debug.Log($"NET: the host refused a command on {refusal.Channel.Name} from {refusal.Peer}: {refusal.Why}");
+    }
+
+    // --- the doors ---------------------------------------------------------------
 
     /// <summary>
     /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
@@ -259,23 +262,26 @@ public partial class NetChem : NetworkBehaviour
     /// </summary>
     public void RequestCast(CastCommand command, int delayTicks, Vector3 from)
     {
-        var cast = new CastIntent
-        {
-            Spell = new FixedString32Bytes(command.Spell), X = command.X, Y = command.Y, Dir = command.Dir,
-            Charge = (byte)World.ClampCharge(command.Charge), AimX = command.AimX, AimY = command.AimY, From = from,
-        };
-        RequestCastRpc(cast, delayTicks);
+        if (session == null) return;
+        if (IsServer) hostFrom = from;
+        else CastFromRpc(from);
+        session.Request(casts, command, delayTicks);
+    }
+
+    // Beside the cast that follows it on the same reliable channel, so the host takes them in the same order.
+    [Rpc(SendTo.Server)]
+    void CastFromRpc(Vector3 from, RpcParams rpc = default)
+    {
+        ulong caster = rpc.Receive.SenderClientId;
+        if (!castFrom.TryGetValue(caster, out var q)) castFrom[caster] = q = new Queue<Vector3>();
+        q.Enqueue(from);
     }
 
     /// <summary>Host only: stamps a physics prop's effect on cells into the next tick's batch, for every machine.</summary>
     public void StampEffect(EffectCommand effect)
     {
-        if (!IsServer) return;
-        pendingEffects.Add(EffectIntent.From(effect, 0));
+        if (IsServer && session != null) session.Stamp(effects, effect);
     }
-
-    // How far from a client's wizard a punch may land, in cells (ChemEffects.Strike).
-    const int StrikeReachCells = 4;
 
     /// <summary>Client: asks the host to hit a pane cell for this client's wizard (ChemEffects.Strike).</summary>
     public void RequestStrike(Vector2Int cell) => RequestStrikeRpc(cell.x, cell.y);
@@ -305,28 +311,24 @@ public partial class NetChem : NetworkBehaviour
     /// Asks the host to run a defense command (the start pedestal: DefenseField). Anyone may ask; the
     /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.
     /// </summary>
-    public void RequestDefense(DefenseCommand command) => RequestDefenseRpc(DefenseIntent.From(command, 0));
+    public void RequestDefense(DefenseCommand command) => session?.Request(defense, command);
 
     /// <summary>This player's name in the core's casts (World.CastOf).</summary>
     public string LocalPlayer => PlayerName(NetworkManager.LocalClientId);
 
     /// <summary>A client's name in the core's casts.</summary>
-    public static string PlayerName(ulong clientId) => $"p{clientId}";
+    public static string PlayerName(ulong clientId) => LockstepChannels.PlayerName(NgoLockstepTransport.PeerOf(clientId));
 
-    /// <summary>The channel players' combo input goes by: a host that isn't a dev build takes no moment, whoever asks.</summary>
-    public static CommandChannel<ComboIntent> ComboChannel(Dictionary<int, TickBatch> batches, bool devBuild) =>
-        new(batches, (batch, c) => batch.Combos.Add(c.ToCommand()), takes: c => c.ToCommand().TakenBy(devBuild));
-
-    /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
-    public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));
+    /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick (the host names the player).</summary>
+    public void RequestCombo(ComboCommand command) => session?.Request(combos, command);
 
     /// <summary>Asks the host to run this wizard's stand or strike; it lands on every machine at the same tick.</summary>
-    public void RequestStrikeCommand(StrikeCommand command) => RequestStrikeCommandRpc(StrikeIntent.From(command, 0));
+    public void RequestStrikeCommand(StrikeCommand command) => session?.Request(strikes, command);
 
     /// <summary>Host only: the dragon is summoned on the next tick, on every machine (a Reset, once the view has it). A client's call does nothing.</summary>
     public void SummonDragon()
     {
-        if (IsServer) dragonAsked = true;
+        if (IsServer && session != null) session.Stamp(dragon, new DragonCommand());
     }
 
     /// <summary>
@@ -337,685 +339,146 @@ public partial class NetChem : NetworkBehaviour
     /// </summary>
     public void StampReset(int delayTicks)
     {
-        if (!IsServer || resetAt > hostTick) return;
-        resetAt = hostTick + Mathf.Max(1, delayTicks);
-        ResetComingRpc(resetAt);
+        if (IsServer) session?.StampReset(delayTicks);
     }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void ResetComingRpc(int tick) => ResetComing?.Invoke(tick);
 
     void Update()
     {
-        if (!IsSpawned) return;
+        if (!IsSpawned || session == null) return;
         long from = System.Diagnostics.Stopwatch.GetTimestamp();
-        if (IsServer) RunHostClock();
-        Advance();
+        transport.Deliver(session, PeerJoined, PeerLeft);
+        if (session == null) return; // a hello sent this peer to the host's map
+        budget.Restart();
+        session.Update(Time.deltaTime, over);
         grid.StepMs = (System.Diagnostics.Stopwatch.GetTimestamp() - from) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        if (IsServer) ServeJoiners();
+        transport.Flush();
     }
 
-    // --- host ----------------------------------------------------------------
+    // --- the host's chunk plan and casts --------------------------------------------
 
-    void RunHostClock()
+    // Just before a tick's batch: the chunk switches around every wizard, against what is already planned, on it.
+    void PlanChunks(int tick)
     {
-        float tickLength = 1f / Mathf.Max(1, grid.World.Rules.Sim.TicksPerSecond);
-        clock = Mathf.Min(clock + Time.deltaTime, ChemGrid.MostOwedSeconds); // peers keep the host's pace, whatever it is
-        int guard = 4;
-        while (clock >= tickLength && guard-- > 0)
+        if (tick == resetAt) ResetPlan(true);
+        if (!grid.streamChunks || tick % PlanEvery != 1) return;
+        var plan = planner.Plan(grid.World, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells(), plannedAwake);
+        foreach (var s in plan)
         {
-            clock -= tickLength;
-            hostTick++;
-            var due = scheduled.FindAll(c => c.Tick <= hostTick);
-            scheduled.RemoveAll(c => c.Tick <= hostTick);
-            for (int i = 0; i < due.Count; i++)
-            {
-                var c = due[i];
-                c.Tick = hostTick;
-                due[i] = c;
-            }
-            history.AddRange(due);
-            var effects = pendingEffects.ToArray();
-            pendingEffects.Clear();
-            for (int i = 0; i < effects.Length; i++) effects[i].Tick = hostTick;
-            effectHistory.AddRange(effects);
-            bool reset = hostTick == resetAt;
-            var rules = reset ? StampResetRules() : RuleChangeMsg.None;
-
-            var chunks = PlanChunks();
-            chunkHistory.AddRange(chunks);
-            StampDefense();
-            StampCombos();
-            StampStrikes();
-            StampDragon();
-            StampRoom();
-
-            // The window the host's world finished last goes out once, with the next batch.
-            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, windowTick, new FixedString128Bytes(windowHash));
-            windowHash = "";
+            if (s.Active) plannedAwake.Add((s.CX, s.CY));
+            else plannedAwake.Remove((s.CX, s.CY));
+            session.Stamp(chunks, s);
         }
     }
 
-    // The reset's batch (J-014): the mods in force (or about to be) re-stamped, since a rebuilt world
-    // starts on the base rules; the history from here on only, headed by them, so a late joiner never
-    // replays what came before; and the chunk plan starting again from a world all awake.
-    RuleChangeMsg StampResetRules()
+    // The plan from the world going online, or (a reset) from the start's reach a rebuilt world has active (#209).
+    void ResetPlan(bool reset)
     {
-        var rules = RuleChangeMsg.From(new RuleChange(hostTick, grid.CurrentRules.Mods));
-        rules.Reset = true;
-        history.RemoveAll(c => c.Tick < hostTick);
-        effectHistory.RemoveAll(e => e.Tick < hostTick);
-        chunkHistory.RemoveAll(c => c.Tick < hostTick);
-        defense.ForgetBefore(hostTick);
-        combos.ForgetBefore(hostTick);
-        strikes.ForgetBefore(hostTick);
-        dragonHistory.RemoveAll(t => t < hostTick);
-        roomCommands.ForgetBefore(hostTick);
-        ruleHistory.Clear();
-        ruleHistory.Add(rules);
-        historyFrom = hostTick;
-        // The rebuilt world starts with only the start's reach active (ChunkStreaming.StartPlan, #209).
         plannedAwake.Clear();
+        planner = new ChunkPlanner();
+        if (!reset)
+        {
+            foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
+            return;
+        }
         foreach (var c in grid.World.ChunkCoords) plannedAwake.Add(c);
         if (grid.streamChunks)
             foreach (var s in ChunkStreaming.StartPlan(grid.World.ChunkCoords, (_, _) => true,
                 new[] { (grid.PlayerStart.x, grid.PlayerStart.y) }, grid.World.Rules.Sim.Streaming.Reach))
                 plannedAwake.Remove((s.CX, s.CY));
-        planner = new ChunkPlanner();
-        return rules;
     }
 
-    // The dragon's summons, if the host asked since the last tick, goes out for this one, just before its batch.
-    void StampDragon()
+    // Host: a cast taken, with the tick it lands on: everyone shows it early and shoves after it.
+    void Taken(LockstepTaken taken)
     {
-        if (!dragonAsked) return;
-        dragonAsked = false;
-        dragonHistory.Add(hostTick);
-        DragonStampedRpc(hostTick);
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void DragonStampedRpc(int tick)
-    {
-        if (batches.TryGetValue(tick, out var batch)) batch.Dragon.Add(new DragonCommand());
-        else dragonFor.Add(tick);
-    }
-
-    // The defense commands asked for since the last tick go out for this one, just before its batch
-    // (the same reliable channel keeps them in order), and into the history for late joiners.
-    void StampDefense()
-    {
-        var stamped = defense.Stamp(hostTick);
-        if (stamped.Length > 0) DefenseStampedRpc(hostTick, stamped);
-    }
-
-    [Rpc(SendTo.Server)]
-    void RequestDefenseRpc(DefenseIntent command) => defense.Request(command);
-
-    // As StampDefense: the input asked for since the last tick goes out just before this tick's batch.
-    void StampCombos()
-    {
-        var stamped = combos.Stamp(hostTick);
-        if (stamped.Length > 0) CombosStampedRpc(hostTick, stamped);
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void CombosStampedRpc(int tick, ComboIntent[] commands) => combos.Receive(tick, commands);
-
-    // As StampCombos. The history keeps the stands a joiner's replay needs (StandKeeper, the channel's hook).
-    void StampStrikes()
-    {
-        var stamped = strikes.Stamp(hostTick);
-        if (stamped.Length > 0) StrikesStampedRpc(hostTick, stamped);
-    }
-
-    // A stand the Hold reads: all of them during a run, and those on its plate or in its attuning room.
-    bool HoldReads(int x, int y) => grid.World?.HoldReadsStand(x, y) == true;
-
-    // Whether a stand stamped now may be read by a trigger (World.TriggersReadStands: a step or tick trigger): one is in force,
-    // or a room command not yet run (stamped for this tick, or for one the host's world hasn't reached) may switch one on.
-    bool StandsReadByTriggers() =>
-        grid.World != null && (grid.World.TriggersReadStands || roomCommands.HasPending || roomStampedFor > NetTick);
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void StrikesStampedRpc(int tick, StrikeIntent[] commands) => strikes.Receive(tick, commands);
-
-    // The sender is whose wizard it is, whatever it says.
-    [Rpc(SendTo.Server)]
-    void RequestStrikeCommandRpc(StrikeIntent command, RpcParams rpc = default)
-    {
-        command.Player = new FixedString32Bytes(PlayerName(rpc.Receive.SenderClientId));
-        strikes.Request(command);
-    }
-
-    // The sender is who the input is for, whatever it says.
-    [Rpc(SendTo.Server)]
-    void RequestComboRpc(ComboIntent command, RpcParams rpc = default)
-    {
-        command.Player = new FixedString32Bytes(PlayerName(rpc.Receive.SenderClientId));
-        combos.Request(command);
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void DefenseStampedRpc(int tick, DefenseIntent[] commands) => defense.Receive(tick, commands);
-
-    // The chunk switches for this tick's batch: around every wizard, against what is already planned.
-    ChunkIntent[] PlanChunks()
-    {
-        if (!grid.streamChunks || hostTick % PlanEvery != 1) return System.Array.Empty<ChunkIntent>();
-        var plan = planner.Plan(grid.World, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells(), plannedAwake);
-        var stamped = new ChunkIntent[plan.Count];
-        for (int i = 0; i < plan.Count; i++)
-        {
-            var s = plan[i];
-            if (s.Active) plannedAwake.Add((s.CX, s.CY));
-            else plannedAwake.Remove((s.CX, s.CY));
-            stamped[i] = ChunkIntent.From(s, hostTick);
-        }
-        return stamped;
-    }
-
-    [Rpc(SendTo.Server)]
-    void RequestCastRpc(CastIntent cast, int delayTicks, RpcParams rpc = default)
-    {
-        ulong caster = rpc.Receive.SenderClientId;
-        cast.Caster = caster;
-        cast.Tick = hostTick + 1 + Mathf.Clamp(delayTicks, 0, 30);
-        scheduled.Add(cast);
-        var (spell, x, y, dir) = (cast.Spell, cast.X, cast.Y, cast.Dir);
+        if (taken.Channel != casts) return;
+        var c = (CastCommand)taken.Command;
+        ulong caster = NgoLockstepTransport.ClientOf(taken.From);
+        var from = caster == NetworkManager.LocalClientId ? hostFrom
+            : castFrom.TryGetValue(caster, out var q) && q.Count > 0 ? q.Dequeue() : Vector3.zero;
         // Only the server can look a player's wizard up by client id; everyone else finds it by its object id.
         var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
-        if (wizard != null) AnnounceCastRpc(spell, x, y, dir | (cast.Charge << 8), cast.AimX, cast.AimY, wizard.NetworkObjectId);
+        AnnounceCastRpc(new Unity.Collections.FixedString32Bytes(c.Spell), c.X, c.Y, c.Dir | (c.Charge << 8), c.AimX, c.AimY,
+            wizard != null ? wizard.NetworkObjectId : ulong.MaxValue, caster, taken.Tick, from);
     }
 
-    [Rpc(SendTo.Server)]
-    void RequestHistoryRpc(RpcParams rpc = default) => joiners.Add(rpc.Receive.SenderClientId);
-
-    void SendHistory(ulong client)
-    {
-        var joiner = RpcTarget.Single(client, RpcTargetUse.Temp);
-        SendRoomHistoryRpc((byte)grid.World.Room.Mode, grid.World.Room.Host, roomStart, roomCommands.HistoryForJoiner(), joiner);
-        SendComboHistoryRpc(combos.HistoryForJoiner(), joiner);
-        var strikeHistory = strikes.HistoryForJoiner();
-        StrikeHistorySent = strikeHistory.Length;
-        SendStrikeHistoryRpc(strikeHistory, joiner);
-        SendDragonHistoryRpc(dragonHistory.ToArray(), joiner);
-        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defense.HistoryForJoiner(),
-            joiner);
-    }
-
-    /// <summary>
-    /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
-    /// things' (World.ThingsNow: the props' stable ids), the sky's (Hasten Time's clock and Control
-    /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's, the
-    /// players' casts and grimoires (World.CastHash), the dragon's (World.DragonHash) and, last, the land's (World.LandHash).
-    /// </summary>
-    static string Checksum(ChemGrid grid) => grid.World.CellHash() + Others(grid);
-
-    // All but the cells: what follows them in a checksum, in a window's too.
-    static string Others(ChemGrid grid) =>
-        "/" + grid.World.Rules.Fingerprint + "/" + grid.World.ThingsNow.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash() + "/" + grid.World.LandHash();
-
-    // --- everyone --------------------------------------------------------------
-
-    // Cosmetic only: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives,
-    // at its charge (a held beam is longer, a held storm wider), which rides in dirAndCharge's second byte.
+    // Cosmetic first: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives, at its
+    // charge (a held beam is longer, a held storm wider), which rides in dirAndCharge's second byte. Then its shove waits for its tick.
     [Rpc(SendTo.ClientsAndHost)]
-    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dirAndCharge, int aimX, int aimY, ulong casterObject)
+    void AnnounceCastRpc(Unity.Collections.FixedString32Bytes spell, int x, int y, int dirAndCharge, int aimX, int aimY, ulong casterObject, ulong caster, int tick, Vector3 from)
     {
+        var cast = new CastCommand(spell.ToString(), x, y, dirAndCharge & 0xff, (byte)(dirAndCharge >> 8), aimX, aimY, PlayerName(caster));
         if (NetworkManager.SpawnManager.SpawnedObjects.TryGetValue(casterObject, out var player) && player.TryGetComponent<SpellCaster>(out var spellCaster))
-            spellCaster.PlayCastEffect(new CastCommand(spell.ToString(), x, y, dirAndCharge & 0xff, (byte)(dirAndCharge >> 8), aimX, aimY));
+            spellCaster.PlayCastEffect(cast);
+        if (session == null || tick <= NetTick) return;
+        if (!shoves.TryGetValue(tick, out var list)) shoves[tick] = list = new List<(CastCommand, ulong, Vector3)>();
+        list.Add((cast, caster, from));
     }
 
-    [Rpc(SendTo.ClientsAndHost)]
-    void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, ChunkIntent[] chunks, int hashTick, FixedString128Bytes hash)
+    // --- everyone ------------------------------------------------------------------
+
+    // A tick has finished: the physical side of its casts, and listeners.
+    void Applied(TickBatch batch)
     {
-        batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()),
-            chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
-        defense.Deliver(tick);
-        combos.Deliver(tick);
-        strikes.Deliver(tick);
-        if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
-        roomCommands.Deliver(tick);
-        if (casts.Length > 0) liveCasts[tick] = casts;
-        if (hash.Length > 0)
+        int tick = session.NetTick;
+        if (shoves.Count > 0)
         {
-            hostHashes[hashTick] = hash.ToString();
-            CheckHash(hashTick);
+            if (shoves.Remove(tick, out var list)) Shove(list);
+            foreach (int t in new List<int>(shoves.Keys))
+                if (t < tick) shoves.Remove(t);
         }
-        if (synced) ExtendKnown();
+        grid.NoteTickDone();
+        // The whole checksum, for the probes that listen: `?.` builds it only when one does.
+        TickApplied?.Invoke(tick, tick % HashEvery == 0 ? session.Checksum() : null);
     }
 
-    [Rpc(SendTo.SpecifiedInParams)]
-    void SendComboHistoryRpc(ComboIntent[] combos, RpcParams rpc = default) => this.combos.Joining(combos);
-
-    [Rpc(SendTo.SpecifiedInParams)]
-    void SendStrikeHistoryRpc(StrikeIntent[] strikes, RpcParams rpc = default) => this.strikes.Joining(strikes);
-
-    [Rpc(SendTo.SpecifiedInParams)]
-    void SendDragonHistoryRpc(int[] ticks, RpcParams rpc = default) => pastDragon = ticks;
-
-    [Rpc(SendTo.SpecifiedInParams)]
-    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, DefenseIntent[] defense,
-        RpcParams rpc = default)
+    // The physical side of the casts just applied: the host moves the props (its physics is the
+    // one that counts), and every player moves their own wizard unless they cast it.
+    void Shove(List<(CastCommand cast, ulong caster, Vector3 from)> casts)
     {
-        // Since an online reset the host keeps the history from it on, headed by the reset's rules:
-        // the replay starts there, on a fresh world counting from that tick (the reset itself replays first).
-        // The defense commands come in this RPC, not one of their own, so they join the replay from here.
-        int from = ruleChanges.Where(r => r.Reset).Select(r => r.Tick).DefaultIfEmpty(1).Max();
-        var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
-            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), null, from);
-        this.defense.Joining(defense);
-        this.defense.Replay(timeline);
-        combos.Replay(timeline);
-        strikes.Replay(timeline);
-        TickBatch.AddDragon(timeline, pastDragon);
-        roomCommands.Replay(timeline);
-        for (int t = from; t <= upToTick; t++)
-            if (!batches.ContainsKey(t)) batches[t] = timeline[t];
-        tickBase = from - 1;
-        replayedUpTo = upToTick;
-        knownUpTo = upToTick;
-        synced = true;
-        ExtendKnown();
-        if (effects.Length > 0) EventLog.Add($"Catching up {effects.Length} prop effect(s) on the yard");
-        EventLog.Add(ruleChanges.Length > 0
-            ? $"Joined the yard at tick {upToTick}; catching up, with {ruleChanges.Length} rule switch(es)"
-            : $"Joined the yard at tick {upToTick}; catching up");
-    }
-
-    void ExtendKnown()
-    {
-        while (batches.ContainsKey(knownUpTo + 1)) knownUpTo++;
-    }
-
-    // Batch t is applied while the world is at tick t-1; stepping then brings it to t.
-    void Advance()
-    {
-        if (!synced) return;
-        var budget = System.Diagnostics.Stopwatch.StartNew();
-        bool Over() => budget.Elapsed.TotalMilliseconds >= CatchUpBudgetMs;
-        // A tick a busy frame left part done carries on first. Ticks run in slices within the
-        // frame's budget (World.StepSome); a batch's commands only ever land between whole ticks,
-        // so every peer computes the same ticks however its frames slice them. (grid.World is read
-        // afresh each time: a reset replaces it.)
-        if (grid.World.TickInProgress)
+        var mine = NetworkManager.SpawnManager.GetLocalPlayerObject();
+        var myWizard = mine != null ? mine.GetComponent<Knockback>() : null;
+        foreach (var (cast, caster, from) in casts)
         {
-            if (!grid.World.StepSome(Over)) return;
-            Applied(NetTick);
-        }
-        while (NetTick < knownUpTo && !Over())
-        {
-            int next = NetTick + 1;
-            if (!batches.TryGetValue(next, out var batch)) batch = new TickBatch(next);
-            batches.Remove(next);
-            if (batch.Reset) Rebuild(next);
-            grid.PrepareBatch(batch);
-            if (!grid.World.StepSome(Over)) return;
-            Applied(NetTick);
+            bool castHere = caster == NetworkManager.LocalClientId;
+            SpellForces.ApplyOnline(grid, cast, from, IsServer, castHere ? null : myWizard, castHere && mine != null ? mine.transform : null);
         }
     }
 
-    // The online reset (J-014) at a network tick: the world rebuilt from its seed, things.json, the
-    // clock and the weather (ChemGrid.ResetWorld; its WorldReset listeners can read ResetIsReplay and
-    // LastResetTick), counting from 0 again from here. The batch then re-stamps the mods on it.
-    void Rebuild(int tick)
+    // The online reset (J-014): the world rebuilt from its seed, things.json, the clock and the weather
+    // (ChemGrid.ResetWorld; its WorldReset listeners can read Resetting and LastResetTick). The room stays.
+    void Rebuild()
     {
-        LastResetTick = tick;
-        ResetIsReplay = tick <= replayedUpTo;
+        Resetting = true;
         try
         {
             grid.ResetWorld();
         }
         finally
         {
-            ResetIsReplay = false;
+            Resetting = false;
         }
-        if (IsServer) NoteRoomStart();
-        tickBase = tick - 1;
         EventLog.Add("The world resets");
     }
 
-    // A tick has finished: the physical side of its casts, the desync check, and listeners.
-    void Applied(int tick)
+    /// <summary>
+    /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
+    /// things' (World.ThingsNow: the props' stable ids), the sky's, the defense's, the players' casts
+    /// and grimoires, the dragon's and, last, the land's (JoinSnapshot.ChecksumOf's parts, joined by '/').
+    /// </summary>
+    public string CurrentChecksum => string.Join("/", JoinSnapshot.ChecksumOf(grid.World));
+
+    // The session's world port: the grid's world, rules and batches, its reset and its snapshots.
+    sealed class GridWorld : ILockstepWorld
     {
-        if (liveCasts.Remove(tick, out var casts)) Shove(casts);
-        grid.NoteTickDone();
-        if (IsServer) standKeeper.Ran(tick, grid.World.StandReads, RollingHash.WindowFor(grid.World));
-        HashTick(tick);
-        // The whole checksum, for the probes that listen: `?.` builds it only when one does, so a game hashes its cells only
-        // a slice a tick (HashTick).
-        TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
-    }
+        readonly NetChem net;
 
-    // This tick's slice of the cells; a finished window goes to the peers, or is checked against the host's.
-    void HashTick(int tick)
-    {
-        long from = System.Diagnostics.Stopwatch.GetTimestamp();
-        string cells = rolling.Add(grid.World, tick);
-        if (cells != null) FinishWindow(tick, cells + Others(grid));
-        PerfCounts.Peak("net.hash_us", (System.Diagnostics.Stopwatch.GetTimestamp() - from) * 1000000 / System.Diagnostics.Stopwatch.Frequency);
-    }
+        public GridWorld(NetChem net) => this.net = net;
 
-    void FinishWindow(int tick, string hash)
-    {
-        if (IsServer)
-        {
-            windowTick = tick;
-            windowHash = hash;
-            return;
-        }
-        ownHashes[tick] = hash;
-        int window = RollingHash.WindowFor(grid.World);
-        DropOldHashes(ownHashes, tick, window);
-        DropOldHashes(hostHashes, tick, window);
-        CheckHash(tick);
-    }
-
-    // A window the other side never had (it joined midway) would otherwise wait for ever.
-    static void DropOldHashes(Dictionary<int, string> hashes, int tick, int window)
-    {
-        hashes.Keys.Where(t => t < tick - window * HashesKept).ToList().ForEach(t => hashes.Remove(t));
-    }
-
-    // The physical side of the casts just applied: the host moves the props (its physics is the
-    // one that counts), and every player moves their own wizard unless they cast it.
-    void Shove(CastIntent[] casts)
-    {
-        var mine = NetworkManager.SpawnManager.GetLocalPlayerObject();
-        var myWizard = mine != null ? mine.GetComponent<Knockback>() : null;
-        foreach (var c in casts)
-        {
-            bool castHere = c.Caster == NetworkManager.LocalClientId;
-            SpellForces.ApplyOnline(grid, c.ToCommand(), c.From, IsServer, castHere ? null : myWizard, castHere && mine != null ? mine.transform : null);
-        }
-    }
-
-    void CheckHash(int tick)
-    {
-        if (IsServer || desyncReported || !hostHashes.TryGetValue(tick, out var expected) || !ownHashes.TryGetValue(tick, out var here)) return;
-        hostHashes.Remove(tick);
-        ownHashes.Remove(tick);
-        if (expected == here) return;
-        desyncReported = true;
-        var (hostCells, hostRules, hostThings) = Split(expected);
-        var (ownCells, ownRules, ownThings) = Split(here);
-        if (hostThings != ownThings)
-        {
-            EventLog.Add($"<color=#ff8a80>Desync at tick {tick}: this machine's world/things.json differs from the host's, so props have different ids. Same files?</color>");
-            Debug.LogWarning($"NetChem desync at tick {tick}: things fingerprint host {hostThings} here {ownThings}");
-            return;
-        }
-        if (hostRules != ownRules)
-        {
-            EventLog.Add($"<color=#ff8a80>Desync at tick {tick}: this machine runs different rules from the host's (host {hostRules}, here {ownRules}). Same mods, same files?</color>");
-            Debug.LogWarning($"NetChem desync at tick {tick}: rules fingerprint host {hostRules} here {ownRules}");
-            return;
-        }
-        EventLog.Add($"Desync at tick {tick}: this yard no longer matches the host's");
-        Debug.LogWarning($"NetChem desync at tick {tick}: cells host {hostCells} here {ownCells}");
-    }
-
-    static (string cells, string rules, string things) Split(string checksum)
-    {
-        var parts = checksum.Split('/');
-        return (parts[0], parts.Length > 1 ? parts[1] : "", parts.Length > 2 ? parts[2] : "");
-    }
-
-    /// <summary>For tests and the CLI: the last checksum this machine would send or compare.</summary>
-    public string CurrentChecksum => Checksum(grid);
-
-    /// <summary>Host, for the probe: how many stands, strikes and leavings the last joiner's strike history held.</summary>
-    public int StrikeHistorySent { get; private set; }
-}
-
-/// <summary>A spell cast, stamped with the sim tick it takes effect on, with who cast it and from where.</summary>
-public struct CastIntent : INetworkSerializable
-{
-    public FixedString32Bytes Spell;
-    public int X, Y, Dir, Tick;
-    /// <summary>How long it was held, 1 (a tap) to World.MaxCharge.</summary>
-    public byte Charge;
-    /// <summary>Its aim off the grid's four ways, or (0, 0) (CastCommand).</summary>
-    public int AimX, AimY;
-    public ulong Caster;
-    /// <summary>Where the caster stood when casting: the centre of a burst's shove (Thunderwave).</summary>
-    public Vector3 From;
-
-    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge, AimX, AimY, NetChem.PlayerName(Caster));
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref Spell);
-        serializer.SerializeValue(ref X);
-        serializer.SerializeValue(ref Y);
-        serializer.SerializeValue(ref Dir);
-        serializer.SerializeValue(ref Charge);
-        serializer.SerializeValue(ref AimX);
-        serializer.SerializeValue(ref AimY);
-        serializer.SerializeValue(ref Tick);
-        serializer.SerializeValue(ref Caster);
-        serializer.SerializeValue(ref From);
-    }
-}
-
-/// <summary>A physics prop's effect on cells (Chem.EffectCommand), stamped with the sim tick it takes effect on.</summary>
-public struct EffectIntent : INetworkSerializable
-{
-    public byte Kind;
-    public int X, Y, Tick;
-    public FixedString64Bytes Entity;
-    /// <summary>The prop's stable id (Chem.ThingId), never its NetworkObjectId.</summary>
-    public ulong Thing;
-
-    public static EffectIntent From(EffectCommand e, int tick) => new EffectIntent
-    {
-        Kind = (byte)e.Kind,
-        X = e.X,
-        Y = e.Y,
-        Tick = tick,
-        Entity = new FixedString64Bytes(e.Entity ?? ""),
-        Thing = e.Thing.Value,
-    };
-
-    public EffectCommand ToCommand() => new EffectCommand((EffectKind)Kind, X, Y, Entity.ToString(), new ThingId(Thing));
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref Kind);
-        serializer.SerializeValue(ref X);
-        serializer.SerializeValue(ref Y);
-        serializer.SerializeValue(ref Tick);
-        serializer.SerializeValue(ref Entity);
-        serializer.SerializeValue(ref Thing);
-    }
-}
-
-/// <summary>
-/// A rule switch on the wire: the tick and the full mod list from then on, each mod's id and JSON.
-/// Has is false in the (usual) batch that switches nothing.
-/// </summary>
-public struct RuleChangeMsg : INetworkSerializable
-{
-    public bool Has;
-    public int Tick;
-    /// <summary>The world resets at this tick (J-014): these are the mods in force, re-stamped on the rebuilt world.</summary>
-    public bool Reset;
-    public string[] Ids;
-    public string[] Jsons;
-
-    public static RuleChangeMsg None => new RuleChangeMsg { Ids = System.Array.Empty<string>(), Jsons = System.Array.Empty<string>() };
-
-    public static RuleChangeMsg From(RuleChange change) => new RuleChangeMsg
-    {
-        Has = true,
-        Tick = change.Tick,
-        Ids = change.Mods.Select(m => m.Id).ToArray(),
-        Jsons = change.Mods.Select(m => m.Json).ToArray(),
-    };
-
-    public RuleChange ToChange()
-    {
-        var ids = Ids;
-        var jsons = Jsons;
-        return new RuleChange(Tick, ids.Select((id, i) => new ActiveMod(id, jsons[i])).ToArray());
-    }
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref Has);
-        if (!Has)
-        {
-            if (serializer.IsReader) this = None;
-            return;
-        }
-        serializer.SerializeValue(ref Tick);
-        serializer.SerializeValue(ref Reset);
-        int count = Ids?.Length ?? 0;
-        serializer.SerializeValue(ref count);
-        if (serializer.IsReader)
-        {
-            Ids = new string[count];
-            Jsons = new string[count];
-        }
-        for (int i = 0; i < count; i++)
-        {
-            serializer.SerializeValue(ref Ids[i]);
-            serializer.SerializeValue(ref Jsons[i]);
-        }
-    }
-}
-
-/// <summary>A chunk waking or going to sleep (Chem.ChunkSwitch), stamped with the sim tick it takes effect on.</summary>
-public struct ChunkIntent : INetworkSerializable
-{
-    public int CX, CY, Tick;
-    public bool Active;
-
-    public static ChunkIntent From(ChunkSwitch s, int tick) => new ChunkIntent { CX = s.CX, CY = s.CY, Active = s.Active, Tick = tick };
-
-    public ChunkSwitch ToSwitch() => new ChunkSwitch(CX, CY, Active);
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref CX);
-        serializer.SerializeValue(ref CY);
-        serializer.SerializeValue(ref Tick);
-        serializer.SerializeValue(ref Active);
-    }
-}
-
-/// <summary>A wizard's stand, strike or leaving (Chem.StrikeCommand), stamped with the sim tick it lands on.</summary>
-public struct StrikeIntent : INetworkSerializable, ITickStamped, IStampedStrike<StrikeIntent>
-{
-    public byte Kind;
-    public FixedString32Bytes Player;
-    public int X, Y, AimX, AimY, Hp, Tick;
-
-    int ITickStamped.Tick => Tick;
-
-    // What StandKeeper reads of it.
-    int IStampedStrike<StrikeIntent>.Tick => Tick;
-    StrikeKind IStampedStrike<StrikeIntent>.Kind => (StrikeKind)Kind;
-    int IStampedStrike<StrikeIntent>.X => X;
-    int IStampedStrike<StrikeIntent>.Y => Y;
-    int IStampedStrike<StrikeIntent>.Hp => Hp;
-
-    bool IStampedStrike<StrikeIntent>.SamePlayer(StrikeIntent other) => Player == other.Player;
-
-    void ITickStamped.StampFor(int tick) => Tick = tick;
-
-    public static StrikeIntent From(StrikeCommand c, int tick) => new StrikeIntent
-    {
-        Kind = (byte)c.Kind,
-        Player = new FixedString32Bytes(c.Player ?? ""),
-        X = c.X,
-        Y = c.Y,
-        AimX = c.AimX,
-        AimY = c.AimY,
-        Hp = c.Hp,
-        Tick = tick,
-    };
-
-    public StrikeCommand ToCommand() => new StrikeCommand(Player.ToString(), (StrikeKind)Kind, X, Y, AimX, AimY, Hp);
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref Kind);
-        serializer.SerializeValue(ref Player);
-        serializer.SerializeValue(ref X);
-        serializer.SerializeValue(ref Y);
-        serializer.SerializeValue(ref AimX);
-        serializer.SerializeValue(ref AimY);
-        serializer.SerializeValue(ref Hp);
-        serializer.SerializeValue(ref Tick);
-    }
-}
-
-/// <summary>A player's combo input (Chem.ComboCommand), stamped with the sim tick it lands on.</summary>
-public struct ComboIntent : INetworkSerializable, ITickStamped
-{
-    public byte Kind;
-    public FixedString32Bytes Player, Element;
-    public int Step, Tick;
-    public bool Hold;
-
-    int ITickStamped.Tick => Tick;
-
-    void ITickStamped.StampFor(int tick) => Tick = tick;
-
-    public static ComboIntent From(ComboCommand c, int tick) => new ComboIntent
-    {
-        Kind = (byte)c.Kind,
-        Player = new FixedString32Bytes(c.Player ?? ""),
-        Element = new FixedString32Bytes(c.Element ?? ""),
-        Step = c.Step,
-        Hold = c.Hold,
-        Tick = tick,
-    };
-
-    public ComboCommand ToCommand() => new ComboCommand(Player.ToString(), (ComboCommandKind)Kind, Element.Length > 0 ? Element.ToString() : null, Step, Hold);
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref Kind);
-        serializer.SerializeValue(ref Player);
-        serializer.SerializeValue(ref Element);
-        serializer.SerializeValue(ref Step);
-        serializer.SerializeValue(ref Hold);
-        serializer.SerializeValue(ref Tick);
-    }
-}
-
-/// <summary>A defense command (Chem.DefenseCommand: the start pedestal's), stamped with the sim tick it takes effect on.</summary>
-public struct DefenseIntent : INetworkSerializable, ITickStamped
-{
-    public byte Kind;
-    public int GateX, GateY, FlagX, FlagY, Tick;
-
-    int ITickStamped.Tick => Tick;
-
-    void ITickStamped.StampFor(int tick) => Tick = tick;
-
-    public static DefenseIntent From(DefenseCommand d, int tick) => new DefenseIntent
-    {
-        Kind = (byte)d.Kind,
-        GateX = d.GateX,
-        GateY = d.GateY,
-        FlagX = d.FlagX,
-        FlagY = d.FlagY,
-        Tick = tick,
-    };
-
-    public DefenseCommand ToCommand() => new DefenseCommand((DefenseKind)Kind, GateX, GateY, FlagX, FlagY);
-
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
-    {
-        serializer.SerializeValue(ref Kind);
-        serializer.SerializeValue(ref GateX);
-        serializer.SerializeValue(ref GateY);
-        serializer.SerializeValue(ref FlagX);
-        serializer.SerializeValue(ref FlagY);
-        serializer.SerializeValue(ref Tick);
+        public World World => net.grid.World;
+        public RuleSet Rules => net.grid.CurrentRules;
+        public void Prepare(TickBatch batch) => net.grid.PrepareBatch(batch);
+        public void Rebuild() => net.Rebuild();
+        public JoinSnapshot Snapshot() => JoinSnapshot.Take(World, World.Source, Rules);
+        public void Load(JoinSnapshot snapshot) => net.grid.LoadSnapshot(snapshot);
     }
 }

@@ -7,7 +7,8 @@ namespace Chem.Tests
 {
     /// <summary>
     /// The clock and the weather (Sky.cs) and what the weather does to cells (World.Weather.cs).
-    /// Ported from sandbox/test/weather.test.ts; the golden numbers come from running the same worlds there.
+    /// Ported from sandbox/test/weather.test.ts; the golden numbers came from running the same worlds there, until the
+    /// rain was turned down (2026-11-23: less and rarer rain, none on deep water, hollows seeping dry; the sandbox is frozen).
     /// </summary>
     [Category("Simulation")]
     public class WeatherTests
@@ -71,7 +72,7 @@ namespace Chem.Tests
         {
             var p = R.Sim;
             var forecast = string.Join(" ", Enumerable.Range(0, 24).Select(k => Sky.KindOf(p, 1, k).ToString().ToLowerInvariant()));
-            Assert.That(forecast, Is.EqualTo("clear clear cloudy windy cloudy clear storm rain rain storm cloudy rain cloudy clear rain fog windy rain windy rain rain storm windy snow"));
+            Assert.That(forecast, Is.EqualTo("clear clear cloudy windy cloudy clear storm rain rain snow cloudy rain cloudy clear storm fog cloudy rain windy rain storm storm windy snow"));
         }
 
         [Test]
@@ -119,7 +120,7 @@ namespace Chem.Tests
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()), "deterministic");
             Assert.That(Strikes(a), Is.GreaterThan(0), "lightning struck");
             Assert.That(a.Log.Any(l => l.Text == "The rain puts out a fire"), "the rain put a fire out");
-            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("a80f8ead 275421548 24"));
+            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("1fe9c9ef 3509776219 23"));
         }
 
         [Test]
@@ -127,7 +128,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("41514104 3951220311"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("be6d8efb 2329702834"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
@@ -351,6 +352,114 @@ namespace Chem.Tests
             Assert.That(w.At(1, 1).Cover, Is.EqualTo("frost"));
             Assert.That(w.IsSlippery(w.At(1, 1)), Is.True);
             Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(1));
+        }
+
+        // The valley as the game has it, the 3 x 3 chunks round the spawn active, and what each cell's water was at the start.
+        static World RainyValley(out int[] start)
+        {
+            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            var w = SparseWorldBench.Build(dir, With("'calmPeriods': 0, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }"), out _);
+            w.SetAllActive(false);
+            for (int cy = 4; cy <= 6; cy++)
+            {
+                for (int cx = 3; cx <= 5; cx++) w.SetActive(cx, cy, true);
+            }
+            start = new int[w.W * w.H];
+            for (int k = 0; k < start.Length; k++) start[k] = w.At(k % w.W, k / w.W).Water;
+            return w;
+        }
+
+        // The active cells' water against the start: cells wet that were dry, how many of those deeper than thin water (2
+        // units), the units on them, how much the water that was there rose (the lake, the river), and the cells of mud.
+        static (int wet, int deep, int units, int rise, int mud) Flood(World w, int[] start)
+        {
+            int wet = 0, deep = 0, units = 0, rise = 0, mud = 0;
+            foreach (var (cx, cy) in w.ActiveChunks)
+            {
+                for (int k = 0; k < Chunks.Area; k++)
+                {
+                    int x = cx * Chunks.Size + k % Chunks.Size, y = cy * Chunks.Size + k / Chunks.Size;
+                    var c = w.At(x, y);
+                    int was = start[w.Idx(x, y)];
+                    if (c.T == "mud") mud++;
+                    if (was > 0) rise += c.Water - was;
+                    if (was > 0 || c.Water == 0) continue;
+                    wet++;
+                    units += c.Water;
+                    if (c.Water > R.Sim.ThinWater) deep++;
+                }
+            }
+            return (wet, deep, units, rise, mud);
+        }
+
+        [Test]
+        public void TwoHoursOfRainDoNotFloodTheValley()
+        {
+            // Alpha 0.1.13: it rained a lot and flooded the world. Two game hours of rain (Control Weather from clear skies,
+            // 720 ticks, the base rules' rain), then four dry ones: what's left must be a few puddles, not standing water across the
+            // valley, the lake no higher, and the paths not churned to mud (the cells of mud the map has: none).
+            var w = RainyValley(out var start);
+            int mudAtStart = Flood(w, start).mud;
+            w.Cast("control-weather", 292, 328, 0);
+            Run(w, 60);
+            Assert.That(w.Weather.Kind, Is.EqualTo(WeatherKind.Rain));
+            Run(w, 660);
+            var rained = Flood(w, start);
+            Run(w, 4 * 360);
+            var after = Flood(w, start);
+            TestContext.Out.WriteLine($"cells {w.ActiveChunks.Count * Chunks.Area}; after the rain {rained}; four hours on {after}");
+            Assert.That(rained.mud - mudAtStart, Is.LessThan(100), "the rain churned no path to mud");
+            Assert.That(after.deep, Is.LessThan(200), "no standing water left deeper than a puddle");
+            Assert.That(after.units, Is.LessThan(rained.units / 4), "most of the rain has soaked away");
+        }
+
+        [Test]
+        public void WetGrassSlowsWalkersButAPathNeverDoes()
+        {
+            // A path is dirt (the map legend's '.': roads and the valley's paths). Wet grass (soak.slows) slows a walker
+            // while water stands on it and while it's damp after; dry grass doesn't, and a path, wet or dry, never does.
+            Assert.That(R.Terrain["grass"].WetSpeed, Is.LessThan(1));
+            Assert.That(R.Terrain["dirt"].WetSpeed, Is.EqualTo(1));
+            double wet = R.Terrain["grass"].WetSpeed;
+            var w = new World(R, 8, 3, 1, "grass");
+            Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(1), "dry grass");
+            w.At(1, 1).Water = 1;
+            Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(wet), "a puddle on grass");
+            Run(w, 200);
+            Assert.That(w.At(1, 1).Water, Is.EqualTo(0), "the puddle soaked in");
+            Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(wet), "the grass still damp");
+            Run(w, R.Sim.DampTicks);
+            Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(1), "dry again");
+
+            // Two hours of rain (Control Weather) over grass with a path across it and a patch of the Mud spell's mud:
+            // the grass is slow all through and after, the path never is and isn't churned to mud; mud slows anywhere.
+            var rain = new World(R, 24, 9, 1, "grass");
+            for (int x = 0; x < 24; x++) rain.At(x, 4).T = "dirt";
+            rain.At(20, 1).T = "mud";
+            rain.Cast("control-weather", 0, 0, 0);
+            Run(rain, 60);
+            Assert.That(rain.Weather.Kind, Is.EqualTo(WeatherKind.Rain));
+            Assert.That(rain.WalkSpeed(rain.At(3, 1)), Is.EqualTo(wet), "grass in the rain");
+            Assert.That(rain.WalkSpeed(rain.At(3, 4)), Is.EqualTo(1), "the path in the rain");
+            Assert.That(rain.WalkSpeed(rain.At(20, 1)), Is.EqualTo(0.5), "mud");
+            for (int t = 0; t < 660 + 600; t++)
+            {
+                rain.Step();
+                for (int x = 0; x < 24; x++) Assert.That(rain.WalkSpeed(rain.At(x, 4)), Is.EqualTo(1), $"the path at {x}, tick {rain.Tick}");
+            }
+            Assert.That(Enumerable.Range(0, 24).Count(x => rain.At(x, 4).T == "dirt"), Is.EqualTo(24), "the path is still a path");
+        }
+
+        [Test]
+        public void WaterPouredOnAPathStillChurnsItToMud()
+        {
+            // Rain doesn't churn a path (it leaves the cells it wets damp, and damp ground doesn't churn), but water poured
+            // on dry dirt does, as before (WaterSoaksDirtToMudWhichDriesBack, the Hold's pool).
+            var w = new World(R, 8, 3, 1, "grass");
+            w.At(4, 1).T = "dirt";
+            w.At(4, 1).Water = 1;
+            Run(w, 200);
+            Assert.That(w.At(4, 1).T, Is.EqualTo("mud"));
         }
     }
 }

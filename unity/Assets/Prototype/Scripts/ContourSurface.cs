@@ -182,13 +182,15 @@ public sealed class ContourSurface
 
     void Attributes(IPoints points)
     {
-        var origin = grid.CellCenter(0, 0);
+        // Each point at the copy of its place nearest the camera (on a world that wraps): measured from cell (0, 0) as
+        // its coordinates put it, since that cell's own nearest copy can be a world away from these.
+        var origin = grid.CellCenterUnwrapped(0, 0);
         float size = grid.cellSize;
         bool withFlow = points.Flows;
         for (int n = 0; n < shape.Points.Count; n++)
         {
             var (gx, gy) = shape.Points[n];
-            var at = Flat(origin, size, gx, gy);
+            var at = ViewWrap.Near(Flat(origin, size, gx, gy));
             points.Point(gx, gy, shape.Values[n], out at.y, out var color, out var f);
             vertices.Add(at);
             colors.Add(color);
@@ -220,7 +222,7 @@ public sealed class ContourSurface
     public Vector3 Flat(float gx, float gy) => FlatOn(grid, gx, gy);
 
     /// <summary>The same, for a caller with no surface to hand.</summary>
-    public static Vector3 FlatOn(ChemGrid grid, float gx, float gy) => Flat(grid.CellCenter(0, 0), grid.cellSize, gx, gy);
+    public static Vector3 FlatOn(ChemGrid grid, float gx, float gy) => ViewWrap.Near(Flat(grid.CellCenterUnwrapped(0, 0), grid.cellSize, gx, gy));
 
     /// <summary>The same, from cell (0, 0)'s centre and the cells' size, for a caller placing many points.</summary>
     public static Vector3 Flat(Vector3 origin, float cellSize, float gx, float gy) =>

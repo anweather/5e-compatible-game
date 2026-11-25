@@ -26,6 +26,11 @@ startup and shows "alpha X.Y.Z (abc1234)" at the bottom of the Esc menu.
 
 ## Steps: the release candidate
 
+**From CI (2026-11-23, not proven yet):** a push to `main` runs `.github/workflows/release.yml`, which does steps 3
+and 4 on GitHub's runners (the version is stamped into the players, not committed) and leaves the draft for
+steps 5 to 8. `docs/CI_BUILDS.md`, "As built", says how, and what the first runs must show. Until it has made a
+good draft, the steps below are the way.
+
 A release about every 2 days, or sooner after a big fix (J-019 in
 `JUDGMENT_CALLS.md`). The Build lane runs it; the coordinator calls the
 freeze. The draft on GitHub *is* the release candidate (RC): the same
@@ -91,10 +96,29 @@ files players will get, tested before anyone can see it.
 
 The Mac (or the PC) builds the Windows player in batch mode, with no Editor open
 on the project. It needs Windows Build Support (Mono) and the Asset Store packs,
-a clean tree, and makes the same `Builds/Update/win/` as `UpdateBuild.Players`:
+a clean tree, and makes the same `Builds/Update/win/` as `UpdateBuild.Players`.
+
+A clone with no packs gets them from the Editor's Asset Store cache, or from a
+checkout of the private `anweather/5e-asset-packs` (laid out like the cache), with
+no download. Leave out `-quit` (the imports run after the method returns) and keep
+`-ignorecompilererrors` (the game's scripts don't compile until the packs are in).
+It logs `ASSET PACKS: OK` or `FAILED <what>` and exits 0 or 1; about 5 minutes on
+the M2 Pro for all five into a fresh clone. It also copies the baked tree impostors
+from the cache's `Generated/TreeImpostors/` (the packs repo has them; its README says
+how to redo them) into `Assets/Prototype/Generated/Resources/TreeImpostors/`, `.meta`
+files and all, leaving any already there, and logs `laid in N baked tree impostor
+files`. Baking needs a GPU, so this is what lets the build run with `-nographics`:
 
 ```sh
 U=/Applications/Unity/Hub/Editor/6000.3.27f1/Unity.app/Contents/MacOS/Unity
+$U -batchmode -nographics -ignorecompilererrors -projectPath unity \
+   -executeMethod AssetPackRestore.FromCommandLine \
+   -asset-cache ../5e-asset-packs -logFile restore.log
+```
+
+Then the build:
+
+```sh
 $U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
    -executeMethod PrototypeBuild.BuildWindowsFromCommandLine -rebuild-yard \
    -logFile build.log
@@ -110,7 +134,13 @@ $U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
   exited 132 after a good quit, so trust this method's code, not a bare quit's.
 - About 8 minutes with the shader cache warm, 47 from a cold one (M2 Pro). `-nographics`
   costs nothing: every shader came out the same size as a run with a graphics
-  device, and the player the same apart from stamps and ids. The log's
+  device, and the player the same apart from stamps and ids. **The tree impostors:**
+  the build bakes any species not baked at the current `TreeImpostorBaker.BakeVersion`,
+  which needs a graphics device. In a fresh clone they come from the restore above;
+  without them (or with stale ones), under `-nographics` the build stops with
+  `TREE IMPOSTORS: FAILED, <species> not baked ...` and `HEADLESS BUILD: FAILED`. Then
+  bake them on a machine with a GPU (or leave `-nographics` out) and refresh the packs
+  repo's copy. The log's
   `SpeedTreeURP_Branch.shadergraph` exception and the ray-tracing shader warnings
   are expected (`unity/CLAUDE.md`).
 - **Not proven by a build:** nothing here has run it. Check a Mac-built player on

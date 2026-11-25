@@ -217,6 +217,8 @@ public sealed partial class CellDressing
             {
                 var clump = Rock(foot, grasses[rng.Next(grasses.Length)], at, wide, tall, rng);
                 foreach (var col in clump.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+                // The terrain's grass casts no shadows (LightTufts); a brush cell's clumps, taller and fewer, still do.
+                foreach (var r in clump.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 continue;
             }
             // No terrain pack: a few blades of the look's colour.
@@ -227,7 +229,37 @@ public sealed partial class CellDressing
                 Paint(blade.GetComponent<Renderer>(), "Leaves", color, 0.1f, x + i * 17 + b, y);
             }
         }
+        DrawBrushNear(root);
     }
+
+    /// <summary>How far a brush cell's clumps draw (m), at the follow camera's view: about as far as the terrain's own grass.</summary>
+    public const float BrushDrawMetres = 250f;
+    // The size the brush LOD measures a cell by (m): a cell and a clump's spread.
+    const float BrushLodSize = 2f;
+
+    /// <summary>
+    /// A brush cell's clumps stop drawing past BrushDrawMetres, by the size they take on screen (a LOD group, so the
+    /// Spyglass's zoom draws them further and the Resident Drawer culls them on the GPU). On the nine they were drawn to the
+    /// haze, ~730 m: at the start ~11,400 clumps of ~650 triangles, nearly all past 300 m where a clump is a few pixels in
+    /// the haze, 3.3 ms of the GPU's frame on the Mac (docs/perf/2026-11-23-nine-gpu.md). The cull is the screen height
+    /// that distance gives a BrushLodSize cell at the main camera's field of view, with the quality's LOD bias.
+    /// </summary>
+    public static float BrushCullHeight(float fieldOfView, float lodBias) =>
+        BrushLodSize * lodBias / (2f * BrushDrawMetres * Mathf.Tan(fieldOfView * 0.5f * Mathf.Deg2Rad));
+
+    public static void DrawBrushNear(Transform root)
+    {
+        var renderers = root.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
+        var cam = Camera.main;
+        var lod = root.gameObject.AddComponent<LODGroup>();
+        lod.fadeMode = LODFadeMode.None;
+        lod.SetLODs(new[] { new LOD(BrushCullHeight(cam != null ? cam.fieldOfView : DefaultFieldOfView, QualitySettings.lodBias), renderers) });
+        lod.localReferencePoint = Vector3.zero;
+        lod.size = BrushLodSize;
+    }
+
+    const float DefaultFieldOfView = 60f;
 
     // The terrain's grass and ferns (its detail prototypes' models: the pack's Grass_A..C and Fern_A), or none without the pack.
     static GameObject[] Grasses()

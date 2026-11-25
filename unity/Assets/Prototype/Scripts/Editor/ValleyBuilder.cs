@@ -121,7 +121,8 @@ public static class ValleyBuilder
     {
         AssetDatabase.DeleteAsset(OldBake);
         EditorAssets.EnsureFolderFor(TemplatePath);
-        var template = GroundTemplate(LoadLayers(), LoadTrees(), LoadDetails());
+        var details = LoadDetails(out var packTufts);
+        var template = GroundTemplate(LoadLayers(), LoadTrees(), details);
         var material = RockMaterial();
         var (left, top) = EditorGround.Layout.CellAt(0f, (yardRows.Length - 1) * grid.cellSize);
         cellAt = at => CellOf(at, grid.cellSize, left, top, yardRows.Length);
@@ -129,6 +130,7 @@ public static class ValleyBuilder
         var terrains = new GameObject("Ground").AddComponent<MapTerrains>();
         terrains.template = template;
         terrains.material = material;
+        terrains.packTufts = packTufts;
         EditorGround.Open(template, material);
         return terrains;
     }
@@ -153,13 +155,27 @@ public static class ValleyBuilder
     }
 
     // One material for every chunk: URP's terrain with rock mapped from the sides (TerrainRock.shader). Normal maps on, or a wall has no relief.
-    static Material RockMaterial() => EditorAssets.LoadOrCreate($"{Generated}/Ground/TerrainRock.mat", () =>
+    // Instancing on, set on every build, not only when made: the chunk terrains draw instanced (MapTerrains.Configure) but are
+    // made in play, so no terrain in the scene asks for the shader's instancing variants, and with the material's flag off a
+    // player build strips them (Graphics settings: instancing variants "strip unused"). The player then drew every chunk with
+    // no layer textures: white ground in 0.1.13 (and only in players; the Editor keeps every variant).
+    static Material RockMaterial()
     {
-        var material = new Material(Shader.Find("Prototype/TerrainRock"));
-        material.EnableKeyword("_TERRAIN_INSTANCED_PERPIXEL_NORMAL");
-        material.EnableKeyword("_NORMALMAP");
+        var material = EditorAssets.LoadOrCreate($"{Generated}/Ground/TerrainRock.mat", () =>
+        {
+            var made = new Material(Shader.Find("Prototype/TerrainRock"));
+            made.EnableKeyword("_TERRAIN_INSTANCED_PERPIXEL_NORMAL");
+            made.EnableKeyword("_NORMALMAP");
+            return made;
+        });
+        if (!material.enableInstancing)
+        {
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
+            AssetDatabase.SaveAssets();
+        }
         return material;
-    });
+    }
 
     // Grass on flat ground, moss in the meadows, rock on slopes, snow up high, sand at the lake.
     // ValleyShape.LayerWeights paints these; the cells also paint charred and bare earth
@@ -251,13 +267,18 @@ public static class ValleyBuilder
     // Grass (the first three) and ferns and plants (the rest), from the terrain pack.
     static readonly string[] DetailNames = { "Grass_A", "Grass_B", "Grass_C", "Fern_A", "Plant_A", "Plant_C" };
 
-    static List<DetailPrototype> LoadDetails()
+    // The pack's tufts as the terrains' copies (LightTufts: no shadows, and lighter where there is a lighter one); packTufts, the pack's own meshes of those, for
+    // -perf-look-pair-tufts's before still (MapTerrains.packTufts).
+    static List<DetailPrototype> LoadDetails(out Mesh[] packTufts)
     {
         var protos = new List<DetailPrototype>();
+        var packs = new List<Mesh>();
         foreach (var n in DetailNames)
         {
-            var prefab = EditorAssets.LoadPrefab($"{TerrainPack}/Prefabs/{n}.prefab");
-            if (prefab == null) continue;
+            var pack = EditorAssets.LoadPrefab($"{TerrainPack}/Prefabs/{n}.prefab");
+            if (pack == null) continue;
+            var prefab = LightTufts.For(pack);
+            if (LightTufts.Lightened.ContainsKey(n)) packs.Add(pack.GetComponent<MeshFilter>().sharedMesh);
             protos.Add(new DetailPrototype
             {
                 prototype = prefab,
@@ -268,6 +289,7 @@ public static class ValleyBuilder
                 noiseSpread = 0.3f,
             });
         }
+        packTufts = packs.ToArray();
         return protos;
     }
 

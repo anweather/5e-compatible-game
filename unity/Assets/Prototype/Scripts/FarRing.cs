@@ -8,10 +8,13 @@ using UnityEngine.SceneManagement;
 // The far ring on a generated map (docs/design/world-squares.md section 4, the view half): past the generated land the
 // known chunks (Chem.KnownRing) are drawn as coarse meshes from their 9 × 9 heights, painted by dominant biome, with no
 // colliders; the chunk terrains draw only where no known mesh does, within the known ring (MapTerrains asks
-// TerrainDraws), so nothing is drawn twice; the haze is exponential-squared, about 98% at the known ring's edge (k 1.98
-// over know × 96 m, after Punchy), so the ring's edge never shows; a sea plane runs from the map's edge to the horizon,
-// so the sky never shows below it; and the plan's far landmarks (FarRing.Landmarks.cs) stand past the known ring with
-// their own haze. The meshes are worked out on a worker and only handed to Unity here.
+// TerrainDraws), so nothing is drawn twice; on a hills map the whole map is drawn coarse past the known ring to the
+// horizon (FarRing.FarLand.cs); a sea plane runs from the map's edge to the horizon, so the sky never shows below it;
+// and the plan's far landmarks (FarRing.Landmarks.cs) stand past the known ring. The air over all of it is one
+// (AirInPlay, Air.hlsl), from the dials here (AirDials): on a hills map clear air reaches kilometres, as the far land is
+// drawn; on a map with no far land the haze is exponential-squared, about 98% at the known ring's edge (k 1.98 over
+// know × 96 m, after Punchy), so the ring's edge never shows. The meshes are worked out on a worker and only handed to
+// Unity here.
 //
 // All view and all float: the ring and the landmarks are pure functions of the seed and the plan, and nothing shared
 // reads anything here (D4). Starts itself on a generated map (PinnedValley.InGenerated); the valley alone keeps its
@@ -19,18 +22,18 @@ using UnityEngine.SceneManagement;
 public sealed partial class FarRing : MonoBehaviour
 {
     /// <summary>Punchy's haze constant: exponential-squared density × draw distance, ~98% at the edge.</summary>
-    public const float HazeK = 1.98f;
+    public const float HazeK = Air.HazeK;
 
     /// <summary>The far ring in play, or null on a map that isn't generated.</summary>
     public static FarRing Instance { get; private set; }
 
-    /// <summary>Where the haze reaches ~98% in clear weather (m): the known ring's edge. SkyLight closes it in for rain and fog.</summary>
+    /// <summary>The known ring's edge (m): on a map with no far land, where the clear haze reaches ~98%.</summary>
     public float HazeMetres { get; private set; }
 
     /// <summary>
-    /// Where the clear haze reaches 99% (m), at a depth from the eye as URP's fog measures it: past here nothing shows, so
+    /// Where a map with no far land's clear haze reaches 99% (m), at a depth from the eye: past here nothing shows, so
     /// it's where the Default layer stops drawing and the tree impostors end (#220: at the old 500 m the haze was ~89% and
-    /// the coast's dock popped in and out from the mountain by the falls). Rain and fog only close the haze in.
+    /// the coast's dock popped in and out from the mountain by the falls). On a hills map, a little past the known ring.
     /// </summary>
     public float HazeHides => HazeMetres * HideK / HazeK;
 
@@ -106,6 +109,7 @@ public sealed partial class FarRing : MonoBehaviour
 
     void OnDestroy()
     {
+        DropFarLand();
         if (Instance == this) Instance = null;
     }
 
@@ -155,17 +159,10 @@ public sealed partial class FarRing : MonoBehaviour
         // A rule switch can move streaming sight or know (the dials unset follow it); nothing changes while they hold.
         var rules = ChemGrid.Current?.Rules;
         if (rules != null) Dial(rules.Sim.Streaming);
-        float clear = HazeK / Mathf.Max(1f, HazeMetres);
-        Shader.SetGlobalFloat(HazeDensityId, RenderSettings.fogMode == FogMode.ExponentialSquared ? RenderSettings.fogDensity : clear);
-        Shader.SetGlobalFloat(HazeClearId, clear);
         Shader.SetGlobalFloat(SightMetresId, sight * chunkMetres);
         Shader.SetGlobalFloat(KnownMetresId, HazeMetres);
         Shader.SetGlobalFloat(StretchFromId, StretchFrom);
         Shader.SetGlobalFloat(StretchToId, StretchFrom + StretchOverChunks * chunkMetres);
-        var horizon = RenderSettings.fogColor;
-        var zenith = Shader.GetGlobalColor(PunchyZenithId);
-        Shader.SetGlobalColor(SkyHorizonId, horizon);
-        Shader.SetGlobalColor(SkyZenithId, zenith.maxColorComponent > 0f ? zenith : horizon);
 
         if (FollowCharacters()) ring.Want(characters);
         ring.Handover();
@@ -173,6 +170,7 @@ public sealed partial class FarRing : MonoBehaviour
         if (building != null && building.IsCompleted) FinishBuild();
         LetGo();
         UpdateLandmarks();
+        UpdateFarLand();
     }
 
     // The first frame the worker's load is done: the ring, the haze, the materials, the sea plane and the landmarks.
@@ -193,7 +191,6 @@ public sealed partial class FarRing : MonoBehaviour
         chunkMetres = land.Layout.ChunkSize;
         terrains = FindFirstObjectByType<MapTerrains>();
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
         Dial(rules.Sim.Streaming);
 
         var grid = ChemGrid.Current.Grid;
@@ -201,17 +198,19 @@ public sealed partial class FarRing : MonoBehaviour
         landMaterial = new Material(shader) { name = "Far land" };
         landmarkMaterial = new Material(shader) { name = "Far landmarks" };
         landmarkMaterial.SetFloat(OwnHazeId, 1f);
-        MakeSea();
+        // A torus has no edge to see the sea past (the hills: all land), so it has no sea to the horizon.
+        if (!(ViewWrap.EastWest && ViewWrap.NorthSouth)) MakeSea();
         MakeLandmarks(loaded);
-        palette = Palette(loaded.Biomes, grid.World, terrains);
+        palette = Palette(loaded.Biomes, grid.World, terrains, map.Hills?.Biome);
+        StartFarLand(map);
         StartupTimeline.Mark("far ring map read, landmarks made");
-        Debug.Log($"FAR RING: know {know} (haze 98% at {HazeMetres:0} m, density {RenderSettings.fogDensity:0.00000}/m), {loaded.Far.All.Count} far landmarks");
+        var d = AirDials;
+        Debug.Log($"FAR RING: know {know} ({HazeMetres:0} m), air: clear reach {d.reach:0} m, haze 98% at {d.clear:0} m, {loaded.Far.All.Count} far landmarks");
         return true;
     }
 
-    static readonly int HazeDensityId = Shader.PropertyToID("_FarHazeDensity"), HazeClearId = Shader.PropertyToID("_FarHazeClear"), SightMetresId = Shader.PropertyToID("_FarSightMetres"),
-        SkyHorizonId = Shader.PropertyToID("_FarSkyHorizon"), KnownMetresId = Shader.PropertyToID("_FarKnownMetres"), SkyZenithId = Shader.PropertyToID("_FarSkyZenith"),
-        PunchyZenithId = Shader.PropertyToID("_PunchySkyZenith"), OwnHazeId = Shader.PropertyToID("_OwnHaze");
+    static readonly int SightMetresId = Shader.PropertyToID("_FarSightMetres"), KnownMetresId = Shader.PropertyToID("_FarKnownMetres"),
+        OwnHazeId = Shader.PropertyToID("_OwnHaze");
 
     // The chunks the characters stand in (the camera's, with none); true when they changed.
     bool FollowCharacters()
@@ -224,7 +223,7 @@ public sealed partial class FarRing : MonoBehaviour
         {
             var p = Camera.main.transform.position;
             var (x, y) = land.Layout.CellAt(p.x, p.z);
-            AddChunkOf(x, y);
+            AddChunkOf(ViewWrap.FoldX(x), ViewWrap.FoldY(y));
         }
         if (wanted.Count == 0) return false;
         bool same = wanted.Count == characters.Count;
@@ -233,6 +232,7 @@ public sealed partial class FarRing : MonoBehaviour
         characters.Clear();
         characters.AddRange(wanted);
         if (terrains != null) terrains.ReachNow();
+        if (ViewWrap.EastWest) Replace();
         return true;
     }
 
@@ -251,12 +251,13 @@ public sealed partial class FarRing : MonoBehaviour
             if (!drawn.TryGetValue(ring.Id(k.X, k.Y), out var d) || d.chunk != k) fresh.Add(k);
         float cell = land.Layout.CellSize;
         var colours = palette;
+        var rock = rockAt;
         buildStarted = Time.realtimeSinceStartupAsDouble;
         building = Task.Run(() =>
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             var made = new List<(KnownChunk, FarMeshes.Data)>(fresh.Count);
-            foreach (var k in fresh) made.Add((k, FarMeshes.Known(k, cell, colours)));
+            foreach (var k in fresh) made.Add((k, FarMeshes.Known(k, cell, colours, rock)));
             workerMs = timer.Elapsed.TotalMilliseconds;
             return made;
         });
@@ -266,11 +267,13 @@ public sealed partial class FarRing : MonoBehaviour
     FarMeshes.Palette palette = FarMeshes.Palette.Plain;
 
     // The known chunks' colours from what the near ground draws (#191): each biome's ground as the map's cells paint it,
-    // in the colours of the chunk terrains' own layers. Once, as the ring starts.
-    static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains)
+    // in the colours of the chunk terrains' own layers. Once, as the ring starts. A hills map has no plan's biomes (its
+    // cells are all one biome's ground): its biome's ground is the mean paint of the cells made so far (its grass, the
+    // brush in it, its roads), as the chunk terrains paint them, so the known meshes meet them in one colour.
+    static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains, string allOneBiome)
     {
         var layers = terrains != null && terrains.template != null ? terrains.template.terrainLayers : null;
-        if (biomes == null || world == null || layers == null) return FarMeshes.Palette.Plain;
+        if (world == null || layers == null) return FarMeshes.Palette.Plain;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var colours = new Dictionary<string, Color>();
         foreach (string name in CellPaint.Layers)
@@ -282,10 +285,40 @@ public sealed partial class FarRing : MonoBehaviour
                     colours[name] = new Color(mean.r * tint.x, mean.g * tint.y, mean.b * tint.z);
                     break;
                 }
-        var palette = FarMeshes.Palette.Drawn(biomes.Grounds(world), colours);
+        var grounds = biomes != null ? biomes.Grounds(world) : new Dictionary<string, float[]>();
+        if (biomes == null && allOneBiome != null && MadeGround(world) is { } made) grounds[allOneBiome] = made;
+        var palette = FarMeshes.Palette.Drawn(grounds, colours);
         StartupTimeline.Mark("far ring colours");
-        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms");
+        var layersSaid = string.Join(", ", System.Linq.Enumerable.Select(colours, c => $"{c.Key} {c.Value.r:0.000},{c.Value.g:0.000},{c.Value.b:0.000}"));
+        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms: {layersSaid}; grass {palette.Grass}{(allOneBiome != null ? $", {allOneBiome} {palette.Of(allOneBiome)}" : "")}");
         return palette;
+    }
+
+    // The mean paint (CellPaint's layer weights) of the dry cells of every chunk made so far, every 4th cell each way;
+    // null with none. Reads no chunk that isn't made.
+    static float[] MadeGround(World world)
+    {
+        const int Every = 4;
+        var sum = new float[CellPaint.Layers.Count];
+        int n = 0;
+        for (int cy = 0; cy < world.H / ChunkGen.Size; cy++)
+            for (int cx = 0; cx < world.W / ChunkGen.Size; cx++)
+            {
+                int x0 = cx * ChunkGen.Size, y0 = cy * ChunkGen.Size;
+                if (BiomeGround.CellAsIs(world, x0, y0) == null) continue;
+                for (int y = y0; y < y0 + ChunkGen.Size; y += Every)
+                    for (int x = x0; x < x0 + ChunkGen.Size; x += Every)
+                    {
+                        var c = BiomeGround.CellAsIs(world, x, y);
+                        if (c == null || c.Water > 0) continue;
+                        var mix = CellPaint.Mix(world, x, y, c);
+                        for (int k = 0; k < sum.Length && k < mix.Count; k++) sum[k] += mix[k];
+                        n++;
+                    }
+            }
+        if (n == 0) return null;
+        for (int k = 0; k < sum.Length; k++) sum[k] /= n;
+        return sum;
     }
 
     // A texture's mean colour, linear as the terrain's shader mixes and lights it (FarLand lights a vertex colour as it is),
@@ -378,19 +411,38 @@ public sealed partial class FarRing : MonoBehaviour
         r.reflectionProbeUsage = ReflectionProbeUsage.Off;
     }
 
-    // World x, z of map chunk (cx, cy)'s north-west corner: the line between cells, as the chunk terrains' edges run.
+    // World x, z of map chunk (cx, cy)'s north-west corner: the line between cells, as the chunk terrains' edges run. On a
+    // world that wraps, the copy nearest the camera (ViewWrap).
     Vector3 Corner(int cx, int cy)
     {
         var l = land.Layout;
         int x = cx * ChunkGen.Size, y = cy * ChunkGen.Size;
-        return new Vector3(l.OriginX + (x + l.U0) * l.CellSize, 0f, l.OriginZ + (l.V0 + 1 - y) * l.CellSize);
+        float half = l.ChunkSize * 0.5f, wx = l.OriginX + (x + l.U0) * l.CellSize, wz = l.OriginZ + (l.V0 + 1 - y) * l.CellSize;
+        return new Vector3(ViewWrap.NearX(wx + half) - half, 0f, ViewWrap.NearZ(wz - half) + half);
     }
 
-    // Chebyshev chunks from map chunk (cx, cy) to the nearest character.
+    // On a world that wraps, the known meshes moved to the copy of their place nearest the camera where that changed (the
+    // characters went half a world round: none in sight ever moves).
+    void Replace()
+    {
+        foreach (var p in drawn) Place(p.Value.go, p.Key);
+        foreach (var p in leaving) Place(p.Value.go, p.Key);
+    }
+
+    void Place(GameObject go, int id)
+    {
+        if (go == null) return;
+        var to = Corner(id % chunksW, id / chunksW);
+        var at = go.transform.position;
+        if (Mathf.Abs(at.x - to.x) > 1f || Mathf.Abs(at.z - to.z) > 1f) go.transform.position = new Vector3(to.x, at.y, to.z);
+    }
+
+    // Chebyshev chunks from map chunk (cx, cy) to the nearest character (the short way round a world that wraps).
     int Nearest(int cx, int cy)
     {
         int near = int.MaxValue;
-        foreach (var (x, y) in characters) near = Mathf.Min(near, Mathf.Max(Mathf.Abs(x - cx), Mathf.Abs(y - cy)));
+        foreach (var (x, y) in characters)
+            near = Mathf.Min(near, Mathf.Max(ViewWrap.ChunkDistance(x, cx, chunksW, true), ViewWrap.ChunkDistance(y, cy, chunksH, false)));
         return near;
     }
 

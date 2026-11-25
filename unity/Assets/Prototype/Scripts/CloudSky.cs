@@ -7,8 +7,8 @@ using UnityEngine;
 // same everywhere (Chem.Sky), so the maps here are one texel each, laid over a
 // wide square round the camera. Each weather kind has its own clouds (from
 // Punchy's presets), eased in as it strengthens; lightning lights the cloud
-// it came from. Also colours the haze like the horizon, so distant land fades
-// into the sky. Presentation only, like SkyLight, which still turns the sun
+// it came from. Also says the horizon's colour and the sun's glow on it, which
+// the air fades to (AirInPlay), so distant land fades into the sky. Presentation only, like SkyLight, which still turns the sun
 // and the moon.
 [RequireComponent(typeof(SkyLight))]
 public class CloudSky : MonoBehaviour
@@ -171,9 +171,23 @@ public class CloudSky : MonoBehaviour
         Shader.SetGlobalVector(LightningPosId, new Vector4(strikeAt.x, strikeAt.y, strikeAt.z, strike));
         PublishMaps(cam.transform.position);
 
-        // The haze is the horizon's colour, so the land fades into the sky behind it.
-        RenderSettings.fogColor = horizon;
+        // The air fades into the sky's horizon on each bearing (AirInPlay, Air.hlsl's AirToward): its colour, the sun's glow.
+        HorizonNow = horizon;
+        SunDirection = sunDir;
+        var glow = disc.linear * (Air.GlowShare * (1f - shown.coverage * 0.7f));
+        SunGlow = new Vector3(glow.r, glow.g, glow.b);
+        Ready = true;
     }
+
+    /// <summary>The sky's colour at the horizon this frame (sRGB, as the skybox takes it).</summary>
+    public Color HorizonNow { get; private set; }
+
+    /// <summary>The sun's glow on the horizon line toward it (linear) and the sun's way, this frame.</summary>
+    public Vector3 SunGlow { get; private set; }
+    public Vector3 SunDirection { get; private set; }
+
+    /// <summary>Whether the sky has been worked out at least once.</summary>
+    public bool Ready { get; private set; }
 
     // The weather's clouds: clear sky blending into the kind's look as it strengthens.
     static Look Wanted(WeatherNow now)

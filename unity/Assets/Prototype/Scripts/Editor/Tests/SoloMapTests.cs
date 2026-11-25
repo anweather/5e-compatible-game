@@ -1,4 +1,5 @@
 using System.IO;
+using Chem;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -74,5 +75,42 @@ public class SoloMapTests
         LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("MAP: " + name + " isn't a map"));
         string folder = ChemGrid.PlayFolder(name);
         Assert.That(folder, Is.EqualTo(ChemGrid.PlayFolder("")));
+    }
+
+    // Andrew 2026-11-25: a player with no pick loads into the hills, the sparse island (the nine before).
+    [Test]
+    public void NothingSavedStartsOnTheHills()
+    {
+        PlayerPrefs.DeleteKey(Key);
+        Assert.That(SoloMap.Start(new[] { "game" }), Is.EqualTo("hills-12x10"));
+    }
+
+    [Test]
+    public void TheHillsAreAMapThisCopyHas()
+    {
+        Assert.That(System.Array.FindIndex(ChemGrid.Maps(), m => m.id == "hills-12x10"), Is.GreaterThanOrEqualTo(0));
+    }
+
+    [Test]
+    public void ACopyWithoutTheHillsPlaysTheNineThenTheValley()
+    {
+        Assert.That(SoloMap.First(new[] { ("valley", "V"), ("nine", "N"), ("hills-12x10", "H") }), Is.EqualTo("hills-12x10"));
+        Assert.That(SoloMap.First(new[] { ("valley", "V"), ("nine", "N") }), Is.EqualTo("nine"));
+        Assert.That(SoloMap.First(new[] { ("valley", "V") }), Is.EqualTo(GameFolders.DefaultMap));
+    }
+
+    [Test]
+    public void ASavedPickStillWins()
+    {
+        SoloMap.Save(GameFolders.DefaultMap);
+        Assert.That(SoloMap.Start(new[] { "game" }), Is.EqualTo(GameFolders.DefaultMap));
+    }
+
+    [Test]
+    public void AScriptedRunKeepsTheValley()
+    {
+        PlayerPrefs.DeleteKey(Key);
+        Assert.That(SoloMap.Start(new[] { "game", "-fps-probe" }), Is.EqualTo(GameFolders.DefaultMap));
+        Assert.That(SoloMap.Start(new[] { "game", "-playtest" }), Is.EqualTo(GameFolders.DefaultMap));
     }
 }

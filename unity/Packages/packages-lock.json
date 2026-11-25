@@ -1,5 +1,13 @@
 {
   "dependencies": {
+    "com.anweather.chemistry-core": {
+      "version": "file:../../packages/com.anweather.chemistry-core",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.2.2"
+      }
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.16",
       "depth": 0,

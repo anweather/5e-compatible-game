@@ -371,8 +371,17 @@ public class RoomProbeClient : MonoBehaviour
         walker.enabled = true;
         yield return new WaitForSecondsRealtime(0.5f);
         var hands = wizard.GetComponent<ItemHolder>();
-        hands.PickUp(item);
-        for (float t = 0f; t < 3f && hands.Held == null; t += Time.unscaledDeltaTime) yield return null;
+        // Asked again until it's in hand, as a player presses again: the host refuses while its copy of this wizard is
+        // still where it was (a peer just joined from a snapshot can be a second behind in sending where it is).
+        for (float t = 0f, asked = -1f; t < 3f && hands.Held == null; t += Time.unscaledDeltaTime)
+        {
+            if (t - asked >= 0.5f)
+            {
+                hands.PickUp(item);
+                asked = t;
+            }
+            yield return null;
+        }
         yield return new WaitForSecondsRealtime(1f);
     }
 
@@ -728,9 +737,7 @@ public class RoomOpenProbe : RoomProbe
         yield return Wait(0.5f);
         yield return Ask("rejoin");
         if (Theirs == null) yield break;
-        // After the tick it joined at, its checksums are the host's. Up to it it replayed a history that keeps a player's
-        // newest stand since the last strike, not every stand (StandKeeper), so a stand a replayed checksum saw can
-        // differ, which no peer's own desync check compares (a window it saw only part of gives none).
+        // It starts from the host's world at the tick it joined at (a snapshot), so from there its checksums are the host's.
         HashesFrom = Theirs.replayedUpTo + 1;
         Check("late_joiner_has_the_room", Theirs.roomText == World.RoomText(), $"{Theirs.roomText}, here {World.RoomText()}");
         Check("late_joiner_has_the_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
@@ -740,7 +747,8 @@ public class RoomOpenProbe : RoomProbe
         yield return Reach("late_joiner_waves", Mine.netTick, LateJoinerSeconds);
         if (Theirs == null) yield break;
         Check("late_joiner_has_the_waves", Theirs.defense == waves, $"{Theirs.defense}, here {waves}");
-        Check("late_joiner_has_the_strike", !string.IsNullOrEmpty(Mine.strikes) && Theirs.strikes == Mine.strikes, $"{Theirs.strikes}, here {Mine.strikes}");
+        // The punch is in the world it loaded (its stands, in the checksums), not in its log: a snapshot brings no past log lines.
+        Check("late_joiner_has_the_strike", !string.IsNullOrEmpty(Mine.strikes) && string.IsNullOrEmpty(Theirs.strikes), $"none logged there, {Mine.strikes} here");
     }
 
     // Strikes over the network, after the reset so a late joiner replays it: the client's wizard steps beside the host's

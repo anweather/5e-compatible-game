@@ -1,0 +1,34 @@
+{
+  "base": ["origin/main", "main"],
+  "rules": {
+    "comments": {
+      "on": true,
+      "languages": ["csharp", "shader", "js", "python"],
+      "include": [""],
+      "exclude": ["node_modules/", "vendor/", "third_party/"]
+    },
+    "paths": {
+      "on": true,
+      "prefixes": ["tools/", "docs/"],
+      "history": ["^docs/log/", "^docs/history/"],
+      "made": [],
+      "ignore": [],
+      "strict": true
+    },
+    "ownData": {
+      "on": true,
+      "in": ["tools/"],
+      "patterns": ["persistentDataPath", "LocalLow", "Application Support", "%APPDATA%", "XDG_DATA_HOME"],
+      "allowed": {}
+    },
+    "modules": {
+      "on": false,
+      "root": "src/",
+      "map": "tools/work/modules.txt",
+      "known": "tools/work/modules-known.txt",
+      "pythonRoots": [""],
+      "everyFileMapped": true,
+      "exclude": []
+    }
+  }
+}

@@ -39,3 +39,5 @@ tools/punchy-sync/obj/
 !/world/maps/scale-12x10/map.json
 /world/maps/world-12x10/*
 !/world/maps/world-12x10/map.json
+/world/maps/hills-12x10/*
+!/world/maps/hills-12x10/map.json

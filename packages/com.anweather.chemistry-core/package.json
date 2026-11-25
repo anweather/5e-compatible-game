@@ -1,0 +1,10 @@
+{
+  "name": "com.anweather.chemistry-core",
+  "version": "0.1.0",
+  "displayName": "Chemistry Core",
+  "description": "The engine-free, deterministic spell-chemistry core: loads the interaction rules, runs the cell world one tick at a time for lockstep play, and generates the world. No UnityEngine references.",
+  "unity": "6000.3",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
+  }
+}

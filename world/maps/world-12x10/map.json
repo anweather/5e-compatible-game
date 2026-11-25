@@ -4,6 +4,7 @@
   "name": "The Wide World",
   "size": [6912, 5760],
   "seaLevel": -4,
+  "sea": { "shore": [225, 3295.5], "seaward": [0.62, -0.78] },
   "spawn": [292, 3208],
   "expects": { "landShare": 97, "highest": 9515, "lowest": -320 },
   "generated": {

@@ -1,0 +1,17 @@
+name: Question
+description: Something you'd like to know about the game or how it's made.
+title: "Question: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: What you were doing or reading when it came up
+    validations:
+      required: false

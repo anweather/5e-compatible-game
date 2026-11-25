@@ -489,12 +489,8 @@ public class OnlineProbeClient : MonoBehaviour
             .Select(w => w.GetComponent<CastBeats>()).FirstOrDefault();
     }
 
-    // Ticks this side knows of but hasn't run yet (NetChem's knownUpTo - NetTick; 0 when caught up).
-    static int Lag(NetChem net)
-    {
-        var known = typeof(NetChem).GetField("knownUpTo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return known != null ? System.Math.Max(0, (int)known.GetValue(net) - net.NetTick) : -1;
-    }
+    // Ticks this side knows of but hasn't run yet (NetChem.KnownUpTo - NetTick; 0 when caught up).
+    static int Lag(NetChem net) => System.Math.Max(0, net.KnownUpTo - net.NetTick);
 
     // Tells the host once the reset's stall is over here and this side has caught up (OnlineProbe.ClientSettled).
     static IEnumerator TellSettled(string id, NetChem net)

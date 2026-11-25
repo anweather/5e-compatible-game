@@ -91,11 +91,12 @@ public sealed class CellWaterMesh
         static readonly Stack<WaterCell[]> Pool = new();
         const int MostPooled = 256;
         readonly WaterCell[][] blocks;
-        readonly int w, across;
+        readonly int w, h, across;
 
         public WaterCells(int width, int height)
         {
             w = width;
+            h = height;
             across = (width + Mask) >> Chunks.Shift;
             blocks = new WaterCell[across * ((height + Mask) >> Chunks.Shift)][];
         }
@@ -107,6 +108,9 @@ public sealed class CellWaterMesh
 
         public ref readonly WaterCell Read(int x, int y)
         {
+            // A cell past an edge of a world that wraps (on a torus every cell is in bounds) is the one it folds to.
+            if ((uint)x >= (uint)w) x = ((x % w) + w) % w;
+            if ((uint)y >= (uint)h) y = ((y % h) + h) % h;
             var block = blocks[(y >> Chunks.Shift) * across + (x >> Chunks.Shift)];
             if (block == null) return ref Blank;
             return ref block[((y & Mask) << Chunks.Shift) | (x & Mask)];
@@ -318,6 +322,7 @@ public sealed class CellWaterMesh
         PerfCounts.Add("water.rebuilds");
         if (step != LevelStep.Resting || (stale && Time.frameCount - restingSince >= RestFrames))
             using (RecomputeMarker.Auto()) Recompute(levelOver);
+        MakeUnmadeAhead();
         PerfCounts.Peak("water.dirty_tiles", dirtyTiles.Count);
         if (dirtyTiles.Count == 0 || busy) return;
         drawBudget.Start();
@@ -332,10 +337,50 @@ public sealed class CellWaterMesh
         foreach (int tile in drawOrder)
         {
             if (drawBudget.Over()) break;
-            using (DrawTileMarker.Auto()) DrawTile(tile);
+            bool drew;
+            using (DrawTileMarker.Auto()) drew = DrawTile(tile);
+            if (!drew) continue;
             PerfCounts.Add("water.tiles_drawn");
             dirtyTiles.Remove(tile);
         }
+        MakeUnmadeAhead();
+    }
+
+    // --- chunks not made yet ----------------------------------------------------------
+
+    // On a generated map the source makes chunks as the streaming asks; the water's banks and a tile's ring can reach a
+    // cell of a chunk it hasn't made yet (#hills rivers: a river running out of the drawn chunks). Reading it would make the
+    // chunk here, on the main thread: such a cell isn't read (no bank there, the tile left for later), its chunk is made
+    // ahead on the worker, and the water worked out again once it's in.
+    readonly List<(int cx, int cy)> unmade = new();
+
+    bool Unmade(int x, int y)
+    {
+        var world = grid.World;
+        if (world.Source is not GeneratedSource g) return false;
+        int cx = world.FoldX(x) >> Chunks.Shift, cy = world.FoldY(y) >> Chunks.Shift;
+        if (!world.IsPacked(cx, cy) || g.IsMade(cx, cy)) return false;
+        if (!unmade.Contains((cx, cy))) unmade.Add((cx, cy));
+        return true;
+    }
+
+    // Whether any cell of a box (and the ring of 2 round it) is in a chunk not made yet.
+    bool UnmadeNear(RectInt box)
+    {
+        bool any = false;
+        for (int y = box.yMin - 2; y <= box.yMax + 2; y += Chunks.Size / 2)
+            for (int x = box.xMin - 2; x <= box.xMax + 2; x += Chunks.Size / 2) any |= Unmade(x, y);
+        any |= Unmade(box.xMax + 2, box.yMax + 2) | Unmade(box.xMin - 2, box.yMax + 2) | Unmade(box.xMax + 2, box.yMin - 2);
+        return any;
+    }
+
+    void MakeUnmadeAhead()
+    {
+        if (unmade.Count == 0) return;
+        PerfCounts.Add("water.unmade_ahead", unmade.Count);
+        grid.World.MakeAhead(unmade);
+        unmade.Clear();
+        stale = true;
     }
 
     // Profiler markers round what a Rebuild is made of (ContourSurface marks inside DrawTile).
@@ -432,6 +477,9 @@ public sealed class CellWaterMesh
     /// and counts those that came out different, water or ice, so a tile left stale by a skipped
     /// redraw shows. Drawn afresh, the tile is then right: run it at the end.
     /// </summary>
+    /// <summary>The water's state for a performance pass: its tiles, those waiting to be drawn, its level step and the chunks it waits on.</summary>
+    public string Summary => $"tiles={tiles.Count} dirty={dirtyTiles.Count} step={step} stale={stale} unmade={unmade.Count} wet_blocks={cells.Made}";
+
     public (int tiles, int different) CheckTiles()
     {
         while (stale || step != LevelStep.Resting) Recompute(() => false);
@@ -469,20 +517,22 @@ public sealed class CellWaterMesh
         return dx * dx + dz * dz;
     }
 
-    // A tile's water and ice: made the first time it has any, emptied when it has none.
-    void DrawTile(int tile)
+    // A tile's water and ice: made the first time it has any, emptied when it has none. False when a chunk it reads isn't
+    // made yet: it's left for later.
+    bool DrawTile(int tile)
     {
         int tx = tile % tilesX, ty = tile / tilesX;
         var world = grid.World;
         int x0 = tx * TileCells, y0 = ty * TileCells;
         var box = new RectInt(x0, y0, Mathf.Min(TileCells, world.W - x0), Mathf.Min(TileCells, world.H - y0));
-        if (box.width <= 0 || box.height <= 0) return;
+        if (box.width <= 0 || box.height <= 0) return true;
+        if (UnmadeNear(box)) return false;
         if (!tiles.TryGetValue(tile, out var t))
         {
             if (!AnyWetNear(box))
             {
                 PerfCounts.Add("water.tiles_none");
-                return;
+                return true;
             }
             t = (new ContourSurface(grid, "Water", waterMaterial, Outline, RippleMetres, tiled: true),
                  new ContourSurface(grid, "Ice", iceMaterial, Outline, RippleMetres, tiled: true));
@@ -500,10 +550,11 @@ public sealed class CellWaterMesh
         }
         // A tile with nothing left to draw goes (its cells dried, or their chunk was let go far behind, ChemGrid.Undraw):
         // kept, every tile that ever had water stayed, two meshes and two objects each. Made again if water comes back.
-        if (!t.water.Empty || !t.ice.Empty) return;
+        if (!t.water.Empty || !t.ice.Empty) return true;
         t.water.Destroy();
         t.ice.Destroy();
         tiles.Remove(tile);
+        return true;
     }
 
     // Whether ice could show in the box: the outline reads a ring round it, and a cell only scores
@@ -620,7 +671,7 @@ public sealed class CellWaterMesh
             int nx = x + Ring[d].dx, ny = y + Ring[d].dy;
             if (!world.InBounds(nx, ny)) continue;
             int n = world.Idx(nx, ny);
-            if (cells.Read(nx, ny).wet) continue;
+            if (cells.Read(nx, ny).wet || Unmade(nx, ny)) continue;
             float ground = Ground(n);
             if (ground > own + Level && ground < lowest) lowest = ground;
         }
@@ -637,7 +688,7 @@ public sealed class CellWaterMesh
             int nx = x + Ring[d].dx, ny = y + Ring[d].dy;
             if (!world.InBounds(nx, ny)) continue;
             int n = world.Idx(nx, ny);
-            if (!cells.Read(nx, ny).wet && Ground(n) <= own + Level) return true;
+            if (!cells.Read(nx, ny).wet && !Unmade(nx, ny) && Ground(n) <= own + Level) return true;
         }
         return false;
     }
@@ -667,7 +718,7 @@ public sealed class CellWaterMesh
                 int nx = x + Ring[d].dx, ny = y + Ring[d].dy;
                 if (!world.InBounds(nx, ny)) continue;
                 int n = world.Idx(nx, ny);
-                if (cells.Read(nx, ny).wet || Ground(n) <= top) continue;
+                if (cells.Read(nx, ny).wet || Unmade(nx, ny) || Ground(n) <= top) continue;
                 nextBanks.Add(n);
                 nextCalm.Add(n);
                 nextCalm.Add(key);
@@ -817,7 +868,7 @@ public sealed class CellWaterMesh
             this.frozen = frozen;
             var grid = owner.grid;
             var world = grid.World;
-            origin = grid.CellCenter(0, 0);
+            origin = grid.CellCenterUnwrapped(0, 0);
             cellSize = grid.cellSize;
             x0 = box.xMin - 1;
             y0 = box.yMin - 1;
@@ -872,7 +923,7 @@ public sealed class CellWaterMesh
                 flow = Vector4.zero;
                 return;
             }
-            flow = owner.Foamed(blended, ContourSurface.Flat(origin, cellSize, gx, gy), OnRiver(gx, gy), value);
+            flow = owner.Foamed(blended, ViewWrap.Near(ContourSurface.Flat(origin, cellSize, gx, gy)), OnRiver(gx, gy), value);
             if (liquids) Wear(gx, gy, inside, ref color, ref flow);
         }
 
@@ -952,6 +1003,7 @@ public sealed class CellWaterMesh
     {
         var world = grid.World;
         if (x <= 0 || y <= 0 || x >= world.W - 1 || y >= world.H - 1) return Vector2.zero;
+        if (Unmade(x + 1, y) || Unmade(x - 1, y) || Unmade(x, y + 1) || Unmade(x, y - 1)) return Vector2.zero;
         float east = OwnGround(world.Idx(x + 1, y)) - OwnGround(world.Idx(x - 1, y));
         float south = OwnGround(world.Idx(x, y + 1)) - OwnGround(world.Idx(x, y - 1));
         var slope = new Vector2(east, -south) / (2f * grid.cellSize);

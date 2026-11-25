@@ -38,10 +38,10 @@ Shader "Prototype/Ocean"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
-            #pragma multi_compile_fog
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+                        #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Air.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
             half4 _Deep, _Shallow, _Foam;
@@ -64,7 +64,6 @@ Shader "Prototype/Ocean"
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 float4 surf : TEXCOORD2; // depth, the swell's phase, swash, crest
-                half fogFactor : TEXCOORD3;
                 float3 shore : TEXCOORD4; // the way to land (xz), the distance to the shore
             };
 
@@ -146,7 +145,6 @@ Shader "Prototype/Ocean"
                 // The fragment works out the breakers' foam from where each point is in the swell.
                 o.surf = float4(depth, phase, swashZone * pulse, crestLift);
                 o.shore = float3(shore, fromShore);
-                o.fogFactor = ComputeFogFactor(o.positionCS.z);
                 return o;
             }
 
@@ -203,7 +201,7 @@ Shader "Prototype/Ocean"
                 half alpha = saturate(0.35 + depth * 0.22 + fresnel * 0.4);
                 alpha = max(alpha, foam);
                 alpha *= saturate(depth * 3.0 + 0.45);
-                return half4(MixFog(color, input.fogFactor), alpha);
+                return half4(Aired(color, input.positionWS), alpha);
             }
             ENDHLSL
         }

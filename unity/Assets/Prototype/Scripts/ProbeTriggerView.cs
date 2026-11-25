@@ -113,7 +113,6 @@ public class TriggerViewProbe : RoomProbe
         yield return Reach("late_joiner", Net.NetTick, ReplaySeconds);
         if (Theirs == null) yield break;
         Metric("late_joiner_reach_s", Theirs.reachSeconds);
-        Metric("late_joiner_strike_history", Net.StrikeHistorySent);
         Check("late_joiner_replayed_the_casts", Theirs.triggered == World.TriggeredCasts && Theirs.triggered > 0, $"{Theirs.triggered} cast there, {World.TriggeredCasts} here");
         Check("late_joiner_plays_no_old_shows", Theirs.showsSince == 0 && Theirs.projectiles == 0 && Theirs.meteors == 0,
             $"{Theirs.showsSince} shows, {Theirs.projectiles} projectiles, {Theirs.meteors} meteors since it joined");
@@ -160,7 +159,6 @@ public class TriggerViewProbe : RoomProbe
         yield return Reach("long_walk_late_joiner", Net.NetTick, ReplaySeconds);
         if (Theirs == null) yield break;
         Metric("long_walk_late_joiner_reach_s", Theirs.reachSeconds);
-        Metric("long_walk_strike_history", Net.StrikeHistorySent);
         Check("long_walk_late_joiner_replayed_the_casts", Theirs.triggered == World.TriggeredCasts && World.TriggeredCasts > casts,
             $"{Theirs.triggered} cast there, {World.TriggeredCasts} here");
     }

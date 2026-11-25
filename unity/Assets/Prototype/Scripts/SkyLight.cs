@@ -4,8 +4,8 @@ using UnityEngine.Rendering;
 
 // The sun, the moon, the sky and the haze, from the Chem world's clock and
 // weather (Chem.Sky): the sun rises at 6:00 and sets at 18:00, a dim blue
-// moon lights the night, and clouds, rain and fog dull the light and close
-// the haze in. Presentation only: the time and the weather are the core's,
+// moon lights the night, and clouds, rain and fog dull the light and say
+// how far they close the haze in (AirInPlay makes the air from them). Presentation only: the time and the weather are the core's,
 // so every player sees the same sky. Also the clock line at the top right.
 // The dragon darkens all of it (Menace, DragonFlight.Darkness), read from the
 // core's flight, so that's the same on every machine too.
@@ -28,7 +28,6 @@ public class SkyLight : MonoBehaviour
     Material sky;
     float baseExposure = 1.15f, baseThickness = 0.9f;
     Color baseTint = new Color(0.45f, 0.55f, 0.75f);
-    Color baseFog;
     float baseFogStart, baseFogEnd;
     // How long the shown clock takes to catch up with a jump of the world's clock (s).
     const float ClockGlide = 0.3f;
@@ -65,7 +64,6 @@ public class SkyLight : MonoBehaviour
             if (sky.HasProperty("_AtmosphereThickness")) baseThickness = sky.GetFloat("_AtmosphereThickness");
             if (sky.HasProperty("_SkyTint")) baseTint = sky.GetColor("_SkyTint");
         }
-        baseFog = RenderSettings.fogColor;
         baseFogStart = RenderSettings.fogStartDistance;
         baseFogEnd = RenderSettings.fogEndDistance;
     }
@@ -124,7 +122,6 @@ public class SkyLight : MonoBehaviour
         var lit = moon != null && sunUp < -0.05f ? moon : sun;
         if (RenderSettings.sun != lit) RenderSettings.sun = lit;
         Shine(sunUp, moonUp);
-        Haze();
     }
 
     /// <summary>How much the sky is overcast, 0..1.</summary>
@@ -147,13 +144,20 @@ public class SkyLight : MonoBehaviour
         return -body.forward.y;
     }
 
+    /// <summary>The sun's height (its forward's sine, about 3.4 degrees) under which it casts no shadows; they fade in to twice it.</summary>
+    public const float LowSunShadows = 0.06f;
+
     void Shine(float sunUp, float moonUp)
     {
         float clear = (1f - 0.65f * cloud) * (1f - 0.8f * Menace);
         float sunLight = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.04f, 0.25f, sunUp));
         sun.intensity = 1.6f * sunLight * clear;
         sun.color = Color.Lerp(new Color(1f, 0.55f, 0.32f), new Color(1f, 0.92f, 0.82f), Mathf.InverseLerp(0.02f, 0.45f, sunUp));
-        sun.shadows = sun.intensity > 0.02f ? LightShadows.Soft : LightShadows.None;
+        // The sun's shadows fade out as it nears the horizon and are off under LowSunShadows: a low sun's shadows run along
+        // the ground through a wood's trees (the hills' woods: the frame doubled in the last minutes before sunset).
+        float shade = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(LowSunShadows, LowSunShadows * 2f, sunUp));
+        sun.shadowStrength = shade;
+        sun.shadows = sun.intensity > 0.02f && shade > 0.01f ? LightShadows.Soft : LightShadows.None;
         if (moon != null)
         {
             moon.intensity = 0.5f * Mathf.InverseLerp(-0.04f, 0.2f, moonUp) * (1f - 0.75f * cloud) * (1f - sunLight);
@@ -193,19 +197,15 @@ public class SkyLight : MonoBehaviour
         RenderSettings.ambientProbe = probe;
     }
 
-    // The haze darkens with the light and greys under cloud; fog closes it right in, rain partway.
-    void Haze()
-    {
-        var grey = Color.Lerp(baseFog, new Color(0.6f, 0.62f, 0.64f), cloud);
-        RenderSettings.fogColor = Color.Lerp(new Color(0.04f, 0.05f, 0.08f), grey, Daylight);
-        float rain = Mathf.Clamp01(cloud - 0.5f) * 2f;
-        RenderSettings.fogStartDistance = Mathf.Lerp(Mathf.Lerp(baseFogStart, 40f, rain), 0f, fog);
-        RenderSettings.fogEndDistance = Mathf.Lerp(Mathf.Lerp(baseFogEnd, 1200f, rain), 90f, fog);
-        // A generated map's haze is exponential-squared (FarRing): ~98% at the known ring's edge, closer in rain and fog.
-        var far = FarRing.Instance;
-        if (far != null && far.HazeMetres > 0f && RenderSettings.fogMode == FogMode.ExponentialSquared)
-            RenderSettings.fogDensity = FarRing.HazeK / Mathf.Lerp(Mathf.Lerp(far.HazeMetres, far.HazeMetres * 0.6f, rain), 90f, fog);
-    }
+    /// <summary>How much the rain thickens the haze now, 0..1 (from the cloud past half); AirInPlay reads it.</summary>
+    public float Rain => Mathf.Clamp01(cloud - 0.5f) * 2f;
+
+    /// <summary>How far fog has closed the haze in now, 0..1; AirInPlay reads it.</summary>
+    public float Fog => fog;
+
+    /// <summary>The valley's linear haze now (m): the scene's own, closed in by rain partway and by fog right in.</summary>
+    public (float start, float end) LinearHaze =>
+        (Mathf.Lerp(Mathf.Lerp(baseFogStart, 40f, Rain), 0f, fog), Mathf.Lerp(Mathf.Lerp(baseFogEnd, 1200f, Rain), 90f, fog));
 
     // Day, time and weather at the top right, under the online status line.
     void OnGUI()

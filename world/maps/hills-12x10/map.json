@@ -1,0 +1,25 @@
+{
+  "about": "The rolling hills (docs/design/hills.md): the Wide World's size (12 x 10 world squares, 6912 x 5760 cells, 108 x 90 chunks) and nothing but grass on gentle rolling hills, wrapping both ways (\"wrap\": \"torus\"). No plan, no pinned valley, no sea, water, villages, trees or things: generated \"hills\" is its land, octaves of value noise ([period in cells, height in land units of 0.125 m]) whose periods divide the map's size so it tiles. Too big to bake whole: \"bake\": false, played from its rows alone (GeneratedSource). Its \"roads\" (HillsRoads) are made in the generator: main roads the whole way round along the rows and columns of world squares named, lesser ones joining every other world square, and \"loops\" percent of the sides left over. Spawn is on the main road 32 cells from the east seam, 159 from the south. Its \"forest\" (HillsForest) is woods made in the generator too: tiling noise over \"wood\" is a wood, its chance of a tree per thousand cells rising from \"least\" at its edge to \"most\" in its heart, more on the foothills, thinning to none at the tree line, off roads and water. \"off\" turns off, for this map only, the view's systems a hills map has nothing for.",
+  "id": "hills-12x10",
+  "name": "The Rolling Hills",
+  "size": [6912, 5760],
+  "seaLevel": -4,
+  "drawable": [-136, 3600],
+  "spawn": [6880, 5601],
+  "off": ["fauna"],
+  "expects": { "landShare": 100, "highest": 3063, "lowest": 45 },
+  "generated": {
+    "seed": "hills-1",
+    "squares": [12, 10],
+    "wrap": "torus",
+    "bake": false,
+    "generator": 8,
+    "hills": { "base": 8, "biome": "grassland", "octaves": [[1152, 200], [384, 96], [128, 24], [64, 6]],
+      "roads": { "mainRows": [4, 9], "mainColumns": [5, 11], "loops": 12, "grade": 12 },
+      "massif": { "centre": [3456, 2880], "meadow": 700, "crest": 1050, "foot": 1450, "reach": 2650, "warp": 220,
+        "meadowHeight": 1000, "peaks": 2000, "foothills": 160, "passWidth": 260, "passKeep": 12 },
+      "rivers": { "springs": 2, "springUp": 180, "lakeDepth": 20, "gorgeWidth": 110, "gorgeFall": 4, "minLake": 24, "minEndLake": 120, "endLake": 300 },
+      "forest": { "octaves": [[576, 55], [192, 30], [64, 15]], "wood": 64, "edge": 10, "least": 10, "most": 30, "lone": 1,
+        "foothills": 12, "treeLine": [900, 1400] } }
+  }
+}

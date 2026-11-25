@@ -1,9 +1,13 @@
+using Chem;
 using UnityEngine;
 
 // The map a player plays on when they start the game alone (#216), picked in the Esc menu (Game > Map) and kept between
 // launches as the player's own setting (PlayerPrefs), never shared state: a host's map (NetSession.HostMap) and a joiner's
 // (the host's) still come first while online. A player build starts on it; -map still wins, and the open Editor reads
-// Temp/map instead (a probe on a second map). A saved map this copy no longer has is forgotten and the valley plays.
+// Temp/map instead (a probe on a second map). With none saved, or one this copy no longer has, a player starts on the hills
+// (Andrew 2026-11-25: "Let's make the sparse island the default thing you load into"; the nine before, from 2026-11-23),
+// unless a scripted run (-fps-probe, -playtest) asks for the valley it was written for; a copy without the hills plays the
+// nine, and one without either the valley.
 public sealed class SoloMap : MonoBehaviour
 {
     const string Key = "solo-map";
@@ -30,6 +34,32 @@ public sealed class SoloMap : MonoBehaviour
         if (id.Length == 0) return null;
         maps ??= ChemGrid.Maps();
         return System.Array.FindIndex(maps, m => m.id == id) >= 0 ? id : null;
+    }
+
+    /// <summary>The map a player starts on with none picked: the hills.</summary>
+    public const string FirstMap = "hills-12x10";
+
+    /// <summary>The maps to start on with none picked, the first this copy has: the hills, then the nine.</summary>
+    public static readonly string[] FirstMaps = { FirstMap, "nine" };
+
+    /// <summary>
+    /// The map a player build starts on with no -map: the saved pick, else the hills; the valley for a scripted run, whose
+    /// places are the valley's. A copy without the hills plays the nine, and one without either the valley.
+    /// </summary>
+    public static string Start(string[] args)
+    {
+        if (System.Array.IndexOf(args, "-fps-probe") >= 0 || System.Array.IndexOf(args, "-playtest") >= 0) return GameFolders.DefaultMap;
+        if (Saved() is { } saved) return saved;
+        maps ??= ChemGrid.Maps();
+        return First(maps);
+    }
+
+    /// <summary>The first of <see cref="FirstMaps"/> in <paramref name="have"/>, else the valley.</summary>
+    public static string First((string id, string name)[] have)
+    {
+        foreach (string id in FirstMaps)
+            if (System.Array.FindIndex(have, m => m.id == id) >= 0) return id;
+        return GameFolders.DefaultMap;
     }
 
     /// <summary>Keeps the pick for the next launch.</summary>

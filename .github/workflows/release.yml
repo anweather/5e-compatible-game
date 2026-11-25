@@ -1,0 +1,233 @@
+name: release
+
+# Cuts alpha-X.Y.Z as a DRAFT release from each push to main (docs/CI_BUILDS.md, "Revisited 2026-11-23"): the
+# Windows and Linux players built on GitHub's own runners, the Windows one packed with Velopack, both uploaded by
+# tools/ship-update.sh --skip-build, the same script the machines use. No macOS (J-049). Publishing stays a click
+# (docs/RELEASING.md step 8) until the draft's checks are trusted.
+#
+# Never on pull_request: the repo is public, and this job holds the Unity licence and the token for the private
+# packs. Needs these repository secrets (Settings > Secrets and variables > Actions):
+#   ASSET_PACKS_TOKEN  fine-grained token, Contents read-only, on anweather/5e-asset-packs only
+#   UNITY_EMAIL, UNITY_PASSWORD, and UNITY_LICENSE (Personal: the .ulf file's contents) or UNITY_SERIAL (Pro)
+#
+# The version: the input, or the next patch after the newest alpha-* tag. It's stamped into the players
+# (-build-version); ProjectSettings' bundleVersion isn't committed. A commit a release already targets is skipped,
+# and so is one whose message says [skip release].
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "sandbox/**"
+      - ".claude/**"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "X.Y.Z (blank: the next patch after the newest alpha tag)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Version
+    runs-on: ubuntu-latest
+    if: github.repository == 'anweather/5e-compatible-game'
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      unity: ${{ steps.plan.outputs.unity }}
+      skip: ${{ steps.plan.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANTED: ${{ inputs.version }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          echo "unity=$(sed -n 's/^m_EditorVersion: //p' unity/ProjectSettings/ProjectVersion.txt)" >> "$GITHUB_OUTPUT"
+          skip=false
+          if [ "${{ github.event_name }}" = push ] && grep -qF '[skip release]' <<<"$MESSAGE"; then
+            echo "The commit says [skip release]."; skip=true
+          fi
+          if git tag --points-at HEAD | grep -q '^alpha-'; then
+            echo "HEAD is already tagged $(git tag --points-at HEAD | grep '^alpha-')."; skip=true
+          fi
+          # A draft has no tag yet: look for one at this commit too.
+          if gh release list -R "$GITHUB_REPOSITORY" --limit 20 --json tagName,isDraft --jq '.[] | select(.isDraft) | .tagName' \
+              | while read -r t; do gh release view "$t" -R "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish; done \
+              | grep -qx "$GITHUB_SHA"; then
+            echo "A draft release already targets $GITHUB_SHA."; skip=true
+          fi
+          if [ -n "$WANTED" ]; then
+            version="$WANTED"
+          else
+            last="$(git tag -l 'alpha-*' | sed 's/^alpha-//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)"
+            IFS=. read -r major minor patch <<<"${last:-0.1.0}"
+            version="$major.$minor.$((patch + 1))"
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not a version: $version" >&2; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          echo "alpha-$version at ${GITHUB_SHA:0:7}, skip=$skip" >> "$GITHUB_STEP_SUMMARY"
+
+  gates:
+    name: Core gates
+    needs: plan
+    if: needs.plan.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet build core -c Release -warnaserror -m:1
+      - run: dotnet test core -c Release --no-build --filter TestCategory=Unit
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: [plan, gates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: windows
+            module: windows-mono
+            target: Win64
+            method: PrototypeBuild.BuildWindowsFromCommandLine
+            out: unity/Builds/Update/win
+          - platform: linux
+            module: linux-il2cpp
+            target: Linux64
+            method: LinuxBuild.FromCommandLine
+            out: unity/Builds/Linux
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      IMAGE: unityci/editor:ubuntu-${{ needs.plan.outputs.unity }}-${{ matrix.module }}-4.0.0
+    steps:
+      # A runner starts with about 14 GB free; a build needs the packs (3.1 GB), Library (3.6 GB) and the player.
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/checkout@v4
+        with:
+          repository: anweather/5e-asset-packs
+          token: ${{ secrets.ASSET_PACKS_TOKEN }}
+          path: _packs
+          lfs: false
+      # The packs come through LFS (3.1 GB a checkout, billed as LFS bandwidth): cached by their object ids.
+      - id: packs
+        run: echo "key=packs-$(git -C _packs lfs ls-files -l | cut -d' ' -f1 | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: _packs/.git/lfs/objects
+          key: ${{ steps.packs.outputs.key }}
+      - run: git -C _packs lfs pull
+      - name: Lay the packs into the project
+        run: python3 -I tools/ci/unpack-asset-packs.py --cache _packs --project unity
+      # The tree impostors need a GPU to bake (TreeImpostorBaker), and a runner has none: they come baked from the
+      # packs repo. Without them the build would fail later on ("TREE IMPOSTORS: FAILED"), so stop here.
+      - name: Baked tree impostors from the packs repo
+        run: |
+          [ -d _packs/Generated/TreeImpostors ] || { echo "no Generated/TreeImpostors in 5e-asset-packs: bake them on a machine with a GPU (docs/CI_BUILDS.md)" >&2; exit 1; }
+          mkdir -p unity/Assets/Prototype/Generated/Resources/TreeImpostors
+          cp -R _packs/Generated/TreeImpostors/. unity/Assets/Prototype/Generated/Resources/TreeImpostors/
+      - uses: actions/cache@v4
+        with:
+          path: unity/Library
+          key: Library-${{ matrix.platform }}-${{ needs.plan.outputs.unity }}-${{ hashFiles('unity/Packages/packages-lock.json', 'unity/ProjectSettings/**', 'unity/AssetPacks.json') }}
+          restore-keys: |
+            Library-${{ matrix.platform }}-${{ needs.plan.outputs.unity }}-
+      - name: Build in Unity
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE"
+          # unity-editor (the image's wrapper) runs Unity in batch mode under xvfb. -nographics, as the Mac proved
+          # it from a fresh clone (HEADLESS BUILD: OK): the impostors came baked, so nothing needs a GPU.
+          docker run --rm -v "$GITHUB_WORKSPACE:/w" -w /w \
+            -e UNITY_LICENSE -e UNITY_SERIAL -e UNITY_EMAIL -e UNITY_PASSWORD -e VERSION \
+            -e OWNER="$(id -u):$(id -g)" \
+            "$IMAGE" bash -c '
+              set -uo pipefail
+              git config --global --add safe.directory "*"
+              if [ -n "$UNITY_SERIAL" ]; then
+                unity-editor -quit -nographics -logFile /dev/stdout \
+                  -serial "$UNITY_SERIAL" -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" > /dev/null
+              else
+                mkdir -p /root/.local/share/unity3d/Unity
+                printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf
+              fi
+              unity-editor -nographics -projectPath /w/unity -buildTarget ${{ matrix.target }} \
+                -executeMethod ${{ matrix.method }} -rebuild-yard -build-version "$VERSION" \
+                -expect-commit "$(git -C /w rev-parse --short=7 HEAD)" -logFile /w/build-${{ matrix.platform }}.log
+              status=$?
+              if [ -n "$UNITY_SERIAL" ]; then
+                unity-editor -quit -nographics -logFile /dev/stdout -returnlicense \
+                  -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" > /dev/null || true
+              fi
+              # The container runs as root: hand the files back to the runner, for the caches and uploads.
+              chown -R "$OWNER" /w/unity /w/build-${{ matrix.platform }}.log || true
+              exit $status'
+          grep -E 'HEADLESS BUILD|PLAYER CONTENTS|NET CONFIG' "build-${{ matrix.platform }}.log" || true
+          grep -q 'HEADLESS BUILD: OK' "build-${{ matrix.platform }}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: log-${{ matrix.platform }}
+          path: build-${{ matrix.platform }}.log
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: player-${{ matrix.platform }}
+          path: ${{ matrix.out }}
+          retention-days: 7
+
+  draft:
+    name: Pack and draft alpha-${{ needs.plan.outputs.version }}
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: player-windows
+          path: unity/Builds/Update/win
+      - uses: actions/download-artifact@v4
+        with:
+          name: player-linux
+          path: unity/Builds/Linux
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      # The same Velopack as the game's own Velopack.dll (1.2.161).
+      - run: dotnet tool install -g vpk --version 1.2.161
+      - name: Windows (Velopack) into the draft
+        run: tools/ship-update.sh "$VERSION" --windows-only --skip-build
+      - name: Linux zip into the draft
+        run: tools/ship-update.sh "$VERSION" --linux-only --skip-build
+      - run: echo "Draft $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/alpha-$VERSION is ready to test and publish (docs/RELEASING.md)." >> "$GITHUB_STEP_SUMMARY"

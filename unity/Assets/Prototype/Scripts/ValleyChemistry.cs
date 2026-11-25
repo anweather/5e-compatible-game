@@ -116,8 +116,8 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>The rules switched: the lake's colour, tinted from its art.</summary>
     public void RecolourWater(Color tint)
     {
-        // Looked for once a world, not at every switch: GameObject.Find walks the whole scene, 20-50 ms on the nine,
-        // which has no lake (#181).
+        // Looked for once a world, not at every switch: GameObject.Find walks the whole scene, 20-50 ms on the nine
+        // (#181).
         if (!lakeSought)
         {
             lakeSought = true;
@@ -203,7 +203,8 @@ public partial class ValleyChemistry : MonoBehaviour
             Layout = layout,
             StepHeight = grid.stepHeight,
             Unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep,
-            Lowest = Lowest(land),
+            // A generated map's land is made as it's read: its lowest is the one its map.json expects, not a pass over every chunk.
+            Lowest = land.IsFromSource ? MapLand.Current.Map.Lowest : Lowest(land),
             Layers = template.terrainLayers.Select(l => l.name).ToArray(),
             Grasses = template.detailPrototypes.Select(d => (d.prototype != null ? d.prototype : d.prototypeTexture as Object)?.name ?? "").ToArray(),
             TreeKinds = template.treePrototypes.Select(t => t.prefab.name).ToArray(),
@@ -260,6 +261,7 @@ public partial class ValleyChemistry : MonoBehaviour
             layout = map.Layout;
             lakeLevel = map.WaterLevel;
         }
+        hillsRivers = PinnedValley.InGenerated ? LoadedMaps.Get(ChemGrid.MapSource).Hills?.Rivers : null;
         if (world.W != layout.GridW || world.H != layout.GridH)
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
         if (ground == null)
@@ -300,7 +302,8 @@ public partial class ValleyChemistry : MonoBehaviour
         var (channelCells, channelDepths) = builder.Channel;
         ground.RaiseBase(channelCells, channelDepths);
         steps.Mark("raise_base");
-        SetLand(world);
+        // A world loaded from a save (the host's snapshot) has the land it was saved with, marks and all.
+        if (!grid.WorldLoaded) SetLand(world);
         steps.Mark("set_land");
         CheckGround(world);
         steps.Mark("land");
@@ -352,7 +355,7 @@ public partial class ValleyChemistry : MonoBehaviour
     // drawn whole from the start, reads all of its chunks now.
     void BindStartTrees(World world)
     {
-        startTrees = new StartTrees(world);
+        startTrees = new StartTrees(world, grid.WorldLoaded);
         grid.ChunkSwitched -= ReadStartTrees;
         grid.ChunkSwitched += ReadStartTrees;
         if (!ground.Lazy)
@@ -546,7 +549,25 @@ public partial class ValleyChemistry : MonoBehaviour
     public void AdvanceShaping(float dt) => ground?.Advance(dt);
 
     /// <summary>True for a cell of the lake: a pit whose ground is under the lake's surface.</summary>
-    public bool IsLake(Cell c, int x, int y) => c.T == TerrainIds.Pit && BaseHeight(x, y) < lakeLevel;
+    public bool IsLake(Cell c, int x, int y) => LakeLevelOf(c, x, y) > float.NegativeInfinity;
+
+    /// <summary>
+    /// The surface of the lake a cell is in, in metres, or negative infinity: the valley's lake (its pit cells under the
+    /// lake's level), or on a hills map one of its rivers' lakes (a pit cell by the lake's nodes, HillsLakes draws it).
+    /// </summary>
+    public float LakeLevelOf(Cell c, int x, int y)
+    {
+        if (c.T != TerrainIds.Pit) return float.NegativeInfinity;
+        if (hillsRivers != null)
+        {
+            int level = hillsRivers.LakeNear(grid.World.FoldX(x), grid.World.FoldY(y));
+            return level == HillsRivers.NoLake ? float.NegativeInfinity : level * (float)MapFile.LandUnitMetres;
+        }
+        return BaseHeight(x, y) < lakeLevel ? lakeLevel : float.NegativeInfinity;
+    }
+
+    // A hills map's rivers, whose lakes are drawn as lakes (flat), not as the cells' water.
+    HillsRivers hillsRivers;
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
     // The water runs down the valley's hills (playtest #31), which only the baked ground holds. The
@@ -567,7 +588,8 @@ public partial class ValleyChemistry : MonoBehaviour
     // The ground drawn and the land the core reads are one ground: a few cells' worth, as a probe can't see land.
     void CheckGround(World world)
     {
-        if (landFromFile == null) return;
+        // A map made from its source has no file to check against, and its sample cells over the whole map would make their chunks.
+        if (landFromFile == null || world.Source is IGeneratedSource) return;
         float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         // The map's own land: a loaded world's stamps are on the ground, not in the file.
         var apart = LandCheck.Disagreements((x, y) => ground.BaseHeight(x, y) - world.LandMovedAt(x, y) * unit, landFromFile, unit, unit);
@@ -576,6 +598,8 @@ public partial class ValleyChemistry : MonoBehaviour
 
     static void SetLand(World world)
     {
+        // A map made from its source (the Wide World) has its land from it already (World.LandFromSource).
+        if (world.Source is IGeneratedSource) return;
         var land = LandOf(world);
         if (land == null) world.SetLand((int[])null);
         else world.SetLandByChunk(land);
@@ -592,7 +616,7 @@ public partial class ValleyChemistry : MonoBehaviour
         {
             string path = Path.Combine(ChemGrid.Folders.World, "land.json");
             var map = MapLand.Current;
-            landFromFile = map != null && map.FromFile && map.Land.W == world.W && map.Land.H == world.H ? map.Land
+            landFromFile = map != null && (map.FromFile || map.Land.IsFromSource) && map.Land.W == world.W && map.Land.H == world.H ? map.Land
                 : File.Exists(path) ? LandChunks.Read(File.ReadAllText(path), world.W, world.H) : null;
             if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
         }
@@ -677,7 +701,7 @@ public partial class ValleyChemistry : MonoBehaviour
         // A wall that burned out is no longer alight (the core puts the fire out as it turns to rubble),
         // but it leaves ash; one that caved in under earth shaping doesn't.
         var now = grid.World.At(x, y);
-        if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane)) pane.Shatter(key);
+        if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane) && pane != null) pane.Shatter(key);
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
@@ -690,7 +714,7 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>A cell was redrawn: a pane on it shows its crack, or not.</summary>
     public void PaneCracked(int key, bool cracked)
     {
-        if (panesByCell.TryGetValue(key, out var pane)) pane.Cracked(key, cracked);
+        if (panesByCell.TryGetValue(key, out var pane) && pane != null) pane.Cracked(key, cracked);
     }
 
     void IndexPalms()
@@ -735,7 +759,7 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         int key = grid.World.Idx(x, y);
         if (to == TerrainIds.Tree && from != TerrainIds.Sapling) StandTrees(x, y);
-        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended)) mended.Mend(key);
+        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended) && mended != null) mended.Mend(key);
     }
 
     // The baked trees of a cell, and its palms, as they were.

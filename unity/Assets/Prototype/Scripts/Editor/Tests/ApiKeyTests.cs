@@ -246,8 +246,12 @@ public class ApiKeyTests
             .Where(f => writes.Any(File.ReadAllText(f).Contains))
             .Select(Path.GetFileName).OrderBy(n => n, StringComparer.Ordinal);
         Assert.That(writers, Is.EqualTo(new[] { "ClaudeCheck.cs", "ClaudeSetupSettings.cs" }), "ClaudeCheck keeps a path only for the screen's Check");
-        var core = Path.Combine(Application.dataPath, "Prototype", "Chemistry");
-        Assert.That(Directory.GetFiles(core, "*.cs", SearchOption.AllDirectories).Where(f => File.ReadAllText(f).Contains("ChatSetup.")), Is.Empty, "the rules, mods and saves are the core's");
+        // The core is the package now (packages/com.anweather.chemistry-core, beside unity/); its tools stay in Prototype/Chemistry.
+        var core = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "packages", "com.anweather.chemistry-core"));
+        Assert.That(Directory.Exists(core), Is.True, core);
+        var coreFiles = Directory.GetFiles(core, "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.GetFiles(Path.Combine(Application.dataPath, "Prototype", "Chemistry"), "*.cs", SearchOption.AllDirectories));
+        Assert.That(coreFiles.Where(f => File.ReadAllText(f).Contains("ChatSetup.")), Is.Empty, "the rules, mods and saves are the core's");
     }
 
     [Test]

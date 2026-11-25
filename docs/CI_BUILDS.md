@@ -41,6 +41,38 @@ What it takes, in order:
 
 What still needs a person: the RC's install and online checks (`docs/RELEASING.md` step 6).
 
+**As built (2026-11-23): `.github/workflows/release.yml`.** Each push to `main` (not docs-only) or the Run workflow
+button makes the draft `alpha-X.Y.Z`, the next patch after the newest `alpha-*` tag (or the button's version).
+Skipped when a release already targets the commit, or the commit message says `[skip release]`.
+
+- **plan** picks the version; **gates** runs the core build (warnings fail) and the Unit tests.
+- **build**, Windows and Linux at once, on `ubuntu-latest`: free disk space, check out the game and
+  `anweather/5e-asset-packs` (`ASSET_PACKS_TOKEN`; its LFS objects cached by their ids), lay the packs into the project
+  with `tools/ci/unpack-asset-packs.py` (no Unity: `ImportPackage` doesn't finish under `-quit`), restore the cached
+  `Library/`, then Unity in GameCI's image (`unityci/editor:ubuntu-<version>-windows-mono-4.0.0`, `-linux-il2cpp-`) runs
+  `PrototypeBuild.BuildWindowsFromCommandLine` or `LinuxBuild.FromCommandLine` with `-build-version` and
+  `-nographics` (as proven on the Mac; the image's wrapper adds xvfb anyway). The log is an artifact either way.
+- **draft**: `tools/ship-update.sh X.Y.Z --windows-only --skip-build` (Velopack 1.2.161, the delta from the last
+  published release), then `--linux-only --skip-build` (the zip), into one draft. Then test and publish by hand.
+
+**Not proven yet (the first runs will say):**
+- **Tree impostors without a GPU.** Baking them needs a graphics device. The packs repo carries them baked
+  (`Generated/TreeImpostors/`, BakeVersion 3, from the Mac on 2026-11-10, with their `.meta` files; its README says
+  how to redo them), and the workflow copies that folder into `Assets/Prototype/Generated/Resources/TreeImpostors/`,
+  so the build finds every species baked and bakes nothing (`AssetPackRestore.FromCommandLine -asset-cache` does the
+  same off CI). With them there a `-nographics` build on the Mac ends `HEADLESS BUILD: OK` (2026-11-23). If they're
+  stale (a new `TreeImpostorBaker.BakeVersion`, a new species), a `-nographics` build fails with `TREE IMPOSTORS:
+  FAILED` naming the species, and the workflow stops before Unity when the folder is missing. Bake them again on
+  a machine with a GPU and replace the folder in the packs repo. They're made from pack trees, so they never go in
+  this public repo.
+- **The licence in a container:** the Personal `.ulf` is written where Unity looks
+  (`/root/.local/share/unity3d/Unity/Unity_lic.ulf`), as GameCI's builder does; Pro activates with the serial
+  and returns it after.
+- **Time and space:** a cold build compiled shaders for 42 minutes on the Mac; a runner is slower. The job's limit
+  is 3 hours. The repo's cache (10 GB) holds the packs' LFS objects (3.1 GB) and one `Library/` a platform; GitHub
+  evicts the oldest when it's full.
+- **LFS bandwidth:** a checkout of the packs without the cache is 3.1 GB of the account's LFS bandwidth.
+
 ## The earlier plan: a self-hosted runner on the Mac (superseded)
 
 The Mac already has Unity, the packs, a warm `Library/` and a GPU. GitHub Actions just tells it when to build.

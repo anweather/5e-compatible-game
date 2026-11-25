@@ -11,7 +11,7 @@ Five layers. Each one only knows about the layers above it in this list.
 | # | Layer | Where | What it does | Knows about Unity? |
 |---|---|---|---|---|
 | 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. (The frozen web sandbox has its own copy, `sandbox/rules-frozen/`.) Next to it, `world/things.json`: where the props and items stand, per chunk | No (it's data) |
-| 2 | **Chem core** | `Chemistry/` (namespace `Chem`) | Loads the rules and runs the world: a grid of cells, one tick at a time. Same results on every machine | **No**, the compiler forbids it |
+| 2 | **Chem core** | `packages/com.anweather.chemistry-core/Runtime/` (namespace `Chem`; called `Chemistry/` below) | Loads the rules and runs the world: a grid of cells, one tick at a time. Same results on every machine | **No**, the compiler forbids it |
 | 3 | **View** (presentation) | `Scripts/` | Draws the world, reads input, plays the show (gestures, projectiles, particles), moves the wizard | Yes |
 | 4 | **Networking** | `Scripts/Net/` | Lets friends share one world: sends cast intents, not cells | Yes |
 | 5 | **Editor tooling** | `Scripts/Editor/` | Builds the scenes, records demos, makes player builds, restores Asset Store packs. Never runs in the game | Yes (Editor only) |
@@ -31,6 +31,9 @@ hard-codes what a spell *does*. It only refers to rules by id, and those
 ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 
 ### 2. Chem core (`Chemistry/`)
+The core is the Unity package `com.anweather.chemistry-core` (`packages/` at the repo root), which the game uses by
+local path from `unity/Packages/manifest.json`; its sources are in `Runtime/`. `unity/Assets/Prototype/Chemistry/`
+keeps what stays in the game: `Mcp/` (the Chemistry.Mcp assembly) and `Tests/`.
 - `RuleTables.cs` reads the JSON into typed tables.
 - **Where the game's folders are** is `GameFolders.cs`, and nowhere else:
   `Rules`, `Repo` (the folder it's in: a checkout's root, for docs/ and
@@ -297,12 +300,13 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 
 | Project or folder | May reference | Never |
 |---|---|---|
-| `Chemistry/` (asmdef `Chemistry`, `noEngineReferences`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, anything under `core/` |
+| `Chemistry/` (the package's `Runtime/`, asmdef `Chemistry`, `noEngineReferences`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
+| `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's internals) | `Chemistry/`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
 | `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
 | `Scripts/` (the view) | `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
 | `Scripts/Net/` | `Scripts/`, `Chemistry/` | the view uses it only as the door of rule 3 |
 | `Scripts/Editor/` | everything | nothing references it |
-| `Chemistry/Tests/` (asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
+| `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
 | `core/Game.Core` | links `Chemistry/*.cs`, `Chemistry/Mcp/`, `Scripts/Playtest/Logic/` | any other `core/` project |
 | `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
 | `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |

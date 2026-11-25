@@ -124,6 +124,82 @@ namespace Chem.Tests
             static string Text(GeneratedChunk c) => $"{c.Hash} {c.Biome} {c.Pinned} {c.Things.ToString(Newtonsoft.Json.Formatting.None)}";
         }
 
+        // The view's land on a map too big to bake (MapLand, the ground, the folk): the source's chunks' land, the bake's
+        // cell for cell, read from several threads at once (the ground's chunks are made side by side) and each chunk made
+        // once between them and the World's own reads.
+        [Test]
+        public void ItsLandFromTheSourceIsTheBakesFromAnyThread()
+        {
+            var source = Source();
+            var land = LandChunks.FromSource(source);
+            var bake = LandChunks.Read(File.ReadAllText(Path.Combine(baked, MapFile.LandName)), source.W, source.H);
+            Assert.That(land.IsFromSource, Is.True);
+            Assert.That((land.W, land.H), Is.EqualTo((bake.W, bake.H)));
+            Assert.That(land.Bytes, Is.Zero, "it holds nothing of its own");
+            int cw = made.Gen.ChunksW, n = cw * made.Gen.ChunksH;
+            var wrong = new System.Collections.Concurrent.ConcurrentBag<string>();
+            System.Threading.Tasks.Parallel.For(0, 4 * n, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 8 }, k =>
+            {
+                int c = k * 7 % n, cx = c % cw, cy = c / cw;
+                var reader = land.NewReader();
+                int[] mine = new int[Chunks.Area], theirs = new int[Chunks.Area];
+                land.ChunkInto(cx, cy, mine);
+                bake.ChunkInto(cx, cy, theirs);
+                for (int i = 0; i < Chunks.Area; i++)
+                {
+                    int x = cx * Chunks.Size + (i & Chunks.Mask), y = cy * Chunks.Size + (i >> Chunks.Shift);
+                    if (mine[i] != theirs[i] || reader.At(x, y) != theirs[i]) wrong.Add($"({x}, {y}): {mine[i]} from the source, {theirs[i]} baked");
+                }
+            });
+            Assert.That(wrong.Take(3), Is.Empty);
+            Assert.That(source.Made, Is.EqualTo(n), "each chunk made once, however many threads read it");
+            Assert.That(source.MadeAgain, Is.Zero);
+        }
+
+        // A chunk the World holds unpacked is kept made, however full the hold gets: packing it again reads its cells from the
+        // source, and a chunk let go was made again there, on the World's thread (the Wide World's walk, 230 times).
+        [Test]
+        public void AChunkTheWorldHoldsUnpackedIsKeptMade()
+        {
+            var source = new GeneratedSource(GeneratedMap.Load(map), R, 8);
+            var cell = new Cell();
+            source.Keep(0, 0, true);
+            source.Make(0, 0, cell);
+            for (int k = 1; k <= 20; k++) source.MakeNow(new[] { (k % made.Gen.ChunksW, k / made.Gen.ChunksW) });
+            Assert.That(source.IsMade(0, 0), Is.True, "kept past a full hold");
+            source.Keep(0, 0, false);
+            for (int k = 21; k <= 40; k++) source.MakeNow(new[] { (k % made.Gen.ChunksW, k / made.Gen.ChunksW) });
+            Assert.That(source.IsMade(0, 0), Is.False, "let go once it isn't kept");
+
+            var world = Peer(Source());
+            var g = (GeneratedSource)world.Source;
+            Assert.That(g.KeptCount, Is.EqualTo(world.UnpackedCount), "every chunk the World holds unpacked, kept");
+            Assert.That(g.KeptCount, Is.GreaterThan(0));
+        }
+
+        // The coarse sea a map too big to bake draws (MapLand, Ocean) from its known chunks: the bake's sea to within the
+        // known samples' spacing, every chunk known and none made, and the same mask on one thread as on many.
+        [Test]
+        public void ItsSeaFromTheKnownChunksIsTheBakesNearly()
+        {
+            var gen = GeneratedMap.Load(map).Gen;
+            var known = SeaMask.OfKnown(gen);
+            var bake = LandChunks.Read(File.ReadAllText(Path.Combine(baked, MapFile.LandName)), gen.CellsW, gen.CellsH);
+            var sea = SeaMask.Of(bake, MapFile.Load(map).SeaLevel);
+            int w = gen.CellsW, h = gen.CellsH, agree = 0;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    if (known.IsSea(x, y) == sea.IsSea(x, y)) agree++;
+            double share = agree / (double)(w * h);
+            TestContext.Out.WriteLine($"KNOWN SEA two squares: {known.SeaCells} sea cells known, {sea.SeaCells} baked; {share:P2} of cells agree; {known.Bytes} bytes");
+            Assert.That(sea.SeaCells, Is.GreaterThan(0), "the fixture has a sea to compare");
+            Assert.That(share, Is.GreaterThan(0.97));
+            Assert.That(Math.Abs(known.SeaCells - sea.SeaCells), Is.LessThan(sea.SeaCells / 10 + Chunks.Area));
+            Assert.That(known.IsSea(-1, 0) || known.IsSea(0, h), Is.False, "off the map is never sea");
+            var again = SeaMask.OfKnown(GeneratedMap.Load(map).Gen);
+            Assert.That((again.SeaCells, again.BasinCells, again.Bytes), Is.EqualTo((known.SeaCells, known.BasinCells, known.Bytes)));
+        }
+
         [Test]
         public void ItsWorldIsTheBakesWorld()
         {
@@ -270,10 +346,11 @@ namespace Chem.Tests
                     if (t % 90 == 45) w.Cast("fire-bolt", me[0].x + 6, me[0].y, 1);
                     w.Step();
                 }
-                if (t > 0) most = Math.Max(most, small.HeldCount);
+                // Past the chunks the client's World holds unpacked, which are kept made (Keep).
+                if (t > 0) most = Math.Max(most, small.HeldCount - small.KeptCount);
                 if (t % 50 == 49) Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()), $"tick {t}");
             }
-            TestContext.Out.WriteLine($"GENERATE a client's hold: {hold}, held at most {most} after the build, made {small.Made}, {small.MadeAgain} again");
+            TestContext.Out.WriteLine($"GENERATE a client's hold: {hold}, held at most {most} after the build past those kept, made {small.Made}, {small.MadeAgain} again");
             Assert.That(most, Is.LessThanOrEqualTo(hold));
             Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()));
         }

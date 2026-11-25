@@ -2,7 +2,7 @@ Shader "Prototype/TreeImpostor"
 {
     // A tree as an octahedral impostor (TreeImpostor.hlsl, docs/design/tree-impostors.md): one quad a tree, drawn
     // instanced by TreeImpostors from the atlases TreeImpostorBaker bakes. Lit by the main light (with its shadows and
-    // a wrap for the leaves) and the ambient, fogged, its depth moved onto the tree's surface; it casts its shadow
+    // a wrap for the leaves) and the ambient, in the air (Air.hlsl), its depth moved onto the tree's surface; it casts its shadow
     // from the light's own three views. Forward and Forward+ only.
     Properties
     {
@@ -38,24 +38,37 @@ Shader "Prototype/TreeImpostor"
             #pragma fragment ImpostorForward
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
-            #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            // Far impostors (TreeImpostors' flat material) keep the quad's own depth: no SV_Depth, so the GPU can test their
+            // depth before shading them, and a wood's trees hidden behind nearer ones cost next to nothing.
+            #pragma multi_compile_local _ _IMPOSTOR_FLAT
 
             #include "TreeImpostor.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Air.hlsl"
 
-            half4 ImpostorForward(ImpostorVaryings input, out float depth : SV_Depth) : SV_Target
+            half4 ImpostorForward(ImpostorVaryings input
+            #if !defined(_IMPOSTOR_FLAT)
+                , out float depth : SV_Depth
+            #endif
+                ) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 ImpostorSurface s = ImpostorSurfaceOf(input);
                 clip(s.alpha - _Cutoff);
                 float3 positionWS = TransformObjectToWorld(s.positionOS);
                 float3 normalWS = TransformObjectToWorldNormal(s.normalOS);
+            #if defined(_IMPOSTOR_FLAT)
+                // Far impostors stand past the sun's shadow distance: no shadow map to read.
+                Light light = GetMainLight();
+                float shadow = 1.0;
+            #else
                 Light light = GetMainLight(TransformWorldToShadowCoord(positionWS));
+                float shadow = lerp(1.0, light.shadowAttenuation, _ShadowStrength);
+            #endif
                 float ndl = saturate((dot(normalWS, light.direction) + _Wrap) / (1.0 + _Wrap));
                 float3 viewWS = normalize(GetCameraPositionWS() - positionWS);
                 float through = pow(saturate(dot(viewWS, -light.direction)), 4.0) * _Translucency;
-                float shadow = lerp(1.0, light.shadowAttenuation, _ShadowStrength);
                 // Not light.distanceAttenuation: for a directional light that's unity_LightData.z, per renderer, which an
                 // instanced draw (RenderMeshInstanced) leaves 0.
                 float3 lit = light.color * ((ndl + through) * shadow);
@@ -63,8 +76,10 @@ Shader "Prototype/TreeImpostor"
                 if (_Debug > 0.5 && _Debug < 1.5) colour = lit;
                 else if (_Debug > 1.5 && _Debug < 2.5) colour = SampleSH(normalWS);
                 else if (_Debug > 2.5) colour = normalWS * 0.5 + 0.5;
-                else colour = MixFog(colour, input.fog);
+                else colour = Aired(colour, positionWS);
+            #if !defined(_IMPOSTOR_FLAT)
                 depth = ImpostorDepth(s.positionOS);
+            #endif
                 return half4(colour, 1);
             }
             ENDHLSL
@@ -110,14 +125,21 @@ Shader "Prototype/TreeImpostor"
             #pragma vertex ImpostorVertex
             #pragma fragment ImpostorDepthOnly
             #pragma multi_compile_instancing
+            #pragma multi_compile_local _ _IMPOSTOR_FLAT
             #include "TreeImpostor.hlsl"
 
-            half ImpostorDepthOnly(ImpostorVaryings input, out float depth : SV_Depth) : SV_Target
+            half ImpostorDepthOnly(ImpostorVaryings input
+            #if !defined(_IMPOSTOR_FLAT)
+                , out float depth : SV_Depth
+            #endif
+                ) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 ImpostorSurface s = ImpostorSurfaceOf(input);
                 clip(s.alpha - _Cutoff);
+            #if !defined(_IMPOSTOR_FLAT)
                 depth = ImpostorDepth(s.positionOS);
+            #endif
                 return 0;
             }
             ENDHLSL

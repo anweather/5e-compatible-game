@@ -17,8 +17,12 @@ using UnityEngine;
 [DefaultExecutionOrder(-1000)]
 public sealed class MapTerrains : MonoBehaviour
 {
-    /// <summary>How far a chunk terrain draws its details (grass), in metres, as made.</summary>
-    public const float DetailMetres = 120f;
+    /// <summary>
+    /// How far a chunk terrain draws its details (grass), in metres, as made: where the grass material's own dither fade
+    /// ends (the pack's TerrainGrass, 40 to 80 m), so no tuft is drawn that shows no pixel. It was 120 m; 80 is 0.7 ms of
+    /// the nine's start on the Mac (docs/perf/2026-11-23-tufts.md, Andrew's choice with the grass's shadows off).
+    /// </summary>
+    public const float DetailMetres = 80f;
 
     /// <summary>How far a chunk terrain draws its trees, in metres (900 as made; the tree impostors' trial draws them nearer, TreeImpostors).</summary>
     public static float TreeDistance { get; private set; } = 900f;
@@ -39,6 +43,8 @@ public sealed class MapTerrains : MonoBehaviour
     public TerrainData template;
     [Tooltip("The terrains' material: URP's terrain with rock mapped from the sides (TerrainRock.shader).")]
     public Material material;
+    [Tooltip("The terrain pack's own tuft meshes, which the template's grass is made lighter from (LightTufts); for -perf-look-pair-tufts and -perf-pack-tufts only.")]
+    public Mesh[] packTufts;
 
     TerrainGrid layout;
     Terrain[] chunks;
@@ -170,8 +176,12 @@ public sealed class MapTerrains : MonoBehaviour
         int y0 = Mathf.Max(0, layout.V0 - j * Chem.Chunks.Size - last), y1 = Mathf.Min(world.H - 1, layout.V0 - j * Chem.Chunks.Size);
         if (x0 > x1 || y0 > y1) return;
         int cxMax = (world.W - 1) >> Chem.Chunks.Shift, cyMax = (world.H - 1) >> Chem.Chunks.Shift;
-        for (int cy = Mathf.Max(0, (y0 >> Chem.Chunks.Shift) - ring); cy <= Mathf.Min(cyMax, (y1 >> Chem.Chunks.Shift) + ring); cy++)
-            for (int cx = Mathf.Max(0, (x0 >> Chem.Chunks.Shift) - ring); cx <= Mathf.Min(cxMax, (x1 >> Chem.Chunks.Shift) + ring); cx++) into.Add((cx, cy));
+        // Round a world that wraps, the ring runs over the seam to the chunks it folds to.
+        int cy0 = (y0 >> Chem.Chunks.Shift) - ring, cy1 = (y1 >> Chem.Chunks.Shift) + ring, cx0 = (x0 >> Chem.Chunks.Shift) - ring, cx1 = (x1 >> Chem.Chunks.Shift) + ring;
+        if (!world.WrapY) (cy0, cy1) = (Mathf.Max(0, cy0), Mathf.Min(cyMax, cy1));
+        if (!world.WrapX) (cx0, cx1) = (Mathf.Max(0, cx0), Mathf.Min(cxMax, cx1));
+        for (int cy = cy0; cy <= cy1; cy++)
+            for (int cx = cx0; cx <= cx1; cx++) into.Add((world.FoldChunkX(cx), world.FoldChunkY(cy)));
     }
 
     // The ground's arrays and heights are made side by side (Parallel.For, a worker), and they read the world's cells. A
@@ -194,6 +204,28 @@ public sealed class MapTerrains : MonoBehaviour
         foreach (var (i, j) in terrains) CellChunksUnder(world, i, j, 1, pinned);
         if (pinned.Count != before) HintDrawn(now: true);
         foreach (var (cx, cy) in pinned) world.At(cx << Chem.Chunks.Shift, cy << Chem.Chunks.Shift);
+    }
+
+    // On a map made from its source (the Wide World): the chemistry chunks under these terrains and one round them (what
+    // Warm reads) that are packed and not made by the source yet; none on any other map.
+    List<(int cx, int cy)> Unmade(IEnumerable<(int i, int j)> terrains)
+    {
+        var world = ground?.World;
+        if (world?.Source is not Chem.GeneratedSource source) return null;
+        unmadeScratch.Clear();
+        foreach (var (i, j) in terrains) CellChunksUnder(world, i, j, 1, unmadeScratch);
+        var unmade = new List<(int cx, int cy)>();
+        foreach (var (cx, cy) in unmadeScratch)
+            if (world.IsPacked(cx, cy) && !source.IsMade(cx, cy)) unmade.Add((cx, cy));
+        return unmade;
+    }
+
+    readonly HashSet<(int cx, int cy)> unmadeScratch = new();
+
+    // On a map made from its source, what these terrains read made first on every core, not one at a time as Warm reads it.
+    void MakeFirst(List<(int i, int j)> terrains)
+    {
+        if (Unmade(terrains) is { Count: > 0 } unmade) ground.World.MakeNow(unmade);
     }
 
     void Unpin()
@@ -329,6 +361,7 @@ public sealed class MapTerrains : MonoBehaviour
             if (Distance(at) > keep && !activeNow.Contains(at)) leaving.Add(k);
         }
         foreach (int k in leaving) Release(k);
+        if (ViewWrap.EastWest) Replace();
         ForgetFar(keep);
         wantedNow.Clear();
         foreach (var (fi, fj) in focus)
@@ -357,7 +390,33 @@ public sealed class MapTerrains : MonoBehaviour
 
     void AddFocus((int i, int j) at)
     {
+        at = Fold(at);
         if (!focus.Contains(at)) focus.Add(at);
+    }
+
+    // A chunk past a seam is the one it folds to (ViewWrap): terrains are kept by their folded chunk.
+    (int i, int j) Fold((int i, int j) at) => ViewWrap.FoldChunk(at, layout.ChunksX, layout.ChunksZ);
+
+    // Where chunk (i, j)'s terrain stands: its corner at the copy nearest the camera (ViewWrap).
+    Vector3 Corner((int i, int j) at)
+    {
+        var (cx, cz) = layout.ChunkCorner(at.i, at.j);
+        float half = layout.ChunkSize * 0.5f;
+        return new Vector3(ViewWrap.NearX(cx + half) - half, 0f, ViewWrap.NearZ(cz + half) - half);
+    }
+
+    // On a world that wraps, the terrains standing moved to the copy of their place nearest the camera, where that
+    // changed (the camera went half a world round: none near it ever moves). Their height stays.
+    void Replace()
+    {
+        foreach (int k in made)
+        {
+            var t = chunks[k];
+            if (t == null) continue;
+            var to = Corner((k % layout.ChunksX, k / layout.ChunksX));
+            var p = t.transform.position;
+            if (Mathf.Abs(p.x - to.x) > 1f || Mathf.Abs(p.z - to.z) > 1f) t.transform.position = new Vector3(to.x, p.y, to.z);
+        }
     }
 
     // The terrains under an active chunk of cells (cx, cy): the cells' chunks and the terrains' are offset.
@@ -374,6 +433,7 @@ public sealed class MapTerrains : MonoBehaviour
 
     void Want((int i, int j) at)
     {
+        at = Fold(at);
         if (layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] == null && ground.HasChunk(at)) wantedNow.Add(at);
     }
 
@@ -382,7 +442,8 @@ public sealed class MapTerrains : MonoBehaviour
     {
         if (activeNow.Contains(at)) return 0;
         int best = int.MaxValue;
-        foreach (var (fi, fj) in focus) best = Mathf.Min(best, Mathf.Max(Mathf.Abs(at.i - fi), Mathf.Abs(at.j - fj)));
+        foreach (var (fi, fj) in focus)
+            best = Mathf.Min(best, Mathf.Max(ViewWrap.ChunkDistance(at.i, fi, layout.ChunksX, true), ViewWrap.ChunkDistance(at.j, fj, layout.ChunksZ, false)));
         return best;
     }
 
@@ -406,6 +467,7 @@ public sealed class MapTerrains : MonoBehaviour
         var timer = System.Diagnostics.Stopwatch.StartNew();
         if (whole)
         {
+            MakeFirst(toMake);
             Warm(toMake);
             ground.Prepare(toMake);
             if (arrays == null) Unpin();
@@ -445,9 +507,37 @@ public sealed class MapTerrains : MonoBehaviour
         for (int n = 0; n < toMake.Count && ready.Count < HeightsAFrame; n++)
         {
             if (!ground.Builder.Holds(toMake[n])) break;
+            // On a world that wraps, terrains either side of a seam are far apart by their folded chunks: their box would
+            // run the map's width. Only those near the first go together; the rest come in a later frame's box.
+            if (ready.Count > 0 && Mathf.Max(Mathf.Abs(toMake[n].i - ready[0].i), Mathf.Abs(toMake[n].j - ready[0].j)) > NearBox) continue;
             ready.Add(toMake[n]);
         }
-        if (ready.Count > 1) ground.PrepareHeights(ready);
+        if (ready.Count < 2) return;
+        // Their heights read the cells of one box round them all (CellHeightfield.Prepare): on a map made from its source,
+        // the chunks in the box between them made first on every core, not one a read as the box is read.
+        MakeFirst(BoxOf(ready));
+        ground.PrepareHeights(ready);
+    }
+
+    // How far apart (chunks) terrains whose heights are worked out in one box may be.
+    const int NearBox = 6;
+
+    // The terrains of the box round these (all of them, when it's no bigger than CellHeightfield.Prepare caches at once).
+    static List<(int i, int j)> BoxOf(List<(int i, int j)> terrains)
+    {
+        int i0 = int.MaxValue, j0 = int.MaxValue, i1 = int.MinValue, j1 = int.MinValue;
+        foreach (var (i, j) in terrains)
+        {
+            i0 = Mathf.Min(i0, i);
+            j0 = Mathf.Min(j0, j);
+            i1 = Mathf.Max(i1, i);
+            j1 = Mathf.Max(j1, j);
+        }
+        if ((long)(i1 - i0 + 1) * (j1 - j0 + 1) > Chem.CellHeightfield.MostCachedChunks) return terrains;
+        var box = new List<(int i, int j)>();
+        for (int j = j0; j <= j1; j++)
+            for (int i = i0; i <= i1; i++) box.Add((i, j));
+        return box;
     }
 
     const int HeightsAFrame = 8;
@@ -459,6 +549,13 @@ public sealed class MapTerrains : MonoBehaviour
         var missing = ground.Builder.Missing(toMake.Skip(from).Take(MostAtOnce * 2));
         if (missing.Count > MostAtOnce) missing.RemoveRange(MostAtOnce, missing.Count - MostAtOnce);
         if (missing.Count == 0) return;
+        // On a map made from its source, the chunks they read are made ahead on the worker first: warming them here would
+        // make each on this thread, a stall of milliseconds a chunk. They're asked again until they're made.
+        if (Unmade(missing) is { Count: > 0 } unmade)
+        {
+            ground.World.MakeAhead(unmade);
+            return;
+        }
         var builder = ground.Builder;
         arraysFor = missing;
         Warm(missing);
@@ -501,8 +598,7 @@ public sealed class MapTerrains : MonoBehaviour
             createdEver++;
         }
         t.name = $"Chunk {at.i},{at.j}";
-        var (cx, cz) = layout.ChunkCorner(at.i, at.j);
-        t.transform.position = new Vector3(cx, 0f, cz);
+        t.transform.position = Corner(at);
         Configure(t, layout.IsHighRes(at.i, at.j), material);
         t.allowAutoConnect = false;
         t.enabled = true;
@@ -571,7 +667,11 @@ public sealed class MapTerrains : MonoBehaviour
         t.SetNeighbors(Alike((at.i - 1, at.j), high), Alike((at.i, at.j + 1), high), Alike((at.i + 1, at.j), high), Alike((at.i, at.j - 1), high));
     }
 
-    Terrain Standing((int i, int j) at) => layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] is { } t && t.terrainData != null ? t : null;
+    Terrain Standing((int i, int j) at)
+    {
+        at = Fold(at);
+        return layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] is { } t && t.terrainData != null ? t : null;
+    }
 
     Terrain Alike((int i, int j) at, bool high) => Standing(at) is { } t && layout.IsHighRes(at.i, at.j) == high ? t : null;
 
@@ -579,7 +679,7 @@ public sealed class MapTerrains : MonoBehaviour
     public Terrain TerrainAt(Vector3 p)
     {
         if (chunks == null) return null;
-        int i = Mathf.FloorToInt((p.x - layout.OriginX) / layout.ChunkSize), j = Mathf.FloorToInt((p.z - layout.OriginZ) / layout.ChunkSize);
+        var (i, j) = Fold((Mathf.FloorToInt((p.x - layout.OriginX) / layout.ChunkSize), Mathf.FloorToInt((p.z - layout.OriginZ) / layout.ChunkSize)));
         return layout.HasChunk(i, j) ? chunks[j * layout.ChunksX + i] : null;
     }
 

@@ -194,8 +194,11 @@ public sealed class BiomeGround
     // A cell as the world holds it, without unpacking its chunk (D17): a packed chunk's cell is made from the world's source,
     // as it started (a packed chunk's changes since aren't read: Grounds runs once, as the far ring starts). Reading every
     // Step cells through world.At unpacked every chunk of the map.
-    static Cell CellAsIs(World world, int x, int y)
+    // On a map made from its source (the Wide World) only the chunks it has made already are read: making the others to read
+    // a cell of each was every chunk of the map, on this thread (523 s in the Editor). A biome none of them shows keeps its own.
+    internal static Cell CellAsIs(World world, int x, int y)
     {
+        if (world.Source is GeneratedSource g && world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift) && !g.IsMade(x >> Chunks.Shift, y >> Chunks.Shift)) return null;
         if (world.Source == null || !world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift)) return world.At(x, y);
         made.Reset();
         world.Source.Make(x, y, made);
@@ -211,16 +214,19 @@ public sealed class BiomeGround
         return 0;
     }
 
-    /// <summary>The biome ground of a generated map already read.</summary>
-    public static BiomeGround Of(GeneratedMap map) => new(map);
+    /// <summary>The biome ground of a generated map already read (null for a hills map: one biome, no field).</summary>
+    public static BiomeGround Of(GeneratedMap map) => map.Hills != null ? null : new(map);
 
-    /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated.</summary>
+    /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated (or is a hills map).</summary>
     public static BiomeGround For(string mapSource)
     {
         Last = null;
         if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return null;
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        var ground = new BiomeGround(LoadedMaps.Get(mapSource));
+        var map = LoadedMaps.Get(mapSource);
+        // A hills map is one biome with no plan's field: each cell's own ground is its look.
+        if (map.Hills != null) return null;
+        var ground = new BiomeGround(map);
         StartupTimeline.Mark("biome ground read");
         UnityEngine.Debug.Log($"BIOME GROUND: the plan's biomes read in {timer.Elapsed.TotalMilliseconds:0} ms");
         Last = ground;

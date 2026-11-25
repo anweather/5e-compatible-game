@@ -6,7 +6,7 @@ A 3D RPG in Unity on the open 5E rules (SRD 5.2.1), built around deep,
 physics-based interactions between spells ("spell chemistry"). Say
 "5E-compatible", never "Dungeons & Dragons". More specific guidance loads
 from the `CLAUDE.md` in each area as you work there: `unity/`,
-`unity/Assets/Prototype/Chemistry/`, `unity/Assets/Prototype/Scripts/`,
+`packages/com.anweather.chemistry-core/`, `unity/Assets/Prototype/Scripts/`,
 `sandbox/`, `rules/`.
 
 ## Words
@@ -79,14 +79,17 @@ stable), not something to commit or keep reverting.
 |---|---|
 | `rules/` | The game's interaction rules as JSON. The single source of truth for what spells, materials and reactions do |
 | `world/maps/<id>/` | A map, the valley first (`docs/design/maps-as-data.md`): `map.json` says what it is, `cells.txt` and `land.json` are its cells and land, and `MapCheck` holds them together. What stands where: `things.json` lists the props and items per 64×64 chunk; each gets a stable id from its chunk and its place in the list, so append, never insert. `themes/` and `looks.json` lay the land out (world themes, D11) |
-| `unity/Assets/Prototype/Chemistry/` | The engine-free C# core (namespace `Chem`): loads the rules, runs the cell world one tick at a time, deterministically |
+| `packages/com.anweather.chemistry-core/` | The engine-free C# core (namespace `Chem`), a Unity package our game uses by local path: loads the rules, runs the cell world one tick at a time, deterministically. Sources in `Runtime/` |
+| `unity/Assets/Prototype/Chemistry/` | What stays in the game beside the core: `Mcp/` (the rules MCP and chat tools, the Chemistry.Mcp assembly) and `Tests/` (the core's tests, which need our rules and maps) |
 | `unity/Assets/Prototype/Scripts/` | The Unity view: draws the world, input, the wizard, props, items, HUD; `Net/` is the multiplayer layer; `Editor/` builds scenes and players |
-| `core/` | .NET projects that *link* the Chemistry sources and tests from `unity/` so they build and test without Unity (CI runs these) |
+| `core/` | .NET projects that *link* the Chemistry sources (from `packages/`) and tests (from `unity/`) so they build and test without Unity (CI runs these) |
 | `sandbox/` | A TypeScript web paper prototype running the same `rules/`; its sim mirrors the C# core |
 | `tools/probe.sh` | Runs a scripted scenario in the open Editor and prints pass/fail JSON (`docs/FAST_LOOP.md`) |
 | `docs/` | Design and engineering docs; start with `ARCHITECTURE.md` (layers, patterns, "where new things go") and `GLOSSARY.md` (the words we use) |
 
 ## Commands
+
+The andrew-claude-kit skills read their project settings from `docs/KIT_SETTINGS.md` (D21).
 
 ```sh
 # C# core (what CI's "quality" workflow runs); the Editor isn't needed
@@ -97,6 +100,7 @@ dotnet test core --filter TestCategory=Unit    # the quick fixtures, in seconds 
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
 tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%); jscpd pinned in its lockfile
 node --test tools/chat-report.test.mjs        # the chat report, on real records
+node tools/lint/lint.mjs                      # the kit's lint: dead tools/ and docs/ paths fail; comments only warn until #226
 
 # Sandbox (CI's "sandbox" workflow)
 cd sandbox && npm ci && npm run typecheck && npm test && npm run build

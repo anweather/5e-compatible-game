@@ -115,7 +115,7 @@ public static class ProbeScenarios
             "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
         new Entry("roomopen", typeof(RoomOpenProbe), 200f,
-            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, the client starts the defense waves through the host, the client's wizard punches the host's (the same punch logged on both), a late joiner gets the mods, the waves and the punch. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
+            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, the client starts the defense waves through the host, the client's wizard punches the host's (the same punch logged on both), a late joiner gets the mods, the waves and the punch (in the host's snapshot, so its log starts at its join). Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
         new Entry("faunaresize", typeof(FaunaResizeProbe), 150f,
             "set_species deer scale 3 through the rules MCP in an Open room (#80), this Editor hosting and the virtual player joined: each side puts the same three deer by its wizard. " +
             "Checks: the same three scales on both peers before, three times them on both once the mod is on, and back once it's reverted; every deer out on each side at its row's size each time; " +
@@ -441,8 +441,12 @@ public static class ProbeScenarios
         new Entry("sit", typeof(SitProbe), 40f,
             "The wizard sits on the bench nearest the yard, then lies back on the nearest beach lounger (Seat, Sitter, SitPose), and gets up from each. Checks: ten or more " +
             "seats in the world, the seat in reach beside it (E goes to it), held on the seat with the pose on and the hips within 0.2 m of the seat point, and free again after standing, no console errors."),
+        new Entry("sandbox", typeof(SandboxOpenProbe), 120f,
+            "Outside a Hold run, on the map played (the valley, the nine), a player whose save holds no points (PlayAsIf 0, as a released player's first launch): " +
+            "every row of rules/hold.json open, both hands, every gesture, element and kit spell (be205905; Andrew 2026-11-23: the nine is a sandbox too). Checks: not_in_a_run, " +
+            "plays_as_a_save_with_none, everything_open, both_hands_open, no console errors."),
         new Entry("swim", typeof(SwimProbe), 50f,
-            "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
+            "The wizard drops into the deepest part of the lake. Checks: deep water found, water drawn there at the surface (the lake's own, or the cells' on a generated map: #223), the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after; held, the dive takes the head under over 0.8 m down, breath runs down, and let go it comes back up with its breath full again; no console errors."),
         new Entry("flare", typeof(FlareProbe), 180f,

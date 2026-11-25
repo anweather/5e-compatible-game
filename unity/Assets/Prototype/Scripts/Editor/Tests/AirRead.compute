@@ -1,0 +1,21 @@
+// The air as the shaders read it (AirTests): Air.hlsl's AirSeen at a distance and AirToward on a bearing a thread,
+// written out for the test to set beside Air.cs's Seen and Toward.
+#pragma kernel Read
+
+#define half float
+#define half3 float3
+#define UNITY_BRANCH [branch]
+float3 _WorldSpaceCameraPos;
+#include "../../../Shaders/Air.hlsl"
+
+RWTexture2D<float4> _Out;
+float4 _Asked;
+
+[numthreads(64, 1, 1)]
+void Read(uint3 id : SV_DispatchThreadID)
+{
+    float d = id.x * _Asked.y;
+    float a = (id.x + 0.37) / _Asked.x * 6.2831853;
+    _Out[uint2(id.x, 0)] = float4(AirSeen(d), 0.0, 0.0, 1.0);
+    _Out[uint2(id.x, 1)] = float4(AirToward(float3(cos(a), _Asked.z, sin(a))), 1.0);
+}

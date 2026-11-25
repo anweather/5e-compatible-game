@@ -10,9 +10,13 @@ public sealed class StartTrees
     readonly int across;
     readonly bool[][] blocks;
 
-    public StartTrees(World world)
+    readonly bool fromStart;
+
+    /// <param name="fromStart">The world was loaded from a save: its cells have its changes in, its kept start doesn't.</param>
+    public StartTrees(World world, bool fromStart = false)
     {
         this.world = world;
+        this.fromStart = fromStart && world.HasStart;
         across = (world.W + Chunks.Size - 1) >> Chunks.Shift;
         blocks = new bool[across * ((world.H + Chunks.Size - 1) >> Chunks.Shift)][];
     }
@@ -26,12 +30,21 @@ public sealed class StartTrees
         return read;
     }
 
-    /// <summary>Reads a chunk's trees as they stand now, unless it has been read already.</summary>
+    /// <summary>
+    /// Reads a chunk's trees as the world started, unless it has been read already: as they stand now for a world built
+    /// from its map (unchanged till it activates), from its kept start for one loaded from a save (a late joiner's).
+    /// </summary>
     public void Read(int cx, int cy)
     {
         int n = cy * across + cx;
         if (cx < 0 || cy < 0 || cx >= across || n >= blocks.Length || blocks[n] != null) return;
         var block = new bool[Chunks.Size * Chunks.Size];
+        if (fromStart && world.HasChunk(cx, cy))
+        {
+            world.StartTerrainOf(cx, cy, (i, t) => block[i] = t == TerrainIds.Tree);
+            blocks[n] = block;
+            return;
+        }
         int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
         int x1 = System.Math.Min(world.W, x0 + Chunks.Size), y1 = System.Math.Min(world.H, y0 + Chunks.Size);
         for (int y = y0; y < y1; y++)
