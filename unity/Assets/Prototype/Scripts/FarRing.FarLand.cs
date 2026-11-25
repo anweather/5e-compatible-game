@@ -87,6 +87,7 @@ public sealed partial class FarRing
         var h = new float[gw * gh];
         var water = new byte[gw * gh];
         var biome = new string[gw * gh];
+        var wood = new byte[gw * gh];
         // Every known sample's height too (8 cells apart), for the normals: lit and painted as the known meshes are.
         int fw = gen.CellsW / KnownChunk.Step, fh = gen.CellsH / KnownChunk.Step, fine = KnownChunk.Side - 1;
         var f = new float[fw * fh];
@@ -107,6 +108,7 @@ public sealed partial class FarRing
                         water[g] = k.Water[q];
                         h[g] = k.Heights[q] * unit - (k.Water[q] is KnownChunk.Lake or KnownChunk.River ? 0.4f : 0f) - FarSink;
                         biome[g] = k.Biomes[q] ?? k.Biome;
+                        wood[g] = k.Wood[q];
                     }
             }
         float H(int i, int j) => h[(j % gh + gh) % gh * gw + (i % gw + gw) % gw];
@@ -126,7 +128,7 @@ public sealed partial class FarRing
                         float dx = (F(fi + 1, fj) - F(fi - 1, fj)) / (2f * fineStep), dz = (F(fi, fj - 1) - F(fi, fj + 1)) / (2f * fineStep);
                         var normal = new Vector3(-dx, 1f, -dz).normalized;
                         int x = gi % gw * FarStep, y = gj % gh * FarStep;
-                        var c = FarMeshes.LandColour(colours.Of(biome[g]), colours.Rock, normal, water[g], x, y, rockAt?.Invoke(x, y) ?? 0f);
+                        var c = FarMeshes.LandColour(colours.Wooded(colours.Of(biome[g]), wood[g]), colours.Rock, normal, water[g], x, y, rockAt?.Invoke(x, y) ?? 0f);
                         d.Vertex(new Vector3(i * step, H(gi, gj), -j * step), normal, c);
                     }
                 for (int j = 0; j < th; j++)

@@ -58,21 +58,28 @@ public static class TreeBudget
         int lo = 0, hi = a.Count - 1;
         while (lo < hi)
         {
-            float pivot = a[(lo + hi) >> 1];
-            int i = lo, j = hi;
-            while (i <= j)
-            {
-                while (a[i] < pivot) i++;
-                while (a[j] > pivot) j--;
-                if (i > j) break;
-                (a[i], a[j]) = (a[j], a[i]);
-                i++;
-                j--;
-            }
+            var (i, j) = Partition(a, lo, hi);
             if (k <= j) hi = j;
             else if (k >= i) lo = i;
             else return a[k];
         }
         return a[k];
+    }
+
+    // Hoare's partition of a[lo..hi] round its middle value: a[lo..j] are no more than it, a[i..hi] no less.
+    static (int i, int j) Partition(List<float> a, int lo, int hi)
+    {
+        float pivot = a[(lo + hi) >> 1];
+        int i = lo, j = hi;
+        while (i <= j)
+        {
+            while (a[i] < pivot) i++;
+            while (a[j] > pivot) j--;
+            if (i > j) break;
+            (a[i], a[j]) = (a[j], a[i]);
+            i++;
+            j--;
+        }
+        return (i, j);
     }
 }

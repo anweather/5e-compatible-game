@@ -162,8 +162,8 @@ namespace Chem
             return (t - e / 2) * One / (One - e);
         }
 
-        // The foothills' own bumps' weight, Q16: nothing at the foot or the end, most half way.
-        long FootBand(long r)
+        /// <summary>The foothills' band at a radius, Q16: nothing at the foot or the end, most half way (their own bumps' weight, and the woods').</summary>
+        public long FootBand(long r)
         {
             if (r <= (long)Foot * One || r >= (long)Reach * One) return 0;
             long t = (r - (long)Foot * One) / (Reach - Foot);

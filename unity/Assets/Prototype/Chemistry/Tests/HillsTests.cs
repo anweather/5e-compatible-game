@@ -107,8 +107,8 @@ namespace Chem.Tests
             foreach (var (cx, cy) in new[] { (0, 0), (107, 89), (54, 45), (12, 70), (99, 3) })
             {
                 var c = gen.Make(cx, cy);
-                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.' || ch == ':' || ch == '^' || ch == 'r' || ch == 'w'), Is.True,
-                    $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests), the massif's scree and rock (HillsMassifTests) and the rivers' water (HillsRiversTests)");
+                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.' || ch == ':' || ch == '^' || ch == 'r' || ch == 'w' || ch == 'T'), Is.True,
+                    $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests), the massif's scree and rock (HillsMassifTests) the rivers' water (HillsRiversTests) and the woods' trees (HillsForestTests)");
                 Assert.That(c.Things, Is.Empty);
                 Assert.That(c.Biome, Is.EqualTo("grassland"));
                 Assert.That(c.Land.Min(), Is.GreaterThanOrEqualTo(map.Hills.Base));

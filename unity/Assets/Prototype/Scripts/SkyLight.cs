@@ -144,13 +144,20 @@ public class SkyLight : MonoBehaviour
         return -body.forward.y;
     }
 
+    /// <summary>The sun's height (its forward's sine, about 3.4 degrees) under which it casts no shadows; they fade in to twice it.</summary>
+    public const float LowSunShadows = 0.06f;
+
     void Shine(float sunUp, float moonUp)
     {
         float clear = (1f - 0.65f * cloud) * (1f - 0.8f * Menace);
         float sunLight = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.04f, 0.25f, sunUp));
         sun.intensity = 1.6f * sunLight * clear;
         sun.color = Color.Lerp(new Color(1f, 0.55f, 0.32f), new Color(1f, 0.92f, 0.82f), Mathf.InverseLerp(0.02f, 0.45f, sunUp));
-        sun.shadows = sun.intensity > 0.02f ? LightShadows.Soft : LightShadows.None;
+        // The sun's shadows fade out as it nears the horizon and are off under LowSunShadows: a low sun's shadows run along
+        // the ground through a wood's trees (the hills' woods: the frame doubled in the last minutes before sunset).
+        float shade = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(LowSunShadows, LowSunShadows * 2f, sunUp));
+        sun.shadowStrength = shade;
+        sun.shadows = sun.intensity > 0.02f && shade > 0.01f ? LightShadows.Soft : LightShadows.None;
         if (moon != null)
         {
             moon.intensity = 0.5f * Mathf.InverseLerp(-0.04f, 0.2f, moonUp) * (1f - 0.75f * cloud) * (1f - sunLight);

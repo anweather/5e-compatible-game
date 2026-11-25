@@ -27,6 +27,8 @@ namespace Chem
         public int[] Heights = new int[Side * Side];
         /// <summary>What water stands at each sample: <see cref="Dry"/>, <see cref="Sea"/>, <see cref="River"/> or <see cref="Lake"/>.</summary>
         public byte[] Water = new byte[Side * Side];
+        /// <summary>How wooded each sample looks from far off, 0 (open) to 255 (a wood's heart): a hills map's woods (HillsForest).</summary>
+        public byte[] Wood = new byte[Side * Side];
 
         /// <summary>Whether every sample is open sea.</summary>
         public bool IsSea => Array.TrueForAll(Water, w => w == Sea);

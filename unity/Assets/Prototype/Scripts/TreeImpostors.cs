@@ -18,7 +18,9 @@ using UnityEngine.Rendering;
 // own ground's trees, but those whose cell has stopped being a tree; any other chunk has a tree in each tree cell, placed
 // as the ground would place it (GroundFromLand.Spot), standing on the map's land. Cells are read on the main thread,
 // through the chunk accessors, and a packed chunk is never unpacked to read it (D17): its cells are the world's source's
-// with its changes laid over (#213), read from its save record, which reads it where it lies.
+// with its changes laid over (#213), read from its save record, which reads it where it lies. Round a world that wraps
+// (the hills' torus) the chunks run on over the seams to those they fold to, and each chunk's trees stand at the copy of
+// its place nearest the camera (ViewWrap), moved there when that copy changes.
 public sealed class TreeImpostors : MonoBehaviour
 {
     /// <summary>The Resources folder the baker writes the species' materials to (a material a species, named as its prefab).</summary>
@@ -56,6 +58,8 @@ public sealed class TreeImpostors : MonoBehaviour
     /// <summary>The budget's counts (TreeBudget.MostNear, MostAround), or a run's (-tree-budget near around).</summary>
     public static int MostNear { get; set; } = TreeBudget.MostNear;
     public static int MostAround { get; set; } = TreeBudget.MostAround;
+    /// <summary>The budget's floor for the impostors' reach (TreeBudget.FarFloor, or a run's -tree-budget-floor M).</summary>
+    public static float FarFloor { get; set; } = TreeBudget.FarFloor;
 
     /// <summary>How far out the impostors draw now (m).</summary>
     public static float FarNow => !farSet && FarRing.Instance is { HazeMetres: > 0f } ring ? ring.HazeHides : Far;
@@ -103,11 +107,13 @@ public sealed class TreeImpostors : MonoBehaviour
         farMetres = 500f;
         farSet = false;
         ShadowFar = 256f;
+        FlatFrom = 100f;
         Shadows = true;
         Skip = null;
         Budget = true;
         MostNear = TreeBudget.MostNear;
         MostAround = TreeBudget.MostAround;
+        FarFloor = TreeBudget.FarFloor;
         PrefabsWithin = DefaultNear;
         ImpostorsWithin = 500f;
         MapTerrains.SetTreeDistance(TerrainTreeDistance);
@@ -116,29 +122,55 @@ public sealed class TreeImpostors : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
     {
-        var args = Environment.GetCommandLineArgs();
-        for (int i = 0; i < args.Length; i++)
-        {
-            if (args[i] == "-no-tree-impostors") On = false;
-            else if (args[i] == "-tree-impostors")
-            {
-                On = true;
-                if (i + 1 < args.Length && TryMetres(args[i + 1], out float near)) Near = near;
-            }
-            else if (args[i] == "-tree-impostors-far" && i + 1 < args.Length && TryMetres(args[i + 1], out float far)) Far = far;
-            else if (args[i] == "-tree-impostors-no-shadows") Shadows = false;
-            else if (args[i] == "-no-tree-budget") Budget = false;
-            else if (args[i] == "-tree-budget" && i + 2 < args.Length && int.TryParse(args[i + 1], out int most) && int.TryParse(args[i + 2], out int all))
-            {
-                MostNear = most;
-                MostAround = all;
-            }
-        }
+        ReadArgs(Environment.GetCommandLineArgs());
         if (Instance != null) return;
         var go = new GameObject("TreeImpostors");
         DontDestroyOnLoad(go);
         go.AddComponent<TreeImpostors>();
-        Debug.Log(On ? $"TREE IMPOSTORS: on, prefabs within {Near} m, impostors to {ImpostorsTo()}, their shadows {ShadowsTo()}, budget {(Budget ? $"{MostNear} prefabs, {MostAround} trees round" : "off")}" : "TREE IMPOSTORS: off");
+        Debug.Log(On ? $"TREE IMPOSTORS: on, prefabs within {Near} m, impostors to {ImpostorsTo()}, their shadows {ShadowsTo()}, budget {BudgetSaid()}" : "TREE IMPOSTORS: off");
+    }
+
+    static string BudgetSaid() => Budget ? $"{MostNear} prefabs, {MostAround} trees round" : "off";
+
+    // The command line's tree switches.
+    static void ReadArgs(string[] args)
+    {
+        for (int i = 0; i < args.Length; i++)
+        {
+            float m = 0f;
+            bool metres = i + 1 < args.Length && TryMetres(args[i + 1], out m);
+            switch (args[i])
+            {
+                case "-no-tree-impostors": On = false; break;
+                case "-tree-impostors":
+                    On = true;
+                    if (metres) Near = m;
+                    break;
+                case "-tree-impostors-no-shadows": Shadows = false; break;
+                case "-no-tree-budget": Budget = false; break;
+                case "-tree-budget": Counts(args, i); break;
+                default:
+                    if (metres) Metres(args[i], m);
+                    break;
+            }
+        }
+    }
+
+    // A switch that takes metres: -tree-impostors-far, -tree-impostors-flat-from, -tree-budget-floor, -tree-impostors-shadow-far.
+    static void Metres(string flag, float m)
+    {
+        if (flag == "-tree-impostors-far") Far = m;
+        else if (flag == "-tree-impostors-flat-from") FlatFrom = m;
+        else if (flag == "-tree-budget-floor") FarFloor = m;
+        else if (flag == "-tree-impostors-shadow-far") ShadowFar = m;
+    }
+
+    // -tree-budget near around: the budget's counts.
+    static void Counts(string[] args, int i)
+    {
+        if (i + 2 >= args.Length || !int.TryParse(args[i + 1], out int most) || !int.TryParse(args[i + 2], out int all)) return;
+        MostNear = most;
+        MostAround = all;
     }
 
     static string ImpostorsTo() => farSet ? $"{Far} m" : "the haze";
@@ -153,6 +185,9 @@ public sealed class TreeImpostors : MonoBehaviour
         public Matrix4x4[][] ByKind;
         public int[] Counts;
         public Bounds Bounds;
+        // How far its trees stand from their chunk's own place (a whole number of the world's periods): on a world that
+        // wraps, a chunk's trees are moved to the copy nearest the camera (ViewWrap) when it moves.
+        public Vector2 Shift;
         public Terrain Terrain; // the terrain they were read from; null when made from the cells or the pinned ground
         public bool Any;
     }
@@ -170,6 +205,7 @@ public sealed class TreeImpostors : MonoBehaviour
     readonly Plane[] planes = new Plane[6];
     readonly Matrix4x4[] scratch = new Matrix4x4[Batch];
     Material[] materials; // by the template's tree kind
+    Material[] flat; // the same, keeping the quad's own depth (_IMPOSTOR_FLAT): for chunks wholly past FlatFrom
     GameObject[] prefabs; // by kind
     string[] kinds;
     Mesh quad;
@@ -190,6 +226,7 @@ public sealed class TreeImpostors : MonoBehaviour
     {
         if (Instance == this) Instance = null;
         if (quad != null) Destroy(quad);
+        DropFlat();
     }
 
     void Update()
@@ -219,11 +256,15 @@ public sealed class TreeImpostors : MonoBehaviour
         GeometryUtility.CalculateFrustumPlanes(cam, planes);
         nearD2.Clear();
         around.Clear();
-        float size = layout.ChunkSize, reach = FarNow + size;
-        int i0 = Mathf.Max(0, Mathf.FloorToInt((eye.x - reach - layout.OriginX) / size)), i1 = Mathf.Min(layout.ChunksX - 1, Mathf.FloorToInt((eye.x + reach - layout.OriginX) / size));
-        int j0 = Mathf.Max(0, Mathf.FloorToInt((eye.z - reach - layout.OriginZ) / size)), j1 = Mathf.Min(layout.ChunksZ - 1, Mathf.FloorToInt((eye.z + reach - layout.OriginZ) / size));
+        float reach = FarNow + layout.ChunkSize;
+        var (i0, i1) = Span(eye.x, reach, layout.OriginX, layout.ChunkSize, layout.ChunksX, ViewWrap.EastWest);
+        var (j0, j1) = Span(eye.z, reach, layout.OriginZ, layout.ChunkSize, layout.ChunksZ, ViewWrap.NorthSouth);
+        pending.Clear();
         for (int j = j0; j <= j1; j++)
             for (int i = i0; i <= i1; i++) Visit(layout, chunks, i, j, eye);
+        // Nearest first, so the nearer trees' depth hides the ones behind them before those are shaded.
+        pending.Sort(NearestFirst);
+        foreach (var d in pending) Draw(d.b, eye, d.whole, d.shadows, d.flat, ImpostorsWithin * ImpostorsWithin);
         StandNear();
         // The next frame's distances from this frame's trees round the camera (counted out to Near and FarNow, so how far
         // they draw never feeds back into the counts).
@@ -231,10 +272,18 @@ public sealed class TreeImpostors : MonoBehaviour
         AllAround = 0;
         foreach (var c in around) AllAround += c.trees;
         PrefabsWithin = Budget ? TreeBudget.Near(nearD2, Near, MostNear) : Near;
-        ImpostorsWithin = Budget ? TreeBudget.Far(around, FarNow, MostAround) : FarNow;
+        ImpostorsWithin = Budget ? TreeBudget.Far(around, FarNow, MostAround, FarFloor) : FarNow;
         Read(wanted, layout, chunks, eye, ReadsPerFrame);
         Refresh(chunks);
         Forget(layout, eye, reach);
+    }
+
+    // The chunks along one axis within reach of the eye: round a world that wraps that way they run on over the seam (to
+    // those they fold to, ViewWrap), else within the map.
+    static (int lo, int hi) Span(float eye, float reach, float origin, float size, int chunks, bool wraps)
+    {
+        int lo = Mathf.FloorToInt((eye - reach - origin) / size), hi = Mathf.FloorToInt((eye + reach - origin) / size);
+        return wraps ? (lo, hi) : (Mathf.Max(0, lo), Mathf.Min(chunks - 1, hi));
     }
 
     // The chunks' trees held past Far and LetGoPast chunks more are let go, every LetGoEvery frames: kept, every chunk
@@ -247,7 +296,7 @@ public sealed class TreeImpostors : MonoBehaviour
         gone.Clear();
         foreach (int k in blocks.Keys)
         {
-            var (cx, cz) = layout.ChunkCorner(k % layout.ChunksX, k / layout.ChunksX);
+            var (cx, cz) = NearCorner(layout, k);
             float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
             if (dx * dx + dz * dz > pastSq) gone.Add(k);
         }
@@ -279,24 +328,56 @@ public sealed class TreeImpostors : MonoBehaviour
     }
 
     // Chunk (i, j): its trees drawn if it's within Far and they've been read; asked to be read (or read again) if not.
-    void Visit(TerrainGrid layout, Terrain[] chunks, int i, int j, Vector3 eye)
+    // Chunk k's corner at the copy nearest the camera (its own place on a world that doesn't wrap).
+    static (float x, float z) NearCorner(TerrainGrid layout, int k)
     {
-        float size = layout.ChunkSize, keepSq = (Near + Keep) * (Near + Keep), farSq = FarNow * FarNow, drawSq = ImpostorsWithin * ImpostorsWithin;
-        int k = j * layout.ChunksX + i;
-        var (cx, cz) = layout.ChunkCorner(i, j);
-        float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
-        float nearestSq = dx * dx + dz * dz;
-        if (nearestSq > farSq) return;
+        var (cx, cz) = layout.ChunkCorner(k % layout.ChunksX, k / layout.ChunksX);
+        float half = layout.ChunkSize * 0.5f;
+        return (ViewWrap.NearX(cx + half) - half, ViewWrap.NearZ(cz + half) - half);
+    }
+
+    // A block's trees moved to stand at shift from their chunk's own place.
+    static void MoveTo(Block b, Vector2 shift)
+    {
+        var d = shift - b.Shift;
+        if (d == Vector2.zero) return;
+        for (int kind = 0; kind < b.ByKind.Length; kind++)
+        {
+            var list = b.ByKind[kind];
+            for (int t = 0; t < b.Counts[kind]; t++)
+            {
+                list[t].m03 += d.x;
+                list[t].m23 += d.y;
+            }
+        }
+        b.Bounds.center += new Vector3(d.x, 0f, d.y);
+        b.Shift = shift;
+    }
+
+    // Chunk k's trees as read, asked to be read (or read again: its terrain came or went, or in turn); null if never read.
+    Block Known(Terrain[] chunks, int k)
+    {
         var t = chunks[k];
         bool hasTerrain = t != null && t.terrainData != null;
         bool known = blocks.TryGetValue(k, out var b);
-        if (!known || b.Terrain != (hasTerrain ? t : null))
-        {
-            wanted.Add(k);
-            if (!known) return;
-        }
+        if (!known || b.Terrain != (hasTerrain ? t : null)) wanted.Add(k);
         else if (hasTerrain) stale.Add(k);
-        if (!b.Any) return;
+        return known ? b : null;
+    }
+
+    void Visit(TerrainGrid layout, Terrain[] chunks, int ui, int uj, Vector3 eye)
+    {
+        var (i, j) = ViewWrap.FoldChunk((ui, uj), layout.ChunksX, layout.ChunksZ);
+        float size = layout.ChunkSize, keepSq = (Near + Keep) * (Near + Keep), farSq = FarNow * FarNow, drawSq = ImpostorsWithin * ImpostorsWithin;
+        int k = j * layout.ChunksX + i;
+        var (cx, cz) = layout.ChunkCorner(ui, uj);
+        var (ox, oz) = layout.ChunkCorner(i, j);
+        float dx = Mathf.Max(cx - eye.x, 0f, eye.x - (cx + size)), dz = Mathf.Max(cz - eye.z, 0f, eye.z - (cz + size));
+        float nearestSq = dx * dx + dz * dz;
+        if (nearestSq > farSq) return;
+        var b = Known(chunks, k);
+        if (b == null || !b.Any) return;
+        MoveTo(b, new Vector2(cx - ox, cz - oz));
         int trees = 0;
         foreach (int n in b.Counts) trees += n;
         around.Add((nearestSq, trees));
@@ -306,8 +387,20 @@ public sealed class TreeImpostors : MonoBehaviour
         if (!reachesNear && !GeometryUtility.TestPlanesAABB(planes, b.Bounds)) return;
         bool whole = !reachesNear && Far2(eye, cx, cz, size) <= drawSq;
         bool shadows = Shadows && nearestSq < ShadowFar * ShadowFar;
-        Draw(b, eye, whole, shadows, drawSq);
+        pending.Add((nearestSq, b, whole, shadows, !reachesNear && nearestSq > FlatFrom * FlatFrom));
     }
+
+    // This frame's chunks to draw: how near, its trees, whether whole (all within the impostors' reach, none near), with
+    // shadows, and flat (wholly past FlatFrom).
+    readonly List<(float d2, Block b, bool whole, bool shadows, bool flat)> pending = new();
+    static readonly Comparison<(float d2, Block b, bool whole, bool shadows, bool flat)> NearestFirst = (a, c) => a.d2.CompareTo(c.d2);
+
+    /// <summary>
+    /// Past this (m) a chunk's impostors keep their quads' own depth (the flat material): far off the depth the impostor
+    /// works out for each pixel changes nothing that shows, and writing it stopped the GPU testing depth before shading, so
+    /// in a dense wood every tree behind another was shaded too (the hills' woods, 10 ms of a frame at a wood's heart).
+    /// </summary>
+    public static float FlatFrom { get; set; } = 100f;
 
     // The terrain chunks whose trees changed (ValleyGround.TreesChanged: a fire, a felling) read again, a few a frame; and
     // in turn, one every RefreshEvery frames, the rest (for a writer that doesn't say). Every chunk's twice a frame read
@@ -320,12 +413,12 @@ public sealed class TreeImpostors : MonoBehaviour
             int k = changed[changed.Count - 1];
             changed.RemoveAt(changed.Count - 1);
             if (k < 0 || k >= chunks.Length || chunks[k] == null || chunks[k].terrainData == null || !blocks.TryGetValue(k, out var was)) continue;
-            blocks[k] = FromTerrain(chunks[k], was);
+            blocks[k] = FromTerrain(k, chunks[k], was);
             read++;
         }
         if (stale.Count == 0 || frame % RefreshEvery != 0) return;
         int s = stale[refreshAt % stale.Count];
-        blocks[s] = FromTerrain(chunks[s], ReadBefore(s));
+        blocks[s] = FromTerrain(s, chunks[s], ReadBefore(s));
         refreshAt = (refreshAt + 1) % Math.Max(1, stale.Count);
     }
 
@@ -354,12 +447,12 @@ public sealed class TreeImpostors : MonoBehaviour
         return fx * fx + fz * fz;
     }
 
-    void Draw(Block b, Vector3 eye, bool whole, bool shadows, float farSq)
+    void Draw(Block b, Vector3 eye, bool whole, bool shadows, bool flatDepth, float farSq)
     {
         for (int kind = 0; kind < b.ByKind.Length; kind++)
         {
             int count = b.Counts[kind];
-            var mat = materials[kind];
+            var mat = flatDepth && flat[kind] != null ? flat[kind] : materials[kind];
             if (count == 0 || mat == null) continue;
             var rp = new RenderParams(mat)
             {
@@ -513,7 +606,7 @@ public sealed class TreeImpostors : MonoBehaviour
         foreach (int k in list)
         {
             var t = chunks[k];
-            if (t != null && t.terrainData != null) blocks[k] = FromTerrain(t, ReadBefore(k));
+            if (t != null && t.terrainData != null) blocks[k] = FromTerrain(k, t, ReadBefore(k));
             else
             {
                 if (budget-- <= 0) continue;
@@ -533,19 +626,27 @@ public sealed class TreeImpostors : MonoBehaviour
 
     static float Dist(TerrainGrid layout, int k, Vector3 eye)
     {
-        var (cx, cz) = layout.ChunkCorner(k % layout.ChunksX, k / layout.ChunksX);
+        var (cx, cz) = NearCorner(layout, k);
         float h = layout.ChunkSize * 0.5f, dx = cx + h - eye.x, dz = cz + h - eye.z;
         return dx * dx + dz * dz;
     }
 
     // A terrain's trees, into <paramref name="reuse"/>'s arrays when there's one (read again: no new garbage).
-    Block FromTerrain(Terrain t, Block reuse = null)
+    Block FromTerrain(int k, Terrain t, Block reuse = null)
     {
         var data = t.terrainData;
         var map = KindsOf(data.treePrototypes);
         var b = reuse != null && reuse.ByKind.Length == kinds.Length ? Emptied(reuse) : NewBlock();
         b.Terrain = t;
         var origin = t.transform.position;
+        // The terrain stands at a copy of its chunk's place (MapTerrains.Corner): its trees are read there.
+        var layout = MapLand.Current?.Layout;
+        if (k >= 0 && layout != null)
+        {
+            var (ox, oz) = layout.ChunkCorner(k % layout.ChunksX, k / layout.ChunksX);
+            b.Shift = new Vector2(origin.x - ox, origin.z - oz);
+        }
+        else b.Shift = Vector2.zero;
         var scale = data.size;
         int n = data.treeInstanceCount;
         for (int i = 0; i < n; i++)
@@ -734,6 +835,8 @@ public sealed class TreeImpostors : MonoBehaviour
         var protos = template.treePrototypes;
         kinds = new string[protos.Length];
         materials = new Material[protos.Length];
+        DropFlat();
+        flat = new Material[protos.Length];
         prefabs = new GameObject[protos.Length];
         if (pool == null || pool.Length != protos.Length)
         {
@@ -746,7 +849,10 @@ public sealed class TreeImpostors : MonoBehaviour
             kinds[k] = protos[k].prefab != null ? protos[k].prefab.name : "";
             materials[k] = Resources.Load<Material>($"{ResourceFolder}/{kinds[k]}");
             prefabs[k] = protos[k].prefab;
-            if (materials[k] != null) found++;
+            if (materials[k] == null) continue;
+            found++;
+            flat[k] = new Material(materials[k]) { name = materials[k].name + " (flat)" };
+            flat[k].EnableKeyword("_IMPOSTOR_FLAT");
         }
         Debug.Log($"TREE IMPOSTORS: {found} of {protos.Length} species baked ({string.Join(", ", kinds)})");
         if (found > 0) return true;
@@ -754,6 +860,14 @@ public sealed class TreeImpostors : MonoBehaviour
         On = false;
         materials = null;
         return false;
+    }
+
+    void DropFlat()
+    {
+        if (flat == null) return;
+        foreach (var m in flat)
+            if (m != null) Destroy(m);
+        flat = null;
     }
 
     // A quad of corners (-1, -1) to (1, 1), its bounds left wide: the shader stands it up and sizes it.
@@ -832,7 +946,7 @@ public sealed class TreeImpostors : MonoBehaviour
         if (kinds == null || layout == null || pinned == null || world == null) return false;
         var t = MapTerrains.Instance.Chunks[k];
         if (t == null || t.terrainData == null || !pinned.TryGetValue((k % layout.ChunksX, k / layout.ChunksX), out var own)) return false;
-        var seen = FromTerrain(t);
+        var seen = FromTerrain(k, t);
         var far = FromPinned(layout, own);
         for (int kind = 0; kind < kinds.Length; kind++)
         {

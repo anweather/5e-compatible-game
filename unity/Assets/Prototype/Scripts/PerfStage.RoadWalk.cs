@@ -8,7 +8,7 @@ using UnityEngine;
 // stands on (the one along its row of world squares, else its column), east (south) and on round the torus for as long as
 // the run lasts, a waypoint at each point of the road's line (10 to 20 cells apart). The seams are watched as the seam walk watches them,
 // and as the run ends a "PERF ROADWALK" line says how far it went and how many of its frames stood on the road.
-// -perf-river walks down the main river's bank instead (RiverWalk). -perf-road row,N (or column,N) walks that main road instead, and -perf-from X,Y starts the wizard there (the line's
+// -perf-river walks down the main river's bank instead (RiverWalk), -perf-forest through the densest wood (ForestWalk). -perf-road row,N (or column,N) walks that main road instead, and -perf-from X,Y starts the wizard there (the line's
 // point nearest it), once the chunks round it are drawn: the pass walk of docs/design/alpine.md (-perf-road column,5
 // -perf-from 3300,500, up the foothills, over the north pass and down into the meadow).
 public partial class PerfStage
@@ -26,6 +26,11 @@ public partial class PerfStage
         if (Asked("-perf-river"))
         {
             yield return RiverWalk();
+            yield break;
+        }
+        if (Asked("-perf-forest"))
+        {
+            yield return ForestWalk();
             yield break;
         }
         var spawn = grid.PlayerStart;
@@ -166,6 +171,11 @@ public partial class PerfStage
     public void LogRoadWalk()
     {
         if (Scenario != "roadwalk") return;
+        if (Asked("-perf-forest"))
+        {
+            LogForestWalk();
+            return;
+        }
         if (Asked("-perf-river"))
         {
             Debug.Log(string.Format(CultureInfo.InvariantCulture, "PERF RIVERWALK done cells={0} km={1:0.00}", roadCells, roadCells * 1.5 / 1000));

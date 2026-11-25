@@ -78,6 +78,16 @@ public static class FarMeshes
         public Color Grass { get; private set; } = new(0.30f, 0.42f, 0.20f);
         /// <summary>Where the land is steep.</summary>
         public Color Rock { get; private set; } = new(0.40f, 0.39f, 0.36f);
+        /// <summary>A wood's canopy seen from far off (a hills map's woods): the grass darkened, as the trees' crowns read.</summary>
+        public Color Wood { get; private set; } = WoodOf(new Color(0.30f, 0.42f, 0.20f));
+
+        // How much of a wood's heart its canopy covers from far off (the rest is the ground between the crowns).
+        const float CanopyShare = 0.85f;
+
+        static Color WoodOf(Color grass) => new(grass.r * 0.42f, grass.g * 0.55f, grass.b * 0.45f);
+
+        /// <summary>A sample's colour under its woods: <paramref name="wood"/> (KnownChunk.Wood, 0..255) of the way to the canopy's.</summary>
+        public Color Wooded(Color c, byte wood) => wood == 0 ? c : Color.Lerp(c, Wood, wood / 255f * CanopyShare);
 
         /// <summary>Every biome grass.</summary>
         public static readonly Palette Plain = new();
@@ -92,7 +102,11 @@ public static class FarMeshes
         public static Palette Drawn(IReadOnlyDictionary<string, float[]> grounds, IReadOnlyDictionary<string, Color> layers)
         {
             var p = new Palette();
-            if (layers.TryGetValue(CellPaint.Grass, out var grass)) p.Grass = grass;
+            if (layers.TryGetValue(CellPaint.Grass, out var grass))
+            {
+                p.Grass = grass;
+                p.Wood = WoodOf(grass);
+            }
             if (layers.TryGetValue(CellPaint.Rock, out var rock)) p.Rock = rock;
             foreach (var (id, weights) in grounds)
             {
@@ -141,7 +155,7 @@ public static class FarMeshes
                 float dz = (H(i, j - 1) - H(i, j + 1)) / (step * (j == 0 || j == n - 1 ? 1 : 2));
                 var normal = new Vector3(-dx, 1f, -dz).normalized;
                 int at = j * n + i, x = k.X * ChunkGen.Size + i * KnownChunk.Step, y = k.Y * ChunkGen.Size + j * KnownChunk.Step;
-                var own = biomes?[at] is { } b ? palette.Of(b) : biome;
+                var own = palette.Wooded(biomes?[at] is { } b ? palette.Of(b) : biome, k.Wood[at]);
                 d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, LandColour(own, palette.Rock, normal, k.Water[at], x, y, rockAt?.Invoke(x, y) ?? 0f));
             }
         for (int j = 0; j < n - 1; j++)

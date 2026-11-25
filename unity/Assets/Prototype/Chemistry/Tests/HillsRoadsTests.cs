@@ -229,7 +229,7 @@ namespace Chem.Tests
                             int k = j * s + i;
                             bool road = c.Cells[k] == '.';
                             if (road) roadCells++;
-                            Assert.That(c.Cells[k] == '.' || c.Cells[k] == ',', Is.True, "grass or road");
+                            Assert.That(c.Cells[k] == '.' || c.Cells[k] == ',' || c.Cells[k] == 'T', Is.True, "grass, a tree or road");
                             foreach (int n in new[] { i + 1 < s ? k + 1 : -1, j + 1 < s ? k + s : -1 })
                             {
                                 if (n < 0) continue;
@@ -276,7 +276,7 @@ namespace Chem.Tests
             var (sx, sy) = ChunkOf(6880, 5601);
             TestContext.Out.WriteLine($"ROADS golden: spawn chunk ({sx}, {sy}) {Hex(sx, sy)}, the east seam's other side (0, {sy}) {Hex(0, sy)}, (102, 89) {Hex(102, 89)}");
             Assert.That(map.Gen.Make(sx, sy).Cells.Count(c => c == '.'), Is.GreaterThan(100), "the spawn's chunk has a road in it");
-            Assert.That((Hex(sx, sy), Hex(0, sy), Hex(102, 89)), Is.EqualTo(("dfcd0703", "a9567428", "451900bd")), "a change to the roads is a change to the map");
+            Assert.That((Hex(sx, sy), Hex(0, sy), Hex(102, 89)), Is.EqualTo(("9c6c171b", "5f49a928", "fa458485")), "a change to the roads is a change to the map");
         }
 
         [Test]

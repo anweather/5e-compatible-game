@@ -122,7 +122,9 @@ namespace Chem.Tests
             int slope = 0;
             foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) }) slope = Math.Max(slope, Math.Abs(map.Gen.HillsCellAt(x + dx, y + dy, out _, out _) - h));
             if (slope >= ChunkGen.HillsRock) return '^';
-            return slope >= ChunkGen.HillsScree ? ':' : ',';
+            if (slope >= ChunkGen.HillsScree) return ':';
+            // Grass, or one of the woods' trees (HillsForestTests).
+            return map.Gen.HillsGroundAt(x, y) == 'T' ? 'T' : ',';
         }
 
         // Chunks of the ring, the meadow and the foothills along a line from the centre east, and its pass's chunks.
@@ -144,7 +146,7 @@ namespace Chem.Tests
                 var c = map.Gen.Make(cx, cy);
                 rock += c.Cells.Count(ch => ch == '^');
                 scree += c.Cells.Count(ch => ch == ':');
-                grass += c.Cells.Count(ch => ch == ',');
+                grass += c.Cells.Count(ch => ch == ',' || ch == 'T');
                 // Every edge cell is what the cell alone works out: the land and the ground, so the chunk east of it meets it.
                 for (int k = 0; k < s; k++)
                     foreach (var (i, j) in new[] { (0, k), (s - 1, k), (k, 0), (k, s - 1) })
@@ -190,7 +192,7 @@ namespace Chem.Tests
             string Hex(int cx, int cy) => map.Gen.Make(cx, cy).Hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
             int ring = (m.CentreX + m.Crest) / ChunkGen.Size, foot = (m.CentreX + (m.Foot + m.Reach) / 2) / ChunkGen.Size, row = m.CentreY / ChunkGen.Size;
             TestContext.Out.WriteLine($"MASSIF golden: the ring's chunk ({ring}, {row}) {Hex(ring, row)}, the foothills' ({foot}, {row}) {Hex(foot, row)}");
-            Assert.That((Hex(ring, row), Hex(foot, row)), Is.EqualTo(("9061c639", "9c15349d")), "a change to the massif is a change to the map");
+            Assert.That((Hex(ring, row), Hex(foot, row)), Is.EqualTo(("9061c639", "27ec6765")), "a change to the massif is a change to the map");
         }
 
         [Test, Explicit("where a spring's water would go, for the rivers' design")]

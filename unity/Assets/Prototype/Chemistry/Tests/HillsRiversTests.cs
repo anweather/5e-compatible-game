@@ -353,7 +353,7 @@ namespace Chem.Tests
             var lake = (end.X / s, end.Y / s);
             var reach = Along(main).Select(p => (PlanGrid.Mod(p.x, gen.CellsW) / s, gen.WrapCellY(p.y) / s)).Distinct().ElementAt(40);
             TestContext.Out.WriteLine($"RIVERS golden: the spring's chunk {spring} {Hex(spring)}, a reach's {reach} {Hex(reach)}, the end lake's {lake} {Hex(lake)}");
-            Assert.That((Hex(spring), Hex(reach), Hex(lake)), Is.EqualTo(("4b8df59b", "a3bb0657", "ae82232f")), "a change to the rivers is a change to the map");
+            Assert.That((Hex(spring), Hex(reach), Hex(lake)), Is.EqualTo(("4b8df59b", "ec5db057", "0281e057")), "a change to the rivers is a change to the map");
         }
 
         [Test]

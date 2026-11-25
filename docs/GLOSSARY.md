@@ -201,11 +201,22 @@ touch them.
   View only: the trees it draws are the terrain's where a terrain is made, else a tree a tree cell
   (`docs/design/tree-impostors.md`).
 
+**Wood**
+: A patch of forest on a hills map (`HillsForest`, map.json's `"forest"`): where its tiling noise is over `wood`, a
+  cell's chance of a tree rises from `least` at the wood's edge to `most` per thousand in its heart, thinning up to the
+  tree line; made in the generator, cell by cell, like the roads. Far off a wood is its known samples' `Wood` cover,
+  painted darker (`FarMeshes.Palette.Wooded`).
+
 **Tree budget**
 : The most trees `TreeImpostors` draws round the camera: as their prefab (`TreeBudget.MostNear`) and every way, impostors
   too (`MostAround`). Where the forest is denser the prefabs and the impostors draw to a shorter distance so about that
   many are drawn, never nearer than a floor (60 m prefabs, 400 m impostors); where it's sparse (the nine) they draw as far
   as ever. The forest is as generated: only how far each way of drawing it goes changes.
+
+**Flat impostor**
+: A tree impostor far enough off (past `TreeImpostors.FlatFrom`, 100 m) that it keeps its quad's own depth instead of
+  working out each pixel's: the GPU then tests depth before shading it, so in a dense wood the trees hidden behind nearer
+  ones cost next to nothing (the `_IMPOSTOR_FLAT` variant of Prototype/TreeImpostor, no shadow map read either).
 
 **Tree tiers** *(proposed)*
 : How far out each way of drawing a tree goes: the **full mesh** near (within 60 m in the trial), the **impostor**
