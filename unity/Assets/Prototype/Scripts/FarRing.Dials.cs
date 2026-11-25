@@ -4,7 +4,7 @@ using UnityEngine;
 
 // Two of the three tier dials (docs/design/world-12x8-scope.md, "The three tiers today"), this peer's own view: how far
 // round the characters the chunk terrains draw (drawn, the known ring's sight: past it a chunk is a known mesh) and how far
-// the known ring reaches (known, which sets the haze too: ~98% at its edge). Unset, each is sim.json's streaming sight and
+// the known ring reaches (known, which sets the haze too on a map with no far land: ~98% at its edge). Unset, each is sim.json's streaming sight and
 // know, as before the dials. The third, the active chunks, is lockstep state: streaming reach and keep, changed only as a
 // rule switch (the host's), never here. A player takes them as -drawn N and -known N, for perf runs.
 public sealed partial class FarRing
@@ -23,7 +23,7 @@ public sealed partial class FarRing
 
     /// <summary>
     /// Sets this peer's drawn and known dials (null for the rules'), from the next frame: the known ring is made again at
-    /// the new size and the haze follows it. Known is at least 1 and drawn at most known.
+    /// the new size and the haze follows it (AirDials). Known is at least 1 and drawn at most known.
     /// </summary>
     public static void SetView(int? drawn, int? known)
     {
@@ -58,7 +58,6 @@ public sealed partial class FarRing
         // So the next frame tells the new ring where the characters stand.
         characters.Clear();
         HazeMetres = know * chunkMetres;
-        RenderSettings.fogDensity = HazeK / HazeMetres;
         if (terrains != null) terrains.ReachNow();
     }
 }

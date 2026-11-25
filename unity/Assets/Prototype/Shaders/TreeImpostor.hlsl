@@ -92,7 +92,6 @@ struct ImpostorVaryings
     nointerpolation float4 cellsAB : TEXCOORD2;  // two of the three views
     nointerpolation float2 cellC : TEXCOORD3;
     nointerpolation float3 weights : TEXCOORD4;
-    float fog : TEXCOORD5;
     UNITY_VERTEX_INPUT_INSTANCE_ID
     UNITY_VERTEX_OUTPUT_STEREO
 };
@@ -147,7 +146,6 @@ ImpostorVaryings ImpostorVertex(ImpostorAttributes input)
     #endif
 #else
     o.positionCS = TransformWorldToHClip(positionWS);
-    o.fog = ComputeFogFactor(o.positionCS.z);
 #endif
     return o;
 }

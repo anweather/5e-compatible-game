@@ -54,6 +54,11 @@ public partial class PerfStage : ShowcaseScript
             StartCoroutine(Fireball());
             yield break; // Ready once the chunks round the forest are drawn
         }
+        else if (Scenario == "handover")
+        {
+            StartCoroutine(Handover());
+            yield break; // Ready once every pair is taken
+        }
         else if (Scenario == "stand")
         {
             yield return Stand();

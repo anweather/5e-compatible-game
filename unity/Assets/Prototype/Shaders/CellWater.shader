@@ -33,10 +33,10 @@ Shader "Prototype/CellWater"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
-            #pragma multi_compile_fog
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+                        #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Air.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
             half4 _Color, _Foam;
@@ -64,7 +64,6 @@ Shader "Prototype/CellWater"
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 float4 flowFoam : TEXCOORD2; // flow x, z; foam; the outline's alpha
-                half fogFactor : TEXCOORD3;
                 half4 liquid : TEXCOORD4; // its colour; how much of the point it is
             };
 
@@ -107,7 +106,6 @@ Shader "Prototype/CellWater"
                 o.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 o.flowFoam = float4(input.flow, input.foam.x, input.color.a);
                 o.liquid = half4(input.color.rgb, input.foam.y);
-                o.fogFactor = ComputeFogFactor(o.positionCS.z);
                 return o;
             }
 
@@ -161,7 +159,7 @@ Shader "Prototype/CellWater"
                 color = lerp(color, _Foam.rgb * (SampleSH(half3(0, 1, 0)) + sun * 0.6), foam);
 
                 half alpha = input.flowFoam.w * lerp(lerp(_Color.a, 0.96, own), 1.0, max(max(fresnel * 0.5, foam), max(fx.g * 0.85, fx.r * 0.7)));
-                color = MixFog(color, input.fogFactor);
+                color = Aired(color, input.positionWS);
                 return half4(color, alpha);
             }
             ENDHLSL

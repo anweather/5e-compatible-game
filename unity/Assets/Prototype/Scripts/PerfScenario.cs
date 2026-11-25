@@ -73,7 +73,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout", "stand", "seamwalk", "roadwalk" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm", Fireball, "walkout", "stand", "seamwalk", "roadwalk", "handover" };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast", "draw", "blockers", "chunk" };
 
@@ -302,7 +302,7 @@ public class PerfScenario : MonoBehaviour
     }
 
     // A screenshot is written at the end of the frame it was asked for.
-    static IEnumerator Shot(string name)
+    internal static IEnumerator Shot(string name)
     {
         var file = Path.Combine(ChemGrid.Folders.PlayerData, $"perf-{name}.png");
         ScreenCapture.CaptureScreenshot(file);

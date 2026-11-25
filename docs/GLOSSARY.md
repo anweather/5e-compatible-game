@@ -189,6 +189,12 @@ touch them.
   whose type `world/horizon.json` names. Its **seenFrom** is how far off it shows, a radius in chunks (not a square),
   at least `know` + 2.
 
+**The air / far land**
+: **The air** is the view's haze, the one model of what's left of a shape at a distance and the colour the rest goes
+  to (the sky's horizon on its bearing): `Air` and `Air.hlsl`, written once a frame by `AirInPlay` alone
+  (docs/design/hills.md "One air"). Not the element air (Chemistry). The **far land** is a hills map drawn whole and
+  coarse past the known ring to the horizon (`FarRing.FarLand.cs`), so its air can be clear for kilometres.
+
 **Tree impostor** *(a trial, off by default: J-090)*
 : A tree drawn far off as one camera-facing quad coloured from an atlas of the tree baked from 12 × 12 directions over
   the upper hemisphere (an **octahedral impostor**: `TreeImpostorBaker`, `Prototype/TreeImpostor`, `TreeImpostors`).

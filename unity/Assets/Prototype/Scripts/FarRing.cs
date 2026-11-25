@@ -8,10 +8,13 @@ using UnityEngine.SceneManagement;
 // The far ring on a generated map (docs/design/world-squares.md section 4, the view half): past the generated land the
 // known chunks (Chem.KnownRing) are drawn as coarse meshes from their 9 × 9 heights, painted by dominant biome, with no
 // colliders; the chunk terrains draw only where no known mesh does, within the known ring (MapTerrains asks
-// TerrainDraws), so nothing is drawn twice; the haze is exponential-squared, about 98% at the known ring's edge (k 1.98
-// over know × 96 m, after Punchy), so the ring's edge never shows; a sea plane runs from the map's edge to the horizon,
-// so the sky never shows below it; and the plan's far landmarks (FarRing.Landmarks.cs) stand past the known ring with
-// their own haze. The meshes are worked out on a worker and only handed to Unity here.
+// TerrainDraws), so nothing is drawn twice; on a hills map the whole map is drawn coarse past the known ring to the
+// horizon (FarRing.FarLand.cs); a sea plane runs from the map's edge to the horizon, so the sky never shows below it;
+// and the plan's far landmarks (FarRing.Landmarks.cs) stand past the known ring. The air over all of it is one
+// (AirInPlay, Air.hlsl), from the dials here (AirDials): on a hills map clear air reaches kilometres, as the far land is
+// drawn; on a map with no far land the haze is exponential-squared, about 98% at the known ring's edge (k 1.98 over
+// know × 96 m, after Punchy), so the ring's edge never shows. The meshes are worked out on a worker and only handed to
+// Unity here.
 //
 // All view and all float: the ring and the landmarks are pure functions of the seed and the plan, and nothing shared
 // reads anything here (D4). Starts itself on a generated map (PinnedValley.InGenerated); the valley alone keeps its
@@ -19,18 +22,18 @@ using UnityEngine.SceneManagement;
 public sealed partial class FarRing : MonoBehaviour
 {
     /// <summary>Punchy's haze constant: exponential-squared density × draw distance, ~98% at the edge.</summary>
-    public const float HazeK = 1.98f;
+    public const float HazeK = Air.HazeK;
 
     /// <summary>The far ring in play, or null on a map that isn't generated.</summary>
     public static FarRing Instance { get; private set; }
 
-    /// <summary>Where the haze reaches ~98% in clear weather (m): the known ring's edge. SkyLight closes it in for rain and fog.</summary>
+    /// <summary>The known ring's edge (m): on a map with no far land, where the clear haze reaches ~98%.</summary>
     public float HazeMetres { get; private set; }
 
     /// <summary>
-    /// Where the clear haze reaches 99% (m), at a depth from the eye as URP's fog measures it: past here nothing shows, so
+    /// Where a map with no far land's clear haze reaches 99% (m), at a depth from the eye: past here nothing shows, so
     /// it's where the Default layer stops drawing and the tree impostors end (#220: at the old 500 m the haze was ~89% and
-    /// the coast's dock popped in and out from the mountain by the falls). Rain and fog only close the haze in.
+    /// the coast's dock popped in and out from the mountain by the falls). On a hills map, a little past the known ring.
     /// </summary>
     public float HazeHides => HazeMetres * HideK / HazeK;
 
@@ -106,6 +109,7 @@ public sealed partial class FarRing : MonoBehaviour
 
     void OnDestroy()
     {
+        DropFarLand();
         if (Instance == this) Instance = null;
     }
 
@@ -155,17 +159,10 @@ public sealed partial class FarRing : MonoBehaviour
         // A rule switch can move streaming sight or know (the dials unset follow it); nothing changes while they hold.
         var rules = ChemGrid.Current?.Rules;
         if (rules != null) Dial(rules.Sim.Streaming);
-        float clear = HazeK / Mathf.Max(1f, HazeMetres);
-        Shader.SetGlobalFloat(HazeDensityId, RenderSettings.fogMode == FogMode.ExponentialSquared ? RenderSettings.fogDensity : clear);
-        Shader.SetGlobalFloat(HazeClearId, clear);
         Shader.SetGlobalFloat(SightMetresId, sight * chunkMetres);
         Shader.SetGlobalFloat(KnownMetresId, HazeMetres);
         Shader.SetGlobalFloat(StretchFromId, StretchFrom);
         Shader.SetGlobalFloat(StretchToId, StretchFrom + StretchOverChunks * chunkMetres);
-        var horizon = RenderSettings.fogColor;
-        var zenith = Shader.GetGlobalColor(PunchyZenithId);
-        Shader.SetGlobalColor(SkyHorizonId, horizon);
-        Shader.SetGlobalColor(SkyZenithId, zenith.maxColorComponent > 0f ? zenith : horizon);
 
         if (FollowCharacters()) ring.Want(characters);
         ring.Handover();
@@ -173,7 +170,7 @@ public sealed partial class FarRing : MonoBehaviour
         if (building != null && building.IsCompleted) FinishBuild();
         LetGo();
         UpdateLandmarks();
-        UpdateMassif();
+        UpdateFarLand();
     }
 
     // The first frame the worker's load is done: the ring, the haze, the materials, the sea plane and the landmarks.
@@ -194,7 +191,6 @@ public sealed partial class FarRing : MonoBehaviour
         chunkMetres = land.Layout.ChunkSize;
         terrains = FindFirstObjectByType<MapTerrains>();
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
         Dial(rules.Sim.Streaming);
 
         var grid = ChemGrid.Current.Grid;
@@ -206,15 +202,15 @@ public sealed partial class FarRing : MonoBehaviour
         if (!(ViewWrap.EastWest && ViewWrap.NorthSouth)) MakeSea();
         MakeLandmarks(loaded);
         palette = Palette(loaded.Biomes, grid.World, terrains);
-        StartMassif(map);
+        StartFarLand(map);
         StartupTimeline.Mark("far ring map read, landmarks made");
-        Debug.Log($"FAR RING: know {know} (haze 98% at {HazeMetres:0} m, density {RenderSettings.fogDensity:0.00000}/m), {loaded.Far.All.Count} far landmarks");
+        var d = AirDials;
+        Debug.Log($"FAR RING: know {know} ({HazeMetres:0} m), air: clear reach {d.reach:0} m, haze 98% at {d.clear:0} m, {loaded.Far.All.Count} far landmarks");
         return true;
     }
 
-    static readonly int HazeDensityId = Shader.PropertyToID("_FarHazeDensity"), HazeClearId = Shader.PropertyToID("_FarHazeClear"), SightMetresId = Shader.PropertyToID("_FarSightMetres"),
-        SkyHorizonId = Shader.PropertyToID("_FarSkyHorizon"), KnownMetresId = Shader.PropertyToID("_FarKnownMetres"), SkyZenithId = Shader.PropertyToID("_FarSkyZenith"),
-        PunchyZenithId = Shader.PropertyToID("_PunchySkyZenith"), OwnHazeId = Shader.PropertyToID("_OwnHaze");
+    static readonly int SightMetresId = Shader.PropertyToID("_FarSightMetres"), KnownMetresId = Shader.PropertyToID("_FarKnownMetres"),
+        OwnHazeId = Shader.PropertyToID("_OwnHaze");
 
     // The chunks the characters stand in (the camera's, with none); true when they changed.
     bool FollowCharacters()
@@ -255,12 +251,13 @@ public sealed partial class FarRing : MonoBehaviour
             if (!drawn.TryGetValue(ring.Id(k.X, k.Y), out var d) || d.chunk != k) fresh.Add(k);
         float cell = land.Layout.CellSize;
         var colours = palette;
+        var rock = rockAt;
         buildStarted = Time.realtimeSinceStartupAsDouble;
         building = Task.Run(() =>
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
             var made = new List<(KnownChunk, FarMeshes.Data)>(fresh.Count);
-            foreach (var k in fresh) made.Add((k, FarMeshes.Known(k, cell, colours)));
+            foreach (var k in fresh) made.Add((k, FarMeshes.Known(k, cell, colours, rock)));
             workerMs = timer.Elapsed.TotalMilliseconds;
             return made;
         });

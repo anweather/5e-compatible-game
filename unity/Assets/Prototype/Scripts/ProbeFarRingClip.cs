@@ -129,7 +129,7 @@ public class FarRingClipProbe : ProbeScenario
     IEnumerator Bare(FarRing far)
     {
         far.enabled = false;
-        Shader.SetGlobalFloat("_FarHazeDensity", 0f);
+        AirInPlay.Lifted = true;
         foreach (var r in far.GetComponentsInChildren<MeshRenderer>())
         {
             if (!r.name.StartsWith("Far ", System.StringComparison.Ordinal)) continue;

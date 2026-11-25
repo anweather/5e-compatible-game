@@ -2,7 +2,7 @@ Shader "Prototype/TreeImpostor"
 {
     // A tree as an octahedral impostor (TreeImpostor.hlsl, docs/design/tree-impostors.md): one quad a tree, drawn
     // instanced by TreeImpostors from the atlases TreeImpostorBaker bakes. Lit by the main light (with its shadows and
-    // a wrap for the leaves) and the ambient, fogged, its depth moved onto the tree's surface; it casts its shadow
+    // a wrap for the leaves) and the ambient, in the air (Air.hlsl), its depth moved onto the tree's surface; it casts its shadow
     // from the light's own three views. Forward and Forward+ only.
     Properties
     {
@@ -38,11 +38,11 @@ Shader "Prototype/TreeImpostor"
             #pragma fragment ImpostorForward
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
-            #pragma multi_compile_fog
             #pragma multi_compile_instancing
 
             #include "TreeImpostor.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Air.hlsl"
 
             half4 ImpostorForward(ImpostorVaryings input, out float depth : SV_Depth) : SV_Target
             {
@@ -63,7 +63,7 @@ Shader "Prototype/TreeImpostor"
                 if (_Debug > 0.5 && _Debug < 1.5) colour = lit;
                 else if (_Debug > 1.5 && _Debug < 2.5) colour = SampleSH(normalWS);
                 else if (_Debug > 2.5) colour = normalWS * 0.5 + 0.5;
-                else colour = MixFog(colour, input.fog);
+                else colour = Aired(colour, positionWS);
                 depth = ImpostorDepth(s.positionOS);
                 return half4(colour, 1);
             }

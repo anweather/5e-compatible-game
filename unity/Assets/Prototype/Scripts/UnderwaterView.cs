@@ -5,7 +5,7 @@ using UnityEngine;
 // the surface overhead seen from below as a bright, flat sheet. Under the water drawn
 // on a cell (ChemGrid.WaterSurfaceY, the lake's level) or under the sea (Ocean: its
 // level and swell, seaward of its coast where the ground is below it). Everything
-// is put back as the eye comes up; SkyLight sets the haze again each frame anyway.
+// is put back as the eye comes up; AirInPlay makes the air the water's while it's under.
 // Starts itself on the main camera, so no scene change is needed.
 [DefaultExecutionOrder(1000)]
 [RequireComponent(typeof(Camera))]
@@ -24,7 +24,13 @@ public class UnderwaterView : MonoBehaviour
     CameraClearFlags clear;
     Color background;
     bool fogWas;
-    FogMode fogModeWas;
+
+    /// <summary>Whether the main camera's eye is under water now: AirInPlay makes the air the water's.</summary>
+    public static bool EyeUnder { get; private set; }
+
+    /// <summary>The water's air: its tint, and how far you can see in it (m).</summary>
+    public static Color WaterTint => Tint;
+    public const float WaterSeen = FogEnd;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Attach()
@@ -48,10 +54,6 @@ public class UnderwaterView : MonoBehaviour
         if (now != under) Switch(now);
         if (!under) return;
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogColor = Tint;
-        RenderSettings.fogStartDistance = 0f;
-        RenderSettings.fogEndDistance = FogEnd;
         sheet.transform.position = new Vector3(eye.x, top, eye.z);
     }
 
@@ -84,12 +86,12 @@ public class UnderwaterView : MonoBehaviour
     void Switch(bool toUnder)
     {
         under = toUnder;
+        EyeUnder = toUnder;
         if (toUnder)
         {
             clear = cam.clearFlags;
             background = cam.backgroundColor;
             fogWas = RenderSettings.fog;
-            fogModeWas = RenderSettings.fogMode;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = Deep;
             if (sheet == null) sheet = MakeSheet();
@@ -99,7 +101,6 @@ public class UnderwaterView : MonoBehaviour
         cam.clearFlags = clear;
         cam.backgroundColor = background;
         RenderSettings.fog = fogWas;
-        RenderSettings.fogMode = fogModeWas;
         if (sheet != null) sheet.SetActive(false);
     }
 

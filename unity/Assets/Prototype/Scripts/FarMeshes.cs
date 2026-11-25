@@ -118,7 +118,7 @@ public static class FarMeshes
     /// A known chunk's land: its 9 × 9 samples <paramref name="cellMetres"/> × KnownChunk.Step apart, from its north-west
     /// corner (the mesh's origin) east along +x and south along -z, each at its height in metres; then its skirt.
     /// </summary>
-    public static Data Known(KnownChunk k, float cellMetres, Palette palette = null)
+    public static Data Known(KnownChunk k, float cellMetres, Palette palette = null, System.Func<int, int, float> rockAt = null)
     {
         palette ??= Palette.Plain;
         const int n = KnownChunk.Side;
@@ -140,7 +140,9 @@ public static class FarMeshes
                 float dx = (H(i + 1, j) - H(i - 1, j)) / (step * (i == 0 || i == n - 1 ? 1 : 2));
                 float dz = (H(i, j - 1) - H(i, j + 1)) / (step * (j == 0 || j == n - 1 ? 1 : 2));
                 var normal = new Vector3(-dx, 1f, -dz).normalized;
-                d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, Paint(k, i, j, biomes?[j * n + i] is { } b ? palette.Of(b) : biome, palette.Rock, normal));
+                int at = j * n + i, x = k.X * ChunkGen.Size + i * KnownChunk.Step, y = k.Y * ChunkGen.Size + j * KnownChunk.Step;
+                var own = biomes?[at] is { } b ? palette.Of(b) : biome;
+                d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, LandColour(own, palette.Rock, normal, k.Water[at], x, y, rockAt?.Invoke(x, y) ?? 0f));
             }
         for (int j = 0; j < n - 1; j++)
             for (int i = 0; i < n - 1; i++)
@@ -152,17 +154,21 @@ public static class FarMeshes
         return d;
     }
 
-    // A sample's colour: its water, else its own biome's (blended to its neighbours' across the triangles), turned to rock where it's steep, with a little variety.
-    static Color32 Paint(KnownChunk k, int i, int j, Color biome, Color rock, Vector3 normal)
+    /// <summary>
+    /// A sample's colour at map cell (<paramref name="x"/>, <paramref name="y"/>): its water, else its biome's (blended to its
+    /// neighbours' across the triangles), turned to rock where it's steep or where <paramref name="rock"/> (0..1, a hills
+    /// map's high massif) says, with a little variety by the cell. Linear, as the near ground's paint is (#191). The known
+    /// chunks and a hills map's far land paint by it alike, so the two meet in one colour.
+    /// </summary>
+    public static Color32 LandColour(Color biome, Color rockColour, Vector3 normal, byte water, int x, int y, float rock = 0f)
     {
-        byte water = k.Water[j * KnownChunk.Side + i];
         Color c = water switch
         {
             KnownChunk.River or KnownChunk.Lake => Water,
             KnownChunk.Sea => SeaFloor,
-            _ => Color.Lerp(biome, rock, Mathf.InverseLerp(0.85f, 0.6f, normal.y)),
+            _ => Color.Lerp(biome, rockColour, Mathf.Max(Mathf.InverseLerp(0.85f, 0.6f, normal.y), rock)),
         };
-        uint hash = (uint)((k.X * 64 + i * 8) * 73856093 ^ (k.Y * 64 + j * 8) * 19349663);
+        uint hash = (uint)(x * 73856093 ^ y * 19349663);
         float vary = 0.94f + 0.12f * ((hash >> 8) % 1000) / 1000f;
         return new Color(c.r * vary, c.g * vary, c.b * vary, 0f);
     }

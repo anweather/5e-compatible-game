@@ -265,7 +265,7 @@ public class OvernightShowcase : ShowcaseScript
                 sun.color = Color.Lerp(sunColor, DuskSunColor, k);
             }
             RenderSettings.ambientProbe = ambient * Mathf.Lerp(1f, DuskAmbient, k);
-            RenderSettings.fogColor = Color.Lerp(fog, DuskFog, k);
+            AirInPlay.HeldHorizon = Color.Lerp(fog, DuskFog, k);
             if (sky == null || !sky.HasProperty("_Exposure")) return;
             if (skyCopy == null)
             {
@@ -295,7 +295,7 @@ public class OvernightShowcase : ShowcaseScript
                 sun.color = sunColor;
             }
             RenderSettings.ambientProbe = ambient;
-            RenderSettings.fogColor = fog;
+            AirInPlay.HeldHorizon = null;
             if (sky != null) RenderSettings.skybox = sky;
             if (skyCopy != null) Destroy(skyCopy);
             skyCopy = null;
