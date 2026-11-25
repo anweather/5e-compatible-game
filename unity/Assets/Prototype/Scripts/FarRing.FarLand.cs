@@ -22,14 +22,13 @@ public sealed partial class FarRing
     // How much the far land pales toward the sky's colour far off (Air.hlsl's DulledFar).
     const float FarDulls = 0.5f;
 
-    /// <summary>A hills map's air (m): its clear air's reach, its gaussian's 98% in clear air and in rain, and where all gives way.</summary>
+    /// <summary>A generated map's air (m): its clear air's reach, its gaussian's 98% in clear air and in rain, and where all gives way.</summary>
     public const float HillsReach = 15000f, HillsClear = 25000f, HillsRainy = 1500f, HillsFarFrom = 12500f, HillsFarTo = 14500f;
 
     Task<(FarMeshes.Data[] tiles, double ms)> farLandWork;
     Mesh[] farTiles;
     Vector2[] farCorners;
     Material farMaterial;
-    bool hasFarLand;
     float periodX, periodZ, tileX, tileZ;
     GameObject[] farCopies;
     // Copies of each tile drawn at most, each way from the nearest: two maps' widths (20 km) past the air's reach.
@@ -37,13 +36,11 @@ public sealed partial class FarRing
     System.Func<int, int, float> rockAt;
 
     /// <summary>
-    /// The air's dials on this map (AirInPlay): its clear air's reach (m, 0 for none), its gaussian's ~98% in clear air and
-    /// in rain (m), and where everything gives way (m, 0 for nowhere). A hills map draws its far land, so its air is
-    /// clear for kilometres; a map with no far land closes its haze at the known ring's edge, so the edge never shows.
+    /// The air's dials on a generated map (AirInPlay): its clear air's reach (m), its gaussian's ~98% in clear air and in
+    /// rain (m), and where everything gives way (m). Every generated map has the hills' long clear air (Andrew,
+    /// 2026-11-24); a map with no far land shows its known ring's edge (the nine's bare sea past it) until it draws some.
     /// </summary>
-    public (float reach, float clear, float rainy, float farFrom, float farTo) AirDials => hasFarLand
-        ? (HillsReach, HillsClear, HillsRainy, HillsFarFrom, HillsFarTo)
-        : (0f, HazeMetres, HazeMetres * 0.6f, 0f, 0f);
+    public (float reach, float clear, float rainy, float farFrom, float farTo) AirDials => (HillsReach, HillsClear, HillsRainy, HillsFarFrom, HillsFarTo);
 
     /// <summary>A hills map's land at map cell (x, y) in metres, from its generator (no chunk is made), or null on another map.</summary>
     public float? HillsLandAt(int x, int y) => map?.Hills is { } h ? h.At((x % map.Gen.CellsW + map.Gen.CellsW) % map.Gen.CellsW, (y % map.Gen.CellsH + map.Gen.CellsH) % map.Gen.CellsH) * (float)MapFile.LandUnitMetres : null;
@@ -58,7 +55,6 @@ public sealed partial class FarRing
     {
         var hills = m.Hills;
         if (hills == null) return;
-        hasFarLand = true;
         var mm = hills.Massif;
         var gen = m.Gen;
         int w = gen.CellsW, ht = gen.CellsH;

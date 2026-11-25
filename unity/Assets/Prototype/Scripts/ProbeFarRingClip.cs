@@ -136,7 +136,6 @@ public class FarRingClipProbe : ProbeScenario
             var block = new MaterialPropertyBlock();
             r.GetPropertyBlock(block);
             block.SetFloat("_FadeMetres", 1f);
-            block.SetFloat("_HazeAtSeen", 0.0001f);
             r.SetPropertyBlock(block);
         }
         yield return Wait(0.5f);

@@ -6,10 +6,8 @@ Shader "Prototype/FarLand"
     // ambient, no shadows. Everything takes the one air (Air.hlsl, docs/design/hills.md "One air"): toward the sky's
     // horizon on its bearing, by its distance from the eye. The far land pales toward the sky's colour past 3 km (_Dulls,
     // DulledFar) and isn't drawn nearer than _NearClip, where the known meshes and the chunk terrains are the land.
-    // A far landmark (_OwnHaze 1) on a map with no far land past its known ring (the nine, the world maps) still sees
-    // through the air past sight, about 90% at its seenFrom (LandmarkSeen: there's no land drawn under that air, so the
-    // air there is as thin as the landmark asks; it goes when those maps draw far land), and fades wholly into the air
-    // over its last _FadeMetres. Its horizon.json "far" look comes in past _FarStretchFrom (where it can no longer have
+    // A far landmark (_OwnHaze 1) takes the same air and fades wholly into it over its last _FadeMetres, where it's no
+    // longer drawn. Its horizon.json "far" look comes in past _FarStretchFrom (where it can no longer have
     // given way to the land): it stands _Stretch times as tall and its rim dips _Notch of its height where it faces the
     // eye, a crater's notch. The sea plane (_SkyFadeTo above 0) is drawn after the sky and goes clear between
     // _SkyFadeFrom and _SkyFadeTo, so it gives way to the sky as it's drawn there, not with a hard line against it. Over
@@ -20,7 +18,6 @@ Shader "Prototype/FarLand"
     {
         _OwnHaze ("Own haze (a far landmark)", Float) = 0
         _SeenMetres ("Seen from (m)", Float) = 1344
-        _HazeAtSeen ("Haze at seen from", Float) = 0.9
         _FadeMetres ("Fade into the sky over (m)", Float) = 144
         _Stretch ("Far stretch (x its height)", Float) = 1
         _Notch ("Rim notch (of its height)", Float) = 0
@@ -56,7 +53,6 @@ Shader "Prototype/FarLand"
             CBUFFER_START(UnityPerMaterial)
             half _OwnHaze;
             float _SeenMetres;
-            half _HazeAtSeen;
             float _FadeMetres;
             float _Stretch;
             float _Notch;
@@ -116,17 +112,11 @@ Shader "Prototype/FarLand"
                 return o;
             }
 
-            // How much of a far landmark is left at distance d on a map with no far land (see the top): within sight the
-            // one air; past it, over the next two chunks (192 m), the air in front of it thins to its own, exponential-
-            // squared reaching _HazeAtSeen at _SeenMetres in clear weather and thickened as the air's gaussian is by rain
-            // and fog; and none of it over the last _FadeMetres.
+            // How much of a far landmark is left at distance d: the one air, and none of it over its last _FadeMetres.
             half LandmarkSeen(float d)
             {
-                float root = sqrt(-log(max(1e-4, 1.0 - _HazeAtSeen)));
-                float own = d * root / max(1.0, _SeenMetres) * max(1.0, _Air.y / max(1e-9, _AirFar.z));
-                float x = lerp(d * _Air.y, own, smoothstep(_FarSightMetres, _FarSightMetres + 192.0, d));
                 half fade = saturate((d - (_SeenMetres - _FadeMetres)) / max(1.0, _FadeMetres));
-                return (half)(exp(-x * x) * exp(-d * _Air.x)) * (1.0 - fade);
+                return AirSeen(d) * (1.0 - fade);
             }
 
             half4 Frag(Varyings input) : SV_Target
