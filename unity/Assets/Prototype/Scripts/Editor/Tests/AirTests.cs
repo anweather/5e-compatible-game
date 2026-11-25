@@ -22,8 +22,12 @@ public class AirTests
     {
         foreach (var air in new[] { Hills(), Hills(rain: 0.6f), Hills(fog: 1f) })
         {
-            float urp = Mathf.Exp(-Mathf.Pow(air.Density * Air.LitMatchedAt, 2f));
-            Assert.AreEqual(air.Seen(Air.LitMatchedAt), urp, 1e-4f);
+            var (start, end) = air.LinearFog;
+            float Urp(float d) => Mathf.Clamp01((end - d) / (end - start));
+            var (a, b) = air.LitMatches;
+            Assert.AreEqual(air.Seen(a), Urp(a), 1e-3f);
+            Assert.AreEqual(air.Seen(b), Urp(b), 1e-3f);
+            Assert.That(b, Is.GreaterThan(a));
         }
     }
 

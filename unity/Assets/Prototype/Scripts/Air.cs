@@ -11,8 +11,12 @@ public readonly struct Air
     /// <summary>Exponential-squared density × distance where the gaussian haze is ~98% (Punchy's constant).</summary>
     public const float HazeK = 1.98f;
 
-    /// <summary>Where URP's exponential-squared fog (the Lit things') is matched to the air (m): the near things are there.</summary>
-    public const float LitMatchedAt = 200f;
+    /// <summary>
+    /// Where URP's own fog (the Lit things': the grass, the wizard, the props, the trees' meshes) is matched to the air (m),
+    /// and again at LitMatchedTo times that: the near things are there. URP's fog is always linear: a player keeps only the
+    /// fog the scenes it's built from use (the yard's linear), so an exponential-squared fog drew nothing there.
+    /// </summary>
+    public const float LitMatchedAt = 200f, LitMatchedTo = 4f;
 
     /// <summary>Where fog closes the haze in to (m): ~98% here at full fog.</summary>
     public const float FogMetres = 90f;
@@ -103,8 +107,39 @@ public readonly struct Air
         }
     }
 
-    /// <summary>URP's exponential-squared density that leaves what Seen does at LitMatchedAt.</summary>
-    public float Density => Mathf.Sqrt(Linear / LitMatchedAt + Gaussian * Gaussian);
+    /// <summary>
+    /// The two distances URP's linear fog is matched to the air at (m): LitMatchedAt and LitMatchedTo times it, or nearer
+    /// where the air hides more than 10% and 70% of a shape before them (fog, rain).
+    /// </summary>
+    public (float a, float b) LitMatches => (Mathf.Min(LitMatchedAt, Where(0.9f)), Mathf.Min(LitMatchedAt * LitMatchedTo, Where(0.3f)));
+
+    /// <summary>URP's linear fog (start, end in m) that leaves what Seen does at both LitMatches.</summary>
+    public (float start, float end) LinearFog
+    {
+        get
+        {
+            if (IsLinear) return (Start, End);
+            var (a, b) = LitMatches;
+            float sa = Seen(a), sb = Seen(b), slope = (sa - sb) / Mathf.Max(b - a, 1e-3f);
+            if (slope < 1e-7f) return (1e6f, 1e6f + 1f);
+            float end = a + sa / slope;
+            return (end - 1f / slope, end);
+        }
+    }
+
+    // Where the air leaves this much of a shape (m), within 20 km: Seen never rises with the distance.
+    float Where(float left)
+    {
+        float lo = 0f, hi = 20000f;
+        if (Seen(hi) >= left) return hi;
+        for (int i = 0; i < 32; i++)
+        {
+            float mid = (lo + hi) * 0.5f;
+            if (Seen(mid) > left) lo = mid;
+            else hi = mid;
+        }
+        return lo;
+    }
 
     /// <summary>_Air: clear air and gaussian per metre, a linear fade's start and end.</summary>
     public Vector4 ForShaders => new(Linear, Gaussian, Start, End);

@@ -3,8 +3,8 @@ using UnityEngine;
 // The one writer of the air into the drawing (docs/design/hills.md "One air", the boat game's B166): late each frame, after
 // SkyLight has eased the weather, CloudSky has worked out the sky's horizon and UnderwaterView has said where the eye is,
 // it makes the Air and writes it: _Air, _AirFar, _AirHorizon, _AirGlow and _AirSun for every shader that draws by
-// Air.hlsl, and URP's fog (its mode, colour, density, start and end) for the things drawn with URP's own shaders,
-// matched to the air. Nothing else writes the scene's fog (AirTests holds that). The map's dials are the far ring's
+// Air.hlsl, and URP's fog (linear: its colour, start and end) for the things drawn with URP's own shaders, matched to
+// the air near (Air.LinearFog). Nothing else writes the scene's fog (AirTests holds that). The map's dials are the far ring's
 // (FarRing.AirDials: a hills map's clear air reaches kilometres; another generated map's haze closes at its known ring),
 // or, on the valley, the scene's linear haze as SkyLight closes it in. Starts itself on every scene.
 [DefaultExecutionOrder(1100)]
@@ -95,17 +95,10 @@ public sealed class AirInPlay : MonoBehaviour
         Written = air;
         var mean = air.Mean;
         RenderSettings.fogColor = new Color(mean.x, mean.y, mean.z).gamma;
-        if (air.IsLinear)
-        {
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = air.Start;
-            RenderSettings.fogEndDistance = air.End;
-        }
-        else
-        {
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = air.Density;
-        }
+        var (start, end) = air.LinearFog;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogStartDistance = start;
+        RenderSettings.fogEndDistance = end;
         Shader.SetGlobalVector(AirId, air.ForShaders);
         Shader.SetGlobalVector(AirFarId, air.FarForShaders);
         Shader.SetGlobalColor(HorizonId, air.Horizon);
