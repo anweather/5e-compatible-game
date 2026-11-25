@@ -201,7 +201,7 @@ public sealed partial class FarRing : MonoBehaviour
         // A torus has no edge to see the sea past (the hills: all land), so it has no sea to the horizon.
         if (!(ViewWrap.EastWest && ViewWrap.NorthSouth)) MakeSea();
         MakeLandmarks(loaded);
-        palette = Palette(loaded.Biomes, grid.World, terrains);
+        palette = Palette(loaded.Biomes, grid.World, terrains, map.Hills?.Biome);
         StartFarLand(map);
         StartupTimeline.Mark("far ring map read, landmarks made");
         var d = AirDials;
@@ -268,8 +268,9 @@ public sealed partial class FarRing : MonoBehaviour
 
     // The known chunks' colours from what the near ground draws (#191): each biome's ground as the map's cells paint it,
     // in the colours of the chunk terrains' own layers. Once, as the ring starts. A hills map has no plan's biomes (its
-    // cells are all one biome's ground): its land is the grass layer's colour, its steep land the rock's.
-    static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains)
+    // cells are all one biome's ground): its biome's ground is the mean paint of the cells made so far (its grass, the
+    // brush in it, its roads), as the chunk terrains paint them, so the known meshes meet them in one colour.
+    static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains, string allOneBiome)
     {
         var layers = terrains != null && terrains.template != null ? terrains.template.terrainLayers : null;
         if (world == null || layers == null) return FarMeshes.Palette.Plain;
@@ -284,11 +285,40 @@ public sealed partial class FarRing : MonoBehaviour
                     colours[name] = new Color(mean.r * tint.x, mean.g * tint.y, mean.b * tint.z);
                     break;
                 }
-        var palette = FarMeshes.Palette.Drawn(biomes != null ? biomes.Grounds(world) : new Dictionary<string, float[]>(), colours);
+        var grounds = biomes != null ? biomes.Grounds(world) : new Dictionary<string, float[]>();
+        if (biomes == null && allOneBiome != null && MadeGround(world) is { } made) grounds[allOneBiome] = made;
+        var palette = FarMeshes.Palette.Drawn(grounds, colours);
         StartupTimeline.Mark("far ring colours");
         var layersSaid = string.Join(", ", System.Linq.Enumerable.Select(colours, c => $"{c.Key} {c.Value.r:0.000},{c.Value.g:0.000},{c.Value.b:0.000}"));
-        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms: {layersSaid}; grass {palette.Grass}");
+        Debug.Log($"FAR RING: the land's colours from the near ground's paint in {timer.Elapsed.TotalMilliseconds:0} ms: {layersSaid}; grass {palette.Grass}{(allOneBiome != null ? $", {allOneBiome} {palette.Of(allOneBiome)}" : "")}");
         return palette;
+    }
+
+    // The mean paint (CellPaint's layer weights) of the dry cells of every chunk made so far, every 4th cell each way;
+    // null with none. Reads no chunk that isn't made.
+    static float[] MadeGround(World world)
+    {
+        const int Every = 4;
+        var sum = new float[CellPaint.Layers.Count];
+        int n = 0;
+        for (int cy = 0; cy < world.H / ChunkGen.Size; cy++)
+            for (int cx = 0; cx < world.W / ChunkGen.Size; cx++)
+            {
+                int x0 = cx * ChunkGen.Size, y0 = cy * ChunkGen.Size;
+                if (BiomeGround.CellAsIs(world, x0, y0) == null) continue;
+                for (int y = y0; y < y0 + ChunkGen.Size; y += Every)
+                    for (int x = x0; x < x0 + ChunkGen.Size; x += Every)
+                    {
+                        var c = BiomeGround.CellAsIs(world, x, y);
+                        if (c == null || c.Water > 0) continue;
+                        var mix = CellPaint.Mix(world, x, y, c);
+                        for (int k = 0; k < sum.Length && k < mix.Count; k++) sum[k] += mix[k];
+                        n++;
+                    }
+            }
+        if (n == 0) return null;
+        for (int k = 0; k < sum.Length; k++) sum[k] /= n;
+        return sum;
     }
 
     // A texture's mean colour, linear as the terrain's shader mixes and lights it (FarLand lights a vertex colour as it is),

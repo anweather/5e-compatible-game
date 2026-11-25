@@ -63,6 +63,9 @@ Shader "Prototype/FarLand"
             half _Dulls;
             CBUFFER_END
 
+            // How much of the sun's light the coarse land keeps when the sun is on the horizon (tools/handover.py at dusk).
+            static const half LowSunLit = 0.8;
+
             // Set by FarRing each frame: where the generated ring ends (m) and where the known ring ends (m, the view dial's).
             float _FarSightMetres;
             float _FarKnownMetres;
@@ -127,7 +130,10 @@ Shader "Prototype/FarLand"
                 // The land lit as URP's terrain lights it (Lambert and the ambient, no shadows), so it meets the chunk
                 // terrains in one colour (tools/handover.py); a landmark keeps its soft wrapped light.
                 half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);
-                half3 color = albedo * (light.color * saturate(dot(n, light.direction)) + SampleSH(n));
+                // A low sun lights the coarse land less than its Lambert says: the chunk terrains' own relief (their normal
+                // maps) turns much of each slope away from it, and the coarse land has none.
+                half low = (half)lerp(LowSunLit, 1.0, smoothstep(0.05, 0.4, light.direction.y));
+                half3 color = albedo * (light.color * saturate(dot(n, light.direction)) * low + SampleSH(n));
                 UNITY_BRANCH if (_NearClip > 0)
                 {
                     // A far mesh of land the chunk terrains and known meshes draw nearer (the hills' far land).
