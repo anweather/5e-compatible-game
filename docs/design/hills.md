@@ -242,4 +242,4 @@ Stills (800 px): `~/5e-logs/hills/shots/spawn.jpg`, `seam.jpg` (past both seams 
 ## The alpine massif (step 4)
 
 The mountains in the middle, their passes and foothills, the roads' grade limit, the far massif and their results are in
-docs/design/alpine.md; the rivers wait on where they end (a choice there).
+docs/design/alpine.md, and so are its rivers (step 3: a lake in the meadow, a gorge, a river down to a lake in the grassland).
