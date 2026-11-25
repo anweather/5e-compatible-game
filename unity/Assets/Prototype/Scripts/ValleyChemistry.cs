@@ -261,6 +261,7 @@ public partial class ValleyChemistry : MonoBehaviour
             layout = map.Layout;
             lakeLevel = map.WaterLevel;
         }
+        hillsRivers = PinnedValley.InGenerated ? LoadedMaps.Get(ChemGrid.MapSource).Hills?.Rivers : null;
         if (world.W != layout.GridW || world.H != layout.GridH)
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
         if (ground == null)
@@ -548,7 +549,25 @@ public partial class ValleyChemistry : MonoBehaviour
     public void AdvanceShaping(float dt) => ground?.Advance(dt);
 
     /// <summary>True for a cell of the lake: a pit whose ground is under the lake's surface.</summary>
-    public bool IsLake(Cell c, int x, int y) => c.T == TerrainIds.Pit && BaseHeight(x, y) < lakeLevel;
+    public bool IsLake(Cell c, int x, int y) => LakeLevelOf(c, x, y) > float.NegativeInfinity;
+
+    /// <summary>
+    /// The surface of the lake a cell is in, in metres, or negative infinity: the valley's lake (its pit cells under the
+    /// lake's level), or on a hills map one of its rivers' lakes (a pit cell by the lake's nodes, HillsLakes draws it).
+    /// </summary>
+    public float LakeLevelOf(Cell c, int x, int y)
+    {
+        if (c.T != TerrainIds.Pit) return float.NegativeInfinity;
+        if (hillsRivers != null)
+        {
+            int level = hillsRivers.LakeNear(grid.World.FoldX(x), grid.World.FoldY(y));
+            return level == HillsRivers.NoLake ? float.NegativeInfinity : level * (float)MapFile.LandUnitMetres;
+        }
+        return BaseHeight(x, y) < lakeLevel ? lakeLevel : float.NegativeInfinity;
+    }
+
+    // A hills map's rivers, whose lakes are drawn as lakes (flat), not as the cells' water.
+    HillsRivers hillsRivers;
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
     // The water runs down the valley's hills (playtest #31), which only the baked ground holds. The

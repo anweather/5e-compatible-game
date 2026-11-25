@@ -111,6 +111,8 @@ public static class FarMeshes
     }
 
     static readonly Color Water = new(0.16f, 0.30f, 0.36f), SeaFloor = new(0.09f, 0.19f, 0.22f);
+    // How far under its water a known lake's or river's sample is drawn (m).
+    const float UnderWater = 0.4f;
 
     /// <summary>
     /// A known chunk's land: its 9 × 9 samples <paramref name="cellMetres"/> × KnownChunk.Step apart, from its north-west
@@ -124,7 +126,13 @@ public static class FarMeshes
         var d = new Data();
         var biome = palette.Of(k.Biome);
         var biomes = k.Biomes;
-        float H(int i, int j) => k.Heights[Mathf.Clamp(j, 0, n - 1) * n + Mathf.Clamp(i, 0, n - 1)] * unit;
+        // A lake's or river's sample stands a little under its water (a hills map's lakes are drawn as their own surfaces at
+        // their level, HillsLakes): coplanar, the two fought.
+        float H(int i, int j)
+        {
+            int q = Mathf.Clamp(j, 0, n - 1) * n + Mathf.Clamp(i, 0, n - 1);
+            return k.Heights[q] * unit - (k.Water[q] is KnownChunk.Lake or KnownChunk.River ? UnderWater : 0f);
+        }
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++)
             {

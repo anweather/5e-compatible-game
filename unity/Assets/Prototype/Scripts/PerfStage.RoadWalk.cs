@@ -8,7 +8,7 @@ using UnityEngine;
 // stands on (the one along its row of world squares, else its column), east (south) and on round the torus for as long as
 // the run lasts, a waypoint at each point of the road's line (10 to 20 cells apart). The seams are watched as the seam walk watches them,
 // and as the run ends a "PERF ROADWALK" line says how far it went and how many of its frames stood on the road.
-// -perf-road row,N (or column,N) walks that main road instead, and -perf-from X,Y starts the wizard there (the line's
+// -perf-river walks down the main river's bank instead (RiverWalk). -perf-road row,N (or column,N) walks that main road instead, and -perf-from X,Y starts the wizard there (the line's
 // point nearest it), once the chunks round it are drawn: the pass walk of docs/design/alpine.md (-perf-road column,5
 // -perf-from 3300,500, up the foothills, over the north pass and down into the meadow).
 public partial class PerfStage
@@ -21,6 +21,11 @@ public partial class PerfStage
         if (roads == null)
         {
             Debug.LogError("PERF ROADWALK: this map has no generated roads (a hills map's \"roads\")");
+            yield break;
+        }
+        if (Asked("-perf-river"))
+        {
+            yield return RiverWalk();
             yield break;
         }
         var spawn = grid.PlayerStart;
@@ -77,6 +82,59 @@ public partial class PerfStage
         inputs.sprint = false;
     }
 
+    // -perf-river: down the main river on its bank (docs/design/alpine.md), from where it runs into the gorge past the
+    // meadow's lake, over the fords, to its end lake; a waypoint every few cells of its line, its half width and 4 cells to
+    // its right, where that's dry.
+    IEnumerator RiverWalk()
+    {
+        var hills = LoadedMaps.Get(ChemGrid.MapSource).Hills;
+        var rivers = hills?.Rivers;
+        if (rivers == null)
+        {
+            Debug.LogError("PERF RIVERWALK: this map has no rivers (a hills map's \"rivers\")");
+            yield break;
+        }
+        var main = rivers.Rivers.First(r => !r.Joins);
+        var massif = hills.Massif;
+        var path = new System.Collections.Generic.List<(int x, int y)>();
+        var gen = LoadedMaps.Get(ChemGrid.MapSource).Gen;
+        bool started = false, meadow = false;
+        for (int k = 0; k + 1 < main.X.Length; k++)
+        {
+            float x = main.X[k] / 65536f, y = main.Y[k] / 65536f, dx = main.X[k + 1] / 65536f - x, dy = main.Y[k + 1] / 65536f - y;
+            float len = Mathf.Max(0.01f, Mathf.Sqrt(dx * dx + dy * dy)), side = main.Half[k] + 4;
+            int bx = Mathf.RoundToInt(x - dy / len * side), by = Mathf.RoundToInt(y + dx / len * side);
+            // From where it runs into the ring again past the meadow (the gorge), on dry land beside it.
+            bool ring = massif != null && massif.Touches(bx, by) && massif.Ring(massif.Radius(bx, by)) > 0;
+            if (!ring) meadow = true;
+            if (!started && meadow && ring) started = true;
+            gen.HillsCellAt(World.FoldX(bx), World.FoldY(by), out char kind, out _);
+            if (kind is 'r' or 'w') continue;
+            if (started && (path.Count == 0 || Mathf.Max(Mathf.Abs(bx - path[path.Count - 1].x), Mathf.Abs(by - path[path.Count - 1].y)) >= 6)) path.Add((bx, by));
+        }
+        var inputs = wizard.GetComponent<StarterAssets.StarterAssetsInputs>();
+        inputs.cursorInputForLook = false;
+        Debug.Log($"PERF RIVERWALK points={path.Count} start={path[0].x},{path[0].y} end={path[path.Count - 1].x},{path[path.Count - 1].y}");
+        PlaceCell(World.FoldX(path[0].x), World.FoldY(path[0].y));
+        yield return null;
+        while (grid.ChunksLeftToDraw > 0) yield return null;
+        PlaceCell(World.FoldX(path[0].x), World.FoldY(path[0].y));
+        Ready = true;
+        StartCoroutine(WatchSeams());
+        while (!Go) yield return null;
+        var last = path[0];
+        for (int k = 1; k < path.Count && enabled; k++)
+        {
+            roadCells += Mathf.Max(Mathf.Abs(path[k].x - last.x), Mathf.Abs(path[k].y - last.y));
+            last = path[k];
+            yield return WalkTo(CellGround(path[k].x, path[k].y), inputs);
+            PerfCounts.Add("walk.legs");
+        }
+        Debug.Log(string.Format(CultureInfo.InvariantCulture, "PERF RIVERWALK reached the end lake={0}", path.Count > 0 && last == path[path.Count - 1]));
+        inputs.move = Vector2.zero;
+        inputs.sprint = false;
+    }
+
     // -perf-road row,N or column,N: the main road asked for, or null.
     static (bool alongRow, int index)? RoadAsked()
     {
@@ -108,6 +166,11 @@ public partial class PerfStage
     public void LogRoadWalk()
     {
         if (Scenario != "roadwalk") return;
+        if (Asked("-perf-river"))
+        {
+            Debug.Log(string.Format(CultureInfo.InvariantCulture, "PERF RIVERWALK done cells={0} km={1:0.00}", roadCells, roadCells * 1.5 / 1000));
+            return;
+        }
         Debug.Log(string.Format(CultureInfo.InvariantCulture, "PERF ROADWALK done cells={0} km={1:0.00} frames={2} on_road={3:0.0}%",
             roadCells, roadCells * 1.5 / 1000, roadFrames, 100.0 * roadFramesOn / Mathf.Max(1, roadFrames)));
     }

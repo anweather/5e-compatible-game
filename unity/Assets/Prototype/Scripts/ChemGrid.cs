@@ -841,11 +841,16 @@ public partial class ChemGrid : MonoBehaviour
         return CellCenter(cell.x, cell.y);
     }
 
-    public Vector3 CellCenter(int x, int y)
+    public Vector3 CellCenter(int x, int y) => ViewWrap.Near(CellCenterUnwrapped(x, y));
+
+    /// <summary>
+    /// A cell's centre as its coordinates put it, not moved to the copy nearest the camera: an origin to measure many
+    /// points from (each then moved with ViewWrap.Near), as cell (0, 0)'s nearest copy is a world away from a far cell's.
+    /// </summary>
+    public Vector3 CellCenterUnwrapped(int x, int y)
     {
         var yard = Yard;
-        // On a world that wraps, the copy of the cell nearest the camera (ViewWrap).
-        return ViewWrap.Near(new Vector3((x - yard.x) * cellSize, 0f, (yard.y + yard.height - 1 - y) * cellSize));
+        return new Vector3((x - yard.x) * cellSize, 0f, (yard.y + yard.height - 1 - y) * cellSize);
     }
 
     public Vector2Int CellAt(Vector3 p)

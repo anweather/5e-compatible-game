@@ -22,7 +22,9 @@ namespace Chem
     public sealed class HillsMassif
     {
         const long One = BiomeMath.One;
-        const int SaltWarp = 0x5a01, SaltWarp2 = 0x5a02, SaltRidge = 0x5a10, SaltFoot = 0x5a20;
+        const int SaltWarp = 0x5a01, SaltWarp2 = 0x5a02, SaltRidge = 0x5a10, SaltFoot = 0x5a20, SaltSpring = 0x5a30, SaltGorge = 0x5a31;
+        /// <summary>How far the gorge wanders either side of its line, in cells.</summary>
+        public const int GorgeWander = 70;
         /// <summary>The pass grid's spacing in cells.</summary>
         public const int GridStep = 16;
 
@@ -168,14 +170,33 @@ namespace Chem
             return 4 * t * (One - t) / One;
         }
 
-        /// <summary>The massif's rise at a cell over the hills' land, in land units: 0 outside its reach.</summary>
-        public int At(int x, int y)
+        /// <summary>The massif's rise at a cell over the hills' land, in land units: 0 outside its reach (the gorge not cut).</summary>
+        public int At(int x, int y) => (int)(Rise(x, y, out _, out _) / One);
+
+        /// <summary>
+        /// The land at a cell given the hills' own land there (<paramref name="rolling"/>): the massif's rise on it, and the
+        /// gorge cut down to its floor where it runs.
+        /// </summary>
+        public int Land(int x, int y, int rolling)
         {
+            long rise = Rise(x, y, out long gorge, out long along);
+            int land = rolling + (int)(rise / One);
+            if (gorge <= 0) return land;
+            int floor = GorgeFloor(along);
+            if (land <= floor) return land;
+            return land - (int)((land - floor) * gorge / One);
+        }
+
+        // The rise in Q16 land units, the gorge's weight here (Q16) and how far along the gorge's line it is (Q16 cells).
+        long Rise(int x, int y, out long gorge, out long along)
+        {
+            gorge = along = 0;
             if (!Touches(x, y)) return 0;
             var (dx, dy) = Offset(x, y);
             long px = (long)(CentreX + dx) * One + One / 2, py = (long)(CentreY + dy) * One + One / 2;
             long r = Radius(x, y);
             if (r >= (long)Reach * One) return 0;
+            gorge = GorgeWeight(dx, dy, out along);
             long rise = Uplift(r) * MeadowHeight;
             long ring = Ring(r);
             if (ring > 0)
@@ -190,11 +211,187 @@ namespace Chem
                 // 0.4 + 0.6 ridge²: the crest is a ridge everywhere, with peaks where its noise lines up.
                 long shape = 2 * One / 5 + 3 * (ridge * ridge / One) / 5;
                 long keep = One - PassWeight(dx, dy) * (100 - PassKeep) / 100;
+                // The gorge takes the ring away along its line.
+                keep = keep * (One - gorge) / One;
                 rise += ring * shape / One * keep / One * Peaks;
             }
             long band = FootBand(r);
             if (band > 0 && FoothillRelief > 0) rise += band * BiomeMath.Noise(seed, SaltFoot, px, py, 300) / One * FoothillRelief;
-            return (int)(rise / One);
+            return rise;
+        }
+
+        // The gorge: a straight cut from the meadow's lowest point (gox, goy cells from the centre) out through the ring at
+        // (ux, uy), Q16 unit, from GorgeFrom to GorgeTo cells along it; its floor is GorgeLevel (absolute land units) to the
+        // crest (gorgeCrest along it), then falls GorgeFall Q16 units a cell.
+        bool hasGorge;
+        long gux, guy;
+        int gox, goy, gorgeLevel, gorgeWidth, gorgeFrom, gorgeTo, gorgeCrest;
+        long gorgeFall;
+
+        /// <summary>The meadow's lowest point, where the gorge starts, in map cells.</summary>
+        public (int x, int y) GorgeStart => (CentreX + gox, CentreY + goy);
+
+        /// <summary>Whether a gorge is cut, its way out from the centre (Q16 unit) and its floor at the crest (land units).</summary>
+        public bool HasGorge => hasGorge;
+        public (long x, long y) GorgeWay => (gux, guy);
+        public int GorgeLevel => gorgeLevel;
+        public int GorgeWidth => gorgeWidth;
+
+        /// <summary>The gorge's floor (land units) at a distance along its line, Q16 cells.</summary>
+        public int GorgeFloor(long along)
+        {
+            long past = along - (long)gorgeCrest * One;
+            if (past <= 0) return gorgeLevel;
+            return gorgeLevel - (int)(past * gorgeFall / One / One);
+        }
+
+        // The gorge's weight at an offset from the centre, Q16: 1 on its line, 0 a width off it and past its ends.
+        long GorgeWeight(int dx, int dy, out long along)
+        {
+            along = 0;
+            if (!hasGorge) return 0;
+            long qx = (long)(dx - gox) * One, qy = (long)(dy - goy) * One;
+            along = (qx * gux + qy * guy) / One;
+            long from = (long)gorgeFrom * One, to = (long)gorgeTo * One, fade = 100L * One;
+            if (along <= from || along >= to) return 0;
+            // It wanders either side of its line by up to GorgeWander cells (seeded noise along it), so it isn't ruled straight.
+            long wander = BiomeMath.Centred(seed, SaltGorge, along, 0, 280) * GorgeWander;
+            long across = Math.Abs((qx * guy - qy * gux) / One - wander);
+            if (across >= (long)gorgeWidth * One) return 0;
+            long weight = One - BiomeMath.Smoothstep(across / gorgeWidth);
+            long ends = Math.Min(BiomeMath.Smoothstep((along - from) / 100), BiomeMath.Smoothstep((to - along) / 100));
+            if (along - from >= fade && to - along >= fade) ends = One;
+            return weight * ends / One;
+        }
+
+        /// <summary>
+        /// Cuts the gorge: from the meadow's lowest point out the way, of the <paramref name="ways"/> ways round evenly,
+        /// farthest from every pass (the middle of the widest run of ways no pass reaches), its floor <paramref name="lakeDepth"/> land units over
+        /// the meadow's lowest land (so the meadow holds a lake that spills through it), falling <paramref name="fallPercent"/>
+        /// percent past the crest. Call it once, after the passes and before any chunk is made.
+        /// </summary>
+        public void SetGorge(Func<int, int, int> rolling, int lakeDepth, int width, int fallPercent, int ways = 64)
+        {
+            // The meadow's lowest land: the hills' own there and the meadow's rise (no ring, no foothills inside it).
+            int lowest = int.MaxValue;
+            int inside = Meadow - Warp;
+            for (int dy = -inside; dy <= inside; dy += 16)
+                for (int dx = -inside; dx <= inside; dx += 16)
+                {
+                    if ((long)dx * dx + (long)dy * dy >= (long)inside * inside) continue;
+                    int land = rolling(CentreX + dx, CentreY + dy) + MeadowHeight;
+                    if (land >= lowest) continue;
+                    lowest = land;
+                    (gox, goy) = (dx, dy);
+                }
+            var dirs = Ways(ways);
+            var free = new bool[ways];
+            int reach = Foot + Warp + 200 + (int)(BiomeMath.Length((long)gox * One, (long)goy * One) / One);
+            for (int k = 0; k < ways; k++)
+            {
+                free[k] = true;
+                // Clear of the passes through the ring (a meadow road it crosses gets a ford).
+                for (int t = 0; t <= reach && free[k]; t += 32)
+                {
+                    int px = gox + (int)(dirs[k].x * t / One), py = goy + (int)(dirs[k].y * t / One);
+                    if ((long)px * px + (long)py * py < (long)(Meadow - Warp) * (Meadow - Warp)) continue;
+                    free[k] = PassWeight(px, py) == 0;
+                }
+            }
+            int best = FreestWay(free);
+            if (best < 0) throw new FormatException($"{MapFile.FileName}: no way out of the massif's meadow clear of its passes for a gorge");
+            (gux, guy) = dirs[best];
+            gorgeLevel = lowest + lakeDepth;
+            gorgeWidth = width;
+            gorgeFrom = -100;
+            gorgeTo = reach;
+            // Along the line from its start, where it meets the crest (as near as a straight line from the centre's offset).
+            gorgeCrest = Crest - (int)(((long)gox * gux + (long)goy * guy) / One);
+            gorgeFall = (long)fallPercent * 12 * One / 100;
+            hasGorge = true;
+            GorgeIndex = best;
+            wayDirs = dirs;
+        }
+
+        /// <summary>Which of the ways round the gorge runs.</summary>
+        public int GorgeIndex { get; private set; } = -1;
+        (long x, long y)[] wayDirs;
+
+        /// <summary>
+        /// <paramref name="count"/> springs on the ring's inner flank, <paramref name="up"/> cells out from the meadow's edge,
+        /// each where no pass reaches, a sixth of the way round or more from the gorge and each other, chosen by the seed.
+        /// </summary>
+        public List<(int x, int y)> Springs(int count, int up)
+        {
+            var list = new List<(int, int)>();
+            if (!hasGorge) return list;
+            int n = wayDirs.Length, apart = n / 6;
+            long r = Meadow + up;
+            // A way is free for a spring where no pass reaches its spot on the flank.
+            var free = new bool[n];
+            for (int k = 0; k < n; k++) free[k] = PassWeight((int)(wayDirs[k].x * r / One), (int)(wayDirs[k].y * r / One)) == 0;
+            var taken = new List<int> { GorgeIndex };
+            for (int s = 0; s < count; s++)
+            {
+                var ok = new List<int>();
+                for (int k = 0; k < n; k++)
+                {
+                    if (!free[k]) continue;
+                    bool far = true;
+                    foreach (int t in taken)
+                    {
+                        int d = Math.Abs(k - t) % n;
+                        if (Math.Min(d, n - d) < apart) far = false;
+                    }
+                    if (far) ok.Add(k);
+                }
+                if (ok.Count == 0) break;
+                int pick = ok[(int)(WorldHash.Hash4(seed, SaltSpring, s, 0) % (uint)ok.Count)];
+                taken.Add(pick);
+                list.Add((CentreX + (int)(wayDirs[pick].x * r / One), CentreY + (int)(wayDirs[pick].y * r / One)));
+            }
+            return list;
+        }
+
+        // n ways round the centre, as Q16 units from points round a square (integers only).
+        static (long x, long y)[] Ways(int n)
+        {
+            var dirs = new (long, long)[n];
+            int side = n / 4;
+            for (int k = 0; k < n; k++)
+            {
+                int q = k / side, f = k % side, half = side / 2;
+                long ax = 0, ay = 0;
+                switch (q)
+                {
+                    case 0: ax = half; ay = f - half; break;
+                    case 1: ax = half - f; ay = half; break;
+                    case 2: ax = -half; ay = half - f; break;
+                    default: ax = f - half; ay = -half; break;
+                }
+                long len = BiomeMath.Length(ax * One, ay * One);
+                dirs[k] = (ax * One * One / len, ay * One * One / len);
+            }
+            return dirs;
+        }
+
+        // The middle of the longest run of free ways (round the ring), or -1 for none.
+        static int FreestWay(bool[] free)
+        {
+            int n = free.Length, bestLen = 0, best = -1;
+            for (int k = 0; k < n; k++)
+            {
+                if (!free[k] || free[(k + n - 1) % n]) continue;
+                int len = 0;
+                while (len < n && free[(k + len) % n]) len++;
+                if (len > bestLen)
+                {
+                    bestLen = len;
+                    best = (k + len / 2) % n;
+                }
+            }
+            if (best < 0 && n > 0 && free[0]) best = 0; // free all round
+            return best;
         }
 
         // 1 − |2n − 1| for value noise n: Q16 [0, 1], 1 where the noise is at its middle.

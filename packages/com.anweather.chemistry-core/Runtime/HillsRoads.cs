@@ -476,6 +476,9 @@ namespace Chem
             public long Along;
         }
 
+        /// <summary>How near a main road's line a cell is kept dry of an end lake, in cells (a lake's node beside it reaches 16 more).</summary>
+        public const int Dry = MainHalf + Bank + 24;
+
         /// <summary>
         /// The nearest road line to a map cell's middle among <paramref name="near"/>: its distance in Q16 cells (long.MaxValue
         /// when none is within its bank), the nearest point on it in map cells (unwrapped) and that road's half width.

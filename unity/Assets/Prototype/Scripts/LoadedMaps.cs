@@ -22,6 +22,16 @@ public static class LoadedMaps
     /// <summary>The generated map in this folder, loaded now or by whoever asked first (throws as GeneratedMap.Load does).</summary>
     public static GeneratedMap Get(string mapDir) => Load(mapDir).GetAwaiter().GetResult();
 
+    // The map read, and how long it took: a hills map's rivers are worked out as it's read (docs/design/alpine.md).
+    static GeneratedMap Timed(string mapDir)
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var m = GeneratedMap.Load(mapDir);
+        var rivers = m.Hills?.Rivers;
+        Debug.Log($"MAP LOAD {Path.GetFileName(mapDir)} read in {timer.ElapsedMilliseconds} ms{(rivers != null ? $", its rivers' hydrology {rivers.BuildMs} ms of it" : "")}");
+        return m;
+    }
+
     /// <summary>The load of the generated map in this folder, started now if no one has asked for it yet.</summary>
     public static Task<GeneratedMap> Load(string mapDir)
     {
@@ -29,7 +39,7 @@ public static class LoadedMaps
         string key = full + "|" + File.GetLastWriteTimeUtc(Path.Combine(full, MapFile.FileName)).Ticks;
         lock (loads)
         {
-            if (!loads.TryGetValue(key, out var load)) loads[key] = load = Task.Run(() => GeneratedMap.Load(mapDir));
+            if (!loads.TryGetValue(key, out var load)) loads[key] = load = Task.Run(() => Timed(mapDir));
             return load;
         }
     }

@@ -485,6 +485,7 @@ public class PerfScenario : MonoBehaviour
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
         foreach (string line in windows.Lines) Debug.Log(line);
         if (stage != null && scenario == "forestload") LogLatency(inv);
+        if (grid != null) Debug.Log($"PERF WATER {grid.WaterSummary}");
         if (grid != null && Environment.GetCommandLineArgs().Contains("-perf-water-check"))
         {
             var (tiles, different) = grid.CheckWaterTiles();

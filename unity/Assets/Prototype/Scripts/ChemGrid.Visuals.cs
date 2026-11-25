@@ -997,7 +997,7 @@ public partial class ChemGrid
         bool wet = c.Water > 0 && (!lake || c.Frozen) && Standing(c);
         if (wet || v.wet) waterSurface.Changed(x, y, wet);
         v.wet = wet;
-        if (lake) return c.Water > 0 ? Mathf.Max(ground, valley.lakeLevel) : ground;
+        if (lake) return c.Water > 0 ? Mathf.Max(ground, valley.LakeLevelOf(c, x, y)) : ground;
         return wet ? Mathf.Max(ground, waterSurface.Top(x, y, groundTop + WaterDepth(c))) : ground;
     }
 
@@ -1005,10 +1005,13 @@ public partial class ChemGrid
 
     /// <summary>The lake's surface if this cell is lake (its water is drawn by the lake), else negative infinity.</summary>
     public float LakeLevelAt(int x, int y, Cell c) =>
-        valley != null && valley.IsLake(c, x, y) ? valley.lakeLevel : float.NegativeInfinity;
+        valley != null ? valley.LakeLevelOf(c, x, y) : float.NegativeInfinity;
 
     /// <summary>The top of the water or ice drawn at a point in grid units (see CellWaterMesh.TopAt).</summary>
     public float DrawnWaterTopAt(float gx, float gy, float fallback) => waterSurface.TopAt(gx, gy, fallback);
+
+    /// <summary>For a performance pass: the cells' water mesh's state (CellWaterMesh.Summary).</summary>
+    public string WaterSummary => waterSurface.Summary;
 
     /// <summary>For a performance pass: the water tiles redrawn, and how many came out different (CellWaterMesh.CheckTiles).</summary>
     public (int tiles, int different) CheckWaterTiles() => waterSurface.CheckTiles();
@@ -1019,7 +1022,7 @@ public partial class ChemGrid
         var c = World.At(x, y);
         if (c == null) return 0f;
         float top = GroundTop(x, y, c) + WaterDepth(c);
-        return valley != null && c.Water > 0 && valley.IsLake(c, x, y) ? Mathf.Max(top, valley.lakeLevel) : top;
+        return valley != null && c.Water > 0 && valley.IsLake(c, x, y) ? Mathf.Max(top, valley.LakeLevelOf(c, x, y)) : top;
     }
 
     // --- covers ------------------------------------------------------------------

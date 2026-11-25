@@ -3,7 +3,7 @@ using Chem;
 using UnityEngine;
 
 // The far ring's massif (docs/design/alpine.md, "Seeing it from far off"): a hills map's alpine massif drawn whole as one
-// coarse mesh of its land (every MassifStep cells, where the massif rises at all; rock high on the ring), with a far landmark's own thin haze
+// coarse mesh of its land (every MassifStep cells, where the massif rises at all; rock high on the ring, water on its lakes), with a far landmark's own thin haze
 // (FarLand.shader), so its mountains stand on the horizon from anywhere on the map, past the known ring where no other
 // land is drawn. Inside the known ring the chunk terrains and known meshes are the land: the mesh isn't drawn nearer
 // than the known ring's edge (_NearClip) and stands a little under the land, so it never shows through them. On a torus
@@ -19,6 +19,8 @@ public sealed partial class FarRing
     const float MassifSeenMetres = 12000f;
 
     static readonly int NearClipId = Shader.PropertyToID("_NearClip");
+    // The meadow's lake from far off: FarMeshes' water.
+    static readonly Color MassifWater = new(0.16f, 0.30f, 0.36f);
 
     Task<FarMeshes.Data> massifBuild;
     GameObject massif;
@@ -55,11 +57,15 @@ public sealed partial class FarRing
         var h = new float[n * n];
         var risen = new bool[n * n];
         var high = new float[n * n];
+        var wet = new bool[n * n];
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++)
             {
                 int x = x0 + i * MassifStep, y = y0 + j * MassifStep;
-                h[j * n + i] = hills.At(x, y) * unit - MassifSink;
+                int at = hills.At(x, y);
+                int lake = hills.Rivers?.LakeAt(x, y, at) ?? HillsRivers.NoLake;
+                wet[j * n + i] = lake != HillsRivers.NoLake;
+                h[j * n + i] = (wet[j * n + i] ? lake : at) * unit - MassifSink;
                 int rise = mm.At(x, y);
                 risen[j * n + i] = rise >= MassifRises;
                 high[j * n + i] = Mathf.InverseLerp(mm.MeadowHeight + RockFrom, mm.MeadowHeight + RockAll, rise);
@@ -83,6 +89,7 @@ public sealed partial class FarRing
                 var normal = new Vector3(-dx, 1f, -dz).normalized;
                 // Rock where it's steep, as the known meshes paint it, and high on the ring, where the cells are rock and scree.
                 var c = Color.Lerp(colours.Grass, colours.Rock, Mathf.Max(Mathf.InverseLerp(0.85f, 0.6f, normal.y), high[j * n + i]));
+                if (wet[j * n + i]) c = MassifWater;
                 index[j * n + i] = d.Vertex(new Vector3(i * step, H(i, j), -j * step), normal, c);
             }
         for (int j = 0; j < n - 1; j++)

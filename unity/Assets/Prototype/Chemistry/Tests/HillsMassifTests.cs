@@ -114,13 +114,13 @@ namespace Chem.Tests
             Assert.That(lesser, Is.GreaterThan(100));
         }
 
-        // A cell's ground worked out from the land at it and its four neighbours alone, as a chunk makes it.
+        // A cell's ground worked out from the land at it and its four neighbours alone, as a chunk makes it (or what's laid on it).
         char GroundAt(int x, int y)
         {
-            int h = map.Gen.HillsLandAt(x, y, out bool road);
-            if (road) return '.';
+            int h = map.Gen.HillsCellAt(x, y, out char kind, out _);
+            if (kind != '\0') return kind;
             int slope = 0;
-            foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) }) slope = Math.Max(slope, Math.Abs(map.Gen.HillsLandAt(x + dx, y + dy, out _) - h));
+            foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) }) slope = Math.Max(slope, Math.Abs(map.Gen.HillsCellAt(x + dx, y + dy, out _, out _) - h));
             if (slope >= ChunkGen.HillsRock) return '^';
             return slope >= ChunkGen.HillsScree ? ':' : ',';
         }
@@ -266,10 +266,13 @@ namespace Chem.Tests
             int lo = int.MaxValue, hi = int.MinValue;
             var land = new int[w * h];
             var road = new bool[w * h];
+            var wet = new bool[w * h];
             for (int j = 0; j < h; j++)
                 for (int i = 0; i < w; i++)
                 {
-                    land[j * w + i] = gen.HillsLandAt(i * step, j * step, out road[j * w + i]);
+                    land[j * w + i] = gen.HillsCellAt(i * step, j * step, out char kind, out _);
+                    road[j * w + i] = kind == '.';
+                    wet[j * w + i] = kind == 'r' || kind == 'w';
                     lo = Math.Min(lo, land[j * w + i]);
                     hi = Math.Max(hi, land[j * w + i]);
                 }
@@ -285,6 +288,7 @@ namespace Chem.Tests
                     if (sl >= ChunkGen.HillsScree) c = (0.6, 0.58, 0.5);
                     if (sl >= ChunkGen.HillsRock) c = (0.5, 0.48, 0.45);
                     if (road[j * w + i]) c = (0.9, 0.6, 0.2);
+                    if (wet[j * w + i]) c = (0.1, 0.3, 0.9);
                     px[(j * w + i) * 3] = (byte)(255 * c.r * shade);
                     px[(j * w + i) * 3 + 1] = (byte)(255 * c.g * shade);
                     px[(j * w + i) * 3 + 2] = (byte)(255 * c.b * shade);
@@ -301,6 +305,14 @@ namespace Chem.Tests
             for (int i = 0; i < roads.SquaresW * roads.SquaresH; i++)
                 foreach (var a in roads.ArmsOf(i))
                     if (a.Profile != null) TestContext.Out.WriteLine($"MASSIF arm square ({i % roads.SquaresW}, {i / roads.SquaresW}) side {a.Side} kind {a.Kind}: cut {a.Cut / 8.0:0.0} m fill {a.Fill / 8.0:0.0} m");
+            var rv = map.Hills.Rivers;
+            if (rv != null)
+            {
+                var m = map.Hills.Massif;
+                TestContext.Out.WriteLine($"MASSIF gorge way {m.GorgeIndex} ({m.GorgeWay.x / 65536.0:0.00}, {m.GorgeWay.y / 65536.0:0.00}) floor {m.GorgeLevel / 8.0:0.0} m");
+                foreach (var l in rv.Lakes) TestContext.Out.WriteLine($"MASSIF lake {l.Id} at ({l.X}, {l.Y}) level {l.Level / 8.0:0.0} m, {l.Nodes} nodes ({l.Nodes * 576 / 1e6:0.000} km2){(l.End ? " END" : "")}");
+                foreach (var r in rv.Rivers) TestContext.Out.WriteLine($"MASSIF river from ({r.X[0] / 65536}, {r.Y[0] / 65536}) {r.Surface[0] / 8.0:0} m to ({r.X[r.X.Length - 1] / 65536}, {r.Y[r.Y.Length - 1] / 65536}) {r.Surface[r.Surface.Length - 1] / 8.0:0} m, {r.Length * 1.5 / 1000:0.00} km, catchment {r.Catchment[0]}..{r.Catchment[r.Catchment.Length - 1]}, half {r.Half[0]}..{r.Half[r.Half.Length - 1]}{(r.Joins ? " joins" : "")}");
+            }
             sw.Restart();
             int n = 0;
             for (int cy = 40; cy < 50; cy++)

@@ -191,16 +191,17 @@ namespace Chem.Tests
                         var b = Chunk(c);
                         edges++;
                         if (Math.Abs(a.X - b.X) > 1 || Math.Abs(a.Y - b.Y) > 1) seams++;
-                        Assert.That(a.Cells[Local(q.x, q.y)], Is.EqualTo('.'), $"({q.x}, {q.y}) in chunk ({a.X}, {a.Y})");
-                        Assert.That(b.Cells[Local(p.x, p.y)], Is.EqualTo('.'), $"({p.x}, {p.y}) in chunk ({b.X}, {b.Y})");
+                        // Road, or a ford's water where it crosses a river (HillsRiversTests).
+                        Assert.That(a.Cells[Local(q.x, q.y)] is '.' or 'r', Is.True, $"({q.x}, {q.y}) in chunk ({a.X}, {a.Y})");
+                        Assert.That(b.Cells[Local(p.x, p.y)] is '.' or 'r', Is.True, $"({p.x}, {p.y}) in chunk ({b.X}, {b.Y})");
                         worst = Math.Max(worst, Math.Abs(a.Land[Local(q.x, q.y)] - b.Land[Local(p.x, p.y)]));
                         // Every cell of both chunks' facing edges is what the land is there, cell by cell: a chunk reads
                         // every road that reaches it, from its own side and across the seam.
                         for (int k = 0; k < s; k++)
                             foreach (var (ch, i, j) in new[] { (a, 0, k), (a, s - 1, k), (a, k, 0), (a, k, s - 1), (b, 0, k), (b, s - 1, k), (b, k, 0), (b, k, s - 1) })
                             {
-                                int land = gen.HillsLandAt(ch.X * s + i, ch.Y * s + j, out bool road);
-                                if (land != ch.Land[j * s + i] || road != (ch.Cells[j * s + i] == '.')) disagree++;
+                                int land = gen.HillsCellAt(ch.X * s + i, ch.Y * s + j, out char kind, out _);
+                                if (land != ch.Land[j * s + i] || (kind != '\0' && kind != ch.Cells[j * s + i])) disagree++;
                             }
                     }
                     was = p;

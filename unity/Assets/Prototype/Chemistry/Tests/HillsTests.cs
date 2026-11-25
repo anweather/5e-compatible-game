@@ -107,23 +107,26 @@ namespace Chem.Tests
             foreach (var (cx, cy) in new[] { (0, 0), (107, 89), (54, 45), (12, 70), (99, 3) })
             {
                 var c = gen.Make(cx, cy);
-                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.' || ch == ':' || ch == '^'), Is.True, $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests) and the massif's scree and rock (HillsMassifTests)");
+                Assert.That(c.Cells.All(ch => ch == ',' || ch == '.' || ch == ':' || ch == '^' || ch == 'r' || ch == 'w'), Is.True,
+                    $"chunk ({cx}, {cy}) all grass, but its roads' dirt (HillsRoadsTests), the massif's scree and rock (HillsMassifTests) and the rivers' water (HillsRiversTests)");
                 Assert.That(c.Things, Is.Empty);
                 Assert.That(c.Biome, Is.EqualTo("grassland"));
                 Assert.That(c.Land.Min(), Is.GreaterThanOrEqualTo(map.Hills.Base));
                 Assert.That(c.Land.Max(), Is.LessThanOrEqualTo(map.Hills.Highest));
             }
             // Over every known chunk: all dry land, and the map's expects as the known ring reads them.
-            int lowest = int.MaxValue, highest = int.MinValue;
+            int lowest = int.MaxValue, highest = int.MinValue, wetChunks = 0;
             for (int cy = 0; cy < gen.ChunksH; cy++)
                 for (int cx = 0; cx < gen.ChunksW; cx++)
                 {
                     var k = gen.Know(cx, cy);
-                    Assert.That(k.Water.All(x => x == KnownChunk.Dry), Is.True);
+                    // Water only where the rivers and their lakes are (HillsRiversTests checks the samples cell by cell).
+                    if (k.Water.Any(x => x != KnownChunk.Dry)) wetChunks++;
                     lowest = Math.Min(lowest, k.Heights.Min());
                     highest = Math.Max(highest, k.Heights.Max());
                 }
-            TestContext.Out.WriteLine($"HILLS known land from {lowest} to {highest} land units ({lowest * MapFile.LandUnitMetres:0.0} to {highest * MapFile.LandUnitMetres:0.0} m)");
+            Assert.That(wetChunks, Is.InRange(1, 400), "a few chunks hold the rivers and lakes; the rest are dry");
+            TestContext.Out.WriteLine($"HILLS {wetChunks} known chunks with water; known land from {lowest} to {highest} land units ({lowest * MapFile.LandUnitMetres:0.0} to {highest * MapFile.LandUnitMetres:0.0} m)");
             var file = MapFile.Load(HillsDir);
             Assert.That((file.LandShare, file.Lowest, file.Highest), Is.EqualTo((100, lowest, highest)), "map.json's expects");
         }

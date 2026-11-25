@@ -59,7 +59,7 @@ public partial class PerfStage : ShowcaseScript
             yield return Stand();
             yield break; // Ready once the chunks round it are drawn
         }
-        else if (Scenario == "roadwalk" && Pair("-perf-from") != null)
+        else if (Scenario == "roadwalk" && (Pair("-perf-from") != null || Asked("-perf-river")))
         {
             StartCoroutine(RoadWalk());
             yield break; // Ready once the chunks round its start are drawn

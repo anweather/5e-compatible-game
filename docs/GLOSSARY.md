@@ -265,6 +265,19 @@ touch them.
   the **foothills** that carry the land down from the ring's foot to the rolling hills. *Not* a plan map's **massif**
   (above), and a mountain pass is *not* the dragon's **pass**.
 
+**Gorge** (a massif's)
+: The cut through a hills massif's ring that its rivers leave the meadow by (`HillsMassif.SetGorge`): from the meadow's
+  lowest point out the way farthest from every pass, its floor a little over that point (the meadow lake's level), then
+  falling past the crest. *Not* a **mountain pass** (a road's).
+
+**Drainage** (a hills map's rivers, `HillsRivers`)
+: Worked out once on a coarse **grid** of the land (every 16 cells): the **fill level** of each node (priority-flood:
+  no pit left), its **flow line** (the neighbour it drains to, D8) and its **catchment** (the nodes draining through
+  it). A **spring** starts a river; a filled depression on its way big enough is a **lake** at its fill level (it
+  spills on), a smaller one the river cuts through; the first big enough past the massif is its **end lake**, filled
+  from its hollow and standing under its spill. A road over a river is a **ford** (the road comes down to the water at
+  its grade); over a lake, a **causeway** a land unit over the water.
+
 **Rock / scree** (on a hills map)
 : A hills cell's ground by its slope (`ChunkGen.HillsRock`, `HillsScree`, in land units to a neighbour): bare rock
   (`rock`, `'^'` in a chunk's cells) where it's steep, **scree** below that (bare `dirt`, `':'`, so it's told from a
