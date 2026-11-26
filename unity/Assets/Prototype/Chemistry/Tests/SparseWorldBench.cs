@@ -69,23 +69,8 @@ namespace Chem.Tests
             return islandBaked = dir;
         }
 
-        /// <summary>A world as ChemGrid.MapWorld builds one from a map folder, and its starting state kept (StartWorld).</summary>
-        internal static World Build(string dir, Rules rules, out BakedSource source)
-        {
-            var map = MapFile.Load(dir);
-            source = BakedSource.Read(dir, rules);
-            var w = new World(rules, source.W, source.H, 7);
-            w.SetLandRange(map.LandRange);
-            w.MakeFrom(source);
-            w.SetLand(LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H));
-            WorldPuzzles.Load(dir).LayInto(w);
-            MapStamps.Load(dir).LayInto(w);
-            WorldBuildings.Load(dir).LayInto(w);
-            if (GolfCommand.Load(dir) is { } hole) w.ApplyGolf(hole);
-            if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
-            w.KeepStart();
-            return w;
-        }
+        /// <summary>A world as ChemGrid.MapWorld builds one from a map folder (BuiltWorlds.Build).</summary>
+        internal static World Build(string dir, Rules rules, out BakedSource source) => BuiltWorlds.Build(dir, rules, out source);
 
         // What's live on the heap, collected first: a measuring test's only use of the collector (as ScaleIslandTests).
 #pragma warning disable S1215

@@ -15,9 +15,8 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class HillsRoadsTests
     {
-        static Rules R => ChemistryTests.R;
 
-        static string HillsDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "hills-12x10");
+        internal static string HillsDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "hills-12x10");
 
         string root;
         GeneratedMap map;
@@ -285,73 +284,6 @@ namespace Chem.Tests
             var file = MapFile.Load(HillsDir);
             map.Gen.HillsLandAt(file.Spawn.x, file.Spawn.y, out bool road);
             Assert.That(road, Is.True, $"the spawn {file.Spawn}");
-        }
-
-        [Test]
-        public void PeersAndLateJoinersAgreeOnARoad()
-        {
-            string dir = Path.Combine(root, "hills-12x10");
-            MapBake.EnsureRows(HillsDir, dir);
-            GeneratedSource Source() => new GeneratedSource(GeneratedMap.Load(HillsDir), R);
-            World Peer(GeneratedSource source)
-            {
-                var w = GeneratedSource.MapWorld(source, dir, R, 7, out var start);
-                w.KeepStart();
-                ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));
-                return w;
-            }
-            var hostSource = Source();
-            var host = Peer(hostSource);
-            Assert.That(hostSource.Made, Is.LessThan(60), "loading lays nothing for the roads: only the spawn's reach is made");
-            var other = Peer(Source());
-            // Along the main road from the spawn, east over the seam, a fire bolt now and then onto the road ahead.
-            var path = Along(true, roads.MainRows[1]).Select(p => (x: PlanGrid.Mod(p.x, host.W), y: map.Gen.WrapCellY(p.y))).ToList();
-            int from = path.FindIndex(p => p.x == 6880);
-            Assert.That(from, Is.GreaterThanOrEqualTo(0));
-            var planner = new ChunkPlanner();
-            var history = new List<(List<ChunkSwitch> plan, (int x, int y)? cast)>();
-            var peers = new List<(World world, string name)> { (host, "the host"), (other, "the other peer") };
-            const int ticks = 500, joinAt = 300;
-            void Step(World w, List<ChunkSwitch> plan, (int x, int y)? cast)
-            {
-                ChunkStreaming.Apply(w, plan);
-                if (cast is { } c) w.Cast("fire-bolt", c.x, c.y, 1);
-                w.Step();
-            }
-            int roadsCast = 0;
-            for (int t = 0; t < ticks; t++)
-            {
-                var me = new[] { path[(from + t / 2) % path.Count] };
-                var plan = planner.Plan(host, me);
-                (int x, int y)? cast = null;
-                if (t % 60 == 30)
-                {
-                    var ahead = path[(from + t / 2 + 8) % path.Count];
-                    cast = ahead;
-                    if (host.At(ahead.x, ahead.y).T == "dirt") roadsCast++;
-                }
-                history.Add((plan, cast));
-                if (t == joinAt)
-                {
-                    var replayed = Peer(Source());
-                    foreach (var (p, c) in history.Take(t)) Step(replayed, p, c);
-                    var loaded = World.Load(host.Save(host.Source), R, Source());
-                    loaded.LandFromSource();
-                    Assert.That(replayed.CellHash(), Is.EqualTo(host.CellHash()), "the joiner replaying the history");
-                    Assert.That(loaded.CellHash(), Is.EqualTo(host.CellHash()), "the joiner loading the save");
-                    peers.Add((replayed, "the joiner replaying"));
-                    peers.Add((loaded, "the joiner loading"));
-                }
-                foreach (var (w, _) in peers) Step(w, plan, cast);
-            }
-            Assert.That(roadsCast, Is.GreaterThan(3), "the bolts land on the road");
-            Assert.That(path[(from + ticks / 2) % path.Count].x, Is.LessThan(host.W / 2), "the walk crossed the east seam");
-            foreach (var (w, name) in peers)
-            {
-                Assert.That(w.CellHash(), Is.EqualTo(host.CellHash()), name);
-                foreach (var (cx, cy) in host.ActiveChunks) Assert.That(w.ChunkHash(cx, cy), Is.EqualTo(host.ChunkHash(cx, cy)), $"{name}: chunk ({cx}, {cy})");
-            }
-            TestContext.Out.WriteLine($"ROADS peers: the host made {hostSource.Made} chunks ({hostSource.MadeOnRead} on a read, {hostSource.MadeAhead} ahead)");
         }
     }
 }

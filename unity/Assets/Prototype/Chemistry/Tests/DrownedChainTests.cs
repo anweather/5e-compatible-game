@@ -21,7 +21,7 @@ namespace Chem.Tests
         const string RunHash = "a2df7c5d";
 
         static Rules R => ChemistryTests.R;
-        static string Dir => Path.Combine(ChemistryTests.Folders.Maps, Id);
+        static string Dir => Path.Combine(LandFolders.Folders.Maps, Id);
 
         // The characters cells.txt uses, as ChemGrid.Legend has them.
         static void PaintCell(World w, int x, int y, char ch)
@@ -154,19 +154,19 @@ namespace Chem.Tests
             string hash = MapIdentity.Hash(Dir);
             Assert.That(MapIdentity.Hash(Dir), Is.EqualTo(hash));
             Assert.That(hash, Is.EqualTo(FolderHash), "the folder as committed; set it again when its files change");
-            Assert.That(hash, Is.Not.EqualTo(MapIdentity.Hash(Path.Combine(ChemistryTests.Folders.Maps, GameFolders.DefaultMap))));
+            Assert.That(hash, Is.Not.EqualTo(MapIdentity.Hash(Path.Combine(LandFolders.Folders.Maps, GameFolders.DefaultMap))));
         }
 
         [Test]
         public void APeerWithOnlyTheValleyIsTurnedAway()
         {
-            string valley = GameFolders.DefaultMap + ":" + MapIdentity.Hash(Path.Combine(ChemistryTests.Folders.Maps, GameFolders.DefaultMap));
+            string valley = GameFolders.DefaultMap + ":" + MapIdentity.Hash(Path.Combine(LandFolders.Folders.Maps, GameFolders.DefaultMap));
             string chain = Id + ":" + MapIdentity.Hash(Dir);
             var name = MapFile.Load(Dir).Name;
             Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley), Is.EqualTo("The host is on The Drowned Chain, but your copy doesn't have that map."));
             Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley + "," + Id + ":0123456789abcdef"), Is.EqualTo("The host is on The Drowned Chain, but your copy of that map is different."));
             Assert.That(MapIdentity.Refusal(Id, name, MapIdentity.Hash(Dir), valley + "," + chain), Is.Null);
-            Assert.That(MapIdentity.Offered(ChemistryTests.Folders), Does.Contain(chain));
+            Assert.That(MapIdentity.Offered(LandFolders.Folders), Does.Contain(chain));
         }
     }
 }

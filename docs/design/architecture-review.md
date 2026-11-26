@@ -185,6 +185,8 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    everything. That file proposes 5a-5c.*
    *5a done 2026-11-26 (cloud): `Runtime/Land/` is `Chem.Land` (asmdef and `core/Chem.Land`), `GeneratedMap` in it
    and its bake in Sim (`MapBake`); the sweep's 2263 results unchanged by name. Awaits a Unity compile.*
+   *5b done 2026-11-26 (cloud): `Chem.Land.Tests` builds on `Chem.Land` alone (290 tests); the land fixtures' World
+   halves and the land-on-world files are `Chem.LandWorld.Tests` (209); Sim no longer references Land.*
 6. **View plans in plain C#.** A `core/UnityMath` shim (Vector2/3, Mathf, Color: only what the plans use) and a
    `Prototype.Plans` assembly: first the 20 Unity-free `Scripts/` files and the subjects of the 31 plain
    `Editor/Tests` files, with those tests moved to a dotnet project; then the plan halves of `RowMesher`,

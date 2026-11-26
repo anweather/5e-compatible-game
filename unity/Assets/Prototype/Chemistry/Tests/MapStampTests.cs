@@ -158,7 +158,7 @@ namespace Chem.Tests
         [Test]
         public void TheValleysStampsAreAllLaid()
         {
-            string dir = ChemistryTests.WorldDir();
+            string dir = LandFolders.WorldDir();
             var rows = MapFile.ReadCells(dir).Replace("\r", "").Trim('\n').Split('\n');
             var w = new World(ChemistryTests.R, MapCheck.Size, MapCheck.Size, 7);
             for (int y = 0; y < w.H; y++)
@@ -217,7 +217,7 @@ namespace Chem.Tests
         [Test]
         public void TheCastlePadIsFlatFromTheGateToTheCliffsLip()
         {
-            string dir = ChemistryTests.WorldDir();
+            string dir = LandFolders.WorldDir();
             var w = new World(ChemistryTests.R, MapCheck.Size, MapCheck.Size, 7);
             for (int y = 0; y < w.H; y++)
                 for (int x = 0; x < w.W; x++) w.Paint(x, y, "grass");

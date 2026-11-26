@@ -8,12 +8,12 @@ namespace Chem.Tests
     [Category("Unit")]
     public class RoadGradeTests
     {
-        const int Size = 120;
+        internal const int Size = 120;
 
         // Land falling to the east, a unit a cell in every eight, with a road across the slope and a climb at its end.
-        static int Land(int x, int y) => (Size - x) * 8;
+        internal static int Land(int x, int y) => (Size - x) * 8;
 
-        static BuildingRoad Road()
+        internal static BuildingRoad Road()
         {
             var road = new BuildingRoad { Id = "up", Terrain = "dirt", Width = 3 };
             road.Points.Add((60, 20));
@@ -66,18 +66,5 @@ namespace Chem.Tests
 
         [Test]
         public void TheSameRoadIsTheSameCut() => Assert.That(Moved(), Is.EqualTo(Moved()));
-
-        [Test]
-        public void ACutIsNoStamp()
-        {
-            var w = new World(ChemistryTests.R, Size, Size, 7);
-            var road = RoadGrade.Of(Road(), 0, 0, Land, new HashSet<(int x, int y)>());
-            w.LayLand(road);
-            var (x, y, by) = road[road.Count / 2];
-            Assert.That(w.LandMovedAt(x, y), Is.EqualTo(by));
-            Assert.That(w.LandHash(), Is.Empty, "what the map lays is no stamp: it isn't part of the checksum");
-            Assert.That(w.LandHasMoved);
-            Assert.That(w.LandDrop(x, y), Is.Zero, "a bank is no stamped cliff");
-        }
     }
 }

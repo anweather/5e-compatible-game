@@ -17,7 +17,7 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
 
         /// <summary>The flat 1728 x 1728 test map, kept out of world/ so builds don't ship it and joins don't hash it.</summary>
-        internal static string BigMap => Path.Combine(ChemistryTests.Folders.Repo, "test-fixtures", "maps", "flat-1728");
+        internal static string BigMap => Path.Combine(LandFolders.Folders.Repo, "test-fixtures", "maps", "flat-1728");
 
         // The map as made: grass everywhere, what a save is told apart from.
         sealed class FlatGrass : IChunkSource
@@ -85,7 +85,7 @@ namespace Chem.Tests
         [Test, Explicit("a benchmark: run it by name")]
         public void MapSizePhases()
         {
-            foreach (string dir in new[] { ChemistryTests.WorldDir(), BigMap })
+            foreach (string dir in new[] { LandFolders.WorldDir(), BigMap })
             {
                 Phases(dir, false); // warms the JIT and the file cache
                 Heap();
@@ -152,7 +152,7 @@ namespace Chem.Tests
         [Test, Explicit("a benchmark: run it by name")]
         public void MapSizeCosts()
         {
-            foreach (string dir in new[] { ChemistryTests.WorldDir(), BigMap })
+            foreach (string dir in new[] { LandFolders.WorldDir(), BigMap })
             {
                 string id = Path.GetFileName(dir);
                 Load(dir, out _); // warm the JIT and the file cache

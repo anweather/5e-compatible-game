@@ -52,7 +52,9 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 ## Tests
 
 `unity/Assets/Prototype/Chemistry/Tests/` holds NUnit 3 tests that run both in Unity's EditMode runner and
-under `dotnet test core` (via the `core/Chem.<Module>.Tests` projects, `core/Chem.Tests.props`). Run one with
+under `dotnet test core` (via the `core/Chem.<Module>.Tests` projects, `core/Chem.Tests.props`). A land test that
+needs a World, the rules or `ChemistryTests` goes in its fixture's `*WorldTests.cs` half (`Chem.LandWorld.Tests`):
+`Chem.Land.Tests` builds on `Chem.Land` alone, with `LandFolders` for the repo's folders. Run one with
 `dotnet test core --filter "FullyQualifiedName~<Name>"`. Tests read the real
 `rules/` folder through `ChemistryTests.RulesDir()`, and some read docs
 (`docs/MODDING.md` examples must pass the checks). Every fixture is

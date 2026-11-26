@@ -357,8 +357,8 @@ namespace Chem.Tests
         // The valley as the game has it, the 3 x 3 chunks round the spawn active, and what each cell's water was at the start.
         static World RainyValley(out int[] start)
         {
-            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
-            var w = SparseWorldBench.Build(dir, With("'calmPeriods': 0, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }"), out _);
+            string dir = Path.Combine(ChemistryTests.GameWorldDir(), "maps", "valley");
+            var w = BuiltWorlds.Build(dir, With("'calmPeriods': 0, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }"), out _);
             w.SetAllActive(false);
             for (int cy = 4; cy <= 6; cy++)
             {

@@ -196,7 +196,7 @@ namespace Chem.Tests
         [TestCase(true)]
         public void TheValleyComesBackFromASaveTheSame(bool cast)
         {
-            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            string dir = Path.Combine(ChemistryTests.GameWorldDir(), "maps", "valley");
             var straight = GameValley(dir, out var source, out var land);
             int mx = straight.W / 2, my = straight.H / 2;
             if (cast)
@@ -232,7 +232,7 @@ namespace Chem.Tests
         [Test]
         public void ADragonAfterALoadPutsBackWhatTheMapLaid()
         {
-            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            string dir = Path.Combine(ChemistryTests.GameWorldDir(), "maps", "valley");
             var straight = GameValley(dir, out var source, out var land);
             straight.KeepStart();
             int mx = straight.W / 2, my = straight.H / 2;
@@ -263,9 +263,9 @@ namespace Chem.Tests
         [Test]
         public void LandSetAChunkAtATimeIsTheSameLand()
         {
-            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            string dir = Path.Combine(ChemistryTests.GameWorldDir(), "maps", "valley");
             var eager = GameValley(dir, out var source, out _);
-            var lazy = SparseWorldBench.Build(dir, R, out _);
+            var lazy = BuiltWorlds.Build(dir, R, out _);
             var map = MapFile.Load(dir);
             lazy.SetLandByChunk(LandChunks.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H));
             int unmade = lazy.LandUnmadeChunks;
@@ -294,7 +294,7 @@ namespace Chem.Tests
         [Test]
         public void ASaveGivenLandIsRefusedWithoutItOrWithOther()
         {
-            string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
+            string dir = Path.Combine(ChemistryTests.GameWorldDir(), "maps", "valley");
             var w = GameValley(dir, out var source, out _);
             string save = w.Save(source);
             Assert.That(save, Does.Contain("\"landSet\""));
@@ -309,7 +309,7 @@ namespace Chem.Tests
         // a generated map's land is made (LandFromSource, GeneratedSourceTests); SetLand again makes it the game's.
         static World GameValley(string dir, out BakedSource source, out int[] land)
         {
-            var w = SparseWorldBench.Build(dir, R, out source);
+            var w = BuiltWorlds.Build(dir, R, out source);
             land = ValleyLand(dir);
             w.SetLand(land);
             return w;

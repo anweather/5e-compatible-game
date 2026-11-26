@@ -13,9 +13,8 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class HillsTests
     {
-        static Rules R => ChemistryTests.R;
 
-        static string HillsDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "hills-12x10");
+        internal static string HillsDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "hills-12x10");
 
         string root;
         GeneratedMap map;
@@ -141,42 +140,6 @@ namespace Chem.Tests
             Assert.That(other.Gen.Make(54, 45).Hash, Is.Not.EqualTo(map.Gen.Make(54, 45).Hash), "another seed, other hills");
             // Chunk (54, 45) is the middle of the massif's meadow (it was 4ceac909 before the massif).
             Assert.That(map.Gen.Make(54, 45).Hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("8e975151"), "the hills' golden: a change to the land is a new generator version");
-        }
-
-        [Test]
-        public void ItPlaysFromItsRowsAlone()
-        {
-            string dir = Path.Combine(root, "hills-12x10");
-            Assert.That(MapBake.EnsureRows(HillsDir, dir), Is.True);
-            Assert.That(GeneratedMap.IsRowsOnly(dir), Is.True);
-            Assert.That(MapBake.EnsureRows(HillsDir, dir), Is.False, "written once for these inputs");
-            Assert.That(MapCheck.Errors(dir), Is.Empty);
-            var source = new GeneratedSource(GeneratedMap.Load(HillsDir), R);
-            var w = GeneratedSource.MapWorld(source, dir, R, 7, out var start);
-            Assert.That((w.W, w.H, w.WrapX), Is.EqualTo((6912, 5760, true)));
-            Assert.That(w.ChunkCoords.Count, Is.EqualTo(108 * 90));
-            Assert.That(start, Is.EqualTo((6880, 5601)));
-            Assert.That(source.Made, Is.LessThan(20), "nothing is laid, so the build makes next to nothing");
-            w.KeepStart();
-            ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));
-
-            // A walk east over the seam: the chunks ahead made on the worker, none read packed.
-            var planner = new ChunkPlanner();
-            var me = new (int x, int y)[] { start };
-            ChunkStreaming.Apply(w, planner.Plan(w, me));
-            w.Step();
-            long onRead = source.MadeOnRead;
-            for (int t = 0; t < 4 * Chunks.Size; t++)
-            {
-                me[0] = (w.FoldX(start.x + t), start.y);
-                ChunkStreaming.Apply(w, planner.Plan(w, me));
-                w.Step();
-            }
-            Assert.That(me[0].x, Is.LessThan(4 * Chunks.Size), "the walk crossed the east seam");
-            Assert.That(w.IsActive(Chunks.ChunkOf(me[0].x), Chunks.ChunkOf(start.y)), Is.True);
-            Assert.That(w.ReadUnpacks, Is.Zero, "the tick never read a packed chunk");
-            TestContext.Out.WriteLine($"HILLS walk over the east seam: {source.Made} chunks made, {source.MadeOnRead - onRead} on a read, {source.MadeAhead} ahead");
-            Assert.That(w.At(w.FoldX(-1), start.y).T, Is.EqualTo(w.At(w.W - 1, start.y).T));
         }
     }
 }

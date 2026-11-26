@@ -58,7 +58,7 @@ namespace Chem.Tests
         [Test]
         public void TheValleysSeaAndBasins()
         {
-            string dir = ChemistryTests.WorldDir();
+            string dir = LandFolders.WorldDir();
             var map = MapFile.Load(dir);
             var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
             var mask = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
@@ -73,7 +73,7 @@ namespace Chem.Tests
         [TestCase(12, false)]
         public void NearByPartsIsNear(int reach, bool basins)
         {
-            string dir = ChemistryTests.WorldDir();
+            string dir = LandFolders.WorldDir();
             var map = MapFile.Load(dir);
             var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);
             var mask = SeaMask.Of(land, map.W, map.H, map.SeaLevel);
@@ -99,7 +99,7 @@ namespace Chem.Tests
         [Test]
         public void TheValleysLandAChunkAtATimeIsItsLand()
         {
-            string dir = ChemistryTests.WorldDir();
+            string dir = LandFolders.WorldDir();
             var map = MapFile.Load(dir);
             string json = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
             var whole = LandFile.Read(json, map.W, map.H);
@@ -132,28 +132,6 @@ namespace Chem.Tests
             Assert.That((seaRead.SeaCells, seaRead.BasinCells), Is.EqualTo((fromArray.SeaCells, fromArray.BasinCells)));
             Assert.That(seaRead.Near(5, true), Is.EqualTo(fromArray.Near(5, true)));
             Assert.That(seaRead.Near(9, false), Is.EqualTo(fromArray.Near(9, false)));
-        }
-
-        // A map that isn't a whole number of chunks, with NoLand and big steps: the same land back, by Of and by Read.
-        [Test]
-        public void LandNotAWholeNumberOfChunksComesBackTheSame()
-        {
-            const int w = 100, h = 70;
-            var units = new int[w * h];
-            var rng = new System.Random(5);
-            for (int i = 0; i < units.Length; i++)
-            {
-                int step = i % 3 == 0 ? rng.Next(-200, 3000) : 0;
-                units[i] = i % 97 == 0 ? World.NoLand : step + i / w;
-            }
-            var of = LandChunks.Of(units, w, h);
-            var read = LandChunks.Read(LandFile.Write(units, w, h, 0.125f), w, h);
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                {
-                    Assert.That(of.At(x, y), Is.EqualTo(units[y * w + x]), $"Of ({x}, {y})");
-                    Assert.That(read.At(x, y), Is.EqualTo(units[y * w + x]), $"Read ({x}, {y})");
-                }
         }
     }
 }

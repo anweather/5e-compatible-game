@@ -72,7 +72,7 @@ const projectsIn = (ran, filter) => {
   const hit = runs.find(r => r[2] === filter);
   return hit ? JSON.parse(hit[3]).solution.projects.map(p => p.split("/")[0]).sort() : null;
 };
-const ALL = ["Chat.Bench.Tests", "Chem.Land.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Playtest.Tests", "Chem.Rules.Tests", "Chem.Shared.Tests", "Chem.Sim.Tests", "Hold.Runner.Tests", "Playtest.Runner.Tests", "Rules.Mcp.Tests"];
+const ALL = ["Chat.Bench.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Playtest.Tests", "Chem.Rules.Tests", "Chem.Shared.Tests", "Chem.Sim.Tests", "Hold.Runner.Tests", "Playtest.Runner.Tests", "Rules.Mcp.Tests"];
 
 test("the map agrees with core/'s csproj files and Chem.Tests.props", () => {
   const r = spawnSync(process.execPath, [join(dirname(script), "modules.mjs"), "check"], { encoding: "utf8" });
@@ -83,7 +83,7 @@ test("a Land-only change runs Chem.Land.Tests and what references it, and the re
   const { code, out, ran } = run(NOTHING, "0", ["unity/Assets/Prototype/Chemistry/Tests/ChunkGenTests.cs", "core/Chem.Land.Tests/LandFixture.cs"]);
   assert.equal(code, 0, out);
   const tested = projectsIn(ran, "TestCategory!=Sweep");
-  assert.deepEqual(tested, ["Chem.Land.Tests", "Chem.Lockstep.Tests", "Chem.Sim.Tests", "Rules.Mcp.Tests"], "Sim references Land, Lockstep and Rules.Mcp.Tests reference Sim");
+  assert.deepEqual(tested, ["Chem.Land.Tests", "Chem.LandWorld.Tests"], "LandWorld references Land (its helpers); Sim no longer does (step 5b)");
   assert.deepEqual(projectsIn(ran, "TestCategory=Unit"), ALL.filter(p => !tested.includes(p)), "the smoke is every other project's Unit fixtures");
   assert.ok(!/dotnet test core /.test(ran));
   assert.match(out, /core tests: some \(Chem\.Land\.Tests .*\)/);
@@ -114,10 +114,13 @@ test("an unknown path runs everything", () => {
   assert.match(out, /somewhere\/new\.txt is in no module/);
 });
 
-test("a Runtime change runs everything: the Runtime is one assembly until step 5", () => {
-  for (const f of ["packages/com.anweather.chemistry-core/Runtime/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]) {
-    assert.match(run(NOTHING, "0", [f]).ran, /dotnet test core -c Release/, f);
-  }
+test("a Land runtime change runs everything: Game.Core references Chem.Land, and every test project Game.Core", () => {
+  assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs"]).ran, /dotnet test core -c Release/);
+});
+
+test("a Runtime change above the land runs every project but the land's own tests, which build on Chem.Land alone", () => {
+  const tested = projectsIn(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]).ran, "TestCategory!=Sweep");
+  assert.deepEqual(tested, ALL.filter(p => p !== "Chem.Land.Tests"));
 });
 
 test("a rules/ change runs every project that reads the rules", () => {

@@ -9,6 +9,5 @@
 
   <ItemGroup>
     <ProjectReference Include="../Chem.Rules.Tests/Chem.Rules.Tests.csproj" />
-    <ProjectReference Include="../Chem.Land.Tests/Chem.Land.Tests.csproj" />
   </ItemGroup>
 </Project>

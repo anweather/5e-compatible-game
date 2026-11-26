@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- The Chemistry tests of the land: hills, ChunkGen, world plans, themes, maps and MapCheck (Chem.Tests.props). -->
+  <!-- The Chemistry tests of the land alone: hills, ChunkGen, world plans, themes, maps (Chem.Tests.props). It builds on
+       Chem.Land and nothing above it, no World, no Rules, no ChemistryTests: a test that needs those is in its
+       fixture's *WorldTests.cs half, in Chem.LandWorld.Tests (docs/design/chem-land-split.md, 5b). -->
   <Import Project="../Chem.Tests.props" />
 
   <ItemGroup>
@@ -8,6 +10,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Chem.Shared.Tests/Chem.Shared.Tests.csproj" />
+    <ProjectReference Include="../Chem.Land/Chem.Land.csproj" />
   </ItemGroup>
 </Project>

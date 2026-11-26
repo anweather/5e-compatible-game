@@ -313,7 +313,9 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
 | `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
 | `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |
-| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core`, the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
+| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core` (through `Chem.Shared.Tests`), the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
+| `core/Chem.Land.Tests` (the land's own tests) | `Chem.Land` alone | `Game.Core`, `Chem.Shared.Tests`, any other test project |
+| `core/Chem.LandWorld.Tests` (the land on a World: the `*WorldTests.cs` halves) | `Chem.Land.Tests`, `Chem.Shared.Tests` | the tools |
 | `core/<Tool>.Tests` (`Rules.Mcp.Tests`, `Playtest.Runner.Tests`, `Chat.Bench.Tests`, `Hold.Runner.Tests`) | its tool, `Chem.Shared.Tests` or `Chem.Sim.Tests` for the Chemistry tests' internal helpers (`core/TestFriends.cs`) | the other tools |
 
 ## Conventions

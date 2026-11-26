@@ -39,6 +39,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chem.Playtest.Tests", "Chem
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chem.Land", "Chem.Land\Chem.Land.csproj", "{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chem.LandWorld.Tests", "Chem.LandWorld.Tests\Chem.LandWorld.Tests.csproj", "{623555B9-71BF-4CBD-9178-6EA571A55C6E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -257,6 +259,18 @@ Global
 		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x64.Build.0 = Release|Any CPU
 		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x86.ActiveCfg = Release|Any CPU
 		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x86.Build.0 = Release|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Debug|x64.Build.0 = Debug|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Debug|x86.Build.0 = Debug|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Release|x64.ActiveCfg = Release|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Release|x64.Build.0 = Release|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Release|x86.ActiveCfg = Release|Any CPU
+		{623555B9-71BF-4CBD-9178-6EA571A55C6E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

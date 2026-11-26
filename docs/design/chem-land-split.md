@@ -20,6 +20,24 @@ the next section, and the rest of this file is the map as it was drawn.
   The sweep is the same 2263 results, by name, before and after; every land and hash golden passed unchanged.
   Unity's side: `Runtime/Land/Chem.Land.asmdef`, `Chem.Land` in the references of `Chemistry.asmdef`,
   `Chemistry.Mcp.asmdef` and `Chemistry.Tests.asmdef`. **Not yet compiled in Unity.**
+- **5b (the tests, 2026-11-26).** `Chem.Land.Tests` references `Chem.Land` alone. 18 land fixtures split, each into its
+  land part (the file as it was) and a `*WorldTests.cs` part holding the tests that need `World`, `Rules`,
+  `ChemistryTests.R`, `MapCheck` or a bake: Bake, BiomeSketch, ChunkGen, FarRing, GroundPack, Hills, HillsForest,
+  HillsRivers, HillsRoads, LandmarkIntent, MapIdentity (with `MapCheckRecordTests`), Map, RoadGrade, ScaleIsland,
+  SeaMask, Village, WorldPlan, WorldTwelve. `BakeTests` keeps only helpers (a static class); its `WaterRunsTests`
+  moved whole, by class, so its names didn't change. The split was found by the compiler (each test with an error
+  against the land alone moved, then the helpers it used were qualified, `HillsTests.HillsDir`), and 56 test names
+  changed by it, `Chem.Tests.HillsTests.ItPlaysFromItsRowsAlone` becoming `Chem.Tests.HillsWorldTests.ItPlaysFromItsRowsAlone`
+  and so on; nothing else was renamed, and every one has the outcome it had. A land-only `LandFolders` (the repo's
+  folders, as `ChemistryTests.Folders` finds them) replaces `ChemistryTests.Folders`/`WorldDir`/`RulesDir` in the land
+  parts. The world parts, and the 11 files that are a World throughout (GeneratedSource, LaidRow, LandStamp, MapStamp,
+  DrownedChain, Terrain, Places, LandmarkPicture and the Sparse, WorldBuild, MapSize benches), went to a new
+  `Chem.LandWorld.Tests` (Land and Shared), **not Chem.Sim.Tests**: so a land change can run them without the whole
+  simulation's 626 tests, and a Sim change doesn't run them. Sim no longer references Land: its two helpers moved to
+  Shared (`BuiltWorlds.Build`, was `SparseWorldBench.Build`; `ChemistryTests.GameWorldDir`), and `ModSwitchBench`
+  (Explicit; it bakes the nine) is LandWorld's. Counts: Land 290 passed (was 497 + 1 skipped), LandWorld 208 + 1
+  skipped, the rest unchanged; the one new test is LandWorld's fixture-kinds check. A Land test file now runs Land and
+  LandWorld (and the smoke), not Sim, Lockstep and Rules.Mcp.Tests.
 
 Short version: the runtime half splits cleanly once one decision is made (where `GeneratedMap` goes). The tests
 don't split: only 6 of the 36 Land test files (about 50 of 498 tests) compile against the land alone. Almost every
