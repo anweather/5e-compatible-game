@@ -7,7 +7,8 @@
 #             so only for a change to Chemistry/ (Mono can round differently) or the daily sweep. About 40 min on the Mac
 #             (the PC ~14): run it in the background, never enter Play meanwhile.
 #     all     both, as a bare `unity command test run --mode EditMode` does.
-#     sweep   all, plus the Explicit Timing tests (an idle Editor only).
+#     sweep   all, plus the Explicit Timing tests (an idle Editor only), then the duplicate-code gate (jscpd, as CI's
+#             duplicates workflow runs it): the landing gates leave it to CI and the sweep.
 #   Prints the totals and every failure from Library/TestResults.xml (the CLI's own JSON is cut short on a long run).
 #   Needs `unity` on PATH ($HOME/.unity/bin) and UNITY_PROJECT_PATH, as the other tools here do. The yard scene must be built.
 set -uo pipefail
@@ -19,7 +20,7 @@ case "$group" in
   chem)  filter=(--filter Chemistry.Tests --filter_type assembly); secs=3600 ;;
   all)   filter=(); secs=3600 ;;
   sweep) filter=(--include_explicit true); secs=3600 ;;
-  *) sed -n 2,14p "$0"; exit 2 ;;
+  *) sed -n 2,15p "$0"; exit 2 ;;
 esac
 rm -f "$UNITY_PROJECT_PATH/Library/TestResults.xml"
 unity command --timeout "$secs" test run --mode EditMode "${filter[@]}" "$@" --result-only > /dev/null
@@ -34,3 +35,14 @@ let failed = 0;
 for (const m of x.matchAll(/<test-case [^>]*?fullname="([^"]*)"[^>]*?result="Failed"[^>]*>[\s\S]*?<message><!\[CDATA\[([\s\S]*?)\]\]>/g)) { failed++; console.log("  FAILED " + m[1] + ": " + m[2].trim().split("\n")[0].slice(0, 160)); }
 process.exit(Number(at("failed")) > 0 ? 1 : 0);
 ' "$UNITY_PROJECT_PATH/Library/TestResults.xml" "$code"
+result=$?
+if [[ "$group" == sweep ]]; then
+  # jscpd runs out of Node's default heap on a 5 GB VM; the pinned one (tools/jscpd/package-lock.json).
+  jlog="$(mktemp)"
+  if (cd "$here" && NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=3072" bash tools/jscpd/run.sh unity/Assets/Prototype sandbox/src packages > "$jlog" 2>&1); then
+    echo "Duplicate code: under the threshold"
+  else
+    echo "  FAILED duplicate code (jscpd):"; tail -20 "$jlog"; result=1
+  fi
+fi
+exit "$result"

@@ -100,7 +100,8 @@ dotnet test core/Chem.Land.Tests                # one module's tests: Chem.{Shar
 dotnet test core --filter "FullyQualifiedName~EveryExampleModPassesTheChecks"   # one test
 dotnet test core --filter TestCategory=Unit    # the quick fixtures, in seconds (docs/TESTING_LAYERS.md)
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
-tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%); jscpd pinned in its lockfile
+tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%; CI and the sweep run it, not the landing); jscpd pinned in its lockfile
+node tools/workers/modules.mjs choose <path>...   # which core tests the landing gates run for a change (docs/TESTING_LAYERS.md)
 node --test tools/chat-report.test.mjs        # the chat report, on real records
 node tools/lint/lint.mjs                      # the kit's lint: dead tools/ and docs/ paths fail; comments only warn until #226
 
