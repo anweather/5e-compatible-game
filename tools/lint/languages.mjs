@@ -1,4 +1,4 @@
-// The languages the lint reads, and one scanner that finds each file's comment lines, code lines and a copy with comments and string insides blanked: a language is an entry in `languages` and a test in languages.test.mjs.
+// The languages the lint reads, and one scanner that finds each file's comment lines and spans, code lines and a copy with comments and string insides blanked: a language is an entry in `languages` and a test in languages.test.mjs.
 const cKeywordsBeforeRegex = new Set(['return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof']);
 
 export const languages = {
@@ -21,6 +21,7 @@ export function scan(text, name) {
   const n = text.length;
   const out = text.split('');
   const comments = new Set();
+  const spans = [];
   const code = new Set();
   let line = 1;
   let i = 0;
@@ -74,6 +75,7 @@ export function scan(text, name) {
       const from = i;
       comments.add(line);
       while (i < n && text[i] !== '\n') i++;
+      spans.push({ from, to: i, kind: 'line' });
       blank(from, i);
       continue;
     }
@@ -83,6 +85,7 @@ export function scan(text, name) {
       const stop = text.indexOf(block[1], i + block[0].length);
       advance(stop < 0 ? n : stop + block[1].length);
       markComment(fromLine, line);
+      spans.push({ from, to: i, kind: 'block' });
       blank(from, i);
       continue;
     }
@@ -94,6 +97,7 @@ export function scan(text, name) {
         const stop = text.indexOf(quote, i + 3);
         advance(stop + 3);
         markComment(fromLine, line);
+        spans.push({ from, to: i, kind: 'docstring' });
         blank(from, i);
         continue;
       }
@@ -102,13 +106,9 @@ export function scan(text, name) {
       lastSignificant = '"';
       continue;
     }
-    if (lang.strings === 'csharp' && (c === '"' || c === "'" || ((c === '@' || c === '$') && (text[i + 1] === '"' || ((text[i + 1] === '@' || text[i + 1] === '$') && text[i + 2] === '"'))))) {
+    if (lang.strings === 'csharp' && csharpStringAt()) {
       markCode();
-      let verbatim = false;
-      while (text[i] === '@' || text[i] === '$') { if (text[i] === '@') verbatim = true; i++; }
-      if (startsWith('"""')) quoted('"""', { escapes: false, multiline: true });
-      else if (text[i] === "'") quoted("'");
-      else quoted('"', { verbatim, multiline: verbatim });
+      csharpString();
       lastSignificant = '"';
       continue;
     }
@@ -131,6 +131,43 @@ export function scan(text, name) {
     lastSignificant = c;
     lastWord = '';
     i++;
+  }
+
+  function csharpStringAt() {
+    const ch = text[i];
+    return ch === '"' || ch === "'" || ((ch === '@' || ch === '$') && (text[i + 1] === '"' || ((text[i + 1] === '@' || text[i + 1] === '$') && text[i + 2] === '"')));
+  }
+
+  function csharpString() {
+    let verbatim = false, interpolated = false;
+    while (text[i] === '@' || text[i] === '$') { if (text[i] === '@') verbatim = true; else interpolated = true; i++; }
+    if (startsWith('"""')) { quoted('"""', { escapes: false, multiline: true }); return; }
+    if (text[i] === "'") { quoted("'"); return; }
+    if (!interpolated) { quoted('"', { verbatim, multiline: verbatim }); return; }
+    let from = ++i;
+    while (i < n) {
+      const ch = text[i];
+      if (verbatim && ch === '"' && text[i + 1] === '"') { i += 2; continue; }
+      if (!verbatim && ch === '\\') { i += 2; continue; }
+      if ((ch === '{' && text[i + 1] === '{') || (ch === '}' && text[i + 1] === '}')) { i += 2; continue; }
+      if (ch === '"') { blank(from, i); i++; return; }
+      if (ch === '\n') { if (!verbatim) { blank(from, i); return; } line++; }
+      if (ch === '{') { blank(from, i); i++; csharpHole(); from = i; continue; }
+      i++;
+    }
+    blank(from, n);
+  }
+
+  function csharpHole() {
+    let depth = 0;
+    while (i < n) {
+      const ch = text[i];
+      if (csharpStringAt()) { csharpString(); continue; }
+      if (ch === '\n') line++;
+      if (ch === '{') depth++;
+      else if (ch === '}') { if (depth === 0) { i++; return; } depth--; }
+      i++;
+    }
   }
 
   function regexAllowed() {
@@ -173,5 +210,5 @@ export function scan(text, name) {
     if (!code.has(l)) continue;
     if (!lang.headerUntil || lang.headerUntil.test(blankRows[l - 1])) { headerEnds = l; break; }
   }
-  return { comments, code, headerEnds, blanked };
+  return { comments, spans, code, headerEnds, blanked };
 }
