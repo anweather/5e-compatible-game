@@ -14,6 +14,7 @@ const tools = dirname(fileURLToPath(import.meta.url));
 // The watcher needs bash 4 (declare -A); a Mac's /bin/bash is 3.2.
 const bash4 = spawnSync("bash", ["-c", "declare -A x"]).status === 0;
 const hasTimeout = spawnSync("bash", ["-c", "command -v timeout"]).status === 0;
+const rootIgnoresReadOnly = process.getuid?.() === 0;
 
 // A path as bash reads it on every machine: Git Bash takes C:/... but not C:\... inside a script or a variable.
 const posix = p => p.replace(/\\/g, "/");
@@ -126,7 +127,7 @@ test("a removal that fails is logged once, not every pass", { skip: !bash4 }, ()
   } finally { s.done(); }
 });
 
-test("a report that couldn't be mailed stays on the worker for the next pass", { skip: !bash4 || process.platform === "win32" }, () => {
+test("a report that couldn't be mailed stays on the worker for the next pass", { skip: !bash4 || process.platform === "win32" || rootIgnoresReadOnly }, () => {
   const s = scratch();
   try {
     s.report("20261106-120000-a", "text");
