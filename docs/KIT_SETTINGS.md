@@ -71,7 +71,8 @@ retire once Andrew installs the kit's plugins, and this file is then the only co
 ## Project shape
 
 - Lint: `node tools/lint/lint.mjs` (config `tools/lint/lint.config.json`, base `origin/dev`); its tests
-  `node --test "tools/lint/**/*.test.mjs"`. Comments at warning level until the purge (#226); paths on; ownData
+  `node --test "tools/lint/**/*.test.mjs"`. Comments at error level since the purge (#226, `tools/purge-comments.mjs`): a comment on a new or changed line past a
+  file's top comment fails; paths on; ownData
   and modules off. No commit hook (D21).
 - The plain core: `packages/com.anweather.chemistry-core/` (namespace `Chem`), built and tested without Unity by
   `core/`: `dotnet build core -c Release -warnaserror` (on the Mac add `-m:1`), `dotnet test core`,

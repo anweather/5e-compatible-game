@@ -1,5 +1,5 @@
 {
-  "about": "This project's settings for the kit's lint pack (docs/KIT_SETTINGS.md, D21). The comments rule leaves out URP's TerrainLit, copied in as TerrainRock.shader and TerrainRockPasses.hlsl with Unity's own comments (third-party code). The comments rule is at level warning everywhere, new and touched lines too, on Andrew's word: the old comments go in one purge change (issue #226), and then the level comes off so a new comment is an error again. The paths rule reads live files only: history keeps the paths of its day (the state file, logs, handoffs and briefs, perf notes, accepted ADRs, playtest results, retros, the judgment-call log, the playtest bot's phase-0 design). made: folders a tool makes and git ignores. ignore: words that look like paths and aren't (the MCP methods tools/list and tools/call, pieces of web addresses, other repositories' docs, ~/.dotnet/tools/vpk, a brief-format example) and tools/playtest, the retired folder still named in old comments in the playtest bot's C# files, which go with the purge in #226.",
+  "about": "This project's settings for the kit's lint pack (docs/KIT_SETTINGS.md, D21). The comments rule leaves out URP's TerrainLit, copied in as TerrainRock.shader and TerrainRockPasses.hlsl with Unity's own comments (third-party code). The comments rule is at level error since the purge of the old comments (issue #226, tools/purge-comments.mjs): a comment on a new or changed line is an error. The paths rule reads live files only: history keeps the paths of its day (the state file, logs, handoffs and briefs, perf notes, accepted ADRs, playtest results, retros, the judgment-call log, the playtest bot's phase-0 design). made: folders a tool makes and git ignores. ignore: words that look like paths and aren't (the MCP methods tools/list and tools/call, pieces of web addresses, other repositories' docs, ~/.dotnet/tools/vpk, a brief-format example) and tools/playtest, the retired folder still named in old comments in the playtest bot's C# files, which go with the purge in #226.",
   "base": [
     "origin/dev",
     "dev",
@@ -9,7 +9,7 @@
   "rules": {
     "comments": {
       "on": true,
-      "level": "warning",
+      "level": "error",
       "languages": [
         "csharp",
         "shader",

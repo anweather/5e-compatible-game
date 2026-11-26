@@ -38,5 +38,10 @@
 - **Reopen if:** #226 lands (the comments rule goes to errors); the LFS and cost hooks move to a `.githooks/`
   that keeps them; the kit's plugins are installed and the repo's own skills retire; Andrew wants the routines or
   the site.
+- **Update (2026-11-26, #226):** the purge landed. `tools/purge-comments.mjs` took the old comments out (18,619
+  lint warnings, with URP's copy left out, to 0) from 1,063 files, each keeping one top comment; the comments rule is now `"level": "error"`, so a comment
+  on a new or changed line fails the lint. URP's TerrainLit copy (`TerrainRock.shader`, `TerrainRockPasses.hlsl`)
+  is excluded as third-party, and the five empty catches a comment used to fill are wrapped in
+  `#pragma warning disable S108` (Sonar's empty block).
 - **Sources:** the kit's `README.md`, `templates/KIT_SETTINGS.md`, `examples/spell-chemistry-valley-settings.md`,
   `plugins/project-shape/lint-pack/`, at kit commit dea4701.
