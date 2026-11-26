@@ -42,7 +42,8 @@ jobs:
             core/**/*.csproj
             core/Directory.Build.props
       - run: dotnet build core -c Release -warnaserror
-      - run: dotnet test core -c Release --no-build --logger "console;verbosity=normal"
+      # sweep.runsettings: everything, the Sweep category too (plain `dotnet test core` skips it, docs/TESTING_LAYERS.md).
+      - run: dotnet test core -c Release --no-build -s core/sweep.runsettings --logger "console;verbosity=normal"
 
   format:
     name: Formatting and code style

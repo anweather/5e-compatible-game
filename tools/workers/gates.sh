@@ -47,7 +47,8 @@ workers=6; if command -v powershell >/dev/null 2>&1; then
   [[ "$freegb" =~ ^[0-9]+$ ]] && (( freegb < 10 )) && workers=3
 fi
 # The Sweep category (whole runs, peer by peer) is the sweep's, layer 4 of docs/TESTING_LAYERS.md: a landing skips it.
-[[ $failed == 0 ]] && gate "core tests" dotnet test core -c Release --no-build --filter "TestCategory!=Sweep" -- NUnit.NumberOfTestWorkers=$workers
+# sweep.runsettings (everything) and this filter, not the default runsettings, so what a landing runs is said here.
+[[ $failed == 0 ]] && gate "core tests" dotnet test core -c Release --no-build -s core/sweep.runsettings --filter "TestCategory!=Sweep" -- NUnit.NumberOfTestWorkers=$workers
 
 for i in "${!pids[@]}"; do
   if wait "${pids[$i]}"; then echo "  ok  ${names[$i]}"
@@ -56,6 +57,6 @@ for i in "${!pids[@]}"; do
   fi
   cat "$log.${names[$i]}" >> "$log"; rm -f "$log.${names[$i]}"
 done
-# One line per test project (core has five).
+# One line per test project (core has eleven: the Chem.<Module>.Tests and the tools').
 grep -E 'Passed!|Failed!' "$log" | sed 's/^ */  /'
 exit "$failed"
