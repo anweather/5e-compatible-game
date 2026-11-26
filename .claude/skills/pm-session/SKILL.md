@@ -44,8 +44,8 @@ says so). Do that one job, update STATE, and end. Don't sit on the mailbox all d
 ## While running
 
 - Land with one command: `tools/workers/land.sh auto <branch> [--compiled] [--deletes] < message`. It refuses
-  on deletions, heavy removals, Unity C# nobody compiled, a conflict or a merge touching files the branch
-  doesn't own; runs every gate; pushes and deletes the branch. Read a diff only when it stops. Pass `--compiled`
+  on deletions, heavy removals, Unity C# nobody compiled (C# in `Chemistry/Tests` and `Chemistry/Mcp` needs
+  none: dotnet compiles it), a conflict or a merge touching files the branch doesn't own; runs every gate; pushes and deletes the branch. Read a diff only when it stops. Pass `--compiled`
   only when DesktopUnity or the Mac has said so. Silent reverts inside a branch's own files still pass (50fd301):
   skim the stat line it prints. Delete any branch it fully contains.
 - Brief VMs with `tools/workers/start.cmd` / `brief.cmd` and briefs in `docs/handoffs/briefs/`. No
