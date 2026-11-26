@@ -24,6 +24,15 @@ namespace Chem
 
         string t = "dirt";
         Rare rare;
+        int water, liquid, fire, height;
+        bool frozen;
+
+        internal ChunkBlock Home;
+
+        void Touch()
+        {
+            if (Home != null) Home.Touched();
+        }
 
         // Its Rare, made now if it has none.
         Rare Kept => rare ??= new Rare();
@@ -35,64 +44,142 @@ namespace Chem
             set
             {
                 // World.TerrainOf's cache follows the id (a reference check, as before: T is replaced, not edited).
-                if (!ReferenceEquals(t, value)) Def = null;
+                if (ReferenceEquals(t, value)) return;
+                Def = null;
+                bool same = t == value;
                 t = value;
+                if (!same) Touch();
             }
         }
         /// <summary>Units, 0..maxLevel (unitsPerStep units = one step of depth).</summary>
-        public int Water;
+        public int Water
+        {
+            get => water;
+            set
+            {
+                if (water == value) return;
+                water = value;
+                Touch();
+            }
+        }
         /// <summary>
         /// What the water here is: an index into Rules.Liquids, 0 water (Rules.Liquids.cs). Read it
         /// through Kind: a dry cell's is left as it was, and means nothing.
         /// </summary>
-        public int Liquid;
+        public int Liquid
+        {
+            get => liquid;
+            set
+            {
+                if (liquid == value) return;
+                liquid = value;
+                Touch();
+            }
+        }
         /// <summary>The liquid here: Liquid while it holds some, else 0 (water).</summary>
         public int Kind => Water > 0 ? Liquid : 0;
         /// <summary>Ticks until the liquid here sets into its terrain (sets {into, after}, World.SetLiquid). 0: it doesn't set, or the cell is dry.</summary>
         public int Sets
         {
             get => rare?.Sets ?? 0;
-            set { if (rare != null || value != 0) Kept.Sets = value; }
+            set
+            {
+                if (Sets == value) return;
+                Kept.Sets = value;
+                Touch();
+            }
         }
         /// <summary>The count of the liquid setting here: Sets while a liquid besides water holds it, else 0. What's hashed and saved, as Kind is.</summary>
         public int Setting => Kind != 0 ? Sets : 0;
         /// <summary>The water here is ice.</summary>
-        public bool Frozen;
+        public bool Frozen
+        {
+            get => frozen;
+            set
+            {
+                if (frozen == value) return;
+                frozen = value;
+                Touch();
+            }
+        }
         /// <summary>oil, grease, ash, or null.</summary>
         public string Cover
         {
             get => rare?.Cover;
-            set { if (rare != null || value != null) Kept.Cover = value; }
+            set
+            {
+                if (Cover == value) return;
+                Kept.Cover = value;
+                Touch();
+            }
         }
         /// <summary>0..3.</summary>
-        public int Fire;
+        public int Fire
+        {
+            get => fire;
+            set
+            {
+                if (fire == value) return;
+                fire = value;
+                Touch();
+            }
+        }
         /// <summary>Ticks of burning left.</summary>
         public int Fuel
         {
             get => rare?.Fuel ?? 0;
-            set { if (rare != null || value != 0) Kept.Fuel = value; }
+            set
+            {
+                if (Fuel == value) return;
+                Kept.Fuel = value;
+                Touch();
+            }
         }
         public string Gas
         {
             get => rare?.Gas;
-            set { if (rare != null || value != null) Kept.Gas = value; }
+            set
+            {
+                if (Gas == value) return;
+                Kept.Gas = value;
+                Touch();
+            }
         }
         public int GasAmt
         {
             get => rare?.GasAmt ?? 0;
-            set { if (rare != null || value != 0) Kept.GasAmt = value; }
+            set
+            {
+                if (GasAmt == value) return;
+                Kept.GasAmt = value;
+                Touch();
+            }
         }
         /// <summary>3 on the tick lightning arrives, then decays.</summary>
         public int Charge
         {
             get => rare?.Charge ?? 0;
-            set { if (rare != null || value != 0) Kept.Charge = value; }
+            set
+            {
+                if (Charge == value) return;
+                Kept.Charge = value;
+                Touch();
+            }
         }
         /// <summary>
         /// Steps of earth raised (+) or dug (-) by terraform spells, on top of the terrain's own
         /// elevation, within sim.json's height range. At height.blockAt or more the cell is a wall.
         /// </summary>
-        public int Height;
+        public int Height
+        {
+            get => height;
+            set
+            {
+                if (height == value) return;
+                height = value;
+                Touch();
+            }
+        }
         /// <summary>
         /// Ticks until what is growing or lasting here ripens (World.Ripen): a cover with a lifespan
         /// (thorns) withers, and a terrain with growsTo (green shoots, a sapling) grows into it.
@@ -101,7 +188,12 @@ namespace Chem
         public int Life
         {
             get => rare?.Life ?? 0;
-            set { if (rare != null || value != 0) Kept.Life = value; }
+            set
+            {
+                if (Life == value) return;
+                Kept.Life = value;
+                Touch();
+            }
         }
         /// <summary>
         /// The tick until which the ground here is damp from water that soaked in (World.Soak): damp
@@ -110,7 +202,12 @@ namespace Chem
         public int DampUntil
         {
             get => rare?.DampUntil ?? 0;
-            set { if (rare != null || value != 0) Kept.DampUntil = value; }
+            set
+            {
+                if (DampUntil == value) return;
+                Kept.DampUntil = value;
+                Touch();
+            }
         }
         /// <summary>
         /// Ticks it has been wet in all, toward its terrain's rust (World.Rust): at rust.every it rusts
@@ -119,37 +216,67 @@ namespace Chem
         public int Rust
         {
             get => rare?.Rust ?? 0;
-            set { if (rare != null || value != 0) Kept.Rust = value; }
+            set
+            {
+                if (Rust == value) return;
+                Kept.Rust = value;
+                Touch();
+            }
         }
         /// <summary>Ticks it stays hot (World.Cool): metal fire reached stays hot after the fire goes, and burns creatures on it. 0: cold.</summary>
         public int Heat
         {
             get => rare?.Heat ?? 0;
-            set { if (rare != null || value != 0) Kept.Heat = value; }
+            set
+            {
+                if (Heat == value) return;
+                Kept.Heat = value;
+                Touch();
+            }
         }
         /// <summary>Ticks it still sheds the Light spell's light (World.LightUp; the radius is the spell's light, for the view). 0: unlit.</summary>
         public int Lit
         {
             get => rare?.Lit ?? 0;
-            set { if (rare != null || value != 0) Kept.Lit = value; }
+            set
+            {
+                if (Lit == value) return;
+                Kept.Lit = value;
+                Touch();
+            }
         }
         /// <summary>How many more cells the floating cover here may spread (float.reach, World.Float); 0 when it has no cover, or no end to its reach.</summary>
         public int Slick
         {
             get => rare?.Slick ?? 0;
-            set { if (rare != null || value != 0) Kept.Slick = value; }
+            set
+            {
+                if (Slick == value) return;
+                Kept.Slick = value;
+                Touch();
+            }
         }
         /// <summary>How many falling stars are aimed here (World.AimStar): the target mark the view tints. 0: none.</summary>
         public int Star
         {
             get => rare?.Star ?? 0;
-            set { if (rare != null || value != 0) Kept.Star = value; }
+            set
+            {
+                if (Star == value) return;
+                Kept.Star = value;
+                Touch();
+            }
         }
         /// <summary>Its ice or terrain is cracked (shatter.cracks, World.Shatter): the tick it cracked, plus 1, so a blast that hits it twice cracks it once. 0: whole.</summary>
         public int Cracked
         {
             get => rare?.Cracked ?? 0;
-            set { if (rare != null || value != 0) Kept.Cracked = value; }
+            set
+            {
+                if (Cracked == value) return;
+                Kept.Cracked = value;
+                Touch();
+            }
         }
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for, dropped when T changes, and
@@ -168,6 +295,7 @@ namespace Chem
         internal void CopyFrom(Cell o)
         {
             T = o.t; Water = o.Water; Liquid = o.Liquid; Frozen = o.Frozen; Fire = o.Fire; Height = o.Height;
+            if (rare != null || o.rare != null) Touch();
             // A Rare of nothing is copied as none, so a cell put back to bare ground is small again.
             rare = o.rare == null || o.rare.Empty ? null : o.rare.Copy();
         }
@@ -176,6 +304,7 @@ namespace Chem
         public void Reset(string terrain = "dirt")
         {
             T = terrain; Water = 0; Liquid = 0; Frozen = false; Fire = 0; Height = 0;
+            if (rare != null) Touch();
             rare = null;
         }
     }

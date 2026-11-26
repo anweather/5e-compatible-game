@@ -48,6 +48,7 @@ namespace Chem
         {
             var ch = new Chunk(cx, cy) { Fit = fits, Owner = this }; // made under the rules in force
             chunks.Add(Chunks.Key(cx, cy), ch);
+            StaleHash(ch);
             ch.North = FindChunk(cx, cy - 1);
             ch.South = FindChunk(cx, cy + 1);
             ch.West = FindChunk(cx - 1, cy);

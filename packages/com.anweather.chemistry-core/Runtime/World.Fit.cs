@@ -70,12 +70,17 @@ namespace Chem
             if (ch.Fit == fits) return;
             ch.Fit = fits;
             unfitChunks--;
+            StaleHash(ch);
         }
 
         // Every chunk's cells made afresh under the rules in force (World.MakeFrom).
         void AllFitted()
         {
-            foreach (var ch in ChunksInOrder) ch.Fit = fits;
+            foreach (var ch in ChunksInOrder)
+            {
+                if (ch.Fit != fits) StaleHash(ch);
+                ch.Fit = fits;
+            }
             unfitChunks = 0;
             fitLiquids.Clear();
         }

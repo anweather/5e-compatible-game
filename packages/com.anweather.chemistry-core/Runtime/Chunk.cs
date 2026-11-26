@@ -63,6 +63,14 @@ namespace Chem
         public string[] SnapT;
         /// <summary>The land under each cell (World.SetLand), made at the first unpack of a world with land; meaningless without.</summary>
         public int[] Land;
+
+        public Chunk Of;
+
+        public void Touched()
+        {
+            var ch = Of;
+            if (ch != null && !ch.HashStale) ch.Owner.StaleHash(ch);
+        }
     }
 
     /// <summary>
@@ -103,7 +111,15 @@ namespace Chem
         internal ChunkBlock Held => block;
 
         /// <summary>Gives it a block (unpacking) or takes it away (packing), for World.Pack.cs alone.</summary>
-        internal void Hold(ChunkBlock b) => block = b;
+        internal void Hold(ChunkBlock b)
+        {
+            if (block != null) block.Of = null;
+            block = b;
+            if (b != null) b.Of = this;
+        }
+
+        public bool HashStale, HashHeld;
+        public uint HashValue;
 
         /// <summary>The cell at local index i, or null outside the world's extent. A packed chunk unpacks to be read (World.Pack.cs).</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

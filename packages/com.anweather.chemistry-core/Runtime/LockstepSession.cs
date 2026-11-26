@@ -7,8 +7,9 @@
 //   lands that many ticks later (0 to MaxDelayTicks), the same tick on every peer.
 // - A peer runs only through the batches it holds (Advance), a tick in slices within the frame's budget (StepSome):
 //   a batch's commands land between whole ticks, so peers slicing their frames differently compute the same ticks.
-// - Every hash window (RollingHash) the host broadcasts its checksum's parts; a client that disagrees raises Desynced
-//   and asks for a fresh snapshot (RecoverDesyncs), which it loads and plays on from.
+// - Every hash window (RollingHash.Every ticks) the host broadcasts its checksum's parts, the cells' from the chunk
+//   digest (World.ChunkHash.cs), and the chunks whose hash changed in the window; a client that disagrees raises
+//   Desynced, naming the chunks that differ, and asks for a fresh snapshot (RecoverDesyncs), which it loads and plays on from.
 // - A joiner is sent a snapshot of the host's world between two ticks (JoinSnapshot), then the batches the host had
 //   stamped past it, then the live ones. Unlike NetChem, no history is kept to replay.
 // - An online reset (J-014) is a batch that rebuilds the world before it runs, the mods in force re-stamped in it. The
@@ -24,7 +25,7 @@ namespace Chem.Lockstep
     public sealed partial class LockstepSession
     {
         /// <summary>The wire's version: a peer refuses a host that speaks another.</summary>
-        public const int Protocol = 1;
+        public const int Protocol = 2;
 
         /// <summary>The longest input delay a command may ask for, in ticks (NetChem's).</summary>
         public const int MaxDelayTicks = 30;
@@ -46,8 +47,8 @@ namespace Chem.Lockstep
         bool synced, caughtUp;
         int catchUpTo;
         // The desync check: windows still waiting for the other side's.
-        RollingHash rolling = new RollingHash();
-        readonly Dictionary<int, ulong[]> hostHashes = new Dictionary<int, ulong[]>(), ownHashes = new Dictionary<int, ulong[]>();
+        int ownChunksAt = -1;
+        readonly Dictionary<int, HashWindow> hostHashes = new Dictionary<int, HashWindow>(), ownHashes = new Dictionary<int, HashWindow>();
 
         /// <param name="transport">The network, as bytes (the adapter's).</param>
         /// <param name="world">The game's world, as the session drives it.</param>
@@ -60,6 +61,7 @@ namespace Chem.Lockstep
             if (transport.MaxMessageBytes < LockstepFrames.MinMessageBytes)
                 throw new ArgumentException($"a transport must take {LockstepFrames.MinMessageBytes} bytes a send at the least", nameof(transport));
             synced = caughtUp = IsHost;
+            HashBaseline();
         }
 
         public LockstepRole Role => transport.Role;
@@ -285,6 +287,7 @@ namespace Chem.Lockstep
             LastResetTick = tick;
             World.Rebuild();
             tickBase = tick - 1;
+            HashBaseline();
         }
 
         // A tick has finished: the desync check, listeners, and on the host a joiner waiting for a moment between ticks.
@@ -294,8 +297,11 @@ namespace Chem.Lockstep
             var batch = running ?? new TickBatch(tick);
             running = null;
             if (IsHost) held.Remove(tick);
-            string cells = rolling.Add(World.World, tick);
-            if (cells != null) FinishWindow(tick, WindowParts(World.World, cells));
+            if (tick % RollingHash.Every == 0)
+            {
+                var chunks = WindowChunks(World.World);
+                FinishWindow(tick, WindowParts(World.World, World.World.ChunkDigestHash()), chunks);
+            }
             TickApplied?.Invoke(batch);
             if (!caughtUp && tick >= catchUpTo)
             {
@@ -305,14 +311,54 @@ namespace Chem.Lockstep
             if (IsHost) ServeJoiners();
         }
 
-        // A window's parts in JoinSnapshot.PartNames' order, the cells' from the rolling hash: fixed 64-bit hashes.
+        // A window's parts in JoinSnapshot.PartNames' order, the cells' from the chunk digest: fixed 64-bit hashes.
         static ulong[] WindowParts(World w, string cells) => new[]
         {
             Fnv1a64.Hash(cells), Fnv1a64.Hash(w.Rules.Fingerprint), Fnv1a64.Hash(w.ThingsNow.Fingerprint), Fnv1a64.Hash(w.SkyHash()),
             Fnv1a64.Hash(w.DefenseHash()), Fnv1a64.Hash(w.CastHash()), Fnv1a64.Hash(w.DragonHash()), Fnv1a64.Hash(w.LandHash()),
         };
 
-        void FinishWindow(int tick, ulong[] parts)
+        ChunkHashEntry[] WindowChunks(World w)
+        {
+            var changed = w.RefreshChunkHashes();
+            ownChunksAt = NetTick;
+            return changed.ToArray();
+        }
+
+        void HashBaseline() => World.World.RefreshChunkHashes();
+
+        sealed class HashWindow
+        {
+            public ulong[] Parts;
+            public ChunkHashEntry[] Chunks;
+        }
+
+        const ulong HeldChunk = 1UL << 32;
+
+        static void WriteChunks(LockstepWriter w, ChunkHashEntry[] chunks)
+        {
+            w.Natural((uint)chunks.Length);
+            foreach (var c in chunks)
+            {
+                w.Number(c.X);
+                w.Number(c.Y);
+                w.Hash(c.Held ? HeldChunk | c.Hash : 0);
+            }
+        }
+
+        static ChunkHashEntry[] ReadChunks(LockstepReader r)
+        {
+            var chunks = new ChunkHashEntry[r.Count()];
+            for (int i = 0; i < chunks.Length; i++)
+            {
+                int x = r.Number(), y = r.Number();
+                ulong h = r.Hash();
+                chunks[i] = new ChunkHashEntry(x, y, (h & HeldChunk) != 0, unchecked((uint)h));
+            }
+            return chunks;
+        }
+
+        void FinishWindow(int tick, ulong[] parts, ChunkHashEntry[] chunks)
         {
             if (IsHost)
             {
@@ -320,19 +366,19 @@ namespace Chem.Lockstep
                 w.Number(tick);
                 w.Natural((uint)parts.Length);
                 foreach (ulong p in parts) w.Hash(p);
+                WriteChunks(w, chunks);
                 Send(Link.All, default, w.Span);
                 return;
             }
-            ownHashes[tick] = parts;
-            int window = RollingHash.WindowFor(World.World);
-            DropOldHashes(ownHashes, tick, window);
-            DropOldHashes(hostHashes, tick, window);
+            ownHashes[tick] = new HashWindow { Parts = parts, Chunks = chunks };
+            DropOldHashes(ownHashes, tick);
+            DropOldHashes(hostHashes, tick);
             CheckHash(tick);
         }
 
-        static void DropOldHashes(Dictionary<int, ulong[]> hashes, int tick, int window)
+        static void DropOldHashes(Dictionary<int, HashWindow> hashes, int tick)
         {
-            foreach (int t in hashes.Keys.Where(t => t < tick - window * HashesKept).ToList()) hashes.Remove(t);
+            foreach (int t in hashes.Keys.Where(t => t < tick - RollingHash.Every * HashesKept).ToList()) hashes.Remove(t);
         }
 
         void CheckHash(int tick)
@@ -342,11 +388,28 @@ namespace Chem.Lockstep
             ownHashes.Remove(tick);
             var differ = new List<string>();
             for (int p = 0; p < JoinSnapshot.PartNames.Count; p++)
-                if (p >= expected.Length || expected[p] != here[p]) differ.Add(JoinSnapshot.PartNames[p]);
+                if (p >= expected.Parts.Length || expected.Parts[p] != here.Parts[p]) differ.Add(JoinSnapshot.PartNames[p]);
             if (differ.Count == 0) return;
             DesyncSeen = true;
-            Desynced?.Invoke(new LockstepDesync(tick, differ));
+            var chunks = differ.Contains(JoinSnapshot.PartNames[0]) ? DifferingChunks(tick, expected.Chunks, here.Chunks) : Array.Empty<(int cx, int cy)>();
+            Desynced?.Invoke(new LockstepDesync(tick, differ, chunks));
             if (RecoverDesyncs) RequestSnapshot();
+        }
+
+        IReadOnlyList<(int cx, int cy)> DifferingChunks(int tick, ChunkHashEntry[] host, ChunkHashEntry[] own)
+        {
+            if (ownChunksAt != tick) return Array.Empty<(int cx, int cy)>();
+            var w = World.World;
+            var named = new SortedSet<(int cy, int cx)>();
+            var hostHas = new HashSet<(int cx, int cy)>();
+            foreach (var e in host)
+            {
+                hostHas.Add((e.X, e.Y));
+                if (w.CachedChunkHash(e.X, e.Y) != e) named.Add((e.Y, e.X));
+            }
+            foreach (var e in own)
+                if (!hostHas.Contains((e.X, e.Y))) named.Add((e.Y, e.X));
+            return named.Select(k => (k.cx, k.cy)).ToList();
         }
     }
 }
