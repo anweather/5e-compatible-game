@@ -1,19 +1,16 @@
+// What night does in the rules (World.Night.cs, World.Weather.cs): the daylight by the
+// hour, the light fires shed, snow freezing faster and ice keeping at night, and the
+// checks. The light golden came from sandbox/test/night.test.ts (frozen 2026-10-31).
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What night does in the rules (World.Night.cs, World.Weather.cs): the daylight by the
-    /// hour, the light fires shed, snow freezing faster and ice keeping at night, and the
-    /// checks. The light golden came from sandbox/test/night.test.ts (frozen 2026-10-31).
-    /// </summary>
     [Category("Simulation")]
     public class NightTests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>Runs the world's clock on to this hour of the first day (it starts at day.startHour).</summary>
         static void SetHour(World w, double hour)
         {
             long day = Sky.Ticks(R.Sim, R.Sim.Day.LengthMinutes);
@@ -35,7 +32,6 @@ namespace Chem.Tests
             Assert.That(Sky.InHours(6, 19, 6 * 60) && !Sky.InHours(6, 19, 19 * 60), "from the first hour up to the second");
         }
 
-        /// <summary>A dark field with two fires, as night.test.ts builds it.</summary>
         static World FireField()
         {
             var w = ChemistryTests.Room(30, 20);
@@ -68,7 +64,6 @@ namespace Chem.Tests
             Assert.That(w.CellHash(), Is.EqualTo(FireField().CellHash()), "light is never kept: the cells don't change");
         }
 
-        /// <summary>A field of frozen puddles under a clear sky held from the start, at an hour.</summary>
         static int IceLeft(double hour)
         {
             var w = ChemistryTests.Room(20, 12);

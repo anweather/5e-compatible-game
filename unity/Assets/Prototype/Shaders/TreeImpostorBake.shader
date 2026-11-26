@@ -1,9 +1,9 @@
+// What TreeImpostorBaker draws a tree's full mesh with, one view at a time: its albedo (and coverage) into the first
+// target, and into the second its normal in the tree's own space with, in alpha, how far toward the view the surface
+// stands from the plane through the tree's centre (TreeImpostor.hlsl reads both). Unlit, so the light is the
+// impostor's own at run time. The "world" here is the tree's own space: the baker draws the prefab at the origin.
 Shader "Hidden/Prototype/TreeImpostorBake"
 {
-    // What TreeImpostorBaker draws a tree's full mesh with, one view at a time: its albedo (and coverage) into the first
-    // target, and into the second its normal in the tree's own space with, in alpha, how far toward the view the surface
-    // stands from the plane through the tree's centre (TreeImpostor.hlsl reads both). Unlit, so the light is the
-    // impostor's own at run time. The "world" here is the tree's own space: the baker draws the prefab at the origin.
     Properties
     {
         _MainTex("Albedo", 2D) = "white" {}
@@ -31,8 +31,8 @@ Shader "Hidden/Prototype/TreeImpostorBake"
             TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
             float4 _Color;
             float _Cutoff;
-            float4 _BakeCentre; // xyz the tree's centre, w its radius
-            float4 _BakeDir;    // toward the view
+            float4 _BakeCentre;
+            float4 _BakeDir;
 
             struct Attributes
             {
@@ -59,7 +59,6 @@ Shader "Hidden/Prototype/TreeImpostorBake"
                 o.positionWS = TransformObjectToWorld(v.positionOS.xyz);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.uv = v.uv;
-                // SpeedTree keeps its baked occlusion in the vertex colour, and its shaders darken the albedo by it.
                 o.ao = v.color.rgb;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.tangentWS = float4(TransformObjectToWorldDir(v.tangentOS.xyz), v.tangentOS.w);

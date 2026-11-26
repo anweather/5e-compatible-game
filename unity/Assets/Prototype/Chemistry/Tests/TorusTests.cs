@@ -65,7 +65,6 @@ namespace Chem.Tests
             Assert.That(w.IsActiveAt(0, 0), Is.True);
         }
 
-        // A strip of grass down column x round the south seam, y from H - n to n - 1, on stone.
         static World FireColumn(int n, int x)
         {
             var w = Torus(CertainFire, 1, 4, "stone");
@@ -77,7 +76,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // Every cell's state, row by row (or, mirrored, from the south row up).
         static string Cells(World w, bool mirrored)
         {
             var sb = new System.Text.StringBuilder();
@@ -135,7 +133,7 @@ namespace Chem.Tests
                 "reach 2 round chunk (0, 0): the rows and columns over both seams, row by row in folded order");
 
             var planner = new ChunkPlanner();
-            ChunkStreaming.Apply(w, planner.Plan(w, new[] { (10, -2 * S + 10) })); // chunk row 6, given unfolded
+            ChunkStreaming.Apply(w, planner.Plan(w, new[] { (10, -2 * S + 10) }));
             Assert.That(w.IsActive(0, 4) && w.IsActive(0, 5) && w.IsActive(0, 7) && w.IsActive(0, 1), Is.True);
             Assert.That(w.IsActive(0, 2), Is.False, "4 chunks south of row 6 the short way round: past keep 3");
 

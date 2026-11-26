@@ -34,7 +34,6 @@ namespace Chem.Tests
                 }
             Assert.That(new ChunkKey(0, 0, ChunkKey.MostChunks + 1).Fits, Is.False, "past half a layer's rows would touch the next layer");
             Assert.That(new ChunkKey(ChunkKey.MaxLayer + 1, 0, 0).Fits, Is.False);
-            // The last chunk row of one layer and the first of the next have a row between them that's never filled.
             int top = new ChunkKey(0, 0, ChunkKey.MostChunks).Chunk.cy, bottom = new ChunkKey(1, 0, -ChunkKey.MostChunks).Chunk.cy;
             Assert.That(bottom - top, Is.EqualTo(2));
         }

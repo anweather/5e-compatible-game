@@ -19,7 +19,6 @@ using Debug = UnityEngine.Debug;
 [InitializeOnLoad]
 public static class TreeImpostorBaker
 {
-    /// <summary>The baker's version, kept on each material (_BakeVersion): a species baked by an older one is baked again.</summary>
     public const int BakeVersion = 3;
 
     const int Frames = 12, AtlasPixels = 2048;
@@ -30,7 +29,6 @@ public static class TreeImpostorBaker
         EditorApplication.update += WhenFree;
     }
 
-    // Once, on the first Editor update that isn't importing, compiling or playing.
     static void WhenFree()
     {
         if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
@@ -39,11 +37,9 @@ public static class TreeImpostorBaker
         BakeMissing();
     }
 
-    /// <summary>The species in Generated/Trees (as Build Chemistry Yard repairs them), by name.</summary>
     public static string[] Species() =>
         Directory.Exists(Trees) ? Directory.GetFiles(Trees, "*.prefab").Select(Path.GetFileNameWithoutExtension).OrderBy(n => n, System.StringComparer.Ordinal).ToArray() : new string[0];
 
-    /// <summary>Whether a species' impostor is there and was baked by this baker.</summary>
     public static bool IsBaked(string species)
     {
         var mat = AssetDatabase.LoadAssetAtPath<Material>($"{Folder}/{species}.mat");
@@ -51,10 +47,6 @@ public static class TreeImpostorBaker
             && mat.GetTexture("_AlbedoAtlas") != null && mat.GetTexture("_NormalAtlas") != null;
     }
 
-    /// <summary>
-    /// Bakes every species whose impostor is missing or old; returns how many it baked, or -1 (and logs why) when some
-    /// need baking and there's no GPU to bake them with (-nographics).
-    /// </summary>
     public static int BakeMissing()
     {
         var unbaked = Species().Where(s => !IsBaked(s)).ToArray();
@@ -68,7 +60,6 @@ public static class TreeImpostorBaker
         return unbaked.Length;
     }
 
-    /// <summary>Null when <paramref name="unbaked"/> can be baked on <paramref name="device"/>; otherwise why not.</summary>
     internal static string NoGpuRefusal(IReadOnlyCollection<string> unbaked, GraphicsDeviceType device) =>
         unbaked.Count == 0 || device != GraphicsDeviceType.Null ? null
             : $"TREE IMPOSTORS: FAILED, {string.Join(", ", unbaked)} not baked (or baked by an older baker than {BakeVersion}) and there's " +
@@ -77,16 +68,11 @@ public static class TreeImpostorBaker
 
     const string BakeVersionId = "_BakeVersion";
 
-    // Each species' impostor against its own mesh at the 60 m seam, measured (tools/probe.sh treeimpostors on the nine,
-    // the pixels that differ between a pair at 50 and 120 m, from the ground and from above, at 8 and at noon): with
-    // SpeedTree's occlusion baked in, the Conifer's impostor was 6.4% redder, 5.8% greener and as blue (a little bright and
-    // yellow), the Cypress's 3.6% and 3.5%. The tint takes that back out. A species not measured keeps white.
     static readonly Dictionary<string, Color> Tints = new()
     {
         ["Conifer"] = new Color(1f / 1.064f, 1f / 1.058f, 1f / 0.998f, 1f),
         ["Cypress"] = new Color(1f / 1.036f, 1f / 1.035f, 1f / 0.999f, 1f),
     };
-    /// <summary>Where the atlases and materials go: a Resources folder, so a player build carries them.</summary>
     public const string Folder = "Assets/Prototype/Generated/Resources/" + TreeImpostors.ResourceFolder;
     const string Trees = "Assets/Prototype/Generated/Trees";
 
@@ -96,7 +82,6 @@ public static class TreeImpostorBaker
         foreach (var species in Species()) Debug.Log(Bake(species, Frames, AtlasPixels));
     }
 
-    // One part of the tree to draw: a submesh, where it stands in the tree, and its textures.
     struct Part
     {
         public Mesh Mesh;
@@ -105,10 +90,6 @@ public static class TreeImpostorBaker
         public MaterialPropertyBlock Props;
     }
 
-    /// <summary>
-    /// Bakes species (a prefab in Generated/Trees, as Build Chemistry Yard repairs it) at frames x frames views into
-    /// atlas-pixel atlases; returns a line saying what it made, how long it took and what the atlases hold in memory.
-    /// </summary>
     public static string Bake(string species, int frames, int atlas)
     {
         var watch = Stopwatch.StartNew();
@@ -193,7 +174,6 @@ public static class TreeImpostorBaker
                $"centre {centre}, {parts.Count} parts; baked in {watch.ElapsedMilliseconds} ms; atlases {bytes / (1024f * 1024f):F1} MB in memory";
     }
 
-    // The tree's nearest LOD (all of it, without a LOD group), each submesh with its material's textures.
     static List<Part> PartsOf(GameObject prefab)
     {
         var lod = prefab.GetComponent<LODGroup>();
@@ -213,7 +193,6 @@ public static class TreeImpostorBaker
         return parts;
     }
 
-    // A tree material's textures, colour and alpha clip, as the bake shader takes them.
     static MaterialPropertyBlock PropsOf(Material m)
     {
         var props = new MaterialPropertyBlock();
@@ -224,7 +203,6 @@ public static class TreeImpostorBaker
         return props;
     }
 
-    // The tree's bounding sphere: its box's centre, out to its farthest vertex.
     static (Vector3 centre, float radius) Bounds(List<Part> parts)
     {
         var points = parts.Select(p => (p.Mesh, p.Matrix)).Distinct()
@@ -246,9 +224,6 @@ public static class TreeImpostorBaker
         return tex;
     }
 
-    // Spreads each view's colours and normals into the empty pixels round them, within the view, nearest first, so the
-    // filtering and the mips at the tree's edge blend toward the tree's own colour, not the clear black. Coverage (the
-    // albedo's alpha) stays as baked.
     static void Dilate(Texture2D albedo, Texture2D normal, int size, int tile)
     {
         var a = albedo.GetPixels32();
@@ -281,7 +256,6 @@ public static class TreeImpostorBaker
 
     static readonly (int x, int y)[] Steps = { (1, 0), (-1, 0), (0, 1), (0, -1) };
 
-    // The pixels beside pixel k that are in the same view.
     static IEnumerable<int> Neighbours(int k, int size, int tile)
     {
         int x = k % size, y = k / size;

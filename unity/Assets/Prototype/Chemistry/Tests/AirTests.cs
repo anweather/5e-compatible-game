@@ -1,12 +1,10 @@
+// The air spells on raiders (D16, docs/design/unified-casting.md; the 2026-11-06 playtest: Gust "should push raiders back,
+// and could knock them off the cliff, with diminishing returns", and Whirlwind must do something): World.CastShove and
+// World.LiftInTheEye, in the core, so every peer moves the raider alike.
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The air spells on raiders (D16, docs/design/unified-casting.md; the 2026-11-06 playtest: Gust "should push raiders back,
-    /// and could knock them off the cliff, with diminishing returns", and Whirlwind must do something): World.CastShove and
-    /// World.LiftInTheEye, in the core, so every peer moves the raider alike.
-    /// </summary>
     [Category("Simulation")]
     public class AirTests
     {
@@ -38,7 +36,6 @@ namespace Chem.Tests
         [Test]
         public void AGustThrowsARaiderOverTheEdge()
         {
-            // A ledge: the land drops 6 steps (3 m) past x 8, so a shove from the top takes the hound over and the fall hurts it.
             var w = new World(R, 30, 8, 5, "dirt");
             var land = new int[30 * 8];
             int step = R.Sim.WaterUnitsPerStep;
@@ -95,8 +92,6 @@ namespace Chem.Tests
         [Test]
         public void FromUpOnAWallALineGoesOverItAndFromTheGroundTheWallStopsIt()
         {
-            // A stone wall three cells thick (x 4 to 6). Cast from its top (the caster's cell, x 4, is the wall's), a Gust goes
-            // over the rest of it and knocks the hound beyond back; cast from the ground before it, the wall stops the line.
             var w = new World(R, 30, 8, 5, "dirt");
             for (int x = 4; x <= 6; x++) w.At(x, 3).T = "stone";
             Assert.That(w.IsBlocking(w.At(5, 3)), "stone blocks");
@@ -115,7 +110,6 @@ namespace Chem.Tests
         [Test]
         public void ALineReachesAFlyerOverWhatStopsIt()
         {
-            // A tree across the bolt's way: on the ground it stops the line, but the ash wing flies over it, and the bolt reaches it.
             var w = HoldTests.Field();
             var at = (x: w.HoldSite.Heart.x - 30, y: w.HoldSite.Heart.y - 30);
             w.Paint(at.x + 4, at.y, "tree");

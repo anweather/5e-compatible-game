@@ -1,11 +1,9 @@
+// Frame times summed up: how many, the mean, the 50th, 95th and 99th percentiles and the
+// worst, in milliseconds. Shared by FpsProbe and PerfScenario (player builds) and the
+// Editor probe scenarios (ProbeScenario, docs/FAST_LOOP.md).
 using System.Collections.Generic;
 using System.Linq;
 
-/// <summary>
-/// Frame times summed up: how many, the mean, the 50th, 95th and 99th percentiles and the
-/// worst, in milliseconds. Shared by FpsProbe and PerfScenario (player builds) and the
-/// Editor probe scenarios (ProbeScenario, docs/FAST_LOOP.md).
-/// </summary>
 public readonly struct FrameStats
 {
     public int Count { get; }
@@ -25,7 +23,6 @@ public readonly struct FrameStats
         WorstMs = worst;
     }
 
-    /// <summary>The stats of a list of frame times in ms (left unsorted); all zero for no frames.</summary>
     public static FrameStats Of(IReadOnlyCollection<float> frameMs)
     {
         if (frameMs.Count == 0) return new FrameStats(0, 0f, 0f, 0f, 0f, 0f);
@@ -34,7 +31,6 @@ public readonly struct FrameStats
         return new FrameStats(sorted.Count, sorted.Average(), At(0.5f), At(0.95f), At(0.99f), sorted[sorted.Count - 1]);
     }
 
-    /// <summary>The slowest <paramref name="count"/> frames in ms, slowest first.</summary>
     public static List<float> Worst(IEnumerable<float> frameMs, int count) =>
         frameMs.OrderByDescending(ms => ms).Take(count).ToList();
 }

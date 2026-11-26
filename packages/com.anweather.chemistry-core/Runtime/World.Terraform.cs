@@ -7,12 +7,6 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>
-        /// Raises or digs every cell of a terraform spell aimed at (x, y): by Raise or Dig
-        /// steps (times the charge), or (Height) up to that height (2 more per charge level),
-        /// leaving higher cells alone. A ramp rises a step a cell from the first up to that height, and
-        /// cells holding open water rise only to Stepping (stepping stones) when it is set.
-        /// </summary>
         void Terraform(SpellDef s, List<(int x, int y)> cells, int x, int y, int charge)
         {
             bool toHeight = s.Height.HasValue;
@@ -32,11 +26,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// A blast's crater at (x, y), like crater in the TS: the ground dug Depth steps in the
-        /// middle, tapering to none past Radius, in row order; then its middle becomes its Leaves (lava),
-        /// unless that is blocking. Nothing for a null crater.
-        /// </summary>
         public void Crater(int x, int y, CraterDef crater)
         {
             if (crater == null) return;
@@ -51,19 +40,11 @@ namespace Chem
             if (mid != null && !IsBlocking(mid)) mid.T = crater.Leaves;
         }
 
-        /// <summary>
-        /// A held tool's swing at (x, y): one step down, at the tool's strength (items.json "use": "dig").
-        /// Nothing for an item that doesn't dig (a mod removed it).
-        /// </summary>
         public void Dig(int x, int y, ItemDef tool)
         {
             if (tool != null && tool.Use == ItemUses.Dig) Reshape(x, y, -1, null, tool.Strength, tool.Name);
         }
 
-        /// <summary>
-        /// Steps at distance d (in squares) from the middle of a hill or crater of the given
-        /// radius: all of them in the middle, rounding up toward the edge, none past it.
-        /// </summary>
         static int Tapered(int steps, int d, int radius)
         {
             if (d > radius) return 0;
@@ -71,15 +52,6 @@ namespace Chem
             return Math.Sign(steps) * ((size * (radius + 1 - d) + radius) / (radius + 1));
         }
 
-        /// <summary>
-        /// Raises (n &gt; 0) or digs (n &lt; 0) one cell by n steps, clamped to the sim's height
-        /// range. A terrain that uproots (a tree, a cabin's log wall) turns to its UprootsTo
-        /// first, and one that shatters (a window pane) shatters. Blocking terrain and machines can't be shaped. Digging strips the cover and
-        /// turns the terrain to its dugTo; raised ground spills its water onto its neighbours.
-        /// A cell that ends up blocking loses its cover and fire. A dig weaker than the terrain's
-        /// hardness (materials.json) leaves it as it is: soft ground digs, rock needs strength 3,
-        /// metal and bedrock (hardness 0) never dig. Returns whether it changed.
-        /// </summary>
         public bool Reshape(int x, int y, int n, string terrain = null, int strength = 1, string by = null)
         {
             var c = At(x, y);
@@ -101,7 +73,6 @@ namespace Chem
             return true;
         }
 
-        // A plant shaped under is uprooted first (its terrain becomes UprootsTo); true if it was.
         bool Uproot(Cell c)
         {
             var t = TerrainOf(c);
@@ -113,8 +84,6 @@ namespace Chem
 
         static bool Unshapeable(TerrainDef t) => t.Has("blocking") || t.Has("machine");
 
-        // Digging (n below 0) harder ground than the dig's strength, or what never digs (hardness 0, walls,
-        // machines): refused, and said once a tick, naming the spell or tool that tried (by) when there is one.
         bool TooHard(TerrainDef t, int n, int strength, string by)
         {
             bool never = t.Hardness <= 0 || Unshapeable(t);
@@ -128,7 +97,6 @@ namespace Chem
             return true;
         }
 
-        // A reshaped cell that's now a wall loses its cover; a wall, or bare ground that can't burn, its fire.
         void SettleReshaped(Cell c)
         {
             if (IsBlocking(c)) c.Cover = null;
@@ -139,15 +107,9 @@ namespace Chem
             }
         }
 
-        /// <summary>Whether a reshape to this height changes nothing: it's the height already, or it would raise a wall under a raider.</summary>
         bool Unmoved(Cell c, int x, int y, int height) =>
             height == c.Height || (height >= Rules.Sim.Height.BlockAt && RaiderAt(x, y) != null);
 
-        /// <summary>
-        /// Moves all of a cell's water (ice melts) onto the open cells around it: one unit at a
-        /// time round each ring of neighbours, nearest ring first, in N, E, S, W order. Nothing is
-        /// lost unless the whole world is full.
-        /// </summary>
         void SpillWater(int x, int y)
         {
             var c = At(x, y);
@@ -164,7 +126,6 @@ namespace Chem
             }
         }
 
-        // The open cells around a ring not yet seen, in N, E, S, W order round each cell.
         List<(int x, int y)> NextRing(List<(int x, int y)> ring, HashSet<long> seen)
         {
             var next = new List<(int x, int y)>();
@@ -177,7 +138,6 @@ namespace Chem
             return next;
         }
 
-        // Pours units onto a ring one at a time round and round until they're gone or it's full; returns what's left.
         int PourRound(Cell from, List<(int x, int y)> next, int units, int max)
         {
             int kind = from.Liquid;

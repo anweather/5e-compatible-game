@@ -16,9 +16,7 @@ public class CastCamera : CinemachineExtension
     Vector3 lastAt, heldAt;
     Quaternion lastTurn = Quaternion.identity, heldTurn = Quaternion.identity;
 
-    /// <summary>The lens's tightening now (degrees), for the probe.</summary>
     public float Tightening { get; private set; }
-    /// <summary>The charge shake's size now (m), for the probe.</summary>
     public float ChargeShake { get; private set; }
 
     protected override void PostPipelineStageCallback(CinemachineVirtualCameraBase vcam, CinemachineCore.Stage stage, ref CameraState state, float deltaTime)
@@ -59,12 +57,10 @@ public class CastCamera : CinemachineExtension
         state.PositionCorrection += state.GetFinalOrientation() * offset;
     }
 
-    // Still through a hit-stop, whatever the wizard does, then back to the live view without a jump.
     void Holding(ref CameraState state, float deltaTime)
     {
         if (beats.Stopped)
         {
-            // Where it was last drawn: this frame may already have moved it.
             if (!holding)
             {
                 heldAt = lastAt;

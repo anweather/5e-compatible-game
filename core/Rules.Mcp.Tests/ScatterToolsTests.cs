@@ -1,3 +1,4 @@
+// scatter (docs/design/events-and-placing.md 2b): "50 trees near the lake" picks cells now and writes them as a lay row.
 using System.Linq;
 using Chem.Mcp;
 using Newtonsoft.Json.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>scatter (docs/design/events-and-placing.md 2b): "50 trees near the lake" picks cells now and writes them as a lay row.</summary>
     [Category("Simulation")]
     public class ScatterToolsTests
     {

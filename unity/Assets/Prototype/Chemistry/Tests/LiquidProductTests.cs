@@ -1,15 +1,13 @@
+// A liquid's products (docs/design/primitives.md §3, P1 and P3; Rules.Liquids.cs, World.Liquids.cs):
+// hot {for} lights what it touches while it's hot, then cools; freezes turns it into a terrain or a
+// cover where water would freeze; sets {into, after} hardens it into a terrain where it lies. All of
+// them through the material verbs and the fire and cold rows, never a rule for one liquid; the
+// base lava stays terrain (J-062).
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// A liquid's products (docs/design/primitives.md §3, P1 and P3; Rules.Liquids.cs, World.Liquids.cs):
-    /// hot {for} lights what it touches while it's hot, then cools; freezes turns it into a terrain or a
-    /// cover where water would freeze; sets {into, after} hardens it into a terrain where it lies. All of
-    /// them through the material verbs and the fire and cold rows, never a rule for one liquid; the
-    /// base lava stays terrain (J-062).
-    /// </summary>
     [Category("Simulation")]
     public class LiquidProductTests
     {
@@ -17,7 +15,6 @@ namespace Chem.Tests
         static ModBudgets budgets;
         static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
 
-        // A mod's lava-like liquid: thick, hot for a while, set into rock after.
         const string MagmaRow = @"""magma"": { ""name"": ""Magma"", ""thick"": 2, ""heap"": 3, ""soaks"": false, ""floats"": false,
             ""hot"": { ""for"": 160 }, ""sets"": { ""into"": ""rock"", ""after"": 300 }, ""look"": { ""color"": [0.9, 0.3, 0.05] } }";
         // A mod's syrup that freezes into a cover of its own.
@@ -32,7 +29,6 @@ namespace Chem.Tests
 
         static Rules Syrup() => WithAlso(", " + CandyCover, SyrupRow, HoneyRow);
 
-        // Grass dug a step deeper every 4 cells eastward from x = 8, to -6 at x = 32.
         static World Slope(Rules rules)
         {
             var w = new World(rules, 64, 64, 7, "grass");

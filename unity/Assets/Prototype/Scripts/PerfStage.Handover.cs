@@ -13,8 +13,6 @@ public partial class PerfStage
 {
     const float HandoverEyeUp = 20f, HandoverSettle = 2.5f;
 
-    // Target chunks and the way the wizard stands off from each (in chunks): three on the open grassland, and the
-    // massif's north crest seen from the meadow inside it (from the foothills outside, the ring's steep face hid it).
     static readonly (string name, int cx, int cy, int dx, int dy)[] HandoverTargets =
     {
         ("grass-east", 100, 85, -1, 0),

@@ -103,7 +103,6 @@ public class PlayerModsProbe : LooksModProbe
         puppet.Face(spot + Vector3.forward * 10f);
     }
 
-    // One stat for the asker's slot by set_player, into the room as a mod on top of the others; "normal" sets each back.
     IEnumerator Set(string stat, string value)
     {
         if (Filming) Metric("film_at_" + stat, FilmedSeconds);
@@ -135,7 +134,6 @@ public class PlayerModsProbe : LooksModProbe
         if (airs != null) yield return JumpMeasure(true, null, airs);
     }
 
-    // Walks forward for Walk seconds from the spot and gives the ground covered.
     IEnumerator WalkMeasure(System.Action<float> walked)
     {
         Home();
@@ -150,7 +148,6 @@ public class PlayerModsProbe : LooksModProbe
         yield return Wait(0.4f);
     }
 
-    // A jump through the Starter Assets input, as the jump button does; with air, an air jump asked every 0.3 s near each top.
     IEnumerator JumpMeasure(bool air, System.Action<float> peak, System.Action<int> taken)
     {
         Home();

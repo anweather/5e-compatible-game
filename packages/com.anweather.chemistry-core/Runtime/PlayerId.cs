@@ -9,26 +9,19 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// A player's stable id: 1 to 64 of a-z, 0-9, '-' and '_', compared as written. Not a session's name: "p" and digits
-    /// (NetChem.PlayerName's) and "solo" (TriggerDef.SoloPlayer) are refused, so the two can't be taken for each other.
-    /// </summary>
     public readonly struct PlayerId : IEquatable<PlayerId>, IComparable<PlayerId>
     {
         public const int MostLength = 64;
-        /// <summary>The bytes an id is made from (New): 128 bits, as 32 hex digits.</summary>
         public const int Bytes = 16;
 
         readonly string value;
 
         PlayerId(string value) => this.value = value;
 
-        /// <summary>The id as written; null for none (default).</summary>
         public string Value => value;
 
         public bool IsNone => value == null;
 
-        /// <summary>A new id from <see cref="Bytes"/> random bytes the caller makes (the core draws none): lowercase hex.</summary>
         public static PlayerId New(byte[] random)
         {
             if (random == null || random.Length != Bytes) throw new ArgumentException($"an id is made from {Bytes} random bytes", nameof(random));
@@ -36,7 +29,6 @@ namespace Chem
             return new PlayerId(string.Concat(random.Select(b => b.ToString("x2", CultureInfo.InvariantCulture))));
         }
 
-        /// <summary>An id as written in a save; false, and none, if it isn't one (Problem says why).</summary>
         public static bool TryParse(string text, out PlayerId id)
         {
             id = default;
@@ -45,10 +37,8 @@ namespace Chem
             return true;
         }
 
-        /// <summary>An id as written; throws FormatException, saying why, if it isn't one.</summary>
         public static PlayerId Parse(string text) => TryParse(text, out var id) ? id : throw new FormatException(Problem(text));
 
-        /// <summary>Why this isn't a player id; null if it is.</summary>
         public static string Problem(string text)
         {
             if (string.IsNullOrEmpty(text)) return "a player id isn't empty";
@@ -59,7 +49,6 @@ namespace Chem
             return null;
         }
 
-        // What a session names a player (NetChem.PlayerName's "p0", TriggerDef.SoloPlayer's "solo"): never an id.
         static bool IsSessionName(string text) =>
             text == TriggerDef.SoloPlayer || (text.Length > 1 && text[0] == 'p' && text.Skip(1).All(c => c >= '0' && c <= '9'));
 

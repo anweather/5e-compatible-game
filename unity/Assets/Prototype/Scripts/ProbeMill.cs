@@ -7,9 +7,7 @@ using UnityEngine;
 // tell milling about from standing frozen and from jittering on the spot (CreatureBrain's Flee).
 public sealed class MillWatch
 {
-    /// <summary>Below this an animal is stood still, m/s; turns slower than this (rad/s) don't count as turns.</summary>
     const float StoodStill = 0.3f, Turning = 0.3f;
-    /// <summary>What milling about takes: on the move this share of the time and no more than this many reversals a second.</summary>
     const float LeastMoving = 0.25f, MostFlipsPerSecond = 2f;
 
     float3 last;
@@ -17,9 +15,7 @@ public sealed class MillWatch
     bool started;
 
     public float Seconds { get; private set; }
-    /// <summary>Metres walked.</summary>
     public float Walked { get; private set; }
-    /// <summary>How many times its turning swung from one way to the other.</summary>
     public int Flips { get; private set; }
     public float MovingShare => Seconds > 0f ? moving / Seconds : 0f;
     public float FlipsPerSecond => Seconds > 0f ? Flips / Seconds : 0f;
@@ -39,8 +35,6 @@ public sealed class MillWatch
     }
 }
 
-// A corner of the real valley to back an animal into: walkable, walled in (trees, water, rock,
-// the coast) on most sides, with a clear way in. Found on the land itself, nearest first.
 public readonly struct MillCorner
 {
     const int Rays = 16;
@@ -48,7 +42,6 @@ public readonly struct MillCorner
     const int MostOpen = 5, LeastWalled = 7;
 
     public readonly float2 At;
-    /// <summary>The way out, a unit direction.</summary>
     public readonly float2 Open;
     public readonly int Walled;
 
@@ -78,7 +71,6 @@ public readonly struct MillCorner
         return found;
     }
 
-    // A dead end: nothing but wall behind and to the sides, one way out in front.
     static bool Look(ICreatureGround ground, float2 at, out float2 open, out int walled)
     {
         open = default;
@@ -118,10 +110,6 @@ public readonly struct MillCorner
     }
 }
 
-// The probe's millclip scenario: for Andrew's board, a film of an animal with nowhere left to run
-// (CreatureBrain's Flee), same corner, same camera, each run. Three deer backed into a corner of
-// the valley by the wizard, then two deer on a leash in the open with the wizard at their home.
-// Each take's watch goes in as metrics.
 public class MillClipProbe : ClipProbe
 {
     const float TakeSeconds = 12f, FirstSeconds = 2f, LeashMetres = 7f;
@@ -150,7 +138,6 @@ public class MillClipProbe : ClipProbe
         yield return EndFilm();
     }
 
-    // The wizard in the corner's way out, the camera to one side above it.
     IEnumerator Corner(ValleyFauna fauna, MillCorner corner)
     {
         var stand = MillPlaces.Stand(grid, corner);
@@ -164,7 +151,6 @@ public class MillClipProbe : ClipProbe
         yield return Watch(fauna, herd, "corner");
     }
 
-    // Open ground: two deer leashed to a spot, the wizard just outside the leash.
     IEnumerator Leash(ValleyFauna fauna)
     {
         var home = MillPlaces.Meadow;
@@ -206,16 +192,13 @@ public class MillClipProbe : ClipProbe
     }
 }
 
-// Where the mill scenarios stand and look, shared by fauna and millclip.
 public static class MillPlaces
 {
     public const float SearchRange = 160f;
     const float WizardOut = 7f;
 
-    /// <summary>Open meadow east of the yard, nothing to run into for a leash's length.</summary>
     public static readonly float2 Meadow = new(27f, 26f);
 
-    /// <summary>Where the wizard stands to back an animal into a corner: in its way out.</summary>
     public static Vector3 Stand(ChemGrid grid, MillCorner corner)
     {
         var at = corner.At + corner.Open * WizardOut;
@@ -224,7 +207,6 @@ public static class MillPlaces
         return p;
     }
 
-    /// <summary>A camera to one side of the way in, above the wizard, on the corner.</summary>
     public static void Film(ChemGrid grid, MillCorner corner, out Vector3 eye, out Vector3 look)
     {
         look = new Vector3(corner.At.x, 0f, corner.At.y);

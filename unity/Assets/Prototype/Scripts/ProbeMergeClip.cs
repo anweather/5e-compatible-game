@@ -21,7 +21,6 @@ public class MergeClipProbe : HandsClipProbe
         Check("three_different_merges", merges.Distinct().Count() == 3, string.Join(", ", merges));
     }
 
-    // Attunes off the film, then both hands' triggers (or bumpers) held till the merge has slammed and a charge or two, let go.
     IEnumerator Take(string left, string right, bool bumpers, List<string> merges)
     {
         film.Keeping = false;
@@ -56,7 +55,6 @@ public class MergeClipProbe : HandsClipProbe
         for (float s = 0f; s < 4f && (Core.HandsOf(Me).Holds[hand] != element || Core.HandsOf(Me).AttuneLeft > 0); s += Time.deltaTime) yield return null;
     }
 
-    // The right hand's button and the left's: the triggers, or the bumpers.
     void Both(bool bumpers, bool right, bool left)
     {
         var state = new GamepadState();

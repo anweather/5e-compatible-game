@@ -20,12 +20,9 @@ using UnityEngine;
 public class Vitals : MonoBehaviour
 {
     public const float StaminaMax = 100f, MagicMax = 100f;
-    /// <summary>Stamina that comes back each second.</summary>
     public const float StaminaRegen = 12f;
-    // The sandbox's health coming back: after this long unhurt, this much a second.
     const float RecoverAfter = 4f, RecoverPerSecond = 2f;
 
-    /// <summary>The sandbox: nothing runs out.</summary>
     public bool infinite = true;
 
     public float Health { get; private set; } = 12f;
@@ -34,12 +31,9 @@ public class Vitals : MonoBehaviour
     public float Stamina { get; private set; } = StaminaMax;
     public float Magic { get; private set; } = MagicMax;
 
-    /// <summary>The health upgrades add now, for the HUD.</summary>
     public int ExtraHealth { get; private set; }
-    /// <summary>When the maximum last went up (unscaled time), for the HUD's flash.</summary>
     public float HealthGrewAt { get; private set; } = float.NegativeInfinity;
 
-    /// <summary>Health over the wizard's own, from a run's upgrades (ProgressKeeper): it comes with its maximum, and goes with it.</summary>
     public void SetExtraHealth(int extra)
     {
         float before = HealthMax, maximum = baseHealth + extra;
@@ -50,28 +44,21 @@ public class Vitals : MonoBehaviour
         Health = Mathf.Clamp(Health + maximum - before, 1f, maximum);
     }
 
-    /// <summary>The wizard's breath under water (null until Start has read the rules).</summary>
     public Breath Breath { get; private set; }
 
     float lastHurt = float.NegativeInfinity;
     Downed down = new(null);
 
-    /// <summary>Health ran out: the wizard is down (WizardDown).</summary>
     public event System.Action Fell;
-    /// <summary>The wizard is up again, full: its time down is over, or an online reset ended it.</summary>
     public event System.Action Rose;
-    /// <summary>Its time down is over: it comes back at the yard, just after <see cref="Rose"/>.</summary>
     public event System.Action Respawned;
 
-    /// <summary>The wizard is down, and takes no more harm until it's back.</summary>
     public bool IsDown => down.IsDown;
 
-    /// <summary>What the log says of the last fall.</summary>
     public string FellLine { get; private set; } = HealthRanOut;
 
     const string HealthRanOut = "You fall, out of health";
 
-    /// <summary>Takes damage before the wizard does, and returns what's left over (Shapeshift's animal form).</summary>
     public System.Func<float, float> Absorb { get; set; }
 
     void Start()
@@ -84,10 +71,6 @@ public class Vitals : MonoBehaviour
         Health = HealthMax;
     }
 
-    /// <summary>
-    /// Takes stamina for an effort (a dodge roll, DodgeRoll); false, taking nothing, if there isn't
-    /// that much left. Free while infinite.
-    /// </summary>
     public bool TrySpendStamina(float amount)
     {
         if (infinite) return true;
@@ -96,8 +79,6 @@ public class Vitals : MonoBehaviour
         return true;
     }
 
-    /// <summary>Gives back up to <paramref name="amount"/> health (scripts and the probe).</summary>
-    /// <summary>Everything full again (an online reset: OnlineReset).</summary>
     public void Refill()
     {
         Health = HealthMax;
@@ -110,7 +91,6 @@ public class Vitals : MonoBehaviour
 
     public void Heal(float amount) => Health = Mathf.Min(HealthMax, Health + Mathf.Max(0f, amount));
 
-    /// <summary>Takes <paramref name="amount"/> health away; at none left the wizard falls.</summary>
     public void Hurt(float amount)
     {
         if (amount <= 0f || IsDown) return;
@@ -119,10 +99,6 @@ public class Vitals : MonoBehaviour
         if (Health <= 0f) GoDown(HealthRanOut);
     }
 
-    /// <summary>
-    /// Down at once whatever its health, as what knocks a wizard over doesn't hurt it (the dragon's breath: nobody
-    /// dies of it, and nothing an animal shape could soak). <paramref name="line"/> is what the log says.
-    /// </summary>
     public void KnockDown(string line)
     {
         if (IsDown) return;
@@ -150,10 +126,6 @@ public class Vitals : MonoBehaviour
         Health = Mathf.Min(HealthMax, Health + RecoverPerSecond * Time.deltaTime);
     }
 
-    /// <summary>
-    /// A frame of breathing, the head under water or not (SurfaceEffects): out of breath, the wizard
-    /// drowns, hurt every few seconds until its head comes out.
-    /// </summary>
     public void Breathe(bool headUnder, float seconds)
     {
         if (Breath == null || IsDown) return;
@@ -165,7 +137,6 @@ public class Vitals : MonoBehaviour
         TakeDamage(damage);
     }
 
-    /// <summary>The wizard is hurt: an animal shape takes it first; the rest comes off health.</summary>
     public void TakeDamage(float amount)
     {
         if (amount <= 0f || IsDown) return;

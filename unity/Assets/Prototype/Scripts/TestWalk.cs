@@ -17,16 +17,12 @@ public sealed class TestWalk
 
     TestWalk(List<Vector2Int> path) => this.path = path;
 
-    /// <summary>The cells of the path, start to end; none when there's no way.</summary>
     public int Length => path.Count;
 
-    /// <summary>Whether the wizard has come to the end of the path.</summary>
     public bool Done => next >= path.Count - 1;
 
-    /// <summary>A walk from one cell to another, on dry ground if it can, or null when no way is found inside the box round them.</summary>
     public static TestWalk To(ChemGrid grid, Vector2Int from, Vector2Int to) => Find(grid, from, to, false) ?? Find(grid, from, to, true);
 
-    // Dry ground only, or through water too (a wizard swims a river with no bridge on the way).
     static TestWalk Find(ChemGrid grid, Vector2Int from, Vector2Int to, bool swim)
     {
         var world = grid.World;
@@ -70,13 +66,11 @@ public sealed class TestWalk
         return new TestWalk(cells);
     }
 
-    /// <summary>The stick for this frame (the camera's way, as a controller's), and whether to jump.</summary>
     public Vector2 Stick(ChemGrid grid, Transform wizard, Transform cam, float dt, out bool jump)
     {
         jump = false;
         if (Done) return Vector2.zero;
         var at = grid.CellAt(wizard.position);
-        // On along the path past the cells it has reached.
         for (int k = next; k < Mathf.Min(path.Count, next + 24); k++)
             if ((path[k] - at).sqrMagnitude <= 2) next = k;
         var goal = path[Mathf.Min(path.Count - 1, next + Ahead)];

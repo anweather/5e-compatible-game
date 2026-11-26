@@ -22,7 +22,6 @@ public class Carryable : MonoBehaviour
     [Tooltip("Sending stones: the other stone of the pair.")]
     public Carryable partner;
 
-    // How long after leaving a hand it ignores the wizard who threw it, so it clears them.
     const float ClearHolderSeconds = 0.4f;
 
     PhysicsProp prop;
@@ -31,19 +30,13 @@ public class Carryable : MonoBehaviour
     Transform restParent;
 
     public ItemDef Def { get; private set; }
-    /// <summary>Its physics prop (the rules side, its kind and its stable id).</summary>
     public PhysicsProp Prop => prop;
     public ChemGrid Grid => prop.grid;
-    /// <summary>Its network half, or null in a scene without networking.</summary>
     public NetItem Net { get; private set; }
-    /// <summary>Online, whether picking up, letting go and using it go through the host.</summary>
     public bool Online => Net != null && Net.Online;
-    /// <summary>Online on a client: the host's copy is the real one.</summary>
     public bool Puppet => prop.Puppet;
-    /// <summary>Who has it in hand, or null when it lies about.</summary>
     public ItemHolder Holder { get; private set; }
     public string Name => Def != null ? Def.Name : name;
-    /// <summary>What it does in hand (ItemLight, Spyglass, SendingStone, DancingLights).</summary>
     public ItemUse[] Uses { get; private set; } = System.Array.Empty<ItemUse>();
 
     void Awake()
@@ -75,11 +68,8 @@ public class Carryable : MonoBehaviour
         if (prop != null && prop.grid != null) prop.grid.RulesChanged -= ReadRules;
     }
 
-    /// <summary>Raised after a live mod gave this item new numbers (its light, zoom, how it breaks).</summary>
     public event System.Action DefChanged;
 
-    // A live mod changed the rules: read this item's row again. The behaviours added at Start stay
-    // as they are (a mod that gives a ball a "use" it didn't have needs a restart to add it).
     void ReadRules()
     {
         var def = prop.grid.World.Rules.Item(prop.kind);
@@ -101,7 +91,6 @@ public class Carryable : MonoBehaviour
         }
     }
 
-    /// <summary>Into <paramref name="holder"/>'s hand: kinematic, and part of the holder, so its spells and aim pass it by.</summary>
     public void TakeInto(ItemHolder holder)
     {
         Holder = holder;
@@ -112,10 +101,6 @@ public class Carryable : MonoBehaviour
         OutOfTheCamerasWay(true);
     }
 
-    /// <summary>
-    /// Out of the hand, moving at <paramref name="velocity"/> (a throw, or the wizard's own pace for a drop).
-    /// A puppet stays kinematic: the host's copy flies, and this one follows it.
-    /// </summary>
     public void Release(Vector3 velocity)
     {
         var from = Holder;
@@ -131,7 +116,6 @@ public class Carryable : MonoBehaviour
         body.angularVelocity = Random.insideUnitSphere * 2f;
     }
 
-    /// <summary>Taken out of the world while in a hand (the mod that added it went): the hand is free, with nothing to let go of.</summary>
     public void Lost()
     {
         if (Holder == null) return;
@@ -140,7 +124,6 @@ public class Carryable : MonoBehaviour
         foreach (var use in Uses) use.Released();
     }
 
-    /// <summary>Host: lets go at <paramref name="from"/> (where the holder's own screen had the hand), moving at <paramref name="velocity"/>.</summary>
     public void ReleaseAt(Vector3 from, Vector3 velocity)
     {
         Release(velocity);
@@ -148,9 +131,6 @@ public class Carryable : MonoBehaviour
         body.position = from;
     }
 
-    // Held, on the Ignore Raycast layer: the follow camera's obstacle check (Default only) no longer
-    // hits it and snaps in when the hand swings into its line (Andrew's camera snapping), and rays
-    // pass it by. Its own layers back on letting go.
     void OutOfTheCamerasWay(bool held)
     {
         if (held)
@@ -168,7 +148,7 @@ public class Carryable : MonoBehaviour
         layers.Clear();
     }
 
-    const int HeldLayer = 2; // Ignore Raycast
+    const int HeldLayer = 2;
     readonly List<(GameObject go, int layer)> layers = new();
 
     IEnumerator StopIgnoring(ItemHolder from)

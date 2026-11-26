@@ -1,3 +1,4 @@
+// Live rule changes in a room (World.Room.cs, docs/RULES_MCP.md phase 3): change modes, every peer's own checks, active mods.
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>Live rule changes in a room (World.Room.cs, docs/RULES_MCP.md phase 3): change modes, every peer's own checks, active mods.</summary>
     [Category("Simulation")]
     public class RoomTests
     {
@@ -15,7 +15,6 @@ namespace Chem.Tests
 
         static string Mod(string name) => File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "mods", name + ".json"));
 
-        // A fireball over every cell: past the budget's radius, so the checks refuse it.
         const string Hostile = "{ \"title\": \"Huge fireball\", \"patch\": { \"spells\": [ { \"id\": \"fireball\", \"group\": \"fire\", \"name\": \"Fireball\", \"level\": 3, \"shape\": \"burst\", \"radius\": 20, \"element\": \"fire\" } ] } }";
 
         static World Room(ChangeMode mode, string host = "Ana")
@@ -29,9 +28,6 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState} {Last(w)}";
 
-        // #155: a switch's checks and compose prepared ahead on a worker (World.PrepareSwitch, RoomSwitchPrep.Run) while the
-        // world ticks, then used at the tick the command lands, against a room doing it all in the tick: the same verdicts,
-        // rules, cells and save every tick. A prep made against rules that changed since (a revert in between) isn't used.
         [Test]
         public void APreparedSwitchIsTheSameAsOneDoneInTheTick()
         {
@@ -44,7 +40,6 @@ namespace Chem.Tests
                 [15] = RoomCommand.Revert("Ana", "moonstone"),
                 [20] = RoomCommand.Apply("Ana", "wildfire", Mod("wildfire")),
             };
-            // Each switch-on prepared three ticks ahead, but wildfire's before the revert at 15: stale by its tick.
             var prepAt = new Dictionary<int, int> { [2] = 5, [7] = 10, [13] = 20 };
             var preps = new Dictionary<int, (RoomSwitchPrep prep, System.Threading.Tasks.Task run)>();
             for (int t = 0; t < 30; t++)
@@ -77,9 +72,6 @@ namespace Chem.Tests
             Assert.That(prepped.Save(prepped.Source), Is.EqualTo(plain.Save(plain.Source)));
         }
 
-        // #155: switching a mod on puts in force the rules its checks composed (the rules in force with it), not a second
-        // compose of the base with every mod. They must be the same rules, to the byte, as that second compose made: every
-        // shipped mod switched on in turn, each check against RuleSet.Compose of the mods on so far.
         [Test]
         public void ASwitchPutsInForceTheSameRulesAsComposingThemAgain()
         {
@@ -98,14 +90,11 @@ namespace Chem.Tests
                 w.Step();
             }
             Assert.That(on.Count, Is.GreaterThanOrEqualTo(5), "most shipped mods switch on together");
-            // Taken off and on again, the same.
             Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", on[0].Id)).Done, Is.True);
             Assert.That(w.ApplyRoom(RoomCommand.Apply("Ana", on[0].Id, on[0].Json)).Done, Is.True);
             var reordered = on.Skip(1).Append(on[0]).ToList();
             Assert.That(w.RoomRules.Effective.ToJson(), Is.EqualTo(RuleSet.Compose(R, reordered).Effective.ToJson()));
         }
-
-        // ---------- a rebuilt world ----------
 
         [Test]
         public void ARebuiltWorldKeepsTheModsOnAndEqualsTheOneThatHadThem()
@@ -154,12 +143,9 @@ namespace Chem.Tests
             Assert.That(heard[0].Line, Is.EqualTo(RoomPolicy.RefusedLine(RoomChange.Apply, heard[0].Reason)));
         }
 
-        // ---------- every peer validates ----------
-
         [Test]
         public void TwoPeersRefuseTheHostilePatchAndSwitchOnTheGoodOneAlike()
         {
-            // Two peers, each with its own world and its own checks: only the batches cross between them.
             var a = Room(ChangeMode.Open);
             var b = Room(ChangeMode.Open);
             var ra = a.RoomRules;
@@ -201,8 +187,6 @@ namespace Chem.Tests
             Assert.That(v.Done, Is.False, v.Line);
             Assert.That(w.RoomText(), Is.EqualTo("#room 0 Ana"));
         }
-
-        // ---------- change modes ----------
 
         [Test]
         public void EachChangeModeDecidesWhoseChangeGoesIn()
@@ -254,8 +238,6 @@ namespace Chem.Tests
             w.OpenRoom(ChangeMode.Open, "Ana", R, Budgets);
             Assert.Throws<System.InvalidOperationException>(() => w.OpenRoom(ChangeMode.Locked, "Ana", R, Budgets));
         }
-
-        // ---------- active mods ----------
 
         [Test]
         public void RevertingTheMiddleOfThreeGivesTheRulesOfTheOtherTwo()

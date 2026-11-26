@@ -9,13 +9,8 @@ using System.IO;
 
 namespace Chem
 {
-    /// <summary>A baked map's cells, by chunk: what the World makes every cell from before play, and packs chunks against.</summary>
     public sealed class BakedSource : IChunkSource
     {
-        /// <summary>
-        /// The map legend: one character a cell, the same as the web sandbox's scenarios. Its terrain, water, ice and cover,
-        /// laid as World.PaintLegend lays them; any other character is dirt ('.').
-        /// </summary>
         public static readonly IReadOnlyDictionary<char, (string t, int water, bool frozen, string cover)> Legend = new Dictionary<char, (string, int, bool, string)>
         {
             ['%'] = ("bedrock", 0, false, null),
@@ -41,24 +36,18 @@ namespace Chem
 
         readonly LegendCells made;
         readonly int cw;
-        // Each chunk's legend bytes (row-major, local index), or null when it's all one: then uniform holds it.
         readonly byte[][] blocks;
         readonly byte[] uniform;
 
-        /// <summary>The map's size in cells.</summary>
         public int W { get; }
         public int H { get; }
 
-        /// <summary>Where the map's '@' is (the last one, row by row), or (0, 0) without one.</summary>
         public (int x, int y) Start { get; }
 
-        /// <summary>The map's cells by their FNV-1a, so a save of one map is never loaded over another.</summary>
         public string Version { get; }
 
-        /// <summary>What it holds: the chunks' bytes, a chunk all one character a byte.</summary>
         public long Bytes { get; }
 
-        /// <summary>The chunks all one character, of all of them.</summary>
         public int UniformChunks { get; }
 
         BakedSource(Rules rules, Rows rows)
@@ -101,12 +90,10 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A map's cells from their text (rows top to bottom, one legend character a cell), under the rules it's made with.</summary>
         public static BakedSource FromText(string map, Rules rules)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             var rows = new Rows();
-            // A line at a time where it lies in the text, never the text split into rows (a big map's is 40 M characters).
             for (var rest = map.AsSpan(); ;)
             {
                 int end = rest.IndexOf('\n');
@@ -119,7 +106,6 @@ namespace Chem
             return new BakedSource(rules ?? throw new ArgumentNullException(nameof(rules)), rows.Finish());
         }
 
-        /// <summary>A map folder's cells.txt, read a row at a time so the whole text is never held.</summary>
         public static BakedSource Read(string worldDir, Rules rules)
         {
             var rows = new Rows();
@@ -135,10 +121,6 @@ namespace Chem
             made.Make(b == null ? uniform[k] : b[(Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x)], cell);
         }
 
-        /// <summary>
-        /// The map's rows as they come, into a band of chunks at a time (64 rows): blank rows at either end left off, as the
-        /// map's text is trimmed, a short row's end dirt.
-        /// </summary>
         sealed class Rows
         {
             public readonly List<List<byte[]>> Bands = new List<List<byte[]>>();
@@ -151,7 +133,6 @@ namespace Chem
             {
                 if (row.Length == 0)
                 {
-                    // Kept only if a row follows it (the text is trimmed of blank rows at its ends).
                     if (H > 0) blank++;
                     return;
                 }
@@ -194,10 +175,6 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// Each legend character's cell under the rules a map is made with, as painting it makes it (World.PaintLegend): the
-    /// table a baked map's and a generated map's source (BakedSource, GeneratedSource) make their cells by.
-    /// </summary>
     internal sealed class LegendCells
     {
         readonly struct Made
@@ -228,7 +205,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Sets a freshly reset cell to legend character <paramref name="c"/>'s (one past 255 is dirt, as the map text reads it).</summary>
         public void Make(int c, Cell cell)
         {
             var m = made[c < 256 ? c : '.'];
@@ -241,10 +217,6 @@ namespace Chem
 
     public sealed partial class World
     {
-        /// <summary>
-        /// Lays one map legend character on a cell (BakedSource.Legend; any other character is dirt), as a map's cells are
-        /// painted: its terrain, then its water, ice and cover, each only where the rules let it lie.
-        /// </summary>
         public void PaintLegend(int x, int y, char ch)
         {
             if (!BakedSource.Legend.TryGetValue(ch, out var spec)) spec = BakedSource.Legend['.'];

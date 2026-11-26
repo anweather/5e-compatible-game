@@ -19,27 +19,20 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The woods of a hills map: each cell's chance of a tree, per thousand.</summary>
     public sealed class HillsForest
     {
         const long One = BiomeMath.One;
         const int SaltWood = 0x6f01, SaltTree = 0x6f10;
 
-        /// <summary>Each octave's lattice in cells and its weight (the weights add up to 100).</summary>
         public readonly IReadOnlyList<(int lattice, int weight)> Octaves;
-        /// <summary>The noise (0..100) a wood starts at, and how many points further in it's at its densest.</summary>
         public readonly int Wood, Edge;
-        /// <summary>Trees per thousand cells: at a wood's edge, in its heart, and anywhere else.</summary>
         public readonly int Least, Most, Lone;
-        /// <summary>How many points more the foothills' woods get, most half way up them.</summary>
         public readonly int Foothills;
-        /// <summary>The land (land units) the trees start thinning at, and where none grow.</summary>
         public readonly int TreeLineFrom, TreeLineTo;
 
         readonly int seed, w, h;
         readonly HillsMassif massif;
 
-        /// <summary>map.json's "forest" as read, with its defaults.</summary>
         public sealed class Settings
         {
             public List<(int lattice, int weight)> Octaves = new List<(int, int)> { (576, 55), (192, 30), (64, 15) };
@@ -75,10 +68,6 @@ namespace Chem
             TreeLineTo = s.TreeLineTo;
         }
 
-        /// <summary>
-        /// map.json's "hills" "forest": { "octaves": [[lattice, weight], ...], "wood", "edge", "least", "most", "lone",
-        /// "foothills", "treeLine": [from, to] }; null for none.
-        /// </summary>
         public static HillsForest Read(JObject o, int seed, int cellsW, int cellsH, HillsMassif massif)
         {
             if (o == null) return null;
@@ -102,7 +91,6 @@ namespace Chem
             return new HillsForest(seed, cellsW, cellsH, s, massif);
         }
 
-        /// <summary>The woods' noise at a cell, 0..100 (without the foothills' share): over Wood is a wood.</summary>
         public int Noise(int x, int y)
         {
             long px = (long)PlanGrid.Mod(x, w) * One + One / 2, py = (long)PlanGrid.Mod(y, h) * One + One / 2;
@@ -116,10 +104,6 @@ namespace Chem
             return (int)(sum / One);
         }
 
-        /// <summary>
-        /// A cell's chance of a tree, per thousand, on land <paramref name="land"/> (land units): its wood's (or a lone
-        /// tree's), thinned up to the tree line and in the passes. Roads, water and steep ground aren't asked here.
-        /// </summary>
         public int Density(int x, int y, int land)
         {
             if (land >= TreeLineTo) return 0;
@@ -138,14 +122,9 @@ namespace Chem
             return (int)(d / One * keep / One);
         }
 
-        /// <summary>Whether a cell with this chance (per thousand) stands a tree: its own roll, the same on every peer.</summary>
         public bool Roll(int x, int y, int density) =>
             density > 0 && WorldHash.Hash4(seed, SaltTree, PlanGrid.Mod(x, w), PlanGrid.Mod(y, h)) % 1000 < (uint)density;
 
-        /// <summary>
-        /// The densest wood's chunk: the chunk whose woods' chance, sampled every 8 cells on <paramref name="land"/>, is
-        /// highest, then whose noise is (the first in row order on a tie). For the forest walk and the tests; it reads no chunk.
-        /// </summary>
         public (int cx, int cy) Heart(Func<int, int, int> land)
         {
             const int step = 8, size = ChunkGen.Size;
@@ -159,7 +138,6 @@ namespace Chem
                         for (int i = step / 2; i < size; i += step)
                         {
                             int x = cx * size + i, y = cy * size + j;
-                            // The noise too, so the hearts of woods (all at Most) still have one heart.
                             sum += Density(x, y, land(x, y)) * 1000L + Noise(x, y);
                         }
                     if (sum <= best) continue;
@@ -169,7 +147,6 @@ namespace Chem
             return at;
         }
 
-        /// <summary>How wooded a far sample looks, 0..255: its density over the woods' heart's, at most all.</summary>
         public byte Cover(int density) => (byte)Math.Min(255, density * 255 / Math.Max(1, Most));
     }
 }

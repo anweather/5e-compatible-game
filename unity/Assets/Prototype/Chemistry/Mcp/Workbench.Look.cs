@@ -8,30 +8,17 @@ using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S1168 // a JToken is a collection to the analyser; null here means "no such entry"
+#pragma warning disable S1168
 
 namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        /// <summary>The tables whose entries have a look, by the name set_look takes.</summary>
         static readonly string[] LookTables = { "spells", "terrain", "covers", "gases", "elements", "entities", "items" };
 
-        /// <summary>SetLook for a where or a by alone.</summary>
         public Draft SetLook(string draftId, string id, string param, string value, string table, out string said, (string where, string by) only) =>
             SetLook(draftId, id, param, value, table, out said, (only.where, only.by, null));
 
-        /// <summary>
-        /// One parameter of the look of a spell, terrain, cover, gas, element, entity or item, by id; null removes
-        /// it. Only the parameters its family takes (a bare look's: color), "form" where the family has
-        /// forms, and "mix" wherever an element, cover, gas or terrain takes a colour. With
-        /// <c>only.where</c>, a color or mix holds only there (a scoped look; null takes it back).
-        /// With <c>only.by</c> ("me", a player's slot, or "each"), a color or mix colours only what
-        /// that player's casts make (each: one colour of the mix per player).
-        /// <paramref name="said"/> is what it takes, and anything to know. An element's plain color goes on to every spell of
-        /// that element with a colour of its own, unless <c>only.spells</c> is false: each spell keeps its own otherwise,
-        /// so the element alone leaves every cast the old colour (docs/telemetry/chat-model-2026-11-02.md).
-        /// </summary>
         public Draft SetLook(string draftId, string id, string param, string value, string table, out string said, (string where, string by, bool? spells) only = default)
         {
             var (where, by, spells) = only;
@@ -41,7 +28,6 @@ namespace Chem.Mcp
             var draft = DraftOf(draftId);
             table = LookTableOf(draft, id, table);
             var look = LookIn(table, id, Current(draft, table, id));
-            // A thing with no look yet is a creature: the family that has no prefab to read.
             string family = Str(look["family"]) ?? (IsThingTable(table) ? CreatureFamily : null);
             var takes = Takes(table, family, out var familyOf);
             bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
@@ -72,8 +58,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // The spells of an element that chose their own colour, in force or in the draft: colour takes them along, and without
-        // it they're named, so nobody says every cast changed when none did. Null when there are none.
         string SpellsOfElement(Draft draft, string element, JToken colour, bool? spells)
         {
             var ids = ((JArray)Raw["spells"]).Concat(draft.Patch["spells"] as JArray ?? new JArray())
@@ -97,8 +81,6 @@ namespace Chem.Mcp
                 (wont.Count == 0 ? "" : $" It won't show on {Names(wont)}.");
         }
 
-        // A where as the look keeps it: a known place by id, a cell, or a player by name ("me" is the one
-        // asking), and within so many cells; or the sentence saying what's wrong.
         JObject ScopeOf(string table, string id, string param, string whereJson, bool colours)
         {
             if (!colours)
@@ -152,7 +134,6 @@ namespace Chem.Mcp
             return scope;
         }
 
-        // A by as the look keeps it, {"by": slot or "each"}: "me" is the asking player's slot.
         JObject ByOf(string table, string id, string param, string by, bool byPlayer)
         {
             if (!byPlayer)
@@ -173,8 +154,6 @@ namespace Chem.Mcp
             return new JObject { ["by"] = slot };
         }
 
-        // The plain look takes the value: a colour drops a mix (the patch's here, what's under it when it
-        // composes), and blend needs one. Null stays, as what takes it out of the look under it. Returns the patch's look.
         static JObject SetPlain(JObject look, JObject under, string param, JToken v)
         {
             if (param == "blend" && !HasValue(look["mix"]) && (!HasValue(under["mix"]) || look["mix"] != null))
@@ -191,8 +170,6 @@ namespace Chem.Mcp
 
         static bool HasValue(JToken t) => t != null && t.Type != JTokenType.Null;
 
-        // The scoped look with this where (or by) takes the value (moving to the end); null takes it back,
-        // and blend changes only how its mix mixes. Returns the scoped look, or null once it's gone.
         static JObject SetScoped(JObject look, JObject under, JObject scope, string param, JToken v)
         {
             string key = scope["by"] != null ? "by" : "where";
@@ -200,7 +177,6 @@ namespace Chem.Mcp
             var list = look["scoped"] as JArray ?? new JArray();
             var entry = list.OfType<JObject>().FirstOrDefault(s => JToken.DeepEquals(s[key], keyed));
             entry?.Remove();
-            // One from a mod under this draft: blending it here is this draft's own copy of it.
             if (param == "blend") entry ??= (under["scoped"] as JArray)?.OfType<JObject>().FirstOrDefault(s => JToken.DeepEquals(s[key], keyed))?.DeepClone() as JObject;
             if (param == "blend" && entry?["mix"] == null)
                 throw new RulesToolException("blend mixes a mix's colours into one; give this look a mix first (set_look mix with the same where or by).");
@@ -225,8 +201,6 @@ namespace Chem.Mcp
             return entry;
         }
 
-        // When a mix lands on something that only turns its hue (flames, smoke, a spell's show) and what it
-        // gives is pale or grey: it shows as its nearest hue, or not at all. Null when it shows as asked.
         string PaleMix(string table, string id, LookFamily family, JObject look)
         {
             var mix = LookMix.Parse(look["mix"], ScopedLook.IsTrue(look["blend"]));
@@ -257,8 +231,6 @@ namespace Chem.Mcp
                 $"and elsewhere the plain look holds. A colour a spell chose for its own fire still wins.{lapse}";
         }
 
-        // Why a colour won't show, or null: what it's drawn from now is the family's own art, else the base rules' colour
-        // (the view turns its art by how far the look has moved from the base, not from what mods on have it at).
         string WontShow(string table, string id, LookFamily family, JObject look, JToken colour)
         {
             float[] now = colour.Select(c => (float)c).ToArray();
@@ -266,7 +238,6 @@ namespace Chem.Mcp
             return LookFamilies.WontShow(Budgets.Looks, table, id, family, look["baked"]?.Value<bool>() == true, was, now);
         }
 
-        // Which table an id's look is in: the one named, else the only one holding it.
         string LookTableOf(Draft draft, string id, string table)
         {
             var holding = LookTables.Where(t => Current(draft, t, id) != null).ToList();
@@ -285,7 +256,6 @@ namespace Chem.Mcp
             return holding[0];
         }
 
-        // The entry as it would be with the draft on (the draft holds only the fields it names), else null.
         JToken Current(Draft draft, string table, string id)
         {
             switch (table)
@@ -305,7 +275,6 @@ namespace Chem.Mcp
 
         JToken ElementEntry(string id) => Raw.TryGetValue("elements", out var table) ? table[id] : null;
 
-        // The entry in the draft: only the fields it names, made empty the first time.
         static JObject Entry(Draft draft, string table, string id)
         {
             switch (table)
@@ -328,7 +297,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>The draft's elements as entries by id: a list of new names becomes entries with nothing in them.</summary>
         static JObject Elements(Draft draft)
         {
             if (draft.Patch["elements"] is JObject named) return named;
@@ -347,7 +315,6 @@ namespace Chem.Mcp
             throw new RulesToolException($"The {Single(table)} {id} has no look to change; give it one with {tool} (field look, naming a family from rules/looks.json).");
         }
 
-        // The parameters a look may change: its family's, and "form" where the family has forms.
         List<string> Takes(string table, string family, out LookFamily familyOf)
         {
             familyOf = family == null ? null : Budgets.Looks.Find(table, family);
@@ -366,7 +333,6 @@ namespace Chem.Mcp
 
         static string List(IReadOnlyCollection<string> takes) => takes.Count == 0 ? "nothing yet" : string.Join(", ", takes);
 
-        // A parameter's value as the look keeps it, or the sentence saying what it must be.
         JToken LookValue(string param, JToken v, LookFamily family)
         {
             if (v.Type == JTokenType.Null) return v;
@@ -393,8 +359,6 @@ namespace Chem.Mcp
             }
         }
 
-        // A mix as the look keeps it, [{"color": [r, g, b], "weight": w}, ...], from colours (lists or
-        // "#rrggbb", weighing the same) or {"color", "weight"} objects.
         static JArray MixValue(JToken v)
         {
             const string shape = "mix is a list of colours, such as [\"#ff4020\", \"#2050ff\", \"#30d040\"], or with weights, [{\"color\": [1, 0.3, 0.1], \"weight\": 2}, {\"color\": \"#2050ff\", \"weight\": 1}]; each cell picks one.";
@@ -416,7 +380,6 @@ namespace Chem.Mcp
 
         static bool IsNumber(JToken v) => v.Type == JTokenType.Integer || v.Type == JTokenType.Float;
 
-        /// <summary>[r, g, b] from 0 to 1 (or 0 to 255), or "#rrggbb", as [r, g, b] from 0 to 1; null if it's neither.</summary>
         static JArray Colour(JToken v)
         {
             if (Str(v) is string hex && hex.Trim().TrimStart('#') is string h && h.Length == 6
@@ -430,7 +393,6 @@ namespace Chem.Mcp
 
         static double Channel(double x, double scale) => Math.Round(x / scale, 3);
 
-        // What else the caller should know: where else the colour shows, or where it doesn't.
         static string LookNote(string table, string id, JObject entry, LookFamily family, bool spellsSaid)
         {
             var notes = new List<string>();
@@ -442,9 +404,6 @@ namespace Chem.Mcp
             return notes.Count == 0 ? "" : " " + string.Join(" ", notes);
         }
 
-        // ---------- what describe and list say ----------
-
-        /// <summary>describe's last line for an entry with a look: what draws it and what set_look may change.</summary>
         string LookLine(string table, string id, JToken entry)
         {
             if (!LookTables.Contains(table)) return "";
@@ -462,7 +421,6 @@ namespace Chem.Mcp
                 (familyOf?.Notes != null ? " " + familyOf.Notes : "") + MixAndScopes(entry?["look"] as JObject);
         }
 
-        // What a look's mix and scoped looks are now, for describe.
         static string MixAndScopes(JObject look)
         {
             if (look == null) return "";
@@ -477,7 +435,6 @@ namespace Chem.Mcp
             string.Join(", ", mix.Colours.Select((c, i) => $"{c} {Math.Round(mix.Share(i) * 100)}%")) +
             (mix.Blend ? $", blended like paint into {mix.Blended}" : ", a patchwork");
 
-        /// <summary>list looks: the families by table with the parameters each takes, the bare look, and what takes no colour.</summary>
         List<string> LookLines()
         {
             var looks = Budgets.Looks;

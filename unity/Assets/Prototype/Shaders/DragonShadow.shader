@@ -1,7 +1,7 @@
+// The dragon's shadow (DragonShadow): a soft dark shape on a sheet laid over the ground, worked out here
+// from the sheet's uv with no texture: a body, a tail and two swept wings, its nose toward +v.
 Shader "Prototype/DragonShadow"
 {
-    // The dragon's shadow (DragonShadow): a soft dark shape on a sheet laid over the ground, worked out here
-    // from the sheet's uv with no texture: a body, a tail and two swept wings, its nose toward +v.
     Properties
     {
         _Strength ("How dark", Range(0, 1)) = 0.6
@@ -44,9 +44,7 @@ Shader "Prototype/DragonShadow"
             {
                 float2 p = input.uv;
                 float x = abs(p.x);
-                // The body: narrow, to a long tail behind.
                 float body = x - 0.13 * saturate(1.0 - abs(p.y - 0.25) / 0.75);
-                // A wing: from the shoulder out to its tip, swept back, its trailing edge scalloped.
                 float span = x / 0.92;
                 float lead = 0.42 - span * 0.75, trail = lead - 0.46 * (1.0 - span) - 0.05 * abs(sin(span * 12.0));
                 float wing = max(max(p.y - lead, trail - p.y), span - 1.0);

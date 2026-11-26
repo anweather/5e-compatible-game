@@ -35,7 +35,6 @@ public class CrittersProbe : ProbeScenario
         Metric("butterfly_homes", butterflies);
         Check("butterflies_by_day", critters.Shown.y > 0.6f && critters.Shown.x < 0.05f && butterflies > 50,
             $"butterflies out {critters.Shown.y:0.00}, fireflies {critters.Shown.x:0.00}, {butterflies} butterfly homes near");
-        // Butterflies are a hand's width across: from inside the meadow, at knee height.
         Cut(V(27f, 2.2f, 20f), V(27f, 0.4f, 25f));
         yield return null;
         Shot("butterflies");

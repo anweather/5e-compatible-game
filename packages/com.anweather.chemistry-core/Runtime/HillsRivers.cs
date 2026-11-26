@@ -22,31 +22,20 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The rivers and lakes of a hills map, worked out on a coarse grid when the generator is made.</summary>
     public sealed class HillsRivers
     {
         const long One = BiomeMath.One;
-        /// <summary>The grid's spacing in cells.</summary>
         public const int Grid = 16;
-        /// <summary>No lake at a cell.</summary>
         public const int NoLake = int.MinValue;
 
-        /// <summary>map.json's "hills" "rivers".</summary>
         public sealed class Settings
         {
-            /// <summary>Springs, and how far out from the meadow's edge they rise, in cells.</summary>
             public int Springs = 2, SpringUp = 180;
-            /// <summary>The meadow lake's depth over the meadow's lowest land (land units): the gorge's floor.</summary>
             public int LakeDepth = 32;
-            /// <summary>The gorge's half width in cells and its floor's fall past the crest, in percent.</summary>
             public int GorgeWidth = 110, GorgeFall = 4;
-            /// <summary>A river's depth (land units) at its spring and the most it adds with its catchment.</summary>
             public int Depth = 4, DepthMost = 16;
-            /// <summary>The widest a river's half is, in cells.</summary>
             public int HalfMost = 5;
-            /// <summary>Nodes a filled depression needs to be a lake on the way, and to end the river past the massif.</summary>
             public int MinLake = 24, MinEndLake = 120;
-            /// <summary>The end lake's size in nodes: it fills its basin from the bottom up to this, well under its spill.</summary>
             public int EndLake = 300;
 
             public static Settings Read(JObject o)
@@ -71,49 +60,33 @@ namespace Chem
             }
         }
 
-        /// <summary>A lake: its level (land units), its nodes' count, and whether it ends the river.</summary>
         public sealed class Lake
         {
             public int Id, Level, Nodes;
             public bool End;
-            /// <summary>A node of it (map cells), for a still or a walk to look at.</summary>
             public int X, Y;
         }
 
-        /// <summary>One spring's river, from its spring down to where it ends (a lake, or the river it joins).</summary>
         public sealed class River
         {
-            /// <summary>Its line, Q16 map cells, unwrapped (it runs on past a seam), spring first.</summary>
             public long[] X, Y;
-            /// <summary>Its water's surface at each point (land units), never rising downstream, and its half width (cells).</summary>
             public int[] Surface, Half;
-            /// <summary>The catchment (grid nodes) at each point, growing downstream.</summary>
             public int[] Catchment;
-            /// <summary>Its line's bounding box in cells, unwrapped.</summary>
             public int MinX, MinY, MaxX, MaxY;
-            /// <summary>Whether it joins another river (else it ends in the end lake, or wherever the flow lines ended).</summary>
             public bool Joins;
-            /// <summary>Its length in cells along its line.</summary>
             public int Length;
         }
 
         public IReadOnlyList<River> Rivers => rivers;
         public IReadOnlyList<Lake> Lakes => lakes;
-        /// <summary>The grid's size in nodes.</summary>
         public readonly int GridW, GridH;
         readonly Settings set;
         readonly int w, h;
         readonly int[] land, fill, down, catchment, lakeOf;
         readonly List<River> rivers = new List<River>();
         readonly List<Lake> lakes = new List<Lake>();
-        // The nodes an end lake may not take (near a main road): one that would isn't the end, and the river runs on.
         bool[] dry;
 
-        /// <summary>
-        /// Works the rivers out over <paramref name="landAt"/> (map cells to land units) on a map of
-        /// <paramref name="cellsW"/> × <paramref name="cellsH"/> cells (a torus), from <paramref name="springs"/> (map cells),
-        /// a lake ending them only farther than <paramref name="past"/>'s radius in cells from its centre (the massif's).
-        /// </summary>
         public HillsRivers(Func<int, int, int> landAt, int cellsW, int cellsH, IReadOnlyList<(int x, int y)> springs, Settings settings, (int cx, int cy, int radius) past,
             (IReadOnlyList<(long[] x, long[] y)> lines, int cells) keepDry = default)
         {
@@ -145,10 +118,8 @@ namespace Chem
             BuildMs = timer.ElapsedMilliseconds;
         }
 
-        /// <summary>How long working the rivers out took, in milliseconds (a diagnostic: nothing reads it to decide anything).</summary>
         public long BuildMs { get; }
 
-        /// <summary>A node's land, fill level, the node it drains to (-1 for the lowest) and its catchment.</summary>
         public (int land, int fill, int down, int catchment) Node(int i, int j)
         {
             int k = PlanGrid.Mod(j, GridH) * GridW + PlanGrid.Mod(i, GridW);
@@ -157,7 +128,6 @@ namespace Chem
 
         int Id(int i, int j) => PlanGrid.Mod(j, GridH) * GridW + PlanGrid.Mod(i, GridW);
 
-        // Priority-flood from the lowest node, 8 neighbours round the torus; the nodes in the order they were taken.
         int[] Flood()
         {
             int n = land.Length;
@@ -193,7 +163,6 @@ namespace Chem
             return order;
         }
 
-        // A binary min-heap of nodes by (level, then the order they came in): deterministic, no ties left to chance.
         sealed class MinHeap
         {
             readonly long[] keys;
@@ -246,7 +215,6 @@ namespace Chem
             }
         }
 
-        // The filled depression a ponded node is in: the nodes of the same fill level over their land, joined 8 ways.
         List<int> Depression(int start)
         {
             int level = fill[start];
@@ -267,11 +235,10 @@ namespace Chem
             return list;
         }
 
-        // Each spring's way down: its nodes, the lakes on it and where it ends; then its surface and its line.
         void Trace(IReadOnlyList<(int x, int y)> springs, int cx, int cy, int pastRadius)
         {
             var surfaceAt = new Dictionary<int, int>();
-            var tried = new Dictionary<int, int>(); // a ponded node: its depression's lake id, or -1 for too small
+            var tried = new Dictionary<int, int>();
             foreach (var (sx, sy) in springs)
             {
                 var path = new List<int>();
@@ -284,7 +251,6 @@ namespace Chem
                     if (!visited.Add(at)) break;
                     if (surfaceAt.ContainsKey(at) && path.Count > 1)
                     {
-                        // It joins a river already laid: on one more node, so the two run together.
                         joins = true;
                         if (down[at] >= 0 && surfaceAt.ContainsKey(down[at])) path.Add(down[at]);
                         break;
@@ -294,7 +260,6 @@ namespace Chem
                         if (!tried.TryGetValue(at, out int lake)) lake = TryLake(at, tried, cx, cy, pastRadius);
                         if (lake >= 0 && lakes[lake].End)
                         {
-                            // Down to the end lake in its basin's hollow: the steepest way, or over the basin to the hollow it's in.
                             foreach (int m in wayTo.TryGetValue(at, out var way) ? way : Descend(at))
                             {
                                 if (lakeOf[at] == lake) break;
@@ -312,9 +277,6 @@ namespace Chem
             }
         }
 
-        // Whether the depression a ponded node is in is a lake: a lake id, or -1. On the way, a depression big enough is a
-        // lake at its fill level (it spills on). Past the massif, one big enough ends the river: a lake with no outlet,
-        // filled from its basin's bottom up to EndLake nodes, so it stands well under its spill.
         int TryLake(int at, Dictionary<int, int> tried, int cx, int cy, int pastRadius)
         {
             var nodes = Depression(at);
@@ -327,8 +289,6 @@ namespace Chem
             var lake = new Lake { Id = id, Level = fill[at], Nodes = nodes.Count, End = end, X = at % GridW * Grid, Y = at / GridW * Grid };
             if (end)
             {
-                // The hollow the river comes down to the steepest way, else the nearest other hollow of the basin whose
-                // lake keeps clear of the main roads; none, and the river runs on through.
                 var basin = new HashSet<int>(nodes);
                 var bottom = Bottom(basin, Descend(at));
                 if (!Clear(bottom))
@@ -365,7 +325,6 @@ namespace Chem
 
         bool Clear(List<int> lake) => dry == null || !lake.Exists(m => dry[m]);
 
-        // The nodes within a distance of the lines (Q16 map cells), round the torus: kept dry of an end lake.
         void Dry(IReadOnlyList<(long[] x, long[] y)> lines, int cells)
         {
             dry = new bool[GridW * GridH];
@@ -386,7 +345,6 @@ namespace Chem
                 }
         }
 
-        // A basin's hollows (nodes with no lower neighbour), nearest a node first (over the basin, 8 ways), at most 400.
         List<int> Hollows(HashSet<int> inBasin, int from)
         {
             var list = new List<int>();
@@ -410,7 +368,6 @@ namespace Chem
             return list;
         }
 
-        // The shortest way over a basin (its nodes at its fill level, 8 ways) from a node to a lake's nodes, the node left out.
         List<int> Way(int from, List<int> lake, int level)
         {
             var goal = new HashSet<int>(lake);
@@ -437,7 +394,6 @@ namespace Chem
             return way;
         }
 
-        // Steepest descent over the land from a node to the first pit (no lower neighbour; ties to the lower index).
         List<int> Descend(int from)
         {
             var way = new List<int>();
@@ -457,8 +413,6 @@ namespace Chem
             }
         }
 
-        // An end lake: from the pit a river comes down to in its basin, the lowest nodes of the basin next to what's
-        // taken, until EndLake of them (the lake fills its hollow and on up, as water would).
         List<int> Bottom(HashSet<int> inBasin, List<int> down)
         {
             int low = down.Count > 0 ? down[down.Count - 1] : inBasin.Min();
@@ -470,7 +424,6 @@ namespace Chem
             int lastLand = int.MinValue;
             while (heap.Count > 0)
             {
-                // EndLake nodes, and every node at the last one's level too, so none beside the lake is under its level.
                 if (taken.Count >= set.EndLake && heap.PeekLevel() > lastLand) break;
                 int c = heap.Pop();
                 lastLand = land[c];
@@ -497,8 +450,6 @@ namespace Chem
 
         int HalfOf(int node) => 1 + Math.Min(set.HalfMost - 1, (int)BiomeMath.Sqrt(catchment[node]) / 12);
 
-        // The surface along a path: in a lake its level; else no higher than upstream, its land less its depth, and no lower
-        // than the next lake down (or where it joins a river already laid).
         void Surface(List<int> path, Dictionary<int, int> surfaceAt)
         {
             int count = path.Count;
@@ -527,7 +478,6 @@ namespace Chem
             }
         }
 
-        // A path's line: its nodes unwrapped, corners cut twice (the ends kept), its surface, half width and catchment.
         River Line(List<int> path, Dictionary<int, int> surfaceAt, bool joins)
         {
             int count = path.Count;
@@ -549,7 +499,6 @@ namespace Chem
                 py.Add(y * One + One / 2);
                 ps.Add((long)surfaceAt[node] * One);
                 ph.Add((long)Math.Max(k > 0 ? (int)(ph[k - 1] / One) : 0, HalfOf(node)) * One);
-                // Down to an end lake's hollow the nodes are off the flow lines: the river carries what it had.
                 pc.Add(Math.Max(k > 0 ? pc[k - 1] : 0, catchment[node]));
             }
             for (int pass = 0; pass < 2; pass++) Cut(px, py, ps, ph, pc);
@@ -583,8 +532,6 @@ namespace Chem
             return r;
         }
 
-        // Chaikin's corner cutting on every list alike: each corner replaced by points a quarter and three quarters along
-        // its two sides; the ends kept. Linear, so a surface that never rises still never rises.
         static void Cut(params List<long>[] lists)
         {
             int count = lists[0].Count;
@@ -604,8 +551,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The highest level of a lake on a river round a cell (the grid nodes at its square's corners), or
-        /// <see cref="NoLake"/>: a pit cell there is that lake's water (the view draws its surface flat).</summary>
         public int LakeNear(int x, int y)
         {
             int i = (int)BiomeMath.FloorDiv(x, Grid), j = (int)BiomeMath.FloorDiv(y, Grid);
@@ -619,7 +564,6 @@ namespace Chem
             return best;
         }
 
-        /// <summary>A lake's grid nodes, as (i, j): its cells are the grid squares round them.</summary>
         public List<(int i, int j)> LakeNodes(int id)
         {
             var list = new List<(int, int)>();
@@ -628,8 +572,6 @@ namespace Chem
             return list;
         }
 
-        /// <summary>A lake's level at a cell whose land (without the rivers) is <paramref name="natural"/>: the level where the
-        /// cell is under a lake on a river, else <see cref="NoLake"/>. A pure function of the cell.</summary>
         public int LakeAt(int x, int y, int natural)
         {
             int i = (int)BiomeMath.FloorDiv(x, Grid), j = (int)BiomeMath.FloorDiv(y, Grid);
@@ -645,8 +587,6 @@ namespace Chem
             return best;
         }
 
-        /// <summary>A river placed on the map: its line's offset in cells (a whole map's width or height round a seam), and the
-        /// pieces of its line that may reach the box it was placed for.</summary>
         public struct Placed
         {
             public River River;
@@ -654,20 +594,14 @@ namespace Chem
             public List<int> Pieces;
         }
 
-        /// <summary>How far past a river's line it touches the land, in cells: its widest half, its bank and a ford's ramp.</summary>
         public int Reach => set.HalfMost + Bank + 2;
 
-        /// <summary>How far past a river's line a road's ramp down to a ford may start, in cells.</summary>
         public int FordReach => set.HalfMost + FordRampMost + 2;
 
-        /// <summary>Cells a river's bank leans back over, and the least and most a road's slope down to a ford runs.</summary>
         public const int Bank = 4, FordRamp = 10, FordRampMost = 120;
 
-        /// <summary>Every river that may touch a cell of [x0, x1] × [y0, y1] (map cells, unwrapped), at its copy round the seams,
-        /// with the pieces of it that may (within <see cref="Reach"/>).</summary>
         public List<Placed> Near(int x0, int y0, int x1, int y1) => Near(x0, y0, x1, y1, Reach);
 
-        /// <summary>The same, for pieces within <paramref name="reach"/> cells of the box.</summary>
         public List<Placed> Near(int x0, int y0, int x1, int y1, int reach)
         {
             var near = new List<Placed>();
@@ -688,15 +622,12 @@ namespace Chem
             return near;
         }
 
-        /// <summary>The nearest point on a river to a cell: its distance (Q16 cells, long.MaxValue for none in reach), the
-        /// surface there and the half width there.</summary>
         public struct Hit
         {
             public long Distance;
             public int Surface, Half;
         }
 
-        /// <summary>The nearest river line to a map cell's middle among <paramref name="near"/>.</summary>
         public static Hit Nearest(List<Placed> near, int x, int y, int reach)
         {
             long qx = (long)x * One + One / 2, qy = (long)y * One + One / 2;

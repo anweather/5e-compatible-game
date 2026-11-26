@@ -45,7 +45,6 @@ public static class LinuxBuild
     {
         if (!AssetPackRestore.AllPresent) return Fail("Asset Store packs are missing: run Prototype > Restore Asset Packs first.");
 
-        // Two passes, as PrototypeBuild.BuildYardIfAsked: a first pass's new materials lose their settings.
         if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
         ChemYardBuilder.Build();
         ChemYardBuilder.Build();
@@ -55,7 +54,6 @@ public static class LinuxBuild
         string wanted = Argument("-expect-net-config");
         if (wanted != null && wanted != config) return Fail($"NET CONFIG is {config}, wanted {wanted}.");
 
-        // What WriteStamp will see, before the long part: Player Settings are this build's own.
         string changes = BuildInfo.RunGit("status --porcelain --untracked-files=no -- . :(exclude)ProjectSettings/ProjectSettings.asset");
         if (!string.IsNullOrEmpty(changes)) return Fail($"tracked files changed, so the stamp would be dirty: {changes}");
 
@@ -70,7 +68,6 @@ public static class LinuxBuild
             PlayerSettings.SetGraphicsAPIs(Target, new[] { GraphicsDeviceType.Vulkan });
             string path = $"{Folder}/{Exe}";
             string line = PrototypeBuild.Build(Target, path);
-            // The first build after switching platform can fail on an import; once more fixes it.
             if (!line.Contains(": OK")) line = PrototypeBuild.Build(Target, path);
             if (!line.Contains(": OK")) return false;
         }
@@ -91,14 +88,12 @@ public static class LinuxBuild
         return true;
     }
 
-    // The hash NetCommandLine logs, from the scene settings and prefab lists a player loads.
     static ulong NetConfig()
     {
         EditorSceneManager.OpenScene(Scene, OpenSceneMode.Single);
         var manager = UnityEngine.Object.FindAnyObjectByType<NetworkManager>();
         var config = manager.NetworkConfig;
         config.Prefabs.Initialize();
-        // Starting Netcode registers the player prefab too (NetworkPrefabHandler.RegisterPlayerPrefab).
         config.Prefabs.Add(new NetworkPrefab { Prefab = config.PlayerPrefab });
         return config.GetConfig(false);
     }

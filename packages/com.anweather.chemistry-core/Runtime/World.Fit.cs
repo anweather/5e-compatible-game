@@ -18,20 +18,14 @@ namespace Chem
 {
     public sealed partial class World
     {
-        // The rules the cells are made to fit now; a chunk with a lower Fit was made to fit older ones.
         int fits = 1;
-        // Chunks whose Fit is behind fits.
         int unfitChunks;
-        // The liquids' ids (Cell.Liquid's meaning) under each older fit number a chunk still holds.
         readonly Dictionary<int, string[]> fitLiquids = new Dictionary<int, string[]>();
 
-        /// <summary>The fit number of the rules in force: one more for each switch that could unfit a cell.</summary>
         public int FitNumber => fits;
 
-        /// <summary>The fit number a loaded chunk's cells were last made to fit: FitNumber, or lower while it waits to activate.</summary>
         public int FitOf(int cx, int cy) => ChunkOrThrow(cx, cy).Fit;
 
-        /// <summary>A switch from <paramref name="before"/> that could unfit cells: the active chunks are made to fit now, the rest later.</summary>
         void Refit(Rules before)
         {
             fitLiquids[fits] = before.Liquids.Select(l => l.Id).ToArray();
@@ -48,8 +42,6 @@ namespace Chem
             foreach (int n in fitLiquids.Keys.Where(n => !held.Contains(n)).ToList()) fitLiquids.Remove(n);
         }
 
-        // A chunk's cells made to fit the rules in force (its liquids remapped by id, then each cell sanitized), as the
-        // pass over every cell did at the switch.
         void MakeFit(Chunk ch)
         {
             if (ch.Fit == fits) return;
@@ -64,7 +56,6 @@ namespace Chem
             Fitted(ch);
         }
 
-        // A chunk whose cells fit the rules in force now (made to fit, or made afresh under them).
         void Fitted(Chunk ch)
         {
             if (ch.Fit == fits) return;
@@ -72,7 +63,6 @@ namespace Chem
             unfitChunks--;
         }
 
-        // Every chunk's cells made afresh under the rules in force (World.MakeFrom).
         void AllFitted()
         {
             foreach (var ch in ChunksInOrder) ch.Fit = fits;
@@ -80,29 +70,20 @@ namespace Chem
             fitLiquids.Clear();
         }
 
-        // The liquids' ids a chunk's Cell.Liquid means: none (InForce) for the rules in force.
         string[] LiquidsOf(Chunk ch) => ch.Fit == fits ? InForce : fitLiquids[ch.Fit];
 
-        // LiquidsOf for a chunk that fits the rules in force (the rules always have water, so a real list is never empty).
         static string[] InForce => Array.Empty<string>();
 
-        // A cell's liquid id under the liquids its chunk holds (LiquidsOf).
         string LiquidIdIn(string[] liquids, Cell c) => liquids.Length == 0 ? LiquidId(c) : liquids[c.Kind];
 
-        // The liquids a cell of a chunk holds, for a pass over every cell: InForce while every chunk fits, or for a dry cell.
         string[] LiquidsIn(Chunk ch, Cell c) => unfitChunks == 0 || c.Kind == 0 ? InForce : LiquidsOf(ch);
 
-        /// <summary>The id of the liquid at (x, y) ("water" when dry), in the liquids its chunk was made under; null off the world.</summary>
         public string LiquidIdAt(int x, int y)
         {
             var c = Locate(x, y, out var ch, out _);
             return c == null ? null : LiquidIdIn(LiquidsOf(ch), c);
         }
 
-        /// <summary>
-        /// The chunks not yet made to fit the rules in force, for the cell hash: "#cx,cy,fit" each, by row then column;
-        /// "" when every chunk fits, so a world without such a switch hashes as it did.
-        /// </summary>
         public string FitText()
         {
             if (unfitChunks == 0) return "";
@@ -112,7 +93,6 @@ namespace Chem
             return sb.ToString();
         }
 
-        /// <summary>A cell's raised or dug height as fitting the rules makes it: clamped into sim.json's height range.</summary>
         public int HeightOf(Cell c)
         {
             var range = Rules.Sim.Height;

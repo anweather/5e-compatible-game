@@ -15,7 +15,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>world/buildings.json and world/villages.json: all a world needs to name the buildings it was made with.</summary>
     public sealed class WorldBuildings
     {
         public const string FileName = "buildings.json";
@@ -32,13 +31,10 @@ namespace Chem
             this.villages = villages;
         }
 
-        /// <summary>The rows of world/buildings.json.</summary>
         public IReadOnlyList<JObject> FileRows => rows;
 
-        /// <summary>The villages' recipes (world/villages.json).</summary>
         public IReadOnlyList<VillageSpec> Villages => villages;
 
-        /// <summary>Reads the two files from <paramref name="worldDir"/>; no file means none of them.</summary>
         public static WorldBuildings Load(string worldDir)
         {
             if (worldDir == null || !Directory.Exists(worldDir)) return Empty;
@@ -47,16 +43,10 @@ namespace Chem
             return new WorldBuildings(rows ?? new List<JObject>(), VillageLayout.Load(worldDir)) { folder = worldDir };
         }
 
-        /// <summary>The rows the map's cells don't hold: walls and no built cells, laid over the cells at the start (LayInto).</summary>
         public IEnumerable<JObject> LaidRows => rows.Where(IsLaid);
 
         static bool IsLaid(JObject row) => row["walls"] != null && row["built"] == null;
 
-        /// <summary>
-        /// Lays the rows the map's cells don't hold, before the world starts, on every peer alike. Over the cells, as a
-        /// map's puzzles are, so cells.txt and the things keep what they say: a tree under a wall is simply no longer there.
-        /// Only where the whole row fits (the valley, not a small test yard).
-        /// </summary>
         public void LayInto(World world)
         {
             int[] fileLand = null;
@@ -67,7 +57,6 @@ namespace Chem
                 var cells = BuildingRaster.Cells(row, world.Rules.Buildings);
                 if (cells.All(c => world.InBounds(c.X, c.Y))) laid.Add((row, cells));
             }
-            // A generated map's chunks under the rows made first, every core at once, not one a read (changes time only).
             if (world.Source is IGeneratedSource)
             {
                 var under = new SortedSet<(int cx, int cy)>();
@@ -82,17 +71,10 @@ namespace Chem
             }
         }
 
-        // The graded roads' cuts and the pads, from the map's land as its file has it with all that's been stamped and laid
-        // on it so far: the map's own stamps go down first (ChemGrid), so a pad on a stamp's slope is cut level on that
-        // slope, and a later row's pad is level over an earlier row's graded road.
-        // A world without that land keeps its ground. The file's land is read once for all the rows (fileLand), and the
-        // land as it stands now is it with what the world says moved (LandMovedAt), cell by cell as asked: never a copy
-        // of the whole map a row (a big map's land.json is 40 M cells).
         void GradeRoads(World world, BuildingRow row, List<BuildingCell> cells, ref int[] fileLand)
         {
             var pad = row.Json["pad"];
             if ((pad == null && row.Roads.All(r => !r.Graded)) || folder == null) return;
-            // A generated map played unbaked has no land.json: its land is its source's, a chunk at a time (GeneratedSource).
             var made = world.Source as IGeneratedSource;
             string path = Path.Combine(folder, MapFile.LandName);
             if (fileLand == null && made == null)
@@ -102,7 +84,6 @@ namespace Chem
             }
             if (made == null && fileLand.Length == 0) return;
             var file = fileLand;
-            // The row's roads are graded on the land as the pad left it, not on each other: their grades are left out.
             var graded = new Dictionary<(int x, int y), int>();
             int Land(int x, int y)
             {
@@ -124,10 +105,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// A row's pad's "more": each {area: [x0, y0, x1, y1] in half cells from the row's "at", as its joins are, corners
-        /// inclusive; bank in cells (the pad's if none); face: "crag", or earth; clear: true for no trees on it}. None without.
-        /// </summary>
         public static List<PadArea> PadAreas(BuildingRow row)
         {
             var areas = new List<PadArea>();
@@ -142,10 +119,6 @@ namespace Chem
             return areas;
         }
 
-        /// <summary>
-        /// The rows of the buildings standing on these cells: a file's row whose built cells are there, or whose
-        /// laid cells are, and each village's as the cells say it was laid. A world without them (a small test yard) has none.
-        /// </summary>
         public List<JObject> RowsOn(Func<int, int, string> terrainAt, BuildingTables tables)
         {
             var found = new List<JObject>();
@@ -155,15 +128,12 @@ namespace Chem
             return found;
         }
 
-        /// <summary>A village's plan as it was laid on these cells.</summary>
         public static VillagePlan LaidPlan(VillageSpec spec, Func<int, int, string> terrainAt)
         {
             var walls = new HashSet<string>(spec.Materials.Walls.Values) { spec.Materials.Window };
             return VillageLayout.Lay(spec, (x, y) => terrainAt(x, y) is string t && walls.Contains(t));
         }
 
-        // By its walls, nearly all of them: a road or a clearing is ground, and wears, burns and grows over like any, and a table can
-        // close an opening into wall that was laid as glass.
         static bool WasLaid(JObject r, Func<int, int, string> terrainAt, BuildingTables tables)
         {
             var cells = BuildingRaster.Cells(BuildingRow.Read((string)r["id"], r, tables), tables);
@@ -184,13 +154,10 @@ namespace Chem
         }
     }
 
-    /// <summary>A village plan's buildings as rows (fill solid), so their cells stay what the plan's are.</summary>
     public static class VillageRows
     {
-        // Rows on the lattice that the openings' names read from: each is a row of rules/buildings.json.
         const string Window = "window", Door = "drawn-door", Style = "village";
 
-        /// <summary>Every building of the plan, its id the village's name and its place in the plan from 1.</summary>
         public static IEnumerable<JObject> Of(VillagePlan plan)
         {
             string village = plan.Spec.Name.Replace(' ', '-');
@@ -250,7 +217,6 @@ namespace Chem
             return row;
         }
 
-        // The half cell a cell starts at along a wall running clockwise: north runs east, east south, south west, west north.
         static int AlongWall(CellRect r, Side side, int x, int y) => side switch
         {
             Side.North => 2 * (x - r.X),

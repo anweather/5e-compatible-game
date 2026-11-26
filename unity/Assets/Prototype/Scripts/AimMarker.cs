@@ -1,35 +1,22 @@
+// The kinds of aim marker (GLOSSARY), each from a spell's shape: AimMarker.KindOf.
 using System.Collections.Generic;
 using Chem;
 using UnityEngine;
 
-/// <summary>The kinds of aim marker (GLOSSARY), each from a spell's shape: <see cref="AimMarker.KindOf"/>.</summary>
 public enum AimKind
 {
-    /// <summary>Nothing on the ground to mark: the sky spells.</summary>
     None,
-    /// <summary>An arrow along the aim, at any angle: a line from the caster.</summary>
     Lane,
-    /// <summary>A fan along the aim: a cone.</summary>
     Wedge,
-    /// <summary>A ring that grows with the charge: what strikes all at once, and a single spot.</summary>
     Ring,
-    /// <summary>A glowing fence round the cells: what rises from below.</summary>
     Rising,
-    /// <summary>Marching ants round the cells: what settles over an area and stays.</summary>
     Area,
-    /// <summary>Brackets round one target.</summary>
     Lock,
 }
 
-// Where a spell will land, on the ground (SpellCaster): one mesh, redrawn only
-// when the aim changes, drawn by Prototype/AimMarker, whose stripes, marching
-// dashes and pulse are all the GPU's. Everything is ribbons laid over the drawn
-// ground and over water, so it lies on hills and ponds as it does on flat land;
-// hidden parts show faintly through what covers them. Only the show.
 public sealed class AimMarker
 {
     const float Lift = 0.08f, Spacing = 0.35f, HalfWidth = 0.09f, Dash = 0.9f;
-    // A little wider far off, so a thin line still reads across a field.
     const float FarFrom = 12f, MostWidening = 2.5f;
     const float FenceHeight = 0.6f, FenceAlpha = 0.35f;
     const float GrowRate = 6f;
@@ -54,13 +41,9 @@ public sealed class AimMarker
     float ringAim, half;
     Color tint;
 
-    /// <summary>The kind on the ground now (None when hidden), for the probe.</summary>
     public AimKind Kind { get; private set; }
-    /// <summary>The ring's radius as drawn (m), easing to its size, for the probe.</summary>
     public float Radius { get; private set; }
-    /// <summary>How many vertices the one mesh has, for the probe.</summary>
     public int Vertices => vertices.Count;
-    /// <summary>The drawing object, for the probe's check that one mesh is all there is.</summary>
     public GameObject Shown => shown;
 
     public AimMarker(ChemGrid grid, Shader shader)
@@ -79,11 +62,6 @@ public sealed class AimMarker
         shown.SetActive(false);
     }
 
-    /// <summary>
-    /// The marker for a spell, from its shape: a line is a lane, unless it raises the ground where it's
-    /// aimed; a burst that strikes at once (it hurts or shoves) is a ring, like a bolt's spot; earth
-    /// shaping and a spell that needs what's underneath (Geyser) rise; any other patch is an area.
-    /// </summary>
     public static AimKind KindOf(SpellDef s)
     {
         if (s == null || World.IsSkySpell(s)) return AimKind.None;
@@ -108,10 +86,6 @@ public sealed class AimMarker
         Radius = 0f;
     }
 
-    /// <summary>
-    /// Shows a cast's marker: the spell, the cells it would touch, where it's aimed (the core's
-    /// (x, y), its way and its aim off the grid's four ways) and how charged it is.
-    /// </summary>
     public void Show(SpellDef s, List<(int x, int y)> cells, CastCommand cast, Color colour)
     {
         var kind = KindOf(s);
@@ -163,7 +137,6 @@ public sealed class AimMarker
         return Mathf.Clamp(distance / FarFrom, 1f, MostWidening);
     }
 
-    // The spell's colour at full brightness, softened towards white so it reads on anything.
     static Color Bright(Color c)
     {
         float most = Mathf.Max(c.r, Mathf.Max(c.g, c.b), 0.001f);
@@ -174,7 +147,6 @@ public sealed class AimMarker
 
     static Vector2 Flat(Vector3 p) => new(p.x, p.z);
 
-    // Which way a cast points on the ground: the aim, or else its grid way (x east, y north on the ground).
     static Vector2 Heading(CastCommand cast)
     {
         var (x, y) = World.SnapAim(cast.AimX, cast.AimY);
@@ -182,7 +154,6 @@ public sealed class AimMarker
         return cast.Dir switch { 0 => Vector2.up, 1 => Vector2.right, 2 => Vector2.down, _ => Vector2.left };
     }
 
-    // An arrow from the first cell to the last along the aim, as wide as the spell, with a dashed middle.
     void Lane(SpellDef s, List<(int x, int y)> cells, CastCommand cast, float width)
     {
         var from = Middle(cast);
@@ -195,7 +166,6 @@ public sealed class AimMarker
             near = Mathf.Min(near, along - half);
             far = Mathf.Max(far, along + half);
         }
-        // A wave's front is its radius each side, and grows with the charge (World.Waves).
         float wide = (s.Radius + (s.Radius > 0 ? World.ChargedGrowth(s, cast.Charge) : 0) + 0.5f) * grid.cellSize;
         float head = Mathf.Min(grid.cellSize * 1.2f, (far - near) * 0.45f);
         var (start, tip) = (from + way * near, from + way * far);
@@ -206,7 +176,6 @@ public sealed class AimMarker
         Path(false, width * 0.7f, Dash);
     }
 
-    // A fan from the first cell, widening a cell each side per cell out, as the core's cone does.
     void Wedge(List<(int x, int y)> cells, CastCommand cast, float width)
     {
         var from = Middle(cast);
@@ -226,7 +195,6 @@ public sealed class AimMarker
         Path(false, width * 0.7f, Dash);
     }
 
-    // The ring, with a dashed one inside it running the other way round if there's room.
     void Ring(Vector2 at, float width)
     {
         Circle(at, Radius);
@@ -246,7 +214,6 @@ public sealed class AimMarker
         }
     }
 
-    // The cells' outer edges, clockwise from above so dashes march round, each edge a ribbon of its own.
     void Outline(List<(int x, int y)> cells, float width, float dash, float fence)
     {
         inside.Clear();
@@ -265,13 +232,11 @@ public sealed class AimMarker
     void Edge(Vector2 from, Vector2 to, float width, float dash, float fence)
     {
         var way = (to - from).normalized;
-        // Run on by the ribbon's half width, so corners meet; each edge's dashes go by where it lies, so they join up.
         Begin(from - way * width, to + way * width);
         Path(false, width, dash, Vector2.Dot(from, way) - width);
         if (fence > 0f) Fence(fence, from, to);
     }
 
-    // A short curtain up from the last path, fading out as it rises; it stops at the edge's corners.
     void Fence(float height, Vector2 from, Vector2 to)
     {
         int first = vertices.Count, last = line.Count - 1;
@@ -287,7 +252,6 @@ public sealed class AimMarker
         }
     }
 
-    // Four corners, round the target and a cell and a half across.
     void Brackets(Vector2 at, float width)
     {
         float r = grid.cellSize * 0.75f, leg = grid.cellSize * 0.32f;
@@ -306,7 +270,6 @@ public sealed class AimMarker
         points.AddRange(path);
     }
 
-    // A ribbon along the points, cut every little way so it follows the ground. A negative dash marches backwards.
     void Path(bool closed, float width, float dash, float start = 0f)
     {
         Resample(closed);
@@ -326,11 +289,9 @@ public sealed class AimMarker
         }
     }
 
-    // From a point of the line to the ribbon's side, a unit wide, mitred so a corner keeps its width.
     Vector2 Side(int i, bool closed)
     {
         int last = line.Count - 1, before = Mathf.Max(i - 1, 0), after = Mathf.Min(i + 1, last);
-        // A closed line's two ends are one point: it runs on from the other end.
         if (closed && i == 0) before = last - 1;
         if (closed && i == last) after = 1;
         var into = (line[i] - line[before]).normalized;
@@ -354,7 +315,6 @@ public sealed class AimMarker
         line.Add(closed ? points[0] : points[n - 1]);
     }
 
-    // The top of the ground as drawn, or of the water on it.
     float Top(Vector2 p)
     {
         var at = new Vector3(p.x, 0f, p.y);

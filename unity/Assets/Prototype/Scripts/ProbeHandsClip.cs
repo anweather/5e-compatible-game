@@ -68,7 +68,6 @@ public class HandsClipProbe : ProbeScenario
         }
     }
 
-    /// <summary>What the take films, between rolling and stopping.</summary>
     protected virtual IEnumerator Takes()
     {
         float level = (float)Core.SecondsPerLevel;
@@ -90,7 +89,6 @@ public class HandsClipProbe : ProbeScenario
         Check("merged_on_screen", hud != null && hud.MergeShown, $"{Core.CastOf(Me)?.Merge}");
         Note($"let go, merged as {Core.CastOf(Me)?.Merge}");
         Pad(0f, 0f);
-        // The merge cools both hands: the icons grey and refill.
         for (float s = 0f; s < 8f && (Core.HandCooling(Me, HandsDef.Left) > 0 || Core.HandCooling(Me, HandsDef.Right) > 0 || Core.HandsOf(Me).Casting); s += Time.deltaTime)
         {
             Listen();
@@ -131,7 +129,6 @@ public class HandsClipProbe : ProbeScenario
         }
     }
 
-    // What fired, onto the timeline; how many of them were this one spell row's hand (-1: any).
     int Listen(int hand = -1)
     {
         int count = 0;

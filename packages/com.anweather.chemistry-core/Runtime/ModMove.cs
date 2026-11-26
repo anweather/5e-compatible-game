@@ -18,20 +18,16 @@ namespace Chem
 {
     public static class ModMove
     {
-        /// <summary>In the build's rules/mods: the shipped mods' ids, one a line. Not *.json, so nobody reads it as a mod.</summary>
         public const string ShippedList = "shipped-mods.txt";
 
-        /// <summary>In the data folder's mods: the ids dealt with, one a line, never looked at again.</summary>
         public const string MovedList = "moved-from-install.txt";
 
-        /// <summary>Writes <see cref="ShippedList"/> for the mods in the folder (the build's pack step).</summary>
         public static void WriteShippedList(string modsDir)
         {
             var ids = Directory.GetFiles(modsDir, "*.json").Select(ModCatalog.IdOf).OrderBy(id => id, StringComparer.Ordinal);
             File.WriteAllText(Path.Combine(modsDir, ShippedList), string.Concat(ids.Select(id => id + "\n")));
         }
 
-        /// <summary>Moves the player's mods from the install's rules/mods to their own folder. Never throws: returns a sentence for each thing it did or couldn't.</summary>
         public static IReadOnlyList<string> FromInstall(string installDir, string playerDir)
         {
             var said = new List<string>();
@@ -60,7 +56,6 @@ namespace Chem
                 bool clash = File.Exists(to) && File.ReadAllText(to) != File.ReadAllText(file);
                 if (!File.Exists(to))
                 {
-                    // Never a half-written mod under its real name.
                     string part = to + ".part";
                     MakeWritable(part);
                     File.Copy(file, part, true);
@@ -77,8 +72,6 @@ namespace Chem
             }
         }
 
-        // A copy keeps its source's read-only state, and the player's file is theirs to overwrite and
-        // delete. Before the copy too, as a crash can leave a read-only .part that a copy can't replace.
         static void MakeWritable(string file)
         {
             if (File.Exists(file)) File.SetAttributes(file, FileAttributes.Normal);

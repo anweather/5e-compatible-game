@@ -19,16 +19,11 @@ public class PeerVanishProbe : RoomProbe
     const string Moment = "first-wave";
     const int Lead = 18;
     const float Settle = 1.5f, MostToLose = 150f, Later = 20f;
-    // How far a drawn wizard may be from where its owner has it (m), and its bounds' centre from its feet.
     const float Lag = 1.5f, BoundsReach = 3f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
     protected override bool StartsWithAMod => false;
 
-    /// <summary>
-    /// Whether this peer draws a wizard: active, its body's renderers on and not hidden (Shapeshift's forceRenderingOff, the
-    /// camera's shadows-only), on a layer the camera draws, and its bounds round where it stands. With what was found.
-    /// </summary>
     public static (bool drawn, string why) Drawn(GameObject wizard)
     {
         if (wizard == null) return (false, "gone");
@@ -58,7 +53,6 @@ public class PeerVanishProbe : RoomProbe
             var off = hips.position - at;
             sb.Append(string.Format(CultureInfo.InvariantCulture, " hips {0:0.0},{1:0.0},{2:0.0} off", off.x, off.y, off.z));
         }
-        // An animal stands in for the model: drawn if the animal is.
         bool drawn = animal ? shape.DrawnFrames > 0 : shown > 0 && Body(wizard) is { } body && Hidden(body, cam, at) == null;
         return (drawn, sb.ToString());
     }
@@ -66,7 +60,6 @@ public class PeerVanishProbe : RoomProbe
     static SkinnedMeshRenderer Body(GameObject wizard) =>
         wizard.GetComponentsInChildren<SkinnedMeshRenderer>(true).FirstOrDefault(s => s.name == "Armature_Mesh");
 
-    // Why a renderer isn't drawn, or null.
     static string Hidden(Renderer r, Camera cam, Vector3 feet)
     {
         if (!r.gameObject.activeInHierarchy) return "inactive";
@@ -80,7 +73,6 @@ public class PeerVanishProbe : RoomProbe
         return null;
     }
 
-    /// <summary>Every other player's wizard on this peer, drawn or not: "player 2 drawn (at ...)", one each, ;-separated.</summary>
     public static string Others()
     {
         var nm = NetworkManager.Singleton;
@@ -95,7 +87,6 @@ public class PeerVanishProbe : RoomProbe
             }));
     }
 
-    /// <summary>This peer's own wizard's feet, "x,y,z".</summary>
     public static string Self()
     {
         var nm = NetworkManager.Singleton;
@@ -105,7 +96,6 @@ public class PeerVanishProbe : RoomProbe
         return string.Format(CultureInfo.InvariantCulture, "{0:0.00},{1:0.00},{2:0.00}", p.x, p.y, p.z);
     }
 
-    /// <summary>The keep on its last point, put in by each peer straight after it has run <paramref name="tick"/>.</summary>
     public static IEnumerator LastPointAfter(NetChem net, int tick, Action<bool> done = null)
     {
         bool put = false;
@@ -124,7 +114,6 @@ public class PeerVanishProbe : RoomProbe
 
     GameObject Local => NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
 
-    // Each peer draws the other's wizard, and where its owner has it.
     IEnumerator Look(string name)
     {
         yield return Ask("report");
@@ -137,11 +126,9 @@ public class PeerVanishProbe : RoomProbe
         Check($"{name}_client_draws_the_host", IsDrawn(there), $"{there}; the host at {Self()}");
     }
 
-    // Others() named a wizard, and every one it named is drawn.
     static bool IsDrawn(string others) =>
         !string.IsNullOrEmpty(others) && others.Contains(" drawn (", StringComparison.Ordinal) && !others.Contains("NOT drawn", StringComparison.Ordinal);
 
-    // How far the client's wizard here is from where the client has it.
     static float Gap(string self)
     {
         if (string.IsNullOrEmpty(self)) return float.MaxValue;
@@ -159,7 +146,6 @@ public class PeerVanishProbe : RoomProbe
         yield return Look("joined");
         yield return OutOfSight("early");
 
-        // A run, for everyone: each wizard gets up at the castle.
         var me = Local.GetComponent<SpellCaster>();
         Check("run_started", me.Moment(Moment), "the core refused the moment");
         for (float t = 0f; t < 10f && !World.HoldRunning; t += Time.unscaledDeltaTime) yield return null;
@@ -167,7 +153,6 @@ public class PeerVanishProbe : RoomProbe
         yield return Wait(3f);
         yield return Look("in_the_run");
 
-        // The keep on its last point on both peers at one tick; the first blow takes it.
         int tick = Net.NetTick + Lead;
         bool putHere = false;
         StartCoroutine(LastPointAfter(Net, tick, p => putHere = p));
@@ -176,7 +161,6 @@ public class PeerVanishProbe : RoomProbe
         for (float t = 0f; t < 20f && !putHere; t += Time.unscaledDeltaTime) yield return null;
         for (float t = 0f; t < MostToLose && World.Hold.Phase == HoldPhase.Running; t += Time.unscaledDeltaTime) yield return null;
         Check("run_lost", World.Hold.Phase == HoldPhase.Lost, World.Hold.Phase.ToString());
-        // In front of the host's camera, for the film.
         var seen = Behind(-InFront);
         yield return Ask("stand", $"{seen.x},{seen.y}");
         if (Theirs == null) yield break;
@@ -186,7 +170,6 @@ public class PeerVanishProbe : RoomProbe
         Keep(false);
         yield return Look("after_the_loss");
 
-        // The host's reset, for everyone (as holding R or Back does).
         int lastReset = Net.LastResetTick;
         EventLog.RebuildYard();
         for (float t = 0f; t < 15f && Net.LastResetTick == lastReset; t += Time.unscaledDeltaTime) yield return null;
@@ -197,7 +180,6 @@ public class PeerVanishProbe : RoomProbe
         Keep(false);
         yield return Look("after_the_reset");
 
-        // The client walks off and back, and the two go on a while.
         yield return Ask("walk", "1,0,8");
         if (Theirs == null) yield break;
         yield return Look("after_a_walk");
@@ -217,11 +199,9 @@ public class PeerVanishProbe : RoomProbe
         HashesFrom = 0;
     }
 
-    // The host punches the client beside it (B3): every punch the core says hit is felt by the puncher too (ItemHolder.FistLanded).
     IEnumerator Punches()
     {
         var me = Local;
-        // Beside the host, square to its camera, so the film sees the fist land.
         var right = Camera.main.transform.right;
         right.y = 0f;
         var front = grid.CellAt(me.transform.position + right.normalized * PunchAhead);
@@ -242,7 +222,6 @@ public class PeerVanishProbe : RoomProbe
             else misses++;
         }
         strike.Struck += On;
-        // Real punches, the arm and all (ItemHolder.HandAct), each sent as a strike when the fist gets there.
         for (int i = 0; i < 8 && hits < 2; i++)
         {
             hands.HandAct("punch");
@@ -258,8 +237,6 @@ public class PeerVanishProbe : RoomProbe
 
     IEnumerator OutOfSight(string name)
     {
-        // Out of the host's sight (far behind its camera, past the shadows' reach), the client casts a few times, then
-        // comes back in front: the host draws it again, its body where it stands.
         var away = Behind(Away);
         yield return Ask("stand", $"{away.x},{away.y}");
         if (Theirs == null) yield break;
@@ -267,7 +244,6 @@ public class PeerVanishProbe : RoomProbe
         unseen = watched = 0;
         mostOff = 0f;
         var watch = StartCoroutine(WatchHips());
-        // Casts with the hands, held to charge too, as a player does: CastBeats lays its poses over the animation.
         yield return Ask("attune", "fire,earth");
         if (Theirs == null) yield break;
         yield return Ask("handcasts");
@@ -277,7 +253,6 @@ public class PeerVanishProbe : RoomProbe
         Metric($"{name}_away_frames_unseen", unseen);
         Metric($"{name}_away_frames", watched);
         Metric($"{name}_away_hips_most_off_m", mostOff);
-        // Unseen, the Animator used to stop writing the bones and the poses laid over them each frame piled up.
         Check($"{name}_unseen_body_stays_whole", mostOff < 0.6f, $"hips up to {mostOff:0.00} m from where they belong over {watched} frames, {unseen} unseen");
         var front = Behind(-InFront);
         Keep(true);
@@ -291,8 +266,6 @@ public class PeerVanishProbe : RoomProbe
     int unseen, watched;
     float mostOff;
 
-    // With --shots, a film from the host's camera of the moments worth seeing (the clip): after the loss, after the reset,
-    // the client back in sight, the punches.
     ClipFilm film;
     const float PunchAhead = 1.5f;
 
@@ -308,7 +281,6 @@ public class PeerVanishProbe : RoomProbe
         if (film != null) film.Keeping = on;
     }
 
-    // Each frame while the client is out of sight: whether its body is seen, and how far its hips are from where they belong.
     IEnumerator WatchHips()
     {
         while (true)
@@ -329,7 +301,6 @@ public class PeerVanishProbe : RoomProbe
 
     const float Away = 90f, InFront = 8f;
 
-    // A dry, open cell about this far behind the host's camera, flat (negative: in front of it).
     Vector2Int Behind(float metres)
     {
         var cam = Camera.main.transform;

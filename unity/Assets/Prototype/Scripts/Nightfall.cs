@@ -14,11 +14,8 @@ public class Nightfall : MonoBehaviour
     static float lamps, stars;
     static int steppedFrame = -1;
 
-    // How lit the lamps are and how bright the stars at each light level.
     const float DimLamps = 0.6f, DimStars = 0.5f, DarkStars = 1.6f;
-    // How fast a change fades in (per second).
     const float Ease = 1.2f;
-    // A light this close to the wizard counts as its own (a lantern, a glowing ball, Dancing Lights, a lamp).
     const float OwnLightReach = 6f;
 
     ChemGrid grid;
@@ -40,21 +37,18 @@ public class Nightfall : MonoBehaviour
         go.AddComponent<Nightfall>();
     }
 
-    /// <summary>0 by day to 1 at night: how lit the lamps and windows are (eased).</summary>
     public static float Lamps(World world)
     {
         Step(world);
         return lamps;
     }
 
-    /// <summary>0 by day, about 1.6 on a dark night: how bright the stars are (eased; clouds hide them on top).</summary>
     public static float Stars(World world)
     {
         Step(world);
         return stars;
     }
 
-    // Once a frame, whoever asks first.
     static void Step(World world)
     {
         if (world == null || steppedFrame == Time.frameCount) return;
@@ -68,7 +62,6 @@ public class Nightfall : MonoBehaviour
         stars = Mathf.Lerp(stars, starsTo, k);
     }
 
-    // Twice a second: is the wizard in the dark with nothing to see by? Said once a night.
     void Update()
     {
         if (Time.unscaledTime < nextLook) return;

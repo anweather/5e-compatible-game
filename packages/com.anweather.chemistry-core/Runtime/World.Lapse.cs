@@ -32,7 +32,6 @@ namespace Chem
         IReadOnlyList<TempMaterial> temps = Array.Empty<TempMaterial>();
         IReadOnlyList<ModAdd> adds = Array.Empty<ModAdd>();
 
-        /// <summary>What the room's mods add, each with its owner, in mod, table and patch order (ModAdds); empty without a room.</summary>
         public IReadOnlyList<ModAdd> ModAdded
         {
             get
@@ -47,7 +46,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The room's temporary materials, in mod, table and patch order (TempMaterials); empty without a room.</summary>
         public IReadOnlyList<TempMaterial> TemporaryMaterials
         {
             get
@@ -62,7 +60,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The tick a mod on lapses at: its switch plus the shortest lapse.after of its own materials; -1 if none lapses.</summary>
         public int LapsesAt(RoomMod mod)
         {
             int after = 0;
@@ -71,7 +68,6 @@ namespace Chem
             return after == 0 ? -1 : mod.Tick + after;
         }
 
-        // The end of a tick: the first mod in room order whose lapse is due goes off; another due waits a tick.
         void LapseDue()
         {
             if (Room == null || TemporaryMaterials.Count == 0) return;
@@ -84,8 +80,6 @@ namespace Chem
             }
         }
 
-        // A mod lapses: off as by a revert, the change mode aside, its dependents with it. If the mods over it
-        // don't fit without them, every mod over it goes too.
         void Lapse(int at)
         {
             var mod = Room.Mods[at];
@@ -103,10 +97,6 @@ namespace Chem
             foreach (var m in gone) RoomDecided?.Invoke(RoomCommand.Revert(m.By, m.Id), verdict);
         }
 
-        /// <summary>
-        /// The mod at this place in the room and every mod that goes with it (#86, #88): each later one naming
-        /// anything one of them adds, chains too. The mod first, then its dependents, the last on first.
-        /// </summary>
         public List<RoomMod> WithDependents(int at)
         {
             var owners = new HashSet<string>(StringComparer.Ordinal) { Room.Mods[at].Id };
@@ -123,10 +113,8 @@ namespace Chem
             return dependents.Prepend(Room.Mods[at]).ToList();
         }
 
-        // The mods on but these, in room order.
         IEnumerable<ActiveMod> Without(List<RoomMod> gone) => Room.Mods.Where(m => !gone.Contains(m)).Select(m => new ActiveMod(m.Id, m.Json));
 
-        // These mods go off together, in one switch: the rules without them in force, their materials swept.
         void TakeOff(List<RoomMod> gone, RuleSet next)
         {
             Room.Mods.RemoveAll(gone.Contains);
@@ -134,14 +122,9 @@ namespace Chem
             Room.Found.RemoveWhere(t => ThingsNow.Find(new ThingId(t)) == null);
         }
 
-        // ", and A wing, A porch with it" for the mods that went with the first; "" for none.
         static string AlsoGone(List<RoomMod> gone) =>
             gone.Count == 1 ? "" : ", and " + string.Join(", ", gone.Skip(1).Select(m => m.Title)) + " with it";
 
-        /// <summary>
-        /// For a patch the checks refuse: why, if it names a row a mod once added that isn't in force now (Room.Retired
-        /// and Room.RetiredRows keep who added it), else null. A wing can't go on before its house; a mod adding its own row again passes.
-        /// </summary>
         string OwnerProblem(string title, string json)
         {
             var gone = Room.Retired.Where(r => !Rules.HasMaterial(r.Table, r.Id)).Select(r => new ModAdd("material", r.Id, r.Mod))
@@ -153,7 +136,6 @@ namespace Chem
             return $"{title} names {owner.Id}, a {owner.Kind} of the mod {owner.Mod}, which isn't on; switch {owner.Mod} on first";
         }
 
-        /// <summary>Puts the room's rules in force: the temporary materials they drop are retired and swept first.</summary>
         void PutInForce(RuleSet next)
         {
             var mixesGone = new List<TempMaterial>();
@@ -181,8 +163,6 @@ namespace Chem
             WriteEveryCell(c => Sweep(c, into[0], into[1], into[2]));
         }
 
-        // The rows the mods added before this switch that aren't materials and no mod adds now: kept, with who added them,
-        // for OwnerProblem. A row added again leaves the list; the oldest go past RetiredRowsKept.
         void RetireRows(IReadOnlyList<ModAdd> was)
         {
             var now = new HashSet<string>(ModAdded.Select(a => a.Kind + ":" + a.Id), StringComparer.Ordinal);
@@ -195,7 +175,6 @@ namespace Chem
             if (Room.RetiredRows.Count > RetiredRowsKept) Room.RetiredRows.RemoveRange(0, Room.RetiredRows.Count - RetiredRowsKept);
         }
 
-        /// <summary>How many rows that went the room remembers (RetiredRows), the oldest dropped first.</summary>
         public const int RetiredRowsKept = 64;
 
         static void Sweep(Cell c, Dictionary<string, string> terrain, Dictionary<string, string> covers, Dictionary<string, string> gases)
@@ -218,14 +197,12 @@ namespace Chem
             }
         }
 
-        /// <summary>What a retired terrain turns into now (Sanitize), or null if it isn't one or its into isn't in force.</summary>
         string RetiredInto(string terrain)
         {
             var r = Room?.Retired.LastOrDefault(x => x.Table == "terrain" && x.Id == terrain);
             return r?.Into != null && Rules.Terrain.ContainsKey(r.Into) ? r.Into : null;
         }
 
-        /// <summary>Null if the rules hold no more temporary materials than a room may, else why not.</summary>
         string LiveProblem(RuleSet next, string title)
         {
             int live = TempMaterials.Of(next).Count;

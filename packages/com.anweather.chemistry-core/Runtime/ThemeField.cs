@@ -24,10 +24,8 @@ namespace Chem
         public const int MatNone = 0, MatWater = 1, MatLava = 2, MatIce = 3, MatShoreSand = 4, MatShoreAsh = 5;
 
         const int SaltZone = 0x5a4f4e45, SaltLake = 0x4c414b45, SaltDither = 0x44495448, SaltInfluence = 0x494e464c;
-        /// <summary>The dither field's lattice (cells): look patches are roughly this size where a weight is low.</summary>
         const double DitherLattice = 7;
         const double InfluenceEdgeLattice = 14, PatchSoft = 0.05;
-        // How far (cells) zone edges wander beyond the blob outline, plus a share of the radius.
         const double ZoneEdge = 7, ZoneEdgeRel = 0.07, LakeEdge = 2.5, Shore = 1.6, RiverBank = 1.3;
 
         sealed class LiveZone
@@ -64,13 +62,10 @@ namespace Chem
         readonly List<LiveInfluence> influences = new List<LiveInfluence>();
         readonly double[] w;
 
-        /// <summary>After Look: the terrain an influence's heart forces here (water, grass, forest, sand, rock...), or null.</summary>
         public string Heart { get; private set; }
 
-        /// <summary>After Look: whether a zone (or an island) painted the cell, i.e. it isn't filler.</summary>
         public bool Painted { get; private set; }
 
-        /// <summary>A field over the cells in <paramref name="box"/> (continent cells, x east, y south, the start at 0).</summary>
         public ThemeField(Blueprint bp, GeoBox box)
         {
             this.bp = bp;
@@ -94,7 +89,6 @@ namespace Chem
             }
             foreach (var r in bp.Rivers)
             {
-                // A dry course fills nothing and has no bank: what's along it still follows it (the blueprint's influences).
                 if (r.Dry) continue;
                 if (r.Path.Points.Length < 2 || !ThemeGeometry.Bounds(r.Path, RiverBank + 1).Meets(box)) continue;
                 var segs = ThemeGeometry.SegmentsIn(r.Path, box, RiverBank + 1);
@@ -125,7 +119,6 @@ namespace Chem
             else influences.Add(live);
         }
 
-        /// <summary>The look the theme gives a cell, or null for filler (the caller's own land); sets Heart and Painted.</summary>
         public string Look(int mx, int my)
         {
             Heart = null;
@@ -162,7 +155,6 @@ namespace Chem
             return influences.Count > 0 ? Blend(mx, my, b, painted, fade) : b;
         }
 
-        // Influence weights at a cell, then the dithered pick of a look (and any heart).
         string Blend(int mx, int my, string b, bool painted, double fade)
         {
             int seed = bp.Seed;
@@ -180,7 +172,6 @@ namespace Chem
                 return influences[heartAt].Inf.Look;
             }
             if (total <= 0) return b;
-            // Later influences take the top of the dither range, so overlaps nest.
             double scale = total > 1 ? 1 / total : 1;
             double u = WorldNoise.ToUniform(2, WorldNoise.Fractal(seed, SaltDither, mx, my, DitherLattice, 2));
             double acc = 0;
@@ -217,7 +208,6 @@ namespace Chem
             return inf.Strength * e * fade;
         }
 
-        // An influence's normalised distance: 0 at its heart, 1 where it ends.
         static double Distance(LiveInfluence li, double x, double y)
         {
             var inf = li.Inf;
@@ -243,7 +233,6 @@ namespace Chem
 
         double LakeWobble(int mx, int my, LiveLake ll) => (WorldNoise.Fractal(bp.Seed, SaltLake, mx, my, 6, 2) - 0.5) * ll.Amp;
 
-        // 0 outside, 1 inside the lake's outline (island included), 2 on its shore ring.
         int InLake(int mx, int my, LiveLake ll, double fade)
         {
             double rho = ThemeGeometry.Rho(ll.L.Blob, mx + 0.5, my + 0.5);
@@ -260,7 +249,6 @@ namespace Chem
             _ => MatWater,
         };
 
-        /// <summary>What fills a cell: a lake's or river's water, lava or ice, a shore ring (Mat* codes), or nothing.</summary>
         public int Material(int mx, int my)
         {
             if (zones.Count == 0 && lakes.Count == 0 && rivers.Count == 0) return MatNone;
@@ -277,8 +265,6 @@ namespace Chem
             return shore;
         }
 
-        // A lake's fill at a cell (MatNone on an island), or -1 outside every lake; shore: the ring a
-        // lake's shore puts there (sand by water, ash by lava), MatNone for none; onShore: on any lake's shore ring.
         int LakeMaterial(int mx, int my, double fade, out int shore, out bool onShore)
         {
             shore = MatNone;
@@ -297,7 +283,6 @@ namespace Chem
         bool OnIsland(LiveLake ll, int mx, int my, double fade) =>
             ll.L.Island != null && ThemeGeometry.Rho(ll.L.Island, mx + 0.5, my + 0.5) + LakeWobble(mx, my, ll) * 0.6 < fade;
 
-        /// <summary>How far (cells) a cell is from the nearest river's bank (0 in it), or infinity with none near.</summary>
         public double RiverBankDistance(int mx, int my)
         {
             double best = double.PositiveInfinity;

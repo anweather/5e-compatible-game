@@ -7,18 +7,12 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>
-    /// A value a cell over a w × h map, held a chunk at a time and only for the chunks a write reached: the rest read as
-    /// default. Reads by world cell, as the map-sized array it stands for was read.
-    /// </summary>
     internal sealed class ChunkCells<T> where T : struct
     {
         readonly int w, h, across, down;
         readonly bool wrapX, wrapY;
         readonly T[][] byChunk;
 
-        // wrapX: the map wraps east-west (World.WrapX, a whole number of chunks wide), so an x past the seam folds; wrapY,
-        // north-south too (a torus, World.WrapY), so a y past the south seam folds.
         public ChunkCells(int w, int h, bool wrapX = false, bool wrapY = false)
         {
             this.w = w;
@@ -41,7 +35,6 @@ namespace Chem
             return cy * across + cx;
         }
 
-        /// <summary>The value at a cell on the map: default where nothing was written.</summary>
         public T this[int x, int y]
         {
             get
@@ -51,7 +44,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The value at a cell on the map, to write: its chunk's array is made at the first write.</summary>
         public ref T Cell(int x, int y)
         {
             ref var a = ref byChunk[ChunkIndex(x, y)];
@@ -59,7 +51,6 @@ namespace Chem
             return ref a[Local(x, y)];
         }
 
-        /// <summary>The chunks a write reached.</summary>
         public int ChunkCount
         {
             get
@@ -70,10 +61,8 @@ namespace Chem
             }
         }
 
-        /// <summary>What it holds, for a value of <paramref name="size"/> bytes: its chunk arrays and the index of them.</summary>
         public long Bytes(int size) => 24 + 8L * byChunk.Length + ChunkCount * (24 + (long)size * Chunks.Area);
 
-        /// <summary>The cells whose value isn't default, row by row.</summary>
         public IEnumerable<(int x, int y)> Cells()
         {
             var cmp = EqualityComparer<T>.Default;
@@ -89,15 +78,8 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// A chunk's land (World.SetLand: an int a cell, World.NoLand on water) in a few bytes, for a packed chunk: each cell
-    /// as its difference from what the cells before it predict (left + up − up-left, the left alone on the top row, the up
-    /// alone down the left side), zigzagged into a varint, and a run of cells the prediction gets exactly as one varint.
-    /// Smooth land is a byte or so a cell; a chunk of sea or of flat land, a few bytes. Exact for any ints.
-    /// </summary>
     internal static class LandCodec
     {
-        /// <summary>The most a chunk's land encodes to: five bytes a cell.</summary>
         public const int MostBytes = Chunks.Area * 5;
 
         static int Predict(int[] v, int i)
@@ -108,7 +90,6 @@ namespace Chem
             return unchecked(v[i - 1] + v[i - Chunks.Size] - v[i - Chunks.Size - 1]);
         }
 
-        /// <summary>A chunk's land, Area ints, as its bytes; <paramref name="scratch"/> (MostBytes) is written through.</summary>
         public static byte[] Encode(int[] v, byte[] scratch)
         {
             int n = 0;
@@ -132,7 +113,6 @@ namespace Chem
             return bytes;
         }
 
-        /// <summary>A chunk's land back from its bytes into <paramref name="v"/> (Area ints).</summary>
         public static void Decode(byte[] bytes, int[] v)
         {
             int at = 0;

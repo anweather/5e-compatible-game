@@ -22,10 +22,8 @@ public class TriggerViewProbe : RoomProbe
     const string Bolts = "[{\\\"cast\\\":\\\"fire-bolt\\\",\\\"at\\\":\\\"behind\\\",\\\"by\\\":2}]";
     const string Meteors = "[{\\\"cast\\\":\\\"meteor\\\",\\\"at\\\":\\\"ahead\\\",\\\"by\\\":2,\\\"delay\\\":6}]";
     const int WalkSteps = 12, BackSteps = 6, MeteorDelay = 6;
-    /// <summary>Seconds between a walk's steps: 3 ticks, a run.</summary>
     public const float StepSeconds = 0.5f;
     const float Settle = 3f, FrameSeconds = 1f / 15f, ReplaySeconds = 100f;
-    /// <summary>The long walk: a loop of cells (east, south, west, north), a step a tick.</summary>
     static readonly (int dx, int dy, int steps)[] Loop = { (1, 0, 18), (0, 1, 8), (-1, 0, 18), (0, -1, 8) };
     const float LongStepSeconds = 1f / 6f;
     const int FilmWidth = 1280, FilmHeight = 720;
@@ -44,7 +42,6 @@ public class TriggerViewProbe : RoomProbe
         base.OnDestroy();
     }
 
-    /// <summary>Walks a wizard a cell at a time along (dx, dy), as its stand sends each new cell (WizardStrike), facing the way.</summary>
     public static IEnumerator Walk(ChemGrid grid, GameObject wizard, int dx, int dy, int steps, float seconds = StepSeconds)
     {
         var body = wizard.GetComponent<CharacterController>();
@@ -64,13 +61,10 @@ public class TriggerViewProbe : RoomProbe
         }
     }
 
-    /// <summary>The triggered casts in this world after the Nth, as "n:spell@x,y", in order.</summary>
     public static List<string> CastsAfter(World world, int n) => world.TriggeredAfter(n).Select(c => $"{c.N}:{c.Spell}@{c.X},{c.Y}").ToList();
 
-    /// <summary>The shows this side played (ChemGrid.TriggeredShown), as "n:spell@x,y".</summary>
     public static List<string> Shown(ChemGrid grid) => grid.TriggeredShown.Select(s => $"{s.n}:{s.spell}@{s.x},{s.y}").ToList();
 
-    /// <summary>The step lines in this side's log, distinct and sorted.</summary>
     public static string StepLines(World world) =>
         string.Join("|", world.Log.Select(l => l.Text).Where(t => t.Contains("'s step calls down")).Distinct().OrderBy(t => t, StringComparer.Ordinal));
 
@@ -81,7 +75,6 @@ public class TriggerViewProbe : RoomProbe
         count = TriggerShowCount.Start();
         me = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
 
-        // The two triggers in one draft, then on for the room.
         var bolt = RoomMcpProbe.Post(RoomMcpProbe.Tool("add_trigger", $"{{\"id\":\"bolt-steps\",\"who\":\"each\",\"every\":6,\"do\":\"{Bolts}\"}}"));
         yield return RoomMcpProbe.Until(bolt);
         string body = bolt.Result.body ?? "";
@@ -96,17 +89,14 @@ public class TriggerViewProbe : RoomProbe
         yield return Agree("triggers_on", $"Player 1 switched on {Title}");
         if (Theirs == null) yield break;
 
-        // The host walks east: its bolts and meteors show on both.
         StartCoroutine(Film());
         yield return Walked("host", me, "Player 1", () => Walk(grid, me, 1, 0, WalkSteps));
         if (Theirs == null) yield break;
-        // The virtual player walks east too.
         yield return Walked("client", null, "Player 2", null);
         if (Theirs == null) yield break;
         filming = false;
         CompareHashes("walks_stayed_in_step");
 
-        // A late joiner, a few seconds after the last firing: its replay fires them all again, and plays none of their shows.
         HashesFrom = Net.NetTick;
         yield return Ask("rejoin");
         yield return Wait(Settle);
@@ -120,11 +110,8 @@ public class TriggerViewProbe : RoomProbe
         yield return LongWalk();
         if (Theirs == null) yield break;
 
-        // Reverted: steps fire nothing, and nothing new shows, on either side.
         var off = RoomMcpProbe.Post(RoomMcpProbe.Tool("revert", $"{{\"mod\":\"{Slug}\"}}"));
         yield return RoomMcpProbe.Until(off);
-        // The joiner of the long walk is still catching up (NetChem's CatchUpBudgetMs gains on this side only slowly),
-        // so these two give it the replay's time to reach their tick, not a live player's.
         yield return Agree("reverted", $"Player 1 switched off {Title}", ReplaySeconds);
         if (Theirs == null) yield break;
         int casts = World.TriggeredCasts, theirShows = Theirs.showsSince, shows = grid.TriggeredShown.Count;
@@ -141,8 +128,6 @@ public class TriggerViewProbe : RoomProbe
         Metric("film_frames", frames);
     }
 
-    // A long walk with the triggers on, then a late joiner (#83): its strike history keeps the stands its replay needs,
-    // not every step, and it still fires every cast the host did, at the same ticks (the checksums carry the firings).
     IEnumerator LongWalk()
     {
         int casts = World.TriggeredCasts;
@@ -163,9 +148,6 @@ public class TriggerViewProbe : RoomProbe
             $"{Theirs.triggered} cast there, {World.TriggeredCasts} here");
     }
 
-    // One walk (the host's when wizard is given, else the virtual player's) and its checks: every cast it fired
-    // plays exactly one show on each side (one projectile per bolt, one meteor per meteor), the meteor falls
-    // for its delay, and each side's log names the player.
     IEnumerator Walked(string who, GameObject wizard, string player, Func<IEnumerator> walk)
     {
         yield return Ask("report");
@@ -191,7 +173,6 @@ public class TriggerViewProbe : RoomProbe
         Check($"{who}_meteor_per_meteor_here", count.Meteors - meteors == falls, $"{count.Meteors - meteors} meteors for {falls}");
         Check($"{who}_projectile_per_bolt_there", Theirs.projectiles - theirProjectiles == bolts, $"{Theirs.projectiles - theirProjectiles} projectiles for {bolts} bolts");
         Check($"{who}_meteor_per_meteor_there", Theirs.meteors - theirMeteors == falls, $"{Theirs.meteors - theirMeteors} meteors for {falls}");
-        // A meteor's show falls for its delay (6 ticks, a second), not a cast's 1.8 s; seen from the frames it was out.
         var timed = grid.TriggeredShown.Where(s => s.spell == SpellIds.Meteor && s.n > from).Select(s => s.lands - s.tick).ToList();
         Check($"{who}_meteor_shows_for_its_delay", timed.Count > 0 && timed.All(t => t >= MeteorDelay - 1 && t <= MeteorDelay), string.Join(" ", timed));
         Metric($"{who}_meteor_fall_s_here", count.MeteorSeconds);
@@ -203,7 +184,6 @@ public class TriggerViewProbe : RoomProbe
         Check($"{who}_log_names_the_player_there", Theirs.stepLog.Contains(player + "'s step calls down Meteor"), Theirs.stepLog);
     }
 
-    // Frames from behind and above the host's wizard as it walks, at 720p, rendered off screen (no window needed).
     IEnumerator Film()
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) yield break;
@@ -240,10 +220,6 @@ public class TriggerViewProbe : RoomProbe
     }
 }
 
-/// <summary>
-/// Counts the spell shows that come out on this side: each projectile (SpellProjectile) and each meteor
-/// (MeteorFall at a meteor's size) once, and how long the last meteors were out (their fall), for triggerview.
-/// </summary>
 public class TriggerShowCount : MonoBehaviour
 {
     readonly HashSet<int> seen = new();
@@ -254,7 +230,6 @@ public class TriggerShowCount : MonoBehaviour
 
     public int Projectiles { get; private set; }
     public int Meteors { get; private set; }
-    /// <summary>The mean seconds a meteor was out, 0 before any landed.</summary>
     public float MeteorSeconds => fallCount > 0 ? fallTotal / fallCount : 0f;
 
     public static TriggerShowCount Start()
@@ -275,7 +250,6 @@ public class TriggerShowCount : MonoBehaviour
                 Meteors++;
                 falling[m.GetInstanceID()] = Time.unscaledTime;
             }
-        // Out of the sky once it's landed (MeteorFall disables itself) or gone.
         landed.Clear();
         foreach (var kv in falling)
             if (!now.Any(m => m.GetInstanceID() == kv.Key && m.enabled)) landed.Add(kv.Key);

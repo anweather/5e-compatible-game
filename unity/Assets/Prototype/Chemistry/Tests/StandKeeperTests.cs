@@ -9,7 +9,6 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class StandKeeperTests
     {
-        /// <summary>A host's history as NetChem keeps it: each tick's stand stamped, then the tick run (Ran) with the world's reads so far.</summary>
         sealed class History
         {
             public readonly List<StampedStrike> Kept = new List<StampedStrike>();
@@ -28,7 +27,6 @@ namespace Chem.Tests
         [Test]
         public void AStandStandingAtAChecksumOrARuleReadingStaysTheRestGo()
         {
-            // Without triggers: 28 the first; 29 and 30 stand at the checksum at 30; 31 goes; 33 the newest, 32 until 33 has run.
             var h = new History();
             for (int t = 28; t <= 33; t++)
             {
@@ -37,7 +35,6 @@ namespace Chem.Tests
             }
             Assert.That(h.Ticks, Is.EqualTo(new[] { 28, 29, 30, 32, 33 }));
 
-            // A rule read the stands at 45 (a golf turn, a hand attuning): the stands round it stay as a checksum's.
             h = new History();
             for (int t = 41; t <= 51; t += 2)
             {
@@ -88,19 +85,14 @@ namespace Chem.Tests
         {
             const int fireAt = 7;
             var h = new History(() => true);
-            // East along a row, a turn south for two cells, then east again with a step that fired a trigger at tick 7.
             var walk = new[] { (10, 10), (11, 10), (12, 10), (13, 10), (13, 11), (13, 12), (14, 12), (15, 12) };
             for (int t = 1; t <= walk.Length; t++)
             {
                 h.Stamp(t, Stand(walk[t - 1].Item1, walk[t - 1].Item2));
                 if (t < walk.Length) h.Keeper.Ran(t, t >= fireAt ? 1 : 0);
             }
-            // 1: the first (no stand before it to step from); 4 and 6: the stand after each steps another way from the
-            // stand before them (from 1 to 6 is diagonal, 4 to 6 south; from 4 to 7 diagonal, 6 to 7 east); 7: it fired;
-            // 8: the newest, not run yet. 2, 3 and 5 fired nothing and leave the step after them as it was.
             Assert.That(h.Ticks, Is.EqualTo(new[] { 1, 4, 6, 7, 8 }));
 
-            // Hurt to the ground and up again: a stand that's no step can't be shown to fire nothing, so it stays.
             h = new History(() => true);
             var hurt = new[] { (1, 12), (2, 12), (2, 0), (3, 0), (4, 12), (5, 12), (6, 12), (7, 12) };
             for (int t = 1; t <= hurt.Length; t++)
@@ -111,7 +103,6 @@ namespace Chem.Tests
             Assert.That(h.Ticks, Is.EqualTo(new[] { 1, 3, 4, 5, 7, 8 }),
                 "2 goes (the fall after it is no step from 1 either); 3 and 4 are down and 5 gets up, none a step, so they stay; 6 goes, 7 until 8 has run");
 
-            // Without triggers the same stands go but those a checksum or a rule saw: down or not, nothing reads them.
             h = new History();
             for (int t = 1; t <= hurt.Length; t++)
             {

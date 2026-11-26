@@ -15,8 +15,6 @@ namespace Chem
         readonly Dictionary<long, Chunk> chunks = new Dictionary<long, Chunk>();
         Chunk lastChunk;
 
-        // The active chunks' cells as row segments, in world row-major order (y, then x),
-        // whatever order the store keeps them in. Rebuilt when the active set changes.
         RowSpan[] spans;
         Chunk[] activeChunks;
 
@@ -33,10 +31,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// Creates the chunks covering the world's extent, every one packed against a source of the fill (World.Pack.cs):
-        /// no Cell objects until something reads a chunk or it ticks.
-        /// </summary>
         void BuildChunks(string fill)
         {
             for (int cy = 0; cy <= Chunks.ChunkOf(H - 1); cy++)
@@ -46,7 +40,7 @@ namespace Chem
 
         void AddChunk(int cx, int cy)
         {
-            var ch = new Chunk(cx, cy) { Fit = fits, Owner = this }; // made under the rules in force
+            var ch = new Chunk(cx, cy) { Fit = fits, Owner = this };
             chunks.Add(Chunks.Key(cx, cy), ch);
             ch.North = FindChunk(cx, cy - 1);
             ch.South = FindChunk(cx, cy + 1);
@@ -62,8 +56,6 @@ namespace Chem
             sortedChunks = null;
         }
 
-        // Lookups come in runs inside one chunk, so the last chunk found is checked first.
-        // A chunk x past the seam folds round (FoldChunkX), so the links, the planner and every lookup cross it.
         Chunk FindChunk(int cx, int cy)
         {
             cx = FoldChunkX(cx);
@@ -77,7 +69,6 @@ namespace Chem
 
         static int LocalIndex(int x, int y) => (Chunks.LocalOf(y) << Chunks.Shift) | Chunks.LocalOf(x);
 
-        /// <summary>The cell at (x, y) with its chunk and local index, or null off the world.</summary>
         Cell Locate(int x, int y, out Chunk ch, out int i)
         {
             x = FoldX(x);
@@ -87,10 +78,8 @@ namespace Chem
             return ch?.CellAt(i);
         }
 
-        /// <summary>Like Locate, but null for a cell in a paused chunk too.</summary>
         Cell LocateActive(int x, int y, out Chunk ch, out int i)
         {
-            // The chunk is checked before its cell is read, so an inactive chunk's packed cells stay packed.
             x = FoldX(x);
             y = FoldY(y);
             i = LocalIndex(x, y);
@@ -98,19 +87,14 @@ namespace Chem
             return ch != null && ch.Active ? ch.CellAt(i) : null;
         }
 
-        /// <summary>Whether (x, y) is a cell the simulation may change: on the world, in an active chunk.</summary>
         public bool IsActiveAt(int x, int y) => LocateActive(x, y, out _, out _) != null;
 
-        /// <summary>Neighbours in N, E, S, W order that the simulation may change.</summary>
         IEnumerable<(int x, int y, int dir)> ActiveNeighbours(int x, int y)
         {
             foreach (var n in Neighbours(x, y))
                 if (IsActiveAt(n.x, n.y)) yield return n;
         }
 
-        // ---------- the active set ----------
-
-        /// <summary>Every loaded chunk's coordinate, sorted by row then column.</summary>
         public IReadOnlyList<(int cx, int cy)> ChunkCoords
         {
             get
@@ -122,8 +106,6 @@ namespace Chem
             }
         }
 
-        // The chunks never change once the world is made (BuildChunks): their coordinates and their order, kept, as the
-        // planner reads them every frame (9,720 of them on the 12 x 10).
         IReadOnlyList<(int cx, int cy)> chunkCoords;
         Chunk[] sortedChunks;
 
@@ -131,7 +113,6 @@ namespace Chem
 
         List<(int cx, int cy)> activeCoords;
 
-        /// <summary>The simulated chunks' coordinates, by row then column (kept until a chunk wakes or sleeps).</summary>
         public IReadOnlyList<(int cx, int cy)> ActiveChunks
         {
             get
@@ -143,46 +124,28 @@ namespace Chem
             }
         }
 
-        /// <summary>Whether a loaded chunk is simulated. Chunks start active.</summary>
         public bool IsActive(int cx, int cy) => ChunkOrThrow(cx, cy).Active;
 
-        /// <summary>
-        /// A chunk activated (Active) or deactivated, raised by SetActive and SetAllActive once it
-        /// has switched (and, activating, caught up), so its cells are as they now are. Switches
-        /// only come from commands (ChunkSwitch in tick batches, or the solo plan), so every peer
-        /// raises the same ones at the same tick. For the view (props sleeping with their chunk):
-        /// a handler must not change the world, only send commands.
-        /// </summary>
         public event Action<ChunkSwitch> ChunkSwitched;
 
-        /// <summary>
-        /// Activates or deactivates a loaded chunk. An inactive chunk keeps its cells exactly as
-        /// they are; fire, water and gas next to it stop at its edge. Call it between ticks, the
-        /// same on every peer.
-        /// </summary>
         public void SetActive(int cx, int cy, bool active)
         {
-            FinishTick(); // chunk switches land between whole ticks (StepSome)
+            FinishTick();
             var ch = ChunkOrThrow(cx, cy);
             if (ch.Active == active) return;
             ch.Active = active;
-            // Activating, it's made to fit the rules if a switch while it was inactive could
-            // have unfitted it (World.Fit.cs), catches up what it missed (World.CatchUp) and
-            // counts as live, so a chunk activated for what is about to cross into it
-            // (ChunkPlanner) isn't let go as settled before it arrives.
             if (active)
             {
-                UnpackAround(ch); // an active chunk is unpacked, and those round it (World.Pack.cs)
+                UnpackAround(ch);
                 MakeFit(ch);
                 Resume(ch);
             }
             else Stop(ch);
             spans = null;
             activeCoords = null;
-            ChunkSwitched?.Invoke(new ChunkSwitch(ch.X, ch.Y, active)); // its own (folded) coordinates
+            ChunkSwitched?.Invoke(new ChunkSwitch(ch.X, ch.Y, active));
         }
 
-        /// <summary>Activates or deactivates every loaded chunk (no catching up, but made to fit the rules), raising ChunkSwitched for each that changed, by row then column.</summary>
         public void SetAllActive(bool active)
         {
             FinishTick();
@@ -202,7 +165,6 @@ namespace Chem
         Chunk ChunkOrThrow(int cx, int cy) =>
             FindChunk(cx, cy) ?? throw new ArgumentOutOfRangeException(nameof(cx), $"No chunk at ({cx}, {cy})");
 
-        /// <summary>The active chunks' row segments in world row-major order.</summary>
         RowSpan[] Spans
         {
             get
@@ -212,7 +174,6 @@ namespace Chem
             }
         }
 
-        // The active chunks by row then column, made with the spans.
         Chunk[] ActiveChunkArray
         {
             get
@@ -237,7 +198,6 @@ namespace Chem
             activeChunks = active.ToArray();
         }
 
-        /// <summary>Loaded chunks (or only the active ones) by row then column, never in the store's own order.</summary>
         List<Chunk> SortedChunks(bool activeOnly)
         {
             var all = ChunksInOrder;
@@ -246,9 +206,6 @@ namespace Chem
             return list;
         }
 
-        // Every chunk by row then column: what each pass over all of them walks, never the store's own order. A
-        // Dictionary's is the order its chunks were made in, which a world making them as they're wanted wouldn't share
-        // with its peers (core-review-0). Sorted once as chunks are added (AddChunk drops it), then read with no garbage.
         Chunk[] ChunksInOrder
         {
             get
@@ -266,7 +223,6 @@ namespace Chem
 
         static readonly Comparison<Chunk> ByRowThenColumn = (a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.X.CompareTo(b.X);
 
-        /// <summary>Row segments for one row of chunks (active[first..last], left to right), clipped to the extent (an open world's chunks are whole).</summary>
         void AddRowSpans(List<Chunk> active, int first, int last, List<RowSpan> list)
         {
             int y0 = active[first].Y * Chunks.Size;
@@ -282,33 +238,18 @@ namespace Chem
             }
         }
 
-        // ---------- cells through their chunks ----------
-        // Every reach for a cell goes through its chunk (D9), never a map-sized array, so how a chunk holds its
-        // cells can change under these (the sparse World, docs/design/sparse-world.md).
-
-        /// <summary>The cell at a world index (Idx(x, y)), through its chunk; null off the world.</summary>
         public Cell CellAt(int index)
         {
             if (IsOpen) throw NoIndex();
             return index >= 0 && index < W * H ? Locate(index % W, index / W, out _, out _) : null;
         }
 
-        /// <summary>
-        /// The cells of chunk (cx, cy), read-only, by local index (ly * Chunks.Size + lx; null outside the world's
-        /// extent), or empty for a chunk not loaded. For a view's pass over a whole chunk (drawing its cells, the fire
-        /// lights), found once per chunk instead of per cell: a per-cell At there costs the frame ~0.6 ms on the nine.
-        /// </summary>
         public ReadOnlySpan<Cell> ChunkCells(int cx, int cy)
         {
             var ch = FindChunk(cx, cy);
             return ch == null ? ReadOnlySpan<Cell>.Empty : ch.ActiveCells;
         }
 
-        /// <summary>
-        /// Every cell of the world in row order (Idx), through their chunks, to read or change. Not for the tick: it
-        /// allocates its enumerator, and it unpacks every packed chunk it passes (World.Pack.cs), so on a big map it holds
-        /// the whole map unpacked: count over ActiveChunks there.
-        /// </summary>
         public IEnumerable<Cell> AllCells()
         {
             if (IsOpen)
@@ -320,12 +261,6 @@ namespace Chem
             while (run.MoveNext()) yield return run.Cell;
         }
 
-        /// <summary>
-        /// Walks the cells of world indices [from, to) in row order through their chunks, finding a chunk once
-        /// for each row of it crossed: no allocation, so the tick's passes (HashSlice) use it. Given a scratch cell it
-        /// only reads, and reads a packed chunk where it lies (ChunkReader), into the scratch, never unpacking it; without
-        /// one, its cells are the chunks' own objects, a packed chunk unpacked for them.
-        /// </summary>
         struct RowCells
         {
             readonly World world;
@@ -347,7 +282,6 @@ namespace Chem
                 Cell = null;
             }
 
-            /// <summary>The cell walked to and its chunk.</summary>
             public Cell Cell;
             public Chunk Chunk;
 
@@ -372,11 +306,8 @@ namespace Chem
             }
         }
 
-        // The cell the hash's, the audit's and SetLand's walks read a packed chunk's cells into (RowCells, ChunkReader): the World is
-        // read on the main thread only.
         readonly Cell walkScratch = new Cell();
 
-        /// <summary>Sets one of the per-tick marks (FlowMark, ...) on a cell.</summary>
         void Mark(int x, int y, byte mark)
         {
             if (Locate(x, y, out var ch, out int i) != null) ch.Marks[i] |= mark;
@@ -385,14 +316,6 @@ namespace Chem
         static int CellX(Chunk ch, int i) => (ch.X << Chunks.Shift) + (i & Chunks.Mask);
         static int CellY(Chunk ch, int i) => (ch.Y << Chunks.Shift) + (i >> Chunks.Shift);
 
-        // ---------- hashes ----------
-
-        /// <summary>
-        /// Stable fingerprint of the cells (FNV-1a), matching the TS golden script in the tests
-        /// (cellHash in sandbox/test/sim.test.ts). Height and Life are written only when they
-        /// aren't 0, and a liquid only when it isn't water, so worlds nobody has terraformed,
-        /// grown or poured a liquid on hash as they did before them.
-        /// </summary>
         public string CellHash()
         {
             if (IsOpen) return OpenCellHash();
@@ -401,7 +324,6 @@ namespace Chem
             return CloseHash(sum);
         }
 
-        /// <summary>What CellHash hashes, as text: for a test that the running hash agrees with it.</summary>
         public string CellText()
         {
             if (IsOpen) return OpenCellText();
@@ -415,7 +337,6 @@ namespace Chem
             return sb.Append(FitText()).Append(WrapText).ToString();
         }
 
-        /// <summary>Adds one of <paramref name="slices"/> slices of the cells to a running hash (RollingHash): row-major, by the world's size alone.</summary>
         public void HashSlice(ref Fnv1aSum sum, int slice, int slices)
         {
             if (IsOpen)
@@ -427,7 +348,6 @@ namespace Chem
             HashCells(ref sum, (int)(n * slice / slices), (int)(n * (slice + 1) / slices));
         }
 
-        // Adds the cells of world indices [from, to) to a running hash, in row order.
         void HashCells(ref Fnv1aSum sum, int from, int to)
         {
             if (HashesChanges)
@@ -444,25 +364,10 @@ namespace Chem
             for (var run = new RowCells(this, from, to, walkScratch); run.MoveNext();) AddCell(ref sum, run.Cell, LiquidsIn(run.Chunk, run.Cell));
         }
 
-        /// <summary>
-        /// Whether the cell hash is the changes hash: on a world whose source makes its chunks when they're read (a generated
-        /// map's, IGeneratedSource), a walk over every cell would make the whole map, so the hash covers only the cells that
-        /// differ from the source ("@index:" and the cell, in row order), which is the same fingerprint of the cells when
-        /// every peer has the source. A packed chunk's are its changes as they lie; an unpacked chunk's cells are each
-        /// compared with the source, as packing it would. Other worlds hash every cell, as they always have.
-        /// </summary>
         public bool HashesChanges => Source is IGeneratedSource;
 
-        // The cell the changes hash makes the source's into, to compare an unpacked chunk's with.
         readonly Cell hashMade = new Cell();
 
-        /// <summary>
-        /// Walks the cells of world indices [from, to) that differ from the world's source, in row order, through their
-        /// chunks a row of each at a time, never unpacking one or reading the source for a packed chunk: a packed chunk's
-        /// are its changes (each differs from the source: Changes and WithChange keep no other), laid into the scratch on a
-        /// reset cell, which is the cell the source and the change make (a change holds every field the source makes, and
-        /// all the rest when either has any); an unpacked chunk's are its own objects that packing would keep.
-        /// </summary>
         struct ChangedRun
         {
             readonly World world;
@@ -489,7 +394,6 @@ namespace Chem
                 Index = 0;
             }
 
-            /// <summary>The changed cell walked to, its chunk and its world index.</summary>
             public Cell Cell;
             public Chunk Chunk;
             public int Index;
@@ -528,7 +432,6 @@ namespace Chem
 
             void Done(int local) => Index = ((Chunk.Y << Chunks.Shift) + (local >> Chunks.Shift)) * world.W + (Chunk.X << Chunks.Shift) + (local & Chunks.Mask);
 
-            // The next run of a row inside one chunk, up to the walk's end; false past it.
             bool NextSegment()
             {
                 int at = y * world.W + x;
@@ -552,7 +455,6 @@ namespace Chem
             }
         }
 
-        /// <summary>What a hash of the cells ends with: the things cracked so far, then the chunks not yet made to fit the rules (FitText).</summary>
         public string CloseHash(Fnv1aSum sum)
         {
             foreach (ulong thing in crackedThings)
@@ -565,8 +467,6 @@ namespace Chem
             return sum.ToString();
         }
 
-        // What a hash of the cells ends with on a world that wraps, after FitText: "~ew" ("~torus" both ways), so it differs from the same cells
-        // on a world that doesn't (they behave apart at the edges). Nothing on one that doesn't, so its hash is as it was.
         string WrapText
         {
             get
@@ -576,7 +476,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The same fingerprint over one chunk's cells (those inside the world), row by row.</summary>
         public string ChunkHash(int cx, int cy)
         {
             var sum = Fnv1aSum.Start();
@@ -586,7 +485,6 @@ namespace Chem
             return sum.ToString();
         }
 
-        // What AppendCell writes, into a running hash; a liquid by its id in liquids (LiquidsOf: null for the rules in force).
         void AddCell(ref Fnv1aSum sum, Cell c, string[] liquids)
         {
             sum.Add(c.T);
@@ -615,7 +513,6 @@ namespace Chem
             AddIfSet(ref sum, 's', c.Star);
             AddIfSet(ref sum, 'c', c.Cracked);
             AddIfSet(ref sum, 'p', c.Setting);
-            // A liquid other than water by its id (never its index), so a world of water hashes as it did.
             if (c.Kind != 0)
             {
                 sum.Add(',');

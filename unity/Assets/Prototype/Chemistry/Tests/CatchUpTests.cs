@@ -1,14 +1,12 @@
+// Catching up (World.CatchUp, docs/WORLD_STREAMING.md "Part 2, second slice"): a chunk that
+// deactivated while live runs the ticks it missed when it next activates, up to sim.json
+// streaming.catchUpTicks, so a fire left behind has burned on when a wizard comes back. With
+// quiet neighbours it ends exactly as if it had never stopped.
 using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Catching up (World.CatchUp, docs/WORLD_STREAMING.md "Part 2, second slice"): a chunk that
-    /// deactivated while live runs the ticks it missed when it next activates, up to sim.json
-    /// streaming.catchUpTicks, so a fire left behind has burned on when a wizard comes back. With
-    /// quiet neighbours it ends exactly as if it had never stopped.
-    /// </summary>
     [Category("Simulation")]
     public class CatchUpTests
     {
@@ -18,7 +16,6 @@ namespace Chem.Tests
 
         static World Dirt(Rules rules = null) => new World(rules ?? R, 9 * S, 9 * S, 3, "dirt");
 
-        /// <summary>A 10×10 patch of grass round the middle of chunk (4, 4), set alight, burning a few ticks.</summary>
         static World Burning(Rules rules = null)
         {
             var w = Dirt(rules);
@@ -103,7 +100,6 @@ namespace Chem.Tests
         [Test]
         public void CatchUpsInTickBatchesReplayTheSame()
         {
-            // Live: the host stops chunk (4, 4) while it burns and starts it again later.
             var live = Burning();
             var rules = RuleSet.Plain(R);
             var switches = new List<(int, ChunkSwitch)> { (10, new ChunkSwitch(4, 4, false)), (80, new ChunkSwitch(4, 4, true)) };
@@ -115,7 +111,6 @@ namespace Chem.Tests
                 if (t == 80) caught = live.CaughtUp(4, 4);
             }
 
-            // Replay: a late joiner from the same history.
             var replay = Burning();
             var replayRules = RuleSet.Plain(R);
             for (int t = 1; t <= 120; t++) replayRules = timeline[t].RunOn(replay, replayRules, out _);

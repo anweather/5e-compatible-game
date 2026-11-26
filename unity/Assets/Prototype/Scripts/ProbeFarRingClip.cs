@@ -14,7 +14,6 @@ public class FarRingClipProbe : ProbeScenario
 {
     const float Settle = 4f, Open = 4f, Turning = 6f, Gliding = 12f, Hold = 4f, Up = 45f;
 
-    // The glide: from over the spawn to past the landmark's seenFrom, over the highest ground on the way.
     struct Glide
     {
         public Vector3 Start, End, Top, Away;
@@ -47,7 +46,6 @@ public class FarRingClipProbe : ProbeScenario
         yield return Turn(g.Start, g.Away, g.Top, Turning);
         yield return GlideOn(g);
         Check("landmark_shown", far.Landmarks.Any(l => l.landmark == target.landmark && l.shown), Describe(target, g.End));
-        // Whether the land stands between the eye and the landmark's top at the end (a terrain's collider is there drawn or not).
         var eyeAtEnd = Camera.main.transform.position;
         Metric("landmark_hidden_by_land_at_m", Physics.Linecast(eyeAtEnd, g.Top, out var hit) ? hit.distance : -1f);
         Metric("landmark_off_m", Vector3.Distance(eyeAtEnd, g.Top));
@@ -62,7 +60,6 @@ public class FarRingClipProbe : ProbeScenario
 
     static bool RingUp(FarRing far) => far != null && far.IsReady && far.KnownDrawn > 0;
 
-    // The volcano (the nine's must), else the spire, else the plan's tallest landmark; with the ring's metrics.
     (FarLandmark landmark, Vector3 foot, bool shown) Target(FarRing far, Vector3 start)
     {
         var all = far.Landmarks.ToList();
@@ -79,8 +76,6 @@ public class FarRingClipProbe : ProbeScenario
         return target;
     }
 
-    // The ground round a landmark's foot (m): the middle of 16 samples on the ring at its radius, outside its own stamp
-    // (the ground at its middle is a volcano's crater floor, 50 m up its cone).
     float GroundRound(Vector3 foot, float radius)
     {
         var heights = new float[16];
@@ -96,11 +91,8 @@ public class FarRingClipProbe : ProbeScenario
     Glide Plan((FarLandmark landmark, Vector3 foot, bool shown) target, Vector3 start)
     {
         var top = target.foot + Vector3.up * (target.landmark.Height * 0.6f);
-        // It ends at 0.7 of the landmark's seenFrom from it (past sight, so it's still a far mesh).
         float seen = target.landmark.SeenFrom * 96f, off = new Vector2(top.x - start.x, top.z - start.z).magnitude;
         var end = start + Flat(top - start) * Mathf.Max(0f, off - 0.7f * seen);
-        // Over the highest ground on the way and on to the landmark, so the glide clears the hills and the view of it does,
-        // and well over the landmark's own ground, so the land round it doesn't stand in front of it.
         float highest = start.y;
         for (int s = 0; s <= 96; s++)
             highest = Mathf.Max(highest, grid.GroundAt(Vector3.Lerp(start, target.foot, s / 96f)) + Up * 0.7f);
@@ -119,13 +111,11 @@ public class FarRingClipProbe : ProbeScenario
             var eye = Vector3.Lerp(g.Start, g.End, k);
             eye.y = Mathf.Max(Mathf.Lerp(g.Start.y, g.Highest, Mathf.Clamp01(k * 3f)), grid.GroundAt(eye) + Up * 0.5f);
             Cut(eye, g.Top);
-            // The wizard keeps under the eye, so the generated and known rings follow it as they would a walk.
             Teleport(new Vector3(eye.x, grid.GroundAt(eye) + 0.05f, eye.z));
             yield return null;
         }
     }
 
-    // A still of the same view with the landmarks' own haze lifted, so a tuning pass can see where they stand.
     IEnumerator Bare(FarRing far)
     {
         far.enabled = false;
@@ -149,7 +139,6 @@ public class FarRingClipProbe : ProbeScenario
     static string Describe((FarLandmark landmark, Vector3 foot, bool shown) l, Vector3 eye) =>
         $"{l.landmark.Name ?? l.landmark.Type} {new Vector2(l.foot.x - eye.x, l.foot.z - eye.z).magnitude:0} m off, seenFrom {l.landmark.SeenFrom}";
 
-    // The eye turns, eased, from looking at one point to another.
     IEnumerator Turn(Vector3 eye, Vector3 from, Vector3 to, float seconds)
     {
         var a = Quaternion.LookRotation(from - eye);

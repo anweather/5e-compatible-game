@@ -10,7 +10,6 @@ public static class ProceduralCast
 {
     public const int Rate = 44100;
 
-    /// <summary>The weight under a slam: a kick that drops from about 130 Hz to 45 Hz in a moment.</summary>
     public static float[] Sub(float seconds = 0.3f)
     {
         var data = new float[(int)(seconds * Rate)];
@@ -24,7 +23,6 @@ public static class ProceduralCast
         return data;
     }
 
-    /// <summary>A bolt leaving the hand: a whip of bright noise and a crack at the front of it.</summary>
     public static float[] Snap(int seed, float seconds = 0.4f)
     {
         var r = new System.Random(seed);
@@ -41,7 +39,6 @@ public static class ProceduralCast
         return data;
     }
 
-    /// <summary>Earth heaved up: a slow low push with grit in it.</summary>
     public static float[] Heave(int seed, float seconds = 0.7f)
     {
         var r = new System.Random(seed);
@@ -59,7 +56,6 @@ public static class ProceduralCast
         return data;
     }
 
-    /// <summary>Something pushed away from the hand, wind or water: a soft rush that brightens and falls.</summary>
     public static float[] Rush(int seed, float seconds = 0.55f)
     {
         var r = new System.Random(seed);
@@ -76,7 +72,6 @@ public static class ProceduralCast
         return data;
     }
 
-    /// <summary>The energy between the hands, made to loop: a low hum in fifths, slowly beating, with air on top.</summary>
     public static float[] ChargeLoop(float seconds = 3f)
     {
         var r = new System.Random(7);
@@ -101,7 +96,6 @@ public static class ProceduralCast
         return looped;
     }
 
-    /// <summary>A cast dropped: a falling sputter that dies out.</summary>
     public static float[] Fizzle(float seconds = 0.45f)
     {
         var r = new System.Random(11);

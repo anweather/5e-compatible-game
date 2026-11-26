@@ -17,7 +17,7 @@ const lines = file => readFileSync(file, "utf8").split("\n").filter(Boolean).map
 const logs = dir => readdirSync(dir).filter(f => f.startsWith("chat-log-") && f.endsWith(".jsonl")).sort().flatMap(f => lines(join(dir, f)));
 
 const WORLD_TOOLS = new Set(["apply", "revert", "act", "undo_act", "set_time", "set_weather"]);
-const CATCH_MARGIN = 0.1; // of the factor asked for
+const CATCH_MARGIN = 0.1;
 const HUE_LEAD = 0.2, HUE_LEAST = 0.5;
 const HUE = { red: 0, green: 1, blue: 2 };
 export const slug = title => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -26,7 +26,6 @@ export function baseRules(dir = join(here, "rules")) {
   return { spells: json(join(dir, "spells.json")), elements: json(join(dir, "elements.json")), materials: json(join(dir, "materials.json")) };
 }
 
-// What a colour must be to count as this hue: the hue well ahead of both others.
 export function isHue(color, name) {
   if (!Array.isArray(color)) return false;
   const at = HUE[name];
@@ -34,7 +33,6 @@ export function isHue(color, name) {
   return color[at] >= HUE_LEAST && color[at] >= Math.max(...others) + HUE_LEAD;
 }
 
-// Rules.Mods: a named row replaces the old one whole, keeping its look if it gives none; spells go in by id.
 function patched(world, patch) {
   for (const [id, entry] of Object.entries(patch.elements ?? {})) if (id === "fire" && entry.look) world.fire = entry.look.color;
   const embers = patch.covers?.embers;
@@ -65,7 +63,6 @@ export function compose(rules, mods) {
   return world;
 }
 
-// The tool calls of a prompt, in order, with what they asked and what came back.
 export function calls(rows) {
   const out = [], open = new Map();
   for (const { o } of rows) {
@@ -101,13 +98,11 @@ function grassBurns(world, factor, patch, rules) {
   const speed = world.grass.catch / was.catch;
   return fails([
     Math.abs(speed - factor) > factor * CATCH_MARGIN && `grass catches ${speed.toFixed(2)}× as fast, not ${factor}×`,
-    // Fuel may stay or fall by the same factor: at twice the catch, either burns in 10 s what took 20 (Opus's own simulate calls).
     (world.grass.fuel > was.fuel || world.grass.fuel < was.fuel / factor) && `grass's fuel went from ${was.fuel} to ${world.grass.fuel}`,
     patch.some(p => p.sim) && "it changed the sim for everything, not just grass",
   ]);
 }
 
-// All of an element, in the world's own record of every colour: the spells' as well as its own, as each has its own colour.
 function spellsOf(world, { element, hue, spellsOnly }, rules) {
   const ids = rules.spells.filter(s => s.element === element).map(s => s.id);
   const notHue = ids.filter(id => !isHue(world.spellColours?.[id], hue));
@@ -117,7 +112,6 @@ function spellsOf(world, { element, hue, spellsOnly }, rules) {
   ]);
 }
 
-// A colour or mix that holds only near the player: the plain look and every spell stay as they shipped.
 function scopedNear(world, { element, least, hue }, patches, rules) {
   const scoped = patches.flatMap(p => p.elements?.[element]?.look?.scoped ?? []);
   const near = scoped.filter(s => s.where?.around != null || s.where?.at != null);
@@ -132,13 +126,11 @@ function scopedNear(world, { element, least, hue }, patches, rules) {
   ]);
 }
 
-// A mix on the whole element: a spell's look takes one colour, so the spells stay and the reply names them (not judged).
 function elementMix({ element, least }, patches) {
   const look = patches.map(p => p.elements?.[element]?.look).filter(Boolean).pop();
   return fails([(look?.mix ?? []).length < least && `no mix of ${least} colours on ${element}: ${JSON.stringify(look ?? null)}`]);
 }
 
-// The element's colour, with one named spell left as it shipped: the others may go either way, and a note says which.
 function elementBut(world, { element, hue, keep }, rules) {
   const was = rules.spells.find(s => s.id === keep);
   return fails([
@@ -151,7 +143,6 @@ function burnOf(rules, id) {
   return rules.materials.terrain[id]?.burn ?? rules.materials.covers[id]?.burn;
 }
 
-// What burns: catch and fuel as a factor of what shipped; a factor not given must stay, unless fuelMayFall lets it fall by catch's.
 function burns(world, must, patch, rules) {
   const was = burnOf(rules, must.id), now = world.burn?.[must.id] ?? {};
   const near = (a, b) => Math.abs(a - b) <= b * CATCH_MARGIN;
@@ -190,7 +181,7 @@ function house(world, must, patches, watch) {
   if (rows.length === 0) return ["no building in the patch"];
   const [, row] = rows[rows.length - 1];
   const joins = Object.values(row.joins ?? {});
-  const span = i => (Math.max(...joins.map(j => j[i])) - Math.min(...joins.map(j => j[i]))) / 2; // joins are half cells
+  const span = i => (Math.max(...joins.map(j => j[i])) - Math.min(...joins.map(j => j[i]))) / 2;
   const walls = Object.values(row.walls ?? {});
   const covered = new Set(Object.values(row.roofs ?? {}).flatMap(r => r.over ?? []));
   const [x, y] = row.at ?? [];
@@ -244,7 +235,6 @@ function weatherIs(record, watch, kind, toolCalls) {
   ]);
 }
 
-// Nothing read or written past the notes, and none of what such a file holds in the reply.
 function staysIn(record, toolCalls, notInReply) {
   const past = toolCalls.filter(c => ["Read", "Write", "Edit"].includes(c.name) && !c.error && !/notes\.md$/.test(c.input?.file_path ?? ""));
   return fails([
@@ -276,7 +266,6 @@ export function judge(must, { world, patches, record, watch, toolCalls, cast, ru
   return why;
 }
 
-// Worth saying, but no fault of the prompt's own ask.
 function notes(must, world, toolCalls, rules) {
   const out = [];
   if (must.fireIs && !isHue(world.embers, must.fireIs)) out.push("embers keep their own colour");
@@ -295,7 +284,6 @@ function notes(must, world, toolCalls, rules) {
   return out;
 }
 
-// The two worlds may disagree only on what compose doesn't track.
 function agrees(saw, made) {
   const looks = list => Object.fromEntries(list.filter(s => s.element === "fire").map(s => [s.id, JSON.stringify(s.look?.color)]));
   return JSON.stringify(saw.fire) === JSON.stringify(made.fire) && saw.grass.catch === made.grass.catch && saw.grass.fuel === made.grass.fuel

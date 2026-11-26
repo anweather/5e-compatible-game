@@ -1,13 +1,11 @@
+// Cells a mod lays (docs/design/events-and-placing.md 2b): a "lay" row of the world section laid at the switch,
+// skipping cells that aren't open, and taken back exactly by a revert; LaidText, the save, the checks and the budget.
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Cells a mod lays (docs/design/events-and-placing.md 2b): a "lay" row of the world section laid at the switch,
-    /// skipping cells that aren't open, and taken back exactly by a revert; LaidText, the save, the checks and the budget.
-    /// </summary>
     [Category("Simulation")]
     public class LayTests
     {
@@ -25,7 +23,6 @@ namespace Chem.Tests
 
         static int Count(World w, string terrain) => Enumerable.Range(0, 64 * 64).Count(i => w.At(i % 64, i / 64).T == terrain);
 
-        /// <summary>LayGolden (design section 6): 50 trees laid by a mod, CellHash pinned; reverted, back to the starting hash.</summary>
         [Test]
         public void LayGolden()
         {
@@ -91,7 +88,6 @@ namespace Chem.Tests
             Assert.That(loaded.CellHash(), Is.EqualTo(start));
         }
 
-        // A late joiner's view tells the map's trees from the laid ones by what the world began as (the valley's StartTrees).
         [Test]
         public void ALoadedWorldStartedWithoutTheLaidTrees()
         {

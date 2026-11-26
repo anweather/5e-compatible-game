@@ -13,11 +13,6 @@ namespace Chem
         Rules thingsFor;
         int thingsPlaced = -1;
 
-        /// <summary>
-        /// The things in this world under the rules in force: world/things.json plus what the mods on add, less any whose
-        /// chance didn't hold for this seed, then what spells placed (World.Place.cs). A new table whenever that changes, so
-        /// a view diffs it (ChangesFrom) after any tick whose table isn't the one it had.
-        /// </summary>
         public WorldThings ThingsNow
         {
             get
@@ -32,7 +27,6 @@ namespace Chem
             }
         }
 
-        // Each row these rules add that aren't in force yet stands on open, dry ground with nothing else on it.
         string ThingSiteProblem(Rules next, string title, ISet<(string, int, int)> leaving)
         {
             if (next.ModThings.Count == 0) return null;
@@ -62,8 +56,6 @@ namespace Chem
             return null;
         }
 
-        // The rows in force these rules don't have: their things are gone once they're on, so they stop nothing. A room's
-        // switch only adds rows, so this is empty there, on every peer; it's for a patch standing in for a mod (SiteProblemOf).
         HashSet<(string, int, int)> LeavingThings(Rules next)
         {
             var leaving = new HashSet<(string, int, int)>();
@@ -72,8 +64,6 @@ namespace Chem
             return leaving;
         }
 
-        // Someone picked up a thing. The first pick-up of one a mod added goes in the room and the log, on every
-        // peer at this tick; anything else changes nothing and says nothing. No change mode: a Locked room can still find it.
         RoomVerdict Found(RoomCommand c)
         {
             var thing = ulong.TryParse(c.Mod, NumberStyles.None, CultureInfo.InvariantCulture, out ulong id) ? ThingsNow.Find(new ThingId(id)) : null;

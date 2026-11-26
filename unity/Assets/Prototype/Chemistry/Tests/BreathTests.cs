@@ -1,22 +1,20 @@
+// A swimmer's breath and drowning (docs/BACKLOG.md 13; Breath.cs, sim.json breath).
 using System;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>A swimmer's breath and drowning (docs/BACKLOG.md 13; Breath.cs, sim.json breath).</summary>
     [Category("Unit")]
     public class BreathTests
     {
         static BreathParams P => ChemistryTests.R.Sim.Breath;
 
-        // A seeded die of the given sides.
         static Func<int, int> Dice(int seed)
         {
             var r = new Random(seed);
             return sides => r.Next(1, sides + 1);
         }
 
-        // Steps the breath in frames of dt for this many seconds; the damage taken in all.
         static int Run(Breath b, double seconds, bool under, double dt = 0.02)
         {
             int damage = 0;
@@ -85,7 +83,6 @@ namespace Chem.Tests
         [Test]
         public void OneLongStepCountsEveryHit()
         {
-            // A long frame (a hitch) still deals each hit it covers: out at 30 s, then at 33, 36 and 39.
             var b = new Breath(P, Dice(3));
             int damage = b.Step(P.Seconds + 3 * P.DrownEvery + 0.5, true);
             Assert.That(damage, Is.InRange(4, 24));
@@ -104,7 +101,6 @@ namespace Chem.Tests
         [Test]
         public void ItsDataNotAConstant()
         {
-            // A mod or a tweak to sim.json changes it (Rules.Mods deep-merges over sim).
             var p = Parse("{ \"seconds\": 10, \"refillSeconds\": 1, \"drownEvery\": 2, \"drownDice\": 2, \"drownSides\": 4 }");
             Assert.That((p.Seconds, p.RefillSeconds, p.DrownEvery, p.DrownDice, p.DrownSides), Is.EqualTo((10.0, 1.0, 2.0, 2, 4)));
             var b = new Breath(p, Dice(5));

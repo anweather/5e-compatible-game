@@ -38,7 +38,6 @@ public class ChargesProbe : ProbeScenario
         Compare("mage_hand_lift", (float)MageHand.MaxMass(hand, 1), (float)MageHand.MaxMass(hand, Held), "kg");
     }
 
-    // A tap against a held cast: the held one does half as much again or more.
     void Compare(string name, float tap, float held, string unit)
     {
         Metric($"{name}_tap", tap);
@@ -46,8 +45,6 @@ public class ChargesProbe : ProbeScenario
         Check($"{name}_stronger_held", tap > 0f && held >= tap * 1.5f, $"{tap:0.##} {unit} tapped, {held:0.##} held");
     }
 
-    // Casts a cell spell at a yard cell and returns how much it left in its held footprint at once
-    // (it lands at once without a projectile): water units for water, else squares with its cover.
     float Cells(string spellId, int x, int y, int charge)
     {
         var spell = World.Rules.Spell(spellId);
@@ -62,7 +59,6 @@ public class ChargesProbe : ProbeScenario
         return Measure() - before;
     }
 
-    // Ray of Frost from beside the wizard along its longest open way, tapped then held: the beam's length.
     IEnumerator Beams()
     {
         var spell = World.Rules.Spell(SpellIds.RayOfFrost);
@@ -81,7 +77,6 @@ public class ChargesProbe : ProbeScenario
         Compare("ray_of_frost_beam_m", lengths[0], lengths[1], "m");
     }
 
-    // Thunderwave beside the crate (as the smoke probe casts it), tapped then held from the same side: how far it went.
     IEnumerator Thunderwaves()
     {
         Place(15, 6);
@@ -113,7 +108,6 @@ public class ChargesProbe : ProbeScenario
         Compare("thunderwave_shove_m", moved[0], moved[1], "m");
     }
 
-    // Levitate on two props near yard (17, 6), the first tapped, the second held: how high each rose in 2 s.
     IEnumerator Levitates()
     {
         var near = grid.YardCellCenter(17, 6);
@@ -143,7 +137,6 @@ public class ChargesProbe : ProbeScenario
         Compare("levitate_rise_m", rose[0], rose[1], "m");
     }
 
-    // The free-standing physics prop nearest a point (not <paramref name="except"/>), or null.
     static PhysicsProp Nearest(Vector3 at, PhysicsProp except) =>
         FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
             .Where(p => p != except && p.State != null && p.TryGetComponent<Rigidbody>(out var body) && !body.isKinematic)

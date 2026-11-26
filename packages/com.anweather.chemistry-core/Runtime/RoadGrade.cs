@@ -9,12 +9,9 @@ namespace Chem
 {
     public static class RoadGrade
     {
-        // In half cells: how far along a road its height is evened, how far out the land takes to lean back, and how far
-        // from each end the road comes to meet the land.
         const int Evened = 24, Bank = 6, Pinned = 16;
         const int Scale = 16;
 
-        /// <summary>What the road adds to the land at each cell it moves, in land units, keeping off the cells in <paramref name="keepOff"/>.</summary>
         public static List<(int x, int y, int by)> Of(BuildingRoad road, int rowX, int rowY, Func<int, int, int> land, ISet<(int x, int y)> keepOff)
         {
             var line = Line(road, rowX, rowY);
@@ -31,7 +28,6 @@ namespace Chem
             var moved = new List<(int x, int y, int by)>();
             foreach (var cell in nearest.OrderBy(c => c.Key.y).ThenBy(c => c.Key.x))
             {
-                // Past its ends the land stays as it is: flattened up to a gate, it left a step no one could climb.
                 if (keepOff.Contains(cell.Key) || cell.Value.at == 0 || cell.Value.at == line.Count - 1) continue;
                 int by = surface[cell.Value.at] - land(cell.Key.x, cell.Key.y);
                 int part = by * Kept(cell.Value.d2, inner) / (Scale * Scale);
@@ -40,7 +36,6 @@ namespace Chem
             return moved;
         }
 
-        // The road's line, a point a half cell.
         static List<(int x, int y)> Line(BuildingRoad road, int rowX, int rowY)
         {
             var line = new List<(int x, int y)>();
@@ -49,8 +44,6 @@ namespace Chem
             return line;
         }
 
-        // The height along the line: evened, never turning back on its climb, and meeting the land at both ends, after a
-        // landing this many half cells long at its start's height (a gate's).
         static int[] Surface(int[] ground, int flat)
         {
             int n = ground.Length;
@@ -72,7 +65,6 @@ namespace Chem
                 even[last] = ground[n - 1] + (even[last] - ground[n - 1]) * k / Pinned;
             }
             if (flat <= 0) return even;
-            // The landing, then the road leaving it over as far again, to meet the evened height.
             flat = Math.Min(flat, n / 2);
             int ease = Math.Min(flat, n - 1 - flat);
             for (int k = 0; k < flat; k++) even[k] = ground[0];
@@ -84,7 +76,6 @@ namespace Chem
             return even;
         }
 
-        // How much of the road's height a cell takes, out of Scale squared: all of it on the road, none at the bank's foot.
         static int Kept(long d2, int inner)
         {
             if (d2 <= (long)inner * inner) return Scale * Scale;

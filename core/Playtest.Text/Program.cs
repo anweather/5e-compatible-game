@@ -106,7 +106,6 @@ namespace Chem.PlaytestText
             return at >= 0 && at + 1 < args.Length ? args[at + 1] : null;
         }
 
-        // Runs the log's commands on a new desk: the first whose world differs fails it.
         static int Replay(GameFolders folders, uint seed, string path)
         {
             var desk = new Desk(folders, seed, double.MaxValue, null);

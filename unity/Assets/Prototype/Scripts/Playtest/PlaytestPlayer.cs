@@ -19,7 +19,6 @@ using UnityEngine;
 public sealed class PlaytestPlayer
 {
     const float Arrive = 4f, NoProgressSeconds = 12f, JumpCheckSeconds = 1f;
-    // How near an item must be to pick it up (metres).
     const float Reach = 3f;
 
     static readonly (string first, string then)[] ComboPairs =
@@ -60,24 +59,15 @@ public sealed class PlaytestPlayer
         surface = wizard.GetComponent<SurfaceEffects>();
     }
 
-    /// <summary>
-    /// The bot owns the wizard's input: the real mouse and stick never turn the camera. Menus turn
-    /// look back on as they close (PauseMenu.SetLook), so PlaytestBot calls this every frame. The
-    /// bot's own look (LookAround) writes look directly and still works.
-    /// </summary>
     public void HoldLook()
     {
         if (inputs != null) inputs.cursorInputForLook = false;
     }
 
-    /// <summary>Whether the bot is pushing the stick (for the stuck detector).</summary>
     public bool Pushing => inputs != null && inputs.move.sqrMagnitude > 0.01f;
-    /// <summary>The frame the bot last moved the wizard itself (a teleport).</summary>
     public int TeleportedOnFrame { get; private set; } = -1;
-    /// <summary>The frame number, as the bot counts it (set by PlaytestBot each frame).</summary>
     public int Frame { get; set; }
 
-    /// <summary>What the bot can choose from in this world.</summary>
     public GoalOptions Options()
     {
         var rules = grid.World.Rules;
@@ -95,12 +85,10 @@ public sealed class PlaytestPlayer
         };
     }
 
-    // Seats and items in the scene (found once per question; there are few of them).
     static IEnumerable<Component> SeatsAndItems() =>
         UnityEngine.Object.FindObjectsByType<Seat>(FindObjectsSortMode.None).Cast<Component>()
             .Concat(UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.None));
 
-    /// <summary>Carries a goal out, for at most its seconds of game time.</summary>
     public IEnumerator Do(Goal goal)
     {
         trace("goal", goal.ToString());
@@ -129,8 +117,6 @@ public sealed class PlaytestPlayer
         inputs.jump = false;
     }
 
-    // Walks to a point: steers through the stick, sprints when far, jumps when blocked, and
-    // teleports near it when it makes no progress for a while (logged, so it isn't blamed on the game).
     IEnumerator Visit(Vector3 target, float seconds)
     {
         float until = Time.time + seconds, lastProgress = Time.time, nextJumpCheck = Time.time + JumpCheckSeconds;
@@ -169,7 +155,6 @@ public sealed class PlaytestPlayer
         trace("gave up", Place(target));
     }
 
-    // The stick, as a gamepad would push it: the third-person controller moves relative to the camera's yaw.
     void Steer(Vector3 to, bool sprint)
     {
         if (inputs == null || Camera.main == null) return;
@@ -181,7 +166,6 @@ public sealed class PlaytestPlayer
 
     void Teleport(Vector3 at)
     {
-        // Never off the world: a place out there is the bot's mistake, not the game's.
         if (!PlaytestPlaces.InWorld(grid, at))
         {
             trace("no teleport", F("{0:0},{1:0} is off the world", at.x, at.z));
@@ -196,9 +180,6 @@ public sealed class PlaytestPlayer
         trace("teleport", F("{0:0},{1:0}", ground.x, ground.z));
     }
 
-    // Casts a spell (and then a second one on the same cells) a few metres ahead, and checks a
-    // chemistry spell changed something where it reaches (Watched), waiting for that as long as a
-    // cast's result may take to show.
     IEnumerator CastAhead(string spell, string then)
     {
         if (caster == null) yield break;
@@ -234,26 +215,16 @@ public sealed class PlaytestPlayer
         yield return null;
     }
 
-    // N, E, S, W as the chemistry counts them: north (y-1) is +z.
     static int Dir(Vector3 forward)
     {
         if (Mathf.Abs(forward.z) >= Mathf.Abs(forward.x)) return forward.z >= 0 ? 0 : 2;
         return forward.x >= 0 ? 1 : 3;
     }
 
-    // --- casting by elements (docs/SPELL_COMBOS.md) ---------------------------------------
-
-    // How long a meter may take to run out (the longest cast is 18 ticks), and how long a cast's
-    // result may take to show in the cells (a projectile's flight, a wave rolling out).
     const float MeterSeconds = 6f, ResultSeconds = 6f;
-    // Where a chain or a cast by elements aims: this many cells ahead, within Frost's and Wave's reach.
     const float AheadMinCells = 4f, AheadMaxCells = 6.5f;
-    // A Geyser's prop counts as thrown when it rises this far (metres); props further than this aren't walked to.
     const float ThrownRise = 0.5f, PropSearch = 60f;
 
-    // A cast by elements a few cells ahead, as a player makes it: each element pressed in order, the
-    // last perhaps held to charge, the meter left to run out, the cast going off where it's aimed.
-    // Then a shot, and a check that a chemistry spell changed something there.
     IEnumerator CastElements(string combo)
     {
         if (caster == null) yield break;
@@ -262,7 +233,7 @@ public sealed class PlaytestPlayer
         var world = grid.World;
         var cast = world.Rules.Combos.Combo(combo);
         int charge = Chains.ChargeFor(dice);
-        var def = world.Rules.Spell(cast?.Spell); // on the hands a charge makes the same spell bigger
+        var def = world.Rules.Spell(cast?.Spell);
         var watched = Watched(def?.Id, cell, Dir(wizard.transform.forward));
         string before = HashIfActive(watched);
         bool went = false;
@@ -275,10 +246,6 @@ public sealed class PlaytestPlayer
                 $"{combo} ({def.Id}) at cell {cell.x},{cell.y} changed nothing there", lowConfidence: true));
     }
 
-    // Casts a combo's spell with the hands (SpellCaster.CastByHands: the same commands as the pad and the keys), aimed at a
-    // point, held to the charge asked for. The combos are still named by their elements (fire+air), as the goals and chains
-    // name them; what goes off is that combo's spell, wherever it sits on the hands (D16). Tells whether it went off. A
-    // spell no gesture of the hands brings out is skipped, not reported: the hands' table left it out on purpose.
     IEnumerator Press(string combo, Vector3 at, Action<bool> went, int charge = 1)
     {
         var world = grid.World;
@@ -304,7 +271,7 @@ public sealed class PlaytestPlayer
                 yield return null;
             }
         }
-        var watching = caster.StartCoroutine(Watch()); // the bot is no MonoBehaviour: the wizard runs it
+        var watching = caster.StartCoroutine(Watch());
         yield return caster.CastByHands(spell, charge, ok => pressed = ok);
         if (!pressed)
         {
@@ -316,15 +283,12 @@ public sealed class PlaytestPlayer
         }
         for (float until = Time.time + MeterSeconds; !fired && Time.time < until;) yield return null;
         caster.StopCoroutine(watching);
-        // The caster aims and casts in the tick the spell went off; give it the frame.
         yield return null;
         caster.AimOverride = null;
         if (!fired) report(new Candidate("elements-didnt-cast", combo, Category.Gameplay, Frame, $"{combo} ({spell}) was pressed on the hands but never went off"));
         went(fired);
     }
 
-    // A chain: the setup cast by elements, then the trigger aimed at what it left, and the cells
-    // checked for the rules' result (Playtest.Chains), with a shot of it either way.
     IEnumerator PlayChain(Chain chain)
     {
         if (chain == null || caster == null) yield break;
@@ -363,7 +327,6 @@ public sealed class PlaytestPlayer
         if (!went) yield break;
         bool done = false;
         until = Time.time + ResultSeconds;
-        // With a prop, the whole wait: it may be thrown after the cells show the jet.
         while (Time.time < until && !(done && prop == null))
         {
             done |= chain.Done(grid.World, ax, ay, since);
@@ -381,7 +344,6 @@ public sealed class PlaytestPlayer
         if (done && chain.WalkAcross) yield return WalkAcross(CellPoint(ax, ay));
     }
 
-    // Walks over the ice and a little past it; swimming on the way means the bridge didn't hold.
     IEnumerator WalkAcross(Vector3 ice)
     {
         var past = ice + Flat(ice - wizard.transform.position).normalized * (2f * grid.cellSize);
@@ -400,7 +362,6 @@ public sealed class PlaytestPlayer
                 "walking across Frost's ice, the wizard was swimming", lowConfidence: true));
     }
 
-    // A point a few cells ahead of the wizard, on the ground.
     Vector3 Ahead()
     {
         var at = wizard.transform.position + Flat(wizard.transform.forward).normalized * (dice.Range(AheadMinCells, AheadMaxCells) * grid.cellSize);
@@ -414,9 +375,6 @@ public sealed class PlaytestPlayer
         return new Vector3(c.x, grid.SurfaceY(x, y), c.z);
     }
 
-    // The chunks a cast aimed at a cell can change: every one under its shape at the highest charge
-    // and its scatter, and the caster's (a line from self starts there). A burst near a chunk's edge
-    // reaches into the next, so the aimed cell's chunk alone can miss what it did.
     HashSet<Vector2Int> Watched(string spellId, Vector2Int cell, int dir)
     {
         var chunks = new HashSet<Vector2Int> { grid.ChunkAt(CellPoint(cell.x, cell.y)), grid.ChunkAt(wizard.transform.position) };
@@ -432,16 +390,12 @@ public sealed class PlaytestPlayer
         return chunks;
     }
 
-    // The watched chunks' hashes where they're simulated (an inactive chunk is held as it is: no change
-    // to see), in a fixed order; null when none is.
     string HashIfActive(HashSet<Vector2Int> chunks)
     {
         var active = chunks.Where(c => grid.IsChunkActive(c.x, c.y)).OrderBy(c => c.y).ThenBy(c => c.x).ToList();
         return active.Count == 0 ? null : string.Join(" ", active.Select(c => grid.World.ChunkHash(c.x, c.y)));
     }
 
-    // Waits until the watched chunks change (the cast landed and did something) or the time is up,
-    // looking a few times a second (a chunk's hash reads all its cells).
     IEnumerator UntilChanged(HashSet<Vector2Int> chunks, string before, float seconds)
     {
         float until = Time.time + seconds;
@@ -450,14 +404,12 @@ public sealed class PlaytestPlayer
 
     const float HashEvery = 0.25f;
 
-    // The nearest prop within a walk, by distance then name (the same on every run).
     PhysicsProp NearestProp() =>
         UnityEngine.Object.FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
             .Where(p => Flat(p.transform.position - wizard.transform.position).magnitude < PropSearch)
             .OrderBy(p => (p.transform.position - wizard.transform.position).sqrMagnitude).ThenBy(p => p.name, StringComparer.Ordinal)
             .FirstOrDefault();
 
-    // Walks to the nearest item, picks it up and throws it.
     IEnumerator Throw(float seconds)
     {
         var item = UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.None)
@@ -465,7 +417,6 @@ public sealed class PlaytestPlayer
             .FirstOrDefault();
         if (item == null || hands == null) yield break;
         yield return Visit(item.transform.position, seconds);
-        // Only within reach: a wizard who didn't get there doesn't pick it up from afar.
         if (Flat(item.transform.position - wizard.transform.position).magnitude > Reach)
         {
             trace("no pickup", item.name + " is out of reach");
@@ -480,7 +431,6 @@ public sealed class PlaytestPlayer
         yield return Wait(3f);
     }
 
-    // Walks to the nearest seat, sits a while, stands.
     IEnumerator Sit(float seconds)
     {
         var seat = Seat.Nearest(wizard.transform.position, 500f);
@@ -494,7 +444,6 @@ public sealed class PlaytestPlayer
         yield return Wait(1f);
     }
 
-    // Opens a menu page, then closes the menu; a menu that won't open or close is a candidate.
     IEnumerator Menu(string page)
     {
         var menu = PauseMenu.Instance;
@@ -516,7 +465,6 @@ public sealed class PlaytestPlayer
     IEnumerator LookAround(float seconds)
     {
         float until = Time.time + seconds;
-        // Turning only: a tilt held for seconds left the camera on the ground or the sky for minutes (0.1.8 runs).
         var look = new Vector2(dice.Range(-1f, 1f), 0f) * 3f;
         trace("look", F("{0:0.0},{1:0.0}", look.x, look.y));
         while (Time.time < until)
@@ -526,12 +474,8 @@ public sealed class PlaytestPlayer
         }
     }
 
-    // The camera's tilt the bot keeps between goals (degrees below level), and how near is near enough.
     const float LevelPitch = 12f, LevelWithin = 6f, LevelSeconds = 1.5f;
 
-    // Brings the camera back to a little below level through the look stick, the way a player
-    // would, so the next goal's shot shows the world and not the ground or the sky. Which way the
-    // stick tilts the camera depends on the device, so it reverses if the tilt grows.
     IEnumerator Level()
     {
         if (inputs == null || Camera.main == null) yield break;
@@ -548,7 +492,6 @@ public sealed class PlaytestPlayer
         inputs.look = Vector2.zero;
     }
 
-    // The main camera's tilt, degrees below level (negative above).
     static float Pitch() => Mathf.DeltaAngle(0f, Camera.main.transform.eulerAngles.x);
 
     static IEnumerator Wait(float seconds)

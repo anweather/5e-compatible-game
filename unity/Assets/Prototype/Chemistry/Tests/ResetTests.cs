@@ -1,3 +1,9 @@
+// Resetting the world online (J-014, NetChem's part A): at the reset's tick every peer rebuilds
+// the world from its seed and runs that tick's batch on it, the mods in force re-stamped in it.
+// The network's tick keeps counting while the rebuilt world starts again at tick 0, so the
+// clock and the weather start again too. A peer that ran through the reset, and a late joiner
+// whose history starts at the reset, both end exactly where a fresh world with the same mods
+// does.
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -5,14 +11,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Resetting the world online (J-014, NetChem's part A): at the reset's tick every peer rebuilds
-    /// the world from its seed and runs that tick's batch on it, the mods in force re-stamped in it.
-    /// The network's tick keeps counting while the rebuilt world starts again at tick 0, so the
-    /// clock and the weather start again too. A peer that ran through the reset, and a late joiner
-    /// whose history starts at the reset, both end exactly where a fresh world with the same mods
-    /// does.
-    /// </summary>
     [Category("Simulation")]
     public class ResetTests
     {
@@ -20,10 +18,8 @@ namespace Chem.Tests
 
         static ActiveMod Wildfire => new ActiveMod("wildfire", File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "mods", "wildfire.json")));
 
-        /// <summary>A peer as NetChem runs one: its world, and the network tick its world's tick 0 sits at.</summary>
         sealed class Peer
         {
-            /// <summary>The world as it starts: a meadow with a pond, the same every time.</summary>
             static World Fresh()
             {
                 var w = new World(R, 128, 128, 11, "grass");
@@ -57,12 +53,11 @@ namespace Chem.Tests
         {
             (3, new CastCommand("fire-bolt", 20, 20, 0)),
             (12, new CastCommand("earthen-trench", 58, 45, 3)),
-            (30, new CastCommand("hasten-time", 64, 64, 0)),   // moves the clock: a reset must put it back
+            (30, new CastCommand("hasten-time", 64, 64, 0)),
             (45, new CastCommand("fire-bolt", 90, 90, 0)),
             (60, new CastCommand("earthen-trench", 76, 45, 1)),
         };
 
-        // The host's batches: wildfire on at tick 5, the reset at ResetAt (re-stamping wildfire), casts before and after.
         static List<TickBatch> HostBatches()
         {
             var batches = new List<TickBatch>();
@@ -86,7 +81,6 @@ namespace Chem.Tests
             var live = new Peer();
             foreach (var b in HostBatches()) live.Run(b);
 
-            // The same history as a fresh world would have it: the mods at its first tick, the later casts shifted.
             var fresh = new Peer();
             for (int t = 1; t <= Until - ResetAt + 1; t++)
             {
@@ -105,7 +99,6 @@ namespace Chem.Tests
             var live = new Peer();
             foreach (var b in HostBatches()) live.Run(b);
 
-            // What the host keeps after the reset: the history from ResetAt on, the mods at its head.
             var timeline = TickBatch.Timeline(Casts.Where(c => c.tick >= ResetAt), new[] { new RuleChange(ResetAt, new[] { Wildfire }) }, Until, from: ResetAt);
             Assert.That(timeline.Keys.Min(), Is.EqualTo(ResetAt), "nothing from before the reset");
             Assert.That(timeline[ResetAt].Reset, Is.True, "the history starts with the reset");

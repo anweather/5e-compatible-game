@@ -12,7 +12,6 @@ using UnityEngine;
 // saved look is put back after.
 public class LookProbe : ProbeScenario
 {
-    // The outfit's parts hanging on the wizard, and its hat.
     int OutfitParts(out Transform hat)
     {
         int parts = 0;
@@ -26,7 +25,6 @@ public class LookProbe : ProbeScenario
         return parts;
     }
 
-    // Anything of the outfit hanging on either hand (the sleeves hang on the arms).
     static int OnHands(Animator animator)
     {
         int parts = 0;
@@ -35,8 +33,6 @@ public class LookProbe : ProbeScenario
         return parts;
     }
 
-    // One wizard of each staff a seed can draw, at a clear noon with the same cameras: standing, walking,
-    // then with an element in each hand: none of them carries it. For the gallery (--shots); hands-*.png.
     IEnumerator HandsFree(WizardOutfit outfit)
     {
         int seed = outfit.Look.Seed;
@@ -83,7 +79,6 @@ public class LookProbe : ProbeScenario
         }
         Metric("parts_on_hands", onHands);
         Check("hands_free", onHands == 0, $"{onHands} outfit parts on the hands over one wizard of each staff kind");
-        // The staff's code, unused until a focus brings it back: it still hangs one, in the left hand.
         outfit.carriesStaff = true;
         int crystal = 1;
         while (WizardLook.From(crystal).Staff != WizardLook.StaffKind.Crystal) crystal++;
@@ -94,12 +89,8 @@ public class LookProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
-    // The cowl's opening, about its own upright: how far back of the head bone that stands, and the
-    // half angle (radians) that takes in its steps of quads.
     const float HoodAxisBack = 0.06f, HoodOpening = 1.02f;
 
-    // Rays in from outside the head, over all of it above the brim: the headwear must be met before
-    // the head is. For a cowl, the opening in front of the face is left out.
     static int HeadThrough(MeshFilter hat, Transform head, bool cowl)
     {
         var shell = hat.gameObject.AddComponent<MeshCollider>();
@@ -108,7 +99,6 @@ public class LookProbe : ProbeScenario
         int through = 0;
         for (int i = 0; i < 2000; i++)
         {
-            // A spiral of even points over the ball, in the head's own space.
             float y = 1f - 2f * (i + 0.5f) / 2000f, round = Mathf.Sqrt(1f - y * y), turn = i * 2.39996f;
             var dir = new Vector3(Mathf.Cos(turn) * round, y, Mathf.Sin(turn) * round);
             var skin = WizardOutfit.FaceAt + Vector3.Scale(dir, WizardOutfit.FaceSize / 2f);
@@ -121,14 +111,12 @@ public class LookProbe : ProbeScenario
         return through;
     }
 
-    // The ball of a head stays inside the hat and the cowl, for many seeds, and a picture of each.
     IEnumerator HeadwearFits(WizardOutfit outfit, Transform head)
     {
         int seed = outfit.Look.Seed, worst = 0, worstSeed = 0;
         var fit = new System.Collections.Generic.Dictionary<WizardLook.HeadwearKind, int>();
         for (int i = 2; i <= 200; i++)
         {
-            // What's worn is in the seed's top bits: each drawn wizard in the one and in the other.
             int s = i % 2 == 0 ? i / 2 : WizardLook.NextHeadwear(i / 2);
             outfit.Wear(s);
             OutfitParts(out var hat);
@@ -173,7 +161,6 @@ public class LookProbe : ProbeScenario
         Check("body_hidden", hidden >= 10 && skin.bones.Contains(animator.GetBoneTransform(HumanBodyBones.LeftFoot)) && skin.bones.Contains(animator.GetBoneTransform(HumanBodyBones.RightHand)) && !skin.bones.Contains(head),
             $"{hidden} bones hidden; feet and hands kept, the head gone");
 
-        // The same seed, the same wizard; another seed, another.
         var a = WizardLook.From(12345);
         var b = WizardLook.From(12345);
         var c = WizardLook.From(54321);
@@ -182,7 +169,6 @@ public class LookProbe : ProbeScenario
 
         yield return HeadwearFits(outfit, head);
         yield return HandsFree(outfit);
-        // Portraits: the camera in front of the wizard, a few looks.
         var w = wizard.transform;
         Cut(w.position + w.forward * 2.6f + Vector3.up * 1.5f, w.position + Vector3.up * 1.15f);
         yield return Wait(0.3f);
@@ -192,7 +178,6 @@ public class LookProbe : ProbeScenario
         yield return Wait(0.2f);
         Shot("face");
         yield return null;
-        // The other headwear: the same wizard otherwise.
         var robe = outfit.Look.Robe;
         var worn = outfit.Look.Headwear;
         outfit.NextHeadwear();
@@ -223,7 +208,6 @@ public class LookProbe : ProbeScenario
         Shot("back");
         yield return null;
 
-        // Put the player's own look back.
         PlayerPrefs.SetInt("wizard.look", saved);
         outfit.Wear(saved);
     }

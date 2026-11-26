@@ -59,8 +59,6 @@ public class CastSoundTests
     public void CombiningRisesOverTheGathering() =>
         Assert.That(CastSoundTable.HumPitchAt(1), Is.GreaterThan(CastSoundTable.HumPitchAt(0)));
 
-    // A click at the seam or a clipped peak would be heard on every cast. Vorbis leaves a seam of up to
-    // 0.025 on these, about 2.6 of the hums' largest steps between samples; a click is many times that.
     [Test]
     public void EveryRenderedHumIsACleanLoop()
     {

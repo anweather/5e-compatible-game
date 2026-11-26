@@ -28,15 +28,13 @@ public partial class ChemGrid
     readonly Dictionary<int, GameObject> floes = new();
     readonly List<(int x, int y, float at)> floesDue = new();
     readonly List<int> floesThawed = new();
-    MaterialPropertyBlock iceShade; // made on first use: Unity makes none in a MonoBehaviour's field initializer
+    MaterialPropertyBlock iceShade;
     float floesCheckedAt;
 
-    /// <summary>How many cells are drawn as pack ice now, for the probe.</summary>
     public int PackIceShown => floes.Count;
 
     bool Cold(World.Wave wave) => World.Rules.Spell(wave.Spell)?.Then == ColdElement;
 
-    // A wave's show turned cold or back: a spare show may have been the other's.
     void IceLook(WaveShow show, World.Wave wave, float tall, float deep)
     {
         bool cold = Cold(wave);
@@ -64,11 +62,9 @@ public partial class ChemGrid
         frost.scale = new Vector3(wide * 0.9f, 0.1f, 0.4f);
         show.ice.frost.transform.localPosition = new Vector3(0f, tall, deep * 0.3f);
         foreach (var ps in new[] { show.ice.sleet, show.ice.mist, show.ice.frost }) ps.Play(true);
-        // It heaves up out of the water in a burst of broken ice.
         BurstFx.Play(BurstFx.Kind.Chips, show.root.transform.position + Vector3.up * (tall * 0.5f), 1.2f + wave.Width * 0.5f, look: IceColor);
     }
 
-    // Each piece rolls up the wave's back, over its crest and down out of sight, tumbling as it goes, round and round.
     static void RollIce(WaveShow show, float tall, float deep)
     {
         var ice = show.ice;
@@ -85,7 +81,6 @@ public partial class ChemGrid
         }
     }
 
-    // How high the crest stands at a point along it from behind (z -1.5) to its lip (0.3), as WaveCrest draws it.
     static float CrestHeight(float z)
     {
         if (z <= -1.5f) return 0f;
@@ -120,7 +115,6 @@ public partial class ChemGrid
             go.transform.SetParent(root.transform, false);
             var holder = new GameObject("Shape").transform;
             holder.SetParent(go.transform, false);
-            // A shard is a long splinter, laid along its spin; a chunk a broken block.
             if (i >= IceChunks)
             {
                 holder.localScale = new Vector3(0.28f, 1.1f, 0.22f);
@@ -159,7 +153,6 @@ public partial class ChemGrid
         return ps;
     }
 
-    // Sleet driving down round it: fast streaks slanting the way it rolls.
     ParticleSystem Sleet(Transform parent)
     {
         var ps = IceParticles(parent, "Sleet", true, 1600f, 3000);
@@ -181,7 +174,6 @@ public partial class ChemGrid
         return ps;
     }
 
-    // A freezing mist off the ice: low, slow and spreading, left lying in its wake.
     ParticleSystem FreezingMist(Transform parent)
     {
         var ps = IceParticles(parent, "Freezing mist", true, 55f, 400);
@@ -205,7 +197,6 @@ public partial class ChemGrid
         return ps;
     }
 
-    // Frost glittering off its lip.
     ParticleSystem Frost(Transform parent)
     {
         var ps = IceParticles(parent, "Frost", true, 160f, 400);
@@ -218,7 +209,6 @@ public partial class ChemGrid
         return ps;
     }
 
-    // Each cell a cold wave's front rolls over turns to pack ice once the core has frozen it.
     void PackIceBehind(World.Wave wave)
     {
         if (!Cold(wave)) return;
@@ -251,7 +241,6 @@ public partial class ChemGrid
         }
     }
 
-    // Broken slabs of ice over the cell, tilted every way, now and then one pushed up on edge, and loose lumps.
     GameObject PackIce(int x, int y)
     {
         var rng = new System.Random(x * 92821 + y * 68917);

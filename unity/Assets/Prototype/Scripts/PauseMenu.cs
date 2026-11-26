@@ -35,8 +35,6 @@ public class PauseMenu : MonoBehaviour
     static readonly List<(Action draw, int order, Submenu submenu)> sections = new();
     static readonly Dictionary<string, Page> pages = new();
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options): the
-    // sections and pages are added again as their owners start.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -52,40 +50,26 @@ public class PauseMenu : MonoBehaviour
 
     readonly MenuNavigator nav = new();
     MenuControls controls;
-    bool activating;    // MenuActivator's pass: the highlighted Button returns true
-    float padScroll;    // right stick, applied to scroll views once per frame
-    Rect focusRect;     // where the highlighted button was drawn, for scroll views
+    bool activating;
+    float padScroll;
+    Rect focusRect;
     bool focusDrawn;
 
-    /// <summary>Where a section sits: on the main page (Main), or on one of the sub menus the main page lists.</summary>
     public enum Submenu { Main, Game, Multiplayer, Settings, Claude, Developer }
 
-    /// <summary>The sub menus, in the order the main page lists them.</summary>
     static readonly Submenu[] Submenus = { Submenu.Game, Submenu.Multiplayer, Submenu.Settings, Submenu.Claude, Submenu.Developer };
 
-    /// <summary>A sub-page of the menu: its title, width and contents, and optionally its own controller handling.</summary>
     public sealed class Page
     {
         public string Title;
         public int Width = MainWidth;
         public Action Draw;
-        /// <summary>Up (-1) or down (+1) on the controller; return true if handled (the highlight doesn't move).</summary>
         public Func<int, bool> Move;
-        /// <summary>A on the controller; return true if handled (no item is activated).</summary>
         public Func<bool> Submit;
-        /// <summary>B on the controller; return true if handled (the page stays open).</summary>
         public Func<bool> Back;
-        /// <summary>Played on the keyboard, highlight and all, so Back names no controller button.</summary>
         public bool ForKeys;
     }
 
-    /// <summary>
-    /// Adds a section to a sub menu, or to the main page above Quit (IMGUI layout calls, inside
-    /// the menu's width), so other parts of the game can put their controls in the menu without
-    /// the menu knowing about them. Remove it again when its owner goes away. Buttons drawn with
-    /// <see cref="Button"/> can be reached with a controller.
-    /// </summary>
-    /// <param name="order">Lower draws higher up; equal orders keep the order they were added in.</param>
     public static void AddSection(Action draw, int order, Submenu submenu)
     {
         if (sections.Exists(s => s.draw == draw)) return;
@@ -95,7 +79,6 @@ public class PauseMenu : MonoBehaviour
 
     public static void RemoveSection(Action draw) => sections.RemoveAll(s => s.draw == draw);
 
-    /// <summary>Adds a sub-page, opened with <see cref="ShowPage"/>. Remove it again when its owner goes away.</summary>
     public static void AddPage(string id, Page page) => pages[id] = page;
 
     public static void RemovePage(string id)
@@ -104,22 +87,16 @@ public class PauseMenu : MonoBehaviour
         if (instance != null) instance.nav.Remove(id);
     }
 
-    /// <summary>A sub menu's page id, for ShowPage.</summary>
     public static string PageOf(Submenu submenu) => $"menu-{submenu}";
 
-    /// <summary>The order for sections that belong at the bottom of their page (the version and credits).</summary>
     public const int LastOrder = 1000;
 
-    /// <summary>The menu's button style, for sections that want matching buttons.</summary>
     public static GUIStyle ButtonStyle => instance != null ? instance.button : GUI.skin.button;
 
-    /// <summary>The Esc menu, once it has started itself.</summary>
     public static PauseMenu Instance => instance;
 
-    /// <summary>The menu's own controls (Esc / Start, M, and the controller navigation).</summary>
     public static MenuControls Controls => instance != null ? instance.controls : null;
 
-    // What opening the menu changed on the wizard, put back on close.
     PlayerControls pausedControls;
     Behaviour pausedPlayerInput;
     Component lookInput;
@@ -128,19 +105,14 @@ public class PauseMenu : MonoBehaviour
 
     public bool Open { get; private set; }
 
-    /// <summary>The page showing: MenuNavigator.MainPage, or a sub-page's id.</summary>
     public string CurrentPage => nav.Page;
 
-    /// <summary>The highlighted item on the current page, counted from 0 in drawing order.</summary>
     public int Focus => nav.Focus;
 
-    /// <summary>How many controller-reachable items the current page has.</summary>
     public int ItemCount => nav.ItemCount;
 
-    /// <summary>True while the controller highlight shows (the menu was last used with a controller).</summary>
     public bool Highlight { get; set; }
 
-    /// <summary>The text of the highlighted button as last drawn (for probes and tests), or null.</summary>
     public string FocusedLabel { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -153,10 +125,8 @@ public class PauseMenu : MonoBehaviour
         go.AddComponent<MenuActivator>();
     }
 
-    /// <summary>A text box outside the menu has the keys, so Esc and M are letters to it, not the menu's.</summary>
     public static bool KeysTaken { get; set; }
 
-    /// <summary>A text field on a page has the keys this frame: letters are letters to it, and Esc only lets go of it.</summary>
     public static void FieldHasKeys() => fieldFrame = Time.frameCount;
 
     static int fieldFrame = -2;
@@ -191,41 +161,36 @@ public class PauseMenu : MonoBehaviour
         if (mouse != null && mouse.delta.ReadValue().sqrMagnitude > 25f) Highlight = false;
     }
 
-    /// <summary>Opens or closes the menu. It opens on the main page.</summary>
     public void SetOpen(bool open)
     {
         if (open == Open) return;
         Open = open;
         nav.Reset();
-        GUIUtility.keyboardControl = 0; // no text field keeps the keys (M, 1-9) after the menu
+        GUIUtility.keyboardControl = 0;
         if (open) PauseWizard();
         else ResumeWizard();
     }
 
-    /// <summary>Opens the menu on a sub-page (B goes back to the sub menu it's opened from, else the main page). Nothing happens for an unknown page.</summary>
     public void ShowPage(string id)
     {
         if (!pages.ContainsKey(id)) return;
         if (Open && nav.Page == id) return;
         SetOpen(true);
-        if (!OnSubmenu) CloseSubPages(); // so B goes back to the button that opened it
+        if (!OnSubmenu) CloseSubPages();
         nav.Push(id);
     }
 
-    /// <summary>The controller's up (-1) or down (+1): moves the highlight, or the page handles it.</summary>
     public void Navigate(int delta)
     {
         if (!Open) return;
-        if (!Highlight) { Highlight = true; return; } // the first press only shows where the highlight is
+        if (!Highlight) { Highlight = true; return; }
         var page = CurrentPageInfo();
         if (page?.Move != null && page.Move(delta)) return;
         nav.Move(delta);
     }
 
-    /// <summary>Puts the highlight on an item of the current page, counted from 0.</summary>
     public void FocusAt(int item) => nav.FocusAt(item);
 
-    /// <summary>The controller's A: activates the highlighted item, as a click would.</summary>
     public void Submit()
     {
         if (!Open) return;
@@ -235,7 +200,6 @@ public class PauseMenu : MonoBehaviour
         nav.Activate();
     }
 
-    /// <summary>The controller's B: back from a sub-page, or closes the menu on the main page.</summary>
     public void Back()
     {
         if (!Open) return;
@@ -245,7 +209,6 @@ public class PauseMenu : MonoBehaviour
         if (!nav.Back()) SetOpen(false);
     }
 
-    /// <summary>Back to the main page (for a sub-page that is done, such as Join by code after joining).</summary>
     public void CloseSubPages()
     {
         bool more = true;
@@ -274,7 +237,6 @@ public class PauseMenu : MonoBehaviour
             pausedControls.enabled = false;
         }
         lookInput = caster != null ? caster.GetComponent(WizardRig.InputsComponent) : null;
-        // Movement and jump too, so the stick and A can drive the menu without walking or jumping.
         if (caster != null && caster.TryGetComponent<PlayerInput>(out var input) && input.enabled)
         {
             pausedPlayerInput = input;
@@ -299,7 +261,6 @@ public class PauseMenu : MonoBehaviour
         Cursor.visible = cursorVisibleWas;
     }
 
-    // Stops (or restarts) the mouse turning the camera; the last move and look inputs are cleared so they don't carry on.
     void SetLook(bool on)
     {
         if (lookInput == null) return;
@@ -316,12 +277,6 @@ public class PauseMenu : MonoBehaviour
         }
     }
 
-    // --- items -------------------------------------------------------------------
-
-    /// <summary>
-    /// A menu button the controller can reach: GUILayout.Button, counted for the highlight,
-    /// framed in gold while highlighted, and true when A chooses it as well as when clicked.
-    /// </summary>
     public static bool Button(string text, GUIStyle style = null, params GUILayoutOption[] options)
     {
         style ??= GUI.skin.button;
@@ -335,7 +290,6 @@ public class PauseMenu : MonoBehaviour
         var e = Event.current.type;
         if (activating)
             return nav.TakeActivation(index) && GUI.enabled;
-        // A page that handles A itself (Join by code) shows its own highlight instead.
         if (e == EventType.Repaint && Highlight && index == nav.Focus && CurrentPageInfo()?.Submit == null)
         {
             focusRect = GUILayoutUtility.GetLastRect();
@@ -356,11 +310,6 @@ public class PauseMenu : MonoBehaviour
         GUI.DrawTexture(new Rect(r.xMax, r.y, t, r.height), gold);
     }
 
-    /// <summary>
-    /// A scroll view that keeps the controller highlight in sight and scrolls with the right
-    /// stick. Draw its contents in <paramref name="content"/>; returns the new scroll position.
-    /// </summary>
-    /// <param name="across">Whether it may scroll sideways too; a page that holds to a width of its own needn't.</param>
     public static Vector2 ScrollView(Vector2 scroll, float height, Action content, bool across = true)
     {
         var view = across ? GUILayout.BeginScrollView(scroll, GUILayout.Height(height))
@@ -372,7 +321,7 @@ public class PauseMenu : MonoBehaviour
         if (instance == null || !repaint) return view;
         if (instance.focusDrawn)
         {
-            var r = instance.focusRect; // in the scroll view's own coordinates
+            var r = instance.focusRect;
             if (r.yMin < view.y) view.y = r.yMin - 6f;
             else if (r.yMax > view.y + height) view.y = r.yMax - height + 6f;
         }
@@ -380,20 +329,13 @@ public class PauseMenu : MonoBehaviour
         return view;
     }
 
-    // --- drawing -----------------------------------------------------------------
-
-    // Activation passes run so far, and how many had run at the menu's last Layout.
     int activations, activationsAtLayout;
 
     void OnGUI()
     {
         HudScale.Apply();
         if (!Open) return;
-        GUI.depth = -100; // over the rest of the HUD (lower draws on top)
-        // Unity lays out every OnGUI before it sends any the event, so MenuActivator's pass can fall
-        // between this one's Layout and Repaint. What its button changed (a new page) would then be
-        // drawn into the old page's layout ("Getting control N's position in a group with only N
-        // controls"), so this event is skipped and the next frame lays out what is there now.
+        GUI.depth = -100;
         if (Event.current.type == EventType.Layout) activationsAtLayout = activations;
         else if (activations != activationsAtLayout) return;
         MakeStyles();
@@ -402,7 +344,6 @@ public class PauseMenu : MonoBehaviour
         if (Event.current.type == EventType.Layout) nav.EndLayout();
     }
 
-    /// <summary>MenuActivator's pass: runs the page's items so the one A chose acts as clicked.</summary>
     internal void RunActivation()
     {
         if (!Open || !nav.ActivationPending) return;
@@ -421,7 +362,6 @@ public class PauseMenu : MonoBehaviour
     void DrawMenu()
     {
         var page = CurrentPageInfo();
-        // Centred, as tall as its contents.
         GUILayout.BeginArea(new Rect(0, 0, HudScale.Width, HudScale.Height));
         GUILayout.FlexibleSpace();
         GUILayout.BeginHorizontal();
@@ -481,7 +421,6 @@ public class PauseMenu : MonoBehaviour
         goldTint = Solid(new Color(1f, 0.82f, 0.29f, 0.18f));
     }
 
-    /// <summary>A one-pixel texture of one colour, for IMGUI backgrounds.</summary>
     public static Texture2D Solid(Color c)
     {
         var t = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };

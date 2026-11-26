@@ -21,42 +21,28 @@ namespace Chem
         readonly List<(int x, int y, int lands)> falling = new List<(int x, int y, int lands)>();
         readonly List<(int x, int y, int lands)> newMeteors = new List<(int x, int y, int lands)>();
 
-        /// <summary>
-        /// The base rules' snow covers: what the view's drawing (CellPaint, CellHeightfield) falls back on
-        /// with no rules to hand, and the probes' names. The world's snow, and the view given the rules,
-        /// read sim.json weather.snow.cover and bank (CellPaint.Snowy, IsBank).
-        /// </summary>
         public const string SnowCover = "snow", BankCover = "snowbank";
 
-        /// <summary>The world's seed: the weather's, as RngState is the cells'.</summary>
         public uint Seed { get; }
 
-        /// <summary>This tick's weather (Sky.Weather), set at the start of each Step.</summary>
         public WeatherNow Weather { get; private set; }
 
-        /// <summary>Squares lightning struck this tick, for a view's flash and thunder.</summary>
         public IReadOnlyList<(int x, int y)> Strikes => strikes;
 
-        // The strikes and the new meteors of the last HistoryTicks ticks, stamped with their tick, for
-        // a view that steps several ticks in one frame (tick-spread, catch-up) and would otherwise see
-        // only the last tick's. Not world state: never hashed or saved.
         const int HistoryTicks = 600;
         readonly List<(int x, int y, int tick)> strikeHistory = new List<(int x, int y, int tick)>();
         readonly List<(int x, int y, int lands, int tick)> meteorHistory = new List<(int x, int y, int lands, int tick)>();
 
-        /// <summary>Strikes after <paramref name="tick"/> (within the last 600 ticks), oldest first, each with its tick.</summary>
         public IEnumerable<(int x, int y, int tick)> StrikesSince(int tick)
         {
             foreach (var s in strikeHistory) if (s.tick > tick) yield return s;
         }
 
-        /// <summary>Meteors that appeared after <paramref name="tick"/> (within the last 600 ticks), oldest first: where, the tick they land on, the tick they appeared.</summary>
         public IEnumerable<(int x, int y, int lands, int tick)> MeteorsSince(int tick)
         {
             foreach (var m in meteorHistory) if (m.tick > tick) yield return m;
         }
 
-        // Drops what is older than HistoryTicks (each new tick).
         void TrimWeatherHistory()
         {
             strikeHistory.RemoveAll(s => s.tick <= Tick - HistoryTicks);
@@ -66,17 +52,12 @@ namespace Chem
             if (firedHistory.Count > 0) firedHistory.RemoveAll(f => f.tick <= Tick - HistoryTicks);
         }
 
-        /// <summary>Meteors that appeared this tick, for a view to bring down: where, and the tick they land on.</summary>
         public IReadOnlyList<(int x, int y, int lands)> NewMeteors => newMeteors;
 
-        /// <summary>The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none.</summary>
         public int WindDir => Wind.HasValue ? Wind.Value.dir : Weather.WindDir;
 
-
-        /// <summary>Whether the weather changes the cells this tick: not in the calm first periods, unless a spell set it.</summary>
         bool WeatherActs => Weather.Period >= Rules.Sim.Weather.CalmPeriods || WeatherSet.HasValue;
 
-        /// <summary>Whether rain is falling on the cells this tick, filling them here and there.</summary>
         bool Raining => WeatherActs && Weather.Rain > 0;
 
         void TickWeather(RowSpan[] rows)
@@ -92,7 +73,6 @@ namespace Chem
             if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
         }
 
-        /// <summary>What the weather does to each cell (rain fills, snow freezes and settles, dry weather dries and thaws), without strikes or meteors.</summary>
         void WeatherOnCells(RowSpan[] rows, Chunk[] chunks)
         {
             if (!WeatherActs) return;
@@ -119,7 +99,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Snow at this strength (0..100): shallow water freezes, and snow settles, banks and builds up.</summary>
         void Snow(RowSpan[] rows, int snow)
         {
             var p = Rules.Sim.Weather;
@@ -136,8 +115,6 @@ namespace Chem
             meteorHistory.Add((m.x, m.y, m.Item3, Tick));
         }
 
-        // Meteors whose tick has come land as the Meteor spell, in the order they appeared; one that
-        // lands on paused ground (no one near) leaves no mark.
         void LandMeteors()
         {
             if (falling.Count == 0) return;
@@ -151,9 +128,6 @@ namespace Chem
             falling.RemoveAll(m => m.lands <= Tick);
         }
 
-        // Rain on the cells: a unit here and there, leaving the cell damp (so it doesn't churn a path to mud as it soaks
-        // in, World.SoakIn), but none on water deeper than thin (a lake, the river, the sea, a pond): their way out
-        // carries it off, so rain never raises them.
         void Fill(RowSpan[] rows, double chance)
         {
             int max = Math.Min(Rules.Sim.WaterMaxLevel, Rules.Sim.ThinWater + 1);
@@ -174,12 +148,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// A unit of water off squares two units deep or less (not ice): puddles dry. Deeper water seeps away, a unit
-        /// every sim.water.seep / chance of these beats on each cell's own turn of the count (no draw on the world's
-        /// generator), where its ground soaks and nothing beside it is water its bed holds: a hollow the rain ran into
-        /// drains, the lake, the river, the sea and a filled pit stay (and their shores). Soaking off (soakPass 0), no seep.
-        /// </summary>
         void Dry(RowSpan[] rows, double chance)
         {
             var p = Rules.Sim;
@@ -200,15 +168,12 @@ namespace Chem
             }
         }
 
-        // Whether it's a cell's turn of a count, by where it is: so a pool drains from all over, not cell by cell.
         static bool OnTurn(Chunk ch, int i, int beat, int turns)
         {
             int x = (ch.X << Chunks.Shift) + (i & Chunks.Mask), y = (ch.Y << Chunks.Shift) + (i >> Chunks.Shift);
             return ((beat + x * 7 + y * 13) % turns + turns) % turns == 0;
         }
 
-        // Whether deep water on a cell seeps away: its ground soaks, and no neighbour holds water on ground that doesn't
-        // (a lake's bed, the river's, a pit's), else the lake would drain away through its shore.
         bool Seeps(Chunk ch, int i, Cell c)
         {
             if (!SoaksIn(c)) return false;
@@ -226,7 +191,6 @@ namespace Chem
             return (t.SoakEvery > 0 || t.SoakEveryWet > 0) && !c.Frozen && LiquidOf(c).Soaks;
         }
 
-        /// <summary>Snow freezes the water on squares two units deep or less; without it, that ice thaws. Lakes are left alone.</summary>
         void Freeze(RowSpan[] rows, double chance, bool freeze)
         {
             foreach (var s in rows)
@@ -241,14 +205,12 @@ namespace Chem
             }
         }
 
-        // Snow's freeze on a thin pool: water to ice and back; another liquid with freezes into its terrain or cover.
         void FreezeThin(Chunk ch, Cell c, bool freeze)
         {
             if (c.Liquid == 0) c.Frozen = freeze;
             else FreezeLiquid(ch, c);
         }
 
-        /// <summary>Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered.</summary>
         void Settle(RowSpan[] rows, double cover, double bank, double deepen)
         {
             int upwind = WindDir >= 0 ? (WindDir + 2) % 4 : -1;
@@ -256,7 +218,6 @@ namespace Chem
                 for (int i = s.Start; i < s.End; i++) SettleOn(s.Chunk, i, upwind, cover, bank, deepen);
         }
 
-        // Snow on one square: a cover on open ground, a bank where it's sheltered, and slowly in the open.
         void SettleOn(Chunk ch, int i, int upwind, double cover, double bank, double deepen)
         {
             var c = ch.ActiveCells[i];
@@ -269,12 +230,6 @@ namespace Chem
             else if (c.Cover == w.SnowCover && w.BankCover != null && Rand() < (Sheltered(ch, i, upwind) ? bank : deepen)) c.Cover = w.BankCover;
         }
 
-        /// <summary>
-        /// Fog weather: patches of its gas, here and there. Where they stand is worked out afresh from the
-        /// seed, the stretch and the cells, with no state of its own, so every peer and a loaded save agree,
-        /// and only the patches' cells are visited. Each block of chunks with an active chunk in it has its
-        /// patches, in row-major order; cells of inactive chunks are left alone.
-        /// </summary>
         void Veil(Chunk[] chunks, string gas, double chance)
         {
             var p = Rules.Sim.Weather;
@@ -295,7 +250,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The best of a block's FogTries cells for its patch n, by the hash of the block; false if none is dry and open.</summary>
         bool PatchCentre(uint block, int rx, int ry, int n, out int x, out int y)
         {
             var p = Rules.Sim.Weather;
@@ -316,7 +270,6 @@ namespace Chem
             return !double.IsNegativeInfinity(best);
         }
 
-        /// <summary>How much fog likes a cell: low ground with water near; never on water or anything blocking.</summary>
         double PatchScore(int x, int y)
         {
             var p = Rules.Sim.Weather;
@@ -331,7 +284,6 @@ namespace Chem
             return p.FogWet * wet - p.FogLow * GroundUnits(x, y);
         }
 
-        /// <summary>A unit of gas on the open, gasless cells of a disc: full chance over its middle, thinning at the rim.</summary>
         void LayPatch(int x, int y, int radius, string gas, double chance)
         {
             int r2 = radius * radius;
@@ -346,7 +298,6 @@ namespace Chem
                 }
         }
 
-        /// <summary>Whether something blocking stands next to a square: on its upwind side in a wind, any side without.</summary>
         bool Sheltered(Chunk ch, int i, int upwind)
         {
             for (int d = 0; d < 4; d++)
@@ -358,7 +309,6 @@ namespace Chem
             return false;
         }
 
-        /// <summary>Banks sink back to snow, and snow melts into a puddle.</summary>
         void Melt(RowSpan[] rows, double chance)
         {
             foreach (var s in rows)
@@ -368,7 +318,6 @@ namespace Chem
             }
         }
 
-        // One square's snow: a bank sinks to snow, snow melts into a puddle.
         void MeltOn(Cell c, double chance)
         {
             var w = Rules.Sim.Weather;
@@ -394,7 +343,6 @@ namespace Chem
             Apply(x, y, "lightning", 2, -1, false);
         }
 
-        /// <summary>Rain (or snow, by half) may burn a fire down a step; true if it went out.</summary>
         bool Doused(Cell c)
         {
             int rain = Weather.Wet;
@@ -406,7 +354,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>How much of fire's spread the rain (or snow, by half) leaves, 1 when dry.</summary>
         double RainDamp() => 1 - Rules.Sim.Weather.Dampen * Weather.Wet / 100;
     }
 }

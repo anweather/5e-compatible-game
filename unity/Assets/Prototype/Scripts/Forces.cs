@@ -7,7 +7,6 @@ using UnityEngine;
 // kilograms, so a crate (mass 1) flies off three times as fast as a boulder
 // (mass 3), much as the sandbox's "distance = force - mass + 1" has it.
 
-/// <summary>Something a shove can move: a physics prop or a wizard.</summary>
 public interface IPushable
 {
     void Push(Vector3 impulse);
@@ -17,18 +16,11 @@ public static class Forces
 {
     public const float KgPerMass = 40f;
     public const float ImpulsePerPush = 100f;
-    // A little lift, so a shove throws things rather than only sliding them.
     const float Loft = 0.35f;
-    // How tall a column above a cell counts as standing in it.
     const float ColumnHeight = 3f;
 
     static readonly Collider[] Hits = new Collider[64];
 
-    /// <summary>
-    /// Pushes everything within <paramref name="reach"/> away from <paramref name="center"/>:
-    /// the full impulse at the centre, half at the edge. <paramref name="only"/>, if given, picks
-    /// what may be pushed (online, each machine pushes only what it owns). Returns how many things it pushed.
-    /// </summary>
     public static int Radial(Vector3 center, float reach, float impulse, Transform except, System.Predicate<IPushable> only = null)
     {
         var targets = Around(center, reach, except, only);
@@ -43,10 +35,6 @@ public static class Forces
         return targets.Count;
     }
 
-    /// <summary>
-    /// Throws everything within <paramref name="reach"/> of <paramref name="center"/> straight up (a Geyser's jet):
-    /// a prop by the impulse, a wizard at <paramref name="wizardSpeed"/> m/s. Returns how many things it threw.
-    /// </summary>
     public static int Up(Vector3 center, float reach, float impulse, float wizardSpeed, Transform except, System.Predicate<IPushable> only = null)
     {
         var targets = Around(center, reach, except, only);
@@ -64,8 +52,6 @@ public static class Forces
     static List<IPushable> Around(Vector3 center, float reach, Transform except, System.Predicate<IPushable> only)
     {
         var targets = InSphere<IPushable>(center, reach, except);
-        // Other players' wizards have no live collider on this machine (their owners move them),
-        // so they are found by distance; Knockback hands their shove on to their owner.
         foreach (var wizard in Knockback.All)
         {
             if (targets.Contains(wizard) || (except != null && wizard.transform.IsChildOf(except))) continue;
@@ -75,10 +61,6 @@ public static class Forces
         return targets;
     }
 
-    /// <summary>
-    /// Pushes everything standing in <paramref name="cells"/> along <paramref name="direction"/> (only what
-    /// <paramref name="only"/> picks, if given). Returns how many things it pushed.
-    /// </summary>
     public static int Along(ChemGrid grid, List<(int x, int y)> cells, Vector3 direction, float impulse, Transform except, System.Predicate<IPushable> only = null)
     {
         var pushed = OnCells(grid, cells, except, only);
@@ -86,7 +68,6 @@ public static class Forces
         return pushed.Count;
     }
 
-    /// <summary>Everything pushable standing in the columns over these cells, apart from <paramref name="except"/>'s, that <paramref name="only"/> picks.</summary>
     public static HashSet<IPushable> OnCells(ChemGrid grid, List<(int x, int y)> cells, Transform except, System.Predicate<IPushable> only = null)
     {
         var found = new HashSet<IPushable>();
@@ -104,10 +85,8 @@ public static class Forces
         return found;
     }
 
-    /// <summary>Every distinct <typeparamref name="T"/> with a collider within <paramref name="reach"/>, apart from <paramref name="except"/> and its children.</summary>
     public static List<T> InSphere<T>(Vector3 center, float reach, Transform except) where T : class
     {
-        // A new list each time: an exploding barrel can set off another while its own list is in use.
         var found = new List<T>();
         int count = Physics.OverlapSphereNonAlloc(center, reach, Hits, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < count; i++)
@@ -118,7 +97,6 @@ public static class Forces
         return found;
     }
 
-    /// <summary>The <typeparamref name="T"/> nearest <paramref name="point"/> within <paramref name="reach"/>, or null.</summary>
     public static T Nearest<T>(Vector3 point, float reach) where T : Component
     {
         T best = null;
@@ -133,7 +111,6 @@ public static class Forces
         return best;
     }
 
-    /// <summary>A flat direction with the little lift every shove has.</summary>
     public static Vector3 Thrown(Vector3 flatDirection) => (flatDirection + Vector3.up * Loft).normalized;
 
     static Vector3 Position(IPushable target) => target is Component c ? c.transform.position : Vector3.zero;

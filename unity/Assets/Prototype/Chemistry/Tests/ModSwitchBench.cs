@@ -1,3 +1,9 @@
+// Where a mod switched on in play spends its frame (#155; docs/design/mod-switch-stall.md): the patch read, its checks
+// (ModValidator), the compose (RoomRules.WithMods: the rules copied and read again), and the whole World.ApplyRoom,
+// switch-on and revert, on the valley and the nine as ChemGrid builds them, in a room. Each part warm, the median of
+// five. And a prototype of composing ahead: the same RuleSet composed on a worker is the same rules, to the byte.
+// Not a check and not in CI (Explicit): run it by name in Release and read the lines it prints.
+// dotnet test core -c Release --filter "FullyQualifiedName~ModSwitchBench" --logger "console;verbosity=detailed"
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,14 +14,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Where a mod switched on in play spends its frame (#155; docs/design/mod-switch-stall.md): the patch read, its checks
-    /// (ModValidator), the compose (RoomRules.WithMods: the rules copied and read again), and the whole World.ApplyRoom,
-    /// switch-on and revert, on the valley and the nine as ChemGrid builds them, in a room. Each part warm, the median of
-    /// five. And a prototype of composing ahead: the same RuleSet composed on a worker is the same rules, to the byte.
-    /// Not a check and not in CI (Explicit): run it by name in Release and read the lines it prints.
-    /// <code>dotnet test core -c Release --filter "FullyQualifiedName~ModSwitchBench" --logger "console;verbosity=detailed"</code>
-    /// </summary>
     [Explicit("a benchmark: run it by name")]
     [Category("Simulation")]
     public class ModSwitchBench
@@ -30,7 +28,7 @@ namespace Chem.Tests
 
         static double Median(Func<double> run)
         {
-            run(); // warm
+            run();
             var times = Enumerable.Range(0, 5).Select(_ => run()).OrderBy(t => t).ToArray();
             return times[2];
         }
@@ -74,7 +72,6 @@ namespace Chem.Tests
             switchOn = ons.Skip(1).OrderBy(t => t).ElementAt(2);
             revert = reverts.Skip(1).OrderBy(t => t).ElementAt(2);
             double rest = Math.Max(0, switchOn - checks - compose);
-            // What each part allocates (Mono's collector is what makes garbage a stall in the game): MB on this thread.
             double Mb(Action act)
             {
                 long before = GC.GetAllocatedBytesForCurrentThread();
@@ -88,11 +85,6 @@ namespace Chem.Tests
                 $"SWITCH {map} {mod}: read {parse:0.0} ms, checks {checks:0.0} ms, compose {compose:0.0} ms; the switch-on {switchOn:0.0} ms (so {rest:0.0} ms besides checks and compose), the revert {revert:0.0} ms; allocated: checks {checksMb:0.0} MB, compose {composeMb:0.0} MB, the switch-on {switchMb:0.0} MB");
         }
 
-        /// <summary>
-        /// The compose-ahead prototype: the RuleSet a switch puts in force, composed on a worker while the main thread ticks,
-        /// is the RuleSet composed on the main thread, to the byte (its rules' JSON and fingerprint), and the time a tick
-        /// would then spend is only the swap.
-        /// </summary>
         [Test]
         public void AModComposedOnAWorkerIsTheSameRules()
         {

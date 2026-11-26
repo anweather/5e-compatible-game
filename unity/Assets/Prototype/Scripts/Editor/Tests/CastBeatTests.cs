@@ -82,7 +82,6 @@ public class CastBeatTests
         Assert.That(CastBeat.Next(Beat.Release, between, Nothing, feel, tap: true), Is.EqualTo(Beat.Release), "a tap");
     }
 
-    // A shove over the host's cap would be quietly cut online, while a solo punch still looked right.
     [Test]
     public void TheHostTakesTheWholePunch()
     {
@@ -90,7 +89,6 @@ public class CastBeatTests
         Assert.That(shipped.punchShove * Forces.ImpulsePerPush, Is.LessThanOrEqualTo(NetProp.MaxKick));
     }
 
-    // The charged cast Andrew called amazing (J-040): its numbers as they were, in the asset that ships.
     [Test]
     public void TheChargedTuningIsPinned()
     {

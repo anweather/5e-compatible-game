@@ -17,56 +17,35 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// A source that makes a chunk's cells when they're first asked for (a generated map's, GeneratedSource), dear to read
-    /// whole: the World never reads its untouched chunks, and hashes a world on it by its changes. It holds the land too.
-    /// </summary>
     public interface IGeneratedSource : IChunkSource
     {
-        /// <summary>The map's size in cells.</summary>
         int W { get; }
         int H { get; }
 
-        /// <summary>The land under a cell as the map makes it, in water units (land.json's, had it been baked).</summary>
         int LandAt(int x, int y);
 
-        /// <summary>Asks for these chunks to be made ahead, on a worker, nearest first: they're about to be read. Changes time only.</summary>
         void Ahead(IEnumerable<(int cx, int cy)> chunks);
 
-        /// <summary>Makes these chunks now, on every core, those not made yet: they're about to be read. Changes time only.</summary>
         void MakeNow(IEnumerable<(int cx, int cy)> chunks);
 
-        /// <summary>
-        /// A chunk's land as the map makes it, Chunks.Area ints by local index (LandAt for each of its cells), made now if it
-        /// isn't held: safe from any thread (the view's LandChunks.FromSource reads it beside the World).
-        /// </summary>
         void LandInto(int cx, int cy, int[] into);
 
-        /// <summary>
-        /// Keeps a chunk made while <paramref name="kept"/> (the World holds it unpacked: packing it again reads its cells
-        /// here to find what changed), or lets the hold drop it again. Changes time only.
-        /// </summary>
         void Keep(int cx, int cy, bool kept);
     }
 
-    /// <summary>A generated map's chunks made on demand by its ChunkGen, under the rules the map is made with, and held a while.</summary>
     public sealed class GeneratedSource : IGeneratedSource
     {
-        /// <summary>The chunks held made at most (~24 KB each: their cells and land): the reach and drawn tier of several characters.</summary>
         public const int Holds = 768;
 
         readonly ChunkGen gen;
         readonly LegendCells legend;
         readonly int cw, ch;
-        // The chunks made or being made, by key, each with the use it was last read at (for letting the oldest go).
         readonly Dictionary<long, Held> held = new Dictionary<long, Held>();
-        // Chunks asked for ahead and not yet made, in the order asked.
         readonly Queue<long> asked = new Queue<long>();
         readonly HashSet<long> queued = new HashSet<long>();
         readonly object gate = new object();
         bool working;
         long uses;
-        // The chunk the last read was in: one read a cell, from the World's thread.
         Held last;
         long made, madeAhead, madeOnRead, waits;
         long makeTicks, waitTicks;
@@ -79,21 +58,16 @@ namespace Chem
             public long Used;
         }
 
-        /// <summary>The map's size in cells.</summary>
         public int W { get; }
         public int H { get; }
 
-        /// <summary>"generated:" and the map's inputs (GeneratedMap.InputHash): a save of one map is never loaded over another.</summary>
         public string Version { get; }
 
-        /// <summary>Where the map's spawn is (map.json's).</summary>
         public (int x, int y) Start { get; }
 
-        /// <summary>Chunks made since the source was, ahead on the worker of them, and how often a read waited for one being made there.</summary>
         public long Made => Interlocked.Read(ref made);
         public long MadeAhead => Interlocked.Read(ref madeAhead);
         public long Waits => Interlocked.Read(ref waits);
-        /// <summary>Chunks made again after being let go (the hold's eviction): the same chunk as the first time, made twice.</summary>
         public long MadeAgain
         {
             get
@@ -102,20 +76,13 @@ namespace Chem
             }
         }
 
-        /// <summary>Chunks a read made one at a time on the World's thread, not made ahead or at once (MakeNow): each a stall of milliseconds.</summary>
         public long MadeOnRead => Interlocked.Read(ref madeOnRead);
 
-        /// <summary>
-        /// Told each chunk a read made (MadeOnRead), on the reading thread, just after: a probe's, to say which read it was
-        /// (its stack). Changes nothing; null for none.
-        /// </summary>
         public Action<int, int> MadeOnReadAt { get; set; }
 
-        /// <summary>The time spent making chunks on any thread, and the World's thread spent making or waiting for them, in milliseconds.</summary>
         public double MakeMs => Interlocked.Read(ref makeTicks) * 1000.0 / Stopwatch.Frequency;
         public double WaitMs => Interlocked.Read(ref waitTicks) * 1000.0 / Stopwatch.Frequency;
 
-        /// <summary>The chunks held made now.</summary>
         public int HeldCount
         {
             get
@@ -124,12 +91,10 @@ namespace Chem
             }
         }
 
-        /// <summary>A generated map's source, under the rules it's played with.</summary>
         public GeneratedSource(GeneratedMap map, Rules rules) : this(map, rules, Holds)
         {
         }
 
-        /// <summary>One holding at most <paramref name="holds"/> chunks made: a test's, to see chunks let go and made again.</summary>
         public GeneratedSource(GeneratedMap map, Rules rules, int holds)
         {
             if (holds < 1) throw new ArgumentOutOfRangeException(nameof(holds), "it holds at least one chunk");
@@ -159,16 +124,13 @@ namespace Chem
             Array.Copy(MadeChunk(cx, cy).Land, into, Chunks.Area);
         }
 
-        /// <summary>A chunk's things as the bake's things.json lists them (its "things"), made now if it isn't held: for the view.</summary>
         public JArray ThingsOf(int cx, int cy) => ChunkOf(cx, cy).Things;
 
-        /// <summary>Whether a chunk is held made now (not being made).</summary>
         public bool IsMade(int cx, int cy)
         {
             lock (gate) return held.TryGetValue(Chunks.Key(cx, cy), out var h) && h.Chunk != null;
         }
 
-        // The chunk made, from the last read's, the held ones, the worker's (waited for) or made here now. The World's thread.
         GeneratedChunk ChunkOf(int cx, int cy)
         {
             var l = last;
@@ -178,8 +140,6 @@ namespace Chem
             return c;
         }
 
-        // The chunk made, from the held ones, the worker's or another reader's (waited for) or made here now: from any thread.
-        // A chunk being made has its Making from the moment it's held, so a second reader waits for it rather than make it too.
         GeneratedChunk MadeChunk(int cx, int cy)
         {
             long key = Chunks.Key(cx, cy);
@@ -209,7 +169,6 @@ namespace Chem
                 MadeOnReadAt?.Invoke(cx, cy);
                 if (making.IsFaulted)
                 {
-                    // Let the next read make it again, and say why here.
                     lock (gate) held.Remove(key);
                     System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(making.Exception.InnerException ?? making.Exception).Throw();
                 }
@@ -218,7 +177,6 @@ namespace Chem
             }
             else
             {
-                // Being made on the worker or by another reader: waited for (a chunk asked for ahead too late).
                 Interlocked.Increment(ref waits);
                 c = making.Result;
             }
@@ -237,14 +195,11 @@ namespace Chem
             return c;
         }
 
-        // Every chunk made once, to count those made again: at most the map's chunks (9,720 on the 12 x 10).
         readonly HashSet<long> everMade = new HashSet<long>();
         long madeAgain;
 
-        // How many chunks made it holds at most (Holds, unless a test says fewer).
         readonly int holds;
 
-        // The chunks the World holds unpacked (Keep): never let go, as packing one again reads it.
         readonly HashSet<long> pinned = new HashSet<long>();
 
         public void Keep(int cx, int cy, bool kept)
@@ -256,7 +211,6 @@ namespace Chem
             }
         }
 
-        /// <summary>How many chunks are kept made for the World (Keep).</summary>
         public int KeptCount
         {
             get
@@ -265,7 +219,6 @@ namespace Chem
             }
         }
 
-        // A chunk made: held, and the oldest let go past holds.
         void Finish(Held h, GeneratedChunk c)
         {
             lock (gate)
@@ -275,11 +228,8 @@ namespace Chem
             }
         }
 
-        // Past the hold (besides the chunks the World holds unpacked, pinned), the chunks made longest unused let go, down to
-        // three quarters of it; never one being made, one the caller is about to read (kept), or a pinned one. Under the gate.
         void Trim(Func<Held, bool> kept)
         {
-            // The chunks the World holds unpacked don't count toward the hold: they're kept besides it.
             int besides = 0;
             foreach (long key in pinned)
                 if (held.ContainsKey(key)) besides++;
@@ -301,7 +251,7 @@ namespace Chem
                     long key = Chunks.Key(cx, cy);
                     if (held.TryGetValue(key, out var h))
                     {
-                        h.Used = ++uses; // asked for again: kept
+                        h.Used = ++uses;
                         continue;
                     }
                     if (queued.Add(key)) asked.Enqueue(key);
@@ -312,7 +262,6 @@ namespace Chem
             Task.Run(Work);
         }
 
-        // The worker: makes what's asked, in order, until nothing is, then stops.
         void Work()
         {
             while (true)
@@ -342,7 +291,6 @@ namespace Chem
                 h.Making.RunSynchronously();
                 if (h.Making.IsFaulted)
                 {
-                    // Let a read make it again, and say why there.
                     lock (gate) held.Remove(h.Key);
                     continue;
                 }
@@ -351,10 +299,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// Makes these chunks now on every core (MakeAll's way) and holds them, before a World reads them: a map's lays at
-        /// build time, the spawn's reach. The same chunks as one at a time.
-        /// </summary>
         public void MakeNow(IEnumerable<(int cx, int cy)> chunks)
         {
             var want = new List<(int cx, int cy)>();
@@ -363,7 +307,7 @@ namespace Chem
                 foreach (var (cx, cy) in chunks)
                 {
                     if (cx < 0 || cy < 0 || cx >= cw || cy >= ch || !seen.Add(Chunks.Key(cx, cy))) continue;
-                    if (held.TryGetValue(Chunks.Key(cx, cy), out var h)) h.Used = ++uses; // asked for again: kept
+                    if (held.TryGetValue(Chunks.Key(cx, cy), out var h)) h.Used = ++uses;
                     else want.Add((cx, cy));
                 }
             var got = new GeneratedChunk[want.Count];
@@ -376,19 +320,10 @@ namespace Chem
                     if (held.ContainsKey(key)) continue;
                     held.Add(key, new Held { Key = key, Chunk = got[k], Used = ++uses });
                 }
-                // Kept to the hold as a chunk made on a read is (Finish), but none of these: they're about to be read. A
-                // client's chunks come only this way and on reads (the worker's are the host's planner's), so without it
-                // the held chunks grew with every chunk a character activated (core-guards).
                 Trim(e => seen.Contains(e.Key));
             }
         }
 
-        /// <summary>
-        /// A world to play in on a generated map, as ChemGrid.MapWorld builds one from a baked map: made from the source
-        /// (no chunk's cells are made until something reads it), its land the source's, then the map's puzzles, stamps,
-        /// rows, golf and Hold from <paramref name="rowsDir"/> (GeneratedMap.EnsureRows), which make only the chunks they
-        /// lay on, every core at once. Its starting state isn't kept: KeepStart, as ChemGrid.StartWorld does.
-        /// </summary>
         public static World MapWorld(GeneratedSource source, string rowsDir, Rules rules, uint seed, out (int x, int y) start)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -399,7 +334,6 @@ namespace Chem
             world.LandFromSource();
             start = source.Start;
             WorldPuzzles.Load(rowsDir).LayInto(world);
-            // The map's stamps before its rows: a row's pad is cut level on the stamped land (ChemGrid.MapWorld's order).
             MapStamps.Load(rowsDir).LayInto(world);
             WorldBuildings.Load(rowsDir).LayInto(world);
             if (GolfCommand.Load(rowsDir) is { } hole) world.ApplyGolf(hole);

@@ -74,7 +74,6 @@ public class MenuControlsTests
     [Test]
     public void OnlyThePadsStartCountsAsAPadPress()
     {
-        // This test's own pad: a real controller plugged into the machine has its own Start too.
         Assert.That(controls.Menu.controls.OfType<ButtonControl>().Count(c => c.device == pad), Is.EqualTo(1));
     }
 }

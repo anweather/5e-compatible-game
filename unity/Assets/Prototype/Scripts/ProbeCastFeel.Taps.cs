@@ -8,7 +8,6 @@ using UnityEngine;
 // other's heels each show theirs. A hand held down still gathers on its row's castTicks and charges.
 public partial class CastFeelProbe
 {
-    // Frames at 60 fps: a tick is 10. From the press to the thrust: the tap's two ticks and the gesture's release.
     const int TapThrustFrames = 45;
 
     bool Hand(int hand, bool down, bool bumper = true)
@@ -42,7 +41,6 @@ public partial class CastFeelProbe
         FixClock(false);
     }
 
-    // One tap, pressed on a tick and let go the frame after.
     IEnumerator OneTap(string me, HandsDef hands)
     {
         beatFrames.Clear();
@@ -76,7 +74,6 @@ public partial class CastFeelProbe
         Check("a_tap_thrusts_quickly", thrust > pressed && thrust - pressed <= TapThrustFrames, $"thrust {thrust - pressed} frames after the press: {Frames()}");
     }
 
-    // A held hand: it gathers on its row's castTicks, as before, then charges.
     IEnumerator HeldHand(string me, HandsDef hands)
     {
         beatFrames.Clear();
@@ -98,7 +95,6 @@ public partial class CastFeelProbe
         yield return AtBeat(Beat.Neutral, 0.3f);
     }
 
-    // Taps as fast as the hand takes them: each goes off, each slams and thrusts.
     IEnumerator SpamTaps(string me, HandsDef hands)
     {
         const int Casts = 5;

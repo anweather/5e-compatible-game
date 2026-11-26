@@ -11,13 +11,9 @@ public class WaterSplashes : MonoBehaviour
 {
     static readonly Color Spray = new(0.88f, 0.95f, 1f, 0.75f);
     static readonly Color Mist = new(0.95f, 0.98f, 1f, 0.4f);
-    // How often the wake round a moving wizard and the surf mist are fed (s).
     const float WakeEvery = 0.12f, MistEvery = 0.25f, FindEvery = 1f;
-    // Slower than this (m/s) and a wizard in the water leaves no wake; faster than this falling, the biggest splash.
     const float WakeSpeed = 0.8f, HardFall = 8f;
-    // How near the coast the camera must be for surf mist (m), and how far along it the mist spreads.
     const float MistRange = 80f, MistSpread = 35f;
-    // How shallow the sea is where the surf breaks (m).
     const float SurfDepth = 1.2f;
 
     sealed class Wader
@@ -54,7 +50,6 @@ public class WaterSplashes : MonoBehaviour
         if (Time.time >= nextFind) FindWaders();
         bool wake = Time.time >= nextWake;
         if (wake) nextWake = Time.time + WakeEvery;
-        // A wizard can go between finds (going online swaps the solo one for the networked one).
         foreach (var w in waders) if (w.body != null) Watch(w, wake);
         if (Time.time >= nextMist)
         {
@@ -85,7 +80,6 @@ public class WaterSplashes : MonoBehaviour
         w.wet = wet;
     }
 
-    // A crown of drops thrown up and out, from a step in (0) to a hard fall (1).
     void Splash(Vector3 at, float hard)
     {
         int count = Mathf.RoundToInt(Mathf.Lerp(24f, 70f, hard));
@@ -97,7 +91,6 @@ public class WaterSplashes : MonoBehaviour
         }
     }
 
-    // A few low drops round a wizard moving through the water.
     void Wake(Vector3 at)
     {
         for (int i = 0; i < 3; i++)
@@ -108,7 +101,6 @@ public class WaterSplashes : MonoBehaviour
         }
     }
 
-    // Soft mist rising off the line where the sea meets the beach, near the camera.
     void SurfMist()
     {
         var sea = Ocean.Instance;
@@ -129,7 +121,6 @@ public class WaterSplashes : MonoBehaviour
         }
     }
 
-    // The surf: sea over ground less than SurfDepth below it, found by looking straight down.
     static bool InSurf(Vector2 p, float level)
     {
         if (!Physics.Raycast(new Vector3(p.x, level + 30f, p.y), Vector3.down, out var hit, 60f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
@@ -151,7 +142,6 @@ public class WaterSplashes : MonoBehaviour
         into.Emit(p, 1);
     }
 
-    // Also RockWake's white water.
     internal static ParticleSystem MakeSystem(GameObject go, string name, float gravity)
     {
         var ps = go.AddComponent<ParticleSystem>();

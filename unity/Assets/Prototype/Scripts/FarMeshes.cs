@@ -10,7 +10,6 @@ using UnityEngine;
 // the cells (D4).
 public static class FarMeshes
 {
-    /// <summary>A mesh's arrays, ready for Mesh.SetVertices and the rest on the main thread.</summary>
     public sealed class Data
     {
         public readonly List<Vector3> Vertices = new();
@@ -18,7 +17,6 @@ public static class FarMeshes
         public readonly List<Color32> Colors = new();
         public readonly List<int> Triangles = new();
 
-        /// <summary>A mesh of these arrays (32-bit indices only when it needs them).</summary>
         public Mesh ToMesh(string name)
         {
             var mesh = new Mesh { name = name };
@@ -39,7 +37,6 @@ public static class FarMeshes
             return Vertices.Count - 1;
         }
 
-        // A flat-shaded triangle, front face clockwise as seen.
         internal void Flat(Vector3 a, Vector3 b, Vector3 c, Color32 colour)
         {
             var n = Vector3.Cross(b - a, c - a).normalized;
@@ -61,44 +58,26 @@ public static class FarMeshes
         internal int Vertex(Vector3 v, Vector3 n, Color32 c) => Add(v, n, c);
     }
 
-    /// <summary>How far a known chunk's skirt hangs below its edge (m), to cover the step to a chunk terrain beside it.</summary>
     public const float SkirtMetres = 10f;
 
-    /// <summary>
-    /// The far ring's colours for the land: each biome's, and the rock that steep land turns to. Drawn() makes them from the
-    /// same paint the near ground draws (#191): each biome's ground as BiomeGround.Grounds measures it on the map, mixed
-    /// from the colours of the terrain layers the chunk terrains draw. Plain is a stand-in for a ring with neither (the
-    /// tests, a map whose terrains can't be read): every biome grass.
-    /// </summary>
     public sealed class Palette
     {
         readonly Dictionary<string, Color> biomes = new();
 
-        /// <summary>A biome not in the palette (the pinned map's name too).</summary>
         public Color Grass { get; private set; } = new(0.30f, 0.42f, 0.20f);
-        /// <summary>Where the land is steep.</summary>
         public Color Rock { get; private set; } = new(0.40f, 0.39f, 0.36f);
-        /// <summary>A wood's canopy seen from far off (a hills map's woods): the grass darkened, as the trees' crowns read.</summary>
         public Color Wood { get; private set; } = WoodOf(new Color(0.30f, 0.42f, 0.20f));
 
-        // How much of a wood's heart its canopy covers from far off (the rest is the ground between the crowns).
         const float CanopyShare = 0.85f;
 
         static Color WoodOf(Color grass) => new(grass.r * 0.42f, grass.g * 0.55f, grass.b * 0.45f);
 
-        /// <summary>A sample's colour under its woods: <paramref name="wood"/> (KnownChunk.Wood, 0..255) of the way to the canopy's.</summary>
         public Color Wooded(Color c, byte wood) => wood == 0 ? c : Color.Lerp(c, Wood, wood / 255f * CanopyShare);
 
-        /// <summary>Every biome grass.</summary>
         public static readonly Palette Plain = new();
 
-        /// <summary>A biome's colour (a biomes.json id; anything else is grass).</summary>
         public Color Of(string biome) => biome != null && biomes.TryGetValue(biome, out var c) ? c : Grass;
 
-        /// <summary>
-        /// The palette of <paramref name="grounds"/> (each biome's weights over CellPaint.Layers) in <paramref name="layers"/>
-        /// (each CellPaint layer's colour as drawn); a layer with no colour counts as grass.
-        /// </summary>
         public static Palette Drawn(IReadOnlyDictionary<string, float[]> grounds, IReadOnlyDictionary<string, Color> layers)
         {
             var p = new Palette();
@@ -125,13 +104,8 @@ public static class FarMeshes
     }
 
     static readonly Color Water = new(0.16f, 0.30f, 0.36f), SeaFloor = new(0.09f, 0.19f, 0.22f);
-    // How far under its water a known lake's or river's sample is drawn (m).
     const float UnderWater = 0.4f;
 
-    /// <summary>
-    /// A known chunk's land: its 9 × 9 samples <paramref name="cellMetres"/> × KnownChunk.Step apart, from its north-west
-    /// corner (the mesh's origin) east along +x and south along -z, each at its height in metres; then its skirt.
-    /// </summary>
     public static Data Known(KnownChunk k, float cellMetres, Palette palette = null, System.Func<int, int, float> rockAt = null)
     {
         palette ??= Palette.Plain;
@@ -140,8 +114,6 @@ public static class FarMeshes
         var d = new Data();
         var biome = palette.Of(k.Biome);
         var biomes = k.Biomes;
-        // A lake's or river's sample stands a little under its water (a hills map's lakes are drawn as their own surfaces at
-        // their level, HillsLakes): coplanar, the two fought.
         float H(int i, int j)
         {
             int q = Mathf.Clamp(j, 0, n - 1) * n + Mathf.Clamp(i, 0, n - 1);
@@ -150,7 +122,6 @@ public static class FarMeshes
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++)
             {
-                // Central differences inside, one-sided at the edges: x grows east, z north (j grows south).
                 float dx = (H(i + 1, j) - H(i - 1, j)) / (step * (i == 0 || i == n - 1 ? 1 : 2));
                 float dz = (H(i, j - 1) - H(i, j + 1)) / (step * (j == 0 || j == n - 1 ? 1 : 2));
                 var normal = new Vector3(-dx, 1f, -dz).normalized;
@@ -168,12 +139,6 @@ public static class FarMeshes
         return d;
     }
 
-    /// <summary>
-    /// A sample's colour at map cell (<paramref name="x"/>, <paramref name="y"/>): its water, else its biome's (blended to its
-    /// neighbours' across the triangles), turned to rock where it's steep or where <paramref name="rock"/> (0..1, a hills
-    /// map's high massif) says, with a little variety by the cell. Linear, as the near ground's paint is (#191). The known
-    /// chunks and a hills map's far land paint by it alike, so the two meet in one colour.
-    /// </summary>
     public static Color32 LandColour(Color biome, Color rockColour, Vector3 normal, byte water, int x, int y, float rock = 0f)
     {
         Color c = water switch
@@ -187,7 +152,6 @@ public static class FarMeshes
         return new Color(c.r * vary, c.g * vary, c.b * vary, 0f);
     }
 
-    // A wall hanging SkirtMetres down from the grid's rim, drawn from both sides.
     static void Skirt(Data d, int n)
     {
         var rim = new List<int>(4 * (n - 1));
@@ -205,12 +169,9 @@ public static class FarMeshes
         }
     }
 
-    // Each shape's profile from its foot to its top, as (radius, height) fractions, turned round its axis.
     static readonly Dictionary<string, Vector2[]> Profiles = new()
     {
         ["cone"] = new[] { new Vector2(1f, 0f), new Vector2(0.55f, 0.6f), new Vector2(0.12f, 1f), new Vector2(0f, 1f) },
-        // A volcano's cone as its stamp stands (the nine's Old Grumbler sampled: 0.2 of its rise at 0.86 of its radius, 0.55
-        // at 0.67, 0.8 at 0.48, its rim at 0.27), concave up to a narrow rim round a crater a fifth of its rise deep.
         ["crater"] = new[]
         {
             new Vector2(1f, 0f), new Vector2(0.8f, 0.3f), new Vector2(0.6f, 0.62f), new Vector2(0.42f, 0.88f), new Vector2(0.28f, 1f),
@@ -222,13 +183,10 @@ public static class FarMeshes
         ["keep"] = new[] { new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) },
     };
 
-    /// <summary>The shapes a horizon.json row may name; any other is drawn as a keep.</summary>
     public static IEnumerable<string> Shapes => Profiles.Keys;
 
-    /// <summary>A far landmark's colour by its type and shape.</summary>
     public static Color LandmarkColour(string type, string shape) => type switch
     {
-        // Basalt and ash, cool so the haze greys it blue far off (a warm brown went ochre in the sun).
         "volcano" => new Color(0.13f, 0.14f, 0.17f),
         "lake" or "port" => new Color(0.42f, 0.4f, 0.36f),
         "great tree" or "lone great tree" => new Color(0.05f, 0.09f, 0.11f),
@@ -242,19 +200,11 @@ public static class FarMeshes
 
     static readonly Color Trunk = new(0.3f, 0.22f, 0.15f);
 
-    /// <summary>
-    /// A far landmark's stand-in: its shape's profile turned round its axis (four sides for a keep), <paramref name="radius"/>
-    /// across and <paramref name="height"/> high from its foot at the origin, flat-shaded, and <paramref name="sink"/> metres
-    /// more below the foot so it never floats on a slope. With an <paramref name="apron"/> (a multiple of the radius, more
-    /// than 1) the land it stands on goes on out from its foot to that radius and down <paramref name="drop"/> metres below
-    /// it (to the water), so past the known ring, where no land is drawn, it stands on a swell of land, not on the sky.
-    /// </summary>
     public static Data Landmark(string type, string shape, float radius, float height, float sink, float apron = 0f, float drop = 0f)
     {
         if (shape == null || !Profiles.TryGetValue(shape, out var profile)) profile = Profiles[shape = "keep"];
         int sides = shape == "keep" ? 4 : 16;
         float turn = shape == "keep" ? Mathf.PI / 4f : 0f;
-        // A keep's corners stand at the radius, so its sides are a little inside it.
         var colour = LandmarkColour(type, shape);
         var d = new Data();
         Vector3 At(Vector2 p, int side, bool foot)
@@ -270,14 +220,12 @@ public static class FarMeshes
             for (int s = 0; s < sides; s++)
             {
                 Vector3 a = At(lo, s, r == 0), b = At(lo, s + 1, r == 0), e = At(hi, s, false), f = At(hi, s + 1, false);
-                // Seen from outside: the ring's lower edge, then up; a ring that closes to a point gives one triangle.
                 if (hi.x > 0f) d.Flat(a, e, f, c);
                 d.Flat(a, f, b, c);
             }
         }
         if (apron > 1f)
         {
-            // From the foot's ring out and down: seen from outside, as the rows above.
             float low = -Mathf.Max(sink, drop);
             for (int s = 0; s < sides; s++)
             {
@@ -291,11 +239,6 @@ public static class FarMeshes
         return d;
     }
 
-    /// <summary>
-    /// How a far landmark's stand-in is drawn past the known ring, from its world/horizon.json row's "far" (view only; the
-    /// core's HorizonTable doesn't read it): how much taller it stands where it's full far (1 where it gives way to the
-    /// land), how deep a notch its rim shows the eye (a fraction of its height), and its apron (a multiple of its radius).
-    /// </summary>
     public readonly struct FarLook
     {
         public readonly float Stretch, Notch, Apron;
@@ -307,11 +250,9 @@ public static class FarMeshes
             Apron = apron;
         }
 
-        /// <summary>Drawn as its row says, nothing more.</summary>
         public static readonly FarLook Plain = new(1f, 0f, 0f);
     }
 
-    /// <summary>Each horizon.json type's FarLook; a type with no "far" isn't listed (it's Plain).</summary>
     public static Dictionary<string, FarLook> FarLooks(string horizonJson)
     {
         var looks = new Dictionary<string, FarLook>();
@@ -325,14 +266,6 @@ public static class FarMeshes
         return looks;
     }
 
-    /// <summary>
-    /// The sea plane: a frame at <paramref name="level"/> round the rectangle (x0, z0)-(x1, z1), out <paramref name="reach"/>
-    /// metres past it on every side, so the sky never shows below the horizon past the coast; and the map's own rectangle,
-    /// its vertices' alpha <see cref="UnderTheMap"/>, which FarLand.shader clears within the known ring (the map's land and
-    /// water draw there) and leaves past it, where nothing else is drawn and the sky below the horizon, paler than the
-    /// haze, showed through as flat white wedges between the known ring and the coast.
-    /// </summary>
-    /// <summary>The sea plane's vertex alpha over the map itself, cleared near the eye (FarLand.shader).</summary>
     public const byte UnderTheMap = 255;
 
     public static Data SeaFrame(float x0, float z0, float x1, float z1, float reach, float level, Color colour)
@@ -351,7 +284,6 @@ public static class FarMeshes
             d.Vertex(new Vector3(x0 - reach, level, z1 + reach), up, c), d.Vertex(new Vector3(x1 + reach, level, z1 + reach), up, c),
             d.Vertex(new Vector3(x1 + reach, level, z0 - reach), up, c), d.Vertex(new Vector3(x0 - reach, level, z0 - reach), up, c),
         };
-        // North-west, north-east, south-east, south-west, clockwise from above: each side a band from the outer edge in.
         for (int s = 0; s < 4; s++)
         {
             int t = (s + 1) % 4;

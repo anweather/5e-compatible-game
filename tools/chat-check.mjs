@@ -19,13 +19,11 @@ export function readRaw(file) {
     try {
       o = JSON.parse(l.slice(b + 1));
     } catch {
-      // the stream's own non-JSON lines are nobody's record
     }
     return { utc: Date.parse(l.slice(0, a)), at: Number(l.slice(a + 1, b)), o };
   }).filter(r => r.o);
 }
 
-// Each reply once, by message.id; its last line has the fullest count, and each line of one reply has the same input side.
 export function perMessage(rows) {
   const seen = new Map();
   for (const { o } of rows) if (o.type === "assistant" && o.message?.id && o.message.usage) seen.set(o.message.id, o.message.usage);
@@ -43,7 +41,6 @@ export function perMessage(rows) {
   };
 }
 
-// Each tool call from line arrivals: tool_use's line to tool_result's line, in the order they were asked.
 export function toolTimes(rows, sent) {
   const calls = [];
   const open = new Map();
@@ -80,7 +77,6 @@ const union = calls => {
   return total;
 };
 
-// The server's lines for this prompt's game calls, in order: its log says when each ended.
 function joinServer(calls, server) {
   const left = [...server];
   return calls.filter(c => c.game).map(c => {

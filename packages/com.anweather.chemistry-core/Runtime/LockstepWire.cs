@@ -14,13 +14,11 @@ using System.Text;
 
 namespace Chem.Lockstep
 {
-    /// <summary>Bytes that aren't a lockstep message: cut short, or of a kind or version this core doesn't know.</summary>
     public sealed class LockstepWireException : Exception
     {
         public LockstepWireException(string message) : base(message) { }
     }
 
-    /// <summary>Writes a message: varints, strings and fixed 64-bit hashes, into a buffer that grows.</summary>
     public sealed class LockstepWriter
     {
         byte[] buffer = new byte[64];
@@ -35,7 +33,6 @@ namespace Chem.Lockstep
 
         public void Bool(bool b) => Byte(b ? (byte)1 : (byte)0);
 
-        /// <summary>An unsigned varint: seven bits a byte, low first.</summary>
         public void Natural(uint n)
         {
             while (n >= 0x80)
@@ -46,7 +43,6 @@ namespace Chem.Lockstep
             Byte((byte)n);
         }
 
-        /// <summary>A signed varint, zigzagged so small negatives stay short.</summary>
         public void Number(int n) => Natural(unchecked((uint)((n << 1) ^ (n >> 31))));
 
         public void Hash(ulong n)
@@ -54,7 +50,6 @@ namespace Chem.Lockstep
             for (int i = 0; i < 8; i++) Byte((byte)(n >> (8 * i)));
         }
 
-        /// <summary>A string's UTF-8 bytes after its length plus one; 0 is null.</summary>
         public void Text(string s)
         {
             if (s == null)
@@ -79,7 +74,6 @@ namespace Chem.Lockstep
         public byte[] ToArray() => Span.ToArray();
     }
 
-    /// <summary>Reads what a <see cref="LockstepWriter"/> wrote, in the same order; LockstepWireException if it runs out.</summary>
     public sealed class LockstepReader
     {
         readonly byte[] bytes;
@@ -136,7 +130,6 @@ namespace Chem.Lockstep
             return s;
         }
 
-        /// <summary>A count read before that many things: refused if more bytes than are left would be needed.</summary>
         public int Count() => Count(Natural());
 
         int Count(uint n)
@@ -145,7 +138,6 @@ namespace Chem.Lockstep
             return (int)n;
         }
 
-        /// <summary>The bytes from here to the end.</summary>
         public byte[] Rest()
         {
             var rest = new byte[bytes.Length - at];
@@ -155,21 +147,15 @@ namespace Chem.Lockstep
         }
     }
 
-    /// <summary>Splits a message into frames that fit a send, and puts a sender's pieces back together.</summary>
     public sealed class LockstepFrames
     {
         const byte Whole = 0, Piece = 1;
-        /// <summary>A piece's frame before its bytes, at most: the kind, then three varints of up to five bytes.</summary>
         public const int PieceHeader = 16;
-        /// <summary>The shortest send a transport may offer.</summary>
         public const int MinMessageBytes = 32;
 
-        // The sender's: its next message's number.
         int nextMessage;
-        // The receiver's: each sender's messages part in, by number.
         readonly Dictionary<(PeerId from, int message), byte[][]> partIn = new Dictionary<(PeerId, int), byte[][]>();
 
-        /// <summary>The frames to send for <paramref name="message"/>, each at most <paramref name="maxBytes"/> long.</summary>
         public List<byte[]> Split(ReadOnlySpan<byte> message, int maxBytes)
         {
             if (maxBytes < MinMessageBytes) throw new ArgumentOutOfRangeException(nameof(maxBytes), $"a transport must take {MinMessageBytes} bytes a send at the least");
@@ -196,7 +182,6 @@ namespace Chem.Lockstep
             return frames;
         }
 
-        /// <summary>A frame from <paramref name="from"/>: true with the whole message it completes, false while pieces are still to come.</summary>
         public bool TryJoin(PeerId from, byte[] frame, out byte[] message)
         {
             message = null;
@@ -222,7 +207,6 @@ namespace Chem.Lockstep
             return true;
         }
 
-        /// <summary>A peer went: its part-sent messages never finish.</summary>
         public void Forget(PeerId from)
         {
             var gone = new List<(PeerId, int)>();
@@ -232,7 +216,6 @@ namespace Chem.Lockstep
         }
     }
 
-    /// <summary>64-bit FNV-1a over a string's UTF-16 code units: a hash window's parts.</summary>
     public static class Fnv1a64
     {
         public static ulong Hash(string s)

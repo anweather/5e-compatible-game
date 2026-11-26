@@ -11,27 +11,17 @@ namespace Playtest
 {
     public enum GoalKind
     {
-        /// <summary>Walk (and sprint and jump) to a place.</summary>
         Visit,
-        /// <summary>Cast a spell at a cell near the wizard.</summary>
         Cast,
-        /// <summary>Two spells in a row on the same cells (oil then fire, water then frost...).</summary>
         Combo,
-        /// <summary>Cast by elements, as a player does: one element or an ordered pair (Target: the combo id, "water+earth").</summary>
         Elements,
-        /// <summary>A setup cast by elements, then a trigger on what it left (Target: the chain id, Playtest.Chains).</summary>
         Chain,
-        /// <summary>Pick up a nearby item and throw it.</summary>
         Throw,
-        /// <summary>Walk to a seat and sit.</summary>
         Sit,
-        /// <summary>Open a menu page and come back.</summary>
         Menu,
-        /// <summary>Stand and look around (time for fire and weather to play out).</summary>
         Idle,
     }
 
-    /// <summary>One goal: what, where or with what, and how many game seconds it may take.</summary>
     public sealed class Goal
     {
         public Goal(GoalKind kind, string target, string spell = null, string spell2 = null, float seconds = 30f)
@@ -44,13 +34,11 @@ namespace Playtest
         }
 
         public GoalKind Kind { get; }
-        /// <summary>The place (Visit, Sit), the menu page (Menu), the combo (Elements), the chain (Chain), or null.</summary>
         public string Target { get; }
         public string Spell { get; }
         public string Spell2 { get; }
         public float Seconds { get; }
 
-        /// <summary>The coverage key: what "done lately" counts.</summary>
         public string Key => Kind switch
         {
             GoalKind.Visit or GoalKind.Sit or GoalKind.Menu => $"{Kind}:{Target}",
@@ -75,15 +63,12 @@ namespace Playtest
         };
     }
 
-    /// <summary>What the bot can choose from, found in the game at the start of a run.</summary>
     public sealed class GoalOptions
     {
         public IReadOnlyList<string> Places { get; set; } = Array.Empty<string>();
         public IReadOnlyList<string> Spells { get; set; } = Array.Empty<string>();
         public IReadOnlyList<(string first, string then)> Combos { get; set; } = Array.Empty<(string, string)>();
-        /// <summary>The casts by elements (combo ids: "fire", "water+earth").</summary>
         public IReadOnlyList<string> ElementCasts { get; set; } = Array.Empty<string>();
-        /// <summary>The chains (Playtest.Chains ids).</summary>
         public IReadOnlyList<string> ChainIds { get; set; } = Array.Empty<string>();
         public IReadOnlyList<string> MenuPages { get; set; } = Array.Empty<string>();
         public bool HasSeats { get; set; }
@@ -92,18 +77,12 @@ namespace Playtest
 
     public static class GoalPicker
     {
-        // How often each kind comes up, before coverage.
         static readonly (GoalKind kind, double weight)[] Kinds =
         {
             (GoalKind.Visit, 4), (GoalKind.Cast, 2), (GoalKind.Combo, 1), (GoalKind.Elements, 4), (GoalKind.Chain, 2), (GoalKind.Throw, 1),
             (GoalKind.Sit, 1), (GoalKind.Menu, 1), (GoalKind.Idle, 1),
         };
 
-        /// <summary>
-        /// The next goal: a kind by weight, then a target among those of that kind, each candidate
-        /// weighted down by how often it was done lately (weight / (1 + times)). The same dice,
-        /// options and coverage give the same goal.
-        /// </summary>
         public static Goal Next(PlaytestRandom dice, GoalOptions options, IReadOnlyDictionary<string, int> doneLately)
         {
             if (dice is null) throw new ArgumentNullException(nameof(dice));
@@ -119,12 +98,6 @@ namespace Playtest
             return Seconds(candidates[candidates.Count - 1], dice);
         }
 
-        // Every goal the options allow; Idle always.
-        /// <summary>
-        /// The goal with this coverage key (Goal.Key: "Combo:create-water+shocking-grasp",
-        /// "Visit:bridge", "Idle"), if the options allow it; null otherwise. For a run that does
-        /// set goals in order (playtest run --goals), to check one finding on purpose.
-        /// </summary>
         public static Goal ByKey(PlaytestRandom dice, GoalOptions options, string key)
         {
             if (dice is null) throw new ArgumentNullException(nameof(dice));
@@ -146,7 +119,6 @@ namespace Playtest
             yield return new Goal(GoalKind.Idle, null);
         }
 
-        // A kind's weight is shared among its goals, so ten spells don't drown out one seat.
         static double KindWeight(GoalKind kind) => Kinds.First(k => k.kind == kind).weight;
 
         static int Count(Goal g, List<Goal> all) => all.Count(o => o.Kind == g.Kind);
@@ -154,7 +126,6 @@ namespace Playtest
         static int Times(IReadOnlyDictionary<string, int> done, string key) =>
             done != null && done.TryGetValue(key, out int n) ? n : 0;
 
-        // How long it may take: long enough to walk somewhere, short for a cast.
         static Goal Seconds(Goal g, PlaytestRandom dice) => new Goal(g.Kind, g.Target, g.Spell, g.Spell2, g.Kind switch
         {
             GoalKind.Visit => 90f,

@@ -9,7 +9,6 @@ using UnityEngine;
 // burn (materials.json flammability, fuel and heat; ValleyChemistry.Roofs).
 public class ThatchProbe : ProbeScenario
 {
-    // When every wall cell had burnt out (Time.time, -1 not yet), and the most alight at once.
     float allOut = -1f;
     int mostAlight;
 
@@ -44,7 +43,6 @@ public class ThatchProbe : ProbeScenario
         yield return null;
     }
 
-    // Watches the walls burn, for up to 110 s: a picture as the thatch flares.
     IEnumerator Watch(System.Collections.Generic.List<Vector2Int> cells, float cast)
     {
         while (Time.time - cast < 110f && allOut < 0f)

@@ -23,28 +23,19 @@ using UnityEngine;
 public class RobeCloth : MonoBehaviour
 {
     const float Step = 1f / 60f;
-    // Two passes of the links and collisions a step (four cost too much: the Mac's cost bar).
     const int MaxStepsPerFrame = 3, Iterations = 2;
-    // Velocity kept per step (air drag), and in water.
     const float Damping = 0.985f, WaterDamping = 0.8f;
     const float Gravity = 9.81f, WaterLift = 7f;
-    // How much of the way back to its rest shape a particle goes each step: keeps the robe's flare.
     const float ShapeKeep = 0.025f;
-    // The cloth's half-thickness against what it touches, and how far it may stretch.
     const float Skin = 0.02f, MaxStretch = 1.15f;
     const float SnapDistance = 2f, FarDistance = 25f;
-    // The share of the hips' move each step that the cloth takes on at once.
     const float Follow = 0.8f;
-    // The legs and hips it falls round (radii in metres).
-    // A little wider than the legs themselves: the cloth's faces sag between its particles.
     const float ThighRadius = 0.115f, ShinRadius = 0.09f, HipsRadius = 0.15f;
-    // The feet among the legs' bones.
     static readonly int[] Feet = { 2, 5 };
 
     static readonly ProfilerMarker StepMarker = new("RobeCloth.Step");
 
     Transform hips;
-    // Left thigh, knee, foot, then right.
     readonly Transform[] legs = new Transform[6];
     Sitter sitter;
     SurfaceEffects surface;
@@ -53,17 +44,13 @@ public class RobeCloth : MonoBehaviour
     Mesh mesh;
 
     int sides, rings;
-    Vector3[] rest;          // in the hips' space
-    // The rest shape from the hips in the body's own upright frame (its heading, not the hips' tilt):
-    // what the cloth hangs toward, so a tilted pelvis (sitting, lying back) lets it fall, not stick out.
+    Vector3[] rest;
     Vector3[] hang;
-    // The particles of the robe's front panel (within 60° of straight ahead), kept in front of the legs.
     bool[] frontPanel;
     float[] frontShare;
-    // What moves the wizard: on for the local player (its robe steps every time), off for the rest.
     CharacterController driver;
     Transform body;
-    Vector3[] pos, prev;     // in the world
+    Vector3[] pos, prev;
     struct Link { public int a, b; public float length; public bool vertical; }
     readonly List<Link> links = new();
     Vector3[] vertices, normals;
@@ -72,7 +59,6 @@ public class RobeCloth : MonoBehaviour
     Vector3 lastHips, lastStepHips;
     bool ready;
 
-    /// <summary>How far the cloth's farthest particle is from a point (the probe checks it holds together).</summary>
     public float Farthest(Vector3 from)
     {
         float most = 0f;
@@ -80,20 +66,13 @@ public class RobeCloth : MonoBehaviour
         return most;
     }
 
-    /// <summary>The steps run so far (the probe checks it's moving).</summary>
     public int Steps { get; private set; }
 
-    /// <summary>Seconds spent stepping every robe since it was last set to 0 (FpsProbe's cloth line).</summary>
     public static double StepSeconds;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics() => StepSeconds = 0;
 
-    /// <summary>
-    /// Builds the cloth on the hips: rings at these heights (in the hips' space, the first two
-    /// pinned), these radii, <paramref name="sides"/> particles round each; robe-coloured, the last
-    /// row in the trim colour.
-    /// </summary>
     public void Init(Animator animator, float[] heights, float[] radii, int sides, Color robe, Color trim)
     {
         hips = animator.GetBoneTransform(HumanBodyBones.Hips);
@@ -137,7 +116,6 @@ public class RobeCloth : MonoBehaviour
 
     bool Pinned(int i) => i < 2 * sides;
 
-    // Round each ring, down each line, across each quad both ways, and two rings down (bending).
     void MakeLinks()
     {
         links.Clear();
@@ -161,7 +139,6 @@ public class RobeCloth : MonoBehaviour
         }
     }
 
-    // Everything back to its rest shape where the hips are now.
     void Snap()
     {
         for (int i = 0; i < pos.Length; i++) pos[i] = prev[i] = hips.TransformPoint(rest[i]);
@@ -170,12 +147,10 @@ public class RobeCloth : MonoBehaviour
 
     bool hidden, told;
 
-    /// <summary>How often the cloth has gone bad and been put back: for the probe.</summary>
     public int Recoveries { get; private set; }
 
     static bool Finite(Vector3 v) => float.IsFinite(v.x + v.y + v.z);
 
-    // One bad bone for one frame fills the cloth with NaN, and nothing else would ever clear it: the skirt would be gone for good (#37).
     bool Sound()
     {
         var sum = Vector3.zero;
@@ -202,7 +177,6 @@ public class RobeCloth : MonoBehaviour
             hidden = true;
             return;
         }
-        // It stood still while it wasn't drawn and the wizard didn't: back on from rest, not from where it was left.
         if (hidden) Snap();
         hidden = false;
         float step = Step * Slowdown();
@@ -221,13 +195,9 @@ public class RobeCloth : MonoBehaviour
         }
         StepSeconds += (System.Diagnostics.Stopwatch.GetTimestamp() - from) / (double)System.Diagnostics.Stopwatch.Frequency;
         if (stepped && !Sound()) Recover();
-        // Between steps the mesh rides on the wizard as it is.
         if (stepped) Draw();
     }
 
-    // How many 60 Hz steps one step stands for: the local player's own robe every step; anyone
-    // else's (another player's, a copy) at 30 Hz, and every third step far off (the cost bar:
-    // about 1 ms a frame at 4 wizards on the Mac).
     int Slowdown()
     {
         var cam = Camera.main;
@@ -235,7 +205,6 @@ public class RobeCloth : MonoBehaviour
         return driver != null && driver.enabled ? 1 : 2;
     }
 
-    // The bones read once a step (a transform read per particle per pass cost most of the time).
     Matrix4x4 hipsMatrix;
     Vector3 hipsAt;
     Quaternion bodyTurn;
@@ -256,12 +225,9 @@ public class RobeCloth : MonoBehaviour
     }
 
     bool seated;
-    // How long it has been seated: just sat down, the cloth is settled onto the lap (the legs swing
-    // up through it as the wizard sits, which would leave it caught under the thighs).
     float seatedFor;
     const float Settle = 0.8f, SettleRate = 0.2f;
 
-    // Seated, the lap: the hip joints, knees and feet between both legs, and how long the thighs and shins are.
     Vector3 lapHip, lapKnee, lapFoot, lapRight;
     float lapThigh, lapShin;
     bool lapFound;
@@ -278,9 +244,6 @@ public class RobeCloth : MonoBehaviour
         lapRight = bodyTurn * Vector3.right;
     }
 
-    // Where a particle is pulled back to: the robe's shape hanging from the hips in the body's upright
-    // frame (so a tilted pelvis, sitting or lying back, lets it fall onto the seat). Seated, the front
-    // goes over the lap instead (Andrew: cover the thighs to the knee, then down the shins).
     Vector3 Target(int i)
     {
         var hangs = hipsAt + bodyTurn * hang[i];
@@ -288,21 +251,16 @@ public class RobeCloth : MonoBehaviour
         return front > 0f ? Vector3.Lerp(hangs, OverLap(i), front) : hangs;
     }
 
-    // How much of a particle is the robe's front (none at its back), seated with the lap found.
     float Front(int i) => lapFound ? frontShare[i] : 0f;
 
-    // Each particle's share of the front, from its rest place (worked out once).
     static float FrontShare(Vector3 h)
     {
         float across = new Vector2(h.x, h.z).magnitude;
         return across < 1e-4f ? 0f : Mathf.Clamp01((h.z / across + 0.3f) / 0.8f);
     }
 
-    // A front particle laid along the legs as far down the robe as it hangs: over the thighs to the
-    // knees, then over the shins (down a bench's front, along a lounger), just clear of them.
     Vector3 OverLap(int i)
     {
-        // From where its line leaves the waist (the pinned ring above it), so the lap doesn't fold back.
         float d = rest[sides].y - rest[i].y + Mathf.Max(0f, Vector3.Dot(pos[sides + i % sides] - lapHip, (lapKnee - lapHip).normalized));
         Vector3 from, way;
         float along;
@@ -314,8 +272,6 @@ public class RobeCloth : MonoBehaviour
         return from + way * along + clear + lapRight * (hang[i].x * 0.8f);
     }
 
-    // How hard a particle is pulled back: firm near the waist, loose at the hem (so the legs win); seated,
-    // the back only gently (so it falls onto the seat and over its edge), the front over the lap firmly.
     float Keep(int i)
     {
         float k = Mathf.Lerp(1.5f, 0.35f, i / sides / (float)(rings - 1));
@@ -332,8 +288,6 @@ public class RobeCloth : MonoBehaviour
         seatedFor = seated ? seatedFor + dt : 0f;
         bool settling = seated && seatedFor < Settle;
         ReadLap();
-        // Most of the hips' own move goes straight to the cloth, so running it swings round the legs
-        // instead of streaming behind like a cape.
         var carried = (hipsAt - lastStepHips) * Follow;
         lastStepHips = hipsAt;
         for (int i = 0; i < pos.Length; i++)
@@ -359,8 +313,6 @@ public class RobeCloth : MonoBehaviour
         }
     }
 
-    // Pulls a linked pair back to its length (a pinned end doesn't move); a line down the robe
-    // stretched past MaxStretch is pulled all the way.
     void Hold(Link link)
     {
         var d = pos[link.b] - pos[link.a];
@@ -386,9 +338,6 @@ public class RobeCloth : MonoBehaviour
         for (int i = 2 * sides; i < pos.Length; i++)
         {
             var p = OutOfSphere(pos[i], hipsAt, HipsRadius);
-            // Seated, the robe's front lies over the lap: caught by a thigh, it goes up onto it. Up, the
-            // front panel always goes out in front of a leg, never back through it (Andrew: the front
-            // leg came through the robe at a run).
             p = OffLegs(p, WayOffLegs(i, seat != null), ahead, right);
             if (seat != null) p = OffSeat(p, seat);
             if (p.y < ground) p.y = ground;
@@ -396,7 +345,6 @@ public class RobeCloth : MonoBehaviour
         }
     }
 
-    // Which way cloth leaves a leg: the nearest way, up over it (a lap), or out in front of it.
     enum LegWay { Round, Over, Ahead }
 
     LegWay WayOffLegs(int i, bool sitting)
@@ -405,9 +353,6 @@ public class RobeCloth : MonoBehaviour
         return frontPanel[i] ? LegWay.Ahead : LegWay.Round;
     }
 
-    // Out of both legs: thigh and shin capsules, the leg on the cloth's own side last so it has the
-    // last word (always left then right left cloth between the legs pushed by the right one, and the
-    // robe draped to the wizard's left).
     Vector3 OffLegs(Vector3 p, LegWay way, Vector3 ahead, Vector3 right)
     {
         int first = Vector3.Dot(p - hipsAt, right) > 0f ? 0 : 1;
@@ -429,8 +374,6 @@ public class RobeCloth : MonoBehaviour
         return p;
     }
 
-    // Out of a capsule toward the body's front, from wherever it is beside it (so cloth that slipped
-    // behind a striding leg is brought back in front); the nearest way where the leg points ahead.
     static Vector3 InFrontOfCapsule(Vector3 p, Vector3 a, Vector3 b, float r, Vector3 ahead, Vector3 right)
     {
         var ab = b - a;
@@ -462,8 +405,6 @@ public class RobeCloth : MonoBehaviour
         return OutOfSphere(p, a + ab * t, r);
     }
 
-    // Out of a capsule by going up over it: to the top of the capsule above the nearest point. Past
-    // its ends (in front of a knee) just out of it, so cloth there falls on past rather than up.
     static Vector3 OntoCapsule(Vector3 p, Vector3 a, Vector3 b, float r)
     {
         var ab = b - a;
@@ -479,14 +420,10 @@ public class RobeCloth : MonoBehaviour
         return p;
     }
 
-    // A seat's top, as a box under its seat point (a bench's plank, or a lounger's whole length):
-    // cloth inside it goes up onto the top.
     static Vector3 OffSeat(Vector3 p, Seat seat)
     {
         var t = seat.transform;
         var local = t.InverseTransformPoint(p);
-        // Under the thighs (the seat point is where the hips go, level with them), so cloth caught
-        // between leg and seat stays there instead of being squeezed up over the lap.
         var top = seat.seatAt.y - ThighRadius - 0.04f;
         float halfX = seat.lounge ? 0.35f : 0.7f, halfZ = seat.lounge ? 1.0f : 0.25f;
         if (Mathf.Abs(local.x - seat.seatAt.x) > halfX || Mathf.Abs(local.z - seat.seatAt.z) > halfZ) return p;
@@ -495,7 +432,6 @@ public class RobeCloth : MonoBehaviour
         return t.TransformPoint(local);
     }
 
-    // Just under the lower foot: the ground, read from the rig once a step (no terrain lookups).
     float Ground()
     {
         bool any = false;
@@ -509,7 +445,6 @@ public class RobeCloth : MonoBehaviour
         return any ? y - 0.06f + Skin : float.MinValue;
     }
 
-    // The water's top while the wizard swims (read once a step), else far below.
     float WaterTop()
     {
         if (surface == null || !surface.Swimming || grid == null || grid.World == null) return float.MinValue;
@@ -517,8 +452,6 @@ public class RobeCloth : MonoBehaviour
         return grid.WaterSurfaceY(cell.x, cell.y);
     }
 
-    // The weather's wind on the cloth: its way (World.WindDir: toward north, east, south, west),
-    // strong in a gale or a storm.
     Vector3 Wind()
     {
         var world = grid != null ? grid.World : null;
@@ -529,8 +462,6 @@ public class RobeCloth : MonoBehaviour
         float gust = 0.7f + 0.3f * Mathf.Sin(Time.time * 1.7f + hips.position.x);
         return dir * (4f * strength * gust);
     }
-
-    // --- the mesh: two faces per quad (outside, and a darker inside) --------------------------
 
     void MakeMesh(Color robe, Color trim)
     {
@@ -552,8 +483,6 @@ public class RobeCloth : MonoBehaviour
         GetComponent<MeshFilter>().sharedMesh = mesh;
     }
 
-    // One quad's colours (outside, and a darker inside) and its two faces' triangles, wound so the
-    // outside faces out.
     void SetUpQuad(int i, int k, Color colour, Color[] colours, int[] tris)
     {
         int q = i * sides + k;
@@ -578,7 +507,6 @@ public class RobeCloth : MonoBehaviour
 
     static readonly int[] Face = { 0, 1, 2, 0, 2, 3 }, FlippedFace = { 0, 3, 2, 0, 2, 1 };
 
-    // Colours are picked in sRGB; the shader works in linear (as MeshKit does).
     static Color Linear(Color c) =>
         QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(c.linear.r, c.linear.g, c.linear.b, c.a) : c;
 
@@ -590,8 +518,6 @@ public class RobeCloth : MonoBehaviour
         d = At(i + 1, k);
     }
 
-    // The particles into the mesh, in this object's space, each corner with the normal of the quads
-    // round its particle averaged (smooth shading, Andrew: not faceted).
     void Fill()
     {
         var space = transform;
@@ -606,7 +532,6 @@ public class RobeCloth : MonoBehaviour
             for (int k = 0; k < sides; k++)
             {
                 Quad(i, k, out var a, out var b, out var c, out var d);
-                // Outward: the a-b-c face's normal, turned round where the quad's winding was flipped.
                 var n = Vector3.Cross(local[b] - local[a], local[c] - local[a]);
                 if (flipped[i * sides + k]) n = -n;
                 smooth[a] += n;

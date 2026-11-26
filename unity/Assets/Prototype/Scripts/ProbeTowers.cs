@@ -49,7 +49,6 @@ public class TowersProbe : ProbeScenario
             Core.Hold.Health = int.MaxValue / 2;
             Core.Hold.ToSpawn = 0;
 
-            // Away from the towers a run attunes nothing: the trigger casts.
             StandOn(site.Rise);
             yield return Wait(0.5f);
             string before = Core.HandsOf(Me).Holds[HandsDef.Right];
@@ -67,15 +66,13 @@ public class TowersProbe : ProbeScenario
         }
     }
 
-    // At the tower, from above: the right hand takes its element in a moment, then the same trigger casts.
     IEnumerator AtTower(HoldTower tower)
     {
-        yield return Wait(1f); // any cast under way ends
+        yield return Wait(1f);
         var ground = Core.TowerGround(tower)[0];
         StandOn(ground);
         var spot = grid.CellCenter(ground.x, ground.y);
         spot.y = grid.GroundAt(spot);
-        // From the courtyard side, up a little, with the tower behind the wizard.
         var middle = grid.CellCenter(tower.X, tower.Y);
         var away = new Vector3(spot.x - middle.x, 0f, spot.z - middle.z).normalized;
         Cut(spot + away * 9f + Vector3.up * 6f, spot + Vector3.up);

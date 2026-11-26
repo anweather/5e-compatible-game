@@ -39,7 +39,6 @@ public partial class DefenseField : ICreatureGround
     SegmentInstance[] instances = new SegmentInstance[256];
     static Material puffMaterial;
 
-    /// <summary>Raiders drawn this frame, and death puffs shown since the start (for the probe).</summary>
     public int DrawnRaiders { get; private set; }
     public int Puffs { get; private set; }
 
@@ -61,7 +60,6 @@ public partial class DefenseField : ICreatureGround
         drawer?.Dispose();
     }
 
-    // Follows the core's raiders: new ones appear, moved ones start sliding, gone ones puff.
     void UpdateRaiders()
     {
         var world = World;
@@ -95,12 +93,9 @@ public partial class DefenseField : ICreatureGround
         Slide();
     }
 
-    // Raiders the core no longer has: a puff where one was beaten. One last seen on the flag's square
-    // or next to it got through (it leaves the board on the tick it steps onto the flag).
     void Forget(Vector2Int flagCell)
     {
         gone.Clear();
-        // One a spire killed rides it up all the same, and puffs when it comes down.
         foreach (var kv in shown)
             if (kv.Value.hp < 0 && !grid.SpireRide(kv.Key).HasValue) gone.Add(kv.Key);
         foreach (int id in gone)
@@ -112,7 +107,6 @@ public partial class DefenseField : ICreatureGround
         }
     }
 
-    // Each raider along its step, facing the way it goes, its gait from how fast.
     void Slide()
     {
         foreach (var s in shown.Values)
@@ -120,7 +114,6 @@ public partial class DefenseField : ICreatureGround
             float t = s.stepSeconds > 0f ? Mathf.Clamp01((Time.time - s.movedAt) / s.stepSeconds) : 1f;
             var at = Vector3.Lerp(s.from, s.to, t);
             Lift(s, World);
-            // The cells make a staircase of a diagonal: the body takes the corners off it.
             if (!s.smoothed) s.smooth = at;
             s.smoothed = true;
             var before = s.smooth;
@@ -146,7 +139,6 @@ public partial class DefenseField : ICreatureGround
         }
     }
 
-    // After everything has moved: pose every raider and draw them all in one go.
     void LateUpdate()
     {
         DrawnRaiders = BossesDrawn = 0;
@@ -177,7 +169,6 @@ public partial class DefenseField : ICreatureGround
         drawer.Draw(instances, used, centre);
     }
 
-    // A raider with an adjective shows it: its segments lean to the adjective's colour (Hold.cs).
     void Adjective(Shown s, int from, int to)
     {
         var color = s.raider != null ? World.Rules.AdjectiveOf(s.raider.Kind)?.Color : null;
@@ -190,9 +181,6 @@ public partial class DefenseField : ICreatureGround
         }
     }
 
-    // A frozen raider's segments in ice; cracked, a spiderweb over the ice (Punchy/Creature draws it
-    // where an instance's Pad is set), with a spit of shards as it happens. GPU-first: only what the
-    // instances are drawn with.
     void Frost(Shown s, int from, int to)
     {
         var sim = World.Rules.Sim;
@@ -213,7 +201,6 @@ public partial class DefenseField : ICreatureGround
         }
     }
 
-    // The species its rules row draws it as (raider.body), or null for none (the ash wing has wings of its own).
     CreatureBody Body(string kind)
     {
         if (bodies.Count == 0) ReadRows();
@@ -238,15 +225,12 @@ public partial class DefenseField : ICreatureGround
         return at;
     }
 
-    // Sizes the creature from its kind's body: the species' own size, times the kind's (raider.size, a percent).
     void SizeUp(Shown s)
     {
         var b = Body(s.kind);
         float size = (World.Rules.Entity(s.kind)?.Raider?.Size ?? 100) / 100f;
         s.state.Scale = (b != null ? (b.Size.x + b.Size.y) * 0.5f : 1f) * size * (Boss(World, s.raider) ? BossSize : 1f);
     }
-
-    // --- health bars and puffs ----------------------------------------------------------
 
     void DrawHealthBars()
     {
@@ -261,7 +245,6 @@ public partial class DefenseField : ICreatureGround
             if (screen.z <= 0f || screen.z > hudRange) continue;
             bool boss = Boss(World, s.raider);
             float width = boss ? 150f : 46f, height = boss ? 13f : 6f;
-            // The HUD's scale is on: a screen point is in pixels, the drawing in HUD units.
             float sx = screen.x / HudScale.Factor, sy = (Screen.height - screen.y) / HudScale.Factor;
             var back = new Rect(sx - width / 2f, sy, width, height);
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
@@ -278,7 +261,6 @@ public partial class DefenseField : ICreatureGround
         GUI.color = before;
     }
 
-    // A frozen raider struck: it bursts into ice shards with a crack, instead of the dust of a defeat.
     void Shatter(Vector3 at)
     {
         Puffs++;
@@ -286,7 +268,6 @@ public partial class DefenseField : ICreatureGround
         GameSounds.Play(SoundIds.Shatter, at);
     }
 
-    // A short burst of dark dust where a raider fell.
     void Puff(Vector3 at)
     {
         Puffs++;
@@ -329,8 +310,6 @@ public partial class DefenseField : ICreatureGround
         ps.Play();
         Destroy(go, 2f);
     }
-
-    // --- the ground the animator stands the bodies on (ICreatureGround) ----------------------
 
     public float Height(float2 xz) => grid != null ? grid.GroundAt(new Vector3(xz.x, 0f, xz.y)) : 0f;
 

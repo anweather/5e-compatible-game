@@ -1,3 +1,5 @@
+// The Dragon's rules (World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
+// sandbox/test/dragon.test.ts (frozen 2026-10-31); the save, the inactive chunks and the timing are C# only.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,10 +8,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The Dragon's rules (World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
-    /// sandbox/test/dragon.test.ts (frozen 2026-10-31); the save, the inactive chunks and the timing are C# only.
-    /// </summary>
     [Category("Simulation")]
     public class DragonTests
     {
@@ -32,7 +30,6 @@ namespace Chem.Tests
             Assert.That(w.Dragon, Is.Null, "the dragon should have left");
         }
 
-        // A bare world with its starting state kept, then changes everywhere.
         static World ChangedWorld(int width, int height, uint seed)
         {
             var w = new World(R, width, height, seed);
@@ -42,7 +39,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // The golden's map: a grass patch, a stone wall with a gap, a walled pond and four raiders: in the open, under water, between two stones, far off.
         static World GoldenWorld(out List<Raider> raiders, out string start)
         {
             var w = new World(R, 256, 128, 7);
@@ -83,7 +79,6 @@ namespace Chem.Tests
 
         static string Line(World w) => $"{w.Tick} {w.CellHash()} {w.RngState} {w.DragonText()}";
 
-        // How big it's drawn is the view's alone: a flight runs the same at any scale, tick by tick, its reach too.
         [Test]
         public void ItsScaleChangesNothingInTheCore()
         {
@@ -259,7 +254,7 @@ namespace Chem.Tests
             w.KeepStart();
             w.ApplyDragon(new DragonCommand());
             while (w.Dragon.Phase == DragonPhase.Warning) w.Step();
-            var raider = w.SpawnRaider("bone-hound", 30, 30, 50); // it would be at the flag by now
+            var raider = w.SpawnRaider("bone-hound", 30, 30, 50);
             for (int i = 0; i < 40 && raider.StatusOf(World.DownedStatus) == 0; i++) w.Step();
             int ticks = (int)Math.Floor(R.Sim.Downed.Seconds * R.Sim.TicksPerSecond);
             Assert.That(raider.StatusOf(World.DownedStatus), Is.EqualTo(ticks));
@@ -503,15 +498,8 @@ namespace Chem.Tests
             Assert.That(back.At(3, 3).Height, Is.EqualTo(0));
         }
 
-        /// <summary>
-        /// The time a full sweep takes on a world land.json's size (576 × 576), every chunk active and a third of the cells
-        /// changed, against the budgets: 1/6 s for a tick (ticks at 6 a second), 6 ms for a slice (ChemGrid.StepBudgetMs).
-        /// The best of up to three sweeps, each on a fresh world after a settled heap, so a busy Editor (a long suite's
-        /// garbage, another job, #192, as #177) can't fail it alone, and a sweep that has really grown slower fails every
-        /// round. Prints the numbers; run with --logger "console;verbosity=detailed" to read them.
-        /// </summary>
         [Test]
-        [NonParallelizable] // it times itself: it needs the machine to itself
+        [NonParallelizable]
         [Category("Timing")]
         public void AFullSweepStaysWithinTheTickBudget()
         {
@@ -525,7 +513,6 @@ namespace Chem.Tests
             Assert.That(rounds.Min(), Is.LessThan(budget), $"the worst tick, best of the rounds {string.Join(", ", rounds.Select(r => r.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)))} ms");
         }
 
-        // One sweep over a fresh 576 x 576 world: its worst tick (ms), its numbers printed, and the world as it started after.
         static double TimedSweep()
         {
             const int size = 576, dragonStage = 8;
@@ -574,7 +561,6 @@ namespace Chem.Tests
             return worstTick;
         }
 
-        // Earlier tests' garbage collected before a timed sweep, not in the middle of it: a timing test's only use of the collector.
 #pragma warning disable S1215
         static void Settle()
         {
@@ -587,7 +573,6 @@ namespace Chem.Tests
         [Test]
         public void AFlightPutsTheCourseBackAndKeepsItsZonesAndTimes()
         {
-            // Ported from sandbox/test/dragon.test.ts.
             var w = new World(R, 60, 12, 3, "dirt");
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava";
             w.SetCourse(CourseLayout.FromJson(@"{

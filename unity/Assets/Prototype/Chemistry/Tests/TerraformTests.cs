@@ -1,3 +1,5 @@
+// Earth shaping (terraform spells). Ported from sandbox/test/terraform.test.ts; the golden
+// numbers first came from running the same casts there (frozen 2026-10-31).
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,10 +8,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Earth shaping (terraform spells). Ported from sandbox/test/terraform.test.ts; the golden
-    /// numbers first came from running the same casts there (frozen 2026-10-31).
-    /// </summary>
     [Category("Unit")]
     public class TerraformTests
     {
@@ -19,7 +17,6 @@ namespace Chem.Tests
 
         static World Room(int w, int h, uint seed = 7, Rules with = null) => ChemistryTests.Room(w, h, seed, with ?? R);
 
-        /// <summary>A pond of pits holding a full step of water.</summary>
         static void Pond(World w, int x0, int x1, int y0, int y1)
         {
             for (int x = x0; x <= x1; x++)
@@ -43,11 +40,9 @@ namespace Chem.Tests
         {
             var w = Room(20, 9);
             Pond(w, 2, 5, 2, 6);
-            // The wizard stands on the dry bank at (6, 4); SpellCaster.Aim puts a self line one square out.
             w.Cast("earthen-trench", 7, 4, 1);
             Assert.That(Heights(w, 4, 5, 6, 7, 13, 14), Is.EqualTo(new[] { 0, -2, -2, -2, 0 }), "8 squares from the caster's own");
             Run(w, 20);
-            // Settled: on the flat water needs a 2-unit difference to move, so the channel slopes.
             Assert.That(Row(w, 4, 6, 7, 8, 9, 10, 11, 12, 13), Is.EqualTo(new[] { 5, 4, 3, 2, 1, 1, 0, 0 }));
             Assert.That(w.At(8, 3).Water, Is.EqualTo(0), "the banks stay dry");
             Assert.That(TotalWater(w), Is.EqualTo(80));
@@ -167,7 +162,6 @@ namespace Chem.Tests
             Assert.That(Heights(w, 6, 4, 5, 6, 7), Is.EqualTo(new[] { 1, 2, 3, 4 }));
             Assert.That(!w.IsBlocking(w.At(7, 6)), "four steps is no wall when walls start at five");
 
-            // Switching the mod off clamps heights back into the base range.
             w.ApplyRules(R);
             Assert.That(w.At(2, 3).Height, Is.EqualTo(R.Sim.Height.Max));
         }
@@ -185,7 +179,6 @@ namespace Chem.Tests
                     { 'id': 'f', 'name': 'F', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': 9, 'blurb': '' },
                     { 'id': 'g', 'name': 'G', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': -1.5, 'dig': 1, 'blurb': '' },
                     { 'id': 'e', 'name': 'E', 'level': 1, 'shape': 'point', 'effect': 'quake', 'blurb': '' } ] }".Replace('\'', '"')) })).Errors;
-            // validateRules' output for the same patch (terraform.test.ts).
             Assert.That(errors, Is.EqualTo(new[]
             {
                 "terrain mud: dugTo clay unknown",
@@ -206,7 +199,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenChargedCastsMatchTs()
         {
-            // The same casts as "charged casts dig deeper..." in terraform.test.ts.
             var w = Room(24, 12, 3);
             Pond(w, 2, 4, 2, 9);
             w.Cast("mold-earth-heap", 8, 3, 1, 3);
@@ -222,14 +214,12 @@ namespace Chem.Tests
             Assert.That(w.SpellCells(R.Spell("fire-bolt"), 18, 8, 1, 3).Count, Is.EqualTo(13), "a held Fire Bolt spreads two squares round its spot");
             w.Cast("fire-bolt", 18, 8, 1, 3);
             Run(w, 60);
-            // The hash changed when a charged spot, square or burst began to grow (World.ChargedGrowth): the bolt lights 13 squares, not 1.
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1e7f4b73 3022804953"));
         }
 
         [Test]
         public void ChargedAreasGrowButEarthShapingKeepsItsPatch()
         {
-            // The same as "charged spots, squares and bursts grow..." in terraform.test.ts.
             var w = Room(24, 24, 3);
             Assert.That(w.SpellCells(R.Spell("fireball"), 12, 12, 1, 3).Count, Is.EqualTo(9 * 9), "radius 2 + 2");
             Assert.That(w.SpellCells(R.Spell("grease"), 12, 12, 1, 2).Count, Is.EqualTo(3 * 3), "side 2 + 1");
@@ -239,7 +229,6 @@ namespace Chem.Tests
             Assert.That(w.SpellCells(R.Spell("misty-step"), 12, 12, 1, 3).Count, Is.EqualTo(1), "a target stays one square");
         }
 
-        // A row of raised rock (hardness 3) and a row of metal plate (hardness 4) across a room of dirt.
         static World HardRoom()
         {
             var w = Room(20, 12, 9);
@@ -293,8 +282,6 @@ namespace Chem.Tests
         [Test]
         public void StoneShapeDigsRockButNothingDigsMetalOrBedrock()
         {
-            // BACKLOG 4: Lower Earth (strength 1) digs dirt, sand and mud; rock (hardness 3) needs Stone Shape
-            // (strength 3); metal and bedrock (hardness 0) never dig, and each refusal says why.
             var w = new World(R, 12, 5, 1, "dirt");
             w.At(2, 2).T = "sand";
             w.At(4, 2).T = "mud";
@@ -318,7 +305,6 @@ namespace Chem.Tests
         [Test]
         public void APickDigsRockThroughAnEffect()
         {
-            // BACKLOG 4: the pick (strength 3) digs what Stone Shape digs; it stops at metal and bedrock.
             var w = new World(R, 10, 3, 1, "dirt");
             w.At(2, 1).T = "rock";
             w.At(4, 1).T = "metal";
@@ -359,7 +345,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenHardnessMatchesTs()
         {
-            // The same as "a dig weaker than the ground..." in terraform.test.ts.
             var w = HardRoom();
             w.Cast("mold-earth", 4, 3, 1);
             w.Cast("earthen-trench", 3, 9, 1);
@@ -372,7 +357,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenBurningHandsConeMatchesTs()
         {
-            // The same as "Burning Hands is a cone..." in terraform.test.ts.
             var w = Room(20, 14, 4);
             for (int x = 1; x < 19; x++)
                 for (int y = 1; y < 13; y++) w.At(x, y).T = "grass";
@@ -387,7 +371,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenRiverRefillsMatchesTs()
         {
-            // The same as "a river refills..." in terraform.test.ts.
             var w = Room(24, 12, 6);
             for (int x = 1; x <= 10; x++)
             {
@@ -405,7 +388,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenFireballCraterMatchesTs()
         {
-            // The same as "Fireball blows a small crater..." in terraform.test.ts.
             var w = Room(20, 12, 8);
             for (int x = 1; x < 19; x++)
                 for (int y = 1; y < 11; y++) w.At(x, y).T = "grass";
@@ -432,7 +414,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenSlantedTrenchMatchesTs()
         {
-            // The same as "a slanted trench runs off the grid..." in terraform.test.ts.
             var w = Room(24, 14, 9);
             for (int x = 2; x <= 4; x++)
                 for (int y = 3; y <= 10; y++)
@@ -464,7 +445,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenTopplingTreesMatchesTs()
         {
-            // The same as "earth shaping topples trees..." in terraform.test.ts.
             var w = Room(20, 12, 10);
             for (int x = 1; x < 19; x++)
                 for (int y = 1; y < 11; y++) w.At(x, y).T = "grass";
@@ -494,7 +474,6 @@ namespace Chem.Tests
             Assert.DoesNotThrow(() => R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"height\": { \"min\": -5 } } }") }));
         }
 
-        /// <summary>The same casts as earthShaping in terraform.test.ts.</summary>
         static World EarthShaping(uint seed)
         {
             var w = Room(18, 10, seed);
@@ -503,9 +482,9 @@ namespace Chem.Tests
                 for (int y = 6; y <= 8; y++) w.At(x, y).T = "grass";
             w.At(9, 7).Cover = "oil";
             w.At(10, 7).Cover = "oil";
-            w.Cast("earthen-trench", 6, 4, 1); // from the dry bank at (5, 4)
+            w.Cast("earthen-trench", 6, 4, 1);
             Run(w, 20);
-            w.Cast("wall-of-stone", 12, 1, 2); // across the trench's end
+            w.Cast("wall-of-stone", 12, 1, 2);
             w.Cast("move-earth", 14, 7, 1);
             w.Cast("create-water", 14, 7, 1);
             w.Cast("mold-earth", 9, 7, 1);
@@ -540,7 +519,6 @@ namespace Chem.Tests
             }, w.Log.Select(l => $"{l.Tick}|{l.Kind.ToString().ToLowerInvariant()}|{l.Count}|{l.Text}").ToArray());
         }
 
-        // A whirlwind cast south of a cell and heading north, 15 ticks on: its eye has crossed it.
         static World Crossing(System.Action<Cell> set)
         {
             var w = new World(R, 9, 12, 1, "dirt");
@@ -597,7 +575,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenFireTornadoMatchesTs()
         {
-            // It starts on a fire, heads east over dry grass, lights what it passes and drops fire where it ends.
             var w = new World(R, 20, 9, 3, "grass");
             w.At(4, 4).Fire = 3;
             w.At(4, 4).Fuel = 8;
@@ -612,7 +589,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenDustFlashMatchesTs()
         {
-            // A dust cloud goes up as one from a spark at its edge, all of it used up; a cloud apart from it doesn't.
             var w = new World(R, 16, 9, 1, "dirt");
             for (int y = 0; y < 9; y++)
                 for (int x = 10; x < 16; x++) w.At(x, y).T = "grass";

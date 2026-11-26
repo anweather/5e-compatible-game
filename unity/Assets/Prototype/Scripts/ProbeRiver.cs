@@ -13,8 +13,6 @@ using UnityEngine;
 // full again after.
 public class RiverProbe : ProbeScenario
 {
-    // Points the river's course bends through (ValleyShape.River), down from the foothills; it runs
-    // roughly north to south there, so a row of squares crosses it.
     static readonly Vector3[] OnCourse = { new(128f, 0f, 170f), new(142f, 0f, 95f), new(120f, 0f, 30f) };
     const int MinWidth = 5;
     const float MinDepth = 1.8f, WalkSeconds = 25f;
@@ -28,8 +26,6 @@ public class RiverProbe : ProbeScenario
         yield return Dig();
     }
 
-    // The river's width in squares and the water's depth over the drawn ground at its middle, at each
-    // point of OnCourse. Returns the deepest middle square, or null if the river wasn't found.
     Vector2Int? MeasureRiver()
     {
         int narrowest = int.MaxValue;
@@ -52,8 +48,6 @@ public class RiverProbe : ProbeScenario
         return deepest;
     }
 
-    // The run of river squares across the row through a square (from the river square nearest it in
-    // that row): its middle square and how many squares it is.
     (Vector2Int middle, int width) Across(Vector2Int at)
     {
         int x0 = int.MinValue;
@@ -71,7 +65,6 @@ public class RiverProbe : ProbeScenario
 
     bool IsRiver(int x, int y) => World.InBounds(x, y) && World.At(x, y).T == TerrainIds.River;
 
-    // Drops the wizard into the river's middle: deep enough there to float rather than stand on the bed.
     IEnumerator Swim(Vector2Int middle, SurfaceEffects surface)
     {
         var at = grid.CellCenter(middle.x, middle.y);
@@ -83,7 +76,6 @@ public class RiverProbe : ProbeScenario
         Shot("swimming");
     }
 
-    // Walks the wizard from the ground past the bridge's west ramp to past its east ramp.
     IEnumerator CrossBridge(SurfaceEffects surface)
     {
         var bridge = GameObject.Find("Bridge");
@@ -131,10 +123,8 @@ public class RiverProbe : ProbeScenario
 
     static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
 
-    // Digs from the river's edge east of it to a dry square three squares out, and checks the water comes.
     IEnumerator Dig()
     {
-        // Near the river's course at world (120, 30), on the grid.
         var near = grid.CellAt(new Vector3(120f, 0f, 30f));
         var river = FindRiver(near, 12);
         Check("river_found", river.HasValue, river.HasValue ? $"river square {river.Value}" : $"no river square within 12 of {near}");
@@ -142,7 +132,6 @@ public class RiverProbe : ProbeScenario
         var r = river.Value;
         Check("river_full", World.At(r.x, r.y).Water >= 4, $"{World.At(r.x, r.y).Water} units");
 
-        // The dry square east of it, three squares out, and the wizard west of that.
         var dry = new Vector2Int(r.x + 3, r.y);
         while (World.At(dry.x - 1, dry.y).T == TerrainIds.River) dry.x++;
         var yard = grid.yardCells;
@@ -151,7 +140,6 @@ public class RiverProbe : ProbeScenario
         at.y = grid.GroundAt(at);
         Cut(at + V(6f, 7f, -8f), at);
         yield return Wait(1f);
-        // Dig a trench from the river's edge to the dry square: Lower Earth, charged, along the gap.
         for (int x = dry.x - 2; x <= dry.x; x += 1) World.Cast(SpellIds.MoldEarth, x, dry.y, 1, 2);
         yield return Wait(4f);
         int wet = World.At(dry.x, dry.y).Water;

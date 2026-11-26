@@ -10,11 +10,10 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
-    /// <summary>The running game's world, for tools that read it. Called off the game's main thread: Read crosses to it and waits.</summary>
     public interface IWorldDesk
     {
         T Read<T>(Func<World, T> read);
@@ -26,20 +25,14 @@ namespace Chem.Mcp
         const string DefaultStyle = "plain", DoorKind = "door", WindowKind = "window";
         const int MinSide = 3, FindLines = 24, SiteLines = 5;
 
-        /// <summary>The running game's world; null reads the stand-in in memory (StandInValley).</summary>
         public IWorldDesk WorldDesk { get; set; }
 
         T OnWorld<T>(Func<World, T> read) => WorldDesk != null ? WorldDesk.Read(read) : read(Live);
 
-        // A game is attached but can't show its world yet: a site can only be judged there, at the tick.
         bool WorldBlind => Desk != null && WorldDesk == null;
 
         string StandInLine => WorldBlind || WorldDesk == null ? "\n(A stand-in of the valley: no game's world is attached, so there are no trees or yard here.)" : "";
 
-        /// <summary>
-        /// validate's and apply's line naming what a patch's buildings say that nothing draws (BuildingsShown), or "".
-        /// A patch that can't switch on is read against the tables in force.
-        /// </summary>
         public string UnseenNote(string patchJson)
         {
             JObject patch;
@@ -63,9 +56,6 @@ namespace Chem.Mcp
             return BuildingsShown.Note(BuildingsShown.Unseen(patch, composed, Base.Buildings));
         }
 
-        // ---------- find ----------
-
-        /// <summary>find(): buildings and things, with their ids, nearest first.</summary>
         public string Find(string kind, string near, int? within, string side, string edge)
         {
             int reach = within ?? 64;
@@ -114,7 +104,6 @@ namespace Chem.Mcp
             return Math.Sqrt(best);
         }
 
-        // What "near" names, as cells to measure from, and its name for a sentence.
         List<(int x, int y)> Targets(string near, string side, string edge, out string name)
         {
             string key = (near ?? "").Trim();
@@ -143,7 +132,6 @@ namespace Chem.Mcp
             return cells;
         }
 
-        // A place, or just its edge (the world's own edge isn't a shore), or just the side of it facing one way.
         List<(int x, int y)> PlaceCells(Place place, string side, string edge, ref string name)
         {
             bool shore = !string.IsNullOrWhiteSpace(edge);
@@ -179,9 +167,6 @@ namespace Chem.Mcp
             throw new RulesToolException($"{what} is a cell as JSON, [x, y].");
         }
 
-        // ---------- find_site ----------
-
-        /// <summary>find_site(): where a building of this size can stand, nearest first.</summary>
         public string FindSite(int width, int depth, string near, string side, string edge, int? within)
         {
             if (width < 1 || depth < 1) throw new RulesToolException("A site is at least a cell each way.");
@@ -235,14 +220,12 @@ namespace Chem.Mcp
             return picked;
         }
 
-        // What most of a site stands on, by name.
         static string MostOf(World w, int x, int y, int width, int depth)
         {
             var cells = Enumerable.Range(0, depth).SelectMany(dy => Enumerable.Range(0, width).Select(dx => w.TerrainOf(w.At(x + dx, y + dy)).Name));
             return cells.GroupBy(n => n).OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal).First().Key;
         }
 
-        // Every cell of the site is free.
         static bool Clear(int x, int y, int width, int depth, Func<int, int, bool> free)
         {
             for (int dy = 0; dy < depth; dy++)
@@ -251,16 +234,12 @@ namespace Chem.Mcp
             return true;
         }
 
-        // The kinds of place that stay as they are, whatever a mod or an act asks: what the map says stands there.
         static readonly HashSet<string> SettledKinds = new HashSet<string> { "village", "course", "puzzle", "court", "field", "tower", "bridge", "landmark" };
 
-        // The settled place on a cell, or null for open country.
         Place SettledPlace(int x, int y) => Places.All.FirstOrDefault(p => SettledKinds.Contains(p.Kind) && p.Contains(x, y));
 
-        // Only open country is a site.
         bool Settled(int x, int y) => SettledPlace(x, y) != null;
 
-        // Cells from the targets (-1 past reach), by steps across the grid.
         static int[] DistanceMap(World w, List<(int x, int y)> from, int reach)
         {
             var map = new int[w.W * w.H];
@@ -287,18 +266,11 @@ namespace Chem.Mcp
             return map;
         }
 
-        // ---------- the drafts ----------
-
-        /// <summary>
-        /// Why a patch's buildings and things couldn't stand on the world now; null if they can, or no world can say.
-        /// <paramref name="own"/> is the mod on that this patch is an earlier state of (OwnMod).
-        /// </summary>
         string SiteNote(string json, string own = null)
         {
             if (WorldBlind) return null;
             try
             {
-                // SiteProblemOf says a patch that doesn't compose in a sentence; only a patch that can't be read throws here.
                 if (!(ModPatch.Parse(json).Json["world"] is JObject)) return null;
                 return OnWorld(w => w.SiteProblemOf(json, "The draft", own));
             }
@@ -308,7 +280,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>A draft with its buildings as a mod, and a sentence if they wouldn't stand.</summary>
         public string Sited(Draft draft)
         {
             string note = SiteNote(draft.Patch.ToString(Formatting.None), OwnMod(draft));
@@ -322,7 +293,6 @@ namespace Chem.Mcp
             return rows;
         }
 
-        /// <summary>A new building: a box from its size and style, or a whole row.</summary>
         public Draft AddBuilding(string draftId, string at, int? width, int? depth, string style, string front, string id, string fill, string row)
         {
             JObject made;
@@ -362,7 +332,6 @@ namespace Chem.Mcp
             return row;
         }
 
-        /// <summary>One field of a building by dotted path; null removes it. The whole row goes in the draft.</summary>
         public Draft SetBuilding(string draftId, string id, string field, string value)
         {
             id = Required(id, "building");
@@ -373,7 +342,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // The draft's row, or the world's copied in: every edit is of the whole row.
         JObject RowInDraft(Draft draft, string id)
         {
             var rows = DraftRows(draft);
@@ -385,7 +353,6 @@ namespace Chem.Mcp
             return copy;
         }
 
-        /// <summary>A row of a building table (a style, an opening, a floor, a roof shape, a detail).</summary>
         public Draft AddBuildingPart(string draftId, string table, string id, string row)
         {
             table = Required(table, "table").ToLowerInvariant();
@@ -406,9 +373,6 @@ namespace Chem.Mcp
         IEnumerable<string> BuildingLines() =>
             OnWorld(w => w.BuildingsNow.Select(r => $"{r.Id}: {BuildingLine(r, w.BuildingCellsOf(r))}").ToList());
 
-        // ---------- add_wing ----------
-
-        /// <summary>A wing on one side of a building by id, or on the first side whose site stands.</summary>
         public Draft AddWing(string draftId, string building, int width, int depth, string side)
         {
             building = Required(building, "building");
@@ -432,13 +396,12 @@ namespace Chem.Mcp
                 }
                 refusals.Add($"{s.ToString().ToLowerInvariant()}: {why}");
             }
-            draft.Changed.Add($"{BuildingsTable} {building}"); // the row was copied in to try it, so remove can take it back
+            draft.Changed.Add($"{BuildingsTable} {building}");
             throw new RulesToolException($"No wing of {width} by {depth} cells stands on {building}. {string.Join("; ", refusals)}.");
         }
 
         static int HostLength(JObject row, Side side) => Wing.HostOf(row, side)?.length ?? 0;
 
-        // The tables as the draft has them; tables that don't fit the rules are a refusal (RulesWith), not a ModException.
         BuildingTables BuildingTablesIn(Draft draft) =>
             RulesWith(new JObject { [BuildingTables.Key] = draft.Patch[BuildingTables.Key]?.DeepClone() ?? new JObject() }.ToString()).Buildings;
     }

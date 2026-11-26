@@ -50,8 +50,6 @@ public class Village : MonoBehaviour
             grid = ChemGrid.Current?.Grid;
             nextSkyLookup = Time.unscaledTime + 2f;
         }
-        // Playing, the windows and door lamps light as the rules' daylight drops from bright
-        // (Nightfall); in the Editor, from the sky as it stands.
         var world = grid != null ? grid.World : null;
         float lit;
         if (world != null) lit = Nightfall.Lamps(world);
@@ -61,15 +59,9 @@ public class Village : MonoBehaviour
         if (Application.isPlaying) LightLamps(lit);
     }
 
-    // --- door lamps --------------------------------------------------------------------------
-
-    // The inn's and the shop's door lights (the buildings' own) and a lamp over the well, lit at dusk:
-    // each at its own brightness times how lit the lamps are.
     const string DoorLight = "Door light";
     const float WellRange = 8f, WellIntensity = 1.6f;
     static readonly Color LampColour = new(1f, 0.72f, 0.42f);
-    // Each lamp with its building's roof: a building that burnt down or caved in has its roof hidden
-    // (ValleyChemistry), and its lamp stays out (Andrew's playtest #10c). The well's lamp has none.
     readonly System.Collections.Generic.List<(Light lamp, float full, Renderer roof)> lamps = new();
     ChemGrid grid;
     bool lampsFound;
@@ -110,7 +102,6 @@ public class Village : MonoBehaviour
         lamps.Add((lamp, WellIntensity, null));
     }
 
-    // A round stone well with two posts, a little shingled roof, a windlass and a bucket.
     void BuildWell()
     {
         var kit = new MeshKit();
@@ -149,9 +140,6 @@ public class Village : MonoBehaviour
         WellColliders(stones, radius);
     }
 
-    // The wall stands in your way, a box for each column of stones, its full height (Andrew's
-    // playtest #5): a ring, not a solid, so you can still jump in and the water still slows you.
-    // The two posts stop you too.
     void WellColliders(int stones, float radius)
     {
         const float wallHeight = 0.9f;
@@ -162,7 +150,6 @@ public class Village : MonoBehaviour
             part.transform.SetParent(well.transform, false);
             part.transform.SetLocalPositionAndRotation(new Vector3(Mathf.Cos(t) * radius, wallHeight / 2f, Mathf.Sin(t) * radius),
                 Quaternion.Euler(0f, -t * Mathf.Rad2Deg + 90f, 0f));
-            // Wide enough to meet its neighbours round the ring.
             part.AddComponent<BoxCollider>().size = new Vector3(2f * Mathf.PI * radius / stones + 0.05f, wallHeight, 0.3f);
         }
         for (int side = -1; side <= 1; side += 2)

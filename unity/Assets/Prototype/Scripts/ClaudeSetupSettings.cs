@@ -8,7 +8,6 @@ using UnityEngine;
 // page is the only thing that writes ChatSetup: that path runs a program on the player's PC. Starts itself.
 public class ClaudeSetupSettings : MonoBehaviour
 {
-    /// <summary>The page's id in the Esc menu.</summary>
     public const string PageId = "claude-setup";
     const int SectionOrder = 510, MostChars = 400;
     const float PageHeight = 470f, CapStep = 0.5f, PageWidth = 640f, Margins = 32f, Scrollbar = 24f, FieldGap = 8f;
@@ -19,14 +18,11 @@ public class ClaudeSetupSettings : MonoBehaviour
         ConsoleLink = "https://console.anthropic.com/settings/keys",
         NoVault = "This computer has no safe place to keep these yet. Set the SPELL_VALLEY_API_KEY environment variable for the API, or the game uses claude from your PATH.";
 
-    /// <summary>How many times the page has been drawn, for the probe.</summary>
     public static int Drawn { get; private set; }
 
-    /// <summary>The widest the page's contents were drawn, and how wide they may be, for the probe.</summary>
     public static float Widest { get; private set; }
     public static float Room => Mathf.Min(PageWidth, HudScale.Width - Margins) - Margins - Scrollbar;
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -35,7 +31,6 @@ public class ClaudeSetupSettings : MonoBehaviour
         Widest = 0f;
     }
 
-    /// <summary>Fills the path's box without storing anything, for the probe: a long one must not widen the page.</summary>
     public static void ShowPath(string text)
     {
         if (instance != null) instance.path = text;
@@ -102,7 +97,6 @@ public class ClaudeSetupSettings : MonoBehaviour
         scroll = PauseMenu.ScrollView(scroll, PageHeight, DrawContent, across: false);
     }
 
-    // Held to a width: a text box left to itself grows with what's in it, and a long key or path would widen the whole page.
     void DrawContent()
     {
         GUILayout.BeginVertical(GUILayout.Width(Room));

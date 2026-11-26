@@ -25,20 +25,12 @@ using UnityEngine;
 // movement), from the caster's position carried in the cast.
 public static class SpellForces
 {
-    /// <summary>Solo: applies the forces of a cast that just landed to everything but the caster. Returns how many things it moved.</summary>
     public static int Apply(ChemGrid grid, string spellId, int x, int y, int dir, Transform caster, int charge = 1) =>
         Apply(grid, new CastCommand(spellId, x, y, dir, charge), caster);
 
-    /// <summary>Solo: as above, for a cast that may be aimed off the grid's four ways.</summary>
     public static int Apply(ChemGrid grid, CastCommand cast, Transform caster) =>
         Apply(grid, cast, caster.position, caster, null, levitate: true, caster);
 
-    /// <summary>
-    /// Online: the forces of a cast whose tick batch just ran. <paramref name="props"/> on the host
-    /// moves the physics props; <paramref name="wizard"/>, the local player's wizard unless they cast it,
-    /// is shoved too; <paramref name="ownCaster"/>, the local player's wizard when they cast it, is the
-    /// one a spell that moves its caster moves. Returns how many things it moved here.
-    /// </summary>
     public static int ApplyOnline(ChemGrid grid, CastCommand cast, Vector3 from, bool props, Knockback wizard, Transform ownCaster)
     {
         bool Mine(IPushable p) => (props && p is PhysicsProp) || (wizard != null && ReferenceEquals(p, wizard));
@@ -56,7 +48,6 @@ public static class SpellForces
         HurtWizards(grid, spell, cast, except, only);
         if (spell.ForceThrow > 0 && spell.Shape == SpellShapes.Burst) return Jet(grid, spell, cast, except, only);
         if (spell.Push <= 0) return HitWizards(grid, spell, cast, except, only);
-        // Held, a push is half again as hard per level, and a burst reaches as far as its grown squares.
         float impulse = spell.Push * Forces.ImpulsePerPush * (1f + 0.5f * (charge - 1));
         return spell.Shape switch
         {
@@ -66,10 +57,8 @@ public static class SpellForces
         };
     }
 
-    // How hard a jet throws, in impulses and in a wizard's m/s, for each tick of its force.throw.
     const float JetImpulse = 55f, JetSpeed = 1.5f;
 
-    // A Geyser's jet throws what's on its water straight up; on dry ground it fizzled and throws nothing.
     static int Jet(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
     {
         var c = grid.World.At(cast.X, cast.Y);
@@ -79,8 +68,6 @@ public static class SpellForces
         return Forces.Up(at, reach, spell.ForceThrow * JetImpulse, spell.ForceThrow * JetSpeed, except, only);
     }
 
-    // The spells that move or change one thing rather than push: Levitate (a prop), Misty Step and
-    // Mage Hand (the caster's own), Shapeshift (the caster becomes an animal); null for the rest.
     static int? MovesSomeone(ChemGrid grid, SpellDef spell, CastCommand cast, bool levitate, Transform ownCaster)
     {
         int charge = World.ClampCharge(cast.Charge);
@@ -94,11 +81,9 @@ public static class SpellForces
         };
     }
 
-    // Shapeshift: the caster's own wizard takes the animal's shape (on the caster's machine only).
     static int Shift(Transform ownCaster, SpellDef spell, CastCommand cast) =>
         ownCaster != null && ownCaster.TryGetComponent<Shapeshift>(out var shape) && shape.Land(spell, cast.X, cast.Y, cast.Charge) ? 1 : 0;
 
-    // The wizards standing in the spell's squares (not its caster) feel its element.
     static int HitWizards(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
     {
         if (spell.Element == null) return 0;
@@ -109,8 +94,6 @@ public static class SpellForces
         return hit;
     }
 
-    // A spell with damage hurts the wizards in its squares (not its caster): its dice's average,
-    // times the charge (Vitals; an animal shape takes it first).
     static void HurtWizards(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
     {
         if (spell.Damage == null || spell.Damage.Length < 2) return;
@@ -119,7 +102,6 @@ public static class SpellForces
             if (wizard.TryGetComponent<Vitals>(out var vitals)) vitals.TakeDamage(damage);
     }
 
-    // The wizards (this machine's to move, with `only`) standing in a cast's squares, not `except`.
     static System.Collections.Generic.List<Knockback> WizardsIn(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
     {
         var found = new System.Collections.Generic.List<Knockback>();
@@ -133,7 +115,6 @@ public static class SpellForces
         return found;
     }
 
-    // What an element does to a wizard it catches.
     static bool Hit(Knockback wizard, SpellDef spell, Vector3 centre, Vector3 along, int charge)
     {
         var away = wizard.transform.position - centre;
@@ -165,17 +146,14 @@ public static class SpellForces
         }
     }
 
-    // The sandbox's directions on the ground: north (y-1) is +z.
     static Vector3 Direction(int dir) => new Vector3(World.DirX(dir), 0f, -World.DirY(dir));
 
-    // Which way a cast points on the ground: along its aim when it has one off the grid's four ways.
     static Vector3 Along(CastCommand cast)
     {
         var (ax, ay) = World.SnapAim(cast.AimX, cast.AimY);
         return ax != 0 && ay != 0 ? new Vector3(ax, 0f, -ay).normalized : Direction(cast.Dir);
     }
 
-    // Held, it stays up that many times as long and rises half again as fast per level.
     static bool Levitate(ChemGrid grid, SpellDef spell, int x, int y, int charge)
     {
         var target = grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y);

@@ -19,7 +19,7 @@ public class ViewWrapTests
     public void APlaceGoesToTheCopyNearestTheCamera()
     {
         ViewWrap.Set(6912, 5760, 1.5f);
-        ViewWrap.EyeAt = new Vector3(10360f, 20f, -10f); // just west of the east seam, just south of the south one
+        ViewWrap.EyeAt = new Vector3(10360f, 20f, -10f);
         Assert.That(ViewWrap.PeriodX, Is.EqualTo(10368f));
         Assert.That(ViewWrap.NearX(10f), Is.EqualTo(10378f), "the west edge's copy is just east of the seam");
         Assert.That(ViewWrap.NearX(10300f), Is.EqualTo(10300f), "a place near the camera stays");

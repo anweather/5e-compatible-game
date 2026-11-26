@@ -73,7 +73,6 @@ namespace Chem
                 Values(what, "breaks.spill.", spill, schema.SectionOf("spill"));
             }
 
-            /// <summary>An optional sub-object: true if it is there; anything else there is an error.</summary>
             bool Section(JToken parent, string key, string what, out JObject section)
             {
                 var v = parent[key];
@@ -82,7 +81,6 @@ namespace Chem
                 return section != null;
             }
 
-            /// <summary>"#rrggbb".</summary>
             static bool IsHexColor(JToken v) =>
                 v.Type == JTokenType.String && ((string)v).Length == 7 && ((string)v)[0] == '#' && ((string)v).Skip(1).All(Uri.IsHexDigit);
         }

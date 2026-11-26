@@ -12,7 +12,6 @@ using UnityEngine;
 [OnTheValley]
 public class GroundLandTests
 {
-    // One land unit.
     const double MostMetres = 0.125;
 
     [Test]
@@ -45,10 +44,6 @@ public class GroundLandTests
         Assert.That(off, Is.Zero, $"worst {worst:0.000} m");
     }
 
-    // The chunks as the game makes them as the scene starts (MapTerrains, from the pack with the yard's template), read
-    // as ValleyGround reads them in play: each cell's sample less the starting cells' offsets (laid land not drawn, walls
-    // flat as the yard's rocks make them), the river's cells raised to their banks. Before phase 6 this read the yard's
-    // own bake, which once drew a cell 20 cm under its land while the pack and the land agreed (2026-11-08).
     [Test]
     public void TheChunksTheGameMakesAgreeWithTheLandOnEveryCell()
     {

@@ -15,7 +15,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A theme with its mix-ins merged in: what the blueprint solver reads.</summary>
     public sealed class Theme
     {
         public string Id = "", Name = "", Description = "";
@@ -24,7 +23,6 @@ namespace Chem
         public JObject Start = new JObject();
         public JObject Climate;
         public string Tracks = "sparse";
-        /// <summary>Core regions across (1, 3 or 5) and fade regions around them (0, 1 or 2).</summary>
         public int CoreRegions = 3, FadeRegions = 1;
         public List<JObject> Features = new List<JObject>();
 
@@ -107,7 +105,6 @@ namespace Chem
                 errors.Add($"{path}.between must be [id, id]");
         }
 
-        /// <summary>Structural check of one theme FILE (before mix-ins are merged); <paramref name="looks"/> are the biome ids a zone or influence may name.</summary>
         public static List<string> ValidateFile(JToken json, IReadOnlyCollection<string> looks)
         {
             var errors = new List<string>();
@@ -150,7 +147,6 @@ namespace Chem
             var id = raw["id"];
             if (id?.Type != JTokenType.String || string.IsNullOrEmpty((string)id)) errors.Add($"{path}.id is required");
             else if (!seen.ids.Add((string)id)) errors.Add($"{path}: duplicate id \"{(string)id}\"");
-            // No kind = an OVERRIDE of a mix-in's feature with the same id; checked once merged (Validate).
             if (raw["kind"] == null && seen.hasMixins)
             {
                 foreach (var p in raw.Properties())
@@ -265,7 +261,7 @@ namespace Chem
                 case "influence":
                     CheckInfluence(f, p, looks, errors);
                     break;
-                default: // city, town
+                default:
                     CheckSettlement(f, p, errors);
                     break;
             }
@@ -377,7 +373,6 @@ namespace Chem
             if (ho["above"] != null && !Num(ho["above"], 0.3, 1)) errors.Add($"{p}.heart.above must be a number in [0.3, 1]");
         }
 
-        /// <summary>Check of a MERGED theme: every feature (overrides resolved) is well formed, and what relations, rivers and roads point at exists and fits.</summary>
         public static List<string> Validate(Theme theme, IReadOnlyCollection<string> looks)
         {
             var errors = new List<string>();
@@ -390,7 +385,6 @@ namespace Chem
             return errors;
         }
 
-        // What one feature points at exists, and is the right kind.
         static void CheckRefs(JObject f, Dictionary<string, JObject> byId, List<string> errors)
         {
             string p = $"feature {(string)f["id"]}";
@@ -429,10 +423,6 @@ namespace Chem
             else if (kinds != null && !kinds.Contains((string)target["kind"])) errors.Add($"{path}: \"{id}\" must be a {string.Join(" or ", kinds)}");
         }
 
-        /// <summary>
-        /// Merges mix-ins (depth-first, in order) under the theme's own fields: features BY ID (a later
-        /// feature with the same id overrides the earlier one's keys), start, climate and continent by key.
-        /// </summary>
         public static Theme Merge(JObject file, Func<string, JObject> lookup) => Merge(file, lookup, new List<string>());
 
         static Theme Merge(JObject file, Func<string, JObject> lookup, List<string> seen)
@@ -473,7 +463,6 @@ namespace Chem
             };
         }
 
-        // A layer's features over those so far: one with the same id overrides its keys, a new one is added.
         static void MergeFeatures(List<JObject> features, JArray layer)
         {
             foreach (var f in (layer ?? new JArray()).OfType<JObject>())
@@ -491,7 +480,6 @@ namespace Chem
             return result;
         }
 
-        // A merged mix-in, back as a file layer for the theme that pulls it in.
         static JObject ToJson(Theme t) => new JObject
         {
             ["id"] = t.Id,

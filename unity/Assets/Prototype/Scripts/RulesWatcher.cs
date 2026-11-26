@@ -23,7 +23,6 @@ public class RulesWatcher : MonoBehaviour
     readonly List<string> due = new();
     RuleSwitcher switcher;
 
-    /// <summary>The folders being watched, for the log and the panel.</summary>
     public string RulesDir { get; private set; }
 
     void Awake() => switcher = GetComponent<RuleSwitcher>();
@@ -52,7 +51,6 @@ public class RulesWatcher : MonoBehaviour
         watchers.Add(w);
     }
 
-    // Worker thread: just remember the path and when.
     void OnFileEvent(object sender, FileSystemEventArgs e) => touched[e.FullPath] = DateTime.UtcNow;
 
     void OnRenamed(object sender, RenamedEventArgs e)
@@ -70,7 +68,6 @@ public class RulesWatcher : MonoBehaviour
             if (pair.Value <= quietSince) due.Add(pair.Key);
         foreach (var path in due)
         {
-            // Only if nothing touched it again since we looked.
             if (!touched.TryGetValue(path, out var when) || when > quietSince || !touched.TryRemove(path, out _)) continue;
             if (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && switcher.OwnsRules) switcher.FileChanged(path);
         }

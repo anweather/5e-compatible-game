@@ -1,13 +1,11 @@
+// Live cells and settled chunks (docs/WORLD_STREAMING.md, "Part 2, second slice"): a chunk
+// remembers the last tick anything in it was live (fire, gas, charge, a timer counting down,
+// water moving), and is settled once nothing has been for sim.json's streaming.settleTicks.
+// What lingers after a character walks away is decided from this.
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Live cells and settled chunks (docs/WORLD_STREAMING.md, "Part 2, second slice"): a chunk
-    /// remembers the last tick anything in it was live (fire, gas, charge, a timer counting down,
-    /// water moving), and is settled once nothing has been for sim.json's streaming.settleTicks.
-    /// What lingers after a character walks away is decided from this.
-    /// </summary>
     [Category("Simulation")]
     public class LiveChunkTests
     {
@@ -19,7 +17,6 @@ namespace Chem.Tests
 
         static (int x, int y) Middle => (S + S / 2, S + S / 2);
 
-        // Steps until the middle chunk settles, at most `most` ticks; the ticks it took.
         static int StepUntilSettled(World w, int most)
         {
             for (int t = 1; t <= most; t++)

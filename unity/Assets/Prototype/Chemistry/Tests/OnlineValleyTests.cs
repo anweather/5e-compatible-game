@@ -1,17 +1,15 @@
+// Lockstep on the chunked valley: a world the valley's size (TerrainGrid.Valley(), 200×175
+// cells over 9×9 chunk terrains), the probe's online casts (fire, trenches, walls,
+// Thunderwave) from two players as tick batches. A client fed the batches live, and a late
+// joiner replaying the history, have the host's checksum at every 30th tick, and the terrain
+// each draws (CellHeightfield) is the host's, whether eased in cell by cell as the cells
+// changed (a player who watched) or computed at once after catching up (a late joiner).
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Lockstep on the chunked valley: a world the valley's size (TerrainGrid.Valley(), 200×175
-    /// cells over 9×9 chunk terrains), the probe's online casts (fire, trenches, walls,
-    /// Thunderwave) from two players as tick batches. A client fed the batches live, and a late
-    /// joiner replaying the history, have the host's checksum at every 30th tick, and the terrain
-    /// each draws (CellHeightfield) is the host's, whether eased in cell by cell as the cells
-    /// changed (a player who watched) or computed at once after catching up (a late joiner).
-    /// </summary>
     [Category("Simulation")]
     public class OnlineValleyTests
     {
@@ -20,7 +18,6 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
         static readonly TerrainGrid Grid = TerrainGrid.Valley();
 
-        // The probe's schedule (ProbeOnline.cs), in valley cells: the host's casts and the client's interleaved.
         static List<TickBatch> HostSession()
         {
             var casts = new Dictionary<int, CastCommand>
@@ -28,7 +25,7 @@ namespace Chem.Tests
                 [12] = new CastCommand("thunderwave", 98, 82, 1),
                 [30] = new CastCommand("fire-bolt", 80, 90, 3),
                 [36] = new CastCommand("fire-bolt", 91, 77, 0),
-                [42] = new CastCommand("earthen-trench", 99, 81, 3),   // from the pond's bank: fills
+                [42] = new CastCommand("earthen-trench", 99, 81, 3),
                 [48] = new CastCommand("earthen-trench", 99, 84, 3),
                 [54] = new CastCommand("wall-of-stone", 95, 83, 0),
                 [60] = new CastCommand("wall-of-stone", 90, 80, 0),
@@ -38,7 +35,6 @@ namespace Chem.Tests
                 .ToList();
         }
 
-        /// <summary>One machine: its world, rules and the terrain it draws, kept up to date cell by cell.</summary>
         sealed class Machine
         {
             public readonly World World = Valley();
@@ -47,7 +43,6 @@ namespace Chem.Tests
             RuleSet rules = RuleSet.Plain(R);
             int[] elevation;
 
-            /// <summary>Meadow with a pond of pits holding water at (100..104, 80..84) and oil at (90..92, 76..78).</summary>
             static World Valley()
             {
                 var w = new World(R, Grid.GridW, Grid.GridH, 1, "grass");
@@ -70,7 +65,6 @@ namespace Chem.Tests
 
             int[] Elevations() => World.AllCells().Select(c => World.ElevationUnits(c)).ToArray();
 
-            /// <summary>Applies a batch and steps, as NetChem.Advance does, reshaping the cells that moved (as ValleyGround does).</summary>
             public void Run(TickBatch batch, bool watch)
             {
                 rules = batch.RunOn(World, rules, out _);
@@ -84,7 +78,6 @@ namespace Chem.Tests
                 if (moved.Count > 0) Ground.Update(World, moved, snap: true);
             }
 
-            /// <summary>A late joiner's terrain: computed at once from the world it caught up to.</summary>
             public void CatchUpGround()
             {
                 Ground.Reset(World);
@@ -111,7 +104,6 @@ namespace Chem.Tests
                 client.Run(b, watch: true);
                 if (b.Tick == JoinAt)
                 {
-                    // The history the host sends (NetChem.SendHistoryRpc), replayed from tick 0.
                     var history = session.Take(JoinAt).SelectMany(x => x.Casts.Select(c => (x.Tick, c)));
                     var timeline = TickBatch.Timeline(history, null, JoinAt);
                     for (int t = 1; t <= JoinAt; t++) joiner.Run(timeline[t], watch: false);
@@ -128,7 +120,6 @@ namespace Chem.Tests
             AssertSameGround(host.Ground, client.Ground, "client");
             AssertSameGround(host.Ground, joiner.Ground, "late joiner");
 
-            // The trenches and walls did reshape the terrain, and on a full-detail chunk.
             var start = new Machine();
             var (ci, cj) = Grid.ChunkOfCell(99, 81);
             Assert.That(host.Ground.Current(ci, cj), Is.Not.EqualTo(start.Ground.Current(ci, cj)), "the trench moved the ground");

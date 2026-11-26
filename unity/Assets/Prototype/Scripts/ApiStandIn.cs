@@ -9,11 +9,9 @@ using Newtonsoft.Json.Linq;
 // It answers a key's check too, by the key: no real key, no real call (J-071).
 public sealed class ApiStandIn : IChatWire, IKeyLister
 {
-    /// <summary>What a key starts with to be taken, turned down, or met with no network.</summary>
     public const string GoodKey = "stand-in-good", BadKey = "stand-in-bad", OfflineKey = "stand-in-offline";
 
     const string MessageStop = "{\"type\":\"message_stop\"}";
-    // The list holds a model the key can use and the game can't run, which the player must never be offered.
     const string Listed = "{\"data\":[{\"id\":\"claude-opus-5-5\"},{\"id\":\"claude-unpriced-1\"},{\"id\":\"claude-haiku-5-5\"}],\"has_more\":false}";
 
     readonly ApiWire real = new();

@@ -20,20 +20,17 @@ public class VoiceCheck : MonoBehaviour
 {
     const float DefaultSeconds = 12f, Rest = 2f, MostEnd = 20f;
 
-    /// <summary>What one hold heard and how it ended.</summary>
     public sealed class Pass
     {
         public string Name, Ended = "no end";
         public int Partials, Finals, Said;
         public float StopMs = -1f, Loudest;
-        // Loud: the game's meter heard more than a quiet room, so someone talked.
         public bool Done, Loud;
 
         public override string ToString() =>
             $"{Name}: {Partials} partials, {Finals} finals ({Said} chars), {Ended}, stop {StopMs:0} ms" + (Name == "game" ? $", loudest {Loudest:0.000}" : "");
     }
 
-    /// <summary>The pass going and its seconds left, for the screen.</summary>
     public static string Showing { get; private set; }
 
     float seconds;
@@ -64,7 +61,6 @@ public class VoiceCheck : MonoBehaviour
         GUI.Box(new Rect(40, 40, Screen.width - 80, 140), Showing, style);
     }
 
-    /// <summary>What the passes say, in a line.</summary>
     public static string Verdict(IReadOnlyList<Pass> passes)
     {
         bool Heard(Pass p) => p.Finals + p.Partials > 0;
@@ -76,7 +72,6 @@ public class VoiceCheck : MonoBehaviour
         return game != null && !Heard(game) ? "Unity's recogniser heard words and the game's didn't: the game's code" : "some heard and some didn't: " + string.Join(", ", passes.Where(Heard).Select(p => p.Name));
     }
 
-    /// <summary>The three holds of these seconds each, into passes.</summary>
     public static IEnumerator Run(float seconds, List<Pass> passes)
     {
 #if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
@@ -145,7 +140,6 @@ public class VoiceCheck : MonoBehaviour
         while (!pass.Done && stop.Elapsed.TotalSeconds < MostEnd) yield return null;
         pass.StopMs = (float)stop.Elapsed.TotalMilliseconds;
         VoiceTrace.Line($"check {pass}");
-        // One that never finished stays undisposed, as Dispose on a stuck one blocks (#58).
         if (pass.Done) recogniser.Dispose();
     }
 

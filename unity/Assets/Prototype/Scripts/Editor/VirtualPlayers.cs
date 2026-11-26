@@ -24,7 +24,6 @@ public static class VirtualPlayers
         throw new InvalidOperationException($"No Multiplayer Play Mode player called '{name}'");
     }
 
-    /// <summary>NotLaunched, Launching, Launched or UnexpectedlyStopped.</summary>
     public static string State(string name)
     {
         var p = Player(name);
@@ -33,10 +32,8 @@ public static class VirtualPlayers
 
     public static bool Running(string name) => State(name) == "Launched";
 
-    /// <summary>Starts the virtual player (its window's checkbox); it takes 15 s or more to come up.</summary>
     public static void Activate(string name) => Call(name, "Activate");
 
-    /// <summary>Stops the virtual player through MPPM.</summary>
     public static void Deactivate(string name) => Call(name, "Deactivate");
 
     static void Call(string name, string method)

@@ -14,7 +14,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A derived material in a room: its table, id, the rows it came from, its row as JSON and the tick it was made.</summary>
     public sealed class RoomMix
     {
         public string Table, Id, Row;
@@ -24,12 +23,10 @@ namespace Chem
 
     public sealed partial class Rules
     {
-        /// <summary>A material row's key for its mix group.</summary>
         public const string MixKey = "mix";
 
         const char MixJoin = '+';
 
-        // What a liquid row left out means: water's own numbers and flags (LiquidDef).
         static readonly JObject LiquidDefaults = new JObject
         {
             ["thick"] = 1,
@@ -44,17 +41,13 @@ namespace Chem
 
         static readonly string[] NotMerged = { "name", "look", LapseKey, MixKey };
 
-        /// <summary>The id of what these two rows make: every parent of both, sorted and joined. One of the two if it holds the other's parents.</summary>
         public static string MixId(string a, string b) =>
             string.Join(MixJoin.ToString(), MixParents(a).Concat(MixParents(b)).Distinct().OrderBy(p => p, StringComparer.Ordinal));
 
-        /// <summary>The rows a mix's id came from; a row that isn't a mix is its own.</summary>
         public static IReadOnlyList<string> MixParents(string id) => id.Split(MixJoin);
 
-        /// <summary>A material row as the rules hold it, or null.</summary>
         internal JObject MaterialRow(string table, string id) => doc[table]?[id] as JObject;
 
-        /// <summary>The row two rows of a table make: by id order, so whichever arrived first it's the same.</summary>
         internal static JObject DeriveMix(string table, string a, JObject rowA, string b, JObject rowB)
         {
             if (string.CompareOrdinal(a, b) > 0)
@@ -78,7 +71,6 @@ namespace Chem
             return filled;
         }
 
-        // What two rows or sections have in common; Nothing if a text in a section differs, so the section goes whole.
         static JToken Merged(JObject a, JObject b, bool section)
         {
             var row = new JObject();
@@ -102,12 +94,10 @@ namespace Chem
             return JToken.DeepEquals(a, b) ? a.DeepClone() : Nothing;
         }
 
-        // Two values with nothing in common.
         static JToken Nothing => JValue.CreateNull();
 
         static bool IsNumeric(JToken t) => t.Type == JTokenType.Integer || t.Type == JTokenType.Float;
 
-        // The first look with the two colours mixed like paint; with one look, that one. The view's only, outside the fingerprint.
         static JToken MixedLook(JObject a, JObject b)
         {
             if (a == null || b == null) return (a ?? b ?? Nothing).DeepClone();

@@ -10,7 +10,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>A running game's world as the tools read it: a copy made on the game's own thread, safe to read off it.</summary>
     public sealed class WorldNow
     {
         WorldNow(World w)
@@ -27,12 +26,10 @@ namespace Chem.Mcp
 
         public int Tick { get; }
         public uint Seed { get; }
-        /// <summary>World.Minutes: game minutes since midnight of day 1.</summary>
         public long Minutes { get; }
         public WeatherNow Weather { get; }
         public (WeatherKind kind, int from, int until)? Held { get; }
         public (int rate, int ticks)? Haste { get; }
-        /// <summary>The room's mode, host and mods on, in order.</summary>
         public RoomState Room { get; }
 
         public static WorldNow Of(World world) => new WorldNow(world);
@@ -40,7 +37,6 @@ namespace Chem.Mcp
 
     public sealed partial class Workbench
     {
-        // The written rules after each mod on: [0] the base, the last the rules in force.
         sealed class Layer
         {
             public RoomMod Mod;
@@ -53,29 +49,22 @@ namespace Chem.Mcp
         string layersFor = "";
         JObject inForceDoc;
 
-        /// <summary>The rules in force: the base rules with the room's mods on, in order.</summary>
         public Rules InForce { get; private set; }
 
-        /// <summary>The room's temporary materials by id, each with its mod (TempMaterials): another mod may name one, but makes no thing of one.</summary>
         IReadOnlyDictionary<string, string> Temporary { get; set; } = new Dictionary<string, string>();
 
-        /// <summary>The rules in force as the engine reads them (materials ungrouped into flat keys).</summary>
         internal JObject Doc => inForceDoc;
 
-        /// <summary>The rules in force as written (materials in verb groups), by file name without .json.</summary>
         internal Dictionary<string, JToken> Raw => layers[layers.Count - 1].Raw;
 
-        // A game too old to say what's on: the tools can only read the base.
         bool Blind => Desk != null && !(Desk is ILiveDesk);
 
-        /// <summary>The world now: the game's, or the one in memory. Null if the game is between scenes or can't say.</summary>
         WorldNow Now()
         {
             if (Desk != null) return (Desk as ILiveDesk)?.Now();
             return WorldNow.Of(Live);
         }
 
-        /// <summary>Reads what's on in the room and, if that changed, works out the rules in force again. Every tool call starts with this.</summary>
         public void Refresh()
         {
             if (Desk == null && live == null) return;
@@ -88,7 +77,6 @@ namespace Chem.Mcp
 #pragma warning disable S108
             catch (ModException)
             {
-                // The room composed them over its own base; ours differs (rules/ edited on disk). The last that fit stands.
             }
 #pragma warning restore S108
         }
@@ -112,11 +100,9 @@ namespace Chem.Mcp
             layersFor = signature;
         }
 
-        // The rule files in the shape of Rules' document, so a patch goes on them as the room does it, but not ungrouped.
         static JObject WrittenDoc(Dictionary<string, JToken> raw) =>
             Rules.Doc((file, _) => raw.TryGetValue(file.Substring(0, file.Length - ".json".Length), out var t) ? t.DeepClone() : JValue.CreateNull());
 
-        // Back from that shape to the files. looks and budgets aren't patched: a mod can't raise its own budget.
         Dictionary<string, JToken> RawOf(JObject written)
         {
             var raw = new Dictionary<string, JToken>(baseRaw, StringComparer.Ordinal);
@@ -138,9 +124,6 @@ namespace Chem.Mcp
             return raw;
         }
 
-        // ---------- which mods changed what ----------
-
-        /// <summary>describe's last lines: each mod on that changed this entry, in order, and what it changed.</summary>
         string ChangedBy(string table, string id)
         {
             if (Blind) return "\nThis game can't tell the tools what's on yet, so this is the base rules, and mods may have changed it.";
@@ -162,7 +145,6 @@ namespace Chem.Mcp
             return now == null ? "took it away" : string.Join(", ", Differences("", was, now));
         }
 
-        // Everything a layer changed from the one under it, in the words apply uses.
         IEnumerable<string> LayerChanges(int i)
         {
             var (under, over) = (layers[i - 1].Raw, layers[i].Raw);
@@ -197,7 +179,6 @@ namespace Chem.Mcp
             }
         }
 
-        // One entry's change, as apply and whats_on say it.
         static string EntryChange(string table, string id, JToken was, JToken now)
         {
             string name = Str(now?["name"]) ?? Str(was?["name"]) ?? id;
@@ -206,9 +187,6 @@ namespace Chem.Mcp
             return $"{name}: {string.Join(", ", Differences("", was, now))}";
         }
 
-        // ---------- whats_on ----------
-
-        /// <summary>What's on now in plain words: the room, each mod on and what it changes, the clock and the weather.</summary>
         public string WhatsOn()
         {
             if (Blind)
@@ -228,7 +206,6 @@ namespace Chem.Mcp
 
         const string NoWorld = "There's no world running: the game is between scenes. Try again in a moment.";
 
-        // Mods on after this one that name a field it does: their values stand once it's gone.
         string StillHeld(string mod)
         {
             var mods = Now()?.Room.Mods;
@@ -239,7 +216,6 @@ namespace Chem.Mcp
             return later.Count == 0 ? "" : $"\n{string.Join(" and ", later)} sets some of the same values, so what it set stands.";
         }
 
-        // Every value a patch sets, as "table id field.path"; a row a mod replaces whole counts as one.
         static HashSet<string> FieldsOf(string json)
         {
             var patch = ModPatch.Parse(json).Json;
@@ -264,7 +240,6 @@ namespace Chem.Mcp
                 into.Add(path);
                 return;
             }
-            // A scoped look adds to what's under it, so nothing holds it.
             foreach (var p in o.Properties().Where(p => p.Name != "id" && p.Name != "scoped")) Leaves(path + "." + p.Name, p.Value, into);
         }
     }

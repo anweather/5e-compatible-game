@@ -11,7 +11,6 @@ namespace Chem
 {
     public sealed class WorldSketch
     {
-        /// <summary>The biomes a shape may be drawn as (the paper's SKETCH_BIOMES): "ocean" is a lake or the sea.</summary>
         public static readonly string[] Biomes = { "ocean", "foggy-marsh", "grassland", "temperate", "salt-flat", "ashlands", "tundra", "mountains" };
 
         public const int DefaultSoft = 96, MaxShapes = 64, MaxPoints = 240;
@@ -19,19 +18,15 @@ namespace Chem
         public sealed class Shape
         {
             public string Biome;
-            /// <summary>The outline's points in hundredths of a world square, x east and y south.</summary>
             public long[] X, Y;
         }
 
         public string Name = "";
-        /// <summary>The world it was drawn for, in world squares.</summary>
         public int W = 12, H = 10;
         public bool Wrap = true;
-        /// <summary>How many cells a shape's edge blends over.</summary>
         public int Soft = DefaultSoft;
         public List<Shape> Shapes = new List<Shape>();
 
-        /// <summary>A sketch from map.json, null when there is none or it's off ("fit": false). Throws FormatException for one it can't read.</summary>
         public static WorldSketch Read(JToken token)
         {
             if (token == null || token.Type == JTokenType.Null) return null;
@@ -69,7 +64,6 @@ namespace Chem
         static long Hundredths(double v) => (long)Math.Round(v * 100, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>A sketch laid on a plan: its outlines in sixteenths of a cell, and the membership of a point in each.</summary>
     internal sealed class PlacedSketch
     {
         const long One = BiomeMath.One;
@@ -77,7 +71,7 @@ namespace Chem
 
         sealed class Outline
         {
-            public int Biome; // a biomes.json row, or −1 for water (a lake or the sea), which shows the land field under it
+            public int Biome;
             public long[] X, Y;
             public long X0, Y0, X1, Y1;
         }
@@ -85,7 +79,7 @@ namespace Chem
         readonly Outline[] outlines;
         readonly string[] names;
         readonly int seed, soft;
-        readonly long period; // cells round the world, 0 for a world that doesn't wrap
+        readonly long period;
 
         public PlacedSketch(WorldSketch sketch, BiomeTable table, int seed, int gridW, int gridH, bool wrap)
         {
@@ -115,21 +109,13 @@ namespace Chem
 
         public int Count => outlines.Length;
 
-        /// <summary>Shape <paramref name="k"/>'s biome as drawn ("ocean" for water).</summary>
         public string NameOf(int k) => names[k];
 
-        /// <summary>Shape <paramref name="k"/>'s biome row, or −1 for water.</summary>
         public int BiomeOf(int k) => outlines[k].Biome;
 
-        /// <summary>
-        /// Each shape's membership at plan cell (<paramref name="x"/>, <paramref name="y"/>) (y south) into
-        /// <paramref name="into"/>, Q16: 1 well inside, 0 well outside, a smoothstep over <paramref name="blendCells"/> (at
-        /// least the sketch's own soft edge) centred on the outline, after the climate-scale warp; round a world that wraps
-        /// a shape is read a world east and west too.
-        /// </summary>
         public void Membership(int x, int y, int blendCells, Span<long> into)
         {
-            if (period > 0) x = (int)BiomeMath.Mod(x, period); // the same a world round, bit for bit
+            if (period > 0) x = (int)BiomeMath.Mod(x, period);
             long xq = (long)x * One + One / 2, yq = (long)y * One + One / 2;
             long wx = BiomeMath.Centred(seed, SaltWarpX, xq, yq, WarpLattice, period, 0) * WarpCells * Sub / One;
             long wy = BiomeMath.Centred(seed, SaltWarpY, xq, yq, WarpLattice, period, 0) * WarpCells * Sub / One;
@@ -150,7 +136,6 @@ namespace Chem
             }
         }
 
-        // The signed distance from a point to a closed outline, positive inside (the paper's polySD), in sixteenths of a cell.
         static long SignedDistance(Outline o, long x, long y)
         {
             bool inside = false;
@@ -162,7 +147,6 @@ namespace Chem
                 long dx = xj - xi, dy = yj - yi;
                 if ((yi > y) != (yj > y))
                 {
-                    // x < xi + dx (y − yi) / dy, multiplied through by dy (its sign turns the comparison).
                     long lhs = (x - xi) * dy, rhs = dx * (y - yi);
                     if (dy > 0 ? lhs < rhs : lhs > rhs) inside = !inside;
                 }

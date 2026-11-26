@@ -1,3 +1,4 @@
+// The valley's puzzles (world/puzzles.json, WorldPuzzles.cs): the meadow coil by spell golf's hole.
 using System;
 using System.IO;
 using System.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The valley's puzzles (world/puzzles.json, WorldPuzzles.cs): the meadow coil by spell golf's hole.</summary>
     [Category("Simulation")]
     public class PuzzleTests
     {
@@ -57,7 +57,6 @@ namespace Chem.Tests
             w.Step();
             Assert.That(w.At(gate.x, gate.y).T, Is.EqualTo("gate"), "still shut before the bolt");
 
-            // A coil somewhere else in the valley, powered, doesn't open the puzzle's gate.
             w.At(40, 40).T = "coil";
             w.At(40, 40).Charge = 2;
             w.Step();
@@ -73,8 +72,6 @@ namespace Chem.Tests
         [Test]
         public void TwoLinkedPuzzlesDontOpenEachOther()
         {
-            // A coil linked to its gate (World.LinkGate) opens that gate alone, and no gate no one linked; a coil no one
-            // linked opens only the gates no one linked. Ported from sandbox/test/machines.test.ts, with its golden.
             var w = new World(R, 20, 9, 12, "dirt");
             w.At(4, 1).T = "coil";
             w.At(9, 1).T = "gate";
@@ -99,7 +96,6 @@ namespace Chem.Tests
             Assert.That(w.At(16, 7).T, Is.EqualTo("gate_open"), "the coil no one linked opens the gate no one linked");
             Assert.That(w.At(9, 7).T, Is.EqualTo("gate"), "and still not B's");
 
-            // Through a save, the links hold.
             var back = World.Load(w.Save(new Blank()), R, new Blank());
             back.At(4, 7).Charge = 2;
             back.Step();

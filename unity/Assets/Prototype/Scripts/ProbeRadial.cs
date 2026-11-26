@@ -20,8 +20,6 @@ public class RadialProbe : ProbeScenario
         var hud = wizard.GetComponent<SpellRadialHud>();
         var controls = caster.controls;
         bool controlsWereOn = controls != null && controls.enabled, casterWasOn = caster.enabled, hudWasOn = EventLog.HudVisible;
-        // The radial runs only for a player-driven wizard; the probe drives this one by script (ShowcaseScript),
-        // which also hides the HUD (for showcase recordings): on, so the screenshot shows the radial.
         if (controls != null) controls.enabled = true;
         caster.enabled = true;
         EventLog.HudVisible = true;
@@ -50,7 +48,6 @@ public class RadialProbe : ProbeScenario
         }
     }
 
-    // Hold LB and push the stick at Storm, then at Thunderwave in its arc; release picks it.
     IEnumerator PickThunderwave(SpellRadialHud hud, RadialLayout layout, bool lookBefore)
     {
         int storm = layout.IndexOf("storm");
@@ -65,13 +62,12 @@ public class RadialProbe : ProbeScenario
             $"state {hud.Radial.State}, highlighted {hud.Radial.HighlightedSpell}");
         Shot("radial");
         yield return WheelHoldsTogether(hud, toSlot);
-        yield return Hold(GamepadButton.LeftShoulder, toSlot, 1f, 0.1f); // held while the screenshot is taken at the end of the frame
+        yield return Hold(GamepadButton.LeftShoulder, toSlot, 1f, 0.1f);
         yield return Release();
         Check("release_picks_thunderwave", !hud.IsOpen && caster.SelectedId == SpellIds.Thunderwave, $"open {hud.IsOpen}, selected {caster.SelectedId}");
         Check("look_back_on", LookOn() == lookBefore, $"cursorInputForLook back to {lookBefore}");
     }
 
-    // Its wedges turn about the wheel's centre at any screen, not just the 1080p the Game view runs at (#51).
     IEnumerator WheelHoldsTogether(SpellRadialHud hud, double toSlot)
     {
         HudScale.Forced = 2f;
@@ -88,7 +84,6 @@ public class RadialProbe : ProbeScenario
         Check("wheel_holds_together_at_4k", hud.WheelDrift < 0.5f, $"the wedges' centre moved {hud.WheelDrift:F1} px");
     }
 
-    // A tap swaps back to Fire Bolt; B cancels; the d-pad steps to the next element, RB to the next spell in it.
     IEnumerator TapCancelAndStep(SpellRadialHud hud, RadialLayout layout)
     {
         yield return Hold(GamepadButton.LeftShoulder, 0, 0f, 0.05f);
@@ -113,7 +108,6 @@ public class RadialProbe : ProbeScenario
         Check("rb_steps_spell", sameGroup && (caster.SelectedId != first || layout.Groups[after].SpellIds.Count == 1), $"{first} -> {caster.SelectedId}");
     }
 
-    // Holds a button with the right stick pushed toward `degrees` (clockwise from up), for `seconds`.
     IEnumerator Hold(GamepadButton buttons, double degrees, float push, float seconds)
     {
         float a = (float)degrees * Mathf.Deg2Rad;

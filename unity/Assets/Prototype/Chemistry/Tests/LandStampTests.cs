@@ -58,7 +58,6 @@ namespace Chem.Tests
             Assert.That(low.ApplyRoom(Stamp(64, 64, 10, 90, LandStamp.Flat)).Done, Is.True);
         }
 
-        // The PC's case (#146): wall 36, radius 32, on the lowest dry land there is.
         [Test]
         public void TheSameCanyonIsTakenOnEverySeed()
         {
@@ -99,7 +98,6 @@ namespace Chem.Tests
             Assert.That(said.Count, Is.EqualTo(1));
         }
 
-        // The biggest step from one cell to the next, walking across the line at each column near the middle.
         static int SteepestAcross(World w) =>
             Enumerable.Range(56, 16).Max(x => Enumerable.Range(33, 62).Max(y => Math.Abs(w.LandMovedAt(x, y + 1) - w.LandMovedAt(x, y))));
 
@@ -115,7 +113,6 @@ namespace Chem.Tests
             Assert.That(SteepestAcross(w), Is.GreaterThanOrEqualTo(40), "a wall, not a slope: 5 m in a cell");
         }
 
-        // Whether a player on the floor can get out, by steps of at most a metre a cell (34 degrees, inside what the wizard climbs).
         static bool CanWalkOut(World w)
         {
             const int mostStep = 8;
@@ -310,7 +307,6 @@ namespace Chem.Tests
             Assert.That(w.ApplyRoom(Stamp(64, 40, 10, 80)).Done, "clear of it");
         }
 
-        // #156: the act tool asks LandRefusal before any land is set; it saw no water then, and a spot search took the lake.
         [Test]
         public void WaterIsSeenBeforeTheLandIsSet()
         {

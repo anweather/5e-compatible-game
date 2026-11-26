@@ -9,21 +9,13 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The checks on a map's folder.</summary>
     public static class MapCheck
     {
-        /// <summary>
-        /// The valley's size, which the scene's terrains are laid out for (TerrainGrid.Valley) until maps phase 6 lets the
-        /// scene take a map's own: the view's, not the core's. A map's size is in its map.json, any whole number of chunks.
-        /// </summary>
         public const int Size = 576;
 
-        // How far the land's share may stray from what map.json says, in percentage points.
         const int ShareSlack = 1;
-        // The cells of a map's text that hold water.
         const string Wet = "wr*~";
 
-        /// <summary>Everything wrong with the map in this folder; empty when it's fit to play.</summary>
         public static List<string> Errors(string worldDir)
         {
             var errors = new List<string>();
@@ -42,7 +34,6 @@ namespace Chem
             if (map.W <= 0 || map.H <= 0 || map.W % Chunks.Size != 0 || map.H % Chunks.Size != 0)
                 errors.Add($"the map is {map.W} x {map.H}, and a map is a whole number of {Chunks.Size}-cell chunks each way");
             CheckDresses(map, errors);
-            // A generated map's rows alone (GeneratedMap.EnsureRows) hold no cells or land: they're made as play reads them.
             bool rowsOnly = GeneratedMap.IsRowsOnly(worldDir);
             if (!rowsOnly) CheckCells(worldDir, map, errors);
             int[] land = rowsOnly ? Array.Empty<int>() : ReadLand(worldDir, map, errors);
@@ -59,12 +50,6 @@ namespace Chem
             return errors;
         }
 
-        /// <summary>
-        /// Errors, unless this folder is byte for byte one a clean check of this build recorded in <paramref name="record"/>
-        /// (a file the caller keeps, in the player's own data): then none, for the cost of hashing the folder (island-startup).
-        /// A check that finds nothing records it. An edited map, a new build of the game, or no record runs the whole check;
-        /// tests call Errors(worldDir), which always does.
-        /// </summary>
         public static List<string> Errors(string worldDir, string record)
         {
             if (string.IsNullOrEmpty(record)) return Errors(worldDir);
@@ -76,7 +61,6 @@ namespace Chem
 #pragma warning disable S108
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
-                // No record to read: check it all.
             }
 #pragma warning restore S108
             var errors = Errors(worldDir);
@@ -90,19 +74,13 @@ namespace Chem
 #pragma warning disable S108
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
-                // Not recorded: the next start checks it all again.
             }
 #pragma warning restore S108
             return errors;
         }
 
-        // What a clean check is recorded under: the folder's hash and this build of the checks (a new build checks again).
         static string RecordKey(string worldDir) => FolderHash(worldDir) + " " + typeof(MapCheck).Assembly.ManifestModule.ModuleVersionId.ToString("N");
 
-        /// <summary>
-        /// The bytes of every file in a map's folder, and their names relative to it, in order: FNV-1a, 64 bits, as hex. Any
-        /// edit to the map, its land or its rows changes it.
-        /// </summary>
         public static string FolderHash(string worldDir)
         {
             string root = Path.GetFullPath(worldDir);
@@ -125,7 +103,6 @@ namespace Chem
             return hash.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
         }
 
-        // The places a map dresses are named once each, in the place names' form (lower case, words joined by '-').
         static void CheckDresses(MapFile map, List<string> errors)
         {
             foreach (var place in map.Dresses.Distinct())
@@ -136,7 +113,6 @@ namespace Chem
             }
         }
 
-        // A map's own land stamps read as stamps (where they land is the world's to say, World.LayMapStamps).
         static void CheckStamps(string worldDir, List<string> errors)
         {
             try
@@ -149,7 +125,6 @@ namespace Chem
             }
         }
 
-        // A map's Hold names a row, its joins and places that are there.
         static void CheckHold(string worldDir, List<string> errors)
         {
             try
@@ -162,10 +137,9 @@ namespace Chem
             }
         }
 
-        // A row laid over the cells stands on the map, dry and clear of its things: the box of its walls and towers.
         static void CheckRows(string worldDir, MapFile map, List<string> errors)
         {
-            if (!File.Exists(Path.Combine(worldDir, MapFile.CellsName))) return; // said once, by CheckCells
+            if (!File.Exists(Path.Combine(worldDir, MapFile.CellsName))) return;
             var rows = MapFile.ReadCells(worldDir).Replace("\r", "").Trim('\n').Split('\n');
             var things = WorldThings.Load(worldDir).All;
             foreach (var row in WorldBuildings.Load(worldDir).LaidRows)
@@ -184,7 +158,6 @@ namespace Chem
             }
         }
 
-        // The cells a row's walls and towers lie in; a road isn't in it, since it runs out over the land.
         static (int x0, int y0, int x1, int y1) RowBox(JObject row)
         {
             var joins = row["joins"] as JObject ?? new JObject();
@@ -226,7 +199,6 @@ namespace Chem
             return land;
         }
 
-        // A range a map says is held to its land; one left out is the valley's, whose sea bed lies below where stamps stop.
         static void CheckRange(MapFile map, int[] land, List<string> errors)
         {
             var (low, high) = map.LandRange;

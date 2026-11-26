@@ -24,7 +24,6 @@ namespace Chem
     public enum RoofKind { Gable, Hip }
     public enum RoofCover { Thatch, Slate, Shingle }
 
-    /// <summary>A direction on the cell grid: north is -y (y grows south), east is +x.</summary>
     public enum Side { North, East, South, West }
 
     public static class Sides
@@ -40,7 +39,6 @@ namespace Chem
         public static Side Opposite(Side s) => (Side)(((int)s + 2) % 4);
     }
 
-    /// <summary>A rectangle of cells: x, y its top-left (north-west) cell.</summary>
     public readonly struct CellRect : IEquatable<CellRect>
     {
         public readonly int X, Y, W, H;
@@ -72,7 +70,6 @@ namespace Chem
         public static bool operator !=(CellRect a, CellRect b) => !a.Equals(b);
     }
 
-    /// <summary>A window in a building's wall: the pane cell it stands on, and the way it faces.</summary>
     public readonly struct VillageWindow
     {
         public readonly int X, Y;
@@ -86,15 +83,11 @@ namespace Chem
         }
     }
 
-    /// <summary>One building of a village plan: what it is, where it stands and how it's built.</summary>
     public sealed class VillageBuilding
     {
         public BuildingKind Kind { get; internal set; }
-        /// <summary>The cells it stands on, all of them wall.</summary>
         public CellRect Footprint { get; internal set; }
-        /// <summary>The way its front (and door) faces: toward its street.</summary>
         public Side Door { get; internal set; }
-        /// <summary>Its size in cells along its front and from front to back.</summary>
         public int Width { get; internal set; }
         public int Depth { get; internal set; }
         public int Storeys { get; internal set; }
@@ -102,28 +95,17 @@ namespace Chem
         public RoofKind Roof { get; internal set; }
         public RoofCover Cover { get; internal set; }
         public bool Chimney { get; internal set; }
-        /// <summary>Its own seed, for the view's details and colours.</summary>
         public int Seed { get; internal set; }
 
-        /// <summary>What its walls and roof are made of: terrain ids (world/villages.json "materials").</summary>
         public string WallMaterial { get; internal set; } = "logwall";
         public string RoofMaterial { get; internal set; } = "thatch";
 
-        /// <summary>The cell on its front the door stands in; no window takes it or the cells beside it.</summary>
         public (int x, int y) DoorCell { get; internal set; }
-        /// <summary>Its windows (world/villages.json "materials" windows): cells of glass in its walls, never a corner.</summary>
         public List<VillageWindow> Windows { get; } = new List<VillageWindow>();
 
-        /// <summary>The cell character its walls are in a map (ChemGrid's legend), from their material.</summary>
         public char WallCell => BuildingMaterials.CellOf(WallMaterial);
     }
 
-    /// <summary>
-    /// What a building's walls and roof are made of, by kind (world/villages.json "materials"): terrain
-    /// ids in materials.json, so a timber house's walls burn like log walls and a stone one's don't, and a
-    /// thatch roof burns where slate doesn't. The walls stand on the footprint's cells; the roof isn't a
-    /// cell (yet), but carries its material.
-    /// </summary>
     public sealed class BuildingMaterials
     {
         public Dictionary<WallKind, string> Walls { get; } = new Dictionary<WallKind, string>
@@ -139,16 +121,13 @@ namespace Chem
             [RoofCover.Shingle] = "shingle",
         };
 
-        /// <summary>What window cells are made of: a terrain id.</summary>
         public string Window { get; set; } = "pane";
-        /// <summary>Along a wall, a window every this many cells; and how many walls' backs in ten have theirs.</summary>
         public int WindowEvery { get; set; } = 2;
         public int BackInTen { get; set; } = 8;
 
         public string WallOf(WallKind k) => Walls[k];
         public string RoofOf(RoofCover c) => Roofs[c];
 
-        // The map characters wall materials stand as (ChemGrid's legend).
         static readonly Dictionary<string, char> Cells = new Dictionary<string, char>
         {
             ["logwall"] = 'L',
@@ -159,40 +138,30 @@ namespace Chem
             ["pane"] = 'P',
         };
 
-        /// <summary>A wall material's map character; throws for one the map has no character for.</summary>
         public static char CellOf(string material) =>
             Cells.TryGetValue(material, out char c) ? c : throw new FormatException($"villages.json: no map cell for wall material {material}");
 
-        /// <summary>Whether a wall material can stand on a map (has a character).</summary>
         public static bool CanBeWall(string material) => Cells.ContainsKey(material);
     }
 
-    /// <summary>What a village should have (world/villages.json).</summary>
     public sealed class VillageSpec
     {
         public string Name { get; set; } = "Village";
-        /// <summary>The world cell the square is centred on.</summary>
         public int X { get; set; }
         public int Y { get; set; }
         public int Seed { get; set; }
-        /// <summary>The square's side in cells, smallest and largest.</summary>
         public int SquareMin { get; set; } = 10;
         public int SquareMax { get; set; } = 13;
-        /// <summary>The most houses (fewer if the land runs out).</summary>
         public int Houses { get; set; } = 10;
-        /// <summary>Lanes out of the square: 1 (the road) or 2.</summary>
         public int Lanes { get; set; } = 2;
         public int LaneMin { get; set; } = 14;
         public int LaneMax { get; set; } = 22;
         public bool Inn { get; set; } = true;
         public bool Shop { get; set; } = true;
-        /// <summary>How many buildings in ten are stone (the rest timber, a few log).</summary>
         public int StoneInTen { get; set; } = 3;
-        /// <summary>What the buildings' walls and roofs are made of (the file's "materials", shared by all).</summary>
         public BuildingMaterials Materials { get; set; } = new BuildingMaterials();
     }
 
-    /// <summary>A laid-out village: its square, well, lanes and buildings, in world cells.</summary>
     public sealed class VillagePlan
     {
         public VillageSpec Spec { get; internal set; }
@@ -202,13 +171,8 @@ namespace Chem
         public List<CellRect> Lanes { get; } = new List<CellRect>();
         public List<VillageBuilding> Buildings { get; } = new List<VillageBuilding>();
 
-        /// <summary>Everything the village covers, a cell padding included: keep trees and rocks off it.</summary>
         public CellRect Bounds { get; internal set; }
 
-        /// <summary>
-        /// The village's cells as map characters (ChemGrid's legend): building walls, the dirt of
-        /// the square and lanes ('.'), and the well's water ('w'). Later entries win.
-        /// </summary>
         public IEnumerable<(int x, int y, char c)> Cells()
         {
             foreach (var (x, y) in Square.Cells()) yield return (x, y, '.');
@@ -221,7 +185,6 @@ namespace Chem
             yield return (Well.x, Well.y, 'w');
         }
 
-        /// <summary>FNV-1a over the whole plan, for golden tests.</summary>
         public uint Digest()
         {
             uint h = 2166136261;
@@ -268,7 +231,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A row of plots: the cell its front line starts at, the way it runs, the way its doors face, its length.</summary>
     readonly struct Front
     {
         public readonly int X, Y, Length;
@@ -284,20 +246,12 @@ namespace Chem
         }
     }
 
-    /// <summary>Lays villages out (VillagePlan) and reads their specs (world/villages.json).</summary>
     public static class VillageLayout
     {
         public const string FileName = "villages.json";
 
-        /// <summary>
-        /// Lays out a village. <paramref name="buildable"/> says whether a world cell can take a
-        /// building or a street (dry, not too steep, not already something); a plot that needs a
-        /// cell it refuses is skipped.
-        /// </summary>
         public static VillagePlan Lay(VillageSpec spec, Func<int, int, bool> buildable) => new Layer(spec, buildable).Run();
 
-        // One village being laid: what's taken so far, and the count of choices made (each choice
-        // is a hash of the seed, its kind and this count).
         sealed class Layer
         {
             const int SaltSquare = 1, SaltRoad = 2, SaltShopSide = 3, SaltLane = 4, SaltSize = 5, SaltLook = 6, SaltGap = 7, SaltDoor = 8, SaltBack = 9;
@@ -325,14 +279,12 @@ namespace Chem
                 plan.Well = (spec.X, spec.Y);
                 Take(square);
 
-                // The inn faces the road across the square, the shop one side of it, a lane out of the side facing the shop.
                 var road = (Side)Pick(SaltRoad, 0, 3);
                 plan.Road = road;
                 var innSide = Sides.Opposite(road);
                 var shopSide = (Side)(((int)road + (Pick(SaltShopSide, 0, 1) == 0 ? 1 : 3)) % 4);
                 var freeSide = Sides.Opposite(shopSide);
 
-                // The lanes first, so no building stands across one.
                 var fronts = new List<Front>();
                 foreach (var s in new[] { innSide, shopSide, freeSide, road }) fronts.Add(SquareFront(square, s));
                 LayLane(square, road, fronts);
@@ -364,7 +316,6 @@ namespace Chem
                 if (Fits(b.Footprint)) Add(b);
             }
 
-            // Houses along a frontage, out from its start, with gaps; a plot that won't fit moves on a cell.
             void LayHouses(Front f)
             {
                 int at = 0;
@@ -395,9 +346,6 @@ namespace Chem
                 Take(b.Footprint.Grown(1));
             }
 
-            // The door on the front (a house's anywhere along it, a landmark's in the middle) and the
-            // windows: along the front clear of the door, along most backs, one in the middle of each
-            // side deep enough. Never at a corner, so a window always has wall to stand in.
             void Openings(VillageBuilding b)
             {
                 var m = spec.Materials;
@@ -423,11 +371,9 @@ namespace Chem
                 b.Windows.Add(new VillageWindow(x, y, side));
             }
 
-            // How many cells a side of the footprint has.
             static int LengthOf(VillageBuilding b, Side side) =>
                 side == Side.North || side == Side.South ? b.Footprint.W : b.Footprint.H;
 
-            // The cell at a place along a side of the footprint, counted from its north or west end.
             static (int x, int y) CellOf(VillageBuilding b, Side side, int at)
             {
                 var r = b.Footprint;
@@ -452,8 +398,6 @@ namespace Chem
                 foreach (var c in r.Cells()) taken.Add(c);
             }
 
-            // Storeys, walls and roof from a building's seed: the inn tall and timbered, stone for some
-            // in ten, a few old log houses; slate or thatch on stone.
             static void Look(VillageBuilding b, int stoneInTen)
             {
                 int seed = b.Seed;
@@ -471,7 +415,6 @@ namespace Chem
                 b.Chimney = b.Kind != BuildingKind.Shop || Roll(5) % 2 == 0;
             }
 
-            // A lane two cells wide out of the middle of the square's side, length cells long.
             static CellRect Lane(CellRect sq, Side s, int length)
             {
                 int midX = sq.X + sq.W / 2 - 1, midY = sq.Y + sq.H / 2 - 1;
@@ -484,7 +427,6 @@ namespace Chem
                 }
             }
 
-            // The frontage facing one side of the square, a cell of verge back from it.
             static Front SquareFront(CellRect sq, Side s)
             {
                 switch (s)
@@ -496,7 +438,6 @@ namespace Chem
                 }
             }
 
-            // The two frontages along a lane, a cell of verge back from it, running out from the square.
             static void AddLaneFronts(CellRect lane, Side outward, List<Front> fronts)
             {
                 if (outward == Side.North || outward == Side.South)
@@ -511,13 +452,10 @@ namespace Chem
                 fronts.Add(new Front(x, lane.Bottom + 1, outward, Side.North, lane.W));
             }
 
-            // A building on a frontage, at cells along it from its start: width along the front line,
-            // depth back from it (away from the door).
             static VillageBuilding Plot(Front f, int at, int width, int depth, BuildingKind kind)
             {
                 var (ax, ay) = Sides.Step(f.Along);
                 var (bx, by) = Sides.Step(Sides.Opposite(f.Door));
-                // Two corners: the front one at the start, the back one at the end.
                 int x1 = f.X + ax * at, y1 = f.Y + ay * at;
                 int x2 = x1 + ax * (width - 1) + bx * (depth - 1), y2 = y1 + ay * (width - 1) + by * (depth - 1);
                 var rect = new CellRect(Math.Min(x1, x2), Math.Min(y1, y2), Math.Abs(x2 - x1) + 1, Math.Abs(y2 - y1) + 1);
@@ -532,14 +470,12 @@ namespace Chem
 
         }
 
-        /// <summary>Reads world/villages.json from <paramref name="worldDir"/>; no file means no villages.</summary>
         public static List<VillageSpec> Load(string worldDir)
         {
             var path = Path.Combine(worldDir, FileName);
             return File.Exists(path) ? FromJson(File.ReadAllText(path)) : new List<VillageSpec>();
         }
 
-        /// <summary>The villages in a villages.json text. Throws <see cref="FormatException"/> for one that can't be read.</summary>
         public static List<VillageSpec> FromJson(string json)
         {
             JObject doc;
@@ -557,8 +493,6 @@ namespace Chem
             return list;
         }
 
-        // "materials": { "walls": { "timber": "logwall", ... }, "roofs": { "thatch": "thatch", ... } },
-        // keyed by the kinds' names in lower case; a kind left out keeps its default.
         static BuildingMaterials ReadMaterials(JToken t)
         {
             var m = new BuildingMaterials();

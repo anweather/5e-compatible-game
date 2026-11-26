@@ -23,7 +23,6 @@ public class AssetPackTextureSize : AssetPostprocessor
         if (!InPack(assetPath)) return;
         var importer = (TextureImporter)assetImporter;
         if (importer.maxTextureSize > MaxSize) importer.maxTextureSize = MaxSize;
-        // A platform override (the packs set one for Standalone) wins over the default size.
         var standalone = importer.GetPlatformTextureSettings("Standalone");
         if (standalone.overridden && standalone.maxTextureSize > MaxSize)
         {

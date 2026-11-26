@@ -12,7 +12,6 @@ using UnityEngine;
 [RequireComponent(typeof(Animator))]
 public class SwimPose : MonoBehaviour
 {
-    /// <summary>Water this deep over the feet (m) and the wizard is swimming (SurfaceEffects floats it lower than this).</summary>
     const float SwimDepth = 1.15f;
     const float Ease = 3f;
 
@@ -23,7 +22,6 @@ public class SwimPose : MonoBehaviour
     Vector3 lastPosition;
     float weight, moving, phase;
 
-    /// <summary>How far into the swimming pose the body is, 0 (out of the water) to 1.</summary>
     public float Weight => weight;
 
     void Awake()
@@ -67,30 +65,25 @@ public class SwimPose : MonoBehaviour
         return c != null && !c.Frozen && c.Water > 0 && grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y > SwimDepth;
     }
 
-    // Forward into the stroke from the hips, riding a little higher so the head stays out.
     void Lean(SwimStyle style)
     {
         float lean = style.lean * moving * weight;
         hips.SetPositionAndRotation(hips.position + Vector3.up * (style.lift * moving * weight), Quaternion.AngleAxis(lean, transform.right) * hips.rotation);
     }
 
-    // Breaststroke while moving (reach forward, sweep out, pull in under the chin, back out);
-    // sculling small circles at the sides while treading. side is -1 left, 1 right.
     void Arm(LimbIK.Limb arm, float side, SwimStyle style)
     {
         if (!arm.Valid) return;
-        var up = chest.up;              // toward the head
+        var up = chest.up;
         var right = transform.right * side;
-        var front = Vector3.Cross(transform.right, up);   // the chest's front, down when lying prone
+        var front = Vector3.Cross(transform.right, up);
         var shoulder = arm.root.position;
 
         float t = phase * Mathf.PI * 2f;
-        // Stroke: out along the spine, round wide and back, in under the chin.
         var stroke = shoulder
             + up * (style.reach * (0.45f + 0.55f * Mathf.Cos(t)))
             + right * (0.08f + style.sweep * Mathf.Max(0f, Mathf.Sin(t)))
             + front * 0.22f;
-        // Treading: hands out at the sides, sculling small circles.
         var tread = shoulder
             + front * (0.3f + 0.08f * Mathf.Sin(t))
             + right * (0.3f + 0.1f * Mathf.Cos(t))
@@ -100,8 +93,6 @@ public class SwimPose : MonoBehaviour
         LimbIK.Solve(arm, target, elbow, weight);
     }
 
-    // A frog kick, half a stroke behind the arms: feet drawn up and out, then driven back together.
-    // Treading: slow small kicks under the body.
     void Leg(LimbIK.Limb leg, float side, SwimStyle style)
     {
         if (!leg.Valid) return;

@@ -27,26 +27,20 @@ public class NetProp : NetworkBehaviour
     readonly NetworkVariable<bool> burning = new();
     readonly NetworkVariable<bool> levitating = new();
     readonly NetworkVariable<int> hp = new();
-    // The host writes it as it spawns (so it arrives with the spawn, late joiners included);
-    // a NetworkVariable mustn't be written before then.
     readonly NetworkVariable<ulong> thing = new(ThingId.None.Value);
     ThingId assigned = ThingId.None;
 
     PhysicsProp prop;
     Rigidbody body;
 
-    /// <summary>A client's copy: follows the host's, simulates nothing.</summary>
     public bool Puppet => IsSpawned && !IsServer;
-    /// <summary>The host's copy of a spawned prop: the one that counts.</summary>
     public bool Hosting => IsSpawned && IsServer;
 
     public bool Burning => burning.Value;
     public bool Levitating => levitating.Value;
     public int Hp => hp.Value;
-    /// <summary>Its stable id from world/things.json, the same on every machine (None if it wasn't spawned from data).</summary>
     public ThingId Id => assigned.IsNone ? new ThingId(thing.Value) : assigned;
 
-    /// <summary>ThingSpawner, before it is spawned (or solo, where it never is): which thing of the world's data this is.</summary>
     public void AssignId(ThingId id) => assigned = id;
 
     void Awake()
@@ -63,7 +57,6 @@ public class NetProp : NetworkBehaviour
             Publish();
             return;
         }
-        // A client's copy arrives from the host: the spawner gives it the grid and its partner.
         var spawner = FindAnyObjectByType<ThingSpawner>();
         if (spawner != null) spawner.Adopt(this);
         body.isKinematic = true;
@@ -72,8 +65,6 @@ public class NetProp : NetworkBehaviour
         prop.ShowBurning(burning.Value, announce: false);
     }
 
-    // A despawn while the session runs means it broke: gone on this machine too. (Leaving the
-    // game also despawns everything, during shutdown; the scene is reloaded then anyway.)
     public override void OnNetworkDespawn()
     {
         burning.OnValueChanged -= Burned;
@@ -89,7 +80,6 @@ public class NetProp : NetworkBehaviour
         if (Hosting) Publish();
     }
 
-    // A NetworkVariable only sends when its value changes.
     void Publish()
     {
         var state = prop.State;
@@ -99,10 +89,6 @@ public class NetProp : NetworkBehaviour
         hp.Value = state.Hp;
     }
 
-    /// <summary>
-    /// Host: the prop broke (or blew up). Everyone sees it go (unless <paramref name="quiet"/>: an item
-    /// whose spill the chemistry already logs), then it is gone from every machine.
-    /// </summary>
     public void Broke(bool exploded, bool quiet = false)
     {
         if (!Hosting) return;
@@ -117,10 +103,6 @@ public class NetProp : NetworkBehaviour
         prop.ShowBreak(exploded);
     }
 
-    /// <summary>
-    /// Host: moves it straight to a point (the ball back on the court's centre spot, BallCourt), flagged
-    /// as a teleport so the other machines jump it there instead of sliding it across.
-    /// </summary>
     public void Teleport(Vector3 to)
     {
         if (!Hosting) return;
@@ -129,10 +111,8 @@ public class NetProp : NetworkBehaviour
         else transform.position = to;
     }
 
-    /// <summary>The hardest kick the host takes (kg m/s): above the hardest punch (CastFeel.punchShove; a test holds them apart).</summary>
     public const float MaxKick = 3f * Forces.ImpulsePerPush;
 
-    /// <summary>A wizard ran into it (Kicker) or punched it: the host's physics takes the kick, wherever it came from.</summary>
     public void Kick(Vector3 impulse)
     {
         if (IsServer) KickHere(impulse);

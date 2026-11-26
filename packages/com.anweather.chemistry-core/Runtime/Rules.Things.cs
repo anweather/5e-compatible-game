@@ -9,23 +9,19 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One row of a mod's "world" section's "add": a kind, a world cell, a turn and a chance.</summary>
     public sealed class ModThing
     {
         public string Kind;
         public int X, Y, Rotation;
-        /// <summary>How likely it is to be in a given world, above 0 and up to 1 (ThingChance).</summary>
         public double Chance = 1;
     }
 
     public sealed partial class Rules
     {
-        /// <summary>Where the composed document holds the mods' things, in the order they came.</summary>
         internal const string WorldThingsKey = "worldThings";
 
         static readonly string[] ThingRowFields = { "kind", "cell", "rot", "chance" };
 
-        /// <summary>The things the mods on add, in the order they came.</summary>
         public IReadOnlyList<ModThing> ModThings { get; private set; } = Array.Empty<ModThing>();
 
         void ParseThings(JObject d)

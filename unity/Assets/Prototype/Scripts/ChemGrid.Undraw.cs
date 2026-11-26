@@ -12,27 +12,19 @@ using UnityEngine;
 // The view alone: nothing the core simulates changes.
 public partial class ChemGrid
 {
-    // Past the draw radius by this many chunks, a drawn chunk is let go; and how often the drawn ones are looked over.
     const int UndrawMargin = 2;
     const float UndrawEvery = 0.5f;
-    // At most this many chunks let go a frame (a forest chunk's dressings destroyed are a few ms, at the frame's end).
     const int UndrawAFrame = 1;
 
     readonly List<int> toUndraw = new();
     float nextUndrawLook;
 
-    /// <summary>Chunks let go since the world was built (drawn again as they come back within reach), for the probe.</summary>
     public int ChunksUndrawn { get; private set; }
 
-    /// <summary>Chunks drawn now (drawn and not let go), for the probe.</summary>
     public int ChunksHeldDrawn => drawnChunks.Count;
 
-    // Each drawn chunk's dressings stand under a root of its own, a scene root posed as the grid is, not under the grid:
-    // Unity keeps one transform hierarchy a root, sized to the most it ever held and never shrunk, so with them all under
-    // the grid it held the crossing's peak (300 thousand transforms) for good; a chunk's root goes with it (Undraw).
     readonly Dictionary<int, Transform> cellRoots = new();
 
-    /// <summary>What a cell's dressing stands under: its chunk's root, made the first time one is wanted.</summary>
     public Transform CellRoot(int x, int y)
     {
         if (World == null) return transform;
@@ -45,7 +37,6 @@ public partial class ChemGrid
         return root;
     }
 
-    // Every chunk's root goes (a new world: ResetWorld; the grid going).
     void ForgetCellRoots()
     {
         foreach (var root in cellRoots.Values)
@@ -74,7 +65,6 @@ public partial class ChemGrid
         }
     }
 
-    // Chunk n let go, if nothing passing shows on it; false if it stays drawn.
     bool Undraw(int n)
     {
         int across = ChunksAcross, cx = n % across, cy = n / across;
@@ -95,7 +85,6 @@ public partial class ChemGrid
                 if (v.wet) waterSurface.Changed(x, y, false);
                 blockers.Remove(index);
             }
-        // The chunk's dressings all stand under its root (CellRoot): it goes with them.
         if (cellRoots.Remove(n, out var root) && root != null) Destroy(root.gameObject);
         views.Drop(cx, cy);
         drawn[n] = false;

@@ -15,7 +15,6 @@ public static class PerfMemory
     const double Mb = 1024.0 * 1024.0;
     const int TypesListed = 14;
 
-    /// <summary>One line of what the process holds now, labelled.</summary>
     public static string Line(string label)
     {
         var inv = CultureInfo.InvariantCulture;
@@ -44,7 +43,6 @@ public static class PerfMemory
         return line.ToString();
     }
 
-    // Mono's Process reports 0 for these in a player, so on Windows they come from psapi; elsewhere, 0.
     static (double priv, double ws, double peak) ProcessMemory()
     {
         if (Application.platform != RuntimePlatform.WindowsPlayer && Application.platform != RuntimePlatform.WindowsEditor) return (0, 0, 0);

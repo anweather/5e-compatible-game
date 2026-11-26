@@ -22,7 +22,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A colour, each channel 0 to 1.</summary>
     public readonly struct LookColour
     {
         public readonly float R, G, B;
@@ -36,7 +35,6 @@ namespace Chem
 
         public static LookColour Of(LookDef look) => look == null ? new LookColour(1, 1, 1) : new LookColour(look.R, look.G, look.B);
 
-        /// <summary>Whether two colours are the same to within a hair.</summary>
         public bool Near(LookColour o) => Math.Abs(R - o.R) < 1e-5f && Math.Abs(G - o.G) < 1e-5f && Math.Abs(B - o.B) < 1e-5f;
         public override string ToString() => string.Format(CultureInfo.InvariantCulture, "[{0:0.###}, {1:0.###}, {2:0.###}]", R, G, B);
 
@@ -46,10 +44,6 @@ namespace Chem
         internal static bool IsNumber(JToken t) => t != null && (t.Type == JTokenType.Integer || t.Type == JTokenType.Float);
     }
 
-    /// <summary>
-    /// A player in the game: the name the core keys players by (what an "around" look follows), their
-    /// slot (0, 1, 2... in join order, kept while they stay: what a "by" look names) and where they stand.
-    /// </summary>
     public readonly struct PlayerSpot
     {
         public readonly string Player;
@@ -65,13 +59,8 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// A look's "mix": several colours with weights, either a patchwork (each cell picks one) or, with
-    /// "blend", one colour mixed from them like paint (Colors).
-    /// </summary>
     public sealed class LookMix
     {
-        /// <summary>Weights are kept as whole thousandths, so a pick is integer maths.</summary>
         const double Scale = 1000;
 
         readonly int[] upTo;
@@ -91,16 +80,12 @@ namespace Chem
         }
 
         public IReadOnlyList<LookColour> Colours { get; }
-        /// <summary>Blend the colours into one rather than pick one a cell.</summary>
         public bool Blend { get; }
-        /// <summary>The colours mixed like paint by their weights: what a blend draws everywhere.</summary>
         public LookColour Blended { get; }
         public int Total => upTo[upTo.Length - 1];
 
-        /// <summary>The share of cells that pick colour <paramref name="i"/>, 0 to 1.</summary>
         public double Share(int i) => (double)(upTo[i] - (i == 0 ? 0 : upTo[i - 1])) / Total;
 
-        /// <summary>The colour a cell with this hash picks; a blend's one colour.</summary>
         public LookColour Pick(uint hash)
         {
             if (Blend) return Blended;
@@ -110,10 +95,6 @@ namespace Chem
             return Colours[Colours.Count - 1];
         }
 
-        /// <summary>
-        /// A mix as a look gives it: [{"color": [r, g, b], "weight": 2}, ...], or plain colours
-        /// [[r, g, b], ...] weighing the same. Null when it isn't one (LookScopes.ShapeProblems says why).
-        /// </summary>
         public static LookMix Parse(JToken t, bool blend = false)
         {
             if (!(t is JArray items) || items.Count == 0) return null;
@@ -133,13 +114,11 @@ namespace Chem
         }
     }
 
-    /// <summary>A scoped look's "where": around a place, a cell or a player, within so many cells.</summary>
     public sealed class LookWhere
     {
         public string Place;
         public int X, Y;
         public bool At;
-        /// <summary>The player it follows, by name; the look lapses while they aren't in the game.</summary>
         public string Around;
         public int Within;
 
@@ -167,21 +146,15 @@ namespace Chem
         static string Str(JToken t) => t != null && t.Type == JTokenType.String ? (string)t : null;
     }
 
-    /// <summary>One of a look's "scoped" looks: a colour or a mix that holds only where it says.</summary>
     public sealed class ScopedLook
     {
-        /// <summary>A "by" look's slot when it gives "each": one colour per player, by slot.</summary>
         public const int Each = -1;
 
-        /// <summary>Where it holds; null for a look by player.</summary>
         public LookWhere Where;
-        /// <summary>For a look by player (Where null): the slot whose casts it colours, or Each.</summary>
         public int By;
         public LookColour Colour;
-        /// <summary>Null when it gives one colour.</summary>
         public LookMix Mix;
 
-        /// <summary>The scoped looks a look gives, earliest first; the ones that can't be read are left out (Rules.Check refuses them).</summary>
         public static IReadOnlyList<ScopedLook> ParseAll(JToken t)
         {
             if (!(t is JArray list)) return Array.Empty<ScopedLook>();
@@ -200,7 +173,6 @@ namespace Chem
 
         internal static bool IsTrue(JToken t) => t != null && t.Type == JTokenType.Boolean && (bool)t;
 
-        /// <summary>A "by" as a slot: a whole number from 0, or Each for "each"; null if it's neither.</summary>
         public static int? BySlot(JToken t)
         {
             if (t == null) return null;
@@ -208,7 +180,6 @@ namespace Chem
             return t.Type == JTokenType.Integer && (long)t >= 0 && (long)t < int.MaxValue ? (int)(long)t : (int?)null;
         }
 
-        /// <summary>What it is in words, for describe.</summary>
         public override string ToString()
         {
             if (Where != null) return Where.ToString();
@@ -216,19 +187,12 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// The rules' looks compiled for drawing: for each element, cover, gas and terrain, its plain look
-    /// (one colour or a mix) and its scoped looks, with each place's distances worked out.
-    /// </summary>
     public sealed class LookScopes
     {
-        /// <summary>A scope's edge blends from its look into what's under it over this many cells.</summary>
         public const int EdgeCells = 3;
 
-        /// <summary>The tables a look may be scoped by place or mixed in, by the names set_look takes.</summary>
         public static readonly string[] Tables = { "elements", "covers", "gases", "terrain" };
 
-        /// <summary>The tables a look may be given by player in: what a cast makes, and the cast's own show.</summary>
         public static readonly string[] ByTables = { "elements", "covers", "gases", "spells" };
 
         readonly Dictionary<string, CellLook> looks = new Dictionary<string, CellLook>(StringComparer.Ordinal);
@@ -238,7 +202,6 @@ namespace Chem
 
         LookScopes(WorldPlaces places) { this.places = places ?? WorldPlaces.Empty; }
 
-        /// <summary>Compiles every look in the rules; a "where" naming a place the world doesn't have never holds.</summary>
         public static LookScopes Compile(Rules rules, WorldPlaces places)
         {
             var s = new LookScopes(places);
@@ -250,17 +213,11 @@ namespace Chem
             return s;
         }
 
-        /// <summary>
-        /// The look of an element, cover, gas or terrain by id, to call At on per cell; one with no look
-        /// draws white. Look it up once a frame, not per cell.
-        /// </summary>
         public CellLook Of(string table, string id) =>
             looks.TryGetValue(Key(table, id), out var look) ? look : new CellLook(LookColour.Of(null), null, Array.Empty<CellLook.Scope>(), Array.Empty<CellLook.ByPlayer>(), Salt(table, id));
 
-        /// <summary>The players a scoped look follows and how far round them it holds: what moves as they do.</summary>
         public IReadOnlyList<(string player, int within)> Followers => followers;
 
-        /// <summary>Whether any look is mixed or scoped: if not, the view can draw as it always did.</summary>
         public bool Any => looks.Values.Any(l => !l.Plain);
 
         static string Key(string table, string id) => table + "/" + id;
@@ -296,7 +253,6 @@ namespace Chem
             return fields[key] = place == null ? null : new PlaceField(place, within + EdgeCells);
         }
 
-        // FNV-1a over "table/id", so two looks mixing the same colours don't make the same patchwork.
         static uint Salt(string table, string id)
         {
             unchecked
@@ -309,7 +265,6 @@ namespace Chem
 
         static uint Mixed(uint salt, int n) => unchecked(salt ^ ((uint)n * 0x9E3779B9u));
 
-        /// <summary>A cell's hash for a mix's pick: integer maths on where it is, nothing from the world's RNG.</summary>
         public static uint CellHash(int x, int y, uint salt)
         {
             unchecked
@@ -324,9 +279,6 @@ namespace Chem
             }
         }
 
-        // ---------- the shape a look's mix and scoped looks must have (Rules.Check) ----------
-
-        /// <summary>What's wrong with a look's "mix" and "scoped", one terse message each (the caller names the look).</summary>
         public static IEnumerable<string> ShapeProblems(JObject look)
         {
             if (look["mix"] != null && LookMix.Parse(look["mix"]) == null) yield return MixShape("look.mix");
@@ -392,10 +344,6 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// How far each cell round a place is from it (0 inside), over the place's bounds grown by a reach;
-    /// worked out once, when the looks are compiled.
-    /// </summary>
     sealed class PlaceField
     {
         readonly int x0, y0, w, h;
@@ -408,8 +356,6 @@ namespace Chem
             w = place.Bounds.W + 2 * reach;
             h = place.Bounds.H + 2 * reach;
             distance = new float[w * h];
-            // Dead reckoning: each cell keeps the nearest place cell found, passed on to its neighbours
-            // in a forward and a backward sweep, so the distance is (nearly) true Euclidean.
             var near = new int[w * h];
             for (int i = 0; i < near.Length; i++) near[i] = place.Contains(x0 + i % w, y0 + i / w) ? i : -1;
             Sweep(near, 1, new[] { (-1, -1), (0, -1), (1, -1), (-1, 0) });
@@ -438,7 +384,6 @@ namespace Chem
             return Math.Sqrt(dx * dx + dy * dy);
         }
 
-        /// <summary>How far the cell is from the place; infinite past the reach.</summary>
         public float At(int x, int y)
         {
             int i = x - x0, j = y - y0;
@@ -446,10 +391,8 @@ namespace Chem
         }
     }
 
-    /// <summary>One element's, cover's, gas's, terrain's or spell's look, compiled: At gives a cell's colour.</summary>
     public sealed class CellLook
     {
-        // A look by player: the slot whose casts it colours, or every slot, one colour each.
         internal sealed class ByPlayer
         {
             readonly int slot;
@@ -465,8 +408,6 @@ namespace Chem
                 this.salt = salt;
             }
 
-            // Adds this look's colour for what the caster cast: one naming their slot to the named looks,
-            // "each" to the looks for everyone (weaker); none if it's for another slot.
             public void AddTo(int caster, int x, int y, ref ColourMixer named, ref ColourMixer everyone)
             {
                 if (slot == ScopedLook.Each) everyone.Add(mix.Colours[caster % mix.Colours.Count]);
@@ -491,9 +432,6 @@ namespace Chem
                 this.salt = salt;
             }
 
-            // 1 inside the scope, falling to 0 over EdgeCells past it; 0 for a player not in the game.
-            // <paramref name="depth"/> is how far in from its outer edge the cell is, in cells: how much
-            // it counts where scopes overlap.
             public float Weight(int x, int y, IReadOnlyList<PlayerSpot> players, out float depth)
             {
                 double d;
@@ -535,27 +473,14 @@ namespace Chem
             this.salt = salt;
         }
 
-        /// <summary>Its colour with no scope or player in it: what a scope's edge fades into.</summary>
         public LookColour Colour => colour;
 
-        /// <summary>One colour everywhere, no mix, no scopes and none by player: the view needn't call At per cell.</summary>
         public bool Plain => mix == null && scopes.Length == 0 && by.Length == 0;
 
-        /// <summary>Looks by player: the view needs to know who cast what this draws.</summary>
         public bool ByPlayers => by.Length > 0;
 
-        /// <summary>Scoped looks that hold somewhere (one naming a place the world lacks is left out).</summary>
         public int Scopes => scopes.Length;
 
-        /// <summary>
-        /// The colour at cell (x, y), strongest first: the looks by the player whose cast made what's there
-        /// (<paramref name="caster"/>, a slot; one naming the slot over "each", and they lapse once that
-        /// slot isn't in <paramref name="players"/>), else a spell's own colour if the thing there has one
-        /// (J-052), else the scoped looks covering the cell, over the plain look. Looks of the same strength
-        /// mix like paint (Colors): overlapping scopes by how far into each the cell is, and a scope's edge
-        /// into the plain look under it. A patchwork mix picks by a hash of the cell; a blend is one colour.
-        /// <paramref name="players"/> is who is in the game and where each stands. Allocates nothing.
-        /// </summary>
         public LookColour At(int x, int y, IReadOnlyList<PlayerSpot> players, LookColour? own = null, int? caster = null)
         {
             if (caster is int slot && slot >= 0 && by.Length > 0 && InGame(players, slot))
@@ -590,11 +515,6 @@ namespace Chem
             return mixer.Result(plain);
         }
 
-        /// <summary>
-        /// The colour a new fire (or anything that spreads) takes when it catches from neighbours of these
-        /// colours: their mix, like paint (a blue fire meeting a yellow one burns green between them). Add
-        /// each neighbour's colour to a <see cref="ColourMixer"/> and call this; with none, the plain look.
-        /// </summary>
         public LookColour Caught(ColourMixer neighbours) => neighbours.Result(colour);
 
         static bool InGame(IReadOnlyList<PlayerSpot> players, int slot)

@@ -12,20 +12,13 @@ using UnityEngine;
 // rather than stepping from bright to dim, so "dim" is the fading outer half.
 public class ItemLight : ItemUse
 {
-    /// <summary>Light falling on a surface at the bright edge (URP's units, the sun being 1.6 here).</summary>
     public const float BrightLux = 0.5f;
-    /// <summary>
-    /// How far above a glowing ball its light hangs. Light falls off with the square of the distance,
-    /// so a lamp right at a ball lying in the grass burns a blown-out spot around it.
-    /// </summary>
     public const float LampLift = 2f;
-    /// <summary>For a light that is only dim (Dancing Lights): what falls halfway out.</summary>
     public const float DimLux = 0.5f;
 
     Renderer look;
     Color glow;
 
-    /// <summary>The light itself, on a child, so DancingLights can send it out on its own.</summary>
     public Light Lamp { get; private set; }
 
     protected override void Awake()
@@ -40,7 +33,6 @@ public class ItemLight : ItemUse
         ColorUtility.TryParseHtmlString(def.Color, out glow);
         Lamp = new GameObject("Light").AddComponent<Light>();
         Lamp.transform.SetParent(transform, false);
-        // A beam starts just in front, so the lantern's own body doesn't shadow it.
         if (def.Cone > 0 && look != null) Lamp.transform.position = transform.position + transform.forward * (look.bounds.extents.magnitude + 0.03f);
         Configure(Lamp, def, glow);
         SetOn(!Item.Online || Item.Net.Lit);
@@ -52,14 +44,12 @@ public class ItemLight : ItemUse
         if (Item != null) Item.DefChanged -= Reconfigure;
     }
 
-    // A ball's light hangs above it, whichever way the ball has rolled (unless Dancing Lights sent it out).
     void LateUpdate()
     {
         if (Lamp == null || Lamp.type != LightType.Point || Lamp.transform.parent != transform) return;
         Lamp.transform.position = transform.position + Vector3.up * LampLift;
     }
 
-    // A live mod changed the item's light (e.g. "bright-lantern"): same lamp, new reach and colour.
     void Reconfigure()
     {
         var def = Item.Def.Light;
@@ -70,7 +60,6 @@ public class ItemLight : ItemUse
         SetGlow(on);
     }
 
-    /// <summary>Sets up <paramref name="lamp"/> for an items.json light: a spot for a cone, otherwise a point light.</summary>
     public static void Configure(Light lamp, ItemLightDef def, Color color)
     {
         bool cone = def.Cone > 0;
@@ -84,10 +73,6 @@ public class ItemLight : ItemUse
         lamp.innerSpotAngle = (float)def.Cone * 0.75f;
     }
 
-    /// <summary>
-    /// URP's falloff is 1/d² times a window that reaches 0 at the range, (1 - (d/r)^4)²; this picks
-    /// the intensity that leaves BrightLux at the bright edge (or DimLux halfway out for a dim light).
-    /// </summary>
     public static float Intensity(ItemLightDef def)
     {
         double range = def.RangeMetres;
@@ -97,7 +82,6 @@ public class ItemLight : ItemUse
         return (float)((bright ? BrightLux : DimLux) * d * d / Window(d, range));
     }
 
-    /// <summary>The light URP's falloff leaves at <paramref name="distance"/> from a lamp (before the spot's cone).</summary>
     public static double Falloff(double intensity, double distance, double range)
     {
         if (distance <= 0 || distance >= range) return distance <= 0 ? intensity : 0;
@@ -119,7 +103,6 @@ public class ItemLight : ItemUse
         EventLog.Add(on ? $"You uncover the {Item.Name.ToLowerInvariant()}" : $"You cover the {Item.Name.ToLowerInvariant()}");
     }
 
-    /// <summary>Uncovers (true) or covers the light.</summary>
     public void SetOn(bool on)
     {
         if (Lamp == null) return;
@@ -127,13 +110,11 @@ public class ItemLight : ItemUse
         SetGlow(on);
     }
 
-    // The item's own surface glows in its light's colour while lit (bloom picks it up).
     void SetGlow(bool on)
     {
         if (look == null) return;
         var block = new MaterialPropertyBlock();
         look.GetPropertyBlock(block);
-        // A lantern's brass only warms a little; a ball with the Light cantrip on it shines.
         float strength = Item.Def.Light.Cone > 0 ? 0.6f : 0.9f;
         block.SetColor("_EmissionColor", on ? glow * strength : Color.black);
         look.SetPropertyBlock(block);

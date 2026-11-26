@@ -25,7 +25,6 @@ public class FpsProbe : MonoBehaviour
     static readonly float[] ShotsAt = { 10f, 22f, 32f, 40f };
 
     readonly List<float> frameMs = new();
-    // CPU main thread, CPU render thread and GPU time per frame (FrameTimingManager), when the build has it.
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
     static readonly FrameTiming[] Timing = new FrameTiming[1];
     float started;
@@ -65,7 +64,6 @@ public class FpsProbe : MonoBehaviour
     const float ClothSeconds = 15f;
     static readonly WaitForSeconds SettleWait = new(2f);
 
-    // The N after -cloth-wizards, or 0.
     static int ClothWizards()
     {
         var args = Environment.GetCommandLineArgs();
@@ -73,8 +71,6 @@ public class FpsProbe : MonoBehaviour
         return at >= 0 && at + 1 < args.Length && int.TryParse(args[at + 1], out int n) ? Mathf.Clamp(n, 1, 32) : 0;
     }
 
-    // N wizards in a row across the yard, the camera before them, 15 s: "CLOTH PROBE: N wizards ...",
-    // the robes' stepping time a frame (all of them together) and the frame times.
     IEnumerator Cloth(int count)
     {
         var grid = ChemGrid.Current?.Grid;
@@ -88,7 +84,6 @@ public class FpsProbe : MonoBehaviour
             spots.Add(grid.CellCenter(cell.x, cell.y) + Vector3.up * (grid.SurfaceY(cell.x, cell.y) + 0.02f));
         }
         var facing = Quaternion.LookRotation(Vector3.back);
-        // The local wizard first, the copies beside it.
         var body = wizard.GetComponent<CharacterController>();
         body.enabled = false;
         wizard.transform.SetPositionAndRotation(spots[0], facing);
@@ -97,7 +92,6 @@ public class FpsProbe : MonoBehaviour
         var middle = (spots[0] + spots[^1]) / 2f;
         var eye = middle + new Vector3(0f, 2.2f, -4f - count * 0.5f);
         Camera.main.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(middle + Vector3.up - eye));
-        // A moment for the copies to dress and their robes to settle.
         yield return SettleWait;
 
         frameMs.Clear();
@@ -125,9 +119,6 @@ public class FpsProbe : MonoBehaviour
     const float BurnSeconds = 20f;
     static readonly WaitForSeconds BoltGap = new(0.4f);
 
-    // Then a wildfire, as the probe's wildfire scenario sets it (the Wildfire mod on, Fire Bolts
-    // into the meadow north of the yard, 20 s burning with the camera on it), so a build's numbers
-    // cover a big fire too: a second line, "FPS PROBE fire".
     IEnumerator Wildfire()
     {
         var grid = ChemGrid.Current?.Grid;
@@ -181,10 +172,8 @@ public class FpsProbe : MonoBehaviour
         shot++;
     }
 
-    // The timings land a few frames late; a frame the GPU didn't report (0) is left out.
     void ReadTiming() => ReadTiming(mainMs, renderMs, gpuMs);
 
-    /// <summary>Adds the latest frame's CPU main, CPU render and GPU times to these lists.</summary>
     public static void ReadTiming(List<float> main, List<float> render, List<float> gpu)
     {
         FrameTimingManager.CaptureFrameTimings();
@@ -202,7 +191,6 @@ public class FpsProbe : MonoBehaviour
         return $"{name} mean {stats.MeanMs:0.0} ms, 95th percentile {stats.P95Ms:0.0} ms";
     }
 
-    // "<label>: N frames ..." and "<label> timing: ...", for the frames measured since the last start.
     void Report(string label = "FPS PROBE", string note = null)
     {
         var stats = FrameStats.Of(frameMs);

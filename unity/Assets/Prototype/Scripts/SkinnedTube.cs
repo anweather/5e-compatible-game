@@ -12,7 +12,6 @@ using UnityEngine;
 // poses remember.
 public static class SkinnedTube
 {
-    /// <summary>One ring: its centre, the way the tube runs there, its half width and depth (share of the width), its colour.</summary>
     public struct Ring
     {
         public Vector3 at, along;
@@ -20,18 +19,10 @@ public static class SkinnedTube
         public Color colour;
     }
 
-    /// <summary>
-    /// Builds the tube on <paramref name="host"/> (in its space) as a SkinnedMeshRenderer with
-    /// these bones, each corner weighed by <paramref name="weigh"/> (its position and ring).
-    /// </summary>
     public static GameObject Make(Transform host, string name, Ring[] rings, int sides, Transform[] bones,
         Func<Vector3, int, BoneWeight> weigh, Material material) =>
         MakeMany(host, name, new List<Ring[]> { rings }, sides, bones, (p, _, ring) => weigh(p, ring), material);
 
-    /// <summary>
-    /// Builds several tubes into one SkinnedMeshRenderer on <paramref name="host"/>, each corner
-    /// weighed by <paramref name="weigh"/> (its position, its tube and its ring).
-    /// </summary>
     public static GameObject MakeMany(Transform host, string name, List<Ring[]> tubes, int sides, Transform[] bones,
         Func<Vector3, int, int, BoneWeight> weigh, Material material)
     {
@@ -65,7 +56,6 @@ public static class SkinnedTube
         return go;
     }
 
-    // A tube's rings: each an ellipse of corners round its centre, across the way the tube runs.
     static void AddRings(Ring[] rings, int sides, Func<Vector3, int, BoneWeight> weigh, List<Vector3> vertices, List<Color> colours, List<BoneWeight> weights)
     {
         for (int i = 0; i < rings.Length; i++)
@@ -88,8 +78,6 @@ public static class SkinnedTube
         }
     }
 
-    // The faces between a tube's rings, wound so the outside faces out (for an ellipse turned the
-    // way the rings above are).
     static void AddFaces(int first, int rings, int sides, List<int> triangles)
     {
         for (int i = 0; i + 1 < rings; i++)
@@ -101,7 +89,6 @@ public static class SkinnedTube
             }
     }
 
-    /// <summary>Two bones blended (the second's share <paramref name="t"/>), as a bone weight.</summary>
     public static BoneWeight Blend(int a, int b, float t) =>
         new() { boneIndex0 = a, weight0 = 1f - t, boneIndex1 = b, weight1 = t };
 }

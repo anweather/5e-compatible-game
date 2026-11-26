@@ -41,7 +41,6 @@ public class TranscribedSpeechTests
         return samples;
     }
 
-    // Take, as GameVoice calls it each frame, until Done; what was heard, and how long it took.
     static (string text, bool done, double ms) Hold(TranscribedSpeech speech, double mostMs = 5000)
     {
         string text = "";

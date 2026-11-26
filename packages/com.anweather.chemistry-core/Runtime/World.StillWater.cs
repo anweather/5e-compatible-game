@@ -17,21 +17,15 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>Whether the water pass skips still chunks (on; off only to compare in tests).</summary>
         public bool SkipStillWater { get; set; } = true;
 
-        /// <summary>How many chunks the last water pass found still, for the view's numbers.</summary>
         public int StillChunks { get; private set; }
 
-        // Before the water pass: which of chunks [from, to) changed since the last pass. kinds: the
-        // rules hold a liquid besides water, so each cell's kind is compared too (a rule switch
-        // drops every snapshot, so a world of water alone never needs it).
         static void CheckWater(Chunk[] chunks, int from, int to, bool kinds)
         {
             for (int k = from; k < to; k++) CheckWater(chunks[k], kinds);
         }
 
-        // Whether a chunk changed since the last pass, refreshing its snapshot (kept in its block).
         static void CheckWater(Chunk ch, bool kinds)
         {
             var b = ch.Block;
@@ -64,7 +58,6 @@ namespace Chem
             ch.WaterDisturbed = false;
         }
 
-        // A cell's kind against the snapshot's, refreshing it: true if the same.
         static bool SnapKind(ChunkBlock b, int i, Cell c)
         {
             byte kind = (byte)c.Kind;
@@ -73,7 +66,6 @@ namespace Chem
             return same;
         }
 
-        // Once every active chunk is checked: which are still this tick.
         void MarkStill(Chunk[] chunks)
         {
             int still = 0;
@@ -87,8 +79,6 @@ namespace Chem
             StillChunks = still;
         }
 
-        // Unchanged with no water moving last tick, and the same for each neighbour (an inactive one
-        // is a wall: it only has to have stayed inactive).
         bool QuietAround(Chunk ch)
         {
             if (!Quiet(ch)) return false;
@@ -102,8 +92,6 @@ namespace Chem
             return true;
         }
 
-        // With a thick liquid in the rules (Rules.Liquids.cs) it must have stood that many passes, so
-        // the stillness spans one of its turns; with water alone, one pass, as before liquids.
         bool Quiet(Chunk ch)
         {
             int k = StillTicks();
@@ -118,7 +106,6 @@ namespace Chem
             _ => ch.West,
         };
 
-        // Water moved in this chunk this tick: it and the chunks around it are disturbed.
         void WaterMoved(Chunk ch)
         {
             if (ch.LastFlowTick == Tick) return;
@@ -131,10 +118,8 @@ namespace Chem
             }
         }
 
-        // Whether the water pass may skip this chunk's rows now.
         static bool Skips(Chunk ch) => ch.WaterStill && !ch.WaterDisturbed;
 
-        /// <summary>After a rule switch the terrain's meaning may have changed: no snapshot holds.</summary>
         void ForgetWaterSnapshots()
         {
             foreach (var ch in ChunksInOrder) ch.SnapValid = false;

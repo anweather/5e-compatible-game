@@ -15,7 +15,6 @@ using UnityEngine;
 // All of it takes its look (LookTint): the flames, the trail, the rock's heat and the light.
 public class MeteorFall : MonoBehaviour
 {
-    /// <summary>How long a meteor takes to fall (the spell lands this long after the cast).</summary>
     public const float Seconds = 1.8f;
     const float Height = 110f, Reach = 75f, RockSize = 1.6f;
 
@@ -30,25 +29,18 @@ public class MeteorFall : MonoBehaviour
     Light glow;
     Transform rock;
 
-    /// <summary>How big it is: 1 a meteor's, under 1 a falling star's. It's disabled once it lands (for the probe).</summary>
     public float Size => size;
 
-    /// <summary>
-    /// Brings a meteor down on <paramref name="target"/>, coming in from beyond it as seen from
-    /// <paramref name="viewer"/> (the caster), so it streaks across their view.
-    /// </summary>
     public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster, float seconds = Seconds, float size = 1f, float blastScale = 1f)
     {
         var ahead = target - viewer;
         ahead.y = 0f;
         if (ahead.sqrMagnitude < 1f) ahead = Vector3.forward;
-        // From beyond the target and off to one side, high up.
         var side = Quaternion.Euler(0f, (target.x + target.z) % 2f < 1f ? 35f : -35f, 0f) * ahead.normalized;
         var go = new GameObject("Meteor");
         var m = go.AddComponent<MeteorFall>();
         m.size = size;
         m.blastScale = blastScale;
-        // A small one comes down steeply, near enough to see.
         float near = size < 1f ? size : 1f;
         m.from = target + side * (Reach * size * near) + Vector3.up * (Height * size * Mathf.Max(near, 0.5f));
         m.to = target;
@@ -64,8 +56,6 @@ public class MeteorFall : MonoBehaviour
     void Build()
     {
         if (hot == null) hot = UrpMaterials.NewLit("Meteor rock", new Color(0.12f, 0.08f, 0.06f), 0.2f, new Color(1f, 0.45f, 0.12f) * 2.5f);
-        // The trails take the particle pack's soft materials when they're there: the flames' embers
-        // (a soft glowing dot, stretched along the trail) and the dust's smoke.
         if (trail == null) trail = ParticleMaterial(look?.projectile, "Embers");
         if (trail == null) trail = UrpMaterials.NewUnlitParticles("Meteor trail", Color.white, additive: true);
         if (smoke == null) smoke = ParticleMaterial(look?.afterImpact, null);
@@ -110,7 +100,6 @@ public class MeteorFall : MonoBehaviour
 
     LookTint Tint => look != null ? look.Tint : default;
 
-    // The rock's own heat in the look's colour: the material is shared with every other meteor.
     void Heat(GameObject body)
     {
         var heat = new MaterialPropertyBlock();
@@ -118,7 +107,6 @@ public class MeteorFall : MonoBehaviour
         foreach (var r in body.GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(heat);
     }
 
-    // A particle material from an effect prefab (the one named, or its first), or null.
     static Material ParticleMaterial(GameObject prefab, string name)
     {
         if (prefab == null) return null;
@@ -142,14 +130,13 @@ public class MeteorFall : MonoBehaviour
 
     void Update()
     {
-        if (hasCaster && caster == null) // its caster went in flight (Unity's null check)
+        if (hasCaster && caster == null)
         {
             Destroy(gameObject);
             return;
         }
         t += Time.deltaTime / seconds;
         float k = Mathf.Clamp01(t);
-        // Falling faster as it comes.
         transform.position = Vector3.Lerp(from, to, k * (0.55f + 0.45f * k));
         rock.Rotate(new Vector3(200f, 140f, 90f) * Time.deltaTime, Space.Self);
         glow.intensity = Mathf.Lerp(4f, 30f, k * k);
@@ -174,7 +161,7 @@ public class MeteorFall : MonoBehaviour
             BurstFx.Play(BurstFx.Kind.Flash, to + Vector3.up * 0.2f, 4f * size, look: look?.glow);
             BurstFx.Play(BurstFx.Kind.Chips, to, 12f * size, null, new Color(0.32f, 0.26f, 0.2f));
         }
-        CastImpact.Felt(to, Mathf.Clamp01(size)); // shake and rumble, hardest near the blast
+        CastImpact.Felt(to, Mathf.Clamp01(size));
         var cam = Camera.main;
         float distance = cam != null ? Vector3.Distance(cam.transform.position, to) : 50f;
         var sky = FindAnyObjectByType<SkyLight>();
@@ -187,7 +174,6 @@ public class MeteorFall : MonoBehaviour
         for (float s = 0f; s < 1.6f; s += Time.deltaTime)
         {
             float f = 1f - s / 1.6f;
-            // A white-hot flash, then the fire's glow dying down.
             glow.intensity = (s < 0.08f ? 120f : 60f * f * f) * size;
             yield return null;
         }

@@ -5,11 +5,6 @@ using System.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>
-    /// A running game that can tell the tools what's on and take every room command. It answers
-    /// Now from the main thread (WorldNow.Of), null between scenes, and sends a command on as
-    /// command.As(its own player), of whatever kind: RoomIntent has to carry RoomCommand.Change.
-    /// </summary>
     public interface ILiveDesk : IRoomDesk
     {
         WorldNow Now();
@@ -17,10 +12,8 @@ namespace Chem.Mcp
 
     public sealed partial class Workbench
     {
-        /// <summary>The clock in words.</summary>
         public string TimeNow() => TimeWords(SkyNow());
 
-        /// <summary>The weather in words.</summary>
         public string WeatherNow() => WeatherWords(SkyNow());
 
         WorldNow SkyNow()
@@ -56,7 +49,6 @@ namespace Chem.Mcp
             return $"Weather: {kind}{strength}{wind}{shower}, as the world has it; in {Num(inTicks / (double)Sky.Ticks(p, 1))} minutes of play it turns to {Sky.WeatherName(Sky.KindOf(p, now.Seed, w.Period + 1))}.";
         }
 
-        /// <summary>Moves the clock on to a time of day, through the room; it says what happened.</summary>
         public string SetTime(string time, string peer = null)
         {
             SkyNow();
@@ -64,7 +56,6 @@ namespace Chem.Mcp
             return Refused(said) ? said : said + "\n" + TimeNow();
         }
 
-        /// <summary>Holds a weather for so many minutes of play, or "natural" lets it go its own way, through the room; it says what happened.</summary>
         public string SetWeather(string weather, int? minutes = null, string peer = null)
         {
             SkyNow();
@@ -86,7 +77,6 @@ namespace Chem.Mcp
 
         static bool Refused(string said) => said.Contains(" refused:", System.StringComparison.Ordinal);
 
-        // "09:30", "21", "noon"... as a minute of the day, or the sentence saying what it takes.
         int MinuteOf(string time)
         {
             var day = InForce.Sim.Day;

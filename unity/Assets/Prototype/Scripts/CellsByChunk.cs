@@ -11,7 +11,6 @@ public sealed class CellsByChunk<T>
     readonly T[][] blocks;
     readonly System.Func<int, T> missing;
 
-    /// <param name="missing">What a cell of a chunk with no block reads as, by its world index; default when null.</param>
     public CellsByChunk(TerrainGrid layout, System.Func<int, T> missing = null)
     {
         this.layout = layout;
@@ -36,10 +35,8 @@ public sealed class CellsByChunk<T>
         }
     }
 
-    /// <summary>Whether a chunk has a block (one of its cells was set since it was made or dropped).</summary>
     public bool Has(int i, int j) => layout.HasChunk(i, j) && blocks[j * layout.ChunksX + i] != null;
 
-    /// <summary>How many chunks have a block, for a check.</summary>
     public int Made()
     {
         int made = 0;
@@ -48,16 +45,13 @@ public sealed class CellsByChunk<T>
         return made;
     }
 
-    /// <summary>A chunk's block goes: its cells read as missing says again.</summary>
     public void Drop(int i, int j)
     {
         if (layout.HasChunk(i, j)) blocks[j * layout.ChunksX + i] = null;
     }
 
-    /// <summary>Every block goes.</summary>
     public void Clear() => System.Array.Clear(blocks, 0, blocks.Length);
 
-    // A new block, its cells as missing says until they're set.
     T[] Made(int n)
     {
         var block = new T[TerrainGrid.ChunkCells * TerrainGrid.ChunkCells];
@@ -72,7 +66,6 @@ public sealed class CellsByChunk<T>
         return block;
     }
 
-    // The block a world cell index is in (-1 for none) and its place in it.
     int Block(int index, out int at)
     {
         int x = index % layout.GridW, y = index / layout.GridW;

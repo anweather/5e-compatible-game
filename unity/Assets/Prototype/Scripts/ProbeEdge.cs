@@ -21,7 +21,6 @@ public class EdgeProbe : ProbeScenario
         for (int d = 0; d < 4; d++) yield return RunAt(land, d, names[d]);
     }
 
-    // The terrains' extent on the ground plane (x, z).
     static Rect Land()
     {
         var rect = new Rect();
@@ -49,7 +48,6 @@ public class EdgeProbe : ProbeScenario
         };
         start.y = TerrainGround(start) + 0.3f;
         Teleport(start);
-        // The controller moves relative to the camera: look outward from behind the wizard.
         Cut(start - outward * 8f + Vector3.up * 5f, start + outward * 10f);
         yield return Wait(0.3f);
         puppet.Move(Vector2.up);

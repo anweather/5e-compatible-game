@@ -1,19 +1,16 @@
+// Physics props' effects on cells as lockstep inputs (Effects.cs): stamped into a tick batch
+// next to the casts, applied at that tick, and replayed by a late joiner from the history.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Physics props' effects on cells as lockstep inputs (Effects.cs): stamped into a tick batch
-    /// next to the casts, applied at that tick, and replayed by a late joiner from the history.
-    /// </summary>
     [Category("Unit")]
     public class EffectTests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>A grass field with dirt paths, an oil patch at (10..12, 4..6) and a puddle.</summary>
         static World Field()
         {
             var w = new World(R, 30, 12, 7, "grass");
@@ -25,8 +22,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // A host's session: a cast at tick 2, a barrel blowing up in the oil at 6, a burning crate
-        // at 9 and its embers at 15, a lantern smashing at 20.
         static List<TickBatch> HostSession(int ticks)
         {
             var stamped = new List<TickBatch>();
@@ -58,7 +53,6 @@ namespace Chem.Tests
             var live = HostSession(ticks);
             var host = Run(live);
 
-            // What the host sends a late joiner: every cast and every effect with its tick.
             var casts = live.SelectMany(b => b.Casts.Select(c => (b.Tick, c))).ToList();
             var effects = live.SelectMany(b => b.Effects.Select(e => (b.Tick, e))).ToList();
             Assert.That(effects, Has.Count.EqualTo(4));
@@ -80,7 +74,6 @@ namespace Chem.Tests
             Assert.That(Run(session.Take(5)).CellHash(), Is.EqualTo(Run(plain.Take(5)).CellHash()), "identical before the blast");
 
             var after = Run(session.Take(6));
-            // The barrel's blast: radius 1 of burning oil around (11, 5), fire at least 3 on the batch's tick.
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
                     Assert.That(after.At(11 + dx, 5 + dy).Fire, Is.GreaterThan(0), $"({11 + dx}, {5 + dy}) burns");
@@ -90,8 +83,6 @@ namespace Chem.Tests
         [Test]
         public void TheSameEffectsInTheSameOrderGiveTheSameWorld()
         {
-            // Two batches with the same effects stamped in a different order differ only if the effects
-            // interact; the host's order is the one sent, so everyone applies them in that order.
             var a = new TickBatch(1, null, null, new[]
             {
                 new EffectCommand(EffectKind.Explode, 11, 5, "barrel"),

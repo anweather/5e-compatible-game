@@ -1,3 +1,5 @@
+// Building part of the game by asking and keeping it (J-059, J-062): the two asks from a headless
+// client, over the MCP's own messages, ending as one mod that survives save and reload.
 using System;
 using System.IO;
 using System.Linq;
@@ -7,17 +9,12 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Building part of the game by asking and keeping it (J-059, J-062): the two asks from a headless
-    /// client, over the MCP's own messages, ending as one mod that survives save and reload.
-    /// </summary>
     [Category("Simulation")]
     public class HouseToolsTests
     {
         string data, dir;
         GameFolders folders;
 
-        // A player's data folder; dir is their mods in it, where a save goes.
         [SetUp]
         public void MakeFolder()
         {
@@ -29,7 +26,6 @@ namespace Chem.Tests
         [TearDown]
         public void RemoveFolder() => Directory.Delete(data, true);
 
-        // A headless client: JSON-RPC to the tools, as a player's Claude talks to the game.
         internal sealed class Client
         {
             readonly McpRpc rpc;
@@ -75,18 +71,15 @@ namespace Chem.Tests
 
         static string FirstSite(string sites) => sites.Split('\n')[1].Substring(2).Split(',')[0] + "," + sites.Split('\n')[1].Substring(2).Split(',')[1];
 
-        // Both asks, as Claude would answer them, in one draft. Returns the saved mod's name and the world's state.
         (string mod, string text) BothAsks(Workbench bench)
         {
             var client = new Client(bench);
 
-            // "Add a wing to the house by the lake."
             string found = client.Call("find", new { kind = "building", near = "lake" });
             string house = FirstId(found);
             Assert.That(found, Does.Contain("cabin"));
             string d = DraftId(client.Call("add_wing", new { building = house }));
 
-            // "Build a house on the beach", of stucco, with its roof tile in the same mod.
             client.Call("add_material", new { kind = "terrain", id = "clay-tile", name = "Clay tile", tags = new[] { "roof" }, verbs = "{\"look\": {\"family\": \"ground\", \"color\": [0.66, 0.3, 0.2]}}", draft = d });
             client.Call("add_building_part", new { table = "styles", id = "southwest", row = BuildingTests.SouthwestStyle, draft = d });
             string sites = client.Call("find_site", new { width = 8, depth = 6, near = "sea", edge = "shore" });
@@ -113,7 +106,6 @@ namespace Chem.Tests
             Assert.That(rows["beach-house#1"], Is.Not.Null);
             Assert.That(rows.Children<JProperty>().Select(p => p.Name), Has.Some.StartWith("lake-house#"), "the house by the lake");
 
-            // Switched on from the kept file, it builds both; nothing but the row names anything.
             var world = bench.LiveWorld;
             string before = world.CellHash();
             var plain = new Workbench(folders).LiveWorld;
@@ -132,7 +124,6 @@ namespace Chem.Tests
             Assert.That(client.Call("whats_on", new { }), Does.Contain("the building beach-house#1"));
             Assert.That(client.Call("describe", new { table = "buildings", id = "beach-house#1" }), Does.Contain("stucco-wall"), "the tools read what's on");
 
-            // The world's save keeps it: a load has the same cells and room, and reverting then puts all back.
             var source = bench.LiveSource;
             string save = world.Save(source);
             var loaded = World.Load(save, bench.Base, source, bench.Budgets);
@@ -142,7 +133,6 @@ namespace Chem.Tests
             Assert.That(loaded.ApplyRoom(RoomCommand.Revert(Workbench.HostName, mod)).Done, Is.True);
             Assert.That(built.All(c => loaded.At(c.X, c.Y).T == plain.At(c.X, c.Y).T), "reverting puts back what stood there");
 
-            // A new session reads the kept mod and gets the same world.
             var again = new Workbench(folders);
             Assert.That(new Client(again).Call("apply", new { mod }), Does.Contain("switched on"));
             Assert.That(again.LiveWorld.CellHash(), Is.EqualTo(world.CellHash()));
@@ -273,7 +263,6 @@ namespace Chem.Tests
             var others = world.BuildingCellsOf(world.BuildingRowOf(other)).Select(c => (c.X, c.Y, c.Terrain)).ToList();
             int x = row.X, y = row.Y;
 
-            // A smaller building in the same place: what it gives up goes to bare ground.
             var patch = new JObject { ["world"] = new JObject { ["buildings"] = new JObject { ["Hollowmere#1"] = JObject.Parse("{ \"at\": [" + x + ", " + y + "], \"style\": \"village\", \"joins\": { \"a\": [0, 0], \"b\": [6, 0], \"c\": [6, 6], \"d\": [0, 6] }, \"walls\": { \"n\": { \"from\": \"a\", \"to\": \"b\" }, \"e\": { \"from\": \"b\", \"to\": \"c\" }, \"s\": { \"from\": \"c\", \"to\": \"d\" }, \"w\": { \"from\": \"d\", \"to\": \"a\" } } }") } } };
             Assert.That(world.ApplyRoom(RoomCommand.Apply("host", "smaller", patch.ToString())).Done, Is.True);
             Assert.That(world.At(x + 3, y).T, Is.EqualTo("dirt"), "a cell it gave up");

@@ -11,10 +11,8 @@ public sealed class ApiKeyCheck
     const int MostSeconds = 20;
     const string Unreadable = "The saved key can't be read on this PC. Remove it and add it again.", Unsaved = "That key works, but it couldn't be saved here.";
 
-    /// <summary>What asks the API: the real wire, or a stand-in in a test.</summary>
     public static Func<IKeyLister> Lister { get; set; } = () => new ApiWire();
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -23,10 +21,8 @@ public sealed class ApiKeyCheck
 
     KeyCheck done;
 
-    /// <summary>Whether it's still waiting on the API.</summary>
     public bool Checking { get; private set; }
 
-    /// <summary>Starts on a typed key, or the saved key if nothing is typed. Returns at once.</summary>
     public void Start(string typed)
     {
         if (Checking) return;
@@ -36,7 +32,6 @@ public sealed class ApiKeyCheck
         new Thread(() => Volatile.Write(ref done, Run(lister, fresh))) { IsBackground = true, Name = "API key check" }.Start();
     }
 
-    /// <summary>On the main thread: how it came out once it has, and the models are kept for the picker. Null until then.</summary>
     public KeyCheck Take()
     {
         var result = Volatile.Read(ref done);

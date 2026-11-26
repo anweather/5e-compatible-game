@@ -50,7 +50,6 @@ namespace Playtest.Runner
             return RunUnity(wt, target, stamp, Say);
         }
 
-        // The bot's checkout at the commit: made the first time, else reset hard (it's only ever this tree).
         static bool Checkout(Paths paths, string wt, string target, Action<string> say)
         {
             if (Path.GetFileName(wt) != "playtest-build")
@@ -68,7 +67,6 @@ namespace Playtest.Runner
             return false;
         }
 
-        // The Asset Store packs (unity/AssetPacks.json), copied from the main checkout where missing.
         static void CopyPacks(string main, string wt, Action<string> say)
         {
             var packs = (JArray)JObject.Parse(File.ReadAllText(Path.Combine(main, "unity", "AssetPacks.json")))["packs"];

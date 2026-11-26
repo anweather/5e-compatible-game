@@ -24,20 +24,13 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>sim.json's "golf": how far a spell's force sends the ball and how much room the course has.</summary>
     public sealed class GolfParams
     {
-        /// <summary>The ball moves a cell every this many ticks.</summary>
         public int Every = 1;
-        /// <summary>Cells it rolls for each point of a spell's force push, and flies for each point of its throw.</summary>
         public int PushRoll = 5, ThrowCarry = 3;
-        /// <summary>Cells round the tee and the hole that are still the course; past them it's out of bounds.</summary>
         public int Margin = 16;
-        /// <summary>Cells more a spell with no force sends it for each level, over a point of push.</summary>
         public int LevelRoll = 2;
-        /// <summary>The ticks a player who hit the ball waits for someone else's shot.</summary>
         public int TurnTicks = 90;
-        /// <summary>Cells round a placed cup that drop the ball in; the valley's hole takes only its own cell.</summary>
         public int CupReach = 1;
 
         internal static GolfParams Parse(JToken t)
@@ -55,7 +48,6 @@ namespace Chem
         }
     }
 
-    /// <summary>Puts the ball on the tee of a hole (the tee's cell and the hole's), a new round with no strokes.</summary>
     public readonly struct GolfCommand
     {
         public GolfCommand(int teeX, int teeY, int holeX, int holeY)
@@ -73,7 +65,6 @@ namespace Chem
 
         public const string FileName = "golf.json";
 
-        /// <summary>The course in world/golf.json (tee and hole, grid cells), or null without the file.</summary>
         public static GolfCommand? Load(string worldDir)
         {
             string path = Path.Combine(worldDir, FileName);
@@ -85,21 +76,14 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// The hole being played: the tee and the hole, where the ball is, the strokes so far, whether it's in, and the way
-    /// on it: the way it's going, cells still to fly (Carry) and then to roll (Roll), and its age in ticks.
-    /// </summary>
     public sealed class GolfState
     {
         public int TeeX, TeeY, HoleX, HoleY, X, Y, Strokes, Dir, Roll, Carry, Age;
         public bool Holed;
-        /// <summary>Who hit it last, null until a player's cast has, and the tick they may hit it again though others are playing.</summary>
         public string LastBy;
         public int TurnEnds;
-        /// <summary>An act placed this round. Until both are placed one of the two is missing, and its cell is the other's.</summary>
         public bool Placed, NoBall, NoCup;
         public bool Moving => !Holed && (Roll > 0 || Carry > 0);
-        /// <summary>Both are there and the ball isn't in yet: a spell can hit it.</summary>
         public bool InPlay => !Holed && !NoBall;
         internal bool Plain => LastBy == null && !Placed;
         internal GolfState Copy() => (GolfState)MemberwiseClone();
@@ -107,32 +91,24 @@ namespace Chem
 
     public sealed partial class World
     {
-        /// <summary>What an act calls the golf ball and the cup; "ball" alone is the court's physics ball.</summary>
         public const string GolfBall = "golf-ball", GolfCup = "cup";
 
-        /// <summary>The hole being played, or null before anyone teed off.</summary>
         public GolfState Golf { get; private set; }
 
-        /// <summary>Puts the ball on the tee (startGolf in the TS): a new round, again after holing out. Between ticks, like a cast.</summary>
         public void ApplyGolf(GolfCommand command)
         {
-            FinishTick(); // commands land between whole ticks (StepSome)
+            FinishTick();
             if (!InBounds(command.TeeX, command.TeeY) || !InBounds(command.HoleX, command.HoleY)) return;
             Golf = new GolfState { TeeX = command.TeeX, TeeY = command.TeeY, HoleX = command.HoleX, HoleY = command.HoleY, X = command.TeeX, Y = command.TeeY, Dir = -1 };
             AddLog("The ball is on the tee: hole it in as few strokes as you can", LogKind.Notable);
         }
 
-        /// <summary>
-        /// A spell's force on the ball at (x, y) (hitBall in the TS): its push sets it rolling PushRoll cells a point along
-        /// dir, its throw sends it flying ThrowCarry cells a point and rolling a cell a point after. A stroke.
-        /// </summary>
         void HitBall(SpellDef s, int x, int y, int dir)
         {
             var p = Rules.Sim.Golf;
             StrokeBall(s, x, y, dir, s.ForcePush * p.PushRoll + s.ForceThrow, s.ForceThrow * p.ThrowCarry);
         }
 
-        // A spell with no force that lands on the ball: away from where it landed, or along its way when that's the ball's own cell.
         void SpellOnBall(SpellDef s, List<(int x, int y)> cells, (int x, int y) landed, int dir, int charge)
         {
             var g = Golf;
@@ -155,7 +131,6 @@ namespace Chem
             AddLog($"Stroke {g.Strokes.ToString(CultureInfo.InvariantCulture)}: the {s.Name.ToLowerInvariant()} sends the ball {DirName(dir)}");
         }
 
-        // Whether the cast's player may hit the ball: not again straight after their own shot while someone else is playing.
         bool TurnOpen(GolfState g)
         {
             if (castBy == null || castBy != g.LastBy) return true;
@@ -165,12 +140,9 @@ namespace Chem
             return false;
         }
 
-        /// <summary>Whether whoever hit the ball last is waiting for someone else's shot.</summary>
         public bool GolfWaiting(GolfState g) =>
             g.LastBy != null && Tick < g.TurnEnds && stands.Values.Any(w => w.Player != g.LastBy && !w.Down && InCourse(g, w.X, w.Y));
 
-        // An act's ball or cup on its cell, if the ground's open and the other isn't there: a new round, and the first
-        // one placed where there's no course leaves the other to come. Cells the act gave past the first aren't used.
         int PlaceGolf(string what, List<(int x, int y)> cells)
         {
             if (cells.Count == 0) return 0;
@@ -191,7 +163,6 @@ namespace Chem
             return 1;
         }
 
-        /// <summary>The ball's tick (tickGolf in the TS): a cell flown or rolled when its time comes.</summary>
         void TickGolf()
         {
             var g = Golf;
@@ -200,8 +171,6 @@ namespace Chem
             else RollBall(g);
         }
 
-        // A cell through the air: over water and hills, back off what blocks it; where it comes down it may land in the
-        // water or (on the hole) drop in.
         void Fly(GolfState g)
         {
             int nx = g.X + DirX(g.Dir), ny = g.Y + DirY(g.Dir);
@@ -219,9 +188,6 @@ namespace Chem
             if (--g.Carry == 0) Arrive(g);
         }
 
-        // A cell along the ground: climbing costs a cell of roll more for each step (or part) it rises, a drop gives
-        // one back for each whole step; what blocks it bounces it back at a cell's cost. Run out on a slope, it rolls on
-        // down the steepest way.
         void RollBall(GolfState g)
         {
             int nx = g.X + DirX(g.Dir), ny = g.Y + DirY(g.Dir);
@@ -252,7 +218,6 @@ namespace Chem
             if (g.Roll <= 0) Downhill(g);
         }
 
-        // Where the ball comes down or rolls onto: water loses it, the hole holes it. True when either did.
         bool Arrive(GolfState g)
         {
             if (InWater(At(g.X, g.Y)))
@@ -270,7 +235,6 @@ namespace Chem
             return true;
         }
 
-        // A ball that slows on a slope rolls on a cell down the steepest way (N, E, S, W on a tie); on the level it rests.
         void Downhill(GolfState g)
         {
             g.Roll = 0;
@@ -307,7 +271,6 @@ namespace Chem
                 && y >= Math.Min(g.TeeY, g.HoleY) - m && y <= Math.Max(g.TeeY, g.HoleY) + m;
         }
 
-        /// <summary>The ground's level at (x, y) in water units: the cell's elevation and the land's hills under it.</summary>
         int GroundUnits(int x, int y)
         {
             int units = ElevationUnits(At(x, y));
@@ -318,7 +281,6 @@ namespace Chem
 
         static string DirName(int dir) => dir switch { 0 => "north", 1 => "east", 2 => "south", _ => "west" };
 
-        /// <summary>The hole as text, "" before anyone teed off (so worlds without it hash as they did; golfState in the TS).</summary>
         public string GolfText()
         {
             var g = Golf;
@@ -329,10 +291,8 @@ namespace Chem
 
         static int GolfFlags(GolfState g) => (g.Placed ? 1 : 0) | (g.NoBall ? 2 : 0) | (g.NoCup ? 4 : 0);
 
-        /// <summary>FNV-1a of GolfText (part of CastHash, so of the online checksum).</summary>
         public string GolfHash() => Fnv1a.Hash(GolfText());
 
-        // The hole into a save, when there is one: tee, hole, ball, strokes, holed and the way on it.
         void SaveGolf(JObject save)
         {
             if (Golf != null) save["golf"] = GolfRow(Golf);

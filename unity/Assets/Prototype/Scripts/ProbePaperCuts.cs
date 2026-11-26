@@ -29,7 +29,6 @@ public class PaperCutsProbe : ProbeScenario
         if (village != null) yield return BurntLights(village);
     }
 
-    // A picture, then a frame before the camera moves on: ScreenCapture takes it at the frame's end.
     IEnumerator Snap(string label)
     {
         Shot(label);
@@ -39,8 +38,6 @@ public class PaperCutsProbe : ProbeScenario
 
     const string Clear = "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }";
 
-    // #1: each sign's words from the front and from behind, and whether they're drawn with the
-    // front-only, depth-tested SignText.
     IEnumerator Signs()
     {
         foreach (var name in new[] { "Defense sign words", "Defense banner words", "Tower sign words" })
@@ -63,7 +60,6 @@ public class PaperCutsProbe : ProbeScenario
         }
     }
 
-    // #2 and #3: a villager's face close up, and one sitting on a bench (where, which way).
     IEnumerator Folk(Village village, ValleyFauna fauna)
     {
         var square = village.transform.position + village.wellAt;
@@ -100,7 +96,6 @@ public class PaperCutsProbe : ProbeScenario
         else Check("sits_on_the_seat", false, "no one sat within 45 s");
     }
 
-    // #4: the house nearest the square: its roof solid, its window boxes solid, and a look at its front.
     IEnumerator House(Village village)
     {
         var square = village.transform.position + village.wellAt;
@@ -111,7 +106,6 @@ public class PaperCutsProbe : ProbeScenario
         Check("roof_solid", roofSolid, roofSolid ? "the roof has a collider" : "no collider on the roof");
         int solids = house.GetComponentsInChildren<BoxCollider>().Count(b => b.name == "Solid");
         Metric("house_solid_extras", solids);
-        // Dropped from above the roof's slope, half a metre in from the eaves, does it land on the roof?
         var t = house.transform;
         var box = house.GetComponent<BoxCollider>();
         if (box != null && roof != null)
@@ -130,7 +124,6 @@ public class PaperCutsProbe : ProbeScenario
         yield return Snap("house-close");
     }
 
-    // #5: walking at the well from beside it, does the wall stop you?
     IEnumerator Well(Village village)
     {
         var well = village.transform.position + village.wellAt;
@@ -141,7 +134,6 @@ public class PaperCutsProbe : ProbeScenario
         yield return Snap("well");
     }
 
-    // #8: is a point on the beach somewhere a wild animal may walk?
     void Coast(ValleyFauna fauna)
     {
         var ocean = Ocean.Instance;
@@ -151,7 +143,6 @@ public class PaperCutsProbe : ProbeScenario
         Check("no_deer_on_the_beach", !walkable, walkable ? "the beach is walkable for wild animals" : "the beach is off-limits to them");
     }
 
-    // #14: the island's palms and, if there is one, its south pier.
     IEnumerator Island()
     {
         var pier = GameObject.Find("South pier");
@@ -166,7 +157,6 @@ public class PaperCutsProbe : ProbeScenario
         yield return Snap("island");
     }
 
-    // #10c: at dusk, an inn whose roof is gone (as a burnt-down one's is) keeps its door light out.
     IEnumerator BurntLights(Village village)
     {
         var inn = village.GetComponentsInChildren<VillageHouse>().FirstOrDefault(h => h.GetComponentsInChildren<Light>(true).Any(l => l.name == "Door light"));
@@ -177,7 +167,7 @@ public class PaperCutsProbe : ProbeScenario
         yield return Wait(1f);
         bool litStanding = lamp.enabled;
         if (roof != null) roof.enabled = false;
-        foreach (var l in inn.GetComponentsInChildren<Light>(true)) l.enabled = false; // as ValleyChemistry does when it burns down
+        foreach (var l in inn.GetComponentsInChildren<Light>(true)) l.enabled = false;
         yield return Wait(1f);
         Check("burnt_inn_dark", litStanding && !lamp.enabled, $"lit while standing {litStanding}, lit once burnt {lamp.enabled}");
         if (roof != null) roof.enabled = true;

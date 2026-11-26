@@ -12,10 +12,8 @@ namespace Chem.Tests
     {
         static Rules R => ChemistryTests.R;
 
-        // A raider on every cell of a walled room but the caster's (a spell from self starts in front of it), each with 900 HP.
         const int Size = 31, Middle = 15, Hp = 900;
 
-        // What one cast at the room's middle, eastward, does to each raider over 90 ticks (15 s), its burning included.
         internal static int[] Dealt(string spell, string kind = "giant-spider", int charge = 1)
         {
             var w = ChemistryTests.Room(Size, Size, 7, R);

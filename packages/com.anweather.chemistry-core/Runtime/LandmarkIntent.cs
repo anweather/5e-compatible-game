@@ -14,13 +14,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One intent's file: its id, how far it reaches, and its forms by biome.</summary>
     public sealed class LandmarkIntent
     {
-        /// <summary>Where the intents live under the game's world folder.</summary>
         public const string Folder = "landmarks";
 
-        /// <summary>The form for any biome the file doesn't name.</summary>
         public const string AnyBiome = "*";
 
         const int MostUses = 8;
@@ -36,17 +33,13 @@ namespace Chem
 
         public string Id { get; }
 
-        /// <summary>How many cells across the landmark and its village may take.</summary>
         public int Footprint { get; }
 
-        /// <summary>The forms the file writes out (not the ones that only use another), in its order.</summary>
         public IEnumerable<string> Forms => by.Properties().Where(p => p.Value["use"] == null).Select(p => p.Name);
 
-        /// <summary>world/landmarks/<paramref name="id"/>.json under <paramref name="worldDir"/>.</summary>
         public static LandmarkIntent Load(string worldDir, string id) =>
             Parse(File.ReadAllText(Path.Combine(worldDir, Folder, id + ".json")));
 
-        /// <summary>An intent's text. Throws <see cref="FormatException"/> for one that can't be made.</summary>
         public static LandmarkIntent Parse(string json)
         {
             JObject doc;
@@ -60,10 +53,8 @@ namespace Chem
             return intent;
         }
 
-        /// <summary>What a form's landmark is ("great tree", "volcano", "lake"), or null for a form the file hasn't got.</summary>
         public string LandmarkOf(string form) => (string)(by[form ?? ""] as JObject)?["landmark"];
 
-        /// <summary>The form a biome takes: its own, the one it uses, or "*"'s.</summary>
         public string FormFor(string biome)
         {
             string at = by[biome ?? ""] != null ? biome : AnyBiome;
@@ -77,12 +68,6 @@ namespace Chem
             throw new FormatException($"landmark {Id}: the forms' uses go round in a circle from {biome}");
         }
 
-        /// <summary>
-        /// The rows of this intent in <paramref name="biome"/>, at a site (a world cell), from a seed. A village's house laid
-        /// out here (a climb's, a shore's) goes only where <paramref name="buildable"/> takes every cell of it; without one,
-        /// anywhere. Its two names' place ids go into <paramref name="names"/>' taken ones (the map's so far), never one
-        /// already there; without, the rolled names.
-        /// </summary>
         public LandmarkRows Make(string biome, int siteX, int siteY, int seed, Func<int, int, bool> buildable = null, PlaceNames names = null)
         {
             string form = FormFor(biome);
@@ -90,40 +75,28 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// The place ids a map has taken, and the words for where a landmark is ("Downs"). A name taken is the list's next
-    /// unused one, else the rolled one "of the" quarter ("the Elder Oak of the Downs"), numbered from 2 if that's taken too.
-    /// </summary>
     public sealed class PlaceNames
     {
         public ISet<string> Taken { get; set; }
         public string Quarter { get; set; }
     }
 
-    /// <summary>What an intent made: rows in the map files' own shapes, and the texts of those files holding only them.</summary>
     public sealed class LandmarkRows
     {
         public string Intent { get; internal set; }
         public string Form { get; internal set; }
-        /// <summary>The form's words: "a forest village by a great tree".</summary>
         public string Words { get; internal set; }
-        /// <summary>The landmark's place's name and the village's.</summary>
         public string Name { get; internal set; }
         public string VillageName { get; internal set; }
-        /// <summary>The landmark's middle and how far it reaches, in cells.</summary>
         public (int x, int y) Centre { get; internal set; }
         public int Reach { get; internal set; }
 
         public JArray Stamps { get; } = new JArray();
-        /// <summary>The villages.json recipe of a village laid as a square; null for one laid out here as rows (a climb, a shore).</summary>
         public JObject Village { get; internal set; }
         public JArray Buildings { get; } = new JArray();
-        /// <summary>things.json's chunks: {chunk, things}, by chunk row then column.</summary>
         public JArray Things { get; } = new JArray();
         public JObject Place { get; internal set; }
-        /// <summary>The village's own place when it's laid as rows (a square village's comes from villages.json); else null.</summary>
         public JObject VillagePlace { get; internal set; }
-        /// <summary>Where the village starts: a square's middle, a climb's foot, the middle of a shore's arc.</summary>
         public (int x, int y) VillageAt { get; internal set; }
 
         public string StampsJson => File("stamps", Stamps);
@@ -134,7 +107,6 @@ namespace Chem
 
         static string File(string key, JArray rows) => new JObject { [key] = rows.DeepClone() }.ToString(Formatting.None);
 
-        /// <summary>FNV-1a over the five files' texts: the golden the PC, the Mac and u2 compare.</summary>
         public uint Hash()
         {
             unchecked
@@ -151,7 +123,6 @@ namespace Chem
         }
     }
 
-    // One making: the form, the site, the turn, and a count of rolls (each a hash of the key, its kind and that count).
     sealed class LandmarkMaker
     {
         const int SaltTurn = 1, SaltName = 2, SaltVillage = 3, SaltRange = 4, SaltDirection = 5, SaltSeed = 6;
@@ -192,7 +163,6 @@ namespace Chem
             return lo + (int)(Roll(SaltRange) % (uint)(Math.Max(lo, hi) - lo + 1));
         }
 
-        // One roll whatever is taken, so the rolls after it (and a map with no repeats) stay as they were.
         string PickName(string listKey, string fallback)
         {
             var names = (row[listKey] as JArray)?.Select(t => (string)t).ToList();
@@ -201,7 +171,6 @@ namespace Chem
             return Unused(names.Skip(at).Concat(names.Take(at)).ToList());
         }
 
-        // The first of the names whose place id isn't taken (and takes it), else the first "of the" quarter, numbered.
         string Unused(IList<string> names)
         {
             var taken = Names?.Taken;
@@ -218,7 +187,6 @@ namespace Chem
             return name;
         }
 
-        // An offset from the site turned with the form: a quarter turn clockwise per step, y south.
         (int x, int y) Turned(int dx, int dy)
         {
             switch (turn)
@@ -237,7 +205,6 @@ namespace Chem
             return (siteX + dx, siteY + dy);
         }
 
-        // A seeded direction, Unit long, in integers.
         (int x, int y) Direction()
         {
             for (int tries = 0; tries < 16; tries++)
@@ -277,8 +244,6 @@ namespace Chem
             return sb.ToString().Trim('-');
         }
 
-        // ---------- the land ----------
-
         void Stamps()
         {
             int n = 0, reach = 0;
@@ -308,8 +273,6 @@ namespace Chem
             rows.Centre = centre;
             rows.Reach = reach;
         }
-
-        // ---------- the village ----------
 
         void Village()
         {
@@ -358,11 +321,6 @@ namespace Chem
             rows.Village = village;
         }
 
-        // ---------- the great tree: a stand-in from rows we have ----------
-
-        // A trunk of log wall (an octagon of walls, drawn low as the root flare), the view's own tree scaled up over it (the
-        // "great-tree" detail, rules/buildings.json), and roots of fallen tree laid out from it as roads. Joins are half
-        // cells from the site's cell, (1, 1) its middle.
         void GreatTree(JObject t)
         {
             int trunk = Pick(t["trunk"]), roots = Pick(t["roots"]);
@@ -394,7 +352,6 @@ namespace Chem
             rows.Reach = Math.Max(rows.Reach, trunk + Pick(t["root"]) + 4);
         }
 
-        // The detail the view draws as the tree: at the trunk's middle, its size, and the kind of tree when the form names one.
         static JObject GreatTreePart(JObject t, int scale)
         {
             var part = new JObject { ["kind"] = "great-tree", ["join"] = "c", ["scale"] = scale };
@@ -402,12 +359,9 @@ namespace Chem
             return part;
         }
 
-        // A Unit vector turned by whole degrees, by tables of tens of degrees and of single ones, in integers.
         static (int x, int y) Rotated(int x, int y, int degrees)
         {
-            // cos and sin of 0..350 in steps of 10, times Unit.
             int[] cos = { 1024, 1008, 962, 887, 784, 658, 512, 350, 178, 0, -178, -350, -512, -658, -784, -887, -962, -1008, -1024, -1008, -962, -887, -784, -658, -512, -350, -178, 0, 178, 350, 512, 658, 784, 887, 962, 1008 };
-            // and of 0..9 degrees, for what's left over.
             int[] fineCos = { 1024, 1024, 1023, 1023, 1022, 1020, 1018, 1016, 1014, 1011 }, fineSin = { 0, 18, 36, 54, 71, 89, 107, 125, 143, 160 };
             int whole = ((degrees % 360) + 360) % 360, step = whole / 10, left = whole % 10;
             int c = cos[step], s = cos[(step + 27) % 36];
@@ -429,9 +383,6 @@ namespace Chem
             roads[$"root-{k}"] = new JObject { ["through"] = new JArray($"r{k}a", $"r{k}b", $"r{k}c"), ["terrain"] = "deadfall", ["width"] = 1 };
         }
 
-        // ---------- villages laid out as rows: a climb up the landmark, an arc round a shore ----------
-
-        // A unit vector from one cell towards another (east when they're the same).
         static (int x, int y) Toward(int fx, int fy, int tx, int ty)
         {
             long dx = tx - fx, dy = ty - fy, length = BiomeMath.Sqrt(dx * dx + dy * dy);
@@ -445,7 +396,6 @@ namespace Chem
             return dx < 0 ? Side.West : Side.East;
         }
 
-        // A house of the village style centred on a cell, its door facing a point; stone or log by the village's stoneInTen.
         bool HouseAt(JObject v, (int x, int y) at, (int x, int y) facing, JObject size, string what, out JObject building)
         {
             var (cx, cy) = at;
@@ -466,7 +416,6 @@ namespace Chem
                 ["note"] = $"{rows.VillageName}'s {what}, by {rows.Name}",
             };
             if (stone) building["wall"] = new JObject { ["material"] = "stone" };
-            // On a slope, a flat pad cut for it, its walls one height (a climb's houses).
             if (v["pad"] is JObject pad)
             {
                 building["level"] = true;
@@ -484,7 +433,6 @@ namespace Chem
                 for (int i = 0; i < w; i++) yield return (x + i, y + j);
         }
 
-        // The village's way, laid as a road on its first house's row through these cells.
         static void Way(JObject first, IList<(int x, int y)> points, int width, bool graded = false)
         {
             if (first == null || points.Count < 2) return;
@@ -497,13 +445,10 @@ namespace Chem
                 through.Add($"way{k}");
             }
             var way = new JObject { ["through"] = through, ["terrain"] = "dirt", ["width"] = width };
-            // Cut into the slope it crosses (RoadGrade), a terrace of its own between the houses' pads.
             if (graded) way["graded"] = true;
             first["roads"] = new JObject { ["way"] = way };
         }
 
-        // Houses either side of a way that climbs from the foot towards the landmark, wandering a little, with the top house
-        // (a watch house) where it ends.
         void Climbing(JObject v, int x, int y)
         {
             var (ux, uy) = Toward(x, y, rows.Centre.x, rows.Centre.y);
@@ -530,8 +475,6 @@ namespace Chem
             Way(first, way, (int?)v["width"] ?? 2);
         }
 
-        // A way that winds part-way round the landmark from the village's foot, closing in on it slowly (a gentle grade up
-        // its lower slopes, never its top), with houses either side: one above the way on the up slope, the next below it.
         void Winding(JObject v, int x, int y)
         {
             var (cx, cy) = rows.Centre;
@@ -545,7 +488,6 @@ namespace Chem
             JObject first = null;
             for (int k = 0; k < houses; k++)
             {
-                // Halfway between the way's points, so a house never sits on a bend.
                 var (wx, wy) = OnTheWinding((cx, cy), (bx, by), (start, end), sense * span, 2 * k + 1, 2 * houses);
                 var (ux, uy) = Toward(cx, cy, wx, wy);
                 int back = Pick(v["setback"]) * (k % 2 == 0 ? -1 : 1);
@@ -554,9 +496,6 @@ namespace Chem
             Way(first, way, (int?)v["width"] ?? 2, (bool?)v["graded"] ?? false);
         }
 
-        // Houses round a shelf levelled into the landmark's lower slope, their doors to its middle, where a well house stands
-        // whose pad reaches over the whole shelf at the height of its middle; and the village's way out, a trail switchbacking
-        // up to the landmark (Trail).
         void OnAShelf(JObject v, int x, int y)
         {
             int shelf = (int?)v["shelf"] ?? 14, houses = Math.Max(2, Pick(v["houses"]));
@@ -588,8 +527,6 @@ namespace Chem
             if (row["trail"] is JObject trail) Trail(trail, (x, y), shelf, first);
         }
 
-        // The village's way out: from the shelf's edge, switchbacking up towards the landmark's middle in legs that turn one
-        // way and then the other round it, cut into the slope, to a lookout just short of its crater's rim.
         void Trail(JObject t, (int x, int y) from, int shelf, JObject village)
         {
             var (cx, cy) = rows.Centre;
@@ -624,8 +561,6 @@ namespace Chem
             Way(lookout ?? village, points, (int?)t["width"] ?? 2, (bool?)t["graded"] ?? false);
         }
 
-        // The point k of n along the winding: turned from the start's bearing, its distance from the middle eased from start
-        // to end.
         static (int x, int y) OnTheWinding((int x, int y) centre, (int x, int y) bearing, (int start, int end) reach, int degrees, int k, int n)
         {
             var (ox, oy) = Rotated(bearing.x, bearing.y, degrees * k / n);
@@ -633,8 +568,6 @@ namespace Chem
             return (centre.x + ox * r / Unit, centre.y + oy * r / Unit);
         }
 
-        // Houses on an arc round the lake, back from its shore, facing the water, with a way along the arc between them
-        // and the shore.
         void OnTheShore(JObject v, int x, int y)
         {
             var (lx, ly) = At(v["around"]);
@@ -658,8 +591,6 @@ namespace Chem
             Way(first, way, (int?)v["width"] ?? 2);
         }
 
-        // ---------- the docks: boathouses on the lake's shore, each with a dock out over the water ----------
-
         void Docks(JObject d)
         {
             var (lx, ly) = At(d["lake"]);
@@ -675,8 +606,6 @@ namespace Chem
             }
         }
 
-        // How far the lake's water reaches from its middle: where the hollow is deeper than the lake's level (Places' water,
-        // 4 land units).
         int ShoreOf(int lx, int ly)
         {
             var lake = rows.Stamps.OfType<JObject>().FirstOrDefault(s => (int)s["at"][0] == lx && (int)s["at"][1] == ly);
@@ -684,7 +613,6 @@ namespace Chem
             return deep <= 4 ? radius : (int)BiomeMath.Sqrt((long)radius * radius * (deep - 4) / deep);
         }
 
-        // A box whose front faces the lake, its front wall on the shore cell, the rest of it on dry land.
         void Boathouse(JObject d, int k, int lx, int ly, int sx, int sy)
         {
             var houses = d["house"] as JArray;
@@ -727,8 +655,6 @@ namespace Chem
             _ => "west",
         };
 
-        // ---------- houses: a box of a style at an offset, its door towards the landmark ----------
-
         void House(JObject h)
         {
             var (x, y) = At(h["at"]);
@@ -751,14 +677,11 @@ namespace Chem
             rows.Buildings.Add(building);
         }
 
-        // ---------- things ----------
-
         void Things(JObject t)
         {
             int count = Pick(t["count"]);
             for (int k = 0; k < count; k++)
             {
-                // A few tries for a cell clear of every row, and of the things already put down; none, and it isn't put.
                 for (int tries = 0; tries < 12; tries++)
                 {
                     var (x, y) = (string)t["near"] == "docks" && docks.Count > 0 ? ByADock() : OnARing(t);
@@ -769,7 +692,6 @@ namespace Chem
             }
         }
 
-        // Off every row's block (the cells its joins span) and every thing put down.
         bool Clear(int x, int y)
         {
             if (things.Any(t => t.x == x && t.y == y)) return false;
@@ -784,7 +706,6 @@ namespace Chem
             return true;
         }
 
-        // Inside a row's block: for one with a way or roots (a long road), only near a house's own corners or the road's points.
         static bool Near(JObject b, int x, int y)
         {
             if (b["roads"] == null) return true;
@@ -799,12 +720,10 @@ namespace Chem
             var ring = t["ring"] as JArray;
             int r = ring == null ? 12 : Pick(ring);
             var (ux, uy) = Direction();
-            // "near": on the site's side of the ring, where the village is.
             if ((string)t["half"] == "near" && (long)ux * (siteX - cx) + (long)uy * (siteY - cy) < 0) (ux, uy) = (-ux, -uy);
             return (cx + ux * r / Unit, cy + uy * r / Unit);
         }
 
-        // Just beside a boathouse, on a side away from the water.
         (int x, int y) ByADock()
         {
             var (ax, ay, w, h) = docks[(int)(Roll(SaltRange) % (uint)docks.Count)];
@@ -827,16 +746,12 @@ namespace Chem
             }
         }
 
-        // ---------- the place ----------
-
-        // A village laid as rows names its own place: the block its houses stand in.
         void VillagePlaceOf()
         {
             if (rows.Village != null) return;
             string id = Slug(rows.VillageName);
             var mine = rows.Buildings.OfType<JObject>().Where(b => ((string)b["id"]).StartsWith(id + "#", StringComparison.Ordinal)).ToList();
             if (mine.Count == 0) return;
-            // Its houses' own cells and a cell round each, row by row: a shore's arc has its lake inside its block.
             var cells = new SortedDictionary<int, SortedSet<int>>();
             foreach (var b in mine)
             {

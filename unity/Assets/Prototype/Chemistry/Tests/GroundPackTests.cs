@@ -30,8 +30,6 @@ namespace Chem.Tests
             };
         }
 
-        // A map's baked ground says what it was baked from (MapInputs): an edit to a stamp, a village, a row, a puzzle, the
-        // golf or a theme that wasn't baked (Prototype > Bake Map Data) fails here, not as old ground on screen.
         [Test]
         public void EveryBakedMapWasBakedFromItsInputsAsTheyAre()
         {

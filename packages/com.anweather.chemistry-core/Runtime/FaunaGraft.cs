@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S1168 // a JToken is a collection to the analyser; null here means "no such row"
+#pragma warning disable S1168
 
 namespace Chem
 {
@@ -21,16 +21,10 @@ namespace Chem
         internal const string FromKey = "from";
         internal static readonly string[] DonorKeys = { "species", "take", "drop", "at", "dir", "scale", "coat" };
         internal static readonly string[] Sections = { "body", "move", "behave" };
-        // What a graft that gives no colours of its own wears: its first donor's.
         static readonly string[] Colours = { "coat", "coats", "hair", "vary" };
 
-        /// <summary>Whether a row is built from others: "from" on it, or on its body, move or behave.</summary>
         internal static bool IsGraft(JObject row) => row?[FromKey] != null || Sections.Any(k => row?[k]?[FromKey] != null);
 
-        /// <summary>
-        /// The species' row with its grafts flattened, or the row itself if it has none; null if there's no row.
-        /// What can't be built (an unknown donor or slot, a loop) is left out and said in <paramref name="errors"/>.
-        /// </summary>
         internal static JObject Flatten(JObject species, string id, List<string> errors = null) =>
             new Flattening(species, errors).Row(id, true);
 
@@ -80,7 +74,6 @@ namespace Chem
                 return flat;
             }
 
-            // The row a donor's slots, body and gait come from: a variant's are the species it's built on.
             JObject Base(string id, bool top)
             {
                 for (int i = 0; i <= FaunaTables.MaxVariantDepth && id != null; i++)
@@ -124,7 +117,6 @@ namespace Chem
                 }
             }
 
-            // The donor's slots that come: those taken and every slot below them, or all but those dropped and theirs.
             HashSet<string> Pick(string id, string name, List<JProperty> all, JObject donor, bool top)
             {
                 var take = Names(donor["take"]);
@@ -179,7 +171,6 @@ namespace Chem
             }
         }
 
-        // Where a donor's slots go: its roots moved together so the first sits at "at", turned by "dir", all grown by "scale".
         sealed class Placing
         {
             readonly double[] shift, turn;
@@ -215,7 +206,6 @@ namespace Chem
 
             public void Below(JObject slot) => Grow(slot, true);
 
-            // A slot below another sits metres from its end, so it moves out as its parent grows.
             void Grow(JObject slot, bool below)
             {
                 if (Math.Abs(scale - 1) < 1e-9) return;
@@ -227,7 +217,6 @@ namespace Chem
 
             static bool IsNumber(JToken t) => t != null && (t.Type == JTokenType.Integer || t.Type == JTokenType.Float);
 
-            // A triple of numbers, or null where there's none to read.
             static double[] Triple(JToken t) => t is JArray a && a.Count == 3 && a.All(IsNumber) ? a.Select(x => (double)x).ToArray() : null;
         }
     }

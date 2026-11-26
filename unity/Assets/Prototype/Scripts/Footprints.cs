@@ -12,15 +12,11 @@ using UnityEngine.Rendering;
 // own, and the chemistry never knows.
 public class Footprints : MonoBehaviour
 {
-    /// <summary>Unlit, alpha-blended and tinted by vertex colour (ChemYardBuilder makes it).</summary>
     public Material material;
 
     const int Max = 2000;
-    /// <summary>Animals leave prints only this close to the camera.</summary>
     const float AnimalReach = 50f;
-    /// <summary>A wizard's stride, in metres; an animal's scales with its size.</summary>
     const float Stride = 0.6f;
-    /// <summary>Seconds a print lasts in falling snow, and once the snow has stopped.</summary>
     const float LifeSnowing = 45f, LifeSettled = 300f;
     const float RebuildEvery = 0.2f;
     static readonly Color Shadow = new(0.42f, 0.5f, 0.66f, 0.7f);
@@ -53,7 +49,6 @@ public class Footprints : MonoBehaviour
     ValleyFauna fauna;
     float nextRebuild, nextLook;
 
-    /// <summary>Prints on the ground now, and how many of them are wizards', for the probe.</summary>
     public int Count => count;
     public int WizardPrints { get; private set; }
 
@@ -121,7 +116,6 @@ public class Footprints : MonoBehaviour
             Graphics.RenderMesh(new RenderParams(drawn) { shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false }, mesh, 0, Matrix4x4.identity);
     }
 
-    // The animals moving near the camera.
     void WalkAnimals(World world)
     {
         var cam = Camera.main;
@@ -137,7 +131,6 @@ public class Footprints : MonoBehaviour
         }
     }
 
-    // A print each stride on snowy ground, left and right in turn.
     void Walk(World world, Dictionary<int, Walker> walkers, int key, Vector3 at, Vector3 forward, float size)
     {
         if (!walkers.TryGetValue(key, out var w))
@@ -158,7 +151,6 @@ public class Footprints : MonoBehaviour
         var side = Vector3.Cross(Vector3.up, forward) * ((w.left ? -0.12f : 0.12f) * size);
         var p = at + side;
         float y = grid.GroundAt(p);
-        // The slope under the print, from the ground a little either side.
         float dx = grid.GroundAt(p + Vector3.right * 0.3f) - grid.GroundAt(p - Vector3.right * 0.3f);
         float dz = grid.GroundAt(p + Vector3.forward * 0.3f) - grid.GroundAt(p - Vector3.forward * 0.3f);
         var up = new Vector3(-dx / 0.6f, 1f, -dz / 0.6f).normalized;
@@ -176,7 +168,6 @@ public class Footprints : MonoBehaviour
         count++;
     }
 
-    // Animals despawn; drop the ones not seen for a while.
     void Forget(Dictionary<int, Walker> walkers)
     {
         stale.Clear();
@@ -185,7 +176,6 @@ public class Footprints : MonoBehaviour
         foreach (int k in stale) walkers.Remove(k);
     }
 
-    // Every print's quad, fading toward the end of its life; gone where its snow has melted.
     void Rebuild(World world)
     {
         bool snowing = world.Weather.Snow > 0;

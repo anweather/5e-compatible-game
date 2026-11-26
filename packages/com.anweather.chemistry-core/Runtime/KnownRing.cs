@@ -11,16 +11,13 @@ using System.Threading.Tasks;
 
 namespace Chem
 {
-    /// <summary>The known chunks round the characters, for the view's far ring.</summary>
     public sealed class KnownRing
     {
         readonly ChunkGen gen;
         public readonly int Sight, Know;
-        // Every chunk worked out so far, shown or not (a sea chunk's neighbours are read to see whether it touches land).
         readonly Dictionary<int, KnownChunk> made = new Dictionary<int, KnownChunk>();
         readonly Dictionary<int, KnownChunk> shown = new Dictionary<int, KnownChunk>();
         List<KnownChunk> ordered = new List<KnownChunk>();
-        // The chunks within know and past sight of every character, in chunk order.
         List<int> wanted = new List<int>();
         (int x, int y)[] characters = Array.Empty<(int, int)>();
         Task<List<KnownChunk>> job;
@@ -38,25 +35,16 @@ namespace Chem
             Know = know;
         }
 
-        /// <summary>Goes up each time the known chunks change, so the view can poll it.</summary>
         public int Version { get; private set; }
 
-        /// <summary>Whether chunks are being worked out on the worker.</summary>
         public bool Busy => job != null;
 
-        /// <summary>The known chunks, in chunk order (north to south, west to east).</summary>
         public IReadOnlyList<KnownChunk> Chunks => ordered;
 
-        /// <summary>Known chunk (<paramref name="cx"/>, <paramref name="cy"/>), if it's known now (x modulo the width where the map wraps).</summary>
         public bool TryGet(int cx, int cy, out KnownChunk chunk) => shown.TryGetValue(Id(cx, cy), out chunk);
 
-        /// <summary>The chunk id the ring keys by: <c>cy × ChunksW + cx</c>, cx taken modulo the width where the map wraps.</summary>
         public int Id(int cx, int cy) => gen.WrapChunkY(cy) * gen.ChunksW + gen.WrapChunk(cx);
 
-        /// <summary>
-        /// Where the characters stand now (map chunks), at a tick boundary: the chunks they know follow, worked out on the
-        /// worker and shown from a later <see cref="Handover"/>.
-        /// </summary>
         public void Want(IEnumerable<(int x, int y)> characterChunks)
         {
             var now = characterChunks.Select(c => (x: gen.WrapChunk(c.x), y: gen.WrapChunkY(c.y))).Distinct().OrderBy(c => c.y).ThenBy(c => c.x).ToArray();
@@ -68,16 +56,11 @@ namespace Chem
                     for (int cx = gen.WrapX ? x - Know : Math.Max(0, x - Know); cx <= (gen.WrapX ? x + Know : Math.Min(gen.ChunksW - 1, x + Know)); cx++)
                         if (Nearest(gen.WrapChunk(cx), gen.WrapChunkY(cy)) > Sight) near.Add(Id(cx, cy));
             wanted = near.ToList();
-            // Forget what's past every character's ring and the chunk beyond it.
             foreach (int id in made.Keys.Where(id => Nearest(id % gen.ChunksW, id / gen.ChunksW) > Know + 1).ToList()) made.Remove(id);
             dirty = true;
             Start();
         }
 
-        /// <summary>
-        /// At a tick boundary: takes what the worker has finished and shows the known chunks it decides, in chunk order;
-        /// false if nothing changed.
-        /// </summary>
         public bool Handover()
         {
             if (job != null && job.IsCompleted)
@@ -93,7 +76,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Works out everything wanted now, on this thread, and shows it (at load, and in tests).</summary>
         public void Fill()
         {
             job?.Wait();
@@ -126,7 +108,6 @@ namespace Chem
             Version++;
         }
 
-        // Whether a sea chunk has a chunk beside it that isn't all sea; decided is false while a neighbour isn't worked out.
         bool TouchesLand(KnownChunk k, out bool decided)
         {
             decided = true;
@@ -152,7 +133,6 @@ namespace Chem
                 }
         }
 
-        // The wanted chunks not worked out yet, in chunk order.
         List<int> Missing() => wanted.Where(id => !made.ContainsKey(id)).ToList();
 
         void Start()
@@ -166,8 +146,6 @@ namespace Chem
             job = Task.Run(() => Work(missing, have, want));
         }
 
-        // Works out the chunks (and, for each that's all sea, the neighbours that say whether it touches land); reads only
-        // the generator and its own copies of what's made and wanted, so it runs on any thread.
         List<KnownChunk> Work(List<int> ids, Dictionary<int, KnownChunk> have, List<int> want)
         {
             var mine = new Dictionary<int, KnownChunk>(have);
@@ -181,7 +159,6 @@ namespace Chem
                 done.Add(k);
                 return k;
             }
-            // The chunks themselves on every core (each is a pure function of where it is), kept in chunk order.
             var first = new KnownChunk[ids.Count];
             Parallel.For(0, ids.Count, n => first[n] = gen.Know(ids[n] % gen.ChunksW, ids[n] / gen.ChunksW));
             foreach (var k in first)

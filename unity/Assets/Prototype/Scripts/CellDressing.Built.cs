@@ -6,14 +6,12 @@ using UnityEngine;
 // them reads as separate things, not a row of tiles.
 public sealed partial class CellDressing
 {
-    // Each rock model's size and where its mesh sits, measured once.
     static readonly System.Collections.Generic.Dictionary<GameObject, Bounds> RockBounds = new();
 
     static readonly Color Iron = new(0.30f, 0.29f, 0.28f);
     static readonly Color Bronze = new(0.45f, 0.32f, 0.18f);
     static readonly Color Rusted = new(0.42f, 0.22f, 0.12f);
 
-    // A bridge's deck: boards across the cell, uneven and with gaps, on two beams.
     void DressPlanks(Transform root, Vector3 surface, Color color, System.Random rng, int x, int y)
     {
         const int boards = 5;
@@ -32,16 +30,11 @@ public sealed partial class CellDressing
         }
     }
 
-    // An iron (now and then bronze) plate lying on the ground: sized, shifted, turned and tilted a little, a
-    // raised face on a thicker rim, and a rivet at each corner. A rusted one (metal left wet, materials.json
-    // rust) is the same plate gone orange-brown, flaking and dull.
     void DressPlate(Transform root, Vector3 surface, Color iron, System.Random rng, int x, int y, bool rusted = false)
     {
-        // A run of plates mixes in a quarter of bronze; a rusted one is only rust.
         var color = rng.NextDouble() < 0.25 && !rusted ? Bronze : iron;
         var plate = new GameObject("Plate").transform;
         plate.SetParent(root, false);
-        // Shifted off the cell's centre too, so a run of plates is a scatter, not a tiled path.
         var shift = new Vector3(Jitter(rng, 0.1f), 0f, Jitter(rng, 0.1f)) * CellSize;
         plate.SetPositionAndRotation(surface + shift + Vector3.up * 0.03f, Quaternion.Euler(Jitter(rng, 2f), Jitter(rng, 20f), Jitter(rng, 2f)));
         float w = CellSize * (0.7f + 0.2f * (float)rng.NextDouble()), d = CellSize * (0.66f + 0.22f * (float)rng.NextDouble());
@@ -56,10 +49,6 @@ public sealed partial class CellDressing
         }
     }
 
-    /// <summary>
-    /// Hot metal's glow (Cell.Heat, the fire-heat reaction): 0 cold to 1 just heated, from dull red to
-    /// orange, on the plate's own material through its emission (no new objects). Rusted plates glow too.
-    /// </summary>
     public void Glow(GameObject dressing, float heat)
     {
         if (dressing == null) return;
@@ -74,7 +63,6 @@ public sealed partial class CellDressing
 
     static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
 
-    // A part of a plate, placed and sized in the plate's own (turned) frame.
     static GameObject PlatePart(Transform plate, PrimitiveType type, Vector3 local, Vector3 scale)
     {
         var go = Primitives.Visual(type);
@@ -84,8 +72,6 @@ public sealed partial class CellDressing
         return go;
     }
 
-    // Worn metal: one shared metallic material (another, rough and barely metallic, for rust), each
-    // part's shade (some rust in it) per cell. Both take hot metal's glow (Glow): emission on, black.
     void PaintMetal(Renderer r, Color color, int x, int y, bool rusted = false)
     {
         var m = rusted ? materials.Metal("Rusted plate", Color.white, 0.12f, 0.2f) : materials.Metal("Plate", Color.white, 0.45f, 0.75f);
@@ -95,10 +81,6 @@ public sealed partial class CellDressing
         UrpMaterials.SetColor(r, tint, Color.Lerp(color, Rusted, (rusted ? 0.6f : 0.35f) * n) * (0.85f + 0.3f * n));
     }
 
-    // A raised wall: a rock model per square, big enough to cover the square's face from below the
-    // wall's foot to just over its top (the terrain's own steep sides stretch their texture), and
-    // now and then a smaller stone on top, each turned and sized per cell so a run of them reads as
-    // one rocky ridge. Rough shapes stand in without the terrain pack's rocks.
     void DressWall(Transform root, Vector3 surface, int steps, int x, int y)
     {
         var rocks = grid.wallRocks;
@@ -117,15 +99,12 @@ public sealed partial class CellDressing
         Rock(root, stones[rng.Next(stones.Length)], top, CellSize * (0.5f + 0.2f * (float)rng.NextDouble()), 0.3f + 0.25f * (float)rng.NextDouble(), rng);
     }
 
-    // A rock model stood on <paramref name="foot"/>, turned about the vertical, scaled to about
-    // <paramref name="width"/> across and <paramref name="height"/> high.
     internal static GameObject Rock(Transform root, GameObject prefab, Vector3 foot, float width, float height, System.Random rng)
     {
         if (prefab == null) return null;
         var b = BoundsOf(prefab);
         var rock = Object.Instantiate(prefab, root);
         var turn = Quaternion.Euler(0f, rng.Next(360), 0f);
-        // The bounds are as the prefab stands (its root's own scale in them), so the root's scale is multiplied, not replaced.
         var fit = new Vector3(width / Mathf.Max(0.01f, b.size.x), height / Mathf.Max(0.01f, b.size.y), width / Mathf.Max(0.01f, b.size.z));
         rock.transform.localScale = Vector3.Scale(prefab.transform.localScale, fit);
         rock.transform.SetPositionAndRotation(foot - turn * Vector3.Scale(new Vector3(b.center.x, b.min.y, b.center.z), fit), turn);
@@ -151,21 +130,17 @@ public sealed partial class CellDressing
         return b;
     }
 
-    // Without the pack's rocks: rough crags and boulders over the wall's top and down its sides.
     void DressWallShapes(Transform root, Vector3 surface, Color color, int x, int y)
     {
         var rng = new System.Random(x * 15485863 + y * 32452843);
-        // Weathered grey, darker than the rock's own colour, so the crags read as stone and not as pale boxes.
         color = Color.Lerp(color, new Color(0.36f, 0.35f, 0.33f), 0.6f);
         int count = 4 + rng.Next(3);
         for (int i = 0; i < count; i++)
         {
             var off = new Vector3(Jitter(rng, 0.62f), 0f, Jitter(rng, 0.62f)) * CellSize;
-            // Toward the cell's edge a crag sits lower, over the slope.
             float edge = Mathf.Max(Mathf.Abs(off.x), Mathf.Abs(off.z)) / (CellSize * 0.62f);
             float size = 0.4f + 0.55f * (float)rng.NextDouble();
             var shape = rng.NextDouble() < 0.6 ? PrimitiveType.Sphere : PrimitiveType.Cube;
-            // Half sunk into the wall's top, lower still toward its edge.
             var at = surface + off + Vector3.up * (size * 0.05f - 0.45f * edge * edge);
             var crag = Part(root, shape, at, new Vector3(size, size * (0.5f + 0.4f * (float)rng.NextDouble()), size * (0.7f + 0.5f * (float)rng.NextDouble())), "Stone", color);
             crag.transform.rotation = Quaternion.Euler(Jitter(rng, 30f), rng.Next(360), Jitter(rng, 30f));
@@ -173,9 +148,6 @@ public sealed partial class CellDressing
         }
     }
 
-    // A fallen tree: the valley's own tree that stood here (ValleyChemistry.FelledTree), laid on
-    // its side with its torn-up root ball at its foot, fallen a different way per cell; a trunk,
-    // a root ball and a few clumps of leaves without one.
     void DressDeadfall(Transform root, Vector3 surface, System.Random rng, Color color, int x, int y)
     {
         var fall = Quaternion.Euler(0f, rng.Next(360), 0f);
@@ -186,7 +158,6 @@ public sealed partial class CellDressing
         {
             var tree = Object.Instantiate(prefab, root);
             tree.name = "Fallen " + prefab.name;
-            // Tipped over toward its fall, lying a little above the ground on its branches.
             tree.transform.SetPositionAndRotation(surface + Vector3.up * 0.3f, fall * Quaternion.Euler(86f, 0f, 0f));
             tree.transform.localScale = Vector3.Scale(prefab.transform.localScale, scale);
             Untip(tree);
@@ -205,8 +176,6 @@ public sealed partial class CellDressing
         }
     }
 
-    // A tree model on its side: no colliders, and not the far LOD (a picture of a standing tree,
-    // which would stand up again in the distance).
     static void Untip(GameObject tree)
     {
         foreach (var col in tree.GetComponentsInChildren<Collider>()) Object.Destroy(col);
@@ -220,6 +189,5 @@ public sealed partial class CellDressing
         lod.SetLODs(kept);
     }
 
-    // A random value in -range..range.
     static float Jitter(System.Random rng, float range) => ((float)rng.NextDouble() * 2f - 1f) * range;
 }

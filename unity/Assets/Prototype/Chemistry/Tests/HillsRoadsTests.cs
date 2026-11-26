@@ -41,7 +41,6 @@ namespace Chem.Tests
 
         int Squares => roads.SquaresW * roads.SquaresH;
 
-        // The way a side faces, in world squares.
         static (int dx, int dy) Step(int side) => side switch { 0 => (0, -1), 1 => (1, 0), 2 => (0, 1), _ => (-1, 0) };
 
         int Neighbour(int i, int side)
@@ -65,7 +64,6 @@ namespace Chem.Tests
                 for (int s = 0; s < 4; s++)
                     if (roads.SideOf(i, s).kind != HillsRoads.None && seen.Add(Neighbour(i, s))) open.Enqueue(Neighbour(i, s));
             }
-            // Every world square but the massif's wild ones, which no lesser road reaches (HillsMassifTests).
             var massif = map.Hills.Massif;
             int wild = 0;
             for (int i = 0; i < Squares; i++)
@@ -81,7 +79,6 @@ namespace Chem.Tests
             }
             TestContext.Out.WriteLine($"ROADS {Squares - wild} world squares on the network, {wild} wild in the massif's ring");
             Assert.That(wild, Is.LessThanOrEqualTo(12));
-            // Main roads: every side along their row (column), the seam's too.
             foreach (int r in roads.MainRows)
                 for (int sx = 0; sx < roads.SquaresW; sx++) Assert.That(roads.SideOf(r * roads.SquaresW + sx, 1).kind, Is.EqualTo(HillsRoads.Main), $"row {r} at {sx}");
             foreach (int c in roads.MainColumns)
@@ -108,19 +105,15 @@ namespace Chem.Tests
                     int j = Neighbour(i, s);
                     Assert.That(roads.SideOf(i, s), Is.EqualTo(roads.SideOf(j, (s + 2) % 4)), $"square {i} side {s}");
                     if (roads.SideOf(i, s).kind == HillsRoads.None) continue;
-                    // The two arms start at the one point: the slot's middle, on the side between them.
                     var a = roads.ArmsOf(i).Single(x => x.Side == s);
                     var b = roads.ArmsOf(j).Single(x => x.Side == (s + 2) % 4);
                     long dx = (long)Step(s).dx * sq, dy = (long)Step(s).dy * sq;
                     Assert.That((a.X[0], a.Y[0]), Is.EqualTo((b.X[0] + dx * BiomeMath.One, b.Y[0] + dy * BiomeMath.One)), $"square {i} side {s}: the arms meet");
-                    // Each leaves its side square on, so the road runs straight over it.
                     long across = s % 2 == 0 ? a.X[1] - a.X[0] : a.Y[1] - a.Y[0], inward = s % 2 == 0 ? a.Y[1] - a.Y[0] : a.X[1] - a.X[0];
                     Assert.That(Math.Abs(across) * 4, Is.LessThan(Math.Abs(inward)), $"square {i} side {s}: square on");
                 }
         }
 
-        // Every cell along a main road's line, at every cell step, once round the torus and a little past its start again (a
-        // world on), so the walk goes over the seam.
         IEnumerable<(int x, int y)> Along(bool alongRow, int index)
         {
             var path = roads.Route(alongRow, index);
@@ -155,14 +148,11 @@ namespace Chem.Tests
                 }
                 TestContext.Out.WriteLine($"ROADS main {(alongRow ? "row" : "column")} {index}: {cells} cells ({cells * 1.5 / 1000:0.0} km), {off} off the road, steepest {steepest} land units a cell, {crossedSeam} seam crossings");
                 Assert.That(off, Is.Zero, "every cell on its line is road");
-                // The grade limit is 12% (1.44 land units a cell); a diagonal step of the walk can move the line's nearest
-                // point two cells, so up to 4 between neighbours where the land climbs at nearly the limit.
                 Assert.That(steepest, Is.LessThanOrEqualTo(4), "within the grade along, through the massif's passes too");
                 Assert.That(crossedSeam, Is.EqualTo(1), "once round: over its seam once");
             }
         }
 
-        // The chunk a map cell is in, folded.
         (int cx, int cy) ChunkOf(int x, int y) => (PlanGrid.Mod(x, map.Gen.CellsW) / ChunkGen.Size, map.Gen.WrapCellY(y) / ChunkGen.Size);
 
         [Test]
@@ -186,17 +176,13 @@ namespace Chem.Tests
                     var c = ChunkOf(p.x, p.y);
                     if (was is { } q && ChunkOf(q.x, q.y) != c)
                     {
-                        // The line steps from one chunk into the next: both cells are road in their own chunk, and level.
                         var a = Chunk(ChunkOf(q.x, q.y));
                         var b = Chunk(c);
                         edges++;
                         if (Math.Abs(a.X - b.X) > 1 || Math.Abs(a.Y - b.Y) > 1) seams++;
-                        // Road, or a ford's water where it crosses a river (HillsRiversTests).
                         Assert.That(a.Cells[Local(q.x, q.y)] is '.' or 'r', Is.True, $"({q.x}, {q.y}) in chunk ({a.X}, {a.Y})");
                         Assert.That(b.Cells[Local(p.x, p.y)] is '.' or 'r', Is.True, $"({p.x}, {p.y}) in chunk ({b.X}, {b.Y})");
                         worst = Math.Max(worst, Math.Abs(a.Land[Local(q.x, q.y)] - b.Land[Local(p.x, p.y)]));
-                        // Every cell of both chunks' facing edges is what the land is there, cell by cell: a chunk reads
-                        // every road that reaches it, from its own side and across the seam.
                         for (int k = 0; k < s; k++)
                             foreach (var (ch, i, j) in new[] { (a, 0, k), (a, s - 1, k), (a, k, 0), (a, k, s - 1), (b, 0, k), (b, s - 1, k), (b, k, 0), (b, k, s - 1) })
                             {
@@ -218,7 +204,6 @@ namespace Chem.Tests
         {
             var gen = map.Gen;
             int s = ChunkGen.Size, roadCells = 0, worstRoad = 0, worst = 0;
-            // The chunks round the spawn's junction and its two seams.
             for (int cy = 84; cy < 90; cy++)
                 for (int cx = 100; cx < 108; cx++)
                 {
@@ -260,7 +245,6 @@ namespace Chem.Tests
                 again[chunks.Count - 1 - k] = other.Gen.Make(cx, cy).Hash;
             });
             for (int k = 0; k < chunks.Count; k++) Assert.That(again[k], Is.EqualTo(first[chunks[k]]), $"chunk {chunks[k]}");
-            // Known chunks sample the same land, roads in it.
             var (kx, ky) = ChunkOf(6880, 5601);
             var known = map.Gen.Know(kx, ky);
             var made = map.Gen.Make(kx, ky);
@@ -304,7 +288,6 @@ namespace Chem.Tests
             var host = Peer(hostSource);
             Assert.That(hostSource.Made, Is.LessThan(60), "loading lays nothing for the roads: only the spawn's reach is made");
             var other = Peer(Source());
-            // Along the main road from the spawn, east over the seam, a fire bolt now and then onto the road ahead.
             var path = Along(true, roads.MainRows[1]).Select(p => (x: PlanGrid.Mod(p.x, host.W), y: map.Gen.WrapCellY(p.y))).ToList();
             int from = path.FindIndex(p => p.x == 6880);
             Assert.That(from, Is.GreaterThanOrEqualTo(0));

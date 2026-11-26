@@ -9,7 +9,6 @@ public class DressingSlide : MonoBehaviour
     Vector3 from, to;
     float t;
 
-    /// <summary>Slides <paramref name="part"/>, measured from where it is now, from one offset to the other.</summary>
     public static void Start(Transform part, Vector3 from, Vector3 to)
     {
         var slide = part.gameObject.AddComponent<DressingSlide>();

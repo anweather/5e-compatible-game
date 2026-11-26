@@ -14,17 +14,13 @@ namespace Chem
     public sealed partial class World
     {
         readonly List<Raider> raiders = new List<Raider>();
-        // Reused by TickRaiders so a tick allocates little.
         readonly List<Raider> raiderScratch = new List<Raider>();
         readonly List<string> statusScratch = new List<string>();
 
-        /// <summary>The raiders on the board, oldest first (the sandbox's entities, for the defense field).</summary>
         public IReadOnlyList<Raider> Raiders => raiders;
 
-        /// <summary>The next entity id (the sandbox's nextId).</summary>
         public int NextEntityId { get; private set; } = 1;
 
-        /// <summary>The raider standing on a square, or null (entityAt in the TS).</summary>
         public Raider RaiderAt(int x, int y)
         {
             x = FoldX(x);
@@ -33,11 +29,6 @@ namespace Chem
             return null;
         }
 
-        /// <summary>
-        /// Puts a raider of a kind on a square with the given hit points (spawn in the TS, minus its
-        /// blocking check: the gate is never refused). Null if the kind isn't an entity or someone
-        /// stands there.
-        /// </summary>
         public Raider SpawnRaider(string kind, int x, int y, int hp)
         {
             if (!InBounds(x, y) || RaiderAt(x, y) != null || Rules.Entity(kind) == null) return null;
@@ -46,10 +37,6 @@ namespace Chem
             return r;
         }
 
-        /// <summary>
-        /// An element arriving at a raider (applyEntityElement in the TS). Returns the damage
-        /// multiplier its state adds (wet + lightning = 2).
-        /// </summary>
         int ApplyRaiderElement(Raider r, string element, bool direct)
         {
             var def = Rules.Entity(r.Kind);
@@ -66,11 +53,6 @@ namespace Chem
             return mul;
         }
 
-        /// <summary>
-        /// A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only
-        /// with the material's flammability and lasts its fuel, both less its soak.dampens while the thing
-        /// is wet; 0 when it didn't catch. (The TS's materialBurn.)
-        /// </summary>
         int MaterialBurn(Raider r, EntityDef def, string status, int ticks)
         {
             var m = def.MaterialDef;
@@ -80,10 +62,6 @@ namespace Chem
             return DampFuel(m.Fuel ?? ticks, dryness);
         }
 
-        /// <summary>
-        /// A statusOf effect (react.ts materialStatus): the status the verb gives (burn burning, freeze frozen,
-        /// soak wet), for as many ticks as the thing's material says (flesh burns 9, bone not at all).
-        /// </summary>
         static void MaterialStatus(Raider r, EntityDef def, string verb)
         {
             int ticks = def.MaterialDef?.StatusTicks(verb) ?? 0;
@@ -99,7 +77,6 @@ namespace Chem
             return def.Components.HasAll(cond.Has) && !def.Components.HasAny(cond.Lacks);
         }
 
-        // Sets and clears the effect's statuses; returns its damage multiplier (1 for none).
         int RunEntityEffect(Raider r, EntityDef def, EntityEffect eff)
         {
             foreach (var kv in eff.Status)
@@ -112,12 +89,6 @@ namespace Chem
             return eff.DamageMul != 0 ? eff.DamageMul : 1;
         }
 
-        /// <summary>
-        /// Hurts a raider (damage in the TS): <paramref name="element"/> (or null) doubles the damage
-        /// if it's weak to it and halves it (rounded up) if it resists. At 0 HP it's defeated; with the
-        /// sim's status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it; if the
-        /// material ice cracks, only the second: the first leaves it cracked for as long as it stays frozen.
-        /// </summary>
         void DamageRaider(Raider r, int amount, string cause, string element)
         {
             amount = amount * castPower / 100;
@@ -139,7 +110,6 @@ namespace Chem
             if (r.Hp <= 0) DefeatRaider(r);
         }
 
-        // The first hit on a frozen raider of cracking ice: it cracks, and takes no harm yet.
         bool CracksFirst(Raider r, string frozen)
         {
             if (r.StatusOf(CrackedStatus) > 0 || !(FrozenWater() is TerrainDef ice) || !ice.Cracks) return false;
@@ -148,7 +118,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Damage after a raider's weaknesses and resistances (scaleDamage in the TS).</summary>
         static int Scaled(EntityDef def, string element, int amount)
         {
             var raider = def.Raider;
@@ -165,18 +134,12 @@ namespace Chem
             AddLog($"{Rules.Entity(r.Kind).Name} {how}", LogKind.Hurt);
         }
 
-        /// <summary>Takes every raider off the board (a lost defense, a restart), without a word.</summary>
         void ClearRaiders()
         {
             foreach (var r in raiders) r.Alive = false;
             raiders.Clear();
         }
 
-        /// <summary>
-        /// A spell landing (landSpell in the TS): a shoving spell's damage hits the raiders in its
-        /// squares first, furthest first (they stand their ground); the rest hurt the creature in
-        /// each square after their element lands there (see LandOnRaider).
-        /// </summary>
         void BlastRaiders(SpellDef s, List<(int x, int y)> cells, int x, int y)
         {
             if (s.Push <= 0 || raiders.Count == 0) return;
@@ -196,7 +159,6 @@ namespace Chem
                 if (s.Damage.Length == 2) DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
         }
 
-        /// <summary>A non-shoving damage spell's hit on the creature in one square, after its element landed there.</summary>
         void LandOnRaider(SpellDef s, int cx, int cy)
         {
             if (s.Push > 0 || s.Damage.Length != 2) return;
@@ -214,7 +176,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The way from a blast's middle out through (dx, dy) off it, along the longer axis, east or west on a tie; north at the middle (awayDir in the TS).</summary>
         static int AwayDir(int dx, int dy)
         {
             if (dx == 0 && dy == 0) return 0;
@@ -222,10 +183,6 @@ namespace Chem
             return dy > 0 ? 2 : 0;
         }
 
-        /// <summary>
-        /// A blast's shove on a raider (shoveRaider in the TS: a dust flash): force less its mass, plus 1, cells along dir,
-        /// stopping at a wall, an inactive chunk or another raider.
-        /// </summary>
         void ShoveRaider(Raider r, int dir, int force)
         {
             int dist = force - Rules.Entity(r.Kind).Mass + 1;
@@ -238,12 +195,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// A spell's force on the raider at (x, y) (force in the TS; spells.json force): pushed ForcePush cells along dir
-        /// where that's open, if it's MaxMass or lighter (a wave knocks it back), and thrown off its feet for ForceThrow
-        /// ticks (a geyser's jet, a boulder), so it can't walk. A cast forces each raider once (<paramref name="once"/>
-        /// holds those it has), so one pushed along a gust's line isn't pushed again on the cells it lands on.
-        /// </summary>
         void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null, int charge = 0)
         {
             if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
@@ -269,12 +220,7 @@ namespace Chem
             LogOnce($"thrown#{r.Id}", $"The {by} throws {def.Name} off its feet", LogKind.Notable);
         }
 
-        /// <summary>The status counting the casts that have knocked a raider back (CastShove); it never counts down.</summary>
         public const string ShovedStatus = "shoved";
-        // A cast's shove: force.push cells for each charge level and one more (a tapped Gust 4, held to the most 8); a raider
-        // that's been shoved goes half as far the second time and braces once it's had sim shove.most (diminishing returns,
-        // D16). It staggers shove.staggerTicks before it walks on. A drop of fall.cliffSteps or more in one cell takes it over
-        // the edge: it falls, hurt FallDamage for every fall.stepsPerHurt steps it drops, and the shove ends there.
 
         void CastShove(SpellDef s, Raider r, EntityDef def, int dir, int charge, string by)
         {
@@ -292,9 +238,6 @@ namespace Chem
             LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
         }
 
-        // Moves a raider up to `cells` along dir, stopping short of a wall, an inactive chunk or another raider; over a drop of
-        // fall.cliffSteps or more in one cell it goes over the edge, falls (FallDamage for every fall.stepsPerHurt steps down from
-        // where it started) and stops there.
         void Hurl(Raider r, EntityDef def, int dir, int cells, string by)
         {
             int from = GroundUnits(r.X, r.Y), step = Rules.Sim.WaterUnitsPerStep;
@@ -313,7 +256,6 @@ namespace Chem
             }
         }
 
-        /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
         int Roll(int[] dice)
         {
             int total = 0;
@@ -321,10 +263,6 @@ namespace Chem
             return total;
         }
 
-        /// <summary>
-        /// A creature stepping onto a cover that hurts (thorns) takes its damage, and one that slows (or
-        /// ground that does: mud) is snagged for the rest of the step's time (thorns in the TS).
-        /// </summary>
         void Thorns(Raider r, Cell c)
         {
             if (!Rules.Entity(r.Kind).Creature) return;
@@ -335,7 +273,6 @@ namespace Chem
                 r.Status["snagged"] = Math.Max(r.StatusOf("snagged"), (int)Math.Floor(Rules.Sim.TicksPerSecond * (1 / speed - 1) + 0.5));
         }
 
-        /// <summary>Per-tick raider upkeep (tickEntities in the TS): statuses, burning, wading, zaps, falls.</summary>
         void TickRaiders()
         {
             if (raiders.Count == 0) return;
@@ -353,7 +290,6 @@ namespace Chem
             }
         }
 
-        // The heat that hurts a raider this tick: burning, a hot cell, thick steam (the TS's heatHazards).
         void HeatHazards(Raider r, Cell c, EntityDef def)
         {
             var s = Rules.Sim;
@@ -363,12 +299,10 @@ namespace Chem
                 if (def.Flammable && r.Alive) Apply(r.X, r.Y, "fire", 1, -1, false);
             }
             if (c.Heat > 0 && def.Creature && Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
-            // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
             if (c.Gas != null && c.Gas == Rules.Sim.WaterBoils && c.GasAmt >= 2 && def.MaterialDef?.Has("scalds") == true && Tick % s.ScaldEvery == 0)
                 DamageRaider(r, Rules.Gases.TryGetValue(c.Gas, out var steam) ? steam.Scald : 1, "scalding", "fire");
         }
 
-        // What the raider's square does to it this tick: fire and water reach it, burning and steam hurt, a shock zaps.
         void Hazards(Raider r, Cell c, EntityDef def)
         {
             var s = Rules.Sim;
@@ -382,11 +316,8 @@ namespace Chem
             }
         }
 
-        // Freshly charged water (or metal) under it, or, wet, beside it.
         bool Shocked(Raider r, Cell c, EntityDef def) => c.Charge == 3 || ShockedFromBeside(r, def);
 
-        // Shock-water (conduct.chainsWet): a wet creature of a material that chains wet is shocked by
-        // freshly charged water beside it too, not only under it (the goblin on the bank of a struck pond).
         bool ShockedFromBeside(Raider r, EntityDef def)
         {
             if (r.StatusOf("wet") == 0 || def.MaterialDef == null || !def.MaterialDef.ChainsWet) return false;
@@ -398,7 +329,6 @@ namespace Chem
             return false;
         }
 
-        // Into a dry pit: hurt once, until it's out again.
         void Fall(Raider r, Cell c, EntityDef def)
         {
             bool inPit = HasTag(c, "low") && !(c.Frozen && c.Water > 0);
@@ -414,7 +344,6 @@ namespace Chem
             }
         }
 
-        // Every status but a fall and the shoves felt ticks down and goes at 0 (in name order: the order only matters to the log).
         void CountDown(Raider r)
         {
             statusScratch.Clear();
@@ -429,7 +358,6 @@ namespace Chem
             }
         }
 
-        /// <summary>After a rule switch: raiders whose kind the rules no longer define go (sanitizeWorld in the TS).</summary>
         void SanitizeRaiders()
         {
             for (int i = raiders.Count - 1; i >= 0; i--)

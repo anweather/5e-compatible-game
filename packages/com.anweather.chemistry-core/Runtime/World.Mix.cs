@@ -16,22 +16,17 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>The derived mixes a room holds at most when its budgets don't say.</summary>
         public const int DefaultMaxMixes = 16;
 
-        // The pairs met this tick, in the order they met, and the covers waiting on them.
         readonly List<(string table, string a, string b)> mixWanted = new List<(string table, string a, string b)>();
         readonly List<(Cell cell, string a, string b)> mixLanding = new List<(Cell cell, string a, string b)>();
 
-        // Mixes whose row can't go in the rules: every peer finds the same, so none is asked for again.
         readonly HashSet<string> mixRefused = new HashSet<string>(StringComparer.Ordinal);
 
         int MaxMixes => (int)(roomBudgets?.Number("materials.maxMixes", DefaultMaxMixes) ?? DefaultMaxMixes);
 
-        // Whether a mix not in the rules yet could still be made.
         bool MayMix(string id) => Room.Mixes.Count < MaxMixes && !mixRefused.Contains(id);
 
-        /// <summary>Whether liquid l, running onto a cell holding another, mixes with it: one group, and the mix is there or can be made.</summary>
         bool Mixes(LiquidDef l, Cell there)
         {
             var other = Rules.Liquid(there.Liquid);
@@ -40,10 +35,6 @@ namespace Chem
             return Rules.LiquidIndex(id) >= 0 || MayMix(id);
         }
 
-        // Pools that settle side by side never run onto each other, so touching counts: the first neighbour, in
-        // N, E, S, W order, of its group that isn't its parent or child becomes their mix, and so does this cell.
-        // A mix beside a parent is left alone, so a band of it stands between two pools rather than eating both.
-        // True if this cell changed kind.
         bool Contact(Chunk ch, int i, Cell c, LiquidDef l)
         {
             for (int d = 0; d < 4; d++)
@@ -63,8 +54,6 @@ namespace Chem
             return false;
         }
 
-        // Liquid l meets the liquid on a cell it mixes with: the kind they make, or -1 if it's only been
-        // asked for, and it stops for now. The chunks count as moved, so the still-water pass doesn't skip the next try.
         int MeetLiquid(LiquidDef l, Cell there, Chunk ch, Chunk other)
         {
             var met = Rules.Liquid(there.Liquid);
@@ -76,8 +65,6 @@ namespace Chem
             return Rules.LiquidIndex(Rules.MixId(l.Id, met.Id));
         }
 
-        // What laying a cover on a cell puts there: itself, unless the cell's cover is of its group: then
-        // their mix, or null if it isn't made yet (it lands at the tick's end) or can't be (it stops).
         string LaidOver(Cell c, string coverId)
         {
             if (Room == null || c.Cover == null || coverId == null || c.Cover == coverId) return coverId;
@@ -97,7 +84,6 @@ namespace Chem
             if (stage == TickStage.None) MixDue();
         }
 
-        // The end of a tick: what met is made, in one switch, and the covers waiting land.
         void MixDue()
         {
             if (mixWanted.Count == 0) return;
@@ -113,7 +99,6 @@ namespace Chem
             mixLanding.Clear();
         }
 
-        // Adds the mix of two rows to the room's list: its name, or null if it's there, past the cap or won't fit the rules.
         string MakeMix(string table, string a, string b)
         {
             string id = Rules.MixId(a, b);
@@ -142,8 +127,6 @@ namespace Chem
             }
         }
 
-        // The rules with the room's mixes over them. A mix with no parent left in force goes, and so does one
-        // that no longer fits (it named what a mod took with it): each lapses as its last parent did.
         RuleSet MixedOver(RuleSet plain, List<TempMaterial> gone)
         {
             if (Room.Mixes.Count == 0) return plain;
@@ -156,7 +139,6 @@ namespace Chem
             return plain.WithMixes(kept);
         }
 
-        /// <summary>What the retired list says added a mix: no mod did.</summary>
         public const string MixOwner = "mix";
 
         TempMaterial LastParent(RoomMix m) => TemporaryMaterials.LastOrDefault(t => t.Table == m.Table && m.Parents.Contains(t.Id));

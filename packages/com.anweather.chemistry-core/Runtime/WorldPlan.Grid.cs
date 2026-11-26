@@ -5,26 +5,18 @@ using System;
 
 namespace Chem
 {
-    /// <summary>How the world's edges join.</summary>
     public enum PlanWrap
     {
-        /// <summary>A rectangle, the sea beyond its west and south edges.</summary>
         None,
-        /// <summary>East joins west (a cylinder); the north and south rows are walls nothing crosses.</summary>
         EastWest,
-        /// <summary>East joins west and north joins south.</summary>
         Torus,
     }
 
     public sealed class PlanGrid
     {
-        /// <summary>n e s w: a step's x and y. y grows south.</summary>
         public static readonly int[] Dx = { 0, 1, 0, -1 }, Dy = { -1, 0, 1, 0 };
-        /// <summary>NW NE SE SW: a diagonal step's x and y.</summary>
         public static readonly int[] Cdx = { -1, 1, 1, -1 }, Cdy = { -1, -1, 1, 1 };
-        /// <summary>The two sides that meet at each corner (NW NE SE SW).</summary>
         public static readonly int[][] CornerSides = { new[] { 0, 3 }, new[] { 0, 1 }, new[] { 1, 2 }, new[] { 2, 3 } };
-        /// <summary>The corners a side runs from and to (n and s run west to east, e and w north to south).</summary>
         public static readonly int[][] SideCorners = { new[] { 0, 1 }, new[] { 1, 2 }, new[] { 3, 2 }, new[] { 0, 3 } };
 
         public readonly int W, H, Count;
@@ -53,7 +45,6 @@ namespace Chem
 
         public int Y(int i) => i / W;
 
-        /// <summary>The square at (x, y), across a wrap; -1 off the edge of a world that doesn't.</summary>
         public int Index(int x, int y)
         {
             if (WrapX) x = Mod(x, W);
@@ -67,17 +58,14 @@ namespace Chem
 
         public int Diagonal(int i, int corner) => diag[i * 4 + corner];
 
-        /// <summary>Chebyshev distance in squares, the short way across a wrap.</summary>
         public int Distance(int a, int b) => Math.Max(Along(X(a), X(b), W, WrapX), Along(Y(a), Y(b), H, WrapY));
 
-        /// <summary>Chebyshev distance in chunks between two chunk coordinates, across a wrap.</summary>
         public int ChunkDistance(int ax, int ay, int bx, int by)
         {
             int k = WorldPlan.ChunksPerSquare;
             return Math.Max(Along(ax, bx, W * k, WrapX), Along(ay, by, H * k, WrapY));
         }
 
-        /// <summary>The side of <paramref name="i"/> that faces its neighbour <paramref name="j"/>, or -1.</summary>
         public int SideTo(int i, int j)
         {
             for (int s = 0; s < 4; s++) if (Neighbour(i, s) == j) return s;

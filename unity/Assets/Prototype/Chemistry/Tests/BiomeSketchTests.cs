@@ -27,7 +27,6 @@ namespace Chem.Tests
             ["ashlands"] = (86, 64, 60),
         };
 
-        // The biome at every step-th cell, sea and wall rows painted over, the world square grid in faint lines.
         static int BiomeMap(GeneratedMap map, string file, int step)
         {
             string folder = Environment.GetEnvironmentVariable("BIOME_PNG_OUT");
@@ -44,7 +43,7 @@ namespace Chem.Tests
                     (int, int, int) col;
                     if (gen.Plan.Wall[square] != 0) col = gen.Plan.Wall[square] == 1 ? (236, 244, 250) : (222, 190, 120);
                     else if (gen.LandAt(cx, cy) < ChunkGen.SeaLevel) col = (40, 84, 150);
-                    else if (gen.IsPinned(cx / ChunkGen.Size, cy / ChunkGen.Size)) col = (30, 96, 40); // the valley, its own map
+                    else if (gen.IsPinned(cx / ChunkGen.Size, cy / ChunkGen.Size)) col = (30, 96, 40);
                     else
                     {
                         var (r, g, b) = Colours.TryGetValue(gen.BiomeAt(cx, cy), out var bc) ? bc : ((byte)255, (byte)0, (byte)255);
@@ -61,8 +60,6 @@ namespace Chem.Tests
         static SquareLibrary library;
         static SquareLibrary Lib => library ??= SquareLibrary.Load(LandmarkIntentTests.GameWorldDir());
 
-        // One big forest over the middle of a 12 x 10, its edges 0.4 of a world square inside squares 2..7 east and
-        // 2..6 south (more than the warp and the soft edge), so those 30 world squares are wholly drawn.
         internal const string ForestSketch = @"{ ""worldSketch"": 1, ""name"": ""One big forest"", ""world"": { ""w"": 12, ""h"": 10, ""wrap"": ""ew"" },
             ""soft"": 96, ""shapes"": [ { ""biome"": ""temperate"", ""pts"": [[1.6, 1.6], [8.4, 1.6], [8.4, 7.4], [1.6, 7.4]] } ] }";
 
@@ -85,7 +82,7 @@ namespace Chem.Tests
                 for (int sx = 2; sx <= 7; sx++)
                 {
                     int i = plan.Grid.Index(sx, sy), forest = 0, all = 0;
-                    if (plan.Band[i] == 0) continue; // a square the world keeps as sea has no land to be forest
+                    if (plan.Band[i] == 0) continue;
                     for (int y = 8; y < WorldPlan.SquareCells; y += 16)
                         for (int x = 8; x < WorldPlan.SquareCells; x += 16)
                         {
@@ -137,7 +134,6 @@ namespace Chem.Tests
             int w = gen.CellsW, worst = 0;
             for (int y = 0; y < gen.CellsH; y += 8)
             {
-                // A world round is the same bit for bit, and the seam's two sides differ no more than neighbours do.
                 foreach (int x in new[] { 0, 1, w / 2, w - 1 })
                 {
                     var a = field.At(x, y);
@@ -154,7 +150,6 @@ namespace Chem.Tests
             Assert.That(worst, Is.LessThan(BiomeMath.One / 8), "no step at the seam");
         }
 
-        // The most any biome's weight differs between two blends, Q16.
         static int Jump(BiomeBlend a, BiomeBlend b)
         {
             long Of(BiomeBlend w, int id)
@@ -173,7 +168,6 @@ namespace Chem.Tests
             return (int)worst;
         }
 
-        // Goldens: a change that alters a plan is made on purpose (a new WorldPlan.Version), or the goldens are re-picked.
         [Test]
         public void TheForestPlanIsGolden()
         {

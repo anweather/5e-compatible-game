@@ -18,10 +18,8 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>What an act can be: laying a terrain or cover, placing a thing, bringing out an animal, or casting a spell.</summary>
         public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast", ActGolf = "golf", ActCalled = "called";
 
-        /// <summary>How many acts are kept to undo: the oldest are forgotten, and stay done.</summary>
         public const int MostActsKept = 32;
 
         sealed class ActDone
@@ -30,9 +28,7 @@ namespace Chem
             public string By, Kind, What;
             public readonly List<(int key, string terrain, string cover)> Cells = new List<(int, string, string)>();
             public readonly List<int> Things = new List<int>();
-            /// <summary>The stamp, when the act stamped land.</summary>
             public LandStamp Land;
-            /// <summary>What a named act's firing did, each kept as an act of its own; empty for any other act.</summary>
             public readonly List<ActDone> Parts = new List<ActDone>();
         }
 
@@ -60,13 +56,10 @@ namespace Chem
             return new RoomVerdict(true, null, $"{c.Peer} {(kind == ActCast ? "cast" : "brought out")} {Whole(done)} {what} (act {Whole(act.N)}){left}");
         }
 
-        /// <summary>In a verdict's line when part of what was asked didn't land.</summary>
         public const string FellShort = "only part landed:";
 
-        // How many were asked for: an ask says, as the cells found may be fewer.
         static int Wanted(JObject ask, int cells) => System.Math.Max((int?)ask["wanted"] ?? 0, cells);
 
-        /// <summary>How many acts have been done: with the world's seed, what tells one firing from the next.</summary>
         public int ActsDone => actCount;
 
         static List<(int x, int y)> CellsOf(JObject ask) =>
@@ -79,9 +72,6 @@ namespace Chem
             if (acts.Count > MostActsKept) acts.RemoveAt(0);
         }
 
-        // A named act fired: each ask in it as an act of its own, one firing to keep and take back. A part with no room
-        // is skipped, as a cell with no room is in an act; the peer asking has to be someone it's for. The line says what
-        // landed row by row, so whoever asked can tell the player the truth.
         RoomVerdict FireNamed(RoomCommand c, string id, JObject ask)
         {
             var named = Rules.TriggersOn(TriggerEvent.Called).First(t => t.Id == id);
@@ -118,7 +108,6 @@ namespace Chem
             return count < wanted ? $"{Whole(count)} of {Whole(wanted)} {what}" : $"{Whole(count)} {what}";
         }
 
-        // One ask of a firing and how many of it landed, or null if none did, with why when there's more to say than no room.
         ActDone DonePart(RoomCommand c, JObject ask, out int count, out string why)
         {
             count = 0;
@@ -171,7 +160,6 @@ namespace Chem
             }
         }
 
-        // Each open cell gets what's asked for; the count of those that did.
         int PlaceAct(ActDone act, List<(int x, int y)> cells, JObject ask)
         {
             var onto = (ask["onto"] as JArray)?.Select(t => (string)t).ToList();
@@ -208,7 +196,6 @@ namespace Chem
             touched.Add(ChunkKey(key));
         }
 
-        // A spell cast at each cell as a trigger's is, with its own delay, the view told by the triggered list.
         int CastAct(ActDone act, List<(int x, int y)> cells)
         {
             var s = Rules.Spell(act.What);
@@ -224,7 +211,6 @@ namespace Chem
             return done;
         }
 
-        // The act named, or with none the peer's last that's kept.
         RoomVerdict UndoAct(RoomCommand c)
         {
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer);
@@ -244,7 +230,6 @@ namespace Chem
             return new RoomVerdict(true, null, $"{c.Peer} took back {Whole(gone)} {act.What} (act {Whole(act.N)})");
         }
 
-        // One firing whole: all its parts that can be taken back, or none if any land can't go back yet.
         RoomVerdict UndoFiring(RoomCommand c, ActDone firing)
         {
             var parts = firing.Parts.Where(p => ActStays(p.Kind) == null).ToList();
@@ -288,7 +273,6 @@ namespace Chem
             foreach (var (key, terrain, cover) in act.Cells)
             {
                 var c = CellAt(key);
-                // Burnt, felled or built on since: what's there now stands.
                 if ((act.Kind == ActTerrain ? c.T : c.Cover) != act.What) continue;
                 LayFresh(c, Rules.Terrain.ContainsKey(terrain) ? terrain : Rules.Buildings.Ground, cover != null && Rules.Covers.ContainsKey(cover) ? cover : null);
                 KeepInStart(key, c);
@@ -299,11 +283,9 @@ namespace Chem
             return gone;
         }
 
-        /// <summary>The acts kept to undo, newest first, in words: for the tools.</summary>
         public IEnumerable<string> ActsKept() =>
             Enumerable.Reverse(acts).Select(a => $"act {Whole(a.N)}: {a.What} by {a.By}");
 
-        /// <summary>The acts done and kept, for CastHash: "" until one, so worlds without hash as they did.</summary>
         public string ActText()
         {
             if (actCount == 0) return "";

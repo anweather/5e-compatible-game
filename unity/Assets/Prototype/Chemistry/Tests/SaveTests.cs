@@ -1,3 +1,6 @@
+// Saving a world to disk (World.Save.cs, docs/WORLD_STREAMING.md "Part 2, third slice"):
+// save, load and step equals stepping straight through; a save of a load is the save
+// again; only changed chunks are saved; a save that doesn't fit is refused.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,17 +10,11 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Saving a world to disk (World.Save.cs, docs/WORLD_STREAMING.md "Part 2, third slice"):
-    /// save, load and step equals stepping straight through; a save of a load is the save
-    /// again; only changed chunks are saved; a save that doesn't fit is refused.
-    /// </summary>
     [Category("Simulation")]
     public class SaveTests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>A made-up land from a seed: grass and brush, stone outcrops, a pond and a bedrock rim.</summary>
         sealed class Meadow : IChunkSource
         {
             readonly int w, h;
@@ -49,7 +46,6 @@ namespace Chem.Tests
 
         const int W = 192, H = 128;
 
-        // The meadow's terrains by a cell's hash out of 100.
         static readonly (uint below, string terrain)[] Lands = { (60, "grass"), (85, "dirt"), (95, "brush"), (100, "stone") };
 
         static World Fresh(IChunkSource source)
@@ -59,7 +55,6 @@ namespace Chem.Tests
             return w;
         }
 
-        /// <summary>Fire across the meadow, water, dug and raised earth, a chunk let go and a defense field marching.</summary>
         static World Played(IChunkSource source)
         {
             var w = Fresh(source);
@@ -118,10 +113,6 @@ namespace Chem.Tests
             Assert.That(loaded.Log.Count, Is.GreaterThan(0), "and it goes on logging");
         }
 
-        // How to make a cell differ from the source in just one member, and what it reads back as. Every public member of
-        // Cell that can be set is here, so a new one fails CellMembersAreAllInTheGuard until it is: then this test says
-        // whether SameCell, SaveCell and LoadCell know it. Liquid and Sets mean something only while a liquid other than
-        // water stands in the cell (Kind, Setting), so theirs set that too.
         static readonly Dictionary<string, (Action<Cell> set, object value)> Differs = new Dictionary<string, (Action<Cell>, object)>
         {
             ["T"] = (c => c.T = "sand", "sand"),
@@ -146,7 +137,6 @@ namespace Chem.Tests
             ["Cracked"] = (c => c.Cracked = 9, 9),
         };
 
-        // The public members of Cell a save must keep: its fields, and its properties that can be set.
         static IEnumerable<MemberInfo> CellMembers() =>
             typeof(Cell).GetFields(BindingFlags.Public | BindingFlags.Instance).Cast<MemberInfo>()
                 .Concat(typeof(Cell).GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.SetMethod?.IsPublic == true))

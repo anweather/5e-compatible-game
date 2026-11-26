@@ -14,8 +14,6 @@ public class TapsClipProbe : HandsClipProbe
     {
         yield return Hold(0.8f);
         Note("taps: triggers and bumpers, as fast as the hands take them");
-        // Right bumper, left trigger, right trigger, left bumper, round and round; each a press of two frames, each once the
-        // hands are free (the other hand's same gesture under way would merge them) and the hand has rested its tap.
         var order = new (int hand, bool bumper)[] { (HandsDef.Right, true), (HandsDef.Left, false), (HandsDef.Right, false), (HandsDef.Left, true) };
         int taps = 0;
         float from = film.Seconds;

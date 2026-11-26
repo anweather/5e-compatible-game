@@ -20,19 +20,14 @@ using UnityEngine;
 // starts itself in a virtual player's Play mode and waits for a host.json it
 // hasn't seen.
 
-/// <summary>The files the host and the virtual player exchange.</summary>
 public static class ProbeLink
 {
     public const string Hosting = "hosting", Go = "go", Joined = "joined", Reported = "reported";
-    /// <summary>After the reset: the host asks for the checksums since it (up to startTick), the virtual player sends them.</summary>
     public const string ResetSettled = "reset-settled", ResetCheck = "reset-check", ResetReported = "reset-reported";
-    /// <summary>The host names a tick it has run; the virtual player answers once it has run it too (OnlineProbe.ClientInStep).</summary>
     public const string InStepAsk = "in-step-ask", InStep = "in-step";
 
-    /// <summary>True in a Multiplayer Play Mode virtual player (its project is a copy under Library/VP/).</summary>
     public static bool InVirtualPlayer => Application.isEditor && VirtualRoot() != null;
 
-    // The main project's folder: the virtual player's project is <main>/Library/VP/<id>/.
     static string VirtualRoot()
     {
         string data = Application.dataPath.Replace('\\', '/');
@@ -78,21 +73,16 @@ public class ProbeHostMessage
     public int startTick;
 }
 
-/// <summary>What one side saw: the same fields from the host and from the virtual player.</summary>
 [Serializable]
 public class OnlineObservation
 {
     public string id;
     public string phase;
-    /// <summary>The host's wizard seen here in an animal's shape, then back in its own (Shapeshift, NetWizard's form).</summary>
     public bool sawForm, sawFormEnd;
-    /// <summary>The beats the other wizard's cast went through here (CastBeats), one line for each copy that moved.</summary>
     public List<string> otherBeats = new();
-    /// <summary>The casting sounds of that wizard's copy here, each with how far from its chest it was (m) and from this side's listener.</summary>
     public List<string> otherSounds = new();
     public float otherSoundWorst, otherSoundFarthest;
 
-    /// <summary>Notes a casting sound if it's that wizard's (near it).</summary>
     public void NoteSound(CastBeats other, string sound, Vector3 at)
     {
         if (other == null || Vector3.Distance(at, other.transform.position) > 3f) return;
@@ -101,48 +91,35 @@ public class OnlineObservation
         if (Camera.main != null) otherSoundFarthest = Mathf.Max(otherSoundFarthest, Vector3.Distance(at, Camera.main.transform.position));
     }
 
-    /// <summary>The strikes this side's wizard took, and the health they cost it (WizardStrike).</summary>
     public int hitsTaken;
     public float damageTaken;
-    /// <summary>The hit-stops that wizard's copy had here: none, they're its owner's view.</summary>
     public int otherStops;
-    /// <summary>The dragon's flight in this side's world, and how far its sky darkened.</summary>
     public int dragonFlights;
     public bool sawDragonWarning;
     public float mostMenace;
     public int joinedTick;
-    /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
     public int lagAtStart;
     public List<int> hashTicks = new();
     public List<string> hashes = new();
     public bool desync;
-    /// <summary>A cell put wrong by hand here was reported as a desync within two windows (RollingHash).</summary>
     public bool wrongCellCaught;
     public int errorCount;
     public List<string> errors = new();
-    /// <summary>The pushed crate, before the shove and once it has settled (OnlineSchedule.PropTick).</summary>
     public Vector3 propBefore, propAfter;
     public bool propFound;
-    /// <summary>The pushed crate's stable id (world/things.json), and every thing this side has, as "id kind", sorted, at PropTick.</summary>
     public string propId;
     public List<string> things = new();
-    /// <summary>The host's wizard (this side's copy), before the virtual player's Thunderwave and at PropTick.</summary>
     public Vector3 hostWizardBefore, hostWizardAfter;
-    /// <summary>At OnlineSchedule.SampleTick, in the order of OnlineSchedule.Lines: per spell, its cells' summed height, wet cells, water units, raised walls, cells drawn wet, and the terrain drawn at their centres.</summary>
     public List<int> heightSums = new(), wetCells = new(), waterUnits = new(), raisedWalls = new(), drawnWet = new();
     public List<float> drawnGround = new(), drawnGroundAtStart = new();
     public int sampledTick;
-    /// <summary>Every player's casts and grimoire (World.CastState) at the sample tick.</summary>
     public string castState;
-    /// <summary>The glow balls left at the sample tick (the host breaks one).</summary>
     public int glowBalls;
     public string sampledChecksum;
 }
 
-/// <summary>The shared script, in sim ticks after the start tick (6 a second). Yard cells; directions 0 N, 1 E, 2 S, 3 W.</summary>
 public static class OnlineSchedule
 {
-    /// <summary>The glow balls still in the world, on this side.</summary>
     public static List<Carryable> GlowBalls() => UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID)
         .Where(c => c.Holder == null && c.TryGetComponent<PhysicsProp>(out var p) && p.kind.StartsWith("glow-ball", StringComparison.Ordinal)).ToList();
 
@@ -168,14 +145,11 @@ public static class OnlineSchedule
     static Step S(int at, bool client, string spell, (int x, int y) stand, (int x, int y) target, int dir) =>
         new Step(at, client, spell, new Vector2Int(stand.x, stand.y), new Vector2Int(target.x, target.y), dir);
 
-    /// <summary>Not a spell: the wizard is put FallMetres above its cell and drops (a landing on the other screen).</summary>
     public const string Fall = "(fall)";
     const float FallMetres = 10f;
 
-    /// <summary>The yard cell of the crate the virtual player's Thunderwave shoves east (found by its stable id).</summary>
     public static readonly Vector2Int PushedCell = new Vector2Int(16, 6);
 
-    /// <summary>The pushed crate's stable id, from the world's data (the same on both sides).</summary>
     public static Chem.ThingId PushedThing(ChemGrid grid)
     {
         var cell = grid.YardCell(PushedCell.x, PushedCell.y);
@@ -185,26 +159,22 @@ public static class OnlineSchedule
 
     public static readonly Step[] Steps =
     {
-        S(0, false, null, (15, 7), (15, 7), 0),                 // the host stands beside the client, to be thrown too
+        S(0, false, null, (15, 7), (15, 7), 0),
         S(0, true, SpellIds.Thunderwave, (15, 6), (15, 6), 1),
-        S(30, false, SpellIds.FireBolt, (5, 13), (2, 12), 3),         // the meadow, west of the old yard
-        S(36, true, SpellIds.FireBolt, (16, 11), (19, 3), 0),         // the oil spill by the barrels
-        S(42, false, SpellIds.EarthenTrench, (16, 5), (15, 5), 3),    // west from the pond's bank: fills
+        S(30, false, SpellIds.FireBolt, (5, 13), (2, 12), 3),
+        S(36, true, SpellIds.FireBolt, (16, 11), (19, 3), 0),
+        S(42, false, SpellIds.EarthenTrench, (16, 5), (15, 5), 3),
         S(48, true, SpellIds.EarthenTrench, (16, 8), (15, 8), 3),
         S(54, false, SpellIds.WallOfStone, (10, 6), (12, 7), 0),
         S(60, true, SpellIds.WallOfStone, (6, 4), (8, 4), 0),
-        S(72, false, Fall, (10, 6), (10, 6), 0),                  // the host's wizard falls and lands
+        S(72, false, Fall, (10, 6), (10, 6), 0),
     };
 
-    /// <summary>When the shoved crate has settled (before any fire can reach it).</summary>
     public const int PropTick = 15;
-    /// <summary>When both sides write down what they see: 20 s after the fall, while the fires still spread.</summary>
     public const int SampleTick = 192;
 
-    /// <summary>The earth spells' lines, whose cells are observed.</summary>
     public static IEnumerable<Step> Lines => Steps.Where(s => s.Spell == SpellIds.EarthenTrench || s.Spell == SpellIds.WallOfStone);
 
-    /// <summary>Places the local wizard and casts one step through the network (SpellCaster.Cast); a step without a spell only places.</summary>
     public static void Cast(ChemGrid grid, GameObject wizard, Step step)
     {
         var body = wizard.GetComponent<CharacterController>();
@@ -219,18 +189,15 @@ public static class OnlineSchedule
         wizard.GetComponent<SpellCaster>().Cast(step.Spell, target.x, target.y, step.Dir);
     }
 
-    /// <summary>The cells of the earth spells' lines, as the world stands now (both sides take them at the start tick).</summary>
     public static List<List<(int x, int y)>> LineCells(ChemGrid grid) => Lines.Select(line =>
     {
         var t = grid.YardCell(line.Target.x, line.Target.y);
         return grid.World.SpellCells(grid.World.Rules.Spell(line.Spell), t.x, t.y, line.Dir);
     }).ToList();
 
-    /// <summary>The terrain drawn at the centres of each line's cells, summed, now.</summary>
     public static List<float> DrawnGround(ChemGrid grid, List<List<(int x, int y)>> lines) =>
         lines.Select(cells => cells.Sum(c => grid.GroundAt(grid.CellCenter(c.x, c.y)))).ToList();
 
-    /// <summary>Writes down the lines' cells and how they are drawn (call at SampleTick).</summary>
     public static void Sample(ChemGrid grid, List<List<(int x, int y)>> lines, OnlineObservation o)
     {
         var w = grid.World;
@@ -247,14 +214,12 @@ public static class OnlineSchedule
         o.drawnGround = DrawnGround(grid, lines);
     }
 
-    /// <summary>This side's copy of a thing, by its stable id.</summary>
     public static PhysicsProp FindProp(Chem.ThingId id)
     {
         var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
         return spawner != null ? spawner.Find(id) : null;
     }
 
-    /// <summary>Every thing this side has, as "id kind", sorted by id.</summary>
     public static List<string> Things()
     {
         var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
@@ -263,10 +228,6 @@ public static class OnlineSchedule
     }
 }
 
-/// <summary>
-/// One side's part: casts its steps when their ticks come and records checksums and samples
-/// from NetChem.TickApplied, so both sides record the very same ticks.
-/// </summary>
 public sealed class OnlineProbeRecorder
 {
     readonly ChemGrid grid;
@@ -326,7 +287,6 @@ public sealed class OnlineProbeRecorder
         else Seen.propBefore = prop.transform.position;
     }
 
-    /// <summary>Call every frame: casts this side's steps whose tick has come.</summary>
     public void Play(GameObject wizard)
     {
         var steps = OnlineSchedule.Steps;
@@ -338,11 +298,9 @@ public sealed class OnlineProbeRecorder
     }
 }
 
-/// <summary>The virtual player's half: joins when the host says so, plays its steps, reports.</summary>
 public class OnlineProbeClient : MonoBehaviour
 {
     const float PollSeconds = 0.25f;
-    // A host.json older than this is left over from an earlier run.
     const double FreshSeconds = 120;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -381,7 +339,6 @@ public class OnlineProbeClient : MonoBehaviour
         }
     }
 
-    // This side's wizard once it's in the game and caught up with the host's history, else null.
     static GameObject JoinedWizard(ChemGrid grid, NetChem net)
     {
         var network = NetworkManager.Singleton;
@@ -389,8 +346,6 @@ public class OnlineProbeClient : MonoBehaviour
         return local != null && net.Online && grid.World.Tick > 0 && net.CaughtUp ? local.gameObject : null;
     }
 
-    // This side in the game: a host on another map sends it there first (NetSession.JoinOnHostMap), and the scene loads
-    // again on it, so the grid is found afresh each frame until this side has joined on the host's map.
     sealed class Joined
     {
         const float MostSeconds = 45f;
@@ -420,7 +375,7 @@ public class OnlineProbeClient : MonoBehaviour
         var joined = new Joined();
         yield return joined.Wait();
         var (grid, net, wizard) = (joined.Grid, joined.Net, joined.Wizard);
-        if (wizard == null) yield break;   // the host times out waiting for "joined"
+        if (wizard == null) yield break;
         var recorder = new OnlineProbeRecorder(grid, client: true);
         recorder.Seen.id = id;
         recorder.Seen.phase = ProbeLink.Joined;
@@ -437,8 +392,6 @@ public class OnlineProbeClient : MonoBehaviour
         }
         if (go == null) { recorder.Stop(); yield break; }
         recorder.StartTick = go.startTick;
-        // At the start tick: how far behind the host this side still is (ticks it knows of but
-        // hasn't run), then caught up before it casts anything.
         while (grid.World.Tick < go.startTick) yield return null;
         recorder.Seen.lagAtStart = Lag(net);
         while (!net.CaughtUp) yield return null;
@@ -459,7 +412,6 @@ public class OnlineProbeClient : MonoBehaviour
         yield return AfterReset(id, net);
     }
 
-    // The host's dragon as this side has it, in its own core and its own sky: not run yet (needs the PC's `online`).
     static void WatchDragon(OnlineObservation seen)
     {
         var world = ChemGrid.Current.World;
@@ -469,7 +421,6 @@ public class OnlineProbeClient : MonoBehaviour
         if (sky != null) seen.mostMenace = Mathf.Max(seen.mostMenace, sky.Menace);
     }
 
-    // The other wizard's shape as this side draws it.
     static void WatchForms(OnlineObservation seen)
     {
         var mine = NetworkManager.Singleton != null ? NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject() : null;
@@ -481,7 +432,6 @@ public class OnlineProbeClient : MonoBehaviour
         }
     }
 
-    // The other wizard's beats on this side.
     static CastBeats OtherBeats()
     {
         var mine = NetworkManager.Singleton != null ? NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject() : null;
@@ -489,10 +439,8 @@ public class OnlineProbeClient : MonoBehaviour
             .Select(w => w.GetComponent<CastBeats>()).FirstOrDefault();
     }
 
-    // Ticks this side knows of but hasn't run yet (NetChem.KnownUpTo - NetTick; 0 when caught up).
     static int Lag(NetChem net) => System.Math.Max(0, net.KnownUpTo - net.NetTick);
 
-    // Tells the host once the reset's stall is over here and this side has caught up (OnlineProbe.ClientSettled).
     static IEnumerator TellSettled(string id, NetChem net)
     {
         for (float waited = 0f; waited < 90f; waited += Time.unscaledDeltaTime)
@@ -506,8 +454,6 @@ public class OnlineProbeClient : MonoBehaviour
         }
     }
 
-    // The host then resets the world (OnlineProbe.TryReset): the checksums from after the reset,
-    // sent when the host asks, up to the tick it names.
     IEnumerator AfterReset(string id, NetChem net)
     {
         var after = new OnlineObservation { id = id };
@@ -556,8 +502,6 @@ public class OnlineProbeClient : MonoBehaviour
         ProbeLink.Write(ProbeLink.ClientFile, after);
     }
 
-    // The desync check's own test, last, as it leaves this peer wrong: one cell far from anything,
-    // on this peer alone, is reported within two windows.
     static IEnumerator PutACellWrong(NetChem net, OnlineObservation after)
     {
         net.GetComponent<ChemGrid>().World.At(0, 0).Fuel += 7;
@@ -570,19 +514,13 @@ public class OnlineProbeClient : MonoBehaviour
     const float WrongCellGrace = 2f;
 }
 
-/// <summary>
-/// The host's half and the checks. Needs a virtual player (Player 2, Multiplayer Play Mode):
-/// `probe run --name online` activates it first if it isn't running.
-/// </summary>
 public class OnlineProbe : ProbeScenario
 {
-    // What the core said of the strikes on the virtual player (TryStrikes).
     int strikeHits, strikeDamage, strikeMisses, strikeMoved;
     StrikeHit strikeSeen;
     const int LeadTicks = 30;
     const float JoinSeconds = 60f, ReportSeconds = 60f;
 
-    // So a virtual player started later doesn't join from this run's files.
     protected override void OnDestroy()
     {
         if (resetNet != null) resetNet.TickApplied -= CollectAfterReset;
@@ -602,7 +540,6 @@ public class OnlineProbe : ProbeScenario
         puppet = new WizardPuppet(wizard);
         caster = wizard.GetComponent<SpellCaster>();
         caster.enabled = false;
-        // Before anyone joins, so the joiner has to replay it (NetChem's combo history).
         var net = grid.GetComponent<NetChem>();
         net.RequestCombo(ComboCommand.Load("", ElementIds.Water));
         ProbeLink.Write(ProbeLink.HostFile, new ProbeHostMessage { id = id, phase = ProbeLink.Hosting });
@@ -623,7 +560,6 @@ public class OnlineProbe : ProbeScenario
         recorder.Seen.id = id;
         recorder.StartTick = World.Tick + LeadTicks;
         ProbeLink.Write(ProbeLink.HostFile, new ProbeHostMessage { id = id, phase = ProbeLink.Go, startTick = recorder.StartTick });
-        // The camera over the pond, the trenches and the walls.
         Cut(Yard(13, 14) + V(0f, 22f, 0f), Yard(13, 6));
         while (World.Tick < recorder.StartTick) yield return null;
         ballsBefore = OnlineSchedule.GlowBalls().Count;
@@ -634,7 +570,6 @@ public class OnlineProbe : ProbeScenario
         while (!recorder.Sampled)
         {
             recorder.Play(wizard);
-            // After both sides have listed every thing (RecordProp at PropTick).
             if (!ballBroken && World.Tick > recorder.StartTick + OnlineSchedule.PropTick)
             {
                 ballBroken = true;
@@ -665,8 +600,6 @@ public class OnlineProbe : ProbeScenario
         yield return CompareAfterReset(id);
     }
 
-    // The host's R calls the dragon, not the rebuild: the warning starts for everyone, and the checksums
-    // compared after this (CompareAfterReset) carry its state, so a peer that missed it shows as a mismatch.
     void Summon()
     {
         int flights = World.DragonFlights;
@@ -681,9 +614,6 @@ public class OnlineProbe : ProbeScenario
             $"reloaded {reloaded}, flights {flights} to {World.DragonFlights}, phase {World.Dragon?.Phase}");
     }
 
-    // A reset stalls a peer's frame for a couple of seconds and leaves it ticks behind. A deer that
-    // came and went inside that stall is never drawn there, so what follows waits for it. (A peer
-    // catching up keeps its beats too: castfeel's mid_tick cast.)
     IEnumerator ClientSettled(string id)
     {
         float waited = 0f;
@@ -691,11 +621,6 @@ public class OnlineProbe : ProbeScenario
         Metric("reset_client_settled_s", waited);
     }
 
-    // ClientSettled only says the client has run the ticks it has heard of, and after a reset those come
-    // late: it can be a second or more behind the host and still say so. Catching up, it runs the ticks
-    // between two casts closer together than the beats between them take, so a cast on the other side
-    // cuts the last one's Recovery short by design. So the beats wait until the client runs a tick the
-    // host has just run about as it happens, measured from here, as both are on one machine.
     IEnumerator ClientInStep(string id)
     {
         var net = grid.GetComponent<NetChem>();
@@ -716,11 +641,8 @@ public class OnlineProbe : ProbeScenario
 
     int ballsBefore;
     ThingId ballId = ThingId.None;
-    // The things standing as the scenario began: the reset brings back these too, not only those still standing at it
-    // (the Fire Bolt on the oil spill blows up its barrels, #170).
     HashSet<ThingId> thingsAtStart = new();
 
-    // The host's checksums since the reset (TryReset starts collecting them).
     readonly Dictionary<int, string> afterReset = new();
     NetChem resetNet;
 
@@ -729,7 +651,6 @@ public class OnlineProbe : ProbeScenario
         if (checksum != null && resetNet.LastResetTick > 0 && tick > resetNet.LastResetTick) afterReset[tick] = checksum;
     }
 
-    // Lockstep across the reset: every 30-tick checksum after it equal on both sides, three or more.
     IEnumerator CompareAfterReset(string id)
     {
         for (float t = 0f; t < 30f && afterReset.Count < 3; t += Time.unscaledDeltaTime) yield return null;
@@ -764,14 +685,12 @@ public class OnlineProbe : ProbeScenario
         DragonOnTheClient(client);
     }
 
-    // The checksums carry the dragon's state; this is what the client made of it: its own core's warning and its own dark sky.
     void DragonOnTheClient(OnlineObservation client)
     {
         bool seen = client.sawDragonWarning && client.dragonFlights == World.DragonFlights && client.mostMenace > 0f;
         Check("dragon_seen_on_the_client", seen, $"warning seen {client.sawDragonWarning}, flights {client.dragonFlights} of {World.DragonFlights}, its sky darkened to {client.mostMenace:0.00}");
     }
 
-    // What the virtual player saw of shapes, strikes and casts.
     void CheckSeenOnline(OnlineObservation client)
     {
         Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
@@ -785,8 +704,6 @@ public class OnlineProbe : ProbeScenario
         CheckRemoteSounds(client);
     }
 
-    // The host takes a deer's shape and ends it as a cast button does (Shapeshift.ChangeBackByChoice), on its own machine;
-    // the virtual player reports what it drew (WatchForms). Every animal is local, so the deer is only this side's.
     IEnumerator TryShape()
     {
         var shape = wizard.GetComponent<Shapeshift>();
@@ -818,7 +735,6 @@ public class OnlineProbe : ProbeScenario
 
     readonly List<string> hostBeats = new();
 
-    // The host casts a pair and a charged single through the core; the virtual player must show the same beats.
     IEnumerator TryBeats()
     {
         var beats = wizard.GetComponent<CastBeats>();
@@ -832,8 +748,6 @@ public class OnlineProbe : ProbeScenario
         yield return Wait(0.4f);
         LoadElement(ElementIds.Earth);
         yield return UntilNeutral(beats);
-        // A new cast cuts Recovery short by design, so one on the heels of Neutral could land before
-        // that beat on the other side; this compares the beats, not that race.
         yield return Wait(0.3f);
         LoadElement(ElementIds.Fire, held: true);
         yield return Wait(1.6f);
@@ -850,7 +764,6 @@ public class OnlineProbe : ProbeScenario
         for (float t = 0f; t < 6f && beats.Now != Beat.Neutral; t += Time.deltaTime) yield return null;
     }
 
-    // The host stands next to the virtual player's wizard and strikes it until it has seen a hit and a miss, as rolled.
     IEnumerator TryStrikes()
     {
         const int MostStrikes = 24, Hits = 2;
@@ -880,7 +793,6 @@ public class OnlineProbe : ProbeScenario
         Check("strike_moved_one_cell", strikeMoved > 0, $"{strikeMoved} of {strikeHits} hits moved its wizard a cell, on the owner's machine");
     }
 
-    // One strike from the cell west of the foe, and its result; then the wait until the next may go.
     IEnumerator StrikeOnce(WizardStrike strike, string foe, string me, NetworkClient other)
     {
         var target = World.Stands[foe];
@@ -901,17 +813,13 @@ public class OnlineProbe : ProbeScenario
     {
         strikeHits++;
         strikeDamage += hit.Damage;
-        // The owner moves it; its copy here gets there through the NetworkTransform.
         var to = new Vector2Int(hit.ToX, hit.ToY);
         for (float t = 0f; t < 2f && grid.CellAt(other.PlayerObject.transform.position) != to; t += Time.unscaledDeltaTime) yield return null;
         var copy = grid.CellAt(other.PlayerObject.transform.position);
-        // Pushed a cell east, unless the land there stops it (the core then puts it where it can stand): either way its
-        // copy here is where the core said.
         if (copy == to && to == from + Vector2Int.right) strikeMoved++;
         else if (copy != to) Check("strike_moved_where_the_core_said", false, $"core {to}, its copy here {grid.CellAt(other.PlayerObject.transform.position)}");
     }
 
-    // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.
     IEnumerator TryTag()
     {
         var tag = grid.GetComponent<NetTag>();
@@ -932,9 +840,6 @@ public class OnlineProbe : ProbeScenario
         tag.Stop();
     }
 
-    // Reset (R / View) online (J-014, OnlineReset): the host's resets the world for everyone after a
-    // countdown, without reloading the scene. Before it, a prop is broken and the wizard walks off;
-    // after it, every thing is back with its id (the broken one too) and the wizard is at its start.
     IEnumerator TryReset()
     {
         var net = grid.GetComponent<NetChem>();
@@ -942,8 +847,8 @@ public class OnlineProbe : ProbeScenario
         net.TickApplied += CollectAfterReset;
         var spawner = FindAnyObjectByType<ThingSpawner>();
         var before = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
-        if (!ballId.IsNone) before.Add(ballId); // the ball broken earlier comes back too
-        before.UnionWith(thingsAtStart); // and whatever else broke along the way
+        if (!ballId.IsNone) before.Add(ballId);
+        before.UnionWith(thingsAtStart);
         var broken = spawner.Live.Select(t => t.prop).FirstOrDefault(p => p.State != null && p.kind == EntityIds.Crate);
         var brokenId = broken != null ? broken.Thing : ThingId.None;
         if (broken != null) broken.Hurt(9999);
@@ -970,15 +875,12 @@ public class OnlineProbe : ProbeScenario
         Check("reset_clock_restarts", World.Tick < 60, $"world tick {World.Tick} (network tick {net.NetTick})");
     }
 
-    // The virtual player's client.json if it is from this run and in the given phase (any phase when null), else null.
     static OnlineObservation ReadClient(string id, string phase)
     {
         var seen = ProbeLink.Read<OnlineObservation>(ProbeLink.ClientFile);
         return seen != null && seen.id == id && (phase == null || seen.phase == phase) ? seen : null;
     }
 
-    // A glow ball hurled at the ground near the wizard: the host's physics breaks it for everyone. Its glass cracks on the
-    // first hard hit (Fragile), so a ball whose bounces didn't break it is hurled again.
     IEnumerator BreakBall()
     {
         var ball = OnlineSchedule.GlowBalls().FirstOrDefault();
@@ -1001,7 +903,6 @@ public class OnlineProbe : ProbeScenario
         Metric("glow_balls_before", ballsBefore);
         Metric("glow_balls_host", host.glowBalls);
         Metric("glow_balls_client", client.glowBalls);
-        // A map with no glow ball (the Drowned Chain): said, not failed. The valley has three.
         if (!grid.Things.All.Any(t => t.Kind.StartsWith("glow-ball", StringComparison.Ordinal)) && ChemGrid.MapId != GameFolders.DefaultMap)
             Check("broken_ball_gone_on_both", true, $"skipped: {ChemGrid.MapId} has no glow ball");
         else Check("broken_ball_gone_on_both", ballsBefore > 0 && host.glowBalls == ballsBefore - 1 && client.glowBalls == host.glowBalls,
@@ -1026,7 +927,6 @@ public class OnlineProbe : ProbeScenario
             client.errorCount == 0 ? "0 errors" : $"{client.errorCount} errors: {string.Join(" | ", client.errors.Take(3))}");
     }
 
-    // The checksums of the ticks both sides wrote down, the sample's tick and checksum, and the client's desync flag.
     void CompareChecksums(OnlineObservation host, OnlineObservation client)
     {
         var mine = new Dictionary<int, string>();
@@ -1052,13 +952,11 @@ public class OnlineProbe : ProbeScenario
         Check("client_saw_no_desync", !client.desync);
     }
 
-    // The trenches, their water and the walls, as each side has and draws them at the sample tick.
     void CompareEarth(OnlineObservation host, OnlineObservation client)
     {
         string Lines(OnlineObservation o, Func<OnlineObservation, IEnumerable<object>> f) => string.Join(",", f(o));
         bool Same(Func<OnlineObservation, IEnumerable<object>> f) => Lines(host, f) == Lines(client, f);
 
-        // Earth spells: index 0 and 2 are the host's trench and wall, 1 and 3 the client's (OnlineSchedule.Lines).
         float dug = host.drawnGround.Count > 0 && host.drawnGroundAtStart.Count > 0 ? host.drawnGround[0] - host.drawnGroundAtStart[0] : 0f;
         float clientDug = client.drawnGround.Count > 1 && client.drawnGroundAtStart.Count > 1 ? client.drawnGround[1] - client.drawnGroundAtStart[1] : 0f;
         float worstGround = host.drawnGround.Zip(client.drawnGround, (a, b) => Mathf.Abs(a - b)).DefaultIfEmpty(float.MaxValue).Max();
@@ -1079,14 +977,12 @@ public class OnlineProbe : ProbeScenario
             $"raised wall cells host [{Lines(host, o => o.raisedWalls.Cast<object>())}] client [{Lines(client, o => o.raisedWalls.Cast<object>())}]");
     }
 
-    // The crate the client's Thunderwave shoved: moved on the host, and in the same place on the client.
     void CompareProp(OnlineObservation host, OnlineObservation client)
     {
         float moved = Vector3.Distance(host.propBefore, host.propAfter);
         float apart = Vector3.Distance(host.propAfter, client.propAfter);
         Metric("prop_moved_m", moved);
         Metric("prop_apart_m", apart);
-        // A map with no crate where the Thunderwave shoves (the Drowned Chain): said, not failed. The valley has one.
         if (OnlineSchedule.PushedThing(grid).IsNone && ChemGrid.MapId != GameFolders.DefaultMap)
         {
             Check("prop_moved_matches", true, $"skipped: {ChemGrid.MapId} has no crate on the yard's cell {OnlineSchedule.PushedCell}");
@@ -1098,8 +994,6 @@ public class OnlineProbe : ProbeScenario
 
     void CompareKnockback(OnlineObservation host, OnlineObservation client)
     {
-        // The client's Thunderwave throws the host's wizard on the host's machine (Knockback); its landing on the
-        // client's screen is what threw in the Starter Assets controller before WizardRig.PrepareForAnimationEvents.
         float thrown = Vector3.Distance(host.hostWizardBefore, host.hostWizardAfter);
         float wizardApart = Vector3.Distance(host.hostWizardAfter, client.hostWizardAfter);
         Metric("host_wizard_thrown_m", thrown);
@@ -1108,7 +1002,6 @@ public class OnlineProbe : ProbeScenario
             $"the host's wizard thrown {thrown:0.00} m by the client's Thunderwave; the client's copy {wizardApart * 100f:0.0} cm from it");
     }
 
-    // Every prop and item by its stable id (world/things.json): the client adopted the host's, none missing.
     void CompareThings(OnlineObservation host, OnlineObservation client)
     {
         int inData = grid.Things.Count;

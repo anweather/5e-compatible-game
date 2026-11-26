@@ -43,10 +43,8 @@ namespace Chem.Tests
         }
 
         const int Grid = 16;
-        // A tree cell's character (ChunkGen's legend).
         const char Tree = 'T';
 
-        // Every Grid cells over the map: whether the woods' noise (with the foothills') makes it a wood there.
         bool[] WoodGrid(out int gw, out int gh)
         {
             gw = map.Gen.CellsW / Grid;
@@ -61,7 +59,6 @@ namespace Chem.Tests
             return wood;
         }
 
-        // The woods as 8-connected patches of the grid's wood samples (round the torus), their sizes in samples.
         static List<int> Patches(bool[] wood, int gw, int gh)
         {
             var seen = new bool[wood.Length];
@@ -150,7 +147,6 @@ namespace Chem.Tests
             Assert.That((double)meadowDensity / meadow, Is.LessThan((double)footDensity / foot / 2), "the high meadow thinner than the foothills");
         }
 
-        // The chunks along the main roads' lines and the rivers', and those round the densest wood.
         List<(int cx, int cy)> Chunks()
         {
             var gen = map.Gen;
@@ -182,7 +178,6 @@ namespace Chem.Tests
                         if (c.Cells[j * s + i] != Tree) continue;
                         trees++;
                         int x = cx * s + i, y = cy * s + j;
-                        // Nothing laid within two cells: no road, river, lake or ford (their banks are clear further still).
                         for (int dy = -2; dy <= 2; dy++)
                             for (int dx = -2; dx <= 2; dx++)
                             {
@@ -191,7 +186,6 @@ namespace Chem.Tests
                                 Assert.That(ford, Is.False);
                                 checkedRoads++;
                             }
-                        // Not in a pass.
                         Assert.That(map.Hills.Massif.PassAt(x, y), Is.LessThan(BiomeMath.One), $"a tree at ({x}, {y}) in a pass");
                     }
             }
@@ -205,7 +199,6 @@ namespace Chem.Tests
             var gen = map.Gen;
             int s = ChunkGen.Size, edges = 0, edgeTrees = 0;
             var chunks = Chunks();
-            // The chunks along both seams too, either side.
             for (int cy = 0; cy < gen.ChunksH; cy += 9)
             {
                 chunks.Add((0, cy));
@@ -229,7 +222,6 @@ namespace Chem.Tests
                         if (cell == Tree) edgeTrees++;
                     }
             }
-            // A cell and its copies a world off either way read the same.
             for (int y = 0; y < gen.CellsH; y += 37)
             {
                 Assert.That(gen.HillsGroundAt(gen.CellsW - 1, y), Is.EqualTo(gen.HillsGroundAt(-1, y)), $"row {y} over the east seam");
@@ -240,7 +232,6 @@ namespace Chem.Tests
                 Assert.That(gen.HillsGroundAt(x, gen.CellsH - 1), Is.EqualTo(gen.HillsGroundAt(x, -1)), $"column {x} over the south seam");
                 Assert.That(gen.HillsGroundAt(x, 0), Is.EqualTo(gen.HillsGroundAt(x, gen.CellsH)), $"column {x} over the south seam");
             }
-            // The woods' chance tiles round the torus.
             for (int k = 0; k < 400; k++)
             {
                 int x = (int)(WorldHash.Hash4(1, 2, k, 0) % (uint)gen.CellsW), y = (int)(WorldHash.Hash4(1, 3, k, 0) % (uint)gen.CellsH);
@@ -278,10 +269,8 @@ namespace Chem.Tests
             TestContext.Out.WriteLine(string.Format(CultureInfo.InvariantCulture, "FOREST the densest wood's chunk {0}: {1} trees ({2:0.0}%), its known samples' mean cover {3:0}", heart, trees, 100.0 * trees / (s * s), cover));
             Assert.That(trees, Is.GreaterThan(s * s * forest.Most / 1000 / 2), "the heart of a wood is dense");
             Assert.That(cover, Is.GreaterThan(128), "and looks it from far off");
-            // A chunk with no tree looks open.
             var bare = Chunks().First(k => !gen.Make(k.cx, k.cy).Cells.Contains(Tree));
             Assert.That(gen.Know(bare.cx, bare.cy).Wood.Average(b => (double)b), Is.LessThan(16), $"the treeless chunk {bare}");
-            // Where the samples are laid (road, water) they're never wooded.
             for (int q = 0; q < known.Wood.Length; q++)
                 if (known.Water[q] != KnownChunk.Dry) Assert.That(known.Wood[q], Is.EqualTo(0));
         }
@@ -290,7 +279,6 @@ namespace Chem.Tests
         public void Places()
         {
             var m = map.Hills.Massif;
-            // Round the massif: where a wood stands highest on the foothills' way up (the tree line), by bearing.
             for (int a = 0; a < 360; a += 15)
             {
                 double ang = a * Math.PI / 180;
@@ -330,7 +318,6 @@ namespace Chem.Tests
             }
             var host = Peer(Source());
             var other = Peer(Source());
-            // Through the densest wood from west to east, a character on it, a fire bolt now and then into a tree ahead.
             int s = ChunkGen.Size, y0 = heart.cy * s + s / 2, x0 = (heart.cx - 2) * s;
             var path = Enumerable.Range(0, 5 * s).Select(k => (x: PlanGrid.Mod(x0 + k, host.W), y: y0)).ToList();
             var planner = new ChunkPlanner();
@@ -351,7 +338,6 @@ namespace Chem.Tests
                 (int x, int y)? cast = null;
                 if (t % 40 == 20)
                 {
-                    // The nearest tree ahead within a few cells of the path.
                     var (px, py) = path[Math.Min(path.Count - 1, t + 8)];
                     for (int d = 0; d < 12 && cast == null; d++)
                         foreach (var (dx, dy) in new[] { (0, d), (0, -d), (d, 0), (-d, 0) })

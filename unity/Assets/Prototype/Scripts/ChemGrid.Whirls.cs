@@ -12,18 +12,14 @@ using UnityEngine;
 // GPU-first: a handful of particle systems however long the game runs.
 public partial class ChemGrid
 {
-    const float ColumnEase = 4f; // m/s: a whirlwind's cell steps; its column glides between them
+    const float ColumnEase = 4f;
     const float ColumnHeight = 7f;
-    const float ColumnRate = 280f; // puffs a second in a whirlwind's column (radius 2)
-    // A falling star's size, as a share of a meteor's.
+    const float ColumnRate = 280f;
     const float StarSize = 0.3f;
-    // The biggest a flash is drawn: past this its sparks fly off before they're seen.
     const float FlashMost = 2.6f;
-    // A lightning star's bolt: the element that makes one, how high it comes from and how many forks round its edge.
     const string StrikeElement = "lightning";
     const float StrikeHeight = 22f;
     const int StrikeForks = 5;
-    // How much of a strike's thunder is placed where it struck: little, so it's as loud across the field as beside it.
     const float ClapSpread = 0.35f;
     readonly System.Random thunderSeeds = new();
 
@@ -36,7 +32,6 @@ public partial class ChemGrid
     readonly List<World.Star> starsGone = new();
     SpellCaster showman;
 
-    // What a whirlwind looks like carrying each thing (spells.json "carries"); plain air otherwise.
     static Color ColumnTint(string carrying) => carrying switch
     {
         "fire" => new Color(1f, 0.42f, 0.06f, 0.95f),
@@ -63,7 +58,6 @@ public partial class ChemGrid
         at.y = GroundTop(ww.X, ww.Y, World.At(ww.X, ww.Y));
         bool starting = !ps.isEmitting;
         ps.transform.position = starting ? at : Vector3.MoveTowards(ps.transform.position, at, ColumnEase * Time.deltaTime);
-        // A bigger one (Tornado's 3 to Whirlwind's 2) stands taller too, and as thick with dust as a small one.
         ps.transform.localScale = new Vector3(ww.Radius, Mathf.Max(1f, ww.Radius / 2f), ww.Radius) * cellSize;
         if (starting)
         {
@@ -122,7 +116,6 @@ public partial class ChemGrid
         return ps;
     }
 
-    // Soft puffs tinted by their particles' colour: a whirlwind's column, a wave's foam.
     Material SoftParticles()
     {
         if (columnMaterial != null) return columnMaterial;
@@ -133,7 +126,6 @@ public partial class ChemGrid
         return columnMaterial;
     }
 
-    // A wizard to ask how a spell looks.
     SpellCaster Showman
     {
         get
@@ -143,10 +135,8 @@ public partial class ChemGrid
         }
     }
 
-    // The colour of a spell's look, or null with no show for it.
     Color? SpellLookColor(string spell) => Showman != null ? Showman.LookOf(spell)?.glow : null;
 
-    // A star the core has aimed starts falling, to land the moment the core does.
     void RenderStars()
     {
         foreach (var star in World.Stars)
@@ -171,8 +161,6 @@ public partial class ChemGrid
         foreach (var star in starsGone) starsFalling.Remove(star);
     }
 
-    // A lightning star (Thunder Strike) comes down out of the sky rather than falling as a rock: a thick bolt onto
-    // its middle and thinner ones round its edge, the moment the core lands it, with a flash the burst's width.
     void SkyStrike(World.Star star, Vector3 at, float seconds)
     {
         var glow = SpellLookColor(star.Spell);
@@ -191,7 +179,6 @@ public partial class ChemGrid
         StartCoroutine(StrikeFlash(at, reach, seconds, clap));
     }
 
-    // The bolt lands: a flash, rock thrown up, and its thunder (made while the bolt came down) right on it.
     System.Collections.IEnumerator StrikeFlash(Vector3 at, float reach, float seconds, System.Threading.Tasks.Task<float[]> clap)
     {
         yield return new WaitForSeconds(seconds);
@@ -201,11 +188,9 @@ public partial class ChemGrid
         if (!clap.IsFaulted) GameSounds.PlayMade(SoundIds.ThunderClap, ThunderClap.ToClip(clap.Result), at, 1f, ClapSpread);
     }
 
-    // Each tick's flash since the last frame, as one burst and one shove over the cells that went up.
     void RenderFlashes()
     {
         flashing.Clear();
-        // From the tick before too: a cast lands between ticks, stamped with the tick already seen.
         foreach (var f in World.FlashesSince(flashSeen - 1))
             if (flashesShown.Add((f.x, f.y, f.tick))) flashing.Add(f);
         flashSeen = World.Tick;
@@ -231,7 +216,6 @@ public partial class ChemGrid
         var first = flashing[from];
         middle.y = GroundTop(first.x, first.y, World.At(first.x, first.y));
         BurstFx.Play(BurstFx.Kind.Flash, middle, Mathf.Min(reach + cellSize, FlashMost));
-        // Props are the host's (D4): a client's are puppets that follow it.
         bool hosting = !TryGetComponent<NetChem>(out var net) || !net.Online || net.IsServer;
         if (hosting && first.push > 0) Forces.Radial(middle, reach, first.push * Forces.ImpulsePerPush, null);
     }

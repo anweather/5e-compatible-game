@@ -5,18 +5,14 @@
 // and right (the spell radial's) and the shoulder buttons.
 public class CodePicker
 {
-    /// <summary>How long a Multiplayer Services session code is.</summary>
     public const int Length = 6;
 
-    /// <summary>The characters a code can hold (NetSession upper-cases codes before joining).</summary>
     public const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     readonly int[] chars = new int[Length];
 
-    /// <summary>The letter being changed, 0 to Length - 1.</summary>
     public int Slot { get; private set; }
 
-    /// <summary>The code as entered so far (every slot holds a character).</summary>
     public string Code
     {
         get
@@ -27,10 +23,6 @@ public class CodePicker
         }
     }
 
-    /// <summary>
-    /// Starts again. A code to begin from (one that was copied or typed) fills the slots and
-    /// puts the cursor on the last letter, so A joins at once; anything else starts from AAAAAA.
-    /// </summary>
     public void Begin(string start = null)
     {
         Slot = 0;
@@ -41,14 +33,12 @@ public class CodePicker
         Slot = Length - 1;
     }
 
-    /// <summary>Changes the current letter: positive goes forward through A-Z then 0-9, wrapping.</summary>
     public void Step(int delta)
     {
         int n = Alphabet.Length;
         chars[Slot] = ((chars[Slot] + delta) % n + n) % n;
     }
 
-    /// <summary>Moves on to the next letter. True when the last letter was already current (the code is done).</summary>
     public bool Next()
     {
         if (Slot == Length - 1) return true;
@@ -56,7 +46,6 @@ public class CodePicker
         return false;
     }
 
-    /// <summary>Goes back one letter. False on the first letter (leave the picker).</summary>
     public bool Back()
     {
         if (Slot == 0) return false;
@@ -64,7 +53,6 @@ public class CodePicker
         return true;
     }
 
-    /// <summary>True for text that could be a join code: six letters or digits, ignoring case and spaces around it.</summary>
     public static bool LooksLikeCode(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return false;

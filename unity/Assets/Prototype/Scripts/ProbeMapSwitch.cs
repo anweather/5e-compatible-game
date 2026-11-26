@@ -21,7 +21,6 @@ public class MapSwitchProbe : ProbeScenario
     {
         Check("starts_on_the_valley", ChemGrid.MapId == Valley, $"on {ChemGrid.MapId}: empty unity/{ChemGrid.EditorMapFile}");
         if (ChemGrid.MapId != Valley) yield break;
-        // The probe outlives the scene's reloads.
         DontDestroyOnLoad(gameObject);
         string startLand = LandPrint();
         CheckMap("valley_start", null);
@@ -46,8 +45,6 @@ public class MapSwitchProbe : ProbeScenario
             Metric($"leak_{kind}", grew);
             Metric($"count_{kind}", after[kind]);
         }
-        // A few of the scene's own objects come and go with the clock (a gull, a ripple); a leak of a map's chunks or
-        // places is hundreds.
         Check("no_objects_leaked", after["gameobjects"] - before["gameobjects"] <= 8, Delta(before, after, "gameobjects"));
         Check("no_meshes_leaked", after["meshes"] - before["meshes"] <= 4, Delta(before, after, "meshes"));
         Check("no_textures_leaked", after["textures"] - before["textures"] <= 2, Delta(before, after, "textures"));
@@ -58,7 +55,6 @@ public class MapSwitchProbe : ProbeScenario
     static string Delta(Dictionary<string, int> before, Dictionary<string, int> after, string kind) =>
         $"{before[kind]} before, {after[kind]} after";
 
-    // Loads a map the way the Esc menu does and waits for its first drawn frame, measuring the frames between.
     IEnumerator SwitchTo(string id, string name)
     {
         var was = ChemGrid.Current?.Grid;
@@ -82,11 +78,9 @@ public class MapSwitchProbe : ProbeScenario
         Metric($"{name}_longest_frame_ms", longest * 1000f);
         Metric($"{name}_frames", frames);
         Check($"{name}_switched", grid != null && grid != was && ChemGrid.MapId == id, $"on {ChemGrid.MapId} after {seconds:0.0} s ({frames} frames, the longest {longest * 1000f:0} ms)");
-        // A frame or two for the things and the wizard to settle on the new ground.
         yield return Wait(1f);
     }
 
-    // The new world's cells as the scene has built them, before its first tick (after every Awake, before any Update).
     (string print, int tick)? loaded;
 
     void OnLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
@@ -95,8 +89,6 @@ public class MapSwitchProbe : ProbeScenario
         if (world != null) loaded = (CellPrint(world, true), world.Tick);
     }
 
-    // The map on screen is the one switched to: the world, chunks, sea, spawn, things and land are its own; its cells as
-    // they were loaded (null at the run's own start, which is a fresh start) equal a fresh start's.
     void CheckMap(string name, (string print, int tick)? atLoad)
     {
         var land = MapLand.Current;
@@ -106,7 +98,6 @@ public class MapSwitchProbe : ProbeScenario
         var terrains = FindAnyObjectByType<MapTerrains>();
         int chunks = terrains != null ? terrains.Chunks.Length : 0, wanted = land.Layout.ChunksX * land.Layout.ChunksZ;
         int allChunks = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
-        // A generated map makes terrains only for the drawn tier (#205): as many as stand and wait in the pool, none more.
         int terrainsWanted = terrains != null && terrains.Lazy ? terrains.Counts.created : wanted;
         Check($"{name}_chunks_are_the_maps", chunks == wanted && allChunks == terrainsWanted && allChunks > 0, $"{chunks} chunks of {wanted}, {allChunks} terrains in the scene ({terrainsWanted} made)");
         var ocean = Ocean.Instance;
@@ -124,7 +115,6 @@ public class MapSwitchProbe : ProbeScenario
         Metric($"{name}_things", live);
         Check($"{name}_things_are_the_maps", World.ThingsNow.Count == fromFile.Count && live == World.ThingsNow.Count, $"{live} spawned, {World.ThingsNow.Count} in the world, {fromFile.Count} in its things.json");
 
-        // A fresh start on this map: its cells as MapWorld lays them from the folder, and its land as land.json has it.
         if (atLoad is { } at0)
         {
             var fresh = ChemGrid.MapWorld(World.Rules, ChemGrid.CellMap(), grid.seed, out _);
@@ -138,8 +128,6 @@ public class MapSwitchProbe : ProbeScenario
         Check($"{name}_land_is_a_fresh_start", mapLand == freshLand, $"{mapLand}, land.json {freshLand}");
     }
 
-    // The land as played: each cell's raised height (not its terrain, which the weather may have turned to mud by now),
-    // then the map's land.
     string LandPrint() => $"{ChemGrid.MapId} {CellPrint(World, false)} {Print(MapLand.Current?.Land)}";
 
     static string CellPrint(World world, bool terrain)
@@ -156,7 +144,6 @@ public class MapSwitchProbe : ProbeScenario
 
     static string Print(LandChunks land) => land == null ? "none" : Fnv(land).ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
 
-    // Over the land row by row, as over the int a cell it was: a band of chunk rows at a time, so each chunk is decoded once.
     static uint Fnv(LandChunks land)
     {
         uint h = 2166136261;
@@ -173,10 +160,8 @@ public class MapSwitchProbe : ProbeScenario
 
     Dictionary<string, int> counted;
 
-    // What's alive, after unused assets have gone: what a switch and back must leave as it found it.
     IEnumerator Census()
     {
-        // Unity's own sweep: what nothing holds goes, so what's left is held (a static, a DontDestroyOnLoad).
         yield return Resources.UnloadUnusedAssets();
         counted = new Dictionary<string, int>
         {

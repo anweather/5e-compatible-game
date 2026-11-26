@@ -11,7 +11,6 @@ public sealed class TestWalker : MonoBehaviour
     Component inputs;
     System.Reflection.FieldInfo move, run, jump;
 
-    /// <summary>Whether it has arrived (or found no way).</summary>
     public bool Done { get; private set; }
 
     void Start()

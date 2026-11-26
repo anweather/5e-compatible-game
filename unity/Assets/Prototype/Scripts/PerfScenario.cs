@@ -81,7 +81,6 @@ public class PerfScenario : MonoBehaviour
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
     readonly List<(float ms, string line)> spikes = new();
     readonly List<float> shotMs = new();
-    // Every measured frame in the order PerfMarkers sampled it (NaN for the bot's shots), and the chunk the wizard was in.
     readonly List<float> sampledMs = new();
     readonly List<Vector2Int> sampledChunk = new();
     string scenario;
@@ -117,7 +116,6 @@ public class PerfScenario : MonoBehaviour
         early = new PerfMarkers();
         earlyFrom = Time.realtimeSinceStartupAsDouble;
         scenario = Arg("-perf-scenario");
-        // The scene is up and the map made: the load, and what it holds (-perf-memory, slow).
         Debug.Log($"PERF LOAD map={ChemGrid.MapId} since_start_s={Time.realtimeSinceStartup.ToString("0.00", CultureInfo.InvariantCulture)} keep_start_ms={ChemGrid.KeepStartMs.ToString("0", CultureInfo.InvariantCulture)} chunks={ChemGrid.Current?.World.ChunkCoords.Count ?? 0} active_chunks={ChemGrid.Current?.World.ActiveChunks.Count ?? 0}");
         if (Has("-perf-memory")) Debug.Log(PerfMemory.Line("start"));
         LogSource("load");
@@ -139,7 +137,6 @@ public class PerfScenario : MonoBehaviour
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
         if (float.TryParse(Arg("-perf-step-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float stepMs) && stepMs > 0f)
         {
-            // The slices a frame in a playtest run, in proportion to the game's 6 ms and 256.
             int slices = Mathf.Max(1, Mathf.RoundToInt(stepMs / 6f * 256f));
             ChemGrid.Current?.Grid.SetStepBudget(stepMs, slices);
             Debug.Log($"PERF STEP BUDGET ms={stepMs.ToString("0.0", CultureInfo.InvariantCulture)} slices={slices}");
@@ -150,7 +147,6 @@ public class PerfScenario : MonoBehaviour
         wizard = WizardRig.FindLocal();
         if (scenario != Bot) yield return SetTheStage();
         if (Has("-perf-flames-off")) grid.Flames.enabled = false;
-        // A wildfire burns from the bolts, and fog's cost is in how it comes. The others settle, even a walk.
         if (scenario != Wildfire && scenario != Fog) yield return new WaitForSecondsRealtime(SettleSeconds);
         if (stage != null) stage.Go = true;
 
@@ -158,7 +154,7 @@ public class PerfScenario : MonoBehaviour
         LogSource("measure");
         PerfKnobs.Apply();
         foreach (string line in PerfCensus.Lines("start")) Debug.Log(line);
-        yield return null; // the census's own frame isn't measured
+        yield return null;
         early.Dispose();
         early = null;
         markers = new PerfMarkers(Has("-perf-wide"));
@@ -168,16 +164,14 @@ public class PerfScenario : MonoBehaviour
         measuring = true;
         if (scenario == Bot) yield break;
 
-        // Update ends the run, so the frame that crosses the end is counted, however long it took.
         while (measuring) yield return null;
         if (Has("-perf-look-pair") || Has("-perf-look-pair-tufts") || Arg("-perf-look-pair-detail") != null || Has("-perf-look-pair-grass-shadows") || Has("-perf-look-pair-tree-budget")) yield return LookPair();
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
-        yield return new WaitForSecondsRealtime(ShotSavedSeconds); // quitting drops a shot still being written
+        yield return new WaitForSecondsRealtime(ShotSavedSeconds);
         Application.Quit();
     }
 
-    // With -host-online, until the session is up and its wizard stands in the world.
     IEnumerator WaitToHost()
     {
         if (!Has("-host-online")) yield break;
@@ -192,11 +186,9 @@ public class PerfScenario : MonoBehaviour
         Debug.Log($"PERF HOSTED online={net != null && net.Online}");
     }
 
-    // URP takes the camera's formats from its target, so this matches URP's HDR colour and depth.
     static void DrawOffscreenIfAsked()
     {
         if (!Has("-perf-offscreen")) return;
-        // -perf-offscreen-4k draws into 3840x2160, as Andrew's own screen is.
         int scale = Has("-perf-offscreen-4k") ? 2 : 1;
         Camera.main.targetTexture = new RenderTexture(OffscreenWide * scale, OffscreenHigh * scale, GraphicsFormat.B10G11R11_UFloatPack32, GraphicsFormat.D32_SFloat_S8_UInt);
         Debug.Log($"PERF OFFSCREEN {OffscreenWide * scale}x{OffscreenHigh * scale}");
@@ -224,8 +216,6 @@ public class PerfScenario : MonoBehaviour
         while (!stage.Ready) yield return null;
     }
 
-    // Two shots with Prototype/Flame and one without, of the fire from the air and from close by, so
-    // a script can count what it really drew: the first two differ by a flicker, the last by the flames.
     IEnumerator FlameShots()
     {
         var flames = grid.GetComponentInChildren<FlameBank>();
@@ -247,7 +237,6 @@ public class PerfScenario : MonoBehaviour
         yield return Shot("wildfire-close-off");
     }
 
-    // The camera 5 m from the middle burning cell (PerfStage has taken it from Cinemachine).
     void LookAtFire()
     {
         var world = grid.World;
@@ -260,11 +249,6 @@ public class PerfScenario : MonoBehaviour
         Camera.main.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(at - eye));
     }
 
-    // -perf-look-pair: with time stopped, the same view as it draws now and as it drew before the 2026-11-23 GPU fixes
-    // (PerfKnobs.AsBefore): from where the camera is, and from 60 m up looking out north, east, south and west. A fair
-    // still pair, as nothing moves between them. -perf-look-pair-tufts: before is the pack's own tufts (PerfKnobs.PackTufts);
-    // -perf-look-pair-detail M: before is the grass drawn to M metres; -perf-look-pair-grass-shadows: before is the grass
-    // casting shadows again (PerfKnobs.GrassShadows).
     IEnumerator LookPair()
     {
         Time.timeScale = 0f;
@@ -277,11 +261,9 @@ public class PerfScenario : MonoBehaviour
             string label = i == 0 ? "now" : "before";
             if (i == 1)
             {
-                // -perf-look-pair-tufts: before is the terrain pack's own grass tufts (LightTufts), nothing else.
                 if (Has("-perf-look-pair-tufts")) Debug.Log($"PERF KNOBS pack_tufts={PerfKnobs.PackTufts()}");
                 else if (float.TryParse(Arg("-perf-look-pair-detail"), NumberStyles.Float, CultureInfo.InvariantCulture, out float metres)) PerfKnobs.DetailMetres(metres);
                 else if (Has("-perf-look-pair-grass-shadows")) Debug.Log($"PERF KNOBS grass_shadows_on={PerfKnobs.GrassShadows(UnityEngine.Rendering.ShadowCastingMode.On)}");
-                // -perf-look-pair-tree-budget: before is the trees without their budget (TreeBudget), as far as ever.
                 else if (Has("-perf-look-pair-tree-budget"))
                 {
                     TreeImpostors.Budget = false;
@@ -304,13 +286,11 @@ public class PerfScenario : MonoBehaviour
     {
         if (stage != null) stage.CutTo(eye, at);
         for (int f = 0; f < 3; f++) yield return null;
-        // The near trees stood as their prefabs first (a few a frame), so both of a pair show what each draws.
         for (int f = 0; f < 600 && TreeImpostors.NearWaiting > 0; f++) yield return null;
         Debug.Log($"PERF LOOK {name} prefabs={TreeImpostors.NearDrawn} prefabs_within={TreeImpostors.PrefabsWithin:0} impostors={TreeImpostors.Drawn} impostors_within={TreeImpostors.ImpostorsWithin:0}");
         yield return Shot(name);
     }
 
-    // A screenshot is written at the end of the frame it was asked for.
     internal static IEnumerator Shot(string name)
     {
         var file = Path.Combine(ChemGrid.Folders.PlayerData, $"perf-{name}.png");
@@ -322,7 +302,6 @@ public class PerfScenario : MonoBehaviour
 
     static bool Has(string name) => Environment.GetCommandLineArgs().Contains(name);
 
-    // Before measuring starts: the slow frames of start-up, with what the markers say of them.
     void NoteEarly()
     {
         if (early == null) return;
@@ -349,7 +328,6 @@ public class PerfScenario : MonoBehaviour
         overheadMs = 0;
         frameNumber++;
         markers.Sample();
-        // A bot's shot is a frame or two of its own, then a slow render or so behind it.
         quietFrames = markers.BotShotLastFrame ? ShotQuietFrames : Math.Max(0, quietFrames - 1);
         if (quietFrames > 0) shotMs.Add(ms);
         else frameMs.Add(ms);
@@ -374,7 +352,6 @@ public class PerfScenario : MonoBehaviour
         if (scenario != Bot && now - startedAt >= seconds) Finish();
     }
 
-    // The frame's PerfCounts into the run's, after the spike line has had them.
     void ReadCounts()
     {
         foreach (var pair in PerfCounts.Frame)
@@ -398,13 +375,10 @@ public class PerfScenario : MonoBehaviour
             $" hour={(grid.World.Minutes / 60.0 % 24.0).ToString("0.0", inv)} chunk={chunk.x},{chunk.y} weather={grid.World.Weather.Kind} active_chunks={grid.World.ActiveChunks.Count}{shot}{markers.Breakdown()}{counted}"));
     }
 
-    // How many cells burn and hold fog, over the whole world; its time doesn't count against the frame.
     void CountCells()
     {
         long from = Stopwatch.GetTimestamp();
         burningNow = fogNow = 0;
-        // The unpacked chunks only (D17): a read of a packed one unpacks it, and this every second unpacked the whole map.
-        // A packed chunk is inactive and has been for streaming.packTicks, so nothing in it burns or drifts meanwhile.
         var world = grid.World;
         foreach (var (cx, cy) in world.ChunkCoords)
         {
@@ -428,7 +402,6 @@ public class PerfScenario : MonoBehaviour
         else if (type != LogType.Log) errors++;
     }
 
-    // The bot quits when its run is done (OnApplicationQuit never runs in a Windows player).
     void OnApplicationQuit() => Finish();
 
     void OnDestroy()
@@ -443,7 +416,6 @@ public class PerfScenario : MonoBehaviour
 
     static readonly Dictionary<string, int> madeStacks = new();
 
-    // The read's callers past the source and the World's own frames, a few, as one key.
     static void CountMadeStack()
     {
         var frames = new StackTrace(2, false).GetFrames();
@@ -453,12 +425,9 @@ public class PerfScenario : MonoBehaviour
         lock (madeStacks) madeStacks[key] = (madeStacks.TryGetValue(key, out int n) ? n : 0) + 1;
     }
 
-    // A map made from its source (the Wide World): the chunks its generator made so far, and how (on a read: a stall on the
-    // thread that read it; ahead on the worker; waited for). The walk's on-read count is end's less measure's.
     static void LogSource(string at)
     {
         if (ChemGrid.Current?.World?.Source is not Chem.GeneratedSource g) return;
-        // -perf-made-stacks: which reads made the chunks made on a read, by their callers' frames (the heaviest first).
         if (Has("-perf-made-stacks"))
         {
             if (at == "load") g.MadeOnReadAt = (_, _) => CountMadeStack();
@@ -510,7 +479,6 @@ public class PerfScenario : MonoBehaviour
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
     }
 
-    // The frames at the run's p95 and over: what their markers were made of, and where the wizard was.
     void LogSlow()
     {
         if (frameMs.Count == 0) return;
@@ -527,7 +495,6 @@ public class PerfScenario : MonoBehaviour
             .Select(w => $" {w.Key.x},{w.Key.y}={w.Value.slow}/{w.Value.all}")));
     }
 
-    // The times a player feels: each as seconds into the run, then ms.
     void LogLatency(CultureInfo inv)
     {
         static string Listed(IEnumerable<(float at, float ms)> times) => string.Join(",", times.Select(t => $"{t.at.ToString("0", CultureInfo.InvariantCulture)}:{t.ms.ToString("0.0", CultureInfo.InvariantCulture)}"));
@@ -580,7 +547,6 @@ public class PerfScenario : MonoBehaviour
         Add("gfx_used_mb", markers.GfxUsedBytes / BytesPerMb, "0");
         Add("system_used_mb", markers.SystemUsedBytes / BytesPerMb, "0");
         line.Append($" active_chunks={grid.World.ActiveChunks.Count} ticks={grid.World.Tick - tickAtStart}");
-        // The sparse World (D17): chunks unpacked now, the drawn hint, and the packing since the world was made.
         var w = grid.World;
         line.Append($" unpacked={w.UnpackedCount} drawn_hint={w.DrawnCount} packs={w.Packs} unpacks={w.Unpacks} read_unpacks={w.ReadUnpacks} pack_ms={w.PackMs.ToString("0.0", inv)} unpack_ms={w.UnpackMs.ToString("0.0", inv)}");
         line.Append($" burning_peak={burningPeak} burning_end={burningNow} fog_cells_peak={fogPeak} fog_cells_end={fogNow} fog_drawn={grid.Fog.SquaresShown}");
@@ -591,7 +557,6 @@ public class PerfScenario : MonoBehaviour
         return line.ToString();
     }
 
-    // Every marker and counter this player has, for choosing which to read.
     static void ListMarkers()
     {
         var handles = new List<ProfilerRecorderHandle>();

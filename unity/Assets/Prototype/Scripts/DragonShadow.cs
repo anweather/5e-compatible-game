@@ -17,7 +17,6 @@ public class DragonShadow : MonoBehaviour
     MaterialPropertyBlock block;
     readonly Vector3[] vertices = new Vector3[Side * Side];
 
-    /// <summary>A shadow on a new child of <paramref name="view"/>.</summary>
     public static DragonShadow On(Transform view, ChemGrid grid, Shader shader)
     {
         var go = new GameObject("Dragon's shadow");
@@ -54,7 +53,6 @@ public class DragonShadow : MonoBehaviour
         look.enabled = false;
     }
 
-    /// <summary>Lays the shadow, <paramref name="size"/> metres across, round a point, its nose along <paramref name="forward"/>.</summary>
     public void Lay(Vector3 at, Vector3 forward, float size, float strength)
     {
         forward.y = 0f;

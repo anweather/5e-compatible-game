@@ -18,13 +18,8 @@ using UnityEngine;
 public class QuickExit : MonoBehaviour
 {
     const string Off = "-clean-quit";
-    // Long enough for a disconnect to reach the other peers, short enough not to be noticed.
     const float MostToLeave = 0.5f;
 
-    /// <summary>
-    /// Runs once as the game quits, before the process ends: save or send what can't be
-    /// lost here. In a Windows player Unity's own quit callbacks don't run (see the top).
-    /// </summary>
     public static event Action BeforeExit;
 
     static bool ending;
@@ -32,7 +27,6 @@ public class QuickExit : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Boot()
     {
-        // Starts over each run, even with the Editor's domain reload off.
         ending = false;
         BeforeExit = null;
         Application.wantsToQuit -= Quitting;
@@ -41,7 +35,6 @@ public class QuickExit : MonoBehaviour
         Application.wantsToQuit += Quitting;
     }
 
-    // Unity asks before it quits: say no, and end it ourselves once the session is left.
     static bool Quitting()
     {
         if (ending) return false;
@@ -70,17 +63,12 @@ public class QuickExit : MonoBehaviour
             net.Shutdown();
             float until = Time.realtimeSinceStartup + MostToLeave;
             while (net.ShutdownInProgress && Time.realtimeSinceStartup < until) yield return null;
-            yield return null; // one more frame for the transport to send it
+            yield return null;
         }
         Debug.Log("Quit: ending the process (-clean-quit for Unity's own shutdown).");
         Now(0);
     }
 
-    /// <summary>
-    /// Ends the process at once, with no shutdown. On Windows that's TerminateProcess:
-    /// ExitProcess would run every DLL's detach under the loader lock, which deadlocks with
-    /// Unity's threads still running (seen on the PC).
-    /// </summary>
     public static void Now(uint exitCode)
     {
         if (Application.platform == RuntimePlatform.WindowsPlayer) TerminateProcess(GetCurrentProcess(), exitCode);

@@ -5,28 +5,21 @@
 using System;
 using System.ComponentModel;
 
-#pragma warning disable S107 // a tool's parameters are its schema, so add_spell and add_reaction take many
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
-    /// <summary>Marks a method of RulesTools as a tool of that name.</summary>
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class RulesToolAttribute : Attribute
     {
         public RulesToolAttribute(string name) { Name = name; }
 
         public string Name { get; }
-        /// <summary>The tool only reads: nothing in the game or on disk changes.</summary>
         public bool ReadOnly { get; set; }
     }
 
     public sealed class RulesTools
     {
-        /// <summary>
-        /// What a client is told when it connects: how to go about it. Both hosts send it. Claude Code carries this in the first
-        /// message, which every prompt writes again, and the tools' descriptions in the block that stays cached: so what a tool
-        /// needs goes in its description, and this stays short (docs/telemetry/chat-context-2026-11-02.md).
-        /// </summary>
         public const string Instructions =
             "These tools change the rules of Spell Chemistry Valley, a game about how spells and materials react, in the game the player is watching. When the player asks for a change, write it yourself: " +
             "read what's on now (whats_on, then list, describe, explain), build a new draft, check it with validate, run simulate if validate says to, then apply it with a short title the players will read. " +
@@ -40,11 +33,8 @@ namespace Chem.Mcp
         readonly Workbench bench;
         readonly Func<string, Exception> failure;
 
-        // A server may run calls at once; drafts are shared state, so one call at a time.
         readonly object gate = new object();
 
-        /// <param name="bench">What the tools do.</param>
-        /// <param name="failure">The exception a host wants for a refusal, with its sentence; RulesToolException when left out.</param>
         public RulesTools(Workbench bench, Func<string, Exception> failure = null)
         {
             this.bench = bench;
@@ -66,8 +56,6 @@ namespace Chem.Mcp
                 throw failure(e.Message);
             }
         }
-
-        // ---------- read ----------
 
         [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal, how each is built and whether it comes out on its own: add_species and set_species change them), parts (the shapes animals are built from: each part's role, segments and who wears it), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), the triggers (rules that react when a player steps or a golf ball is holed), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
@@ -111,8 +99,6 @@ namespace Chem.Mcp
             [Description("Only a place's side: north, east, south or west.")] string side = null,
             [Description("shore for the edge of a place: near sea, edge shore is the beach.")] string edge = null,
             [Description("How far from it, in cells; 32 when left out.")] int? within = null) => Do(() => bench.FindSite(width, depth, near, side, edge, within));
-
-        // ---------- draft ----------
 
         [RulesTool("act"), Description("Does something once, now, for everyone, with no mod: lays a terrain or cover, places a thing, brings out an animal (a species from list fauna) or casts a spell, on open ground near a place, a building, a cell or the player asking. \"Add 20 trees near me\" is act(what: tree, count: 20, spacing: 2); asked again, it's act again, so the mod list stays as it was. \"Spawn three centaurs near me\" is act(what: centaur, count: 3), once the species is there. \"Make a canyon here\" is act(what: land, profile: canyon, along: east, radius: 32, rise: 30), then act(what: tree) along its rim: land reads best dressed. \"Put a ball and a cup near me\" is act(what: cup, within: 20) then act(what: golf-ball): spell golf, a new round. Any spell landing on the ball moves it, players take turns, and fireworks go off when it goes in. Use it for anything that happens rather than a rule that holds: no draft, validate or apply. undo_act takes back ground and things; animals, casts, the ball and the cup stay.")]
         public string Act([Description("A terrain (tree), a cover, a thing's kind, a species, a spell, golf-ball or cup for spell golf (ball alone is the court's kicking ball), or land to shape the land's height.")] string what,
@@ -332,8 +318,6 @@ namespace Chem.Mcp
         public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), lay (the id is what#seed, as scatter says), triggers, openings, floors, roofs, details or styles.")] string table,
             [Description("The id, or the sim parameter's path.")] string id) => Do(() => bench.Remove(draft, table, id).Show());
 
-        // ---------- check, run, save ----------
-
         [RulesTool("validate", ReadOnly = true), Description("Checks a draft (or a mod in rules/mods, or patch JSON): shape, references, the design rules, determinism and the budgets. Every problem is one sentence. Says if it changes how the world behaves, which wants a simulate before apply.")]
         public string Validate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft) => Do(() =>
             {
@@ -350,8 +334,6 @@ namespace Chem.Mcp
         public string Save([Description("A draft's id, or the id of a mod on now, as room lists it.")] string draft, [Description("A short title.")] string title, [Description("The idea in a sentence or two: what people vote on.")] string idea,
             [Description("The file name without .json; from the title when left out.")] string name = null, [Description("Replace a mod with that name.")] bool overwrite = false) =>
             Do(() => $"Saved {bench.Save(draft, title, idea, name, overwrite)}.");
-
-        // ---------- the room ----------
 
         [RulesTool("set_time"), Description("Moves the clock on to a time of day, for everyone, at the next tick: it only runs forward, to the next time the day reaches it. The room's change mode decides who may; the answer is what the room said and the time now.")]
         public string SetTime([Description("09:30, 21, noon, midnight, dawn or dusk.")] string time,

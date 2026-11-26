@@ -6,7 +6,6 @@ using UnityEngine;
 // button that opens the attribution and licences (Credits) as a page. Starts itself.
 public class GameInfoMenu : MonoBehaviour
 {
-    /// <summary>The Credits page's id in the Esc menu.</summary>
     public const string CreditsPage = "credits";
 
     static GameInfoMenu instance;
@@ -64,7 +63,6 @@ public class GameInfoMenu : MonoBehaviour
         if (PauseMenu.Button("About and credits", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(CreditsPage);
     }
 
-    // The Credits page: the attribution, scrolled with the mouse wheel or the right stick.
     void DrawCredits()
     {
         MakeStyles();

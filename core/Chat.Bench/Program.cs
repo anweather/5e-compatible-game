@@ -23,7 +23,6 @@ namespace Chem.Bench
 {
     public static class Program
     {
-        /// <summary>A colour, a rule, a spell, a house, and one that must be refused.</summary>
         public static readonly (string kind, string prompt)[] Prompts =
         {
             ("colour", "make all fire blue"),
@@ -33,7 +32,6 @@ namespace Chem.Bench
             ("refused", "make the player twice as tall"),
         };
 
-        /// <summary>As ClaudeChat's watchdog.</summary>
         const int MostSeconds = 240;
 
         const int StopWaitMs = 2000;
@@ -98,7 +96,6 @@ namespace Chem.Bench
             }
         }
 
-        // The folder as ClaudeTerminal.WriteFolder makes it, with the server over stdio in place of the game's url.
         static void WriteFolder(string folder, string rules, string applied)
         {
             string server = Path.Combine(AppContext.BaseDirectory, "Rules.Mcp.dll");
@@ -132,11 +129,10 @@ namespace Chem.Bench
                 RedirectStandardError = true,
                 StandardOutputEncoding = Encoding.UTF8,
             };
-            start.Environment.Remove("CLAUDECODE"); // a bench run from inside Claude Code is still a player's top-level claude
+            start.Environment.Remove("CLAUDECODE");
             return start;
         }
 
-        // As ClaudeChat.Follow: the message on stdin, each line out with its clock, a watchdog. Then the record.
         static JObject Follow(string claude, string model, string folder, string prompt, string applied)
         {
             var clock = Stopwatch.StartNew();
@@ -170,7 +166,7 @@ namespace Chem.Bench
 
         static string Commit()
         {
-#pragma warning disable S4036 // git from the PATH, as a terminal finds it
+#pragma warning disable S4036
             var start = new ProcessStartInfo("git", "rev-parse --short HEAD") { RedirectStandardOutput = true, UseShellExecute = false };
 #pragma warning restore S4036
             using var git = Process.Start(start);
@@ -181,21 +177,19 @@ namespace Chem.Bench
 
         static string Seconds(JToken ms) => ms == null || ms.Type == JTokenType.Null ? "-" : ((double)ms / 1000).ToString("0.0", CultureInfo.InvariantCulture);
 
-        /// <summary>One run in a line: the design's numbers, all from its record.</summary>
         public static string Row(JObject r)
         {
             var at = r["at"];
             var split = r["split"];
             var tokens = r["tokens"];
             var tools = (JArray)r["tools"];
-            int refused = tools.Count(t => (bool?)t["game"] == true && (bool?)t["ok"] != true); // a Read of notes.md that isn't there yet is no refusal
+            int refused = tools.Count(t => (bool?)t["game"] == true && (bool?)t["ok"] != true);
             string cost = ((double?)tokens["cost"] ?? 0).ToString("0.0000", CultureInfo.InvariantCulture);
             return $"{r["prompt"],-48} {r["outcome"],-8} ready {Seconds(at["claudeReady"]),5} word {Seconds(at["firstWord"]),5} tool {Seconds(at["firstTool"]),5} apply {Seconds(at["firstApply"]),5} applied {Seconds(at["applied"]),5} done {Seconds(at["done"]),5}"
                 + $" | start {Seconds(split["startingUp"]),4} model {Seconds(split["model"]),5} tools {Seconds(split["tools"]),5} left {Seconds(split["leftOver"]),5}"
                 + $" | in {tokens["input"]} write {tokens["cacheWrite"]} read {tokens["cacheRead"]} out {tokens["output"]} ${cost} {tokens["turns"]} turns {tools.Count} tools {refused} refused";
         }
 
-        /// <summary>Each prompt's median over its runs: done, to applied, tokens written and output, cost.</summary>
         public static string Table(IReadOnlyList<JObject> records)
         {
             var table = new StringBuilder("Prompt, runs, outcomes, then medians: done s, applied s, output tokens, cost\n");

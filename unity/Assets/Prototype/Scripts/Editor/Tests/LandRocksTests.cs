@@ -42,9 +42,7 @@ public class LandRocksTests
         var (grid, rocks) = Laid(5, 6);
         Assert.That(Root(grid).childCount, Is.EqualTo(1), "the map's rock is placed");
 
-        // ChemGrid.ResetWorld: every child of the grid goes.
         foreach (var child in grid.transform.Cast<Transform>().ToArray()) Object.DestroyImmediate(child.gameObject);
-        // The new world's land eases under the rock's cell.
         grid.World.At(5, 6).Height += 2;
 
         Assert.DoesNotThrow(() => rocks.Tick(0.02f), "a destroyed rock's body isn't read");

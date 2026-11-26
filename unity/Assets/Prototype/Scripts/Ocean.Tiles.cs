@@ -14,12 +14,9 @@ using UnityEngine.Rendering;
 // chunks, all drawn.
 public partial class Ocean
 {
-    /// <summary>The coarse sea's spacing past the tiles (m), and how far under the level it lies.</summary>
     public const float CoarseStep = 32f, CoarseBelow = 3.5f;
 
-    // About this many ms a frame go to laying tiles in play (at least one a frame while any is wanted).
     const double TileBudgetMs = 1.5;
-    // A tile is laid within the terrains' sight plus Margin of a focus and goes back to the pool past it plus KeepMargin.
     const int Margin = 1, KeepMargin = 2;
     const float PlanEvery = 0.25f;
 
@@ -40,10 +37,8 @@ public partial class Ocean
     float nextTilePlan;
     Color tint = Color.white;
 
-    /// <summary>Whether the sea is laid in tiles round the drawn tier (a generated map's in play), not as one mesh.</summary>
     public bool Tiled => tiled;
 
-    /// <summary>The fine tiles laid now, and the vertices in them and in the coarse sea (the perf lines, the probe).</summary>
     public (int tiles, int tileVertices, int coarseVertices) Counts
     {
         get
@@ -62,7 +57,6 @@ public partial class Ocean
 
     static bool WantsTiles() => Application.isPlaying && MapTerrains.Instance != null && MapTerrains.Instance.Lazy;
 
-    // The coarse sea (once a map: it reads no terrain), then the tiles round the focus, all of them now.
     void BuildTiled()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -100,7 +94,6 @@ public partial class Ocean
         coarseFor = null;
     }
 
-    // Every tile back to the pool (to be measured again), or destroyed with the pool (the sea is going).
     void ReleaseTiles(bool destroy = false)
     {
         foreach (var t in tiles.Values)
@@ -128,8 +121,6 @@ public partial class Ocean
         LayTiles(whole: false);
     }
 
-    // Which tiles are wanted: round each character and the camera. Those past the keep distance go back to the pool now;
-    // those wanted and not laid wait, nearest first.
     void PlanTiles()
     {
         nextTilePlan = Time.unscaledTime + PlanEvery;
@@ -174,8 +165,6 @@ public partial class Ocean
         return best;
     }
 
-    // The waiting tiles, nearest first: all of them that can be (before the first frame), or as many as fit the frame's
-    // budget. A tile over the map waits for its terrain, so it's measured on the ground as drawn.
     void LayTiles(bool whole)
     {
         if (tilesWanted.Count == 0) return;
@@ -197,7 +186,6 @@ public partial class Ocean
         }
     }
 
-    // One chunk's square of fine sea, from the pool; null where none of it is over the water.
     Tile LayTile((int i, int j) at, float x0, float z0, float size)
     {
         int cells = Mathf.CeilToInt(size / fineStep);
@@ -206,7 +194,6 @@ public partial class Ocean
         for (int k = 0; k <= cells; k++) us.Add(x0 + k * step);
         var vs = new List<float>(cells + 1);
         for (int k = 0; k <= cells; k++) vs.Add(z0 + k * step);
-        // Measured on this tile's own terrain: its edge a hair inside it, so the tile never waits on a neighbour's.
         float lo = 0.01f, hi = size - 0.01f;
         Tile t = tilePool.Count > 0 ? tilePool.Pop() : null;
         var m = Lay(us, vs, (xz, outward) =>

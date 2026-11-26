@@ -22,7 +22,6 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(SpellCaster))]
 public class SpellRadialHud : MonoBehaviour
 {
-    // Ring 1's outer radius at 1080 lines; scaled with the screen.
     const float RingPixels = 230f;
 
     SpellCaster caster;
@@ -36,21 +35,16 @@ public class SpellRadialHud : MonoBehaviour
     readonly Dictionary<int, Texture2D> wedgeTextures = new();
     Texture2D disc, acidIcon;
     GUIStyle label, small, slot;
-    // The element whose spells are out (-1: none), since when, and how long they take to unfold (s).
     int arcElement = -1;
     float arcOpenedAt;
     const float UnfoldSeconds = 0.14f;
 
-    /// <summary>The radial's state, for the HUD and the probe (null until the wizard is in a world).</summary>
     public SpellRadial Radial => radial;
     public bool IsOpen => radial != null && radial.IsOpen;
-    /// <summary>True while open, and on the frame it closed: the frame's buttons were its own (B cancels it, and also throws).</summary>
     public bool BusyThisFrame => IsOpen || closedFrame == Time.frameCount;
 
-    /// <summary>The furthest a wedge's turn has moved the wheel's centre, in screen pixels: 0 unless the wedges have come apart. For the probe.</summary>
     public float WheelDrift { get; set; }
 
-    /// <summary>The element the selected spell is in, for the HUD chip, or null.</summary>
     public RadialGroup CurrentGroup
     {
         get
@@ -83,7 +77,6 @@ public class SpellRadialHud : MonoBehaviour
 
     bool Ready() => caster != null && caster.enabled && controls != null && controls.enabled && caster.grid != null && caster.grid.World != null;
 
-    // The wedges for the rules in force: made on the first frame, made again when the rules change.
     void LayOut()
     {
         if (laidOutFor == caster.grid && radial != null) return;
@@ -110,9 +103,6 @@ public class SpellRadialHud : MonoBehaviour
         if (acidIcon != null) Destroy(acidIcon);
     }
 
-    // --- input -------------------------------------------------------------------------
-
-    // Closed: the hold button or a number key opens it; Q changes element, E changes spell, as RB and the d-pad do.
     void Idle()
     {
         double now = Time.unscaledTimeAsDouble;
@@ -147,10 +137,8 @@ public class SpellRadialHud : MonoBehaviour
         if (!radial.IsOpen) Closed();
     }
 
-    // One frame of aim: the right stick when the gamepad opened it, else the mouse's movement in ring radii.
     RadialInput Sample(bool held, double now, bool cancel)
     {
-        // The stick of the pad whose button holds it open (with two pads connected, not just the newest).
         var pad = heldBy?.activeControl?.device as Gamepad;
         if (pad == null && heldBy == controls.RadialHold && controls.UsingGamepad) pad = Gamepad.current;
         if (pad != null)
@@ -187,9 +175,6 @@ public class SpellRadialHud : MonoBehaviour
         closedFrame = Time.frameCount;
     }
 
-    // Camera look stops while it's open (the mouse and the right stick are aiming at it), and the last
-    // look input is cleared so the camera doesn't keep turning. Movement is untouched. Only on opening and
-    // closing, and closing puts back what was there (a scripted wizard's look is off: WizardPuppet).
     void PauseLook(bool paused)
     {
         if (paused == lookPaused) return;
@@ -209,11 +194,8 @@ public class SpellRadialHud : MonoBehaviour
         if (look != null && look.FieldType == typeof(Vector2)) look.SetValue(lookInput, Vector2.zero);
     }
 
-    // --- drawing -----------------------------------------------------------------------
-
     static float Radius() => RingPixels * Scale;
 
-    // Sizes scale with the screen, but never below a readable size on a small window.
     static float Scale => Mathf.Max(0.85f, HudScale.Height / 1080f);
 
     void OnGUI()
@@ -221,7 +203,7 @@ public class SpellRadialHud : MonoBehaviour
         if (!IsOpen || !EventLog.HudVisible) return;
         MakeStyles();
         HudScale.Apply();
-        GUI.depth = -50; // over the HUD, under the Esc menu
+        GUI.depth = -50;
         var centre = new Vector2(HudScale.Width / 2f, HudScale.Height / 2f);
         float r = Radius();
         var groups = radial.Layout.Groups;
@@ -241,8 +223,6 @@ public class SpellRadialHud : MonoBehaviour
         GUI.color = Color.white;
     }
 
-    // An element's wedge: lit when highlighted; once an element's spells are out the others fall
-    // back, so the spells read as a second pick inside the first.
     void DrawWedge(Vector2 centre, float r, int i, IReadOnlyList<RadialGroup> groups, bool spellsOut)
     {
         double angle = RadialGeometry.WedgeCentre(i, groups.Count);
@@ -270,7 +250,6 @@ public class SpellRadialHud : MonoBehaviour
             double angle = RadialGeometry.SlotCentre(element, groups.Count, s, spells.Count, radial.Tuning);
             var def = rules.Spell(spells[s]);
             bool lit = radial.Spell == s;
-            // Unfolding out of the ring's edge as the arc opens.
             var at = Polar(centre, angle, r * Mathf.Lerp(1.02f, 1.45f, Unfold()));
             string level = LevelOf(def);
             string name = def?.Name ?? spells[s];
@@ -279,7 +258,6 @@ public class SpellRadialHud : MonoBehaviour
             var box = new Rect(at.x - size.x / 2f, at.y - size.y / 2f, size.x, size.y);
             if (lit)
             {
-                // Edged in the element's colour.
                 GUI.color = ParseColor(groups[element].Color);
                 GUI.DrawTexture(new Rect(box.x - 3f, box.y - 3f, box.width + 6f, box.height + 6f), Texture2D.whiteTexture);
             }
@@ -296,8 +274,6 @@ public class SpellRadialHud : MonoBehaviour
         }
     }
 
-    // A spell's icon in its slot, or null (the slots are names; Acid Splash, the temporary 4th in
-    // nature, has a green drop to set it apart). Drawn in code: a teardrop, lit from the top left.
     Texture2D IconOf(string spellId)
     {
         if (spellId != SpellIds.AcidSplash) return null;
@@ -308,7 +284,6 @@ public class SpellRadialHud : MonoBehaviour
         for (int y = 0; y < n; y++)
             for (int x = 0; x < n; x++)
             {
-                // A circle at the bottom drawn up to a point at the top (texture y runs up).
                 float u = (x + 0.5f) / n - 0.5f, v = (y + 0.5f) / n;
                 float r = 0.3f, cy = 0.36f;
                 float d = new Vector2(u, v - cy).magnitude - r;
@@ -323,7 +298,6 @@ public class SpellRadialHud : MonoBehaviour
         return acidIcon;
     }
 
-    // The highlighted spell's name and its one-line effect in the centre, else how to cancel.
     void DrawCentre(Vector2 centre, float r)
     {
         var id = radial.HighlightedSpell;
@@ -334,7 +308,6 @@ public class SpellRadialHud : MonoBehaviour
         Centred(centre, text, label);
         if (def?.Blurb != null)
         {
-            // The highlighted spell's effect, in a box at the top, under the HUD lines (below the ring it can run off a small window).
             small.wordWrap = true;
             small.fontSize = Mathf.RoundToInt(17 * Scale);
             var box = new Rect(centre.x - r * 1.5f, 78f, r * 3f, small.fontSize * 2.6f);
@@ -350,17 +323,14 @@ public class SpellRadialHud : MonoBehaviour
         }
     }
 
-    // How far the arc has unfolded since it opened (0 to 1, eased over UnfoldSeconds).
     float Unfold() => Mathf.SmoothStep(0f, 1f, (Time.unscaledTime - arcOpenedAt) / UnfoldSeconds);
 
-    // A wedge's opacity: highlighted, ordinary, or fallen back while an element's spells are out.
     static float WedgeAlpha(bool lit, bool spellsOut)
     {
         if (lit) return 0.9f;
         return spellsOut ? 0.18f : 0.45f;
     }
 
-    // Andrew: it wasn't clear it's two picks. The centre says which step it's on.
     string StepHint()
     {
         int size = Mathf.RoundToInt(15 * Scale);
@@ -384,7 +354,6 @@ public class SpellRadialHud : MonoBehaviour
         return stop > 0 ? blurb.Substring(0, stop + 1) : blurb;
     }
 
-    // Degrees clockwise from up, at a distance from the centre, in GUI space (y down).
     static Vector2 Polar(Vector2 centre, double degrees, float distance)
     {
         float a = (float)degrees * Mathf.Deg2Rad;
@@ -404,7 +373,6 @@ public class SpellRadialHud : MonoBehaviour
         slot = new GUIStyle(label) { fontSize = Mathf.RoundToInt(17 * Scale) };
     }
 
-    // One ring-1 wedge pointing straight up, as wide as `count` wedges allow, with a small gap at each side.
     Texture2D Wedge(int count)
     {
         if (wedgeTextures.TryGetValue(count, out var tex)) return tex;
@@ -416,7 +384,7 @@ public class SpellRadialHud : MonoBehaviour
         {
             for (int x = 0; x < size; x++)
             {
-                float u = (x + 0.5f) / size * 2f - 1f, v = (y + 0.5f) / size * 2f - 1f; // v up (textures start at the bottom)
+                float u = (x + 0.5f) / size * 2f - 1f, v = (y + 0.5f) / size * 2f - 1f;
                 float d = Mathf.Sqrt(u * u + v * v);
                 float angle = Mathf.Abs(Mathf.Atan2(u, v) * Mathf.Rad2Deg);
                 float edge = Mathf.Min(Mathf.Min(d - inner, outer - d) * size * 0.5f, (half - angle) * d * size * 0.01f);

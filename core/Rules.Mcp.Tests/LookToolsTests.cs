@@ -1,3 +1,4 @@
+// set_look and what describe and list say of looks (docs/RULES_MCP.md "Looks").
 using System;
 using System.Linq;
 using Chem.Mcp;
@@ -6,7 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>set_look and what describe and list say of looks (docs/RULES_MCP.md "Looks").</summary>
     [Category("Simulation")]
     public class LookToolsTests
     {

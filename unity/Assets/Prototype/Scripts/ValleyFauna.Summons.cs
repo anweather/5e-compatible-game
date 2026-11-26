@@ -12,14 +12,11 @@ using UnityEngine;
 // number (World.LastSummonN) and asks nothing else.
 public partial class ValleyFauna
 {
-    /// <summary>The most summoned animals out on a peer at once (the design's view cap).</summary>
     public const int MaxSummoned = 24;
 
-    // The world the summons were read from, and the last one brought out (its N), so each comes out once.
     World summonWorld;
     int lastSummon = -1;
 
-    /// <summary>How many animals spells brought out are out now, for the probe.</summary>
     public int SummonedCount
     {
         get
@@ -31,7 +28,6 @@ public partial class ValleyFauna
         }
     }
 
-    /// <summary>Where the summoned animal with this N is now, and its species' id; false once it's gone (for the probe).</summary>
     public bool Summoned(int n, out Vector3 at, out string species)
     {
         foreach (var c in creatures)
@@ -46,10 +42,6 @@ public partial class ValleyFauna
         return false;
     }
 
-    /// <summary>
-    /// Brings out what spells summoned since the last look (Update calls it each frame; public for the probe's cost). A new
-    /// world (a reset, or joining a room) starts the count again, so a late joiner brings out what its replay summoned lately.
-    /// </summary>
     public void BringOutSummons()
     {
         world = grid != null ? grid.World : null;

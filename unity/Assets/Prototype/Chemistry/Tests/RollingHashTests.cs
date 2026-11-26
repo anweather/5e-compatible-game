@@ -1,9 +1,9 @@
+// The online desync check's rolling fingerprint (RollingHash), and the running hash under CellHash.
 using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The online desync check's rolling fingerprint (RollingHash), and the running hash under CellHash.</summary>
     [Category("Simulation")]
     public class RollingHashTests
     {
@@ -17,7 +17,6 @@ namespace Chem.Tests
             return world;
         }
 
-        // The windows closed by running the ticks, each cell put wrong where the map says, by tick.
         static List<string> Windows(World world, int ticks, Dictionary<int, System.Action<World>> at = null)
         {
             var rolling = new RollingHash();
@@ -32,8 +31,6 @@ namespace Chem.Tests
             return closed;
         }
 
-        // A window's length is the world's size alone, so peers agree: the valley's 30 ticks, longer for a world of more than
-        // two valleys' cells, so a tick still hashes about two valleys' worth (chunk-hash; the 3 x 3's 6 ms a tick under Mono).
         [Test]
         public void AWindowIsLongerOnlyForABigWorldAndBySizeAlone()
         {
@@ -45,8 +42,6 @@ namespace Chem.Tests
             Assert.That(RollingHash.WindowFor(new World(ChemistryTests.R, 1152, 64, 1)), Is.EqualTo(RollingHash.WindowFor(1152 * 64)), "a world's is its size's");
         }
 
-        // A big world's window covers every cell once, so on a world nobody changes it closes on the full hash, on the same
-        // tick for two peers with the same size and edits.
         [Test]
         public void ABigWorldsWindowClosesOnTheFullHash()
         {

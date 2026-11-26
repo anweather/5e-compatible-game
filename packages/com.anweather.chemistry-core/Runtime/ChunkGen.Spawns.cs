@@ -7,24 +7,19 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A spawn point as a map cell: its plan square and what it stands near (WorldPlan's PlanSpawn).</summary>
     public sealed class MapSpawn
     {
         public int Square, X, Y;
         public string Near;
-        /// <summary>The pinned valley's (its own map's spawn); <see cref="Held"/>, a pinned block's own, from its generator.</summary>
         public bool Pinned, Held;
     }
 
     public sealed partial class ChunkGen
     {
-        /// <summary>A spawn's clearing: its radius in cells, and the bank past it over which the land leans back.</summary>
         public const int ClearCells = 4, ClearBank = 6;
 
-        /// <summary>The plan's spawns on the map, in the plan's order.</summary>
         public IReadOnlyList<MapSpawn> Spawns => spawns;
         readonly List<MapSpawn> spawns = new List<MapSpawn>();
-        // The clearings, each a map cell and the land it is levelled to (land units × Q).
         readonly List<(int x, int y, long land)> clearings = new List<(int, int, long)>();
 
         void SetUpSpawns()
@@ -36,12 +31,10 @@ namespace Chem
                 if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) continue;
                 bool pinned = InPinnedSquare(s.Square);
                 spawns.Add(new MapSpawn { Square = s.Square, X = x, Y = y, Near = s.Near, Pinned = pinned });
-                // The land at the spot as it would be with no clearing (none is laid yet).
                 if (!pinned) level.Add((x, y, (long)LandAt(x, y) * Q));
             }
             clearings.AddRange(level);
             if (Pinned?.Inner == null) return;
-            // A block's spawns are its own, moved; its chunks hold their clearings already. In the plan's order.
             foreach (var s in Pinned.Inner.Spawns)
             {
                 int x = s.X + PinnedX, y = s.Y + PinnedY;
@@ -50,7 +43,6 @@ namespace Chem
             spawns.Sort((a, b) => a.Square.CompareTo(b.Square));
         }
 
-        // Levels a cell in a spawn's clearing to the spot's land, and leans its bank back; whether it is in a clearing.
         bool Clearing(int x, int y, ref long g)
         {
             const int reach = ClearCells + ClearBank;

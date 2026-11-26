@@ -44,7 +44,6 @@ namespace Chem.Tests
             Assert.That(moved.Keys.Where(c => c.x < 20 - Margin - Bank || c.x >= 30 + Margin + Bank), Is.Empty);
         }
 
-        // A pad reaching further (its "more"): the area beyond is the row's one height, and a crag area's bank is laid as rock.
         [Test]
         public void AMoreAreaIsTheSameHeightAndItsCragFaceIsRock()
         {

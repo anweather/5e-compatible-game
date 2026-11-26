@@ -9,7 +9,6 @@ using System.Linq;
 // dotnet test. Positions are metres, y up, as plain floats.
 namespace Playtest
 {
-    /// <summary>The wizard: NaN, fell through the ground, left the world, airborne too long, stuck.</summary>
     public sealed class WizardWatch
     {
         public const float FellBelow = 2f, StuckMetres = 0.5f;
@@ -21,7 +20,6 @@ namespace Playtest
         float pushX, pushZ;
         bool reportedFell, reportedOut, reportedNaN, reportedAir;
 
-        /// <summary>The world's extent on the ground (metres), past which the wizard is out of bounds.</summary>
         public WizardWatch(float minX, float minZ, float maxX, float maxZ)
         {
             this.minX = minX;
@@ -30,22 +28,16 @@ namespace Playtest
             this.maxZ = maxZ;
         }
 
-        /// <summary>One frame of the wizard, as the bot sees it.</summary>
         public struct Sample
         {
             public float X, Y, Z;
-            /// <summary>The ground's height under the wizard.</summary>
             public float Ground;
             public bool Grounded;
-            /// <summary>The bot is pushing the stick.</summary>
             public bool Pushing;
-            /// <summary>The bot moved the wizard itself this frame (a teleport), which resets "stuck".</summary>
             public bool BotMoved;
-            /// <summary>Where it is, for the signature ("stuck near the tower").</summary>
             public string Place;
         }
 
-        /// <summary>One frame's candidates.</summary>
         public IEnumerable<Candidate> Frame(int frame, Sample s)
         {
             float x = s.X, y = s.Y, z = s.Z, ground = s.Ground;
@@ -72,7 +64,6 @@ namespace Playtest
             foreach (var c in Stuck(frame, x, z, pushing, botMoved, place)) yield return c;
         }
 
-        // Pushing the stick for 10 s without getting half a metre: stuck (often the bot's own steering).
         IEnumerable<Candidate> Stuck(int frame, float x, float z, bool pushing, bool botMoved, string place)
         {
             if (!pushing || botMoved)
@@ -101,7 +92,6 @@ namespace Playtest
         }
     }
 
-    /// <summary>Frame times: single spikes, and the run's 95th percentile against a budget.</summary>
     public sealed class FrameWatch
     {
         public const float SpikeMs = 100f;
@@ -111,23 +101,15 @@ namespace Playtest
 
         public IReadOnlyList<float> Times => ms;
 
-        /// <summary>Frames after a screenshot of the bot's own that a spike isn't counted on.</summary>
         public const int AfterShotFrames = 3;
         int quietUntil = -1;
 
-        /// <summary>The first frames load the world: neither spikes nor the worst frame count there.</summary>
         public const int LoadingFrames = 60;
 
-        /// <summary>The slowest frame that counts: past loading, and not just after a screenshot.</summary>
         public float Worst { get; private set; }
 
-        /// <summary>
-        /// The bot took a screenshot on this frame: its readback, encode and write cost 40-60 ms
-        /// and more, and the next few frames' spikes are the bot's, not the game's (the Mac's profile).
-        /// </summary>
         public void ShotTaken(int frame) => quietUntil = frame + AfterShotFrames;
 
-        /// <summary>One frame's real time; a spike is reported once per place.</summary>
         public IEnumerable<Candidate> Frame(int frame, float frameMs, string place)
         {
             ms.Add(frameMs);
@@ -146,15 +128,12 @@ namespace Playtest
         }
     }
 
-    /// <summary>The player's log: errors and exceptions, keyed by their type and first stack frame.</summary>
     public static class LogWatch
     {
-        /// <summary>A candidate for an error or exception log line, or null for anything else.</summary>
         public static Candidate Line(int frame, string message, string stack, bool isError)
         {
             if (!isError || string.IsNullOrEmpty(message)) return null;
             string first = (stack ?? "").Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
-            // "Type: details" keeps the type; the frame drops its arguments and addresses.
             string kind = message.Split(':')[0].Trim();
             int paren = first.IndexOf('(');
             string where = paren > 0 ? first.Substring(0, paren).Trim() : first;
@@ -164,7 +143,6 @@ namespace Playtest
         static string Short(string s) => s.Length <= 300 ? s : s.Remove(300) + "...";
     }
 
-    /// <summary>The sound, from the tap on the listener: clipping, NaN, and silence while things should be playing.</summary>
     public sealed class AudioWatch
     {
         public const float ClipAt = 0.99f;
@@ -173,7 +151,6 @@ namespace Playtest
         int silentSince = -1;
         bool clipped, nan, silent;
 
-        /// <summary>One frame: the loudest sample since the last frame, whether one was NaN, and whether any source is playing audibly.</summary>
         public IEnumerable<Candidate> Frame(int frame, float peak, bool sawNaN, bool sourcesPlaying, string place)
         {
             if (sawNaN && !nan)
@@ -197,12 +174,10 @@ namespace Playtest
         }
     }
 
-    /// <summary>A screenshot's pixels: missing shaders (magenta), a black or blown-out frame.</summary>
     public static class ImageCheck
     {
         public const double MagentaShare = 0.01, Dark = 8, Bright = 247;
 
-        /// <summary>Candidates for one screenshot, given its pixels as r, g, b bytes in a row. At night (darkExpected) a black picture is fine.</summary>
         public static IEnumerable<Candidate> Pixels(int frame, byte[] rgb, string place, bool darkExpected = false)
         {
             if (rgb == null || rgb.Length < 3) yield break;
@@ -225,27 +200,21 @@ namespace Playtest
         }
     }
 
-    /// <summary>Physics props: NaN, flung, lost under the ground or far away, awake in an inactive chunk.</summary>
     public sealed class PropWatch
     {
         public const float FlungSpeed = 50f, LostMetres = 200f;
 
         readonly HashSet<string> reported = new HashSet<string>();
 
-        /// <summary>One prop on one frame.</summary>
         public struct Sample
         {
-            /// <summary>ThingId's id, and the kind of thing (the signature's key).</summary>
             public string Id, Kind;
             public float X, Y, Z, Speed;
-            /// <summary>The ground's height under it.</summary>
             public float Ground;
-            /// <summary>Where it spawned, on the ground.</summary>
             public float SpawnX, SpawnZ;
             public bool Asleep, ChunkActive;
         }
 
-        /// <summary>One prop's candidates on one frame; each problem is reported once per prop.</summary>
         public IEnumerable<Candidate> Frame(int frame, Sample p)
         {
             string id = p.Id, kind = p.Kind;

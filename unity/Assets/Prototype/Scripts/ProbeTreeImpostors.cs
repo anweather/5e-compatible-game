@@ -49,7 +49,6 @@ public class TreeImpostorsProbe : ProbeScenario
             Check($"subject_found_{species}", found, $"tree at {tree}, shot from {away}");
             if (!found) continue;
             Hide(true);
-            // The lone tree: every other tree along the cameras' line and round the tree taken away for these shots.
             Clear(true);
             impostors.Forget();
             yield return LoneTree(species, first);
@@ -70,8 +69,6 @@ public class TreeImpostorsProbe : ProbeScenario
     const string Windy = ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
         "{ 'clear': 0, 'cloudy': 0, 'windy': 1, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }";
 
-    // A tree in a far chunk with no terrain (none made out there) felled, its chunk packed again: once its trees are read
-    // again it's gone, read from the packed chunk's changes without unpacking it (#213).
     IEnumerator Felled(TreeImpostors impostors)
     {
         TreeImpostors.On = true;
@@ -103,8 +100,6 @@ public class TreeImpostorsProbe : ProbeScenario
         yield return null;
     }
 
-    // The pinned valley's chunks: each one with a terrain made, its trees as the pinned ground has them (what a far one
-    // draws before its terrain is made) against the terrain's. Every terrain tree should be there, of the same species.
     IEnumerator PinnedTrees(TreeImpostors impostors)
     {
         yield return null;
@@ -124,7 +119,6 @@ public class TreeImpostorsProbe : ProbeScenario
         Metric("pinned_chunks_read", TreeImpostors.PinnedRead);
     }
 
-    // Every chunk's trees read once, far out: the count by species, and what reading them costs and unpacks.
     IEnumerator Count(TreeImpostors impostors)
     {
         Metric("unpacked_chunks_before", World.UnpackedCount);
@@ -155,13 +149,11 @@ public class TreeImpostorsProbe : ProbeScenario
             foreach (float d in Distances)
             {
                 yield return Pair($"{species}-{h}-ground-{d:0}", Ground(d), centre, 0f);
-                // Within Near, the tree as its prefab too: what stands against the impostor at the 60 m join.
                 if (d < 60f) yield return Prefab($"{species}-{h}-ground-{d:0}", Ground(d), centre);
                 yield return Pair($"{species}-{h}-up-{d:0}", tree + away * d + Vector3.up * 100f, centre, 0f);
             }
         }
         if (!circle) yield break;
-        // Circling at 30 m: the prefab every 45 degrees, then the impostor.
         float baseAngle = Mathf.Atan2(away.z, away.x) * Mathf.Rad2Deg;
         TreeImpostors.On = true;
         TreeImpostors.Near = 60f;
@@ -171,7 +163,6 @@ public class TreeImpostorsProbe : ProbeScenario
         TreeImpostors.Near = 0f;
         yield return Wait(0.5f);
         for (int a = 0; a < 360; a += 45) yield return Still($"circle-{a:000}", Around(baseAngle + a, 30f), centre);
-        // The wind: a windy stretch, the prefab from one place, a still every quarter second.
         TreeImpostors.Near = 60f;
         yield return Switch(At(12f) + Windy);
         yield return Wait(8f);
@@ -198,11 +189,8 @@ public class TreeImpostorsProbe : ProbeScenario
         }
     }
 
-    // The trees taken away for the lone tree's shots, to put back.
     readonly List<(TerrainData data, TreeInstance[] was)> cleared = new();
 
-    // Takes away (or puts back) every tree but the subject within 14 m of the cameras' line out to 520 m, and within 40 m
-    // of the tree: from the terrains (put back as they were) and from the impostors (Skip).
     void Clear(bool clear)
     {
         if (!clear)
@@ -228,7 +216,6 @@ public class TreeImpostorsProbe : ProbeScenario
         Metric("cleared_terrains", cleared.Count);
     }
 
-    // The impostors read the terrains' trees again (they only do of themselves for a chunk the game changed).
     static void ReadImpostorsAgain()
     {
         var impostors = TreeImpostors.Instance;
@@ -244,7 +231,6 @@ public class TreeImpostorsProbe : ProbeScenario
         return along > 0f && along < 520f && (rel - away * along).sqrMagnitude < 14f * 14f;
     }
 
-    // A quick look (--seconds 5 or less): one camera at noon, today and the impostor's lighting a few ways.
     IEnumerator LookDev()
     {
         bool found = Subject(Species[0]);
@@ -253,7 +239,6 @@ public class TreeImpostorsProbe : ProbeScenario
         Hide(true);
         yield return Switch(At(12f) + Calm);
         yield return Wait(3f);
-        // As baked, the main light alone, no shadows taken, and less wrap and light through.
         var looks = new[] { (0.5f, 0.5f, 0.7f, 0f), (0.5f, 0.5f, 0.7f, 1f), (0.5f, 0.5f, 0f, 0f), (0.3f, 0.2f, 1f, 0f) };
         var sun = RenderSettings.sun;
         Metric("sun_intensity", sun != null ? sun.intensity : -1f);
@@ -287,7 +272,6 @@ public class TreeImpostorsProbe : ProbeScenario
         Hide(false);
     }
 
-    // Today's tree and the impostor (the full mesh within near) from one camera.
     IEnumerator Pair(string label, Vector3 from, Vector3 at, float near)
     {
         TreeImpostors.On = false;
@@ -298,7 +282,6 @@ public class TreeImpostorsProbe : ProbeScenario
         TreeImpostors.On = false;
     }
 
-    // The tree as its prefab (on, as play has it) from one camera.
     IEnumerator Prefab(string label, Vector3 from, Vector3 at)
     {
         TreeImpostors.On = true;
@@ -332,8 +315,6 @@ public class TreeImpostorsProbe : ProbeScenario
         return p;
     }
 
-    // The wizard's renderers off for the shots (it stands near the tree, keeping the terrains made round it), and the
-    // generated props' (the coast's palms have no collider, so the cameras' line can't see them to keep clear of them).
     void Hide(bool hide)
     {
         if (hide)
@@ -353,7 +334,6 @@ public class TreeImpostorsProbe : ProbeScenario
         }
     }
 
-    // Nothing with a collider (a rock, a cabin, another tree's trunk) between the ground cameras and the tree's middle.
     static bool Unblocked(Vector3 at, Vector3 dir, float up)
     {
         var mid = at + Vector3.up * up;
@@ -367,14 +347,11 @@ public class TreeImpostorsProbe : ProbeScenario
         return true;
     }
 
-    // A tree of a species within 320 m of the wizard with the fewest trees round it, and the way to look at it from
-    // with the fewest trees and no ground in the line out to 500 m.
     bool Subject(string species)
     {
         var trees = Trees(species);
         var me = wizard.transform.position;
         float best = float.MaxValue;
-        // The species' middle at scale 1 (its impostor's bounding centre): the Conifer's is 14.5 m up, the Cypress's 3.6.
         var mat = Resources.Load<Material>($"{TreeImpostors.ResourceFolder}/{species}");
         middle = mat != null ? mat.GetVector("_Centre").y : 14.5f;
         foreach (var c in trees)
@@ -398,7 +375,6 @@ public class TreeImpostorsProbe : ProbeScenario
         return best < float.MaxValue;
     }
 
-    // Every tree the made terrains draw: where it stands, whether it's the species, its height's scale.
     static List<(Vector3 at, bool mine, float height)> Trees(string species)
     {
         var trees = new List<(Vector3 at, bool mine, float height)>();
@@ -418,7 +394,6 @@ public class TreeImpostorsProbe : ProbeScenario
         return trees;
     }
 
-    // How many trees stand within 6 m of the line out from a tree, 8 to 500 m along.
     static int InLine(List<(Vector3 at, bool mine, float height)> trees, Vector3 from, Vector3 dir)
     {
         int inLine = 0;
@@ -431,8 +406,6 @@ public class TreeImpostorsProbe : ProbeScenario
         return inLine;
     }
 
-    // Whether the ground rises into the line from 2 m over the ground 500 m out to 10 m up the tree, or the line runs out
-    // over water (a camera there would be under the sea, or shoot across it at the coast's palms).
     static bool GroundInTheWay(Vector3 at, Vector3 dir)
     {
         float eye = (MapTerrains.Instance.HeightAt(at + dir * 500f) ?? at.y) + 2f;

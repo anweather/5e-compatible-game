@@ -10,14 +10,9 @@
 #ifndef PROTOTYPE_OCCLUDER_DITHER_INCLUDED
 #define PROTOTYPE_OCCLUDER_DITHER_INCLUDED
 
-// x, y: the wizard's chest on screen (0 to 1, from the bottom left); z: its distance from the
-// camera along the view (metres); w: how much of the pattern is cut (0 off, up to about 0.75).
 float4 _OccluderDither;
-// x: the circle's radius, as a fraction of the screen's height; y: the screen's width over its
-// height; z: how far in front of the wizard (metres) something has to stand to be cut.
 float4 _OccluderDitherShape;
 
-// The 4x4 ordered-dither threshold of a pixel, in (0, 1): bit-reversed interleaving of x^y and y.
 float OccluderBayer(float2 pixel)
 {
     uint2 p = uint2(pixel) & 3u;
@@ -26,7 +21,6 @@ float OccluderBayer(float2 pixel)
     return (b + 0.5) / 16.0;
 }
 
-// How much of the pattern to cut at this fragment (0 where it stays whole).
 float OccluderCut(float4 positionCS)
 {
     float2 uv = GetNormalizedScreenSpaceUV(positionCS);
@@ -39,10 +33,8 @@ float OccluderCut(float4 positionCS)
     return _OccluderDither.w * inside * nearer;
 }
 
-// Discards this fragment if it's one of the pattern's holes.
 void OccluderDitherClip(float4 positionCS)
 {
-    // The same for every fragment of a frame, so the branch is cheap; off, it costs one compare.
     if (_OccluderDither.w <= 0.0) return;
     clip(OccluderBayer(positionCS.xy) - OccluderCut(positionCS));
 }

@@ -18,7 +18,6 @@ namespace Chem.Tests
         static ModBudgets budgets;
         static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
 
-        // A meadow with trees, and a pond to pour into and boil.
         static World Meadow()
         {
             var w = new World(R, 64, 64, 5, "grass");
@@ -41,7 +40,6 @@ namespace Chem.Tests
             return w;
         }
 
-        /// <summary>One peer: its session over its end of the loopback, its channels, and its checksum at every tick it ran.</summary>
         sealed class Peer
         {
             public LockstepSession Session;
@@ -61,7 +59,6 @@ namespace Chem.Tests
             public int Tick => Session.NetTick;
         }
 
-        /// <summary>The loopback, its host and clients, run a frame at a time.</summary>
         sealed class Net
         {
             public readonly LockstepLoopback Loop;
@@ -106,7 +103,6 @@ namespace Chem.Tests
                 return p;
             }
 
-            /// <summary>One frame: the host's clock moves a tick on (none, <paramref name="hostClock"/> false), every peer runs, the loopback delivers.</summary>
             public void Frame(bool hostClock = true)
             {
                 Host.Session.Update(hostClock ? 1.0 / Math.Max(1, R.Sim.TicksPerSecond) : 0);
@@ -114,7 +110,6 @@ namespace Chem.Tests
                 Loop.Pump();
             }
 
-            /// <summary>Frames until the host has run <paramref name="tick"/>, with <paramref name="each"/> before every frame.</summary>
             public void RunTo(int tick, Action<int> each = null)
             {
                 int guard = 0;
@@ -126,7 +121,6 @@ namespace Chem.Tests
                 }
             }
 
-            /// <summary>The host's clock stopped, frames until every client has run all the host stamped.</summary>
             public void Settle()
             {
                 int guard = 0;
@@ -138,7 +132,6 @@ namespace Chem.Tests
             }
         }
 
-        /// <summary>The first tick from <paramref name="from"/> on where a peer's checksum isn't the host's, or null.</summary>
         static string FirstDifference(Net net, Peer peer, int from)
         {
             var ticks = peer.Sums.Keys.Where(t => t >= from).OrderBy(t => t).ToList();
@@ -177,8 +170,6 @@ namespace Chem.Tests
         [Test]
         public void ATickRunOverFramesLosesNoBatch()
         {
-            // A slice a frame (a busy frame, or the long one after a reset): each tick is still running, its world's
-            // tick already counted, when the host stamps the next. Every batch must still be held and run.
             var net = new Net(Meadow);
             var client = net.Join();
             double tickSeconds = 1.0 / Math.Max(1, R.Sim.TicksPerSecond);
@@ -240,9 +231,7 @@ namespace Chem.Tests
             int window = RollingHash.WindowFor(client.World);
             Assert.That(client.Desyncs.Count, Is.EqualTo(1), "seen once, then put right");
             var desync = client.Desyncs[0];
-            // The first window to hash that cell after it changed: the one it's in, or the next if its slice had gone by.
             Assert.That(desync.Tick, Is.InRange(corrupted + 1, corrupted + 2 * window));
-            // The dragon's part counts the cells changed since the start (World.DragonHash), so it differs too.
             Assert.That(desync.Parts, Is.EqualTo(new[] { "cells", "dragon" }));
             StringAssert.Contains("no longer matches the host's", desync.Text);
             Assert.That(client.Joins.Count, Is.EqualTo(2), "the snapshot it joined with, and the one that put it right");
@@ -301,7 +290,6 @@ namespace Chem.Tests
                 Assert.That(p.Session.LastResetTick, Is.EqualTo(resetAt));
                 Assert.That(p.World.Tick, Is.EqualTo(p.Tick - (resetAt - 1)), "the rebuilt world counts from the reset");
             }
-            // Right after the reset the world is the fresh one, run a tick.
             var fresh = Meadow();
             fresh.Step();
             Assert.That(net.Host.Sums[resetAt].Split('/')[0], Is.EqualTo(fresh.CellHash()), "the fireball's burn is gone");

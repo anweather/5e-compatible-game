@@ -1,13 +1,11 @@
+// Where the game's folders are (GameFolders): a build's packed rules or the repo's, world/ beside them, and the
+// player's mods in the chat's folder (#63), a probe's while one is set, and the Editor's own data folder (#78). Every folder here is a temp one.
 using System;
 using System.IO;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Where the game's folders are (GameFolders): a build's packed rules or the repo's, world/ beside them, and the
-    /// player's mods in the chat's folder (#63), a probe's while one is set, and the Editor's own data folder (#78). Every folder here is a temp one.
-    /// </summary>
     [Category("Unit")]
     public class GameFoldersTests
     {

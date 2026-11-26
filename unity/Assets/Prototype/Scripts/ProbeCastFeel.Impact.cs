@@ -12,7 +12,6 @@ using UnityEngine.InputSystem;
 // charging tightens, builds and stays gentle; off is still; the motors always stop.
 public partial class CastFeelProbe
 {
-    // A gamepad that records what it's told; nothing is plugged in behind it.
     class MotorPad : Gamepad
     {
         public float Low, High, PeakLow, PeakHigh;
@@ -31,8 +30,6 @@ public partial class CastFeelProbe
         public bool Quiet => Low < Silence && High < Silence;
     }
 
-    // The lens wanders by itself, by a centimetre or two at 4 m (a hair of look input on a shared PC), so
-    // what's asked of the camera is checked by its numbers and this is only a sanity limit on the result (m).
     const float Wander = 0.04f, Silence = 0.001f;
 
     MotorPad pad;
@@ -45,8 +42,6 @@ public partial class CastFeelProbe
         float shakeWas = GameFeel.Shake;
         var padWas = Gamepad.current;
         InputSystem.RegisterLayout<MotorPad>();
-        // A real pad plugged in (a DualSense sends reports all the time) would take Gamepad.current, and
-        // the rumble with it, from the probe's pad: they're off while it runs.
         var others = Gamepad.all.Where(g => g.enabled).ToArray();
         foreach (var other in others) InputSystem.DisableDevice(other);
         pad = InputSystem.AddDevice<MotorPad>("Rumble pad");
@@ -80,10 +75,8 @@ public partial class CastFeelProbe
         }
     }
 
-    // Where the camera is from the wizard it follows: what a shake moves, and a step of the ground doesn't.
     Vector3 Offset => lens.position - root.position;
 
-    // The camera's greatest move from where it is now, and the motors' peaks, while something plays.
     IEnumerator Watch(float seconds, System.Action start)
     {
         var rest = Offset;
@@ -103,7 +96,7 @@ public partial class CastFeelProbe
         int scale = Mathf.RoundToInt(Time.timeScale * 1000f);
         float fixedStep = Time.fixedDeltaTime;
         var animator = wizard.GetComponent<Animator>();
-        void Struck(Beat beat) => CastImpact.Felt(wizard.transform.position, 1f); // a shake going on must not move a held camera
+        void Struck(Beat beat) => CastImpact.Felt(wizard.transform.position, 1f);
         beats.Struck += Struck;
         Check("tap_loads", LoadElement(ElementIds.Fire));
         yield return Wait(0.2f);
@@ -142,7 +135,6 @@ public partial class CastFeelProbe
 
     IEnumerator Scaling()
     {
-        // A tap against a full charge, by what the release asks of the camera.
         LoadElement(ElementIds.Fire);
         yield return UntilReleaseKick();
         float small = CastImpact.LastKick;
@@ -158,7 +150,6 @@ public partial class CastFeelProbe
         Metric("release_kick_charged_m", big);
         Check("release_scales_with_size", big > small * 1.2f, $"{small:0.000} m, charged {big:0.000} m");
 
-        // Landings, near and far, big and small, measured at the lens and the motors.
         var at = wizard.transform.position;
         var side = wizard.transform.right;
         yield return FeelAt(at + side * 3f, 0f, "near_small");
@@ -174,7 +165,6 @@ public partial class CastFeelProbe
         Check("landing_scales_with_distance", nearBig.camera > farBig.camera && farBig.camera > 0.005f && nearBig.motor > farBig.motor, $"{nearBig}, far {farBig}");
         Check("landing_out_of_reach_is_not_felt", CastImpact.Kicks == kicksBefore && gone.motor < Silence, gone.ToString());
 
-        // Only a spell with force in it shakes: a quiet one landing beside the wizard doesn't.
         foreach (var quiet in new[] { "fog-cloud", "light" })
         {
             int quietKicks = CastImpact.Kicks;
@@ -186,7 +176,6 @@ public partial class CastFeelProbe
         Check("damaging_landing_is_felt", CastImpact.Kicks > damagingKicks && pad.PeakLow > 0f, $"{CastImpact.Kicks - damagingKicks} kicks, camera {peak:0.000} m, heavy motor {pad.PeakLow:0.00}");
         yield return Wait(0.8f);
 
-        // The way it really comes: a Fireball, with no beats (a cast from the radial), landing beside the wizard.
         var cell = grid.CellAt(at + wizard.transform.forward * 4f);
         yield return Watch(2.5f, () => caster.Cast(SpellIds.Fireball, cell.x, cell.y, 0));
         Metric("fireball_camera_m", peak);
@@ -194,7 +183,6 @@ public partial class CastFeelProbe
         yield return Wait(0.5f);
     }
 
-    // Its kick waits for the end of the release's hit-stop.
     IEnumerator UntilReleaseKick()
     {
         bool struck = false;
@@ -227,7 +215,7 @@ public partial class CastFeelProbe
         felt = new Peak(peak, pad.PeakLow);
         Metric($"felt_{name}_camera_m", felt.camera);
         Metric($"felt_{name}_motor", felt.motor);
-        yield return Wait(0.8f); // a kick into the ground lifts the lens, and that eases off slowly (CameraClearance)
+        yield return Wait(0.8f);
     }
 
     IEnumerator Charging()
@@ -357,8 +345,6 @@ public partial class CastFeelProbe
         Check(check, ran && pad.Quiet, $"ran {ran}, then {pad.Low:0.00} {pad.High:0.00}");
     }
 
-    // The same charged cast from a new world, on the same tick, with the stops and without.
-    // Two hashes alike, in the time the clock says, mean the game never knew.
     IEnumerator SameTicks()
     {
         yield return SameTicks(true, "");
@@ -369,9 +355,9 @@ public partial class CastFeelProbe
     {
         (int tick, string hash, float seconds) settled = default, with = default, without = default;
         FixClock(true);
-        ChemGrid.ExactFrames = true; // the same ticks on the same frames, so what lands, lands at the same tick
+        ChemGrid.ExactFrames = true;
         GameFeel.Shake = 0f;
-        yield return TickRun(held, r => settled = r); // what the world before this one left behind is gone by the next
+        yield return TickRun(held, r => settled = r);
         yield return TickRun(held, r => without = r);
         int stops = beats.Stops;
         GameFeel.Shake = 1f;

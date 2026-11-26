@@ -1,15 +1,13 @@
+// Components (Components.cs, rules/components.json): what entities and items are
+// made of, entity rules that match on them ("has" / "lacks"), the old
+// flammable / creature keys, and the checks (the same wording as validateRules in
+// sandbox/src/rules.ts; the expected list is the one in sandbox/test/components.test.ts).
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Components (Components.cs, rules/components.json): what entities and items are
-    /// made of, entity rules that match on them ("has" / "lacks"), the old
-    /// flammable / creature keys, and the checks (the same wording as validateRules in
-    /// sandbox/src/rules.ts; the expected list is the one in sandbox/test/components.test.ts).
-    /// </summary>
     [Category("Unit")]
     public class ComponentTests
     {
@@ -22,15 +20,12 @@ namespace Chem.Tests
         [Test]
         public void EveryCreatureNamesAKnownMaterialThatGivesItNothingYet()
         {
-            // docs/MATERIALS.md step 5, part 1: creatures name flesh, bone or chitin, which have no verbs
-            // yet, so they still burn, freeze and soak as creatures (no MaterialBurn, no components).
             var creatures = R.Entities.Where(e => e.Value.Creature).ToList();
             Assert.That(creatures, Is.Not.Empty);
             foreach (var (id, def) in creatures.Select(e => (e.Key, e.Value)))
             {
                 Assert.That(def.MaterialDef, Is.Not.Null, $"{id} names a known material");
                 Assert.That(new[] { "flesh", "bone", "chitin" }, Does.Contain(def.Material), id);
-                // Only scalds (steam scalds flesh), which is a hazard, not a component.
                 Assert.That(def.MaterialDef.Burns || def.MaterialDef.Tags.Any(t => t != "scalds"), Is.False, $"{id}'s {def.Material} gives it nothing");
             }
         }
@@ -54,11 +49,6 @@ namespace Chem.Tests
             Assert.That(R.Entity("goblin").Creature && !R.Entity("goblin").Flammable);
         }
 
-        /// <summary>
-        /// Every entity's and item's component bits (bit i is the i-th name in sorted order),
-        /// hashed with FNV-1a: the same golden as componentGolden in sandbox/test/components.test.ts,
-        /// so both engines number the components alike and give each thing the same ones.
-        /// </summary>
         [Test]
         public void ComponentBitsMatchTheSandbox()
         {
@@ -74,8 +64,6 @@ namespace Chem.Tests
         [Test]
         public void ThingsTakeWhatTheirMaterialGivesFromIt()
         {
-            // docs/MATERIALS.md, step 4: a crate is flammable and breakable because it's timber, a lantern
-            // brittle because it's glass; entities.json and items.json list only creature and heavy.
             Assert.That(R.EntityHas("crate", "flammable") && R.EntityHas("crate", "breakable") && R.Entity("crate").Flammable);
             Assert.That(R.ItemHas("bullseye-lantern", "brittle"));
             string Path(string file) => System.IO.Path.Combine(ChemistryTests.RulesDir(), file);

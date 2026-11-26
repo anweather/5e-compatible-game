@@ -18,7 +18,6 @@ public class CurrentProbe : ProbeScenario
         Check("currents", currents != null && currents.river.Length > 1, "WaterCurrents with the river's line");
         if (currents == null || currents.river.Length < 2) yield break;
 
-        // Mid-river, a third of the way down from the falls.
         int i = currents.river.Length / 3;
         var a = currents.river[i];
         var downstream = (currents.river[i + 1] - a).normalized;
@@ -34,7 +33,6 @@ public class CurrentProbe : ProbeScenario
         Check("river_carries_wizard", along > 2f, $"{along:0.0} m downstream in 3 s");
         Shot("river");
 
-        // In the surf off the beach: the breakers shove it ashore.
         var shore = -currents.seaward.normalized;
         var surf = SurfSpot(currents, 2.2f);
         Check("surf_found", surf.HasValue, "water about 2 m deep off the beach");
@@ -52,7 +50,6 @@ public class CurrentProbe : ProbeScenario
             Shot("surf");
         }
 
-        // In the surf off the island, on its mainland side: the island is the nearest land.
         var sideways = Vector2.Perpendicular(currents.seaward.normalized);
         var island = IslandSurf(currents, 2.2f);
         Check("island_surf_found", island.HasValue, "water about 2 m deep off the island's mainland side");
@@ -73,8 +70,6 @@ public class CurrentProbe : ProbeScenario
             yield return SeaViews(currents, island.Value);
         }
 
-        // A crate on the river floats downstream.
-        // A crate (not the court's ball, which the court puts back in play).
         PhysicsProp crate = null;
         foreach (var prop in FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None))
             if (prop.name.StartsWith("crate", System.StringComparison.Ordinal)) crate = prop;
@@ -97,8 +92,6 @@ public class CurrentProbe : ProbeScenario
         Check("crate_drifts_downstream", down > 2f, $"{down:0.0} m downstream in 4 s");
     }
 
-    // The waves off the island at noon, in clear weather, the wizard out of the way: a still view
-    // for the frame times, then the views to look at for seams.
     IEnumerator SeaViews(WaterCurrents currents, Vector3 surf)
     {
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
@@ -124,7 +117,6 @@ public class CurrentProbe : ProbeScenario
         yield return Wait(0.2f);
         if (string.IsNullOrEmpty(ScreenshotDir)) yield break;
 
-        // Close above the beach, two shots a second apart: the crests should move toward the sand.
         Cut(surf + out3 * 4f + Vector3.up * 26f, surf + out3 * 6f + side * 0.5f);
         yield return Wait(1f);
         Shot("crests-a");
@@ -132,20 +124,17 @@ public class CurrentProbe : ProbeScenario
         Shot("crests-b");
         yield return Wait(0.2f);
 
-        // Down on the strait, where the mainland's shore and the island's are about as near.
         var strait = surf - out3 * 55f;
         Cut(strait + side * 10f - out3 * 40f + Vector3.up * 150f, strait);
         yield return Wait(1f);
         Shot("strait");
         yield return Wait(0.2f);
 
-        // Round the island's far side.
         Cut(surf + out3 * 210f + side * 90f + Vector3.up * 70f, surf + out3 * 90f);
         yield return Wait(1f);
         Shot("far-side");
         yield return Wait(0.2f);
 
-        // Where the shore map ends: the waves die away before its eastern edge, with no line there.
         var map = currents.shoreMap;
         if (map == null) yield break;
         var eastEdge = new Vector3(map.origin.x + map.size, currents.seaLevel, map.origin.y + map.size * 0.5f);
@@ -162,8 +151,6 @@ public class CurrentProbe : ProbeScenario
         return values[values.Count / 2];
     }
 
-    // The water about this deep off the island: the last such spot on a line out from the mainland
-    // before the line comes ashore again. Off the middle of the island, clear of the dock.
     Vector3? IslandSurf(WaterCurrents currents, float depth)
     {
         var dir = currents.seaward.normalized;
@@ -180,7 +167,6 @@ public class CurrentProbe : ProbeScenario
         return null;
     }
 
-    // A point at the water's surface over the given (x, z): ground of the cell, lifted to the water.
     Vector3 Ground(Vector2 at)
     {
         var p = new Vector3(at.x, 0f, at.y);
@@ -188,7 +174,6 @@ public class CurrentProbe : ProbeScenario
         return new Vector3(at.x, grid.WaterSurfaceY(cell.x, cell.y) - 1.2f, at.y);
     }
 
-    // Out from the coast along the seaward line until the water is about this deep.
     Vector3? SurfSpot(WaterCurrents currents, float depth)
     {
         var dir = currents.seaward.normalized;

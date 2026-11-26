@@ -11,7 +11,6 @@ public static class ThemePreview
 {
     const string PathOut = "Assets/Prototype/Generated/ThemePreview.png";
 
-    // Grass, moss, rock, snow, sand, soil (ValleyBuilder.LayerNames order).
     static readonly Color[] LayerColours =
     {
         new Color(0.45f, 0.62f, 0.3f), new Color(0.25f, 0.42f, 0.2f), new Color(0.55f, 0.53f, 0.5f),
@@ -49,7 +48,6 @@ public static class ThemePreview
         if (h < ValleyShape.LakeLevel || (ValleySurroundings.Mask(p) > 0.5f && ValleySurroundings.Water(p) != '\0')
             || ValleyShape.InRiver(p))
             return new Color(0.2f, 0.4f, 0.75f);
-        // The slope from the neighbouring heights, for the layers and the hill shading.
         float dx = ValleyShape.HeightAt(p + Vector2.right * cs) - h, dz = ValleyShape.HeightAt(p + Vector2.up * cs) - h;
         float slope = Mathf.Atan(Mathf.Sqrt(dx * dx + dz * dz) / cs) * Mathf.Rad2Deg;
         var w = ValleyShape.LayerWeights(p, slope);
@@ -57,7 +55,6 @@ public static class ThemePreview
         for (int k = 0; k < w.Length && k < LayerColours.Length; k++) c += LayerColours[k] * w[k];
         float light = Mathf.Clamp(0.8f + (dx - dz) / cs * 0.6f, 0.45f, 1.2f) * Mathf.Lerp(0.85f, 1.1f, Mathf.InverseLerp(0f, 200f, h));
         c *= light;
-        // The valley floor's edge, faintly.
         float m = ValleySurroundings.Mask(p);
         if (m > 0.02f && m < 0.06f) c = Color.Lerp(c, Color.yellow, 0.5f);
         c.a = 1f;

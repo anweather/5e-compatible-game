@@ -24,14 +24,12 @@ namespace Chem.Tests
 
         static GeneratedMap Nine => nine ??= GeneratedMap.Load(NineDir);
 
-        // The whole nine, made on every thread at once.
         static GeneratedChunk[] All => all ??= Nine.MakeAll();
 
         static GeneratedChunk At(int cx, int cy) => All[cy * Nine.Gen.ChunksW + cx];
 
         static int[] wholeLand;
 
-        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
         [OneTimeTearDown]
         public void DropTheMap()
         {
@@ -40,7 +38,6 @@ namespace Chem.Tests
             wholeLand = null;
         }
 
-        // The nine's land, row-major over all its cells.
         static int[] Whole
         {
             get
@@ -55,7 +52,6 @@ namespace Chem.Tests
             }
         }
 
-        // The hash of every chunk's hash in row-major order: the nine's golden.
         internal static uint HashOfAll(IEnumerable<GeneratedChunk> chunks)
         {
             uint h = 2166136261u;
@@ -71,8 +67,6 @@ namespace Chem.Tests
             return h;
         }
 
-        // The goldens: the nine's chunks for its seed, and a few alone. A change here is a new generator version
-        // (ChunkGen.Version), or a change to the world files the plan reads.
         internal const uint NineGolden = 0x69abb343u;
         static readonly (int x, int y, uint hash)[] ChunkGoldens = { (13, 13, 0xf3fe1169u), (9, 20, 0xaae09923u), (4, 4, 0x8ba5599du), (26, 0, 0xf8076225u) };
 
@@ -89,8 +83,6 @@ namespace Chem.Tests
             Assert.That(m.Plan.Problems, Is.Empty);
         }
 
-        // Section 5's must-haves: the nine's world file asks for a volcano, the plan gives one a square of the map (kept
-        // whatever the town roll), and its cone stands in the land, the same on every load.
         [Test]
         public void TheNinesPlanHoldsAVolcano()
         {
@@ -103,7 +95,6 @@ namespace Chem.Tests
             var v = Nine.Far.All.Single(l => l.Type == "volcano");
             Assert.That(v.Square, Is.EqualTo(square));
             Assert.That(v.Name, Is.Not.Null, "a named volcano, from its rows");
-            // Its cone: the rim stands 40 m or more over the land 100 cells out.
             int w = Nine.Gen.CellsW, rim = int.MinValue;
             var foot = new List<int>();
             for (int dy = -100; dy <= 100; dy++)
@@ -124,7 +115,6 @@ namespace Chem.Tests
         [Test]
         public void ChunksMadeInTwoOrdersAreTheSame()
         {
-            // A fresh generator, chunks made one at a time from the far corner back: the same as the nine made on every thread.
             var other = GeneratedMap.Load(NineDir).Gen;
             var picks = new List<(int x, int y)>();
             for (int k = 0; k < 40; k++) picks.Add((26 - k * 7 % 27, 26 - k * 11 % 27));
@@ -136,7 +126,6 @@ namespace Chem.Tests
                 Assert.That(c.Land, Is.EqualTo(At(x, y).Land));
                 Assert.That(c.Cells, Is.EqualTo(At(x, y).Cells));
             }
-            // And again on one thread, row-major.
             var again = GeneratedMap.Load(NineDir).MakeAll(1);
             Assert.That(again.Select(c => c.Hash), Is.EqualTo(All.Select(c => c.Hash)));
         }
@@ -154,7 +143,6 @@ namespace Chem.Tests
         [Test]
         public void EveryChunksEdgeIsItsLandByPosition()
         {
-            // The land at a chunk's edge is what the position alone gives (the neighbour's view of it), where no stamp moved it.
             var gen = Nine.Gen;
             int checkedCells = 0;
             foreach (var c in All.Where(c => !c.Pinned && c.Landmarks.Count == 0 && (c.X + c.Y) % 3 == 0))
@@ -170,8 +158,6 @@ namespace Chem.Tests
         [Test]
         public void SeamsMatchAcrossEveryChunkSide()
         {
-            // Across every chunk side the generator made (the valley's own sides are its folder's), the step from one cell
-            // to the next is no bigger than the land makes inside its chunks: no cliff where two chunks, made apart, meet.
             var gen = Nine.Gen;
             int n = ChunkGen.Size, w = gen.CellsW;
             var land = Whole;
@@ -190,7 +176,6 @@ namespace Chem.Tests
                 }
             TestContext.Out.WriteLine($"SEAMS the biggest step across a chunk side {across} land units at ({worstX}, {worstY}); inside a chunk {inside}");
             Assert.That(across, Is.LessThanOrEqualTo(inside), $"a step of {across} across a chunk side at ({worstX}, {worstY})");
-            // The valley's sides meet the land beside them within a metre a cell where the valley's own land does.
             int valleyStep = 0;
             int x0 = gen.PinnedX, y0 = gen.PinnedY;
             for (int t = 0; t < ChunkGen.Square; t++)
@@ -205,12 +190,6 @@ namespace Chem.Tests
         [Test]
         public void TheValleysMeetIsSmoothBothWays()
         {
-            // Outside the valley's north and east sides, the land meeting it is smooth along the side and across it: no
-            // comb of rows or columns each blended on its own (as the first meet made, bending by 3 to 10 land units on about
-            // one cell in eight). A bend is a cell against its two neighbours (|left + right − 2 × middle|, and up and
-            // down): a smooth slope bends by 0 or 1 however steep it is. Over 2 is rare, where the biomes' own relief folds;
-            // by the rim no sharper than the rim itself. Land a river, road or lake carves, the coast's step, and chunks a
-            // landmark stamps are left out; the land beyond the meet is printed to compare.
             var gen = Nine.Gen;
             var land = Whole;
             int w = gen.CellsW, x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square;
@@ -248,11 +227,6 @@ namespace Chem.Tests
         [Test]
         public void TheFirstCellOutMeetsItsPinnedNeighbour()
         {
-            // #193: along the valley's north and east sides (and round the corner between them), the first generated cell is
-            // within a height step (0.5 m, 4 land units) of the valley's rim cell beside it. The meet once read the rim as a
-            // mean over three cells for that first cell, so a rough rim stepped up to 8 land units (1 m) onto the generated
-            // land at x 107 on the north side. Printed too: the steepest step out across the next 16 cells, against the
-            // steepest along the rim itself (the valley's own hillside, up to 3 m a cell, which the meet carries on).
             var gen = Nine.Gen;
             var land = Whole;
             int w = gen.CellsW, x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square, e = sq - 1;
@@ -276,7 +250,6 @@ namespace Chem.Tests
                         alongRim = Math.Max(alongRim, Math.Abs(land[a] - land[prev]));
                     }
                 }
-            // The north-east corner's cell out, against the valley's corner cell.
             int cornerStep = Math.Abs(land[(y0 - 1) * w + x0 + e + 1] - land[y0 * w + x0 + e]);
             TestContext.Out.WriteLine($"SEAM the biggest step onto the valley {worst} land units at ({worstX}, {worstY}); the corner {cornerStep}; " +
                 $"out across the next 16 cells {out16}; along the valley's rim {alongRim}");
@@ -320,14 +293,12 @@ namespace Chem.Tests
                     Assert.That(r.Surface[k], Is.LessThanOrEqualTo(r.Surface[k - 1]), $"{name}: its water never rises downstream");
                     Assert.That(r.Half[k], Is.GreaterThanOrEqualTo(r.Half[k - 1]), $"{name}: it never narrows downstream");
                 }
-                // In its square's corridor (a slot on the east or south side is the next square's first cell).
                 var (sx, sy) = gen.MapCell(r.Square, 0, 0);
                 for (int k = 0; k < r.X.Length; k++)
                 {
                     long x = r.X[k] >> 16, y = r.Y[k] >> 16;
                     Assert.That(x >= sx && x <= sx + ChunkGen.Square && y >= sy && y <= sy + ChunkGen.Square, $"{name}: ({x}, {y}) is in its square");
                 }
-                // Not a ruler line: somewhere it strays from the straight line between its ends.
                 long ax = r.X[0], ay = r.Y[0], bx = r.X[^1], by = r.Y[^1];
                 double chord = Math.Sqrt((double)(bx - ax) * (bx - ax) + (double)(by - ay) * (by - ay)) / 65536;
                 double stray = 0;
@@ -335,7 +306,6 @@ namespace Chem.Tests
                     stray = Math.Max(stray, Math.Abs((double)(bx - ax) * (r.Y[k] - ay) - (double)(by - ay) * (r.X[k] - ax)) / 65536 / 65536 / Math.Max(1, chord));
                 TestContext.Out.WriteLine($"RIVER {name}: {chord:F0} cells end to end, strays {stray:F0}, water {r.Surface[0] / 256.0 / 8:F1} m to {r.Surface[^1] / 256.0 / 8:F1} m, half its width {r.Half[0] / 65536.0:F1} to {r.Half[^1] / 65536.0:F1} cells");
                 if (chord > 150) Assert.That(stray, Is.GreaterThan(10), $"{name} wanders");
-                // Where the next river starts as this one ends (the hub, or the next square across a side), it carries on.
                 foreach (var next in rivers.Where(o => o != r && o.X[0] == bx && o.Y[0] == by))
                 {
                     Assert.That(next.Surface[0], Is.EqualTo(r.Surface[^1]), $"{name} runs on at the same level");
@@ -344,7 +314,6 @@ namespace Chem.Tests
                 }
             }
             Assert.That(joins, Is.GreaterThanOrEqualTo(3), "the nine's river runs through squares and hubs");
-            // And the water is there: a river's cells along its middle.
             int wet = 0, middles = 0;
             foreach (var r in rivers)
                 for (int k = 1; k + 1 < r.X.Length; k++)
@@ -361,8 +330,6 @@ namespace Chem.Tests
         [Test]
         public void HighGroundReadsAsMountains()
         {
-            // A square above the hills band is ranges, saddles and shoulders, not one cap: lines across it every 48 cells,
-            // each way, rise and fall by 10 m more than twice on average (a cap: about once).
             var gen = Nine.Gen;
             var land = Whole;
             int w = gen.CellsW, sq = ChunkGen.Square;
@@ -383,7 +350,6 @@ namespace Chem.Tests
             }
         }
 
-        // The peaks and troughs along a line, each counted once the land has come back by at least the given height.
         static int Turns(IEnumerable<int> line, int by)
         {
             int turns = 0, dir = 0, hi = int.MinValue, lo = int.MaxValue;
@@ -410,9 +376,6 @@ namespace Chem.Tests
         [TestCase("seed-9")]
         public void EverySquaresSpawnIsOpenFlatAndDry(string seed)
         {
-            // One spawn per map square (all nine are land below the peaks), the valley's its own map's spawn; every other
-            // one beside a road where its square has one, near its anchor, on cleared, level grass: no water, tree, stone
-            // or boulder in its clearing, off every landmark's footprint and above the sea.
             var m = seed == Nine.Seed ? Nine : GeneratedMap.Load(NineDir, seed);
             var gen = m.Gen;
             Assert.That(gen.Spawns.Count, Is.EqualTo(9), "a spawn a square");
@@ -468,17 +431,12 @@ namespace Chem.Tests
             }
         }
 
-        // A cell a walker can stand on: dry land (no sea, lake or river) that isn't a wall. Stone, trees and brambles are
-        // walls wherever they're read (ChemGrid's legend, materials.json's "blocking").
         static bool Walkable(int[] land, char[] cells, int k) =>
             land[k] >= ChunkGen.SeaLevel && cells[k] != 'w' && cells[k] != 'r' && cells[k] != '#' && cells[k] != 'T' && cells[k] != '"';
 
-        // A step a walker takes between two side-by-side cells: both walkable, and no more than a metre up or down.
         static bool Steps(int[] land, char[] cells, int a, int b) =>
             Walkable(land, cells, a) && Walkable(land, cells, b) && Math.Abs(land[a] - land[b]) <= 8;
 
-        // The valley's sides that face another square of the map (north 0, east 1, south 2, west 3; the nine's are north
-        // and east), and for side s and a place along it the valley's rim cell and the map cell just outside it.
         static IEnumerable<int> OpenSides(ChunkGen gen)
         {
             int x0 = gen.PinnedX, y0 = gen.PinnedY, sq = ChunkGen.Square;
@@ -520,11 +478,6 @@ namespace Chem.Tests
         [TestCase("seed-9")]
         public void EverySpawnIsReachableOnFootAcrossEachOfTheValleysOpenSides(string seed)
         {
-            // From the valley's spawn, walking from cell to cell over dry land, never through a wall (stone, a tree,
-            // brambles) and never up or down more than a metre a cell, every other square's spawn is reached; and it is
-            // reached across each of the valley's open sides alone (the other closed), so neither side is a wall. Steep
-            // generated land once laid stone on every face over 1.25 m a cell, which walled off nearly all of the valley's
-            // north and east seam; this would have caught it.
             var m = seed == Nine.Seed ? Nine : GeneratedMap.Load(NineDir, seed);
             var gen = m.Gen;
             var (land, cells) = WholeOf(gen, seed == Nine.Seed ? All : m.MakeAll());
@@ -550,7 +503,6 @@ namespace Chem.Tests
                         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
                         int n = ny * w + nx;
                         if (seen[n] || !Steps(land, cells, k, n)) continue;
-                        // Into or out of the valley only across this side (s is the way the step goes, out of the valley).
                         if (InValley(k) != InValley(n) && (InValley(k) ? s : (s + 2) % 4) != side) continue;
                         seen[n] = true;
                         queue.Enqueue(n);
@@ -567,11 +519,6 @@ namespace Chem.Tests
         [TestCase("seed-9")]
         public void TheValleysOpenSidesAreCrossableAlongMostOfTheirLength(string seed)
         {
-            // Along each of the valley's open sides, a walker steps from the valley's rim cell to the cell outside it at
-            // most places its rim is dry land (the valley's own sea and lakes are left out: its east side is sea south of
-            // row 324), in every one of the plan's slots on that side (a chunk's width each) with dry rim, and at every
-            // road that crosses it, on the road. Where it can't, it is the valley's own trees or a step over a metre (no
-            // stone is laid on a steep face), and no stone at all stands outside the rim.
             var m = seed == Nine.Seed ? Nine : GeneratedMap.Load(NineDir, seed);
             var gen = m.Gen;
             var (land, cells) = WholeOf(gen, seed == Nine.Seed ? All : m.MakeAll());
@@ -651,9 +598,6 @@ namespace Chem.Tests
                 PictureOf(dir, report);
                 Assert.That(MapCheck.Errors(dir), Is.Empty);
                 var map = MapFile.Load(dir);
-                // This folder is away from the map's own, as a build's bake is (the player's data), and the pinned map
-                // can't be found from there: the bake says the full detail the pinned map gave it (#183: the nine's ground
-                // was the valley's 257 samples a chunk on a layout of 65, and a build's world was never made).
                 var own = MapFile.Load(Nine.MapDir);
                 Assert.That(own.FullDetail, Is.EqualTo((3, 2, 5, 4)), "the valley's full detail, where its square is (terrain rows count from the south)");
                 Assert.That(map.FullDetail, Is.EqualTo(own.FullDetail), "a bake away from the map's folder draws the chunks its map does");
@@ -664,18 +608,14 @@ namespace Chem.Tests
                 Assert.That(rows[map.Spawn.y][map.Spawn.x], Is.EqualTo('@'), "the valley's spawn, moved with it");
                 Assert.That(rows.Sum(r => r.Count(ch => ch == '@')), Is.EqualTo(1));
                 foreach (string name in GeneratedMap.Baked) Assert.That(File.Exists(Path.Combine(dir, name)), name);
-                // A spawn place a square, named for it, at its spawn; the valley's the map's start.
                 var spawns = WorldPlaces.Load(dir).All.Where(p => p.Kind == "spawn").ToList();
                 TestContext.Out.WriteLine("BAKE spawns: " + string.Join(", ", spawns.Select(p => $"{p.Name} {p.Middle}")));
                 Assert.That(spawns.Select(p => p.Middle), Is.EquivalentTo(Nine.Gen.Spawns.Select(s => (s.X, s.Y))));
                 Assert.That(spawns.Select(p => p.Name).Distinct().Count(), Is.EqualTo(9));
                 var start = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, WorldPlaces.FileName)))["places"].Single(p => (bool?)p["start"] == true);
                 Assert.That(spawns.Single(p => p.Id == (string)start["id"]).Middle, Is.EqualTo(map.Spawn), "the valley's spawn is the map's start");
-                // The rows the valley's buildings stand on are where the valley is now.
                 var hold = WorldBuildings.Load(dir);
                 Assert.That(hold, Is.Not.Null);
-                // A build's bake is kept while it's of these inputs and this format; an older one (it has no "format",
-                // and its map.json none of the pinned map's full detail) is made again.
                 Assert.That(GeneratedMap.EnsureBakedInto(NineDir, dir), Is.False, "a bake of these inputs in this format is kept");
                 File.Copy(Path.Combine(NineDir, MapFile.FileName), Path.Combine(dir, MapFile.FileName), true);
                 var note = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, GeneratedMap.BakeName)));
@@ -725,13 +665,10 @@ namespace Chem.Tests
             GC.KeepAlive(chunks);
         }
 
-        // What's live on the heap, collected first: a measuring test's only use of the collector.
 #pragma warning disable S1215
         static long Heap() => GC.GetTotalMemory(true);
 #pragma warning restore S1215
 
-        // The nine's heights, a pixel for every three cells: sea blue by depth, land green to brown to white by height,
-        // shaded from the north-west; rivers and lakes light blue, roads brown, the valley's edge drawn.
         static void PictureOf(string dir, BakeReport r)
         {
             string folder = Environment.GetEnvironmentVariable("CHUNK_GEN_PNG_OUT");
@@ -757,7 +694,6 @@ namespace Chem.Tests
                     else if (v >= ChunkGen.SeaLevel && cell == '#') col = (130, 125, 120);
                     WorldPlanPicture.Put(rgb, y * w + x, col, Math.Max(-60, Math.Min(60, shade * 6)));
                 }
-            // The squares' borders, faintly.
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++)
                     if ((x * scale) % ChunkGen.Square < scale || (y * scale) % ChunkGen.Square < scale)
@@ -769,7 +705,6 @@ namespace Chem.Tests
             CellsOf(folder, cells, r.W, 1, 1, "middle");
         }
 
-        // One world square's cells at a pixel a cell, by their Legend character: roads and paths are the dirt lines.
         static void CellsOf(string folder, char[] cells, int width, int sx, int sy, string name)
         {
             int n = ChunkGen.Square;

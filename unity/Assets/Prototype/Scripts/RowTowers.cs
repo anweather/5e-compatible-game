@@ -8,7 +8,6 @@ using UnityEngine;
 // it, and a floor at the walk's height, which is the blockers' top. "roof": "cone" puts one on it; none, a crown of merlons.
 public static class RowTowers
 {
-    // A cone roof in overlapping rings of slates, each slate its own tone, every other ring a half step round.
     static void Slates(MeshKit kit, Vector3 foot, float radius, float height)
     {
         const int Rings = 9, Round = 20;
@@ -37,7 +36,6 @@ public static class RowTowers
     static readonly Color Cover = new(0.27f, 0.29f, 0.34f), Floor = new(0.56f, 0.52f, 0.46f), Ceiling = new(0.2f, 0.14f, 0.09f);
     const float FloorThick = 0.08f;
 
-    /// <summary>Each tower's middle and radius on the ground, in metres from the row's corner.</summary>
     public static List<(Vector2 middle, float radius)> Rings(JObject row, Dictionary<string, Vector2> joins)
     {
         var rings = new List<(Vector2, float)>();
@@ -46,10 +44,6 @@ public static class RowTowers
         return rings;
     }
 
-    /// <summary>
-    /// Draws the row's towers, a stretch each that stands on all its cells (RowRuin takes it down when enough of them have gone).
-    /// Each wall is its line's two ends and a point a thickness to its right, all at y 0.
-    /// </summary>
     public static List<RowMesher.Stretch> Draw(MeshKit body, MeshKit walk, JObject row, Dictionary<string, Vector2> joins, List<(Vector3 from, Vector3 to, Vector3 right)> walls, float walkTop, float footing, Color color)
     {
         var made = new List<RowMesher.Stretch>();
@@ -81,7 +75,6 @@ public static class RowTowers
         return made;
     }
 
-    // The cells BuildingRaster.LayTowers takes, from the row's at cell: a cell's middle within the radius of the join, in half cells.
     static List<Vector2Int> CellsOf(int x, int y, int radius)
     {
         var cells = new List<Vector2Int>();
@@ -94,7 +87,6 @@ public static class RowTowers
         return cells;
     }
 
-    // The wall above the walk, a piece a side: where a wall comes in, only what's over the arch.
     static void Drum(MeshKit kit, Vector3 middle, float radius, float walkTop, float top, List<(Vector3 from, Vector3 to, Vector3 right)> walls, Color color)
     {
         float side = 2f * Mathf.PI * radius / Sides * 1.08f;

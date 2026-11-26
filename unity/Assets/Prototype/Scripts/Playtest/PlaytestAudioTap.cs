@@ -14,10 +14,8 @@ public class PlaytestAudioTap : MonoBehaviour
     public float Peak => peak;
     public float Rms => samples == 0 ? 0f : (float)System.Math.Sqrt(sumSquares / samples);
     public bool SawNaN => sawNaN;
-    /// <summary>Audio frames heard (samples per channel), to tell silence from no audio at all.</summary>
     public long Frames => frames;
 
-    /// <summary>The loudest sample since the last call (once a frame, from the main thread).</summary>
     public float TakePeak()
     {
         float p = recentPeak;

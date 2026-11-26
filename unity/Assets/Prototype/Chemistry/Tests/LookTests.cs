@@ -1,3 +1,6 @@
+// The look and effect families (rules/looks.json, docs/RULES_MCP.md "Looks"): the data parses,
+// the terrain table that used to live in CellDressing came across unchanged, and looks stay
+// the view's: they reach neither the rules fingerprint nor a world's state.
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,11 +9,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The look and effect families (rules/looks.json, docs/RULES_MCP.md "Looks"): the data parses,
-    /// the terrain table that used to live in CellDressing came across unchanged, and looks stay
-    /// the view's: they reach neither the rules fingerprint nor a world's state.
-    /// </summary>
     [Category("Simulation")]
     public class LookTests
     {
@@ -23,7 +21,6 @@ namespace Chem.Tests
 
         static ModPatch Mod(string json) => ModPatch.Parse(json.Replace('\'', '"'));
 
-        // CellDressing.TerrainLook as it stood before the table moved to materials.json (colour, height).
         static readonly Dictionary<string, (float r, float g, float b, float height)> OldTable = new Dictionary<string, (float, float, float, float)>
         {
             ["bedrock"] = (0.24f, 0.23f, 0.25f, 1.5f),
@@ -54,8 +51,6 @@ namespace Chem.Tests
             ["logwall"] = (0.4f, 0.27f, 0.16f, 0f),
             ["worn-logwall"] = (0.52f, 0.42f, 0.3f, 0f),
         };
-
-        // ---------- the data ----------
 
         [Test]
         public void TheFamiliesParse()
@@ -112,8 +107,6 @@ namespace Chem.Tests
             }
         }
 
-        // ---------- scaling by the rules in force ----------
-
         [Test]
         public void TheBlastScalesWithTheRadiusInForceAndTheCharge()
         {
@@ -152,8 +145,6 @@ namespace Chem.Tests
             }
         }
 
-        // ---------- looks stay the view's ----------
-
         [Test]
         public void TheFingerprintIgnoresLooks()
         {
@@ -166,7 +157,6 @@ namespace Chem.Tests
         [Test]
         public void ALookCannotChangeTheWorld()
         {
-            // The same world under the same casts, on the base rules and with every look changed.
             var doc = JObject.Parse(Base.ToJson());
             var terrain = new JObject();
             foreach (var p in ((JObject)doc["terrain"]).Properties())
@@ -180,7 +170,6 @@ namespace Chem.Tests
             Assert.That(HashAfterAFireball(relooked), Is.EqualTo(HashAfterAFireball(Base)));
         }
 
-        // The cell hash of a meadow 120 ticks after a Fireball, under these rules.
         static string HashAfterAFireball(Rules rules)
         {
             var w = new World(rules, 32, 32, 7, "grass");
@@ -212,9 +201,6 @@ namespace Chem.Tests
             Assert.That(w.At(8, 8).T, Is.EqualTo("moonstone"));
         }
 
-        // ---------- elements, covers and gases: a colour with no family ----------
-
-        // Blue fire everywhere, a blue fireball, and steam and oil recoloured: looks only, the rest of each entry as it was.
         static ModPatch LookOnly()
         {
             var doc = JObject.Parse(Base.ToJson());
@@ -305,12 +291,9 @@ namespace Chem.Tests
             Assert.That(errors, Has.Some.EqualTo("terrain grass: look.color must be three numbers from 0 to 1"));
         }
 
-        // ---------- glow (docs/design/primitives.md §3 P4): view only, 0 to 1 ----------
-
         static ModBudgets budgets;
         static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
 
-        // A mod's own cover, a bare look of a colour and this glow, as glowing moss would give it.
         static string GlowingCover(string glow) =>
             "{ 'covers': { 'glow-moss': { 'name': 'Glowing moss', 'tags': [], 'look': { 'color': [0.3, 0.85, 0.55], 'glow': GLOW } } } }".Replace("GLOW", glow).Replace('\'', '"');
 

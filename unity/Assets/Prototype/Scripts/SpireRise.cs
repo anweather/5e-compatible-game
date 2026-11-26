@@ -14,8 +14,6 @@ public class SpireRise : MonoBehaviour
     bool broke, sinking, loud;
     Color dust;
 
-    /// <summary>Starts it under the ground, <paramref name="depth"/> down, to burst up at <paramref name="when"/> over <paramref name="seconds"/>;
-    /// a <paramref name="loud"/> one rumbles as it breaks the ground (every spire of a line doing so would only be noise).</summary>
     public void Begin(float when, float seconds, float depth, Color dust, bool loud)
     {
         this.loud = loud;
@@ -27,7 +25,6 @@ public class SpireRise : MonoBehaviour
         Update();
     }
 
-    /// <summary>Sinks it back into the ground from <paramref name="when"/>, over <paramref name="seconds"/>.</summary>
     public void SinkAt(float when, float seconds)
     {
         sinkAt = when;
@@ -54,7 +51,6 @@ public class SpireRise : MonoBehaviour
         if (!broke) Burst(1.2f);
         broke = true;
         t = Mathf.Clamp01(t);
-        // Back-out easing: past its height, then back down onto it.
         float u = t - 1f;
         float up = 1f + (Overshoot + 1f) * u * u * u + Overshoot * u * u;
         transform.localPosition = Vector3.down * (depth * (1f - up));
@@ -68,7 +64,6 @@ public class SpireRise : MonoBehaviour
     void Burst(float size)
     {
         var at = transform.parent != null ? transform.parent.position : transform.position;
-        // Rock and dust, not Debris' burning rock: nothing here is on fire.
         BurstFx.Play(BurstFx.Kind.Chips, at + Vector3.up * 0.3f, size * 1.3f, tint: dust);
         var grid = ChemGrid.Current?.Grid;
         if (grid != null) grid.SpireDust(at + Vector3.up * 0.3f);

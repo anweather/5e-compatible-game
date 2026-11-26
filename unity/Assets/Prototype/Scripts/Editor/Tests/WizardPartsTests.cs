@@ -50,12 +50,9 @@ public class WizardPartsTests
             Assert.IsNotNull(net.GetComponent(part), $"NetWizard has no {part.Name}");
     }
 
-    // The component types on a wizard's root, one entry per component (so a part added twice shows).
     static IEnumerable<System.Type> Parts(GameObject wizard) =>
         wizard.GetComponents<Component>().Where(c => c != null && !(c is Transform)).Select(c => c.GetType());
 
-    // The yard as it is open in the Editor, or opened alongside for the test and closed again.
-    /// <summary>Runs a check on the built yard, opening its scene for it if it isn't open.</summary>
     public static void WithYard(System.Action<Scene> check)
     {
         var open = SceneManager.GetSceneByPath(Yard);

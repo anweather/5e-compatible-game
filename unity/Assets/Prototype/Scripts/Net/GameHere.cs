@@ -14,7 +14,6 @@ public sealed class GameHere : IHere
 
     public HereSpot? Asking() => latest is HereSpot spot ? spot : null;
 
-    /// <summary>Once a frame on the main thread: this player, their slot, their cell and the cell they aim at.</summary>
     public void Follow()
     {
         if (mine == null)

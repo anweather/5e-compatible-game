@@ -12,7 +12,6 @@ namespace Chem
 {
     public sealed class ModPatch
     {
-        /// <summary>The id tables a mod adds entries to or patches entries in, field by field (Rules.MergedEntry).</summary>
         internal static readonly string[] Tables = { "terrain", "covers", "gases", Rules.LiquidsKey, "entities", "items", "machines", "groups", "components", FaunaTables.SpeciesKey, FaunaTables.PartsKey };
 
         ModPatch(string title, JObject patch)
@@ -21,17 +20,10 @@ namespace Chem
             Json = patch;
         }
 
-        /// <summary>The title when the JSON was {"title", "patch"}; null for a bare patch.</summary>
         public string Title { get; }
 
-        /// <summary>Never modified: composing clones whatever it takes from here.</summary>
         internal JObject Json { get; }
 
-        /// <summary>
-        /// Reads a mod. Like the sandbox's Experiments panel it takes a bare patch or
-        /// {"title", "patch"} (what an AI answering the brief replies, and how saved mods look).
-        /// Throws <see cref="ModException"/> if it isn't JSON or a section has the wrong type.
-        /// </summary>
         public static ModPatch Parse(string json)
         {
             JToken token;
@@ -55,10 +47,6 @@ namespace Chem
             return new ModPatch(title, (JObject)patch.DeepClone());
         }
 
-        /// <summary>
-        /// Sections of the wrong type. The TS doesn't check these (a wrong one breaks its merge); a
-        /// missing or null section means "no change" on both sides, and unknown ones are ignored.
-        /// </summary>
         static List<string> ShapeErrors(JObject p)
         {
             var errors = new List<string>();
@@ -91,7 +79,6 @@ namespace Chem
             return errors;
         }
 
-        // A table a mod's "buildings" can't add rows to, named, rather than dropped without a word (#85).
         static void UnknownBuildingTables(JObject given, List<string> errors)
         {
             if (given == null) return;
@@ -102,10 +89,8 @@ namespace Chem
                     : $"\"buildings\" has no table {name}; a mod adds rows to {tables}");
         }
 
-        // An object of rows by id, a null taking one out (the triggers).
         static bool RowsOrNulls(JToken t) => t is JObject rows && rows.PropertyValues().All(v => v is JObject || v.Type == JTokenType.Null);
 
-        // The reactions section's lists: rules to add, entity rules to add, ids to remove.
         static void ReactionShapeErrors(JObject rx, List<string> errors)
         {
             if (Present(rx, "add") && !ListOf(rx["add"], JTokenType.Object)) errors.Add("\"reactions.add\" must be a list of rules");
@@ -113,10 +98,6 @@ namespace Chem
             if (Present(rx, "remove") && !ListOf(rx["remove"], JTokenType.String)) errors.Add("\"reactions.remove\" must be a list of rule ids");
         }
 
-        /// <summary>
-        /// The elements a patch names: a list of names (new ones join the rules), or entries by id, an
-        /// element's look ({"fire": {"look": ...}}), which adds the element too if it's new.
-        /// </summary>
         internal static IEnumerable<string> ElementNames(JToken elements) => elements switch
         {
             JArray list => list.Where(x => x.Type == JTokenType.String).Select(x => (string)x),
@@ -128,13 +109,11 @@ namespace Chem
         static bool ListOf(JToken t, JTokenType type) => t is JArray a && a.All(x => x.Type == type);
     }
 
-    /// <summary>A mod that can't be read, or mods that don't fit the rules they're applied over.</summary>
     public sealed class ModException : Exception
     {
         public ModException(IReadOnlyList<string> errors) : base(string.Join("; ", errors)) { Errors = errors; }
         public ModException(string error) : this(new[] { error }) { }
 
-        /// <summary>Every problem found, one sentence each, in the sandbox's wording where it has one.</summary>
         public IReadOnlyList<string> Errors { get; }
     }
 }

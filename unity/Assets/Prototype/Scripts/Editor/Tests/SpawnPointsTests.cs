@@ -50,12 +50,10 @@ public class SpawnPointsTests
     {
         var spawns = Spawns();
         var reached = new HashSet<string> { SpawnPoints.StartId };
-        // Down by the east spawn before anyone has been there: back at the start.
         Assert.That(SpawnPoints.Nearest(spawns, reached, new Vector2Int(495, 300)).Id, Is.EqualTo(SpawnPoints.StartId));
         Assert.That(SpawnPoints.Visit(spawns, reached, new Vector2Int(501 + SpawnPoints.ReachCells, 301)), Is.True);
         Assert.That(SpawnPoints.Visit(spawns, reached, new Vector2Int(501, 301)), Is.False, "reached once is enough");
         Assert.That(SpawnPoints.Nearest(spawns, reached, new Vector2Int(495, 300)).Id, Is.EqualTo("spawn-east"));
-        // The north spawn is nearer this cell, but nobody has reached it.
         Assert.That(SpawnPoints.Nearest(spawns, reached, new Vector2Int(310, 60)).Id, Is.Not.EqualTo("spawn-north"));
     }
 

@@ -1,3 +1,4 @@
+// A mod patches only the fields it names (Rules.MergedEntry), so mods stack and a revert undoes only its own.
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>A mod patches only the fields it names (Rules.MergedEntry), so mods stack and a revert undoes only its own.</summary>
     [Category("Simulation")]
     public class ModFieldTests
     {

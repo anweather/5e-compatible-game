@@ -17,7 +17,6 @@ using UnityEngine;
 // like paint (ChemGrid.LookScopes.cs).
 public partial class ChemGrid
 {
-    /// <summary>What a cast left on a cell: the spell, who cast it (-1 not noted), and a colour it caught.</summary>
     readonly struct LitNote
     {
         public readonly string Spell;
@@ -32,15 +31,11 @@ public partial class ChemGrid
         }
     }
 
-    // How long a noted cell waits to catch: online a cast's fire comes at its tick, and the note before or after it.
     const float LookFireWait = 3f;
 
     readonly Dictionary<int, LitNote> litBy = new();
     readonly Queue<(float until, int index)> litByCheck = new();
 
-    /// <summary>
-    /// A spell in a look of its own lands: fire on its cells, and on what it scatters a few cells out, burns in that look.
-    /// </summary>
     public void LightInLook(SpellCaster caster, SpellDef spell, SpellVisuals.Entry look, CastCommand cast)
     {
         if (spell == null || look == null || (!look.KeepsFire && !noteCasters)) return;
@@ -57,17 +52,15 @@ public partial class ChemGrid
     {
         if (litBy.TryAdd(index, note)) litByCheck.Enqueue((Time.time + LookFireWait, index));
         else litBy[index] = note;
-        if (views?[index] != null) views[index].key = int.MinValue; // a fire already there redraws in it
+        if (views?[index] != null) views[index].key = int.MinValue;
     }
 
-    /// <summary>The look the fire on a cell burns in: its spell's if it chose a colour, else the fire element's.</summary>
     public LookTint FireTint(int x, int y)
     {
         if (anyScoped) return ScopedFireTint(x, y);
         return SpellFire(x, y, out var tint) ? tint : fireLook;
     }
 
-    // Whether a spell that chose a colour lit a cell, and how far that turns its fire: maybe not at all, for a colour near the art's.
     bool SpellFire(int x, int y, out LookTint tint)
     {
         tint = default;
@@ -82,10 +75,8 @@ public partial class ChemGrid
         return true;
     }
 
-    /// <summary>How far the embers on a cell are turned round the wheel, 0 to 1, for the probe.</summary>
     public float EmberTurnOn(int x, int y) => lava.TurnOn(x, y);
 
-    // A new fire beside a fire in a look caught from it.
     void CatchLookFire(Cell c, int x, int y, bool isNew)
     {
         if (!isNew || c.Fire <= 0 || litBy.Count == 0 || litBy.ContainsKey(World.Idx(x, y))) return;
@@ -100,7 +91,6 @@ public partial class ChemGrid
         Note(World.Idx(x, y), mixes ? new LitNote(null, -1, (fireLooks ?? scopes.Of("elements", ElementIds.Fire)).Caught(caught)) : firstCaught);
     }
 
-    // The neighbours a new fire caught from: their mix, and the one note if they all agree.
     ColourMixer caught;
     LitNote firstCaught;
     LookColour firstColour;
@@ -124,7 +114,6 @@ public partial class ChemGrid
         caught.Add(colour);
     }
 
-    // Lets go of the cells that never caught or have burnt out, a few a frame at most.
     void ForgetLookFire()
     {
         while (litByCheck.Count > 0 && litByCheck.Peek().until <= Time.time)
@@ -136,7 +125,6 @@ public partial class ChemGrid
         }
     }
 
-    // The rules switched: what's burning in a look is drawn again from the look now in force.
     void RedrawLookFire()
     {
         if (views == null) return;

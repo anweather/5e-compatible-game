@@ -10,7 +10,6 @@ using UnityEngine;
 public class GrimoireMenu : MonoBehaviour
 {
     const string PageId = "grimoire";
-    // Where its button sits in the Game sub menu: first.
     const int SectionOrder = 45;
     const float ElementsWidth = 190f, RowHeight = 34f;
 
@@ -18,7 +17,6 @@ public class GrimoireMenu : MonoBehaviour
     PauseMenu.Page page;
     GUIStyle row, head;
     Vector2 scroll;
-    // Opened in play, not from the menu's button: nothing to go back to.
     bool openedInPlay;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -30,7 +28,6 @@ public class GrimoireMenu : MonoBehaviour
         instance = go.AddComponent<GrimoireMenu>();
     }
 
-    /// <summary>Opens the menu on the grimoire.</summary>
     public static void Show()
     {
         var menu = PauseMenu.Instance;
@@ -65,7 +62,6 @@ public class GrimoireMenu : MonoBehaviour
         PauseMenu.Instance.ShowPage(PageId);
     }
 
-    // Back from the page: closes the menu if it was opened in play; false leaves it to the menu.
     bool BackToPlay()
     {
         if (!openedInPlay) return false;

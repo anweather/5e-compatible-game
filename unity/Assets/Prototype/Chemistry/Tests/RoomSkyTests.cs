@@ -1,9 +1,9 @@
+// The clock and the weather as room commands (World.RoomSky.cs): every peer does them at the same tick, a late joiner too.
 using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The clock and the weather as room commands (World.RoomSky.cs): every peer does them at the same tick, a late joiner too.</summary>
     [Category("Simulation")]
     public class RoomSkyTests
     {
@@ -20,7 +20,6 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.SkyState()} {w.CastHash()} {w.RngState}";
 
-        // A run of commands by tick, the same for every peer.
         static Dictionary<int, TickBatch> Batches(int upTo)
         {
             var batches = TickBatch.Timeline(null, null, upTo);
@@ -59,7 +58,6 @@ namespace Chem.Tests
             Assert.That(a.SkyHash(), Is.EqualTo(joiner.SkyHash()));
         }
 
-        // The golden for the new commands. Worlds that get none hash as they did (TerraformTests, ChemistryTests).
         [Test]
         public void TheCommandsGolden()
         {
@@ -86,7 +84,6 @@ namespace Chem.Tests
         [Test]
         public void TheClockLeavesTheCellsToTheTick()
         {
-            // Setting noon at noon changes nothing the checksum sees but the log.
             var w = Room();
             w.ApplyRoom(RoomCommand.SetTime("Ana", 12 * 60));
             string sky = w.SkyState();

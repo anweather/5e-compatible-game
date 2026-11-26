@@ -1,3 +1,5 @@
+// Switching rules in a running game: rule sets (base + mods), tick batches that carry a
+// rule switch next to the casts, and a late joiner's replay of the host's history.
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -5,10 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Switching rules in a running game: rule sets (base + mods), tick batches that carry a
-    /// rule switch next to the casts, and a late joiner's replay of the host's history.
-    /// </summary>
     [Category("Simulation")]
     public class RuleSwitchTests
     {
@@ -18,13 +16,11 @@ namespace Chem.Tests
 
         static ActiveMod Example(string id) => new ActiveMod(id, File.ReadAllText(Path.Combine(ModsDir, id + ".json")));
 
-        // What ChemGrid passes for the valley: a longer fire fade and a far lightning reach.
         static ModPatch ValleyTuning() => ModPatch.Parse("{ \"sim\": { \"fire\": { \"fadeCells\": 50 }, \"conductLimit\": 12000 } }");
 
         static readonly ActiveMod Broken = new ActiveMod("broken",
             "{ \"reactions\": { \"add\": [{ \"id\": \"x\", \"element\": \"fire\", \"do\": [{ \"teleportEverything\": true }] }] } }");
 
-        /// <summary>A grass field with dirt paths, so how far fire spreads depends on the rules.</summary>
         static World Field(Rules rules)
         {
             var w = new World(rules, 30, 12, 7, "grass");
@@ -33,8 +29,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // A host's session: casts at a few ticks, wildfire on at tick 10, damp world added at 25,
-        // wildfire off at 40. Returns the batches as stamped, in order.
         static List<TickBatch> HostSession(int ticks)
         {
             var wildfire = Example("wildfire");
@@ -72,7 +66,6 @@ namespace Chem.Tests
             var live = HostSession(ticks);
             var (host, hostRules) = Run(live);
 
-            // What the host sends a late joiner: every cast and rule switch with its tick.
             var casts = live.SelectMany(b => b.Casts.Select(c => (b.Tick, c))).ToList();
             var changes = live.Where(b => b.Mods != null).Select(b => new RuleChange(b.Tick, b.Mods)).ToList();
             var timeline = TickBatch.Timeline(casts, changes, ticks);
@@ -112,7 +105,6 @@ namespace Chem.Tests
             var bad = Assert.Throws<ModException>(() => rules.WithMods(new[] { new ActiveMod("typo", "{ \"sim\": ") }));
             Assert.That(bad.Errors[0], Does.StartWith("typo: That isn't valid JSON"), "says which mod");
 
-            // A batch carrying a switch that doesn't check out keeps the old rules and still steps.
             var world = Field(rules.Effective);
             var before = world.Rules;
             var kept = new TickBatch(1, null, new[] { Broken }).RunOn(world, rules, out var errors);

@@ -15,7 +15,6 @@ public class HandPose : MonoBehaviour
 
     enum Phase { Rest, Wind, Out, Hold, Back }
 
-    // The right arm's, by gesture (HandsDef); the left's are their mirror.
     static readonly Vector3[] WindUp = { new(0.26f, 1.02f, -0.12f), new(0.3f, 1.78f, -0.26f), new(0.62f, 1.22f, 0.02f) };
     static readonly Vector3[] Out = { new(0.14f, 1.3f, 0.62f), new(0.2f, 1.5f, 0.6f), new(-0.28f, 1.2f, 0.46f) };
     static readonly Vector3[] BothWindUp = { new(0.16f, 1.08f, 0.04f), new(0.12f, 1.86f, -0.14f), new(0.68f, 1.3f, 0.1f) };
@@ -42,13 +41,10 @@ public class HandPose : MonoBehaviour
     bool together, aimed;
     float flinch;
 
-    /// <summary>What's shown in a hand (HandsDef.Left, Right), or null: for the probe.</summary>
     public string Showing(int hand) => held.Showing(hand);
 
-    /// <summary>The gesture an arm is playing, or HandsDef.NoGesture: for the probe.</summary>
     public int Playing(int hand) => arms[hand].phase == Phase.Rest ? HandsDef.NoGesture : arms[hand].gesture;
 
-    /// <summary>The same gesture is on both arms, as one two-handed movement: for the probe.</summary>
     public bool Together => together;
 
     void Awake()
@@ -61,7 +57,6 @@ public class HandPose : MonoBehaviour
 
     void OnDestroy() => held?.Destroy();
 
-    /// <summary>This wizard took a blow: it flinches.</summary>
     public void Flinch() => flinch = 1f;
 
     void LayFlinch()
@@ -83,7 +78,6 @@ public class HandPose : MonoBehaviour
         ShowHeld(world);
     }
 
-    // Only between ticks, as CastBeats reads the cast.
     void Read(World world)
     {
         string player = beats.Player;

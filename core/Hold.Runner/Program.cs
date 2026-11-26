@@ -16,7 +16,6 @@ namespace Chem.HoldCurve
         static int? points;
         static bool idle;
 
-        // A new player: fire in the right hand, then whatever the unlocks give, spending each run's points on the next.
         static int Journey(Rules rules, string worldDir, int minutes)
         {
             var p = rules.Sim.Hold;
@@ -38,7 +37,6 @@ namespace Chem.HoldCurve
             return 0;
         }
 
-        // What a new player holds in the second hand: water once it has it, or fire.
         static string Second(Rules rules, int have)
         {
             foreach (var u in rules.Sim.Hold.Unlocks)
@@ -89,7 +87,6 @@ namespace Chem.HoldCurve
             return 0;
         }
 
-        // What stands round the heart: a run that stalls has usually lost its way to it.
         static IEnumerable<string> Around(World w)
         {
             var (x, y) = w.HoldSite.Heart;

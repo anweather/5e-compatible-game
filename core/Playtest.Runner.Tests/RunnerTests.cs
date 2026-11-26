@@ -1,3 +1,6 @@
+// The playtest runner's decisions (core/Playtest.Runner, playtest/DESIGN.md): the preflight,
+// coverage, which player it runs, how a run's ending becomes a candidate, and the crash
+// events it reads. The parts that launch players or Unity are checked by running them.
 using System.Collections.Generic;
 using NUnit.Framework;
 using Playtest;
@@ -5,11 +8,6 @@ using Playtest.Runner;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The playtest runner's decisions (core/Playtest.Runner, playtest/DESIGN.md): the preflight,
-    /// coverage, which player it runs, how a run's ending becomes a candidate, and the crash
-    /// events it reads. The parts that launch players or Unity are checked by running them.
-    /// </summary>
     [Category("Unit")]
     public class RunnerTests
     {
@@ -125,7 +123,6 @@ namespace Chem.Tests
         [Test]
         public void APcWithNoAudioOutputRunsAsMuted()
         {
-            // Windows answers "Element not found" for the default output on a PC or VM with no audio device.
             Assert.That(AppMute.Silenced(AppMute.NoOutput), Is.True, "nothing can play aloud");
             Assert.That(AppMute.Silenced(0), Is.False, "no sound session yet: keep trying");
             Assert.That(AppMute.Silenced(2), Is.True);

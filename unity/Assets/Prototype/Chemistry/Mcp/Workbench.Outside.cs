@@ -19,7 +19,6 @@ namespace Chem.Mcp
             ("A building's rooms: walls and doors inside it", "a building's outside is a row: add_building, add_wing and set_building change its walls, openings and fill"),
         };
 
-        /// <summary>What the rules can't reach yet, and the nearest thing that can be done.</summary>
         public static string Outside() =>
             "These aren't in the rules yet, so no tool can change them. Tell the player so, and offer the nearest thing:\n" +
             string.Join("\n", OutsideRules.Select(o => $"- {o.what}. Instead: {o.instead}."));

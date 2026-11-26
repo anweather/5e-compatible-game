@@ -7,12 +7,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>sim.json's "downed": how long a wizard stays down.</summary>
     public sealed class DownedParams
     {
         public double Seconds = 3;
 
-        /// <summary>Reads sim.json's "downed" (absent: the defaults).</summary>
         public static DownedParams Parse(JToken t)
         {
             var d = new DownedParams();
@@ -21,7 +19,6 @@ namespace Chem
         }
     }
 
-    /// <summary>One wizard's time down: Fall at 0 health, Step it each frame, Clear when it's up.</summary>
     public sealed class Downed
     {
         readonly double seconds;
@@ -31,7 +28,6 @@ namespace Chem
 
         public bool IsDown { get; private set; }
 
-        /// <summary>Goes down; false if it already was, so the clock doesn't start again.</summary>
         public bool Fall()
         {
             if (IsDown) return false;
@@ -40,7 +36,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A frame goes by; true once the time down is over (still down until <see cref="Clear"/>).</summary>
         public bool Step(double dt)
         {
             if (!IsDown) return false;
@@ -48,7 +43,6 @@ namespace Chem
             return left <= 0;
         }
 
-        /// <summary>Up again; true if it was down.</summary>
         public bool Clear()
         {
             bool was = IsDown;

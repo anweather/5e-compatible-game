@@ -16,19 +16,16 @@ using UnityEngine;
 public class Fragile : MonoBehaviour
 {
     Carryable item;
-    // How long after the first crack its bounces don't count as the next hit, and the dim of a cracked thing.
     const float BounceSeconds = 0.4f, CrackedDim = 0.6f;
     static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
     bool broken, cracked, shownCracked;
     float bouncingUntil;
 
-    /// <summary>The speed of its hardest landing so far, in m/s.</summary>
     public float HardestImpact { get; private set; }
 
     void Awake() => item = GetComponent<Carryable>();
 
-    // Whatever cracked it, here or on the host: a late joiner's and a saved game's too.
     void Update()
     {
         if (shownCracked || item.Grid == null || item.Grid.World == null) return;
@@ -44,7 +41,6 @@ public class Fragile : MonoBehaviour
         }
     }
 
-    // True if this hit only cracks it, or is the bounce of the one that did.
     bool Cracks()
     {
         var grid = item.Grid;

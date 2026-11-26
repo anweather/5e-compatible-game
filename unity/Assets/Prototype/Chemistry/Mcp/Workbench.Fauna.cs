@@ -6,7 +6,7 @@ using System;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
@@ -14,16 +14,10 @@ namespace Chem.Mcp
     {
         const string FaunaTable = FaunaTables.SpeciesKey;
 
-        /// <summary>What a variant reads from its own row's behave; the rest it takes from the species it's built on.</summary>
         static readonly string[] VariantBehave = { "active", "graze", "thirst", "play", "laze", "hunger", "chase", "hunts" };
 
-        // What a new species takes from the one it's based on, as a variant leaves them to the reader's defaults.
         static readonly string[] Inherited = { "coat", "coats", "hair", "vary", "behave" };
 
-        /// <summary>
-        /// A new species built on one there is (its body, gait, wandering and fleeing, with its own look, size and habits),
-        /// or grafted from others' slots by <paramref name="from"/> (FaunaGraft), moving and behaving as its first donor.
-        /// </summary>
         public Draft AddSpecies(string draftId, string id, string name, string basedOn, double? scale, string color, string accent, double? glow, string behave, double? density, string from = null)
         {
             id = Required(id, "id");
@@ -40,8 +34,6 @@ namespace Chem.Mcp
                 throw new RulesToolException($"There is no species {basedOn}; list fauna shows them.");
             var row = new JObject { ["name"] = Required(name, "name"), ["variantOf"] = basedOn };
             foreach (var key in Inherited.Where(k => under[k] != null)) row[key] = under[key].DeepClone();
-            // A variant's reader takes only VariantBehave from its own behave; wander, idle, flee and group stay
-            // the base's (CreatureBody), so copies of them would be dead and go stale. describe says them as the base's.
             if (row["behave"] is JObject copied)
             {
                 foreach (var p in copied.Properties().Where(p => !VariantBehave.Contains(p.Name)).ToList()) p.Remove();
@@ -58,7 +50,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        /// <summary>A species' size, against its normal size, and its behaviour, keeping the rest of its row.</summary>
         public Draft SetSpecies(string draftId, string id, double? scale, string behave, string from = null, string color = null, string accent = null, double? glow = null, double? density = null, double? speed = null)
         {
             id = Required(id, "id");
@@ -76,7 +67,6 @@ namespace Chem.Mcp
             if (scale.HasValue)
             {
                 double times = Positive(scale.Value, "scale");
-                // What "normal" is: the base rules' row, or the row as whoever added it wrote it.
                 var normal = baseRaw[FaunaTable][id] as JObject ?? (EntryIn(Raw, FaunaTable, id) as JObject) ?? now;
                 if (Str(now["variantOf"]) != null) entry["scale"] = Rounded(((double?)normal["scale"] ?? 1) * times);
                 else entry["size"] = new JArray(((normal["size"] as JArray)?.Select(s => (double)s) ?? new[] { 0.9, 1.1 }).Select(s => Rounded(s * times)));
@@ -94,7 +84,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // A species' walk and run at speed times its normal gait (the base rules' row, or the row as whoever added it wrote it), within the caps.
         JObject Gait(string id, JObject now, double speed)
         {
             if (Str(now["variantOf"]) != null)
@@ -105,7 +94,6 @@ namespace Chem.Mcp
             return new JObject { ["walk"] = Rounded(walk * times), ["run"] = Rounded(run * times) };
         }
 
-        /// <summary>What set_species says of a speed: cut to the caps, how fast that is, and that the player should hear it.</summary>
         public string SpeedNote(double speed)
         {
             double least = Budgets.Number("fauna.minSpeed", 0.2), most = Budgets.Number("fauna.maxSpeed", 5);
@@ -114,7 +102,6 @@ namespace Chem.Mcp
             return $"\nIt walks and runs at {Num(times)} times its normal speed (its normal: the base rules' row), once it's applied.{cut}";
         }
 
-        // A graft's row: its donors' slots, and its first donor's body, gait, habits, colours and a share of its number.
         Draft AddGraft(Draft draft, string id, string name, JArray donors, double? scale, (string color, string accent, double? glow) look, string behave, double? density)
         {
             string first = Str(donors[0]["species"]);
@@ -134,7 +121,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // A from list: donors as JSON, each naming a species there is; the rest Rules.CheckFauna checks when it's validated.
         JArray Donors(Draft draft, string json)
         {
             const string example = "[{\"species\": \"deer\", \"drop\": [\"neck\", \"head\"]}, {\"species\": \"human\", \"take\": [\"human-torso\"], \"at\": [0, 0.45, 0.8]}]";
@@ -148,7 +134,6 @@ namespace Chem.Mcp
             return donors;
         }
 
-        // A behave object of keys the row's reader takes: a variant moves and keeps company as the species it's built on.
         JObject Behave(string species, string json, bool variant)
         {
             if (!(Value(json) is JObject given)) throw new RulesToolException("behave is a JSON object, such as {\"active\": \"always\", \"play\": 0.6}.");
@@ -162,8 +147,6 @@ namespace Chem.Mcp
             return given;
         }
 
-        // A colour over the coat it took: one coat in the colours given, the accent kept if none is.
-        // An existing species' coat: one coat in place of whatever it wore, its own colours where none is given.
         static void Recolour(JObject entry, JObject now, string color, string accent, double? glow)
         {
             var row = new JObject();

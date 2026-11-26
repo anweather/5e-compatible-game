@@ -19,31 +19,22 @@ public partial class ChemGrid
     RuleSet queuedRules;
     readonly List<RoomCommand> queuedRoom = new();
     ModBudgets budgets;
-    // What the next world's room is: the host's chosen mode, or the last world's.
     ChangeMode? plannedMode;
 
-    /// <summary>The rules in force: base, the switched-on mods, and what they compose to.</summary>
     public RuleSet CurrentRules { get; private set; }
 
-    /// <summary>What the rules will be after the next tick (solo): the queued switch, or the current rules.</summary>
     public RuleSet UpcomingRules => queuedRules ?? CurrentRules;
 
-    /// <summary>Raised after the world's rules changed, so props and items can read their numbers again.</summary>
     public event Action RulesChanged;
 
-    /// <summary>rules/*.json with this scene's tuning on top. Throws if a file can't be read or the tuning doesn't fit.</summary>
     public Rules LoadBaseRules() => RuleSet.BaseOf(Rules.Load(Folders.Rules), SceneTuning());
 
-    /// <summary>A room command was decided on this machine (or, early, refused by the host).</summary>
     public event Action<RoomCommand, RoomVerdict> RoomDecided;
 
-    /// <summary>The next world built opens its room in this mode: the host's choice (the mods on stay).</summary>
     public void PlanRoom(ChangeMode mode) => plannedMode = mode;
 
-    /// <summary>Solo: a room command, decided before the next tick.</summary>
     public void QueueRoom(RoomCommand command) => queuedRoom.Add(command);
 
-    /// <summary>The host refused a command before stamping it: everyone hears, as they would at the tick.</summary>
     public void NoteRefused(RoomCommand command, RoomVerdict verdict)
     {
         EventLog.Add(verdict.Line);
@@ -52,7 +43,6 @@ public partial class ChemGrid
 
     ModBudgets Budgets => budgets ??= ModBudgets.Load(Folders);
 
-    // Every world is a room, solo too (docs/RULES_MCP.md): a rebuilt one keeps the room it replaces.
     void OpenRoom(RoomState was)
     {
         HearRoom();
@@ -72,7 +62,6 @@ public partial class ChemGrid
         RecolourWorld();
     }
 
-    // The world's room decisions, passed on (a revert also sweeps its materials).
     void HearRoom()
     {
         World.RoomDecided += (command, verdict) =>
@@ -82,10 +71,8 @@ public partial class ChemGrid
         };
     }
 
-    /// <summary>Puts <paramref name="next"/> (already checked) in force before the next solo tick.</summary>
     public void QueueRules(RuleSet next) => queuedRules = next ?? throw new ArgumentNullException(nameof(next));
 
-    // A new world starts on the base rules with no mods.
     Rules StartRules()
     {
         queuedRules = null;
@@ -93,7 +80,6 @@ public partial class ChemGrid
         return CurrentRules.Effective;
     }
 
-    // The inspector's per-scene numbers, as a mod over rules/sim.json (null when there are none).
     ModPatch SceneTuning()
     {
         var parts = new List<string>();
@@ -102,9 +88,6 @@ public partial class ChemGrid
         return parts.Count == 0 ? null : ModPatch.Parse($"{{ \"title\": \"Scene tuning\", \"patch\": {{ \"sim\": {{ {string.Join(", ", parts)} }} }} }}");
     }
 
-    // A mod went off (a revert, or a lapse: World.Lapse.cs) and its temporary materials were swept from every cell,
-    // inactive chunks too. The rules are read again before the next tick (FollowLapse), and every chunk is redrawn
-    // once the switch is done (RedrawOwed): a sweep of a mod and its dependents redraws once, not once a mod.
     bool reverted, redrawOwed;
 
     void Reverted()
@@ -120,8 +103,6 @@ public partial class ChemGrid
         RedrawEveryChunk();
     }
 
-    // A lapse takes a mod off at the end of a tick with no room command, so nothing put the room's rules in force on
-    // this side (a tick batch hands back the rules it was given): read them again, as on a revert, between ticks.
     void FollowLapse()
     {
         if (!reverted) return;
@@ -133,7 +114,6 @@ public partial class ChemGrid
         if (before != null) Announce(before);
     }
 
-    // Solo: the queued switch takes effect at this tick boundary.
     void ApplyQueuedRules()
     {
         FollowLapse();
@@ -154,17 +134,12 @@ public partial class ChemGrid
         RedrawOwed();
     }
 
-    /// <summary>Online: runs one of the host's tick batches (a rule switch if it has one, its casts, a step).</summary>
     public void RunBatch(TickBatch batch)
     {
         PrepareBatch(batch);
         World.Step();
     }
 
-    /// <summary>
-    /// Online: a tick batch's rule switch, casts and other commands, without the step, which the
-    /// caller then runs in slices (World.StepSome) so a long tick doesn't stall one frame.
-    /// </summary>
     public void PrepareBatch(TickBatch batch)
     {
         FollowLapse();
@@ -182,7 +157,6 @@ public partial class ChemGrid
 
     readonly System.Diagnostics.Stopwatch composing = new();
 
-    /// <summary>How long the last switch took to compose (ms), and when its drawing began (realtime).</summary>
     public double ComposeMs { get; private set; }
     public float AnnouncedAt { get; private set; }
 
@@ -196,25 +170,21 @@ public partial class ChemGrid
     void Announce(RuleSet before)
     {
         AnnouncedAt = Time.realtimeSinceStartup;
-        // A room's change has its own line in the world log.
         if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
         var part = System.Diagnostics.Stopwatch.StartNew();
         RedrawLooks(before.Effective);
         RedrawLookFire();
         double redrawMs = part.Elapsed.TotalMilliseconds;
         part.Restart();
-        // Every colour drawn from the rules is as it was unless a look changed: most switches change none (#181).
         bool recoloured = !before.Effective.SameLooks(CurrentRules.Effective);
         if (recoloured) RecolourWorld();
         double recolourMs = part.Elapsed.TotalMilliseconds;
         part.Restart();
         string slowest = TellRulesChanged();
-        // What the switch cost on this frame, by part (#210): composing, the looks queued, the recolour, the listeners.
         Debug.Log(string.Format(CultureInfo.InvariantCulture, "RULE SWITCH compose_ms={0:0.0} redraw_ms={1:0.0} recolour_ms={2:0.0} recoloured={3} listeners_ms={4:0.0}{5}",
             ComposeMs, redrawMs, recolourMs, recoloured, part.Elapsed.TotalMilliseconds, slowest));
     }
 
-    // RulesChanged, each listener timed in a development build: the slowest named, for the RULE SWITCH line.
     string TellRulesChanged()
     {
         if (RulesChanged == null) return "";
@@ -237,10 +207,6 @@ public partial class ChemGrid
             .Select(kv => string.Format(CultureInfo.InvariantCulture, " {0}={1:0.0}", kv.Key, kv.Value)));
     }
 
-    // What stands on the cells of a terrain whose look changed, drawn again from the rules now in
-    // force: every peer runs this at the same switch, with no scene load and no asset. Only the view moves. The
-    // chunks drawn so far are queued, nearest first, and built again a few rows a frame (RedrawSomeLooks); a chunk
-    // drawn later takes the look in force then. Every view of the map at once was 300 to 345 ms on the nine (#186).
     void RedrawLooks(Rules before)
     {
         var after = CurrentRules.Effective;
@@ -251,7 +217,6 @@ public partial class ChemGrid
         QueueLooks(changed);
     }
 
-    /// <summary>"Wildfire on", "Damp world off", "Wildfire reloaded", "Base rules reloaded", joined.</summary>
     static string Describe(RuleSet before, RuleSet after)
     {
         var parts = new List<string>();

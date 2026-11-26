@@ -9,7 +9,6 @@ public class CreatureWaterTests
 {
     const float Dt = 1f / 30f;
 
-    // A lake 40 m across and 2 m deep in dry land.
     sealed class Lake : ICreatureGround
     {
         public float Height(float2 xz) => InLake(xz) ? -2f : 0f;

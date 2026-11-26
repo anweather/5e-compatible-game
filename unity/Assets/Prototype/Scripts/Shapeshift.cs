@@ -22,22 +22,15 @@ using UnityEngine;
 // wizard, its gait following the synced transform.
 public partial class Shapeshift : MonoBehaviour
 {
-    /// <summary>No animal: the wizard as it is.</summary>
     public const int None = -1;
     const float DefaultSeconds = 60f;
-    // How long an aimed animal stays the one a cast takes (online the cast lands a tick or two later).
     const float PendingSeconds = 3f;
 
-    /// <summary>The species (an index in ValleyFauna's list) whose shape the wizard has, or None.</summary>
     public int Species { get; private set; } = None;
-    /// <summary>The coat (colouring) of that shape.</summary>
     public int Coat { get; private set; }
     public bool Shifted => Species != None;
-    /// <summary>The shape's name ("red fox"), or null when not shifted.</summary>
     public string FormName => Shifted ? NameOf(Species) : null;
-    /// <summary>Seconds until the shape wears off (the caster's machine only).</summary>
     public float SecondsLeft { get; private set; }
-    /// <summary>The animal form's hit points left, and its most (the caster's machine only).</summary>
     public float FormHp { get; private set; }
     public float FormHpMax { get; private set; }
 
@@ -46,10 +39,8 @@ public partial class Shapeshift : MonoBehaviour
     PlayerControls controls;
     Vitals vitals;
     ItemHolder hands;
-    // This machine's own wizard took the shape (it runs the timer and the body).
     bool local;
     int pendingSpecies = None, pendingCoat;
-    // The form asked for (Show), which may wait for the animals to be built.
     int requested = None;
     float pendingAt = -100f;
     GUIStyle hud;
@@ -80,12 +71,6 @@ public partial class Shapeshift : MonoBehaviour
         }
     }
 
-    // --- aiming and casting (the caster's machine) -------------------------------------
-
-    /// <summary>
-    /// Why the crosshair's <paramref name="ray"/> can't take a shape, or null with the square of
-    /// the animal it points at; that animal is the one the cast will take (Land).
-    /// </summary>
     public string Aim(SpellDef spell, Ray ray, out Vector2Int cell)
     {
         cell = default;
@@ -103,10 +88,6 @@ public partial class Shapeshift : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// The cast landed (SpellForces, on the caster's machine): takes the shape of the animal it was
-    /// aimed at, or else the one standing nearest square (x, y). Returns whether it took a shape.
-    /// </summary>
     public bool Land(SpellDef spell, int x, int y, int charge)
     {
         var (species, coat) = Time.time - pendingAt <= PendingSeconds && pendingSpecies != None ? (pendingSpecies, pendingCoat) : AnimalAt(x, y);
@@ -130,13 +111,8 @@ public partial class Shapeshift : MonoBehaviour
         return true;
     }
 
-    /// <summary>A cast button pressed while shifted (SpellCaster): back to the wizard, if there's room to stand.</summary>
     public bool ChangeBackByChoice() => ChangeBack($"You shake off the {FormName}'s shape", force: false);
 
-    /// <summary>
-    /// Back to the wizard's own shape, with <paramref name="line"/> in the log. Unless
-    /// <paramref name="force"/>d (the spell ran out, the animal dropped), only where there's room to stand.
-    /// </summary>
     public bool ChangeBack(string line, bool force)
     {
         if (!Shifted) return false;
@@ -163,7 +139,6 @@ public partial class Shapeshift : MonoBehaviour
         if (SecondsLeft <= 0f) ChangeBack($"The {FormName}'s shape wears off in a puff of mist", force: true);
     }
 
-    // Damage reaches the animal first; at 0 the wizard changes back and the rest carries on (Vitals).
     float AbsorbDamage(float amount)
     {
         if (!Shifted) return amount;
@@ -174,7 +149,6 @@ public partial class Shapeshift : MonoBehaviour
         return rest;
     }
 
-    // The animal nearest the middle of a square, within a square and a half: a cast by square (demos, the probe).
     (int species, int coat) AnimalAt(int x, int y)
     {
         var f = Fauna;
@@ -194,32 +168,25 @@ public partial class Shapeshift : MonoBehaviour
         return best < 0 ? (None, 0) : (f.SpeciesOf(best), f.Coat(best));
     }
 
-    // A rough count by bulk, near the SRD's beasts: a rabbit 2, a fox 3, a wolf 9, a deer 15, a bear 23.
     static float HitPoints(CreatureBody body)
     {
         float scale = (body.Size.x + body.Size.y) * 0.5f;
         return Mathf.Clamp(1f + Mathf.Round(60f * body.BodyLength * body.FrontRadius * scale * scale), 1f, 40f);
     }
 
-    // --- the form, on every machine -------------------------------------------------------
-
-    /// <summary>A form as one number for the network: None, or the species with its coat above it.</summary>
     public static int Pack(int species, int coat) => species < 0 ? None : species + (coat << 8);
 
-    // Here, and online on everyone else's screen through NetWizard.
     void SetForm(int form)
     {
         Show(form);
         if (TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.SetForm(form);
     }
 
-    /// <summary>Shows this wizard in a form (Pack): an animal's body in place of the wizard's, with a puff of mist; None for the wizard.</summary>
     public void Show(int form)
     {
         requested = form;
         int species = form < 0 ? None : form & 0xff;
         int coat = form < 0 ? 0 : form >> 8;
-        // Not ready yet (a late joiner, before the animals are built): LateUpdate tries again.
         if (species != None && (Fauna == null || Fauna.Body(species) == null)) (species, coat) = (None, 0);
         if (species == Species && coat == Coat) return;
         Species = species;
@@ -229,7 +196,6 @@ public partial class Shapeshift : MonoBehaviour
         StartDrawing();
     }
 
-    // Green mist where the wizard stands, the spell's own look (SpellVisuals).
     void Puff()
     {
         var look = TryGetComponent<SpellCaster>(out var caster) ? caster.LookOf(SpellIds.Shapeshift) : null;
@@ -244,7 +210,6 @@ public partial class Shapeshift : MonoBehaviour
 
     static string Article(string noun) => (noun[0] is 'a' or 'e' or 'i' or 'o' or 'u' ? "an " : "a ") + noun;
 
-    // How long is left, under the crosshair (the log said how to change back).
     void OnGUI()
     {
         HudScale.Apply();

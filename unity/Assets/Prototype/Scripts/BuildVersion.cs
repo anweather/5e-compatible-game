@@ -9,22 +9,14 @@ using Newtonsoft.Json.Linq;
 // BuildInfo says which version and commit this copy of the game is.
 public static class BuildVersion
 {
-    /// <summary>The game's GitHub repository, where its releases live (SelfUpdate reads them).</summary>
     public const string RepoUrl = "https://github.com/anweather/5e-compatible-game";
 
-    /// <summary>Where players download the game; also where a version mismatch sends them.</summary>
     public const string ReleasesPage = RepoUrl + "/releases";
 
-    /// <summary>GitHub's list of releases, newest first, pre-releases included.</summary>
     public const string ReleasesApi = "https://api.github.com/repos/anweather/5e-compatible-game/releases?per_page=10";
 
-    /// <summary>Release tags are this plus the version: alpha-0.1.0.</summary>
     public const string TagPrefix = "alpha-";
 
-    /// <summary>
-    /// Parses "X.Y.Z" (a leading "v" or "alpha-" and anything after a '-' or '+' are
-    /// ignored) into its three numbers, or null when it isn't one.
-    /// </summary>
     public static int[] Parse(string version)
     {
         if (string.IsNullOrWhiteSpace(version)) return null;
@@ -41,7 +33,6 @@ public static class BuildVersion
         return numbers;
     }
 
-    /// <summary>Negative when a is older than b, 0 when equal, positive when newer. Unparseable versions sort oldest.</summary>
     public static int Compare(string a, string b)
     {
         var x = Parse(a);
@@ -52,18 +43,12 @@ public static class BuildVersion
         return 0;
     }
 
-    /// <summary>A published release newer than this copy of the game.</summary>
     public sealed class Release
     {
         public string Version;
         public string Url;
     }
 
-    /// <summary>
-    /// Reads GitHub's releases JSON and returns the newest alpha-X.Y.Z release that is
-    /// newer than <paramref name="current"/>, or null when there is none (or the JSON
-    /// isn't a releases list). Drafts are skipped; pre-releases count.
-    /// </summary>
     public static Release NewestRelease(string releasesJson, string current)
     {
         JArray releases;
@@ -84,16 +69,11 @@ public static class BuildVersion
         return best;
     }
 
-    // --- the join handshake -----------------------------------------------------
-
-    /// <summary>Who a player is, version-wise: sent in the connection request, checked by the host.</summary>
     public sealed class Stamp
     {
         public string Version;
         public string Commit;
-        /// <summary>Running in the Unity Editor: its commit is whatever is checked out, so only the version counts.</summary>
         public bool Editor;
-        /// <summary>The maps this copy has (MapIdentity.Offered): read by the host, not part of the build's own stamp.</summary>
         public string Maps = "";
 
         public string Label => $"alpha {Version}" + (string.IsNullOrEmpty(Commit) ? "" : $" ({Commit})");
@@ -103,11 +83,9 @@ public static class BuildVersion
 
     const int MostPayload = 1024;
 
-    /// <summary>The connection payload: "scv1|version|commit|editor|maps".</summary>
     public static byte[] Encode(Stamp stamp, string maps = "") =>
         System.Text.Encoding.UTF8.GetBytes($"{HandshakeTag}|{stamp.Version}|{stamp.Commit}|{(stamp.Editor ? 1 : 0)}|{maps}");
 
-    /// <summary>Reads a connection payload, or null when it isn't one (an older or foreign build).</summary>
     public static Stamp Decode(byte[] payload)
     {
         if (payload == null || payload.Length == 0 || payload.Length > MostPayload) return null;
@@ -119,10 +97,6 @@ public static class BuildVersion
         return new Stamp { Version = parts[1], Commit = parts[2], Editor = parts[3] == "1", Maps = parts[4] };
     }
 
-    /// <summary>
-    /// Why the host turns a joining player away, or null when they can play together: the
-    /// versions must match, and so must the commits unless either side is the Editor.
-    /// </summary>
     public static string Mismatch(Stamp host, Stamp client)
     {
         if (client == null)
@@ -136,15 +110,8 @@ public static class BuildVersion
         return $"Host is on {host.Label}; you're on {client.Label}. {fix}";
     }
 
-    /// <summary>
-    /// What to tell a player whose join failed, from Netcode's DisconnectReason: the host's
-    /// own reason when it sent one, otherwise a guess. Netcode refuses a different build
-    /// (different network prefabs) before the host's approval runs, without a reason.
-    /// </summary>
     public static string JoinFailure(string disconnectReason)
     {
-        // Netcode's own texts, not the host's: "[Disconnect Event]..." when the server sent
-        // nothing, and "Client-3 disconnected by server." when it refused the config hash.
         bool fromHost = !string.IsNullOrWhiteSpace(disconnectReason)
             && !disconnectReason.StartsWith("[Disconnect Event]", StringComparison.Ordinal)
             && !System.Text.RegularExpressions.Regex.IsMatch(disconnectReason, @"^Client-\d+ disconnected by server\.?$");

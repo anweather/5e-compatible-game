@@ -12,7 +12,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One colouring of a species. Colours are sRGB, 0 to 1.</summary>
     public sealed class CoatDef
     {
         public string Name;
@@ -21,62 +20,43 @@ namespace Chem
         public double Weight = 1;
     }
 
-    /// <summary>How much one animal of a species differs from the next, each drawn from its Individual.</summary>
     public sealed class VaryDef
     {
-        /// <summary>Lighter or darker, as a share of the colour.</summary>
         public double Shade;
-        /// <summary>Warmer or cooler: red up and blue down, or the other way, as a share.</summary>
         public double Warm;
-        /// <summary>Slimmer or stockier, as a share of every radius.</summary>
         public double Girth;
-        /// <summary>Picks base and accent from the coats apart (a tunic and a skin), not in pairs.</summary>
         public bool Mix;
     }
 
-    /// <summary>A part on a species: which shape, hung from what, where and how.</summary>
     public sealed class SlotDef
     {
         public string Id, Part;
-        /// <summary>The earlier slot it hangs from the end of; null for the body.</summary>
         public string On;
-        /// <summary>On the body, in body units; on a slot, metres from the end of its last segment.</summary>
         public double[] At;
-        /// <summary>Rest direction in degrees: pitch, yaw, roll.</summary>
         public double[] Dir;
         public bool Mirror;
         public double Phase;
         public double MirrorPhase = 0.5;
         public double Scale = 1, Thickness = 1;
-        /// <summary>Style group: each animal shows one slot of a group (hairstyles, beards); 0 is always shown.</summary>
         public int Style;
-        /// <summary>A grafted slot's donor when it wears that species' own coats and hair ("coat": "own"); null for the row's.</summary>
         public string OwnCoatOf;
     }
 
-    /// <summary>A species' row, as written: a variant leaves out what it takes from <see cref="VariantOf"/>.</summary>
     public sealed class SpeciesDef
     {
         public string Id, Name, VariantOf;
-        /// <summary>A variant's size relative to the species it's based on.</summary>
         public double VariantScale = 1;
         public double[] Size = { 0.9, 1.1 };
         public double Length = 0.8, Radius = 0.15, Taper = 1, Flatten = 1.1;
-        /// <summary>The coat when <see cref="Coats"/> is empty.</summary>
         public CoatDef Coat = new CoatDef { Base = new[] { 0.55, 0.4, 0.25 }, Accent = new[] { 0.9, 0.85, 0.75 } };
         public IReadOnlyList<CoatDef> Coats = Array.Empty<CoatDef>();
-        /// <summary>Hair colours each animal picks from; empty takes the species it's a variant of, or the segments' own.</summary>
         public IReadOnlyList<double[]> Hair = Array.Empty<double[]>();
-        /// <summary>How animals differ from each other; null takes the species it's a variant of, or none.</summary>
         public VaryDef Vary;
         public IReadOnlyList<SlotDef> Slots = Array.Empty<SlotDef>();
-        /// <summary>A graft's donors as written ("from"), each its species id; empty for a row of its own (FaunaGraft).</summary>
         public IReadOnlyList<string> Grafted = Array.Empty<string>();
         public double Walk = 1.4, Run = 6, Turn = 140, Rock;
         public double[] Bob = { 0.02, 0.06 }, Bobs = { 2, 2 }, Stride = { 0.6, 0.9 };
-        /// <summary>Where it lives: walks (the default), swims under the water or floats on it; leaps says a swimmer leaps.</summary>
         public IReadOnlyList<string> Habitats = Array.Empty<string>();
-        /// <summary>A swimmer's depth below the surface in metres, and leaps a minute.</summary>
         public double Depth = 0.6, Leaps;
         public bool Upright;
         public double Wander = 25, Flee = 12;
@@ -84,38 +64,29 @@ namespace Chem
         public string Active = "day";
         public double Graze, Thirst = 0.3, Play, Laze = 0.25, Hunger = 0.3, Chase = 10;
         public IReadOnlyList<string> Hunts = Array.Empty<string>();
-        /// <summary>Animals per hectare in the wilds; 0 with no "spawn": a village's folk, or a form only a mod uses.</summary>
         public double Density;
         public bool NearWater, Spawns;
-        /// <summary>The folk it comes out among, and what share of their number it is: a village of those has some of these.</summary>
         public string Among;
         public double Share;
     }
 
-    /// <summary>One segment of a part: a tapered capsule.</summary>
     public sealed class SegmentDef
     {
         public double Length = 0.2, RadiusStart = 0.04, RadiusEnd = 0.03, Flatten = 1;
-        /// <summary>Mix from the coat's base colour (0) to its accent (1).</summary>
         public double Accent;
-        /// <summary>A colour of its own, whatever the coat (hooves, eyes); null for the coat's.</summary>
         public double[] Colour;
         public double Glow;
-        /// <summary>Takes the animal's hair colour.</summary>
         public bool Hair;
     }
 
-    /// <summary>A part's row: its shape and, until gaits go by rule, its key poses.</summary>
     public sealed class PartDef
     {
-        /// <summary>The key poses in the order the view blends them.</summary>
         public static readonly string[] PoseKeys = { "idle", "walkReach", "walkPush", "walkLift", "runReach", "runPush", "runLift" };
 
         public string Id, Role;
         public IReadOnlyList<SegmentDef> Segments = Array.Empty<SegmentDef>();
         public double Spring, Ripple;
         public bool FollowsGround;
-        /// <summary>By <see cref="PoseKeys"/>: each pose's joint angles in degrees, one [x, y, z] per segment; a pose may stop short.</summary>
         public double[][][] Poses;
     }
 
@@ -123,7 +94,6 @@ namespace Chem
     {
         public const string SpeciesKey = "fauna", PartsKey = "parts";
 
-        /// <summary>Whether a table of the rule document is one of these.</summary>
         internal static bool Holds(string table) => table == SpeciesKey || table == PartsKey;
 
         internal static readonly string[] Roles = { "leg", "arm", "tail", "neck", "head", "ear", "horn", "eye", "feature" };
@@ -140,12 +110,10 @@ namespace Chem
             parts = doc[PartsKey] as JObject ?? new JObject();
         }
 
-        /// <summary>Every species' id, in row order: spawners first in the base rules, a mod's new ones last.</summary>
         public IEnumerable<string> SpeciesIds => species.Properties().Select(p => p.Name);
 
         public IEnumerable<string> PartIds => parts.Properties().Select(p => p.Name);
 
-        /// <summary>The species with this id, or null.</summary>
         public SpeciesDef Species(string id)
         {
             if (id == null) return null;
@@ -157,7 +125,6 @@ namespace Chem
             return read;
         }
 
-        /// <summary>The part with this id, or null.</summary>
         public PartDef Part(string id)
         {
             if (id == null) return null;
@@ -168,7 +135,6 @@ namespace Chem
             return read;
         }
 
-        /// <summary>The species whose body, gait and behaviour this one uses: itself unless it's a variant.</summary>
         public SpeciesDef BodyOf(string id)
         {
             var s = Species(id);
@@ -178,12 +144,10 @@ namespace Chem
 
         internal const int MaxVariantDepth = 8;
 
-        /// <summary>Whether a species' row, or any row it's built from, differs between these tables and <paramref name="other"/>.</summary>
         public bool SameRows(FaunaTables other, string id, ISet<string> changedParts)
         {
             for (int i = 0; i <= MaxVariantDepth && id != null; i++)
             {
-                // A graft compares flattened, so a change to a donor changes it.
                 var row = FaunaGraft.Flatten(species, id);
                 if (!JToken.DeepEquals(row, FaunaGraft.Flatten(other.species, id))) return false;
                 if (row == null) return true;
@@ -193,13 +157,8 @@ namespace Chem
             return true;
         }
 
-        // The last tables found to hold the same rows, so a second asker (the raiders after the creatures) needn't compare again.
         FaunaTables same;
 
-        /// <summary>
-        /// Whether every row is as in <paramref name="other"/>: what a rule switch that leaves the creatures alone (a sim
-        /// value, a spell) is, so the view needn't compare them species by species (#181).
-        /// </summary>
         public bool SameAs(FaunaTables other)
         {
             if (other == null) return false;
@@ -209,7 +168,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>The ids of parts whose rows differ from <paramref name="other"/>'s.</summary>
         public ISet<string> ChangedParts(FaunaTables other)
         {
             var changed = new HashSet<string>(StringComparer.Ordinal);
@@ -219,8 +177,6 @@ namespace Chem
                 if (parts[p.Name] == null) changed.Add(p.Name);
             return changed;
         }
-
-        // ---------- reading a row ----------
 
         static SpeciesDef ReadSpecies(string id, JObject row)
         {
@@ -347,7 +303,6 @@ namespace Chem
         static double Num(JToken t, double otherwise) => t == null || t.Type == JTokenType.Null ? otherwise : (double)t;
         static double[] Nums(JToken t, double[] otherwise) => t is JArray a ? a.Select(x => (double)x).ToArray() : otherwise;
 
-        /// <summary>A colour: "#rrggbb", or [r, g, b] from 0 to 1 where hex would round the number.</summary>
         static double[] Colour(JToken t, double[] otherwise)
         {
             if (!IsHex(t, out int rgb)) return Nums(t, otherwise);

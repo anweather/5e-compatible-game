@@ -22,7 +22,6 @@ namespace Playtest.Runner
             return same ? 0 : 1;
         }
 
-        /// <summary>Whether the runs match, and in words: how far they matched and, if they parted, where and doing what.</summary>
         public static (bool same, string text) Describe(RunReport a, RunReport b)
         {
             ArgumentNullException.ThrowIfNull(a);

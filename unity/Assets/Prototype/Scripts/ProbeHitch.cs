@@ -62,7 +62,6 @@ public class HitchProbe : ProbeScenario
         Check("switch_compose_within_budget", compose < ComposeBudgetMs, $"median {compose:0} ms of {string.Join(", ", composes.Select(c => c.ToString("0")))} (budget {ComposeBudgetMs:0})");
     }
 
-    // The grid's Blockers object (CellBlockers' parent), by name: the same one after a rebuild when the boxes are kept.
     GameObject BlockersObject()
     {
         foreach (Transform child in grid.transform)

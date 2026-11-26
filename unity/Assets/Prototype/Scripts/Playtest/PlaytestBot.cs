@@ -34,25 +34,20 @@ using UnityEngine.Rendering;
 // Windows mixer instead).
 public class PlaytestBot : MonoBehaviour
 {
-    // PerfScenario reads these, to tell the bot's own cost from the game's.
     static readonly ProfilerMarker WatchMarker = new("PlaytestBot.LateUpdate"), ShotMarker = new("PlaytestBot.Shot");
 
     const int Fps = 30, ShotWidth = 960, ShotHeight = 540, PropEvery = 15, SoundEvery = 30, HeartbeatEvery = 30;
 
-    // Settings, from the command line.
     string outDir;
     float seconds = 480f;
     int untilFrame = int.MaxValue;
     bool offscreen, mute;
-    // The window in front when the runner started this player (-playtest-hand-focus), and how often
-    // the front was handed back to it.
     long handFocus;
     int handedBack;
     float handUntil;
     const float HandFocusSeconds = 20f;
     Dictionary<string, int> coverage = new();
 
-    // The run.
     readonly RunReport run = new();
     readonly CandidateLog found = new();
     readonly FrameWatch frameWatch = new();
@@ -73,20 +68,15 @@ public class PlaytestBot : MonoBehaviour
     string goal = "starting";
     float startedReal;
 
-    // The run's seed, worked out before the scene loads (UnityEngine.Random needs it by then).
     static ulong? runSeed;
 
-    // Before the scene loads, so its first frames are locked too: the chemistry clock adds up
-    // deltaTime, and one slow loading frame on real time put a run a tick ahead of its replay.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void LockTimeIfAsked()
     {
-        // Statics outlive a Play session when the Editor skips the domain reload: start each one clean.
         ChemGrid.ExactFrames = false;
         runSeed = null;
         var args = Environment.GetCommandLineArgs();
         if (!args.Contains("-playtest")) return;
-        // Game time moves exactly 1/30 s a frame; the cap keeps the bot from spinning the GPU.
         Time.captureFramerate = Fps;
         Application.targetFrameRate = Fps;
         QualitySettings.vSyncCount = 0;
@@ -101,7 +91,6 @@ public class PlaytestBot : MonoBehaviour
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
-    // The replayed run's seed, else -playtest-seed, else the time.
     static ulong SeedOf(string[] args)
     {
         string replay = Arg(args, "-playtest-replay");
@@ -109,8 +98,6 @@ public class PlaytestBot : MonoBehaviour
         return ulong.TryParse(Arg(args, "-playtest-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : (ulong)DateTime.Now.Ticks;
     }
 
-    // The window is up by the splash screen and before the valley loads (half a minute): give the
-    // front back then too, so keys typed elsewhere during the load stay there.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
     static void HandBackAtSplash() => HandBackEarly();
 
@@ -130,7 +117,6 @@ public class PlaytestBot : MonoBehaviour
             new GameObject("Playtest bot").AddComponent<PlaytestBot>();
     }
 
-    /// <summary>Whether a playtest run is going (EventLog.ResetYard won't reload the scene under it).</summary>
     public static bool Active { get; private set; }
 
     void Awake()
@@ -167,7 +153,6 @@ public class PlaytestBot : MonoBehaviour
         goalsFirst = (Arg("-playtest-goals") ?? "").Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
         string cov = Arg("-playtest-coverage");
         if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
-        // A replay chooses against what the original knew (coverage.json has moved on since).
         if (original != null) coverage = original.Coverage ?? new();
         run.Coverage = new Dictionary<string, int>(coverage);
         offscreen = args.Contains("-playtest-offscreen");
@@ -206,8 +191,6 @@ public class PlaytestBot : MonoBehaviour
         Finish(frame >= untilFrame ? "until-frame" : "done");
     }
 
-    // Goals asked for on the command line come first, in order (one the options don't allow is
-    // skipped, and logged); then the dice choose as usual.
     List<string> goalsFirst = new();
 
     Goal NextGoal()
@@ -241,8 +224,6 @@ public class PlaytestBot : MonoBehaviour
         DeafToRealInput();
     }
 
-    // The bot drives the wizard through its inputs, never the real devices: a key or pad press that
-    // reaches the bot's window (it took focus once, seed 103) mustn't change the run or reset it.
     static void DeafToRealInput()
     {
         foreach (var device in InputSystem.devices.ToList())
@@ -255,8 +236,6 @@ public class PlaytestBot : MonoBehaviour
         };
     }
 
-    // From the bot's first frame (the valley takes half a minute to load, so not from the process's
-    // start): Unity raises its window as it starts up, whatever the runner asked.
     void Update()
     {
         if (handFocus == 0 || Time.realtimeSinceStartup > handUntil || !PlaytestWindow.HandBack(handFocus)) return;
@@ -267,8 +246,6 @@ public class PlaytestBot : MonoBehaviour
     {
         if (!running) return;
         using var marked = WatchMarker.Auto();
-        // The scene went away under the run (seed 103 on a development build: a reload, every frame
-        // after it a NullReferenceException here): stop cleanly with what was found so far.
         if (wizard == null || grid == null)
         {
             Add(new Candidate("bot-lost-wizard", Here0, Category.GameBreaking, frame, "the wizard or the world was destroyed mid-run (a scene reload?)"));
@@ -284,7 +261,6 @@ public class PlaytestBot : MonoBehaviour
             var p = wizard.transform.position;
             Trace(ReplayCheck.Sync, ReplayCheck.SyncDetail(grid.World.Tick, p.x, p.y, p.z));
         }
-        // Spikes while Hasten Time runs the chemistry fast are their own paper cut, not the place's.
         string spikeAt = grid.World.Haste.HasValue ? Here + " (hasten time)" : Here;
         foreach (var c in frameWatch.Frame(frame, Time.unscaledDeltaTime * 1000f, spikeAt)) Add(c);
         if (tap != null) WatchSound();
@@ -294,8 +270,6 @@ public class PlaytestBot : MonoBehaviour
 
     string Here => PlaytestPlaces.Near(places, grid, wizard.transform.position);
 
-    // A dark picture is right whenever the sky isn't bright: at night, and at dawn and dusk
-    // (World.Daylight, sim.json day), which Hasten Time often runs the clock into.
     bool Night => grid.World.Daylight != Chem.LightLevel.Bright;
 
     void WatchWizard()
@@ -305,7 +279,6 @@ public class PlaytestBot : MonoBehaviour
         {
             X = p.x, Y = p.y, Z = p.z,
             Ground = grid.GroundAt(p),
-            // Swimming isn't on the ground but isn't airborne either.
             Grounded = controller == null || controller.Grounded || (surface != null && surface.Swimming),
             Pushing = player.Pushing,
             BotMoved = player.TeleportedOnFrame == frame,
@@ -349,7 +322,6 @@ public class PlaytestBot : MonoBehaviour
     void OnLog(string message, string stack, LogType type)
     {
         bool error = type == LogType.Error || type == LogType.Exception || type == LogType.Assert;
-        // The bot's own lines never count against the game.
         if (!error || message.StartsWith("PLAYTEST", StringComparison.Ordinal)) return;
         var c = LogWatch.Line(frame, message, stack, true);
         if (c != null) Add(c);
@@ -357,7 +329,6 @@ public class PlaytestBot : MonoBehaviour
 
     void Trace(string action, string detail) => run.Trace.Add(new TraceStep { Frame = frame, Action = action, Detail = detail });
 
-    // Records a candidate; the first of its signature in this run gets a screenshot.
     void Add(Candidate c)
     {
         c.Goal = goal;
@@ -366,16 +337,12 @@ public class PlaytestBot : MonoBehaviour
         if (!c.Detector.StartsWith("image-", StringComparison.Ordinal)) c.Screenshot = Shoot(c.Detector);
     }
 
-    // A screenshot from the main camera into a RenderTexture (it doesn't need the window), saved as
-    // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
         using var marked = ShotMarker.Auto();
         frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
-        // In the 0.1.8 runs a third of the shots showed only ground, sky or night. At night a goal's
-        // routine shot is skipped; a candidate's or a cast's is lit instead.
         bool night = Night;
         if (night && label == "goal")
         {
@@ -416,8 +383,6 @@ public class PlaytestBot : MonoBehaviour
         return file;
     }
 
-    // Why the camera's view can't be judged, or null: inside the ground, straight down at it, or
-    // up at open sky (nothing in front of it for 500 m).
     string Unusable(Camera cam)
     {
         var at = cam.transform.position;
@@ -430,8 +395,6 @@ public class PlaytestBot : MonoBehaviour
 
     Camera shotCamera;
 
-    // A camera behind and above the wizard, looking at them, with the main camera's settings: for
-    // a shot the main camera can't take.
     Camera Reframed(Camera main)
     {
         if (shotCamera == null)
@@ -450,7 +413,6 @@ public class PlaytestBot : MonoBehaviour
         return shotCamera;
     }
 
-    // Flat grey ambient light added for a night shot, enough to see shapes and colours by.
     static SphericalHarmonicsL2 NightFill()
     {
         var fill = new SphericalHarmonicsL2();
@@ -458,10 +420,8 @@ public class PlaytestBot : MonoBehaviour
         return fill;
     }
 
-    // Where the run was last, for a candidate raised once the wizard is gone.
     string Here0 => run.Goals.Count > 0 ? run.Goals[run.Goals.Count - 1] : "start";
 
-    // For a performance pass: which frames of the run its worst frame times were.
     void LogWorstFrames()
     {
         var worst = frameWatch.Times.Select((ms, at) => (ms, at)).OrderByDescending(f => f.ms).Take(10);

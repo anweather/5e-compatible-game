@@ -10,33 +10,26 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>A spawn point of the plan: its square, its site (cells within the square) and what it stands beside.</summary>
     public sealed class PlanSpawn
     {
         public int Square, SiteX, SiteY, ChunkX, ChunkY;
-        /// <summary>What it was placed near: "valley", an inn or a shop, "village", a landmark's kind, an outcrop's, or "hub".</summary>
         public string Near;
-        /// <summary>Whether it stands beside a road (a square with none has its spawn in the open).</summary>
         public bool ByRoad;
     }
 
     public sealed partial class WorldPlan
     {
-        /// <summary>How far a spawn keeps, in cells: from the square's sides, a landmark's site, a river's line and a lake's middle.</summary>
         const int SpawnEdge = 40, SpawnLandmark = 60, SpawnRiver = 72, SpawnLake = 64;
-        // How far a river's curve leaves its side square on (ChunkGen.SideReach): a spawn keeps clear of that stretch too.
         const int RiverSideReach = 110;
-        // How far a spawn stands off its road's edge, in cells: its clearing (ChunkGen.ClearCells) stays off the road.
         const int SpawnTries = 32, SpawnBeside = 6;
 
-        /// <summary>Per land square below the peaks, its spawn, in square order.</summary>
         public List<PlanSpawn> Spawns = new List<PlanSpawn>();
 
         void PlaceSpawns()
         {
             for (int i = 0; i < Count; i++)
             {
-                if (!IsLand(i) || Options[i].Sea || Band[i] >= Library.Lands - 1 || held[i] >= 0) continue; // a held square's are its own plan's
+                if (!IsLand(i) || Options[i].Sea || Band[i] >= Library.Lands - 1 || held[i] >= 0) continue;
                 PlanSpawn spawn;
                 if (i == Valley && Inputs.ValleySpawn.HasValue)
                 {
@@ -69,7 +62,6 @@ namespace Chem
                 int x, y;
                 if (arms.Count > 0)
                 {
-                    // The arm nearest the anchor first, then any; a point along it near the anchor's foot, off to one side.
                     var a = k == 0 ? arms.OrderBy(m => SegmentDistance2(ax, ay, m.ax, m.ay, m.bx, m.by)).First() : arms[r.Below(arms.Count)];
                     long dx = a.bx - a.ax, dy = a.by - a.ay, len2 = Math.Max(1, dx * dx + dy * dy), len = Math.Max(1, BiomeMath.Sqrt(len2));
                     long t = Math.Max(0, Math.Min(len2, (ax - a.ax) * dx + (ay - a.ay) * dy)) * len / len2;
@@ -81,7 +73,6 @@ namespace Chem
                 }
                 else
                 {
-                    // No road: out in the open round the anchor, in one of eight directions, further each try.
                     var (ox, oy) = Around[r.Below(Around.Length)];
                     int far = 60 + r.Below(40 + k * 8);
                     x = ax + ox * far / 55;
@@ -95,8 +86,6 @@ namespace Chem
                 }
                 if (room >= 0) return best;
             }
-            // No roll found room (a road between two rivers, say): the spot every 16 cells with room nearest the road, or
-            // the anchor where there's none; failing that the roomiest seen.
             long nearest = long.MaxValue;
             for (int y = SpawnEdge; y < SquareCells - SpawnEdge; y += 16)
                 for (int x = SpawnEdge; x < SquareCells - SpawnEdge; x += 16)
@@ -111,7 +100,6 @@ namespace Chem
             return best;
         }
 
-        // What a square's spawn is placed near: its inn or shop, its village or landmark, a sight on its road, or its hub.
         (int x, int y, string near) SpawnAnchor(int i)
         {
             var w = Waystations.FirstOrDefault(s => s.Square == i);
@@ -123,16 +111,11 @@ namespace Chem
             return (Hub[i].x, Hub[i].y, "hub");
         }
 
-        /// <summary>
-        /// How much room a site (cells within square <paramref name="i"/>) has to spare, in cells: the least of its distances
-        /// past what a spawn keeps from the sides, the shore, a landmark's site, a river and a lake. Negative where it's too near.
-        /// </summary>
         public long SpawnRoom(int i, int x, int y)
         {
             int[] from = { y, SquareCells - 1 - x, SquareCells - 1 - y, x };
             long room = from.Min() - SpawnEdge;
             var c = Coasts[i];
-            // The shore wobbles up to 42% of its depth inland; the beach and a margin past that.
             for (int s = 0; s < 4; s++)
                 if (c.Open[s]) room = Math.Min(room, from[s] - c.Depth[s] * 3 / 2 - SpawnEdge);
             for (int k = 0; k < 4; k++)
@@ -145,7 +128,6 @@ namespace Chem
                 room = Math.Min(room, BiomeMath.Sqrt(Distance2(x, y, l.SiteX, l.SiteY)) - SpawnLandmark);
             var (hx, hy) = Hub[i];
             if (Lake[i]) room = Math.Min(room, BiomeMath.Sqrt(Distance2(x, y, hx, hy)) - SpawnLake);
-            // A river leaves its slot square on, then curves to the hub; it wanders either side of that.
             for (int s = 0; s < 4; s++)
                 foreach (var f in Features[i][s])
                 {
@@ -162,7 +144,6 @@ namespace Chem
 
         static long Distance2(long ax, long ay, long bx, long by) => (ax - bx) * (ax - bx) + (ay - by) * (ay - by);
 
-        // The squared distance from (px, py) to the segment from a to b, whole cells.
         static long SegmentDistance2(long px, long py, long ax, long ay, long bx, long by)
         {
             long dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy, dot = (px - ax) * dx + (py - ay) * dy;

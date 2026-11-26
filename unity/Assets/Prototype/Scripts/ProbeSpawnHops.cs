@@ -28,7 +28,6 @@ public class SpawnHopsProbe : ProbeScenario
         Stood("back_one", body);
     }
 
-    // Waits out the hop's landing, then a second for the controller to settle on the ground.
     IEnumerator Landed(PlaytestTools tools)
     {
         yield return null;

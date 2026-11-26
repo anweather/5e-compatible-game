@@ -82,7 +82,6 @@ public class BuildingMesherTests
     {
         var made = BuildingMesher.Make(Spec(WallKind.Log, RoofKind.Hip, RoofCover.Shingle, 1));
         var walls = made.body.bounds;
-        // Logs' ends, the door step and the chimney may stand a little past it; nothing more.
         Assert.That(walls.extents.x, Is.LessThan(7.5f / 2f + 0.5f));
         Assert.That(walls.min.z, Is.GreaterThan(-6f / 2f - 1f));
         Assert.That(walls.min.y, Is.GreaterThanOrEqualTo(-0.01f));

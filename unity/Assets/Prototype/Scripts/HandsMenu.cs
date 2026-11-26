@@ -12,7 +12,6 @@ using UnityEngine.InputSystem;
 // the local wizard has controls, so there's one.
 public class HandsMenu : MonoBehaviour
 {
-    // A hand's ring: how far apart the two sit, how far out the elements are, and the orbs' sizes.
     const float Apart = 300f, Spoke = 96f, Orb = 28f, PickedOrb = 36f, Middle = 40f, Backing = 150f;
     static readonly Color Shade = new(0f, 0f, 0f, 0.5f), Gold = new(1f, 0.82f, 0.3f);
     const float Dim = 0.28f;
@@ -21,10 +20,8 @@ public class HandsMenu : MonoBehaviour
     SpellCaster caster;
     Gamepad pad;
     bool open;
-    // Shut with B while the d-pad's down is still held: it opens again only after letting go.
     bool shutWhileHeld;
     readonly string[] picks = new string[HandsDef.Count];
-    // A hand still to attune once the other is done.
     SpellCaster waitingFor;
     int waitingHand = -1;
     string waitingElement;
@@ -32,16 +29,12 @@ public class HandsMenu : MonoBehaviour
     Component inputs;
     GUIStyle word;
 
-    /// <summary>Whether the menu is showing.</summary>
     public static bool IsOpen => instance != null && instance.open;
 
-    /// <summary>What a hand is pointed at in the menu (null: nothing yet), for the probe.</summary>
     public static string Pick(int hand) => instance != null ? instance.picks[hand] : null;
 
-    /// <summary>Whether a hand is still waiting for the other to finish attuning, for the probe.</summary>
     public static bool Waiting => instance != null && instance.waitingHand >= 0;
 
-    /// <summary>Whether this wizard's menu is open: its hands and d-pad are the menu's.</summary>
     public static bool OpenFor(SpellCaster caster) => IsOpen && instance.caster == caster;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -55,10 +48,6 @@ public class HandsMenu : MonoBehaviour
 
     void OnDestroy() { if (instance == this) instance = null; }
 
-    /// <summary>
-    /// Each frame, from the wizard with the hands on: whether the d-pad's down is held, and the pad it's held on. Opens the menu,
-    /// reads the sticks while it's open, and on letting go attunes what changed.
-    /// </summary>
     public static void Feed(SpellCaster caster, bool held, Gamepad pad)
     {
         if (instance == null) return;
@@ -79,7 +68,6 @@ public class HandsMenu : MonoBehaviour
         else instance.Steer();
     }
 
-    /// <summary>Shuts the menu without attuning anything.</summary>
     public static void Close()
     {
         if (instance == null || !instance.open) return;
@@ -132,7 +120,6 @@ public class HandsMenu : MonoBehaviour
         }
     }
 
-    // The second hand, once the first has attuned.
     void AttuneWaiting(SpellCaster by)
     {
         if (waitingHand < 0 || by != waitingFor) return;
@@ -143,7 +130,6 @@ public class HandsMenu : MonoBehaviour
         by.AttuneTo(hand, waitingElement);
     }
 
-    // What a hand can take here: an open hand and element, and in a Hold run only at a tower, its own.
     static bool Offered(World world, string player, int hand, string element)
     {
         if (!world.HandOpen(player, hand) || !world.ElementOpen(player, element)) return false;
@@ -151,7 +137,6 @@ public class HandsMenu : MonoBehaviour
         return !world.HoldRunning || world.HandsOf(player).Holds[hand] == element;
     }
 
-    // The sticks are the menu's while it's open: the wizard stands still and the camera stays, as in the Esc menu.
     void Pause()
     {
         if (caster.TryGetComponent<PlayerInput>(out var input) && input.enabled)
@@ -171,7 +156,6 @@ public class HandsMenu : MonoBehaviour
         inputs = null;
     }
 
-    // The last move and look the wizard had are cleared, so they don't carry on.
     void Still()
     {
         if (inputs == null) return;
@@ -182,15 +166,13 @@ public class HandsMenu : MonoBehaviour
         }
     }
 
-    // --- drawing -----------------------------------------------------------------------
-
     void OnGUI()
     {
         var world = World;
         if (!open || world == null || !EventLog.HudVisible) return;
         word ??= new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
         HudScale.Apply();
-        GUI.depth = -50; // over the HUD, under the Esc menu
+        GUI.depth = -50;
         var centre = new Vector2(HudScale.Width / 2f, HudScale.Height / 2f);
         for (int hand = 0; hand < HandsDef.Count; hand++)
             DrawHand(world, hand, centre + new Vector2(hand == HandsDef.Left ? -Apart : Apart, 0f));

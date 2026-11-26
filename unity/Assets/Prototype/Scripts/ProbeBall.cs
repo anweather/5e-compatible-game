@@ -13,7 +13,6 @@ public class BallProbe : ProbeScenario
     float ballYAtSpawn = float.NaN;
     float farthest;
 
-    // Waits, noting the farthest the ball gets from where it started (on the ground plane).
     IEnumerator Follow(Transform ball, Vector3 start, float seconds)
     {
         for (float t = 0f; t < seconds; t += Time.deltaTime)
@@ -38,7 +37,6 @@ public class BallProbe : ProbeScenario
         Metric("ball_start_y", start.y);
         Metric("ground_at_ball", grid.GroundAt(start));
         Metric("ball_spawn_seen_y", ballYAtSpawn);
-        // From the west, running east at it.
         var from = start - Vector3.right * 6f;
         var body = wizard.GetComponent<CharacterController>();
         body.enabled = false;
@@ -66,7 +64,6 @@ public class BallProbe : ProbeScenario
         var walls = court.GetComponentsInChildren<Renderer>();
         var inside = walls[0].bounds;
         foreach (var r in walls) inside.Encapsulate(r.bounds);
-        // The goals stand out past the end walls: a goal scored still counts as in.
         Check("ball_stays_in_court", end.x > inside.min.x && end.x < inside.max.x && end.z > inside.min.z && end.z < inside.max.z,
             $"ball at ({end.x:0.0}, {end.z:0.0}), court x {inside.min.x:0}..{inside.max.x:0}, z {inside.min.z:0}..{inside.max.z:0}");
     }

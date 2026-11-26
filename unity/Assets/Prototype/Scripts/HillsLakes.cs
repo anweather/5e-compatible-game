@@ -11,7 +11,6 @@ using UnityEngine.SceneManagement;
 // reads it.
 public sealed class HillsLakes : MonoBehaviour
 {
-    // A lake's surface, with its north-west corner as a map cell (unwrapped) and its size in cells.
     readonly List<(GameObject go, int x0, int y0, int w, int h)> lakes = new();
     MapLand land;
     float nextPlace;
@@ -44,7 +43,6 @@ public sealed class HillsLakes : MonoBehaviour
         Debug.Log($"HILLS LAKES: {lakes.Count} lakes drawn as surfaces");
     }
 
-    // The valley's lake's material where the scene has it, else plain water.
     static Material LakeMaterial()
     {
         var valleyLake = GameObject.Find("Lake");
@@ -61,14 +59,11 @@ public sealed class HillsLakes : MonoBehaviour
         const int g = HillsRivers.Grid;
         int gw = rivers.GridW, gh = rivers.GridH;
         var nodes = rivers.LakeNodes(lake.Id);
-        // Its grid squares (a cell is lake where a corner of its square is a lake node), unwrapped round its first node.
         var (fi, fj) = nodes[0];
         var squares = new HashSet<(int, int)>();
         foreach (var (i, j) in nodes)
         {
             int ui = fi + Wrap(i - fi, gw), uj = fj + Wrap(j - fj, gh);
-            // And a square more all round: land under the level just past the lake's cells reads as its shore's water, not
-            // as a stair of the grid's squares (land over the level stands over the surface).
             for (int dj = -2; dj <= 1; dj++)
                 for (int di = -2; di <= 1; di++) squares.Add((ui + di, uj + dj));
         }
@@ -118,7 +113,6 @@ public sealed class HillsLakes : MonoBehaviour
         return d;
     }
 
-    // At the copy of its place nearest the camera: its north-west corner's world x, z as a cell's line (as the far ring's).
     void Place(GameObject go, int x0, int y0, int w, int h)
     {
         var l = land.Layout;

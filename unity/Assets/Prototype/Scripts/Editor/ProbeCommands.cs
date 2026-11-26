@@ -43,7 +43,6 @@ public static class ProbeCommands
     const string FocusedKey = "Prototype.Probe.PlayFocused";
     const string Starting = "starting", Running = "running", Done = "done", Aborted = "aborted";
     const string SecondPlayer = "Player 2";
-    // How long a virtual player may take to start, and a moment more for it to settle before Play mode.
     const double LaunchTimeout = 180, LaunchGrace = 3;
 
     static readonly JsonSerializer Json = JsonSerializer.Create(new JsonSerializerSettings
@@ -51,10 +50,8 @@ public static class ProbeCommands
         ContractResolver = new DefaultContractResolver { NamingStrategy = new SnakeCaseNamingStrategy() },
     });
 
-    // The project folder: the Editor's working directory, readable from any thread.
     static string ResultPath => Path.Combine(Directory.GetCurrentDirectory(), "Temp", "Probe", "result.json");
 
-    // A batch's scenarios' results, one file each, in the order they ran.
     static string ResultsDir => Path.Combine(Directory.GetCurrentDirectory(), "Temp", "Probe", "results");
 
     sealed class Request
@@ -77,17 +74,13 @@ public static class ProbeCommands
         public string Budget { get; set; }
         public string Ttl { get; set; }
         public DateTime RequestedUtc { get; set; }
-        /// <summary>The virtual player this run started, to stop after it (null: none, or keep it).</summary>
         public string StopAfter { get; set; }
-        /// <summary>A batch's scenarios still to run after this one, and where this one is in it (0 from the first).</summary>
         public string[] Queue { get; set; } = Array.Empty<string>();
         public int Index { get; set; }
-        /// <summary>Every scenario of a batch, and when the batch was asked for; null for one scenario alone.</summary>
         public string[] Batch { get; set; }
         public DateTime BatchUtc { get; set; }
     }
 
-    // The run in progress (Play mode doesn't reload the domain on the way out, so this lasts the run).
     static Request active;
     static ProbeScenario scenario;
     static double startedAt;
@@ -106,7 +99,7 @@ public static class ProbeCommands
 
     [CliGroupCommand(Group, "Enter Play mode and run a probe scenario in the open scene (the Chemistry Yard), or several, " +
         "named with commas, one after another. Returns at once; read the JSON result with `probe result --wait true`.")]
-#pragma warning disable S107 // Too many parameters: the CLI makes one argument of each
+#pragma warning disable S107
     public static object Run(
         [CliArg("name", "Scenario name, from `probe list`; several joined by commas run one after another", Required = true)] string name,
         [CliArg("shots", "Folder to save screenshots in (absolute, e.g. a scratchpad); empty for none")] string shots = "",
@@ -186,7 +179,6 @@ public static class ProbeCommands
         };
     }
 
-    // Throws if the Editor can't enter Play mode for a probe now: it's playing, compiling or running EditMode tests.
     static void RefuseIfBusy()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Already in Play mode: stop it first.");
@@ -195,11 +187,6 @@ public static class ProbeCommands
             throw new InvalidOperationException("An EditMode test run is still going: try again when it ends (its scene restore fails in Play mode, #174).");
     }
 
-    /// <summary>
-    /// Whether the Test Runner has a run going (TestRunnerApi.IsRunActive, internal in the test framework): one that
-    /// timed out at the CLI still runs on, and when it ends it restores its scene, which throws in Play mode and leaves an
-    /// empty scene (#174). False if this test framework can't say.
-    /// </summary>
     public static bool TestRunActive()
     {
         var api = Type.GetType("UnityEditor.TestTools.TestRunner.Api.TestRunnerApi, UnityEditor.TestRunner");
@@ -209,9 +196,6 @@ public static class ProbeCommands
 
     static string FullPath(string folder) => string.IsNullOrWhiteSpace(folder) ? null : Path.GetFullPath(folder);
 
-    // Enters Play mode without focusing the Game view (the user's Play Focused is put back once the
-    // run is over), and hands the keyboard back to the window they were in each time the Editor
-    // raises itself (FocusKeeper), so a run doesn't pull them out of what they're doing.
     static void Play()
     {
         if (!SessionState.GetBool(FocusedKey + ".saved", false))
@@ -231,7 +215,6 @@ public static class ProbeCommands
         SessionState.EraseBool(FocusedKey + ".saved");
     }
 
-    // Waits (on the Editor's update, so the CLI call can return) for the virtual player to be up, then enters Play mode.
     static void EnterPlayModeWhenUp(Request request)
     {
         double since = EditorApplication.timeSinceStartup, upAt = -1;
@@ -279,8 +262,6 @@ public static class ProbeCommands
         {
             var result = ReadResult();
             string state = (string)result?["state"];
-            // Nothing was run, or a run never got into Play mode: say so now rather than hold the
-            // Editor's command queue (every other command waits behind this one) until the timeout.
             if (!wait || result == null || state == Done || state == Aborted) return result ?? (object)new { state = "none" };
             if (state == Starting && DateTime.UtcNow - File.GetLastWriteTimeUtc(ResultPath) > TimeSpan.FromSeconds(StartLimit((string)result["scenario"])))
             {
@@ -299,10 +280,7 @@ public static class ProbeCommands
         }
     }
 
-    // How long a run may stay "starting": entering Play mode, or first starting the virtual player.
     static double StartLimit(string scenario) => ProbeScenarios.Find(scenario)?.Players > 1 ? LaunchTimeout + 30 : 120;
-
-    // --- the run, in Play mode -------------------------------------------------------
 
     [InitializeOnLoadMethod]
     static void Hook() => EditorApplication.playModeStateChanged += OnPlayModeChanged;
@@ -317,16 +295,12 @@ public static class ProbeCommands
                 break;
             case PlayModeStateChange.ExitingPlayMode:
                 FocusKeeper.Guard();
-                // Left Play mode before the scenario finished (stopped by hand, or timed out).
                 if (active != null) Finish(Aborted, $"Play mode ended after {EditorApplication.timeSinceStartup - startedAt:0.0} s, before the scenario finished");
                 break;
             case PlayModeStateChange.EnteredEditMode:
                 StopPlayer();
-                // A batch's next scenario: straight back into Play mode, for a fresh world.
                 if (SessionState.GetString(RequestKey, "") != "")
                 {
-                    // Not from inside this callback. An Editor in the background doesn't tick on its own in Edit mode,
-                    // so this may wait for the next command on the main thread: `probe kick` (probe.sh sends it).
                     EditorApplication.delayCall += Play;
                     break;
                 }
@@ -353,7 +327,7 @@ public static class ProbeCommands
         active = JsonConvert.DeserializeObject<Request>(saved);
         var entry = ProbeScenarios.Find(active.Name);
         var go = new GameObject($"Probe ({entry.Name})");
-        go.SetActive(false);   // so the settings are in before Awake and Start
+        go.SetActive(false);
         scenario = (ProbeScenario)go.AddComponent(entry.Type);
         scenario.Result.Scenario = entry.Name;
         scenario.ScreenshotDir = active.Shots;
@@ -372,7 +346,6 @@ public static class ProbeCommands
         scenario.BudgetFile = active.Budget;
         scenario.PrefixTtl = active.Ttl;
         go.SetActive(true);
-        // A slow scenario's own pace (ProbeScenarios.Entry.Speed); clips film at their own fixed clock.
         Time.timeScale = active.Shots == null ? entry.Speed : 1f;
         if (active.Shots != null) DemoRecorder.HideGizmos();
         startedAt = EditorApplication.timeSinceStartup;
@@ -415,8 +388,6 @@ public static class ProbeCommands
         if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
     }
 
-    // A batch's scenario is over: its result into the results folder, then the next one asked for (it starts when Play
-    // mode has ended), or, after the last, the batch's own result.
     static void NextInBatch(Request run, JObject result)
     {
         result["batch_index"] = run.Index;
@@ -458,8 +429,6 @@ public static class ProbeCommands
         });
     }
 
-    // --- the result file -----------------------------------------------------------------
-
     static JObject Status(Request run, string state) => new JObject
     {
         ["id"] = run.Id,
@@ -472,8 +441,6 @@ public static class ProbeCommands
         Directory.CreateDirectory(Path.GetDirectoryName(ResultPath));
         string temp = ResultPath + ".tmp";
         File.WriteAllText(temp, result.ToString(Formatting.Indented));
-        // The waiting `probe result` may be reading the old file: losing this write would leave the
-        // run "running" for good, in Play mode, so it's tried again for a moment.
         for (int tries = 1; tries < WriteTries; tries++)
         {
             try

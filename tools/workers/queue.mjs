@@ -28,8 +28,6 @@ export function caps({ env = process.env, platform = process.platform, exists = 
   return found;
 }
 
-// Whether the queue is on for this machine: WORKER_QUEUE (1/on or 0/off), else ~/.worker/queue holding on or off,
-// else on for u2 only (D15's first self-landing worker).
 export function queueOn(name, { env = process.env, read = f => fs.readFileSync(f, 'utf8') } = {}) {
   let v = env.WORKER_QUEUE;
   if (v == null) { try { v = read(path.join(base, 'queue')); } catch { } }
@@ -37,7 +35,6 @@ export function queueOn(name, { env = process.env, read = f => fs.readFileSync(f
   return /^\s*(1|on|yes|true)\s*$/i.test(v);
 }
 
-// A brief's head: "Needs: unity (a machine with an Editor)", "Area: tools/workers/**, docs/x.md", "Branch: name".
 export function parseBrief(text) {
   const field = k => text.match(new RegExp(`^${k}:[ \\t]*(.*)$`, 'mi'))?.[1].trim();
   const needs = field('Needs')?.split(/[\s|(]/)[0].toLowerCase() || null;
@@ -48,13 +45,10 @@ export function parseBrief(text) {
 
 export function meets(needs, have) {
   if (needs === 'any' || needs === 'core') return true;
-  return needs === 'unity' || needs === 'mac' ? have.has(needs) : false; // no Needs, or one we don't know: not ours
+  return needs === 'unity' || needs === 'mac' ? have.has(needs) : false;
 }
 
-// The literal part of an area as a path prefix: "tools/workers/**" and "tools/workers/*.cmd" are both "tools/workers/",
-// "Chemistry/MapCheck*.cs" is "Chemistry/MapCheck", and a plain name ends at its own boundary ("docs/x.md/").
 const prefix = a => a.includes('*') ? a.split('*')[0] : (a.endsWith('/') ? a : a + '/');
-// Two areas overlap when one is inside the other. A brief that names no area could touch anything.
 export function overlaps(a, b) {
   if (!a.length || !b.length) return true;
   return a.some(x => b.some(y => {
@@ -63,8 +57,6 @@ export function overlaps(a, b) {
   }));
 }
 
-// briefs: [{ name, text }] in the queue; taken: the same for queue/taken/. The first by name this machine can do
-// whose area no taken brief holds, with why each other one was passed over.
 export function pick(briefs, taken, have) {
   const held = taken.map(t => ({ ...t, ...parseBrief(t.text) }));
   const passed = [];
@@ -81,7 +73,6 @@ export function pick(briefs, taken, have) {
 const git = (repo, args, { input, env = {} } = {}) => spawnSync('git', args, { cwd: repo, encoding: 'utf8', input, env: { ...process.env, ...env } });
 const ok = r => { if (r.status !== 0) throw new Error(`git: ${r.stderr.trim()}`); return r.stdout.trim(); };
 
-// The queue as origin/dev has it (the worker's checkout may be on any branch, with changes: it isn't touched).
 export function readQueue(repo, rev = 'origin/dev') {
   const list = dir => ok(git(repo, ['ls-tree', '--name-only', `${rev}:${dir}`])).split('\n')
     .filter(f => f.endsWith('.md') && f !== 'README.md')
@@ -90,8 +81,6 @@ export function readQueue(repo, rev = 'origin/dev') {
   return { briefs: list(QUEUE), taken };
 }
 
-// Claim the next brief: the move to taken/ is made as a commit on origin/dev from a scratch index (the same tree
-// `git mv` + commit would give) and pushed. A push that loses the race to another worker fetches and picks again.
 export function claim(repo, have, who, { tries = 5, log = () => { } } = {}) {
   const index = path.join(os.tmpdir(), `queue-index-${process.pid}`);
   const scratch = (args, input) => git(repo, args, { input, env: { GIT_INDEX_FILE: index } });

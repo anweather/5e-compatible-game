@@ -8,7 +8,6 @@ public static class ChatBar
     const float Sent = 0.05f, Started = 0.1f, Ready = 0.2f, ToolsReach = 0.7f, Applying = 0.8f, Applied = 0.9f, Finishing = 0.95f;
     const float ToolsHalfway = 3f;
 
-    /// <summary>How far a prompt has got; null with none going.</summary>
     public static (float done, string what)? Of(ChatRecorder recorder)
     {
         if (recorder == null) return null;

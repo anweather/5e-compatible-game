@@ -6,7 +6,6 @@ using UnityEngine;
 // Asset Store pack files they use.
 public static class EditorAssets
 {
-    /// <summary>The asset at <paramref name="path"/>, or a new one from <paramref name="create"/> saved there.</summary>
     public static T LoadOrCreate<T>(string path, System.Func<T> create) where T : Object
     {
         var existing = AssetDatabase.LoadAssetAtPath<T>(path);
@@ -16,7 +15,6 @@ public static class EditorAssets
         return made;
     }
 
-    /// <summary>A Lit material asset at <paramref name="path"/> (made if missing) with these settings.</summary>
     public static Material LitMaterial(string path, Color color, float smoothness, Color? emission = null)
     {
         var mat = LoadOrCreate(path, () => new Material(Shader.Find(UrpMaterials.LitShader)));
@@ -25,7 +23,6 @@ public static class EditorAssets
         return mat;
     }
 
-    /// <summary>Makes the folder for an asset path and lets the AssetDatabase see it.</summary>
     public static void EnsureFolderFor(string assetPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(assetPath));
@@ -35,9 +32,6 @@ public static class EditorAssets
     public static GameObject LoadPrefab(string path) => AssetDatabase.LoadAssetAtPath<GameObject>(path);
 }
 
-// Where the Asset Store packs keep what the builders use (see AssetPacks.json;
-// Prototype > Restore Asset Packs brings them back). Every builder treats a
-// missing file as optional and falls back to something plainer.
 public static class PackPaths
 {
     public const string StarterAssets = "Assets/Starter Assets/Runtime/ThirdPersonController/Prefabs";
@@ -53,6 +47,5 @@ public static class PackPaths
     public const string TerrainSamples = "Assets/TerrainSampleAssets";
     public const string TerrainDemo = "Assets/TerrainDemoScene_URP/Prefabs";
 
-    /// <summary>Olivier Girardot's free sound pack (only the files AssetPacks.json lists are imported).</summary>
     public const string FreeSounds = "Assets/Free Pack";
 }

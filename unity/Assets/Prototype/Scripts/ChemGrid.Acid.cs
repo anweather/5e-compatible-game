@@ -11,11 +11,9 @@ using UnityEngine;
 // passes; online the cast lands a tick or two after the show.
 public partial class ChemGrid
 {
-    // How long a noted cell is watched (s), and how long its stain lasts.
     const float AcidWatchSeconds = 4f, EatenSeconds = 40f;
     readonly List<(int index, string terrain, string cover, float until)> acidWatch = new();
 
-    /// <summary>An acid spell is on its way: notes its cells that acid can eat, to stain the ones it does.</summary>
     public void WatchAcid(CastCommand cast)
     {
         if (World == null) return;
@@ -31,7 +29,6 @@ public partial class ChemGrid
         }
     }
 
-    // Once a frame: a watched cell whose terrain or cover changed was eaten.
     void WatchAcidCells()
     {
         for (int i = acidWatch.Count - 1; i >= 0; i--)

@@ -24,11 +24,8 @@ public static class BuildingMesher
         public int storeys;
         public bool chimney;
         public int seed;
-        /// <summary>The footprint in metres: along the front, and front to back.</summary>
         public float width, depth;
-        /// <summary>The plan's windows: x its wall (Front, Back, Left, Right), y its place along that wall in metres; null, the mesher spaces them itself.</summary>
         public Vector2[] windows;
-        /// <summary>Where the plan puts the door along the front (m), or null for the seed's choice.</summary>
         public float? doorAt;
         public const int Front = 0, Back = 1, Left = 2, Right = 3;
     }
@@ -36,17 +33,11 @@ public static class BuildingMesher
     public struct Result
     {
         public Mesh body, roof;
-        /// <summary>The top of the chimney (for smoke), or NaN without one.</summary>
         public Vector3 chimneyTop;
-        /// <summary>Where a lamp hangs by the door.</summary>
         public Vector3 lamp;
-        /// <summary>The walls' extent and the roof's top, for a collider.</summary>
         public Vector3 size;
-        /// <summary>The walls' top (the eaves): a collider for the walls stops here, the roof has its own.</summary>
         public float eaves;
-        /// <summary>Things on the walls to bump into, as local boxes: window boxes and planters.</summary>
         public System.Collections.Generic.List<(Vector3 at, Vector3 size)> solids;
-        /// <summary>The windows' glass (WindowPanes).</summary>
         public WindowPanes.Pane[] panes;
     }
 
@@ -69,7 +60,6 @@ public static class BuildingMesher
     static readonly Color Lit = new(1f, 0.76f, 0.42f, 1f);
     static readonly Color Leaves = Rgb(0.22f, 0.4f, 0.18f);
 
-    // One building being built: its look, its sizes, and the shapes so far.
     sealed class Build
     {
         public System.Random rng;
@@ -78,7 +68,6 @@ public static class BuildingMesher
         public readonly System.Collections.Generic.List<(Vector3 at, Vector3 size)> solids = new();
         public readonly System.Collections.Generic.List<WindowPanes.Pane> panes = new();
         public Color wall, timber, stone, roof, paint, door;
-        // The walls' half extents (ground storey), their top, the roof's overhang, pitch and rise.
         public float ex, ez, top, over, pitch, rise, doorX;
 
         public float Range(float lo, float hi) => lo + (float)rng.NextDouble() * (hi - lo);
@@ -91,11 +80,9 @@ public static class BuildingMesher
             return new Color(Mathf.Clamp01(c.r * k), Mathf.Clamp01(c.g * k), Mathf.Clamp01(c.b * k), c.a);
         }
 
-        // The half depth of a storey: the timber frame's upper storeys jut out front and back.
         public float StoreyEz(int storey) => s.walls == WallKind.Timber && storey > 0 ? ez + Jetty : ez;
     }
 
-    // Where the door stands along the front: the plan's, else the seed's for a house, the middle for the rest.
     static float DoorX(Build b)
     {
         float slack = Mathf.Max(0f, b.ex - 1.6f);
@@ -153,8 +140,6 @@ public static class BuildingMesher
         return result;
     }
 
-    // --- walls ------------------------------------------------------------------------
-
     static void Walls(Build b, int storey)
     {
         float y0 = Plinth + storey * Storey, ez = b.StoreyEz(storey);
@@ -175,8 +160,6 @@ public static class BuildingMesher
         }
     }
 
-    // The timber frame on the plaster: corner posts, a sill and a plate, studs, and on the front a
-    // pair of braces beside the middle.
     static void Frame(Build b, float y0, float ez)
     {
         const float beam = 0.18f, proud = 0.05f;
@@ -208,14 +191,12 @@ public static class BuildingMesher
         }
         if (y0 > Plinth)
         {
-            // Under the jutting storey, the joists' ends.
             for (float x = -b.ex + 0.3f; x < b.ex; x += 0.6f)
             {
                 kit.Box(new Vector3(x, y0 - 0.06f, -ez + Jetty / 2f), new Vector3(0.12f, 0.12f, Jetty + 0.1f), b.timber);
                 kit.Box(new Vector3(x, y0 - 0.06f, ez - Jetty / 2f), new Vector3(0.12f, 0.12f, Jetty + 0.1f), b.timber);
             }
         }
-        // Two braces on the front, leaning in toward the corners.
         float braceLength = Mathf.Sqrt(1.1f * 1.1f + Storey * Storey * 0.6f);
         float lean = Mathf.Atan2(1.1f, Storey * 0.78f) * Mathf.Rad2Deg;
         for (int fx = -1; fx <= 1; fx += 2)
@@ -225,8 +206,6 @@ public static class BuildingMesher
         }
     }
 
-    // Stone in courses: blocks of jittered tone standing a little proud of the wall, with
-    // big pale quoins at the corners.
     static void Blocks(Build b, float y0, float ez)
     {
         const float course = 0.42f, proud = 0.04f;
@@ -251,7 +230,6 @@ public static class BuildingMesher
         }
     }
 
-    // One course of blocks along a face, about two in three of them standing out.
     static void Course(Build b, float y, float course, Vector3 face, Vector3 along, float length, int row)
     {
         float x = -length / 2f + (row % 2 == 0 ? 0f : 0.3f) + 0.2f;
@@ -271,9 +249,6 @@ public static class BuildingMesher
 
     static Vector3 Abs(Vector3 v) => new(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
 
-    // Log walls: courses of logs front and back along x, the sides along z half a log higher, the
-    // ends running past the corners as on a real log cabin. The logs' outer faces are the wall's
-    // face, so what's set on a wall (doors, windows, boxes) stands clear of them, as on any other.
     static void Logs(Build b, float y0, float ez)
     {
         const float r = LogRadius;
@@ -288,11 +263,9 @@ public static class BuildingMesher
             b.kit.Cylinder(new Vector3(-wx, y + r, -wz - 0.3f), new Vector3(-wx, y + r, wz + 0.3f), r, 7, c);
             b.kit.Cylinder(new Vector3(wx, y + r, -wz - 0.3f), new Vector3(wx, y + r, wz + 0.3f), r, 7, c);
         }
-        // A wall behind the logs, so no gaps show between them.
         b.kit.Box(new Vector3(0f, y0 + Storey / 2f, 0f), new Vector3(wx * 2f - 0.1f, Storey, wz * 2f - 0.1f), Log * 0.6f);
     }
 
-    // The gable ends under a gabled roof: wall-coloured triangles, with a king post on timber.
     static void Gables(Build b)
     {
         float ez = b.StoreyEz(b.s.storeys - 1);
@@ -308,14 +281,10 @@ public static class BuildingMesher
             b.kit.Box(new Vector3(fx * (b.ex + 0.03f), b.top + b.rise * 0.45f, 0f), new Vector3(0.1f, b.rise * 0.9f, 0.16f), b.timber);
     }
 
-    // --- openings ---------------------------------------------------------------------
-
     static void Door(Build b)
     {
         float z = -b.ez, x = b.doorX;
         var kit = b.kit;
-        // Stood clear of the wall's face: a stone wall's jittered blocks poked through a door set
-        // in it (Andrew's playtest #4).
         kit.Box(new Vector3(x, Plinth + 1.1f, z - 0.12f), new Vector3(1.3f, 2.25f, 0.2f), b.timber);
         kit.Box(new Vector3(x, Plinth + 1.02f, z - 0.18f), new Vector3(1.0f, 2.02f, 0.1f), b.door);
         kit.Box(new Vector3(x + 0.35f, Plinth + 1.0f, z - 0.25f), new Vector3(0.08f, 0.08f, 0.06f), Rgb(0.7f, 0.6f, 0.3f));
@@ -343,7 +312,6 @@ public static class BuildingMesher
         Window(b, new Vector3(b.ex, y, 0f), Vector3.right);
     }
 
-    // A window from the plan: x its wall (Spec.windows), y its place along that wall.
     static void PlannedWindow(Build b, Vector2 w, float y, float ez)
     {
         switch ((int)w.x)
@@ -355,7 +323,6 @@ public static class BuildingMesher
         }
     }
 
-    // A lit window in a wall facing out, with a frame, shutters folded back and maybe flowers.
     static void Window(Build b, Vector3 at, Vector3 facing)
     {
         var kit = b.kit;
@@ -363,14 +330,12 @@ public static class BuildingMesher
         Vector3 Size(float a, float h, float d) => Abs(along * a + Vector3.up * h + facing * d);
         kit.Box(at + facing * 0.06f, Size(0.95f, 1.05f, 0.08f), b.timber);
         kit.Box(at + facing * 0.09f, Size(0.75f, 0.85f, 0.04f), b.Jitter(Lit, 0.08f));
-        // Mullions: a cross of timber over the glass.
         kit.Box(at + facing * 0.12f, Size(0.06f, 0.85f, 0.03f), b.timber);
         kit.Box(at + facing * 0.12f, Size(0.75f, 0.06f, 0.03f), b.timber);
-        // Its glass, over all that (WindowPanes draws it, apart from the walls).
         b.panes.Add(new WindowPanes.Pane { at = at + facing * 0.145f, along = along * 0.4f, up = Vector3.up * 0.45f, facing = facing });
         if (b.s.walls != WallKind.Log)
             for (int side = -1; side <= 1; side += 2)
-                kit.Box(at + along * (side * 0.72f) + facing * 0.15f, Size(0.4f, 0.95f, 0.05f), b.paint); // clear of the wall and its beams
+                kit.Box(at + along * (side * 0.72f) + facing * 0.15f, Size(0.4f, 0.95f, 0.05f), b.paint);
         if (!b.Chance(0.35f)) return;
         var box = at + Vector3.down * 0.6f + facing * 0.18f;
         kit.Box(box, Size(0.95f, 0.18f, 0.25f), b.timber);
@@ -380,12 +345,8 @@ public static class BuildingMesher
             kit.Box(box + along * (-0.32f + f * 0.21f) + Vector3.up * 0.18f, Vector3.one * 0.11f, b.Pick(Flowers));
     }
 
-    // --- extras -----------------------------------------------------------------------
-
-    // A stone chimney up the inside of one gable end, through the roof, with a cap.
     static Vector3 Chimney(Build b)
     {
-        // Behind the logs on a log wall, not out through the gaps between them.
         float x = (b.Chance(0.5f) ? 1f : -1f) * (b.ex - 0.45f - (b.s.walls == WallKind.Log ? LogRadius : 0f)), z = b.ez * 0.35f;
         float ridgeY = b.top + b.rise;
         float height = ridgeY + 0.9f;
@@ -395,7 +356,6 @@ public static class BuildingMesher
         return new Vector3(x, height + 0.2f, z);
     }
 
-    // The inn's sign hanging from a bracket by the door, a painted board with a gilt emblem.
     static Vector3 Sign(Build b)
     {
         float x = b.ex * 0.55f, y = Plinth + Storey - 0.1f, z = -b.ez;
@@ -405,14 +365,12 @@ public static class BuildingMesher
         kit.Box(new Vector3(x, y - 0.55f, z - 0.8f), new Vector3(0.06f, 0.65f, 0.9f), b.paint);
         kit.Box(new Vector3(x, y - 0.55f, z - 0.8f), new Vector3(0.09f, 0.3f, 0.3f), Rgb(0.85f, 0.7f, 0.25f));
         for (int k = -1; k <= 1; k += 2) kit.Box(new Vector3(x, y - 0.15f, z - 0.8f + k * 0.35f), new Vector3(0.02f, 0.2f, 0.02f), Rgb(0.2f, 0.2f, 0.2f));
-        // A lantern by the door.
         var lamp = new Vector3(-0.95f, Plinth + 2.2f, z - 0.22f);
         kit.Box(lamp, new Vector3(0.22f, 0.3f, 0.22f), Lit);
         kit.Box(lamp + Vector3.up * 0.2f, new Vector3(0.28f, 0.08f, 0.28f), Rgb(0.15f, 0.15f, 0.15f));
         return lamp + Vector3.back * 0.3f;
     }
 
-    // The shop's striped awning over its front, and a couple of crates under it.
     static Vector3 Awning(Build b)
     {
         float y0 = Plinth + 2.65f, z = -b.ez, reach = 1.3f, drop = 0.5f;
@@ -436,10 +394,6 @@ public static class BuildingMesher
         return new Vector3(0f, y0 - 0.3f, z - 0.6f);
     }
 
-    // --- roofs ------------------------------------------------------------------------
-
-    // Two slopes in overlapping courses (thick bundles for thatch, thin rows for slate and
-    // shingle), a ridge along x, and eaves over the walls and gables.
     static void GableRoof(Build b)
     {
         float ez = b.StoreyEz(b.s.storeys - 1);
@@ -455,19 +409,16 @@ public static class BuildingMesher
             float step = slope / courses;
             for (int i = 0; i < courses; i++)
             {
-                // Each course lies a little on the one below it, so the roof shows rows.
                 var at = new Vector3(0f, ridgeY, 0f) + down * ((i + 0.5f) * step) + turn * Vector3.up * (thick * 0.5f + (i % 2) * 0.015f);
                 kit.Box(at, new Vector3(width, thick, step * 1.12f), b.Jitter(b.roof, 0.07f), turn);
             }
         }
-        // Ridge cap.
         if (b.s.cover == RoofCover.Thatch)
             kit.Cylinder(new Vector3(-width / 2f, ridgeY + 0.12f, 0f), new Vector3(width / 2f, ridgeY + 0.12f, 0f), 0.3f, 8, b.roof * 0.9f);
         else
             kit.Box(new Vector3(0f, ridgeY + 0.1f, 0f), new Vector3(width, 0.18f, 0.32f), b.roof * 0.8f, Quaternion.Euler(45f, 0f, 0f));
     }
 
-    // Four slopes meeting at a short ridge, one colour each with a darker underside.
     static void HipRoof(Build b)
     {
         float ez = b.StoreyEz(b.s.storeys - 1);
@@ -491,7 +442,6 @@ public static class BuildingMesher
         Face(E3, E4, R1, R2, new Vector3(0f, 1f, 1f), false);
         Face(E4, E1, R1, default, new Vector3(-1f, 1f, 0f), true);
         Face(E2, E3, R2, default, new Vector3(1f, 1f, 0f), true);
-        // The eaves' edge, so the roof has a thickness.
         kit.Box(new Vector3(0f, eaveY + lift / 2f, -hz), new Vector3(hx * 2f, lift, 0.06f), b.roof * 0.75f);
         kit.Box(new Vector3(0f, eaveY + lift / 2f, hz), new Vector3(hx * 2f, lift, 0.06f), b.roof * 0.75f);
         kit.Box(new Vector3(-hx, eaveY + lift / 2f, 0f), new Vector3(0.06f, lift, hz * 2f), b.roof * 0.75f);

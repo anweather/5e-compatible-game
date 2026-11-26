@@ -1,10 +1,10 @@
+// add_species and set_species (#61, #72): animals Claude adds are fauna rows, so they move as their kind does.
 using System.Linq;
 using Chem.Mcp;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>add_species and set_species (#61, #72): animals Claude adds are fauna rows, so they move as their kind does.</summary>
     [Category("Simulation")]
     public class FaunaToolsTests
     {

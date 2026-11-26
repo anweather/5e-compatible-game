@@ -21,29 +21,18 @@ using UnityEngine.SceneManagement;
 // skyline and its linear haze.
 public sealed partial class FarRing : MonoBehaviour
 {
-    /// <summary>Punchy's haze constant: exponential-squared density × draw distance, ~98% at the edge.</summary>
     public const float HazeK = Air.HazeK;
 
-    /// <summary>The far ring in play, or null on a map that isn't generated.</summary>
     public static FarRing Instance { get; private set; }
 
-    /// <summary>The known ring's edge (m): on a map with no far land, where the clear haze reaches ~98%.</summary>
     public float HazeMetres { get; private set; }
 
-    /// <summary>
-    /// Where a map with no far land's clear haze reaches 99% (m), at a depth from the eye: past here nothing shows, so
-    /// it's where the Default layer stops drawing and the tree impostors end (#220: at the old 500 m the haze was ~89% and
-    /// the coast's dock popped in and out from the mountain by the falls). On a hills map, a little past the known ring.
-    /// </summary>
     public float HazeHides => HazeMetres * HideK / HazeK;
 
-    // sqrt(ln 100): exponential-squared haze is 99% where density × depth is this.
     const float HideK = 2.146f;
 
-    /// <summary>The last known-chunk build: how many chunks, the worker's milliseconds and the main thread's (meshes to Unity).</summary>
     public static (int chunks, double workerMs, double mainMs) LastBuild { get; private set; }
 
-    // What the worker reads at the start: the map, its far landmarks and the ground at each.
     sealed class Loaded
     {
         public GeneratedMap Map;
@@ -62,8 +51,6 @@ public sealed partial class FarRing : MonoBehaviour
     int chunksW, chunksH, sight, know;
     float chunkMetres;
 
-    // The known chunks drawn now, by ring id, with the chunk each was built from (the ring keeps a chunk's object while
-    // it's known, so the same object means the same land).
     readonly Dictionary<int, (KnownChunk chunk, GameObject go)> drawn = new();
     Task<List<(KnownChunk chunk, FarMeshes.Data data)>> building;
     double buildStarted;
@@ -102,7 +89,6 @@ public sealed partial class FarRing : MonoBehaviour
         land = MapLand.Current;
         string source = ChemGrid.MapSource;
         float water = land != null ? land.WaterLevel : 0f;
-        // The plan and the generator, the landmarks and the ground they stand on, all off the main thread.
         float cell = land != null ? land.Layout.CellSize : 1.5f;
         loading = Task.Run(() => Load(source, water, cell));
     }
@@ -129,9 +115,6 @@ public sealed partial class FarRing : MonoBehaviour
         return new Loaded { Map = m, Far = far, Ground = ground, Looks = looks, Biomes = BiomeGround.Of(m) };
     }
 
-    // The ground a far landmark stands on (m): the lowest dry known sample within its radius (at least a sample's spacing)
-    // of its middle, so a stamp's own rise (a volcano's cone) isn't counted twice and a tree on a hill stands on the hill;
-    // just under the water's top where there's none.
     static float Ground(ChunkGen gen, FarLandmark l, float water, Dictionary<int, KnownChunk> near, float cellMetres)
     {
         int cx = l.X / ChunkGen.Size, cy = l.Y / ChunkGen.Size;
@@ -156,7 +139,6 @@ public sealed partial class FarRing : MonoBehaviour
     void Update()
     {
         if (map == null && !Ready()) return;
-        // A rule switch can move streaming sight or know (the dials unset follow it); nothing changes while they hold.
         var rules = ChemGrid.Current?.Rules;
         if (rules != null) Dial(rules.Sim.Streaming);
         Shader.SetGlobalFloat(SightMetresId, sight * chunkMetres);
@@ -173,7 +155,6 @@ public sealed partial class FarRing : MonoBehaviour
         UpdateFarLand();
     }
 
-    // The first frame the worker's load is done: the ring, the haze, the materials, the sea plane and the landmarks.
     bool Ready()
     {
         var rules = ChemGrid.Current?.Rules;
@@ -198,7 +179,6 @@ public sealed partial class FarRing : MonoBehaviour
         landMaterial = new Material(shader) { name = "Far land" };
         landmarkMaterial = new Material(shader) { name = "Far landmarks" };
         landmarkMaterial.SetFloat(OwnHazeId, 1f);
-        // A torus has no edge to see the sea past (the hills: all land), so it has no sea to the horizon.
         if (!(ViewWrap.EastWest && ViewWrap.NorthSouth)) MakeSea();
         MakeLandmarks(loaded);
         palette = Palette(loaded.Biomes, grid.World, terrains, map.Hills?.Biome);
@@ -212,7 +192,6 @@ public sealed partial class FarRing : MonoBehaviour
     static readonly int SightMetresId = Shader.PropertyToID("_FarSightMetres"), KnownMetresId = Shader.PropertyToID("_FarKnownMetres"),
         OwnHazeId = Shader.PropertyToID("_OwnHaze");
 
-    // The chunks the characters stand in (the camera's, with none); true when they changed.
     bool FollowCharacters()
     {
         wanted.Clear();
@@ -242,7 +221,6 @@ public sealed partial class FarRing : MonoBehaviour
         if (!wanted.Contains(c)) wanted.Add(c);
     }
 
-    // The known chunks not drawn yet, built on a worker.
     void StartBuild()
     {
         builtVersion = ring.Version;
@@ -266,10 +244,6 @@ public sealed partial class FarRing : MonoBehaviour
     double workerMs;
     FarMeshes.Palette palette = FarMeshes.Palette.Plain;
 
-    // The known chunks' colours from what the near ground draws (#191): each biome's ground as the map's cells paint it,
-    // in the colours of the chunk terrains' own layers. Once, as the ring starts. A hills map has no plan's biomes (its
-    // cells are all one biome's ground): its biome's ground is the mean paint of the cells made so far (its grass, the
-    // brush in it, its roads), as the chunk terrains paint them, so the known meshes meet them in one colour.
     static FarMeshes.Palette Palette(BiomeGround biomes, World world, MapTerrains terrains, string allOneBiome)
     {
         var layers = terrains != null && terrains.template != null ? terrains.template.terrainLayers : null;
@@ -294,8 +268,6 @@ public sealed partial class FarRing : MonoBehaviour
         return palette;
     }
 
-    // The mean paint (CellPaint's layer weights) of the dry cells of every chunk made so far, every 4th cell each way;
-    // null with none. Reads no chunk that isn't made.
     static float[] MadeGround(World world)
     {
         const int Every = 4;
@@ -321,8 +293,6 @@ public sealed partial class FarRing : MonoBehaviour
         return sum;
     }
 
-    // A texture's mean colour, linear as the terrain's shader mixes and lights it (FarLand lights a vertex colour as it is),
-    // from a small copy on the GPU: the terrain's textures can't be read here.
     static Color MeanColour(Texture texture)
     {
         const int Side = 64;
@@ -341,7 +311,6 @@ public sealed partial class FarRing : MonoBehaviour
         return sum / pixels.Length;
     }
 
-    // The worker's meshes to Unity, the chunks no longer known taken away, and the terrains told what's drawn now.
     void FinishBuild()
     {
         using var marked = FinishMarker.Auto();
@@ -365,8 +334,6 @@ public sealed partial class FarRing : MonoBehaviour
             if (!ring.TryGet(p.Key % chunksW, p.Key / chunksW, out var now) || now != p.Value.chunk) gone.Add(p.Key);
         foreach (int id in gone)
         {
-            // Land come within sight is the terrains' now: its mesh stays until they draw there (LetGo), so the hand-off
-            // shows no hole while they're made and switched on.
             if (terrains != null && Nearest(id % chunksW, id / chunksW) <= know) leaving[id] = (drawn[id].go, Time.unscaledTime);
             else Drop(drawn[id].go);
             drawn.Remove(id);
@@ -381,7 +348,6 @@ public sealed partial class FarRing : MonoBehaviour
 
     static readonly Unity.Profiling.ProfilerMarker FinishMarker = new("FarRing.FinishBuild");
 
-    // A known chunk's object and its mesh (the object doesn't own the mesh: destroying it alone leaked the mesh).
     static void Drop(GameObject go)
     {
         if (go == null) return;
@@ -400,7 +366,6 @@ public sealed partial class FarRing : MonoBehaviour
         return go;
     }
 
-    // No shadows, no probes, and on the far ring's own layer (past the Default layer's cull distance).
     static void Quiet(MeshRenderer r, Material material)
     {
         r.gameObject.layer = Layer;
@@ -411,8 +376,6 @@ public sealed partial class FarRing : MonoBehaviour
         r.reflectionProbeUsage = ReflectionProbeUsage.Off;
     }
 
-    // World x, z of map chunk (cx, cy)'s north-west corner: the line between cells, as the chunk terrains' edges run. On a
-    // world that wraps, the copy nearest the camera (ViewWrap).
     Vector3 Corner(int cx, int cy)
     {
         var l = land.Layout;
@@ -421,8 +384,6 @@ public sealed partial class FarRing : MonoBehaviour
         return new Vector3(ViewWrap.NearX(wx + half) - half, 0f, ViewWrap.NearZ(wz - half) + half);
     }
 
-    // On a world that wraps, the known meshes moved to the copy of their place nearest the camera where that changed (the
-    // characters went half a world round: none in sight ever moves).
     void Replace()
     {
         foreach (var p in drawn) Place(p.Value.go, p.Key);
@@ -437,7 +398,6 @@ public sealed partial class FarRing : MonoBehaviour
         if (Mathf.Abs(at.x - to.x) > 1f || Mathf.Abs(at.z - to.z) > 1f) go.transform.position = new Vector3(to.x, at.y, to.z);
     }
 
-    // Chebyshev chunks from map chunk (cx, cy) to the nearest character (the short way round a world that wraps).
     int Nearest(int cx, int cy)
     {
         int near = int.MaxValue;
@@ -446,13 +406,10 @@ public sealed partial class FarRing : MonoBehaviour
         return near;
     }
 
-    // Known meshes of land now within sight, kept showing (and when they began to) until the chunk terrains draw there.
     readonly Dictionary<int, (GameObject go, float since)> leaving = new();
     readonly List<int> letGo = new();
-    // A leaving mesh goes after this long whatever the terrains do (one whose terrain stays off for another chunk's mesh).
     const float MostLeavingSeconds = 6f;
 
-    // The leaving meshes whose land the terrains draw now, or that are past sight again, or kept too long, dropped.
     void LetGo()
     {
         if (leaving.Count == 0) return;
@@ -469,8 +426,6 @@ public sealed partial class FarRing : MonoBehaviour
         }
     }
 
-    // Whether every chunk terrain under map chunk (cx, cy) stands and draws (the terrains are offset from the map's
-    // chunks, so up to four meet it): its four corner cells' terrains.
     bool TerrainsDraw(int cx, int cy)
     {
         var l = land.Layout;
@@ -486,34 +441,26 @@ public sealed partial class FarRing : MonoBehaviour
         return t != null && t.terrainData != null && t.isActiveAndEnabled && t.drawHeightmap;
     }
 
-    /// <summary>For the flyover probe's holes: what the ring says of map chunk (cx, cy).</summary>
     public string Explain(int cx, int cy) =>
         ring == null ? "no ring" : $"nearest {Nearest(cx, cy)} know {know} sight {sight} drawn {drawn.ContainsKey(ring.Id(cx, cy))} leaving {leaving.ContainsKey(ring.Id(cx, cy))} known {ring.TryGet(cx, cy, out _)}";
 
-    /// <summary>Whether map chunk (cx, cy) shows a known mesh now: one of the ring's, or one kept until its terrains draw.</summary>
     public bool MeshShows(int cx, int cy) => ring != null && (drawn.ContainsKey(ring.Id(cx, cy)) || leaving.ContainsKey(ring.Id(cx, cy)));
 
-    /// <summary>How many known chunks are drawn as meshes now.</summary>
     public int DrawnCount => drawn.Count;
 
-    /// <summary>Whether map chunk (cx, cy) is drawn as its chunk terrain: within the known ring and not as a known mesh.</summary>
     public bool LandIsTerrain(int cx, int cy) =>
         ring == null || characters.Count == 0 || (Nearest(cx, cy) <= know && !drawn.ContainsKey(ring.Id(cx, cy)));
 
-    /// <summary>Whether chunk terrain (i, j) draws (MapTerrains): everywhere until the ring is ready, then as LandIsTerrain.</summary>
     public bool TerrainDraws(int i, int j)
     {
         if (ring == null) return true;
         var l = land.Layout;
-        // The terrain's north-west cell, in map cells (the terrains run north to south the other way).
         var (x, y) = l.GridCell(i * TerrainGrid.ChunkCells, j * TerrainGrid.ChunkCells + TerrainGrid.ChunkCells - 1);
         if (x < 0 || y < 0) return true;
         int cx = x / ChunkGen.Size, cy = y / ChunkGen.Size;
         return cx >= chunksW || cy >= chunksH || LandIsTerrain(cx, cy);
     }
 
-    // From the map's edge to the horizon at the water's level (a little under it, so the map's own sea draws over it), and
-    // under the map itself past the known ring (FarMeshes.SeaFrame).
     void MakeSea()
     {
         var l = land.Layout;
@@ -525,8 +472,6 @@ public sealed partial class FarRing : MonoBehaviour
         Quiet(go.AddComponent<MeshRenderer>(), SeaMaterial());
     }
 
-    // The far land's look, drawn after the sky and going clear past SeaClearFrom so the sky shows through toward the
-    // horizon (FarLand.shader): fogged wholly it's the haze's colour, and the sky just over the horizon is brighter.
     Material SeaMaterial()
     {
         var sea = new Material(landMaterial) { name = "Far sea", renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent };
@@ -538,6 +483,5 @@ public sealed partial class FarRing : MonoBehaviour
         return sea;
     }
 
-    /// <summary>Where the sea plane starts to give way to the sky (m): past the known ring, where the haze is whole.</summary>
     public const float SeaClearFrom = 1500f;
 }

@@ -18,7 +18,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>An animal a spell brought out: its species (fauna.json), its cell, and the Individual every peer gives it.</summary>
     public readonly struct Summon
     {
         public Summon(int n, string species, int x, int y, uint individual, int tick)
@@ -31,14 +30,11 @@ namespace Chem
             Tick = tick;
         }
 
-        /// <summary>Its place in the world's running count of what spells placed: a view brings out those past the last it saw.</summary>
         public int N { get; }
         public string Species { get; }
         public int X { get; }
         public int Y { get; }
-        /// <summary>Odd, never 0: what ValleyFauna.Spawn takes for its coat, size and gait.</summary>
         public uint Individual { get; }
-        /// <summary>The tick it came out on (the last whole tick when it was cast).</summary>
         public int Tick { get; }
     }
 
@@ -46,43 +42,33 @@ namespace Chem
     {
         const int PlaceSalt = 0x706c6163, TurnSalt = 0x7475726e, SummonSalt = 0x73756d6e;
 
-        /// <summary>The most placed things live in a room at once when no budgets say (budgets.json place.maxLive): the oldest lapses first.</summary>
         public const int DefaultMaxPlaced = 64;
 
         readonly List<ThingSpawn> placedThings = new List<ThingSpawn>();
         readonly List<Summon> summoned = new List<Summon>();
         readonly List<Summon> summonHistory = new List<Summon>();
-        // Bumped whenever placedThings changes, so ThingsNow is worked out again.
         int placedVersion;
-        // Place actions run, and things and animals placed, since the world began: core state.
         int placeActions, placedCount;
-        // The cells of the buildings in force, for the rules they were worked out under.
         HashSet<(int, int)> builtCells;
         Rules builtFor;
 
-        /// <summary>The things spells placed that are still there, oldest first (also in ThingsNow).</summary>
         public IReadOnlyList<ThingSpawn> Placed => placedThings;
 
-        /// <summary>The animals spells brought out since this tick began, for the view to bring out (as NewMeteors).</summary>
         public IReadOnlyList<Summon> Summoned => summoned;
 
-        /// <summary>The N of the last animal brought out within the last 600 ticks, or -1: a view compares it with the last it saw, and asks SummonedAfter only when it's past.</summary>
         public int LastSummonN => summonHistory.Count > 0 ? summonHistory[summonHistory.Count - 1].N : -1;
 
-        /// <summary>The animals brought out after the <paramref name="n"/>th (within the last 600 ticks), oldest first: for a view that steps several ticks a frame.</summary>
         public IEnumerable<Summon> SummonedAfter(int n)
         {
             foreach (var s in summonHistory) if (s.N > n) yield return s;
         }
 
-        // Each new tick: this tick's list starts empty, and the history keeps its last HistoryTicks.
         void BeginPlaceTick()
         {
             summoned.Clear();
             if (summonHistory.Count > 0) summonHistory.RemoveAll(s => s.Tick <= Tick - HistoryTicks);
         }
 
-        // Once a tick: placed things whose time is up go, in the order placed.
         void TickPlaced()
         {
             if (placedThings.Count == 0) return;
@@ -91,10 +77,6 @@ namespace Chem
 
         int MaxPlaced => (int)(roomBudgets?.Number("place.maxLive", DefaultMaxPlaced) ?? DefaultMaxPlaced);
 
-        /// <summary>
-        /// A spell's place (Land, after its element): Count cells picked among the spell's cells, or within Within of
-        /// the aim when it gives one, by the world's seed, the tick and the actions run so far; each gets what's placed.
-        /// </summary>
         void Place(SpellDef s, List<(int x, int y)> cells, int x, int y)
         {
             var p = s.Place;
@@ -102,12 +84,11 @@ namespace Chem
             PlaceOn(p, s.Name, p.Within >= 0 ? Placement.Around(x, y, p.Within) : cells);
         }
 
-        // A place's Count cells picked over an area, by the world's seed, the tick and the actions run so far; each gets what's placed.
         void PlaceOn(PlaceDef p, string name, List<(int x, int y)> area)
         {
             int salt = unchecked((int)WorldHash.Hash4(unchecked((int)Seed), PlaceSalt, Tick, placeActions));
             placeActions++;
-            if (WrapX) area = area.ConvertAll(c => (FoldX(c.x), FoldY(c.y))); // cells past the seam are where they fold to
+            if (WrapX) area = area.ConvertAll(c => (FoldX(c.x), FoldY(c.y)));
             var picks = Placement.Pick(area, p.Count, p.Spacing, PlaceOpen(p.Onto), unchecked((int)Seed), salt);
             foreach (var (cx, cy) in picks)
             {
@@ -157,7 +138,6 @@ namespace Chem
             summonHistory.Add(summon);
         }
 
-        // A cell laid fresh, as a building lays it: no fire, gas or water, its height and target mark kept.
         void LayFresh(Cell c, string terrain, string cover = null)
         {
             int height = c.Height, star = c.Star;
@@ -168,11 +148,6 @@ namespace Chem
             if (cover != null) PutCover(c, cover);
         }
 
-        /// <summary>
-        /// Whether something may be placed on a cell: on the world (and active, with <paramref name="activeOnly"/>), open
-        /// ground (a terrain with one of <paramref name="onto"/>'s tags, or "ground" with none), not blocking, dry, and with
-        /// no building or thing on it. A cast places only where it's active; a world edit lays anywhere.
-        /// </summary>
         public Func<int, int, bool> PlaceOpen(IReadOnlyList<string> onto, bool activeOnly = true)
         {
             var built = BuiltCells();
@@ -200,10 +175,6 @@ namespace Chem
             return builtCells;
         }
 
-        /// <summary>
-        /// What spells placed, for CastHash: the actions run, the count, then each thing still there (n, kind, cell,
-        /// turn, the tick it lapses). "" until a spell places, so worlds without hash as they did.
-        /// </summary>
         public string PlacedText()
         {
             if (placeActions == 0) return "";
@@ -224,7 +195,6 @@ namespace Chem
                 ["count"] = placedCount,
                 ["things"] = new JArray(placedThings.Select(t => new JArray(t.Id.PlacedN, t.Kind, t.CellX, t.CellY, t.Rotation, t.Lapses))),
             };
-            // The animals brought out lately, for a view that comes to the world later (a late joiner's) to bring out too.
             if (summonHistory.Count > 0)
                 save["placedThings"]["summons"] = new JArray(summonHistory.Select(a => new JArray(a.N, a.Species, a.X, a.Y, (long)a.Individual, a.Tick)));
         }

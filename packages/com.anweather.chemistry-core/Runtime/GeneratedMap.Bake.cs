@@ -16,23 +16,15 @@ namespace Chem
 {
     public sealed partial class GeneratedMap
     {
-        /// <summary>
-        /// Writes the whole map as a map folder into <paramref name="outDir"/> (its map.json too, unless it's the map's own
-        /// folder): the chunks' land and cells, the pinned valley's in its place, every chunk's things, and the valley's
-        /// rows moved to the valley's place with the landmarks' rows added. Its chunks are made as it writes, on
-        /// <paramref name="threads"/> threads (all of them for 0), or taken from <paramref name="chunks"/> (MakeAll's).
-        /// </summary>
         public BakeReport Bake(string outDir, GeneratedChunk[] chunks = null, int threads = 0)
         {
             if (!Bakes) throw new InvalidOperationException(NoBake);
             var timer = Stopwatch.StartNew();
-            // A pinned block's rows are read from its own bake, as a pinned map's are from its folder.
             if (Inner != null && !IsBaked(PinnedDir)) Inner.Bake(PinnedDir);
             int w = Gen.ChunksW, h = Gen.ChunksH;
             if (chunks != null && chunks.Length != w * h) throw new ArgumentException($"a bake of {w} x {h} chunks, given {chunks.Length}", nameof(chunks));
             Directory.CreateDirectory(outDir);
             var report = new BakeReport { W = Gen.CellsW, H = Gen.CellsH };
-            // The rows first: the places.json they write says which water bodies the land is read for as it goes.
             WriteRows(outDir);
             var water = WaterRuns.For(outDir, Gen.CellsW, Gen.CellsH);
             var options = new ParallelOptions { MaxDegreeOfParallelism = threads > 0 ? threads : Environment.ProcessorCount };
@@ -59,7 +51,6 @@ namespace Chem
                 }
                 finally
                 {
-                    // A row still being written when making one threw: let it finish before its files close.
                     if (!writing.IsCompleted) writing.ContinueWith(_ => { }, TaskScheduler.Default).Wait();
                 }
                 files.Finish();
@@ -72,9 +63,6 @@ namespace Chem
             return report;
         }
 
-        // cells.txt, land.json and things.json, written a row of chunks at a time from the north: what the bake once
-        // gathered whole (a char and an int a cell of the map, and every chunk's things) and wrote at the end, the same
-        // bytes. Its two row buffers are a row of chunks' cells and land.
         sealed class ChunkRows : IDisposable
         {
             const int Size = ChunkGen.Size;
@@ -98,13 +86,11 @@ namespace Chem
                 cells = new char[w * Size];
                 land = new int[w * Size];
                 var utf8 = new UTF8Encoding(false);
-                // cells.txt is put in place only if it changed (MapFile.WriteCells), so it's written beside it first.
                 cellsPath = Path.Combine(dir, MapFile.CellsName);
                 cellsTemp = cellsPath + ".baking";
                 cellsOut = new StreamWriter(cellsTemp, false, utf8, 1 << 16);
                 landOut = new FileStream(Path.Combine(dir, MapFile.LandName), FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16);
                 landRows = new LandFile.Writer(landOut, w, h, 0.125);
-                // As JObject.ToString(Formatting.Indented) wrote the whole file: the same writer, a chunk at a time.
                 thingsOut = new StreamWriter(Path.Combine(dir, "things.json"), false, utf8, 1 << 16);
                 things = new JsonTextWriter(thingsOut) { Formatting = Formatting.Indented };
                 things.WriteStartObject();
@@ -114,7 +100,6 @@ namespace Chem
                 things.WriteStartArray();
             }
 
-            /// <summary>The next row of chunks, west to east.</summary>
             public void Add(GeneratedChunk[] row)
             {
                 foreach (var c in row)
@@ -135,7 +120,6 @@ namespace Chem
                     if (c.Things.Count > 0) new JObject { ["chunk"] = new JArray(c.X, c.Y), ["things"] = c.Things }.WriteTo(things);
             }
 
-            /// <summary>Ends the three files, every row written.</summary>
             public void Finish()
             {
                 if (y != h) throw new InvalidOperationException($"a bake wrote {y} of its {h} rows");
@@ -146,7 +130,6 @@ namespace Chem
                 landRows.Finish();
                 finished = true;
                 Dispose();
-                // As MapFile.WriteCells: the file is left as it is when it holds these cells already.
                 if (File.Exists(cellsPath) && Same(cellsPath, cellsTemp)) File.Delete(cellsTemp);
                 else
                 {

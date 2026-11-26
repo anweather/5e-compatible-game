@@ -17,10 +17,8 @@ static class FocusKeeper
     const string WindowKey = "Prototype.Probe.UserWindow", UntilKey = "Prototype.Probe.GuardUntil", LastKey = "Prototype.Probe.GuardLast";
     const float GuardSeconds = 5f;
 
-    // Domain reloads (entering Play mode) drop the update hook; put it back.
     static FocusKeeper() => EditorApplication.update += Watch;
 
-    /// <summary>Notes the window in front now (unless it's the Editor) and guards it for a few seconds.</summary>
     public static void Remember()
     {
         Forget();
@@ -32,14 +30,12 @@ static class FocusKeeper
 #endif
     }
 
-    /// <summary>Guards the remembered window for the next few seconds (the Editor is about to raise itself).</summary>
     public static void Guard()
     {
         if (SessionState.GetString(WindowKey, "").Length > 0)
             SessionState.SetFloat(UntilKey, (float)EditorApplication.timeSinceStartup + GuardSeconds);
     }
 
-    /// <summary>The run is over: stop guarding once this last guard runs out.</summary>
     public static void Release()
     {
         Guard();

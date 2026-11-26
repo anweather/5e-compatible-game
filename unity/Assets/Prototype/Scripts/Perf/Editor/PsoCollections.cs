@@ -12,10 +12,6 @@ public static class PsoCollections
 {
     const string Folder = "Assets/Prototype/Scripts/Perf/Resources";
 
-    /// <summary>
-    /// Merges the trace files into Resources/Pso&lt;API&gt;.graphicsstate (made or replaced) and
-    /// returns a one-line summary, or why it couldn't.
-    /// </summary>
     public static string Merge(params string[] traces)
     {
         if (traces.Length == 0) return "PSO merge: no traces given.";
@@ -49,10 +45,6 @@ public static class PsoCollections
         return $"PSO merge: {traces.Length} traces, {merged.totalGraphicsStateCount} states in {merged.variantCount} variants -> {path}";
     }
 
-    /// <summary>
-    /// Merge in a batch Editor: -executeMethod PsoCollections.MergeFromCommandLine -pso-merge a.pso b.pso.
-    /// Name a copy of the shipped collection first to add to it rather than replace it.
-    /// </summary>
     public static void MergeFromCommandLine()
     {
         var args = System.Environment.GetCommandLineArgs();

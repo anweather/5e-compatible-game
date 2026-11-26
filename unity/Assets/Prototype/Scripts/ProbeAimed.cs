@@ -23,7 +23,6 @@ public class AimedProbe : ProbeScenario
     protected World Core => grid.World;
     protected string Me => caster.CastPlayer;
 
-    /// <summary>Whether this run films its takes (aimedclip).</summary>
     protected virtual bool Filming => false;
 
     protected void Stand(Vector2Int cell)
@@ -42,7 +41,6 @@ public class AimedProbe : ProbeScenario
 
     protected void Let() => InputSystem.QueueStateEvent(pad, new GamepadState());
 
-    // From the spell list before the run (the keep's room went, hold-batch): a moment each.
     protected IEnumerator AttuneTo(string element, int hand)
     {
         caster.AttuneTo(hand, element);
@@ -50,8 +48,6 @@ public class AimedProbe : ProbeScenario
         Check($"attuned_{hand}_to_{element}", Core.HandsOf(Me).Holds[hand] == element, Core.HandsOf(Me).Holds[hand]);
     }
 
-    // A tap of these buttons, and the spell it set off (null if none did in time), the aim kept on the raider as a player
-    // keeps it while the spell goes off.
     protected IEnumerator Tap(System.Action press, string[] fired, Raider on, float off)
     {
         heard.StartFrom(Core);
@@ -75,27 +71,23 @@ public class AimedProbe : ProbeScenario
         yield return Wait(0.2f);
     }
 
-    // Where a raider is drawn: up in the air for a flyer.
     protected Vector3 Drawn(Raider r)
     {
         var c = grid.CellCenter(r.X, r.Y);
         return new Vector3(c.x, grid.GroundAt(c) + (Core.Flying(r) ? DefenseField.FlyHeight : 1f), c.z);
     }
 
-    // The camera over the wizard's shoulder, looking at a raider; the aim a few degrees to its side, as a player's thumb leaves it.
     protected void LookAt(Raider r, float off)
     {
         var at = Drawn(r);
         var t = wizard.transform;
         var flat = Vector3.ProjectOnPlane(at - t.position, Vector3.up).normalized;
         t.rotation = Quaternion.LookRotation(flat);
-        // A flyer from up behind the wall; one on the ground from out in the field beyond it, looking back at the wall.
         var from = Core.Flying(r) ? t.position + new Vector3(3f, 15f, -11f) : at + flat * 9f + Vector3.up * 5f + t.right * 2f;
         Cut(from, Vector3.Lerp(t.position + Vector3.up * 1.5f, at, Core.Flying(r) ? 0.55f : 0.7f));
         caster.AimRayOverride = new Ray(from, Quaternion.AngleAxis(off, Vector3.up) * (at - from).normalized);
     }
 
-    // A raider of a kind the run's waves won't crowd, where it's asked for (or the nearest open cell north of there).
     protected Raider Put(string kind, Vector2Int at, int hp)
     {
         for (int k = 0; k < 6; k++)
@@ -156,16 +148,14 @@ public class AimedProbe : ProbeScenario
         for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
         Check("a_run_starts", Core.HoldRunning);
         if (!Core.HoldRunning) yield break;
-        Core.Hold.Health = int.MaxValue / 2; // the run outlasts the probe
+        Core.Hold.Health = int.MaxValue / 2;
         Stand(new Vector2Int(row.X + WallX, row.Y + WallY));
         yield return Wait(0.5f);
     }
 
-    // Lightning at a flyer up in the air, a little off the crosshair: as the game was, then with lock-on and pitch.
     IEnumerator Lightning()
     {
         var me = grid.CellAt(wizard.transform.position);
-        // Far out north, so it's still out there, in front of the wall, through both casts.
         var flyer = Put(RaiderIds.AshWing, new Vector2Int(me.x + 1, me.y - 17), 400);
         Check("a_flyer_comes", flyer != null && Core.Flying(flyer));
         if (flyer == null) yield break;
@@ -202,14 +192,13 @@ public class AimedProbe : ProbeScenario
         yield return Cooled();
     }
 
-    // Gust of Wind at a raider on the ground below the wall: it's knocked back, away from the wizard.
     IEnumerator Gust()
     {
         var me = grid.CellAt(wizard.transform.position);
-        var hound = Put(RaiderIds.BoneHound, new Vector2Int(me.x, me.y - 5), 400); // straight out from the wall: the trees off to the west stop a line
+        var hound = Put(RaiderIds.BoneHound, new Vector2Int(me.x, me.y - 5), 400);
         Check("a_raider_comes", hound != null);
         if (hound == null) yield break;
-        hound.Wait = 60; // it stands a while, on its clear line (walking, it goes in among the trees, which stop a line)
+        hound.Wait = 60;
         yield return Wait(0.4f);
         LookAt(hound, OffAim * 0.5f);
         int from = me.y - hound.Y;
@@ -231,7 +220,6 @@ public class AimedProbe : ProbeScenario
         yield return Cooled();
     }
 
-    // A Whirlwind on a raider: it's lifted off its feet in the eye, then flung out and hurt.
     IEnumerator Whirlwind()
     {
         var me = grid.CellAt(wizard.transform.position);

@@ -8,13 +8,8 @@ using UnityEngine;
 // marked for a delayed one); this is only the show. ChemGrid.RenderTriggered picks the wizard.
 public partial class SpellCaster
 {
-    /// <summary>The player this wizard stands for in the core's stands, on every machine: its client's online, the solo one alone.</summary>
     public string StandPlayer => TryGetComponent<NetWizard>(out var wizard) && wizard.IsSpawned ? wizard.CastPlayer : SoloPlayer;
 
-    /// <summary>
-    /// Plays a triggered cast's show: what this spell's cast shows, landing in <paramref name="seconds"/> (its
-    /// delay; at once for a cast that lands at once, a meteor then falling the shortest it can).
-    /// </summary>
     public void PlayTriggered(TriggeredCast cast, float seconds)
     {
         if (grid == null || grid.World == null) return;

@@ -5,7 +5,6 @@ using UnityEngine;
 // with a soft edge, and the elements' icons. Only draws during a repaint.
 public static class HudDraw
 {
-    // Vertices round a full circle, and how soft an edge is (screen pixels).
     const int Segments = 72;
     const float Feather = 1.5f;
 
@@ -32,10 +31,8 @@ public static class HudDraw
 
     static void End() => GL.PopMatrix();
 
-    /// <summary>A ring from the top clockwise, <paramref name="share"/> of the way round (1 for all of it).</summary>
     public static void Ring(Vector2 centre, float inner, float outer, float share, Color color) => Arc(centre, inner, outer, 0f, share, color);
 
-    /// <summary>A piece of a ring, from <paramref name="from"/> to <paramref name="to"/> of the way round, clockwise from the top (0 to 1).</summary>
     public static void Arc(Vector2 centre, float inner, float outer, float from, float to, Color color)
     {
         from = Mathf.Clamp01(from);
@@ -62,10 +59,8 @@ public static class HudDraw
         End();
     }
 
-    /// <summary>A filled circle.</summary>
     public static void Disc(Vector2 centre, float radius, Color color) => Ring(centre, 0f, radius, 1f, color);
 
-    /// <summary>A filled triangle.</summary>
     public static void Triangle(Vector2 a, Vector2 b, Vector2 c, Color color)
     {
         if (!Begin()) return;
@@ -79,14 +74,12 @@ public static class HudDraw
         End();
     }
 
-    /// <summary>A filled four-sided shape, corners in order round it.</summary>
     public static void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color color)
     {
         Triangle(a, b, c, color);
         Triangle(a, c, d, color);
     }
 
-    /// <summary>A straight bar from one point to another, <paramref name="width"/> across.</summary>
     public static void Bar(Vector2 from, Vector2 to, float width, Color color)
     {
         var along = to - from;
@@ -95,7 +88,6 @@ public static class HudDraw
         Quad(from + side, to + side, to - side, from - side, color);
     }
 
-    // One quad of a ring, between two angles (clockwise from the top) and two radii.
     static void Band(Vector2 c, float a, float b, float from, float to, Color inner, Color outer)
     {
         GL.Color(inner);
@@ -109,7 +101,6 @@ public static class HudDraw
     static void Point(Vector2 c, float angle, float radius) =>
         GL.Vertex3(c.x + Mathf.Sin(angle) * radius, c.y - Mathf.Cos(angle) * radius, 0f);
 
-    /// <summary>An element's colour, for its orb on the HUD and in the hands.</summary>
     public static Color ElementColor(string element) => element switch
     {
         ElementIds.Fire => new Color(0.95f, 0.42f, 0.12f),
@@ -119,7 +110,6 @@ public static class HudDraw
         _ => Color.gray,
     };
 
-    /// <summary>A loaded element: its coloured circle with its icon on it.</summary>
     public static void ElementOrb(Vector2 at, float r, string element, float alpha = 1f)
     {
         Disc(at, r + 3f, new Color(0f, 0f, 0f, 0.6f * alpha));
@@ -136,7 +126,6 @@ public static class HudDraw
         }
     }
 
-    // Each icon's outline is centred on the orb: as far left of the middle as right, and above as below.
     static void Flame(Vector2 at, float r, Color mark)
     {
         at += new Vector2(0f, r * 0.05f);
@@ -163,7 +152,6 @@ public static class HudDraw
         const float Inner = 0.25f, Outer = 0.36f;
         for (int i = -1; i <= 1; i++)
         {
-            // A half ring lies right of its centre, so the three are set back by half their width.
             var c = at + new Vector2((i * 0.08f - Outer / 2f) * r, i * Outer * r);
             Ring(c, r * Inner, r * Outer, 0.5f, mark);
         }

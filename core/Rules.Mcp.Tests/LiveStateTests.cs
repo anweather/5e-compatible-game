@@ -1,3 +1,4 @@
+// What the first play with Claude found (docs/playtests/2026-11-01-mcp.md): the tools read what's in force, refuse at once and say their limits.
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,15 +9,12 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>What the first play with Claude found (docs/playtests/2026-11-01-mcp.md): the tools read what's in force, refuse at once and say their limits.</summary>
     [Category("Simulation")]
     public class LiveStateTests
     {
         static Workbench NewBench() => new Workbench(ChemistryTests.Folders);
 
         static void Bigger(Workbench b) => b.Apply(b.SetSpell(null, "fireball", "radius", "4").Id, "Ana", "Bigger fireball");
-
-        // ---------- live state ----------
 
         [Test]
         public void ADraftBuildsOnWhatIsInForce()
@@ -95,7 +93,6 @@ namespace Chem.Tests
             Assert.That(b.RoomNow.Mods.Count, Is.EqualTo(3), b.Room());
             var room = b.RoomNow.Mods.Select(m => ModPatch.Parse(m.Json));
             Assert.That(b.InForce.Fingerprint, Is.EqualTo(b.Base.WithMods(room).Fingerprint));
-            // A look-free read of a value the written layer has: it agrees with the engine's in every spell.
             foreach (var s in b.InForce.Spells)
                 StringAssert.Contains($"\"id\": \"{s.Id}\"", b.Describe("spells", s.Id));
         }
@@ -124,12 +121,9 @@ namespace Chem.Tests
             var said = b.Apply(b.AddMaterial(null, "cover", "tar", "Tar").Id, "Ana", "Tar");
             StringAssert.Contains("switched on", said);
             var d = b.AddReaction(null, "fire-tar", "fire", "[{\"ignite\": 2}]", "{\"cover\": [\"tar\"]}");
-            // Tar is on, as a temporary material of its own mod (World.Lapse.cs): another mod may name it, and goes when it does (#86).
             Assert.That(b.Validate(d.Id), Is.Empty, Workbench.Report(b.Validate(d.Id)));
             Assert.That(b.Simulate(d.Id, "fire-on-grass", 6), Does.Contain("Scenario fire-on-grass"));
         }
-
-        // ---------- a game's desk ----------
 
         sealed class OldDesk : IRoomDesk
         {
@@ -144,7 +138,6 @@ namespace Chem.Tests
             }
         }
 
-        // A game that says what's on: its own world, stepped as a solo game does.
         sealed class LiveDesk : ILiveDesk
         {
             public World World;
@@ -175,7 +168,6 @@ namespace Chem.Tests
             b.Desk = desk;
             var tools = new RulesTools(b);
             tools.Apply(b.SetSpell(null, "fireball", "radius", "4").Id, null, "Bigger fireball");
-            // Someone else's change in the game shows at the next call.
             desk.World.ApplyRoom(RoomCommand.Apply("Player 2", "push", "{\"sim\": {\"push\": {\"slideCells\": 5}}}", "Longer slides"));
             StringAssert.Contains("Bigger fireball (bigger-fireball), by Player 1: radius from 2 to 4", tools.Describe("spells", "fireball"));
             StringAssert.Contains("Longer slides", tools.WhatsOn());
@@ -216,8 +208,6 @@ namespace Chem.Tests
             Assert.Throws<RulesToolException>(() => tools.SetWeather("rain"));
             Assert.That(desk.Asked, Is.Empty, "it would send a clock command on as a mod");
         }
-
-        // ---------- refuse at once ----------
 
         [TestCase("burn.colour", "burn takes")]
         [TestCase("burnn.catch", "has no field")]
@@ -307,8 +297,6 @@ namespace Chem.Tests
             Assert.AreEqual("An entity has no field player; its fields are name, material, components, hp, mass, str, ac, explodes, raider, look.", e.Message);
         }
 
-        // ---------- limits up front ----------
-
         static string Description(string tool) =>
             typeof(RulesTools).GetMethods().Where(m => m.GetCustomAttribute<RulesToolAttribute>()?.Name == tool).Select(m => m.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>().Description).Single();
 
@@ -350,8 +338,6 @@ namespace Chem.Tests
             var listed = JObject.Parse(rpc.Handle("{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}"))["result"]["tools"].Select(t => (string)t["name"]);
             Assert.That(listed, Is.SupersetOf(new[] { "whats_on", "outside_rules", "time", "weather", "set_time", "set_weather" }));
         }
-
-        // ---------- a new spell's place ----------
 
         static Workbench.SpellArgs Deluge(string extra = null) =>
             new Workbench.SpellArgs { Id = "oil-deluge", Name = "Oil Deluge", Group = "fire", Level = 3, Shape = "burst", Element = "fire", Radius = 6, Extra = extra };
@@ -400,8 +386,6 @@ namespace Chem.Tests
             var b = NewBench();
             StringAssert.Contains("by the combo", b.ReachOf(null, "scalding-steam"));
         }
-
-        // ---------- the clock and the weather ----------
 
         [Test]
         public void SetTimeMovesTheClockForwardOnly()

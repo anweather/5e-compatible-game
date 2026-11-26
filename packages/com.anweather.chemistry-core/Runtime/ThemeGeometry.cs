@@ -9,7 +9,6 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A point in cells (x east, y south).</summary>
     public readonly struct Pt
     {
         public readonly double X, Y;
@@ -21,7 +20,6 @@ namespace Chem
         }
     }
 
-    /// <summary>An axis-aligned box in cells.</summary>
     public readonly struct GeoBox
     {
         public readonly double X0, Y0, X1, Y1;
@@ -37,7 +35,6 @@ namespace Chem
         public bool Meets(GeoBox b) => X0 <= b.X1 && b.X0 <= X1 && Y0 <= b.Y1 && b.Y0 <= Y1;
     }
 
-    /// <summary>One wobble of a blob's outline: radius(theta) *= 1 + amp * cos(k * theta + phase).</summary>
     public readonly struct Harmonic
     {
         public readonly int K;
@@ -51,7 +48,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A noisy ellipse: centre, radii, rotation of the X radius from +x, and its outline's wobble.</summary>
     public sealed class Blob
     {
         public double Cx, Cy, Rx, Ry, Angle;
@@ -61,14 +57,12 @@ namespace Chem
             new Blob { Cx = Cx, Cy = Cy, Rx = Rx * sx, Ry = Ry * sy, Angle = Angle, Harmonics = Harmonics };
     }
 
-    /// <summary>A polyline with a half width at each point (cells).</summary>
     public sealed class GeoPath
     {
         public Pt[] Points = Array.Empty<Pt>();
         public double[] Half = Array.Empty<double>();
     }
 
-    /// <summary>The solver's seeded stream (mulberry32). Never used per cell.</summary>
     public sealed class ThemeRng
     {
         uint s;
@@ -88,7 +82,6 @@ namespace Chem
         }
 
         public double Range(double a, double b) => a + (b - a) * Next();
-        /// <summary>A whole number in [0, n).</summary>
         public int Below(int n) => (int)Math.Floor(Next() * n);
     }
 
@@ -97,13 +90,10 @@ namespace Chem
         const double Tau = 6.283185307179586;
         const double HalfPi = 1.5707963267948966;
 
-        /// <summary>sqrt(x² + y²) from exact operations.</summary>
         public static double Hypot(double x, double y) => Math.Sqrt(x * x + y * y);
 
-        /// <summary>JavaScript's Math.round: halves round up.</summary>
         static double RoundJs(double x) => Math.Floor(x + 0.5);
 
-        /// <summary>sin by range reduction and a Taylor series to x^17 (error under 1e-12).</summary>
         public static double Sin(double x)
         {
             double r = x - Tau * RoundJs(x / Tau);
@@ -120,7 +110,6 @@ namespace Chem
 
         public static double Cos(double x) => Sin(x + HalfPi);
 
-        /// <summary>atan by two half-angle reductions and a series (error under 1e-15).</summary>
         static double Atan(double v)
         {
             double t = v < 0 ? -v : v;
@@ -152,8 +141,6 @@ namespace Chem
             return c * c * (3 - 2 * c);
         }
 
-        // ---------- noisy ellipses ----------
-
         public static Blob MakeBlob(ThemeRng rng, double cx, double cy, double rx, double ry, double angle, double wobble = 0.14)
         {
             int[] ks = { 2, 3, 5 };
@@ -167,7 +154,6 @@ namespace Chem
             return new Blob { Cx = cx, Cy = cy, Rx = rx, Ry = ry, Angle = angle, Harmonics = harmonics };
         }
 
-        /// <summary>Normalised radial distance: under 1 inside, 1 on the (wobbly) outline.</summary>
         public static double Rho(Blob b, double x, double y)
         {
             double dx = x - b.Cx, dy = y - b.Cy;
@@ -195,8 +181,6 @@ namespace Chem
             return new GeoBox(b.Cx - r, b.Cy - r, b.Cx + r, b.Cy + r);
         }
 
-        // ---------- polylines ----------
-
         public static GeoBox Bounds(GeoPath p, double pad = 0)
         {
             double x0 = double.PositiveInfinity, y0 = double.PositiveInfinity, x1 = double.NegativeInfinity, y1 = double.NegativeInfinity;
@@ -212,7 +196,6 @@ namespace Chem
             return new GeoBox(x0, y0, x1, y1);
         }
 
-        /// <summary>Segments of a path whose padded box meets <paramref name="box"/> (indices of segment starts).</summary>
         public static List<int> SegmentsIn(GeoPath p, GeoBox box, double pad)
         {
             var output = new List<int>();
@@ -228,7 +211,6 @@ namespace Chem
             return output;
         }
 
-        /// <summary>Distance from (x, y) to the path's middle line over the given segments, and its half width there.</summary>
         public static (double d, double half) Distance(GeoPath p, IReadOnlyList<int> segs, double x, double y)
         {
             double best = double.PositiveInfinity, half = 0;
@@ -257,7 +239,6 @@ namespace Chem
             return s;
         }
 
-        /// <summary>Distance from p to the segment a-b.</summary>
         public static double SegmentDistance(Pt p, Pt a, Pt b)
         {
             double vx = b.X - a.X, vy = b.Y - a.Y;
@@ -269,12 +250,6 @@ namespace Chem
 
         static double LengthOr1(double l) => l == 0 ? 1 : l;
 
-        /// <summary>
-        /// A meandering curve through <paramref name="anchors"/> (at least two), resampled every
-        /// <paramref name="step"/> cells. Each leg is bent by recursive midpoint displacement (the large
-        /// bends) plus a sum of sines along it (the meanders), scaled by <paramref name="meander"/>
-        /// (0 straight, 1 strongly winding). Anchors are kept exactly.
-        /// </summary>
         public static List<Pt> MeanderCurve(ThemeRng rng, IReadOnlyList<Pt> anchors, double meander, double step = 4)
         {
             var output = new List<Pt> { anchors[0] };
@@ -290,7 +265,6 @@ namespace Chem
             return output;
         }
 
-        // Large bends: midpoint displacement to depth 3.
         static List<Pt> Bends(ThemeRng rng, Pt p, Pt q, double meander)
         {
             var ctrl = new List<Pt> { p, q };
@@ -313,7 +287,6 @@ namespace Chem
             return ctrl;
         }
 
-        // Resample a leg, adding sine meanders across its own direction (tapered to nothing at the anchors).
         static void AddMeanders(ThemeRng rng, List<Pt> output, List<Pt> ctrl, Pt p, Pt q, double meander, double step)
         {
             double len = Hypot(q.X - p.X, q.Y - p.Y);

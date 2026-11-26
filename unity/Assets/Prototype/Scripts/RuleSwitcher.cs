@@ -25,28 +25,21 @@ public class RuleSwitcher : MonoBehaviour
     ChemGrid grid;
     NetChem net;
 
-    /// <summary>The shipped mods and the player's own.</summary>
     public ModCatalog Catalog { get; private set; }
 
-    /// <summary>Why the last switch was refused, or null after one that worked.</summary>
     public string LastError { get; private set; }
 
-    /// <summary>The rules in force on this machine.</summary>
     public RuleSet Rules => grid.CurrentRules;
 
     bool Online => net != null && net.Online;
     bool IsClient => Online && !net.IsServer;
 
-    /// <summary>The room this world is played in.</summary>
     public RoomState Room => grid.World.Room;
 
-    /// <summary>This peer's name in the room.</summary>
     public string Me => Online ? net.LocalPeer : NetChem.PeerName(0);
 
-    /// <summary>Whether this machine may change the rules from files: solo or the host.</summary>
     public bool OwnsRules => !IsClient;
 
-    // Before anything reads the mods. Only a build has an install; the Editor's rules/mods is the repo's.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void MoveModsOutOfTheInstall()
     {
@@ -67,16 +60,11 @@ public class RuleSwitcher : MonoBehaviour
 
     void OnDestroy() => grid.RoomDecided -= Decided;
 
-    // This peer's own change: the panel says why it was refused, or stops saying.
     void Decided(RoomCommand command, RoomVerdict verdict)
     {
         if (command.Peer == Me) LastError = verdict.Done ? null : verdict.Line;
     }
 
-    /// <summary>
-    /// For a mod on whose materials lapse (World.LapsesAt): "lapses in 4:59", the play time left at the world's
-    /// tick rate; null for a mod that isn't on or doesn't lapse. A lapse itself comes as a revert (RoomDecided).
-    /// </summary>
     public string LapseNote(string id)
     {
         var world = grid.World;
@@ -88,13 +76,8 @@ public class RuleSwitcher : MonoBehaviour
         return $"lapses in {seconds / 60}:{seconds % 60:00}";
     }
 
-    // What a new switch builds on: a switch already queued but not yet in force counts.
     RuleSet Upcoming => grid.UpcomingRules;
 
-    /// <summary>
-    /// Switches a mod from the catalog on or off, or takes off one that came another way. Returns
-    /// why it was refused now, or null; the room's answer comes at the tick, in the log and LastError.
-    /// </summary>
     public string Toggle(string id)
     {
         if (Room.Mods.Exists(m => m.Id == id)) return Ask(RoomCommand.Revert(Me, id));
@@ -104,7 +87,6 @@ public class RuleSwitcher : MonoBehaviour
         return Ask(RoomCommand.Apply(Me, id, file.AsActive().Json, file.Title));
     }
 
-    /// <summary>Sends a room command on its way: decided before the next solo tick, or at the tick the host stamps.</summary>
     public string Ask(RoomCommand command)
     {
         if (Online) net.RequestRoom(command);
@@ -112,10 +94,6 @@ public class RuleSwitcher : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// A rules file was saved (from RulesWatcher, on the main thread): reload it, check it, and
-    /// switch at the next tick if it is in force. A file that doesn't check out leaves the rules alone.
-    /// </summary>
     public void FileChanged(string path)
     {
         if (!OwnsRules) return;
@@ -154,7 +132,6 @@ public class RuleSwitcher : MonoBehaviour
             Ask(RoomCommand.Apply(Me, id, file.AsActive().Json, file.Title));
             return;
         }
-        // Off: check that it would fit, so a broken mod shows up as soon as it is saved.
         Switch(() => { target.WithMods(target.Toggled(file.AsActive())); return null; },
             $"Mod checked: {shown} ({file.Title}), off; switch it on in the mods panel (M)", shown);
     }
@@ -170,7 +147,6 @@ public class RuleSwitcher : MonoBehaviour
         Switch(() => target.WithBase(grid.LoadBaseRules()), $"Rules reloaded: {shown}", shown);
     }
 
-    // Builds the new rules (which checks them) and, if they fit, queues them. A null result means "only checking".
     void Switch(Func<RuleSet> build, string note, string what)
     {
         RuleSet next;

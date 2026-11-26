@@ -13,11 +13,9 @@ public class HoldMoments : MonoBehaviour
 
     ChemGrid grid;
     int seen;
-    // Picked in the menu: gone into next frame, since closing the menu while it's drawing breaks its layout.
     string chosen;
     bool showPage;
 
-    /// <summary>Whether this build offers moments at all.</summary>
     public static bool Offered => Application.isEditor || Debug.isDebugBuild;
 
     void Awake()
@@ -37,7 +35,6 @@ public class HoldMoments : MonoBehaviour
         PauseMenu.RemovePage(PageId);
     }
 
-    // One row on the Developer page, opening a page of their own.
     void DrawInMenu()
     {
         if (PauseMenu.Button("The Hold's moments")) showPage = true;
@@ -50,7 +47,6 @@ public class HoldMoments : MonoBehaviour
             if (PauseMenu.Button(moment.Name)) chosen = moment.Id;
     }
 
-    /// <summary>Goes into a moment by its id, as the list does; false if the core refused it. The probe starts one here.</summary>
     public bool Enter(string id)
     {
         var caster = EventLog.TrackedCaster;

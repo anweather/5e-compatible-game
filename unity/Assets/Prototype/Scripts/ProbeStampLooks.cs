@@ -32,7 +32,6 @@ public class StampLooksProbe : LandShapesProbe
         Check($"dome_{radius}_moved_the_land", said.Contains("moved the land"), said.Length > 200 ? said.Substring(0, 200) : said);
     }
 
-    // Stamped cells around the middle that paint mostly rock.
     static int RockCells(World world, int reach)
     {
         int rock = CellPaint.Layers.ToList().IndexOf(CellPaint.Rock), n = 0;
@@ -42,7 +41,6 @@ public class StampLooksProbe : LandShapesProbe
         return n;
     }
 
-    // The slope of the drawn ground under a point, in degrees.
     float Slope(Vector3 p)
     {
         const float d = 0.75f;
@@ -53,7 +51,6 @@ public class StampLooksProbe : LandShapesProbe
 
     static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
 
-    // Watches the crates for some seconds: their top speeds and highest jump off the ground, and the land carry's cost.
     IEnumerator Watch(List<Watched> crates, float seconds)
     {
         foreach (var c in crates) c.Fastest = c.Highest = 0f;
@@ -102,7 +99,6 @@ public class StampLooksProbe : LandShapesProbe
         PlaceCell(X - 28, Y - 28);
         yield return Wait(1f);
 
-        // #148: a small stamp.
         var centre = Centre;
         centre.y = valley.GroundAt(centre);
         Cut(centre + new Vector3(-11f, 7f, -11f), centre);
@@ -117,7 +113,6 @@ public class StampLooksProbe : LandShapesProbe
         yield return Say("undo_act", "{}");
         yield return Wait(10f);
 
-        // #147: crates on a dome as it rises.
         yield return Say("act", $"{{\"what\":\"crate\",\"count\":{Crates},\"near\":\"[{X}, {Y}]\",\"within\":12,\"spacing\":3}}");
         yield return Wait(3f);
         var crates = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
@@ -139,7 +134,6 @@ public class StampLooksProbe : LandShapesProbe
         float carriedUp = crates.Average(c => c.Highest), carriedFar = crates.Average(c => Flat(c.Body.position, c.Home));
         Check("the_carry_is_cheap", carryFrames > 0 && carryMostMs < 2.0, $"{carryMostMs:0.00} ms at most over {carryFrames} frames");
 
-        // The same crates set on the still dome: what the slope alone does.
         var homes = crates.Select(c => c.Home).ToList();
         foreach (var c in crates)
         {
@@ -152,8 +146,6 @@ public class StampLooksProbe : LandShapesProbe
         }
         yield return Watch(crates, 15f);
         Report("still", crates);
-        // A crate tumbling down a 50 degree flank hops and runs on by itself: the carry may not add to that. Over the
-        // crates, not the one that went furthest: one crate's tumble runs anywhere from 70 to 140 m either way.
         float stillUp = crates.Average(c => c.Highest), stillFar = crates.Average(c => Flat(c.Body.position, c.Home));
         Metric("carried_highest_mean_m", carriedUp);
         Metric("still_highest_mean_m", stillUp);

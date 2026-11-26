@@ -30,7 +30,6 @@ public class HoldEastProbe : ProbeScenario
         return p;
     }
 
-    // The castle's gates as their open cells, the east gate first, then the south.
     List<List<(int x, int y)>> Gates()
     {
         var site = Core.HoldSite;
@@ -64,7 +63,6 @@ public class HoldEastProbe : ProbeScenario
         Check("two_spawners", site.Spawners.Count == 2, string.Join(",", site.Spawners.Select(s => s.Id)));
         Check("the_brook_is_dry", Enumerable.Range(250, 220).All(y => Enumerable.Range(30, 100).All(x => Core.At(x, y)?.T != "river")), "no river cells behind the castle");
         if (gates.Count != 2 || site.Spawners.Count != 2) yield break;
-        // The castle drawn whole before the run: no stretch of wall shown down by the new gate.
         var houses = FindAnyObjectByType<RowHouses>();
         var ruin = houses != null ? houses.Ruin(site.Castle) : null;
         Check("the_castle_stands_whole", ruin != null && ruin.Down == 0, ruin == null ? "no ruin" : $"{ruin.Down} down at {string.Join(" ", ruin.DownPlaces())}, the row at {site.Row?["at"]}");
@@ -74,7 +72,6 @@ public class HoldEastProbe : ProbeScenario
         Check("a_run_starts", Core.HoldRunning);
         if (!Core.HoldRunning) yield break;
         StandOn(site.Rise);
-        // A fuller wave than the first, with a few kinds in it, as the probe puts it straight in.
         Core.Hold.Wave = 4;
         Core.Hold.InWave = 0;
         Core.Hold.ToSpawn = World.HoldWaveSize(Core.Rules.Sim.Hold, 4, Core.Hold.Peers);
@@ -91,14 +88,12 @@ public class HoldEastProbe : ProbeScenario
         }
     }
 
-    // The run held in its first wave with the keep whole, so no offer or fall cuts in while the probe watches.
     void HoldTheRun()
     {
         Core.Hold.Health = Core.Rules.Sim.Hold.Health;
         Core.Hold.NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
     }
 
-    // Who has come in at which gate so far.
     void Through(List<List<(int x, int y)>> gates, ref bool east, ref bool south)
     {
         HoldTheRun();
@@ -109,7 +104,6 @@ public class HoldEastProbe : ProbeScenario
         }
     }
 
-    // The wave comes out from both spawners, walks both roads, and some of it is in at the south gate.
     IEnumerator BothRoads(WorldHold site, List<List<(int x, int y)>> gates)
     {
         var east = Middle(gates[0]);
@@ -117,7 +111,6 @@ public class HoldEastProbe : ProbeScenario
         var from = new Dictionary<int, (int x, int y)>();
         bool throughSouth = false, throughEast = false;
         Time.timeScale = Hurry;
-        // Till a few are close to each gate, outside it.
         for (float t = 0f; t < MostMarch; t += Time.deltaTime)
         {
             Through(gates, ref throughEast, ref throughSouth);
@@ -137,7 +130,6 @@ public class HoldEastProbe : ProbeScenario
 
         if (!string.IsNullOrEmpty(ScreenshotDir)) film = new ClipFilm(this, ScreenshotDir, withHud: true) { Keeping = false };
         film?.Roll();
-        // Over the castle's south-east corner: the east gate's road on the right, the south gate's below.
         var heart = Ground(site.Heart);
         var corner = Ground((south.x + 10, south.y + 8));
         Cut(corner + new Vector3(22f, 26f, -30f), (heart + corner) * 0.5f);
@@ -151,7 +143,6 @@ public class HoldEastProbe : ProbeScenario
         }
         if (film != null) film.Keeping = false;
 
-        // The east gate, the foot's road coming up to it.
         var gateEast = Ground(east);
         Cut(gateEast + new Vector3(17f, 8f, 5f), gateEast + Vector3.up * 1.5f);
         yield return Wait(0.3f);
@@ -164,7 +155,6 @@ public class HoldEastProbe : ProbeScenario
         }
         if (film != null) film.Keeping = false;
 
-        // At the south gate, from outside, looking in.
         var gate = Ground(south);
         Cut(gate + new Vector3(4f, 7f, -16f), gate + Vector3.up * 1.5f);
         yield return Wait(0.3f);
@@ -176,7 +166,6 @@ public class HoldEastProbe : ProbeScenario
             yield return null;
         }
         if (film != null) film.Keeping = false;
-        // The rest of the wave, hurried, to see who got in where.
         Time.timeScale = Hurry;
         for (float t = 0f; t < 120f && !(throughSouth && throughEast); t += Time.deltaTime)
         {
@@ -188,7 +177,6 @@ public class HoldEastProbe : ProbeScenario
         Check("and_at_the_east_gate", throughEast);
     }
 
-    // The wizard walks off the lake's west shore into the shallows: wading slows it a little.
     IEnumerator Wade()
     {
         var effects = wizard.GetComponent<SurfaceEffects>();
@@ -197,7 +185,6 @@ public class HoldEastProbe : ProbeScenario
         Check("the_edge_slows_a_little", effects.WadingFactor(0.15f) >= 0.88f, $"{effects.WadingFactor(0.15f):0.00}");
         Check("waist_deep_slows_more_not_a_lot", effects.WadingFactor(1.1f) >= 0.75f && effects.WadingFactor(1.1f) < effects.WadingFactor(0.15f), $"{effects.WadingFactor(1.1f):0.00}");
 
-        // A dry cell with the lake's water a few cells east of it, south of the lake house, on the ground (not a roof).
         (int x, int y) shore = default;
         bool found = false;
         for (int y = 396; y < 430 && !found; y++)
@@ -227,7 +214,6 @@ public class HoldEastProbe : ProbeScenario
         var walk = puppet.WalkTo(Ground((shore.x + 13, shore.y)));
         for (float t = 0f; t < 6f && walk.MoveNext(); t += Time.deltaTime)
         {
-            // The camera follows, behind and to the side.
             var at = wizard.transform.position;
             Cut(at + new Vector3(-4.5f, 2.6f, -5.5f), at + new Vector3(2.5f, 0.6f, 0f));
             yield return walk.Current;
@@ -257,7 +243,6 @@ public class HoldEastProbe : ProbeScenario
         Check("wading_is_only_a_little_slower", dry > 0f && wet / dry >= 0.78f, $"{wet:0.00} m/s against {dry:0.00} on land");
     }
 
-    // The castle's surroundings a pixel a cell (scaled): water blue, the castle's roads orange, stone grey, the spawners red.
     void WriteMap(string path, int x0, int y0, int x1, int y1, int scale)
     {
         var site = Core.HoldSite;

@@ -16,7 +16,6 @@ namespace Chem.Tests
         const string Bo = "Bo", Cy = "Cy";
         const int Seed = 17, MostTicks = 20000;
 
-        // The rules with short, small waves, so a test plays several: the curve isn't what's checked here.
         static Rules rules;
         static Rules R => rules ??= Short(Rules.Load(ChemistryTests.RulesDir()));
         static HoldParams P => R.Sim.Hold;
@@ -28,7 +27,6 @@ namespace Chem.Tests
             return r;
         }
 
-        // What the net checks (NetChem.Checksum): everything but the cells each tick, and the cells a slice a tick (RollingHash).
         static string Others(World w) => w.SkyHash() + "/" + w.DefenseHash() + "/" + w.CastHash() + "/" + w.DragonHash() + "/" + w.LandHash();
 
         static string Checksum(World w) => w.CellHash() + "/" + Others(w);
@@ -44,7 +42,6 @@ namespace Chem.Tests
             }
         }
 
-        // The wall cells nearest the heart, where the wizards stand to fight (as the holdcurve bots do).
         static List<(int x, int y)> Posts(World w)
         {
             var s = w.HoldSite;
@@ -54,14 +51,12 @@ namespace Chem.Tests
                 .Select(c => (c.X, c.Y)).Where((_, i) => i % 3 == 0).Take(3).ToList();
         }
 
-        // One player's copy of the game: its world, and the one wizard it plays.
         sealed class Peer
         {
             public World W;
             public string Me;
             public int Points;
             public (int x, int y) Post;
-            // Which of an offer it takes, by the wave; -1 leaves it for the seed's pick as the next wave starts.
             public Func<int, int> Choose;
             public readonly RollingHash Rolling = new RollingHash();
             bool brought, posted;
@@ -70,7 +65,6 @@ namespace Chem.Tests
                 .Where(r => Math.Abs(r.X - Post.x) <= range && Math.Abs(r.Y - Post.y) <= range)
                 .OrderBy(r => Math.Abs(r.X - W.HoldSite.Heart.x) + Math.Abs(r.Y - W.HoldSite.Heart.y)).ThenBy(r => r.Id).FirstOrDefault();
 
-            // What this peer sends before the tick, from what its own world shows.
             public IEnumerable<object> Think()
             {
                 if (!brought)
@@ -106,7 +100,6 @@ namespace Chem.Tests
                     if (pick >= 0) yield return ComboCommand.Pick(Me, run.Offer[pick % run.Offer.Count]);
                 }
                 if (W.CastOf(Me)?.Casting == true || Target(HandRules.RangeOf(Throw)) == null) yield break;
-                // Every hand and gesture it would like, whether it has them or not: a locked one is refused alike everywhere.
                 for (int hand = Right; hand >= Left; hand--)
                     if (W.HandCooling(Me, hand) == 0)
                     {
@@ -124,7 +117,6 @@ namespace Chem.Tests
             public readonly List<(int tick, object command)> History = new List<(int, object)>();
             public int Checked;
 
-            // One tick of lockstep: every peer's commands, in the peers' order, reach every world; they all step; their checksums agree.
             public void Tick()
             {
                 var sent = Peers.SelectMany(p => p.Think().ToList()).ToList();
@@ -151,7 +143,6 @@ namespace Chem.Tests
                 Assert.That(done(Peers[0].W), what);
             }
 
-            // A peer joining late replays the history on a fresh world (NetChem), then plays along.
             public Peer Join(Peer p)
             {
                 var host = Peers[0].W;
@@ -173,7 +164,6 @@ namespace Chem.Tests
             return new Peer { W = w, Me = me, Points = points, Post = Posts(w)[post], Choose = choose };
         }
 
-        // The landing's short one: two peers with different points through a wave and its picks, and a joiner caught up.
         [Test]
         public void TwoPeersWithDifferentPointsStayInLockstepThroughAWave()
         {
@@ -196,7 +186,6 @@ namespace Chem.Tests
             Assert.That(late.W.HandsText(), Is.EqualTo(w.HandsText()));
         }
 
-        // Five waves with three peers: the sweep runs it (docs/TESTING_LAYERS.md), the one above and the control below land.
         [Test, Category("Sweep")]
         public void TwoPeersWithDifferentPointsStayInLockstepThroughARunAndALateJoiner()
         {
@@ -206,7 +195,6 @@ namespace Chem.Tests
             room.Peers.Add(fresh);
             room.Peers.Add(all);
             room.Tick();
-            // Attuning at the water tower takes its moment.
             for (int i = 0; i < R.Sim.Hold.Hands.AttuneTicks; i++) room.Tick();
 
             var w = fresh.W;
@@ -216,7 +204,6 @@ namespace Chem.Tests
             Assert.That(all.W.HandsOf(Me).Holds[Left], Is.EqualTo("water"), "so a fresh wizard attunes, on every peer");
             Assert.That(all.W.HandsOf(Bo).Holds[Left], Is.EqualTo("water"));
 
-            // Ana's peer starts the run from the plate; both wizards go to the wall.
             var plate = StrikeCommand.Stand(Me, w.HoldSite.Plate.x, w.HoldSite.Plate.y, 1000000);
             room.History.Add((w.Tick, plate));
             foreach (var p in room.Peers) Apply(p.W, plate);
@@ -245,7 +232,6 @@ namespace Chem.Tests
             TestContext.WriteLine($"{room.Checked} ticks checked, wave {w.Hold.Wave}, {w.ActiveChunks.Count} chunks active");
         }
 
-        // The control: a point either way is a different world, so the checksum would catch a peer that brought its own.
         [Test]
         public void APeerThatDisagreesOnPointsIsCaught()
         {

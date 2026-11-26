@@ -39,7 +39,6 @@ public class DefenseProbe : ProbeScenario
 
     Vector3 Middle => (defense.gate.position + defense.flag.position) / 2f;
 
-    // From the south, high, looking over the whole path.
     void Overview() => Cut(Middle + V(0f, 26f, -34f), Middle);
 
     IEnumerator StartWaves()
@@ -49,12 +48,10 @@ public class DefenseProbe : ProbeScenario
         yield return Wait(2f);
         Check("plate_starts_waves", defense.Running, "standing on the start plate started the waves");
         Check("start_logged", ConsoleSaid("raiders are coming", mark) || LogSince(0).Any(l => l.Contains("Wave 1 of")), "the start in the log");
-        // Off the plate, beside the flag, to watch.
         var watch = defense.flag.position + V(-4f, 0f, -9f);
         Teleport(new Vector3(watch.x, TerrainGround(watch) + 0.05f, watch.z));
     }
 
-    // The first raider comes through the gate and gets nearer the flag.
     IEnumerator Walking(Vector2Int flag)
     {
         float waited = 0f;
@@ -79,11 +76,8 @@ public class DefenseProbe : ProbeScenario
         Check("raiders_drawn", defense.DrawnRaiders > 0, $"{defense.DrawnRaiders} raiders drawn as creatures");
     }
 
-    // How fast the first raider walked (Walking), to lead a Fireball by.
     float squaresPerSecond;
 
-    // A Fireball ahead of the leader, where it will be when the bead lands: the core takes the cast at the landing, a
-    // wind-up and a flight later, and the leader walks on meanwhile (about 5 squares from this far).
     IEnumerator Fireball(Vector2Int flag)
     {
         if (World.Raiders.Count == 0) yield break;
@@ -101,7 +95,6 @@ public class DefenseProbe : ProbeScenario
         Check("fireball_kills", defense.Puffs > puffs, $"{defense.Puffs - puffs} raider(s) beaten ({alive} on the board before, {World.Raiders.Count} after)");
     }
 
-    // A Wall of Stone across the path, eight squares short of the flag: the raiders go round its ends.
     IEnumerator Wall(Vector2Int flag)
     {
         int column = flag.x - 8;
@@ -128,7 +121,6 @@ public class DefenseProbe : ProbeScenario
             $"passed the wall's column on rows {string.Join(", ", seen)} (wall on {string.Join(", ", wallRows)}); way's cost {costBefore} then {costAfter}");
     }
 
-    // Sooner or later one gets through: a life lost, on the banner too.
     IEnumerator LifeLost()
     {
         int lives = World.Rules.Sim.Defense.Lives;

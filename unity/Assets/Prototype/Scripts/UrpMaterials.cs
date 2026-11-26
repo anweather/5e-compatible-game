@@ -8,10 +8,8 @@ using UnityEngine.Rendering;
 public static class UrpMaterials
 {
     public const string LitShader = "Universal Render Pipeline/Lit";
-    // Lit like LitShader, but multiplied by the mesh's vertex colours (alpha too): soft-edged films.
     public const string VertexLitShader = "Universal Render Pipeline/Particles/Lit";
 
-    /// <summary>A new Lit material. <paramref name="smoothness"/> null keeps the shader's default.</summary>
     public static Material NewLit(string name, Color color, float? smoothness = null, Color? emission = null)
     {
         var m = new Material(Shader.Find(LitShader)) { name = name };
@@ -19,7 +17,6 @@ public static class UrpMaterials
         return m;
     }
 
-    /// <summary>Sets a Lit material's colour, and optionally its smoothness and emission.</summary>
     public static void Configure(Material m, Color color, float? smoothness = null, Color? emission = null)
     {
         m.SetColor("_BaseColor", color);
@@ -27,12 +24,9 @@ public static class UrpMaterials
         if (!emission.HasValue) return;
         m.EnableKeyword("_EMISSION");
         m.SetColor("_EmissionColor", emission.Value);
-        // Without this flag URP's material validation drops _EMISSION again when a saved
-        // material is imported (the flag starts as EmissiveIsBlack), and the glow is lost.
         m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
     }
 
-    /// <summary>Switches a Lit material to a transparent, alpha-blended surface (as the inspector's Surface Type does).</summary>
     public static void MakeTransparent(Material m)
     {
         m.SetFloat("_Surface", 1f);
@@ -45,11 +39,6 @@ public static class UrpMaterials
         m.SetOverrideTag("RenderType", "Transparent");
     }
 
-    /// <summary>
-    /// Makes a material a see-through lit surface tinted by its mesh's vertex colours, alpha
-    /// included, so a mesh can fade its own edges (water, slicks). Falls back to plain Lit (no
-    /// vertex colours) if the shader isn't in the build.
-    /// </summary>
     public static void ConfigureSoftSurface(Material m, Color color, float smoothness)
     {
         var shader = Shader.Find(VertexLitShader);
@@ -60,18 +49,10 @@ public static class UrpMaterials
         m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
     }
 
-    /// <summary>
-    /// How glossy a film on the ground is (oil, grease, mud, glass: CellSlickMesh). Near a mirror its
-    /// sky reflection stays at full strength however see-through the film is, and hides its colour.
-    /// </summary>
     public const float FilmSmoothness = 0.7f;
 
     public const string UnlitParticlesShader = "Universal Render Pipeline/Particles/Unlit";
 
-    /// <summary>
-    /// An unlit see-through material for particles and lines, tinted by their vertex colours:
-    /// alpha-blended (rain) or added on top (a lightning bolt; a colour over 1 blooms).
-    /// </summary>
     public static Material NewUnlitParticles(string name, Color color, bool additive)
     {
         var m = new Material(Shader.Find(UnlitParticlesShader)) { name = name };
@@ -90,7 +71,6 @@ public static class UrpMaterials
         m.EnableKeyword("_NORMALMAP");
     }
 
-    /// <summary>Per-renderer colour through a property block, so many renderers can share one material.</summary>
     public static void SetColor(Renderer r, MaterialPropertyBlock block, Color color)
     {
         r.GetPropertyBlock(block);

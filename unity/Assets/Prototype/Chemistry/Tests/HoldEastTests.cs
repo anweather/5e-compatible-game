@@ -9,7 +9,6 @@ namespace Chem.Tests
 {
     public partial class HoldTests
     {
-        // The castle's open gates, each as its cells: the east gate first, then the south.
         static List<List<(int x, int y)>> Gates(World w)
         {
             var row = BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings);
@@ -24,7 +23,6 @@ namespace Chem.Tests
             return gates.OrderByDescending(g => g.Max(c => c.x)).ToList();
         }
 
-        // Where one raider of this kind put down here walks, until it strikes the keep.
         static List<(int x, int y)> Walk(World w, (int x, int y) from, string kind = "bone-hound")
         {
             int full = w.Hold.Health;

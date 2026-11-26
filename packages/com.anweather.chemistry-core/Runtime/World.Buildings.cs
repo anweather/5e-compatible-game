@@ -16,7 +16,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>What a rule switch did to the world's buildings. For the view: a handler must not change the world.</summary>
     public sealed class BuildingsChange
     {
         internal HashSet<int> Covered = new HashSet<int>();
@@ -28,32 +27,24 @@ namespace Chem
             Ids = ids;
         }
 
-        /// <summary>The buildings whose rows changed, whose drawing must follow: World.BuildingRowOf(id) is the row, null once it's gone.</summary>
         public IReadOnlyList<string> Ids { get; }
 
-        /// <summary>Whether this cell was just built on, so whoever stands there is pushed out (World.NearestFree).</summary>
         public bool Covers(int x, int y) => Covered.Contains(y * w + x);
     }
 
     public sealed partial class World
     {
-        // How far a push looks for a free cell, in cells.
         const int PushReach = 48;
 
         List<JObject> baseBuildings;
-        // What stood under a cell a mod's building was laid on (terrain and height), by index.
         readonly SortedDictionary<int, (string terrain, int height)> underBuildings = new SortedDictionary<int, (string, int)>();
 
-        /// <summary>A rule switch changed what's built. Raised after the cells are laid, with the chunks raised on ChunkFreshened.</summary>
         public event Action<BuildingsChange> BuildingsChanged;
 
-        /// <summary>The rows of the buildings the world was made with (WorldBuildings), by the world's starting cells.</summary>
         internal IReadOnlyList<JObject> BaseBuildings => baseBuildings ??= (roomBudgets?.Buildings ?? WorldBuildings.Empty).RowsOn(StartTerrain, Rules.Buildings);
 
-        // Before a mod's building lands, so the rows read the world as it was made.
         internal void NoteBaseBuildings() => _ = BaseBuildings;
 
-        // A load's starting cells are in: the buildings are read from them again.
         internal void NoteBaseBuildingsAgain()
         {
             if (startSource == null) return;
@@ -67,23 +58,18 @@ namespace Chem
             return startSource != null ? StartCell(x, y).T : At(x, y).T;
         }
 
-        /// <summary>Every building in force, in order: those the world was made with, then those the mods added.</summary>
         public IReadOnlyList<BuildingRow> BuildingsNow => RowsUnder(Rules);
 
-        /// <summary>Whether the world was made with this building, so a mod's row of that id edits it.</summary>
         public bool IsBaseBuilding(string id) => BaseBuildings.Any(r => (string)r["id"] == id);
 
-        /// <summary>The buildings drawn from their rows: what the mods brought and edited, and the world's rows laid at the start. The rest stand as the valley drew them.</summary>
         public List<BuildingRow> RowsDrawn()
         {
             var laid = new HashSet<string>((roomBudgets?.Buildings ?? WorldBuildings.Empty).LaidRows.Select(r => (string)r["id"]), StringComparer.Ordinal);
             return BuildingsNow.Where(r => (laid.Contains(r.Id) && IsBaseBuilding(r.Id)) || Rules.ModBuildings.Any(m => m.Id == r.Id)).ToList();
         }
 
-        /// <summary>A building in force by id, or null.</summary>
         public BuildingRow BuildingRowOf(string id) => RowOf(id, Rules);
 
-        /// <summary>What a building's cells are under the rules in force, in world cells.</summary>
         public List<BuildingCell> BuildingCellsOf(BuildingRow row) => BuildingRaster.Cells(row, Rules.Buildings);
 
         List<BuildingRow> RowsUnder(Rules rules)
@@ -108,12 +94,9 @@ namespace Chem
             return row == null ? null : BuildingRow.Read(id, row, rules.Buildings);
         }
 
-        // Whether a switch can change what's built: a mod's rows, or tables the world's own rows read through (#85).
         static bool MayChangeBuildings(Rules was, Rules now) =>
             was.ModBuildings.Count > 0 || now.ModBuildings.Count > 0 || !JToken.DeepEquals(was.Buildings.Json, now.Buildings.Json);
 
-        // The rows that differ between two rule sets, in id order: only what decides cells counts. A table
-        // change can redraw the world's own rows (a drawn-door that becomes a gap), so they're compared too.
         List<string> ChangedRows(Rules was, Rules now)
         {
             var ids = new SortedSet<string>(was.ModBuildings.Select(r => r.Id).Concat(now.ModBuildings.Select(r => r.Id)), StringComparer.Ordinal);
@@ -129,7 +112,6 @@ namespace Chem
             return x.Count == y.Count && x.Zip(y, (p, q) => p.X == q.X && p.Y == q.Y && p.Terrain == q.Terrain).All(same => same);
         }
 
-        // The cells a list of rows covers, by index, in order (a later row wins); cells off the world are left out.
         SortedDictionary<int, string> CellsOf(IEnumerable<string> ids, Rules rules)
         {
             var cells = new SortedDictionary<int, string>();
@@ -142,8 +124,6 @@ namespace Chem
             }
             return cells;
         }
-
-        // ---------- laying what changed ----------
 
         void LayBuildings(Rules was, Rules now)
         {
@@ -196,7 +176,6 @@ namespace Chem
             KeepInStart(index, c);
         }
 
-        // A wall taken away: what stood under it, or for a cell the world was made with, the plain ground.
         void ClearBuilding(int index, Rules now)
         {
             var c = CellAt(index);
@@ -216,7 +195,6 @@ namespace Chem
             ch.Start = WithChange(ch.Start, LocalIndex(x, y), c, x, y, startSource);
         }
 
-        // A chunk's cells were laid over: its water is checked afresh, the audit counts again, and the view redraws it.
         void FreshenBuilt(int cx, int cy)
         {
             var ch = FindChunk(cx, cy);
@@ -226,7 +204,6 @@ namespace Chem
             ChunkFreshened?.Invoke(new ChunkFresh(cx, cy));
         }
 
-        // Raiders on a cell just built on, in id order, each to the nearest free cell.
         void PushRaiders(BuildingsChange change)
         {
             foreach (var r in raiders.Where(r => r.Alive && change.Covers(r.X, r.Y)).OrderBy(r => r.Id))
@@ -238,11 +215,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// The nearest cell someone standing here can be pushed to: not blocking, not under water, and in no
-        /// building; nearest by distance, then north to south and west to east; null if none is within reach.
-        /// The view asks this for its players, who aren't core state, and logs its own line (BuildingsChanged).
-        /// </summary>
         public (int x, int y)? NearestFree(int x, int y)
         {
             var built = BuiltIndexes();
@@ -254,7 +226,6 @@ namespace Chem
             return null;
         }
 
-        // The cells of every building standing now, by index (NearestFree's own, uncached, unlike BuiltCells).
         HashSet<int> BuiltIndexes()
         {
             var built = new HashSet<int>();
@@ -264,7 +235,6 @@ namespace Chem
             return built;
         }
 
-        // The nearest free cell on the square ring this far out, north to south and west to east on ties; null if none.
         (int x, int y)? NearestFreeAt(int x, int y, int reach, HashSet<int> built)
         {
             (int x, int y)? best = null;
@@ -285,12 +255,6 @@ namespace Chem
             return best;
         }
 
-        // ---------- the site check, on every peer at the tick ----------
-
-        /// <summary>
-        /// Whether these rules' changed rows may stand: null if so, else one sentence. Only cells a building
-        /// newly takes count, each of which must be in the world, clear of other buildings and things, dry and open ground.
-        /// </summary>
         public string SiteProblem(Rules next, string title = null)
         {
             var leaving = LeavingThings(next);
@@ -316,7 +280,6 @@ namespace Chem
             return OverlapProblem(next, title);
         }
 
-        /// <summary>Why a building can't stand on this cell (null if it can), other than on the given buildings' cells or under the things leaving.</summary>
         public string CellProblem(int x, int y, IReadOnlyDictionary<(int, int), string> others = null, ISet<(string, int, int)> leaving = null)
         {
             if (!InBounds(x, y)) return "it's off the world";
@@ -337,7 +300,6 @@ namespace Chem
             return cells;
         }
 
-        // Two buildings on one cell, among those a mod has a hand in.
         string OverlapProblem(Rules next, string title)
         {
             if (next.ModBuildings.Count == 0) return null;
@@ -353,13 +315,6 @@ namespace Chem
             return null;
         }
 
-        /// <summary>
-        /// The site problem a patch would meet here if it switched on now: null if none. It doesn't switch it on.
-        /// With <paramref name="replacing"/>, a mod on that is an earlier state of this same patch, it goes in that mod's
-        /// place rather than over it, so what that mod put in the world doesn't count against the patch.
-        /// A patch that doesn't compose with the mods on is a sentence too, never a ModException: this runs on the
-        /// game's main thread for the tools (GameRoomDesk), where a throw would reach no one.
-        /// </summary>
         public string SiteProblemOf(string patchJson, string title = null, string replacing = null)
         {
             if (RoomRules == null) return null;
@@ -368,8 +323,6 @@ namespace Chem
             string misfit = Compose(mods, $"{title ?? "that mod"} doesn't fit the rules", out var next);
             return misfit != null ? misfit.Replace(standIn + ": ", "") : SiteProblem(next.Effective, title);
         }
-
-        // ---------- the save ----------
 
         void SaveBuildings(JObject room)
         {
@@ -381,7 +334,6 @@ namespace Chem
             foreach (var u in room["under"] ?? new JArray()) underBuildings[(int)u[0]] = ((string)u[1], (int)u[2]);
         }
 
-        // A load makes the starting state from the source, without the mods' buildings: they go in again.
         internal void BuildingsIntoStart()
         {
             if (startSource == null || Rules.ModBuildings.Count == 0) return;

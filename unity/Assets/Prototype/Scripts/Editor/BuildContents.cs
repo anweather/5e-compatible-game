@@ -21,7 +21,6 @@ public static class BuildContents
         }
     }
 
-    /// <summary>The collection a target's player warms up from, named for its graphics API.</summary>
     internal static string PsoCollection(BuildTarget target) =>
         target == BuildTarget.StandaloneWindows64 ? "PsoDirect3D12" : "PsoMetal";
 

@@ -7,15 +7,12 @@ using System.IO;
 
 namespace Chem
 {
-    /// <summary>The game's folders: rules/, world/ beside it, and the player's own when there is a player.</summary>
     public sealed class GameFolders
     {
-        /// <summary>The map when none is named: the first one.</summary>
         public const string DefaultMap = "valley";
 
         const string RulesName = "rules", WorldName = "world", MapsName = "maps", ModsName = "mods", Marker = "materials.json", EditorDataName = "EditorPlayerData";
 
-        /// <summary>A given rules folder (the MCP server's --rules, a test's copy), a map's folder under world/maps/ beside it, and the player's data folder if there is one.</summary>
         public GameFolders(string rules, string playerData = null, string map = DefaultMap)
         {
             Rules = rules;
@@ -30,54 +27,30 @@ namespace Chem
 
         GameFolders(GameFolders folders, string map) : this(folders.Rules, folders.PlayerData, map) => Claude = folders.Claude;
 
-        /// <summary>The same folders on another map: the player's, a probe's chat folder among them, stay as they are.</summary>
         public GameFolders WithMap(string map) => new GameFolders(this, map);
 
-        /// <summary>rules/: the rules JSON, looks and budgets.</summary>
         public string Rules { get; }
 
-        /// <summary>
-        /// The folder rules/ is in: the repo's root, with docs/, tools/ and the rest of a checkout, for anything run from one
-        /// (the Editor, the tests, a build being packed); a build reading its pack has only rules/ and world/ there.
-        /// </summary>
         public string Repo { get; }
 
-        /// <summary>The map these folders are for: its id, and its folder's name.</summary>
         public string Map { get; }
 
-        /// <summary>world/maps/, beside rules/: a folder for each map.</summary>
         public string Maps { get; }
 
-        /// <summary>The map's folder, world/maps/&lt;id&gt;: map.json, cells, land, things, places, buildings and themes.</summary>
         public string World { get; }
 
-        /// <summary>rules/mods: the shipped mods, which come with the build.</summary>
         public string ShippedMods { get; }
 
-        /// <summary>The player's data folder, which an update leaves alone; null with no player (the MCP server, chatbench, the tests).</summary>
         public string PlayerData { get; }
 
-        /// <summary>The chat's folder in the player's data folder; null with no player.</summary>
         public ClaudeFolder Claude { get; }
 
-        /// <summary>A player's own API key, sealed (ApiKey), beside the chat's folder and not in it, which claude can read; null with no player.</summary>
         public string ApiKeyFile => PlayerData == null ? null : System.IO.Path.Combine(PlayerData, "api-key.dat");
 
-        /// <summary>How the game reaches Claude, sealed as the key is (ChatSetup); null with no player.</summary>
         public string ChatSetupFile => PlayerData == null ? null : System.IO.Path.Combine(PlayerData, "chat-setup.dat");
 
-        /// <summary>
-        /// Where a save goes, read before the shipped mods: the player's, beside notes.md, in the Editor too, so a save
-        /// there leaves the repo's rules/mods alone. With no player it's rules/mods, which is how the MCP server ships a mod.
-        /// </summary>
         public string Mods => Claude?.Mods ?? ShippedMods;
 
-        /// <summary>
-        /// The game's: a build's rules packed into its StreamingAssets, else (the Editor, or a build without them) the repo's
-        /// rules/ found by walking up from the project. A fixed "../../rules" would miss it for Multiplayer Play Mode's
-        /// virtual players, whose project copies live deeper (unity/Library/VP/&lt;id&gt;/). A build's data folder is the one
-        /// it's given; the Editor's is <see cref="EditorPlayerData"/>, as Unity gives the Editor the shipped game's (#78).
-        /// </summary>
         public static GameFolders ForGame(string streamingAssets, string project, bool editor, string playerData, string map = DefaultMap)
         {
             string packed = Path.Combine(streamingAssets, RulesName);
@@ -85,15 +58,9 @@ namespace Chem
                 editor ? EditorPlayerData(project) : playerData, map);
         }
 
-        /// <summary>
-        /// The Editor's own data folder, Library/EditorPlayerData in the project: the Editor shares the shipped game's
-        /// persistentDataPath (the same company and product), where a player's saved mods, play logs and chat records are,
-        /// so nothing the Editor or a test run writes goes there. Library is the project's own and out of git.
-        /// </summary>
         public static string EditorPlayerData(string project) =>
             Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project).TrimEnd('/', '\\')) ?? project, "Library", EditorDataName);
 
-        /// <summary>The repo's rules/ above a folder, with no player: anything started inside the repo.</summary>
         public static GameFolders InRepo(string start, string map = DefaultMap) => new GameFolders(RulesAbove(start), null, map);
 
         static string RulesAbove(string start)
@@ -107,29 +74,18 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// The chat's folder, claude-terminal in the player's data folder: where the terminal and the chat run claude, with its
-    /// .mcp.json, CLAUDE.md, notes.md and the player's saved mods.
-    /// </summary>
     public sealed class ClaudeFolder
     {
-        /// <summary>Its name in the player's data folder.</summary>
         public const string Name = "claude-terminal";
 
         readonly string own;
 
         public ClaudeFolder(string playerData) => own = System.IO.Path.Combine(playerData, Name);
 
-        /// <summary>The folder: a probe's while <see cref="Test"/> is set, else the player's.</summary>
         public string Path => Test ?? own;
 
-        /// <summary>
-        /// A probe's folder in place of the player's, so a probe starts from no notes.md and its saves are its own. While
-        /// it's set, a sign-in failure opens no terminal: nobody is at the keys.
-        /// </summary>
         public string Test { get; set; }
 
-        /// <summary>The player's saved mods.</summary>
         public string Mods => System.IO.Path.Combine(Path, "mods");
     }
 }

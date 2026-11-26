@@ -25,9 +25,7 @@ public class WizardDown : MonoBehaviour
     NetWizard net;
     Component inputs;
     FieldInfo move;
-    // The controls are off because of the fall, and come back once the menu isn't holding them.
     bool heldOff;
-    // The cell it fell on, and the last tick the breath was asked about.
     Vector2Int fellOn;
     int breathTick = -1;
 
@@ -104,8 +102,6 @@ public class WizardDown : MonoBehaviour
         if (Online) net.Downed(lying);
     }
 
-    // Each frame, as the menu gives the controls back when it closes. The stick's last push stays
-    // in the controller's input once PlayerInput is off, so it's cleared too.
     void HoldOff()
     {
         heldOff = true;
@@ -121,7 +117,6 @@ public class WizardDown : MonoBehaviour
         if (input != null) input.enabled = true;
     }
 
-    /// <summary>Up at the castle, as after going down in a run (HoldMoments).</summary>
     public void ToTheCastle()
     {
         var grid = caster.grid;
@@ -145,7 +140,6 @@ public class WizardDown : MonoBehaviour
             EventLog.Add("You come to at your last checkpoint");
             return;
         }
-        // A map with waystones: the nearest one the party has reached (SpawnPoints).
         if (SpawnPoints.Several)
         {
             var back = SpawnPoints.ComeBackAt(fellOn);
@@ -168,7 +162,6 @@ public class WizardDown : MonoBehaviour
             net.JumpTo(at);
             return;
         }
-        // The character controller keeps its own idea of where it is: off for the jump.
         bool hasBody = TryGetComponent<CharacterController>(out var body) && body.enabled;
         if (hasBody) body.enabled = false;
         transform.position = at;

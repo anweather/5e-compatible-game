@@ -9,7 +9,6 @@ using NUnit.Framework;
 public class PinnedGroundTests
 {
     const int Res = 65, Texels = 64, Detail = 8;
-    // 3 x 3 chunks, 192 x 192 cells; the pinned map, one chunk, at map cell (64, 64): chunk (1, 1).
     static readonly TerrainGrid Layout = new TerrainGrid(1.5f, (0f, 0f), (3, 3), (0, 191), (192, 192), (0, 0, -1, -1));
 
     static GroundChunk Chunk(int i, int j, ushort height, string[] layers) => new GroundChunk
@@ -21,7 +20,6 @@ public class PinnedGroundTests
         Trees = new GroundTree[0],
     };
 
-    // The generated map: flat at 0 m over [-10, 90].
     static GroundPack Generated()
     {
         var layers = new[] { "Grass", "Rock" };
@@ -31,7 +29,6 @@ public class PinnedGroundTests
         return pack;
     }
 
-    // The pinned map: one chunk over [-20, 280], a slope east from 12 m, painted all rock (its first layer).
     static GroundPack Pinned()
     {
         var layers = new[] { "Rock", "Grass" };
@@ -75,16 +72,12 @@ public class PinnedGroundTests
             Assert.That(west.Heights[z * Res + Res - 1], Is.EqualTo(laid.Heights[z * Res]), $"west edge, row {z}");
             Assert.That(east.Heights[z * Res], Is.EqualTo(laid.Heights[z * Res + Res - 1]), $"east edge, row {z}");
         }
-        // Eased in: part way at half the seam, as generated past it.
         double edge = ground.Metres(laid, 0, 32), half = ground.Metres(west, Res - 1 - PinnedGround.SeamCells / 2, 32);
         Assert.That(half, Is.GreaterThan(0.5).And.LessThan(edge - 0.5), "half way into the seam");
         Assert.That(ground.Metres(west, Res - 1 - PinnedGround.SeamCells, 32), Is.EqualTo(0).Within(0.01), "past the seam");
         Assert.That(ground.Metres(At(ground, 0, 0), 0, 0), Is.EqualTo(0).Within(0.01), "a far corner");
     }
 
-    // The island (scale-12x10, 2026-11-11): its generated chunks were moved into the pinned valley's wider height range and
-    // their trees weren't, so every tree off the valley stood 9 to 17 m under its ground. Every tree, generated, eased or
-    // pinned, stands where its ground is drawn at its spot.
     [Test]
     public void EveryTreeStandsOnItsGroundOnceLaid()
     {
@@ -103,7 +96,6 @@ public class PinnedGroundTests
         Assert.That(trees, Is.EqualTo(10 * 9));
     }
 
-    // Ten trees a chunk at a sample each, standing on the chunk's height there (as GroundFromLand stands them).
     static GroundTree[] Planted(GroundChunk c) => Enumerable.Range(0, 10).Select(n =>
     {
         int x = 2 + n * 6, z = 60 - n * 6;
@@ -121,8 +113,6 @@ public class PinnedGroundTests
         for (int n = 0; n < before.Count; n++) Assert.That(ground.Chunks[n].Heights, Is.EqualTo(before[n]));
     }
 
-    // #183: in a build the nine's layout had lost the valley's full detail, the valley's 257-sample chunks were laid over
-    // 65-sample ones all the same, and the world's ground threw far from the cause (ValleyGround.Recover).
     [Test]
     public void APinnedChunkOfAnotherSizeThanTheLayoutsIsRefused()
     {

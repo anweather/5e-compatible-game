@@ -14,7 +14,6 @@ public class UnderwaterView : MonoBehaviour
     static readonly Color Tint = new(0.06f, 0.27f, 0.32f);
     static readonly Color Deep = new(0.02f, 0.11f, 0.16f);
     static readonly Color Surface = new(0.55f, 0.82f, 0.86f);
-    // How far you can see under water (m), and the surface sheet's half size.
     const float FogEnd = 14f, SheetHalf = 60f;
 
     Camera cam;
@@ -25,10 +24,8 @@ public class UnderwaterView : MonoBehaviour
     Color background;
     bool fogWas;
 
-    /// <summary>Whether the main camera's eye is under water now: AirInPlay makes the air the water's.</summary>
     public static bool EyeUnder { get; private set; }
 
-    /// <summary>The water's air: its tint, and how far you can see in it (m).</summary>
     public static Color WaterTint => Tint;
     public const float WaterSeen = FogEnd;
 
@@ -57,11 +54,6 @@ public class UnderwaterView : MonoBehaviour
         sheet.transform.position = new Vector3(eye.x, top, eye.z);
     }
 
-    /// <summary>
-    /// The top of the water over a point: a cell's drawn water (lakes, rivers, pools; not ice) or
-    /// the sea with its swell, seaward of the coast over ground below it; negative infinity where
-    /// there's none. WaterSplashes uses it too.
-    /// </summary>
     public static float WaterTop(ChemGrid grid, Vector3 eye)
     {
         var cell = grid.CellAt(eye);
@@ -76,7 +68,6 @@ public class UnderwaterView : MonoBehaviour
         }
         var sea = Ocean.Instance;
         var xz = new Vector2(eye.x, eye.z);
-        // The sea: out from the coast (Ocean.shoreOrigin, seaward), over ground below its level.
         bool seaward = sea != null && Vector2.Dot(xz - sea.shoreOrigin, sea.seaward.normalized) > 0f;
         if (seaward && (!inside || ground < sea.level))
             top = Mathf.Max(top, sea.level + sea.WaveOffset(xz));
@@ -104,8 +95,6 @@ public class UnderwaterView : MonoBehaviour
         if (sheet != null) sheet.SetActive(false);
     }
 
-    // A flat sheet whose face looks down (seen from below) but is lit as if it faced up, so
-    // the daylight shows through it; VillageLit draws its vertex colour.
     static GameObject MakeSheet()
     {
         var mesh = new Mesh { name = "Water from below" };

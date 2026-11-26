@@ -1,9 +1,9 @@
+// Words on a sign or a board in the world (SignWords): the font's glyphs in the text's
+// colour, behind whatever stands in front of them and only from the front. The font's own
+// material (GUI/Text Shader) draws through everything and from both sides, so a sign's words
+// showed mirrored on its back, through the board.
 Shader "Prototype/SignText"
 {
-    // Words on a sign or a board in the world (SignWords): the font's glyphs in the text's
-    // colour, behind whatever stands in front of them and only from the front. The font's own
-    // material (GUI/Text Shader) draws through everything and from both sides, so a sign's words
-    // showed mirrored on its back, through the board.
     Properties
     {
         _MainTex ("Font texture", 2D) = "white" {}
@@ -48,7 +48,6 @@ Shader "Prototype/SignText"
 
             half4 Frag(Varyings i) : SV_Target
             {
-                // A font texture keeps the glyphs in its alpha.
                 half alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).a;
                 return half4(i.color.rgb, i.color.a * alpha);
             }

@@ -13,24 +13,20 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
         static HandsDef Table => R.Sim.Hold.Hands;
 
-        // Open ground at the tower that gives this element, where a wizard stands to attune.
         static (int x, int y) TowerOf(World w, string element) => w.TowerGround(w.HoldSite.Towers.First(t => t.Element == element))[0];
 
-        // A hand attuned, away from the castle while no run is on, and its moment waited out.
         static void AttuneAway(World w, int hand, string element)
         {
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, hand, element)), $"attune {hand} to {element ?? "nothing"}");
             Ticks(w, T.AttuneTicks);
         }
 
-        // A hand's trigger, or its bumper.
         static void Trigger(World w, int hand, bool taken = true) =>
             Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, hand)), Is.EqualTo(taken), $"trigger {hand}");
 
         static void Bumper(World w, int hand, bool taken = true) =>
             Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, hand, bumper: true)), Is.EqualTo(taken), $"bumper {hand}");
 
-        // Attuned before the run (null: nothing), then away, with a run going.
         static World Holding(string left, string right, int seed = 7)
         {
             var w = Field(seed);
@@ -43,7 +39,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // What goes off, spells and acts, stepping until something does, and the ticks it took.
         static (string[] out_, int ticks) Out(World w)
         {
             for (int i = 1; i < 60; i++)
@@ -77,7 +72,6 @@ namespace Chem.Tests
                 for (int g = 0; g < 3; g++) Assert.That(T.One(row[0], g).Spell, Is.EqualTo(row[1 + g]));
         }
 
-        // unified-casting.md's pair table: thrust, then throw; null for a cut row.
         [TestCase("fire", "fire", "fireball", "meteor")]
         [TestCase("water", "water", "wave", "iceberg")]
         [TestCase("earth", "earth", "wall-of-stone", "earth-spires")]
@@ -103,7 +97,6 @@ namespace Chem.Tests
             Assert.That(R.Spell("dust-storm"), Is.Not.Null, "the spells stay, for mods and the chemistry");
         }
 
-        // A hand's button held down from now, as the view sends it.
         static void Down(World w, int hand, bool bumper = false, bool taken = true) =>
             Assert.That(w.ApplyCombo(ComboCommand.HandDown(Me, hand, bumper)), Is.EqualTo(taken), $"down {hand}");
 
@@ -127,7 +120,6 @@ namespace Chem.Tests
             Assert.That(Fired(w), Is.EqualTo("ray-of-frost"));
         }
 
-        // Two taps on one hand sweep if the second comes before the first has gone off, and the sweep is a tap too.
         [TestCase(false)]
         [TestCase(true)]
         public void TriggerAndBumperOnOneHandSweep(bool bumperFirst)
@@ -143,7 +135,6 @@ namespace Chem.Tests
             Assert.That(ticks, Is.EqualTo(T.TapTicks));
         }
 
-        // A button held down leaves the other the whole window, and the sweep it makes takes its row's time.
         [TestCase(false)]
         [TestCase(true)]
         public void AHeldButtonSweepsInsideTheWindow(bool bumperFirst)
@@ -261,7 +252,6 @@ namespace Chem.Tests
             Down(w, Right, bumper: true);
             Trigger(w, Left);
             var (first, ticks) = Out(w);
-            // Apart: Unity's NUnit compares a tuple's array by reference.
             Assert.That(first, Is.EqualTo(new[] { "create-water" }), "the thrust doesn't wait for the sweep");
             Assert.That(ticks, Is.EqualTo(T.TapTicks), "the thrust doesn't wait for the sweep");
             Up(w, Right);
@@ -355,7 +345,6 @@ namespace Chem.Tests
         [Test]
         public void ACombinedSpellLocksBoth()
         {
-            // Water and fire: Scalding Steam has no rest of its own (Thunder Strike, on air and fire, has Meteor's).
             var w = Holding("water", "fire");
             Trigger(w, Right);
             Trigger(w, Left);
@@ -390,7 +379,6 @@ namespace Chem.Tests
             Assert.That(Fired(w), Is.EqualTo(T.Kit[0].Spell));
         }
 
-        // At a tower a hand takes the tower's element and nothing else, in its moment, in a run too.
         [Test]
         public void ATowerAttunesAHandToItsElementOnly()
         {
@@ -461,7 +449,6 @@ namespace Chem.Tests
             Assert.That(w.CastHash(), Is.EqualTo("f8c9fb76"));
         }
 
-        // Each tower has open ground in its reach to stand on and attune: the courtyard's corner beside it.
         [Test]
         public void EachTowerHasGroundToStandOn()
         {
@@ -475,7 +462,6 @@ namespace Chem.Tests
             }
         }
 
-        // Four towers, one element each, at the row's corner towers; the plate, the heart and the rise aren't at one.
         [Test]
         public void TheTowersComeFromTheRow()
         {
@@ -563,7 +549,6 @@ namespace Chem.Tests
             Assert.That(w.CastHash(), Is.EqualTo(new[] { "593bf5f", "1140a2b4", "1db53f1d", "6df13877" }[System.Math.Min(levels, 3)]));
         }
 
-        // Let go within tapTicks, a button is a tap: it goes off tapTicks after its press, at charge 1, and rests a tap's cooldown.
         [TestCase(0)]
         [TestCase(1)]
         public void ATapGoesOffAtOnce(int held)
@@ -582,7 +567,6 @@ namespace Chem.Tests
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.TapCooldown));
         }
 
-        // Held to tapTicks, the charge has begun: a release that soon still takes the row's castTicks and rests handCooldown.
         [Test]
         public void HoldingPastATapIsTheChargeAndTakesItsRowsTime()
         {
@@ -598,7 +582,6 @@ namespace Chem.Tests
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.HandCooldown));
         }
 
-        // Both hands tapped together merge, and a merge keeps its row's castTicks and both hands' cooldown.
         [Test]
         public void TappedHandsMergeOnTheirRowsTime()
         {
@@ -644,7 +627,7 @@ namespace Chem.Tests
             Assert.That(w.HandCooling(Me, Left), Is.EqualTo(T.BothCooldown));
             Assert.That(w.HandCooling(Me, Right), Is.EqualTo(T.BothCooldown));
             Assert.That(w.CastOf(Me).Merge, Is.Null);
-            Assert.That(w.CastHash(), Is.EqualTo("e722d8d4")); // Fireball's 15 ticks (2026-11-06 playtest)
+            Assert.That(w.CastHash(), Is.EqualTo("e722d8d4"));
         }
 
         [Test]
@@ -686,7 +669,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenTwoPeersWithDifferentHandsStayInLockstep()
         {
-            // Two peers' copies of one world, each given the same stamped commands: Ana's hands and Bo's differ.
             const string bo = "Bo";
             var commands = new (int tick, ComboCommand command)[]
             {
@@ -695,10 +677,10 @@ namespace Chem.Tests
                 (8, ComboCommand.HandDown(Me, Left)),
                 (8, ComboCommand.HandDown(Me, Right)),
                 (9, ComboCommand.HandDown(bo, Right, true)),
-                (10, ComboCommand.Hand(bo, Left)), // a tap: it goes off at 11, not 15, since casting-taps
+                (10, ComboCommand.Hand(bo, Left)),
                 (20, ComboCommand.HandUp(bo, Right)),
                 (27, ComboCommand.HandUp(Me, Right)),
-                (40, ComboCommand.HandDown(Me, Left, true)), // refused: the merge cooled both hands
+                (40, ComboCommand.HandDown(Me, Left, true)),
                 (60, ComboCommand.HandDown(Me, Left, true)),
                 (64, ComboCommand.HandUp(Me, Left)),
             };
@@ -797,7 +779,6 @@ namespace Chem.Tests
             Assert.That(Fired(loaded), Is.EqualTo("fire-bolt"));
         }
 
-        // The rules with hold.json's hands edited, as the rule check finds them.
         static System.Collections.Generic.IReadOnlyList<string> Errors(System.Action<Newtonsoft.Json.Linq.JObject> edit)
         {
             var files = System.IO.Directory.GetFiles(ChemistryTests.RulesDir(), "*.json").ToDictionary(System.IO.Path.GetFileName, System.IO.File.ReadAllText);

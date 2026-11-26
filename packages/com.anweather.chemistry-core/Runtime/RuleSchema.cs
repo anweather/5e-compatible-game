@@ -9,10 +9,8 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>What a field holds. Value: more than one shape (a number or an id), checked in code.</summary>
     public enum RuleFieldType { Text, Number, Whole, Flag, Dice, Value, Verb, Reference, References, Components, Section, Colour, Look }
 
-    /// <summary>One field of a rules table.</summary>
     public sealed class RuleField
     {
         RuleField(string name, RuleFieldType type)
@@ -23,23 +21,15 @@ namespace Chem
 
         public string Name { get; }
         public RuleFieldType Type { get; }
-        /// <summary>A number's lowest value, or the value it stays above when <see cref="Above"/>.</summary>
         public double Min { get; private set; }
         public bool Above { get; private set; }
         public double Max { get; private set; } = double.MaxValue;
-        /// <summary>True when a number has a range the checks hold it to.</summary>
         public bool Ranged { get; private set; }
-        /// <summary>True when the entry (or its section) must give it.</summary>
         public bool Required { get; private set; }
-        /// <summary>False for a field only the shipped rules set.</summary>
         public bool ModSets { get; private set; } = true;
-        /// <summary>A verb's words: each needs code.</summary>
         public IReadOnlyCollection<string> Verbs { get; private set; } = System.Array.Empty<string>();
-        /// <summary>The table a reference names an entry of.</summary>
         public string Table { get; private set; }
-        /// <summary>The budgets.json number a mod's value may not go over, or null.</summary>
         public string Cap { get; private set; }
-        /// <summary>A section's own fields.</summary>
         public RuleSchema Inside { get; private set; }
 
         public static RuleField Text(string name, bool required = false) => new RuleField(name, RuleFieldType.Text) { Required = required };
@@ -54,27 +44,22 @@ namespace Chem
         public static RuleField Reference(string name, string table) => new RuleField(name, RuleFieldType.Reference) { Table = table };
         public static RuleField Section(string name, RuleSchema inside) => new RuleField(name, RuleFieldType.Section) { Inside = inside };
 
-        /// <summary>A number, any.</summary>
         public static RuleField Number(string name) => new RuleField(name, RuleFieldType.Number);
 
-        /// <summary>A number from <paramref name="min"/> (or above it), up to <paramref name="max"/>.</summary>
         public static RuleField Number(string name, double min, bool above = false, double max = double.MaxValue, bool required = false) =>
             new RuleField(name, RuleFieldType.Number) { Min = min, Above = above, Max = max, Ranged = true, Required = required };
 
         public static RuleField Whole(string name) => new RuleField(name, RuleFieldType.Whole);
 
-        /// <summary>A whole number from <paramref name="min"/>, up to <paramref name="max"/>.</summary>
         public static RuleField Whole(string name, double min, double max = double.MaxValue, bool required = false) =>
             new RuleField(name, RuleFieldType.Whole) { Min = min, Max = max, Ranged = true, Required = required };
 
-        /// <summary>This field, which a mod's value may not take over the budget at <paramref name="cap"/>.</summary>
         public RuleField CappedBy(string cap)
         {
             Cap = cap;
             return this;
         }
 
-        /// <summary>This field, set by the shipped rules only: a mod may not.</summary>
         public RuleField ShippedOnly()
         {
             ModSets = false;
@@ -82,7 +67,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A rules table's fields, in the order its messages list them.</summary>
     public sealed class RuleSchema
     {
         public RuleSchema(params RuleField[] fields)
@@ -92,13 +76,10 @@ namespace Chem
 
         public IReadOnlyList<RuleField> Fields { get; }
 
-        /// <summary>Every field's name.</summary>
         public IEnumerable<string> Names => Fields.Select(f => f.Name);
 
-        /// <summary>The names of the fields a mod may set.</summary>
         public IEnumerable<string> ModNames => Fields.Where(f => f.ModSets).Select(f => f.Name);
 
-        /// <summary>items.json (Items.cs).</summary>
         public static readonly RuleSchema Items = new RuleSchema(
             RuleField.Text("name", required: true),
             RuleField.Reference("material", "terrain"),
@@ -114,7 +95,6 @@ namespace Chem
                 RuleField.Colour("color"))),
             RuleField.Number("zoom", 1),
             RuleField.Number("reach", 0),
-            // From 1 only for use dig (Rules.CheckItems), so no range here.
             RuleField.Whole("strength"),
             RuleField.Section("breaks", new RuleSchema(
                 RuleField.Number("speed", 0, above: true, required: true),
@@ -124,13 +104,11 @@ namespace Chem
                     RuleField.Number("fire", 0))))),
             RuleField.Look("look"));
 
-        /// <summary>The ground a blast digs out ("crater" on a spell or an entity's "explodes").</summary>
         public static readonly RuleSchema Crater = new RuleSchema(
             RuleField.Whole("depth", 1, required: true),
             RuleField.Whole("radius", 0),
             RuleField.Whole("strength", 1));
 
-        /// <summary>entities.json (RuleTables.cs ParseEntity).</summary>
         public static readonly RuleSchema Entities = new RuleSchema(
             RuleField.Text("name"),
             RuleField.Reference("material", "terrain"),
@@ -153,10 +131,8 @@ namespace Chem
                 RuleField.Text("body"),
                 RuleField.Whole("size", 1))),
             RuleField.Look("look"),
-            // The wizard: one entity the game spawns for each player.
             RuleField.Flag("player").ShippedOnly());
 
-        /// <summary>A reaction rule's "if" (and a spell's "needs"): each condition needs code.</summary>
         public static readonly RuleSchema Conditions = new RuleSchema(
             RuleField.References("cover", "covers"),
             RuleField.Value("fire"),
@@ -179,7 +155,6 @@ namespace Chem
             RuleField.Number("chance", 0),
             RuleField.Text("verb"));
 
-        /// <summary>One effect of a reaction rule's "do": each effect is a verb that needs code.</summary>
         public static readonly RuleSchema Effects = new RuleSchema(
             RuleField.Value("ignite").CappedBy("effects.ignite"),
             RuleField.Number("boil").CappedBy("effects.boil"),
@@ -218,7 +193,6 @@ namespace Chem
             RuleField.Value("ticks"),
             RuleField.Number("wave").CappedBy("effects.wave"));
 
-        /// <summary>materials.json "liquids" (Rules.Liquids.cs): a row of the liquids table, water being built in.</summary>
         public static readonly RuleSchema Liquids = new RuleSchema(
             RuleField.Text("name"),
             RuleField.Value("tags"),
@@ -237,7 +211,6 @@ namespace Chem
             RuleField.Look("look"),
             RuleField.Value("lapse"));
 
-        /// <summary>reactions.json's cell and entity rules.</summary>
         public static readonly RuleSchema Reactions = new RuleSchema(
             RuleField.Text("id", required: true),
             RuleField.Reference("element", "elements"),
@@ -247,10 +220,8 @@ namespace Chem
             RuleField.Flag("notable"),
             RuleField.Flag("stop"));
 
-        /// <summary>The field called this, or null.</summary>
         public RuleField Field(string name) => Fields.FirstOrDefault(f => f.Name == name);
 
-        /// <summary>The section called this, or null.</summary>
         public RuleSchema SectionOf(string name) => Field(name)?.Inside;
     }
 }

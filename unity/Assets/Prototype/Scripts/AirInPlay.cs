@@ -13,13 +13,10 @@ public sealed class AirInPlay : MonoBehaviour
     static readonly int AirId = Shader.PropertyToID("_Air"), AirFarId = Shader.PropertyToID("_AirFar"),
         HorizonId = Shader.PropertyToID("_AirHorizon"), GlowId = Shader.PropertyToID("_AirGlow"), SunId = Shader.PropertyToID("_AirSun");
 
-    /// <summary>The air written last.</summary>
     public static Air Written { get; private set; }
 
-    /// <summary>No air at all while true (the farringclip probe's bare still).</summary>
     public static bool Lifted { get; set; }
 
-    /// <summary>A horizon colour held in place of the sky's (OvernightShowcase's dusk), or null.</summary>
     public static Color? HeldHorizon { get; set; }
 
     SkyLight skyLight;
@@ -53,7 +50,6 @@ public sealed class AirInPlay : MonoBehaviour
 
     void Awake()
     {
-        // The scene's own haze, as its builder set it: the valley's is linear.
         linearScene = RenderSettings.fogMode == FogMode.Linear;
         sceneStart = RenderSettings.fogStartDistance;
         sceneEnd = RenderSettings.fogEndDistance;

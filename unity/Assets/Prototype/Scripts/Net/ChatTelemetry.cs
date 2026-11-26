@@ -21,7 +21,6 @@ public class ChatTelemetry : MonoBehaviour
     const float GraceSeconds = 5f, HitchMs = 50f, SecondsPerMs = 0.001f, Thousand = 1000f;
     const int SettleFrames = 2, MostShown = 8, MostPromptChars = 34;
 
-    /// <summary>One finished prompt, as the Claude menu lists it.</summary>
     public sealed class Entry
     {
         public string Id, Prompt, Outcome;
@@ -34,7 +33,6 @@ public class ChatTelemetry : MonoBehaviour
 
     readonly Stopwatch clock = Stopwatch.StartNew();
     readonly List<Entry> finished = new();
-    // What's on from which record, by mod id, and what each record's patches touched.
     readonly Dictionary<string, (string record, long at)> onFrom = new();
     readonly List<(string record, HashSet<string> entries)> touched = new();
     readonly HashSet<string> touching = new();
@@ -48,13 +46,10 @@ public class ChatTelemetry : MonoBehaviour
     float worstMs;
     float? endedAt;
 
-    /// <summary>The telemetry, or null where the game doesn't serve Claude.</summary>
     public static ChatTelemetry Instance { get; private set; }
 
-    /// <summary>Where the records go in place of Home, for the probe.</summary>
     public static string Folder { get; set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -63,10 +58,8 @@ public class ChatTelemetry : MonoBehaviour
         Folder = null;
     }
 
-    /// <summary>Where the records and the MCP log go now: ChatLog.Home unless the probe says otherwise. On the main thread.</summary>
     public static string Home => Folder ?? ChatLog.Home(ChemGrid.Folders.PlayerData, GivenLogFolder());
 
-    // The folder of a log this process was told to use: a test's. Null for a player started as players start it.
     static string GivenLogFolder()
     {
         string log = Application.consoleLogPath;
@@ -74,13 +67,10 @@ public class ChatTelemetry : MonoBehaviour
         return given && !string.IsNullOrEmpty(log) ? Path.GetDirectoryName(log) : null;
     }
 
-    /// <summary>The prompt being answered, for the progress bar; null with none.</summary>
     public ChatRecorder Current => current;
 
-    /// <summary>The newest prompts first, at most a few.</summary>
     public IEnumerable<Entry> Latest => Enumerable.Reverse(finished).Take(MostShown);
 
-    /// <summary>The clock every time in a record is read from, in ms.</summary>
     public long Now => clock.ElapsedMilliseconds;
 
     void Awake()
@@ -101,7 +91,6 @@ public class ChatTelemetry : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    /// <summary>A prompt is going to Claude; source is typed or voice. A record still open is written first.</summary>
     public ChatRecorder Begin(string prompt, string source)
     {
         if (current != null) Flush();
@@ -119,13 +108,11 @@ public class ChatTelemetry : MonoBehaviour
         return current;
     }
 
-    /// <summary>The process has gone: the record is written once the world has the change, or never will.</summary>
     public void ProcessEnded()
     {
         if (current != null && endedAt == null) endedAt = Time.unscaledTime;
     }
 
-    /// <summary>A patch reached the room, from the MCP's thread: the record keeps it whole.</summary>
     public static void Patched(string key, string patch)
     {
         live?.Patched(key, patch);
@@ -138,7 +125,6 @@ public class ChatTelemetry : MonoBehaviour
         lock (gate) touching.UnionWith(Entries(patch));
     }
 
-    // What a patch touches: each section's entries, as "terrain.stucco".
     static IEnumerable<string> Entries(string patch)
     {
         JObject json;
@@ -201,7 +187,6 @@ public class ChatTelemetry : MonoBehaviour
         if (endedAt != null && (!settling || Time.unscaledTime - endedAt > GraceSeconds)) Flush();
     }
 
-    // The first frame after the switch with nothing left queued to draw.
     bool ViewBusy()
     {
         var valley = hooked != null ? hooked.valley : null;
@@ -228,7 +213,6 @@ public class ChatTelemetry : MonoBehaviour
         Write(record);
     }
 
-    // The plain rule: a prompt that applies over what an earlier one did fixes it.
     void Fixes(string id)
     {
         HashSet<string> now;
@@ -261,7 +245,6 @@ public class ChatTelemetry : MonoBehaviour
         Task.Run(() => ChatLog.Append(folder, day, line));
     }
 
-    // At the end of a session: what stayed on says so.
     void StillOn()
     {
         string folder = Home;
@@ -280,7 +263,6 @@ public class ChatTelemetry : MonoBehaviour
         foreach (var e in Latest) GUILayout.Label(Line(e));
     }
 
-    /// <summary>A prompt's line in the list.</summary>
     public static string Line(Entry e)
     {
         string prompt = e.Prompt == null || e.Prompt.Length <= MostPromptChars ? e.Prompt : e.Prompt.Substring(0, MostPromptChars) + "...";

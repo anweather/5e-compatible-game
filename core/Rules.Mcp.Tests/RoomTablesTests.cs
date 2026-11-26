@@ -1,3 +1,7 @@
+// #79: a mod that changes the building tables, switched on through the room on a host and a peer. The
+// world's own buildings are read over the mod's tables (World.SiteProblem, ApplyRules), so a table that
+// would make one of them unreadable must be refused by the checks, the same on every peer, and never
+// thrown out of ApplyRoom. One that reads is switched on, and both peers agree.
 using System;
 using System.Globalization;
 using System.IO;
@@ -9,12 +13,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// #79: a mod that changes the building tables, switched on through the room on a host and a peer. The
-    /// world's own buildings are read over the mod's tables (World.SiteProblem, ApplyRules), so a table that
-    /// would make one of them unreadable must be refused by the checks, the same on every peer, and never
-    /// thrown out of ApplyRoom. One that reads is switched on, and both peers agree.
-    /// </summary>
     [Category("Simulation")]
     public class RoomTablesTests
     {
@@ -28,7 +26,6 @@ namespace Chem.Tests
             data = Path.Combine(Path.GetTempPath(), "room-tables-" + Guid.NewGuid().ToString("N"));
             folders = new GameFolders(ChemistryTests.RulesDir(), data);
             Directory.CreateDirectory(folders.Mods);
-            // A plain house on open ground near Hollowmere, so a mod with a row of its own reads the world's rows too.
             string sites = new HouseToolsTests.Client(new Workbench(folders)).Call("find_site", new { width = 6, depth = 6, near = "hollowmere", within = 60 });
             var at = Regex.Match(sites, @"\[(\d+), (\d+)\]");
             Assert.That(at.Success, sites);
@@ -42,7 +39,6 @@ namespace Chem.Tests
 
         static string State(World w) => w.CellHash() + " " + w.CastHash() + " " + w.Rules.Fingerprint;
 
-        // The patch: these tables, and with a row, the dock with these fields over it.
         string Patch(string tables, string row)
         {
             var patch = new JObject { ["buildings"] = JObject.Parse(tables) };
@@ -53,7 +49,6 @@ namespace Chem.Tests
             return patch.ToString();
         }
 
-        // Host and peer decide it at the same tick and step on, as the room does.
         (World host, World peer, RoomVerdict a, RoomVerdict b) Switch(string patch)
         {
             var host = new Workbench(folders).LiveWorld;
@@ -69,9 +64,6 @@ namespace Chem.Tests
             return (host, peer, a, b);
         }
 
-        // Each of these threw InvalidOperationException out of Rules.Check (Newtonsoft reading a field of a
-        // string) and so out of ApplyRoom on every peer; a style's wall, floor or roof goes into each of the
-        // world's buildings of that style. Now each is a sentence naming the part and the field.
         [TestCase("{\"styles\": {\"cabin\": {\"wall\": \"stone\"}}}", null, "Style cabin: wall must be an object of its own fields, not stone")]
         [TestCase("{\"styles\": {\"village\": {\"wall\": \"stone\"}}}", null, "Style village: wall must be an object of its own fields, not stone")]
         [TestCase("{\"styles\": {\"cabin\": {\"floor\": \"slab\"}}}", null, "Style cabin: floor must be an object of its own fields, not slab")]
@@ -81,7 +73,6 @@ namespace Chem.Tests
         [TestCase("{}", "{\"floor\": \"slab\"}", "Building dock#1: floor must be an object of its own fields, not slab")]
         [TestCase("{}", "{\"roofs\": {\"main\": \"gable\"}}", "Building dock#1: roof main must be an object of its own fields, not gable")]
         [TestCase("{}", "{\"walls\": {\"north\": \"x\"}}", "Building dock#1: wall north must be an object of its own fields, not x")]
-        // These were refused, but as "can't be read as a mod" (a FormatException from the checks or a row's read).
         [TestCase("{\"styles\": {\"plain\": {\"storeys\": \"two\", \"wall\": {\"material\": \"stone\"}}}}", "{}", "Style plain: storeys must be a whole number, 1 or more")]
         [TestCase("{}", "{\"storeys\": \"two\"}", "Building dock#1: storeys must be a whole number, 1 or more")]
         [TestCase("{}", "{\"built\": {\"stone\": [[0, \"a\", 2]]}}", "Building dock#1: built cells are spans")]
@@ -99,9 +90,6 @@ namespace Chem.Tests
             Assert.That(host.Room.Mods, Is.Empty);
         }
 
-        // What the checks let through, and why each is safe to read the world's rows over (BuildingRow.Read,
-        // BuildingRaster.Cells): an opening longer than its wall only marks the cells it holds; a door that
-        // becomes a gap, an empty style or roof only change what's drawn or what a row falls back to.
         [TestCase("{\"openings\": {\"drawn-door\": {\"cells\": 1, \"becomes\": \"open\"}}}")]
         [TestCase("{\"openings\": {\"window\": {\"cells\": 1000, \"becomes\": \"pane\"}}}")]
         [TestCase("{\"openings\": {\"window\": {\"cells\": 0, \"becomes\": \"pane\"}}}")]
@@ -127,8 +115,6 @@ namespace Chem.Tests
             }
         }
 
-        // A table can't take a row away: the shape check refuses a row that isn't an object, so a style or an
-        // opening the world's buildings name is always there (ApplyBuildings only replaces rows).
         [TestCase("{\"styles\": {\"village\": null}}")]
         [TestCase("{\"styles\": {\"cabin\": \"plain\"}}")]
         [TestCase("{\"openings\": {\"drawn-door\": null}}")]

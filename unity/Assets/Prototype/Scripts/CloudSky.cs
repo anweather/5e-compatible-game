@@ -13,14 +13,11 @@ using UnityEngine;
 [RequireComponent(typeof(SkyLight))]
 public class CloudSky : MonoBehaviour
 {
-    /// <summary>The 3D noise the clouds are carved from, baked by ChemYardBuilder (made here at start without it).</summary>
     public Texture3D cloudNoise;
 
-    /// <summary>The weather maps cover this square round the camera, in metres; past it the sky uses the same values.</summary>
     const float MapSize = 40000f;
     const float MaxCloudBase = 4000f, MaxCloudThickness = 9000f;
 
-    // What a kind of weather looks like, at full strength (Punchy's presets).
     readonly struct Look
     {
         public readonly float coverage, darkness, overcast, cloudBase, thickness, rain;
@@ -47,10 +44,8 @@ public class CloudSky : MonoBehaviour
     static readonly Look Rain = new(0.95f, 0.6f, 0.95f, 650f, 2200f, 0.6f);
     static readonly Look Storm = new(1f, 0.9f, 1f, 600f, 7500f, 1f);
     static readonly Look Snow = new(0.95f, 0.3f, 0.9f, 700f, 1500f, 0.2f);
-    // The dragon's sky: a low dark lid, thinner than a storm's, as it's over the whole valley for minutes.
     static readonly Look Dragon = new(1f, 1f, 1f, 700f, 1500f, 0f);
 
-    // The clear sky through the day, by the sun's height (0 straight down, 0.5 on the horizon, 1 overhead).
     static readonly Gradient Zenith = Make(
         (0.00f, new Color(0.006f, 0.010f, 0.030f)), (0.44f, new Color(0.03f, 0.05f, 0.13f)),
         (0.50f, new Color(0.22f, 0.30f, 0.52f)), (0.60f, new Color(0.20f, 0.40f, 0.82f)), (1.00f, new Color(0.17f, 0.39f, 0.86f)));
@@ -91,10 +86,8 @@ public class CloudSky : MonoBehaviour
     Vector3 strikeAt;
     float strike;
 
-    /// <summary>How much of the sky is cloud now, 0..1 (eased toward the weather), for the probe.</summary>
     public float Coverage => shown.coverage;
 
-    /// <summary>Lights the cloud above a lightning strike for a moment (WeatherFx).</summary>
     public void Strike(Vector3 at, float brightness)
     {
         strikeAt = new Vector3(at.x, shown.cloudBase + shown.thickness * 0.3f, at.z);
@@ -125,7 +118,6 @@ public class CloudSky : MonoBehaviour
 
     static Texture2D Texel(string name) => new(1, 1, TextureFormat.RGBA32, false, true) { name = name, hideFlags = HideFlags.DontSave };
 
-    // After SkyLight has turned the sun and moon and set the haze for this frame.
     void LateUpdate()
     {
         var world = grid != null ? grid.World : null;
@@ -142,14 +134,12 @@ public class CloudSky : MonoBehaviour
         float night = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.15f, 0.05f, sunDir.y));
         var disc = SunDisc.Evaluate(key) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.06f, 0.03f, sunDir.y)) * (1f - 0.92f * skyLight.Menace);
 
-        // Overcast greys the sky toward its own brightness, so it works at noon and at midnight alike.
         var clearZenith = Zenith.Evaluate(key);
         var clearHorizon = Horizon.Evaluate(key);
         float brightness = clearHorizon.grayscale;
         var grey = new Color(brightness, brightness * 1.02f, brightness * 1.06f);
         var zenith = Color.Lerp(clearZenith, grey * 0.78f, shown.overcast) * (1f - 0.45f * shown.darkness);
         var horizon = Color.Lerp(clearHorizon, grey, shown.overcast) * (1f - 0.35f * shown.darkness);
-        // Bruised red toward the horizon, under the dragon.
         zenith = Color.Lerp(zenith, new Color(0.012f, 0.008f, 0.01f), skyLight.Menace);
         horizon = Color.Lerp(horizon, new Color(0.05f, 0.02f, 0.016f), skyLight.Menace);
         var ground = GroundColor * (Mathf.Clamp01(brightness / 0.8f) * (1f - 0.4f * shown.darkness));
@@ -163,15 +153,12 @@ public class CloudSky : MonoBehaviour
         Shader.SetGlobalVector(CloudsId, new Vector4(shown.coverage, 0f, 1f, 0f));
         Shader.SetGlobalVector(CloudOffsetId, cloudOffset);
         Shader.SetGlobalFloat(NightId, night);
-        // The stars by the rules' light level (Nightfall), hidden as the cloud thickens; a tiny floor
-        // keeps the shader from reading 0 as unset.
         Shader.SetGlobalFloat(StarBrightId, Mathf.Max(0.001f, Nightfall.Stars(world) * (1f - shown.coverage)));
         var toStrike = (strikeAt - cam.transform.position).normalized;
         Shader.SetGlobalVector(LightningId, new Vector4(toStrike.x, toStrike.y, toStrike.z, strike));
         Shader.SetGlobalVector(LightningPosId, new Vector4(strikeAt.x, strikeAt.y, strikeAt.z, strike));
         PublishMaps(cam.transform.position);
 
-        // The air fades into the sky's horizon on each bearing (AirInPlay, Air.hlsl's AirToward): its colour, the sun's glow.
         HorizonNow = horizon;
         SunDirection = sunDir;
         var glow = disc.linear * (Air.GlowShare * (1f - shown.coverage * 0.7f));
@@ -179,17 +166,13 @@ public class CloudSky : MonoBehaviour
         Ready = true;
     }
 
-    /// <summary>The sky's colour at the horizon this frame (sRGB, as the skybox takes it).</summary>
     public Color HorizonNow { get; private set; }
 
-    /// <summary>The sun's glow on the horizon line toward it (linear) and the sun's way, this frame.</summary>
     public Vector3 SunGlow { get; private set; }
     public Vector3 SunDirection { get; private set; }
 
-    /// <summary>Whether the sky has been worked out at least once.</summary>
     public bool Ready { get; private set; }
 
-    // The weather's clouds: clear sky blending into the kind's look as it strengthens.
     static Look Wanted(WeatherNow now)
     {
         float s = now.Strength / 100f;
@@ -205,7 +188,6 @@ public class CloudSky : MonoBehaviour
         };
     }
 
-    // The clouds drift with the wind (toward its direction: 0..3 N E S W, north is +z), and slowly without.
     void Drift(int windDir)
     {
         var dir = windDir switch
@@ -220,7 +202,6 @@ public class CloudSky : MonoBehaviour
         cloudOffset += dir * (speed * Time.deltaTime / 1800f);
     }
 
-    // One texel of weather over a wide square round the camera (Sky.hlsl's maps).
     void PublishMaps(Vector3 camera)
     {
         weatherMap.SetPixel(0, 0, new Color(shown.coverage, shown.darkness, shown.rain, 0f));

@@ -13,18 +13,14 @@ using UnityEngine;
 // online) it doesn't land, like a SpellProjectile.
 public class FrostBeam : MonoBehaviour
 {
-    /// <summary>How long the beam takes to reach the end of its line: when the spell lands.</summary>
     public const float ReachSeconds = 0.12f;
     const float HoldSeconds = 0.4f, FadeSeconds = 0.45f, CoreWidth = 0.1f, HaloWidth = 0.42f, Wobble = 0.035f;
     const int Points = 24;
 
     static Material beamMaterial, moteMaterial;
 
-    /// <summary>Where it starts: the caster's hand.</summary>
     public Vector3 From { get; private set; }
-    /// <summary>Where it ends: the end of the spell's line.</summary>
     public Vector3 To { get; private set; }
-    /// <summary>How far along it has shot, 0 to 1.</summary>
     public float Reached { get; private set; }
 
     LineRenderer core, halo;
@@ -37,10 +33,6 @@ public class FrostBeam : MonoBehaviour
     Action onArrive;
     UnityEngine.Object caster;
 
-    /// <summary>
-    /// Shoots a beam of frost from <paramref name="from"/> to <paramref name="to"/>, tinted
-    /// <paramref name="tint"/>; <paramref name="onArrive"/> runs once, when it gets there.
-    /// </summary>
     public static FrostBeam Launch(Vector3 from, Vector3 to, Color tint, Action onArrive, UnityEngine.Object caster, LookTint look = default)
     {
         var go = new GameObject("Frost beam");
@@ -88,7 +80,6 @@ public class FrostBeam : MonoBehaviour
         return line;
     }
 
-    // Frost motes: a scatter along the whole beam once it's there, drifting off it and fading.
     ParticleSystem Motes()
     {
         var go = new GameObject("Frost motes");
@@ -126,7 +117,6 @@ public class FrostBeam : MonoBehaviour
         return ps;
     }
 
-    // The weather's snowflakes when there are any (soft round flakes), else plain glowing dots.
     static Material MoteMaterial()
     {
         var weather = FindAnyObjectByType<WeatherFx>();
@@ -138,13 +128,12 @@ public class FrostBeam : MonoBehaviour
     void Update()
     {
         t += Time.deltaTime;
-        if (onArrive != null && hasCaster && caster == null) onArrive = null; // its caster went first (Unity's null check)
+        if (onArrive != null && hasCaster && caster == null) onArrive = null;
         Reached = Mathf.Clamp01(t / ReachSeconds);
         if (Reached >= 1f && !landed) Land();
         float fade = Mathf.Clamp01(1f - (t - ReachSeconds - HoldSeconds) / FadeSeconds);
         Draw(fade);
         if (fade > 0f) return;
-        // Faded: the lines go, the motes already out finish drifting, then it goes.
         enabled = false;
         core.enabled = halo.enabled = glow.enabled = false;
         Destroy(gameObject, 1.2f);
@@ -161,7 +150,6 @@ public class FrostBeam : MonoBehaviour
         land?.Invoke();
     }
 
-    // The beam from the hand out to how far it has reached, shimmering a little, at <paramref name="fade"/> strength.
     void Draw(float fade)
     {
         var tip = Vector3.Lerp(From, To, Reached);

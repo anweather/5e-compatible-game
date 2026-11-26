@@ -8,9 +8,7 @@ using System.Threading;
 // still runs: an engine that can't run two at once waits inside itself. Anything it loads, such as a model, loads on that worker thread too.
 public interface ITranscriber : IDisposable
 {
-    /// <summary>What it is, for the trace and the speech check.</summary>
     string Name { get; }
 
-    /// <summary>The words in these 16 kHz mono samples, "" for none; on a worker thread.</summary>
     string Transcribe(float[] samples, CancellationToken cancel);
 }

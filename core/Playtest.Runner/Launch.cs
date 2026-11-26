@@ -14,7 +14,6 @@ namespace Playtest.Runner
 {
     public static class Launch
     {
-        /// <summary>The window in front now, as a number for -playtest-hand-focus; 0 off Windows.</summary>
         public static long FrontWindow() => OperatingSystem.IsWindows() ? GetForegroundWindow().ToInt64() : 0;
 
         public static Process Start(string exe, string arguments)
@@ -31,7 +30,6 @@ namespace Playtest.Runner
             if (!CreateProcess(null, commandLine, IntPtr.Zero, IntPtr.Zero, false, 0, IntPtr.Zero, System.IO.Path.GetDirectoryName(exe), ref startup, out var info))
                 throw new InvalidOperationException($"couldn't start {exe} (error {Marshal.GetLastWin32Error()})");
             CloseHandle(info.Thread);
-            // Process opens its own handle; ours closes after, so the exit code is still there to read.
             var p = Process.GetProcessById(info.ProcessId);
             _ = p.Handle;
             CloseHandle(info.Process);

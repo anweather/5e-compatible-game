@@ -22,7 +22,6 @@ public class ClothProbe : ProbeScenario
 
         yield return Moves(wizard.GetComponent<StarterAssets.StarterAssetsInputs>());
 
-        // A dodge roll.
         Place(8, 10);
         puppet.Face(Yard(20, 10));
         Cut(Yard(12, 13) + V(0f, 1.4f, 0f), Yard(11, 10) + V(0f, 0.6f, 0f));
@@ -35,7 +34,6 @@ public class ClothProbe : ProbeScenario
 
         yield return Seats();
 
-        // Swimming in the lake.
         var deep = SwimProbe.DeepestLake(grid, out float depth);
         if (depth > 2f)
         {
@@ -58,8 +56,6 @@ public class ClothProbe : ProbeScenario
         Check("cloth_stays_whole", farthest < 1.5f, $"farthest particle {farthest:0.00} m from the hips");
     }
 
-    // Walking, then running, across the yard, the camera alongside; then running again filmed from
-    // ahead (where a striding leg used to come through the robe's front).
     IEnumerator Moves(StarterAssets.StarterAssetsInputs input)
     {
         Place(6, 10);
@@ -78,7 +74,6 @@ public class ClothProbe : ProbeScenario
         }
     }
 
-    // A bench, then a lounger, each from the side and from the front.
     IEnumerator Seats()
     {
         var sitter = wizard.GetComponent<Sitter>();
@@ -102,8 +97,6 @@ public class ClothProbe : ProbeScenario
         }
     }
 
-    // Runs a walk with the camera alongside the wizard, 3.5 m off to its left and a little above, or
-    // ahead of it and to its left.
     IEnumerator Filmed(IEnumerator walk, bool ahead)
     {
         while (walk.MoveNext())

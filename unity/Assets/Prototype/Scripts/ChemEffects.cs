@@ -16,19 +16,10 @@ using UnityEngine;
 //   follow the host's), so a request from a client is dropped.
 public static class ChemEffects
 {
-    /// <summary>How far off a wizard can work a gate, in cells.</summary>
     public const int SwingReachCells = 3;
 
-    /// <summary>
-    /// An effect of <paramref name="kind"/> by <paramref name="prop"/> on <paramref name="cell"/>: its rules
-    /// come from the prop's kind, and it names the prop by its stable id (world/things.json), not by an object id.
-    /// </summary>
     public static EffectCommand By(PhysicsProp prop, EffectKind kind, Vector2Int cell) => new EffectCommand(kind, cell.x, cell.y, prop.kind, prop.Thing);
 
-    /// <summary>
-    /// A wizard hit a pane cell (a punch), the same hit as a heavy thing's. Unlike a prop's, it can start
-    /// on a client, which asks the host to stamp it (NetChem.RequestStrike).
-    /// </summary>
     public static void Strike(ChemGrid grid, Vector2Int cell)
     {
         if (grid == null || grid.World == null) return;
@@ -36,7 +27,6 @@ public static class ChemEffects
         else Request(grid, new EffectCommand(EffectKind.Shatter, cell.x, cell.y, "", ThingId.None));
     }
 
-    /// <summary>A wizard's hand on the nearest gate in reach (materials.json "swing"), if there is one. Like a punch, it can start on a client.</summary>
     public static void SwingNear(ChemGrid grid, Vector3 at)
     {
         if (grid == null || grid.World == null) return;
@@ -53,7 +43,6 @@ public static class ChemEffects
                 }
     }
 
-    /// <summary>Asks for an effect on the grid's world (see the top of the file).</summary>
     public static void Request(ChemGrid grid, EffectCommand effect)
     {
         if (grid == null || grid.World == null) return;

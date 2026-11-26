@@ -6,7 +6,6 @@ using UnityEngine;
 // any size and need no art. Each fits inside its disc: points are in parts of the disc's radius, x right and y down.
 public static class PairGlyphs
 {
-    /// <summary>Draws the glyph of <paramref name="spell"/> on a disc of radius <paramref name="r"/>; false if it has none.</summary>
     public static bool Draw(string spell, Vector2 at, float r, Color mark)
     {
         var g = new Pen(at, r, mark);
@@ -39,7 +38,6 @@ public static class PairGlyphs
         return true;
     }
 
-    // Draws in parts of the disc's radius about its middle.
     readonly struct Pen
     {
         readonly Vector2 at;
@@ -54,19 +52,16 @@ public static class PairGlyphs
         public void Ring(float x, float y, float inner, float outer) => HudDraw.Ring(P(x, y), inner * r, outer * r, 1f, Mark);
         public void Arc(float x, float y, float inner, float outer, float from, float to) => HudDraw.Arc(P(x, y), inner * r, outer * r, from, to, Mark);
         public void Tri(float ax, float ay, float bx, float by, float cx, float cy) => HudDraw.Triangle(P(ax, ay), P(bx, by), P(cx, cy), Mark);
-        // Corners in parts of the radius, in order round the shape.
         public void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d) => HudDraw.Quad(P(a.x, a.y), P(b.x, b.y), P(c.x, c.y), P(d.x, d.y), Mark);
         public void Bar(float ax, float ay, float bx, float by, float width) => HudDraw.Bar(P(ax, ay), P(bx, by), width * r, Mark);
         public void Box(float left, float top, float right, float bottom) => Quad(new(left, top), new(right, top), new(right, bottom), new(left, bottom));
 
-        // The upper half of a ring, as a wave's crest.
         public void Crest(float x, float y, float inner, float outer)
         {
             Arc(x, y, inner, outer, 0.75f, 1f);
             Arc(x, y, inner, outer, 0f, 0.25f);
         }
 
-        // A puffy cloud along y, from x0 to x1.
         public void Cloud(float y, float x0, float x1)
         {
             float mid = (x0 + x1) / 2f, half = (x1 - x0) / 2f;
@@ -76,7 +71,6 @@ public static class PairGlyphs
             Box(x0 + half * 0.3f, y, x1 - half * 0.3f, y + half * 0.36f);
         }
 
-        // A five-pointed star.
         public void Star(float x, float y, float outer)
         {
             float inner = outer * 0.42f;
@@ -91,7 +85,6 @@ public static class PairGlyphs
         }
     }
 
-    // A sun of fire: a ball with eight short rays.
     static void Fireball(Pen g)
     {
         g.Disc(0f, 0f, 0.4f);
@@ -102,7 +95,6 @@ public static class PairGlyphs
         }
     }
 
-    // A rock falling from the top left, its tail behind it.
     static void Meteor(Pen g)
     {
         g.Tri(0.06f, 0.42f, 0.42f, 0.06f, -0.62f, -0.62f);
@@ -111,7 +103,6 @@ public static class PairGlyphs
         g.Disc(0.24f, 0.24f, 0.3f);
     }
 
-    // A cloud with steam rising off it.
     static void Steam(Pen g)
     {
         g.Cloud(0.22f, -0.6f, 0.6f);
@@ -123,7 +114,6 @@ public static class PairGlyphs
         }
     }
 
-    // A jet from the ground, widening, and its spray.
     static void Geyser(Pen g)
     {
         g.Quad(new(-0.1f, 0.48f), new(0.1f, 0.48f), new(0.22f, -0.28f), new(-0.22f, -0.28f));
@@ -133,7 +123,6 @@ public static class PairGlyphs
         g.Box(-0.5f, 0.46f, 0.5f, 0.58f);
     }
 
-    // An anvil with sparks off it.
     static void Forge(Pen g)
     {
         g.Box(-0.38f, -0.1f, 0.48f, 0.08f);
@@ -145,7 +134,6 @@ public static class PairGlyphs
         g.Bar(0.2f, -0.18f, 0.5f, -0.36f, 0.07f);
     }
 
-    // A pool, low and wide, with bubbles off it.
     static void LavaPool(Pen g)
     {
         g.Box(-0.56f, 0.2f, 0.56f, 0.42f);
@@ -157,7 +145,6 @@ public static class PairGlyphs
         g.Ring(0.24f, -0.42f, 0.04f, 0.08f);
     }
 
-    // A star coming down from the top left.
     static void FallingStar(Pen g)
     {
         g.Bar(-0.1f, -0.1f, -0.6f, -0.6f, 0.08f);
@@ -166,14 +153,12 @@ public static class PairGlyphs
         g.Star(0.16f, 0.14f, 0.44f);
     }
 
-    // A bolt in two strokes.
     static void Lightning(Pen g)
     {
         g.Tri(0.22f, -0.72f, -0.32f, 0.08f, 0.14f, 0.02f);
         g.Tri(-0.14f, -0.02f, 0.32f, -0.08f, -0.22f, 0.72f);
     }
 
-    // A wave curling over.
     static void Wave(Pen g)
     {
         g.Arc(0.05f, 0.08f, 0.32f, 0.5f, 0.68f, 1f);
@@ -183,14 +168,12 @@ public static class PairGlyphs
         g.Tri(-0.45f, 0.4f, -0.2f, 0.4f, -0.45f, -0.05f);
     }
 
-    // Three rows of waves.
     static void Flood(Pen g)
     {
         for (int row = -1; row <= 1; row++)
             for (int i = -1; i <= 1; i++) g.Crest(i * 0.38f, 0.1f + row * 0.3f, 0.12f, 0.2f);
     }
 
-    // Bricks.
     static void Wall(Pen g)
     {
         const float Gap = 0.05f, Height = 0.24f, Left = -0.6f, Right = 0.6f;
@@ -203,7 +186,6 @@ public static class PairGlyphs
         }
     }
 
-    // A ramp of stone going up to the right, in steps.
     static void Ramp(Pen g)
     {
         g.Tri(-0.62f, 0.44f, 0.62f, 0.44f, 0.62f, -0.4f);
@@ -212,7 +194,6 @@ public static class PairGlyphs
         g.Bar(0.2f, -0.06f, 0.55f, -0.06f, 0.05f);
     }
 
-    // Blobs and a splash.
     static void Mud(Pen g)
     {
         g.Disc(-0.28f, 0.22f, 0.26f);
@@ -224,7 +205,6 @@ public static class PairGlyphs
         g.Disc(-0.36f, -0.24f, 0.07f);
     }
 
-    // A sprout: a stem, two leaves and the ground.
     static void Sprout(Pen g)
     {
         g.Bar(0f, 0.46f, 0f, -0.3f, 0.09f);
@@ -234,7 +214,6 @@ public static class PairGlyphs
         g.Box(-0.5f, 0.44f, 0.5f, 0.56f);
     }
 
-    // A snowflake: three bars crossed, a V at each end.
     static void Snowflake(Pen g)
     {
         for (int i = 0; i < 6; i++)
@@ -250,14 +229,12 @@ public static class PairGlyphs
         g.Disc(0f, 0f, 0.1f);
     }
 
-    // A cloud with rain under it.
     static void RainCloud(Pen g)
     {
         g.Cloud(-0.16f, -0.6f, 0.6f);
         for (int i = -1; i <= 1; i++) g.Bar(i * 0.3f + 0.06f, 0.22f, i * 0.3f - 0.06f, 0.58f, 0.08f);
     }
 
-    // A boulder rolling right, its speed lines behind it.
     static void Boulder(Pen g)
     {
         g.Disc(0.18f, 0.04f, 0.4f);
@@ -267,7 +244,6 @@ public static class PairGlyphs
         g.Box(-0.6f, 0.46f, 0.66f, 0.56f);
     }
 
-    // A funnel narrowing down to the ground.
     static void Funnel(Pen g)
     {
         float[] widths = { 0.62f, 0.48f, 0.34f, 0.2f };
@@ -279,7 +255,6 @@ public static class PairGlyphs
         g.Disc(0.02f, 0.5f, 0.07f);
     }
 
-    // A tall funnel, wider and in more turns than Whirlwind's, with what it flings off.
     static void Tornado(Pen g)
     {
         float[] widths = { 0.68f, 0.56f, 0.44f, 0.32f, 0.2f, 0.1f };
@@ -292,7 +267,6 @@ public static class PairGlyphs
         g.Disc(0.58f, 0.3f, 0.06f);
     }
 
-    // A cloud with a bolt coming down out of it to a mark.
     static void ThunderStrike(Pen g)
     {
         g.Cloud(-0.42f, -0.6f, 0.6f);
@@ -301,7 +275,6 @@ public static class PairGlyphs
         g.Bar(-0.5f, 0.6f, 0.36f, 0.6f, 0.06f);
     }
 
-    // Three jagged spires out of the ground, the middle one tallest.
     static void Spires(Pen g)
     {
         g.Tri(-0.62f, 0.46f, -0.22f, 0.46f, -0.44f, -0.14f);
@@ -310,7 +283,6 @@ public static class PairGlyphs
         g.Box(-0.66f, 0.46f, 0.66f, 0.58f);
     }
 
-    // An iceberg: a peak above the water line, the water's crests either side.
     static void Iceberg(Pen g)
     {
         g.Quad(new(-0.46f, 0.18f), new(-0.12f, -0.6f), new(0.16f, -0.3f), new(0.5f, 0.18f));

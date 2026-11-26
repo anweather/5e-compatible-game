@@ -13,7 +13,6 @@ using UnityEngine;
 public class RoomProgressProbe : RoomProbe
 {
     const float MostWait = 15f, WaveWait = 180f, CastEvery = 0.8f, Settle = 6f;
-    // Throw and sweep, short of the second hand (rules/hold.json's unlocks: 3, 5, then 8 for it).
     const int HostPoints = 8;
 
     protected override ChangeMode Mode => ChangeMode.Open;
@@ -38,7 +37,6 @@ public class RoomProgressProbe : RoomProbe
         Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left),
             $"host left {world.HandOpen(host, HandsDef.Left)}, joiner left {world.HandOpen(joiner ?? "", HandsDef.Left)}");
 
-        // The host onto the plate, which starts the run (hold-batch: attuning no longer happens in a room round it).
         var plate = world.HoldSite.Plate;
         var at = grid.CellCenter(plate.x, plate.y);
         at.y = grid.GroundAt(at) + 0.05f;
@@ -56,7 +54,6 @@ public class RoomProgressProbe : RoomProbe
         Check("hands_here", Mine.hands.Contains($"{host}:-:fire") && Mine.hands.Contains($"{joiner}:water:air"), Mine.hands);
         Check("hands_on_the_joiner", Theirs.hands == Mine.hands, $"{Theirs.hands}, here {Mine.hands}");
 
-        // Wave 1 falls to Fireballs at the raiders, each a cast like any player's.
         float cast = 0f;
         for (float t = 0f; t < WaveWait && world.Hold.Wave == 1; t += Time.unscaledDeltaTime)
         {

@@ -18,7 +18,6 @@ namespace Chem.Tests
 
         static (int x, int y) Far(World w, int n = 0) => (w.HoldSite.Rise.x - 40 - n, w.HoldSite.Rise.y - 30);
 
-        // Two wizards in a run of the first wave, everything open.
         static World InRun(int seed)
         {
             var w = Field(seed);
@@ -29,14 +28,11 @@ namespace Chem.Tests
             return w;
         }
 
-        // Two wizards, a run, and its first wave just beaten: the offers are out.
         static World Offered(int seed = 7) => Beaten(InRun(seed));
 
-        // The same, built once a seed for the fixture: only for a test that looks and changes nothing.
         static readonly ConcurrentDictionary<int, System.Lazy<World>> Seen = new ConcurrentDictionary<int, System.Lazy<World>>();
         static World OfferedToLook(int seed) => Seen.GetOrAdd(seed, s => new System.Lazy<World>(() => Offered(s))).Value;
 
-        // The wave on now, beaten: the offers are out.
         static World Beaten(World w)
         {
             int next = w.Hold.Wave + 1;
@@ -89,8 +85,6 @@ namespace Chem.Tests
             foreach (var element in R.Combos.Elements) Assert.That(P.Upgrades.Any(u => u.Holds == element), element);
             for (int g = 0; g < 3; g++) Assert.That(P.Upgrades.Any(u => u.Gesture == g), $"gesture {g}");
         }
-
-        // ---------- upgrades ----------
 
         [Test]
         public void EveryPeerSeesTheSameOffers()
@@ -206,7 +200,6 @@ namespace Chem.Tests
             Assert.That(other.CastHash(), Is.EqualTo(one.CastHash()));
         }
 
-        // A tap's tiny cooldown and a charged cast's both (casting-taps).
         [TestCase(false)]
         [TestCase(true)]
         public void ACooldownUpgradeShortensThatWizardsCooldown(bool charged)
@@ -241,7 +234,6 @@ namespace Chem.Tests
         [Test]
         public void ADamageUpgradeHitsHarderForThatWizardOnly()
         {
-            // Each on a world of its own, so each roll is the same roll.
             int Hurt(string by, string pick)
             {
                 var w = InRun(11);
@@ -281,8 +273,6 @@ namespace Chem.Tests
             Assert.That(w.HoldRunning);
             Assert.That(w.RunOf(Me), Is.Null, "a new run starts clean");
         }
-
-        // ---------- unlocks ----------
 
         [Test]
         public void AFreshWizardHasOneHandOneElementAndTheThrust()
@@ -352,8 +342,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // The valley is a sandbox: outside a run nothing is locked, whatever the points (the-hold.md, "the sandbox's controls
-        // and spells don't change"). A run's start lets go of what the save hasn't unlocked.
         [Test]
         public void OutsideARunNothingIsLocked()
         {
@@ -392,7 +380,6 @@ namespace Chem.Tests
             w.Hold.Wave = 3;
             w.Hold.Health = 1;
             Until(w, () => !w.HoldRunning, "the keep falls");
-            // Waves are timed: the clock may bring more before it falls. Every wave before the one it fell in earns.
             Assert.That(w.Hold.Wave, Is.GreaterThanOrEqualTo(3));
             Assert.That(w.PointsOf(Me), Is.EqualTo(4 + (w.Hold.Wave - 1) * P.PointsPerWave));
         }
@@ -417,8 +404,6 @@ namespace Chem.Tests
             var w = Attuned(World.AllPoints).w;
             Assert.That(w.UnlocksOf(Me).Count(), Is.EqualTo(P.Unlocks.Count));
         }
-
-        // ---------- the player's own ----------
 
         [Test]
         public void AJoinersPointsMatchOnEveryPeer()
@@ -489,8 +474,6 @@ namespace Chem.Tests
             Assert.That(back.PointsOf(Me), Is.EqualTo(12));
             Assert.That(back.RunOf(Me).Picks, Is.EqualTo(new[] { "tough" }));
         }
-
-        // ---------- the save ----------
 
         static string Temp()
         {
@@ -566,8 +549,6 @@ namespace Chem.Tests
             Read(folder);
             Assert.That(File.Exists(SaveIn(folder) + ".broken1"), "a second look doesn't overwrite the first");
         }
-
-        // ---------- what the player reads ----------
 
         [Test]
         public void EveryUpgradeSaysWhatItDoes()

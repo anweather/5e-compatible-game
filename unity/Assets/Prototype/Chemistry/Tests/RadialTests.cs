@@ -1,13 +1,11 @@
+// The spell radial (docs/SPELL_RADIAL.md): the groups in the rules, the wedge and arc
+// geometry, and the state machine for both pointer and stick input.
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The spell radial (docs/SPELL_RADIAL.md): the groups in the rules, the wedge and arc
-    /// geometry, and the state machine for both pointer and stick input.
-    /// </summary>
     [Category("Unit")]
     public class RadialTests
     {
@@ -19,14 +17,8 @@ namespace Chem.Tests
 
         static readonly RadialTuning Tuning = new RadialTuning();
 
-        // The arc layout below (FiveEarth), clockwise from the top, 72° a wedge: fire 0°, water 72°, storm 144°, earth 216°, arcane 288°.
-        // The game's own layout has two more after Arcane: Nature, then Time & Weather.
         const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4, Nature = 5;
 
-        // The arc mechanics are tested on the layout they were written for: Fire Bolt alone under
-        // Fire, an Earth wedge of five spells (Earthen Trench and Move Earth back on the radial), and
-        // no Nature or Time & Weather wedges (their spells off the radial, so the five wedges stay 72°
-        // apart). TheLayoutFollowsTheGroupsAndSpellsJsonOrder checks the game's own layout.
         static Rules fiveEarth;
         static Rules FiveEarth => fiveEarth ??= With(@"{ 'spells': [
             { 'id': 'burning-hands', 'group': 'fire', 'name': 'Burning Hands', 'level': 1, 'shape': 'cone', 'origin': 'self', 'length': 3, 'element': 'fire', 'radial': false, 'blurb': '' },
@@ -44,7 +36,6 @@ namespace Chem.Tests
 
         static SpellRadial NewRadial() => new SpellRadial(RadialLayout.From(FiveEarth));
 
-        /// <summary>A vector at a compass angle (degrees clockwise from up), y up.</summary>
         static double X(double angle, double length) => length * Math.Sin(angle * Math.PI / 180);
         static double Y(double angle, double length) => length * Math.Cos(angle * Math.PI / 180);
 
@@ -62,8 +53,6 @@ namespace Chem.Tests
             Assert.That(result.Outcome, Is.EqualTo(RadialOutcome.Selected));
             Assert.That(result.SpellId, Is.EqualTo(id));
         }
-
-        // ---------- data ----------
 
         [Test]
         public void EveryBaseSpellIsInAKnownGroup()
@@ -96,10 +85,6 @@ namespace Chem.Tests
         [Test]
         public void NoElementHasMoreThanThreeSpells()
         {
-            // Andrew's rule for the bar (2026-10-27): at most three spells to an element. A spell
-            // past three stays in the rules with "radial": false (for mods, tests and demos). One
-            // exception until element combos replace the radial (docs/SPELL_COMBOS.md): Acid Splash, a
-            // temporary 4th in nature (the view pass, 2026-10-29).
             foreach (var g in RadialLayout.From(Base).Groups)
                 Assert.That(g.SpellIds.Count, Is.LessThanOrEqualTo(g.Id == "nature" ? 4 : 3), g.Id + ": " + string.Join(", ", g.SpellIds));
         }
@@ -153,8 +138,6 @@ namespace Chem.Tests
             Assert.That(errors, Is.EqualTo(new[] { "\"groups\" must be an object of entries by id" }));
         }
 
-        // ---------- geometry ----------
-
         [TestCase(0, Fire)]
         [TestCase(35.999, Fire)]
         [TestCase(36, Water)]
@@ -199,14 +182,12 @@ namespace Chem.Tests
         [TestCase(291.1, -1)]
         public void FiveSpellsSpreadOverAnArcAroundTheirWedge(double angle, int slot)
         {
-            // Earth, centred on 216°: five 30° slots, 150° in all.
             Assert.That(RadialGeometry.SlotAt(angle, Earth, 5, 5, Tuning), Is.EqualTo(slot));
         }
 
         [Test]
         public void ASmallArcIsNeverNarrowerThanItsWedge()
         {
-            // Fire Bolt alone fills the whole fire wedge, both edges included.
             Assert.That(RadialGeometry.ArcSpan(1, 5, Tuning), Is.EqualTo(72));
             Assert.That(RadialGeometry.SlotAt(324, Fire, 5, 1, Tuning), Is.EqualTo(0));
             Assert.That(RadialGeometry.SlotAt(36, Fire, 5, 1, Tuning), Is.EqualTo(0));
@@ -216,8 +197,6 @@ namespace Chem.Tests
             Assert.That(RadialGeometry.SlotCentre(Earth, 5, 4, 5, Tuning), Is.EqualTo(276));
             Assert.That(RadialGeometry.ArcSpan(20, 5, Tuning), Is.EqualTo(300), "a huge group is capped");
         }
-
-        // ---------- stick ----------
 
         [Test]
         public void StickDwellOpensTheArc()
@@ -296,8 +275,6 @@ namespace Chem.Tests
             Assert.That(Centre(r, 0.3, held: false).Outcome, Is.EqualTo(RadialOutcome.None), "the release after it does nothing");
         }
 
-        // ---------- pointer ----------
-
         [Test]
         public void MouseDeadZoneHighlightsNothingAndReleaseThereCancels()
         {
@@ -328,7 +305,6 @@ namespace Chem.Tests
             Move(r, 0, 0, 0.4);
             Assert.That((r.State, r.Element, r.Spell), Is.EqualTo((RadialState.Spells, Water, -1)), "the arc is out; ring 1 picks no spell");
             Move(r, 0.6, 0, 0.5);
-            // The arc's middle spell, whichever of the water spells that is.
             string middle = r.HighlightedSpell;
             Assert.That(Base.Spell(middle)?.Group, Is.EqualTo("water"));
             IsSelected(Move(r, 0, 0, 0.6, held: false), middle);
@@ -353,8 +329,6 @@ namespace Chem.Tests
             Move(r, X(216, 0.5), Y(216, 0.5), 0);
             IsSelected(Move(r, 0, 0, 0.1, held: false), "mold-earth");
         }
-
-        // ---------- tap and steps ----------
 
         [Test]
         public void AQuickTapSwapsToThePreviousSpell()

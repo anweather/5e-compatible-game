@@ -14,7 +14,6 @@ public static class Credits
         "Spell Chemistry Valley is an independent 5E-compatible game. It is not affiliated with, endorsed, " +
         "sponsored or approved by Wizards of the Coast.";
 
-    /// <summary>The Unity Asset Store packs in the build (unity/AssetPacks.json), all by Unity Technologies.</summary>
     public static readonly string[] Assets =
     {
         "Starter Assets: First Person + Third Person Character Controllers, by Unity Technologies",
@@ -23,30 +22,24 @@ public static class Credits
         "Unity URP Terrain Sample Project, by Unity Technologies",
     };
 
-    /// <summary>Models in the build that aren't ours (unity/Assets/Prototype/ThirdParty/Quaternius, CC0, so credited by choice).</summary>
     public const string Models = "The dragon: Animated Monsters by Quaternius (https://www.patreon.com/quaternius), CC0 1.0 Universal.";
 
-    /// <summary>Sounds in the build (unity/Assets/Prototype/Audio/CC0/CREDITS.md lists each), CC0, so credited by choice.</summary>
     public const string Sounds = "Sound effects: CC0 (public domain).";
 
-    /// <summary>The licences, as LICENSE.md and NOTICE.md have them, in plain words.</summary>
     public const string Licences =
         "The game is under the PolyForm Noncommercial License 1.0.0. Mods you make are CC-BY 4.0, as are the mods that come with the game. " +
         "The SRD 5.2.1 material is CC-BY 4.0. LICENSE.md and NOTICE.md are beside the game.";
 
     public const string Engine = "Made with Unity. Unity is a trademark of Unity Technologies.";
 
-    /// <summary>Libraries in the build whose licences ask to be credited.</summary>
     public const string Libraries = "Velopack (updates in place), MIT License. Copyright (c) 2021 Caelan Sayler, (c) 2024 Velopack Ltd. " +
         "Voice: whisper.cpp and ggml, MIT License, Copyright (c) 2023-2026 The ggml authors; whisper.unity, MIT License, Copyright (c) 2023 Macoron; " +
         "the Whisper model, MIT License, Copyright (c) 2022 OpenAI. The Vulkan Loader, Apache License 2.0, The Khronos Group, LunarG and Valve (VulkanRT-License.txt, beside the libraries). " +
         "The Microsoft Visual C++ runtime, redistributed under Microsoft's terms.";
 
-    /// <summary>Other people's code in the game, used with their permission (unity/Assets/Prototype/ThirdParty).</summary>
     public const string Contributions =
         "The land around the valley, the sky and clouds, the animals, fireflies and butterflies adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy), used with permission.";
 
-    /// <summary>All of it as plain text, for CREDITS.txt (Windows line endings: it's read in Notepad).</summary>
     public static string PlainText(string versionLabel)
     {
         const string nl = "\r\n";

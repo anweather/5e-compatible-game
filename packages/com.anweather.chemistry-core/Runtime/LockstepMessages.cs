@@ -20,7 +20,6 @@ namespace Chem.Lockstep
 {
     internal enum LockstepKind : byte { Hello = 1, Join, Intent, Batch, Hash, Snapshot, ResetComing, Refused, Resync }
 
-    /// <summary>The host's hello: what a peer checks, and the map and start it builds, before it joins.</summary>
     public sealed class LockstepHello
     {
         public LockstepHello(int protocol, string rules, string map, IReadOnlyDictionary<string, string> start, IReadOnlyList<string> channels)
@@ -32,15 +31,10 @@ namespace Chem.Lockstep
             Channels = channels ?? System.Array.Empty<string>();
         }
 
-        /// <summary>The host's LockstepSession.Protocol.</summary>
         public int Protocol { get; }
-        /// <summary>The host's base rules' fingerprint (before any mod): a peer with other files can't follow it.</summary>
         public string Rules { get; }
-        /// <summary>The map the host plays (docs/design/maps-as-data.md): a peer on another builds the host's.</summary>
         public string Map { get; }
-        /// <summary>The host's start settings, by name (ours: the spawn it started in).</summary>
         public IReadOnlyDictionary<string, string> Start { get; }
-        /// <summary>The host's channels' names, in the order registered.</summary>
         public IReadOnlyList<string> Channels { get; }
 
         internal void Write(LockstepWriter w)
@@ -72,7 +66,6 @@ namespace Chem.Lockstep
         }
     }
 
-    /// <summary>A hash window this peer's world disagrees with the host's on: its tick and the parts that differ.</summary>
     public sealed class LockstepDesync
     {
         public LockstepDesync(int tick, IReadOnlyList<string> parts)
@@ -82,10 +75,8 @@ namespace Chem.Lockstep
         }
 
         public int Tick { get; }
-        /// <summary>The checksum's parts that differ, by JoinSnapshot.PartNames.</summary>
         public IReadOnlyList<string> Parts { get; }
 
-        /// <summary>What it means, for the log: other files, other rules, or a world gone its own way.</summary>
         public string Text
         {
             get
@@ -97,7 +88,6 @@ namespace Chem.Lockstep
         }
     }
 
-    /// <summary>A command the host wouldn't take: its channel, the command, who asked and why.</summary>
     public sealed class LockstepRefusal
     {
         public LockstepRefusal(LockstepChannel channel, object command, PeerId peer, string why)
@@ -111,11 +101,9 @@ namespace Chem.Lockstep
         public LockstepChannel Channel { get; }
         public object Command { get; }
         public PeerId Peer { get; }
-        /// <summary>One sentence without its capital (RoomPolicy's style).</summary>
         public string Why { get; }
     }
 
-    /// <summary>Host: a command it took, stamped for a tick (what the view may show early: a cast's gesture).</summary>
     public sealed class LockstepTaken
     {
         public LockstepTaken(PeerId from, LockstepChannel channel, object command, int tick)

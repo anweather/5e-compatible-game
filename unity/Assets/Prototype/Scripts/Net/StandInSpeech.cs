@@ -7,13 +7,10 @@ public sealed class StandInSpeech : ISpeech
 {
     readonly Queue<(SpeechHeard heard, string text)> heard = new();
 
-    /// <summary>Set by the probe: the line Start fails with, or null to work.</summary>
     public string FailWith { get; set; }
 
-    /// <summary>Set by the probe: Stop waits for Finish.</summary>
     public bool Slow { get; set; }
 
-    /// <summary>Set by the probe: Start stays Starting until Ready.</summary>
     public bool SlowStart { get; set; }
 
     public SpeechState State { get; private set; }
@@ -30,7 +27,6 @@ public sealed class StandInSpeech : ISpeech
         if (FailWith != null) heard.Enqueue((SpeechHeard.Done, ""));
     }
 
-    /// <summary>Done starting.</summary>
     public void Ready() => State = SpeechState.Listening;
 
     public void Stop()
@@ -39,13 +35,10 @@ public sealed class StandInSpeech : ISpeech
         Finish();
     }
 
-    /// <summary>A guess at the words so far, as if spoken.</summary>
     public void Partial(string text) => heard.Enqueue((SpeechHeard.Partial, text));
 
-    /// <summary>A phrase it's sure of, as if spoken.</summary>
     public void Final(string text) => heard.Enqueue((SpeechHeard.Final, text));
 
-    /// <summary>Ends the hold.</summary>
     public void Finish()
     {
         State = SpeechState.Idle;

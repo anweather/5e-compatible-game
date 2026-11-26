@@ -10,13 +10,11 @@ using UnityEngine;
 // and not the trees): a check on the arrays, before that move, saw every tree within 0.38 m.
 public class TreeSeatProbe : ProbeScenario
 {
-    /// <summary>How far a tree's lowest point may sit under the ground at its trunk, or its root over it, in metres.</summary>
     public const float Sunk = 1f, Floating = 0.75f;
 
     protected override IEnumerator Run()
     {
         var valley = FindAnyObjectByType<ValleyChemistry>();
-        // The ground eases into any stamp laid at the start: measured once it's still.
         for (float t = 0f; t < 20f && (valley == null || valley.GroundMoving); t += Time.deltaTime) yield return null;
         yield return Wait(2f);
         var terrains = Terrain.activeTerrains;
@@ -52,7 +50,6 @@ public class TreeSeatProbe : ProbeScenario
         }
         int terrainTrees = trees;
 
-        // The tree models standing in the scene: anything made of a terrain tree kind's prefab (a LOD group named for it).
         var kinds = new HashSet<string>();
         foreach (var t in terrains)
             foreach (var p in t.terrainData.treePrototypes)
@@ -84,7 +81,6 @@ public class TreeSeatProbe : ProbeScenario
         Check("no_tree_floating", floating == 0, $"{floating} more than {Floating} m over; worst {worstFloat:F2} m: {worstFloatAt}");
     }
 
-    // A tree kind's lowest point under its root, in its own metres (its first LOD's meshes, at the prefab's own scale).
     static float Lowest(GameObject prefab)
     {
         float low = 0f;

@@ -9,7 +9,6 @@ namespace Playtest.Runner
 {
     public static class Coverage
     {
-        /// <summary>The counts after a run: each old count times 0.8 (rounded down), plus the run's goals; zeros are dropped.</summary>
         public static SortedDictionary<string, int> After(IReadOnlyDictionary<string, int> before, IEnumerable<string> goals)
         {
             var counts = new SortedDictionary<string, int>(System.StringComparer.Ordinal);

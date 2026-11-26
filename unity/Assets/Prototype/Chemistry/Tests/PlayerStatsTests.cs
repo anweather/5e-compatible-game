@@ -1,13 +1,11 @@
+// Player stats (PlayerStats.cs, docs/RULES_MCP.md "Player stats"): everyone's and a slot's own in sim player, a mod
+// stacking and taking them back, the bounds in budgets.json; and a tick trigger, the shower (Rules.Triggers.cs),
+// with ShowerTriggerGolden.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Player stats (PlayerStats.cs, docs/RULES_MCP.md "Player stats"): everyone's and a slot's own in sim player, a mod
-    /// stacking and taking them back, the bounds in budgets.json; and a tick trigger, the shower (Rules.Triggers.cs),
-    /// with ShowerTriggerGolden.
-    /// </summary>
     [Category("Simulation")]
     public class PlayerStatsTests
     {
@@ -68,8 +66,6 @@ namespace Chem.Tests
             StringAssert.Contains("sim player.speed is 0; a mod may set it from 0.5 to 3", Problems("{ 'sim': { 'player': { 'speed': 0 } } }"));
         }
 
-        // ---------- the shower: a tick trigger ----------
-
         const string Shower = "{ 'triggers': { 'meteor-shower': { 'on': 'tick', 'who': 'each', 'every': 12, 'do': [ { 'cast': 'meteor', 'at': 'around', 'within': 8, 'delay': 6 } ] } } }";
 
         static World Standing(Rules rules, params string[] players)
@@ -114,7 +110,6 @@ namespace Chem.Tests
             Assert.That(w.TriggerFirings, Is.EqualTo(4), "left out, every is the floor");
         }
 
-        /// <summary>ShowerTriggerGolden: a meteor shower round two players for 240 ticks; CellHash and CastHash pinned, and two runs match.</summary>
         [Test]
         public void ShowerTriggerGolden()
         {

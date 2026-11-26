@@ -14,7 +14,6 @@ public class MeteorProbe : ProbeScenario
         var at = Yard(14, 3);
         var cell = grid.CellAt(at);
         at.y = grid.GroundAt(at);
-        // From high behind the wizard, over the trees, looking past it at the target and the sky beyond.
         var me = wizard.transform.position;
         var back = me - at;
         back.y = 0f;
@@ -23,7 +22,6 @@ public class MeteorProbe : ProbeScenario
         Check("bar_has_meteor", caster.Select(SpellIds.Meteor));
         puppet.Face(at);
         caster.Cast(SpellIds.Meteor, cell.x, cell.y, 1);
-        // It comes down at the gesture's pull (CastPose, CastGestures), not at the cast.
         yield return Wait(CastGestures.Of(caster.GestureOf(SpellIds.Meteor)).release);
         yield return null;
         var meteor = GameObject.Find("Meteor");
@@ -38,8 +36,6 @@ public class MeteorProbe : ProbeScenario
         int middle = World.At(cell.x, cell.y).Height;
         Check("crater", middle == -3, $"the middle {middle} steps");
         int burning = 0;
-        // The ring past the crater (which digs out to two squares): burning, or already burnt to dirt.
-        // How many still burn at this moment depends on the frame rate, so burnt ones count too.
         for (int dy = -4; dy <= 4; dy++)
             for (int dx = -4; dx <= 4; dx++)
             {

@@ -19,7 +19,6 @@ using UnityEngine;
 // the 4-player demo.
 public static class DemoRecorder
 {
-    // Which recording to start once Play mode is up (empty: none).
     const string Flag = "Prototype.RecordDemo";
     const string Demo = "demo", Overnight = "overnight", Valley = "valley";
     static RecorderController controller;
@@ -35,7 +34,6 @@ public static class DemoRecorder
 
     const string Named = "showcase:";
 
-    /// <summary>Plays and records the ShowcaseScript of this class name into Recordings/&lt;name&gt;/ (1080p JPEG frames).</summary>
     public static void RecordShowcase(string typeName) => PlayAndRecord(Named + typeName);
 
     static void PlayAndRecord(string which)
@@ -60,11 +58,8 @@ public static class DemoRecorder
         };
     }
 
-    // The Game view's Gizmos toggle (light icons and the like) shows up in recordings,
-    // so it is switched off while recording and put back afterwards.
     static bool? gizmosWere;
 
-    /// <summary>Switches the Game view's Gizmos off (for screenshots too: ProbeCommands) until RestoreGizmos.</summary>
     internal static void HideGizmos() => SetGameViewGizmos(false);
 
     internal static void RestoreGizmos()
@@ -102,7 +97,6 @@ public static class DemoRecorder
         RecordUntil("Recordings/ChemistryYard", () => director == null || director.Done, realTime: false, Stop);
     }
 
-    // A scripted showcase at 1080p, as JPEG frames in Recordings/<its class name>/.
     static void RecordShowcase<T>(System.Action stop) where T : ShowcaseScript
     {
         var name = typeof(T).Name;
@@ -110,13 +104,6 @@ public static class DemoRecorder
         RecordUntil($"Recordings/{name}", () => show == null || show.Done, realTime: false, stop, 1920, 1080, frames: true);
     }
 
-    /// <summary>
-    /// Records the Game view (already in Play mode) to <paramref name="file"/>.mp4 until
-    /// <paramref name="done"/> returns true. Fixed-rate recording runs game time at 30 fps,
-    /// smooth even when the Editor renders slowly; real-time recording keeps pace with the
-    /// wall clock, which a networked session needs because other machines don't wait.
-    /// With <paramref name="frames"/> it writes numbered JPEGs into the folder <paramref name="file"/> instead.
-    /// </summary>
     public static void RecordUntil(string file, System.Func<bool> done, bool realTime, System.Action finished = null,
         int width = 1280, int height = 720, bool frames = false)
     {

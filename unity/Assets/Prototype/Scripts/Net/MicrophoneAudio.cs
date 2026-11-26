@@ -14,7 +14,6 @@ public sealed class MicrophoneAudio : ISpeechAudio
     static int Position => Microphone.GetPosition(null);
     static void EndRecording() => Microphone.End(null);
 
-    /// <summary>The longest recording kept.</summary>
     public const int MostSeconds = 30;
 
     readonly List<float> recorded = new();
@@ -39,8 +38,6 @@ public sealed class MicrophoneAudio : ISpeechAudio
         Close();
         recorded.Clear();
         if (Devices.Length == 0) return "No microphone found. Plug one in, or type.";
-        // This can block the main thread: in the hidden Editor on a Mac it took 450 s and failed, then 391 s
-        // and opened (2026-11-03, docs/design/speech-check.md).
         clip = StartRecording();
         read = 0;
         if (clip != null)
@@ -64,7 +61,7 @@ public sealed class MicrophoneAudio : ISpeechAudio
         read = at;
         if (count <= 0) return;
         if (buffer.Length != count) buffer = new float[count];
-        clip.GetData(buffer, (at - frames + clip.samples) % clip.samples); // wraps round the clip by itself
+        clip.GetData(buffer, (at - frames + clip.samples) % clip.samples);
         Level = SpeechSamples.Peak(buffer);
         recorded.AddRange(buffer);
     }

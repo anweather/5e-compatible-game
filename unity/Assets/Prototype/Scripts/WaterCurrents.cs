@@ -33,7 +33,6 @@ public class WaterCurrents : MonoBehaviour
     public float surge = 2.2f, drift = 0.25f;
 
     MapLand seaOf;
-    // The river's line as the scene was built with it, on the valley.
     Vector2[] valleyRiver;
 
     void OnEnable()
@@ -42,12 +41,10 @@ public class WaterCurrents : MonoBehaviour
         FromMap();
     }
 
-    // The map's sea: its shore map, the way out, the level.
     void FromMap()
     {
         seaOf = MapLand.Current;
         if (seaOf == null) return;
-        // The river is the valley's: on a map that pins the valley into a square, it runs where the valley is (PinnedValley).
         if (Application.isPlaying)
         {
             valleyRiver ??= river;
@@ -70,7 +67,6 @@ public class WaterCurrents : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    /// <summary>The current at a point in the water (m/s, level); zero out of the water or in still water.</summary>
     public Vector3 At(Vector3 p)
     {
         if (grid == null || grid.World == null) return Vector3.zero;
@@ -82,7 +78,6 @@ public class WaterCurrents : MonoBehaviour
         return Vector3.zero;
     }
 
-    // Downstream along the nearest stretch of the course, slowing toward the banks.
     Vector3 River(Vector2 p)
     {
         if (river.Length < 2) return Vector3.zero;
@@ -103,11 +98,8 @@ public class WaterCurrents : MonoBehaviour
         return new Vector3(along.x, 0f, along.y) * speed;
     }
 
-    /// <summary>Whether a point is out at sea (the map's low land joined to its edge, SeaMask), not a lake.</summary>
     public bool IsSea(Vector3 p) => seaOf != null ? seaOf.IsSea(new Vector2(p.x, p.z)) : Vector2.Dot(new Vector2(p.x, p.z) - shoreOrigin, seaward.normalized) > -60f;
 
-    // Toward the nearest land: in pulses as each breaker comes in over the shallows, a steady drift
-    // further out. Dying away where two shores are about as near, as the map's way to land does.
     Vector3 Sea(Vector3 p, Vector2Int cell)
     {
         if (shoreMap == null) return Vector3.zero;

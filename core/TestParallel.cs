@@ -3,4 +3,4 @@
 using NUnit.Framework;
 
 [assembly: Parallelizable(ParallelScope.Fixtures)]
-[assembly: LevelOfParallelism(6)] // past this the fixtures, who all make whole worlds, slow each other down
+[assembly: LevelOfParallelism(6)]

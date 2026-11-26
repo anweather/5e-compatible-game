@@ -44,7 +44,6 @@ public class LooksProbe : ProbeScenario
         Patch(o, 4, 4, TerrainIds.Sand);
         Patch(new Vector2Int(o.x + 4, o.y), 4, 4, TerrainIds.Glass);
         yield return Picture("sand-glass", Mid(o, 8, 4));
-        // Lightning fuses sand into glass, in place.
         var hit = new Vector2Int(o.x + 1, o.y + 1);
         Cut(Mid(o, 8, 4) + V(-5f, 4f, -6f), Mid(o, 8, 4));
         caster.Cast(SpellIds.ShockingGrasp, hit.x, hit.y, 1);
@@ -52,7 +51,6 @@ public class LooksProbe : ProbeScenario
         Check("lightning_fuses_sand", World.At(hit.x, hit.y).T == TerrainIds.Glass, $"the struck cell is {World.At(hit.x, hit.y).T}");
     }
 
-    // A glow ball dropped from the hand's pace bounces; one hurled at the ground shatters. Then a raider's ice.
     IEnumerator Balls(Vector2Int o)
     {
         Patch(o, 4, 4, TerrainIds.Dirt);
@@ -67,8 +65,6 @@ public class LooksProbe : ProbeScenario
         Hurl(balls[0], at + Vector3.up * 1f, Vector3.down * 4.5f);
         yield return Wait(1f);
         Check("hand_drop_survives", balls[0] != null, "a ball at 4.5 m/s stays whole");
-        // The whole ball is gone, its light too: the one that survived goes out of frame first, then
-        // another leaves the hand as a player's does and meets the ground hard.
         Hurl(balls[0], at + V(-10f, 1f, 10f), Vector3.zero);
         var hurled = balls[1];
         var stand = at + V(-1.5f, 0f, 0f);
@@ -93,7 +89,6 @@ public class LooksProbe : ProbeScenario
         yield return null;
         yield return null;
 
-        // What DefenseField.Shatter shows for a frozen raider that's struck.
         ShardBurst.At(at + Vector3.up * 0.5f, new Color(0.7f, 0.88f, 1f), 40);
         GameSounds.Play(SoundIds.Shatter, at);
         yield return Wait(0.15f);
@@ -107,7 +102,7 @@ public class LooksProbe : ProbeScenario
     static void Hurl(Carryable ball, Vector3 from, Vector3 velocity)
     {
         var body = ball.GetComponent<Rigidbody>();
-        body.isKinematic = false; // it may have been asleep in a chunk that isn't active
+        body.isKinematic = false;
         body.position = from;
         ball.transform.position = from;
         body.linearVelocity = velocity;
@@ -116,7 +111,6 @@ public class LooksProbe : ProbeScenario
     IEnumerator Mud(Vector2Int o)
     {
         Patch(o, 8, 4, TerrainIds.Mud);
-        // Mud dries on the next soak pass unless the cell is damp, as it is after rain or water.
         for (int y = 0; y < 4; y++)
             for (int x = 0; x < 8; x++) World.At(o.x + x, o.y + y).DampUntil = World.Tick + 600;
         var yard = grid.yardCells;
@@ -193,7 +187,6 @@ public class LooksProbe : ProbeScenario
         yield return null;
     }
 
-    // Oil laid on the yard's pond and set alight, then lightning in the water.
     IEnumerator Pond()
     {
         var yard = grid.yardCells;
@@ -222,7 +215,6 @@ public class LooksProbe : ProbeScenario
         PutOutFires();
         yield return Wait(0.5f);
 
-        // The fire boils some of the pond off: strike what's still wet.
         wet = wet.Where(c => World.At(c.x, c.y).Water > 0).ToList();
         var strike = wet.OrderBy(c => (c - bank).sqrMagnitude).Skip(3).First();
         caster.Cast(SpellIds.ShockingGrasp, strike.x, strike.y, 1);
@@ -235,7 +227,6 @@ public class LooksProbe : ProbeScenario
         yield return null;
     }
 
-    // A house's window: glass, a crate thrown hard at it, then the gap. A crate tossed softly leaves the glass whole.
     IEnumerator Window()
     {
         var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
@@ -243,7 +234,6 @@ public class LooksProbe : ProbeScenario
         var panes = house != null ? house.GetComponent<WindowPanes>() : null;
         Check("house_with_panes", panes != null && panes.panes.Length > 0, panes != null ? $"{panes.panes.Length} panes" : "no stone house");
         if (panes == null || panes.panes.Length == 0) yield break;
-        // A pane on a cell with a clear view of it.
         var pane = panes.panes.FirstOrDefault(p => Near(panes.transform.TransformPoint(p.at), out _) && Clear(panes.transform.TransformPoint(p.at), panes.transform.TransformDirection(p.facing)));
         var at = panes.transform.TransformPoint(pane.at);
         var facing = panes.transform.TransformDirection(pane.facing);
@@ -270,7 +260,6 @@ public class LooksProbe : ProbeScenario
             Metric("crate_hit_ns_2_5ms", WindowPanes.HardestHit);
             Check("nudge_leaves_pane", World.At(cell.x, cell.y).T == TerrainIds.Pane, $"the cell is {World.At(cell.x, cell.y).T} after 2.5 m/s");
             WindowPanes.HardestHit = 0f;
-            // However it tumbles: at 8 m/s a flat landing came to about 125 N s, near the 120 it needs.
             yield return HitWith(crate, at, facing, 11f);
             Metric("crate_hit_ns_11ms", WindowPanes.HardestHit);
             Check("hard_hit_cracks_pane", World.At(cell.x, cell.y).Cracked != 0, $"the cell is {World.At(cell.x, cell.y).T}, cracked {World.At(cell.x, cell.y).Cracked}");
@@ -287,7 +276,6 @@ public class LooksProbe : ProbeScenario
         Shot("window-gap");
         yield return null;
         yield return null;
-        // Another pane on its first hit, with no crate in the way: the web on the glass.
         var others = panes.panes.Where(p => p.at != pane.at && Near(panes.transform.TransformPoint(p.at), out var c) && c != cell && Clear(panes.transform.TransformPoint(p.at), panes.transform.TransformDirection(p.facing))).ToList();
         if (others.Count == 0) yield break;
         var other = others[0];
@@ -311,16 +299,13 @@ public class LooksProbe : ProbeScenario
         body.isKinematic = false;
         body.position = from;
         crate.transform.position = from;
-        // Not still tumbling from the throw before: that spread the hit and left it near the threshold.
         body.angularVelocity = Vector3.zero;
         body.linearVelocity = -facing * speed;
         yield return Wait(0.5f);
     }
 
-    // Whether nothing stands between a pane and the camera's spot before it.
     static bool Clear(Vector3 at, Vector3 facing) => !Physics.Linecast(at + facing * 0.4f, at + facing * 3.5f, ~0, QueryTriggerInteraction.Ignore);
 
-    // The pane cell at a point, or the one beside it (a wall's line runs near a cell's edge).
     bool Near(Vector3 point, out Vector2Int cell)
     {
         var at = grid.CellAt(point);

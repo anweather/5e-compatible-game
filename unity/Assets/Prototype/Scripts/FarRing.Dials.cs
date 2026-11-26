@@ -9,22 +9,14 @@ using UnityEngine;
 // rule switch (the host's), never here. A player takes them as -drawn N and -known N, for perf runs.
 public sealed partial class FarRing
 {
-    /// <summary>This peer's drawn dial (chunks), or null for sim.json's streaming sight.</summary>
     public static int? ViewDrawn { get; private set; }
 
-    /// <summary>This peer's known dial (chunks), or null for sim.json's streaming know.</summary>
     public static int? ViewKnown { get; private set; }
 
-    /// <summary>The drawn and known radii in use now (chunks).</summary>
     public (int drawn, int known) Dials => (sight, know);
 
-    /// <summary>Whether the known ring has caught up with the characters and its meshes are all handed to Unity.</summary>
     public bool Settled => ring != null && !ring.Busy && building == null && ring.Version == builtVersion;
 
-    /// <summary>
-    /// Sets this peer's drawn and known dials (null for the rules'), from the next frame: the known ring is made again at
-    /// the new size and the haze follows it (AirDials). Known is at least 1 and drawn at most known.
-    /// </summary>
     public static void SetView(int? drawn, int? known)
     {
         ViewKnown = known.HasValue ? Mathf.Max(1, known.Value) : null;
@@ -33,7 +25,6 @@ public sealed partial class FarRing
         if (Instance != null && Instance.ring != null && rules != null) Instance.Dial(rules.Sim.Streaming);
     }
 
-    // A player's -drawn N and -known N.
     static void DialsFromArgs()
     {
         var args = Environment.GetCommandLineArgs();
@@ -46,7 +37,6 @@ public sealed partial class FarRing
         if (drawn.HasValue || known.HasValue) SetView(drawn, known);
     }
 
-    // The ring at the dials' sizes (made again when they change), and the haze at the known ring's edge.
     void Dial(StreamingParams streaming)
     {
         int k = ViewKnown ?? streaming.Know, s = Mathf.Min(ViewDrawn ?? streaming.Sight, k);
@@ -55,7 +45,6 @@ public sealed partial class FarRing
         sight = s;
         ring = new KnownRing(map.Gen, s, k);
         builtVersion = -1;
-        // So the next frame tells the new ring where the characters stand.
         characters.Clear();
         HazeMetres = know * chunkMetres;
         if (terrains != null) terrains.ReachNow();

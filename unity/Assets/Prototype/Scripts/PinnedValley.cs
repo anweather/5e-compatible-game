@@ -11,9 +11,6 @@ using UnityEngine;
 // Only where things are drawn: the cells are the map's (D4).
 public static class PinnedValley
 {
-    // The valley's places left out on a bigger map: its skyline and its world edge stand round it. Its lake stays: the sea
-    // doesn't draw a generated map's basins (Ocean.DrawsBasins), and the lake's cells leave their water to the lake's own
-    // surface (ValleyChemistry.IsLake), so without it the lake went undrawn and the wizard swam in the air (#223).
     static readonly string[] EdgePlaces = { "skyline", "world-edge" };
 
     sealed class Placement
@@ -43,7 +40,6 @@ public static class PinnedValley
         {
             if (!GeneratedMap.IsGenerated(source)) return p;
             var map = LoadedMaps.Get(source);
-            // A hills map pins nothing: it's generated (the far ring, the drawn tier), with no valley to dress or move.
             if (map.PinnedDir == null)
             {
                 p.Generated = true;
@@ -65,12 +61,9 @@ public static class PinnedValley
         return p;
     }
 
-    /// <summary>Whether the map being played is made from a world file with the valley pinned in it.</summary>
     public static bool InGenerated => Current.Generated;
 
-    /// <summary>How far the valley's own dressing moves to stand where the valley is in this map (zero on the valley).</summary>
     public static Vector3 Shift => Current.By;
 
-    /// <summary>The valley's places this generated map dresses where the valley lies in it.</summary>
     public static string[] Dresses => Current.Places;
 }

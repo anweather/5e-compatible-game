@@ -1,3 +1,5 @@
+// The chunk terrains' layout, the heights the cells give them and the paint
+// (TerrainGrid, CellHeightfield, CellPaint; docs/WORLD_STREAMING.md, part 1).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,22 +7,15 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The chunk terrains' layout, the heights the cells give them and the paint
-    /// (TerrainGrid, CellHeightfield, CellPaint; docs/WORLD_STREAMING.md, part 1).
-    /// </summary>
     [Category("Simulation")]
     public class TerrainTests
     {
         static Rules R => ChemistryTests.R;
-        // The mechanics are tested on a 200×175 grid over the valley's terrains, where the yard's cells
-        // were before they covered the whole valley; ValleyCoversTheWholeTerrain checks the real layout.
         static readonly TerrainGrid G = new TerrainGrid(1.5f, (-419.25f, -368.25f), (9, 9), (192, 319), (200, 175), (3, 2, 5, 4));
         const float Step = 0.5f;
 
         static World Meadow() => new World(R, G.GridW, G.GridH, 1, "grass");
 
-        /// <summary>A meadow with random heights, pits, rock and walls.</summary>
         static World Rugged(int seed)
         {
             var w = Meadow();
@@ -38,7 +33,6 @@ namespace Chem.Tests
         {
             var list = new List<(int x, int y)>();
             for (int k = 0; k < n; k++) list.Add((rng.Next(G.GridW), rng.Next(G.GridH)));
-            // Cells on chunk edges and corners: x 63/64 is u 255/256, y 63/64 is v 256/255.
             list.AddRange(new[] { (0, 0), (63, 63), (64, 64), (199, 174), (0, 174), (127, 127), (128, 128) });
             return list;
         }
@@ -49,8 +43,6 @@ namespace Chem.Tests
                 for (int x = 0; x < expected.GetLength(1); x++)
                     Assert.AreEqual(expected[z, x], actual[z, x], $"{what} at [{z}, {x}]");
         }
-
-        // ---------- layout ----------
 
         [Test]
         public void ValleyCellsSitWhereTheYardWas()
@@ -78,7 +70,6 @@ namespace Chem.Tests
         [Test]
         public void GridCellZeroCornerIsAChunkCorner()
         {
-            // Cell (0, 0)'s north-west corner is the corner of chunks (3, 4) and (3, 5).
             var (cx, cz) = G.CellCenter(0, 0);
             var (kx, kz) = G.ChunkCorner(3, 5);
             Assert.AreEqual(kx, cx - G.CellSize / 2);
@@ -126,8 +117,6 @@ namespace Chem.Tests
             Assert.IsFalse(G.InGrid(G.CellAt(-200f, 0f).x, 0));
         }
 
-        // ---------- heights ----------
-
         [Test]
         public void ChunkEdgesMatchAcrossEveryKindOfSeam([Values(1, 2, 3)] int seed)
         {
@@ -148,11 +137,6 @@ namespace Chem.Tests
             Assert.IsTrue(maps[(4, 3)].Cast<float>().Any(h => h != 0f), "the heights did something");
         }
 
-        /// <summary>
-        /// Checks the shared edge of two chunks (a west or south of b): equal at every shared
-        /// sample, and on a full-detail edge facing a coarse one, the samples between are on the
-        /// line between the coarse ones. Returns the kind of seam.
-        /// </summary>
         static string CheckSeam(float[,] a, float[,] b, Func<float[,], int, float> edgeA, Func<float[,], int, float> edgeB)
         {
             int ra = a.GetLength(0), rb = b.GetLength(0);
@@ -174,19 +158,15 @@ namespace Chem.Tests
             var w = Meadow();
             for (int y = 80; y <= 82; y++) for (int x = 50; x <= 59; x++) w.At(x, y).Height = -2;
             var field = new CellHeightfield(G, Step);
-            // Cell (55, 81) is u 247, v 238: chunk (3, 3), full detail, local cell (55, 46).
             var (i, j, sx, sz) = G.CellSample(55, 81);
             Assert.AreEqual((3, 3, 55 * 4 + 2, 46 * 4 + 2), (i, j, sx, sz));
             var h = field.Compute(w, i, j);
             Assert.AreEqual(-1f, h[sz, sx], "inside the trench");
             Assert.AreEqual(-1f, h[sz, 55 * 4], "between two trench cells");
-            // The trench's north edge: y 80 is v 239 (local 47), its top the corner at local 48.
-            // The bank slopes evenly from the last trench cell's centre to the first meadow cell's.
             Assert.AreEqual(-0.75f, h[48 * 4 - 1, sx], "a quarter of a cell from the trench's last centre");
             Assert.AreEqual(-0.5f, h[48 * 4, sx], "bank: half way");
             Assert.AreEqual(-0.25f, h[48 * 4 + 1, sx], "a quarter of a cell from the meadow's first centre");
             Assert.AreEqual(0f, h[48 * 4 + 2, sx], "the meadow cell's centre");
-            // The trench's north-west corner (x 50 is u 242, local 50).
             Assert.AreEqual(-0.25f, h[48 * 4, 50 * 4], "outer corner: one cell of four");
             Assert.AreEqual(0f, h[100, 100], "untouched meadow");
         }
@@ -194,7 +174,6 @@ namespace Chem.Tests
         [Test]
         public void SnowBankIsARoundedMound()
         {
-            // Andrew's playtest #30: a bank showed as a square block on its cell.
             var w = Meadow();
             w.At(55, 81).Cover = World.BankCover;
             var field = new CellHeightfield(G, Step);
@@ -249,11 +228,9 @@ namespace Chem.Tests
         public void ChangedCellOnAnEdgeDirtiesBothChunks()
         {
             var field = new CellHeightfield(G, Step);
-            // x 63 is u 255, the last column of chunk 3; its east edge is chunk 4's first column.
             var rects = field.DirtyRects(new[] { (63, 100) });
             CollectionAssert.AreEquivalent(new[] { (3, 3), (4, 3) }, rects.Select(r => (r.I, r.J)));
             Assert.AreEqual(0, rects.Single(r => r.I == 4).X);
-            // Cell (0, 0)'s corner is shared by four chunks, two of them coarse.
             var corner = field.DirtyRects(new[] { (0, 0) }).Select(r => (r.I, r.J));
             CollectionAssert.AreEquivalent(new[] { (2, 4), (3, 4), (2, 5), (3, 5) }, corner);
         }
@@ -284,7 +261,6 @@ namespace Chem.Tests
         [Test]
         public void ResetFromItsCacheEqualsTheCellsRead([Values(6, 7)] int seed, [Values(false, true)] bool flatUnderWalls)
         {
-            // Reset reads each cell's numbers once (its cache); Compute reads the cells themselves, as Update does.
             var w = Rugged(seed);
             var rng = new Random(seed);
             foreach (var c in w.AllCells())
@@ -305,8 +281,6 @@ namespace Chem.Tests
         [Test]
         public void UpdateFillsOnlyRoundTheCellsAndMatchesAFullRecompute([Values(1, 2, 3)] int seed)
         {
-            // Snow's shape: banks scattered over several chunks, some on their edges (RandomCells),
-            // some close together, so the samples they share are worked out once.
             var w = Rugged(seed);
             var field = new CellHeightfield(G, Step);
             field.Reset(w);
@@ -414,8 +388,6 @@ namespace Chem.Tests
             Assert.IsEmpty(field.Advance(0.25f));
         }
 
-        // ---------- paint ----------
-
         [Test]
         public void EveryTerrainPaintsWholeWeights()
         {
@@ -485,7 +457,6 @@ namespace Chem.Tests
             Assert.AreEqual(CellPaint.Grass, Top(CellPaint.Mix(w, w.At(7, 5))));
         }
 
-        // A 3×3 patch of rock at (20..22, 20..22) on a full-detail chunk; the rest keeps the base.
         static PaintBlock RockPatch(World w, out ChunkRect rect)
         {
             for (int y = 20; y <= 22; y++)
@@ -497,7 +468,6 @@ namespace Chem.Tests
             return CellPaint.Block(G, rect, (x, y) => w.At(x, y).T == "rock" ? CellPaint.Mix(w, w.At(x, y)) : null);
         }
 
-        // The cover of the texel at a fraction (fx, fy) across grid cell (x, y) (y growing south).
         static float CoverAt(PaintBlock b, ChunkRect rect, int x, int y, float fx, float fy)
         {
             var cell = G.TexelRect(x, y);
@@ -531,7 +501,6 @@ namespace Chem.Tests
         public void PatchEdgesWanderAcrossCellBorders()
         {
             var b = RockPatch(Meadow(), out var rect);
-            // The west border of the patch: the cover of the texels just outside it differs from row to row.
             var outside = new List<float>();
             var inside = new List<float>();
             for (int y = 20; y <= 22; y++)
@@ -554,7 +523,6 @@ namespace Chem.Tests
             w.At(30, 30).Height = R.Sim.Height.BlockAt;
             var rect = CellPaint.DirtyRects(G, CellPaint.Around(G, new[] { (30, 30) })).Single();
             var b = CellPaint.Block(G, rect, (x, y) => w.IsRaisedWall(w.At(x, y)) ? CellPaint.Mix(w, w.At(x, y)) : null);
-            // The first texel of each neighbour, toward the wall (where its slope is), is mostly rock.
             float east = CoverAt(b, rect, 31, 30, 0f, 0.5f), west = CoverAt(b, rect, 29, 30, 0.875f, 0.5f);
             float north = CoverAt(b, rect, 30, 29, 0.5f, 0.875f), south = CoverAt(b, rect, 30, 31, 0.5f, 0f);
             Assert.Greater(Math.Min(Math.Min(east, west), Math.Min(north, south)), 0.5f);
@@ -575,8 +543,6 @@ namespace Chem.Tests
             Assert.AreEqual(CellPaint.Earth, Top(Enumerable.Range(0, CellPaint.Layers.Count).Select(k => a.Mix[0, 0, k]).ToList()));
         }
 
-        // Every texel of the strips round scattered cells of a rugged world (walls, ash, snow, dug and
-        // scorched ground, full-detail and coarse chunks), Cover and Mix as bits, FNV-1a.
         static uint PaintHash(Func<ChunkRect, Func<int, int, IReadOnlyList<float>>, PaintBlock> block)
         {
             var w = Rugged(11);
@@ -591,7 +557,6 @@ namespace Chem.Tests
             Func<int, int, IReadOnlyList<float>> paintOf = (x, y) =>
                 (x * 7 + y * 3) % 5 == 0 ? null : CellPaint.Mix(w, w.At(x, y), (x + y) % 4 == 0);
             uint h = 2166136261u;
-            // Twice over, so texels painted again (noise kept from the first time) count too.
             for (int round = 0; round < 2; round++)
                 foreach (var r in CellPaint.Runs(G, CellPaint.Around(G, RandomCells(new Random(13), 300))))
                     h = HashBlock(h, block(r, paintOf));
@@ -619,9 +584,6 @@ namespace Chem.Tests
             return h;
         }
 
-        // The paint as composed before it kept each texel's noise and read the mixes as arrays (#70):
-        // the same texels, bit for bit. Unity's Mono keeps a sum's steps in double precision where .NET
-        // rounds each to a float, so each runtime has its own bits (both taken from the code before).
         static readonly uint PaintGolden = Type.GetType("Mono.Runtime") != null ? 411641309u : 454580981u;
 
         [Test]
@@ -635,7 +597,6 @@ namespace Chem.Tests
         [Test]
         public void RunsJoinNeighboursInARowOfOneChunk()
         {
-            // x 63 and 64 are u 255 and 256: the two sides of a chunk edge.
             var runs = CellPaint.Runs(G, new[] { (10, 10), (11, 10), (13, 10), (10, 11), (63, 10), (64, 10) });
             Assert.AreEqual(5, runs.Count);
             Assert.AreEqual(1, runs.Count(r => r.Width == 8 && r.Height == 4), "10 and 11 join");
@@ -657,7 +618,6 @@ namespace Chem.Tests
         public void TheTerrainsInDetailRangeAreFoundInTheirOwnGrid()
         {
             var g = TerrainGrid.Valley();
-            // The middle of terrain (4, 4): world cell x 288, y 575 - 288.
             var near = g.ChunksWithin(288, 575 - 288, 100);
             Assert.That(near.Count, Is.EqualTo(13), "the 3 x 3 round it and the 4 two away along the axes");
             Assert.That(near, Has.Member((4, 2)));
@@ -665,11 +625,9 @@ namespace Chem.Tests
             Assert.That(near, Has.Member((2, 4)));
             Assert.That(near, Has.Member((6, 4)));
             Assert.That(near, Has.No.Member((2, 2)));
-            // Its own chunk is always in, wherever the camera is in it.
             for (int y = 0; y < 576; y += 37)
                 for (int x = 0; x < 576; x += 41)
                     Assert.That(g.ChunksWithin(x, y, 0), Has.Member(g.ChunkOfCell(x, y)), $"cell ({x}, {y})");
-            // The terrains run north to south the other way: a camera at the north edge (y 0) is in row 8.
             Assert.That(g.ChunksWithin(288, 0, 10), Is.EqualTo(new[] { (4, 8) }));
         }
     }

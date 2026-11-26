@@ -25,7 +25,6 @@ public class EarthShowcase : ShowcaseScript
         yield return Topple();
     }
 
-    // The first dry square east of the river, near world (120, 30).
     bool FindBank()
     {
         var near = grid.CellAt(new Vector3(120f, 0f, 30f));
@@ -52,7 +51,6 @@ public class EarthShowcase : ShowcaseScript
         var mid = (grid.CellCenter(bank.x, bank.y) + far) / 2f;
         mid.y = TerrainGround(mid);
         puppet.Face(far);
-        // From high over the north side, looking down the slant of it.
         Cut(mid + V(2f, 26f, 5f), mid + V(0f, 0f, -1f));
         yield return Wait(1.2f);
         caster.Cast(cast);
@@ -110,7 +108,6 @@ public class EarthShowcase : ShowcaseScript
         for (int y = from.y - reach; y <= from.y + reach; y++)
             for (int x = from.x - reach; x <= from.x + reach; x++)
             {
-                // A tree with others round it, so a heave fells a few.
                 if (!IsTree(x, y) || !grid.valley.TrunkAt(x, y, out _) || TreesAround(x, y) < 3) continue;
                 float d = (new Vector2(x, y) - from).sqrMagnitude;
                 if (d >= bestD) continue;

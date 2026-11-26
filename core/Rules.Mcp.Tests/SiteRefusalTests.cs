@@ -1,3 +1,6 @@
+// #60: a draft whose rows don't fit the rules (a wall of wood, which doesn't block) is an ordinary refusal
+// through a running game's desk, as the tools reach it, never an exception thrown on the game's main thread.
+// The world is left as it was, and the same on every peer.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,11 +10,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// #60: a draft whose rows don't fit the rules (a wall of wood, which doesn't block) is an ordinary refusal
-    /// through a running game's desk, as the tools reach it, never an exception thrown on the game's main thread.
-    /// The world is left as it was, and the same on every peer.
-    /// </summary>
     [Category("Simulation")]
     public class SiteRefusalTests
     {
@@ -20,7 +18,6 @@ namespace Chem.Tests
         string data;
         GameFolders folders;
 
-        // A player's data folder, with their mods in it, where a save goes.
         [SetUp]
         public void MakeFolder()
         {
@@ -32,9 +29,6 @@ namespace Chem.Tests
         [TearDown]
         public void RemoveFolder() => Directory.Delete(data, true);
 
-        // A running game, as GameRoomDesk is: a read runs on the main thread, where only a RulesToolException comes
-        // back to the tool; anything else escapes into RulesMcpServer.Update, and the tool hears nothing until it gives up.
-        // A room command is decided by the host and by a peer, each on its own world, at the same tick.
         sealed class GameDesk : ILiveDesk, IWorldDesk
         {
             public World Host, Peer;
@@ -169,7 +163,6 @@ namespace Chem.Tests
             Assert.That(unread.IndexOf('\0'), Is.EqualTo(-1), "without the stand-in's id");
             Assert.That(State(world), Is.EqualTo(before));
 
-            // A peer asking the same of its own world hears the same sentence.
             var peer = new Workbench(folders).LiveWorld;
             Assert.That(peer.SiteProblemOf(patch, "The draft"), Is.EqualTo(why));
             Assert.That(State(peer), Is.EqualTo(before));

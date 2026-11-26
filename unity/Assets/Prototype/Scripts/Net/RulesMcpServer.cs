@@ -19,7 +19,6 @@ using UnityEngine;
 // closes the port, and each player's choice is kept (PlayerPrefs, J-047).
 public class RulesMcpServer : MonoBehaviour
 {
-    /// <summary>The first port tried; a second copy of the game on this machine takes the next.</summary>
     public const int FirstPort = 47777;
     const int Ports = 8;
     const int MaxBody = 1024 * 1024;
@@ -27,18 +26,14 @@ public class RulesMcpServer : MonoBehaviour
 
     readonly ConcurrentQueue<Action> onMainThread = new();
     HttpListener listener;
-    // The tools, made off the main thread: they read every rule file (most of a second at a big map's start).
     Task<McpRpc> rpc;
 
-    /// <summary>The server, or null where the game doesn't serve (a virtual player).</summary>
     public static RulesMcpServer Instance { get; private set; }
 
     readonly GameHere here = new();
 
-    /// <summary>The address Claude connects to; null while off or if no port was free.</summary>
     public static string Url { get; private set; }
 
-    /// <summary>Whether this player lets Claude in. Off closes the port; kept between sessions.</summary>
     public bool Serving
     {
         get => PlayerPrefs.GetInt(OnKey, 1) == 1;
@@ -51,10 +46,8 @@ public class RulesMcpServer : MonoBehaviour
         }
     }
 
-    /// <summary>The line a player runs once, to add the game to Claude Code; null if it isn't serving.</summary>
     public static string ConnectLine => Url == null ? null : AddLine;
 
-    /// <summary>That line, off or on: the address it will have.</summary>
     public static string AddLine => $"claude mcp add --scope user --transport http spell-valley {Url ?? $"http://127.0.0.1:{FirstPort}/mcp"}";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -66,7 +59,6 @@ public class RulesMcpServer : MonoBehaviour
         go.AddComponent<RulesMcpServer>();
     }
 
-    /// <summary>Runs on the main thread at the next frame.</summary>
     public void Post(Action act) => onMainThread.Enqueue(act);
 
     void Awake()
@@ -108,7 +100,6 @@ public class RulesMcpServer : MonoBehaviour
         new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();
     }
 
-    /// <summary>For the real-prompt probe: new tools with no drafts left from the last prompt, on the same port if it's free.</summary>
     public void FreshTools()
     {
         Close();
@@ -160,7 +151,7 @@ public class RulesMcpServer : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogException(e); // as the main thread did when it made them: no tools, so nothing is served
+            Debug.LogException(e);
             listener.Close();
             return;
         }
@@ -173,7 +164,7 @@ public class RulesMcpServer : MonoBehaviour
             }
             catch (Exception e) when (e is HttpListenerException || e is ObjectDisposedException || e is InvalidOperationException)
             {
-                return; // closed
+                return;
             }
             try
             {
@@ -181,7 +172,7 @@ public class RulesMcpServer : MonoBehaviour
             }
             catch (Exception e) when (e is IOException || e is HttpListenerException || e is ObjectDisposedException)
             {
-                Debug.LogWarning("Rules MCP: " + e.Message); // the client went away
+                Debug.LogWarning("Rules MCP: " + e.Message);
             }
         }
     }
@@ -201,7 +192,6 @@ public class RulesMcpServer : MonoBehaviour
         Reply(context, answer == null ? 202 : 200, answer);
     }
 
-    // The status a request is turned away with, or 0.
     static int Refusal(HttpListenerRequest request)
     {
         if (request.Url.AbsolutePath != "/mcp") return 404;

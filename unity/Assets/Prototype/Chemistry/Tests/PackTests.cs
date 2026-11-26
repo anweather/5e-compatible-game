@@ -1,3 +1,7 @@
+// The sparse World's packed chunks (World.Pack.cs; docs/design/sparse-world.md, D17): a new world makes no cells until
+// they're read, a chunk packed and unpacked again is what it was, the hash, the save and the audit read a packed chunk
+// where it lies, chunks pack as play goes once their hold is up (never beside an active chunk or drawn), a load lays
+// inactive chunks in packed, and a peer that packs other chunks at other ticks hashes the same as one that never packs.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,16 +9,9 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The sparse World's packed chunks (World.Pack.cs; docs/design/sparse-world.md, D17): a new world makes no cells until
-    /// they're read, a chunk packed and unpacked again is what it was, the hash, the save and the audit read a packed chunk
-    /// where it lies, chunks pack as play goes once their hold is up (never beside an active chunk or drawn), a load lays
-    /// inactive chunks in packed, and a peer that packs other chunks at other ticks hashes the same as one that never packs.
-    /// </summary>
     [Category("Simulation")]
     public class PackTests
     {
-        /// <summary>A world's cells as they stood when it was made: the source a packed chunk's changes are against.</summary>
         internal sealed class KeptSource : IChunkSource
         {
             readonly int w;
@@ -36,7 +33,6 @@ namespace Chem.Tests
             public void Make(int x, int y, Cell cell) => Copy(kept[y * w + x], cell);
         }
 
-        /// <summary>Every field of a cell into another.</summary>
         internal static void Copy(Cell from, Cell to)
         {
             to.T = from.T;
@@ -61,14 +57,12 @@ namespace Chem.Tests
             to.Cracked = from.Cracked;
         }
 
-        /// <summary>Every field of a cell, the ones the hash leaves out (a dry cell's Liquid, DampUntil) too.</summary>
         static string Fields(Cell c) =>
             $"{c.T},{c.Water},{c.Liquid},{c.Frozen},{c.Fire},{c.Height},{c.Cover},{c.Gas},{c.Sets},{c.Fuel},{c.GasAmt},{c.Charge},{c.Life},"
             + $"{c.DampUntil},{c.Rust},{c.Heat},{c.Lit},{c.Slick},{c.Star},{c.Cracked}";
 
         static string AllFields(World w) => string.Join(";", w.AllCells().Select(Fields));
 
-        // ChunkTests' valley (4 x 3 chunks, fires crossing chunk edges) a while into its script: fire, ash, ice, moved earth.
         static World Worked(int ticks = 150)
         {
             var w = ChunkTests.Valley();
@@ -129,7 +123,6 @@ namespace Chem.Tests
             string hash = w.CellHash(), text = w.CellText();
             var chunkHashes = w.ChunkCoords.ToDictionary(c => c, c => w.ChunkHash(c.cx, c.cy));
             string save = w.Save(w.Source);
-            // Every other chunk, so the walks cross from packed to unpacked along every row.
             foreach (var (cx, cy) in w.ChunkCoords.Where(c => (c.cx + c.cy) % 2 == 0)) w.Pack(cx, cy);
             int unpacked = w.UnpackedCount;
             Assert.That(w.CellHash(), Is.EqualTo(hash));
@@ -159,7 +152,6 @@ namespace Chem.Tests
             Assert.That(() => w.Pack(0, 0), Throws.InvalidOperationException);
         }
 
-        // On another thread than the world's (a view worker: the terrains' arrays, the ground's Parallel.For).
         static Exception OffThread(Action act)
         {
             Exception caught = null;
@@ -217,8 +209,6 @@ namespace Chem.Tests
             Assert.That(w.IsPacked(1, 1), Is.False);
         }
 
-        // ---------- packing as play goes (PackDue) ----------
-
         [Test]
         public void AnInactiveChunkPacksOnceItsHoldIsUpUnlessItIsBesideAnActiveOneOrDrawn()
         {
@@ -234,7 +224,6 @@ namespace Chem.Tests
                 w.Step();
                 foreach (var c in w.ChunkCoords.Where(c => w.IsPacked(c.cx, c.cy) && !packedAt.ContainsKey(c))) packedAt[c] = w.Tick;
             }
-            // (0, 0) is active; (1, 0), (0, 1), (1, 1) are beside it; (5, 1) is drawn. The other seven pack, two a tick, by row.
             var expect = new[] { (2, 0), (3, 0), (4, 0), (5, 0), (2, 1), (3, 1), (4, 1) };
             Assert.That(packedAt.Keys, Is.EquivalentTo(expect));
             Assert.That(expect.Select(c => packedAt[c]), Is.EqualTo(new[] { 10, 10, 11, 11, 12, 12, 13 }), "the hold counts from the last unpack, at tick 0");
@@ -266,7 +255,6 @@ namespace Chem.Tests
         [Test]
         public void AWriteToEveryCellPacksAgainWhatItUnpacks()
         {
-            // The dragon's dive snuffs every fire on the map (SnuffFires), packed chunks' too, and leaves them packed.
             World Diving(Rules rules)
             {
                 var w = ChunkTests.Valley();
@@ -302,21 +290,10 @@ namespace Chem.Tests
             return n;
         }
 
-        // ---------- a fast flight (core-mem-scale) ----------
-
-        /// <summary>
-        /// A character flying fast along a meadow of 40 x 3 chunks (about 10 cells a tick, 90 m/s), the planner switching
-        /// chunks round it and the view's drawn hint following it, under the shipped streaming rules (a 300-tick hold, 2
-        /// packs a tick). The chunks it leaves more than streaming.keep behind pack without waiting their hold, so the
-        /// only chunks still unpacked are those it needs (active, lingering, beside one, drawn) or near the drawn ones; the
-        /// lingering active chunks behind it are the planner's (streaming.linger*), not packing's. A peer that never packs
-        /// hashes the same.
-        /// </summary>
         [Test]
         public void ChunksLeftFarBehindAFastFlightPackWithoutWaitingTheirHold()
         {
             const int size = 64, ticks = 230;
-            // Grass only, so every chunk starts packed, as a map's do: painting would unpack them all before the flight.
             World Meadow(Rules rules) => new World(rules, 40 * size, 3 * size, 9, "grass");
             var flier = Meadow(R);
             var still = Meadow(With("{ \"packsPerTick\": 0 }"));
@@ -338,8 +315,6 @@ namespace Chem.Tests
                 }
                 flier.SetDrawn(drawn);
                 most = Math.Max(most, flier.UnpackedCount);
-                // Nothing far from the drawn chunks and unneeded stays unpacked past a few (a lingering column let go at once
-                // packs over the next ticks, 2 a tick); with the hold alone, these piled up behind for 300 ticks.
                 int left = flier.ChunkCoords.Count(c => !flier.IsPacked(c.cx, c.cy) && !Needed(flier, c.cx, c.cy)
                     && drawn.All(d => Math.Max(Math.Abs(d.cx - c.cx), Math.Abs(d.cy - c.cy)) > 3));
                 Assert.That(left, Is.LessThanOrEqualTo(6), $"tick {t}: chunks left behind, unpacked");
@@ -351,7 +326,6 @@ namespace Chem.Tests
             Assert.That(still.UnpackedCount, Is.GreaterThan(flier.UnpackedCount), "where never packing piles them up");
         }
 
-        // Active, or one of the eight round an active chunk: what the tick may read.
         static bool Needed(World w, int cx, int cy)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -360,13 +334,6 @@ namespace Chem.Tests
             return false;
         }
 
-        // ---------- a peer packing differently (sparse-world.md, step 2's test) ----------
-
-        /// <summary>
-        /// A late joiner replays the host's history (TickBatch.Timeline) to the host's state, whatever each peer packed on
-        /// the way: the host packs soon after a chunk is let go, the joiner never, a third peer at once and many a tick. A
-        /// wizard walks east across a meadow of 12 x 3 chunks for 900 ticks, casting fire ahead as it goes.
-        /// </summary>
         [Test]
         public void ALateJoinerReplaysToTheHostsStateWhateverEachPeerPacked()
         {
@@ -422,8 +389,6 @@ namespace Chem.Tests
             }
         }
 
-
-        // The chunks the script lets go and takes back, by tick: a column at a time, while the fires are still burning.
         static readonly (int tick, int cx, bool active)[] Switches =
         {
             (25, 3, false), (40, 0, false), (90, 3, true), (120, 1, false), (150, 0, true), (200, 1, true), (210, 2, false), (260, 2, true),
@@ -432,11 +397,6 @@ namespace Chem.Tests
         static Rules High(Rules rules) =>
             RuleSet.Plain(rules).WithMods(new[] { new ActiveMod("high", "{ \"patch\": { \"sim\": { \"height\": { \"max\": 12, \"blockAt\": 12 } } } }") }).Effective;
 
-        /// <summary>
-        /// One peer never packs; the other packs each inactive chunk at its own ticks (one pattern for every seed of
-        /// <paramref name="pattern"/>) and unpacks it at others, and packs on its own (PackDue) with a short hold besides.
-        /// The two must hash the same at every tick, across a rule switch that unfits the inactive chunks, and run on the same.
-        /// </summary>
         [TestCase(1)]
         [TestCase(2)]
         [TestCase(3)]
@@ -446,7 +406,6 @@ namespace Chem.Tests
             var packing = ChunkTests.Valley();
             var never = With("{ \"packsPerTick\": 0 }");
             var soon = With("{ \"packTicks\": " + (pattern - 1) + ", \"packsPerTick\": " + pattern + " }");
-            // A switch of the height range at tick 100 and back at 230: it unfits the inactive chunks, packed or not (World.Fit.cs).
             var highNever = High(never);
             var highSoon = High(soon);
             plain.ApplyRules(never);
@@ -470,7 +429,6 @@ namespace Chem.Tests
                         plain.SetActive(s.cx, cy, s.active);
                         packing.SetActive(s.cx, cy, s.active);
                     }
-                // Pack and unpack the inactive chunks at ticks of the pattern's own, never at the plain peer's.
                 foreach (var (cx, cy) in packing.ChunkCoords.Where(c => !packing.IsActive(c.cx, c.cy)))
                 {
                     int beat = (t * pattern + cx * 7 + cy * 3) % (5 + pattern);

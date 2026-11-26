@@ -1,3 +1,6 @@
+// #88: anything a mod adds (ModAdds: a material, a style, a building row, a species, a part, a trigger) makes
+// a mod naming it its dependent, which goes with it, reverted or lapsed, at the same tick on every peer
+// (World.Lapse.cs). A mod naming a row whose owner went is refused naming the owner.
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -5,11 +8,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// #88: anything a mod adds (ModAdds: a material, a style, a building row, a species, a part, a trigger) makes
-    /// a mod naming it its dependent, which goes with it, reverted or lapsed, at the same tick on every peer
-    /// (World.Lapse.cs). A mod naming a row whose owner went is refused naming the owner.
-    /// </summary>
     [Category("Simulation")]
     public class ModDependentsTests
     {
@@ -19,16 +17,13 @@ namespace Chem.Tests
         static ModBudgets budgets;
         static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
 
-        // A cover that lapses After ticks after its mod goes on, or stays while it's on: what lets an owner lapse.
         static string Dust(bool lapses) =>
             "\"covers\": { \"dust\": { \"name\": \"Dust\", \"tags\": []" + (lapses ? ", \"lapse\": { \"after\": " + After + " }" : "") + " } }";
 
         static string Style => BuildingTests.SouthwestStyle.Replace("clay-tile", "slate");
 
-        // The house adds only a style (and a dust its wing doesn't name, to lapse by).
         static string House(bool lapses) => "{ \"title\": \"Adobe\", \"patch\": { " + Dust(lapses) + ", \"buildings\": { \"styles\": { \"adobe\": " + Style + " } } } }";
 
-        // The wing is a building row in the house's style: it names no material of the house.
         static string Wing => "{ \"title\": \"A wing\", \"patch\": { \"world\": { \"buildings\": { \"lakeside#1\": "
             + BuildingTests.StuccoRow(20, 20).Replace("southwest", "adobe").Replace("clay-tile", "slate") + " } } } }";
 
@@ -77,7 +72,6 @@ namespace Chem.Tests
             }
         }
 
-        // The owner on, then a mod over it, then an unrelated mod after; on a host and a peer.
         static Peers OwnerAndDependent(string owner, string dependent)
         {
             var p = new Peers();
@@ -143,8 +137,6 @@ namespace Chem.Tests
             OnlyOtherLeft(p, "Moon deer lapsed, and Moon fawn with it (Open room)");
         }
 
-        // The house went, so the room knows whose adobe was: the wing's refusal names it, the same on every peer,
-        // and in the save and the checksum.
         [Test]
         public void AWingAfterItsHouseWentIsRefusedNamingTheHouse()
         {
@@ -160,7 +152,6 @@ namespace Chem.Tests
             Assert.That(loaded.RoomText(), Is.EqualTo(p.Host.RoomText()));
             Assert.That(loaded.ApplyRoom(RoomCommand.Apply("Ana", "dependent", Wing)).Reason, Is.EqualTo(again.Reason));
 
-            // The house on again takes its style out of the list, and the wing goes on over it.
             Assert.That(p.Both(RoomCommand.Apply("Ana", "owner", House(false))).Done, Is.True);
             p.Each(w => Assert.That(w.Room.RetiredRows.Select(r => r.Id), Is.EqualTo(new[] { "lakeside#1" })));
             Assert.That(p.Both(RoomCommand.Apply("Ana", "dependent", Wing)).Done, Is.True);

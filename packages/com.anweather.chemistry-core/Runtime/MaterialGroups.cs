@@ -48,7 +48,6 @@ namespace Chem
 {
     public static class MaterialGroups
     {
-        // Each verb: the tag having it implies (or null), and its keys as (group key, flat key).
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] TerrainVerbs =
         {
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook"), ("ash", "burnAsh"), ("smoke", "burnSmoke") }),
@@ -84,16 +83,12 @@ namespace Chem
             ("scour", "scourable", System.Array.Empty<(string, string)>()),
         };
 
-        // A creature's statuses from its material: each verb's status key and the flat key it becomes.
         static readonly (string verb, string flat)[] StatusVerbs = { ("burn", "burnStatus"), ("freeze", "freezeStatus"), ("soak", "soakStatus") };
 
-        /// <summary>The flat waterTo's two words (freeze {} and boil {}): what water on it does, not a material; sim.json water says what it becomes.</summary>
         public const string FreezesWater = "ice", BoilsWater = "steam";
 
-        // What water on it turns into: freeze {} for FreezesWater, boil {} for BoilsWater.
         static readonly (string verb, string water)[] WaterVerbs = { ("freeze", FreezesWater), ("boil", BoilsWater) };
 
-        /// <summary>The keys a verb's group holds on a terrain or cover; check it's one of Verbs first.</summary>
         internal static IReadOnlyList<string> KeysOf(bool cover, string verb)
         {
             var keys = (cover ? CoverVerbs : TerrainVerbs).Where(v => v.verb == verb).SelectMany(v => v.keys.Select(k => k.group)).ToList();
@@ -103,11 +98,9 @@ namespace Chem
             return keys;
         }
 
-        /// <summary>The verbs of a terrain or cover.</summary>
         internal static IEnumerable<string> Verbs(bool cover) =>
             (cover ? CoverVerbs : TerrainVerbs).Select(v => v.verb).Concat(cover ? Enumerable.Empty<string>() : WaterVerbs.Select(v => v.verb));
 
-        /// <summary>A flat key as its verb group writes it ("flammability" as "burn.catch"); null if it isn't one.</summary>
         internal static string GroupedName(bool cover, string flat)
         {
             foreach (var (verb, _, keys) in cover ? CoverVerbs : TerrainVerbs)
@@ -116,10 +109,6 @@ namespace Chem
             return null;
         }
 
-        /// <summary>
-        /// A patch may name a flat key ("flammability") over a material written in groups; the group's value
-        /// goes, or Ungroup would put it back over the patch's.
-        /// </summary>
         internal static void FlatOverGroup(JObject under, JToken patch, bool cover)
         {
             if (under == null || !(patch is JObject fields)) return;
@@ -130,7 +119,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Turns the grouped spelling of every terrain and cover in a rule document into the flat keys, in place; the problems found (unknown keys in a group).</summary>
         public static List<string> Ungroup(JObject doc)
         {
             var errors = new List<string>();
@@ -168,8 +156,6 @@ namespace Chem
             }
         }
 
-        // Takes each verb's status out of its group; a group left empty goes too, so burn { status }
-        // doesn't make the material flammable, nor freeze { status } freeze the water on it.
         static void UngroupStatuses(JObject entry)
         {
             foreach (var (verb, flat) in StatusVerbs)
@@ -181,8 +167,6 @@ namespace Chem
             }
         }
 
-        // Takes conduct.chainsWet out of its group; a group left empty goes too, so flesh's
-        // conduct { chainsWet } doesn't make it conduct like metal.
         static void UngroupChainsWet(JObject entry)
         {
             if (!(entry["conduct"] is JObject g) || g["chainsWet"] == null) return;
@@ -216,7 +200,6 @@ namespace Chem
             entry.Remove("chainsWet");
         }
 
-        /// <summary>A flat terrain (or cover) entry spelled as groups: the inverse of Ungroup, for the parity test.</summary>
         public static JObject Group(JObject flat, bool cover)
         {
             var entry = (JObject)flat.DeepClone();

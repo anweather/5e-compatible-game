@@ -8,16 +8,12 @@ namespace Chem.Mcp
 {
     public interface IChatHarness
     {
-        /// <summary>Whether a message is still being answered.</summary>
         bool Busy { get; }
 
-        /// <summary>The next thing heard, on the main thread; false when there's nothing yet.</summary>
         bool Take(out (ClaudeSaid said, string text) line);
 
-        /// <summary>Starts on one message, in a folder ready for it. False, with the reason heard, if it can't.</summary>
         bool Send(string message, string folder, string url, ChatRecorder recorder, Func<long> clock);
 
-        /// <summary>Stops a message in progress: the player asked, or the game is closing.</summary>
         void Cancel();
     }
 }

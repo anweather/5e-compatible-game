@@ -21,7 +21,6 @@ public class CrystalProbe : ProbeScenario
         yield return Wait(0.5f);
     }
 
-    // Three raiders on the heart's cells, standing ready to strike.
     void Strikers()
     {
         var (hx, hy) = Core.HoldSite.Heart;
@@ -35,7 +34,6 @@ public class CrystalProbe : ProbeScenario
         Check("strikers_put", put == 3, $"{put} beside the heart");
     }
 
-    // From high in the open keep, over the plate's room, looking down at the crystal (the keep has no roof).
     void FromTheWalls()
     {
         var (hx, hy) = Core.HoldSite.Heart;
@@ -57,7 +55,7 @@ public class CrystalProbe : ProbeScenario
         Check("a_run_starts", Core.HoldRunning);
         if (!Core.HoldRunning) yield break;
         int full = Core.Hold.Health;
-        Core.Hold.ToSpawn = 0; // no wave walks in on the pictures
+        Core.Hold.ToSpawn = 0;
         FromTheWalls();
         Strikers();
         yield return Wait(1.5f);
@@ -81,7 +79,6 @@ public class CrystalProbe : ProbeScenario
         Metric("crystal_blows", crystal.Blows);
     }
 
-    // The keep's health stepped down past each stage: a crack more at each.
     IEnumerator Cracks(HoldCrystal crystal, int full)
     {
         for (int stage = 1; stage <= HoldCrystal.Stages; stage++)

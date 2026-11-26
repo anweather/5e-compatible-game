@@ -1,9 +1,8 @@
+// What the probes' no_console_errors leaves out: Unity's own QuickSearch, and nothing of ours.
 using NUnit.Framework;
 
-/// <summary>What the probes' no_console_errors leaves out: Unity's own QuickSearch, and nothing of ours.</summary>
 public class ProbeConsoleTests
 {
-    // As Application.logMessageReceived gives it, from an Editor log of 2026-10-31.
     const string QuickSearch = "System.Collections.Generic.List`1[T].get_Item (System.Int32 index)\n"
         + "UnityEditor.Search.SearchDatabase+<EnumerateAll>d__83.MoveNext () (at /Users/bokken/build/output/unity/unity/Modules/QuickSearch/Editor/Indexing/SearchDatabase.cs:453)\n"
         + "UnityEditor.Search.SearchInit.IndexationOnStartup () (at /Users/bokken/build/output/unity/unity/Modules/QuickSearch/Editor/SearchInit.cs:109)\n";

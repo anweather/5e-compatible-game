@@ -36,7 +36,6 @@ public class CrossingProbe : ProbeScenario
             chunks.Add(grid.ChunkAt(wizard.transform.position));
         }
         Hold(Vector2.zero);
-        // The first frame after the rebuild is the rebuild's own.
         if (frames.Count > 0) frames.RemoveAt(0);
         float worst = 0f;
         int over = 0;

@@ -1,3 +1,5 @@
+// act, undo_act, superseded mods and a species' colours (docs/design/world-acts.md): "add 20 trees near me" twice is two
+// acts and no mods, the same on every peer; a chat change that says all an earlier one said takes its place.
 using System.Linq;
 using Chem.Mcp;
 using Newtonsoft.Json.Linq;
@@ -5,10 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// act, undo_act, superseded mods and a species' colours (docs/design/world-acts.md): "add 20 trees near me" twice is two
-    /// acts and no mods, the same on every peer; a chat change that says all an earlier one said takes its place.
-    /// </summary>
     [Category("Simulation")]
     public class ActToolsTests
     {
@@ -81,7 +79,6 @@ namespace Chem.Tests
             Assert.That(b.LiveWorld.LandHasMoved, Is.False);
         }
 
-        // #156: a 100 m mountain came out about 12 cells across. Its rise is cut to land.steepest (1.5 m) a cell of radius.
         [Test]
         public void ATallNarrowStampIsCutToItsWidth()
         {
@@ -92,7 +89,6 @@ namespace Chem.Tests
             Assert.That(b.LiveWorld.LandHash(), Is.EqualTo("[120,120,6,72,\"cone\",0,0,40,1]"), "9 m, in land units");
         }
 
-        // #156: canyons at radius 10 came out with 30 m walls. A hollow or a wall keeps its sign.
         [Test]
         public void ATallNarrowCanyonIsCutToItsWidth()
         {

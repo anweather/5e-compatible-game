@@ -10,7 +10,6 @@ using UnityEngine;
 // the player's -voice-check (VoiceCheck), which this runs short, with no one talking.
 public class DictationProbe : ProbeScenario
 {
-    // A run stopped before its end leaves the log hooked, and with the domain reload off the hook outlives the run.
     protected override void OnDestroy()
     {
         Application.logMessageReceived -= Note;
@@ -32,7 +31,6 @@ public class DictationProbe : ProbeScenario
         var settings = WindowsSpeechSettings.Read();
         Check("windows_lets_voice_in", WindowsSpeechSettings.Problem(settings) == null, settings.ToString());
         yield return Wait(Recover);
-        // The real-words check (-voice-check), short and with nobody talking: every pass must end.
         var passes = new List<VoiceCheck.Pass>();
         yield return VoiceCheck.Run(CheckSeconds, passes);
         Check("voice_check_passes_all_end", passes.Count == 3 && passes.All(p => p.Done), string.Join(" | ", passes));
@@ -50,8 +48,6 @@ public class DictationProbe : ProbeScenario
     }
 
 #if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
-    // A press straight after a stop: the old recogniser hasn't finished, as a stuck one never does.
-    // Leaving it must not stop the game, and the next hold must still work.
     IEnumerator LeftUnfinished()
     {
         WindowsDictation.Metered = true;
@@ -76,7 +72,6 @@ public class DictationProbe : ProbeScenario
         speech.Dispose();
     }
 
-    // A hold of these seconds, to its Done.
     static IEnumerator Hold(WindowsDictation speech, float seconds)
     {
         if (seconds > 0f) speech.Start();
@@ -105,7 +100,6 @@ public class DictationProbe : ProbeScenario
             speech.Start();
             float press = (float)clock.Elapsed.TotalMilliseconds;
             Metric($"{name}_press_{hold}_ms", press);
-            // The first recogniser of a run loads Windows' speech library, once.
             Check($"{name}_press_{hold}_blocks_nothing", press < (hold == 0 && meter ? FirstPressMs : MostPressMs), $"{press:0} ms");
             float worst = 0f;
             for (float t = 0f; t < HoldSeconds; t += Time.unscaledDeltaTime)

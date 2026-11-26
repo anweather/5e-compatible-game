@@ -25,14 +25,12 @@ public static class YardAutoBuild
         BuildWhenFree();
     }
 
-    /// <summary>Checks (and builds if needed) on the next Editor update that isn't importing or compiling.</summary>
     internal static void BuildWhenFree()
     {
         EditorApplication.update -= FirstFreeUpdate;
         EditorApplication.update += FirstFreeUpdate;
     }
 
-    // Once, on the first Editor update that isn't busy importing or compiling.
     static void FirstFreeUpdate()
     {
         if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
@@ -40,7 +38,6 @@ public static class YardAutoBuild
         BuildIfMissing();
     }
 
-    /// <summary>Builds the yard if its scene doesn't exist (or has unstable network ids) and the Editor is free to.</summary>
     public static void BuildIfMissing()
     {
         if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode) return;
@@ -55,7 +52,7 @@ public static class YardAutoBuild
             else if (heavyGrass) why = "The ground's grass is the terrain pack's own heavy tufts or casts shadows, from before LightTufts";
             else why = $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
         }
-        if (AssetPackRestore.Busy) return; // Finished calls back when it's done
+        if (AssetPackRestore.Busy) return;
         if (!AssetPackRestore.AllPresent)
         {
             Debug.LogWarning($"{ScenePath} isn't built yet: run Prototype > Restore Asset Packs, and the yard builds when it finishes.");
@@ -64,14 +61,9 @@ public static class YardAutoBuild
         if (!ClearForBuild()) return;
         Debug.Log($"{why}; building it.");
         ChemYardBuilder.Build();
-        // The trees the yard just repaired are what the impostors are baked from.
         TreeImpostorBaker.BakeMissing();
     }
 
-    // An automatic build must never stop at a "save changes?" dialog. The yard
-    // itself, open after its file was deleted, has nothing to keep, so it's
-    // replaced by an empty scene. Any other scene with unsaved changes might be
-    // someone's work: then nothing is built and the log says how to build.
     static bool ClearForBuild()
     {
         bool yardOpen = false;
@@ -90,12 +82,9 @@ public static class YardAutoBuild
     }
 }
 
-// Notices the yard scene being deleted by anything outside the builder (a pull,
-// a checkout) and builds it again once the Editor is free.
 class YardDeletedWatcher : AssetPostprocessor
 {
-    // Unity calls this message with a fixed signature; only the deleted paths matter here.
-#pragma warning disable S1172 // Unused method parameter
+#pragma warning disable S1172
     static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
 #pragma warning restore S1172
     {

@@ -1,15 +1,13 @@
+// Chunks activating and deactivating round the characters (ChunkStreaming): each character's
+// reach (sim.json streaming.reach, 2) activates, a chunk deactivates once no character is within
+// streaming.keep (3), reaches that overlap are one active region, and the switches travel in
+// tick batches so a replay (a late joiner) switches the same chunks at the same ticks.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Chunks activating and deactivating round the characters (ChunkStreaming): each character's
-    /// reach (sim.json streaming.reach, 2) activates, a chunk deactivates once no character is within
-    /// streaming.keep (3), reaches that overlap are one active region, and the switches travel in
-    /// tick batches so a replay (a late joiner) switches the same chunks at the same ticks.
-    /// </summary>
     [Category("Simulation")]
     public class ChunkStreamingTests
     {
@@ -17,10 +15,8 @@ namespace Chem.Tests
 
         const int S = Chunks.Size;
 
-        /// <summary>A meadow of n×n chunks, all active, as a new world starts.</summary>
         static World Meadow(uint seed = 3, int n = 7) => new World(R, n * S, n * S, seed, "grass");
 
-        /// <summary>The same meadow with every chunk inactive.</summary>
         static World Still(int n = 9)
         {
             var w = Meadow(3, n);
@@ -55,7 +51,6 @@ namespace Chem.Tests
         [Test]
         public void ANewWorldStartsWithOnlyTheReachActiveTheSameOnEveryPeer()
         {
-            // #209: a world just built has every chunk active; the start plan leaves only the start's reach.
             var host = Meadow(3, 9);
             var joiner = Meadow(3, 9);
             var start = new[] { Middle(1, 7) };
@@ -93,7 +88,6 @@ namespace Chem.Tests
             Assert.That(Active(w), Is.EquivalentTo(Square(2, 2, 6, 6)), "the 5×5 within 2 chunks");
             Assert.That(plan.All(s => s.Active), "everything was inactive, so the plan only activates");
 
-            // From all active, as a world starts: only those further than keep (3) deactivate.
             var fresh = Meadow(3, 9);
             ChunkStreaming.Apply(fresh, ChunkStreaming.Plan(fresh, new[] { Middle(4, 4) }));
             Assert.That(Active(fresh), Is.EquivalentTo(Square(1, 1, 7, 7)), "the 7×7 within keep stays active");
@@ -105,12 +99,10 @@ namespace Chem.Tests
             var w = Still();
             ChunkStreaming.Apply(w, ChunkStreaming.Plan(w, new[] { Middle(2, 4) }));
             Assert.That(Active(w), Is.EquivalentTo(Square(0, 2, 4, 6)));
-            // One chunk east: column 5 activates ahead; column 0 is 3 behind, within keep, so stays.
             var east = ChunkStreaming.Plan(w, new[] { Middle(3, 4) });
             Assert.That(east.Where(s => s.Active).Select(s => (s.CX, s.CY)), Is.EqualTo(new[] { (5, 2), (5, 3), (5, 4), (5, 5), (5, 6) }));
             Assert.That(east.Where(s => !s.Active), Is.Empty);
             ChunkStreaming.Apply(w, east);
-            // One more: column 6 activates, and column 0, now 4 behind, deactivates.
             var further = ChunkStreaming.Plan(w, new[] { Middle(4, 4) });
             Assert.That(further.Where(s => s.Active).Select(s => (s.CX, s.CY)), Is.EqualTo(new[] { (6, 2), (6, 3), (6, 4), (6, 5), (6, 6) }));
             Assert.That(further.Where(s => !s.Active).Select(s => (s.CX, s.CY)), Is.EqualTo(new[] { (0, 2), (0, 3), (0, 4), (0, 5), (0, 6) }));
@@ -125,7 +117,6 @@ namespace Chem.Tests
             ChunkStreaming.Apply(w, plan);
             Assert.That(Active(w), Is.EquivalentTo(Square(0, 2, 6, 6)), "the union of the two 5×5s");
 
-            // They part: the chunks between stay while either is within keep, and go once neither is.
             var apart = Still();
             ChunkStreaming.Apply(apart, ChunkStreaming.Plan(apart, new[] { Middle(1, 1), Middle(7, 7) }));
             Assert.That(apart.IsActive(4, 4), Is.False, "two reaches far apart: two islands, nothing between");
@@ -162,7 +153,6 @@ namespace Chem.Tests
         [Test]
         public void SwitchesInTickBatchesReplayTheSameAsTheyRanLive()
         {
-            // Live: a player walks east across the meadow while fires burn behind and ahead.
             var live = Meadow(9);
             var rules = RuleSet.Plain(R);
             var casts = new List<(int, CastCommand)>();
@@ -185,7 +175,6 @@ namespace Chem.Tests
                 rules = batch.RunOn(live, rules, out _);
             }
 
-            // Replay: what a late joiner rebuilds from the host's history.
             var replay = Meadow(9);
             var replayRules = RuleSet.Plain(R);
             var timeline = TickBatch.Timeline(casts, null, 120, null, switches);
@@ -243,7 +232,6 @@ namespace Chem.Tests
         [Test]
         public void EveryPeerHearsTheSameSwitchesAtTheSameTicks()
         {
-            // The host plans as a wizard walks east; a peer (or a late joiner) runs the stamped batches.
             var host = Meadow(9);
             var peer = Meadow(9);
             var planner = new ChunkPlanner();
@@ -270,7 +258,6 @@ namespace Chem.Tests
             var all = new System.Collections.Generic.List<(int, int)>();
             for (int cy = 0; cy < 9; cy++)
                 for (int cx = 0; cx < 9; cx++) all.Add((cx, cy));
-            // The middle of chunk (4, 4), 100 cells: chunk 2's near edge is 96 cells off along an axis.
             var near = ChunkStreaming.Within(all, 4.5 * 64, 4.5 * 64, 100);
             Assert.That(near, Has.Member((2, 4)));
             Assert.That(near, Has.Member((6, 4)));
@@ -279,7 +266,6 @@ namespace Chem.Tests
             Assert.That(near, Has.No.Member((1, 4)));
             Assert.That(near.Count, Is.EqualTo(13), "the 3 x 3 round it and the 4 two away along the axes ((2, 3) is 101 cells off)");
             Assert.That(near, Is.EqualTo(near.OrderBy(c => c.Item2).ThenBy(c => c.Item1)), "by row then column");
-            // On the edge of the valley: only what is there.
             Assert.That(ChunkStreaming.Within(all, 0, 0, 10), Is.EqualTo(new[] { (0, 0) }));
             Assert.That(ChunkStreaming.Within(all, 0, 0, 0), Is.EqualTo(new[] { (0, 0) }), "a point on a chunk is within it");
         }

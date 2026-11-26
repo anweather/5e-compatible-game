@@ -16,17 +16,14 @@ namespace Chem.Tests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>The flat 1728 x 1728 test map, kept out of world/ so builds don't ship it and joins don't hash it.</summary>
         internal static string BigMap => Path.Combine(ChemistryTests.Folders.Repo, "test-fixtures", "maps", "flat-1728");
 
-        // The map as made: grass everywhere, what a save is told apart from.
         sealed class FlatGrass : IChunkSource
         {
             public string Version => "map-size-bench";
             public void Make(int x, int y, Cell cell) => cell.T = "grass";
         }
 
-        // The world from a map's folder: its cells (grass, the valley's water as water, its trees), its land.
         static World Load(string dir, out double ms)
         {
             var sw = Stopwatch.StartNew();
@@ -46,15 +43,12 @@ namespace Chem.Tests
             return w;
         }
 
-        // A terrain layout of the map's size as the valley's is laid out: 64-cell chunks of 1.5 m cells, the same 3 x 3 of
-        // them at high resolution in its middle.
         static TerrainGrid Layout(int size)
         {
             int chunks = size / Chunks.Size, mid = chunks / 2;
             return new TerrainGrid(1.5f, (-size * 0.75f, -size * 0.75f), (chunks, chunks), (0, size - 1), (size, size), (mid - 1, mid - 1, mid + 1, mid + 1));
         }
 
-        // What's live on the heap, collected first: a measuring bench's only use of the collector.
 #pragma warning disable S1215
         static long Heap()
         {
@@ -64,7 +58,6 @@ namespace Chem.Tests
             return GC.GetTotalMemory(true);
         }
 
-        // How long a full collection takes with what's alive now: every Cell is an object the collector walks.
         static double FullCollect()
         {
             var sw = Stopwatch.StartNew();
@@ -80,21 +73,18 @@ namespace Chem.Tests
             return times.OrderBy(t => t).ElementAt(n / 2);
         }
 
-        // Where a world's load goes (cell-memory): the time and the bytes of each step, as Load and ChemGrid.StartWorld take
-        // them, the cells' allocation apart from what's laid on them.
         [Test, Explicit("a benchmark: run it by name")]
         public void MapSizePhases()
         {
             foreach (string dir in new[] { ChemistryTests.WorldDir(), BigMap })
             {
-                Phases(dir, false); // warms the JIT and the file cache
+                Phases(dir, false);
                 Heap();
                 Phases(dir, true);
             }
             Assert.Pass();
         }
 
-        // One load, step by step; its own method, so nothing of it is still held when the next one measures.
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         static void Phases(string dir, bool tell)
         {
@@ -155,7 +145,7 @@ namespace Chem.Tests
             foreach (string dir in new[] { ChemistryTests.WorldDir(), BigMap })
             {
                 string id = Path.GetFileName(dir);
-                Load(dir, out _); // warm the JIT and the file cache
+                Load(dir, out _);
                 long before = Heap();
                 var world = Load(dir, out _);
                 long after = Heap();
@@ -188,8 +178,6 @@ namespace Chem.Tests
                     return sw.Elapsed.TotalMilliseconds;
                 }, 3);
                 double gc = Median(FullCollect, 3);
-                // The online desync check's cost a tick (RollingHash): a slice of Every, as before chunk-hash, and of the
-                // world's own window.
                 double SliceMs(int slices)
                 {
                     var sum = Fnv1aSum.Start();

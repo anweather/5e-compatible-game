@@ -18,10 +18,8 @@ public partial class ChemGrid
 
     Rules DrawnRules => CurrentRules?.Effective ?? World.Rules;
 
-    /// <summary>The fire's colour in the rules in force, turned from its art.</summary>
     public LookTint FireElementTint => fireLook;
 
-    /// <summary>What takes art drawn in <paramref name="art"/> to an element's colour in force; none if that hasn't moved.</summary>
     public LookTint ElementTint(string element, Color art)
     {
         var was = (CurrentRules?.Base ?? World.Rules).ElementLook(element);
@@ -29,31 +27,26 @@ public partial class ChemGrid
         return was == null || now == null || LookDef.Same(was, now) ? default : LookTint.Between(art, ColorOf(now), 1f);
     }
 
-    /// <summary>A cover's colour in the rules in force, or <paramref name="fallback"/> with no look.</summary>
     public Color CoverColor(string cover, Color fallback)
     {
         var look = DrawnRules.Covers.TryGetValue(cover, out var def) ? def.Look : null;
         return look != null ? new Color(look.R, look.G, look.B, fallback.a) : fallback;
     }
 
-    /// <summary>A gas's colour in the rules in force, or <paramref name="fallback"/> with no look.</summary>
     public Color GasColor(string gas, Color fallback)
     {
         var look = DrawnRules.Gases.TryGetValue(gas, out var def) ? def.Look : null;
         return look != null ? new Color(look.R, look.G, look.B, fallback.a) : fallback;
     }
 
-    // What takes the art from the base rules' colour to the colour in force.
     static LookTint TurnBetween(LookDef was, LookDef now, float wash = 0f) =>
         was == null || now == null || LookDef.Same(was, now) ? default : LookTint.Between(ColorOf(was), ColorOf(now), wash);
 
     static Color ColorOf(LookDef look) => new(look.R, look.G, look.B);
 
-    /// <summary>What multiplies art drawn in the base rules' colour to bring it to the colour in force; white if it hasn't moved.</summary>
     public static Color TintBetween(LookDef was, LookDef now)
     {
         if (was == null || now == null || LookDef.Same(was, now)) return Color.white;
-        // What's drawn as one tint can't be a patchwork: a mix shows as its colours mixed.
         var drawn = now.Mix != null ? now.Mix.Blended : LookColour.Of(now);
         return new Color(Ratio(was.R, drawn.R), Ratio(was.G, drawn.G), Ratio(was.B, drawn.B));
     }
@@ -64,18 +57,14 @@ public partial class ChemGrid
 
     static LookDef GasLook(Rules rules, string id) => rules.Gases.TryGetValue(id, out var g) ? g.Look : null;
 
-    /// <summary>The film colour a cell is drawn in, for a probe.</summary>
     public Color? SlickColorAt(int x, int y) => slicks.FilmColorAt(x, y);
 
-    /// <summary>How many cells are drawn wearing a film (a cover's id), and whether a cover wears one, for a probe.</summary>
     public int FilmCells(string film) => slicks.FilmCells(film);
     public bool IsFilm(string cover) => slicks.IsFilm(cover);
 
-    /// <summary>The glow a cell adds now (look.glow: its colour, strength and the light), black for none; and how many cells glow. For a probe.</summary>
     public Color GlowAt(int x, int y) => slicks.GlowAt(x, y);
     public int GlowCells => slicks.GlowCells;
 
-    /// <summary>The top of the water or the lake at a point in grid units, or <paramref name="fallback"/>.</summary>
     public float DrawnSurfaceAt(float gx, float gy, float fallback)
     {
         int x = Mathf.FloorToInt(gx), y = Mathf.FloorToInt(gy);
@@ -84,24 +73,19 @@ public partial class ChemGrid
         return Mathf.Max(DrawnWaterTopAt(gx, gy, fallback), lake);
     }
 
-    /// <summary>The colour the wet cells' water is drawn in, for a probe.</summary>
     public Color CellWaterColor => waterSurface.Color;
 
-    /// <summary>Water's drawn vertices and those in a liquid's colour; and a cell's colour and share of it as drawn. For a probe.</summary>
     public (int vertices, int worn) WornWaterVertices => waterSurface.WornVertices();
     public (Color color, float own)? WaterDrawnAt(int x, int y) => waterSurface.DrawnAt(x, y);
 
-    /// <summary>The valley's land and lake; null in the yard alone.</summary>
     public ValleyChemistry Valley => valley;
 
-    /// <summary>Whether the gas on a cell is showing, in a look of its own.</summary>
     public bool GasInLookAt(int x, int y)
     {
         var v = views[World.Idx(x, y)];
         return v?.gas != null && v.gas.activeInHierarchy && v.gasPrefab != null && (v.gasPrefab == steamInLook || v.gasPrefab == smokeInLook);
     }
 
-    // Reads the colours in force. Copies of the gases' effects made for the last ones go.
     void ReadWorldLooks()
     {
         var was = CurrentRules != null ? CurrentRules.Base : World.Rules;
@@ -116,7 +100,6 @@ public partial class ChemGrid
         CompileLooks();
     }
 
-    // The look a gas's effect is drawn in: the same prefab, or a copy dressed once for the colour in force.
     GameObject InLook(ref GameObject copy, GameObject prefab, LookTint tint)
     {
         if (prefab == null || !tint.Any) return prefab;
@@ -128,7 +111,6 @@ public partial class ChemGrid
         return copy;
     }
 
-    /// <summary>What's on a cell of embers or lava burns in: its spell's look, else the cover's or the element's.</summary>
     LookTint MoltenTint(Cell c, int x, int y)
     {
         if (anyScoped)
@@ -147,7 +129,6 @@ public partial class ChemGrid
         return emberLook.Any ? emberLook : fireLook;
     }
 
-    // The rules switched: everything drawn from a colour is drawn again from the one in force.
     void RecolourWorld()
     {
         ReadWorldLooks();

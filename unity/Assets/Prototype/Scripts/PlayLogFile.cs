@@ -17,7 +17,6 @@ public sealed class PlayLogFile
     readonly BlockingCollection<Action<StreamWriter>> work = new();
     readonly Thread writer;
 
-    /// <summary>The file's folder, its full path, and its name without the extension.</summary>
     public string Folder { get; }
     public string Path { get; }
     public string Stem { get; }
@@ -31,7 +30,6 @@ public sealed class PlayLogFile
         writer.Start();
     }
 
-    /// <summary>A line for the file. Returns at once.</summary>
     public void Add(string line)
     {
         work.Add(w =>
@@ -41,7 +39,6 @@ public sealed class PlayLogFile
         });
     }
 
-    /// <summary>A picture to encode and save, as RGBA bytes.</summary>
     public void AddPicture(string path, byte[] pixels, int width, int height, bool upsideDown)
     {
         work.Add(_ =>
@@ -51,7 +48,6 @@ public sealed class PlayLogFile
         });
     }
 
-    /// <summary>Writes what's left, and closes the file.</summary>
     public void Close()
     {
         work.CompleteAdding();
@@ -69,11 +65,10 @@ public sealed class PlayLogFile
         }
         catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
         {
-            Debug.LogWarning("Play log: " + e.Message); // a full disk costs the log, not the game
+            Debug.LogWarning("Play log: " + e.Message);
         }
     }
 
-    // Leaves room for this one: a log's name sorts by when it began.
     void Trim()
     {
         var logs = Directory.GetFiles(Folder, Prefix + "*.csv").OrderBy(f => f, StringComparer.Ordinal).ToList();

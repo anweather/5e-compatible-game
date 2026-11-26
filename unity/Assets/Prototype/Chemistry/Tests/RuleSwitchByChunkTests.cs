@@ -1,24 +1,20 @@
+// A rule switch that could unfit cells makes the active chunks fit on its tick and every other chunk when it
+// activates (World.Fit.cs, J-086, #190); an inactive chunk not yet made to fit reads as fitting would make it.
 using System.IO;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// A rule switch that could unfit cells makes the active chunks fit on its tick and every other chunk when it
-    /// activates (World.Fit.cs, J-086, #190); an inactive chunk not yet made to fit reads as fitting would make it.
-    /// </summary>
     [Category("Simulation")]
     public class RuleSwitchByChunkTests
     {
         static Rules R => ChemistryTests.R;
 
         static Rules moon;
-        // The base rules with the Moonstone mod: one terrain more, which switching back drops.
         static Rules Moon => moon ??= RuleSet.Plain(R).WithMods(new[] { Moonstone }).Effective;
 
         static ActiveMod Moonstone => new ActiveMod("moonstone", File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "mods", "moonstone.json")));
 
-        // Three chunks by two of grass under Moonstone, a block of moonstone in chunk (0, 0) and in chunk (2, 1).
         static World Field(Rules rules)
         {
             var w = new World(rules, 3 * Chunks.Size, 2 * Chunks.Size, 4, "grass");
@@ -60,7 +56,6 @@ namespace Chem.Tests
         [Test]
         public void AnInactiveChunkIsMadeToFitWhenItActivatesAsTheFullPassMade()
         {
-            // The full pass the switch used to run over every cell is what an all-active world still gets.
             var all = Field(Moon);
             all.ApplyRules(R);
             var w = Field(Moon);
@@ -122,7 +117,6 @@ namespace Chem.Tests
         [Test]
         public void ATerrainDroppedAndBroughtBackSurvivesInAChunkNobodyWasNear()
         {
-            // A chunk inactive across two switches is made to fit the rules when it activates, not each set in turn.
             var w = Field(Moon);
             w.SetActive(2, 1, false);
             w.ApplyRules(R);
@@ -132,8 +126,6 @@ namespace Chem.Tests
             Assert.That(Far(w).T, Is.EqualTo("moonstone"));
             Assert.That(w.At(11, 11).T, Is.EqualTo("dirt"), "the active chunk lost it at the first switch");
         }
-
-        // ---------- liquids: a chunk's kinds are indices into the liquids it was made under ----------
 
         const string HoneyRow = @"""honey"": { ""name"": ""Honey"", ""thick"": 4, ""heap"": 6, ""soaks"": false, ""floats"": false, ""tags"": [""sticky""] }";
         const string PaintRow = @"""red-paint"": { ""name"": ""Red paint"", ""soaks"": false, ""tags"": [""paint""] }";
@@ -199,7 +191,6 @@ namespace Chem.Tests
             a.SetActive(2, 1, false);
             a.ApplyRules(R);
             b.SetActive(2, 1, false);
-            // Cells alike but for the inactive chunk's, which b made to fit: the fit numbers tell them apart too.
             Assert.That(a.FitText(), Is.EqualTo($"#2,1,{a.FitNumber - 1}"));
             Assert.That(b.FitText(), Is.Empty);
             Assert.That(a.CellText(), Does.EndWith(a.FitText()));

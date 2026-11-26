@@ -12,23 +12,18 @@ using UnityEngine;
 // build; it lives on only to rewrite the valley's ground/, so nothing is saved as an asset.
 public sealed class ValleyBake
 {
-    const float Depth = 22f;        // the terrain's base below the yard
+    const float Depth = 22f;
     const float MaxHeight = 300f;
-    const int DetailRes = TerrainGrid.ChunkCells;   // one detail cell per grid cell
-    // The old single terrain had a detail cell every 1.76 m; scale chances to keep the grass as dense.
+    const int DetailRes = TerrainGrid.ChunkCells;
     const float DetailDensity = 2.25f / 3.1f;
 
     public readonly TerrainGrid Layout;
     readonly TerrainData[] datas;
 
-    /// <summary>The chunks, chunk (i, j) at j * ChunksX + i; destroy them with <see cref="Dispose"/>.</summary>
     public TerrainData[] Chunks => datas;
 
     int Index(int i, int j) => j * Layout.ChunksX + i;
 
-    // --- heights -----------------------------------------------------------
-
-    /// <summary>Every chunk's TerrainData with the valley's own heights (no cells yet), painted with <paramref name="layers"/>.</summary>
     public ValleyBake(TerrainGrid layout, TerrainLayer[] layers)
     {
         Layout = layout;
@@ -41,7 +36,6 @@ public sealed class ValleyBake
             foreach (var d in datas) d.terrainLayers = layers;
     }
 
-    /// <summary>Destroys the chunks in memory.</summary>
     public void Dispose()
     {
         foreach (var d in datas)
@@ -59,14 +53,11 @@ public sealed class ValleyBake
             baseMapResolution = Mathf.Max(64, texels),
         };
         data.SetDetailResolution(DetailRes, 8);
-        // The layers hold clumps per texel (ScatterDetails), not coverage out of 255 (the default,
-        // which would draw next to nothing).
         data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
         data.size = new Vector3(Layout.ChunkSize, MaxHeight, Layout.ChunkSize);
         return data;
     }
 
-    // A chunk's heights (0..1 of MaxHeight, from Depth below the yard), [z, x], seams stitched.
     float[,] BaseHeights(int i, int j)
     {
         int res = Layout.Resolution(i, j);
@@ -84,13 +75,8 @@ public sealed class ValleyBake
         return h;
     }
 
-    // Unity stores heights in 15 bits: one step is 1/32766 of MaxHeight (about 9 mm).
     const float Quantum = 1f / 32766f;
 
-    // A full-detail edge facing a coarse chunk is drawn between the coarse samples, at quarter
-    // points. For those to land on stored steps exactly, every cell-corner sample on a
-    // full-detail chunk's border is rounded to a multiple of 4 steps, on every chunk that holds
-    // it (the rule only looks at the point, so all of them agree).
     void RoundSeamCorners(float[,] h, int i, int j)
     {
         int p = Layout.SamplesPerCell(i, j), last = Layout.Resolution(i, j) - 1;
@@ -105,7 +91,6 @@ public sealed class ValleyBake
         }
     }
 
-    // Whether a full-detail chunk holds the cell corner (u, v).
     bool TouchesFullDetail(int u, int v)
     {
         for (int j = Chem.Chunks.ChunkOf(v - 1); j <= Chem.Chunks.ChunkOf(v); j++)
@@ -114,8 +99,6 @@ public sealed class ValleyBake
         return false;
     }
 
-    // On a full-detail chunk's edge facing a coarse chunk, the samples between the coarse
-    // ones lie on the straight line between them, as the coarse chunk draws its edge.
     void StitchSeams(float[,] h, int i, int j)
     {
         if (!Layout.IsHighRes(i, j)) return;
@@ -141,7 +124,6 @@ public sealed class ValleyBake
         }
     }
 
-    /// <summary>The starting cells' offsets (pits, the pond, the map's stamps) added to the chunks they reach, by CellHeightfield.</summary>
     public void BakeCells(World world, float stepHeight)
     {
         var field = new CellHeightfield(Layout, stepHeight) { LaidLandDrawn = false };
@@ -158,14 +140,12 @@ public sealed class ValleyBake
         }
     }
 
-    /// <summary>A chunk's own steepness (degrees) at a world point.</summary>
     public float Steepness(Vector2 w)
     {
         var (data, u, v) = Locate(w);
         return data.GetSteepness(u, v);
     }
 
-    // The chunk under a world point, and the point as 0..1 across it.
     (TerrainData data, float u, float v) Locate(Vector2 w)
     {
         float s = Layout.ChunkSize;
@@ -175,19 +155,12 @@ public sealed class ValleyBake
         return (datas[Index(i, j)], Mathf.Clamp01((w.x - cx) / s), Mathf.Clamp01((w.y - cz) / s));
     }
 
-    /// <summary>Where the chunks stand: the height that puts the flat yard's cell exactly at 0 (heights are stored in 16 bits).</summary>
     public float Bottom(Vector2Int flatCell)
     {
         var (fi, fj, fx, fz) = Layout.CellSample(flatCell.x, flatCell.y);
         return -datas[Index(fi, fj)].GetHeight(fx, fz);
     }
 
-    // --- paint -------------------------------------------------------------
-
-    /// <summary>
-    /// Paints every chunk from the valley's shape, then lays the given cells' paint (the old
-    /// yard's: its bare pad, the gully) over it with the runtime's soft edges (CellPaint).
-    /// </summary>
     public void Paint(TerrainLayer[] layers, World world, IEnumerable<(int x, int y)> cells)
     {
         if (layers == null) return;
@@ -233,7 +206,6 @@ public sealed class ValleyBake
                 for (int k = 0; k < block.GetLength(2); k++) map[r.Z + z, r.X + x, k] = block[z, x, k];
     }
 
-    // Weights scaled to sum to 1; all grass (the first layer) if they are all zero.
     static float[] Normalized(float[] weights)
     {
         float total = 0f;
@@ -246,9 +218,6 @@ public sealed class ValleyBake
         return weights;
     }
 
-    // --- trees and details -------------------------------------------------
-
-    /// <summary>Plants trees at world points (x, z) with a scale each, on whichever chunk holds them.</summary>
     public void PlantTrees(TreePrototype[] protos, IEnumerable<(Vector2 at, float scale, int species, float turn)> trees)
     {
         if (protos.Length == 0) return;
@@ -275,7 +244,6 @@ public sealed class ValleyBake
         for (int n = 0; n < datas.Length; n++) datas[n].SetTreeInstances(lists[n].ToArray(), true);
     }
 
-    /// <summary>Grass and plants on every chunk; then cleared off the given cells where they aren't grassy.</summary>
     public void PaintDetails(DetailPrototype[] protos, World world, IEnumerable<(int x, int y)> cells)
     {
         if (protos.Length == 0) return;
@@ -305,9 +273,6 @@ public sealed class ValleyBake
         return new Vector2(cx, cz);
     }
 
-    // One detail cell: lush grass in the meadows, the odd fern or plant where it is drier. One kind
-    // of grass to a patch (tens of metres across, blending at the edges) rather than all three mixed
-    // everywhere, which read as busy.
     void ScatterDetails(TerrainData data, int[][,] layers, System.Random rng, Vector2 corner, int dx, int dz)
     {
         float u = (dx + 0.5f) / DetailRes, v = (dz + 0.5f) / DetailRes;
@@ -321,10 +286,8 @@ public sealed class ValleyBake
             if (rng.NextDouble() < 0.025 * (1f - lush) * DetailDensity) layers[k][dz, dx] = 1;
     }
 
-    // The first three details are grass.
     const int GrassKinds = 3;
 
-    // Which grass grows at a point: a slow noise picks the patch's kind, jittered so patches blend.
     static int GrassKind(Vector2 w, System.Random rng)
     {
         float t = Mathf.Clamp01(0.5f + 1.6f * ValleyShape.Fbm(w * 0.015f + new Vector2(37f, 11f), 2));

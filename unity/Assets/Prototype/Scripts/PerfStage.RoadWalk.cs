@@ -41,7 +41,6 @@ public partial class PerfStage
         int index = alongRow ? sy : sx;
         if (RoadAsked() is { } asked) (alongRow, index) = asked;
         var path = roads.Route(alongRow, index);
-        // Start at the line's point nearest the spawn.
         int from = 0;
         long best = long.MaxValue;
         for (int p = 0; p < path.Count; p++)
@@ -54,7 +53,6 @@ public partial class PerfStage
         Debug.Log($"PERF ROADWALK from={spawn.x},{spawn.y} {(alongRow ? "row" : "column")}={index} line={path.Count} points start={path[from].x},{path[from].y}");
         if (from0 != null)
         {
-            // Stood on the road's line there, and again once its ground is drawn (a wizard put down before it stands falls through).
             PlaceCell(path[from].x, path[from].y);
             yield return null;
             while (grid.ChunksLeftToDraw > 0) yield return null;
@@ -64,12 +62,10 @@ public partial class PerfStage
         StartCoroutine(WatchSeams());
         StartCoroutine(WatchRoad());
         while (!Go) yield return null;
-        // Unfolded: each lap round the torus adds a world to the line, so the wizard walks on past the seam.
         int wx = alongRow ? World.W : 0, wy = alongRow ? 0 : World.H, k = from, lap = 0;
         (int x, int y) last = path[from];
         while (enabled)
         {
-            // The line's points are 10 to 20 cells apart: one a waypoint.
             if (++k >= path.Count)
             {
                 k = 0;
@@ -87,9 +83,6 @@ public partial class PerfStage
         inputs.sprint = false;
     }
 
-    // -perf-river: down the main river on its bank (docs/design/alpine.md), from where it runs into the gorge past the
-    // meadow's lake, over the fords, to its end lake; a waypoint every few cells of its line, its half width and 4 cells to
-    // its right, where that's dry.
     IEnumerator RiverWalk()
     {
         var hills = LoadedMaps.Get(ChemGrid.MapSource).Hills;
@@ -109,7 +102,6 @@ public partial class PerfStage
             float x = main.X[k] / 65536f, y = main.Y[k] / 65536f, dx = main.X[k + 1] / 65536f - x, dy = main.Y[k + 1] / 65536f - y;
             float len = Mathf.Max(0.01f, Mathf.Sqrt(dx * dx + dy * dy)), side = main.Half[k] + 4;
             int bx = Mathf.RoundToInt(x - dy / len * side), by = Mathf.RoundToInt(y + dx / len * side);
-            // From where it runs into the ring again past the meadow (the gorge), on dry land beside it.
             bool ring = massif != null && massif.Touches(bx, by) && massif.Ring(massif.Radius(bx, by)) > 0;
             if (!ring) meadow = true;
             if (!started && meadow && ring) started = true;
@@ -140,7 +132,6 @@ public partial class PerfStage
         inputs.sprint = false;
     }
 
-    // -perf-road row,N or column,N: the main road asked for, or null.
     static (bool alongRow, int index)? RoadAsked()
     {
         var args = System.Environment.GetCommandLineArgs();
@@ -150,7 +141,6 @@ public partial class PerfStage
         return parts.Length == 2 && int.TryParse(parts[1], out int n) ? (parts[0] == "row", n) : null;
     }
 
-    // Every frame once the run is going: is the wizard on a road cell?
     IEnumerator WatchRoad()
     {
         var gen = LoadedMaps.Get(ChemGrid.MapSource).Gen;
@@ -167,7 +157,6 @@ public partial class PerfStage
         }
     }
 
-    /// <summary>The "PERF ROADWALK" line: how far the walk went along the road, and its frames on it.</summary>
     public void LogRoadWalk()
     {
         if (Scenario != "roadwalk") return;

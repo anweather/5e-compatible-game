@@ -69,7 +69,6 @@ public class ValleyTourShowcase : ShowcaseScript
             W(Over(-95f, 150f, 9f), Over(-120f, 175f, 1f), 4f),
             W(Over(-135f, 160f, 6f), Over(-95f, 140f, 1f), 4f));
         yield return new WaitUntil(() => flight.Done);
-        // Down low in the meadow grass.
         Cut(Over(-30f, 20f, 1.4f), Over(-10f, 40f, 0.5f));
         flight = Fly(W(Over(-24f, 26f, 1.6f), Over(-6f, 46f, 0.8f), 4f));
         yield return new WaitUntil(() => flight.Done);

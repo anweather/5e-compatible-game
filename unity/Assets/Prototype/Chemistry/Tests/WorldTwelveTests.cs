@@ -23,7 +23,6 @@ namespace Chem.Tests
 
         static GeneratedMap World => world ??= GeneratedMap.Load(Dir);
 
-        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
         [OneTimeTearDown]
         public void DropTheMap()
         {
@@ -34,7 +33,6 @@ namespace Chem.Tests
         static KnownChunk[] known;
         static double knownMs;
 
-        // Every chunk known, row-major, on every core (what the known ring's worker does), and how long that took.
         static KnownChunk[] Known
         {
             get
@@ -51,7 +49,6 @@ namespace Chem.Tests
 
         static StreamingParams Streaming => ChemistryTests.R.Sim.Streaming;
 
-        // The plan's golden: a change that alters it is a new WorldPlan.Version, or a change to the files it reads.
         const uint PlanGolden = 0x9a65cab9u;
 
         [Test]
@@ -67,7 +64,6 @@ namespace Chem.Tests
             Assert.That((map.W, map.H), Is.EqualTo((m.Gen.CellsW, m.Gen.CellsH)));
             Assert.That(map.Spawn, Is.EqualTo((m.Gen.PinnedX + 292, m.Gen.PinnedY + 328)), "the valley's spawn, moved");
             Assert.That(m.Plan.Problems, Is.Empty);
-            // It's never baked whole: too big.
             Assert.That(GeneratedMap.IsBaked(Dir), Is.False);
             Assert.That(() => GeneratedMap.EnsureBaked(Dir), Throws.InvalidOperationException.With.Message.Contains("too big to bake"));
             Assert.That(() => m.Bake(Path.Combine(Path.GetTempPath(), "never")), Throws.InvalidOperationException);
@@ -102,7 +98,6 @@ namespace Chem.Tests
                 Assert.That((p.Cold[north], p.Cold[south]), Is.EqualTo((BiomeMath.One, 0L)), "coldest north, hottest south");
                 for (int y = 1; y < last; y++) Assert.That(p.Wall[p.Grid.Index(x, y)], Is.Zero, $"square ({x}, {y}) is land or sea");
             }
-            // The wall rows stand high: every known sample in them is dry land above the sea.
             var gen = World.Gen;
             foreach (var k in Known.Where(k => k.Y < WorldPlan.ChunksPerSquare || k.Y >= gen.ChunksH - WorldPlan.ChunksPerSquare))
                 Assert.That(k.Water.All(w => w == KnownChunk.Dry), Is.True, $"wall chunk ({k.X}, {k.Y})");
@@ -111,7 +106,6 @@ namespace Chem.Tests
         [Test]
         public void TheLandIsTheSameAWorldRound()
         {
-            // Land is a function of position, and a position a world's width east is the same position.
             var gen = World.Gen;
             int w = gen.CellsW, cells = 0;
             for (int y = 3; y < gen.CellsH; y += 11)
@@ -121,7 +115,6 @@ namespace Chem.Tests
                     cells++;
                 }
             Assert.That(cells, Is.GreaterThan(3000));
-            // The known chunks either side of the seam share their samples there, as any two neighbours do.
             for (int cy = 0; cy < gen.ChunksH; cy++)
             {
                 var east = Known[cy * gen.ChunksW + gen.ChunksW - 1];
@@ -134,10 +127,6 @@ namespace Chem.Tests
         [Test]
         public void TheLandRunsOnUnbrokenAcrossTheSeam()
         {
-            // The chunks either side of the seam, made: the step from the east column to the west is no bigger than the
-            // land makes inside those chunks, and beside the valley (pinned at the west edge) no bigger than its own meet.
-            // The sea floor is held too: it shelves by the distance from the shore, so it has no step at the seam either
-            // (#176; TheSeaFloorShelvesIntoTheOpenSea).
             var gen = World.Gen;
             int n = ChunkGen.Size, rows = gen.ChunksH;
             var east = new GeneratedChunk[rows];
@@ -157,7 +146,6 @@ namespace Chem.Tests
                     for (int i = 0; i + 1 < n; i++) inside = Math.Max(inside, Math.Abs(e[j * n + i + 1] - e[j * n + i]));
                     if (west[cy].Pinned)
                     {
-                        // As the nine's valley sides: the step onto the valley less the valley's own next step.
                         valleyStep = Math.Max(valleyStep, step - Math.Abs(wl[j * n + 1] - wl[j * n]));
                         continue;
                     }
@@ -176,12 +164,6 @@ namespace Chem.Tests
         [Test]
         public void TheSeaFloorShelvesIntoTheOpenSea()
         {
-            // #176: across every side between two world squares, 16 cells either side of it at every fourth cell along, no
-            // step from one sea cell to the next is over a height step (0.5 m, 4 land units); the sides where a coast
-            // square's sea meets an open-sea square are counted. The floor once ramped over 90 cells from the coast square's
-            // own shore and was the open sea's full 40 m at once past its side: 55 land units in one cell on this plan, up to
-            // 175 on the plan the issue was found on. Sides by the pinned valley (its own land, met over 90 cells and more)
-            // and the wall rows are left out.
             var gen = World.Gen;
             var plan = World.Plan;
             var grid = plan.Grid;
@@ -226,10 +208,8 @@ namespace Chem.Tests
             Assert.That(top.step, Is.LessThanOrEqualTo(4), $"a step of {top.step} on the sea floor at ({top.x}, {top.y})");
         }
 
-        // The .NET suite's, where the landing gates run it (about 1 s). Under the Editor's Mono the ring's fill alone is 14 s
-        // and the whole test passed 180 s (#187), so EditMode skips it, saying why (docs/TESTING_LAYERS.md).
         [Test]
-        [NonParallelizable] // it times itself: it needs the machine to itself
+        [NonParallelizable]
         public void TheKnownRingOverEveryChunk()
         {
             if (Type.GetType("Mono.Runtime") != null)
@@ -237,12 +217,9 @@ namespace Chem.Tests
             var gen = World.Gen;
             int count = gen.ChunksW * gen.ChunksH;
             Assert.That(Known.Length, Is.EqualTo(count));
-            // One chunk at a time on one thread, a row of them, for the cost of a chunk.
             var one = Stopwatch.StartNew();
             for (int cx = 0; cx < gen.ChunksW; cx++) gen.Know(cx, 40);
             double perChunk = one.Elapsed.TotalMilliseconds / gen.ChunksW;
-            // The ring itself, from one character knowing the whole world: every chunk but its own, less open sea away
-            // from the coast.
             var ring = new KnownRing(gen, 0, gen.ChunksW);
             ring.Want(new[] { (0, 45) });
             var watch = Stopwatch.StartNew();
@@ -253,7 +230,6 @@ namespace Chem.Tests
                 $"{perChunk:F2} ms a chunk on one; the ring from one character {ringMs:F0} ms, {ring.Chunks.Count} shown ({seaOnly} all sea)");
             Assert.That(ring.Chunks.Count, Is.GreaterThan(count * 3 / 4).And.LessThan(count));
             Assert.That(ring.Chunks.Select(k => (k.X, k.Y)), Is.Unique);
-            // One assertion over every chunk, not one each: NUnit's array comparison and its message, 9,000 times, were most of the cost.
             var differ = ring.Chunks.Where(k => !k.Heights.AsSpan().SequenceEqual(Known[k.Y * gen.ChunksW + k.X].Heights)).Select(k => (k.X, k.Y)).Take(5).ToList();
             Assert.That(differ, Is.Empty, "chunks whose ring heights aren't their known heights");
             Assert.That(perChunk, Is.LessThan(5), "a known chunk costs well under a made one");
@@ -276,7 +252,6 @@ namespace Chem.Tests
                 int d = gen.ChunkDistance(0, row, k.X, k.Y);
                 Assert.That(d, Is.GreaterThan(Streaming.Sight).And.LessThanOrEqualTo(Streaming.Know), $"chunk ({k.X}, {k.Y})");
             }
-            // Every chunk past sight within know, the short way round, is shown unless it's open sea away from the coast.
             int wanted = 0;
             for (int cy = row - Streaming.Know; cy <= row + Streaming.Know; cy++)
                 for (int cx = -Streaming.Know; cx <= Streaming.Know; cx++)
@@ -288,7 +263,6 @@ namespace Chem.Tests
                     if (shown) Assert.That(k.X, Is.EqualTo(gen.WrapChunk(cx)), "a chunk west of the seam is the map's east column");
                 }
             Assert.That(wanted, Is.EqualTo(15 * 15 - 9 * 9));
-            // A character a world east, or one column west of the seam named either way, knows the same chunks.
             var same = World.KnownRing(Streaming);
             same.Want(new[] { (w, row) });
             same.Fill();
@@ -312,21 +286,18 @@ namespace Chem.Tests
             foreach (var l in far)
             {
                 Assert.That(l.WrapCells, Is.EqualTo(w));
-                // From just across the seam from it, it shows exactly when it would from as far off this side.
                 int x = l.X < w / 2 ? w - 40 : 40;
                 int dx = Math.Abs(l.DxTo(x));
                 Assert.That(dx, Is.LessThanOrEqualTo(w / 2));
                 Assert.That(l.SeenAt(x, l.Y), Is.EqualTo(dx <= l.SeenFrom * ChunkGen.Size), $"{l.Type} at ({l.X}, {l.Y}) from ({x}, {l.Y})");
                 Assert.That(l.SeenAt(l.X + w, l.Y) && l.SeenAt(l.X - w, l.Y), Is.True, "a world round is where it stands");
             }
-            // Something stands near the seam and is seen from the other side of it.
             Assert.That(far.Any(l => l.X >= w / 2 ? l.SeenAt(0, l.Y) : l.SeenAt(w - 1, l.Y)), Is.True, "a landmark seen across the seam");
         }
 
         [Test]
         public void ItsExpectsAreTheKnownLand()
         {
-            // map.json's expects for a world that's never baked: the known samples' share above the sea, highest and lowest.
             var heights = Known.SelectMany(k => k.Heights).ToArray();
             var map = MapFile.Load(Dir);
             int share = (int)Math.Round(100.0 * heights.Count(h => h >= map.SeaLevel) / heights.Length);
@@ -335,8 +306,6 @@ namespace Chem.Tests
             Picture();
         }
 
-        // The plan, and the heights of the whole world from its known samples (a pixel per sample, 8 cells), with the
-        // first two squares drawn again past the east edge so the seam shows in the middle of land, ticked above and below.
         static void Picture()
         {
             string folder = Environment.GetEnvironmentVariable("WORLD_12_PNG_OUT");
@@ -367,7 +336,6 @@ namespace Chem.Tests
                     else if (water == KnownChunk.Dry && wall == 2) col = (222, 190, 120);
                     WorldPlanPicture.Put(rgb, (y + margin) * pw + x, col, Math.Max(-50, Math.Min(50, shade / 2)));
                 }
-            // The seam's ticks, red, in the margins.
             for (int y = 0; y < margin; y++)
                 foreach (int yy in new[] { y, ph - 1 - y })
                     for (int x = w - 1; x <= w; x++)

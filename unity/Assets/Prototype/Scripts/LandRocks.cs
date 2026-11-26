@@ -12,7 +12,6 @@ using UnityEngine;
 public sealed class LandRocks
 {
     const int FaceDrop = 12, FootReach = 2, ClumpCells = 5;
-    // Room for a map's own stamps' rocks (the valley's cliff and canyon take about 600) and as many again for acts.
     const int PlacedPerFrame = 6, MostRocks = 1400;
     const float StillSeconds = 1f, StillMetres = 0.001f;
 
@@ -53,8 +52,6 @@ public sealed class LandRocks
         root.SetParent(grid.transform, false);
     }
 
-    // An online reset (ChemGrid.ResetWorld) destroys everything under the grid, these rocks with it (playtest 2026-11-08
-    // L1: their bodies were still read): a new root, and every cell that had one looked at again on the new world's land.
     void Regrow()
     {
         MakeRoot();
@@ -65,7 +62,6 @@ public sealed class LandRocks
         still = 0f;
     }
 
-    /// <summary>How many rocks the land's faces have now; a map's own aren't counted.</summary>
     public int Count
     {
         get
@@ -77,7 +73,6 @@ public sealed class LandRocks
         }
     }
 
-    /// <summary>How many of the land's own rocks stand within a square this far round a cell (a map's stamps have theirs elsewhere).</summary>
     public int Near(int x, int y, int reach)
     {
         int w = grid.World.W, n = 0;
@@ -86,7 +81,6 @@ public sealed class LandRocks
         return n;
     }
 
-    /// <summary>The rocks a map's folder lays, each [x, y, metres across]: none without a rocks.json.</summary>
     public void Lay(string worldDir)
     {
         string path = Path.Combine(worldDir, "rocks.json");
@@ -99,7 +93,6 @@ public sealed class LandRocks
         }
     }
 
-    /// <summary>The land moved round a cell: what stands there is looked at again.</summary>
     public void Moved(int x, int y, int reach)
     {
         var world = grid.World;
@@ -109,7 +102,6 @@ public sealed class LandRocks
         still = 0f;
     }
 
-    /// <summary>Once a frame: a few more rocks, and the ones that stand ride the ground.</summary>
     public void Tick(float dt)
     {
         var world = grid.World;
@@ -148,13 +140,11 @@ public sealed class LandRocks
 
     static uint Hash(int x, int y, int salt) => WorldHash.Hash4(salt, 4177, x, y);
 
-    // Rocks come in clumps, so a long face doesn't wear an even row of them.
     static bool InClump(int x, int y) => Hash(x / ClumpCells, y / ClumpCells, 1) % 5 < 3;
 
     static Kind KindAt(World world, int x, int y)
     {
         int drop = world.LandDrop(x, y);
-        // A short face is a bump's bank, not a crag: no boulders on it, nor at its foot (#148).
         if (drop == 0 || world.LandFace(x, y) < World.LandCrag) return Kind.None;
         uint roll = Hash(x, y, 2);
         if (drop >= FaceDrop)
@@ -166,7 +156,6 @@ public sealed class LandRocks
         return drop < World.LandSteep && roll % 4 == 0 && IsFoot(world, x, y) ? Kind.Scree : Kind.None;
     }
 
-    // At the top of a face: every cell higher than this one beside it is no longer steep.
     static bool IsLip(World world, int x, int y)
     {
         int here = world.LandMovedAt(x, y);
@@ -176,7 +165,6 @@ public sealed class LandRocks
         return true;
     }
 
-    // Low ground with a face rising close by.
     static bool IsFoot(World world, int x, int y)
     {
         int here = world.LandMovedAt(x, y);
@@ -186,7 +174,6 @@ public sealed class LandRocks
         return false;
     }
 
-    // The way down the land from a cell, flat, in the world.
     Vector3 Down(World world, int x, int y)
     {
         var east = (grid.CellCenter(x + 1, y) - grid.CellCenter(x, y)).normalized;
@@ -238,12 +225,11 @@ public sealed class LandRocks
         foreach (var collider in made.GetComponentsInChildren<Collider>())
         {
             if (Application.isPlaying) Object.Destroy(collider);
-            else Object.DestroyImmediate(collider); // an Edit mode test's
+            else Object.DestroyImmediate(collider);
         }
         return new Rock { Kind = kind, Body = made.transform, Spot = spot, Over = made.transform.position.y - ground, Last = ground };
     }
 
-    // Without the pack's rocks: a rough cube.
     GameObject Lump(Vector3 foot, float wide, float tall)
     {
         var lump = GameObject.CreatePrimitive(PrimitiveType.Cube);

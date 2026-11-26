@@ -75,8 +75,6 @@ public partial class CastFeelProbe : ProbeScenario
         }
     }
 
-    // A peer catching up on ticks in slices can be mid-tick at the end of every frame: the beats
-    // must still play, all of them. (World.StepSome here leaves a tick begun for the grid to finish.)
     IEnumerator MidTick()
     {
         bool slicing = true;
@@ -103,7 +101,6 @@ public partial class CastFeelProbe : ProbeScenario
 
     void Pulsed(int level) => pulses++;
 
-    // From the slam's start until the hands meet.
     IEnumerator TimeSlam()
     {
         float at = Time.time;
@@ -112,10 +109,6 @@ public partial class CastFeelProbe : ProbeScenario
         slamSeconds = Time.time - at;
     }
 
-    // The same cast on the same clock each run, 60 fps fixed and begun on a tick, gives the same frames:
-    // what a beat lasts, to the frame, with its hit-stops. Those in the charged cast were dev's before
-    // the uncharged rework, and must never change. First and Charge end on a tick, so they can trade or take a
-    // frame between them, a tick being 10 frames from a clock that adds up floats.
     const int ChargedBeat = 6, ChargedRelease = 13, ChargedRecovery = 15, ChargedFirstAndHold = 120;
     const int TapWindUp = 12, TapRelease = 21, TapRecovery = 15, TapFirstAndSlam = 70;
 
@@ -126,7 +119,6 @@ public partial class CastFeelProbe : ProbeScenario
         float shakeWas = GameFeel.Shake;
         GameFeel.Shake = 1f;
         FixClock(true);
-        // Ticks in work units too: by real milliseconds a tick can come a frame or ten late (Charge 79, not 70), and the beats with it.
         ChemGrid.ExactFrames = true;
         yield return Wait(1f);
         yield return Timed(true);
@@ -137,14 +129,12 @@ public partial class CastFeelProbe : ProbeScenario
         string tap = string.Join(", ", lasted.Select(kv => $"{kv.Key} {kv.Value}"));
         Check("tap_beats_as_tuned", lasted[Beat.WindUp] == TapWindUp && lasted[Beat.Release] == TapRelease && lasted[Beat.Recovery] == TapRecovery
             && Mathf.Abs(lasted[Beat.First] + lasted[Beat.Slam] - TapFirstAndSlam) <= 1, tap);
-        ChemGrid.ExactFrames = false; // the repeats want real slices: a tick finished from outside lost a cast once (#39)
+        ChemGrid.ExactFrames = false;
         yield return Repeats();
         FixClock(false);
         GameFeel.Shake = shakeWas;
     }
 
-    // Casts on each other's heels: each new one goes as soon as the core takes it. No cast waits for
-    // the beats, each goes off when the core says, and each still shows its slam before its thrust.
     IEnumerator Repeats()
     {
         const int Casts = 5;
@@ -187,7 +177,6 @@ public partial class CastFeelProbe : ProbeScenario
         repeatFired++;
     }
 
-    // A cast begun on a tick, let go 40 frames into the charge beat if it's held, and what each of its beats lasted in frames.
     IEnumerator Timed(bool held)
     {
         bool loaded = false;
@@ -211,7 +200,6 @@ public partial class CastFeelProbe : ProbeScenario
         for (int i = 0; i + 1 < beatFrames.Count; i++) lasted[beatFrames[i].beat] = beatFrames[i + 1].frame - beatFrames[i].frame;
     }
 
-    // Beginning a cast and following it until the beats are back at neutral.
     IEnumerator Cast(string name, string[] elements, bool held, Beat[] expected)
     {
         seen.Clear();
@@ -231,7 +219,6 @@ public partial class CastFeelProbe : ProbeScenario
         Report(name, expected);
     }
 
-    // Runs until neutral, keeping the worst hand error of each settled beat.
     IEnumerator Settle()
     {
         float waited = 0f;
@@ -247,7 +234,6 @@ public partial class CastFeelProbe : ProbeScenario
     void Report(string name, Beat[] expected)
     {
         Check($"{name}_beats_in_order", seen.SequenceEqual(expected), string.Join(" ", seen));
-        // Every beat with hand targets has its check: a short one can end before a frame lands in its settled time, so has none to read.
         foreach (var beat in expected.Where(b => b is not (Beat.Neutral or Beat.Recovery or Beat.Fizzle)))
         {
             string label = $"{name}_{beat.ToString().ToLowerInvariant()}";
@@ -273,7 +259,6 @@ public partial class CastFeelProbe : ProbeScenario
         worstHand[beat] = Mathf.Max(error, worstHand.GetValueOrDefault(beat));
     }
 
-    // Held on: the slam, the pressed hands, a pulse at each level, the slower walk; let go, the thrust and the recoil.
     IEnumerator Charged()
     {
         seen.Clear();
@@ -330,7 +315,6 @@ public partial class CastFeelProbe : ProbeScenario
         yield return Follow(new[] { Beat.First, Beat.Fizzle, Beat.Neutral }, "cancelled");
     }
 
-    // The same moments, with the pose on or off: a pair gathering and going, a charge held, a cancel.
     IEnumerator Pictures(string set)
     {
         LoadElement(ElementIds.Fire);

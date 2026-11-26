@@ -12,13 +12,10 @@ namespace Chem
     {
         LightLevel[] oneLight;
 
-        /// <summary>The light the sky gives now (Sky.Daylight at the clock).</summary>
         public LightLevel Daylight => Sky.Daylight(Rules.Sim.Day, Minutes);
 
-        /// <summary>Whether it's night: dark between dusk and dawn.</summary>
         public bool IsNight => Daylight == LightLevel.Dark;
 
-        /// <summary>The light on one cell: the daylight, or a fire's near it if brighter.</summary>
         public LightLevel LightAt(int x, int y)
         {
             oneLight ??= new LightLevel[1];
@@ -26,12 +23,6 @@ namespace Chem
             return oneLight[0];
         }
 
-        /// <summary>
-        /// The light on each cell of a w by h block from (x0, y0), row by row into
-        /// <paramref name="into"/> (at least w·h long): the daylight, raised by every burning cell
-        /// within reach, bright out to day.fireLight.bright feet and dim beyond. Distance is the
-        /// SRD's grid distance (a diagonal step is 5 ft).
-        /// </summary>
         public void FillLight(int x0, int y0, int w, int h, LightLevel[] into)
         {
             var day = Daylight;
@@ -39,7 +30,6 @@ namespace Chem
             if (day != LightLevel.Bright) ShineFires(x0, y0, w, h, into);
         }
 
-        // Every burning cell within reach of the block raises the light round it.
         void ShineFires(int x0, int y0, int w, int h, LightLevel[] into)
         {
             var d = Rules.Sim.Day;
@@ -52,7 +42,6 @@ namespace Chem
                 }
         }
 
-        // A block of cells being lit, and how far a fire's bright and dim light reach, in cells.
         readonly struct LightBlock
         {
             readonly int x0, y0, w, h, bright;
@@ -71,7 +60,6 @@ namespace Chem
 
             public int Reach { get; }
 
-            // One fire's light on the block: bright within `bright` cells, dim out to Reach.
             public void Shine(int fx, int fy)
             {
                 for (int y = Math.Max(y0, fy - Reach); y <= Math.Min(y0 + h - 1, fy + Reach); y++)

@@ -1,15 +1,13 @@
+// core-review-0 (docs/design/core-review-0.md): the lockstep cases the review found untested. Each runs the same
+// inputs on two peers, one never packing and one packing and unpacking its inactive chunks at ticks of its own
+// (as a peer's drawn hint and hold make it do), and asks for the same CellHash every tick: a thick liquid across a
+// rule switch that renumbers the liquids, the simulation across the east-west seam, and the dragon's reset.
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// core-review-0 (docs/design/core-review-0.md): the lockstep cases the review found untested. Each runs the same
-    /// inputs on two peers, one never packing and one packing and unpacking its inactive chunks at ticks of its own
-    /// (as a peer's drawn hint and hold make it do), and asks for the same CellHash every tick: a thick liquid across a
-    /// rule switch that renumbers the liquids, the simulation across the east-west seam, and the dragon's reset.
-    /// </summary>
     [Category("Simulation")]
     public class CoreReviewTests
     {
@@ -22,7 +20,6 @@ namespace Chem.Tests
 
         static Rules Soon(Rules rules) => Streaming(rules, "{ \"packTicks\": 0, \"packsPerTick\": 3 }");
 
-        // The packing peer packs and unpacks each inactive chunk at beats of its own, never at the other's.
         static int PackAtBeats(World w, int t)
         {
             int moved = 0;
@@ -37,7 +34,6 @@ namespace Chem.Tests
             return moved;
         }
 
-        // Both peers run the same step; the packing one packs between ticks; they hash the same every tick.
         static int RunBoth(World plain, World packing, int ticks, Action<World, int> step)
         {
             int moved = 0;
@@ -59,9 +55,6 @@ namespace Chem.Tests
         static Rules Liquids(Rules over, params string[] rows) =>
             RuleSet.Plain(over).WithMods(new[] { new ActiveMod("liquids", "{ \"patch\": { \"liquids\": { " + string.Join(", ", rows) + " } } }") }).Effective;
 
-        // Thick liquids sit out turns (World.StillWater's UnchangedFor), and a pack drops a chunk's water snapshot; a rule
-        // switch that renumbers the liquids remaps an inactive chunk's cells by id only when it activates (World.Fit.cs).
-        // Neither may show between a peer that packs and one that doesn't.
         [Test]
         public void AThickLiquidAndARenumberingHashTheSameWhateverEachPeerPacked()
         {
@@ -93,8 +86,6 @@ namespace Chem.Tests
             Assert.That(moved, Is.GreaterThan(10), "the packing peer packed and unpacked");
         }
 
-        // A world that wraps: fire, water and gas cross the seam (sim-across-the-seam) while the chunks beside it are let go
-        // and taken back, packed on one peer and not on the other.
         [Test]
         public void TheSeamRunsTheSameWhateverEachPeerPacked()
         {
@@ -124,8 +115,6 @@ namespace Chem.Tests
             Assert.That(moved, Is.GreaterThan(10), "the packing peer packed and unpacked");
         }
 
-        // The dragon's reset puts every chunk back to its start (World.Dragon.cs): a packed chunk's start is its changes as
-        // they stood, an unpacked one's is diffed from its block. Peers that packed differently must come out the same.
         [Test]
         public void TheDragonsResetIsTheSameWhateverEachPeerPacked()
         {

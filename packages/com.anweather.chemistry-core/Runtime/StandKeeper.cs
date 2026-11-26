@@ -41,7 +41,6 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A stand, strike or leaving as a history holds it: what StandKeeper reads of each (NetChem's StrikeIntent, the tests' StampedStrike).</summary>
     public interface IStampedStrike<in T>
     {
         int Tick { get; }
@@ -53,7 +52,6 @@ namespace Chem
         bool SamePlayer(T other);
     }
 
-    /// <summary>A strike command and the tick it was stamped for.</summary>
     public readonly struct StampedStrike : IStampedStrike<StampedStrike>
     {
         public StampedStrike(int tick, StrikeCommand command)
@@ -78,24 +76,14 @@ namespace Chem
         readonly Func<int, int, bool> inBounds;
         readonly Func<int, int, bool> keeps;
         readonly Func<int, int, int> deltaX, deltaY;
-        // The players whose last stand was one kept whatever else is true: their next one says when they left.
         readonly List<T> leaving = new List<T>();
 
-        // The last tick with a strike (or a leaving) in the history: stands up to it are kept.
         int lastStrikeTick;
-        // Where keeping while triggers read stands last took over from keeping without, or handed back: stands up to it are kept.
         int switchedAt, lastStand;
         bool byTriggers;
-        // Host: the ticks its world has run (up to ranTo), the ones of those where a rule read the stands, the
-        // world's count of reads so far, and its checksum window.
         int ranTo, reads, window = RollingHash.Every;
         readonly HashSet<int> read = new HashSet<int>();
 
-        /// <param name="readByTriggers">Whether a trigger that reads stands is in force (World.TriggersReadStands), or may be by the time a stand stamped now runs.</param>
-        /// <param name="inBounds">Whether a cell is in the world: the core ignores a stand off it.</param>
-        /// <param name="keeps">Whether a stand on this cell, now, must stay in the history whatever else is true (World.HoldReadsStand); null for none.</param>
-        /// <param name="deltaX">The cells from one x east to another as the core takes them (World.DeltaX: the short way round the seam on a world that wraps); null for x1 - x0.</param>
-        /// <param name="deltaY">The same for y (World.DeltaY: the short way round the south seam on a torus); null for y1 - y0.</param>
         public StandKeeper(Func<bool> readByTriggers, Func<int, int, bool> inBounds, Func<int, int, bool> keeps = null, Func<int, int, int> deltaX = null, Func<int, int, int> deltaY = null)
         {
             this.readByTriggers = readByTriggers;
@@ -105,10 +93,6 @@ namespace Chem
             this.deltaY = deltaY ?? ((y0, y1) => y1 - y0);
         }
 
-        /// <summary>
-        /// Host: its world has run <paramref name="tick"/>, with this many reads of the stands since it began (World.StandReads),
-        /// and checksums every <paramref name="windowTicks"/> ticks (RollingHash.WindowFor) as well as every RollingHash.Every.
-        /// </summary>
         public void Ran(int tick, int readsNow, int windowTicks = RollingHash.Every)
         {
             if (readsNow != reads) read.Add(tick);
@@ -117,7 +101,6 @@ namespace Chem
             window = Math.Max(1, windowTicks);
         }
 
-        /// <summary>The compaction hook: adds a just-stamped stand, strike or leaving to the history, and drops the stands it makes needless.</summary>
         public void Record(List<T> history, T command)
         {
             if (command.Kind != StrikeKind.Stand)
@@ -143,7 +126,6 @@ namespace Chem
             DropNeedless(history, command, Math.Max(lastStrikeTick, switchedAt));
         }
 
-        /// <summary>Everything forgotten, as a fresh session starts.</summary>
         public void Clear()
         {
             lastStrikeTick = switchedAt = lastStand = ranTo = reads = 0;
@@ -153,7 +135,6 @@ namespace Chem
             leaving.Clear();
         }
 
-        // One pass over a player's stands, oldest first, dropping each that the rules above allow.
         void DropNeedless(List<T> history, T player, int floor)
         {
             if (read.Count > 0) read.RemoveWhere(t => t <= floor);
@@ -174,7 +155,6 @@ namespace Chem
             b.Tick > floor && c.Tick <= ranTo && !ReadFrom(b.Tick, c.Tick)
             && (!byTriggers || (a.Tick > lastStrikeTick && Step(a, b) != null && Step(a, c) == Step(b, c)));
 
-        // Whether a rule read the stands, or a checksum fell, on a tick from one to the other, both in.
         bool ReadFrom(int from, int to)
         {
             if (FirstMultipleFrom(from, RollingHash.Every) <= to || FirstMultipleFrom(from, window) <= to) return true;
@@ -183,7 +163,6 @@ namespace Chem
             return false;
         }
 
-        // How the core takes s after r (World.ApplyStrike): a step's signs, or null when it's no step (the same cell, or either down).
         (int, int)? Step(T r, T s)
         {
             int dx = deltaX(r.X, s.X), dy = deltaY(r.Y, s.Y);

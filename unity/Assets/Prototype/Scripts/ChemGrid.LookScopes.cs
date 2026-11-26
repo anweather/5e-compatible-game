@@ -10,19 +10,14 @@ using UnityEngine;
 // A moving "around" touches only the cells at its edge, a few a frame, and never the rule switch.
 public partial class ChemGrid
 {
-    // Cells marked for a redraw a frame, at most: RenderCell draws them as it comes to them.
     const int MostMarksAFrame = 160;
-    // How strongly a film shows a scope's colour on what the land or the lake draws, and how far a colour must be from the plain look to show in full.
     const float GroundFilm = 0.55f, FullFilmApart = 0.25f, LeastApart = 0.02f;
-    // Colours are rounded to this many steps a channel for a gas's effect, so a scope's edge makes a few copies, not one a cell.
     const float GasSteps = 6f;
     const int MostGasCopies = 24;
 
     LookScopes scopes;
     bool anyScoped, groundScoped;
-    // The cover the rules' snow lays (sim.json weather.snow.cover), whose scoped look the land shows as a film.
     string snowCover;
-    /// <summary>Whether casts need noting by player (a "by" look on anything a cast makes).</summary>
     bool noteCasters;
     CellLook fireLooks, emberLooks, lavaLooks, waterLooks, ashLooks, snowLooks;
     readonly Dictionary<string, CellLook> gasLooks = new(), coverLooks = new(), groundLooks = new();
@@ -30,26 +25,21 @@ public partial class ChemGrid
     readonly List<PlayerSpot> spots = new();
     readonly Dictionary<string, Vector2Int> spotWas = new();
     readonly Queue<int> toRemark = new();
-    // The cells in toRemark, each once: only those a moving scope's edge reaches, never a bool a cell of the map (#207).
     readonly HashSet<int> remarking = new();
     int spotsWere;
     LookColour fireArt;
     MaterialPropertyBlock clumpBlock;
 
-    /// <summary>Who is in the game and where, while a scoped look is on; for a probe too.</summary>
     public IReadOnlyList<PlayerSpot> PlayerSpots => spots;
 
-    /// <summary>Whether any scoped, mixed or by-player look is on.</summary>
     public bool LooksScoped => anyScoped;
 
-    /// <summary>A player's slot: a look "by" names it. 0 for the solo wizard and the host, then each in join order.</summary>
     public static int SlotOf(SpellCaster caster) => caster != null && caster.TryGetComponent<NetWizard>(out var net) ? (int)net.OwnerClientId : 0;
 
     static Color ToColor(LookColour c, float a = 1f) => new(c.R, c.G, c.B, a);
 
     static LookColour Of(Color c) => new(c.r, c.g, c.b);
 
-    // The looks in force, compiled at each rule switch. With none scoped, this is all the cost there is.
     void CompileLooks()
     {
         var rules = DrawnRules;
@@ -96,7 +86,6 @@ public partial class ChemGrid
         return look.ByPlayers;
     }
 
-    // Once a frame with a scoped look on: where the players stand, and what a moving scope has changed.
     void FollowLooks()
     {
         if (!anyScoped) return;
@@ -112,7 +101,7 @@ public partial class ChemGrid
 
     void ReadSpots()
     {
-        PlayerCells(); // keeps wizards up to date
+        PlayerCells();
         spots.Clear();
         foreach (var w in wizards)
         {
@@ -125,11 +114,10 @@ public partial class ChemGrid
             spotWas[name] = cell;
         }
         if (spots.Count == spotsWere) return;
-        spotsWere = spots.Count; // someone came or went: a look by or round them lapses, or starts
+        spotsWere = spots.Count;
         MarkAllDrawn();
     }
 
-    // The cells a scope round this player changed as they moved: those not inside it both times nor outside it both times.
     void MarkEdges(string player, Vector2Int was, Vector2Int now)
     {
         foreach (var (who, within) in scopes.Followers)
@@ -166,26 +154,19 @@ public partial class ChemGrid
         if (remarking.Add(index)) toRemark.Enqueue(index);
     }
 
-    // Whether anything on a cell is drawn from a look that isn't one colour everywhere.
     bool LookReaches(Cell c) =>
         groundScoped || (c.Fire > 0 && !fireLooks.Plain) || (c.Cover == CoverIds.Embers && !emberLooks.Plain)
         || (c.Gas != null && gasLooks.ContainsKey(c.Gas)) || (c.Cover != null && coverLooks.ContainsKey(c.Cover));
 
-    // Everything drawn from a colour, drawn again: a rule switch, or a player coming or going. Nothing is walked here:
-    // each drawn chunk marks its own views the next time its cells are looked over (CatchUpLooks), which is when the
-    // marks are first read. Marking every view of the map at once was 12 to 46 ms on the nine (#186).
     void MarkAllDrawn()
     {
         lookStamp++;
         if (groundScoped) groundStamp = lookStamp;
     }
 
-    // How many times everything drawn from a colour has been asked to draw again (MarkAllDrawn), the last of them that
-    // took the ground along, and the count each chunk's views were last marked at.
     int lookStamp, groundStamp;
     int[] chunkLooks = System.Array.Empty<int>();
 
-    // A drawn chunk about to be looked over: its views drawn from a colour are marked, if MarkAllDrawn has run since.
     void CatchUpLooks(int n, int cx, int cy)
     {
         if (chunkLooks[n] == lookStamp) return;
@@ -202,7 +183,6 @@ public partial class ChemGrid
             }
     }
 
-    // What a cast left on a cell: its own colour if a spell chose one or a fire caught a mix, and who cast it.
     LookColour? NoteOn(int index, out int? caster)
     {
         caster = null;
@@ -212,17 +192,15 @@ public partial class ChemGrid
         return note.Spell != null && Showman != null && Showman.LookOf(note.Spell) is { KeepsFire: true } look ? Of(look.glow) : null;
     }
 
-    // The fire on a cell in a scoped, mixed or by-player look; the art's colour turned to it.
     LookTint ScopedFireTint(int x, int y)
     {
         var own = NoteOn(World.Idx(x, y), out var caster);
         if (own == null && caster == null && fireLooks.Plain) return fireLook;
-        if (caster == null && SpellFire(x, y, out var chosen)) return chosen; // the spell's own turn, as it's always drawn
+        if (caster == null && SpellFire(x, y, out var chosen)) return chosen;
         var colour = fireLooks.At(x, y, spots, own, caster);
         return LookTint.Between(ToColor(fireArt), ToColor(colour));
     }
 
-    /// <summary>A gas's colour on a cell: its look there with a scoped look on.</summary>
     public Color GasColorAt(string gas, int index, Color fallback)
     {
         if (!anyScoped || !gasLooks.TryGetValue(gas, out var look)) return GasColor(gas, fallback);
@@ -230,7 +208,6 @@ public partial class ChemGrid
         return ToColor(look.At(index % World.W, index / World.W, spots, caster != null ? own : null, caster), fallback.a);
     }
 
-    /// <summary>A cover's colour on a cell: its look there with a scoped look on.</summary>
     public Color CoverColorAt(string cover, int index, Color fallback)
     {
         if (!anyScoped || !coverLooks.TryGetValue(cover, out var look)) return CoverColor(cover, fallback);
@@ -238,7 +215,6 @@ public partial class ChemGrid
         return ToColor(look.At(index % World.W, index / World.W, spots, caster != null ? own : null, caster), fallback.a);
     }
 
-    // A gas's effect in its look on this cell: the prefab, or a copy dressed for the colour there, rounded so there are only a few.
     GameObject GasShowAt(string kind, GameObject plain, GameObject prefab, int x, int y)
     {
         if (!anyScoped || prefab == null || kind == null || !gasLooks.TryGetValue(kind, out var look)) return prefab;
@@ -258,7 +234,6 @@ public partial class ChemGrid
         return copy;
     }
 
-    // A clump (thorns, vines) in its cover's look on this cell, or its plain material.
     void TintClump(GameObject clump, string cover, int x, int y)
     {
         if (clump == null || !clump.TryGetComponent<Renderer>(out var r)) return;
@@ -271,7 +246,6 @@ public partial class ChemGrid
         UrpMaterials.SetColor(r, clumpBlock, CoverColorAt(cover, World.Idx(x, y), Color.white));
     }
 
-    // What the land or the lake can't draw cell by cell (one layer, one surface): a scope on it shows as a film over the cell.
     Color? GroundFilmAt(Cell c, int x, int y)
     {
         var look = GroundLookOf(c);

@@ -9,7 +9,6 @@ public class SpeechSamplesTests
 {
     const int Pcm = 1, Float = 3;
 
-    // A WAV of this format around these bytes, with an odd-sized chunk before the sound, as some writers add.
     static byte[] Wav(int format, int rate, int channels, int bits, byte[] data)
     {
         using var stream = new MemoryStream();
@@ -26,7 +25,7 @@ public class SpeechSamplesTests
         w.Write((short)bits);
         w.Write(Encoding.ASCII.GetBytes("LIST"));
         w.Write(3);
-        w.Write(new byte[] { 1, 2, 3, 0 }); // three bytes and the pad
+        w.Write(new byte[] { 1, 2, 3, 0 });
         w.Write(Encoding.ASCII.GetBytes("data"));
         w.Write(data.Length);
         w.Write(data);
@@ -34,7 +33,6 @@ public class SpeechSamplesTests
         return stream.ToArray();
     }
 
-    // One second of a 440 Hz tone at this rate: the left channel the tone, any others silent.
     static float[] Tone(int rate, int channels)
     {
         var samples = new float[rate * channels];
@@ -83,7 +81,6 @@ public class SpeechSamplesTests
     [Test]
     public void TwentyFourBitPcmReads()
     {
-        // Half scale, then minus half scale.
         var bytes = new byte[] { 0x00, 0x00, 0x40, 0x00, 0x00, 0xC0 };
         var (samples, rate, channels) = SpeechSamples.ReadWav(Wav(Pcm, 16000, 1, 24, bytes));
         Assert.AreEqual((16000, 1), (rate, channels));

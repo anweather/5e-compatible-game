@@ -16,10 +16,8 @@ public sealed class ClaudeCheck
     string path, says;
     bool found;
 
-    /// <summary>Whether it's still waiting on the program.</summary>
     public bool Checking { get; private set; }
 
-    /// <summary>Starts on this path. Returns at once.</summary>
     public void Start(string given)
     {
         if (Checking) return;
@@ -32,7 +30,6 @@ public sealed class ClaudeCheck
         new Thread(() => Run(program, environment, secrets)) { IsBackground = true, Name = "Claude Code check" }.Start();
     }
 
-    /// <summary>On the main thread: what to tell the player once it's known, a path that answered being kept. Null until then.</summary>
     public string Take()
     {
         string result = Volatile.Read(ref says);
@@ -43,7 +40,6 @@ public sealed class ClaudeCheck
         return result;
     }
 
-    /// <summary>Whether the last check found it.</summary>
     public bool Found => found;
 
     void Run(string program, Dictionary<string, string> environment, string[] secrets)

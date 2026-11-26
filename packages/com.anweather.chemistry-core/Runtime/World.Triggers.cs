@@ -23,63 +23,48 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A cast a trigger made: for the view to play its show (the target mark is in the cells till it lands).</summary>
     public sealed class TriggeredCast
     {
-        /// <summary>Its place in the world's running count of triggered casts: a view plays those past the last it saw.</summary>
         public int N;
         public string Trigger;
-        /// <summary>The player whose event fired it.</summary>
         public string Player;
         public string Spell;
         public int X, Y;
-        /// <summary>The grid way it was cast along (0 north, 1 east, 2 south, 3 west): the way the player moved.</summary>
         public int Dir;
-        /// <summary>The tick it was cast on (the last whole tick when it fired).</summary>
         public int Tick;
-        /// <summary>The tick it lands: Tick for one at once, later for one with a delay (it lands through LandStars).</summary>
         public int Lands;
     }
 
     public sealed partial class World
     {
-        /// <summary>The most triggers that fire a tick in a room (J-067); budgets.json triggers.maxPerTick when the room has budgets.</summary>
         public const int DefaultMaxFiringsPerTick = 4;
 
         const int TriggerSalt = 0x74726967, AroundSalt = 0x61726e64;
 
-        // The tick each trigger may next fire for each player, by "trigger/player" (ordinal order).
         readonly SortedDictionary<string, int> triggerNext = new SortedDictionary<string, int>(StringComparer.Ordinal);
         readonly List<TriggeredCast> triggered = new List<TriggeredCast>();
         readonly List<TriggeredCast> triggeredHistory = new List<TriggeredCast>();
-        // Firings since the world began, triggered casts made, and the firings on firedTick (for the per-tick cap).
         int triggerFirings, triggeredCasts, firedTick, firedOnTick;
 
-        /// <summary>The casts triggers made since this tick began, for the view to play (as NewMeteors).</summary>
         public IReadOnlyList<TriggeredCast> Triggered => triggered;
 
-        /// <summary>The triggered casts after the <paramref name="n"/>th (within the last 600 ticks), oldest first: for a view that steps several ticks a frame.</summary>
         public IEnumerable<TriggeredCast> TriggeredAfter(int n)
         {
             foreach (var t in triggeredHistory) if (t.N > n) yield return t;
         }
 
-        /// <summary>How many times triggers have fired since the world began.</summary>
         public int TriggerFirings => triggerFirings;
 
-        /// <summary>How many casts triggers have made since the world began.</summary>
         public int TriggeredCasts => triggeredCasts;
 
         int MaxFiringsPerTick => (int)(roomBudgets?.Number("triggers.maxPerTick", DefaultMaxFiringsPerTick) ?? DefaultMaxFiringsPerTick);
 
-        // Each new tick: this tick's list starts empty, and the history keeps its last HistoryTicks.
         void BeginTriggerTick()
         {
             triggered.Clear();
             if (triggeredHistory.Count > 0) triggeredHistory.RemoveAll(t => t.Tick <= Tick - HistoryTicks);
         }
 
-        // A player's stand moved from (fromX, fromY) to its cell: the step triggers that are theirs fire, in table order.
         void Stepped(WizardStand me, int fromX, int fromY)
         {
             var list = Rules.TriggersOn(TriggerEvent.Step);
@@ -90,8 +75,6 @@ namespace Chem
                 if (t.IsFor(me.Player, peer) && Due(t, me.Player)) Fire(t, me, dx, dy);
         }
 
-        // A tick begins: each tick trigger fires round each standing player it's for, when due, in table order then the
-        // players' (ordinal) order, facing south as nobody stepped. Before the tick's stages, as a cast between ticks lands.
         void Ticked()
         {
             var list = Rules.TriggersOn(TriggerEvent.Tick);
@@ -102,7 +85,6 @@ namespace Chem
                     if (t.IsFor(me.Player, TriggerDef.PeerOf(me.Player)) && Due(t, me.Player)) Fire(t, me, 0, 1);
         }
 
-        // The ball went in: the holed triggers of who hit it fire at the cup, facing south as nobody stepped.
         void BallHoled(GolfState g)
         {
             var list = Rules.TriggersOn(TriggerEvent.Holed);
@@ -113,7 +95,6 @@ namespace Chem
                 if (t.IsFor(cup.Player, peer) && Due(t, cup.Player)) Fire(t, cup, 0, 1);
         }
 
-        // Whether a trigger of the player's fires now: past its floor, under the tick's cap, and its chance met.
         bool Due(TriggerDef t, string player)
         {
             if (triggerNext.TryGetValue(t.Id + "/" + player, out int next) && Tick < next) return false;
@@ -141,7 +122,6 @@ namespace Chem
             var s = Rules.Spell(a.Cast);
             if (s == null) return;
             int dir = DirOf(dx, dy), delay = a.Delay > 0 ? a.Delay : s.Delay;
-            // The log names the player as the room does ("Player 1"), not their stand ("solo", "p0").
             if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{TriggerDef.PeerOf(me.Player)}'s {EventWord(t.On)} calls down {s.Name}")) return;
             var cast = new TriggeredCast { N = ++triggeredCasts, Trigger = t.Id, Player = me.Player, Spell = s.Id, X = x, Y = y, Dir = dir, Tick = Tick, Lands = Tick + delay };
             triggered.Add(cast);
@@ -155,7 +135,6 @@ namespace Chem
             _ => "step",
         };
 
-        // The cell an action lands on: the player's, along the step by By, or one picked within Within. False off the world.
         bool ActionCell(TriggerAction a, WizardStand me, int dx, int dy, out int x, out int y)
         {
             (x, y) = (me.X, me.Y);
@@ -171,15 +150,14 @@ namespace Chem
                     int salt = unchecked((int)WorldHash.Hash4(unchecked((int)Seed), AroundSalt, Tick, triggerFirings));
                     var pick = Placement.Pick(Placement.Around(me.X, me.Y, a.Within), 1, 0, (px, py) => InBounds(px, py) && IsActiveAt(px, py), unchecked((int)Seed), salt);
                     if (pick.Count == 0) return false;
-                    (x, y) = pick[0]; // folded below
+                    (x, y) = pick[0];
                     break;
             }
-            x = FoldX(x); // a step's cell past the seam
+            x = FoldX(x);
             y = FoldY(y);
             return InBounds(x, y);
         }
 
-        // FNV-1a of a name, the same on every runtime (string.GetHashCode isn't).
         static int StableHash(string s)
         {
             unchecked
@@ -190,10 +168,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// The triggers' state, for CastHash: firings, casts, the tick-cap's tick and count, then each cooldown
-        /// ("trigger/player:next"). "" until one fires, so worlds without hash as they did.
-        /// </summary>
         public string TriggerText()
         {
             if (triggerFirings == 0) return "";

@@ -31,7 +31,6 @@ public class SpellListProbe : ProbeScenario
             yield return Frames(3);
             yield return HandsTab(menu);
 
-            // The rest is the debug layout's (F2): the list picks what Cast casts there.
             controls.ElementPad = false;
             caster.Select(SpellIds.Thunderwave);
             yield return Frames(3);
@@ -66,7 +65,6 @@ public class SpellListProbe : ProbeScenario
             yield return Frames(3);
             Check("esc_closes_it", !menu.Open, $"open {menu.Open}");
 
-            // To the last tab (left wraps round), then down a row and Enter.
             yield return Press(Key.Tab);
             int tabs = SpellListMenu.Tabs.Count;
             while (SpellListMenu.Tab != tabs - 1) yield return Press(Key.LeftArrow);
@@ -83,7 +81,6 @@ public class SpellListProbe : ProbeScenario
 
             yield return QAndE(hud);
 
-            // The wheel is still the pad's. It's behind the debug layout, as before.
             controls.ElementPad = false;
             InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.LeftShoulder));
             yield return Frames(3);
@@ -108,7 +105,6 @@ public class SpellListProbe : ProbeScenario
         }
     }
 
-    // With the hands (D16): Tab opens the list on the hands' tab, the arrows move and Enter attunes.
     IEnumerator HandsTab(PauseMenu menu)
     {
         var world = grid.World;
@@ -123,7 +119,6 @@ public class SpellListProbe : ProbeScenario
         yield return Press(Key.DownArrow);
         yield return Press(Key.DownArrow);
         Check("the_arrows_move_the_highlight", menu.Focus == focus + 2, $"{focus} -> {menu.Focus}");
-        // The left hand's row: fire, water, earth, air, nothing; the third is earth.
         yield return Press(Key.Enter);
         for (float t = 0f; t < 3f && world.HandsOf(me).Holds[HandsDef.Left] != "earth"; t += Time.deltaTime) yield return null;
         Check("enter_attunes_the_left_hand", world.HandsOf(me).Holds[HandsDef.Left] == "earth", world.HandsOf(me).Holds[HandsDef.Left]);
@@ -132,7 +127,6 @@ public class SpellListProbe : ProbeScenario
         caster.AttuneTo(HandsDef.Left, wasLeft);
         for (float t = 0f; t < 3f && world.HandsOf(me).Busy; t += Time.deltaTime) yield return null;
 
-        // The pad's d-pad down is the hands menu now (HandsMenu, the handsmenu scenario), not this list.
         InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadDown));
         yield return Frames(3);
         bool handsMenu = HandsMenu.IsOpen, list = SpellListMenu.Open;
@@ -143,7 +137,6 @@ public class SpellListProbe : ProbeScenario
         yield return Frames(3);
     }
 
-    // Q moves to the next element; E stays in it, on its next spell. The hint says so.
     IEnumerator QAndE(SpellRadialHud hud)
     {
         var layout = hud.Radial.Layout;
@@ -160,7 +153,6 @@ public class SpellListProbe : ProbeScenario
         Check("hud_says_q_and_e", EventLog.KeyHints.Contains("Q element") && EventLog.KeyHints.Contains("E spell"), EventLog.KeyHints);
     }
 
-    // The list offers these, so each must be something a player can pick and cast without an error.
     IEnumerator EveryOffWheelSpellCasts(SpellTab offWheel)
     {
         var cell = grid.CellAt(wizard.transform.position + wizard.transform.forward * 6f);
@@ -179,7 +171,6 @@ public class SpellListProbe : ProbeScenario
         caster.Select(SpellIds.FireBolt);
     }
 
-    // Presses and releases a key on the virtual keyboard.
     IEnumerator Press(Key key)
     {
         InputSystem.QueueStateEvent(keys, new KeyboardState(key));

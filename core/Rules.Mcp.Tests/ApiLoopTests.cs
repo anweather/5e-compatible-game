@@ -1,3 +1,4 @@
+// The API loop behind the chat's seam, on a wire with nobody at the other end: what runs, what it costs, how it stops.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +10,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The API loop behind the chat's seam, on a wire with nobody at the other end: what runs, what it costs, how it stops.</summary>
     [Category("Unit")]
     public class ApiLoopTests
     {
@@ -187,7 +187,6 @@ namespace Chem.Tests
             Assert.That(note[body.Length], Is.EqualTo(' '), "and the cut falls between words");
         }
 
-        // Playtest 2026-11-08: after an undo, a note cut mid-word ran into "Make it daytime." and Claude read "UnMake it daytime" as a note.
         [Test]
         public void TheNewRequestArrivesWholeAfterAnUndo()
         {

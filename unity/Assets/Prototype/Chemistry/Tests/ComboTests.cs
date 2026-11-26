@@ -25,7 +25,6 @@ namespace Chem.Tests
             for (int i = 0; i < ticks; i++) w.Step();
         }
 
-        // Steps until a cast goes off, and says how many ticks that took.
         static int UntilFired(World w)
         {
             for (int t = 1; t <= 60; t++)
@@ -45,7 +44,6 @@ namespace Chem.Tests
 
         static World Small() => new World(Base, 8, 8, 1);
 
-        // A fire cast on its last tick, then that tick begun and left in slices, as a busy frame leaves it.
         static World AtASlicedFiringTick(FiredCastsHeard listener)
         {
             var w = Small();
@@ -279,8 +277,6 @@ namespace Chem.Tests
         [Test]
         public void ADpadSlotWithNoSpellIsRefused()
         {
-            // The base d-pad has no spell-less slot since Light got its spell, so a test-only d-pad gives it
-            // one. Ported from sandbox/test/combos.test.ts.
             var r = Base.WithMods(new[] { ModPatch.Parse("{ 'combos': { 'dpad': [ { 'name': 'Hasten Time', 'spell': 'hasten-time', 'castTicks': 12 }, { 'name': 'Mystery', 'castTicks': 6 } ] } }") });
             var w = new World(r, 8, 8, 1);
             Cycle(w, "ann", 1);
@@ -439,8 +435,6 @@ namespace Chem.Tests
             }
             Assert.That(w.CastOf("bob").Meter, Is.EqualTo(0));
         }
-
-        // The goldens (first taken from sandbox/test/combos.test.ts, frozen 2026-10-31).
 
         [Test]
         public void GoldenComboCast()

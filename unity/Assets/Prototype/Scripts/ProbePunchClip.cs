@@ -53,7 +53,6 @@ public class PunchClipProbe : SpellLooksProbe
             var flew = crate.transform.position - from;
             flew.y = 0f;
             float offLine = Vector3.Angle(flew, Vector3.right);
-            // A miss: turned away, nothing in reach.
             puppet.Face(ahead + Vector3.left * 8f);
             yield return Wait(0.7f);
             yield return Press(pad);
@@ -64,7 +63,6 @@ public class PunchClipProbe : SpellLooksProbe
             Metric("seconds", film.Seconds);
             Metric("sound_peak", film.Peak);
             Check("punch_moved_it", went > 0.1f, $"it went {went:0.00} m");
-            // The crate stands straight ahead of the wizard and the film's camera looks across it.
             Check("punch_sends_it_straight_on", offLine < 15f, $"{offLine:0} degrees off the line from the wizard");
             Check("frames_saved", film.Saved > 50, $"{film.Saved} of {film.Frames} frames");
         }

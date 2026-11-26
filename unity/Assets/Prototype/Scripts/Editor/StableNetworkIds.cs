@@ -31,7 +31,6 @@ using Object = UnityEngine.Object;
 // prefabs (NetWizard) don't need this: their ids are in git.
 public static class StableNetworkIds
 {
-    /// <summary>The GUID a generated asset at <paramref name="path"/> gets on every machine.</summary>
     public static string GuidFor(string path)
     {
         var sb = new StringBuilder(32);
@@ -39,10 +38,6 @@ public static class StableNetworkIds
         return sb.ToString();
     }
 
-    /// <summary>
-    /// The fileID of the NetworkObject on the object named <paramref name="objectName"/> (empty for a
-    /// prefab's root) in the file at <paramref name="path"/>: positive and large, like Unity's own.
-    /// </summary>
     public static long FileIdFor(string path, string objectName = "")
     {
         long id = BitConverter.ToInt64(Digest("fileID:" + path + ":" + objectName), 0);
@@ -55,12 +50,6 @@ public static class StableNetworkIds
         return md5.ComputeHash(Encoding.UTF8.GetBytes(text));
     }
 
-    // --- prefabs -------------------------------------------------------------
-
-    /// <summary>
-    /// Before a generated prefab is saved at <paramref name="path"/>: it will get its stable GUID.
-    /// One saved by an older builder, under some other GUID, is deleted first.
-    /// </summary>
     public static void PrepareAsset(string path)
     {
         string want = GuidFor(path);
@@ -71,10 +60,6 @@ public static class StableNetworkIds
             "fileFormatVersion: 2\nguid: " + want + "\nPrefabImporter:\n  externalObjects: {}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n");
     }
 
-    /// <summary>
-    /// After a network prefab is saved at <paramref name="path"/>: gives its NetworkObject its stable
-    /// fileID, and saves the hash Netcode works out from it into the asset. Returns the prefab, reloaded.
-    /// </summary>
     public static GameObject PinPrefab(string path)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -92,21 +77,13 @@ public static class StableNetworkIds
         return prefab;
     }
 
-    // --- the open scene ------------------------------------------------------
-
-    /// <summary>
-    /// The open scene, already saved at <paramref name="path"/>: gives each of its NetworkObjects its
-    /// stable fileID (closing and reopening the scene around the rewrite, so the Editor never sees
-    /// an open scene change on disk), then saves the hashes Netcode works out. The id comes from
-    /// the object's name, so no two of them may share one.
-    /// </summary>
     public static void PinScene(string path)
     {
         string text = null;
         var named = new HashSet<string>();
         foreach (var networkObject in SceneNetworkObjects(path))
         {
-            if (PrefabUtility.IsPartOfPrefabInstance(networkObject)) continue; // its id comes from its prefab
+            if (PrefabUtility.IsPartOfPrefabInstance(networkObject)) continue;
             if (!named.Add(networkObject.name)) throw new InvalidOperationException($"Two NetworkObjects in {path} are called {networkObject.name}; their network ids would clash. Rename one.");
             long have = FileIdOf(networkObject);
             long want = FileIdFor(path, networkObject.name);
@@ -124,13 +101,6 @@ public static class StableNetworkIds
         EditorSceneManager.SaveScene(SceneManager.GetSceneByPath(path));
     }
 
-    // --- checking a built yard -----------------------------------------------
-
-    /// <summary>
-    /// What in a built scene and its generated network prefabs isn't on its stable id (one an
-    /// older builder made, or one that drifted); empty when everything is. Reads the files, so
-    /// the scene needn't be open.
-    /// </summary>
     public static List<string> Unstable(string scenePath, NetworkPrefabsList generated)
     {
         var problems = new List<string>();
@@ -151,8 +121,6 @@ public static class StableNetworkIds
         return AssetDatabase.AssetPathToGUID(path) == GuidFor(path) && FileIdOf(networkObject) == FileIdFor(path);
     }
 
-    // The scene file's NetworkObjects ("--- !u!114 &fileID" blocks of that class), each checked
-    // against the name of its GameObject ("--- !u!1 &fileID" blocks).
     internal static IEnumerable<string> UnstableInScene(string path, string yaml)
     {
         var names = new Dictionary<string, string>();
@@ -177,17 +145,11 @@ public static class StableNetworkIds
         Array.FindAll(Object.FindObjectsByType<NetworkObject>(FindObjectsInactive.Include, FindObjectsSortMode.None),
             n => n.gameObject.scene.path == path);
 
-    // --- shared --------------------------------------------------------------
-
-    /// <summary>The fileID of <paramref name="obj"/> in the asset or scene file it's saved in.</summary>
     public static long FileIdOf(Object obj) => (long)GlobalObjectId.GetGlobalObjectIdSlow(obj).targetObjectId;
 
-    // Every reference to one fileID in a Unity YAML file: its "--- !u!114 &id" header and each "{fileID: id}".
     static string Replace(string yaml, long from, long to) =>
         Regex.Replace(yaml, @"(?<=&|fileID: )" + from.ToString(CultureInfo.InvariantCulture) + @"(?!\d)", to.ToString(CultureInfo.InvariantCulture));
 
-    // Netcode works out GlobalObjectIdHash in NetworkObject.OnValidate, which doesn't run for
-    // objects made from code; run it, and mark the object to be saved with the hash.
     static void Stamp(NetworkObject networkObject)
     {
         var onValidate = typeof(NetworkObject).GetMethod("OnValidate", BindingFlags.Instance | BindingFlags.NonPublic);

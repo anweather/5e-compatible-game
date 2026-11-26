@@ -65,7 +65,6 @@ public class GolfProbe : ProbeScenario
         yield return Coil();
     }
 
-    // The wizard two cells behind the ball, on the side that sends it this way.
     void Behind(GolfState g, int dir)
     {
         var yard = grid.YardCell(0, 0);
@@ -74,7 +73,6 @@ public class GolfProbe : ProbeScenario
 
     IEnumerator Swing(GolfState g)
     {
-        // Round by the hole's row first, then along it.
         int dir = g.X < g.HoleX ? East : West;
         if (g.Y != g.HoleY) dir = g.Y < g.HoleY ? South : North;
         int strokes = g.Strokes;

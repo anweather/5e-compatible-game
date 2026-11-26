@@ -1,3 +1,4 @@
+// The rules MCP server (core/Rules.Mcp, docs/RULES_MCP.md): validate, simulate, drafts and save.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +9,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The rules MCP server (core/Rules.Mcp, docs/RULES_MCP.md): validate, simulate, drafts and save.</summary>
     [Category("Simulation")]
     public class RulesMcpTests
     {
@@ -20,8 +20,6 @@ namespace Chem.Tests
 
         static IReadOnlyList<ModProblem> Check(string patch) => Bench.Validate(patch.Replace('\'', '"'));
 
-        // ---------- validate ----------
-
         [TestCaseSource(nameof(Mods))]
         public void EveryModInRulesModsPassesValidateUnchanged(string mod)
         {
@@ -29,7 +27,6 @@ namespace Chem.Tests
             Assert.That(problems, Is.Empty, Workbench.Report(problems));
         }
 
-        // One bad patch per check, and the sentence it gets.
         [TestCase("{ 'spells': 3 }", ModCheck.Shape, "\"spells\" must be a list of spells.")]
         [TestCase("{ 'spels': [] }", ModCheck.Shape, "\"spels\" isn't a section of a mod patch")]
         [TestCase("{ 'reactions': { 'add': [ { 'element': 'fire', 'do': [{ 'extinguish': true }] } ] } }", ModCheck.Shape, "Every reaction rule needs an id, and one has none.")]
@@ -76,8 +73,6 @@ namespace Chem.Tests
             Assert.That(problems, Is.Empty, Workbench.Report(problems));
         }
 
-        // #61: a giant rabbit at 10 times goes through; 50 times is refused. A look's scale is drawn only,
-        // so a world full of giants ticks the same cells at the same cost (simulate's 2 times budget holds).
         static string Giants(double scale) => ("{ 'items': { 'giant-rabbit': { 'name': 'Giant rabbit', 'mass': 1, 'look': { 'family': 'creature', 'species': 'rabbit', 'scale': "
             + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) + " } } }, 'world': { 'add': ["
             + string.Join(", ", Enumerable.Range(0, 16).Select(i => "{ 'kind': 'giant-rabbit', 'cell': [" + (10 + i * 2) + ", 20] }")) + "] } }").Replace('\'', '"');
@@ -97,8 +92,6 @@ namespace Chem.Tests
             }
             StringAssert.Contains("changed nothing", Bench.Simulate(Giants(20), "fire-on-grass", 60));
         }
-
-        // ---------- simulate ----------
 
         [Test]
         public void SimulateIsDeterministic()
@@ -133,8 +126,6 @@ namespace Chem.Tests
             StringAssert.Contains("Without it:", text);
             StringAssert.Contains("Cell hash", text);
         }
-
-        // ---------- drafts and save ----------
 
         [Test]
         public void SetMaterialPutsACoverInAMixGroup()

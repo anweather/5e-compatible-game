@@ -17,33 +17,24 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>What's left inside a building's walls: its wall's terrain (today's block), or a floor.</summary>
     public enum BuildingFill { Hollow, Solid }
 
-    /// <summary>What part of a building a cell is.</summary>
     public enum BuildingPart { Wall, Opening, Fill, Built, Road }
 
-    /// <summary>One opening's row (rules/buildings.json "openings"): its cells, and what they become.</summary>
     public sealed class OpeningDef
     {
-        /// <summary>What "becomes" says for the wall's own terrain, a door the view only draws.</summary>
         public const string StaysWall = "wall";
-        /// <summary>What "becomes" says for no cell at all: a gap, which the outside reaches through.</summary>
         public const string Open = "open";
-        /// <summary>The most cells an opening's row may say: far past any wall, and its span in half cells (twice it) stays an int (#85).</summary>
         public const int MaxCells = 1 << 20;
 
         public string Id;
-        /// <summary>How many cells it covers; 0 for one whose width the wall says.</summary>
         public int Cells;
         public string Becomes;
     }
 
-    /// <summary>rules/buildings.json as the rasteriser reads it, with the rows a mod's "buildings" section brought.</summary>
     public sealed class BuildingTables
     {
         public const string Key = "buildings";
-        /// <summary>The tables a mod's "buildings" section adds rows to.</summary>
         internal static readonly string[] Tables = { "openings", "floors", "roofs", "details", "styles" };
 
         internal JObject Json = new JObject();
@@ -61,23 +52,18 @@ namespace Chem
             return t;
         }
 
-        /// <summary>A row of a table (openings, floors, roofs, details, styles), or null.</summary>
         public JObject Row(string table, string id) => Json[table]?[id ?? ""] as JObject;
 
-        /// <summary>The ids a table has, for a refusal's list.</summary>
         public string Ids(string table) => string.Join(", ", (Json[table] as JObject)?.Properties().Select(p => p.Name) ?? Enumerable.Empty<string>());
     }
 
-    /// <summary>An opening in a wall: its row, and where it starts in half cells from the wall's from.</summary>
     public sealed class WallOpening
     {
         public string Kind;
         public int At;
-        /// <summary>How long it is in half cells.</summary>
         public int Span;
     }
 
-    /// <summary>A wall segment between two joins, in half cells from the row's at.</summary>
     public sealed class BuildingWall
     {
         public string Id, Material;
@@ -85,49 +71,36 @@ namespace Chem
         public List<WallOpening> Openings { get; } = new List<WallOpening>();
     }
 
-    /// <summary>A round tower: every cell whose middle lies within its radius of a join, in half cells.</summary>
     public sealed class BuildingTower
     {
         public string Id, Material;
         public int X, Y, Radius;
     }
 
-    /// <summary>A way laid on the ground through the row's joins, in order: cells of its terrain, whole cells wide.</summary>
     public sealed class BuildingRoad
     {
         public string Id, Terrain;
         public int Width;
-        /// <summary>Cut into the land it crosses (RoadGrade), not laid on it.</summary>
         public bool Graded;
-        /// <summary>A graded road's landing: how far from its start, in half cells, it keeps the start's height before it climbs or falls.</summary>
         public int Flat;
         public List<(int x, int y)> Points { get; } = new List<(int, int)>();
     }
 
-    /// <summary>One building: the fields that decide cells, and the whole row (Json) for the view.</summary>
     public sealed class BuildingRow
     {
         public string Id { get; private set; }
-        /// <summary>The cell its joins count from: (0, 0) in half cells is this cell's north-west corner.</summary>
         public int X { get; private set; }
         public int Y { get; private set; }
         public BuildingFill Fill { get; private set; }
-        /// <summary>The terrain a hollow building's floor is.</summary>
         public string Floor { get; private set; }
         public string WallMaterial { get; private set; }
-        /// <summary>The walls, by id, in id order.</summary>
         public IReadOnlyList<BuildingWall> Walls { get; private set; } = Array.Empty<BuildingWall>();
-        /// <summary>The towers, by id, in id order.</summary>
         public IReadOnlyList<BuildingTower> Towers { get; private set; } = Array.Empty<BuildingTower>();
-        /// <summary>The roads, by id, in id order.</summary>
         public IReadOnlyList<BuildingRoad> Roads { get; private set; } = Array.Empty<BuildingRoad>();
-        /// <summary>The row with its style's defaults and recipe filled in: everything the view draws from.</summary>
         public JObject Json { get; private set; }
 
-        /// <summary>Cells as they were baked, by terrain, as (x, y) from at: a cabin's, which no lattice describes.</summary>
         internal List<(int x, int y, string terrain)> Built { get; } = new List<(int, int, string)>();
 
-        /// <summary>A row read over these tables. Throws FormatException for one Rules.Check would refuse.</summary>
         public static BuildingRow Read(string id, JObject row, BuildingTables tables)
         {
             var json = Resolved(row, tables);
@@ -203,8 +176,6 @@ namespace Chem
                         for (int x = (int)r[k]; x <= (int)r[k + 1]; x++) Built.Add((x, (int)r[0], t.Name));
         }
 
-        // An opening's length in half cells: its row's cells, or for one whose width the wall says, that
-        // width in metres to the nearest half cell (0.75 m). The numbers are the same bits on every peer.
         internal static int SpanOf(JToken opening, BuildingTables tables)
         {
             var kind = tables.Row("openings", (string)opening["kind"]);
@@ -214,11 +185,8 @@ namespace Chem
             return Math.Max(1, (int)Math.Round(metres * 4 / 3, MidpointRounding.AwayFromZero));
         }
 
-        // ---------- a style's defaults, and its recipe ----------
-
         const int SaltWidth = 1, SaltDepth = 2;
 
-        /// <summary>The row with what its style gives it where it says nothing, and a recipe's walls if it has none.</summary>
         internal static JObject Resolved(JObject row, BuildingTables tables)
         {
             var json = (JObject)row.DeepClone();
@@ -233,7 +201,6 @@ namespace Chem
             return json;
         }
 
-        // A box of cells whose size comes from the row's seed, with the recipe's door on its front and window on its back.
         static void LayRecipe(JObject json, JObject recipe, JObject style)
         {
             int seed = (int?)json["seed"] ?? 0;
@@ -246,11 +213,6 @@ namespace Chem
             foreach (var p in box.Properties()) json[p.Name] = p.Value;
         }
 
-        /// <summary>
-        /// A closed box of walls, width by depth cells from (0, 0), running clockwise: joins, walls and a
-        /// roof over them. A door in the middle of the front, a window in the middle of each other wall
-        /// long enough to keep it clear of its corners. Either kind may be null for none.
-        /// </summary>
         public static JObject Box(int width, int depth, Side front, string door, string window, JObject roof = null)
         {
             int w = width * 2, d = depth * 2;
@@ -283,11 +245,8 @@ namespace Chem
             return wall;
         }
 
-        // ---------- what the fingerprint sees ----------
-
         static readonly string[] SharedKeys = { "at", "style", "seed", "fill", "joins", "built", "roads" };
 
-        /// <summary>A row with only what decides cells: joins, walls and openings, fill and floor kind. The rest is the view's (Rules.Fingerprint).</summary>
         internal static JObject Shared(JObject row)
         {
             var o = new JObject();
@@ -315,7 +274,6 @@ namespace Chem
             return o;
         }
 
-        /// <summary>The tables with a style's rows cut to what decides cells, for the fingerprint.</summary>
         internal static JObject SharedTables(JObject tables)
         {
             var o = (JObject)tables.DeepClone();
@@ -327,7 +285,6 @@ namespace Chem
         }
     }
 
-    /// <summary>One cell of a building, in world cells.</summary>
     public readonly struct BuildingCell
     {
         public BuildingCell(int x, int y, string terrain, BuildingPart part)
@@ -344,10 +301,8 @@ namespace Chem
         public BuildingPart Part { get; }
     }
 
-    /// <summary>A building's parts to cells, outside only (option (a)). Pure and whole-number.</summary>
     public static class BuildingRaster
     {
-        /// <summary>The row's cells, north to south then west to east, in world cells.</summary>
         public static List<BuildingCell> Cells(BuildingRow row, BuildingTables tables)
         {
             var taken = new SortedDictionary<(int y, int x), (string terrain, BuildingPart part)>();
@@ -360,7 +315,6 @@ namespace Chem
             return taken.Select(c => new BuildingCell(row.X + c.Key.x, row.Y + c.Key.y, c.Value.terrain, c.Value.part)).ToList();
         }
 
-        /// <summary>FNV-1a over a building's cells: its golden.</summary>
         public static uint Digest(IEnumerable<BuildingCell> cells)
         {
             uint h = 2166136261;
@@ -380,8 +334,6 @@ namespace Chem
             return h;
         }
 
-        // The walls, in id order, the first to take a cell keeping it: the upper storeys take none. An
-        // opening holds only on a cell one wall takes: where another wall meets it, it goes.
         static void LayWalls(BuildingRow row, BuildingTables tables, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken, HashSet<(int y, int x)> open)
         {
             var walls = row.Walls.Where(w => w.Storey == 0).ToList();
@@ -398,7 +350,6 @@ namespace Chem
                 }
         }
 
-        // A tower takes what no wall's opening has: a gate between two towers stays a gate.
         static void LayTowers(BuildingRow row, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken)
         {
             foreach (var t in row.Towers)
@@ -411,7 +362,6 @@ namespace Chem
                     }
         }
 
-        // After the fill, since a road runs out past the walls: it takes the cells no part of the building has.
         static void LayRoads(BuildingRow row, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken)
         {
             foreach (var road in row.Roads)
@@ -425,10 +375,8 @@ namespace Chem
                             }
         }
 
-        /// <summary>The half cells of a road's stretch.</summary>
         public static IEnumerable<(int x, int y)> HalfCells((int x, int y) a, (int x, int y) b) => Line(a, b);
 
-        // The half cells from one point to another, in whole numbers: the longer axis steps by one.
         static IEnumerable<(int x, int y)> Line((int x, int y) a, (int x, int y) b)
         {
             int dx = b.x - a.x, dy = b.y - a.y, steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
@@ -442,9 +390,6 @@ namespace Chem
             else taken[c] = (opening.Becomes == OpeningDef.StaysWall ? wall.Material : opening.Becomes, BuildingPart.Opening);
         }
 
-        // The distinct cells a wall takes, from its from to its to: for each half cell along it, the cell
-        // just to the right of that half cell's middle. Counted in eighths of a cell so an edge line, a line
-        // through centres and a 45° line are one rule. y grows south, so right of (dx, dy) is (-dy, dx).
         static IEnumerable<(int y, int x)> Run(BuildingWall w)
         {
             int dx = Math.Sign(w.ToX - w.FromX), dy = Math.Sign(w.ToY - w.FromY);
@@ -459,7 +404,6 @@ namespace Chem
             }
         }
 
-        // The opening whose span holds the middle of this cell, measured along the wall from its from.
         static OpeningDef OpeningOn(BuildingWall w, (int y, int x) c, BuildingTables tables)
         {
             int dx = Math.Sign(w.ToX - w.FromX), dy = Math.Sign(w.ToY - w.FromY);
@@ -469,8 +413,6 @@ namespace Chem
             return null;
         }
 
-        // Flood the outside from a border one cell past everything, through whatever no wall holds; what
-        // the flood doesn't reach is inside.
         static void Fill(BuildingRow row, SortedDictionary<(int y, int x), (string terrain, BuildingPart part)> taken, HashSet<(int y, int x)> open)
         {
             if (taken.Count == 0 && open.Count == 0) return;

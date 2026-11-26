@@ -8,20 +8,16 @@ using UnityEngine;
 // isn't in the way of the view.
 public class Spyglass : ItemUse
 {
-    // How quickly the view eases in and out, per second.
     const float Ease = 10f;
 
-    // The camera it zoomed, and its field of view and distance before, to put back.
     CinemachineCamera zoomed;
     CinemachineThirdPersonFollow follow;
     float baseFov, baseDistance;
     Texture2D mask;
     GUIStyle style;
 
-    /// <summary>True while the holder is looking through it.</summary>
     public bool Looking { get; private set; }
 
-    /// <summary>The field of view that makes things look <paramref name="zoom"/> times closer than <paramref name="fov"/> does.</summary>
     public static float Magnified(float fov, float zoom) =>
         2f * Mathf.Atan(Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1f, zoom)) * Mathf.Rad2Deg;
 
@@ -59,7 +55,6 @@ public class Spyglass : ItemUse
         if (mask != null) Destroy(mask);
     }
 
-    // A round eyepiece: dark beyond a circle the height of the screen.
     void OnGUI()
     {
         if (!Looking || !EventLog.HudVisible) return;

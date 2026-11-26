@@ -1,10 +1,10 @@
+// A Particle Pack effect in a spell's look (LookTint.Dress): what the pack's unlit particle material
+// draws (its sheet, flipbook blend, emission, soft edge against the ground), then turned round the
+// colour wheel. Some of the pack's sheets are coloured (fireball.tif is orange), so tinting can't
+// make them blue; turning can. Every variant is built, as a player has no material of this shader
+// for Unity to see what's needed from. Only an effect turned from its own colour is drawn with it.
 Shader "Prototype/LookParticle"
 {
-    // A Particle Pack effect in a spell's look (LookTint.Dress): what the pack's unlit particle material
-    // draws (its sheet, flipbook blend, emission, soft edge against the ground), then turned round the
-    // colour wheel. Some of the pack's sheets are coloured (fireball.tif is orange), so tinting can't
-    // make them blue; turning can. Every variant is built, as a player has no material of this shader
-    // for Unity to see what's needed from. Only an effect turned from its own colour is drawn with it.
     Properties
     {
         _BaseMap ("Sheet", 2D) = "white" {}
@@ -53,7 +53,7 @@ Shader "Prototype/LookParticle"
             {
                 float4 positionOS : POSITION;
                 half4 color : COLOR;
-                float4 uv : TEXCOORD0; // the frame, and the next frame in .zw when a flipbook blends
+                float4 uv : TEXCOORD0;
                 float blend : TEXCOORD1;
             };
 

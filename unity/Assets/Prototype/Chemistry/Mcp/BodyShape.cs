@@ -11,7 +11,6 @@ namespace Chem.Mcp
 {
     internal sealed class BodyShape
     {
-        /// <summary>One drawn copy of a slot: where it starts and ends at rest, in metres in the body's frame (x right, y up, z ahead).</summary>
         internal sealed class Limb
         {
             public SlotDef Slot;
@@ -23,12 +22,10 @@ namespace Chem.Mcp
         }
 
         public readonly List<Limb> Limbs = new List<Limb>();
-        /// <summary>The body's extent at rest, before an animal's size: least and most x, y and z.</summary>
         public readonly double[] Min = new double[3], Max = new double[3];
 
         BodyShape() { }
 
-        /// <summary>The shape of a species' body (a variant's is the species it's built on).</summary>
         public static BodyShape Of(FaunaTables tables, SpeciesDef body)
         {
             var shape = new BodyShape();
@@ -46,7 +43,6 @@ namespace Chem.Mcp
             return shape;
         }
 
-        // A slot drawn once per copy of what it hangs on, and again mirrored: the indices of its limbs.
         List<int> Copies(SpeciesDef body, SlotDef slot, PartDef part, Dictionary<string, List<int>> copies, bool styleShown)
         {
             var mine = new List<int>();
@@ -103,13 +99,11 @@ namespace Chem.Mcp
             }
         }
 
-        // Horns aren't counted: a beak is one. The slots list them.
         static readonly (string role, string one, string many)[] Counted =
         {
             ("leg", "leg", "legs"), ("arm", "arm", "arms"), ("head", "head", "heads"), ("tail", "tail", "tails"),
         };
 
-        /// <summary>The shape in a line: "4 legs in 2 pairs, 2 arms, 1 head; 2.1 m tall, 1.6 m long".</summary>
         public string Words(double size)
         {
             var shown = Limbs.Where(l => l.Shown).ToList();
@@ -127,10 +121,8 @@ namespace Chem.Mcp
                 $"{Workbench.Num(Math.Round((Max[2] - Min[2]) * size, 1))} m long, {Workbench.Num(Math.Round((Max[0] - Min[0]) * size, 1))} m wide";
         }
 
-        /// <summary>A point as "(x, y, z) m", to the centimetre.</summary>
         public static string Metres(double[] p) => "(" + string.Join(", ", p.Select(v => Workbench.Num(Math.Round(v, 2)))) + ") m";
 
-        // Quaternions as [x, y, z, w], in doubles; Unity.Mathematics' sums.
         static class Quat
         {
             public static readonly double[] Identity = { 0, 0, 0, 1 };
@@ -151,7 +143,6 @@ namespace Chem.Mcp
                 return q;
             }
 
-            /// <summary>Turned about z, then x, then y, as quaternion.EulerZXY.</summary>
             public static double[] EulerZxy(double x, double y, double z) => Mul(Axis(1, y), Mul(Axis(0, x), Axis(2, z)));
 
             public static double[] Rotate(double[] q, double[] v)

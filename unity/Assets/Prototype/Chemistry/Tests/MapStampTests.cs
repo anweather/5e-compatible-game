@@ -27,7 +27,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // West 40 cells, then a dog-leg north-west, then west again.
         static LandStamp DogLeg(string profile, int rise, int seed = 3) =>
             LandStamp.Make(100, 80, 16, rise, profile, 0, 0, 40, seed).Along(new[] { (0, 0), (-40, 0), (-52, -14), (-80, -14) });
 
@@ -43,8 +42,6 @@ namespace Chem.Tests
             Assert.That(LandStamp.Make(1, 2, 3, 4, LandStamp.Cliff, 0, 0, 40, 3).Along(new[] { (0, 0) }).Known, Is.False, "two points or more");
         }
 
-        // A bare stamp (a volcano's cone, J-080 phase 1b): every tree and open ground it moved goes to its terrain; walls,
-        // what it didn't move and an unknown terrain's stamp are left, and the last says so.
         [Test]
         public void ABareStampLeavesItsTerrainWhereItMovedTheLand()
         {
@@ -72,7 +69,6 @@ namespace Chem.Tests
             var w = Flat();
             var canyon = DogLeg(LandStamp.Canyon, 240);
             Assert.That(w.LayMapStamps(new[] { canyon }), Is.Empty);
-            // The middle of each leg, the bend between them included, is cut well down; past the ends it's the land.
             foreach (var (x, y) in new[] { (80, 80), (54, 73), (34, 66) })
                 Assert.That(Enumerable.Range(-4, 9).Min(o => w.LandStampedAt(x, y + o)), Is.LessThan(-60), $"the floor at ({x}, {y})");
             Assert.That(w.LandStampedAt(100 + 16, 80), Is.EqualTo(0), "nothing past its east end's taper");
@@ -84,7 +80,6 @@ namespace Chem.Tests
         public void ACliffAlongAPathIsHighOnTheSameHandRoundItsTurn()
         {
             var w = Flat();
-            // North, then turning north-east: the high side on the left all the way.
             var cliff = LandStamp.Make(80, 120, 30, 240, LandStamp.Cliff, 0, 0, 0, 3).Along(new[] { (0, 0), (0, -40), (30, -70) });
             Assert.That(w.LayMapStamps(new[] { cliff }), Is.Empty);
             Assert.That(w.LandStampedAt(70, 100), Is.GreaterThan(w.LandStampedAt(90, 100) + 100), "west of the north leg is high");
@@ -154,7 +149,6 @@ namespace Chem.Tests
             Assert.That(wet.LandHasMoved, Is.False);
         }
 
-        // The valley's canyon (castle-cliff-canyon): every one laid, with the rows and the river as the map has them.
         [Test]
         public void TheValleysStampsAreAllLaid()
         {
@@ -167,7 +161,6 @@ namespace Chem.Tests
                     w.Paint(x, y, "grass");
                     if ("wr*~".Contains(rows[y][x])) w.At(x, y).Water = 4;
                 }
-            // In ChemGrid's order: the stamps, then the rows.
             var stamps = MapStamps.Load(dir);
             Assert.That(stamps.All.Select(s => s.Id), Is.EquivalentTo(new[] { "the-canyon" }));
             Assert.That(stamps.LayInto(w), Is.Empty);
@@ -179,8 +172,6 @@ namespace Chem.Tests
             Assert.That(stamps.All.All(s => places.Contains($"\"id\":\"{s.Id}\"", StringComparison.Ordinal)), "each is a named place");
         }
 
-        // A map stamp under a row's site (a village up a volcano's slope, J-080 1b): laid first, it's laid, and the row's pad is
-        // cut level on the stamped slope. (Laid after the row, the stamp was refused wherever the pad had moved the land.)
         [Test]
         public void AStampUnderARowsSiteIsLaidAndItsPadIsCutLevelOnIt()
         {
@@ -212,8 +203,6 @@ namespace Chem.Tests
             }
         }
 
-        // The castle cliff (castle-cliff-wing): the Hold's pad reaches north of the castle at its own height and drops off as a
-        // crag, so the ground from the gate to the lip is one height, and the face below it is tall and rock.
         [Test]
         public void TheCastlePadIsFlatFromTheGateToTheCliffsLip()
         {
@@ -232,7 +221,6 @@ namespace Chem.Tests
             Assert.That(w.IsStampedRock(lx + 3, ly), "bare rock");
         }
 
-        /// <summary>The castle's walk: out of its gate, north along its east wall onto the pad beyond, and east to the cliff's lip.</summary>
         public static IEnumerable<(int x, int y)> CastleWalk()
         {
             for (int x = 142; x <= 145; x++) yield return (x, 366);

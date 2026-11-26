@@ -10,7 +10,6 @@ using UnityEngine;
 // buried in it, so such a creature is drawn for its shadow alone.
 public class CreatureMeshTests
 {
-    // As Creature.shader's SegmentVertex places a capsule's vertex.
     static Vector3 Posed(Vector3 shape, Vector2 cap, float length, float radiusStart, float radiusEnd, float flatten)
     {
         float r = Mathf.Lerp(radiusStart, radiusEnd, shape.z);
@@ -31,7 +30,6 @@ public class CreatureMeshTests
         for (int t = 0; t < triangles.Length; t += 3)
         {
             Vector3 a = points[triangles[t]] - middle, b = points[triangles[t + 1]] - middle, c = points[triangles[t + 2]] - middle;
-            // Clockwise from outside in Unity's left-handed space: the cross of two edges points out.
             volume += Vector3.Dot(a, Vector3.Cross(b - a, c - a)) / 6f;
         }
         Assert.That(volume, Is.GreaterThan(0f), "wound inside out");

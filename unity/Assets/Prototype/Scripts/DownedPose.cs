@@ -9,16 +9,13 @@ using UnityEngine;
 [RequireComponent(typeof(Animator))]
 public class DownedPose : MonoBehaviour
 {
-    // How long the fall takes (s), how far over it goes (degrees), and how high the lying body's middle is (m).
     const float FallSeconds = 0.35f, Over = -88f, LyingHeight = 0.2f;
 
     Transform hips, head;
     float weight;
 
-    /// <summary>The wizard is down: the pose tips it over; false, it gets up.</summary>
     public bool Lying { get; set; }
 
-    /// <summary>How far over the body is, 0 upright to 1 flat.</summary>
     public float Weight => weight;
 
     void Awake()

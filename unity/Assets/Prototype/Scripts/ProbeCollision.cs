@@ -37,9 +37,7 @@ public class CollisionProbe : ProbeScenario
         if (!found) return;
         float ground = grid.GroundTop(cell.x, cell.y, World.At(cell.x, cell.y)) + 1f;
         trunk.y = ground;
-        // Through the trunk, west to east: a blocker stops it.
         bool stopped = BlockerHit(trunk - Vector3.right * 3f, Vector3.right, 6f);
-        // A metre north of the trunk (still in its square, or the next): no blocker in the way.
         bool clearBeside = !BlockerHit(trunk + Vector3.forward * 1f - Vector3.right * 3f, Vector3.right, 6f);
         Check("tree_trunk_blocks", stopped, "a ray through the trunk hits its blocker");
         Check("tree_beside_trunk_clear", clearBeside, "a ray 1 m beside the trunk passes");

@@ -23,7 +23,6 @@ public class Sitter : MonoBehaviour
     GUIStyle style, shadow;
     Seat inReach;
 
-    /// <summary>The seat the wizard is sitting on, or null.</summary>
     public Seat Seated { get; private set; }
 
     void Awake()
@@ -34,7 +33,6 @@ public class Sitter : MonoBehaviour
         TryGetComponent(out body);
         TryGetComponent(out animator);
         mover = GetComponent("ThirdPersonController") as Behaviour;
-        // Moving and jumping are the Starter Assets' own input actions, read through PlayerInput.
         if (TryGetComponent<PlayerInput>(out var input) && input.actions != null)
         {
             move = input.actions.FindAction("Move");
@@ -42,7 +40,6 @@ public class Sitter : MonoBehaviour
         }
     }
 
-    // The local, player-driven wizard (a puppet's controls are off).
     bool Driven => controls != null && controls.isActiveAndEnabled;
 
     void Update()
@@ -67,7 +64,6 @@ public class Sitter : MonoBehaviour
         if (inReach != null && controls.Interact.WasPressedThisFrame()) Sit(inReach);
     }
 
-    // Held on the seat after everything else has moved the wizard this frame.
     void LateUpdate()
     {
         if (Seated == null) return;
@@ -93,7 +89,6 @@ public class Sitter : MonoBehaviour
         var seat = Seated;
         Seated = null;
         if (seat == null) return;
-        // Up and a step out in front of the seat, clear of it.
         Place(seat.Foot + seat.Facing * Vector3.forward * (seat.lounge ? 0.2f : 0.55f) + Vector3.up * 0.1f, seat.Facing);
         Ignore(seat, false);
         if (mover != null && Driven) mover.enabled = true;

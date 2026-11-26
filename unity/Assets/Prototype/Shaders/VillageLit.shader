@@ -1,16 +1,13 @@
+// Generated things built with MeshKit (D12), drawn one by one or instanced (AmbientLife): the colour is in the vertices, alpha is glow (a
+// window lit from inside, brighter the darker the sky: the global _LampGlow, which Village sets
+// from SkyLight). Soft wrapped lighting, main-light shadows and URP's fog, like the creatures.
+// A house between the camera and the wizard is dithered away round it (OccluderDither.hlsl).
+// A vertex marked in its first uv is stone in courses: Coursed lays the blocks from where it stands in the world.
 Shader "Prototype/VillageLit"
 {
-    // Generated things built with MeshKit (D12), drawn one by one or instanced (AmbientLife): the colour is in the vertices, alpha is glow (a
-    // window lit from inside, brighter the darker the sky: the global _LampGlow, which Village sets
-    // from SkyLight). Soft wrapped lighting, main-light shadows and URP's fog, like the creatures.
-    // A house between the camera and the wizard is dithered away round it (OccluderDither.hlsl).
-    // A vertex marked in its first uv is stone in courses: Coursed lays the blocks from where it stands in the world.
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
-        // 1 for a glow that's carried about (a wizard's staff): steady, the same by day and night, no
-        // window flicker (that's phased by world position, so on a swinging staff it pulsed with each step)
-        // and no bloom.
         _SteadyGlow ("Steady glow", Float) = 0
     }
     SubShader
@@ -68,9 +65,6 @@ Shader "Prototype/VillageLit"
                 return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
             }
 
-            // Blocks a course high, of uneven lengths and each its own tone, with thin joints, a lit top edge and a rough face.
-            // sharp fades the fine detail as it nears a pixel, so a far wall keeps the weathering and doesn't shimmer. Facing
-            // east or west, a wall runs along z.
             half Coursed(float3 at, half3 n, half sharp)
             {
                 const float course = 0.75, block = 1.7, joint = 0.035;
@@ -109,8 +103,6 @@ Shader "Prototype/VillageLit"
             half4 Frag(Varyings input) : SV_Target
             {
                 OccluderDitherClip(input.positionCS);
-                // Guarded: at a needle tip (a crystal staff's) the normal comes to nothing, and normalising it
-                // gives a pixel of NaN, which the bloom spreads into a great flare that pops as the tip moves.
                 float3 raw = input.normalWS;
                 float length2 = dot(raw, raw);
                 half3 n = length2 > 1e-8 ? raw / sqrt(length2) : half3(0, 1, 0);
@@ -120,13 +112,10 @@ Shader "Prototype/VillageLit"
                 half sharp = saturate(1.0 - fwidth(input.positionWS.y) * 6.0);
                 UNITY_BRANCH if (input.coursed > 0.5) albedo *= Coursed(input.positionWS, n, sharp);
                 half3 color = albedo * (light.color * light.shadowAttenuation * diffuse + SampleSH(n));
-                // Lit windows: a dim warmth by day, bright enough to bloom at night, with a slow flicker.
                 half lamp = lerp(lerp(0.15, 2.4, saturate(_LampGlow)), 1.2, _SteadyGlow);
                 half flicker = lerp(0.9 + 0.1 * sin(_Time.y * 3.1 + input.positionWS.x * 2.0 + input.positionWS.z), 1.0, _SteadyGlow);
                 half glow = input.color.a * lamp;
                 color += albedo * glow * flicker;
-                // A steady glow is one flat colour, unlit and under the bloom's threshold (1): lit, its facets
-                // crossed that threshold as it swung.
                 color = lerp(color, albedo * 0.95, _SteadyGlow * saturate(input.color.a * 2.0));
                 return half4(MixFog(color, input.fogFactor), 1);
             }

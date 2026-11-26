@@ -27,10 +27,6 @@ public class OnlineReset : MonoBehaviour
         instance = go.AddComponent<OnlineReset>();
     }
 
-    /// <summary>
-    /// Online: the host summons the dragon for everyone, a client asks the host to. Returns false
-    /// when not online (EventLog.ResetYard then does it for this machine alone).
-    /// </summary>
     public static bool Summon()
     {
         var net = FindAnyObjectByType<NetChem>();
@@ -40,10 +36,6 @@ public class OnlineReset : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Online: the host rebuilds the world for everyone at once, a client asks the host to. Returns false
-    /// when not online (EventLog.RebuildYard then reloads the scene).
-    /// </summary>
     public static bool Ask()
     {
         var net = FindAnyObjectByType<NetChem>();
@@ -64,10 +56,6 @@ public class OnlineReset : MonoBehaviour
         EventLog.Add("You asked the host to reset the world");
     }
 
-    /// <summary>
-    /// Whether a WorldReset now is a live online reset that the view follows: not going online
-    /// (a fresh world, no reset yet), and not a late joiner loading the host's world.
-    /// </summary>
     public static bool Happened(NetChem net) => net != null && net.Online && net.Resetting;
 
     void Update()
@@ -82,14 +70,11 @@ public class OnlineReset : MonoBehaviour
     {
         if (net != null) net.ResetComing -= Coming;
         net = null;
-        // Leaving Play mode in the Editor keeps statics (no domain reload): a static still naming this one would hold its
-        // NetChem, and through it the grid and the whole last world, until the next Play (cell-memory: 0.8 GB on flat-1728).
         if (instance == this) instance = null;
     }
 
     void Coming(int tick) => resetAt = tick;
 
-    // The countdown, big at the top of the screen, until the reset's tick.
     void OnGUI()
     {
         HudScale.Apply();

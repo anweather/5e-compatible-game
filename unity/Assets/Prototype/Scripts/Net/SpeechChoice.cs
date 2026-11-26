@@ -17,12 +17,10 @@ public static class SpeechChoice
     public const string Flag = "-speech", WavFlag = "-speech-wav", TimeoutFlag = "-speech-timeout", StubSecondsFlag = "-speech-stub-seconds";
     public const string ModelFlag = "-speech-model", GpuFlag = "-speech-gpu";
 
-    /// <summary>The Whisper model a build ships, in StreamingAssets/Whisper (WhisperModelIntoBuild).</summary>
     public const string ModelFile = "ggml-base.en.bin";
     const string Key = "speech.adapter";
     const float DefaultStubSeconds = 0.5f;
 
-    /// <summary>The setting: which adapter to use, by name; -speech wins over it for a run.</summary>
     public static string Adapter
     {
         get => Chosen(Environment.GetCommandLineArgs(), PlayerPrefs.GetString(Key, ""));
@@ -33,16 +31,12 @@ public static class SpeechChoice
         }
     }
 
-    /// <summary>A WAV file a transcriber hears in place of the microphone; null for the microphone.</summary>
     public static string Wav { get; set; } = Arg(Environment.GetCommandLineArgs(), WavFlag);
 
-    /// <summary>How long a transcriber may take.</summary>
     public static TimeSpan Timeout { get; set; } = Seconds(TimeoutFlag, TranscribedSpeech.DefaultTimeout);
 
-    /// <summary>How long the stub transcriber works before it answers.</summary>
     public static TimeSpan StubDelay { get; set; } = Seconds(StubSecondsFlag, TimeSpan.FromSeconds(DefaultStubSeconds));
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -51,11 +45,9 @@ public static class SpeechChoice
         StubDelay = Seconds(StubSecondsFlag, TimeSpan.FromSeconds(DefaultStubSeconds));
     }
 
-    /// <summary>Where the model is: -speech-model's file, otherwise the one the build shipped.</summary>
     public static string ModelPath =>
         Arg(Environment.GetCommandLineArgs(), ModelFlag) ?? Path.Combine(Application.streamingAssetsPath, "Whisper", ModelFile);
 
-    /// <summary>The adapter these arguments and this saved setting pick: the flag, the setting, or Whisper.</summary>
     public static string Chosen(string[] args, string saved)
     {
         string flag = Arg(args, Flag);
@@ -63,14 +55,11 @@ public static class SpeechChoice
         return string.IsNullOrEmpty(saved) ? Whisper : saved;
     }
 
-    /// <summary>Whether this copy may use the adapter: the stub only in an Editor or a development build.</summary>
     public static bool Allowed(string adapter, bool editor, bool developmentBuild) =>
         adapter != Stub || editor || developmentBuild;
 
-    /// <summary>The speech audio a transcriber records from: the WAV file if one is set, otherwise the microphone.</summary>
     public static ISpeechAudio Audio() => string.IsNullOrEmpty(Wav) ? new MicrophoneAudio() : new WavAudio(Wav);
 
-    /// <summary>The stub transcriber as set: it says the WAV file's name, or how long the sound was.</summary>
     public static StubTranscriber MakeStub() => new(StubDelay, string.IsNullOrEmpty(Wav) ? null : StubTranscriber.TextFor(Wav));
 
     static string Arg(string[] args, string flag)
@@ -83,10 +72,8 @@ public static class SpeechChoice
         float.TryParse(Arg(Environment.GetCommandLineArgs(), flag), NumberStyles.Float, CultureInfo.InvariantCulture, out float s) && s > 0f
             ? TimeSpan.FromSeconds(s) : otherwise;
 
-    /// <summary>The chosen adapter, or a NoSpeech that says why there isn't one here.</summary>
     public static ISpeech Make() => Make(Adapter);
 
-    /// <summary>The adapter of this name.</summary>
     public static ISpeech Make(string adapter)
     {
         if (!Allowed(adapter, Application.isEditor, Debug.isDebugBuild))

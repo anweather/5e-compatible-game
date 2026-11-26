@@ -11,8 +11,6 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class MapTests
     {
-        // The FNV-1a of the cell map taken from the baked scene when it moved to cells.txt.
-        // Moved for hold-east-path: the west brook is dry, its cells grass (and the trees its draws moved).
         const uint ValleyCells = 307482015u;
 
         string map;
@@ -43,7 +41,6 @@ namespace Chem.Tests
             File.WriteAllText(path, LandFile.Write(land, Side, Side, 0.125));
         }
 
-        // The copied map's side, as its map.json says.
         int Side => MapFile.Load(map).W;
 
         string Errors => string.Join("\n", MapCheck.Errors(map));
@@ -60,7 +57,6 @@ namespace Chem.Tests
         {
             var maps = Directory.GetDirectories(ChemistryTests.Folders.Maps);
             Assert.That(maps.Select(Path.GetFileName), Does.Contain(GameFolders.DefaultMap));
-            // A generated map's folder holds its world file alone until it's baked; ChunkGenTests checks a bake of it.
             foreach (string folder in maps.Where(m => !GeneratedMap.IsGenerated(m))) Assert.That(MapCheck.Errors(folder), Is.Empty, folder);
         }
 
@@ -85,7 +81,7 @@ namespace Chem.Tests
         [Test]
         public void AWorldDroppedBelowTheSeaIsSaid()
         {
-            LandBecomes(u => u - 304); // the 38 m the yard's corner once took off the second map
+            LandBecomes(u => u - 304);
             Assert.That(Errors, Does.Contain("highest cell").And.Contain("under the sea"));
         }
 
@@ -110,7 +106,6 @@ namespace Chem.Tests
         [Test]
         public void ALaidRowInTheLakeIsSaid()
         {
-            // The brook behind the castle that this used is dry since hold-east-path: the lake east of the castle.
             RowMovesTo(270, 365);
             Assert.That(Errors, Does.Contain("stands on water at"));
         }
@@ -183,7 +178,6 @@ namespace Chem.Tests
         [Test]
         public void AnotherSizeIsTakenAndItsFilesHeldToIt()
         {
-            // Any whole number of chunks is a size (map-size); the valley's cells and land then don't fit it, and say so.
             Change(o => o["size"] = new JArray(640, 640));
             Assert.That(Errors, Does.Not.Contain("chunks each way"));
             Assert.That(Errors, Does.Contain("cells.txt isn't 640 x 640").And.Contain("land.json isn't for a 640 x 640 map"));
@@ -218,7 +212,6 @@ namespace Chem.Tests
             Assert.That(Errors, Does.Contain("finds water below -4"));
         }
 
-        // The cells stand where the map says (map.json's yard and fullDetail): the valley's are where they always stood.
         [Test]
         public void TheValleysLayoutIsTheOneItAlwaysHad()
         {
@@ -243,8 +236,6 @@ namespace Chem.Tests
             Assert.That(layout.IsHighRes(13, 13), Is.False, "no full detail when the map names none");
         }
 
-        // The nine pins the valley at square [0, 2]: its chunk terrains are the valley's own, chunk for chunk, and it draws
-        // them in the valley's full detail, so the valley's ground pack lays into it as it is (PinnedGround).
         [Test]
         public void AGeneratedMapTakesItsPinnedMapsFullDetailWhereItIs()
         {

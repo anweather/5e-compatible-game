@@ -12,13 +12,10 @@ namespace Chem
 {
     public sealed partial class Rules
     {
-        /// <summary>Where the composed document holds the mods' building rows, by id.</summary>
         internal const string WorldRowsKey = "worldBuildings";
 
-        /// <summary>rules/buildings.json with the mods' rows.</summary>
         public BuildingTables Buildings { get; private set; } = new BuildingTables();
 
-        /// <summary>The building rows the mods on have brought, whether edits or new, in id order.</summary>
         public IReadOnlyList<BuildingRow> ModBuildings { get; private set; } = Array.Empty<BuildingRow>();
 
         void ParseBuildings(JObject d)
@@ -47,7 +44,6 @@ namespace Chem
 
         sealed partial class Checker
         {
-            // The widest a tower and a road may be: past these they're not a tower or a road, and a raster of them is work for nothing.
             const int MostTowerRadius = 32, MostRoadWidth = 8;
 
             public void Buildings()
@@ -103,7 +99,6 @@ namespace Chem
                     return;
                 }
                 if (row["fill"] != null) Fill(who, row["fill"]);
-                // A style's wall or floor that isn't an object is its own refusal (StyleRow); the row takes it.
                 var wall = Fields(who, "wall", row["wall"]) ? (JObject)row["wall"] : null;
                 if (Fields(who, "floor", row["floor"]) && row["floor"]["kind"] != null) Named(who, "floor", "floors", row["floor"]["kind"], tables);
                 if (row["storeys"] != null && !IsWholeAtLeast(row["storeys"], 1)) Errors.Add($"{who}: storeys must be a whole number, 1 or more");
@@ -148,7 +143,6 @@ namespace Chem
                 }
             }
 
-            // A row's built spans and its joins; the joins, for its walls and roofs.
             JObject RowCells(string who, JObject row)
             {
                 foreach (var t in (row["built"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
@@ -192,7 +186,7 @@ namespace Chem
                     Errors.Add($"{me} needs from and to, each one of its joins");
                     return;
                 }
-                if (!from.All(IsWhole) || !to.All(IsWhole)) return; // the join's own sentence says so
+                if (!from.All(IsWhole) || !to.All(IsWhole)) return;
                 int dx = Math.Abs((int)to[0] - (int)from[0]), dy = Math.Abs((int)to[1] - (int)from[1]);
                 if (dx == 0 && dy == 0) Errors.Add($"{me} runs nowhere: from and to are the same place");
                 else if (dx != 0 && dy != 0 && dx != dy) Errors.Add($"{me} must run along an axis or at 45°");
@@ -218,10 +212,8 @@ namespace Chem
                     Errors.Add($"{wall}: an opening's width is in metres");
                     return;
                 }
-                // In long: an at near int's top would wrap past the wall's end (#85).
                 long at = (long?)o["at"] ?? 0, span = BuildingRow.SpanOf(o, tables);
                 if (at + span > length) Errors.Add($"{wall}: a {Show(o["kind"])} at {at} is {span} half cells long and runs past the wall's {length}");
-                // One that leaves a cell keeps half a cell clear of a join; a gap may run to the corners.
                 else if (Show(kind["becomes"]) != OpeningDef.Open && (at < 1 || at + span > length - 1))
                     Errors.Add($"{wall}: a {Show(o["kind"])} at {at} must stand half a cell clear of a join");
             }
@@ -241,7 +233,6 @@ namespace Chem
                 else foreach (var j in over.Where(j => joins[j] == null)) Errors.Add($"{who} is over join {j}, which the building hasn't got");
             }
 
-            // A window's light at night (the view's): a colour, or off.
             void Lamp(string who, JToken lamp)
             {
                 if (lamp != null && !BuildingsShown.IsLamp(lamp)) Errors.Add($"{who}: lamp is the colour its window glows at night, \"#rrggbb\", or \"{BuildingsShown.LampOff}\", not {Show(lamp)}");
@@ -255,9 +246,6 @@ namespace Chem
                 else if (!Strings(t["tags"]).Contains("blocking")) Errors.Add($"{who}: wall material {Show(material)} doesn't block, so it can't be a wall (it needs the tag blocking)");
             }
 
-            // A part that holds fields of its own (a wall, a floor, a roof, a recipe): absent, or an object. One that
-            // isn't is refused here, in a sentence, before anything reads into it (#79): reading a field of a string
-            // throws, and a style's goes into every building of that style, the world's own too.
             bool Fields(string who, string field, JToken part)
             {
                 if (part == null) return false;

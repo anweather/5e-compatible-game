@@ -22,7 +22,6 @@ namespace Chem.Tests
         static LandmarkIntent intent;
         internal static LandmarkIntent Village => intent ??= LandmarkIntent.Load(GameWorldDir(), "village-with-landmark");
 
-        // A site well inside a valley-sized square, off the chunk lines so things fall in more than one chunk.
         internal const int SiteX = 300, SiteY = 300;
 
         [Test]
@@ -75,7 +74,6 @@ namespace Chem.Tests
             }
         }
 
-        // The building rows through the rules' own checks, as a mod's world rows are, and through the raster.
         static void Checked(LandmarkRows rows, string what)
         {
             var world = new JObject();
@@ -124,9 +122,6 @@ namespace Chem.Tests
             Assert.That(volcano.Stamps[1]["at"], Is.EqualTo(volcano.Stamps[0]["at"]));
             Assert.That(volcano.Stamps.Select(t => (string)t["bare"]), Is.EqualTo(new[] { "rock", "lava-crust" }), "a bare cone and a crusted crater");
             Assert.That(MapStamps.FromJson(volcano.StampsJson).All.Select(t => t.Bare), Is.EqualTo(new[] { "rock", "lava-crust" }), "as stamps.json reads it");
-            // Its village sits on a shelf levelled into the cone's foot, and its way out switchbacks up to a lookout by the
-            // crater (Andrew, 2026-11-08: "a village at the base of the mountain, and the path out of the village is the road
-            // leading up the mountain"). No house on the steep cone.
             var cone = ((int)volcano.Stamps[0]["at"][0], (int)volcano.Stamps[0]["at"][1]);
             int coneRadius = (int)volcano.Stamps[0]["radius"], crater = (int)volcano.Stamps[1]["radius"];
             Assert.That(volcano.Village, Is.Null, "laid as rows on its shelf, not a square");
@@ -157,7 +152,6 @@ namespace Chem.Tests
             Assert.That((int)fishing.Stamps[0]["rise"], Is.LessThan(0), "a lake's hollow");
             var boathouses = fishing.Buildings.OfType<JObject>().Where(b => b["parts"]?.Any(p => (string)p["kind"] == "dock") == true).ToList();
             Assert.That(boathouses.Count, Is.GreaterThanOrEqualTo(2), "boathouses with docks");
-            // Its village curves round the lake: every house about as far from the water's middle, spread round it.
             var lake = ((int)fishing.Stamps[0]["at"][0], (int)fishing.Stamps[0]["at"][1]);
             var shoreHouses = fishing.Buildings.OfType<JObject>().Where(b => (string)b["style"] == "village").ToList();
             Assert.That(shoreHouses.Count, Is.GreaterThanOrEqualTo(6));
@@ -165,11 +159,9 @@ namespace Chem.Tests
             Assert.That(far.Max() - far.Min(), Is.LessThan(10), "on one arc");
             int across = Math.Max(shoreHouses.Max(b => (int)b["at"][0]) - shoreHouses.Min(b => (int)b["at"][0]), shoreHouses.Max(b => (int)b["at"][1]) - shoreHouses.Min(b => (int)b["at"][1]));
             Assert.That(across, Is.GreaterThan(60), "spread round the shore, not bunched");
-            // Its place is its houses, not the block they stand round: the lake's middle isn't in it.
             var village = WorldPlaces.FromJson(fishing.PlacesJson).All.Single(p => p.Kind == "village");
             Assert.That(village.Contains(lake.Item1, lake.Item2), Is.False, "the lake isn't the village");
             Assert.That(shoreHouses.All(b => village.Contains((int)b["at"][0], (int)b["at"][1])));
-            // Each boathouse's front wall, where its dock goes, stands on the lake's shore: water just past it.
             var land = LandmarkPicture.Land(fishing, SiteX - 128, SiteY - 128, 256);
             foreach (var b in boathouses)
             {
@@ -213,21 +205,18 @@ namespace Chem.Tests
 
         static double Dist((double x, double y) a, (double x, double y) b) => Math.Sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
 
-        // The way's points, in cells, from the row its road is on.
         static List<(double x, double y)> WayCells(JObject b)
         {
             int ax = (int)b["at"][0], ay = (int)b["at"][1];
             return b["roads"]["way"]["through"].Select(j => b["joins"][(string)j]).Select(p => (ax + (int)p[0] / 2.0, ay + (int)p[1] / 2.0)).ToList();
         }
 
-        // How far a building's middle is from a cell.
         static double Distance(JObject b, (int x, int y) to)
         {
             double mx = (int)b["at"][0] + (int)b["joins"]["ne"][0] / 4.0, my = (int)b["at"][1] + (int)b["joins"]["se"][1] / 4.0;
             return Math.Sqrt((mx - to.x) * (mx - to.x) + (my - to.y) * (my - to.y));
         }
 
-        // The goldens, to compare between machines: the five files' texts, per form and seed.
         [TestCase("temperate", 1, 0x2f446555u), TestCase("temperate", 2, 0xf6215265u)]
         [TestCase("mountains", 1, 0x3634a466u), TestCase("mountains", 2, 0xcca4426eu)]
         [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]

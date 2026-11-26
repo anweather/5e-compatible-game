@@ -10,18 +10,14 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>Dollars per million tokens for one model.</summary>
     public sealed class ApiPrice
     {
         public double Input, Write5m, Write1h, Read, Output;
 
-        /// <summary>Haiku's rates change past this many prompt tokens; zero for none.</summary>
         public long LongPrompt;
 
-        /// <summary>What a long prompt multiplies every rate by.</summary>
         public double LongFactor = 1;
 
-        /// <summary>The prices of the models the loop may use; null for any other, which it refuses, as it couldn't count the money.</summary>
         public static ApiPrice Of(string model)
         {
             switch (model)
@@ -35,7 +31,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>The dollars one reply's usage comes to. A write that doesn't say which cache it went to counts as the dearer.</summary>
         public double Cost(JToken usage)
         {
             long input = (long?)usage?["input_tokens"] ?? 0, write = (long?)usage?["cache_creation_input_tokens"] ?? 0;
@@ -49,10 +44,8 @@ namespace Chem.Mcp
         }
     }
 
-    /// <summary>A ceiling on real money across every run that shares a file.</summary>
     public sealed class ApiBudget
     {
-        /// <summary>No prompt starts once this much is spent (the evaluation's own limit, J-064).</summary>
         public const double StopAt = 9;
 
         readonly object gate = new object();
@@ -72,22 +65,17 @@ namespace Chem.Mcp
             Limit = limit;
         }
 
-        /// <summary>A budget for one sitting: what's spent is held here, and nothing is written anywhere.</summary>
         public static ApiBudget ForSession(double limit) => new ApiBudget(limit);
 
-        /// <summary>No request starts once this much is spent.</summary>
         public double Limit { get; set; }
 
-        /// <summary>What to tell someone whose message wasn't sent.</summary>
         public string Refusal => session ? SessionWords() : "The API budget is spent, so this message wasn't sent.";
 
-        /// <summary>What to tell someone whose message stopped partway.</summary>
         public string Stopped => session ? SessionWords() : "The API budget ran out partway through this message.";
 
         string SessionWords() =>
             $"That's this session's spend limit of ${Limit.ToString("0.00", CultureInfo.InvariantCulture)}, so Claude has stopped. Raise it in Settings, or restart the game.";
 
-        /// <summary>Dollars spent so far; infinity if the file can't be read, so nothing starts on a total nobody knows.</summary>
         public double Spent
         {
             get
@@ -109,10 +97,8 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>Whether another request may start.</summary>
         public bool HasRoom => Spent < Limit;
 
-        /// <summary>Adds what a reply cost, as soon as it's known.</summary>
         public void Add(double dollars)
         {
             lock (gate)

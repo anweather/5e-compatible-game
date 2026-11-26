@@ -39,28 +39,23 @@ public class OvernightShowcase : ShowcaseScript
         yield return RulesChapter();
     }
 
-    // --- 1. physics -----------------------------------------------------------------
-
     IEnumerator PhysicsChapter()
     {
         Chapter("Physics");
-        // Over the pond from the south-west: the wizard on the west bank, a crate beside him.
         Place(15, 6);
         puppet.Face(Yard(19, 6));
         Cut(V(17f, 6.5f, 3f), V(26f, 0f, 14f));
         var flight = Fly(W(V(19.5f, 4.2f, 7f), V(25.5f, 0.3f, 13.5f), 3f));
         yield return Wait(1.2f);
-        yield return Cast(SpellIds.Thunderwave, 15, 6, 1, 2.6f);   // the crate flies into the pond and floats
+        yield return Cast(SpellIds.Thunderwave, 15, 6, 1, 2.6f);
         yield return new WaitUntil(() => flight.Done);
 
-        // Round to the east bank: the boulder beside the pond.
         Place(24, 4);
         puppet.Face(Yard(23, 5));
         flight = Fly(W(V(35.5f, 3.6f, 7.5f), V(34f, 0.3f, 15f), 2.2f));
         yield return new WaitUntil(() => flight.Done);
-        yield return Cast(SpellIds.Thunderwave, 24, 4, 3, 2.4f);   // into the water, and down it goes
+        yield return Cast(SpellIds.Thunderwave, 24, 4, 3, 2.4f);
 
-        // Pull back over the pond to the oil spill and its barrels, and light it.
         flight = Fly(W(V(33f, 7.5f, 5f), V(28.5f, 0.5f, 18f), 2f));
         yield return new WaitUntil(() => flight.Done);
         yield return Cast(SpellIds.FireBolt, 19, 3, 0, 0f);
@@ -68,35 +63,27 @@ public class OvernightShowcase : ShowcaseScript
         yield return new WaitUntil(() => flight.Done);
     }
 
-    // --- 2. earth -------------------------------------------------------------------
-
     IEnumerator EarthChapter()
     {
         Chapter("Earth shaping");
-        PutOutFires();   // the oil fire stays in chapter one, not spread across the yard and the valley
-        // West of the pond, looking north-east: the bank the trench is cut from.
+        PutOutFires();
         Place(14, 8);
         var flight = Fly(W(V(13f, 8f, 5f), V(20f, 0f, 15f), 3f));
         yield return new WaitUntil(() => flight.Done);
-        yield return Cast(SpellIds.EarthenTrench, 15, 5, 3, 5.5f);  // from (16,5) on the bank, west; the pond runs in
-        yield return Cast(SpellIds.WallOfStone, 12, 7, 0, 3f);      // a wall across it, north from (12,7)
+        yield return Cast(SpellIds.EarthenTrench, 15, 5, 3, 5.5f);
+        yield return Cast(SpellIds.WallOfStone, 12, 7, 0, 3f);
 
-        // Round to the south: Move Earth under the crate by the pits.
         flight = Fly(W(V(9f, 5.5f, 14f), V(15f, 1f, 6f), 2.5f));
         yield return new WaitUntil(() => flight.Done);
         yield return Cast(SpellIds.MoveEarth, 10, 11, 2, 3.5f);
     }
 
-    // --- 3. things to carry, at dusk ------------------------------------------------
-
     IEnumerator ItemsChapter()
     {
         Chapter("Things to carry");
         PutOutFires();
-        // The wizard by the glowing balls at the south of the yard; dusk falls as the camera comes round.
         Place(14, 13);
         puppet.Face(Yard(8, 13));
-        // Up and away from the hill, then down low to the south: the wizard on the right, open grass to the left.
         var flight = Fly(W(V(12f, 10f, -2f), V(17f, 0.8f, 3f), 1.5f), W(V(18.5f, 2.4f, -4.5f), V(16.5f, 1f, 3f), 2f));
         yield return daylight.Fade(0f, 1f, 3f);
         var ball = Item(ItemIds.GlowBallAzure);
@@ -107,13 +94,10 @@ public class OvernightShowcase : ShowcaseScript
         flight = Fly(W(V(16f, 2.6f, -4.5f), V(13f, 0.6f, 3f), 3f));
         yield return new WaitUntil(() => flight.Done);
 
-        // The bullseye lantern, from over the wizard's shoulder: its beam sweeps the yard to the north.
         hands.PickUp(Item(ItemIds.BullseyeLantern));
         yield return FollowCamera(Yard(8, 8), pitch: 10f);
         yield return Sweep(Yard(8, 8), Yard(21, 8), 4.5f, pitch: 10f);
 
-        // Cut to the west edge of the yard, where nothing stands between the wizard and the
-        // cabin, its window lit: the spyglass.
         hands.Drop();
         var cabin = V(-16.75f, 2f, 15.25f);
         brain.enabled = false;
@@ -121,20 +105,17 @@ public class OvernightShowcase : ShowcaseScript
         puppet.Face(cabin);
         var spyglass = Item(ItemIds.Spyglass);
         hands.PickUp(spyglass);
-        hands.view.PreviousStateIsValid = false;   // snap behind the wizard rather than swoop
+        hands.view.PreviousStateIsValid = false;
         yield return FollowCamera(cabin, pitch: 2f);
         yield return Wait(1f);
         yield return LookThrough(spyglass.GetComponent<Spyglass>(), cabin, 3.5f);
         hands.Drop();
     }
 
-    // --- 4. live rules ----------------------------------------------------------------
-
     IEnumerator RulesChapter()
     {
         Chapter("Change the rules mid-game");
-        PutOutFires();   // the meadow fire is the only one
-        // Back to day, a grass fire in the west meadow, framed to the right of the mods panel.
+        PutOutFires();
         var fire = Yard(5, 12);
         var cam = Camera.main.transform;
         Cut(cam.position, cam.position + cam.forward * 20f);
@@ -143,9 +124,8 @@ public class OvernightShowcase : ShowcaseScript
         yield return Cast(SpellIds.FireBolt, 5, 12, 3, 0f);
         yield return new WaitUntil(() => flight.Done);
         yield return dawn;
-        yield return Wait(0.8f);                    // base rules: it creeps
+        yield return Wait(0.8f);
 
-        // The Esc menu's Mods page, and Wildfire switched on from it.
         EventLog.HudVisible = true;
         var switcher = grid.GetComponent<RuleSwitcher>();
         ModsPanel.SetOpen(true);
@@ -155,13 +135,10 @@ public class OvernightShowcase : ShowcaseScript
         ModsPanel.SetOpen(false);
         EventLog.HudVisible = false;
 
-        // Up and back as it races across the meadow.
         flight = Fly(W(V(-6f, 16f, -12f), fire + V(1f, 0f, 6f), 6f));
         yield return new WaitUntil(() => flight.Done);
         yield return Wait(Beat);
     }
-
-    // --- helpers ------------------------------------------------------------------------
 
     static Carryable Item(string id)
     {
@@ -170,7 +147,6 @@ public class OvernightShowcase : ShowcaseScript
         return null;
     }
 
-    // Lets go of the held item and sends it toward a point, lobbed.
     void Throw(Vector3 toward, float speed)
     {
         var item = hands.Held;
@@ -180,7 +156,6 @@ public class OvernightShowcase : ShowcaseScript
         item.GetComponent<Rigidbody>().linearVelocity = dir.normalized * speed;
     }
 
-    // Hands the shot to the over-the-shoulder camera, already turned toward a point.
     IEnumerator FollowCamera(Vector3 toward, float pitch)
     {
         for (int i = 0; i < 3; i++)
@@ -192,7 +167,6 @@ public class OvernightShowcase : ShowcaseScript
         yield return null;
     }
 
-    // Turns the follow camera (and so the held lantern's beam) from one point to another.
     IEnumerator Sweep(Vector3 from, Vector3 to, float seconds, float pitch)
     {
         for (float t = 0f; t < seconds; t += Time.deltaTime)
@@ -204,11 +178,10 @@ public class OvernightShowcase : ShowcaseScript
         }
     }
 
-    // Holds "use" on the spyglass: the view zooms in on the point, holds, and eases back.
     IEnumerator LookThrough(Spyglass glass, Vector3 at, float seconds)
     {
         var controls = hands.controls;
-        hands.controls = null;   // the script holds "use", not the keyboard
+        hands.controls = null;
         for (float t = 0f; t < seconds + 1f; t += Time.deltaTime)
         {
             puppet.AimCamera(at, 2f, 1000f);
@@ -219,10 +192,8 @@ public class OvernightShowcase : ShowcaseScript
         hands.controls = controls;
     }
 
-    // The scene's light that dusk changes: the sun, the ambient light, the fog and the sky's exposure.
     sealed class Lighting
     {
-        // How much of each the dusk keeps, and its colours.
         const float DuskSun = 0.2f, DuskAmbient = 0.3f, DuskExposure = 0.3f;
         static readonly Color DuskSunColor = new(0.65f, 0.72f, 1f), DuskFog = new(0.13f, 0.15f, 0.24f);
 
@@ -231,7 +202,6 @@ public class OvernightShowcase : ShowcaseScript
         Color sunColor, fog;
         UnityEngine.Rendering.SphericalHarmonicsL2 ambient;
         Material sky, skyCopy;
-        // The clock's sky, held while the dusk is blended in (it would light the scene by the hour).
         SkyLight skyLight;
 
         public static Lighting Capture()
@@ -254,7 +224,6 @@ public class OvernightShowcase : ShowcaseScript
             };
         }
 
-        /// <summary>From day (0) to dusk (1).</summary>
         public void Blend(float k)
         {
             if (skyLight != null) skyLight.Held = true;
@@ -286,7 +255,6 @@ public class OvernightShowcase : ShowcaseScript
             else Blend(to);
         }
 
-        /// <summary>Puts everything back as it was, sky included.</summary>
         public void Restore()
         {
             if (sun != null)

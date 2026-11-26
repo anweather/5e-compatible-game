@@ -23,13 +23,10 @@ namespace Chem.Lockstep
 {
     public sealed partial class LockstepSession
     {
-        /// <summary>The wire's version: a peer refuses a host that speaks another.</summary>
         public const int Protocol = 1;
 
-        /// <summary>The longest input delay a command may ask for, in ticks (NetChem's).</summary>
         public const int MaxDelayTicks = 30;
 
-        // Hash windows kept waiting for the other side's, at most (a window one side never had would wait for ever).
         const int HashesKept = 4;
 
         readonly ILockstepTransport transport;
@@ -37,21 +34,15 @@ namespace Chem.Lockstep
         readonly LockstepFrames frames = new LockstepFrames();
         bool started;
 
-        // Everyone: the batches held and not yet run, how far they run unbroken, and the batch of the tick in progress.
         readonly Dictionary<int, TickBatch> batches = new Dictionary<int, TickBatch>();
         int knownUpTo;
         TickBatch running;
-        // The network tick the world's tick 0 sits at: 0 until a reset rebuilds the world, or as a snapshot says.
         int tickBase;
         bool synced, caughtUp;
         int catchUpTo;
-        // The desync check: windows still waiting for the other side's.
         RollingHash rolling = new RollingHash();
         readonly Dictionary<int, ulong[]> hostHashes = new Dictionary<int, ulong[]>(), ownHashes = new Dictionary<int, ulong[]>();
 
-        /// <param name="transport">The network, as bytes (the adapter's).</param>
-        /// <param name="world">The game's world, as the session drives it.</param>
-        /// <param name="localPeer">This peer's id, as the transport knows it: the host's own requests come from it.</param>
         public LockstepSession(ILockstepTransport transport, ILockstepWorld world, PeerId localPeer = default)
         {
             this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
@@ -64,65 +55,44 @@ namespace Chem.Lockstep
 
         public LockstepRole Role => transport.Role;
 
-        /// <summary>The host or solo: it owns the clock.</summary>
         public bool IsHost => transport.Role != LockstepRole.Client;
 
         public ILockstepWorld World { get; }
 
         public PeerId LocalPeer { get; }
 
-        /// <summary>The channels registered, in order: the same on every peer.</summary>
         public IReadOnlyList<LockstepChannel> Channels => channels;
 
-        /// <summary>The network's tick: the world's own, plus the ticks before the last reset.</summary>
         public int NetTick => tickBase + World.World.Tick;
 
-        /// <summary>The last tick this peer holds the batch of, unbroken from now: the host's own last stamped.</summary>
         public int KnownUpTo => knownUpTo;
 
-        /// <summary>Whether this peer has a world in step with the host's: the host always, a client once a snapshot is in.</summary>
         public bool Synced => synced;
 
-        /// <summary>Whether this peer plays live: the host always, a client once it has run to where the host was when it joined.</summary>
         public bool IsCaughtUp => caughtUp;
 
-        /// <summary>True once this client has found a hash window that differs from the host's, until a snapshot puts it right.</summary>
         public bool DesyncSeen { get; private set; }
 
-        /// <summary>The network tick of the last online reset (0 for none).</summary>
         public int LastResetTick { get; private set; }
 
-        /// <summary>Client: asks to join as soon as the hello checks out. Off, the game calls Join itself (after loading the host's map).</summary>
         public bool AutoJoin { get; set; } = true;
 
-        /// <summary>Client: asks the host for a fresh snapshot when it desyncs.</summary>
         public bool RecoverDesyncs { get; set; } = true;
 
-        /// <summary>Host: the most time the clock owes ticks for; past it, peers keep the host's pace, whatever it is.</summary>
         public double MostOwedSeconds { get; set; } = 1.0;
 
-        /// <summary>After a tick is run on this peer, with its batch.</summary>
         public event Action<TickBatch> TickApplied;
 
-        /// <summary>Client: it has run to the host's tick at its snapshot, and plays live from here.</summary>
         public event Action<int> CaughtUp;
 
-        /// <summary>Client: a hash window differs from the host's.</summary>
         public event Action<LockstepDesync> Desynced;
 
-        /// <summary>A command the host wouldn't take (every peer hears it), or a host-only one a client asked for.</summary>
         public event Action<LockstepRefusal> Refused;
 
-        /// <summary>An online reset is stamped for this network tick: every peer hears it as soon as the host stamps it.</summary>
         public event Action<int> ResetComing;
 
-        /// <summary>Something went wrong that the session can't go on from as it is: a hello or snapshot that doesn't fit, a message that doesn't read.</summary>
         public event Action<string> Failed;
 
-        /// <summary>
-        /// Adds a channel; every peer registers the same, in the same order, before the session starts (its first Update,
-        /// request or message).
-        /// </summary>
         public LockstepChannel<T> Register<T>(LockstepChannel<T> channel)
         {
             if (channel == null) throw new ArgumentNullException(nameof(channel));
@@ -132,10 +102,6 @@ namespace Chem.Lockstep
             return channel;
         }
 
-        /// <summary>
-        /// Asks for a command, as this peer: it lands on every peer at the same tick, <paramref name="delayTicks"/> after the
-        /// host's next (0 to MaxDelayTicks). The host names who asked and may refuse it (Refused).
-        /// </summary>
         public void Request<T>(LockstepChannel<T> channel, T command, int delayTicks = 0)
         {
             int index = IndexOf(channel);
@@ -157,14 +123,8 @@ namespace Chem.Lockstep
             Send(Link.Host, default, w.Span);
         }
 
-        /// <summary>The whole checksum as NetChem builds it: JoinSnapshot.ChecksumOf's parts, joined by '/'.</summary>
         public string Checksum() => string.Join("/", JoinSnapshot.ChecksumOf(World.World));
 
-        /// <summary>
-        /// Once a frame: the host's clock moves on <paramref name="elapsedSeconds"/> and stamps the ticks due; then every
-        /// peer runs the batches it holds while <paramref name="over"/> (the frame's work budget; null for none) says not
-        /// to stop.
-        /// </summary>
         public void Update(double elapsedSeconds, Func<bool> over = null)
         {
             started = true;
@@ -174,7 +134,6 @@ namespace Chem.Lockstep
             if (IsHost && !World.World.TickInProgress) ServeJoiners();
         }
 
-        /// <summary>The adapter: a message arrived from <paramref name="from"/> (the host, on a client).</summary>
         public void Received(PeerId from, ReadOnlySpan<byte> bytes)
         {
             started = true;
@@ -223,7 +182,6 @@ namespace Chem.Lockstep
             }
         }
 
-        // A batch as the host sent it: every peer, the host too, runs what these bytes say.
         TickBatch ReadBatch(LockstepReader r)
         {
             var batch = new TickBatch(r.Number()) { Reset = r.Bool() };
@@ -241,8 +199,6 @@ namespace Chem.Lockstep
             return batch;
         }
 
-        // A batch arrived: held until its tick, unless that tick has run or is running here (a tick in progress is
-        // counted in the world's Tick already, so NetTick is it).
         void Hold(TickBatch batch)
         {
             if (synced && batch.Tick <= NetTick) return;
@@ -256,8 +212,6 @@ namespace Chem.Lockstep
             while (batches.ContainsKey(knownUpTo + 1)) knownUpTo++;
         }
 
-        // Batch t runs while the world is at tick t-1; stepping then brings it to t. A tick a busy frame left part done
-        // carries on first. (World.World is read afresh each time: a reset or a snapshot replaces it.)
         void Advance(Func<bool> over)
         {
             if (!synced) return;
@@ -279,7 +233,6 @@ namespace Chem.Lockstep
             }
         }
 
-        // The online reset (J-014) at a network tick: the world as it started, counting from 0 again from here.
         void Rebuild(int tick)
         {
             LastResetTick = tick;
@@ -287,7 +240,6 @@ namespace Chem.Lockstep
             tickBase = tick - 1;
         }
 
-        // A tick has finished: the desync check, listeners, and on the host a joiner waiting for a moment between ticks.
         void Applied()
         {
             int tick = NetTick;
@@ -305,7 +257,6 @@ namespace Chem.Lockstep
             if (IsHost) ServeJoiners();
         }
 
-        // A window's parts in JoinSnapshot.PartNames' order, the cells' from the rolling hash: fixed 64-bit hashes.
         static ulong[] WindowParts(World w, string cells) => new[]
         {
             Fnv1a64.Hash(cells), Fnv1a64.Hash(w.Rules.Fingerprint), Fnv1a64.Hash(w.ThingsNow.Fingerprint), Fnv1a64.Hash(w.SkyHash()),

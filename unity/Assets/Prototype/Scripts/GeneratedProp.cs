@@ -20,7 +20,6 @@ public class GeneratedProp : MonoBehaviour
     Mesh mesh;
     GameObject shape;
 
-    /// <summary>Whether it has burned (a palm whose square burned).</summary>
     public bool Burnt { get; private set; }
 
     Material unburnt;
@@ -44,7 +43,6 @@ public class GeneratedProp : MonoBehaviour
         shape.AddComponent<MeshRenderer>().sharedMaterial = material;
     }
 
-    /// <summary>The mesh for a kind and seed; <paramref name="top"/> is a palm's crown (zero otherwise).</summary>
     public static Mesh Make(Kind kind, int seed, float length, out Vector3 top)
     {
         top = Vector3.zero;
@@ -62,8 +60,6 @@ public class GeneratedProp : MonoBehaviour
         };
     }
 
-    /// <summary>Its square burned: a palm chars down to a stump (its fronds gone).</summary>
-    /// <summary>Back as it grew, after Burn (the dragon's breath put its cell back).</summary>
     public void Regrow()
     {
         if (!Burnt || shape == null) return;

@@ -11,12 +11,9 @@ using UnityEngine;
 public class GolfCourse : MonoBehaviour
 {
     const float BallSize = 0.7f, HoleSize = 1f, TeeSize = 1.3f, PoleTall = 3.2f, FlagLong = 0.9f, FlagHigh = 0.55f;
-    // How high a flying ball arcs, in metres, and how far from the course the HUD line shows, in cells.
     const float FlightTop = 2.6f;
     const int NearCells = 16;
-    // Under the defense field's line, whose field lies just south of the course.
     const float HudLineTop = 90f;
-    // How high over the cup the fireworks go up (m).
     const float FireworksHeight = 6f;
 
     ChemGrid grid;
@@ -28,7 +25,6 @@ public class GolfCourse : MonoBehaviour
 
     World World => grid.World;
 
-    /// <summary>The course on a new child of <paramref name="grid"/>.</summary>
     public static GolfCourse On(ChemGrid grid)
     {
         var go = new GameObject("Golf course");
@@ -38,7 +34,6 @@ public class GolfCourse : MonoBehaviour
         return course;
     }
 
-    /// <summary>Where the ball is drawn, for the probe.</summary>
     public Vector3 BallAt => ball.position;
 
     void Lay(ChemGrid on)
@@ -60,7 +55,6 @@ public class GolfCourse : MonoBehaviour
         Stand(g);
     }
 
-    // The tee, hole and flag on their cells, and the ball on its own: at the start, and when an act places them.
     void Stand(GolfState g)
     {
         laidAt = (g.TeeX, g.TeeY, g.HoleX, g.HoleY);
@@ -86,7 +80,6 @@ public class GolfCourse : MonoBehaviour
 
     Vector3 BallSpot(GolfState g) => Ground(g.X, g.Y) + Vector3.up * (BallSize / 2f + (g.Carry > 0 ? Flight(g) : 0f));
 
-    // Partway up its arc, by how many cells it has left to fly against a throw's carry.
     float Flight(GolfState g) => FlightTop * Mathf.Sin(Mathf.Clamp01(g.Carry / (World.Rules.Sim.Golf.ThrowCarry * 2f)) * Mathf.PI);
 
     Transform Part(PrimitiveType shape, string name, Vector3 size, Material material)
@@ -116,7 +109,6 @@ public class GolfCourse : MonoBehaviour
         wasHoled = g.Holed;
     }
 
-    /// <summary>The HUD line: the strokes so far, or how it ended.</summary>
     public string HudLine()
     {
         var g = World?.Golf;

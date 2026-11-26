@@ -20,13 +20,9 @@ public class BallCourt : MonoBehaviour
     public float goalWidth = 4f, goalHeight = 1.8f, goalDepth = 1.2f;
     public CourtScoreboard board;
 
-    // The ball's radius and a bit (m): a goal is the whole ball over the line.
     const float OverLine = 0.25f;
-    // How high above the spot the ball is dropped back (m), and how long after a goal (s).
     const float DropHeight = 0.6f, GoalPause = 1.5f;
-    // How far past the rails the ball may be, and for how long, before it's out (m, s).
     const float OutMargin = 0.6f, OutSeconds = 2f;
-    // How far below the court it may fall (through the ground, into a dug pit) before it's out (m).
     const float FallMargin = 6f;
     const float FindEvery = 1f;
 
@@ -36,14 +32,11 @@ public class BallCourt : MonoBehaviour
     Carryable ballCarry;
     float nextFind, returnAt = -1f, outSince = -1f;
 
-    /// <summary>Goals at the west end and at the east end (online, the host's count).</summary>
     public int West => NetCourt.Live != null ? NetCourt.Live.West : west;
     public int East => NetCourt.Live != null ? NetCourt.Live.East : east;
 
-    /// <summary>The court's ball, once it has spawned.</summary>
     public PhysicsProp Ball => ball;
 
-    /// <summary>A goal, in everyone's log and with fireworks over that goal (solo from here, online from NetCourt).</summary>
     public static void Announce(bool eastEnd, int westGoals, int eastGoals)
     {
         EventLog.Add($"Goal at the {(eastEnd ? "east" : "west")} end! West {westGoals}, east {eastGoals}");
@@ -51,10 +44,8 @@ public class BallCourt : MonoBehaviour
         if (court != null) TowerFireworks.Launch(court.GoalMouth(eastEnd) + Vector3.up * FireworksHeight);
     }
 
-    // How high over the goal mouth the fireworks go up (m).
     const float FireworksHeight = 3f;
 
-    /// <summary>The middle of a goal mouth, on the ground.</summary>
     public Vector3 GoalMouth(bool eastEnd) => centre + Vector3.right * ((eastEnd ? 1f : -1f) * length / 2f);
 
     void Update()
@@ -69,7 +60,6 @@ public class BallCourt : MonoBehaviour
         Watch();
     }
 
-    // The ball on the court (it spawns on the centre spot); found again if it goes.
     bool FindBall()
     {
         if (ball != null && ball.gameObject.activeInHierarchy) return true;
@@ -107,7 +97,6 @@ public class BallCourt : MonoBehaviour
         else if (Time.time - outSince > OutSeconds) Return();
     }
 
-    /// <summary>Which goal a point is in: -1 the west one, 1 the east one, 0 neither.</summary>
     public int GoalEnd(Vector3 at)
     {
         float dx = at.x - centre.x;
@@ -117,7 +106,6 @@ public class BallCourt : MonoBehaviour
         return dx > 0f ? 1 : -1;
     }
 
-    /// <summary>Whether a point is on the court (a little past its rails counts).</summary>
     public bool OnCourt(Vector3 at) =>
         Mathf.Abs(at.x - centre.x) < length / 2f + OutMargin && Mathf.Abs(at.z - centre.z) < width / 2f + OutMargin && at.y > centre.y - FallMargin;
 
@@ -133,7 +121,6 @@ public class BallCourt : MonoBehaviour
         Announce(eastEnd, west, east);
     }
 
-    // Back on the centre spot, still. Online the host's NetworkTransform jumps it there on every screen.
     void Return()
     {
         returnAt = -1f;

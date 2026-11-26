@@ -19,7 +19,6 @@ public class ShoreMapTests
     public void TheDistanceIsSignedAndMeasuredFromTheShore()
     {
         const int N = 32;
-        // Land on the western half: the shore is the line between x = 15 and x = 16.
         var d = ShoreField.SignedDistance(Land(N, (x, _) => x < 16), N, 2f);
         Assert.AreEqual(1f, d[8 * N + 16], 1e-4f);
         Assert.AreEqual(-1f, d[8 * N + 15], 1e-4f);
@@ -39,7 +38,6 @@ public class ShoreMapTests
     public void TheWayToLandPointsAtTheNearestShore()
     {
         const int N = 64;
-        // Shores to the west and the east, the western one nearer most of the way.
         var pixels = Map(Land(N, (x, _) => x < 8 || x >= 48), N);
         Assert.Less(pixels[32 * N + 16].r, -0.95f, "near the west shore");
         Assert.Greater(pixels[32 * N + 40].r, 0.95f, "near the east shore");
@@ -50,8 +48,6 @@ public class ShoreMapTests
     {
         const int N = 64;
         var pixels = Map(Land(N, (x, _) => x < 8 || x >= 56), N);
-        // Midway the way to land dies away, and no step across the crease is a jump: unblurred it
-        // would flip from -1 to 1 between two texels.
         Assert.Less(Mathf.Abs(pixels[32 * N + 31].r + pixels[32 * N + 32].r), 0.05f, "midway");
         Assert.Less(Mathf.Abs(pixels[32 * N + 31].r), 0.2f, "midway");
         for (int x = 16; x < 47; x++)
@@ -81,7 +77,6 @@ public class ShoreMapTests
     public void OffTheIslandTheWayToLandIsTheWayToTheIsland()
     {
         var map = BakedMap();
-        // All the way round, 25 m off its rough shore. The mainland is over 100 m away everywhere.
         for (int degrees = 0; degrees < 360; degrees += 30)
         {
             float a = degrees * Mathf.Deg2Rad;
@@ -107,8 +102,6 @@ public class ShoreMapTests
         }
     }
 
-    // Every map keeps its sea: the Ocean isn't in a place a map can leave out (PlaceRoot), and it takes its shore map from
-    // the map as it builds. A yard built before the sea moved out of the coast says rebuild it.
     [Test]
     public void TheYardsSeaIsTheMapsOwn()
     {

@@ -23,7 +23,6 @@ public static class AssetStoreTools
         return container.GetMethod("Resolve").MakeGenericMethod(Asm.GetType(Ns + interfaceName)).Invoke(instance, null);
     }
 
-    // Writes the first 100 purchases to Temp/asset-store-purchases.json when the request returns.
     public static void ListPurchases()
     {
         File.WriteAllText(PurchasesFile, "pending");
@@ -35,7 +34,6 @@ public static class AssetStoreTools
         Asm.GetType(Ns + "IAssetStoreRestAPI").GetMethod("GetPurchases").Invoke(api, new[] { args, onOk, onError });
     }
 
-    // Writes each pack's store details to Temp/asset-store-<id>.json when they arrive.
     public static void ProductDetails(params long[] productIds)
     {
         var api = Service("IAssetStoreRestAPI");
@@ -52,7 +50,6 @@ public static class AssetStoreTools
         }
     }
 
-    // Product details come back as a Dictionary<string, object> tree; render it as JSON.
     static string MiniJson(object o)
     {
         switch (o)
@@ -77,14 +74,12 @@ public static class AssetStoreTools
         }
     }
 
-    // Downloads packs into the Editor's Asset Store cache (AssetPackRestore.CacheRoot). Import them with AssetDatabase.ImportPackage.
     public static void Download(params long[] productIds)
     {
         var manager = Service("IAssetStoreDownloadManager");
         Asm.GetType(Ns + "IAssetStoreDownloadManager").GetMethod("Download").Invoke(manager, new object[] { productIds });
     }
 
-    // Builds an Action<T> for an internal T that forwards to a plain Action<object>.
     static Delegate Callback(Type argType, Action<object> body)
     {
         var p = Expression.Parameter(argType);

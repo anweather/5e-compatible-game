@@ -47,7 +47,6 @@ namespace PunchySync
 
         static string Key(string k, JsonNode v) => $"{Str(k)}: {Inline(v)}";
 
-        /// <summary>One line, with the spaces the hand-written rules have.</summary>
         public static string Inline(JsonNode t) => t switch
         {
             null => "null",
@@ -63,7 +62,6 @@ namespace PunchySync
 
         static readonly Regex RowStart = new("^  \"([^\"]+)\": \\{$");
 
-        /// <summary>The file with these rows replaced (by id) and these added at the end, every other line as it was.</summary>
         public static string Rewrite(string text, IReadOnlyDictionary<string, string> replaced, IReadOnlyList<string> added)
         {
             var lines = text.Replace("\r\n", "\n").Split('\n').ToList();

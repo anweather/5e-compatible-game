@@ -17,29 +17,22 @@ public partial class SpellCaster
     Vector3 lockedPoint;
     GUIStyle lockStyle;
 
-    /// <summary>Lock-on and pitch on (the game) or off (the probe's before picture: the aim as it was).</summary>
     public static bool AimHelp { get; set; } = true;
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetAimHelp()
     {
         AimHelp = true;
     }
 
-    /// <summary>The camera's ray to aim along instead of the crosshair's (the probe: a look up at a flyer). Null for the crosshair.</summary>
     public Ray? AimRayOverride { get; set; }
 
-    /// <summary>The raider the aim is locked onto now, or null.</summary>
     public Raider LockedOn { get; private set; }
 
-    /// <summary>The last aimed hand spell's cast (the probe).</summary>
     public CastCommand LastHandCast { get; private set; }
 
-    /// <summary>The raider the last aimed hand spell locked onto when it went, or null (the probe).</summary>
     public Raider LastLocked { get; private set; }
 
-    // From the crosshair's ray: what it hits, or, aimed above everything, the ground under its heading (pitch).
     bool RayCrosshair()
     {
         if (controls == null || Camera.main == null) return false;
@@ -58,7 +51,6 @@ public partial class SpellCaster
         return true;
     }
 
-    /// <summary>How wide a cone round the crosshair this spell locks onto a raider in (degrees), 0 for a spell that doesn't.</summary>
     public static float LockCone(SpellDef s)
     {
         if (s == null || s.Needs != null || s.Effect != null) return 0f;
@@ -69,7 +61,6 @@ public partial class SpellCaster
         return aimed && strikes && (fromHere || s.Origin != "self") ? SoftLock : 0f;
     }
 
-    // What the aim locks on for: the cast under way, else what Cast casts; with the hands and nothing under way, nothing.
     SpellDef AimingFor(SpellDef selected)
     {
         var held = HeldCast().spell;
@@ -78,7 +69,6 @@ public partial class SpellCaster
         return handsOn ? null : selected;
     }
 
-    // Moves the crosshair onto the raider nearest it inside the spell's cone and reach, if there is one.
     void LockOnto(SpellDef spell)
     {
         LockedOn = null;
@@ -100,7 +90,6 @@ public partial class SpellCaster
             lockedPoint = at;
         }
         if (LockedOn == null) return;
-        // Aimed where it will be when the spell lands, not where it is now: the core takes the cast then.
         var lead = Lead(LockedOn, FlightSeconds(new CastCommand(spell.Id, LockedOn.X, LockedOn.Y, 0)));
         var cell = grid.CellCenter(lead.x, lead.y);
         crosshair = default;
@@ -109,11 +98,8 @@ public partial class SpellCaster
         strikePoint = RaiderAim(LockedOn, lead);
     }
 
-    /// <summary>Steps a raider is led by at most: past that it may have stopped to fight.</summary>
     const int MostLead = 3;
 
-    // Where a raider will stand after this long: the Hold's way walked on (a flyer straight at the keep's heart), a step each
-    // TicksPerSquare after its wait, as World.MarchHold walks it. Where it is now outside a Hold run, or while it can't walk.
     Vector2Int Lead(Raider r, float seconds)
     {
         var world = grid.World;
@@ -134,15 +120,11 @@ public partial class SpellCaster
         return at;
     }
 
-    // Where the show of the cast going off now strikes, when it's locked onto a raider: the bolt or beam goes to the raider as
-    // drawn (a flyer up in the air), not to the ground under it. Taken by PlayCastEffect.
     Vector3? strikeAt;
     Vector3 strikePoint;
 
     void StrikeAtLocked() => strikeAt = LockedOn != null ? strikePoint : null;
 
-    // Where a raider is drawn, to aim at: its cell (or the one it's led to), up in the air for a flyer (DefenseField.FlyHeight),
-    // else about its middle.
     Vector3 RaiderAim(Raider r) => RaiderAim(r, new Vector2Int(r.X, r.Y));
 
     Vector3 RaiderAim(Raider r, Vector2Int at)
@@ -152,7 +134,6 @@ public partial class SpellCaster
         return new Vector3(cell.x, grid.GroundAt(cell) + up, cell.z);
     }
 
-    // Four brackets round the locked raider, on the screen, so a flyer far up still shows it.
     void DrawLock()
     {
         if (LockedOn == null || !LockedOn.Alive || !EventLog.HudVisible || Camera.main == null) return;

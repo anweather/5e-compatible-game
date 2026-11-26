@@ -55,14 +55,12 @@ public class SkyProbe : ProbeScenario
         Shot("fog");
     }
 
-    // A storm at midday: rain falls, the wind blows, lightning strikes (the core's) and the view draws the bolts.
     IEnumerator Storm()
     {
         int logged = World.LogAppended;
         yield return Switch(At(13f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("storm") +
             ", 'storm': { 'strikeEvery': 3, 'strikeChance': 1 } }");
         bool boltSeen = false;
-        // Up to 20 s (8 s was too short about half the time: the storm can take a while to come in).
         float waited = 0f;
         for (; waited < 20f && !boltSeen; waited += Time.deltaTime)
         {
@@ -90,7 +88,6 @@ public class SkyProbe : ProbeScenario
         yield return SkyShot("storm");
     }
 
-    // A meteor shower at night: a clear stretch that is one, meteors coming down (the core's) and drawn falling.
     IEnumerator Shower()
     {
         yield return Switch(At(23f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("clear") +
@@ -109,7 +106,6 @@ public class SkyProbe : ProbeScenario
         yield return Wait(3f);
     }
 
-    // Snow at noon over puddles laid in the yard: flakes fall, the sky greys, the puddles freeze over.
     IEnumerator Snowfall()
     {
         var puddles = new System.Collections.Generic.List<Cell>();
@@ -137,13 +133,11 @@ public class SkyProbe : ProbeScenario
         yield return SkyShot("snow");
     }
 
-    // The sky itself (CloudSky): looking up over the trees toward the mountains, then back to the meadow.
     IEnumerator SkyShot(string label)
     {
         Cut(V(40f, 4f, 1f), V(-40f, 45f, 160f));
         yield return null;
         Shot(label + "-sky");
-        // The capture is taken at the end of a later frame: hold the shot until it is.
         for (int i = 0; i < 3; i++) yield return null;
         Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
     }

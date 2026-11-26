@@ -8,7 +8,6 @@ using UnityEngine;
 // grow on the faces and go with an undo, and the terrain draws with the rock shader.
 public class LandShapesProbe : ProbeScenario
 {
-    // Open ground the size of a full stamp, clear of what stamps keep off.
     protected const int X = 110, Y = 450, Reach = 32, Wall = 36;
     const float EaseSeconds = 40f;
 
@@ -48,7 +47,6 @@ public class LandShapesProbe : ProbeScenario
         yield return Wait(1f);
         Check("terrain_draws_rock_from_the_sides", Terrain.activeTerrains[0].materialTemplate.shader.name == "Prototype/TerrainRock", Terrain.activeTerrains[0].materialTemplate.shader.name);
 
-        // On the spot: the floor drops under the wizard's feet.
         PlaceCell(X, Y);
         yield return Wait(1f);
         float before = valley.Ground.ShownGround(X, Y);
@@ -62,7 +60,6 @@ public class LandShapesProbe : ProbeScenario
         Shot("canyon");
         yield return Undone("canyon", valley.Rocks);
 
-        // Beside it: a face to stand under.
         PlaceCell(X, Y + 16);
         yield return Wait(1f);
         yield return Land(LandStamp.Cliff, Wall - 6);

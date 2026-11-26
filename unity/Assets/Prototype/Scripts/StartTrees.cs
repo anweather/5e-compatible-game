@@ -12,7 +12,6 @@ public sealed class StartTrees
 
     readonly bool fromStart;
 
-    /// <param name="fromStart">The world was loaded from a save: its cells have its changes in, its kept start doesn't.</param>
     public StartTrees(World world, bool fromStart = false)
     {
         this.world = world;
@@ -21,7 +20,6 @@ public sealed class StartTrees
         blocks = new bool[across * ((world.H + Chunks.Size - 1) >> Chunks.Shift)][];
     }
 
-    /// <summary>How many chunks have been read, for a check.</summary>
     public int Read()
     {
         int read = 0;
@@ -30,10 +28,6 @@ public sealed class StartTrees
         return read;
     }
 
-    /// <summary>
-    /// Reads a chunk's trees as the world started, unless it has been read already: as they stand now for a world built
-    /// from its map (unchanged till it activates), from its kept start for one loaded from a save (a late joiner's).
-    /// </summary>
     public void Read(int cx, int cy)
     {
         int n = cy * across + cx;
@@ -52,7 +46,6 @@ public sealed class StartTrees
         blocks[n] = block;
     }
 
-    /// <summary>Whether the cell was a tree as the world started (its chunk read now, if it wasn't yet).</summary>
     public bool At(int x, int y)
     {
         if (!world.InBounds(x, y)) return false;

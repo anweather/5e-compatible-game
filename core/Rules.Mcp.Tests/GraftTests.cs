@@ -1,3 +1,5 @@
+// Grafts (bodies-and-surfaces.md sections 2 and 3, #73): a species row built from others' slots by "from",
+// flattened by the core when it's read, so the view, the checks and describe see plain slots.
 using System.Globalization;
 using System.Linq;
 using Chem.Mcp;
@@ -5,10 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Grafts (bodies-and-surfaces.md sections 2 and 3, #73): a species row built from others' slots by "from",
-    /// flattened by the core when it's read, so the view, the checks and describe see plain slots.
-    /// </summary>
     [Category("Simulation")]
     public class GraftTests
     {
@@ -23,14 +21,12 @@ namespace Chem.Tests
 
         static string N(double d) => d.ToString("0.###", CultureInfo.InvariantCulture);
 
-        // A slot in a line: id, part, what it hangs on, at, dir, scale, and whose coat it wears.
         static string Line(SlotDef s) =>
             $"{s.Id}={s.Part}{(s.On != null ? " on " + s.On : "")} at [{string.Join(",", s.At.Select(N))}] dir [{string.Join(",", s.Dir.Select(N))}]" +
             (s.Mirror ? " mirror" : "") + (System.Math.Abs(s.Scale - 1) > 1e-9 ? $" x{N(s.Scale)}" : "") + (s.Style > 0 ? $" style {s.Style}" : "") + (s.OwnCoatOf != null ? $" coat {s.OwnCoatOf}" : "");
 
         static string Slots(Rules r, string id) => string.Join("\n", r.Fauna.Species(id).Slots.Select(Line));
 
-        // Section 2's centaur, as written there.
         const string Centaur = @"{ ""fauna"": { ""centaur"": { ""name"": ""Centaur"", ""size"": [0.95, 1.05], ""body"": { ""from"": ""deer"" },
             ""from"": [
               { ""species"": ""deer"", ""drop"": [""neck"", ""head"", ""ears"", ""eyes""] },
@@ -44,7 +40,6 @@ namespace Chem.Tests
         {
             Assert.That(Problems(Centaur), Does.StartWith("No problems"));
             var r = Patched(Centaur);
-            // The human's hair options aren't pinned here: they come from Punchy (tools/punchy-sync) and change with it.
             var lines = Slots(r, "centaur").Split('\n');
             Assert.That(lines.Take(5), Is.EqualTo(new[]
             {

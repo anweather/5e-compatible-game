@@ -16,11 +16,9 @@ using Whisper.Utils;
 // Nothing is logged of what was said: the package's own logging, which prints it, is turned down.
 public sealed class WhisperTranscriber : ITranscriber
 {
-    /// <summary>Whisper drops less than a second of sound, so shorter holds get silence added.</summary>
     const float LeastSeconds = 1.2f;
     const int MostThreads = 4;
 
-    // Whisper's way of writing what it heard that isn't words: [BLANK_AUDIO], (wind blowing), *sighs*.
     static readonly Regex NotWords = new(@"\[[^\]]*\]|\([^)]*\)|\*[^*]*\*", RegexOptions.Compiled);
 
     readonly object gate = new();
@@ -38,7 +36,6 @@ public sealed class WhisperTranscriber : ITranscriber
 
     public string Name => $"Whisper ({Path.GetFileNameWithoutExtension(model)}, {(gpu ? "GPU" : "CPU")})";
 
-    /// <summary>How long loading the model took, in ms; 0 until it has.</summary>
     public double LoadMs { get; private set; }
 
     public string Transcribe(float[] samples, CancellationToken cancel)
@@ -55,11 +52,9 @@ public sealed class WhisperTranscriber : ITranscriber
         }
     }
 
-    /// <summary>What whisper wrote, without what it marks as not being words.</summary>
     public static string Words(string text) =>
         Regex.Replace(NotWords.Replace(text ?? "", " "), @"\s+", " ").Trim();
 
-    /// <summary>The threads to use on a machine of this many cores: half, for the game keeps running.</summary>
     public static int Threads(int cores) => Math.Clamp(cores / 2, 1, MostThreads);
 
     void Load()
@@ -86,7 +81,6 @@ public sealed class WhisperTranscriber : ITranscriber
 
     public void Dispose()
     {
-        // WhisperWrapper frees the model when it's collected.
         lock (gate) whisper = null;
     }
 }

@@ -45,10 +45,6 @@ public sealed class PerfPsoCheck
         Application.logMessageReceived -= OnLog;
     }
 
-    /// <summary>
-    /// What a -pso-trace file holds that the shipped collection doesn't: a "PERF PSO missing" line
-    /// for each shader variant, or variant with more states, by shader, pass and keywords.
-    /// </summary>
     public static void Diff(string file)
     {
         var trace = new GraphicsStateCollection();

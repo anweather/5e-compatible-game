@@ -85,7 +85,6 @@ namespace Chem.Tests
                     Assert.That(r.Catchment[k], Is.GreaterThanOrEqualTo(r.Catchment[k - 1]), $"its catchment never falls (point {k})");
                     Assert.That(r.Half[k], Is.GreaterThanOrEqualTo(r.Half[k - 1]), $"it never narrows (point {k})");
                 }
-                // Its spring is high on the ring's inner flank.
                 int sx = (int)BiomeMath.FloorDiv(r.X[0], BiomeMath.One), sy = (int)BiomeMath.FloorDiv(r.Y[0], BiomeMath.One);
                 Assert.That(massif.InRing(sx, sy), Is.True, $"spring ({sx}, {sy}) on the ring");
                 Assert.That(r.Surface[0], Is.GreaterThan(massif.GorgeLevel + 400), "a spring well up the flank, 50 m over the meadow's lake or more");
@@ -102,7 +101,6 @@ namespace Chem.Tests
             Assert.That(end.Nodes * 576, Is.InRange(50_000, 400_000), "an end lake of 5 to 40 hectares");
         }
 
-        // Every cell along a river's line, a cell apart, as (x, y) in map cells (unwrapped).
         static IEnumerable<(int x, int y)> Along(HillsRivers.River r)
         {
             for (int k = 0; k + 1 < r.X.Length; k++)
@@ -127,14 +125,12 @@ namespace Chem.Tests
                     Assert.That(kind == 'r' || kind == 'w', Is.True, $"({x}, {y}) on the river is water, not '{kind}'");
                     cells++;
                     if (kind == 'w') lake++;
-                    // A cell's water may stand a unit over the last's where the line's nearest point steps back on a bend.
                     if (last != int.MaxValue && land > last + 1) rises++;
                     last = Math.Min(last, land);
                 }
                 TestContext.Out.WriteLine($"RIVERS {(r.Joins ? "the tributary" : "the main river")}: {cells} cells along it, {lake} of them lake; {rises} rising");
                 Assert.That(rises, Is.Zero, "the water only goes down along it");
             }
-            // No pit: every river cell of the chunks along the main river has a water cell beside it no higher, down to the end lake.
             int s = ChunkGen.Size, pits = 0, riverCells = 0;
             foreach (var (cx, cy) in Along(Main).Where((_, k) => k % 40 == 0).Select(p => (PlanGrid.Mod(p.x, gen.CellsW) / s, gen.WrapCellY(p.y) / s)).Distinct())
             {
@@ -169,7 +165,6 @@ namespace Chem.Tests
             var meadow = rivers.Lakes.Where(l => !l.End).OrderByDescending(l => l.Nodes).First();
             Assert.That(massif.Ring(massif.Radius(meadow.X, meadow.Y)), Is.Zero, "the biggest lake on the way is in the meadow");
             Assert.That(meadow.Level - massif.GorgeLevel, Is.InRange(0, 8), "it stands at the gorge's floor: that's where it spills");
-            // The main river leaves the meadow by the gorge: where it crosses the crest, it's on the gorge's line, no pass near.
             var (gx, gy) = massif.GorgeWay;
             var (ox, oy) = massif.GorgeStart;
             int crossings = 0;
@@ -211,7 +206,6 @@ namespace Chem.Tests
             Assert.That(fords, Is.GreaterThan(0), "the river crosses roads by fords");
         }
 
-        // The chunks along every river (every 32 cells of their lines), and the end lake's.
         List<(int cx, int cy)> RiverChunks()
         {
             var gen = map.Gen;
@@ -240,7 +234,6 @@ namespace Chem.Tests
                         if (kind != '\0') Assert.That(c.Cells[j * s + i], Is.EqualTo(kind), $"({x}, {y})");
                         edges++;
                     }
-                // A known chunk samples the same land and says where the water is.
                 var known = gen.Know(cx, cy);
                 for (int j = 0; j < KnownChunk.Side - 1; j++)
                     for (int i = 0; i < KnownChunk.Side - 1; i++)
@@ -260,7 +253,6 @@ namespace Chem.Tests
         [Test]
         public void ARiverOverASeamIsTheSameEitherSide()
         {
-            // A small torus whose lowest point is just east of the seam from a spring just west of it: the river runs over it.
             const int w = 1152, h = 1152;
             static int Land(int x, int y)
             {
@@ -275,8 +267,6 @@ namespace Chem.Tests
             var hr = new HillsRivers(Land, w, h, new[] { (1040, 600) }, set, (0, 0, 0));
             var r = hr.Rivers[0];
             Assert.That(r.X.Max(), Is.GreaterThan((long)w * BiomeMath.One), "its line runs on past the east seam, unwrapped");
-            // Every cell either side of the seam on the river's rows: the same river as the cell alone works it out, from a
-            // box either side.
             int seen = 0;
             for (int y = 0; y < h; y++)
             {
@@ -371,8 +361,6 @@ namespace Chem.Tests
             }
             var host = Peer(Source());
             var other = Peer(Source());
-            // Down the main river from its spring, a character on it, a fire bolt now and then
-            // into the water ahead.
             var gen = map.Gen;
             var path = Along(Main).Select(p => (x: PlanGrid.Mod(p.x, host.W), y: gen.WrapCellY(p.y))).ToList();
             int from = path.FindIndex(p => gen.HillsCellAt(p.x, p.y, out char kind, out _) > 0 && kind == 'r' && map.Hills.Massif.Ring(map.Hills.Massif.Radius(p.x, p.y)) > 0);

@@ -10,27 +10,21 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A spell group (groups.json): an element of the spell radial.</summary>
     public sealed class GroupDef
     {
         public string Id, Name;
-        /// <summary>Where it sits around the radial: lowest first, clockwise from the top. Ties go by id.</summary>
         public double Order;
-        /// <summary>"#rrggbb".</summary>
         public string Color;
     }
 
     public sealed partial class Rules
     {
-        /// <summary>The colour of a group that doesn't give one.</summary>
         public const string DefaultGroupColor = "#888888";
 
         readonly List<GroupDef> groups = new List<GroupDef>();
 
-        /// <summary>Every spell group, in radial order (by order, then id).</summary>
         public IReadOnlyList<GroupDef> Groups => groups;
 
-        /// <summary>The group with this id, or null.</summary>
         public GroupDef Group(string id) => groups.FirstOrDefault(g => g.Id == id);
 
         static void ParseGroups(Rules r, JObject table)
@@ -50,7 +44,6 @@ namespace Chem
 
         sealed partial class Checker
         {
-            /// <summary>Same messages as validateRules in sandbox/src/rules.ts.</summary>
             public void Groups()
             {
                 var table = (JObject)r["groups"];

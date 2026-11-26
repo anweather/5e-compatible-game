@@ -84,7 +84,6 @@ public partial class SpellLooksProbe
     static float OffAim(Vector2Int went, int aimX, int aimY) => Vector2.Angle(went, new Vector2(aimX, aimY));
 }
 
-/// <summary>The wave and the boulder at an angle alone.</summary>
 public class MoversProbe : SpellLooksProbe
 {
     protected override IEnumerator Run()

@@ -18,73 +18,47 @@ using UnityEngine;
 // 30-tick checksum alike. The two talk through their own pair of files beside ProbeLink's.
 // roomopen goes on to a reset and a late join; roomhost and roomlocked stop at the refusals.
 
-/// <summary>What the host asks the virtual player to do next, in order.</summary>
 [Serializable]
 public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "deer" (faunaresize's), "grafts" (graftcoats'), "hostile", "defense" and "strike" (roomopen's; strike's mod: the host's wizard's cell), "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
     public string ask, mod;
-    /// <summary>How long a "report" may wait for its tick.</summary>
     public float reach;
 }
 
-/// <summary>What one side has seen by now.</summary>
 [Serializable]
 public class RoomProbeSeen
 {
     public string id;
     public int step;
     public int netTick;
-    /// <summary>A late joiner's: the host's tick its history went up to (NetChem.ReplayedUpTo); ticks after it ran live.</summary>
     public int replayedUpTo;
-    /// <summary>How long this side waited to reach the net tick it was asked to report at.</summary>
     public float reachSeconds;
     public List<string> lines = new();
     public string roomText, rules;
     public int fireballRadius;
-    /// <summary>How far each row house has fallen, on this side (RowHouses.Ruins).</summary>
     public string ruins;
-    /// <summary>The faunaresize probe's deer: their scales, how many deer are out, and the most one is off its row's size.</summary>
     public string deer;
     public int deerOut;
     public float deerGap;
-    /// <summary>The graftcoats probe's grafts: each one's segments in its donors' colours, and their hash (GraftCoatsProbe.Fingerprint).</summary>
     public string coats;
-    /// <summary>The things mods added, on this side (id:kind, sorted), how many wear a body, and the kind in this side's hand.</summary>
     public string things, held;
     public int dressed;
-    /// <summary>
-    /// The things spells placed, on this side (id:kind@cell, sorted, PlaceViewProbe), the most any rests off the ground, the
-    /// animals spells brought out (n:species, sorted), and how many of the cells the last "dressed" ask named stand dressed.
-    /// </summary>
     public string placed, summons;
-    /// <summary>What each wizard's hands show here (HandLooksProbe.Shown).</summary>
     public string hands;
-    /// <summary>peervanish: every other player's wizard as this peer draws it (PeerVanishProbe.Others), and its own wizard's feet.</summary>
     public string others, self;
     public float placedGap;
     public int cellsDressed;
-    /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
     public float fireTurn;
-    /// <summary>The defense field's waves on this side: phase, wave, gate and flag, or "-" before any (roomopen's).</summary>
     public string defense;
-    /// <summary>The punches in this side's log, distinct and sorted (roomopen's).</summary>
     public string strikes;
-    /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
     public List<float> turns = new();
-    /// <summary>
-    /// triggerview's: the triggered casts in this side's world, the shows it played ("n:spell@x,y"), how many since
-    /// it last joined, the projectiles and meteors it showed since then, a meteor's mean fall, and the step lines in its log.
-    /// </summary>
     public int triggered, showsSince, projectiles, meteors;
     public float meteorSeconds;
     public List<string> shown = new();
     public string stepLog;
-    /// <summary>productsview's: for each cover it watches, "id:cells in the world/cells drawn wearing its film", the rules the view draws (its mods), and the chunks a sweep still has to redraw.</summary>
     public string films, viewMods;
-    /// <summary>glowmoss's: "moss cells/glowing cells" (GlowMossProbe.Glows).</summary>
     public string glows;
     public int sweptLeft;
     public List<int> hashTicks = new();
@@ -94,14 +68,12 @@ public class RoomProbeSeen
     public List<string> errors = new();
 }
 
-/// <summary>One side's record of a room: every decision with its tick, and the checksums.</summary>
 public sealed class RoomProbeRecord : IDisposable
 {
     readonly ChemGrid grid;
     readonly NetChem net;
     readonly RoomProbeSeen seen = new();
 
-    /// <summary>The cells whose fire's colour each side reports.</summary>
     public List<Vector2Int> WatchedCells { get; } = new();
 
     public RoomProbeRecord(ChemGrid grid, NetChem net)
@@ -158,10 +130,8 @@ public sealed class RoomProbeRecord : IDisposable
         return seen;
     }
 
-    // The shows this side had played when the record began (a join), and its count of what came out since.
     readonly int shownAtJoin;
 
-    /// <summary>What came out on this side since the record began, if it counts (triggerview).</summary>
     public TriggerShowCount Shows { get; set; }
 
     public int Lines => seen.lines.Count;
@@ -182,7 +152,6 @@ public sealed class RoomProbeRecord : IDisposable
     }
 }
 
-/// <summary>The virtual player's half: starts itself and does what the host's file asks.</summary>
 public class RoomProbeClient : MonoBehaviour
 {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -243,12 +212,10 @@ public class RoomProbeClient : MonoBehaviour
                 yield return Join();
                 break;
             case "report":
-                // The host has run this tick; this peer runs it when it gets there. Past the bound it reports where it is.
                 reachSeconds = 0f;
                 if (string.IsNullOrEmpty(ask.mod)) break;
                 int tick = int.Parse(ask.mod, CultureInfo.InvariantCulture);
                 for (; reachSeconds < ask.reach && net.NetTick < tick; reachSeconds += Time.unscaledDeltaTime) yield return null;
-                // A tick's rules land in NetChem's Update, and this runs straight after it: the view draws them next frame.
                 yield return null;
                 break;
             case "toggle":
@@ -257,7 +224,6 @@ public class RoomProbeClient : MonoBehaviour
                 for (float t = 0f; t < 3f && record.Lines == lines; t += Time.unscaledDeltaTime) yield return null;
                 break;
             case "hostile":
-                // Claims to be someone else, with a patch that can't be read.
                 int before = record.Lines;
                 net.RequestRoom(RoomCommand.Apply("Player 1", "junk", "{ not json"));
                 for (float t = 0f; t < 3f && record.Lines == before; t += Time.unscaledDeltaTime) yield return null;
@@ -276,7 +242,6 @@ public class RoomProbeClient : MonoBehaviour
                 film.Begin(grid, wizard, new Vector2Int(cells[0], cells[1]), new Vector2Int(cells[2], cells[3]), "client");
                 break;
             case "bolt":
-                // Casts a Fire Bolt at the second cell, and both are watched from here on.
                 var bolt = ask.mod.Split(',').Select(int.Parse).ToArray();
                 record.WatchedCells.Clear();
                 record.WatchedCells.Add(new Vector2Int(bolt[0], bolt[1]));
@@ -288,7 +253,6 @@ public class RoomProbeClient : MonoBehaviour
                 yield return Grab(grid, ask.mod);
                 break;
             case "walk":
-                // triggerview's: a walk of whole cells, "dx,dy,steps".
                 var walk = ask.mod.Split(',').Select(int.Parse).ToArray();
                 yield return TriggerViewProbe.Walk(grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject, walk[0], walk[1], walk[2]);
                 break;
@@ -299,7 +263,6 @@ public class RoomProbeClient : MonoBehaviour
                 GraftCoatsProbe.PlaceGrafts(FindAnyObjectByType<ValleyFauna>(), grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position, 0f);
                 break;
             case "dressed":
-                // The cells named (x,y;x,y...) that stand dressed on this side.
                 cellsDressed = PlaceViewProbe.DressedCount(grid, PlaceViewProbe.ParseCells(ask.mod));
                 break;
             case "cut":
@@ -336,7 +299,6 @@ public class RoomProbeClient : MonoBehaviour
         }
     }
 
-    // The start plate's command from this peer: online it goes through the host (DefenseField.Request).
     static IEnumerator StartWaves(ChemGrid grid)
     {
         var field = FindAnyObjectByType<DefenseField>();
@@ -344,7 +306,6 @@ public class RoomProbeClient : MonoBehaviour
         for (float t = 0f; t < 3f && !field.Running; t += Time.unscaledDeltaTime) yield return null;
     }
 
-    // Steps onto the cell west of the host's wizard and punches east, at it: online the stand and the strike go through the host.
     static IEnumerator Punch(ChemGrid grid, int x, int y)
     {
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
@@ -359,7 +320,6 @@ public class RoomProbeClient : MonoBehaviour
         yield return new WaitForSecondsRealtime(1f);
     }
 
-    // Stands by the first thing of a kind and asks the host for it.
     static IEnumerator Grab(ChemGrid grid, string kind)
     {
         var item = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>().Live.Where(t => t.prop.kind == kind).Select(t => t.prop.GetComponent<Carryable>()).FirstOrDefault();
@@ -371,8 +331,6 @@ public class RoomProbeClient : MonoBehaviour
         walker.enabled = true;
         yield return new WaitForSecondsRealtime(0.5f);
         var hands = wizard.GetComponent<ItemHolder>();
-        // Asked again until it's in hand, as a player presses again: the host refuses while its copy of this wizard is
-        // still where it was (a peer just joined from a snapshot can be a second behind in sending where it is).
         for (float t = 0f, asked = -1f; t < 3f && hands.Held == null; t += Time.unscaledDeltaTime)
         {
             if (t - asked >= 0.5f)
@@ -399,20 +357,16 @@ public class RoomProbeClient : MonoBehaviour
     }
 }
 
-/// <summary>The host's half.</summary>
 public abstract class RoomProbe : ProbeScenario
 {
     const float ReplySeconds = 40f;
-    /// <summary>How long the virtual player may take to reach a tick the host has run: well inside ReplySeconds.</summary>
     const float ReachSeconds = 10f;
-    // A late joiner is still catching up on the history it replays, a few hundred ticks in a busy room.
     protected const float LateJoinerSeconds = 40f;
     protected const string Wildfire = "wildfire", BigFireball = "big-fireball";
 
     static string Beside(string name) => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), name);
     public static string AskFile => Beside("room-ask.json");
     public static string SeenFile => Beside("room-seen.json");
-    /// <summary>Written when a game is ready for a Claude outside (roomasks).</summary>
     public static string ReadyFile => Beside("room-ready.json");
 
     protected abstract ChangeMode Mode { get; }
@@ -440,7 +394,6 @@ public abstract class RoomProbe : ProbeScenario
         if (File.Exists(SeenFile)) File.Delete(SeenFile);
         NetSession.RoomMode = Mode;
         Switcher = grid.GetComponent<RuleSwitcher>();
-        // On in solo, before the room is hosted: it stays on as a starting mod, whatever the mode.
         if (StartsWithAMod) Switcher.Toggle(Wildfire);
         yield return Wait(0.5f);
         bool onSolo = !StartsWithAMod || World.Room.Mods.Any(m => m.Id == Wildfire);
@@ -466,7 +419,6 @@ public abstract class RoomProbe : ProbeScenario
 
     protected abstract IEnumerator Steps();
 
-    /// <summary>Asks the virtual player, and waits for what it saw; Theirs is null if it never answered.</summary>
     protected IEnumerator Ask(string ask, string mod = null, float reach = 0f)
     {
         step++;
@@ -481,7 +433,6 @@ public abstract class RoomProbe : ProbeScenario
         Check($"answered_{step}_{ask}", Theirs != null, $"no answer in {ReplySeconds:0} s");
     }
 
-    /// <summary>Asks for a report once the virtual player has run this tick; one that stops short fails _client_reached_tick, saying where.</summary>
     protected IEnumerator Reach(string name, int tick, float seconds = ReachSeconds)
     {
         yield return Ask("report", tick.ToString(CultureInfo.InvariantCulture), seconds);
@@ -489,10 +440,8 @@ public abstract class RoomProbe : ProbeScenario
         Check(name + "_client_reached_tick", Theirs.netTick >= tick, $"the client at net tick {Theirs.netTick} after {Theirs.reachSeconds:0.00} s, here {tick}");
     }
 
-    /// <summary>What this side has seen by now.</summary>
     protected RoomProbeSeen Mine => Record.Seen(id, step);
 
-    /// <summary>Waits for this side to take the next decision in the room (or a few seconds).</summary>
     protected IEnumerator HostToggle(string mod)
     {
         int lines = Record.Lines;
@@ -500,11 +449,6 @@ public abstract class RoomProbe : ProbeScenario
         for (float t = 0f; t < 3f && Record.Lines == lines; t += Time.unscaledDeltaTime) yield return null;
     }
 
-    /// <summary>
-    /// A step's end: both sides saw the same last line, starting so, and hold the same room and rules. A room command
-    /// lands at a tick, and a virtual player can be ticks behind, so the two are compared once it has run the tick
-    /// this side is on; one that never gets there fails _client_reached_tick as well.
-    /// </summary>
     protected IEnumerator Agree(string name, string line, float seconds = ReachSeconds)
     {
         yield return Wait(0.6f);
@@ -522,7 +466,6 @@ public abstract class RoomProbe : ProbeScenario
 
     float slowestReach;
 
-    // The parts of a checksum (NetChem.Checksum: the cells, then Others) that differ, by name, with both sides' values.
     static readonly string[] ChecksumParts = { "cells", "rules", "things", "sky", "defense", "casts", "dragon", "land" };
 
     static string PartsApart(string mine, string theirs)
@@ -538,7 +481,6 @@ public abstract class RoomProbe : ProbeScenario
         return apart.Count == 0 ? "" : " (" + string.Join("; ", apart) + ")";
     }
 
-    /// <summary>The net tick the end of a run compares checksums from.</summary>
     protected int HashesFrom { get; set; }
 
     protected void CompareHashes(string name = "checksums_match", int from = 0)
@@ -572,13 +514,11 @@ public abstract class RoomProbe : ProbeScenario
     }
 }
 
-/// <summary>A house through the room, burnt on the host: the client's ruin comes out the same, and a late joiner's.</summary>
 public class RoomRuinProbe : RoomProbe
 {
     const string Burning = "burning-house";
-    const int SiteX = 235, SiteY = 390; // the grass lot rowburn uses
+    const int SiteX = 235, SiteY = 390;
     const float MostBurn = 60f, Quiet = 4f, Settle = 2f, CatchWait = 15f;
-    // The rejoined client is about 300 ticks behind and replays about 9 a second (30 s on the Mac): this allows 3 a second.
     const float ReplaySeconds = 100f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
@@ -605,8 +545,6 @@ public class RoomRuinProbe : RoomProbe
         Check("the_house_fell", !Mine.ruins.EndsWith(":0/52", StringComparison.Ordinal), Mine.ruins);
         Check("the_same_ruin_on_both", Theirs.ruins == Mine.ruins, $"{Theirs.ruins}, here {Mine.ruins}");
         CompareHashes("the_burn_stayed_in_step");
-        // A late joiner's replay disagrees for a checksum or two after a Fireball, then agrees: a matter
-        // for the core's lane, so the end compares from here, and the ruin it sees is checked below.
         HashesFrom = Net.NetTick;
         yield return Ask("rejoin");
         yield return Wait(Settle);
@@ -617,21 +555,16 @@ public class RoomRuinProbe : RoomProbe
     }
 }
 
-/// <summary>Open: the client's change goes in for both, anyone reverts it, and a reset and a late join keep what's on.</summary>
 public class RoomOpenProbe : RoomProbe
 {
     const string BlueFire = "blue-fire", EachPlayer = "each-player";
-    /// <summary>How long a Fire Bolt takes to land and light its cell, and a little more.</summary>
     public const float BoltLands = 2.5f;
     const float FilmSeconds = 5f;
-    /// <summary>Long enough for two 30-tick checksums after the waves start (5 s each at 6 ticks a second).</summary>
     const float DefenseChecksum = 11f;
-    /// <summary>Long enough for a 30-tick checksum after the punch.</summary>
     const float StrikeChecksum = 6f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
 
-    // Two grass cells near the wizards, apart, in active chunks.
     List<Vector2Int> TwoGrassCells()
     {
         var cells = new List<Vector2Int>();
@@ -646,7 +579,6 @@ public class RoomOpenProbe : RoomProbe
         return cells;
     }
 
-    // "Each player a different fire colour": a look by player, through the same tool, and a Fire Bolt from each.
     IEnumerator EachTheirOwn()
     {
         var cells = TwoGrassCells();
@@ -660,7 +592,6 @@ public class RoomOpenProbe : RoomProbe
         if (Theirs == null) yield break;
         Record.WatchedCells.Clear();
         Record.WatchedCells.AddRange(cells);
-        // With --shots, a film of the two fires from above them.
         ClipFilm film = null;
         if (!string.IsNullOrEmpty(ScreenshotDir))
         {
@@ -684,7 +615,6 @@ public class RoomOpenProbe : RoomProbe
         yield return Agree("each_player_off", "Player 1 switched off Each their own (Open room)");
     }
 
-    // "Make all fire blue": a colour on the fire element, as set_look writes it, the same on both, with the rules' fingerprint unmoved.
     IEnumerator AllFireBlue()
     {
         string rules = World.Rules.Fingerprint;
@@ -732,28 +662,21 @@ public class RoomOpenProbe : RoomProbe
         yield return ClientDefense();
         yield return ClientStrike();
 
-        // A late joiner after a reset and a change after it: the mods as they stood, then the change.
         yield return HostToggle(Wildfire);
         yield return Wait(0.5f);
         yield return Ask("rejoin");
         if (Theirs == null) yield break;
-        // It starts from the host's world at the tick it joined at (a snapshot), so from there its checksums are the host's.
         HashesFrom = Theirs.replayedUpTo + 1;
         Check("late_joiner_has_the_room", Theirs.roomText == World.RoomText(), $"{Theirs.roomText}, here {World.RoomText()}");
         Check("late_joiner_has_the_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
         Check("late_joiner_fireball", Theirs.fireballRadius == World.Rules.Spell(SpellIds.Fireball).Radius, $"radius {Theirs.fireballRadius}");
-        // The waves at one tick: this side's now, and the joiner's once it has run it (a wave can turn between).
         string waves = Mine.defense;
         yield return Reach("late_joiner_waves", Mine.netTick, LateJoinerSeconds);
         if (Theirs == null) yield break;
         Check("late_joiner_has_the_waves", Theirs.defense == waves, $"{Theirs.defense}, here {waves}");
-        // The punch is in the world it loaded (its stands, in the checksums), not in its log: a snapshot brings no past log lines.
         Check("late_joiner_has_the_strike", !string.IsNullOrEmpty(Mine.strikes) && string.IsNullOrEmpty(Theirs.strikes), $"none logged there, {Mine.strikes} here");
     }
 
-    // Strikes over the network, after the reset so a late joiner replays it: the client's wizard steps beside the host's
-    // and punches it (a stand and a strike through the host), both log the same punch, and the checksums (whose stands
-    // and the strike's roll are in them) agree from then on.
     IEnumerator ClientStrike()
     {
         int asked = Net.NetTick;
@@ -768,8 +691,6 @@ public class RoomOpenProbe : RoomProbe
         CompareHashes("strike_checksums_match", asked);
     }
 
-    // Defense over the network, after the reset so a late joiner replays it: the client starts the waves through the
-    // host, both run them, and the checksums (whose last part is the waves' hash) agree from then on.
     IEnumerator ClientDefense()
     {
         int asked = Net.NetTick;
@@ -784,7 +705,6 @@ public class RoomOpenProbe : RoomProbe
     }
 }
 
-/// <summary>Host only: the client's change is refused with the sentence on both; the host's goes in.</summary>
 public class RoomHostProbe : RoomProbe
 {
     protected override ChangeMode Mode => ChangeMode.HostOnly;
@@ -803,7 +723,6 @@ public class RoomHostProbe : RoomProbe
     }
 }
 
-/// <summary>Locked: nothing goes in, from anyone; the mods it started with stay.</summary>
 public class RoomLockedProbe : RoomProbe
 {
     const string Refused = "Switch on refused: this room is locked, so its rules stay as it started";
@@ -821,10 +740,6 @@ public class RoomLockedProbe : RoomProbe
     }
 }
 
-/// <summary>
-/// Solo, the rules MCP as a client meets it (RulesMcpServer): over real HTTP, the handshake, the room, a mod on
-/// and off with the room's sentence back, and a web page's request turned away.
-/// </summary>
 public class RoomMcpProbe : ProbeScenario
 {
     static readonly HttpClient Http = new();
@@ -840,7 +755,6 @@ public class RoomMcpProbe : ProbeScenario
     public static string Tool(string name, string arguments) =>
         $"{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{name}\",\"arguments\":{arguments}}}}}";
 
-    // The draft a reply names, or null: "Draft d1:" before a short draft, "Draft d1 holds ..." before a long one (#167).
     public static string DraftIn(string body)
     {
         int at = body?.IndexOf("Draft ", StringComparison.Ordinal) ?? -1;
@@ -896,8 +810,6 @@ public class RoomMcpProbe : ProbeScenario
         yield return Stills();
     }
 
-    // #63: the server's save lands in the player's folder, not rules/mods, and apply finds it there by name. In a folder of
-    // its own, as an Editor shares its data folder with the player's game.
     IEnumerator SavesToThePlayersFolder()
     {
         const string name = "probe-player-mod";
@@ -931,7 +843,6 @@ public class RoomMcpProbe : ProbeScenario
         yield return null;
     }
 
-    // The Mods page's switch (J-047): off refuses a connection, and on serves again; the choice is kept.
     IEnumerator OffClosesThePort()
     {
         var server = RulesMcpServer.Instance;
@@ -948,7 +859,6 @@ public class RoomMcpProbe : ProbeScenario
         Check("on_serves_again", again.Status == TaskStatus.RanToCompletion && again.Result.status == 200, again.Status.ToString());
     }
 
-    // With --shots: the menu's change mode, the Mods page, and the Play with Claude page with the switch and the line.
     IEnumerator Stills()
     {
         EventLog.HudVisible = true;
@@ -974,10 +884,6 @@ public class RoomMcpProbe : ProbeScenario
     }
 }
 
-/// <summary>
-/// Holds a game open for seconds=N while someone outside changes it through the MCP (a real Claude). Passes on
-/// the first mod switched on, with what the game said.
-/// </summary>
 public class RoomClaudeProbe : ProbeScenario
 {
     protected override IEnumerator Run()
@@ -994,11 +900,6 @@ public class RoomClaudeProbe : ProbeScenario
     }
 }
 
-/// <summary>
-/// Three asks no saved mod covers, each written by a real Claude outside as a new mod (seconds=N for all three): a
-/// bigger fireball, grass burning twice as fast, and a new reaction of fire on water. After each, this casts on a stage
-/// of its own and measures what changed against the base rules.
-/// </summary>
 public class RoomAsksProbe : SpellLooksProbe
 {
     const int GrassSize = 13, PondSize = 9;
@@ -1064,7 +965,6 @@ public class RoomAsksProbe : SpellLooksProbe
         Cut(mid + new Vector3(0f, 16f, -22f), mid);
     }
 
-    // Fire set at the middle of fresh grass: how many of its cells have burnt out in the time, and how long the first took.
     IEnumerator Grass(float[] burnt)
     {
         var o = Spot(GrassSize, GrassSize);
@@ -1088,7 +988,6 @@ public class RoomAsksProbe : SpellLooksProbe
         PutOutFires();
     }
 
-    // A Fireball on a shallow pond: how much steam is on it soon after.
     IEnumerator Pond(int[] gas)
     {
         var o = Spot(PondSize, PondSize);
@@ -1113,11 +1012,6 @@ public class RoomAsksProbe : SpellLooksProbe
     }
 }
 
-/// <summary>
-/// Films this peer, with each frame named by the clock both peers share, for the room clip's two halves side by
-/// side: the screen with the HUD on the host, the camera on a virtual player, whose hidden Game view is a sliver.
-/// Faces the wizard and its camera at the target meanwhile.
-/// </summary>
 public class RoomFilm : MonoBehaviour
 {
     const float FrameSeconds = 1f / 12f;
@@ -1128,10 +1022,8 @@ public class RoomFilm : MonoBehaviour
     Vector3 target;
     RenderTexture lens;
 
-    /// <summary>The folder both peers film under, beside the probe's files.</summary>
     static string Root => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), "room-clip");
 
-    /// <summary>The milliseconds on the shared clock, as frames are named.</summary>
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     public void Begin(ChemGrid grid, GameObject wizard, Vector2Int stand, Vector2Int at, string side)
@@ -1192,10 +1084,6 @@ public class RoomFilm : MonoBehaviour
     }
 }
 
-/// <summary>
-/// The clip for Andrew's board: both peers film their own screens while the host's wizard casts a Fireball, a real
-/// Claude outside asks for a bigger one through the MCP, and the next Fireball is cast. Needs that Claude run while it holds.
-/// </summary>
 public class RoomClipProbe : RoomProbe
 {
     static readonly Vector2Int HostStand = new(12, 14), ClientStand = new(15, 14), Middle = new(13, 7), First = new(9, 8), Second = new(17, 8);

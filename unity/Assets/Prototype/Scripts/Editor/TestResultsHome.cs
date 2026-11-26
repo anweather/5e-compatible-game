@@ -16,13 +16,10 @@ static class TestResultsHome
 {
     const string SaverType = "Unity.PerformanceTesting.Editor.PerformanceTestRunSaver";
 
-    /// <summary>Where a run's results go: the project's Library, out of git and out of the player's folder.</summary>
     public static string File => Path.Combine(Path.GetDirectoryName(Application.dataPath) ?? ".", "Library", "TestResults.xml");
 
-    // First of all callbacks, so the saver is gone before its RunFinished would write.
     static TestResultsHome() => TestRunnerApi.RegisterTestCallback(new Results(), int.MaxValue);
 
-    /// <summary>Takes the Performance Testing package's saver off the runs; how many it found.</summary>
     public static int RemoveSaver()
     {
         int removed = 0;
@@ -37,9 +34,6 @@ static class TestResultsHome
         return removed;
     }
 
-    // What the test runner calls on a run. Its list is internal (CallbacksHolder.instance.GetAll), and
-    // the saver can't be found as an object instead: opening a scene unloads it, while the runner still
-    // holds and calls it. Empty if a later test framework moves the list (TestResultsHomeTests says so).
     public static ICallbacks[] Registered()
     {
         var holder = typeof(TestRunnerApi).Assembly.GetType("UnityEditor.TestTools.TestRunner.Api.CallbacksHolder");
@@ -65,12 +59,10 @@ static class TestResultsHome
 
         public void TestStarted(ITestAdaptor test)
         {
-            // Only the run's start and end matter here.
         }
 
         public void TestFinished(ITestResultAdaptor result)
         {
-            // Only the run's start and end matter here.
         }
     }
 }

@@ -3,10 +3,6 @@ using UnityEngine;
 // What a generated mesh should be, for the closeup probe and the tests (issue #47).
 public static class MeshChecks
 {
-    /// <summary>
-    /// The share of triangles wound against their own normals, by area: their front faces point in, so a
-    /// camera outside sees through them to the far side. 0 for a mesh that's right way out.
-    /// </summary>
     public static float BackwardShare(Mesh mesh)
     {
         var points = mesh.vertices;

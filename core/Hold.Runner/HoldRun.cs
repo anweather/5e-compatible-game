@@ -9,7 +9,6 @@ using System.Linq;
 
 namespace Chem.HoldCurve
 {
-    /// <summary>What a run did at the end of each wave.</summary>
     public sealed class WaveResult
     {
         public int Wave, Seconds, Health;
@@ -29,11 +28,8 @@ namespace Chem.HoldCurve
         public int LastWave => world.Hold?.Wave ?? 0;
         public int Ticks { get; private set; }
         public World World => world;
-        /// <summary>The wizards stand on their posts and never cast: the keep left to itself (--idle).</summary>
         public bool Idle { get; set; }
-        /// <summary>The wave reached, "W" after it for a run won (every wave beaten).</summary>
         public string Outcome => LastWave + (world.Hold?.Phase == HoldPhase.Won ? "W" : "");
-        /// <summary>What the first wizard's points came to.</summary>
         public int Points => world.PointsOf(Name(0)) ?? 0;
 
         public HoldRun(Rules rules, string worldDir, uint seed, int peers, (string left, string right) holds, string moment = null, int? points = null)
@@ -48,7 +44,6 @@ namespace Chem.HoldCurve
                 .Where(c => c.Part == BuildingPart.Wall && world.At(c.X, c.Y).T == "stone")
                 .OrderBy(c => Far(c.X, c.Y, site.Heart)).ThenBy(c => c.X).ThenBy(c => c.Y).ToList();
             for (int i = 0; i < peers; i++) posts.Add((wall[i * 3].X, wall[i * 3].Y));
-            // Attuned before the run, by the rise, one hand at a time with its moment (no tower: a tower gives one element).
             for (int i = 0; i < peers; i++)
             {
                 world.ApplyStrike(StrikeCommand.Stand(Name(i), site.Rise.x, site.Rise.y + i, 1000000));
@@ -72,7 +67,6 @@ namespace Chem.HoldCurve
 
         static int Far(int x, int y, (int x, int y) to) => Math.Abs(x - to.x) + Math.Abs(y - to.y);
 
-        // Open grass, the map's trees, and the rows: what raiders walk on.
         void Lay(string worldDir, WorldHold site)
         {
             var rows = MapFile.ReadCells(worldDir).Replace("\r", "").Trim('\n').Split('\n');
@@ -84,7 +78,6 @@ namespace Chem.HoldCurve
             WorldBuildings.Load(worldDir).LayInto(world);
         }
 
-        /// <summary>Plays until the run ends, this wave is passed (with <paramref name="untilWave"/>), or the time runs out.</summary>
         public void Play(int mostSeconds, int untilWave = int.MaxValue)
         {
             int tps = world.Rules.Sim.TicksPerSecond, seen = world.Hold.Wave;
@@ -117,7 +110,6 @@ namespace Chem.HoldCurve
             if (gesture != HandsDef.Thrust) world.ApplyCombo(ComboCommand.Hand(me, hand, bumper: true));
         }
 
-        // A hand's first gesture that hurts and reaches something, by range: nearest first.
         int GestureFor(string me, int hand, (int x, int y) post)
         {
             foreach (int gesture in new[] { HandsDef.Thrust, HandsDef.Sweep, HandsDef.Throw })

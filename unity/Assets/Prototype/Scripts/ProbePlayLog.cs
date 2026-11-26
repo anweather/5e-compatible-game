@@ -43,7 +43,6 @@ public class PlayLogProbe : ProbeScenario
         var lines = File.ReadAllLines(path);
         Metric("lines", lines.Length);
         Check("header", lines.Length > 2 && lines[1].StartsWith("kind,seconds", System.StringComparison.Ordinal), lines.FirstOrDefault());
-        // Written at the first second, once the window has its size: it said 640 x 480 for 1280 x 720 (#217).
         Check("header_says_the_window", lines.Length > 0 && lines[0].EndsWith($", {Screen.width}x{Screen.height}", System.StringComparison.Ordinal), $"{lines.FirstOrDefault()} (the window {Screen.width}x{Screen.height})");
         Check("a_line_a_second", lines.Count(l => l.StartsWith("second,", System.StringComparison.Ordinal)) >= 3, $"{lines.Length} lines");
         Check("hitch_line", lines.Any(l => l.StartsWith("hitch,", System.StringComparison.Ordinal)), "over 100 ms");
@@ -58,7 +57,6 @@ public class PlayLogProbe : ProbeScenario
         yield return Readout();
     }
 
-    // The frame readout (#217): on, it says the last second's mean, p95 and worst; it costs well under 0.1 ms a frame.
     IEnumerator Readout()
     {
         var readout = FrameReadout.Instance;

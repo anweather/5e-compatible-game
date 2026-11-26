@@ -26,10 +26,6 @@ public sealed class GroundBuilder
     {
     }
 
-    /// <summary>
-    /// A builder whose arrays are made a chunk at a time by <paramref name="make"/>, for the chunks <paramref name="has"/>
-    /// says: <paramref name="pack"/> holds what the chunks share (the heights' range, the names, the river), not the chunks.
-    /// </summary>
     public GroundBuilder(GroundPack pack, TerrainData template, float chunkSize, Func<(int i, int j), GroundChunk> make, Func<(int i, int j), bool> has)
     {
         this.pack = pack;
@@ -44,34 +40,22 @@ public sealed class GroundBuilder
         if (missing >= 0) throw new InvalidDataException($"The ground's layer {pack.Layers[missing]} isn't on the template terrain");
     }
 
-    /// <summary>
-    /// A generated map's pinned chunks (the nine's valley) by where they are, as the pinned map's ground/ has them, or
-    /// null: the far trees there are read from these, without making the chunk (TreeImpostors).
-    /// </summary>
     public IReadOnlyDictionary<(int i, int j), GroundChunk> Pinned { get; set; }
 
-    /// <summary>The top of the chunks' range in metres (a height step of GroundPack.HeightSteps).</summary>
     public float Top => (float)pack.Top;
 
-    /// <summary>The height of the chunks' step 0 in metres: where the terrains stand.</summary>
     public float Bottom => (float)pack.Bottom;
 
-    /// <summary>The tree kinds every chunk is built with (the template's).</summary>
     public TreePrototype[] TreePrototypes => template.treePrototypes;
 
-    /// <summary>The river's cells and how far each is cut below its banks.</summary>
     public (int[] cells, float[] depths) Channel => (pack.ChannelCells, pack.ChannelDepths);
 
-    /// <summary>Whether it has this chunk.</summary>
     public bool Has((int i, int j) at) => make != null ? has(at) : chunks.ContainsKey(at);
 
-    /// <summary>Whether its chunks are made one at a time (a generated map's), not read whole.</summary>
     public bool Lazy => make != null;
 
-    /// <summary>How many chunks' arrays it holds now.</summary>
     public int Held => chunks.Count;
 
-    // A chunk's arrays, made now if they haven't been.
     GroundChunk Chunk((int i, int j) at)
     {
         if (chunks.TryGetValue(at, out var c)) return c;
@@ -80,24 +64,15 @@ public sealed class GroundBuilder
         return c;
     }
 
-    /// <summary>
-    /// Makes the arrays of those of <paramref name="wanted"/> not made yet, side by side (each reads only what nothing
-    /// changes while this runs, and writes only its own chunk), added in order after. Nothing for a pack read whole.
-    /// </summary>
     public void Prepare(IReadOnlyList<(int i, int j)> wanted)
     {
         var missing = Missing(wanted);
         if (missing.Count > 0) Keep(missing, MakeArrays(missing));
     }
 
-    /// <summary>Those of <paramref name="wanted"/> whose arrays aren't made yet (none for a pack read whole).</summary>
     public List<(int i, int j)> Missing(IEnumerable<(int i, int j)> wanted) =>
         make == null ? new List<(int i, int j)>() : wanted.Where(at => !chunks.ContainsKey(at) && has(at)).Distinct().ToList();
 
-    /// <summary>
-    /// Makes these chunks' arrays side by side and returns them, keeping none: safe off the main thread (each reads the
-    /// world, the land and the layout, and writes only its own chunk; Keep them on the main thread).
-    /// </summary>
     public GroundChunk[] MakeArrays(IReadOnlyList<(int i, int j)> missing)
     {
         var made = new GroundChunk[missing.Count];
@@ -106,28 +81,20 @@ public sealed class GroundBuilder
         return made;
     }
 
-    /// <summary>Keeps arrays MakeArrays made (any made meanwhile are kept as they were).</summary>
     public void Keep(IReadOnlyList<(int i, int j)> at, GroundChunk[] made)
     {
         for (int n = 0; n < at.Count; n++) chunks.TryAdd(at[n], made[n]);
     }
 
-    /// <summary>Whether this chunk's arrays are made.</summary>
     public bool Holds((int i, int j) at) => chunks.ContainsKey(at);
 
-    /// <summary>Drops a chunk's arrays made one at a time (its terrain went with nothing changed): made again when wanted again.</summary>
     public void Forget((int i, int j) at)
     {
         if (make != null) chunks.Remove(at);
     }
 
-    /// <summary>A chunk's ground as new TerrainData, the arrays untouched.</summary>
     public TerrainData Build((int i, int j) at) => Build(at, null);
 
-    /// <summary>
-    /// A chunk's ground into <paramref name="reuse"/> when one is given (an earlier chunk's, no longer drawn: the terrains
-    /// are pooled, #205), or into new TerrainData.
-    /// </summary>
     public TerrainData Build((int i, int j) at, TerrainData reuse)
     {
         var c = Chunk(at);
@@ -154,10 +121,6 @@ public sealed class GroundBuilder
         return data;
     }
 
-    /// <summary>
-    /// A chunk built here, taken again by a new world as it is: its layers back to the template's (WetGround gave it copies
-    /// to wet, which go with the old world).
-    /// </summary>
     public void FreshLayers(TerrainData data) => data.terrainLayers = template.terrainLayers;
 
     static void SetHeights(TerrainData data, GroundChunk c)
@@ -169,8 +132,6 @@ public sealed class GroundBuilder
         data.SetHeights(0, 0, heights);
     }
 
-    // Straight into the paint's own textures, as ValleyGround's paint is: SetAlphamaps also redraws the base map, about 20 ms
-    // a call, and nothing in a chunk is far enough off to draw it.
     void SetPaint(TerrainData data, GroundChunk c)
     {
         int texels = c.Texels, area = texels * texels;
@@ -190,7 +151,6 @@ public sealed class GroundBuilder
         }
     }
 
-    // New data has no grass to clear; reused data has the last chunk's, so every kind is written.
     void SetDetails(TerrainData data, GroundChunk c, bool fresh)
     {
         for (int g = 0; g < pack.Grasses.Length; g++)
@@ -200,7 +160,6 @@ public sealed class GroundBuilder
         }
     }
 
-    /// <summary>A box of a chunk's grass as built, [z, x]: what Plant Growth grows back.</summary>
     public int[,] DetailLayer((int i, int j) at, int layer, int x0, int z0, int w, int h) => DetailLayer(Chunk(at), layer, x0, z0, w, h);
 
     static int[,] DetailLayer(GroundChunk c, int layer, int x0, int z0, int w, int h)

@@ -10,17 +10,14 @@ namespace Chem.Tests
     public partial class HoldTests
     {
         internal const string Me = "Ana";
-        // What's left of a keep in a test that only needs to see it fall.
         const int ShortKeep = 20;
         const int MostTicks = 12000;
 
         static Rules R => ChemistryTests.R;
         static WorldHold Site => WorldHold.Load(ChemistryTests.WorldDir());
 
-        // The painted ground round the spawners and the heart, in cells.
         const int Around = 40;
 
-        // Grass round the castle and the spawners, the rows laid, and the map's Hold, with only the chunks round it active.
         internal static World Field(int seed = 7, Rules rules = null)
         {
             var s = Site;
@@ -34,17 +31,13 @@ namespace Chem.Tests
             return w;
         }
 
-        // Only the chunks a run reaches are active (its castle, heart, plate, towers, barricades and spawners, and the painted
-        // ground round them), as only those in a wizard's reach are in the game: the rest of the 576 x 576 world is ground
-        // nobody comes to, and stepping it was most of every Hold test's time. Every peer switches the same chunks before its
-        // first tick, a late joiner too.
         internal static void OnlyTheHold(World w)
         {
             var s = w.HoldSite;
             var cells = BuildingRaster.Cells(BuildingRow.Read(s.Castle, s.Row, R.Buildings), R.Buildings).Select(c => (c.X, c.Y))
                 .Concat(s.Spawners.SelectMany(p => p.Cells)).Concat(s.Barricades)
                 .Concat(new[] { s.Heart, s.Plate, s.Rise }).Concat(s.Towers.Select(t => (t.X, t.Y))).ToList();
-            const int size = 64; // a chunk's side, in cells
+            const int size = 64;
             int fromX = Math.Max(0, cells.Min(c => c.Item1) - Around) / size, toX = Math.Min(w.W - 1, cells.Max(c => c.Item1) + Around) / size;
             int fromY = Math.Max(0, cells.Min(c => c.Item2) - Around) / size, toY = Math.Min(w.H - 1, cells.Max(c => c.Item2) + Around) / size;
             w.SetAllActive(false);
@@ -73,10 +66,8 @@ namespace Chem.Tests
             Assert.That(done(), what);
         }
 
-        // A wizard out of the way, on no cell a raider reaches.
         internal static void Away(World w, string who = Me) => Stand(w, who, (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
 
-        // The map's own trees on the field, as they stand in cells.txt.
         static void Trees(World w)
         {
             var rows = MapFile.ReadCells(ChemistryTests.WorldDir()).Replace("\r", "").Trim('\n').Split('\n');
@@ -189,13 +180,10 @@ namespace Chem.Tests
             w.Hold.Health = System.Math.Min(w.Hold.Health, ShortKeep);
             Until(w, () => !w.HoldRunning, "the keep falls");
             Assert.That(w.Hold.Phase, Is.EqualTo(HoldPhase.Lost));
-            // Waves are timed, so more may have come while the first walked up: the score is the wave it fell in.
             Assert.That(w.Log.Last(l => l.Text.StartsWith("The keep falls", System.StringComparison.Ordinal)).Text, Is.EqualTo($"The keep falls in wave {w.Hold.Wave}"), "the score is the wave reached");
             Assert.That(w.Raiders, Is.Empty, "raiders are cleared");
         }
 
-        // The next wave comes on the clock, waveTicks after the last one's first raider, with the last still standing:
-        // beating a wave buys no time, and leaving one standing doesn't hold the next back. Its warning shows betweenWaves before.
         [Test]
         public void WavesComeOnTheClockWhoeverIsStillStanding()
         {
@@ -214,7 +202,6 @@ namespace Chem.Tests
             Assert.That(w.Tick - first, Is.EqualTo(p.WaveTicks));
         }
 
-        // Beating the last wave wins the run: every wave's points, and the castle mended.
         [Test]
         public void BeatingTheLastWaveWinsTheRun()
         {
@@ -243,7 +230,6 @@ namespace Chem.Tests
             Away(w);
             var row = BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings);
             var gate = BuildingRaster.Cells(row, R.Buildings).Where(c => c.Terrain == "timber-gate-open").ToList();
-            // Both gates shut (the east and the south, hold-east-path): one of them must be battered down.
             var south = gate.First(c => Math.Abs(c.X - gate[0].X) + Math.Abs(c.Y - gate[0].Y) > 4);
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, gate[0].X, gate[0].Y, null));
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, south.X, south.Y, null));
@@ -348,7 +334,6 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            // From wave 4: the first waves are every other test's.
             w.Hold.Wave = 4;
             for (int wave = 4; wave <= 7; wave++)
             {
@@ -412,7 +397,6 @@ namespace Chem.Tests
             var w = Running();
             Away(w);
             bool seen = false, early = false;
-            // Until the first is seen: wave 1 is behind it by then.
             for (int i = 0; i < MostTicks && w.Hold.Wave < 6 && !seen; i++)
             {
                 foreach (var r in w.Raiders)
@@ -428,7 +412,6 @@ namespace Chem.Tests
             Assert.That(early, Is.False);
         }
 
-        // A whole run to a loss, peer by peer: the sweep runs it (docs/TESTING_LAYERS.md); TheRunIsInTheChecksum and HoldWaveTests.TwoWorldsMatchOverSeveralWaves land.
         [Test, Category("Sweep")]
         public void TwoPeersRunAlikeToALoss()
         {
@@ -450,7 +433,6 @@ namespace Chem.Tests
             Assert.That(b.CellHash(), Is.EqualTo(a.CellHash()));
         }
 
-        // A late joiner replays the history on a fresh world (NetChem): every stand of a run is in it (StandKeeper).
         [Test]
         public void ALateJoinerReplayingTheHistoryGetsTheRunInProgress()
         {
@@ -486,7 +468,6 @@ namespace Chem.Tests
             public void Make(int x, int y, Cell cell) => cell.T = "grass";
         }
 
-        // A joining peer's view asks for the rows before the host's room arrives.
         [Test]
         public void APeerThatLooksBeforeItsRoomOpensStillHasTheCastle()
         {
@@ -500,7 +481,6 @@ namespace Chem.Tests
             Assert.That(w.BuildingRowOf("hold#1"), Is.Not.Null);
         }
 
-        // A late joiner loads the host's world (JoinSnapshot): the map's buildings must be its buildings, as they were the host's.
         [Test]
         public void ASavedRoomKeepsTheMapsBuildings()
         {

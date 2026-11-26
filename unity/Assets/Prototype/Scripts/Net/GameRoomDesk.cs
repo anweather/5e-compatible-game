@@ -17,8 +17,6 @@ public class GameRoomDesk : ILiveDesk, IWorldDesk
 
     public GameRoomDesk(RulesMcpServer server) => this.server = server;
 
-    // Runs on the main thread and waits for its answer; a game that has stopped says so. Whatever the act
-    // throws comes back here as a refusal (logged once there), never into RulesMcpServer.Update.
     string OnMainThread(Func<Action<string>, string> act)
     {
         var answer = new TaskCompletionSource<string>();

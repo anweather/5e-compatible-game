@@ -8,15 +8,12 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        // ---------- materials ----------
-
-        /// <summary>A new terrain, cover or gas: its name, tags and verb groups ({"burn": {"catch": 0.4, "fuel": 10}}).</summary>
         public Draft AddMaterial(string draftId, string kind, string id, string name, IEnumerable<string> tags = null, string verbs = null)
         {
             kind = Kind(kind);
@@ -25,7 +22,6 @@ namespace Chem.Mcp
             var owner = MaterialKinds.FirstOrDefault(k => Doc[k]?[id] != null);
             if (owner != null) throw new RulesToolException($"There is already a {Single(owner)} called {id}; use set_material to change it.");
             var entry = new JObject { ["name"] = name.Trim() };
-            // A cover and a terrain must list tags, even none; a gas or liquid needn't.
             var tagList = tags?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? new List<string>();
             if (tagList.Count > 0 || (kind != "gases" && kind != Rules.LiquidsKey)) entry["tags"] = new JArray(tagList);
             if (!string.IsNullOrWhiteSpace(verbs))
@@ -40,7 +36,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        /// <summary>One field of a terrain, cover or gas, by dotted path ("burn.catch"); null removes it.</summary>
         public Draft SetMaterial(string draftId, string id, string field, string value)
         {
             id = Required(id, "id");
@@ -55,12 +50,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // ---------- reactions ----------
-
-        /// <summary>
-        /// A new cell rule (or entity rule): when element reaches a cell where every condition holds, the
-        /// effects run in order. It goes to the top of its element's rules, so it wins.
-        /// </summary>
         public Draft AddReaction(string draftId, string id, string element, string effects, string conditions = null, string log = null,
             bool stop = false, bool notable = false, double? chance = null, bool entity = false)
         {
@@ -92,7 +81,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        /// <summary>One field of a reaction rule ("if.chance", "do", "log", "stop"); it keeps its place in its element's list.</summary>
         public Draft SetReaction(string draftId, string id, string field, string value)
         {
             id = Required(id, "id");
@@ -120,9 +108,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // ---------- spells ----------
-
-        /// <summary>A new spell, in the 5E-compatible frame: it acts through an element (or an effect) and sits in a group.</summary>
         public Draft AddSpell(string draftId, SpellArgs a)
         {
             var id = Required(a.Id, "id");
@@ -156,7 +141,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        /// <summary>One field of a spell ("radius", "damage", "crater.depth"); the rest of it is kept.</summary>
         public Draft SetSpell(string draftId, string id, string field, string value)
         {
             id = Required(id, "id");
@@ -175,7 +159,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // What validate would say later, at once: a number past the caps, a group the radial doesn't have.
         void RefuseBadPlace(string id, JObject spell)
         {
             var over = ModValidator.SpellCaps(Budgets, id, spell).FirstOrDefault();
@@ -184,7 +167,6 @@ namespace Chem.Mcp
                 throw new RulesToolException($"There is no group {group}; the radial's groups are {string.Join(", ", ((JObject)Raw["groups"]).Properties().Select(p => p.Name))}.");
         }
 
-        /// <summary>How a player reaches a spell: on the radial, by a combo, or not yet and what to do about it. For add_spell and describe.</summary>
         public string ReachOf(Draft draft, string id)
         {
             var spell = draft == null ? EntryIn(Raw, "spells", id) : Current(draft, "spells", id);
@@ -219,7 +201,6 @@ namespace Chem.Mcp
                 : $"A player reaches {name} {string.Join("; or ", ways)}.";
         }
 
-        // Where the hand table (D16) puts a spell: which elements to attune in the spell list, and which gesture, on one hand or both.
         static string HandsWay(HandsDef table, string id)
         {
             var (slot, gesture) = table.Find(id);
@@ -233,9 +214,6 @@ namespace Chem.Mcp
             return $"with the hands: {attune} in the spell list (Tab, or the d-pad's down), then {both[gesture]}, which merges them";
         }
 
-        // ---------- sim ----------
-
-        /// <summary>A sim parameter by dotted path ("fire.spreadChance"), within the bounds rules/budgets.json declares.</summary>
         public Draft Tune(string draftId, string param, string value)
         {
             param = Required(param, "parameter");
@@ -253,9 +231,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // ---------- remove ----------
-
-        /// <summary>Takes back something the draft added or changed. Base entries can't be removed this way.</summary>
         public Draft Remove(string draftId, string table, string id)
         {
             var draft = DraftOf(Required(draftId, "draft"));
@@ -304,9 +279,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        // ---------- helpers ----------
-
-        /// <summary>An element the base rules don't have joins the draft's elements (validate then asks that more than one spell use it).</summary>
         void NewElement(Draft draft, string element)
         {
             if (Doc["elements"].Any(e => Str(e) == element)) return;
@@ -339,7 +311,6 @@ namespace Chem.Mcp
             return k;
         }
 
-        /// <summary>"8d6" or [8, 6] as [dice, sides].</summary>
         static JArray Dice(string text)
         {
             var t = text.Trim();
@@ -350,7 +321,6 @@ namespace Chem.Mcp
             throw new RulesToolException($"{text} isn't damage dice; write it like 8d6.");
         }
 
-        /// <summary>A value as JSON when it reads as JSON (numbers, true, lists, objects), else as text.</summary>
         static JToken Value(string text)
         {
             if (text == null) return JValue.CreateNull();
@@ -364,7 +334,6 @@ namespace Chem.Mcp
             }
         }
 
-        // One field of a patch's entry, by dotted path. Null stays, as what takes the field out of the entry under it.
         static void SetField(JObject o, string path, string value)
         {
             var keys = path.Split('.');
@@ -396,7 +365,6 @@ namespace Chem.Mcp
             o?.Remove(keys[keys.Length - 1]);
         }
 
-        /// <summary>Drops empty objects and lists, so taking everything back leaves {}.</summary>
         static void Tidy(JObject o)
         {
             foreach (var p in o.Properties().ToList())

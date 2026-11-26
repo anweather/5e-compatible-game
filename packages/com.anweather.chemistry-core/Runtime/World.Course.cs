@@ -18,7 +18,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The course's blocks of cells (Village.cs's CellRect), written [x0, y0, x1, y1] with the corners inclusive.</summary>
     static class CourseRect
     {
         internal static CellRect Parse(JToken t, string what)
@@ -33,44 +32,35 @@ namespace Chem
         internal static string W(int n) => n.ToString(CultureInfo.InvariantCulture);
     }
 
-    /// <summary>An area that allows only some elements or spells: anything else cast into it fizzles.</summary>
     public sealed class SpellZone
     {
         public string Id, Name;
         public CellRect Area;
-        /// <summary>Elements allowed: a spell is, if a combo of only these elements casts it.</summary>
         public IReadOnlyList<string> Elements = Array.Empty<string>();
-        /// <summary>Spells allowed by id, whatever their elements (Misty Step has none).</summary>
         public IReadOnlyList<string> Spells = Array.Empty<string>();
     }
 
-    /// <summary>One booth of the course: its zone (its area and what it allows) and the cell a wizard downed past it gets up on.</summary>
     public sealed class CourseBooth
     {
         public SpellZone Zone;
         public int CheckX, CheckY;
     }
 
-    /// <summary>world/gauntlet.json: the course's area, its gate, its booths in order and its bell.</summary>
     public sealed class CourseLayout
     {
         public const string FileName = "gauntlet.json";
 
         public string Name;
-        /// <summary>Downed inside this, a wizard on a run gets up at its last checkpoint.</summary>
         public CellRect Area, Gate, Bell;
-        /// <summary>Where a wizard downed before the first booth gets up: the gate's middle.</summary>
         public int StartX, StartY;
         public IReadOnlyList<CourseBooth> Booths = Array.Empty<CourseBooth>();
 
-        /// <summary>The course in world/gauntlet.json, or null without the file.</summary>
         public static CourseLayout Load(string worldDir)
         {
             string path = Path.Combine(worldDir, FileName);
             return File.Exists(path) ? FromJson(File.ReadAllText(path)) : null;
         }
 
-        /// <summary>The course in the file's text. Throws <see cref="FormatException"/> for one that can't be read.</summary>
         public static CourseLayout FromJson(string json)
         {
             var o = JObject.Parse(json);
@@ -103,10 +93,8 @@ namespace Chem
             };
         }
 
-        /// <summary>The booths' zones, in order.</summary>
         public IEnumerable<SpellZone> Zones() => Booths.Select(b => b.Zone);
 
-        /// <summary>What's wrong with the course against these rules: elements and spells the rules don't know, pieces outside its area.</summary>
         public IEnumerable<string> Check(Rules rules)
         {
             foreach (var z in Zones())
@@ -120,7 +108,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A player stands on a cell (the view sends one as its wizard steps onto a new cell inside the course).</summary>
     public readonly struct CourseCommand
     {
         public CourseCommand(string player, int x, int y)
@@ -135,10 +122,6 @@ namespace Chem
         public int Y { get; }
     }
 
-    /// <summary>
-    /// One player's run: the last checkpoint reached (-1 the gate), the tick the clock started (-1 when it isn't
-    /// running), the best time and the last, in ticks (0 for none yet).
-    /// </summary>
     public sealed class CourseRun
     {
         public string Player;
@@ -151,22 +134,17 @@ namespace Chem
         readonly List<SpellZone> zones = new List<SpellZone>();
         readonly SortedDictionary<string, CourseRun> courseRuns = new SortedDictionary<string, CourseRun>(StringComparer.Ordinal);
 
-        /// <summary>The spell zones, in order (the course's booths among them).</summary>
         public IReadOnlyList<SpellZone> Zones => zones;
 
-        /// <summary>The course laid out, or null.</summary>
         public CourseLayout Course { get; private set; }
 
-        /// <summary>Each player's run on the course, by player.</summary>
         public IReadOnlyDictionary<string, CourseRun> CourseRuns => courseRuns;
 
-        /// <summary>Adds a spell zone anywhere in the valley (addZone in the TS). World data: every peer adds the same, before the first tick.</summary>
         public void AddZone(SpellZone zone)
         {
             if (zone != null) zones.Add(zone);
         }
 
-        /// <summary>Lays the course out (setCourse in the TS): its booths become spell zones. World data, like AddZone.</summary>
         public void SetCourse(CourseLayout course)
         {
             if (course == null || Course != null) return;
@@ -174,7 +152,6 @@ namespace Chem
             foreach (var z in course.Zones()) zones.Add(z);
         }
 
-        /// <summary>The zone that smothers this spell cast at (x, y) (zoneAgainst in the TS), or null when it may go off there.</summary>
         public SpellZone ZoneAgainst(SpellDef s, int x, int y)
         {
             foreach (var z in zones)
@@ -182,7 +159,6 @@ namespace Chem
             return null;
         }
 
-        // A spell is allowed by id, or when a combo or a hand row of only the zone's elements casts it.
         bool Allows(SpellZone z, string spell)
         {
             if (z.Spells.Contains(spell)) return true;
@@ -192,13 +168,9 @@ namespace Chem
             return slot != null && slot != HandsDef.Empty && slot.Split('+').All(e => z.Elements.Contains(e));
         }
 
-        /// <summary>
-        /// A player stands on (x, y) (courseStep in the TS): the gate (re)starts their clock, a booth further on than
-        /// their last is the checkpoint reached, and the bell stops the clock. Between ticks, like a cast.
-        /// </summary>
         public void ApplyCourse(CourseCommand command)
         {
-            FinishTick(); // commands land between whole ticks (StepSome)
+            FinishTick();
             var course = Course;
             if (course == null || command.Player == null || !course.Area.Contains(command.X, command.Y)) return;
             if (!courseRuns.TryGetValue(command.Player, out var run)) courseRuns[command.Player] = run = new CourseRun { Player = command.Player };
@@ -236,17 +208,12 @@ namespace Chem
                 : $"{run.Player} rings the bell in {Seconds(time)} (best {Seconds(run.Best)})", LogKind.Notable);
         }
 
-        /// <summary>Ticks as seconds to a tenth, "42.5 s" (courseSeconds in the TS).</summary>
         public string Seconds(int ticks)
         {
             int tps = Math.Max(1, Rules.Sim.TicksPerSecond), tenths = (ticks * 10 + tps / 2) / tps;
             return $"{CourseRect.W(tenths / 10)}.{CourseRect.W(tenths % 10)} s";
         }
 
-        /// <summary>
-        /// Where a wizard downed at (x, y) gets up (courseRespawn in the TS): inside the course on a run, the last
-        /// checkpoint reached (the gate before the first); otherwise null, the yard as ever.
-        /// </summary>
         public (int x, int y)? CourseRespawn(string player, int x, int y)
         {
             var course = Course;
@@ -257,18 +224,14 @@ namespace Chem
             return (b.CheckX, b.CheckY);
         }
 
-        /// <summary>The zones as text, "" with none (so worlds without any hash as they did; zoneState in the TS).</summary>
         public string ZoneText() => string.Concat(zones.Select(z =>
             $"|z{z.Id}:{CourseRect.Text(z.Area)}:{string.Join(",", z.Elements)}:{string.Join(",", z.Spells)}"));
 
-        /// <summary>The players' runs as text, "" before anyone ran (courseState in the TS): player, checkpoint, start, best, last.</summary>
         public string CourseText() => string.Concat(courseRuns.Values.Select(r =>
             $"|r{r.Player}:{CourseRect.W(r.Checkpoint)}:{CourseRect.W(r.Start)}:{CourseRect.W(r.Best)}:{CourseRect.W(r.Last)}"));
 
-        /// <summary>FNV-1a of CourseText and ZoneText (both part of CastHash, so of the online checksum).</summary>
         public string CourseHash() => Fnv1a.Hash(CourseText() + ZoneText());
 
-        // The runs into a save, best times and all; the zones and the course are world data, laid again on load.
         void SaveCourse(JObject save)
         {
             if (courseRuns.Count > 0) save["course"] = new JArray(courseRuns.Values.Select(r => new JArray(r.Player, r.Checkpoint, r.Start, r.Best, r.Last)));

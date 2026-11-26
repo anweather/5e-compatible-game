@@ -14,9 +14,7 @@ using UnityEngine;
 public sealed class MaterialCache
 {
     const string WaterName = "Water";
-    /// <summary>Shades are rounded to 1/64 a channel (half a step is 2 of 255: not seen).</summary>
     const float ShadeSteps = 64f;
-    /// <summary>Past this many shaded copies a shade goes back to a property block.</summary>
     const int MostShades = 4096;
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
@@ -32,10 +30,6 @@ public sealed class MaterialCache
         return m;
     }
 
-    /// <summary>
-    /// <paramref name="plain"/> in <paramref name="color"/> rounded to a shade step, one copy per shade, or null when there
-    /// are too many shades already (the caller tints with a property block then).
-    /// </summary>
     public Material Shaded(Material plain, Color color)
     {
         if (plain == null) return null;
@@ -50,10 +44,8 @@ public sealed class MaterialCache
 
     static int Step(float channel) => Mathf.RoundToInt(channel * ShadeSteps);
 
-    /// <summary>How many shaded copies there are.</summary>
     public int ShadeCount => shades.Count;
 
-    /// <summary>A metallic Lit material, one per name like Lit.</summary>
     public Material Metal(string name, Color color, float smoothness, float metallic)
     {
         if (materials.TryGetValue(name, out var m)) return m;
@@ -62,7 +54,6 @@ public sealed class MaterialCache
         return m;
     }
 
-    /// <summary>See-through water with a rippling normal map that <see cref="ScrollWater"/> drifts.</summary>
     public Material Water()
     {
         if (materials.TryGetValue(WaterName, out var m)) return m;
@@ -73,7 +64,6 @@ public sealed class MaterialCache
         return m;
     }
 
-    /// <summary>A glossy film coloured by its mesh's vertex colours (CellSlickMesh), if the scene has none.</summary>
     public Material Slick()
     {
         const string name = "Slick";
@@ -84,7 +74,6 @@ public sealed class MaterialCache
         return m;
     }
 
-    /// <summary>Drifts the water's ripples; call once a frame.</summary>
     public void ScrollWater(float time)
     {
         if (materials.TryGetValue(WaterName, out var water))

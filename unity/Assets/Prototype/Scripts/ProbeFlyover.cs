@@ -16,7 +16,6 @@ using UnityEngine;
 public class FlyoverProbe : ProbeScenario
 {
     protected virtual float Speed => 40f;
-    // Whether it flies back to the west coast after reaching the east (FlyoverBackProbe).
     protected virtual bool Back => false;
     const float Height = 30f, Step = 48f, SettleMost = 30f;
 
@@ -29,7 +28,6 @@ public class FlyoverProbe : ProbeScenario
         Check("fly_mode_there", tools != null);
         if (land == null || terrains == null || !terrains.Lazy || tools == null) yield break;
 
-        // The coasts on the spawn's row: the first and last land cells.
         int row = land.Map.Spawn.y, w = land.Map.W;
         int west = -1, east = -1;
         for (int x = 0; x < w; x++)
@@ -52,9 +50,7 @@ public class FlyoverProbe : ProbeScenario
         wizardT.position = start;
         Look(wizardT.position);
 
-        // Loading settles at the start, as after a hop.
         var far = FarRing.Instance;
-        // The terrains plan a few times a second: until they've planned for where the wizard is now, none are waiting.
         terrains.ReachNow();
         yield return null;
         yield return null;
@@ -88,19 +84,12 @@ public class FlyoverProbe : ProbeScenario
         var nearHoleAt = new List<string>();
         int closeHoleFrames = 0;
         float leg = end.x - start.x, total = Back ? 2f * leg : leg, flown = 0f;
-        // The first frame is the one after the start's memory reading (Memory("start"): a full collection and an object walk,
-        // 0.8 to 1 s on the Scale Island): not the flight's, as after the readings on the way.
         bool measuredKm = false, measuredHalf = false, skipFrame = true;
-        // With unity/Temp/flyprofile there, every timed marker is read each frame and the slow frames' are summed
-        // (FlyProfile): what a slow frame is made of. It costs a little itself, so the timing runs go without it.
         using var profile = FlyProfile.Wanted() ? new FlyProfile() : null;
         while (flown < total)
         {
             float dt = Time.unscaledDeltaTime;
             profile?.Frame(dt * 1000f, grid.CellAt(wizardT.position).x, !skipFrame);
-            // The frame after a memory reading (a full collection and an object walk) isn't the flight's, and the wizard
-            // doesn't move on it: its time is the reading's (the start's, with ManagedCensus, several seconds), and flying
-            // it jumped the wizard hundreds of cells past terrains it hadn't asked for yet (holes at (17,50), view-mem).
             float moveDt = skipFrame ? 0f : dt;
             if (skipFrame) skipFrame = false;
             else ms.Add(dt * 1000f);
@@ -108,7 +97,6 @@ public class FlyoverProbe : ProbeScenario
             at.Add(grid.CellAt(p).x);
             frames++;
 
-            // Along the line ahead (east, or west on the way back): the drawn ground ahead, the holes in it.
             float heading = flown < leg ? 1f : -1f;
             float ahead = -1f;
             bool hole = false, nearHole = false, overLand = false;
@@ -159,15 +147,12 @@ public class FlyoverProbe : ProbeScenario
             mostWaiting = Mathf.Max(mostWaiting, terrains.Waiting);
             mostActive = Mathf.Max(mostActive, World.ActiveChunks.Count);
 
-            // Memory after the first kilometre: what the flight holds once the terrains round it stand, the baseline the end
-            // is held to (memory_flat).
             if (!measuredKm && flown >= FirstKm)
             {
                 measuredKm = true;
                 skipFrame = true;
                 Memory("km1");
             }
-            // And half way, to tell what the flight still fills in after the first km from growth with distance.
             if (!measuredHalf && flown >= total / 2f)
             {
                 measuredHalf = true;
@@ -175,7 +160,6 @@ public class FlyoverProbe : ProbeScenario
                 Memory("half");
             }
 
-            // There and back: past the east coast the wizard turns and flies west to where it started.
             float move = Speed * moveDt;
             flown += move;
             float dir = flown <= leg ? 1f : -1f;
@@ -218,7 +202,6 @@ public class FlyoverProbe : ProbeScenario
         Metric("terrains_standing_end", c.standing);
         Metric("terrains_created_ever", c.created);
 
-        // The worst frames and where they were; the frames over 33 ms by 200-cell band.
         var order = new List<int>();
         for (int i = 0; i < ms.Count; i++) order.Add(i);
         order.Sort((a, b) => ms[b].CompareTo(ms[a]));
@@ -234,12 +217,6 @@ public class FlyoverProbe : ProbeScenario
         foreach (var h in nearHoleChunks) holeText.Append($"({h.Item1},{h.Item2}) ");
         Debug.Log($"FLYOVER {Speed:0} m/s: worst {worst}\nover 33 ms by x band: {bandText}\nholes within sight at map chunks: {holeText}");
         Check("flew_coast_to_coast", flown >= total, $"{flown:0} of {total:0} m in {frames} frames{(Back ? ", there and back" : "")}");
-        // Memory stays flat however far the flight goes: what's held at the end within MostGrowth of what was held after
-        // the first kilometre (native allocated and managed used, after a full collection), and the terrains bounded. The
-        // managed figure is allowed MostManagedGrowth: it holds the core's unpacked chunks, which pack again only
-        // streaming.packTicks after they're last needed, so at 80 m/s a few hundred more wait behind the flight (bounded by
-        // speed times that hold, not by the distance flown). It also follows the scenery under the flight (half way, over
-        // the island's middle, holds less than either coast).
         float grewNative = mem["end_allocated"] / Mathf.Max(1f, mem["km1_allocated"]) - 1f;
         float grewManaged = mem["end_mono"] / Mathf.Max(1f, mem["km1_mono"]) - 1f;
         Metric("mem_growth_allocated_pct", grewNative * 100f);
@@ -255,16 +232,11 @@ public class FlyoverProbe : ProbeScenario
         if (nearHoleAt.Count > 0) Debug.Log("FLYOVER HOLES " + string.Join(" | ", nearHoleAt));
     }
 
-    // Memory readings by "<when>_<what>" (allocated, reserved, mono), after a full collection.
     readonly Dictionary<string, float> mem = new();
     const float FirstKm = 1000f, MostGrowth = 0.10f, MostManagedGrowth = 0.15f;
 
-    // A memory reading now: metrics mem_<when>_..., and a log line with what the view's caches hold (to find a leak).
     void Memory(string when)
     {
-        // The walk names every loaded object (hundreds of thousands, through a regex): gigabytes of garbage, which a
-        // collection in flight then paid for in the frames measured. So only before and after the flight, and before the
-        // collection here, which takes it.
         bool walk = when is "start" or "end";
         string objects = walk ? System.Environment.NewLine + "FLYOVER MESHES " + Named<Mesh>() + System.Environment.NewLine + "FLYOVER OBJECTS " + Named<GameObject>() + System.Environment.NewLine + ManagedCensus.Report("flyover " + when) : "";
         System.GC.Collect();
@@ -294,7 +266,6 @@ public class FlyoverProbe : ProbeScenario
         return t.isActiveAndEnabled ? "on" : "off";
     }
 
-    // Loaded objects of a type by name (digits and commas taken out, so a chunk's or a cell's are one), the most first.
     static string Named<T>() where T : Object
     {
         var groups = new Dictionary<string, int>();
@@ -317,16 +288,11 @@ public class FlyoverProbe : ProbeScenario
         return s;
     }
 
-    // Height over the ground under a point, or over the water.
     float FlyY(Vector3 p, MapLand land) => Mathf.Max(grid.GroundAt(p), land.WaterLevel) + Height;
 
-    // The camera behind the wizard and over it, looking east and a little down.
     void Look(Vector3 p, float dir = 1f) => Cut(p + new Vector3(-8f * dir, 4f, 0f), p + new Vector3(40f * dir, -8f, 0f));
 }
 
-// What the flyover's slow frames are made of (unity/Temp/flyprofile there): every timed marker of every thread read each
-// frame (PerfMarkers, wide), each one's mean over the frames over SlowMs beside its mean over all, and the worst frames'
-// own breakdowns. The markers overlap (a parent and its children all show).
 sealed class FlyProfile : System.IDisposable
 {
     const float SlowMs = 25f;
@@ -336,7 +302,6 @@ sealed class FlyProfile : System.IDisposable
     long garbage, slowGarbage;
     readonly List<(float ms, int x, string line)> worst = new(), typical = new();
 
-    // The frame's markers of a millisecond or more, and its garbage.
     string Breakdown()
     {
         var line = new StringBuilder();
@@ -353,7 +318,6 @@ sealed class FlyProfile : System.IDisposable
         all = new double[markers.Names.Count];
     }
 
-    // The frame just ended: its time (ms) and the wizard's cell x.
     public void Frame(float ms, int x, bool counted)
     {
         markers.Sample();
@@ -400,14 +364,11 @@ sealed class FlyProfile : System.IDisposable
     public void Dispose() => markers.Dispose();
 }
 
-// The flyover at 80 m/s (the fly mode's 40 with Shift held).
 public class FlyoverFastProbe : FlyoverProbe
 {
     protected override float Speed => 80f;
 }
 
-// The flyover there and back at 40 m/s: east coast to coast, then west again to the start, so the terrains and their
-// data are let go behind and made again on the way back (turning back doesn't thrash or leak).
 public class FlyoverBackProbe : FlyoverProbe
 {
     protected override bool Back => true;

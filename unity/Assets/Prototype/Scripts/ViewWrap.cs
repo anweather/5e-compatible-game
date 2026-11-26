@@ -15,23 +15,18 @@ public static class ViewWrap
     static int frame = -1;
     static Vector3 eye;
 
-    /// <summary>Whether the world in play wraps east-west (and NorthSouth, north-south too).</summary>
     public static bool EastWest => periodX > 0f;
     public static bool NorthSouth => periodZ > 0f;
 
-    /// <summary>The world's period in metres east-west and north-south (0 where it doesn't wrap).</summary>
     public static float PeriodX => periodX;
     public static float PeriodZ => periodZ;
 
-    // Each Play mode starts unwrapped, with the domain reload off too.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Reset() => Set(null, 1f);
 
-    /// <summary>A new world in play (ChemGrid's): its wrap, at this cell size.</summary>
     public static void Set(World world, float cellSize) =>
         Set(world != null && world.WrapX ? world.W : 0, world != null && world.WrapY ? world.H : 0, cellSize);
 
-    /// <summary>A world <paramref name="wrapW"/> cells round east-west and <paramref name="wrapH"/> north-south (0: no wrap that way).</summary>
     public static void Set(int wrapW, int wrapH, float cellSize)
     {
         w = wrapW;
@@ -41,10 +36,8 @@ public static class ViewWrap
         frame = -1;
     }
 
-    /// <summary>Where "near" is measured from instead of the camera (a test's); null for the camera.</summary>
     public static Vector3? EyeAt { get; set; }
 
-    /// <summary>The camera's position this frame (read once a frame): what "near" is measured from.</summary>
     public static Vector3 Eye
     {
         get
@@ -60,29 +53,19 @@ public static class ViewWrap
         }
     }
 
-    /// <summary>A world x moved by whole periods to the copy nearest the camera.</summary>
     public static float NearX(float x) => periodX > 0f ? x + periodX * Mathf.Round((Eye.x - x) / periodX) : x;
 
-    /// <summary>A world z moved by whole periods to the copy nearest the camera.</summary>
     public static float NearZ(float z) => periodZ > 0f ? z + periodZ * Mathf.Round((Eye.z - z) / periodZ) : z;
 
-    /// <summary>A world point at the copy nearest the camera (its height as it is).</summary>
     public static Vector3 Near(Vector3 p) => periodX > 0f || periodZ > 0f ? new Vector3(NearX(p.x), p.y, NearZ(p.z)) : p;
 
-    /// <summary>A cell x folded into the world (as World.FoldX).</summary>
     public static int FoldX(int x) => w > 0 ? Mod(x, w) : x;
 
-    /// <summary>A cell y folded into the world (as World.FoldY).</summary>
     public static int FoldY(int y) => h > 0 ? Mod(y, h) : y;
 
-    /// <summary>
-    /// A chunk terrain's (i, j) folded into a layout <paramref name="chunksX"/> x <paramref name="chunksZ"/> chunks (the
-    /// map's, one terrain a cell chunk), where the world wraps.
-    /// </summary>
     public static (int i, int j) FoldChunk((int i, int j) at, int chunksX, int chunksZ) =>
         (w > 0 ? Mod(at.i, chunksX) : at.i, h > 0 ? Mod(at.j, chunksZ) : at.j);
 
-    /// <summary>Chunks between two chunk indices along an axis of n, the short way where the world wraps that way.</summary>
     public static int ChunkDistance(int a, int b, int n, bool alongX)
     {
         int d = Mathf.Abs(a - b);

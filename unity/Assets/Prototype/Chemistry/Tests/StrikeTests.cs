@@ -1,9 +1,9 @@
+// The unarmed strike (World.Strike.cs): the attack roll, the damage, the knock-back, downed, lockstep.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The unarmed strike (World.Strike.cs): the attack roll, the damage, the knock-back, downed, lockstep.</summary>
     [Category("Unit")]
     public class StrikeTests
     {
@@ -11,10 +11,8 @@ namespace Chem.Tests
 
         static Rules R => rules ??= Rules.Load(ChemistryTests.RulesDir());
 
-        // The world's generator set so the next d20 is known: 1 rolls a 13, 8 a 4, 7 a natural 1.
         const uint Rolls13 = 1, Rolls4 = 8, Rolls1 = 7;
 
-        // Ana at (5, 5) and Bo a cell east of her, both at full health, on open ground.
         static World Yard(Rules with = null)
         {
             var w = ChemistryTests.Room(16, 12, 7, with ?? R);
@@ -60,7 +58,6 @@ namespace Chem.Tests
             Assert.That(LastLog(w), Is.EqualTo("Ana's punch misses Bo"));
             Assert.That((w.Stands["Bo"].Hp, w.Stands["Bo"].X), Is.EqualTo((12, 6)), "no harm and no push");
 
-            // A natural 1 misses whatever the bonus: against AC 1, a 1 + 2 would otherwise hit.
             var easy = Yard(R.WithMods(new[] { Wizard(str: 10, ac: 1) }));
             Assert.That(Punch(easy, Rolls1).Hit, Is.False);
         }
@@ -109,7 +106,7 @@ namespace Chem.Tests
             Punch(w, Rolls13);
             w.ApplyStrike(StrikeCommand.Strike("Ana", 5, 5, 1, 0));
             Assert.That(w.TakeStrikeHits(), Is.Empty);
-            w.ApplyStrike(StrikeCommand.Stand("Bo", 6, 5, 12)); // back from the knock-back
+            w.ApplyStrike(StrikeCommand.Stand("Bo", 6, 5, 12));
             for (int i = 0; i < R.Sim.Strike.CooldownTicks - 1; i++) w.Step();
             w.ApplyStrike(StrikeCommand.Strike("Ana", 5, 5, 1, 0));
             Assert.That(w.TakeStrikeHits(), Is.Empty, "a tick short");
@@ -176,7 +173,7 @@ namespace Chem.Tests
         {
             var w = ChemistryTests.Room(16, 12, 7, R);
             string before = w.CastHash();
-            w.ApplyStrike(StrikeCommand.Strike("Ana", 99, 99, 1, 0)); // off the map: nothing
+            w.ApplyStrike(StrikeCommand.Strike("Ana", 99, 99, 1, 0));
             Assert.That(w.CastHash(), Is.EqualTo(before));
         }
 

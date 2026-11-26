@@ -14,10 +14,8 @@ using UnityEngine;
 public static class WizardBeard
 {
     const float JawY = -0.045f, JawZ = 0.08f, JawHalf = 0.088f;
-    // How far either side of the chin the tufts are rooted (degrees round the jaw).
     const float Reach = 78f;
 
-    // The look's own small draw for the tufts' differences (as WizardLook draws, same on every platform).
     sealed class Draw
     {
         uint s;
@@ -32,20 +30,13 @@ public static class WizardBeard
         public float Jit(float amount) => (Next() * 2f - 1f) * amount;
     }
 
-    // The tufts so far, and where they go: built in the head's space, kept in the host's.
     sealed class Tufts
     {
         public Transform Host, Head;
         public readonly List<SkinnedTube.Ring[]> Rings = new();
-        // Each tuft's chain (-1: on the head only).
         public readonly List<int> Chains = new();
     }
 
-    /// <summary>
-    /// Builds the beard on <paramref name="host"/> (the wizard, posed idle) for this look: the mesh
-    /// and the springs it hangs on (with their BeardChain), keeping out of spheres round these chest
-    /// bones. Null when the look has no beard.
-    /// </summary>
     public static (GameObject mesh, GameObject springs) Build(WizardLook look, Transform host, Transform head, Transform[] chest, Material material)
     {
         if (head == null || look.BeardLength <= 0f) return (null, null);
@@ -84,8 +75,6 @@ public static class WizardBeard
         };
     }
 
-    // Three chains under the chin (left, middle, right), two joints each, in the head's space; a
-    // forked beard's spreading toward the tips.
     static Transform Springs(Transform head, WizardLook.BeardStyle cut, float length, float[] chainX, out Vector3[] roots, out Transform[] joints)
     {
         var springs = new GameObject("Outfit beard springs").transform;
@@ -108,7 +97,6 @@ public static class WizardBeard
         return springs;
     }
 
-    // One tuft, rooted at <paramref name="u"/> along the jaw (-1 the left ear, 1 the right).
     static void Tuft(Tufts tufts, WizardLook look, float length, float[] chainX, float u, Draw draw)
     {
         var cut = look.BeardCut;
@@ -126,7 +114,6 @@ public static class WizardBeard
             anchor = new Vector3(JawHalf * Mathf.Sin(angle), JawY + 0.05f * (1f - Mathf.Cos(angle)) + draw.Jit(0.005f), JawZ * Mathf.Cos(angle) + 0.005f);
             side = Mathf.Abs(Mathf.Sin(angle));
         }
-        // Shorter at the sides of a long or forked beard; a full one is rounder, a goatee a little tapered.
         float own = length * (1f - Shorter(cut) * side) * (1f + draw.Jit(0.12f));
         int chain = ChainOf(cut, chainX, anchor.x, draw);
         float tipX = cut switch
@@ -136,7 +123,6 @@ public static class WizardBeard
             _ => anchor.x * 0.3f + draw.Jit(0.012f),
         };
         var tip = new Vector3(tipX, JawY - own, JawZ + 0.02f + draw.Jit(0.01f));
-        // Bulging forward over the chin, with a little curl.
         var curl = new Vector3(draw.Jit(0.015f), 0f, draw.Jit(0.008f));
         var path = new[] { anchor, Vector3.Lerp(anchor, tip, 0.3f) + new Vector3(0f, 0f, 0.025f), Vector3.Lerp(anchor, tip, 0.65f) + new Vector3(0f, 0f, 0.015f) + curl, tip };
         float w = Mathf.Lerp(0.024f, 0.034f, draw.Next()) * (goatee ? 0.8f : 1f);
@@ -153,8 +139,6 @@ public static class WizardBeard
         _ => 0.2f,
     };
 
-    // The chain a tuft hangs on: a forked beard's tufts go to the fork on their side; others to the
-    // chain nearest where they end.
     static int ChainOf(WizardLook.BeardStyle cut, float[] chainX, float x, Draw draw)
     {
         if (cut == WizardLook.BeardStyle.Forked) return x + draw.Jit(0.001f) < 0f ? 0 : 2;
@@ -165,7 +149,6 @@ public static class WizardBeard
         return best;
     }
 
-    // From under the nose, out and down round the mouth into the beard, on the head alone.
     static void Moustache(Tufts tufts, WizardLook look)
     {
         foreach (float side in new[] { -1f, 1f })
@@ -175,7 +158,6 @@ public static class WizardBeard
                 new[] { Shade(look, 0.8f, 0f), Shade(look, 0.95f, 0f), Shade(look, 1f, 0.08f), Shade(look, 1f, 0.18f) }, 0.8f, -1);
     }
 
-    // A tuft along a path in the head's space, as rings in the host's.
     static void Add(Tufts tufts, Vector3[] path, float[] radii, Color[] shades, float depth, int chain)
     {
         var rings = new SkinnedTube.Ring[path.Length];
@@ -195,14 +177,12 @@ public static class WizardBeard
         tufts.Chains.Add(chain);
     }
 
-    // The beard's colour darkened (by < 1) or lightened, and toward white; hair doesn't glow.
     static Color Shade(WizardLook look, float by, float toWhite)
     {
         var c = Color.Lerp(look.Beard * by, Color.white, toWhite);
         return new Color(c.r, c.g, c.b, 0f);
     }
 
-    // The root on the head; along the beard, from the head to its chain's joints.
     static BoneWeight Weigh(int chain, int ring)
     {
         if (chain < 0) return SkinnedTube.Blend(0, 0, 0f);

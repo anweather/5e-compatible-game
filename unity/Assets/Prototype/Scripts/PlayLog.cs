@@ -23,19 +23,16 @@ public class PlayLog : MonoBehaviour
     public const string OnKey = "playLog.on";
     const string Header = "kind,seconds,clock,fps,worst_ms,p95_ms,over_33,over_50,cpu_main_ms,cpu_render_ms,gpu_ms,sim_pct,tick_debt_s,weather,chunks,players,mods,what";
     const float HitchMs = 100f, SlowMs = 33f, VerySlowMs = 50f;
-    const float LoadingSeconds = 5f; // the summary leaves these out: the first frame alone can take seconds
+    const float LoadingSeconds = 5f;
     const int EventsASecond = 3, ShotMip = 2;
-    const int SectionOrder = 505; // the Settings sub menu: after Shake and rumble
+    const int SectionOrder = 505;
     static readonly CultureInfo Plain = CultureInfo.InvariantCulture;
     static readonly FrameTiming[] Timing = new FrameTiming[1];
 
-    /// <summary>Raised by every mark, with its reason, even with the log off: PlaytestTools writes where it was (#220).</summary>
     public static event Action<string> Marked;
 
-    /// <summary>The log, which exists in every game; it may not be writing.</summary>
     public static PlayLog Instance { get; private set; }
 
-    // This second's totals.
     int frames, over33, over50, timed, hitches, marks;
     float elapsedMs, worstMs, mainMs, renderMs, gpuMs;
     double nextSecond;
@@ -48,10 +45,8 @@ public class PlayLog : MonoBehaviour
     PerfMarkers markers;
     float startedAt;
 
-    /// <summary>The file being written; null while it's off.</summary>
     public string FilePath => file?.Path;
 
-    /// <summary>The player's choice, kept between sessions.</summary>
     public static bool Wanted
     {
         get => PlayerPrefs.GetInt(OnKey, 1) == 1;
@@ -62,7 +57,6 @@ public class PlayLog : MonoBehaviour
         }
     }
 
-    /// <summary>Whether a game opens with the log writing.</summary>
     public static bool StartsWriting(bool inEditor, bool wanted, string[] args) => !inEditor && wanted && !args.Contains("-no-play-log");
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -77,7 +71,7 @@ public class PlayLog : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        QuickExit.BeforeExit += End; // a Windows player has no OnApplicationQuit
+        QuickExit.BeforeExit += End;
     }
 
     void OnEnable() => PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Settings);
@@ -89,13 +83,8 @@ public class PlayLog : MonoBehaviour
         if (StartsWriting(Application.isEditor, Wanted, Environment.GetCommandLineArgs())) Begin(Folder());
     }
 
-    // Beside the player log, so one folder holds everything about a session.
     public static string Folder() => Folder(Application.consoleLogPath, () => ChemGrid.Folders);
 
-    /// <summary>
-    /// Beside the log, else the player's data folder; Unity's own when no rules can be found, as the play
-    /// log is what tells of a broken start.
-    /// </summary>
     public static string Folder(string log, Func<GameFolders> folders)
     {
         if (!string.IsNullOrEmpty(log)) return Path.GetDirectoryName(log);
@@ -117,7 +106,6 @@ public class PlayLog : MonoBehaviour
         else End();
     }
 
-    /// <summary>Starts a new file in this folder, keeping the last few (also for the probe).</summary>
     public void Begin(string folder)
     {
         End();
@@ -132,8 +120,6 @@ public class PlayLog : MonoBehaviour
         if (Debug.isDebugBuild) markers = new PerfMarkers();
     }
 
-    // The header waits for the first second's row: a player's window takes the size it was asked for only after its first
-    // frames, and the header said 640 x 480 for a 1280 x 720 window (#217). Lines from before then wait with it.
     bool headerOwed;
     readonly List<string> early = new();
 
@@ -153,7 +139,6 @@ public class PlayLog : MonoBehaviour
         else file.Add(line);
     }
 
-    /// <summary>Stops with the summary, and waits for the file to be written.</summary>
     public void End()
     {
         if (file == null) return;
@@ -186,7 +171,6 @@ public class PlayLog : MonoBehaviour
         if (Time.unscaledTimeAsDouble >= nextSecond) Second();
     }
 
-    /// <summary>A frame's time, into the totals. Makes no garbage unless the frame is a hitch.</summary>
     public void Frame(float ms)
     {
         frames++;
@@ -235,14 +219,12 @@ public class PlayLog : MonoBehaviour
         Add(Line("hitch", 1000f / ms, 1, 1, what, ms));
     }
 
-    /// <summary>A line of what's going on, to tie a hitch to it: not a mark, which says something felt bad.</summary>
     public void Note(string what)
     {
         if (file == null) return;
         Add(Line("note", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, what));
     }
 
-    /// <summary>"That felt bad": a marked line, and a small picture of the moment. The playtest bot marks what it finds.</summary>
     public void Mark(string why = "felt bad")
     {
         Marked?.Invoke(why);
@@ -253,7 +235,6 @@ public class PlayLog : MonoBehaviour
         StartCoroutine(Shoot(Path.Combine(file.Folder, shot)));
     }
 
-    // The frame as it's shown, read back without holding the game up, a quarter the size.
     System.Collections.IEnumerator Shoot(string path)
     {
         yield return new WaitForEndOfFrame();
@@ -283,7 +264,6 @@ public class PlayLog : MonoBehaviour
         return sb.ToString();
     }
 
-    // The frame 95% of this second's beat. Sorting the list a second doesn't make garbage.
     float P95()
     {
         if (frameMs.Count == 0) return 0f;
@@ -291,7 +271,6 @@ public class PlayLog : MonoBehaviour
         return frameMs[(frameMs.Count - 1) * 95 / 100];
     }
 
-    // The world's speed this second: the ticks it ran against the ticks due.
     string SimSpeed(World world)
     {
         float seconds = elapsedMs / 1000f;
@@ -311,14 +290,12 @@ public class PlayLog : MonoBehaviour
         return grid != null ? grid.World : null;
     }
 
-    /// <summary>The mods on, by the titles the room gives them, a mod Claude wrote too.</summary>
     public string Mods()
     {
         var world = WorldNow();
         return world?.Room == null ? "" : string.Join("; ", world.Room.Mods.Select(m => m.Title));
     }
 
-    // What the world has logged since the last line, the newest few, and the dragon's phase.
     string Happening(bool moveOn = true)
     {
         var world = WorldNow();

@@ -1,3 +1,7 @@
+// #85: three quiet gaps in a mod's building tables, each switched through the room on a host and a peer.
+// A table-only change that redraws the world's own buildings lays their cells again (and back on revert);
+// an opening's cells too many for its span to be an int, or an at near int's top, are refused; a table a
+// mod's "buildings" can't add rows to is refused by name.
 using System;
 using System.Globalization;
 using System.IO;
@@ -9,12 +13,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// #85: three quiet gaps in a mod's building tables, each switched through the room on a host and a peer.
-    /// A table-only change that redraws the world's own buildings lays their cells again (and back on revert);
-    /// an opening's cells too many for its span to be an int, or an at near int's top, are refused; a table a
-    /// mod's "buildings" can't add rows to is refused by name.
-    /// </summary>
     [Category("Simulation")]
     public class BuildingGapsTests
     {
@@ -56,7 +54,6 @@ namespace Chem.Tests
             return (host, peer, a);
         }
 
-        // Every cell the buildings in force rasterise to is the terrain on the world's cell.
         static void CellsMatchTheRaster(World w, string when)
         {
             foreach (var row in w.BuildingsNow)
@@ -64,8 +61,6 @@ namespace Chem.Tests
                     Assert.That(w.At(c.X, c.Y).T, Is.EqualTo(c.Terrain), $"{when}: {row.Id} at ({c.X}, {c.Y})");
         }
 
-        // Gap 1: no mod row, only the drawn-door's row: the world's own drawn doors become gaps, so their
-        // cells are laid again, and laid back when it's off.
         [Test]
         public void ATableOnlyChangeLaysTheWorldsOwnBuildingsAgain()
         {
@@ -82,7 +77,6 @@ namespace Chem.Tests
             Assert.That(host.CellHash(), Is.EqualTo(untouched.CellHash()), "the doors are laid back as the world was made");
         }
 
-        // Gap 2: cells * 2 past int wrapped into a negative span that passed "runs past the wall".
         [TestCase(1 << 30)]
         [TestCase(2000000000)]
         [TestCase(OpeningDef.MaxCells + 1)]
@@ -99,7 +93,6 @@ namespace Chem.Tests
             }
         }
 
-        // And at + span, near int's top, wrapped the same way.
         [Test]
         public void AnOpeningAtNearIntsTopIsRefused()
         {
@@ -112,7 +105,6 @@ namespace Chem.Tests
             Assert.That(host.Room.Mods, Is.Empty);
         }
 
-        // Gap 3: a table ApplyBuildings never reads was dropped without a word.
         [TestCase("{\"windows\": {\"pane\": {\"cells\": 1}}}", "\"buildings\" has no table windows; a mod adds rows to openings, floors, roofs, details, styles")]
         [TestCase("{\"ground\": \"stone\"}", "\"buildings\" can't change ground, the terrain the world's buildings stand on")]
         [TestCase("{\"drawn\": {}}", "\"buildings\" has no table drawn")]

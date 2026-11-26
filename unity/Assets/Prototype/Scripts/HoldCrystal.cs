@@ -21,16 +21,12 @@ public class HoldCrystal : MonoBehaviour
     Light glow;
     float flashAt = -10f;
 
-    /// <summary>How many crack stages show (0 whole, Stages at the last), and whether it has shattered: for the probe.</summary>
     public int Stage { get; private set; }
     public bool Shattered { get; private set; }
-    /// <summary>Blows seen on it since it was made: for the probe.</summary>
     public int Blows { get; private set; }
-    /// <summary>Its light's intensity and its glow's strength now: for the probe.</summary>
     public float LightNow => glow != null ? glow.intensity : 0f;
     public Color GlowNow => glass != null ? glass.GetColor("_EmissionColor") : Color.black;
 
-    /// <summary>Makes the crystal on the heart's cell.</summary>
     public static HoldCrystal At(Transform parent, Vector3 ground)
     {
         var go = new GameObject("Hold crystal");
@@ -73,7 +69,6 @@ public class HoldCrystal : MonoBehaviour
         glow.intensity = 3f;
     }
 
-    /// <summary>Follows the run: a fresh one (or health coming back) whole, each blow a flash, each stage a crack, 0 a shatter.</summary>
     public void Follow(World w)
     {
         world = w;
@@ -132,7 +127,6 @@ public class HoldCrystal : MonoBehaviour
         glow.enabled = false;
     }
 
-    // Brighter whole, dimmer and redder the more it's hurt, a stutter in its light from the second crack, and a flash on a blow.
     void Shine(float share)
     {
         float flash = Mathf.Clamp01(1f - (Time.time - flashAt) / FlashSeconds);
@@ -150,7 +144,6 @@ public class HoldCrystal : MonoBehaviour
         if (world != null) Follow(world);
     }
 
-    // A flat-shaded six-sided crystal: a short point below the waist, a long one above, so it stands like a spire.
     void Shape(Transform parent, Vector3 at, Quaternion turn, float scale)
     {
         var go = new GameObject("Crystal part");
@@ -182,7 +175,6 @@ public class HoldCrystal : MonoBehaviour
         return new Vector3(Mathf.Cos(a) * Radius, Height * Waist, Mathf.Sin(a) * Radius);
     }
 
-    // A triangle with its own corners, so it shades flat.
     static void Face(List<Vector3> v, List<int> t, Vector3 first, Vector3 second, Vector3 third)
     {
         int n = v.Count;
@@ -194,7 +186,6 @@ public class HoldCrystal : MonoBehaviour
         t.Add(n + 2);
     }
 
-    // Jagged dark lines on the upper faces, a little proud of them: each crack a zigzag from a point near the waist upward.
     static Mesh CrackMesh(System.Random random, int count)
     {
         var v = new List<Vector3>();
@@ -216,8 +207,6 @@ public class HoldCrystal : MonoBehaviour
                 var next = Vector3.Lerp(Vector3.Lerp(a, b, u), top, up);
                 var side = CrackWidth * (1f - step / 7f) * Vector3.Cross(next - at, normal).normalized;
                 var lift = normal * 0.02f;
-                // One-sided, facing out of the face, with the face's own normal: a two-sided strip on shared corners
-                // gets normals that cancel to nothing, and its lighting comes out as a blinding bloom.
                 int n = v.Count;
                 v.Add(at + side + lift);
                 v.Add(next + side + lift);

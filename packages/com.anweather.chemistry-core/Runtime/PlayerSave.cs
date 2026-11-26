@@ -13,10 +13,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// A player's save: their id (opaque, as the caller has it), the Hold's points and the combos they know. Version 1 is
-    /// the Hold's progress file (points alone), still read; a save is written as version 2.
-    /// </summary>
     public sealed class PlayerSave
     {
         public const string FileName = "progress.json";
@@ -32,16 +28,11 @@ namespace Chem
             Id = id;
         }
 
-        /// <summary>Who it's for, as the caller names them; the save's own if none was given. Null for none.</summary>
         public string Id { get; private set; }
-        /// <summary>The Hold's points: they only go up.</summary>
         public int Points { get; private set; }
-        /// <summary>The combos the player knows, kept but not yet brought to a world (step 4 of the note).</summary>
         public SortedSet<string> Known { get; } = new SortedSet<string>(StringComparer.Ordinal);
-        /// <summary>What went wrong loading, for the player to hear; null if nothing did.</summary>
         public string Trouble { get; private set; }
 
-        /// <summary>Reads the save, or failing that its last good copy. A save half written (a crash before its rename) isn't read.</summary>
         public void Load()
         {
             Trouble = null;
@@ -56,7 +47,6 @@ namespace Chem
             Trouble = "Your progress save wouldn't load, and it's been kept beside the new one.";
         }
 
-        /// <summary>Takes these points if they're more than it has; whether they were.</summary>
         public bool Raise(int points)
         {
             if (points <= Points) return false;
@@ -64,27 +54,21 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// Writes the save: whole, to a file beside it, then put in place by a rename, the last good one kept as the copy.
-        /// </summary>
         public void Save()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path + Fresh, Text());
             if (!File.Exists(path)) File.Move(path + Fresh, path);
             else if (Readable(path)) File.Replace(path + Fresh, path, path + Backup);
-            else File.Replace(path + Fresh, path, null); // a bad one was kept as .broken when it was loaded
+            else File.Replace(path + Fresh, path, null);
         }
 
-        /// <summary>The save as it's written: the same text for the same progress.</summary>
         public string Text()
         {
             var o = new JObject { ["version"] = Version };
             if (Id != null) o["id"] = Id;
             o["points"] = Points;
             o["known"] = new JArray(Known.Cast<object>().ToArray());
-            // "\n" on every machine: Formatting.Indented alone writes Environment.NewLine, "\r\n" on Windows, and the same
-            // progress must be the same text on a Mac and a PC. Read either way (JObject.Parse takes both).
             using (var text = new StringWriter(System.Globalization.CultureInfo.InvariantCulture) { NewLine = "\n" })
             {
                 using (var json = new JsonTextWriter(text) { Formatting = Formatting.Indented, Indentation = 2 }) o.WriteTo(json);
@@ -92,7 +76,6 @@ namespace Chem
             }
         }
 
-        // Reads a save into this one; false, and nothing changed, if it isn't a good save.
         bool Read(string file)
         {
             if (!TryRead(file, out var id, out int points, out var known)) return false;
@@ -132,7 +115,6 @@ namespace Chem
             }
         }
 
-        // The first free name: bad saves are never overwritten.
         static string Unused(string name)
         {
             string file = name;

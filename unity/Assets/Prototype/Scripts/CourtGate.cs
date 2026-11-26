@@ -28,13 +28,10 @@ public class CourtGate : MonoBehaviour
     Quaternion shut;
     Vector3 middle;
     float progress, openUntil = -1f, nextLook;
-    // Which way it swings: 1 as openAngle says, -1 the other way. Chosen when it starts opening.
     float side = 1f;
 
-    /// <summary>How far open it is: 0 shut, 1 wide open.</summary>
     public float Openness => Mathf.SmoothStep(0f, 1f, progress);
 
-    /// <summary>The middle of the gateway, on the ground.</summary>
     public Vector3 Middle => middle;
 
     void Awake()
@@ -54,7 +51,6 @@ public class CourtGate : MonoBehaviour
         openUntil = Time.time + stayOpen;
     }
 
-    // Eased both ways, so it starts and stops gently.
     void FixedUpdate()
     {
         float target = Time.time < openUntil ? 1f : 0f;
@@ -64,7 +60,6 @@ public class CourtGate : MonoBehaviour
         body.MoveRotation(shut * Quaternion.Euler(0f, side * openAngle * Openness, 0f));
     }
 
-    // The nearest wizard within reach: the local player's, and online everyone else's too.
     bool NearestWizard(out Vector3 at)
     {
         at = default;
@@ -82,6 +77,5 @@ public class CourtGate : MonoBehaviour
         return found;
     }
 
-    // A positive angle swings the free end toward the shut gate's right; swing to the side the wizard isn't on.
     float AwayFrom(Vector3 wizard) => Vector3.Dot(wizard - middle, shut * Vector3.right) > 0f ? -1f : 1f;
 }

@@ -104,7 +104,6 @@ namespace PunchySync
             "{\n" + string.Join(",\n", rows.Select(p => row(p.Key, p.Value.AsObject()))) + "\n}\n";
     }
 
-    /// <summary>The merge of both tables and what it found.</summary>
     public sealed class Sync
     {
         readonly Exported baseRows, theirs;
@@ -125,7 +124,6 @@ namespace PunchySync
 
         public void Run()
         {
-            // New species: those with code we haven't got stay out, and so do variants of what's out.
             var candidates = theirs.Fauna.Select(p => p.Key).Where(id => !Fauna.ContainsKey(id)).ToList();
             foreach (var id in candidates)
                 if (theirs.NeedsCode[id].Count > 0) leftOut[id] = "needs " + string.Join(", ", theirs.NeedsCode[id]);
@@ -148,7 +146,6 @@ namespace PunchySync
                 FaunaAdded.Add(id);
             }
 
-            // Species we have: field by field, our spawn untouched.
             foreach (var (id, row) in Fauna.ToList())
             {
                 if (FaunaAdded.Contains(id)) continue;
@@ -179,7 +176,6 @@ namespace PunchySync
                 FaunaChanged.Add(id);
             }
 
-            // Hunts naming species we haven't got.
             foreach (var id in FaunaAdded.Concat(FaunaChanged))
                 if (Fauna[id]["behave"]?["hunts"] is JsonArray hunts)
                 {
@@ -191,7 +187,6 @@ namespace PunchySync
                     notes.Add($"{id}: hunts {string.Join(", ", gone)} dropped (not in our rows)");
                 }
 
-            // Parts: changed upstream and not by us; new ones only as a species wears them.
             foreach (var (id, row) in Parts.ToList())
             {
                 if (!(theirs.Parts[id] is JsonObject t)) continue;

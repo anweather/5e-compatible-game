@@ -12,12 +12,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A world between two ticks, for a late joiner: its save, the mods in force and the checksum it comes back to.</summary>
     public sealed class JoinSnapshot
     {
         public const int Format = 1;
 
-        /// <summary>The checksum's parts, in NetChem.Checksum's order, named for a refusal.</summary>
         public static readonly IReadOnlyList<string> PartNames = new[] { "cells", "rules", "things", "sky", "defense", "casts and stands", "dragon", "land" };
 
         JoinSnapshot(int tick, string save, IReadOnlyList<ActiveMod> mods, IReadOnlyList<string> checksum)
@@ -28,16 +26,11 @@ namespace Chem
             Checksum = checksum;
         }
 
-        /// <summary>The last tick the world had run when it was taken: a joiner replays the batches after it.</summary>
         public int Tick { get; }
-        /// <summary>The world save (World.Save).</summary>
         public string Save { get; }
-        /// <summary>The mods in force, outside a room (a room's are in its save); none in a room.</summary>
         public IReadOnlyList<ActiveMod> Mods { get; }
-        /// <summary>The host's checksum at Tick, part by part (PartNames).</summary>
         public IReadOnlyList<string> Checksum { get; }
 
-        /// <summary>A world's checksum part by part: what peers compare (NetChem.Checksum's parts, in its order).</summary>
         public static string[] ChecksumOf(World world)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
@@ -48,10 +41,6 @@ namespace Chem
             };
         }
 
-        /// <summary>
-        /// The host's world now, between ticks (a tick in progress is finished first, as a save does), with the rules it's
-        /// running under: what a joiner arriving now loads.
-        /// </summary>
         public static JoinSnapshot Take(World world, IChunkSource source, RuleSet rules)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
@@ -61,7 +50,6 @@ namespace Chem
             return new JoinSnapshot(world.Tick, save, mods, ChecksumOf(world));
         }
 
-        /// <summary>As it goes over the wire: one line of JSON, the same text on every machine.</summary>
         public string Text() => new JObject
         {
             ["format"] = Format,
@@ -71,7 +59,6 @@ namespace Chem
             ["world"] = Save,
         }.ToString(Formatting.None);
 
-        /// <summary>A snapshot from its text; SaveException, saying why, if it isn't one.</summary>
         public static JoinSnapshot Parse(string text)
         {
             JObject o;
@@ -90,11 +77,6 @@ namespace Chem
             return new JoinSnapshot((int)o["tick"], (string)world, mods, sum.Select(p => (string)p).ToArray());
         }
 
-        /// <summary>
-        /// The world the joiner plays on, and the rules to run its batches with (TickBatch.RunOn): the save loaded over the
-        /// joiner's own map (<paramref name="source"/>), base rules and land, with the snapshot's mods. Refused
-        /// (SaveException), saying why, if those aren't the host's, or if the world loaded isn't the host's checksum.
-        /// </summary>
         public (World world, RuleSet rules) Join(Rules baseRules, IChunkSource source, int[] land = null, ModBudgets budgets = null)
         {
             if (baseRules == null) throw new ArgumentNullException(nameof(baseRules));
@@ -107,7 +89,6 @@ namespace Chem
             {
                 throw new SaveException($"This snapshot doesn't fit: its mods don't go on these rules ({e.Message})");
             }
-            // A room's save composes its own mods over the base rules; any other world's is saved under the mods in force.
             var world = World.Load(Save, IsRoom ? baseRules : rules.Effective, source, budgets, land);
             var now = ChecksumOf(world);
             for (int p = 0; p < now.Length; p++)

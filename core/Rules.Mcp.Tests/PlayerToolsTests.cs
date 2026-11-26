@@ -1,3 +1,6 @@
+// What chat couldn't do at the 2026-11-08 playtest, as tools: a player's own stats (set_player), a species' speed
+// ("rabbits 20 times faster"), a shower (add_trigger on tick, "constant meteors"), and a tall land stamp saying what
+// it can rise ("a 100 m mountain").
 using System.Linq;
 using System.Reflection;
 using Chem.Mcp;
@@ -5,11 +8,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What chat couldn't do at the 2026-11-08 playtest, as tools: a player's own stats (set_player), a species' speed
-    /// ("rabbits 20 times faster"), a shower (add_trigger on tick, "constant meteors"), and a tall land stamp saying what
-    /// it can rise ("a 100 m mountain").
-    /// </summary>
     [Category("Simulation")]
     public class PlayerToolsTests
     {

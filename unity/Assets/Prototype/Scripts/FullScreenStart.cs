@@ -20,7 +20,6 @@ public static class FullScreenStart
         Screen.SetResolution(display.systemWidth, display.systemHeight, FullScreenMode.FullScreenWindow);
     }
 
-    /// <summary>Whether the command line chose the window itself.</summary>
     public static bool AskedForAWindow(string[] args)
     {
         foreach (var a in args)

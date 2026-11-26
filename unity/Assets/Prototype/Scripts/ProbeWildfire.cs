@@ -15,9 +15,7 @@ using UnityEngine;
 public class WildfireProbe : ProbeScenario
 {
     const float BurnSeconds = 20f;
-    /// <summary>The p95 frame time a big fire may take in Editor Play mode (60 fps is 16.7 ms).</summary>
     const float P95BudgetMs = 33f;
-    /// <summary>A frame slower than this counts as slow (under 50 fps).</summary>
     const float SlowMs = 20f;
 
     protected override IEnumerator Run()
@@ -28,7 +26,6 @@ public class WildfireProbe : ProbeScenario
 
         Place(13, 10);
         Cut(Yard(13, 4) + V(0f, 30f, -26f), Yard(13, 0));
-        // Bolts north into the meadow beyond the yard, spread along it.
         foreach (int x in new[] { 2, 8, 14, 20, 25 })
         {
             yield return CastFromBar(SpellIds.FireBolt, x, 0, 0, 0.4f);

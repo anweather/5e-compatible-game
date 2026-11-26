@@ -7,13 +7,10 @@
 
 float CrackHash(float n) { return frac(sin(n * 12.9898) * 43758.5453); }
 
-// How far a spoke strays from its even place, in spokes.
 float CrackStray(float spoke, float seed) { return (CrackHash(spoke + seed * 7.0) - 0.5) * 0.6; }
 
-// How far out ring j crosses a spoke, 0 to 0.5.
 float CrackRing(float j, float spoke, float seed) { return (j + 0.55 + (CrackHash(j * 5.0 + spoke * 3.0 + seed) - 0.5) * 0.6) * 0.1; }
 
-// How much crack at uv (0 to 1 across the quad), 0 to 1. seed is 0 to 1.
 float CrackWeb(float2 uv, float seed)
 {
     const float Spokes = 10.0, TwoPi = 6.28318, Width = 0.007;
@@ -36,7 +33,6 @@ float CrackWeb(float2 uv, float seed)
     return crack * (1.0 - smoothstep(0.42, 0.5, r));
 }
 
-// How much mortar at uv: four courses of bricks, every other one offset by half a brick.
 float BrickCourses(float2 uv)
 {
     const float Courses = 4.0, Bricks = 2.0, Width = 0.035;

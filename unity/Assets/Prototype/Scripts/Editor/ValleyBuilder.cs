@@ -44,8 +44,6 @@ public static class ValleyBuilder
         }
     }
 
-    // The places that stay code (docs/design/maps-as-data.md, section 4), by their roots' names: each root keeps its place's
-    // name, and a map that doesn't dress it (map.json's dresses) has it switched off as the scene starts (PlaceRoot).
     static readonly (string root, string place)[] Places =
     {
         ("Lake", "lake"), ("Rocks", "rocks"), ("River rocks", "river-rocks"), ("Ball court", "court"), ("Landmarks", "landmarks"),
@@ -61,17 +59,12 @@ public static class ValleyBuilder
                 root.AddComponent<PlaceRoot>().place = place;
     }
 
-    // A root's name, or the start of its name for one ending in * (the cabins, the villages: one root each).
     static bool Named(string root, string name) =>
         name.EndsWith("*") ? root.StartsWith(name.TrimEnd('*'), System.StringComparison.Ordinal) : root == name;
 
-    // What stands on the ground, built while EditorGround has it.
     static void DressGround(ChemGrid grid, MapTerrains terrains)
     {
         BuildLake();
-        // The cells' water (the river, pond, trenches, puddles) and their oil and grease: films whose
-        // meshes fade their own edges (vertex alpha). The water flows (Prototype/CellWater: ripples
-        // and foam carried along the river's current and down hillsides; Andrew's playtest #32).
         var cellWater = EditorAssets.LoadOrCreate($"{Generated}/CellWaterFlow.mat", () => new Material(Shader.Find("Prototype/CellWater")));
         cellWater.shader = Shader.Find("Prototype/CellWater");
         cellWater.SetColor("_Color", new Color(0.12f, 0.32f, 0.42f, 0.8f));
@@ -81,7 +74,6 @@ public static class ValleyBuilder
         grid.aimShader = Shader.Find("Prototype/AimMarker");
         grid.farShader = Shader.Find("Prototype/FarLand");
         grid.slickMaterial = SoftMaterial("Slick", Color.white, UrpMaterials.FilmSmoothness, null, 0f);
-        // Raised walls are built of the demo pack's rocks: upright crags and slabs for their faces, flat stones on top.
         grid.wallRocks = LoadRocks("Rock_A_01", "Rock_A_02", "Rock_C_02");
         grid.wallStones = LoadRocks("Rock_B_01", "Rock_C_01");
         BuildSky();
@@ -100,23 +92,16 @@ public static class ValleyBuilder
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.terrains = terrains;
-        // Village buildings burn and cave in by the cabins' rules.
         valley.cabins = cabins.Concat(houses).ToArray();
         valley.lakeLevel = (float)MapFile.Load(ChemGrid.Folders.World).WaterMetres;
         grid.valley = valley;
 
-        // The river's current along its course and the surf's on the coast (WaterCurrents; the sea is the map's).
         var currents = grid.gameObject.AddComponent<WaterCurrents>();
         currents.grid = grid;
         currents.river = ValleyShape.RiverLine;
         currents.riverHalfWidth = ValleyShape.RiverHalfWidth;
     }
 
-    // --- terrain -------------------------------------------------------------
-
-    // The ground's assets, made before anything stands on it: the template that holds the prototypes every chunk is built
-    // with (greener grass layers, repaired trees, the grass) and the rock material, then the chunks for the build's length
-    // (EditorGround). The retired bake's 81 chunks (Generated/Valley) go.
     static MapTerrains BuildGround(ChemGrid grid, string[] yardRows)
     {
         AssetDatabase.DeleteAsset(OldBake);
@@ -136,15 +121,12 @@ public static class ValleyBuilder
     }
 
     const string OldBake = Generated + "/Valley", TemplatePath = Generated + "/Ground/Template.asset";
-    // The old single terrain's detail cell; one per grid cell now.
     const int DetailRes = TerrainGrid.ChunkCells;
 
-    // The prototypes every chunk is built with, in the order the ground pack names them (its layers, grasses, tree kinds).
     static TerrainData GroundTemplate(TerrainLayer[] layers, List<TreePrototype> trees, List<DetailPrototype> details)
     {
         var template = EditorAssets.LoadOrCreate(TemplatePath, () => new TerrainData { heightmapResolution = 33 });
         template.SetDetailResolution(DetailRes, 8);
-        // The layers hold clumps per texel, not coverage out of 255 (the default, which would draw next to nothing).
         template.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
         if (layers != null) template.terrainLayers = layers;
         template.treePrototypes = trees.ToArray();
@@ -154,11 +136,6 @@ public static class ValleyBuilder
         return template;
     }
 
-    // One material for every chunk: URP's terrain with rock mapped from the sides (TerrainRock.shader). Normal maps on, or a wall has no relief.
-    // Instancing on, set on every build, not only when made: the chunk terrains draw instanced (MapTerrains.Configure) but are
-    // made in play, so no terrain in the scene asks for the shader's instancing variants, and with the material's flag off a
-    // player build strips them (Graphics settings: instancing variants "strip unused"). The player then drew every chunk with
-    // no layer textures: white ground in 0.1.13 (and only in players; the Editor keeps every variant).
     static Material RockMaterial()
     {
         var material = EditorAssets.LoadOrCreate($"{Generated}/Ground/TerrainRock.mat", () =>
@@ -177,13 +154,8 @@ public static class ValleyBuilder
         return material;
     }
 
-    // Grass on flat ground, moss in the meadows, rock on slopes, snow up high, sand at the lake.
-    // ValleyShape.LayerWeights paints these; the cells also paint charred and bare earth
-    // (CellPaint.Charred, CellPaint.Earth: copies of pack layers, after these).
     static readonly string[] LayerNames = { "Grass_A", "Grass_Moss", "Rock", "Snow", "Sand", "Soil_Rocks" };
 
-    // The terrain layers in LayerNames order, with greener copies of the grass, then the cells'
-    // own; null if the pack is missing.
     static TerrainLayer[] LoadLayers()
     {
         var layers = new List<TerrainLayer>();
@@ -196,9 +168,7 @@ public static class ValleyBuilder
         var mud = PackLayer("Muddy");
         if (layers.Count == LayerNames.Length && pebbles != null && mud != null)
         {
-            // Burnt ground: the pack's dark pebbles, charred nearly black, tiled wide so no repeat shows.
             layers.Add(CopyLayer(pebbles, $"{Generated}/{CellPaint.Charred}_TerrainLayer.terrainlayer", new Color(0.42f, 0.4f, 0.38f), 2.5f));
-            // Worn bare earth: the pack's mud, a touch lighter.
             layers.Add(CopyLayer(mud, $"{Generated}/{CellPaint.Earth}_TerrainLayer.terrainlayer", new Color(1.12f, 1.05f, 0.98f), 3f));
             return layers.ToArray();
         }
@@ -209,13 +179,9 @@ public static class ValleyBuilder
     static TerrainLayer PackLayer(string name) =>
         AssetDatabase.LoadAssetAtPath<TerrainLayer>($"{TerrainPack}/TerrainLayers/{name}_TerrainLayer.terrainlayer");
 
-    // The pack's grass textures are olive; a copy of the layer with a greener copy of its
-    // texture gives a lush valley without editing the pack.
     static TerrainLayer Greener(TerrainLayer source) =>
         CopyLayer(source, $"{Generated}/{source.name}_Green.terrainlayer", new Color(0.78f, 1.12f, 0.6f), source.tileSize.x);
 
-    // A copy of a pack layer at a path, its texture colour-multiplied (URP's terrain shader ignores
-    // the layer's colour remap, so the colour has to be in the texture) and tiled every tileSize metres.
     static TerrainLayer CopyLayer(TerrainLayer source, string path, Color tint, float tileSize)
     {
         var layer = EditorAssets.LoadOrCreate(path, () => new TerrainLayer());
@@ -232,7 +198,6 @@ public static class ValleyBuilder
         return layer;
     }
 
-    // The tree species, repaired for URP; empty if the pack is missing.
     static List<TreePrototype> LoadTrees()
     {
         var conifer = RepairedTree(DemoPack + "/Trees/Conifer/Conifer.prefab", "Conifer");
@@ -244,15 +209,12 @@ public static class ValleyBuilder
         return protos;
     }
 
-    // Spell golf's fairway and the world's puzzles (world/golf.json, puzzles.json), which the map's trees and
-    // rocks keep off: dropped here, so every other tree stands where it always has.
     internal static bool OnPlayedGround(Vector2 at, int margin)
     {
         var cell = cellAt(at);
         return PlayedGround().Any(r => cell.x >= r.xMin - margin && cell.x < r.xMax + margin && cell.y >= r.yMin - margin && cell.y < r.yMax + margin);
     }
 
-    // The files are read for each build, not for each tree.
     static List<RectInt> PlayedGround()
     {
         if (playedGround != null) return playedGround;
@@ -264,11 +226,8 @@ public static class ValleyBuilder
         return playedGround;
     }
 
-    // Grass (the first three) and ferns and plants (the rest), from the terrain pack.
     static readonly string[] DetailNames = { "Grass_A", "Grass_B", "Grass_C", "Fern_A", "Plant_A", "Plant_C" };
 
-    // The pack's tufts as the terrains' copies (LightTufts: no shadows, and lighter where there is a lighter one); packTufts, the pack's own meshes of those, for
-    // -perf-look-pair-tufts's before still (MapTerrains.packTufts).
     static List<DetailPrototype> LoadDetails(out Mesh[] packTufts)
     {
         var protos = new List<DetailPrototype>();
@@ -293,7 +252,6 @@ public static class ValleyBuilder
         return protos;
     }
 
-    // The demo pack's rocks by name, those that are there.
     static GameObject[] LoadRocks(params string[] names)
     {
         var rocks = new List<GameObject>();
@@ -307,17 +265,14 @@ public static class ValleyBuilder
 
     const int FairwayHalfWide = 4;
     static List<RectInt> playedGround;
-    // A point's cell, before the grid has a world to ask (WireChemistry's CellOf).
     static System.Func<Vector2, Vector2Int> cellAt;
 
-    /// <summary>Where world points fall on the cells, for a yard of <paramref name="yardHeight"/> rows at (left, top); the played ground read afresh.</summary>
     internal static void PlanCells(float cellSize, int left, int top, int yardHeight)
     {
         playedGround = null;
         cellAt = at => CellOf(at, cellSize, left, top, yardHeight);
     }
 
-    /// <summary>The cell a world point (x, z) falls on (after PlanCells or a build).</summary>
     internal static Vector2Int CellAt(Vector2 at) => cellAt(at);
 
     static bool RockKeepsOff(Vector2 w) => ValleyShape.KeepClear(w, 10f) || OnPlayedGround(w, 2);
@@ -343,16 +298,12 @@ public static class ValleyBuilder
             at.y = EditorGround.GroundAt(at) - 0.3f;
             rock.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, rng.Next(360), 0f));
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
-            // None in a village; removed after its draws, so the other rocks stay where they were.
             if (ValleyShape.DistanceToVillage(w) < 4f || ValleyCoast.DistanceToPath(w) < 3f || ValleyShape.NearTower(w, 3f)) Object.DestroyImmediate(rock);
             if (rock != null && DefenseFieldBuilder.NearDefenseField(w, 3f)) Object.DestroyImmediate(rock);
             placed++;
         }
     }
 
-    // Rocks in the river (Andrew's playtest #33): a seeded scatter of the demo pack's rocks along the
-    // river's course, their tops out of the water, clear of the bridge and the
-    // falls, each with white water breaking round it (RockWake).
     static void RiverRocks()
     {
         var rocks = LoadRocks("Rock_A_01", "Rock_B_01", "Rock_C_01");
@@ -374,7 +325,6 @@ public static class ValleyBuilder
             var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
             Solid(rock);
             rock.transform.rotation = Quaternion.Euler(0f, turn, 0f);
-            // 1.2 to 2.2 m across, its top 0.3 to 0.6 m out of the water (the rest under it, toward the bed).
             var size = BoundsOf(rock).size;
             rock.transform.localScale = Vector3.one * ((1.2f + extra) / Mathf.Max(Mathf.Max(size.x, size.z), 0.1f));
             var placed = BoundsOf(rock);
@@ -389,7 +339,6 @@ public static class ValleyBuilder
 
     const int RiverRockTries = 16;
 
-    // The point <paramref name="distance"/> along a course and the way it runs there.
     static (Vector2 at, Vector2 way) OnCourse(Vector2[] line, float distance)
     {
         for (int i = 1; i < line.Length; i++)
@@ -410,30 +359,18 @@ public static class ValleyBuilder
         return b;
     }
 
-    // --- the ball court --------------------------------------------------------
-
-    // A walled court on the flat meadow east of the yard, with a goal in each end wall and the
-    // ball in the middle (world/things.json). Wooden rails of four logs, which a ball bounces off
-    // and keeps in (Andrew's playtest #13: one log higher); the goal mouths are open. Its floor is dirt (CellKind). A gate in the
-    // west rail, the yard's side, opens as a wizard comes up to it (CourtGate); a scoreboard
-    // stands by the north rail, and BallCourt counts the goals and puts the ball back.
     static Vector2 CourtCentre => ValleyShape.CourtCentre;
     const float CourtLength = ValleyShape.CourtLength, CourtWidth = ValleyShape.CourtWidth;
     const float RailHeight = 1.2f, GoalWidth = 6f, GoalHeight = 2.2f, GoalDepth = 1.4f;
-    // The logs in a rail, each RailHeight / RailLogs thick.
     const int RailLogs = 4;
-    // The gate: how wide, and where its middle is along the west rail north of the goal (z).
     const float GateWidth = 2.4f, GateZ = 10.5f;
 
     static void BuildCourt()
     {
         var parent = new GameObject("Ball court").transform;
-        // Logs, as the cabins are built of.
         var wood = LogMaterial();
         float x0 = CourtCentre.x - CourtLength / 2f, x1 = CourtCentre.x + CourtLength / 2f;
         float z0 = CourtCentre.y - CourtWidth / 2f, z1 = CourtCentre.y + CourtWidth / 2f;
-        // The long sides, whole; the ends, either side of a goal mouth, the west one's north part
-        // either side of the gate.
         Rail(parent, wood, new Vector3(x0, 0f, z0), new Vector3(x1, 0f, z0));
         Rail(parent, wood, new Vector3(x0, 0f, z1), new Vector3(x1, 0f, z1));
         float gateFrom = GateZ - GateWidth / 2f, gateTo = GateZ + GateWidth / 2f;
@@ -459,9 +396,6 @@ public static class ValleyBuilder
         game.board = Scoreboard(parent, wood, new Vector3(CourtCentre.x, 0f, z1 + 1.8f));
     }
 
-    // The gate, hinged at its south post, shut along the rail (local +z) and swinging east into
-    // the court: logs like the rail's on two uprights, around an unseen box that stops the
-    // ball and the wizard, with a post either side of the gateway.
     static void Gate(Transform parent, Material mat, Vector3 hinge)
     {
         hinge.y = EditorGround.GroundAt(hinge);
@@ -481,12 +415,10 @@ public static class ValleyBuilder
             GatePart(gate.transform, mat, new Vector3(0f, RailHeight / logs * (i + 0.5f), leaf / 2f + 0.05f), Quaternion.Euler(90f, 0f, 0f), new Vector3(2f * r, leaf / 2f, 2f * r));
         foreach (float z in new[] { 0.15f, leaf - 0.05f })
             GatePart(gate.transform, mat, new Vector3(0f, RailHeight / 2f, z), Quaternion.identity, new Vector3(0.12f, RailHeight / 2f, 0.12f));
-        // The gateposts stand still, a little taller than the rail.
         foreach (float z in new[] { -0.05f, GateWidth + 0.05f })
             GatePart(parent, mat, hinge + new Vector3(0f, (RailHeight + 0.3f) / 2f, z), Quaternion.identity, new Vector3(0.2f, (RailHeight + 0.3f) / 2f, 0.2f), local: false);
         var body = gate.AddComponent<Rigidbody>();
         body.isKinematic = true;
-        // Heavy, so a wizard walking into it never counts it as something to kick (Kicker).
         body.mass = 200f;
         body.interpolation = RigidbodyInterpolation.Interpolate;
         var swing = gate.AddComponent<CourtGate>();
@@ -504,16 +436,12 @@ public static class ValleyBuilder
         part.GetComponent<Renderer>().sharedMaterial = mat;
     }
 
-    // Where each segment of a seven-segment figure sits (a to g, CourtScoreboard), in figure
-    // heights from its middle, and whether it lies across (else upright).
     static readonly (float x, float y, bool across)[] Segments =
     {
         (0f, 0.5f, true), (0.25f, 0.25f, false), (0.25f, -0.25f, false), (0f, -0.5f, true),
         (-0.25f, -0.25f, false), (-0.25f, 0.25f, false), (0f, 0f, true),
     };
 
-    // A dark board on two log posts, facing the court (south), with four lit figures: the west
-    // end's goals on the left, the east end's on the right, a colon between.
     static CourtScoreboard Scoreboard(Transform parent, Material wood, Vector3 at)
     {
         at.y = EditorGround.GroundAt(at);
@@ -556,8 +484,6 @@ public static class ValleyBuilder
         return look;
     }
 
-    // A solid rail between two points on the ground: logs stacked to the rail's height, around an
-    // unseen box that stops the ball.
     static void Rail(Transform parent, Material mat, Vector3 a, Vector3 b)
     {
         a.y = EditorGround.GroundAt(a);
@@ -581,7 +507,6 @@ public static class ValleyBuilder
         }
     }
 
-    // Two posts and a crossbar across a goal mouth, a bar along the back of the net to stop the ball.
     static void Goal(Transform parent, Material mat, Vector3 mouth, float outward)
     {
         mouth.y = EditorGround.GroundAt(mouth);
@@ -601,10 +526,6 @@ public static class ValleyBuilder
         bar.GetComponent<Renderer>().sharedMaterial = mat;
     }
 
-    // --- places to go -----------------------------------------------------------
-
-    // A few things to walk out to, well away from the start: a ring of standing stones on the
-    // rise north-west of the yard, and a tall outcrop of rock to the east, past the river.
     internal static readonly Vector2 StonesAt = new Vector2(-120f, 175f), OutcropAt = new Vector2(215f, 110f);
 
     static void BuildLandmarks()
@@ -617,15 +538,13 @@ public static class ValleyBuilder
         }
         if (rocks.Count == 0) return;
         var parent = new GameObject("Landmarks").transform;
-        // The standing stones: nine tall stones in a ring 18 m across, each turned to face the middle.
         for (int i = 0; i < 9; i++)
         {
             float a = i * Mathf.PI * 2f / 9f;
             var at = StonesAt + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 9f;
             Rock(parent, rocks[i % rocks.Count], at, Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f), new Vector3(1.6f, 5.5f, 1.3f));
         }
-        Rock(parent, rocks[0], StonesAt, Quaternion.Euler(0f, 20f, 0f), new Vector3(2.2f, 0.7f, 1.6f)); // the altar stone
-        // The outcrop: big rocks piled against each other, a climb (or a Misty Step) to a view.
+        Rock(parent, rocks[0], StonesAt, Quaternion.Euler(0f, 20f, 0f), new Vector3(2.2f, 0.7f, 1.6f));
         var rng = new System.Random(23);
         for (int i = 0; i < 6; i++)
         {
@@ -635,12 +554,6 @@ public static class ValleyBuilder
         }
     }
 
-    // --- the falls -------------------------------------------------------------------
-
-    // The falls at the head of the river (ValleyShape.Falls): the cliff face clad in the demo pack's
-    // big rocks, a stream over its lip (river squares, drawn by the cells) pouring down two sheets of
-    // streaming water (one see-through, one of white foam, scrolled), spray falling down them, mist and
-    // splashes where they land in the pond (WaterfallFx), which is river squares too and feeds the river.
     static void BuildWaterfall()
     {
         var parent = new GameObject("Falls").transform;
@@ -662,7 +575,7 @@ public static class ValleyBuilder
         UrpMaterials.MakeTransparent(water);
         water.SetTexture("_BaseMap", streaks);
         water.SetTextureScale("_BaseMap", new Vector2(2f, 1.5f));
-        water.SetFloat("_Cull", 0f);   // both faces: seen from the pond and from the cliff top
+        water.SetFloat("_Cull", 0f);
         EditorUtility.SetDirty(water);
         var foam = EditorAssets.LoadOrCreate(Generated + "/FallsFoam.mat", () => UrpMaterials.NewUnlitParticles("FallsFoam", Color.white, additive: true));
         foam.SetTexture("_BaseMap", streaks);
@@ -671,12 +584,10 @@ public static class ValleyBuilder
         foam.SetFloat("_Cull", 0f);
         EditorUtility.SetDirty(foam);
 
-        // The water leaves the lip a little out from the face, so it falls clear of the rocks.
         var lip = new Vector3(falls.x, top + 0.3f, face - 2.4f);
         float drop = top + 0.3f - pond;
         Sheet(parent, "Falls water", lip, drop, (8f, 0.8f), water, new Vector2(0f, -1.4f));
         Sheet(parent, "Falls foam", lip + Vector3.back * 0.15f, drop, (7f, 0.9f), foam, new Vector2(0.03f, -2.3f));
-        // The stream pours over the rocks to the lip: a short sheet from where its squares end.
         var streamEnd = ValleyShape.Stream[ValleyShape.Stream.Length - 1];
         Chute(parent, new Vector3(streamEnd.x, top + 0.12f, streamEnd.y), lip, 6f, water);
 
@@ -688,10 +599,6 @@ public static class ValleyBuilder
         fx.foot = footAt;
     }
 
-    // The cliff face built up of big rocks in staggered courses, like a crag: each rock its own shape
-    // (only a little stretched), the courses stepping back a little as they rise, narrowing toward
-    // the top and the ends where the shelf eases back into the mountain. The ones behind the falls
-    // stand back so the water pours clear in front of them.
     static void CladCliff(Transform parent, Vector2 falls, float face, float pond, float top)
     {
         var rocks = LoadRocks("Rock_A_02", "Rock_C_02");
@@ -706,7 +613,6 @@ public static class ValleyBuilder
             float span = Mathf.Lerp(22f, 17f, rise);
             for (float x = -span + (k % 2) * 2.5f; x <= span; x += 5f)
             {
-                // Behind the falls the rocks stop below the lip, so the stream goes over clear.
                 if (Mathf.Abs(x) < 8f && y + course * 1.5f > top - 0.4f) continue;
                 float behind = Mathf.Abs(x) < 6f ? 1.8f : 0f;
                 float size = 7.5f + 2.5f * (float)rng.NextDouble();
@@ -716,8 +622,6 @@ public static class ValleyBuilder
         }
     }
 
-    // The way up the cliff for anyone without Misty Step: the scree ramp ValleyShape shapes up its
-    // east flank, lined with flat rocks along both edges (solid, to stand and jump on).
     static void BuildScramble(Transform parent, Vector2 falls)
     {
         var rocks = LoadRocks("Rock_B_01", "Rock_C_01");
@@ -739,7 +643,6 @@ public static class ValleyBuilder
             }
     }
 
-    // A rock prefab stood on <paramref name="foot"/>, stretched to about <paramref name="size"/>.
     static void FitRock(Transform parent, GameObject prefab, Vector3 foot, Vector3 size, Quaternion turn)
     {
         var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
@@ -759,8 +662,6 @@ public static class ValleyBuilder
         Solid(rock);
     }
 
-    // A sheet of falling water: a strip of quads from the lip down to the pond, bowing out as it falls,
-    // a little wider at the foot, its streaks scrolled down at the given speed.
     static void Sheet(Transform parent, string name, Vector3 lip, float drop, (float width, float flare) size, Material mat, Vector2 scroll)
     {
         const int rows = 18;
@@ -796,8 +697,6 @@ public static class ValleyBuilder
         go.AddComponent<ScrollingTexture>().speed = scroll;
     }
 
-    // A sheet of water sliding from <paramref name="from"/> over the edge to <paramref name="lip"/>,
-    // widening toward the lip, its streaks running along it.
     static void Chute(Transform parent, Vector3 from, Vector3 lip, float width, Material mat)
     {
         var along = lip - from;
@@ -826,7 +725,6 @@ public static class ValleyBuilder
         go.AddComponent<ScrollingTexture>().speed = new Vector2(0f, -0.9f);
     }
 
-    // Spray tumbling down the face of the falls: the splash's droplets, let go along the lip.
     static void Spray(Transform parent, Vector3 lip, float drop)
     {
         var droplets = ParticleMaterialOf(EditorAssets.LoadPrefab(PackPaths.WaterFx + "/BigSplash.prefab"));
@@ -853,7 +751,6 @@ public static class ValleyBuilder
         if (droplets != null) r.sharedMaterial = droplets;
     }
 
-    // A cloud of mist rolling off the foot of the falls: the smoke effect, turned white and slow.
     static void Mist(Transform parent, Vector3 foot)
     {
         var smoke = EditorAssets.LoadPrefab(PackPaths.SmokeFx + "/SmokeEffect.prefab");
@@ -878,8 +775,6 @@ public static class ValleyBuilder
         return null;
     }
 
-    // Makes a placed rock something to stand on and climb: a mesh collider on each mesh of its most
-    // detailed look (the demo pack's rocks come without colliders). Rocks that have their own keep them.
     static void Solid(GameObject rock)
     {
         if (rock.GetComponentInChildren<Collider>() != null) return;
@@ -902,21 +797,15 @@ public static class ValleyBuilder
         Solid(rock);
     }
 
-    // --- the world's edge ------------------------------------------------------
-
     const float EdgeWallHeight = 400f, EdgeRockSpacing = 6f, EdgeInset = 3f;
 
-    // The end of the land: the valley's chunk terrains stop, and past them is nothing to stand on.
-    // Walls no ray sees (Ignore Raycast, so aiming and the camera pass through) stand just inside
-    // the last terrain's edge, with a line of standing rocks along them so the edge shows (none
-    // out in the lake).
     static void BuildWorldEdge()
     {
         var layout = EditorGround.Layout;
         var (x0, z0) = layout.ChunkCorner(0, 0);
         var (x1, z1) = layout.ChunkCorner(layout.ChunksX, layout.ChunksZ);
-        var a = new Vector3(x0 + EdgeInset, 0f, z0 + EdgeInset);   // south-west corner
-        var b = new Vector3(x1 - EdgeInset, 0f, z1 - EdgeInset);   // north-east corner
+        var a = new Vector3(x0 + EdgeInset, 0f, z0 + EdgeInset);
+        var b = new Vector3(x1 - EdgeInset, 0f, z1 - EdgeInset);
         var parent = new GameObject("World edge").transform;
         Wall(parent, "North", new Vector3((a.x + b.x) / 2f, 0f, b.z + 1f), new Vector3(b.x - a.x + 4f, EdgeWallHeight, 2f));
         Wall(parent, "South", new Vector3((a.x + b.x) / 2f, 0f, a.z - 1f), new Vector3(b.x - a.x + 4f, EdgeWallHeight, 2f));
@@ -927,9 +816,8 @@ public static class ValleyBuilder
 
     static void Wall(Transform parent, string name, Vector3 centre, Vector3 size)
     {
-        var go = new GameObject(name + " wall") { layer = 2 };   // Ignore Raycast
+        var go = new GameObject(name + " wall") { layer = 2 };
         go.transform.SetParent(parent, false);
-        // From well under the lake bed to well over the hills.
         go.transform.position = centre + Vector3.up * (EdgeWallHeight / 2f - 60f);
         go.AddComponent<BoxCollider>().size = size;
     }
@@ -963,9 +851,6 @@ public static class ValleyBuilder
         }
     }
 
-    // --- lake ----------------------------------------------------------------
-
-    // Builds the lake.
     static void BuildLake()
     {
         var ripplesPath = Generated + "/LakeRipples.png";
@@ -984,14 +869,13 @@ public static class ValleyBuilder
 
         var lake = Primitives.Visual(PrimitiveType.Plane, "Lake");
         lake.transform.position = new Vector3(LakeCentre.x, LakeLevel, LakeCentre.y);
-        lake.transform.localScale = new Vector3(24f, 1f, 16f);   // a Plane is 10 m square
+        lake.transform.localScale = new Vector3(24f, 1f, 16f);
         var r = lake.GetComponent<MeshRenderer>();
         r.sharedMaterial = mat;
         r.shadowCastingMode = ShadowCastingMode.Off;
         lake.AddComponent<ScrollingTexture>().speed = new Vector2(0.004f, 0.003f);
     }
 
-    // A see-through material tinted by its mesh's vertex colours (UrpMaterials.ConfigureSoftSurface).
     static Material SoftMaterial(string name, Color color, float smoothness, Texture2D normals, float bump)
     {
         var mat = EditorAssets.LoadOrCreate($"{Generated}/{name}.mat", () => new Material(Shader.Find(UrpMaterials.LitShader)));
@@ -1001,14 +885,8 @@ public static class ValleyBuilder
         return mat;
     }
 
-    // --- sky -----------------------------------------------------------------
-
-    // The sample project's sky and its ring of distant mountains, plus haze that blends them in.
     static void BuildSky()
     {
-        // Punchy's sky (ThirdParty/Punchy): gradient, sun, moon, stars and volumetric clouds, all
-        // from globals CloudSky sets from the clock and the weather. (The sample's HDR cubemap
-        // sky is tuned for HDRP's physical exposure and washes out in URP.)
         var shader = Shader.Find("Punchy/Sky");
         var sky = EditorAssets.LoadOrCreate(Generated + "/Sky.mat", () => new Material(shader));
         sky.shader = shader;
@@ -1021,14 +899,11 @@ public static class ValleyBuilder
         {
             var ring = (GameObject)PrefabUtility.InstantiatePrefab(mountains);
             ring.transform.position = new Vector3(Centre.x, -22f, Centre.y);
-            // The sea is to the south-east: no mountains on its horizon (the ring's 05 and 06
-            // stand from east to south). Only this scene's copy; the pack is untouched.
             foreach (var name in new[] { "SkyboxMountains05", "SkyboxMountains06" })
             {
                 var piece = ring.transform.Find(name);
                 if (piece != null) piece.gameObject.SetActive(false);
             }
-            // Their neighbours sink lower, so the ends they leave stand short and lost in the haze.
             foreach (var name in new[] { "SkyboxMountains04", "SkyboxMountains07" })
             {
                 var piece = ring.transform.Find(name);
@@ -1040,11 +915,9 @@ public static class ValleyBuilder
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogColor = new Color(0.68f, 0.76f, 0.84f);
-        // The mountain ring stands about 9 km out; fog thins it to a hazy silhouette.
         RenderSettings.fogStartDistance = 250f;
         RenderSettings.fogEndDistance = 16000f;
         RenderSettings.ambientMode = AmbientMode.Skybox;
-        // Cinemachine's lens overrides the camera's own clip planes, so set both.
         foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None)) cam.farClipPlane = 15000f;
         foreach (var vcam in Object.FindObjectsByType<Unity.Cinemachine.CinemachineCamera>(FindObjectsSortMode.None))
         {
@@ -1054,15 +927,11 @@ public static class ValleyBuilder
         }
     }
 
-    // --- cabin ---------------------------------------------------------------
-
-    // The cabins' materials, made once per build.
     sealed class CabinLook
     {
         public Material log, gable, roof, stone, door, window;
     }
 
-    // Every cabin of ValleyShape.Cabins, the first named "Cabin" and the rest numbered.
     static Transform[] BuildCabins()
     {
         var look = new CabinLook
@@ -1080,12 +949,6 @@ public static class ValleyBuilder
         return roots;
     }
 
-    // --- villages (D12, docs/WORLD_LIFE.md) ----------------------------------------------
-
-    // Each village ValleyShape laid out (its cells are already in the map, WireChemistry): a root
-    // with the well, and a VillageHouse per building, which builds its own meshes when the scene
-    // loads, so only its plan is saved. A box keeps players out of each; chimneys smoke, and the
-    // inn and the shop have a lamp by the door. Returns the buildings, which burn like cabins.
     static Transform[] BuildVillages()
     {
         var houses = new List<Transform>();
@@ -1104,7 +967,6 @@ public static class ValleyBuilder
             village.villageName = plan.Spec.Name;
             village.material = material;
             village.seed = plan.Spec.Seed;
-            // Its folk, from Punchy's: people in a valley village, elves on an island out at sea.
             bool island = ValleyCoast.OnIsland(well);
             village.residents = island ? "elf" : "human";
             village.residentCount = island ? 4 : 7;
@@ -1112,7 +974,6 @@ public static class ValleyBuilder
             village.enabled = false;
             village.enabled = true;
 
-            // A bench on each side of the square facing the well, beside the middle (where a lane may leave).
             var square = ValleyShape.AreaOf(plan.Square);
             var rng = new System.Random(plan.Spec.Seed);
             foreach (var side in new[] { Vector2.up, Vector2.right, Vector2.down, Vector2.left })
@@ -1134,9 +995,6 @@ public static class ValleyBuilder
         return houses.ToArray();
     }
 
-    // What generated things are drawn with: their colours in their vertices (VillageLit). Generated/
-    // isn't in git, but the NetWizard prefab (which is) points at this material from WizardOutfit, so
-    // it has the same GUID on every machine: made under it when missing, or remade if it has another.
     const string VillageMaterialGuid = "1c2f7c809517e4946a98211dcf83ad02";
 
     internal static Material VillageMaterial()
@@ -1146,11 +1004,9 @@ public static class ValleyBuilder
         if (existing != null && AssetDatabase.AssetPathToGUID(path) == VillageMaterialGuid) return existing;
         if (existing != null) AssetDatabase.DeleteAsset(path);
         EditorAssets.EnsureFolderFor(path);
-        // Made at a scratch path, then its file moved into place beside a .meta that carries the GUID.
         string scratch = $"{Generated}/VillageLit.scratch.mat";
         AssetDatabase.CreateAsset(new Material(Shader.Find("Prototype/VillageLit")), scratch);
         AssetDatabase.SaveAssets();
-        // Its file names it after the scratch path; it's VillageLit where it goes.
         File.WriteAllText(path, File.ReadAllText(scratch).Replace("m_Name: VillageLit.scratch", "m_Name: VillageLit"));
         File.WriteAllText(path + ".meta",
             "fileFormatVersion: 2\nguid: " + VillageMaterialGuid + "\nNativeFormatImporter:\n  externalObjects: {}\n  mainObjectFileID: 2100000\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n");
@@ -1159,7 +1015,6 @@ public static class ValleyBuilder
         return AssetDatabase.LoadAssetAtPath<Material>(path);
     }
 
-    // Window glass: a material asset, so the shader is in the build.
     internal static Material GlassMaterial()
     {
         var glass = EditorAssets.LoadOrCreate($"{Generated}/WindowGlass.mat", () => new Material(Shader.Find("Prototype/WindowGlass")));
@@ -1173,7 +1028,6 @@ public static class ValleyBuilder
         go.transform.SetParent(village, false);
         var mid = ValleyShape.AreaOf(b.Footprint).center;
         var (dx, dy) = Sides.Step(b.Door);
-        // Grid y grows south; world z grows north.
         var door = new Vector3(dx, 0f, -dy);
         go.transform.SetPositionAndRotation(new Vector3(mid.x, level - 0.05f, mid.y), Quaternion.LookRotation(-door));
 
@@ -1189,7 +1043,6 @@ public static class ValleyBuilder
         house.depth = b.Depth * cs;
         house.material = material;
         house.glass = GlassMaterial();
-        // The plan's windows and door, along their walls in the house's own space.
         Vector3 Local((int x, int y) cell)
         {
             var at = ValleyShape.AreaOf(new CellRect(cell.x, cell.y, 1, 1)).center;
@@ -1207,7 +1060,6 @@ public static class ValleyBuilder
         house.Rebuild();
 
         var made = BuildingMesher.Make(house.Spec);
-        // The walls, to the eaves; the roof and the window boxes have their own (VillageHouse).
         var block = go.AddComponent<BoxCollider>();
         block.center = new Vector3(0f, made.eaves / 2f, 0f);
         block.size = new Vector3(made.size.x, made.eaves, made.size.z);
@@ -1235,13 +1087,9 @@ public static class ValleyBuilder
 
     static Material LogMaterial() => CabinMaterial("Log", new Color(0.42f, 0.29f, 0.18f), 0.15f);
 
-    // A small log cabin from primitives: log walls, a pitched roof, a door, a lit window and a
-    // smoking chimney. Local axes: x is the cabin's width, z its depth, the door is on the -z
-    // side; the ridge runs along x.
     static Transform BuildCabin(ValleyShape.CabinSite site, string name, CabinLook look)
     {
         var root = new GameObject(name).transform;
-        // Bottom logs bedded in; local -z (the door) faces the site's way.
         root.SetPositionAndRotation(new Vector3(site.At.x, ValleyShape.HeightAt(site.At) - 0.1f, site.At.y), ValleyShape.CabinRotation(site));
 
         Material log = look.log, roof = look.roof, stone = look.stone, dark = look.door, glow = look.window;
@@ -1251,8 +1099,6 @@ public static class ValleyBuilder
         float wallTop = courses * r * 2f;
         float rise = l / 2f * Mathf.Tan(pitch * Mathf.Deg2Rad);
 
-        // Walls: courses of logs, front and back along x, the sides along z half a log higher,
-        // with log ends running past the corners as on a real log cabin.
         for (int i = 0; i < courses; i++)
         {
             float y = r + i * r * 2f;
@@ -1262,7 +1108,6 @@ public static class ValleyBuilder
             Log(root, new Vector3(-w / 2f, y + r, 0f), l + 0.6f, Axis.Z, log);
         }
 
-        // Gable ends: logs along z, shortening with height so each log's top stays under the roof.
         for (float y = r; y + r * 2f < rise; y += r * 2f)
         {
             float span = l * (1f - (y + r * 2f) / rise);
@@ -1270,7 +1115,6 @@ public static class ValleyBuilder
             Log(root, new Vector3(-w / 2f, wallTop + y + r, 0f), span, Axis.Z, log);
         }
 
-        // Roof: two panels hanging from the ridge, each sloping down toward its own side.
         var ridge = new Vector3(0f, wallTop + rise + 0.1f, 0f);
         float panel = (l / 2f + overhang) / Mathf.Cos(pitch * Mathf.Deg2Rad);
         for (int side = -1; side <= 1; side += 2)
@@ -1281,9 +1125,6 @@ public static class ValleyBuilder
             slab.name = "Roof";
         }
 
-        // A wall behind the gable logs, so the steps of their ends don't open on the empty cabin and the
-        // roof's underside (issue #47): at each end two boards under the two slopes, meeting in the middle.
-        // Their lower ends run down behind the wall logs. Boards, as a cube can't be a triangle.
         float underRoof = wallTop + rise + 0.1f - 0.06f / Mathf.Cos(pitch * Mathf.Deg2Rad);
         float boardLength = (l / 2f + r) / Mathf.Cos(pitch * Mathf.Deg2Rad), boardDrop = l / 2f * Mathf.Sin(pitch * Mathf.Deg2Rad) + 0.05f;
         for (int end = -1; end <= 1; end += 2)
@@ -1297,8 +1138,8 @@ public static class ValleyBuilder
                 board.name = "Gable wall";
             }
 
-        Part(root, PrimitiveType.Cube, new Vector3(0.8f, 1.0f, -l / 2f - 0.17f), new Vector3(1f, 2f, 0.08f), dark);           // door
-        Part(root, PrimitiveType.Cube, new Vector3(-1.6f, 1.6f, -l / 2f - 0.17f), new Vector3(0.9f, 0.7f, 0.05f), glow);      // window
+        Part(root, PrimitiveType.Cube, new Vector3(0.8f, 1.0f, -l / 2f - 0.17f), new Vector3(1f, 2f, 0.08f), dark);
+        Part(root, PrimitiveType.Cube, new Vector3(-1.6f, 1.6f, -l / 2f - 0.17f), new Vector3(0.9f, 0.7f, 0.05f), glow);
         var chimney = new Vector3(-w / 2f + 0.8f, wallTop + rise / 2f + 0.9f, l / 4f);
         Part(root, PrimitiveType.Cube, chimney, new Vector3(0.7f, rise + 1.8f, 0.7f), stone);
         var glass = root.gameObject.AddComponent<WindowPanes>();
@@ -1321,7 +1162,6 @@ public static class ValleyBuilder
             puff.transform.localScale = Vector3.one * 0.35f;
         }
 
-        // One box keeps players out of the cabin.
         var block = root.gameObject.AddComponent<BoxCollider>();
         block.center = new Vector3(0f, (wallTop + rise) / 2f, 0f);
         block.size = new Vector3(w + 0.6f, wallTop + rise, l + 0.6f);
@@ -1330,7 +1170,6 @@ public static class ValleyBuilder
 
     enum Axis { X, Z }
 
-    // A log lying along the cabin's local x or z axis. (A cylinder's length runs along its own y.)
     static void Log(Transform parent, Vector3 at, float length, Axis axis, Material mat)
     {
         var log = Part(parent, PrimitiveType.Cylinder, at, new Vector3(0.32f, length / 2f, 0.32f), mat);
@@ -1350,12 +1189,6 @@ public static class ValleyBuilder
     static Material CabinMaterial(string name, Color color, float smoothness, Color? emission = null) =>
         EditorAssets.LitMaterial($"{Generated}/Cabin{name}.mat", color, smoothness, emission);
 
-    // --- helpers -------------------------------------------------------------
-
-    // The sample trees' leaf and billboard materials use a shader graph that fails to import
-    // in Unity 6.3 (they render pink). This makes a variant of the tree prefab in Generated/
-    // whose broken materials are swapped for copies on URP's own SpeedTree 8 shader, with the
-    // same textures. The pack's own files stay untouched.
     static GameObject RepairedTree(string prefabPath, string name)
     {
         var source = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
@@ -1379,7 +1212,6 @@ public static class ValleyBuilder
         return variant;
     }
 
-    // A copy of a broken tree material on the given SpeedTree shader, with the same textures.
     static Material RepairedTreeMaterial(Material broken, Shader shader)
     {
         var mat = EditorAssets.LoadOrCreate($"{Generated}/Trees/{broken.name}.mat", () => new Material(shader));
@@ -1392,15 +1224,12 @@ public static class ValleyBuilder
         if (billboard) mat.EnableKeyword("EFFECT_BILLBOARD");
         else mat.DisableKeyword("EFFECT_BILLBOARD");
         mat.SetFloat("_TwoSided", billboard ? 2f : 0f);
-        // URP's SpeedTree shader tints leaves gold by default (hue variation).
         mat.SetFloat("_HueVariationKwToggle", 0f);
         mat.DisableKeyword("EFFECT_HUE_VARIATION");
         EditorUtility.SetDirty(mat);
         return mat;
     }
 
-    // Texture slots as saved in a material's file. A material whose shader failed to load
-    // reports no properties through its shader, but its saved texture references remain.
     static IEnumerable<(string property, Texture texture)> SavedTextures(Material material)
     {
         var saved = new SerializedObject(material).FindProperty("m_SavedProperties.m_TexEnvs");
@@ -1412,8 +1241,6 @@ public static class ValleyBuilder
         }
     }
 
-    // A colour-multiplied copy of a texture, saved in Generated/ (which is gitignored: it is
-    // derived from Asset Store content, which a public repo can't redistribute).
     internal static Texture2D Tinted(Texture2D source, Color multiply, int size = 1024)
     {
         string path = $"{Generated}/{source.name}_Tinted.png";
@@ -1431,8 +1258,6 @@ public static class ValleyBuilder
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
-    // An uncompressed copy of a texture, at most size wide, read through a throwaway import of its
-    // file. No GPU: a Blit draws nothing under -nographics, which left the terrain one flat colour.
     static Texture2D ReadableCopy(Texture2D source, int size)
     {
         string file = AssetDatabase.GetAssetPath(source);
@@ -1458,19 +1283,11 @@ public static class ValleyBuilder
         }
     }
 
-    // --- chemistry ------------------------------------------------------------
-
-    // The chemistry world: the whole valley, every chunk terrain's cells (TerrainGrid.Valley()), so
-    // spells work wherever the players go; only the chunks around them are simulated
-    // (ChunkStreaming). The yard's cell (0, 0) stands at world (0, (yard rows - 1) * cell size).
     const int FireFadeCells = 50;
     const int LightningReach = 12000;
 
-    // The scene's chemistry tuning and where the old yard is. The cell map is the map's own (cells.txt, data since phase 6
-    // of docs/design/maps-as-data.md): the build no longer works it out from the valley's shapes.
     static void WireChemistry(ChemGrid grid, string[] yardRows)
     {
-        // Where the cells stand is the map's (map.json's yard); the rows are the valley's shapes' yard, and must agree.
         var (x, y, w, h) = MapFile.Load(ChemGrid.Folders.World).Yard;
         grid.yardCells = new RectInt(x, y, w, h);
         var (left, top) = EditorGround.Layout.CellAt(0f, (yardRows.Length - 1) * grid.cellSize);

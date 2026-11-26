@@ -21,10 +21,8 @@ public class ClaudeTerminal : MonoBehaviour
     const float StartWait = 12f;
     const string ServerName = ClaudeRun.ServerName, WelcomeFile = "welcome.txt", StartFile = "open.cmd", SignInFile = "sign-in.cmd";
 
-    /// <summary>The chat's line when there's no claude on this machine.</summary>
     public const string NotInstalled = "Claude Code isn't installed. Get it from claude.com/claude-code, then ask again.";
 
-    /// <summary>The line that says speech to text is there, on the terminal's first screen and in its CLAUDE.md.</summary>
     public const string TalkLine = ClaudeRun.TalkLine;
 
     const string Welcome = "Spell Chemistry Valley\r\n\r\nType claude and press Enter to start, then ask it to change the game:\r\n" +
@@ -32,10 +30,8 @@ public class ClaudeTerminal : MonoBehaviour
 
     const string Guide = ClaudeRun.Guide;
 
-    // The chat's folder (ClaudeFolder): the player's, or a probe's.
     static string Folder => ChemGrid.Folders.Claude.Path;
 
-    // -open-terminal opens one by itself once the game is up, to test a player with nobody at its keys.
     IEnumerator Start()
     {
         if (!Environment.GetCommandLineArgs().Contains("-open-terminal")) yield break;
@@ -48,10 +44,6 @@ public class ClaudeTerminal : MonoBehaviour
         if (Keyboard.current != null && Keyboard.current.f9Key.wasPressedThisFrame) Open();
     }
 
-    /// <summary>
-    /// Turns the rules MCP on if it's off, writes the folder and opens a terminal there. Says what happened,
-    /// for the Play with Claude page to show.
-    /// </summary>
     public static string Open()
     {
         var server = RulesMcpServer.Instance;
@@ -69,7 +61,6 @@ public class ClaudeTerminal : MonoBehaviour
 #endif
     }
 
-    /// <summary>The folder's files: the MCP's address, what the game is, and the terminal's first screen. Nothing secret.</summary>
     public static void WriteFolder(string folder, string url)
     {
         Directory.CreateDirectory(folder);
@@ -84,21 +75,18 @@ public class ClaudeTerminal : MonoBehaviour
         File.WriteAllText(Path.Combine(folder, SignInFile), PathLine() + $"@{SignInProgram()} auth login\r\n");
     }
 
-    // claude's own folder for this one window, as its installer may have put it where a game started from the desktop can't see.
     static string PathLine()
     {
         string claude = ClaudeChat.FindClaude();
         return claude == null ? "" : $"@set \"PATH={Path.GetDirectoryName(claude)};%PATH%\"\r\n";
     }
 
-    // The player's own install by its full path, whatever it's called; plain claude otherwise.
     static string SignInProgram()
     {
         string claude = ClaudeChat.FindClaude();
         return claude == null ? "claude" : $"\"{claude}\"";
     }
 
-    /// <summary>Opens a terminal on Anthropic's own sign-in: the game never sees it. The player's chat says why.</summary>
     public static void OpenSignIn()
     {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
@@ -107,12 +95,8 @@ public class ClaudeTerminal : MonoBehaviour
     }
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-    // Windows Terminal if it's there, else a plain command prompt. The .\ is for a game started with
-    // NoDefaultCurrentDirectoryInExePath set, as from Claude Code: cmd then won't look in its own folder.
     static string Launch(string folder, string script)
     {
-        // What the player listed goes by the process's environment and never into these files, which claude can read.
-        // Windows Terminal may hand the window to one already open, without it, so those players get a command prompt.
         if (ChatSetup.Secrets.Length > 0)
         {
             var start = new ProcessStartInfo("cmd.exe", $"/k .\\{script}") { WorkingDirectory = folder, UseShellExecute = false };

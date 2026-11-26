@@ -25,11 +25,8 @@ using UnityEngine;
 public partial class NetChem : NetworkBehaviour
 {
     const int HashEvery = RollingHash.Every;
-    // A joiner's held batches, or a busy frame's: no frame spends more than this stepping.
     const double CatchUpBudgetMs = 8.0;
-    // Chunks are planned every few ticks: players move a chunk in seconds, not ticks.
     const int PlanEvery = 3;
-    // How far from a client's wizard a punch may land, in cells (ChemEffects.Strike).
     const int StrikeReachCells = 4;
 
     ChemGrid grid;
@@ -45,62 +42,38 @@ public partial class NetChem : NetworkBehaviour
     readonly System.Diagnostics.Stopwatch budget = new();
     System.Func<bool> over;
 
-    // Host only: the chunks active once every stamped switch has run, the planner, and the tick a reset is stamped for.
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
     ChunkPlanner planner = new();
     int resetAt;
-    // Host only: where each client's casts were cast from, in the order sent, and the host's own cast's.
     readonly Dictionary<ulong, Queue<Vector3>> castFrom = new();
     Vector3 hostFrom;
-    // Everyone: the shoves of the casts announced, by the tick they land on.
     readonly Dictionary<int, List<(CastCommand cast, ulong caster, Vector3 from)>> shoves = new();
     int desyncs;
 
     public bool Online => IsSpawned && session != null;
 
-    /// <summary>
-    /// Raised on every machine after a tick is applied, with the tick; at every HashEvery'th tick
-    /// also with its checksum (null otherwise). The probe's online scenario compares these.
-    /// </summary>
     public event System.Action<int, string> TickApplied;
 
-    /// <summary>True once this client has found a checksum that differs from the host's (it stays true after a snapshot puts it right).</summary>
     public bool DesyncSeen => desyncs > 0;
 
-    /// <summary>How many hash windows this client has found differing from the host's, each put right by a snapshot.</summary>
     public int Desyncs => desyncs;
 
-    /// <summary>The network's tick: the world's own, plus the ticks before the last online reset.</summary>
     public int NetTick => session != null ? session.NetTick : grid.World.Tick;
 
-    /// <summary>The last tick this machine holds the batch of: NetTick plus the ticks it knows of and hasn't run.</summary>
     public int KnownUpTo => session != null ? session.KnownUpTo : NetTick;
 
-    /// <summary>
-    /// Whether this machine is playing live: the host always; a client once it has loaded the host's snapshot and run
-    /// the batches the host had stamped past it. A probe or a scenario waits on this before it acts.
-    /// </summary>
     public bool CaughtUp => session != null && session.IsCaughtUp;
 
-    /// <summary>The tick a late joiner's snapshot was taken at: it ran the ticks after it; 0 for the host.</summary>
     public int ReplayedUpTo { get; private set; }
 
-    /// <summary>The countdown to an online reset, in seconds (J-014).</summary>
     public const float ResetCountdownSeconds = 3f;
 
-    /// <summary>The countdown in ticks at the rules' tick rate (18 at 6 a second): the delay to pass StampReset.</summary>
     public int ResetCountdownTicks => Mathf.RoundToInt(ResetCountdownSeconds * Mathf.Max(1, grid.World.Rules.Sim.TicksPerSecond));
 
-    /// <summary>
-    /// A reset is coming at this network tick: raised on every machine as soon as the host stamps
-    /// it, for a countdown. At that tick the world is rebuilt (ChemGrid.WorldReset fires).
-    /// </summary>
     public event System.Action<int> ResetComing;
 
-    /// <summary>True while ChemGrid.WorldReset fires for an online reset happening now (not a snapshot loading).</summary>
     public bool Resetting { get; private set; }
 
-    /// <summary>The network tick of the last online reset (0 for none).</summary>
     public int LastResetTick => session != null ? session.LastResetTick : 0;
 
     void Awake()
@@ -112,7 +85,6 @@ public partial class NetChem : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         grid.ExternalTicks = true;
-        // The host keeps the mods it had on solo, as the room's starting mods; a client loads the host's world.
         if (IsServer)
         {
             grid.PlanRoom(NetSession.RoomMode);
@@ -137,7 +109,6 @@ public partial class NetChem : NetworkBehaviour
         ReplayedUpTo = 0;
         if (IsServer)
         {
-            // The map the host is on and the spawn it started in (SpawnPoints) go in the hello: joiners start beside it.
             session.MapId = ChemGrid.MapId;
             session.Start["spawn"] = SpawnPoints.StartIn ?? "";
             session.Stamping += PlanChunks;
@@ -163,7 +134,6 @@ public partial class NetChem : NetworkBehaviour
         transport = null;
     }
 
-    // The same channels in the same order on every peer (the hello checks them).
     void Register()
     {
         casts = session.Register(LockstepChannels.Casts(LockstepChannels.PlayerName));
@@ -177,9 +147,6 @@ public partial class NetChem : NetworkBehaviour
         room = session.Register(LockstepChannels.Room(LockstepChannels.PeerName));
     }
 
-    // --- the transport's RPCs ------------------------------------------------------
-
-    // A client's NetChem has spawned: the host sends it the hello (before, an RPC could meet an object not spawned yet).
     [Rpc(SendTo.Server)]
     void ReadyRpc(RpcParams rpc = default) => transport?.Ready(rpc.Receive.SenderClientId);
 
@@ -189,10 +156,8 @@ public partial class NetChem : NetworkBehaviour
     [Rpc(SendTo.SpecifiedInParams)]
     void ToClientRpc(byte[] bytes, RpcParams rpc = default) => transport?.Arrived(NetworkManager.ServerClientId, bytes);
 
-    // Host: a client is a peer; it hears the hello.
     void PeerJoined(ulong client) => session.PeerJoined(NgoLockstepTransport.PeerOf(client), PeerName(client));
 
-    // Host: the core forgets a wizard whose player has gone.
     void PeerLeft(ulong client)
     {
         session.PeerLeft(NgoLockstepTransport.PeerOf(client));
@@ -200,8 +165,6 @@ public partial class NetChem : NetworkBehaviour
         session.Stamp(strikes, StrikeCommand.Leave(PlayerName(client)));
     }
 
-    // Client: the host's hello. On another map than the host's, a joiner loads the host's (the scene is built for the
-    // map it starts on) and joins again; else it starts where the host did and asks for the host's world.
     void Greeted(LockstepHello hello)
     {
         if (hello.Map != ChemGrid.MapId)
@@ -215,7 +178,6 @@ public partial class NetChem : NetworkBehaviour
 
     void Failed(string why)
     {
-        // A host on another map may run other rules: go there first.
         if (!IsServer && session?.Hello != null && session.Hello.Map != ChemGrid.MapId && !session.Synced)
         {
             NetSession.JoinOnHostMap(session.Hello.Map);
@@ -254,12 +216,6 @@ public partial class NetChem : NetworkBehaviour
         Debug.Log($"NET: the host refused a command on {refusal.Channel.Name} from {refusal.Peer}: {refusal.Why}");
     }
 
-    // --- the doors ---------------------------------------------------------------
-
-    /// <summary>
-    /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
-    /// <paramref name="delayTicks"/>; <paramref name="from"/> is where the caster stands (a burst's centre).
-    /// </summary>
     public void RequestCast(CastCommand command, int delayTicks, Vector3 from)
     {
         if (session == null) return;
@@ -268,7 +224,6 @@ public partial class NetChem : NetworkBehaviour
         session.Request(casts, command, delayTicks);
     }
 
-    // Beside the cast that follows it on the same reliable channel, so the host takes them in the same order.
     [Rpc(SendTo.Server)]
     void CastFromRpc(Vector3 from, RpcParams rpc = default)
     {
@@ -277,13 +232,11 @@ public partial class NetChem : NetworkBehaviour
         q.Enqueue(from);
     }
 
-    /// <summary>Host only: stamps a physics prop's effect on cells into the next tick's batch, for every machine.</summary>
     public void StampEffect(EffectCommand effect)
     {
         if (IsServer && session != null) session.Stamp(effects, effect);
     }
 
-    /// <summary>Client: asks the host to hit a pane cell for this client's wizard (ChemEffects.Strike).</summary>
     public void RequestStrike(Vector2Int cell) => RequestStrikeRpc(cell.x, cell.y);
 
     [Rpc(SendTo.Server)]
@@ -295,7 +248,6 @@ public partial class NetChem : NetworkBehaviour
         if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= StrikeReachCells) StampEffect(new EffectCommand(EffectKind.Shatter, x, y, "", ThingId.None));
     }
 
-    /// <summary>Client: asks the host to work a gate for this client's wizard (ChemEffects.SwingNear).</summary>
     public void RequestSwing(Vector2Int cell) => RequestSwingRpc(cell.x, cell.y);
 
     [Rpc(SendTo.Server)]
@@ -307,36 +259,21 @@ public partial class NetChem : NetworkBehaviour
         if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= ChemEffects.SwingReachCells) StampEffect(new EffectCommand(EffectKind.Swing, x, y, "", ThingId.None));
     }
 
-    /// <summary>
-    /// Asks the host to run a defense command (the start pedestal: DefenseField). Anyone may ask; the
-    /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.
-    /// </summary>
     public void RequestDefense(DefenseCommand command) => session?.Request(defense, command);
 
-    /// <summary>This player's name in the core's casts (World.CastOf).</summary>
     public string LocalPlayer => PlayerName(NetworkManager.LocalClientId);
 
-    /// <summary>A client's name in the core's casts.</summary>
     public static string PlayerName(ulong clientId) => LockstepChannels.PlayerName(NgoLockstepTransport.PeerOf(clientId));
 
-    /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick (the host names the player).</summary>
     public void RequestCombo(ComboCommand command) => session?.Request(combos, command);
 
-    /// <summary>Asks the host to run this wizard's stand or strike; it lands on every machine at the same tick.</summary>
     public void RequestStrikeCommand(StrikeCommand command) => session?.Request(strikes, command);
 
-    /// <summary>Host only: the dragon is summoned on the next tick, on every machine (a Reset, once the view has it). A client's call does nothing.</summary>
     public void SummonDragon()
     {
         if (IsServer && session != null) session.Stamp(dragon, new DragonCommand());
     }
 
-    /// <summary>
-    /// Host only: the world resets for everyone after <paramref name="delayTicks"/> (at least 1;
-    /// ResetCountdownTicks for the 3 s countdown). Every machine hears ResetComing at once, and at
-    /// that tick rebuilds the world from its seed, the mods in force re-stamped with it (J-014).
-    /// A reset already coming isn't moved.
-    /// </summary>
     public void StampReset(int delayTicks)
     {
         if (IsServer) session?.StampReset(delayTicks);
@@ -347,16 +284,13 @@ public partial class NetChem : NetworkBehaviour
         if (!IsSpawned || session == null) return;
         long from = System.Diagnostics.Stopwatch.GetTimestamp();
         transport.Deliver(session, PeerJoined, PeerLeft);
-        if (session == null) return; // a hello sent this peer to the host's map
+        if (session == null) return;
         budget.Restart();
         session.Update(Time.deltaTime, over);
         grid.StepMs = (System.Diagnostics.Stopwatch.GetTimestamp() - from) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
         transport.Flush();
     }
 
-    // --- the host's chunk plan and casts --------------------------------------------
-
-    // Just before a tick's batch: the chunk switches around every wizard, against what is already planned, on it.
     void PlanChunks(int tick)
     {
         if (tick == resetAt) ResetPlan(true);
@@ -370,7 +304,6 @@ public partial class NetChem : NetworkBehaviour
         }
     }
 
-    // The plan from the world going online, or (a reset) from the start's reach a rebuilt world has active (#209).
     void ResetPlan(bool reset)
     {
         plannedAwake.Clear();
@@ -387,7 +320,6 @@ public partial class NetChem : NetworkBehaviour
                 plannedAwake.Remove((s.CX, s.CY));
     }
 
-    // Host: a cast taken, with the tick it lands on: everyone shows it early and shoves after it.
     void Taken(LockstepTaken taken)
     {
         if (taken.Channel != casts) return;
@@ -395,14 +327,11 @@ public partial class NetChem : NetworkBehaviour
         ulong caster = NgoLockstepTransport.ClientOf(taken.From);
         var from = caster == NetworkManager.LocalClientId ? hostFrom
             : castFrom.TryGetValue(caster, out var q) && q.Count > 0 ? q.Dequeue() : Vector3.zero;
-        // Only the server can look a player's wizard up by client id; everyone else finds it by its object id.
         var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
         AnnounceCastRpc(new Unity.Collections.FixedString32Bytes(c.Spell), c.X, c.Y, c.Dir | (c.Charge << 8), c.AimX, c.AimY,
             wizard != null ? wizard.NetworkObjectId : ulong.MaxValue, caster, taken.Tick, from);
     }
 
-    // Cosmetic first: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives, at its
-    // charge (a held beam is longer, a held storm wider), which rides in dirAndCharge's second byte. Then its shove waits for its tick.
     [Rpc(SendTo.ClientsAndHost)]
     void AnnounceCastRpc(Unity.Collections.FixedString32Bytes spell, int x, int y, int dirAndCharge, int aimX, int aimY, ulong casterObject, ulong caster, int tick, Vector3 from)
     {
@@ -414,9 +343,6 @@ public partial class NetChem : NetworkBehaviour
         list.Add((cast, caster, from));
     }
 
-    // --- everyone ------------------------------------------------------------------
-
-    // A tick has finished: the physical side of its casts, and listeners.
     void Applied(TickBatch batch)
     {
         int tick = session.NetTick;
@@ -427,12 +353,9 @@ public partial class NetChem : NetworkBehaviour
                 if (t < tick) shoves.Remove(t);
         }
         grid.NoteTickDone();
-        // The whole checksum, for the probes that listen: `?.` builds it only when one does.
         TickApplied?.Invoke(tick, tick % HashEvery == 0 ? session.Checksum() : null);
     }
 
-    // The physical side of the casts just applied: the host moves the props (its physics is the
-    // one that counts), and every player moves their own wizard unless they cast it.
     void Shove(List<(CastCommand cast, ulong caster, Vector3 from)> casts)
     {
         var mine = NetworkManager.SpawnManager.GetLocalPlayerObject();
@@ -444,8 +367,6 @@ public partial class NetChem : NetworkBehaviour
         }
     }
 
-    // The online reset (J-014): the world rebuilt from its seed, things.json, the clock and the weather
-    // (ChemGrid.ResetWorld; its WorldReset listeners can read Resetting and LastResetTick). The room stays.
     void Rebuild()
     {
         Resetting = true;
@@ -460,14 +381,8 @@ public partial class NetChem : NetworkBehaviour
         EventLog.Add("The world resets");
     }
 
-    /// <summary>
-    /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
-    /// things' (World.ThingsNow: the props' stable ids), the sky's, the defense's, the players' casts
-    /// and grimoires, the dragon's and, last, the land's (JoinSnapshot.ChecksumOf's parts, joined by '/').
-    /// </summary>
     public string CurrentChecksum => string.Join("/", JoinSnapshot.ChecksumOf(grid.World));
 
-    // The session's world port: the grid's world, rules and batches, its reset and its snapshots.
     sealed class GridWorld : ILockstepWorld
     {
         readonly NetChem net;

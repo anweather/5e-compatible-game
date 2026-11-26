@@ -12,7 +12,6 @@ using System.Globalization;
 
 namespace Chem.Lockstep
 {
-    /// <summary>A command channel as the session holds it, whatever its command's type.</summary>
     public abstract class LockstepChannel
     {
         protected LockstepChannel(string name)
@@ -21,29 +20,22 @@ namespace Chem.Lockstep
             Name = name;
         }
 
-        /// <summary>The name peers check in the hello: every peer registers the same channels in the same order.</summary>
         public string Name { get; }
 
-        /// <summary>Only the host sends these (its physics' effects, its chunk plan, the dragon); a client's are refused.</summary>
         public bool HostOnly { get; set; }
 
-        /// <summary>At most one a tick: a second asked for the same tick is dropped (the dragon's summons).</summary>
         public bool OnePerTick { get; set; }
 
-        /// <summary>Writes a command of this channel's type, as the wire carries it.</summary>
         public abstract void Write(LockstepWriter w, object command);
 
-        /// <summary>Reads back what Write wrote.</summary>
         public abstract object Read(LockstepReader r);
 
-        /// <summary>Adds a command to its list in a batch.</summary>
         public abstract void AddTo(TickBatch batch, object command);
 
         internal abstract object SentBy(object command, PeerId from);
         internal abstract string Refusal(object command, PeerId from, LockstepSession session);
     }
 
-    /// <summary>A command channel for commands of type <typeparamref name="T"/>.</summary>
     public sealed class LockstepChannel<T> : LockstepChannel
     {
         readonly Action<LockstepWriter, T> write;
@@ -57,10 +49,8 @@ namespace Chem.Lockstep
             this.addTo = addTo ?? throw new ArgumentNullException(nameof(addTo));
         }
 
-        /// <summary>Host: the command as the peer who sent it may ask for it (its player named by the host); null keeps it as sent.</summary>
         public Func<T, PeerId, T> Named { get; set; }
 
-        /// <summary>Host: why it won't take this command from this peer, or null to take it; null takes everything.</summary>
         public Func<T, PeerId, LockstepSession, string> Refuses { get; set; }
 
         public override void Write(LockstepWriter w, object command) => write(w, (T)command);
@@ -70,13 +60,10 @@ namespace Chem.Lockstep
         internal override string Refusal(object command, PeerId from, LockstepSession session) => Refuses?.Invoke((T)command, from, session);
     }
 
-    /// <summary>The standard channels: TickBatch's lists, each with its wire form.</summary>
     public static class LockstepChannels
     {
-        /// <summary>The longest patch a live room change may carry (NetChem.Room's): rules, not a world.</summary>
         public const int MaxPatchChars = 64 * 1024;
 
-        /// <summary>Spells cast. <paramref name="player"/> names a peer's player in the casts (ours: "p" and the client id).</summary>
         public static LockstepChannel<CastCommand> Casts(Func<PeerId, string> player) => new LockstepChannel<CastCommand>("casts", (w, c) =>
             {
                 w.Text(c.Spell);
@@ -94,7 +81,6 @@ namespace Chem.Lockstep
             Named = (c, from) => new CastCommand(c.Spell, c.X, c.Y, c.Dir, World.ClampCharge(c.Charge), c.AimX, c.AimY, player(from)),
         };
 
-        /// <summary>What the host's physics props did to cells (Effects.cs).</summary>
         public static LockstepChannel<EffectCommand> Effects() => new LockstepChannel<EffectCommand>("effects", (w, e) =>
             {
                 w.Number((int)e.Kind);
@@ -107,7 +93,6 @@ namespace Chem.Lockstep
             (b, e) => b.Effects.Add(e))
         { HostOnly = true };
 
-        /// <summary>Chunks activating or deactivating, from the host's plan (ChunkStreaming).</summary>
         public static LockstepChannel<ChunkSwitch> Chunks() => new LockstepChannel<ChunkSwitch>("chunks", (w, s) =>
             {
                 w.Number(s.CX);
@@ -118,10 +103,6 @@ namespace Chem.Lockstep
             (b, s) => b.Chunks.Add(s))
         { HostOnly = true };
 
-        /// <summary>
-        /// An open world's chunks filled from the host game's ground (D20, World.FillChunk), from the host's plan
-        /// (OpenWorldPlanner): the key, then the ground's bytes.
-        /// </summary>
         public static LockstepChannel<ChunkFill> Fills() => new LockstepChannel<ChunkFill>("fills", (w, f) =>
             {
                 w.Number(f.Key.Layer);
@@ -142,7 +123,6 @@ namespace Chem.Lockstep
             return ChunkGround.FromBytes(bytes);
         }
 
-        /// <summary>The defense field's commands (Defense.cs).</summary>
         public static LockstepChannel<DefenseCommand> Defense() => new LockstepChannel<DefenseCommand>("defense", (w, d) =>
             {
                 w.Number((int)d.Kind);
@@ -154,7 +134,6 @@ namespace Chem.Lockstep
             r => new DefenseCommand((DefenseKind)r.Number(), r.Number(), r.Number(), r.Number(), r.Number()),
             (b, d) => b.Defense.Add(d));
 
-        /// <summary>Players' combo input (Combos.cs). A host that isn't a dev build takes no moment, whoever asks.</summary>
         public static LockstepChannel<ComboCommand> Combos(Func<PeerId, string> player, bool devBuild) => new LockstepChannel<ComboCommand>("combos", (w, c) =>
             {
                 w.Text(c.Player);
@@ -170,12 +149,10 @@ namespace Chem.Lockstep
             Refuses = (c, from, session) => c.TakenBy(devBuild) ? null : "a moment is only for a dev build or the Editor",
         };
 
-        /// <summary>The dragon's summons (World.Dragon.cs): the host's, once a tick.</summary>
         public static LockstepChannel<DragonCommand> Dragon() => new LockstepChannel<DragonCommand>("dragon", (w, d) => { }, r => new DragonCommand(),
             (b, d) => b.Dragon.Add(d))
         { HostOnly = true, OnePerTick = true };
 
-        /// <summary>Where players stand on the course (World.Course.cs).</summary>
         public static LockstepChannel<CourseCommand> Course(Func<PeerId, string> player) => new LockstepChannel<CourseCommand>("course", (w, c) =>
             {
                 w.Text(c.Player);
@@ -188,7 +165,6 @@ namespace Chem.Lockstep
             Named = (c, from) => new CourseCommand(player(from), c.X, c.Y),
         };
 
-        /// <summary>Wizards standing, striking and leaving (World.Strike.cs). The host stamps a leaving player's Leave itself (LockstepSession.Stamp).</summary>
         public static LockstepChannel<StrikeCommand> Strikes(Func<PeerId, string> player) => new LockstepChannel<StrikeCommand>("strikes", (w, s) =>
             {
                 w.Text(s.Player);
@@ -205,12 +181,6 @@ namespace Chem.Lockstep
             Named = (s, from) => new StrikeCommand(player(from), s.Kind, s.X, s.Y, s.AimX, s.AimY, s.Hp),
         };
 
-        /// <summary>
-        /// Room commands (World.Room.cs). <paramref name="peer"/> names a peer as the room does (ours: "Player" and the
-        /// client id plus one). The host refuses by the room's change mode (RoomPolicy) and a patch past MaxPatchChars;
-        /// a find (RoomChange.Found) changes no rule, so the mode has no say: the host stamps it with the grant
-        /// (LockstepSession.Stamp), and one asked for is refused.
-        /// </summary>
         public static LockstepChannel<RoomCommand> Room(Func<PeerId, string> peer) => new LockstepChannel<RoomCommand>("room", (w, c) =>
             {
                 w.Number((int)c.Change);
@@ -235,10 +205,8 @@ namespace Chem.Lockstep
                 ?? (c.Json.Length > MaxPatchChars ? "that patch is too long for a live change" : null);
         }
 
-        /// <summary>The name NetChem gives a client's player in the casts: "p" and its id.</summary>
         public static string PlayerName(PeerId peer) => "p" + peer.Value.ToString(CultureInfo.InvariantCulture);
 
-        /// <summary>The name NetChem gives a peer in the room: "Player" and its id plus one (the host, or solo, is Player 1).</summary>
         public static string PeerName(PeerId peer) => "Player " + (peer.Value + 1).ToString(CultureInfo.InvariantCulture);
     }
 }

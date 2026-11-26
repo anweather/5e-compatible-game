@@ -14,7 +14,6 @@ using UnityEngine.Rendering.Universal;
 public class FlareProbe : ProbeScenario
 {
     const int Width = 1600, Height = 900;
-    // Brighter than anything on the wizard should be: the eyes are 2.4.
     const float TooBright = 12f;
     const string NotTheWizard = "no renderer of the wizard clears it";
     static readonly float[] Pitches = { 30f, 38f, 45f, 52f, 60f };
@@ -31,7 +30,6 @@ public class FlareProbe : ProbeScenario
         public Vector2Int at;
     }
 
-    // A view's place and name, and what it counted.
     struct Seen
     {
         public Vector3 from, to;
@@ -69,7 +67,6 @@ public class FlareProbe : ProbeScenario
             {
                 yield return Wait(0.17f);
                 Raw(extra, post, $"{kind} walking {i}");
-                // The same pose through the real post effects, the bloom and all.
                 var top = wizard.transform.position + Vector3.up * 1.6f;
                 Cut(top + Quaternion.Euler(30f, 60f, 0f) * Vector3.back * 1.8f, top);
                 Shot($"{kind}-walking-{i}");
@@ -87,7 +84,6 @@ public class FlareProbe : ProbeScenario
         Metric("bright_pixels", brightPixels);
         Metric("peak", peak);
         Check("no_bad_pixels", nanPixels == 0, $"{nanPixels} NaN or infinite pixels in {nanViews} of {views} views; worst: {worstBad.name}, {worstBad.tally.bad} at {worstBad.tally.at}");
-        // The sun's glint on the ground behind the wizard is the ground's, not this probe's: only the wizard's own fails it.
         bool wizardBright = brightPixels > 0 && !blamedBright.StartsWith(NotTheWizard, System.StringComparison.Ordinal);
         Check("nothing_far_too_bright", !wizardBright, $"{brightPixels} pixels over {TooBright} in {brightViews} of {views} views; worst: {worstBright.name}, {worstBright.tally.bright} at {worstBright.tally.at}; {blamedBright}");
 
@@ -97,7 +93,6 @@ public class FlareProbe : ProbeScenario
         Destroy(target);
         Destroy(read);
 
-        // A picture from the angle the flare was seen at, through the real post effects.
         var w = wizard.transform;
         var head = w.position + Vector3.up * 1.6f;
         Cut(head - w.forward * 2.6f + Vector3.up * 2.6f, head);
@@ -114,7 +109,6 @@ public class FlareProbe : ProbeScenario
         extra.renderPostProcessing = post;
     }
 
-    // Every yaw at every pitch and distance, as the wizard stands right now.
     void Sweep(string name)
     {
         var head = wizard.transform.position + Vector3.up * 1.6f;
@@ -140,7 +134,6 @@ public class FlareProbe : ProbeScenario
         brightPixels += tally.bright;
         peak = Mathf.Max(peak, tally.peak);
         outsideWizard += tally.outside;
-        // Blamed here, on this very pose: a frame on, a walking wizard's pixels are gone.
         if (tally.bad > worstBad.tally.bad)
         {
             worstBad = seen;
@@ -153,7 +146,6 @@ public class FlareProbe : ProbeScenario
         }
     }
 
-    // The worst view with each renderer of the wizard left out: the one that clears it is the culprit.
     string Blame(string what, Seen seen, System.Func<Tally, int> count)
     {
         var cleared = new List<string>();
@@ -169,7 +161,6 @@ public class FlareProbe : ProbeScenario
         return cleared.Count > 0 ? string.Join("; ", cleared) : $"{NotTheWizard} ({was})";
     }
 
-    // The view last scanned as a picture, its bad pixels magenta and its far too bright ones cyan.
     void Save(string what)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) return;
@@ -190,7 +181,6 @@ public class FlareProbe : ProbeScenario
         Destroy(shown);
     }
 
-    // One view, drawn raw into the float target, its pixels counted.
     Tally Scan(Vector3 from, Vector3 to)
     {
         view.transform.SetPositionAndRotation(from, Quaternion.LookRotation(to - from));
@@ -213,7 +203,6 @@ public class FlareProbe : ProbeScenario
             bool bad = float.IsNaN(sum) || float.IsInfinity(sum);
             if (!box.Contains(pixel))
             {
-                // Bright ground in the sun is no business of this probe; a NaN anywhere still flares.
                 if (bad) tally.outside++;
                 else continue;
             }
@@ -229,7 +218,6 @@ public class FlareProbe : ProbeScenario
         return tally;
     }
 
-    // The wizard's box on the target.
     RectInt WizardOnScreen()
     {
         var bounds = new Bounds(wizard.transform.position + Vector3.up, Vector3.one);

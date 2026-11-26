@@ -10,14 +10,9 @@ using UnityEngine;
 // chemistry: the squares under it stay river, so the water runs on beneath.
 public static class ValleyBridge
 {
-    // The deck's width, how high its top stands over the water, how thick the unseen walking boxes
-    // are, a plank's depth along the bridge, the handrail's height and the posts' spacing (metres).
     const float DeckWidth = 2.6f, Clearance = 1.7f, Thickness = 0.3f, PlankDepth = 0.34f, RailHeight = 1.05f, PostSpacing = 1.8f;
-    // How far a ramp's walking box runs on into the ground past its foot, so it meets the ground without a lip.
     const float Buried = 0.8f;
 
-    // A straight stretch of the walking surface, in the bridge's own space (z across the river, y up,
-    // the deck's top at 0): where it starts and ends, and its turn (its z along it, its y square to it).
     readonly struct Section
     {
         public readonly Vector3 From, To, Up;
@@ -38,10 +33,6 @@ public static class ValleyBridge
         public Vector3 At(float t) => Vector3.Lerp(From, To, t);
     }
 
-    /// <summary>
-    /// Builds the bridge, named "Bridge": its root at the middle of the deck's top, its forward from the
-    /// west bank to the east, with a "West landing" and an "East landing" on the ground past each ramp.
-    /// </summary>
     public static Transform Build(Material wood, Material planks)
     {
         var mid = ValleyShape.Bridge;
@@ -50,12 +41,10 @@ public static class ValleyBridge
         float span = ValleyShape.BridgeSpan, reach = span + ValleyShape.BridgeRamp;
         var westFoot = Grounded(centre - across * reach);
         var eastFoot = Grounded(centre + across * reach);
-        // Clear over the river's water (it stands at the banks' level), and a step over the higher foot.
         float deck = Mathf.Max(ValleyShape.BankHeightAt(mid) + Clearance, Mathf.Max(westFoot.y, eastFoot.y) + 0.4f);
 
         var root = new GameObject("Bridge").transform;
         root.SetPositionAndRotation(new Vector3(mid.x, deck, mid.y), Quaternion.LookRotation(across));
-        // The walking surface along the bridge's middle: up the west ramp, over the deck, down the east ramp.
         var line = new[]
         {
             new Vector3(0f, westFoot.y - deck, -reach), new Vector3(0f, 0f, -span),
@@ -76,7 +65,6 @@ public static class ValleyBridge
         return root;
     }
 
-    // An unseen box whose top is the section's walking surface, run on past its ends by the given lengths.
     static void Walkway(Transform root, Section s, float before, float after)
     {
         var go = new GameObject("Bridge walkway");
@@ -88,7 +76,6 @@ public static class ValleyBridge
         go.AddComponent<BoxCollider>().size = new Vector3(DeckWidth, Thickness, Vector3.Distance(a, b) + 0.02f);
     }
 
-    // The section's planks, laid across it side by side, each a little off true.
     static void Planks(Transform root, Section s, Material mat, System.Random rng)
     {
         int count = Mathf.Max(1, Mathf.RoundToInt(s.Length / PlankDepth));
@@ -101,9 +88,6 @@ public static class ValleyBridge
         }
     }
 
-    // Along both sides of a section: a beam under the planks, posts (the first at its start only on the
-    // first section, so no two stand in one place), a handrail and a middle rail, and an unseen wall to
-    // the handrail's height that keeps the wizard on the bridge.
     static void Sides(Transform root, Section s, Material wood, bool first)
     {
         int posts = Mathf.Max(1, Mathf.CeilToInt(s.Length / PostSpacing));
@@ -126,7 +110,6 @@ public static class ValleyBridge
         }
     }
 
-    // Two legs at a point along the bridge (in its space), from under the beams down into the ground.
     static void Legs(Transform root, float z, float surface, Material wood)
     {
         foreach (float side in new[] { -1f, 1f })
@@ -139,7 +122,6 @@ public static class ValleyBridge
         }
     }
 
-    // The walking surface's height at a point along the bridge (its space), between the line's points.
     static float SurfaceAt(Vector3[] line, float z)
     {
         for (int k = 0; k + 1 < line.Length; k++)
@@ -150,7 +132,6 @@ public static class ValleyBridge
         return line[line.Length - 1].y;
     }
 
-    // A marker on the ground where the way onto the bridge starts (the probe walks from one to the other).
     static void Landing(Transform root, string name, Vector3 at)
     {
         var go = new GameObject(name);

@@ -1,15 +1,13 @@
+// The world generator's foundations (D11): hashing, value noise, exact trig, the solver's stream,
+// noisy ellipses and meandering curves. The expected values are bit patterns from running
+// PocketTactics' own TypeScript (src/core/world/hash.ts, noise.ts, theme/geometry.ts) on the same
+// inputs, so these pin the port to the original bit for bit.
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The world generator's foundations (D11): hashing, value noise, exact trig, the solver's stream,
-    /// noisy ellipses and meandering curves. The expected values are bit patterns from running
-    /// PocketTactics' own TypeScript (src/core/world/hash.ts, noise.ts, theme/geometry.ts) on the same
-    /// inputs, so these pin the port to the original bit for bit.
-    /// </summary>
     [Category("Unit")]
     public class WorldGenTests
     {

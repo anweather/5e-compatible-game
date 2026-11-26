@@ -14,7 +14,6 @@ namespace Chem.Mcp
         static readonly string[] TerrainFields = { "name", "tags", "look", "elevation", "spring", "speed" };
         static readonly string[] CoverFields = { "name", "tags", "look", "lasts", "witherLog", "damage", "speed", Rules.MixKey };
 
-        // A liquid's fields (RuleSchema.Liquids): each one value but its hot, sets and lapse.
         static readonly Dictionary<string, string[]> LiquidFields = RuleSchema.Liquids.Names.ToDictionary(n => n, LiquidSection);
 
         static string[] LiquidSection(string field) => field switch
@@ -102,7 +101,6 @@ namespace Chem.Mcp
 
         static readonly string[] RuleKeys = RuleSchema.Reactions.ModNames.ToArray();
 
-        // A gas's or liquid's fields, which are named one by one (a terrain's and a cover's are verb groups: null).
         static (string who, Dictionary<string, string[]> fields)? NamedFields(string kind) => kind switch
         {
             "gases" => ("A gas", GasFields),
@@ -110,7 +108,6 @@ namespace Chem.Mcp
             _ => null,
         };
 
-        /// <summary>A material's field set to this value: throws saying what's wrong with the field, or returns.</summary>
         public static void CheckMaterial(string kind, string path, JToken value)
         {
             if (NamedFields(kind) is var (who, fields))
@@ -140,13 +137,11 @@ namespace Chem.Mcp
                 throw new RulesToolException($"{what} has no field {path}; {top} takes {(verb.Count == 0 ? "nothing, only {}" : string.Join(", ", verb))}. A colour or glow is a look: use set_look.");
         }
 
-        /// <summary>A whole new material's fields.</summary>
         public static void CheckMaterial(string kind, JObject entry)
         {
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
         }
 
-        // The fields a material's own check hands off: a look (ModCheck.Looks and set_look know its parameters) and a lapse.
         static bool CheckedElsewhere(string what, string top, string path, JToken value)
         {
             if (top == "look") return true;
@@ -155,7 +150,6 @@ namespace Chem.Mcp
             return true;
         }
 
-        // A temporary material's lapse (World.Lapse.cs): into and after only.
         static void CheckLapse(string what, string path, JToken value)
         {
             var keys = path.Split('.');
@@ -167,7 +161,6 @@ namespace Chem.Mcp
         static readonly string[] ItemFields = RuleSchema.Items.ModNames.ToArray();
         static readonly string[] EntityFields = RuleSchema.Entities.ModNames.ToArray();
 
-        /// <summary>A new entity's or item's fields: throws saying which the engine wouldn't read, or returns.</summary>
         public static void CheckThing(string table, JObject entry)
         {
             var known = table == "items" ? ItemFields : EntityFields;
@@ -175,7 +168,6 @@ namespace Chem.Mcp
             if (unknown != null) throw new RulesToolException($"A{(table == "items" ? "n item" : "n entity")} has no field {unknown.Name}; its fields are {string.Join(", ", known)}.");
         }
 
-        /// <summary>A spell's field set to this value: throws saying what's wrong with the field, or returns.</summary>
         public static void CheckSpell(string path, JToken value)
         {
             var top = path.Split('.')[0];
@@ -188,7 +180,6 @@ namespace Chem.Mcp
             CheckNamed("A spell", SpellFields, path, value);
         }
 
-        /// <summary>A reaction rule's field set to this value.</summary>
         public static void CheckRule(string path, JToken value)
         {
             var top = path.Split('.')[0];
@@ -197,7 +188,6 @@ namespace Chem.Mcp
             if (top == "do" && value != null) CheckEffects(value);
         }
 
-        /// <summary>A condition, or a whole object of them, under "if" or "needs".</summary>
         public static void CheckConditions(string path, JToken value)
         {
             var keys = path.Split('.');
@@ -206,7 +196,6 @@ namespace Chem.Mcp
             if (unknown != null) throw new RulesToolException($"There's no condition {unknown}; the conditions are {string.Join(", ", Rules.Conditions)}.");
         }
 
-        /// <summary>A rule's effects: one object or a list of them.</summary>
         public static void CheckEffects(JToken effects)
         {
             IEnumerable<JToken> list = effects is JArray a ? a : new[] { effects };

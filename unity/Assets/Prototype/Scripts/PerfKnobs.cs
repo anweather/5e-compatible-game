@@ -18,7 +18,6 @@ using UnityEngine.Rendering.Universal;
 // before LightTufts), -perf-grass-fade S,E (the grass material's dither fade), -perf-gc-off and -perf-gc-slice-ms N.
 public static class PerfKnobs
 {
-    /// <summary>The picture as it was before the 2026-11-23 GPU fixes: brush clumps to the haze and SSAO before the opaques.</summary>
     public static void AsBefore()
     {
         if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset pipeline) SsaoAfterOpaque(pipeline, false);
@@ -44,14 +43,12 @@ public static class PerfKnobs
 
     static T[] All<T>() where T : UnityEngine.Object => UnityEngine.Object.FindObjectsByType<T>(FindObjectsSortMode.None);
 
-    // Each knob: what it did, or null when it wasn't asked for.
     static readonly Func<string>[] Knobs =
     {
         ShadowsOff, HardShadows, Cascades, PostOff, SsaoOff, SsaoWhen, Fog, RenderScale, Details, DetailSettings, GrassNoShadows,
         ImpostorsOff, BrushFar, Resident, HideByShader, HideGroups, PackTuftsKnob, GrassFade, Gc,
     };
 
-    /// <summary>Applies the knobs asked for and logs a "PERF KNOBS" line of what it did.</summary>
     public static void Apply()
     {
         args = Environment.GetCommandLineArgs();
@@ -65,8 +62,6 @@ public static class PerfKnobs
         if (done.Length > 0) Debug.Log("PERF KNOBS" + done);
     }
 
-    // -perf-gc-off: no garbage collection for the run (to tell a collection's pause from anything else);
-    // -perf-gc-slice-ms N: the incremental collector's slice a frame.
     static string Gc()
     {
         string did = null;
@@ -169,7 +164,6 @@ public static class PerfKnobs
         return $"detail_metres={Text(metres ? m : -1f, "0")} detail_density={Text(density ? d : -1f, "0.00")}";
     }
 
-    /// <summary>Every terrain that draws grass draws it to <paramref name="metres"/>.</summary>
     public static void DetailMetres(float metres)
     {
         foreach (var t in All<Terrain>().Where(t => t.detailObjectDistance > 0f)) t.detailObjectDistance = metres;
@@ -178,10 +172,6 @@ public static class PerfKnobs
 
     static string GrassNoShadows() => Has("-perf-grass-no-shadows") ? $"grass_shadows_off={GrassShadows(ShadowCastingMode.Off)}" : null;
 
-    /// <summary>
-    /// The terrains' grass (their detail prototypes) cast shadows as <paramref name="mode"/> says: On is the grass as it was
-    /// before LightTufts turned its shadows off (for -perf-look-pair-grass-shadows). How many renderers it changed.
-    /// </summary>
     public static int GrassShadows(ShadowCastingMode mode)
     {
         int changed = 0;
@@ -200,10 +190,6 @@ public static class PerfKnobs
 
     static string PackTuftsKnob() => Has("-perf-pack-tufts") ? $"pack_tufts={PackTufts()}" : null;
 
-    /// <summary>
-    /// The grass drawn with the terrain pack's own tufts again (MapTerrains.packTufts), as before LightTufts: the terrains'
-    /// detail prototypes and the brush clumps made from them. How many meshes it swapped.
-    /// </summary>
     public static int PackTufts()
     {
         var packs = MapTerrains.Instance != null ? MapTerrains.Instance.packTufts : null;
@@ -230,8 +216,6 @@ public static class PerfKnobs
         return swapped;
     }
 
-    // -perf-grass-fade S,E: the grass's own dither fade (the pack's TerrainGrass material, 40 to 80 m as it comes) from
-    // S to E metres, on the detail prototypes' materials.
     static string GrassFade()
     {
         var range = Arg("-perf-grass-fade")?.Split(',');
@@ -312,7 +296,6 @@ public static class PerfKnobs
         return found;
     }
 
-    // SSAO worked out after the opaques from the copied depth, or before them (which costs a depth prepass of everything).
     static int SsaoAfterOpaque(UniversalRenderPipelineAsset pipeline, bool afterOpaque)
     {
         const System.Reflection.BindingFlags Any = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
@@ -330,8 +313,6 @@ public static class PerfKnobs
         return set;
     }
 
-    // -perf-hide-shader S [-perf-hide-beyond M]: the renderers drawn with a shader whose name starts with S (underscores
-    // for spaces), all of them or only those further than M metres from the camera (a cull distance, tried).
     static string HideByShader()
     {
         string shader = Arg("-perf-hide-shader");

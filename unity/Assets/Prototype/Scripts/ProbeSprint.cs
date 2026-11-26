@@ -63,7 +63,6 @@ public class SprintProbe : ProbeScenario
 
     void HoldTrigger(Vector2 stick) => InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = stick, leftTrigger = 1f });
 
-    // The wizard's ground speed over half a second.
     IEnumerator Speed(System.Action<float> result)
     {
         var a = wizard.transform.position;

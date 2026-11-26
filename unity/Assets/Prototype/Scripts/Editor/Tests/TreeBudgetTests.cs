@@ -6,7 +6,6 @@ using NUnit.Framework;
 // they draw as far as ever. These fail if the dense distances are lost.
 public class TreeBudgetTests
 {
-    // Trees spread evenly over a disc of this radius (m), this many: their squared distances from the middle.
     static List<float> Disc(int trees, float radius)
     {
         var d2 = new List<float>(trees);
@@ -20,7 +19,6 @@ public class TreeBudgetTests
         float near = TreeBudget.Near(Disc(5000, 158f), 150f);
         Assert.That(near, Is.LessThan(100f), "5,000 trees within 150 m should stand fewer than all as prefabs");
         Assert.That(near, Is.GreaterThanOrEqualTo(TreeBudget.NearFloor));
-        // About the budget's trees stand within it.
         Assert.That(near, Is.EqualTo(158f * System.Math.Sqrt((double)TreeBudget.MostNear / 5000)).Within(1f));
     }
 
@@ -38,7 +36,6 @@ public class TreeBudgetTests
     [Test]
     public void ADenseForestDrawsItsImpostorsNearer()
     {
-        // A chunk (40 m) a ring out to 700 m, 160 trees a chunk: ~110,000 trees.
         var chunks = new List<(float d2, int trees)>();
         for (int i = -18; i <= 18; i++)
             for (int j = -18; j <= 18; j++)

@@ -32,7 +32,6 @@ public static class SoundBankBuilder
         public Func<float[]> Under;
     }
 
-    // Recipes here, then the casting sounds' rows; a row's Make is only for when it has no recordings.
     static Recipe[] All()
     {
         var all = new List<Recipe>(Recipes);
@@ -48,8 +47,6 @@ public static class SoundBankBuilder
         return all.ToArray();
     }
 
-    // Loudness targets, loudest first: the mix. Explosions and thunder dominate; impacts and
-    // spells land in the middle; casts and the fire's burning bed sit underneath.
     static readonly Recipe[] Recipes =
     {
         new() { Sound = SoundIds.Explosion, TargetDb = -12f, MaxSeconds = 3f,
@@ -84,7 +81,6 @@ public static class SoundBankBuilder
             Procedural = new Func<float[]>[] { () => ProceduralFire.Loop(1) } },
     };
 
-    // Raise this when a recipe's clips change: a bank out of git is otherwise kept, old sounds and all.
     const int RecipesVersion = 1;
 
     [MenuItem("Prototype/Build Sound Bank")]
@@ -116,22 +112,19 @@ public static class SoundBankBuilder
         return bank;
     }
 
-    /// <summary>A player build's check: a bank from before a row in the table is rebuilt, or that build would have stand-ins.</summary>
     public static void BuildIfOld()
     {
         var bank = AssetDatabase.LoadAssetAtPath<SoundBank>(BankPath);
         if (bank == null || bank.recipes != RecipesVersion || Array.Exists(CastSoundTable.Rows, row => bank.Pick(row.Sound) == null)) Build();
     }
 
-    // Masters each of a recipe's sources that exists and writes it as a mono WAV.
     static IEnumerable<(string, string)> Master(Recipe recipe)
     {
-        // Each keeps its own sample rate (the recordings are mostly 48 kHz, the procedural ones 44.1 kHz).
         var sources = new List<(float[] data, int rate)>();
         foreach (var file in recipe.Files)
         {
             var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(file);
-            if (clip == null) continue; // the pack isn't restored, or a file is missing
+            if (clip == null) continue;
             sources.Add((SoundMastering.ToMono(Samples(clip), clip.channels), clip.frequency));
         }
         foreach (var make in recipe.Procedural) sources.Add((make(), Rate));
@@ -153,7 +146,6 @@ public static class SoundBankBuilder
         }
     }
 
-    // Mixes a layer made at ProceduralCast.Rate under a recording at its own rate, already at its level.
     static void Layer(float[] data, float[] under, int rate)
     {
         float step = ProceduralCast.Rate / (float)rate;
@@ -173,7 +165,6 @@ public static class SoundBankBuilder
         return data;
     }
 
-    // Short sounds decompress on load (no hitch when they play); compressed with Vorbis on disk.
     static AudioClip Import(string path)
     {
         if (AssetImporter.GetAtPath(path) is AudioImporter importer)

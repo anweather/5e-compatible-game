@@ -20,7 +20,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>How a prompt ended. Answered is a question: nothing to change and nothing it couldn't do.</summary>
     public enum ChatOutcome
     {
         Applied,
@@ -31,7 +30,6 @@ namespace Chem.Mcp
         Stopped,
     }
 
-    /// <summary>The record's Who group that only the game knows; model and claude version come from the stream.</summary>
     public sealed class ChatWho
     {
         public string Id = "", GameVersion = "", Commit = "", RoomMode = "";
@@ -39,7 +37,6 @@ namespace Chem.Mcp
         public IReadOnlyList<string> ModsOn = Array.Empty<string>();
     }
 
-    /// <summary>How far a run has got, for a progress bar: tools, since a run's first words often come last.</summary>
     public struct ChatProgress
     {
         public bool Started, Ready, Applying, Applied, InWorld, Done;
@@ -52,7 +49,6 @@ namespace Chem.Mcp
 
         const string ToolError = "An error occurred invoking '";
 
-        /// <summary>The tools that change the world for everyone: a success of any of these is Applied.</summary>
         static readonly HashSet<string> WorldTools = new HashSet<string> { "apply", "revert", "act", "call_act", "undo_act", "set_time", "set_weather" };
 
         sealed class Call
@@ -81,7 +77,6 @@ namespace Chem.Mcp
         ChatOutcome? ended;
         bool sawResult, failed;
 
-        /// <summary>Source is typed, voice or bench; sent is the clock at the send, and every time in the record is from there.</summary>
         public ChatRecorder(string prompt, string source, long sent, ChatWho who = null)
         {
             this.prompt = prompt;
@@ -90,7 +85,6 @@ namespace Chem.Mcp
             this.who = who ?? new ChatWho();
         }
 
-        /// <summary>How far it has got now.</summary>
         public ChatProgress Progress()
         {
             lock (gate)
@@ -107,13 +101,11 @@ namespace Chem.Mcp
                 };
         }
 
-        /// <summary>The process has started.</summary>
         public void Started(long clock)
         {
             lock (gate) started ??= clock;
         }
 
-        /// <summary>One line of the process's stdout. Takes anything: what isn't known is left alone.</summary>
         public void Line(string line, long clock)
         {
             JObject o;
@@ -141,24 +133,21 @@ namespace Chem.Mcp
                         Result(o, clock);
                         break;
                     case "first_word":
-                        firstWord ??= clock; // the API loop's stream, before a reply's block has ended
+                        firstWord ??= clock;
                         break;
                 }
         }
 
-        /// <summary>A patch that went to the room, from Workbench.Applied, by the key apply was given. In either order with its line.</summary>
         public void Patched(string mod, string patch)
         {
             lock (gate) patches.Add((mod, patch));
         }
 
-        /// <summary>This peer has every peer's rules switched and the view finished drawing. With several applies, the last stamp stands.</summary>
         public void InWorld(long clock)
         {
             lock (gate) inWorld = clock;
         }
 
-        /// <summary>The frames and work the change cost this peer, from send to in the world.</summary>
         public void GameCost(double worstFrameMs, int hitches, double composeMs, double drawMs)
         {
             lock (gate)
@@ -171,7 +160,6 @@ namespace Chem.Mcp
                 };
         }
 
-        /// <summary>The model asked for was refused (#64): the record names it, whatever the stream called the model. The reply keeps claude's words.</summary>
         public void ModelUnavailable(string asked)
         {
             lock (gate)
@@ -181,7 +169,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>The process has gone. With how, it was stopped or timed out; a result that came first still stands for how it ended.</summary>
         public void Ended(long clock, ChatOutcome? how = null)
         {
             lock (gate)
@@ -254,7 +241,6 @@ namespace Chem.Mcp
             }
         }
 
-        // A tool result's content: a string, or a list of text parts.
         static string Text(JToken content) =>
             content is JArray parts ? string.Concat(parts.OfType<JObject>().Select(p => (string)p["text"])) : (string)content ?? "";
 
@@ -295,13 +281,11 @@ namespace Chem.Mcp
             return calls.Any(c => c.Game && (c.Ok == false || c.Name == "outside_rules")) ? ChatOutcome.Refused : ChatOutcome.Answered;
         }
 
-        // What it couldn't do, for the list that feeds the backlog: a tool's refusal if the last word was one, else its answer's first line.
         string Couldnt() =>
             calls.LastOrDefault(c => c.Game && c.Ok == false)?.Reason ?? (reply ?? lastWords ?? "").Trim().Split('\n')[0];
 
         long? FromSend(long? clock) => clock - sent;
 
-        // The time tools were running: calls can overlap, so it's their union.
         long ToolsMs()
         {
             long total = 0, reached = long.MinValue;
@@ -359,7 +343,6 @@ namespace Chem.Mcp
             }
             else
             {
-                // Cut off: the most that can be said, a floor on the output as each reply's count came before it was written.
                 all = Tokens(0, 0, 0, 0);
                 foreach (var (name, counted) in replies.Values)
                 {
@@ -371,7 +354,7 @@ namespace Chem.Mcp
                 }
             }
             all["cost"] = cost;
-            if (costBasis != null) all["costBasis"] = costBasis; // the API loop's, which are spent: Claude Code's records stay as they were
+            if (costBasis != null) all["costBasis"] = costBasis;
             all["perModel"] = perModel;
             all["turns"] = turns ?? replies.Count;
             all["cutOff"] = !sawResult;
@@ -384,7 +367,6 @@ namespace Chem.Mcp
             var changes = new JArray();
             foreach (var call in calls.Where(c => c.Game && c.Name == "apply"))
             {
-                // Each apply takes the oldest patch given for its key: a draft can be applied, edited and applied again.
                 int at = left.FindIndex(p => p.mod == call.Mod);
                 string patch = call.Mod != null && call.Mod.TrimStart().StartsWith('{') ? call.Mod : null;
                 if (at >= 0)
@@ -410,10 +392,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>
-        /// The record so far, whole: take it after the process has ended and the world has it (or never will).
-        /// Afterwards isn't here: it's known later, so it's its own line (ChatLog.Afterwards).
-        /// </summary>
         public JObject Record()
         {
             lock (gate)
@@ -455,29 +433,21 @@ namespace Chem.Mcp
         }
     }
 
-    /// <summary>The chat-log files: one JSON line per prompt, in a folder of their own, the newest files kept.</summary>
     public static class ChatLog
     {
         public const int MostFiles = 30;
 
         const string Prefix = "chat-log-", Suffix = ".jsonl";
 
-        /// <summary>The player's data folder's subfolder for the records. Players are told to send Player.log, by name, and the records hold their prompts.</summary>
         public const string RecordsFolder = "chat-records";
 
-        /// <summary>
-        /// Where the records and the MCP log go. A log the process was given (-logFile, or the Editor's own) means a test, and they stay beside it,
-        /// as an Editor shares its data folder with the player's game; logFolder is null otherwise.
-        /// </summary>
         public static string Home(string dataFolder, string logFolder) =>
             string.IsNullOrEmpty(logFolder) ? Path.Combine(dataFolder, RecordsFolder) : logFolder;
 
-        // One write at a time: a record and a later line go off on threads of their own, and the second to open the file would fail.
         static readonly object Writing = new object();
 
         public static void Append(string folder, DateTime day, JObject line) => Append(folder, day, line, Prefix);
 
-        /// <summary>The same, in another log's files (the MCP server's).</summary>
         public static void Append(string folder, DateTime day, JObject line, string prefix)
         {
             string file = prefix + day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + Suffix;
@@ -490,10 +460,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>
-        /// A later line about the record with this id, which chat-report folds into it: how long it stayed on before
-        /// it was reverted (null if it's still on at the end of the session), and the record that fixes it, if one did.
-        /// </summary>
         public static JObject Afterwards(string id, long? revertedAfterMs, string fixedBy = null) => new JObject
         {
             ["of"] = id,

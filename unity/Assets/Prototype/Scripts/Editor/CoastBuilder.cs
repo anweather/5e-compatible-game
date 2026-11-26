@@ -29,10 +29,8 @@ public static class CoastBuilder
 
         var beach = new GameObject("Beach").transform;
         beach.SetParent(root, false);
-        // Sets of loungers by the path's end on the mainland, facing the sea.
         foreach (float along in new[] { -34f, -16f, 24f, 40f })
             BeachSet(beach, OnBeach(along, -9f), Seaward, rng, vertexLit);
-        // And round the island's beach, facing out from it.
         foreach (float angle in new[] { 120f, 165f, 210f, 300f })
         {
             var dir = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
@@ -40,16 +38,11 @@ public static class CoastBuilder
         }
         Scatter(beach, rng, vertexLit);
         BuildLife(root, vertexLit);
-        // Benches at the top of the beach where the path comes down, looking out to sea.
         foreach (float along in new[] { -6f, 6f })
             Bench(beach, OnBeach(along, -24f), Seaward, rng.Next(), vertexLit);
         BuildDock(root, vertexLit);
     }
 
-    // --- the sea ----------------------------------------------------------------------
-
-    // The sea's level, its way out and its shore map are the map's (MapLand), set as the sea builds itself; the shore map
-    // the yard build once baked (Generated/ShoreMap.asset) goes.
     static void BuildSea()
     {
         AssetDatabase.DeleteAsset($"{Generated}/ShoreMap.asset");
@@ -63,15 +56,12 @@ public static class CoastBuilder
         ocean.Build();
     }
 
-    // --- plants -----------------------------------------------------------------------
-
     static void Plant(Transform parent, ValleyCoast.Plant plant, Material material)
     {
         var kind = plant.Palm ? GeneratedProp.Kind.Palm : GeneratedProp.Kind.Glowbulb;
         var prop = Prop(parent, kind, plant.Seed, Ground(plant.At) - 0.1f, plant.At, Quaternion.Euler(0f, plant.Seed % 360, 0f), material);
         if (!plant.Palm) return;
         Object.DestroyImmediate(GeneratedProp.Make(kind, plant.Seed, 0f, out var crown));
-        // The trunk is solid where you'd bump into it: a capsule up its lower half, where it hardly leans.
         var trunk = prop.gameObject.AddComponent<CapsuleCollider>();
         trunk.center = crown * 0.25f;
         trunk.height = crown.y * 0.5f + 0.4f;
@@ -79,9 +69,6 @@ public static class CoastBuilder
         trunk.direction = 1;
     }
 
-    // --- the beach ------------------------------------------------------------------------
-
-    // A spot on the mainland beach, along the coast from the path's end, at a distance out (negative: up the beach).
     static Vector2 OnBeach(float along, float outward)
     {
         var end = ValleyCoast.BeachPath[ValleyCoast.BeachPath.Count - 1];
@@ -89,7 +76,6 @@ public static class CoastBuilder
         return p + Seaward * (outward - ValleyCoast.Out(p));
     }
 
-    // A spot on the island's beach in a direction from its middle, a distance in from the water.
     static Vector2 OnIsland(Vector2 dir, float inside)
     {
         var p = ValleyCoast.IslandAt;
@@ -101,7 +87,6 @@ public static class CoastBuilder
         return p;
     }
 
-    // An umbrella with two loungers under it facing the water, and a towel beside them.
     static void BeachSet(Transform parent, Vector2 at, Vector2 facing, System.Random rng, Material material)
     {
         var face = Quaternion.LookRotation(new Vector3(facing.x, 0f, facing.y));
@@ -122,7 +107,6 @@ public static class CoastBuilder
         Prop(parent, GeneratedProp.Kind.Towel, rng.Next(), Ground(towel) + 0.02f, towel, face * Quaternion.Euler(0f, rng.Next(-20, 20), 0f), material);
     }
 
-    // Driftwood up the beach and starfish down by the water, on the mainland and round the island.
     static void Scatter(Transform parent, System.Random rng, Material material)
     {
         for (int i = 0; i < 14; i++)
@@ -144,15 +128,10 @@ public static class CoastBuilder
         }
     }
 
-    // --- life ---------------------------------------------------------------------------
-
-    // Where the coast's small life lives (AmbientLife): gulls over the beach and the island, crabs
-    // along the waterline, shoals in the shallows off the beach, round the island and in the lake.
     static void BuildLife(Transform root, Material material)
     {
         material.enableInstancing = true;
         EditorUtility.SetDirty(material);
-        // A root of its own: life isn't the coast's to leave out (on a map without it, it lives on that map's shore).
         var life = new GameObject("Coast life").AddComponent<AmbientLife>();
         life.material = material;
         var rng = new System.Random(91);
@@ -161,7 +140,6 @@ public static class CoastBuilder
         life.shoals = Shoals(rng);
     }
 
-    // Over the beach every 40 m along it, and over the island.
     static Vector3[] GullAnchors()
     {
         float sea = ValleyCoast.SeaLevel;
@@ -175,7 +153,6 @@ public static class CoastBuilder
         return gulls.ToArray();
     }
 
-    // Just up the sand from the water: thirty along the mainland beach, ten round the island.
     static Vector3[] CrabSpots(System.Random rng)
     {
         var crabs = new List<Vector3>();
@@ -189,7 +166,6 @@ public static class CoastBuilder
         return crabs.ToArray();
     }
 
-    // In the lake, off the beach and round the island, wherever the water is 1.4 to 12 m deep.
     static Vector4[] Shoals(System.Random rng)
     {
         float sea = ValleyCoast.SeaLevel;
@@ -216,30 +192,22 @@ public static class CoastBuilder
         return new Vector2(Mathf.Cos(a), Mathf.Sin(a));
     }
 
-    // --- the dock ---------------------------------------------------------------------
-
-    /// <summary>The dock's foot on the island (x, z), and the way it runs out over the water.</summary>
     public static Vector2 DockFoot { get; private set; }
     public static Vector2 DockOut { get; private set; }
 
     const float DockLength = 22f;
 
-    // Off the island's beach toward the mainland: a deck on posts with a walkway to stand on and a
-    // ramp up from the sand.
     static void BuildDock(Transform root, Material material)
     {
         DockOut = (ValleyCoast.ShoreOrigin - ValleyCoast.IslandAt).normalized;
         DockFoot = OnIsland(DockOut, 1.5f);
         Pier(root, material, "Dock", DockFoot, DockOut, DockLength, 5);
-        // And a pier out from the island's south side, into open water (Andrew's playtest #14).
         var south = new Vector2(0f, -1f);
         Pier(root, material, "South pier", OnIsland(south, 1.5f), south, PierLength, 9);
     }
 
     const float PierLength = 16f;
 
-    // A deck on posts running out over the water from a foot on the beach, with an unseen walkway
-    // to stand on and a ramp up from the sand.
     static void Pier(Transform root, Material material, string name, Vector2 footAt, Vector2 outward, float length, int seed)
     {
         float foot = Ground(footAt);
@@ -247,7 +215,6 @@ public static class CoastBuilder
         dock.length = length;
         dock.Rebuild();
         dock.name = name;
-        // The deck sits PropMesher.DockDeck above the foot; walk on an unseen box, up a ramp from the sand.
         var deck = new GameObject("Walkway").AddComponent<BoxCollider>();
         deck.transform.SetParent(dock.transform, false);
         deck.center = new Vector3(0f, PropMesher.DockDeck - 0.25f, length / 2f + 1f);
@@ -259,7 +226,6 @@ public static class CoastBuilder
         ramp.size = new Vector3(PropMesher.DockWidth, 0.5f, Mathf.Sqrt(run * run + PropMesher.DockDeck * PropMesher.DockDeck));
     }
 
-    /// <summary>A bench to sit on, facing <paramref name="facing"/>, with a seat (Seat) and a box to bump into.</summary>
     public static GeneratedProp Bench(Transform parent, Vector2 at, Vector2 facing, int seed, Material material)
     {
         var turn = Quaternion.LookRotation(new Vector3(facing.x, 0f, facing.y));
@@ -271,8 +237,6 @@ public static class CoastBuilder
         seat.seatAt = PropMesher.BenchSeat;
         return bench;
     }
-
-    // --- helpers ----------------------------------------------------------------------
 
     static GeneratedProp Prop(Transform parent, GeneratedProp.Kind kind, int seed, float y, Vector2 at, Quaternion turn, Material material)
     {
@@ -289,10 +253,8 @@ public static class CoastBuilder
 
     static float Ground(Vector2 at) => EditorGround.GroundAt(new Vector3(at.x, 0f, at.y));
 
-    // Inside the world's edge walls.
     static bool Inside(Vector2 p) => p.x < 438f && p.y > -362f;
 
-    /// <summary>Every palm, by the cell it stands on, for marking those cells trees (WireChemistry).</summary>
     public static IEnumerable<Vector2> PalmSpots()
     {
         foreach (var plant in ValleyCoast.Plants)

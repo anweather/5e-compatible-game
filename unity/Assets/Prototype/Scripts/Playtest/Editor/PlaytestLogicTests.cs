@@ -21,11 +21,9 @@ public class PlaytestLogicTests
         HasItems = true,
     };
 
-    // A wizard on the ground at height 10 (the ground's height), at (x, y, z).
     static WizardWatch.Sample W(float x, float y, float z, bool pushing, bool botMoved, string place) =>
         new WizardWatch.Sample { X = x, Y = y, Z = z, Ground = 10, Grounded = true, Pushing = pushing, BotMoved = botMoved, Place = place };
 
-    // A prop at (10, 1, 10) that spawned there, awake, at a speed, in an active chunk or not.
     static PropWatch.Sample P(string id, string kind, float speed, bool chunkActive) =>
         new PropWatch.Sample { Id = id, Kind = kind, X = 10, Y = 1, Z = 10, Speed = speed, SpawnX = 10, SpawnZ = 10, ChunkActive = chunkActive };
 
@@ -115,12 +113,9 @@ public class PlaytestLogicTests
         Assert.That(LogWatch.Line(5, "just a log", "", false), Is.Null);
     }
 
-    // playtest/known-issues.json, as the runner reads it.
     static IReadOnlyList<KnownIssue> KnownFile() =>
         KnownIssues.FromJson(System.IO.File.ReadAllText(System.IO.Path.Combine(RepoRoot(), "playtest", "known-issues.json")));
 
-    // The repository's root: above the Unity project in the Editor, else up from the test's folder.
-    // (Chem.Tests.ChemistryTests.Folders is in another assembly in Unity, so it can't be used here.)
     static string RepoRoot() => Chem.GameFolders.InRepo(
 #if UNITY_5_3_OR_NEWER
         UnityEngine.Application.dataPath).Repo;
@@ -198,7 +193,6 @@ public class PlaytestLogicTests
         Assert.That(ReplayCheck.Reproduced(seen, same), Is.True);
         Assert.That(ReplayCheck.Reproduced(seen, other), Is.False);
 
-        // A replay that drifted still reproduces it if it met it doing the same thing.
         var air = new Candidate("wizard-airborne", "waterfall", Category.Gameplay, 1955, "") { Goal = "go to the waterfall" };
         other.Candidates.Add(new Candidate("wizard-airborne", "waterfall", Category.Gameplay, 1786, "") { Goal = "go to the waterfall" });
         Assert.That(ReplayCheck.Reproduced(air, other), Is.True);
@@ -220,10 +214,6 @@ public class PlaytestLogicTests
         Assert.That(ReplayCheck.Steps(back, 100).First(), Does.Contain("go to the tower"));
     }
 
-    // A run with a scripted body instead of the game: the same logic as PlaytestBot (goals from the
-    // dice and coverage, every frame through the detectors, a sync step every second), fed by a
-    // wizard that walks to a dice-picked spot each goal. bumpAt nudges the wizard on one frame, as a
-    // real-time leak would.
     static RunReport ScriptedRun(ulong seed, IReadOnlyDictionary<string, int> coverage, int bumpAt = -1)
     {
         var dice = new PlaytestRandom(seed);
@@ -286,7 +276,6 @@ public class PlaytestLogicTests
         var saved = RunReport.FromJson(original.ToJson());
         Assert.That(saved.Coverage, Is.EqualTo(Lately));
         Assert.That(ScriptedRun(11, saved.Coverage).Goals, Is.EqualTo(original.Goals));
-        // coverage.json moves on after every run; picking against today's changes the run.
         var today = original.Goals.GroupBy(g => g).ToDictionary(g => g.Key, g => g.Count());
         Assert.That(ScriptedRun(11, today).Goals, Is.Not.EqualTo(original.Goals));
     }
@@ -304,7 +293,6 @@ public class PlaytestLogicTests
     {
         var a = ScriptedRun(7, Lately);
         var b = ScriptedRun(7, Lately);
-        // A frame spike's picture is timed by the wall clock: one run took it, the other didn't.
         b.Trace.Insert(5, new TraceStep { Frame = b.Trace[5].Frame, Action = ReplayCheck.Shot, Detail = "shots/000123-frame-spike.jpg" });
         Assert.That(ReplayCheck.FirstDifference(a, b, int.MaxValue), Is.Null);
     }

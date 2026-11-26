@@ -8,7 +8,6 @@ using UnityEngine;
 // of its own has its own copy of the texture (LookTint).
 public static class WaveCrest
 {
-    // The side view, from the flat water behind it, up over the top and curling down its front.
     static readonly Vector2[] Profile =
     {
         new(-1.5f, 0f), new(-0.95f, 0.22f), new(-0.45f, 0.62f), new(-0.05f, 0.95f), new(0.3f, 1.05f),
@@ -16,7 +15,6 @@ public static class WaveCrest
     };
     const int Across = 14;
     const int Skin = 32;
-    // Along the side view from behind (0) to the toe (1): the water's colour and how much of it shows.
     static readonly (float at, Color colour)[] Colours =
     {
         (0f, new Color(0.1f, 0.42f, 0.5f, 0f)), (0.24f, new Color(0.11f, 0.45f, 0.55f, 0.72f)), (0.46f, new Color(0.3f, 0.68f, 0.75f, 0.82f)),
@@ -33,7 +31,6 @@ public static class WaveCrest
         for (int r = 0; r < rows; r++)
         {
             float u = r / (float)Across, side = u * 2f - 1f;
-            // Lower and further back toward its ends, as if the water fed it from behind.
             float taper = 1f - side * side * side * side;
             for (int c = 0; c < cols; c++)
             {
@@ -59,7 +56,6 @@ public static class WaveCrest
         return mesh;
     }
 
-    /// <summary>The colour its water is taken as, against a spell's look.</summary>
     public static readonly Color Own = new(0.3f, 0.6f, 1f);
 
     public static Material Material(LookTint look = default)

@@ -34,7 +34,7 @@ public class SpellProjectile : MonoBehaviour
 
     void Update()
     {
-        if (caster == null) // destroyed in flight (Unity's null check)
+        if (caster == null)
         {
             onArrive = null;
             FadeOut();
@@ -52,7 +52,6 @@ public class SpellProjectile : MonoBehaviour
         FadeOut();
     }
 
-    // Stops emitting and lets the particles already out fade, then goes.
     void FadeOut()
     {
         foreach (var ps in GetComponentsInChildren<ParticleSystem>()) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);

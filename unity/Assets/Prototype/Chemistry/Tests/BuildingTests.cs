@@ -16,7 +16,6 @@ namespace Chem.Tests
         internal const string TileTerrain = "{ \"name\": \"Clay tile\", \"tags\": [\"roof\"], \"look\": { \"family\": \"ground\", \"color\": [0.66, 0.3, 0.2] } }";
         internal const string SouthwestStyle = "{ \"fill\": \"hollow\", \"floor\": { \"kind\": \"slab\", \"height\": 0.15 }, \"wall\": { \"material\": \"stucco-wall\", \"height\": 2.9, \"thickness\": 0.3, \"finish\": { \"pattern\": \"smooth\", \"color\": \"#d6b48a\" } }, \"roof\": { \"shape\": \"hip\", \"pitch\": [4, 12], \"overhang\": 0.45, \"cover\": \"clay-tile\" } }";
 
-        // builders.md's house, at a cell of a test yard rather than the valley's.
         internal static string StuccoRow(int x, int y) =>
             "{ \"id\": \"lakeside#1\", \"at\": [" + x + ", " + y + "], \"style\": \"southwest\", \"seed\": 41, \"storeys\": 1, \"fill\": \"hollow\"," +
             " \"floor\": { \"kind\": \"slab\", \"height\": 0.15 }," +
@@ -54,7 +53,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // Test yards are small; the world files' things are in the valley's far chunks, so the budgets' things stay clear of it except where a test says.
         static World Up(World w, string json) { w.ApplyRoom(RoomCommand.Apply("Ana", "house", json)); return w; }
 
         static Rules Stucco => R.WithMods(new[] { ModPatch.Parse(StuccoMod(20, 20)) });
@@ -63,8 +61,6 @@ namespace Chem.Tests
 
         static Dictionary<(int, int), BuildingCell> Cells(BuildingRow row, Rules rules) =>
             BuildingRaster.Cells(row, rules.Buildings).ToDictionary(c => (c.X, c.Y));
-
-        // ---------- the rasteriser ----------
 
         [Test]
         public void TheRulesTablesRead()
@@ -89,7 +85,6 @@ namespace Chem.Tests
         public void TheStuccoHouseIsWallsDoorsPanesAndAFloor()
         {
             var cells = Cells(Row(), Stucco);
-            // Half cells from at are cells at half that: the house's north-west corner cell.
             Assert.That(cells[(24, 20)].Terrain, Is.EqualTo("stucco-wall"), "the main house's back wall starts at join a");
             Assert.That(cells[(27, 25)].Terrain, Is.EqualTo("rock"), "a hollow house has a floor inside (the slab's terrain)");
             Assert.That(cells.Values.Count(c => c.Terrain == "door"), Is.EqualTo(1 + 1 + 3), "the front door, the party door and three cells of garage door");
@@ -152,8 +147,6 @@ namespace Chem.Tests
 
         const uint WingGolden = 1574690118;
 
-        // ---------- villages as rows ----------
-
         static IEnumerable<VillagePlan> Plans()
         {
             for (int seed = 0; seed < 40; seed++) yield return VillageLayout.Lay(new VillageSpec { Name = "Test", X = 200, Y = 200, Seed = seed, Houses = 12 }, (x, y) => true);
@@ -185,7 +178,6 @@ namespace Chem.Tests
             for (int seed = 0; seed < 40; seed++)
             {
                 var spec = new VillageSpec { Name = "Test", X = 200, Y = 200, Seed = seed, Houses = 12 };
-                // Land that refuses a stripe of plots, as a lake would.
                 var baked = VillageLayout.Lay(spec, (x, y) => (x + y / 3) % 37 > 5);
                 var cells = new Dictionary<(int, int), string>();
                 foreach (var b in baked.Buildings)
@@ -208,7 +200,6 @@ namespace Chem.Tests
                 var read = BuildingRow.Read((string)row["id"], row, R.Buildings);
                 var cells = BuildingRaster.Cells(read, R.Buildings);
                 double mx = (double)row["site"]["metres"][0], mz = (double)row["site"]["metres"][1], dx = (double)row["site"]["door"][0], dz = (double)row["site"]["door"][1];
-                // ValleyShape.InCabin and OnCabinWindow, on each cell centre round the site.
                 var expected = new Dictionary<(int, int), string>();
                 double fx = -dx, fz = -dz, rx = fz, rz = -fx;
                 double wx = rx * -1.6 + fx * -2.45, wz = rz * -1.6 + fz * -2.45;
@@ -223,8 +214,6 @@ namespace Chem.Tests
                 Assert.That(cells.ToDictionary(c => (c.X, c.Y), c => c.Terrain), Is.EquivalentTo(expected), (string)row["id"]);
             }
         }
-
-        // ---------- through the room ----------
 
         [Test]
         public void AModBuildsAtTheSwitchTickOnEveryPeer()
@@ -366,7 +355,6 @@ namespace Chem.Tests
             Assert.That(tree.ApplyRoom(RoomCommand.Apply("Ana", "house", StuccoMod(20, 20))).Reason, Does.Contain("not open ground"));
 
             var built = Up(Yard(), StuccoMod(20, 20));
-            // Its own tile: a mod may not name another mod's temporary material (World.Lapse.cs).
             string second = StuccoMod(30, 22).Replace("lakeside#1", "lakeside#2").Replace("clay-tile", "slate-tile");
             var overlap = built.ApplyRoom(RoomCommand.Apply("Ana", "second", second));
             Assert.That(overlap.Done, Is.False);

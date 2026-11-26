@@ -6,7 +6,7 @@ using UnityEngine;
 // the log, so these ask as a player would.
 public class PlayLogSwitchTests
 {
-    const string Key = "playLog.on"; // spelt out: a new key would turn old opt-outs back on
+    const string Key = "playLog.on";
     static readonly string[] NoArgs = { };
 
     bool hadChoice;

@@ -31,7 +31,6 @@ public partial class SpellLooksProbe
         yield return FrozenRaider(Spot(5, 5));
     }
 
-    // A pond: a pit full of water.
     protected void Pond(Vector2Int o, int w, int h, int water = 8)
     {
         Patch(o, w, h, TerrainIds.Pit);
@@ -90,7 +89,6 @@ public partial class SpellLooksProbe
         Check("geyser_throws", highest > 1f, $"the crate rose {highest:0.0} m");
         yield return Picture("geyser-falling");
         yield return Wait(1.5f);
-        // The wizard goes up too, on its own feet.
         float feet = wizard.transform.position.y, top = 0f;
         wizard.GetComponent<SurfaceEffects>().Toss(9f);
         for (float t = 0f; t < 0.8f; t += Time.deltaTime)
@@ -191,7 +189,6 @@ public partial class SpellLooksProbe
         Cut(Mid(o, 9, 7) + V(-2f, 2.6f, -4.5f), Mid(o, 9, 7) + V(0f, 0f, 1f));
         yield return Wait(0.2f);
         yield return Picture("vines-close");
-        // Walking into them climbs them.
         var foot = grid.CellCenter(wall.x, wall.y - 1);
         PlaceCell(wall.x, wall.y - 1);
         yield return Wait(0.3f);
@@ -208,7 +205,6 @@ public partial class SpellLooksProbe
         Metric("vines_climbed_m", high - low);
         Check("vines_climb", high - low > 0.9f, $"up {high - low:0.0} m at {foot}");
         yield return Wait(0.3f);
-        // They die: the roots break the stone they held.
         for (int x = 1; x < 8; x++) World.At(o.x + x, o.y + 4).Life = 2;
         yield return Wait(1f);
         Check("roots_break", World.At(wall.x, wall.y).T == TerrainIds.Rubble, World.At(wall.x, wall.y).T);
@@ -246,7 +242,6 @@ public partial class SpellLooksProbe
         Cut(Mid(o, 13, 7) + V(-8f, 6f, -8f), Mid(o, 13, 7) + V(3f, 0f, 0f));
         yield return Picture("bolt-gate-shut");
         Check("gate_shut", !World.GatesOpen, "before the bolt");
-        // Aimed at the bare ground by the puddle: it jumps to the water.
         Cast(SpellIds.LightningBolt, o.x + 1, o.y + 3, 1);
         yield return Wait(0.3f);
         yield return Picture("bolt-jump");
@@ -279,7 +274,6 @@ public partial class SpellLooksProbe
         yield return Picture("storm-strike");
     }
 
-    // An element over all of a cloud, as a charged bolt or a blast of cold across it would be.
     void Over(Vector2Int hit, string element)
     {
         for (int y = -2; y <= 2; y++)
@@ -338,7 +332,6 @@ public partial class SpellLooksProbe
     IEnumerator LavaRun(Vector2Int o)
     {
         Patch(o, 12, 3, TerrainIds.Dirt);
-        // A slope down to the east, into a puddle at its foot.
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 12; x++) World.At(o.x + x, o.y + y).Height = 3 - x / 2;
         for (int y = 0; y < 3; y++)
@@ -354,7 +347,6 @@ public partial class SpellLooksProbe
         yield return Picture("lava-crust");
     }
 
-    // Ice over a mound: the crack follows it.
     IEnumerator IceOnAMound(Vector2Int o)
     {
         Patch(o, 7, 7, TerrainIds.Dirt);
@@ -373,7 +365,6 @@ public partial class SpellLooksProbe
         yield return Picture("crack-ice-mound");
     }
 
-    // Ice that's only a film, frozen rain on dry ground: a unit here and there, too thin for the ice's mesh.
     IEnumerator ThinIce(Vector2Int o)
     {
         Patch(o, 6, 6, TerrainIds.Dirt);
@@ -399,7 +390,6 @@ public partial class SpellLooksProbe
         Patch(o, 6, 4, TerrainIds.Metal);
         yield return Frame(o, 6, 4, V(-3f, 2.8f, -4f), 6f);
         int every = World.TerrainOf(World.At(o.x, o.y)).RustEvery;
-        // Part of the way there, more to the east, then steam over it.
         for (int y = 0; y < 4; y++)
             for (int x = 0; x < 6; x++) World.At(o.x + x, o.y + y).Rust = every * (x + 1) / 8;
         yield return Wait(0.4f);
@@ -408,7 +398,7 @@ public partial class SpellLooksProbe
             for (int x = 0; x < 6; x++)
             {
                 World.At(o.x + x, o.y + y).Rust = every - 3;
-                World.At(o.x + x, o.y + y).DampUntil = World.Tick + 600; // it counts on wet metal
+                World.At(o.x + x, o.y + y).DampUntil = World.Tick + 600;
             }
         Cast(SpellIds.ScaldingSteam, o.x + 2, o.y + 2, 1);
         for (float t = 0f; t < 8f && World.At(o.x + 2, o.y + 2).T != TerrainIds.RustedMetal; t += Time.deltaTime) yield return null;
@@ -417,7 +407,6 @@ public partial class SpellLooksProbe
         yield return Picture("rust-steam");
     }
 
-    // A frozen raider, whole and cracked: the web on its ice.
     IEnumerator FrozenRaider(Vector2Int o)
     {
         Patch(o, 5, 5, TerrainIds.Dirt);
@@ -433,7 +422,6 @@ public partial class SpellLooksProbe
     void Cast(string spell, int x, int y, int dir) => caster.Cast(spell, x, y, dir, 1);
 }
 
-/// <summary>The spelllooks probe's new casts alone, for working on them.</summary>
 public class CastLooksProbe : SpellLooksProbe
 {
     protected override IEnumerator Run()

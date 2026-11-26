@@ -35,7 +35,6 @@ public class ChargeProbe : ProbeScenario
         }
     }
 
-    // Aims at a yard cell, holds the right trigger, releases, and checks the cell's height.
     IEnumerator Hold(string spellId, int x, int y, float seconds, int expected, string check)
     {
         Check($"bar_has_{spellId}", caster.Select(spellId));

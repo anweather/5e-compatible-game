@@ -11,7 +11,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One row of a mod's "world" section's "lay": a terrain or a cover, the world cells it goes on, and the seed of the pick.</summary>
     public sealed class LayRow
     {
         public string Terrain, Cover;
@@ -21,12 +20,10 @@ namespace Chem
 
     public sealed partial class Rules
     {
-        /// <summary>Where the composed document holds the mods' laid cells, in the order they came.</summary>
         internal const string WorldLayKey = "worldLay";
 
         static readonly string[] LayRowFields = { "terrain", "cover", "cells", "seed" };
 
-        /// <summary>The rows the mods on lay, in the order they came.</summary>
         public IReadOnlyList<LayRow> ModLays { get; private set; } = Array.Empty<LayRow>();
 
         void ParseLays(JObject d)

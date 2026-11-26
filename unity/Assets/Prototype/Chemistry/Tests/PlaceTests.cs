@@ -1,13 +1,11 @@
+// Spells that place (docs/design/events-and-placing.md 2a): Placement.Pick, a spell's place of a thing, an
+// animal, a terrain or a cover, World.Placed lapsing, World.Summoned, the checks and budgets, and the save.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Spells that place (docs/design/events-and-placing.md 2a): Placement.Pick, a spell's place of a thing, an
-    /// animal, a terrain or a cover, World.Placed lapsing, World.Summoned, the checks and budgets, and the save.
-    /// </summary>
     [Category("Simulation")]
     public class PlaceTests
     {
@@ -36,7 +34,6 @@ namespace Chem.Tests
             return h.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
         }
 
-        /// <summary>PickGolden (design section 6): Pick's cells for fixed seeds and areas, pinned. It's pure, so this is exact.</summary>
         [Test]
         public void PickGolden()
         {
@@ -69,7 +66,6 @@ namespace Chem.Tests
             Assert.That(Placement.Around(0, 0, 32), Has.Count.InRange(3200, 3240), "the design's 3 200 candidates");
         }
 
-        /// <summary>PlaceGolden (design section 6): a spell placing 3 things; CastHash and the ids pinned, gone after lasts.</summary>
         [Test]
         public void PlaceGolden()
         {
@@ -181,7 +177,6 @@ namespace Chem.Tests
             Assert.That(loaded.CastHash(), Is.EqualTo(w.CastHash()), "the counts carry on");
         }
 
-        // A late joiner loads the host's world (JoinSnapshot): an animal brought out lately is still there for its view.
         [Test]
         public void TheAnimalsBroughtOutLatelySaveAndLoad()
         {
@@ -195,7 +190,6 @@ namespace Chem.Tests
             Assert.That(loaded.LastSummonN, Is.EqualTo(w.LastSummonN));
         }
 
-        // A late joiner's view tells the trees grown since the start from the map's own (the valley's StartTrees).
         [Test]
         public void ALoadedWorldStillKnowsWhatItStartedAs()
         {

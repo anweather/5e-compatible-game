@@ -1,31 +1,22 @@
+// The probe scenarios by name, for `unity command probe list` and `probe run`
+// (docs/FAST_LOOP.md). Each runs in the Chemistry Yard, in yard coordinates
+// taken from DemoDirector and ValleyShowcase. Directions: 0 N, 1 E, 2 S, 3 W.
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/// <summary>
-/// The probe scenarios by name, for `unity command probe list` and `probe run`
-/// (docs/FAST_LOOP.md). Each runs in the Chemistry Yard, in yard coordinates
-/// taken from DemoDirector and ValleyShowcase. Directions: 0 N, 1 E, 2 S, 3 W.
-/// </summary>
 public static class ProbeScenarios
 {
     public sealed class Entry
     {
         public string Name { get; }
         public string Description { get; }
-        /// <summary>The longest a run may take in Play mode before the editor gives up on it.</summary>
         public float MaxSeconds { get; }
         public Type Type { get; }
-        /// <summary>Players in the run: more than 1 means Multiplayer Play Mode virtual players (Player 2 on), started before Play mode.</summary>
         public int Players { get; }
-        /// <summary>
-        /// How much faster than real time the run plays (Time.timeScale, so the ticks, physics and Wait), for a slow scenario
-        /// whose checks hold at that speed; 1 for one that measures frames or real seconds.
-        /// </summary>
         public float Speed { get; }
-        /// <summary>Films into --shots and fails without it: a clip for a brief, left out of a sweep.</summary>
         public bool Films { get; }
 
         public Entry(string name, Type type, float maxSeconds, string description, int players = 1, float speed = 1f, bool films = false)
@@ -631,14 +622,8 @@ public static class ProbeScenarios
         All.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
 }
 
-// --- smoke ---------------------------------------------------------------------------
-
 public class SmokeProbe : ProbeScenario
 {
-    // The layout's cells (DemoDirector's, in yard coordinates) sit on the yard on a map that has one (the valley). On one
-    // without (the nine's yard is a 1x1 stub hundreds of cells from the start), they're moved to sit round the wizard's
-    // start, as on the valley, and Fire Bolt and Levitate are aimed at the nearest thing that burns and the nearest prop,
-    // since there's no oil spill or crate laid out for them.
     Vector2Int shift;
     bool onYard;
     static readonly Vector2Int StartInLayout = new Vector2Int(14, 7);
@@ -655,7 +640,6 @@ public class SmokeProbe : ProbeScenario
         Check("layout_near_start", onYard || (walkCell - start).magnitude < Nearby,
             onYard ? $"on the yard {grid.yardCells}" : $"no yard on this map: the layout moved {shift} to sit round the start {start}, the walk to {walkCell}");
 
-        // Walk: from the player start toward the pond, as DemoDirector does.
         var from = wizard.transform.position;
         var walkTo = S(20, 11);
         yield return WalkFor(walkTo.x, walkTo.y, 3f);
@@ -664,11 +648,10 @@ public class SmokeProbe : ProbeScenario
         Check("walked", walked > 1f, $"{walked:0.0} m");
         Shot("walk");
 
-        // Every Elements spell once (DemoDirector's targets; Thunderwave and Levitate by the crate).
         var fire = onYard ? S(19, 3) : Nearest(S(19, 3), c => c.Water == 0 && c.Fire == 0 && (World.TerrainOf(c).Burns || World.CoverBurns(c)));
         if (fire is { } burn)
         {
-            yield return CastLogged(SpellIds.FireBolt, burn, 0, 1.5f);        // the oil spill
+            yield return CastLogged(SpellIds.FireBolt, burn, 0, 1.5f);
             Metric("burning_after_fire_bolt", BurningCells());
             Check("fire_started", BurningCells() > 0, $"{BurningCells()} burning cells");
             yield return CastLogged(SpellIds.CreateWater, burn, 0, 1.5f);
@@ -681,7 +664,6 @@ public class SmokeProbe : ProbeScenario
         var place = S(15, 6);
         Place(place.x, place.y);
         yield return CastLogged(SpellIds.Thunderwave, place, 1, 1.5f);
-        // Levitate moves things, not cells: World.Cast logs nothing for it, but the lifted prop says so (EventLog).
         var lift = onYard ? S(17, 6) : NearestProp();
         if (lift is { } prop)
         {
@@ -692,7 +674,6 @@ public class SmokeProbe : ProbeScenario
         else Check("levitate_lifted", true, $"skipped: no prop within {Nearby} cells of the start on this map");
         Shot("elements");
 
-        // Shape Earth digs its square.
         var dig = S(6, 8);
         var cells = SpellCells(SpellIds.MoldEarth, dig.x, dig.y, 0);
         int before = cells.Sum(c => World.At(c.x, c.y).Height);
@@ -701,7 +682,6 @@ public class SmokeProbe : ProbeScenario
         Metric("mold_earth_height_change", after - before);
         Check("mold_earth_shaped", after != before, $"height sum {before} -> {after}");
 
-        // The fire spells past Fire Bolt: a cone from the hands, and a blast.
         yield return CastLogged(SpellIds.BurningHands, S(4, 14), 3, 1f);
         yield return CastLogged(SpellIds.Fireball, S(22, 1), 0, 1.5f);
 
@@ -711,10 +691,8 @@ public class SmokeProbe : ProbeScenario
         Metric("burning_cells_end", BurningCells());
     }
 
-    // A layout cell, in the yard coordinates the casts take, moved round the start on a map without a yard.
     Vector2Int S(int x, int y) => new Vector2Int(x + shift.x, y + shift.y);
 
-    // The yard cell (layout coordinates) nearest a layout cell, within Nearby of it, whose world cell passes a test.
     Vector2Int? Nearest(Vector2Int around, Func<Chem.Cell, bool> fits)
     {
         var at = grid.YardCell(around.x, around.y);
@@ -732,7 +710,6 @@ public class SmokeProbe : ProbeScenario
         return best;
     }
 
-    // The yard cell (layout coordinates) of the prop nearest the wizard, within Nearby of it.
     Vector2Int? NearestProp()
     {
         var spawner = FindAnyObjectByType<ThingSpawner>();
@@ -748,7 +725,6 @@ public class SmokeProbe : ProbeScenario
             .FirstOrDefault();
     }
 
-    // Casts from the bar and checks the World log has "You cast <name>" since the cast.
     IEnumerator CastLogged(string spellId, Vector2Int at, int dir, float wait)
     {
         int tick = World.Tick;
@@ -759,8 +735,6 @@ public class SmokeProbe : ProbeScenario
 
     static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
 
-    // Every prop and item of world/things.json in the chunks spawned so far (the reach, #209) spawned by ThingSpawner, on its
-    // own cell, with its own id.
     void CheckThingsSpawned()
     {
         var spawner = FindAnyObjectByType<ThingSpawner>();
@@ -777,13 +751,10 @@ public class SmokeProbe : ProbeScenario
     }
 }
 
-// --- fire ----------------------------------------------------------------------------
-
 public class FireProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        // ValleyShowcase's fire: low over the meadow at the old yard's west edge.
         Place(5, 13);
         var target = Yard(2, 12);
         Cut(target + V(8f, 13f, -16f), target + V(-6f, 0f, 3f));
@@ -804,15 +775,12 @@ public class FireProbe : ProbeScenario
     int AshCells() => World.AllCells().Count(c => c.Cover == "ash");
 }
 
-// --- earth ---------------------------------------------------------------------------
-
 public class EarthProbe : ProbeScenario
 {
     const float TrenchFillSeconds = 8f;
 
     protected override IEnumerator Run()
     {
-        // ValleyShowcase's water chapter: the wizard on the pond's west bank, the trench cut west.
         Place(16, 5);
         Cut(V(19f, 2.2f, 6.5f) + V(0f, 4f, -3f), V(20f, 0f, 15f));
         var trench = SpellCells(SpellIds.EarthenTrench, 15, 5, 3);
@@ -828,10 +796,6 @@ public class EarthProbe : ProbeScenario
         Check("trench_has_water_t8", wet > 0, $"{wet}/{trench.Count} cells wet, {units} units");
         Shot("trench");
 
-        // A Wall of Stone across it, north from (12, 7): a wall on dry ground, and on open water, which the trench spills
-        // onto the flat cells beside it as the wizard walks over, stepping stones only "stepping" high (World.Terraform,
-        // J-039). Which cells were wet at the cast's tick only shows after it: a cell is a wall, or a stone of exactly
-        // that height in the spell's terrain.
         Place(10, 6);
         var spell = World.Rules.Spell(SpellIds.WallOfStone);
         var wall = SpellCells(SpellIds.WallOfStone, 12, 7, 0);
@@ -850,13 +814,10 @@ public class EarthProbe : ProbeScenario
     }
 }
 
-// --- perf ----------------------------------------------------------------------------
-
 public class PerfProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        // Where ValleyShowcase's flyover ends: over the meadow toward the pond, the valley beyond.
         Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         Metric("hold_seconds", Seconds);
         Shot("view");

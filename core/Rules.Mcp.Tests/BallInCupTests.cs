@@ -1,13 +1,11 @@
+// The ball in the cup (docs/design/world-acts.md): anyone places a ball and a cup with an act, any spell moves the ball,
+// players at the course take turns, and the ball going in raises the holed event.
 using System.Linq;
 using Chem.Mcp;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The ball in the cup (docs/design/world-acts.md): anyone places a ball and a cup with an act, any spell moves the ball,
-    /// players at the course take turns, and the ball going in raises the holed event.
-    /// </summary>
     [Category("Simulation")]
     public class BallInCupTests
     {

@@ -8,11 +8,6 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>
-        /// A blast like explode in the TS: its crater is blown out of the ground, then every open
-        /// cell within the radius takes the explosion's cover, lit, and burns at least at its fire
-        /// level. Returns the cells stamped.
-        /// </summary>
         public int Explode(int x, int y, EntityDef e)
         {
             var ex = e?.Explodes;
@@ -23,10 +18,6 @@ namespace Chem
             return Stamp(x, y, ex);
         }
 
-        /// <summary>
-        /// A dropped item that broke and spilled what it held (a bullseye lantern's burning oil),
-        /// stamped like a small explosion with no blast. Returns the cells stamped.
-        /// </summary>
         public int Spill(int x, int y, ItemDef item)
         {
             var spill = item?.Breaks?.Spill;
@@ -54,7 +45,6 @@ namespace Chem
             return stamped;
         }
 
-        /// <summary>A burning thing that burns away leaves its fire in the cell (destroy in the TS).</summary>
         public void LeaveEmbers(int x, int y, EntityDef e)
         {
             var c = At(x, y);

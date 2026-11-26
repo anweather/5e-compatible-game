@@ -43,7 +43,6 @@ public class SwimProbe : ProbeScenario
         var from = wizard.transform.position;
         puppet.Move(Vector2.up);
         yield return Wait(1.2f);
-        // While stroking: the body leans forward into it, the head stays out, the hands move.
         float lean = Vector3.Angle(hips.up, Vector3.up);
         float handTravel = 0f;
         var handWas = hand.position - wizard.transform.position;
@@ -68,7 +67,7 @@ public class SwimProbe : ProbeScenario
         Check("swims_along", swum.magnitude > 1f && surface.Swimming, $"{swum.magnitude:0.0} m in 2 s");
 
         float before = wizard.transform.position.y, highest = before;
-        surface.Kick(); // what jump does afloat (SurfaceEffects.OnJump)
+        surface.Kick();
         for (float t = 0f; t < 0.8f; t += Time.deltaTime)
         {
             highest = Mathf.Max(highest, wizard.transform.position.y);
@@ -79,7 +78,6 @@ public class SwimProbe : ProbeScenario
         yield return Wait(2f);
         Check("back_afloat", surface.Swimming, "after the kick it falls back in and floats");
 
-        // The dive held (Left Ctrl, SurfaceEffects.HoldDive): under it goes, holding its breath, and let go it comes back up.
         var breath = wizard.GetComponent<Vitals>().Breath;
         float afloatY = wizard.transform.position.y;
         surface.HoldDive = true;
@@ -98,11 +96,8 @@ public class SwimProbe : ProbeScenario
         Check("breath_refills", breath.Full, $"breath {breath.Left:0.0} of {breath.Max:0} s");
     }
 
-    // The lake square with the most water over the ground. The lake is the lowest water (the
-    // pond at the foot of the falls, high up, can be deeper).
     Vector2Int Deepest(out float depth) => DeepestLake(grid, out depth);
 
-    /// <summary>The lake square with the most water over the ground, and how deep (also for the cloth probe).</summary>
     internal static Vector2Int DeepestLake(ChemGrid grid, out float depth)
     {
         float lake = float.MaxValue;
@@ -123,8 +118,6 @@ public class SwimProbe : ProbeScenario
         return best;
     }
 
-    // The height of the water drawn over a cell: the lake's own surface where one stands over it, else the cells' water
-    // surface (CellWaterMesh); NaN when neither draws it, as the valley's lake on the nine before #223.
     float DrawnWaterAt(Vector2Int cell, Vector3 at)
     {
         var lake = GameObject.Find("Lake");
@@ -134,7 +127,6 @@ public class SwimProbe : ProbeScenario
         return grid.DrawnWaterTopAt(cell.x + 0.5f, cell.y + 0.5f, float.NaN);
     }
 
-    // Water over the ground in a lake square (one whose surface is the lake's), else 0.
     static float LakeDepth(ChemGrid grid, int x, int y, float lake) =>
         Open(grid, x, y) && grid.WaterSurfaceY(x, y) <= lake + 1f ? grid.WaterSurfaceY(x, y) - TerrainGround(grid.CellCenter(x, y)) : 0f;
 
@@ -142,7 +134,6 @@ public class SwimProbe : ProbeScenario
     {
         var c = grid.World.At(x, y);
         if (c.Water <= 0 || c.Frozen || c.T != TerrainIds.Pit) return false;
-        // The lake, not the sea (whose deepest water is out by the world's edge).
         var currents = WaterCurrents.Instance;
         return currents == null || !currents.IsSea(grid.CellCenter(x, y));
     }

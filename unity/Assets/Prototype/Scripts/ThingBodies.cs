@@ -17,11 +17,10 @@ using UnityEngine;
 // moved (CreatureDrawer, with ValleyFauna's creature material). Each peer dresses
 // its own copy from the same rules, and that includes the box's size, which
 // NetworkTransform doesn't send.
-[DefaultExecutionOrder(130)] // after ItemHolder has put what's held in the hand
+[DefaultExecutionOrder(130)]
 public class ThingBodies : MonoBehaviour, ICreatureGround
 {
     const string Family = "creature";
-    // A box no thinner than this, so a snake still has something to stand on.
     const float MinSide = 0.1f;
 
     sealed class Dressed
@@ -37,17 +36,14 @@ public class ThingBodies : MonoBehaviour, ICreatureGround
     SegmentInstance[] instances = new SegmentInstance[64];
     CreatureDrawer drawer;
 
-    /// <summary>How many things wear a body now.</summary>
     public int Count => dressed.Count;
 
-    /// <summary>The look a kind is dressed by, or null if it has none (a kind with its own model).</summary>
     public static LookDef LookOf(Rules rules, string kind)
     {
         var look = rules.Entity(kind)?.Look ?? rules.Item(kind)?.Look;
         return look?.Family == Family ? look : null;
     }
 
-    /// <summary>The rules changed: bodies are built afresh, and every dressed thing reads its look again.</summary>
     public void ReadRules(Rules rules)
     {
         bodies.Clear();
@@ -55,7 +51,6 @@ public class ThingBodies : MonoBehaviour, ICreatureGround
         foreach (var d in dressed) Fit(d, rules);
     }
 
-    /// <summary>Dresses a generic thing whose kind is set, by the rules in force.</summary>
     public void Dress(PhysicsProp prop)
     {
         var d = new Dressed { prop = prop };
@@ -86,20 +81,16 @@ public class ThingBodies : MonoBehaviour, ICreatureGround
         return bodies[species] = CreatureBody.Build(rules.Fauna, species);
     }
 
-    // The species' first coat as the row has it, the look's colour over it. White is the look's
-    // "no colour given", so that keeps the coat.
     static CreatureTraits Coat(CreatureBody body, LookDef look)
     {
         var traits = body.TraitsOf(0, 0u);
         if (look.R == 1f && look.G == 1f && look.B == 1f) return traits;
         var colour = (Vector4)new Color(look.R, look.G, look.B).linear;
         traits.Worn.Base = traits.Worn.Accent = colour;
-        // A graft's donors' own coats take the look's colour too: one colour for the whole thing.
         for (int i = 0; traits.OwnWorn != null && i < traits.OwnWorn.Length; i++) traits.OwnWorn[i].Base = traits.OwnWorn[i].Accent = colour;
         return traits;
     }
 
-    // The box round a pose: every segment's two ends, with their radii.
     static Bounds BoxOf(SegmentInstance[] pose)
     {
         var box = new Bounds(pose[0].Position, Vector3.zero);
@@ -142,7 +133,6 @@ public class ThingBodies : MonoBehaviour, ICreatureGround
 
     void OnDestroy() => drawer?.Dispose();
 
-    // Posing is on flat ground at the origin, whatever is under the box.
     public float Height(float2 xz) => 0f;
     public bool Walkable(float2 xz) => true;
     public bool Water(float2 xz) => false;

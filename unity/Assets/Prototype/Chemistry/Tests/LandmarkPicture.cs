@@ -13,7 +13,6 @@ namespace Chem.Tests
     internal static class LandmarkPicture
     {
         internal const int Cells = 256, Scale = 4, Size = Cells * Scale;
-        /// <summary>Land below this many land units holds water (Places' "water", the lake's level).</summary>
         internal const int WaterBelow = -4;
         const int Contour = 48;
 
@@ -47,7 +46,6 @@ namespace Chem.Tests
 
         static readonly (double r, double g, double b) Dock = (0.66, 0.47, 0.27), Marker = (0.86, 0.14, 0.10), Dirt = (0.62, 0.51, 0.36);
 
-        /// <summary>The land the stamps lay on flat ground, a patch of <paramref name="n"/> cells from (x0, y0), row by row.</summary>
         internal static int[] Land(LandmarkRows rows, int x0, int y0, int n)
         {
             var stamps = MapStamps.FromJson(rows.StampsJson).All;
@@ -58,7 +56,6 @@ namespace Chem.Tests
             return land;
         }
 
-        /// <summary>A boathouse's dock: the cell at its far end, out from the middle of the wall it's on.</summary>
         internal static (int x, int y) DockEnd(JObject b)
         {
             var (x0, y0, x1, y1, side, _, _) = DockOf(b);
@@ -72,7 +69,6 @@ namespace Chem.Tests
             }
         }
 
-        // The dock's cells as a block, its wall, and its length and width in cells.
         static (int x0, int y0, int x1, int y1, string side, int length, int width) DockOf(JObject b)
         {
             var part = b["parts"].First(p => (string)p["kind"] == "dock");
@@ -90,7 +86,6 @@ namespace Chem.Tests
             }
         }
 
-        /// <summary>The picture, framed on the middle of the landmark and its village.</summary>
         internal static Picture Draw(LandmarkRows rows, Rules rules)
         {
             int x0 = (rows.Centre.x + rows.VillageAt.x) / 2 - Cells / 2, y0 = (rows.Centre.y + rows.VillageAt.y) / 2 - Cells / 2;
@@ -126,7 +121,6 @@ namespace Chem.Tests
             return new Picture { Pixels = pixels, Houses = houses };
         }
 
-        // Lays the village where it can stand: dry, gentle, inside the patch and off the landmark's cells.
         static int Village(LandmarkRows rows, int[] land, int x0, int y0, HashSet<(int x, int y)> taken, Action<int, int, (double, double, double)> put)
         {
             var spec = VillageLayout.FromJson(rows.VillagesJson).SingleOrDefault();
@@ -166,7 +160,6 @@ namespace Chem.Tests
                 double deep = Math.Min(1, -h / 60.0);
                 return (0.20 - 0.10 * deep, 0.45 - 0.15 * deep, 0.66 - 0.12 * deep);
             }
-            // Light from the north-west, and the high ground towards bare ash and rock.
             double light = Math.Max(0.55, Math.Min(1.45, 1 + (H(x + 1, y + 1) - H(x - 1, y - 1)) * 0.02));
             double bare = Math.Min(1, Math.Max(0, h / 420.0));
             var (r, g, b) = (ground.r + (0.58 - ground.r) * bare, ground.g + (0.54 - ground.g) * bare, ground.b + (0.50 - ground.b) * bare);
@@ -226,8 +219,6 @@ namespace Chem.Tests
                     if (Math.Abs(d - r) < 1.6 && (int)(Math.Atan2(py - my, px - mx) * 24 / Math.PI + 48) % 2 == 0) Set(pixels, px, py, Marker);
                 }
         }
-
-        // ---------- PNG: RGB, 8 bits, one zlib stream ----------
 
         internal static byte[] Png(byte[] rgb, int width, int height)
         {

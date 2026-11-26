@@ -16,11 +16,6 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>
-    /// A rectangle of heightmap samples or alphamap texels in one chunk: columns X..XMax (east)
-    /// and rows Z..ZMax (north), inclusive. Unity arrays for it are [row, column], i.e.
-    /// [z - Z, x - X], as SetHeights and SetAlphamaps take them.
-    /// </summary>
     public readonly struct ChunkRect : IEquatable<ChunkRect>
     {
         public readonly int I, J, X, Z, XMax, ZMax;
@@ -38,7 +33,6 @@ namespace Chem
         public int Width => XMax - X + 1;
         public int Height => ZMax - Z + 1;
 
-        /// <summary>The smallest rectangle holding both (same chunk).</summary>
         public ChunkRect Union(ChunkRect o) =>
             new ChunkRect(I, J, Math.Min(X, o.X), Math.Min(Z, o.Z), Math.Max(XMax, o.XMax), Math.Max(ZMax, o.ZMax));
 
@@ -52,7 +46,6 @@ namespace Chem
         public override string ToString() => $"chunk ({I}, {J}) [{X}..{XMax}] x [{Z}..{ZMax}]";
     }
 
-    /// <summary>Collects rectangles, one bounding rectangle per chunk.</summary>
     public sealed class ChunkRects
     {
         readonly Dictionary<(int i, int j), ChunkRect> rects = new Dictionary<(int i, int j), ChunkRect>();
@@ -62,7 +55,6 @@ namespace Chem
 
         public int Count => rects.Count;
 
-        /// <summary>The rectangles by chunk row, then column.</summary>
         public List<ChunkRect> ToList()
         {
             var list = new List<ChunkRect>(rects.Values);
@@ -73,19 +65,11 @@ namespace Chem
 
     public sealed class TerrainGrid
     {
-        /// <summary>Cells along a chunk terrain's side: the chemistry's chunk size.</summary>
         public const int ChunkCells = Chunks.Size;
-        /// <summary>Heightmap samples per cell on a full-detail chunk (257 heightmap); a coarse one has 1 (65).</summary>
         public const int HighSamplesPerCell = 4;
 
         readonly (int i0, int j0, int i1, int j1) highRes;
 
-        /// <param name="cellSize">A cell's side in metres.</param>
-        /// <param name="origin">World x, z of the south-west corner of chunk (0, 0).</param>
-        /// <param name="chunks">How many chunk terrains along x and z.</param>
-        /// <param name="gridCorner">The world cell (u, v) of grid cell (0, 0).</param>
-        /// <param name="gridSize">The World's size in cells (W, H).</param>
-        /// <param name="highRes">The full-detail chunks, an inclusive rectangle of chunk coordinates.</param>
         public TerrainGrid(float cellSize, (float x, float z) origin, (int x, int z) chunks,
             (int u, int v) gridCorner, (int w, int h) gridSize, (int i0, int j0, int i1, int j1) highRes)
         {
@@ -102,11 +86,6 @@ namespace Chem
             this.highRes = highRes;
         }
 
-        /// <summary>
-        /// The valley: 9×9 chunks of 96 m, all of them cells (576×576, so chemistry works wherever
-        /// the players go; chunks wake around them, ChunkStreaming), with cell (x, y) centred at world
-        /// ((x - 279) * 1.5, (330 - y) * 1.5) and full detail on chunks i 3..5, j 2..4.
-        /// </summary>
         public static TerrainGrid Valley() =>
             new TerrainGrid(1.5f, (-419.25f, -368.25f), (9, 9), (0, 575), (576, 576), (3, 2, 5, 4));
 
@@ -115,41 +94,28 @@ namespace Chem
         public float OriginZ { get; }
         public int ChunksX { get; }
         public int ChunksZ { get; }
-        /// <summary>World cell of grid cell (0, 0): u = x + U0, v = V0 - y.</summary>
         public int U0 { get; }
         public int V0 { get; }
         public int GridW { get; }
         public int GridH { get; }
 
-        /// <summary>A chunk terrain's side in metres.</summary>
         public float ChunkSize => ChunkCells * CellSize;
-
-        // ---------- chunks ----------
 
         public bool HasChunk(int i, int j) => i >= 0 && j >= 0 && i < ChunksX && j < ChunksZ;
 
         public bool IsHighRes(int i, int j) =>
             i >= highRes.i0 && i <= highRes.i1 && j >= highRes.j0 && j <= highRes.j1;
 
-        /// <summary>Heightmap samples per cell along each axis: 4 on a full-detail chunk, else 1.</summary>
         public int SamplesPerCell(int i, int j) => IsHighRes(i, j) ? HighSamplesPerCell : 1;
 
-        /// <summary>The chunk's heightmap resolution: 257 or 65.</summary>
         public int Resolution(int i, int j) => ChunkCells * SamplesPerCell(i, j) + 1;
 
-        /// <summary>The chunk's alphamap resolution: 256 or 64, a block of SamplesPerCell² texels per cell.</summary>
         public int TexelResolution(int i, int j) => ChunkCells * SamplesPerCell(i, j);
 
-        /// <summary>World x, z of the chunk's south-west corner (its Terrain's position).</summary>
         public (float x, float z) ChunkCorner(int i, int j) => (OriginX + i * ChunkSize, OriginZ + j * ChunkSize);
 
-        /// <summary>The whole heightmap of a chunk as a rectangle.</summary>
         public ChunkRect SampleRect(int i, int j) => new ChunkRect(i, j, 0, 0, Resolution(i, j) - 1, Resolution(i, j) - 1);
 
-        /// <summary>
-        /// The chunks whose heightmaps the grid's cells reach: those holding a cell, plus those
-        /// whose edge runs along the grid's west or north side.
-        /// </summary>
         public List<(int i, int j)> GridChunks()
         {
             var (iLo, iHi) = ChunkSpan(U0, U0 + GridW);
@@ -161,26 +127,16 @@ namespace Chem
             return list;
         }
 
-        /// <summary>The chunks (inclusive) whose cell-corner range [64c, 64(c+1)] meets corners c0..c1.</summary>
         internal static (int lo, int hi) ChunkSpan(int c0, int c1) =>
             (Chunks.ChunkOf(c0 + ChunkCells - 1) - 1, Chunks.ChunkOf(c1));
-
-        // ---------- cells ----------
 
         public bool InGrid(int x, int y) => x >= 0 && y >= 0 && x < GridW && y < GridH;
 
         public (int u, int v) WorldCell(int x, int y) => (x + U0, V0 - y);
         public (int x, int y) GridCell(int u, int v) => (u - U0, V0 - v);
 
-        /// <summary>The chunk a grid cell lies in.</summary>
         public (int i, int j) ChunkOfCell(int x, int y) => (Chunks.ChunkOf(x + U0), Chunks.ChunkOf(V0 - y));
 
-        /// <summary>
-        /// The chunk terrains any part of which lies within <paramref name="radius"/> cells of world
-        /// cell (x, y)'s centre, as (i, j) by row then column: the ones whose details (grass) can be
-        /// in sight from there (ChemGrid.DetailChunks). The terrains are offset from the chemistry's
-        /// chunks and run north to south the other way, so this works in their own grid.
-        /// </summary>
         public List<(int i, int j)> ChunksWithin(int x, int y, double radius)
         {
             var all = new List<(int cx, int cy)>(ChunksX * ChunksZ);
@@ -192,14 +148,12 @@ namespace Chem
         public (float x, float z) CellCenter(int x, int y) =>
             (OriginX + (x + U0 + 0.5f) * CellSize, OriginZ + (V0 - y + 0.5f) * CellSize);
 
-        /// <summary>The grid cell under a world point (it may be off the grid: check InGrid).</summary>
         public (int x, int y) CellAt(float wx, float wz)
         {
             int u = (int)Math.Floor((wx - OriginX) / CellSize), v = (int)Math.Floor((wz - OriginZ) / CellSize);
             return GridCell(u, v);
         }
 
-        /// <summary>The grid cells chunk (i, j) holds (those whose ChunkOfCell it is), row by row as Cells lists them.</summary>
         public IEnumerable<(int x, int y)> CellsIn(int i, int j)
         {
             int u0 = i * ChunkCells, v0 = j * ChunkCells;
@@ -209,19 +163,12 @@ namespace Chem
                 for (int x = Math.Max(0, xLo); x <= Math.Min(GridW - 1, xHi); x++) yield return (x, y);
         }
 
-        /// <summary>Every grid cell, row by row.</summary>
         public IEnumerable<(int x, int y)> Cells()
         {
             for (int y = 0; y < GridH; y++)
                 for (int x = 0; x < GridW; x++) yield return (x, y);
         }
 
-        // ---------- samples and texels ----------
-
-        /// <summary>
-        /// A sample that belongs to the cell alone: its centre on a full-detail chunk, its
-        /// south-west corner on a coarse one (which has no sample inside a cell).
-        /// </summary>
         public (int i, int j, int sx, int sz) CellSample(int x, int y)
         {
             var (u, v) = WorldCell(x, y);
@@ -230,7 +177,6 @@ namespace Chem
             return (i, j, Chunks.LocalOf(u) * p + mid, Chunks.LocalOf(v) * p + mid);
         }
 
-        /// <summary>The grid cell a sample lies in; a sample on a cell border counts as the cell north-east of it.</summary>
         public (int x, int y) CellOfSample(int i, int j, int sx, int sz)
         {
             int p = SamplesPerCell(i, j);
@@ -244,10 +190,8 @@ namespace Chem
             return (cx + sx * step, cz + sz * step);
         }
 
-        /// <summary>The grid cell an alphamap texel paints.</summary>
         public (int x, int y) CellOfTexel(int i, int j, int tx, int tz) => CellOfSample(i, j, tx, tz);
 
-        /// <summary>The block of alphamap texels a grid cell paints.</summary>
         public ChunkRect TexelRect(int x, int y)
         {
             var (u, v) = WorldCell(x, y);

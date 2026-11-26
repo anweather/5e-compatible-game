@@ -25,13 +25,8 @@ using UnityEngine;
 // lights and no material per cell; with no look glowing in the rules nothing of it is made or asked.
 public sealed class CellSlickMesh
 {
-    // How far the film floats over the terrain, how far in from its edge it turns opaque (in
-    // blended value), and the outline: 4 lattice points per cell, more wobble than water.
     const float Lift = 0.025f, FadeWidth = 0.35f;
-    // A step in the ground (metres) beside a cell that holds the outline still there: a wobble
-    // over a pit's lip would drape the film down its side.
     const float Step = 0.1f;
-    // Ground steeper than this (rise over run) sheds the film: none clings to a pit's side.
     const float FlatGrade = 0.12f, SteepGrade = 0.35f;
     static readonly ContourSpec Outline = new(4, 0.5f, 0.8f, 47);
     static readonly Color OilColor = new(0.03f, 0.028f, 0.03f, 0.93f);
@@ -47,13 +42,10 @@ public sealed class CellSlickMesh
 
     readonly ChemGrid grid;
     readonly Dictionary<int, string> slicks = new();
-    // Cells under a scoped look's film, and its colour on each.
     readonly Dictionary<int, Color> scoped = new();
     const string ScopeFilm = "scoped";
     const float SameFilm = 0.03f;
-    // Rock cells that were lava (a look only: the core's cell is plain rock).
     readonly HashSet<int> crusts = new();
-    // Cells acid ate, and until when their stain shows.
     readonly Dictionary<int, float> eaten = new();
     readonly List<int> expired = new();
     const int TileCells = 16;
@@ -66,40 +58,25 @@ public sealed class CellSlickMesh
     readonly HashSet<int> dirtyTiles = new();
     readonly List<int> drawOrder = new();
     readonly ChemGrid.FrameBudget drawBudget = new(DrawBudgetMs, ExactDrawTiles);
-    // What a tile's Build asks, made once.
     readonly System.Func<int, int, float> filmAt, wobbleAt;
-    // The covers' colours in the rules in force.
     Color oil = OilColor, grease = GreaseColor, frost = FrostColor;
     readonly System.Func<float, float, float> heightAt;
     readonly System.Func<float, float, float, Color> shadeAt;
-    // ColorAt's channels, made once (Shade asks for each at every point of the film).
     readonly System.Func<int, int, float?> redAt, greenAt, blueAt, alphaAt, topAt, gradeAt;
-    // The tile being drawn, a ring wider all round: each cell's film colour and how steep it is
-    // (asked of once, by the first point that wants it), as a point asks four cells of everything.
     const int TileRing = 2, TileSide = TileCells + 2 * TileRing;
     readonly Color?[] tileColors = new Color?[TileSide * TileSide];
     readonly float[] tileGrades = new float[TileSide * TileSide];
     readonly bool[] tileAsked = new bool[TileSide * TileSide];
     int tileX, tileY;
 
-    // --- glow ---------------------------------------------------------------------------------
-    // How bright a glow shines over its colour: MaxGlow * (1 - e^(-glow / GlowKnee)), so 0.1 is a faint
-    // shimmer (0.16), 0.3 a clear glow (0.35), 1 the most (0.53); none comes near the look's full colour, which
-    // would wash the cells into a flat cut-out after dark (as a thing's glow of 0.4 does). The glow film's texture
-    // (GlowTexture) mottles it between GlowLeast and all of it, so a patch glows unevenly, as moss would.
     const float MaxGlow = 0.55f, GlowKnee = 0.3f, GlowLeast = 0.45f;
-    // The mottle: a tiling value noise of GlowLattice cells (and twice as fine, at half weight) over GlowSide texels.
     const int GlowSide = 64, GlowLattice = 8;
-    // How much of it shows in full daylight (the lamps out), and the step in light worth a material change.
     const float DayGlow = 0.04f, SameLight = 0.002f;
-    // The glow film floats this far over the film under it.
     const float GlowLift = 0.004f;
-    // Cells that glow, and the colour each adds (the look's colour times Strength), before the light.
     readonly Dictionary<int, Color> glows = new();
     readonly Dictionary<int, ContourSurface> glowTiles = new();
     readonly Material glowMaterial;
     readonly Texture2D glowTexture;
-    // The glow of every cover and ground terrain that glows in the rules in force, and the rules it was read from.
     Dictionary<string, Color> glowLooks = new();
     Rules glowRules;
     float lit = -1f;
@@ -138,14 +115,9 @@ public sealed class CellSlickMesh
         gradeAt = (x, y) => TileGrade(x, y);
     }
 
-    // Which covers wear a film, from the rules in force (asked once a cover, again after a switch): a slippery one
-    // (oil, grease, frost; a mod's black ice), and one the base rules don't have, a mod's own, in its look's colour,
-    // so a cover the view has never seen is drawn, not skipped. Snow stays the land's paint.
     readonly Dictionary<string, bool> filmCovers = new();
-    // A mod's own cover's film, where its look gives no colour.
     static readonly Color OwnFilmColor = new(0.5f, 0.5f, 0.5f, 0.85f);
 
-    /// <summary>Whether a cover is drawn as a film, in the rules in force.</summary>
     public bool IsFilm(string cover)
     {
         if (cover == null) return false;
@@ -157,12 +129,10 @@ public sealed class CellSlickMesh
         return film;
     }
 
-    /// <summary>Whether a cover's film floats a sheen on water (CellFxTexture.Oil): a slippery cover that burns (oil, grease), not a glaze (frost).</summary>
     public bool IsSheen(string cover) => IsFilm(cover) && grid.World.Rules.Covers.TryGetValue(cover, out var def) && def.Has("slippery") && def.Burns;
 
     Rules BaseRules => grid.CurrentRules?.Base ?? grid.World.Rules;
 
-    /// <summary>A cell was redrawn: rock that <paramref name="cooled"/> from lava wears a crust; anything else loses it.</summary>
     public void Crust(int x, int y, Cell c, bool cooled)
     {
         int key = grid.World.Idx(x, y);
@@ -170,10 +140,8 @@ public sealed class CellSlickMesh
         else if (c.T != TerrainIds.Rock) crusts.Remove(key);
     }
 
-    /// <summary>True for a terrain drawn with a film (mud, glass, brick).</summary>
     public static bool IsGlazed(string terrain) => terrain == TerrainIds.Mud || terrain == TerrainIds.Glass || terrain == TerrainIds.Brick;
 
-    /// <summary>The film a cell wears: its cover's (oil, grease, frost, a mod's own: IsFilm), else its ground's (mud, glass), else null.</summary>
     public string FilmOf(Cell c)
     {
         if (c.Star > 0) return StarFilm;
@@ -181,7 +149,6 @@ public sealed class CellSlickMesh
         return IsGlazed(c.T) ? c.T : null;
     }
 
-    /// <summary>A cell's cover or terrain changed: the film is rebuilt at the next Rebuild.</summary>
     public void Changed(int x, int y, Cell c)
     {
         int key = grid.World.Idx(x, y);
@@ -194,7 +161,6 @@ public sealed class CellSlickMesh
         if (glows.Count > 0 || GlowLooks.Count > 0) GlowChanged(key, x, y, c);
     }
 
-    // The glow of every cover, and every ground terrain, whose look glows in the rules in force, as the colour it adds.
     Dictionary<string, Color> GlowLooks
     {
         get
@@ -211,7 +177,6 @@ public sealed class CellSlickMesh
         }
     }
 
-    // The glow film's mottle, made once: grey from GlowLeast to 1, tiling (its lattice wraps), with no draw from any RNG.
     static Texture2D GlowTexture()
     {
         var t = new Texture2D(GlowSide, GlowSide, TextureFormat.RGBA32, false, true) { name = "Glow mottle", wrapMode = TextureWrapMode.Repeat };
@@ -228,7 +193,6 @@ public sealed class CellSlickMesh
         return t;
     }
 
-    // Value noise at a texel on a lattice of this many cells across the texture, wrapping at its edge, 0 to 1.
     static float Mottle(int x, int y, int lattice, int seed)
     {
         float fx = x * lattice / (float)GlowSide, fy = y * lattice / (float)GlowSide;
@@ -238,7 +202,6 @@ public sealed class CellSlickMesh
         return Mathf.Lerp(Mathf.Lerp(At(x0, y0), At(x0 + 1, y0), tx), Mathf.Lerp(At(x0, y0 + 1), At(x0 + 1, y0 + 1), tx), ty);
     }
 
-    /// <summary>How strongly a glow shines over its colour, before the light (see MaxGlow).</summary>
     public static float Strength(float glow) => glow <= 0f ? 0f : MaxGlow * (1f - Mathf.Exp(-Mathf.Min(glow, 1f) / GlowKnee));
 
     static Color GlowOf(LookDef look)
@@ -247,7 +210,6 @@ public sealed class CellSlickMesh
         return new Color(look.R * k, look.G * k, look.B * k, 1f);
     }
 
-    // What a cell adds in glow: its cover's (a cover hides its ground's), else its ground terrain's; null for none.
     Color? GlowOfCell(Cell c)
     {
         var looks = GlowLooks;
@@ -272,9 +234,6 @@ public sealed class CellSlickMesh
         }
     }
 
-    // The rules switched and some look's glow came, went or changed: the drawn chunks' cells are looked over again for it
-    // (a ground terrain's glow reaches cells nothing redraws), once that switch. A chunk not drawn yet takes the glow in
-    // force as it draws (Changed), so the map's other cells aren't visited (#210, J-086).
     void RescanGlow(Dictionary<string, Color> before)
     {
         var after = GlowLooks;
@@ -293,7 +252,6 @@ public sealed class CellSlickMesh
 
     readonly List<Vector2Int> rescanChunks = new();
 
-    /// <summary>The glow drawn at a cell now (its colour times its strength times the light), black for none; for a probe.</summary>
     public Color GlowAt(int x, int y)
     {
         if (!grid.World.InBounds(x, y) || !glows.TryGetValue(grid.World.Idx(x, y), out var g)) return Color.black;
@@ -301,13 +259,10 @@ public sealed class CellSlickMesh
         return new Color(g.r * k, g.g * k, g.b * k, 1f);
     }
 
-    /// <summary>How many cells glow, for a probe.</summary>
     public int GlowCells => glows.Count;
 
-    // How much of a glow shows in this light: DayGlow by day, all of it once the lamps are lit.
     float Light() => DayGlow + (1f - DayGlow) * Nightfall.Lamps(grid.World);
 
-    // Once a frame while anything glows: the one glow material takes the light.
     void LightGlow()
     {
         float k = Light();
@@ -316,10 +271,6 @@ public sealed class CellSlickMesh
         glowMaterial.SetColor(BaseColorId, new Color(k, k, k, 1f));
     }
 
-    /// <summary>
-    /// A scoped look's colour over what can't be drawn cell by cell (the land, the lake), as a film on the
-    /// cell, or null for none (ChemGrid.GroundFilmAt). A cell with a film of its own keeps that. Before Changed.
-    /// </summary>
     public void Scoped(int x, int y, Color? over)
     {
         int key = grid.World.Idx(x, y);
@@ -336,14 +287,12 @@ public sealed class CellSlickMesh
         }
     }
 
-    /// <summary>Ground moved at a cell: the film near it follows at the next Rebuild.</summary>
     public void GroundChanged(int x, int y)
     {
         PerfCounts.Add("slick.ground_changed");
         if (slicks.Count > 0 || eaten.Count > 0 || glows.Count > 0) MarkAround(x, y);
     }
 
-    // A cell's change reaches two cells round it (the outline reads one ring out, the wobble another).
     void MarkAround(int x, int y)
     {
         int tx0 = Mathf.Max(0, (x - 2) / TileCells), tx1 = Mathf.Min(tilesX - 1, (x + 2) / TileCells);
@@ -352,14 +301,12 @@ public sealed class CellSlickMesh
             for (int tx = tx0; tx <= tx1; tx++) dirtyTiles.Add(ty * tilesX + tx);
     }
 
-    /// <summary>Acid ate something at a cell: it wears the eaten stain until <paramref name="until"/> (Time.time).</summary>
     public void Eaten(int x, int y, float until)
     {
         eaten[grid.World.Idx(x, y)] = until;
         MarkAround(x, y);
     }
 
-    /// <summary>Stains past their time go, at the next Rebuild.</summary>
     public void Expire(float now)
     {
         if (eaten.Count == 0) return;
@@ -373,11 +320,8 @@ public sealed class CellSlickMesh
         }
     }
 
-    /// <summary>Redraws the tiles near any change since the last time, nearest the camera first, as far as the frame's budget goes.</summary>
-    /// <summary>The film colour a cell is drawn in, for a probe.</summary>
     public Color? FilmColorAt(int x, int y) => ColorAt(x, y);
 
-    /// <summary>How many cells wear this film (a cover's id, or a ground's), for a probe.</summary>
     public int FilmCells(string film)
     {
         int n = 0;
@@ -386,7 +330,6 @@ public sealed class CellSlickMesh
         return n;
     }
 
-    /// <summary>The rules switched: the covers' films take the colours in force.</summary>
     public void Recolour()
     {
         oil = grid.CoverColor(CoverIds.Oil, OilColor);
@@ -422,7 +365,6 @@ public sealed class CellSlickMesh
         }
     }
 
-    // Squared distance on the ground from a point to a tile's middle.
     float TileDistance(int tile, Vector3 eye)
     {
         int cx = (tile % tilesX) * TileCells + TileCells / 2, cy = (tile / tilesX) * TileCells + TileCells / 2;
@@ -431,7 +373,6 @@ public sealed class CellSlickMesh
         return dx * dx + dz * dz;
     }
 
-    // A tile's film: made the first time it has any, emptied when it has none.
     void DrawTile(int tile)
     {
         var world = grid.World;
@@ -455,7 +396,6 @@ public sealed class CellSlickMesh
         if (glow) DrawGlow(tile, box);
     }
 
-    // A tile's glow film, over its glowing cells alone, in the films' outline.
     void DrawGlow(int tile, RectInt box)
     {
         if (!glowTiles.TryGetValue(tile, out var surface))
@@ -480,7 +420,6 @@ public sealed class CellSlickMesh
 
     Color? GlowColor(int x, int y) => grid.World.InBounds(x, y) && glows.TryGetValue(grid.World.Idx(x, y), out var g) ? g : null;
 
-    // The glows' colours (blended where they meet), faded at their edge and on steep ground as the films are.
     Color GlowShade(float gx, float gy, float value) => new(
         ContourSurface.BlendAround(gx, gy, glowRedAt, 0f),
         ContourSurface.BlendAround(gx, gy, glowGreenAt, 0f),
@@ -496,7 +435,6 @@ public sealed class CellSlickMesh
             for (int x = 0; x < TileSide; x++) tileColors[y * TileSide + x] = ColorAt(tileX + x, tileY + y);
     }
 
-    // Where in the tile's arrays a cell is, or -1 past them.
     int TileIndex(int x, int y)
     {
         int ix = x - tileX, iy = y - tileY;
@@ -521,7 +459,6 @@ public sealed class CellSlickMesh
         return tileGrades[at];
     }
 
-    // Whether any cell in the box, or the ring round it, wears a film (a tile also draws the edge of one lying just past it).
     bool AnyNear(RectInt box)
     {
         for (int y = box.yMin - 1; y <= box.yMax; y++)
@@ -530,9 +467,6 @@ public sealed class CellSlickMesh
         return false;
     }
 
-    // On the ground, but never dipping below the slick cells' own level: past a pit's lip the
-    // film stays level (and faded, see Shade) instead of bending down, which would catch the
-    // light along the bend.
     float Height(float gx, float gy)
     {
         float ground = grid.GroundAt(ContourSurface.FlatOn(grid, gx, gy));
@@ -542,7 +476,6 @@ public sealed class CellSlickMesh
         return top + Lift;
     }
 
-    // Whether the ground beside a cell (its 8 neighbours) is a step up or down from it.
     bool BesideStep(int x, int y)
     {
         var world = grid.World;
@@ -557,7 +490,6 @@ public sealed class CellSlickMesh
 
     bool Has(int x, int y) => grid.World.InBounds(x, y) && (slicks.ContainsKey(grid.World.Idx(x, y)) || eaten.ContainsKey(grid.World.Idx(x, y)));
 
-    // The films' colours (blended where they meet), fading out toward the edge and on steep ground.
     Color Shade(float gx, float gy, float value)
     {
         var c = new Color(
@@ -569,7 +501,6 @@ public sealed class CellSlickMesh
         return c;
     }
 
-    // An alpha faded out toward a film's edge and on steep ground.
     float Fade(float gx, float gy, float value, float a)
     {
         a *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(Outline.Iso, Outline.Iso + FadeWidth, value));
@@ -577,8 +508,6 @@ public sealed class CellSlickMesh
         return a;
     }
 
-    // How steep the ground is at a point (grid units): the larger rise over run across a quarter cell.
-    // A cell's middle speaks for it, and a point blends the four round it: Shade asked this of every point.
     float Grade(float gx, float gy)
     {
         const float d = 0.125f;
@@ -588,7 +517,6 @@ public sealed class CellSlickMesh
         return Mathf.Max(Mathf.Abs(ex), Mathf.Abs(ey)) / run;
     }
 
-    // A cell's film colour, or null for a cell without a film.
     Color? ColorAt(int x, int y)
     {
         if (!Has(x, y)) return null;
@@ -604,7 +532,6 @@ public sealed class CellSlickMesh
             ScopeFilm => scoped.TryGetValue(grid.World.Idx(x, y), out var over) ? over : Color.clear,
             CrustFilm => CrustColor,
             CoverIds.Oil => grid.LooksScoped ? grid.CoverColorAt(CoverIds.Oil, grid.World.Idx(x, y), OilColor) : oil,
-            // A mod's own cover: its look's colour (CoverColorAt reads the rules in force, scoped or not).
             _ => grid.CoverColorAt(film, grid.World.Idx(x, y), OwnFilmColor),
         };
     }

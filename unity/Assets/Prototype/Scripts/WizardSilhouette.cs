@@ -28,7 +28,6 @@ public sealed class WizardSilhouette
         material = new Material(shader) { name = "Wizard silhouette" };
     }
 
-    /// <summary>Whether the figure is drawn now.</summary>
     public bool Shown => shown;
 
     public void Show(bool on)

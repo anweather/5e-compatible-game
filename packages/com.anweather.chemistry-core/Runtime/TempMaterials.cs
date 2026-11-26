@@ -9,7 +9,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A temporary material: its table and id, the mod that adds it and its lapse.</summary>
     public readonly struct TempMaterial
     {
         public TempMaterial(string table, string id, string mod, MaterialLapse lapse)
@@ -28,7 +27,6 @@ namespace Chem
 
     public static class TempMaterials
     {
-        /// <summary>The temporary materials of these rules, in mod, table and patch order; empty with no mods on.</summary>
         public static IReadOnlyList<TempMaterial> Of(RuleSet set)
         {
             var list = new List<TempMaterial>();
@@ -40,7 +38,6 @@ namespace Chem
             return list;
         }
 
-        // A mod's rows in one table that are new over the base and still in force, unless an earlier mod added them.
         static void AddOwn(RuleSet set, string mod, string table, JObject rows, HashSet<string> seen, List<TempMaterial> list)
         {
             if (rows == null) return;
@@ -49,7 +46,6 @@ namespace Chem
                     list.Add(new TempMaterial(table, p.Name, mod, set.Effective.LapseOf(table, p.Name)));
         }
 
-        /// <summary>The temporary materials by id, each with its mod: a mod naming one goes when that mod does (World.Lapse.cs).</summary>
         public static IReadOnlyDictionary<string, string> Owners(IEnumerable<TempMaterial> temps)
         {
             var owners = new Dictionary<string, string>();

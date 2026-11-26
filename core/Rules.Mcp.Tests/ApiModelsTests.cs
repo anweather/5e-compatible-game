@@ -1,3 +1,4 @@
+// A player's own key (J-071): reading the model list, the session's spend limit, and what a child process gets.
 using System.Collections.Generic;
 using System.Linq;
 using Chem.Mcp;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>A player's own key (J-071): reading the model list, the session's spend limit, and what a child process gets.</summary>
     [Category("Unit")]
     public class ApiModelsTests
     {

@@ -21,21 +21,13 @@ public static class ValleyTower
 {
     const string Generated = "Assets/Prototype/Generated";
 
-    /// <summary>The middle of the column on the ground plane (x, z).</summary>
     public static readonly Vector2 Site = new Vector2(-60f, -20f);
 
-    /// <summary>How far round the column everything reaches (m): the platforms, the mats and the start pad.</summary>
     public const float Reach = 13f;
 
-    // The platforms' ring round the column's middle, the column's radius and the summit's (m); the
-    // first platform's bearing (degrees anticlockwise from east, toward the yard), the start pad's
-    // distance out, and how high the summit stands over the last platform.
     const float Ring = 6.5f, ColumnRadius = 3f, SummitRadius = 4.2f, StartBearing = 20f, PadOut = 10.5f, LastRise = 1f;
     const float Thickness = 0.5f, PadRadius = 1.6f;
 
-    // One step of the climb: its kind (and motion, if it moves), how far round from the last (degrees)
-    // and how far above it (m). Single jumps: a gap up to about 1.6 m and a rise under a metre; the
-    // wide ones (50 degrees and more, 1.6 m and more up) need the double jump.
     static readonly (Kind kind, Motion motion, float turn, float rise)[] Steps =
     {
         (Kind.Static, Motion.Slide, 0f, 0.8f), (Kind.Static, Motion.Slide, 32f, 0.8f), (Kind.Static, Motion.Slide, 32f, 0.8f),
@@ -58,7 +50,6 @@ public static class ValleyTower
         public Material stone, column, moving, crumbly, phase, ghost, straw, flag, start, wood;
     }
 
-    /// <summary>Builds the tower, named "Tower", with its TowerCourse.</summary>
     public static TowerCourse Build(ChemGrid grid)
     {
         var looks = MakeMaterials();
@@ -77,8 +68,6 @@ public static class ValleyTower
             bearing += turn;
             top += rise;
             var p = Platform(root, course, (kind, motion), Around(bearing, Ring, top), bearing, i, looks);
-            // Each phasing platform a little behind the one before: it turns solid while that one still is and
-            // stays solid a while after it fades, so the way on is always there for a moment.
             if (kind == Kind.Phasing)
             {
                 p.phase = phasing * 0.7f % 1f;
@@ -99,7 +88,6 @@ public static class ValleyTower
         return course;
     }
 
-    // A point at a bearing (degrees anticlockwise from east) and a distance from the column's middle, at a height.
     static Vector3 Around(float bearing, float distance, float y)
     {
         float a = bearing * Mathf.Deg2Rad;
@@ -108,8 +96,6 @@ public static class ValleyTower
 
     static float Ground(Vector2 p) => EditorGround.GroundAt(new Vector3(p.x, 0f, p.y));
 
-    // One platform, its top at the point: the box the wizard stands on, facing out from the column
-    // (local z outward, x along the ring), and its drawn block.
     static TowerPlatform Platform(Transform root, TowerCourse course, (Kind kind, Motion motion) type, Vector3 topAt, float bearing, int index, Looks looks)
     {
         var (kind, motion) = type;
@@ -140,8 +126,6 @@ public static class ValleyTower
         return p;
     }
 
-    // The stone column from under the ground to the summit, with darker bands every few metres so its
-    // height reads from afar, and the wider summit on top.
     static void Column(Transform root, float ground, float summit, Looks looks)
     {
         float bottom = ground - 1f, height = summit - 0.4f - bottom;
@@ -151,7 +135,6 @@ public static class ValleyTower
         Solid(root, "Tower summit", new Vector3(Site.x, summit - 0.2f, Site.y), new Vector3(SummitRadius * 2f, 0.2f, SummitRadius * 2f), looks.stone);
     }
 
-    // The flag on the summit: a pole, a gold knob, and a red flag flying toward the yard.
     static void Flag(Transform root, Vector3 foot, Looks looks)
     {
         const float pole = 5f;
@@ -162,7 +145,6 @@ public static class ValleyTower
         flag.transform.rotation = Quaternion.LookRotation(toYard);
     }
 
-    // The start pad on the yard's side, with a sign beside it; returns the middle of the pad's top.
     static Vector3 StartPad(Transform root, Looks looks)
     {
         var at = Around(StartBearing, PadOut, 0f);
@@ -182,7 +164,6 @@ public static class ValleyTower
         return at;
     }
 
-    // Writing on the sign's face (toward whoever reads it, the board's -z side).
     static void Words(Transform board, string text)
     {
         var go = new GameObject("Tower sign words");
@@ -191,8 +172,6 @@ public static class ValleyTower
         SignWords.Write(go, text, 0.035f, 1.8f, 0.85f);
     }
 
-    // Straw mats in a ring round the column's foot: where a fall from the tower lands (only a look;
-    // falls do no harm).
     static void Mats(Transform root, Material straw)
     {
         const int count = 22;
@@ -208,7 +187,6 @@ public static class ValleyTower
         }
     }
 
-    // A drawn cylinder the wizard can stand on and bump into (its own mesh as the collider, flat on top).
     static void Solid(Transform root, string name, Vector3 at, Vector3 scale, Material mat)
     {
         var go = Piece(root, PrimitiveType.Cylinder, name, at, scale, mat);

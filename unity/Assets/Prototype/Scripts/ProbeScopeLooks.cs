@@ -62,7 +62,6 @@ public class ScopeLooksProbe : LooksModProbe
         Metric($"{name}_seconds", film.Seconds);
     }
 
-    // A draft from set_look, into the room as a mod, as apply does.
     IEnumerator Apply(Draft draft)
     {
         yield return Off();
@@ -111,7 +110,6 @@ public class ScopeLooksProbe : LooksModProbe
         Cut(mid + back, mid);
     }
 
-    // A row of fire from well inside the village out past it.
     IEnumerator Village()
     {
         var village = World.Rules == null ? null : bench.Places.Find("hollowmere");
@@ -132,7 +130,6 @@ public class ScopeLooksProbe : LooksModProbe
         Clear(new Vector2Int(mx - 2, my + 4), edge + 20 - mx, 8);
     }
 
-    // The scope follows the wizard along a burning strip; what they've left changes back.
     IEnumerator NearMe()
     {
         yield return Off();
@@ -166,7 +163,6 @@ public class ScopeLooksProbe : LooksModProbe
         Clear(at - Vector2Int.one * 3, Strip + 6, Rows + 8);
     }
 
-    // Blue from one side, yellow from the other: a fire between them, caught from both, burns green.
     IEnumerator Meeting()
     {
         yield return Off();
@@ -177,7 +173,6 @@ public class ScopeLooksProbe : LooksModProbe
         yield return Apply(draft);
         var bolt = World.Rules.Spell(SpellIds.FireBolt);
         var ball = World.Rules.Spell(SpellIds.Fireball);
-        // A cast's note reaches its scatter too, so the two are placed to leave one cell between what each noted.
         var left = new Vector2Int(row.x + 2, row.y);
         grid.LightInLook(caster, bolt, caster.LookOf(bolt.Id), new CastCommand(bolt.Id, left.x, left.y, 0));
         int boltEnd = Reach(bolt, left, +1);
@@ -199,7 +194,6 @@ public class ScopeLooksProbe : LooksModProbe
         Clear(row - Vector2Int.one * 8, 34, 20);
     }
 
-    // How far along x a spell cast at a cell notes, its scatter counted: the far end the way asked.
     int Reach(SpellDef spell, Vector2Int cast, int way)
     {
         int scatter = spell.Scatter?.Reach ?? 0;
@@ -235,7 +229,6 @@ public class ScopeLooksProbe : LooksModProbe
         yield return Wait(0.5f);
     }
 
-    // One scope on everything else the world's colours reach: inside it the look, outside it plain.
     IEnumerator Everything()
     {
         yield return Off();

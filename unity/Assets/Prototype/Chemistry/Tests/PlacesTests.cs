@@ -1,3 +1,4 @@
+// world/places.json (Places.cs): the named landmarks, generated from the world data where it can be.
 using System;
 using System.IO;
 using System.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>world/places.json (Places.cs): the named landmarks, generated from the world data where it can be.</summary>
     [Category("Simulation")]
     public class PlacesTests
     {
@@ -79,8 +79,6 @@ namespace Chem.Tests
         [Test]
         public void RowsAloneGiveTheCellsTheyWouldOneByOne()
         {
-            // Out of order, overlapping, touching, a row twice, an empty pair and a gap: rows alone read as spans; the
-            // same rows with a cell already in them (a one-cell area) take the cell-at-a-time way.
             const string rows = @"""rows"": [[12, 9, 11, 2, 4], [10, 5, 3, 8, 8], [12, 5, 6, 3, 7], [10, 1, 2], [14, 0, 0, 20, 30]]";
             var places = WorldPlaces.FromJson(@"{ ""places"": [ { ""id"": ""spans"", " + rows + @" },
                 { ""id"": ""cells"", ""area"": [8, 10, 8, 10], " + rows + @" } ] }");

@@ -19,11 +19,6 @@ public sealed partial class CellDressing
         grid.RiseSpires(cluster, x, y);
     }
 
-    /// <summary>
-    /// A cluster of spires <paramref name="height"/> high at the base under a new child of <paramref name="root"/>, and how
-    /// high its tallest point stands. One <paramref name="centred"/> has its tallest spire upright in the cell's middle, for
-    /// a raider to ride up on (ChemGrid.SpireUnder).
-    /// </summary>
     public (Transform cluster, float tip) Spires(Transform root, float height, Color color, Vector3 surface, int x, int y, bool centred)
     {
         var rng = new System.Random(x * 48611 + y * 96769 + 7);
@@ -50,7 +45,6 @@ public sealed partial class CellDressing
         return (cluster, tall - 0.15f);
     }
 
-    // Where one spire stands in its cluster, how tall and wide, and how far it leans out (degrees) which way.
     readonly struct SpikeAt
     {
         public readonly Vector3 At;
@@ -66,7 +60,6 @@ public sealed partial class CellDressing
         }
     }
 
-    // One spire under the cluster: its base a little under the ground.
     void Spike(Transform cluster, SpikeAt s, System.Random rng, Color color, (int x, int y) cell, int n)
     {
         var go = new GameObject("Spire");
@@ -77,7 +70,6 @@ public sealed partial class CellDressing
         go.AddComponent<MeshFilter>().sharedMesh = RockSpire.Spire(rng.Next());
         var r = go.AddComponent<MeshRenderer>();
         r.sharedMaterial = materials.Lit("Spire rock", Color.white, SpireSmoothness);
-        // Each spire its own shade of the look, the low ones darker, so the cluster reads as broken rock.
         Shade(r, color * (n == 0 ? 1f : 0.82f + 0.12f * (float)rng.NextDouble()), cell.x + n * 31, cell.y + n * 17);
     }
 }

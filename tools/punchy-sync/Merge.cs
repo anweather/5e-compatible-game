@@ -16,7 +16,6 @@ namespace PunchySync
 
     public static class Merge
     {
-        /// <summary>The merged node; <paramref name="changes"/> gets what came from upstream, <paramref name="conflicts"/> what both sides changed.</summary>
         public static JsonNode Three(JsonNode b, JsonNode o, JsonNode t, string path, List<Change> changes, List<Change> conflicts)
         {
             if (Same(t, b)) return o?.DeepClone();
@@ -51,7 +50,6 @@ namespace PunchySync
             return o?.DeepClone();
         }
 
-        /// <summary>A change broken into the fields it touched, for the report.</summary>
         public static IEnumerable<Change> Fields(Change c)
         {
             if (c.Ours is JsonObject o && c.Theirs is JsonObject t)
@@ -71,7 +69,6 @@ namespace PunchySync
             yield return c;
         }
 
-        /// <summary>Equal as rows: numbers by value, objects by keys (any order), arrays in order.</summary>
         public static bool Same(JsonNode a, JsonNode b)
         {
             if (a == null || b == null) return a == null && b == null;

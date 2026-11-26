@@ -7,7 +7,6 @@ namespace PunchySync
 {
     public static class UnityYaml
     {
-        /// <summary>The asset's one document's object (the MonoBehaviour's fields), or an empty map.</summary>
         public static Dictionary<string, object> Fields(string text)
         {
             var root = Parse(text);
@@ -61,7 +60,6 @@ namespace PunchySync
                     i++;
                     continue;
                 }
-                // "- key: value" opens a map whose keys sit two further in.
                 lines[i] = (indent + 2, item);
                 list.Add(Map(lines, ref i, indent + 2));
             }
@@ -113,10 +111,6 @@ namespace PunchySync
             yield return t.Substring(start).Trim();
         }
 
-        // ---------- reading fields, with the class's default when an old asset leaves one out ----------
-
-        /// <summary>A float field by the digits CreatureRowExport wrote under Unity's Mono, whose float "R" is seven
-        /// digits if they read back the same float, else nine (0.46750003 is written 0.467500031).</summary>
         public static double Num(this Dictionary<string, object> m, string key, double otherwise)
         {
             if (!(m.TryGetValue(key, out var v) && v is string s && float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var f))) return otherwise;
@@ -135,7 +129,6 @@ namespace PunchySync
         public static List<object> Items(this Dictionary<string, object> m, string key) =>
             m.TryGetValue(key, out var v) && v is List<object> l ? l : new List<object>();
 
-        /// <summary>A vector's x, y(, z), or the default.</summary>
         public static double[] Vec(this Dictionary<string, object> m, string key, params double[] otherwise)
         {
             var v = m.Sub(key);
@@ -149,7 +142,6 @@ namespace PunchySync
         public static double[] Rgb(Dictionary<string, object> c, double[] otherwise) =>
             c == null ? otherwise : new[] { c.Num("r", otherwise[0]), c.Num("g", otherwise[1]), c.Num("b", otherwise[2]) };
 
-        /// <summary>A reference's GUID, or null for none (fileID 0).</summary>
         public static string Guid(object reference) =>
             reference is Dictionary<string, object> r && r.Text("fileID") != "0" ? r.Text("guid") : null;
     }

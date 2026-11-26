@@ -39,7 +39,6 @@ public class PeopleProbe : ClipProbe
         Check("workers_at_posts", working >= 2, string.Join(", ", kinds));
         Shot("village");
 
-        // A line across the open south of the square, walking east, with the wizard out of the way.
         var clear = square + new Vector3(9f, 0f, 5f);
         Teleport(new Vector3(clear.x, grid.GroundAt(clear) + 0.1f, clear.z));
         var start = square + new Vector3(6f, 0f, -2.5f);

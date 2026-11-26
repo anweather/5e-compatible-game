@@ -16,8 +16,6 @@ using UnityEngine;
 // read. Presentation only, like the rest of the fauna.
 public partial class ValleyFauna
 {
-    // Where a village's folk go: its doors, the spot by its well, its benches (and the island's
-    // loungers), and its bar if it has one (the shop); and whether they've all gone in.
     sealed class FolkPlaces
     {
         public readonly List<float2> doors = new();
@@ -32,12 +30,10 @@ public partial class ValleyFauna
         public bool indoors;
     }
 
-    // What one of the folk is doing (Creature.task).
     enum FolkTask : byte { Pause, Walk, Sit, GoIn }
 
     readonly List<FolkPlaces> places = new();
 
-    // A fire closer than this sends the folk running (the brain's fear of fire takes over).
     const float FolkFireFear = 16f;
 
     static FolkPlaces PlacesOf(Village v)
@@ -47,7 +43,6 @@ public partial class ValleyFauna
         p.well = new float2(square.x, square.z) + new float2(1.4f, 0.6f);
         foreach (var house in v.GetComponentsInChildren<VillageHouse>())
         {
-            // A house's local -z faces its street: its door is just out in front.
             var t = house.transform;
             var outward = -t.forward;
             var door = t.position + outward * (house.depth / 2f + 0.8f);
@@ -70,16 +65,12 @@ public partial class ValleyFauna
         {
             var foot = seat.Foot;
             if (math.distance(new float2(foot.x, foot.z), new float2(square.x, square.z)) > reach) continue;
-            // On the seat itself (its feet under the seat point, as a sitting wizard's go), facing
-            // out from it; a spot 0.35 m in front sat folk on the air before the bench (Andrew's
-            // playtest #3).
             var f = seat.Facing * Vector3.forward;
             p.benches.Add((new float2(foot.x, foot.z), math.atan2(f.x, f.z), seat.lounge));
         }
         return p;
     }
 
-    // The nth to come out of a village's doors: the first few have posts, as far as it has them.
     static (CreatureTask job, float2 post, float yaw) PostOf(int n, FolkPlaces p)
     {
         if (n == 0 && p.hasBar) return (CreatureTask.Gesture, p.bar, p.barYaw);
@@ -92,14 +83,12 @@ public partial class ValleyFauna
         return (CreatureTask.None, default, 0f);
     }
 
-    /// <summary>Night, or rain or snow heavy enough to send the folk indoors.</summary>
     bool FolkGoIn(float night)
     {
         var weather = world.Weather;
         return night > 0.55f || weather.Rain > 30 || (weather.Kind == WeatherKind.Snow && weather.Strength > 50);
     }
 
-    // Once a frame, before the brains: every one of the folk takes its next step.
     void RunFolk(float dt, float night)
     {
         bool goIn = FolkGoIn(night);
@@ -117,13 +106,11 @@ public partial class ValleyFauna
         }
     }
 
-    // One of the folk's step; false once it has gone in at a door.
     bool StepFolk(Creature c, FolkPlaces p, bool goIn, float dt)
     {
         var s = c.state;
         if (FireNear(s.Position.xz))
         {
-            // The brain runs from it; the day's plan starts again once it's past.
             if (s.Mode == CreatureMode.Puppet)
             {
                 s.Mode = CreatureMode.Idle;
@@ -165,8 +152,6 @@ public partial class ValleyFauna
         return true;
     }
 
-    // At its goal: a worker takes up its post, facing its work; a bench is sat on (a lounger lain
-    // on); anywhere else it stands a while.
     void Arrive(Creature c, ref CreatureState s, FolkPlaces p)
     {
         s.Speed = 0f;
@@ -181,11 +166,8 @@ public partial class ValleyFauna
         foreach (var (at, yaw, lounge) in p.benches)
         {
             if (math.distancesq(at, c.goal) > 0.01f) continue;
-            // Walking stops within arm's reach of the goal; sitting, it is on the seat itself (the
-            // probe saw folk 0.6 m off it).
             s.Position = new float3(at.x, s.Position.y, at.y);
             s.Yaw = yaw;
-            // A bench is sat on upright-ish: 0.6 leant villagers back over the backrest (Andrew's playtest #3).
             s.Lie = lounge ? 1f : 0.35f;
             c.task = FolkTask.Sit;
             c.wait = rng.NextFloat(12f, 30f);
@@ -193,7 +175,6 @@ public partial class ValleyFauna
         }
     }
 
-    // Where next: a worker to its post; the others a door, the well or a bench, at random.
     void Next(Creature c, ref CreatureState s, FolkPlaces p)
     {
         s.Lie = 0f;
@@ -209,8 +190,6 @@ public partial class ValleyFauna
         else c.goal = p.doors[rng.NextInt(p.doors.Count)];
     }
 
-    // A seat no one else sits on or is walking to, at random; false if all are taken. One
-    // villager to a seat (Andrew's playtest #3: too many sat on one bench).
     bool FreeSeat(Creature c, FolkPlaces p, out float2 seat)
     {
         seat = default;
@@ -239,8 +218,6 @@ public partial class ValleyFauna
         return false;
     }
 
-    // Walks toward the goal at the body's walking pace, turning round anything it can't walk on
-    // (a wall, water, a burning cell); true once it's there.
     bool Steer(ref CreatureState s, float2 goal, CreatureBody b, float dt)
     {
         var to = goal - s.Position.xz;
@@ -251,12 +228,9 @@ public partial class ValleyFauna
             s.YawRate = 0f;
             return true;
         }
-        // Yaw is the heading from north (+z) toward east (+x): forward is (sin, cos).
         float east = to.x, north = to.y;
         float want = math.atan2(east, north);
         float yaw = s.Yaw + math.clamp(Wrap(want - s.Yaw), -3f * dt, 3f * dt);
-        // Round a wall: the first clear heading either side of the way it wants to go
-        // (0, then +0.6, -0.6, +1.2, -1.2 radians).
         for (int k = 0; k < 5; k++)
         {
             float side = (k & 1) == 1 ? 1f : -1f;
@@ -288,7 +262,6 @@ public partial class ValleyFauna
         return best;
     }
 
-    /// <summary>For the probe: where a village's folk are now (those out of doors), and how many of them sit.</summary>
     public List<Vector3> FolkOf(Village village, out int sitting)
     {
         var at = new List<Vector3>();
@@ -303,7 +276,6 @@ public partial class ValleyFauna
         return at;
     }
 
-    /// <summary>For the probe: how many of a village's folk are at their posts, and each one's species and job.</summary>
     public List<string> FolkKinds(Village village, out int working)
     {
         var kinds = new List<string>();
@@ -318,7 +290,6 @@ public partial class ValleyFauna
         return kinds;
     }
 
-    /// <summary>For the probe: one of a village's folk sitting now, where and facing which way.</summary>
     public bool FirstSitter(Village village, out Vector3 at, out float yaw)
     {
         int v = folk.FindIndex(f => f.village == village);

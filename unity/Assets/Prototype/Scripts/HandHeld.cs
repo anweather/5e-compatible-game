@@ -40,10 +40,8 @@ public sealed class HandHeld
         return ps;
     }
 
-    /// <summary>What's shown in a hand (HandsDef.Left, Right), or null.</summary>
     public string Showing(int hand) => showing[hand];
 
-    /// <summary>Each frame, after the arms are laid: what each hand holds, null for nothing.</summary>
     public void Show(string right, string left)
     {
         Hold(HandsDef.Right, right, pose.RightPalm);
@@ -142,7 +140,6 @@ public sealed class HandHeld
             stoneMesh = cube.GetComponent<MeshFilter>().sharedMesh;
             Object.Destroy(cube);
         }
-        // A Play mode's end destroys the material and not the built-in mesh: each is made again on its own.
         if (stoneMaterial == null) stoneMaterial = UrpMaterials.NewLit("Hand stone", Stone);
         var look = ps.GetComponent<ParticleSystemRenderer>();
         look.renderMode = ParticleSystemRenderMode.Mesh;

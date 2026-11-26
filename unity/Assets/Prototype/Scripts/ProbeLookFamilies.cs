@@ -37,7 +37,6 @@ public class LookFamiliesProbe : SpellLookFxProbe
             StartFilm();
             yield return Wait(0.3f);
         }
-        // Sparks and swirl are small and faint as they ship: the same casts in their own colours, to compare.
         yield return AsShipped(SpellIds.ShockingGrasp, spots[1], Aim.Target);
         yield return AsShipped(SpellIds.GustOfWind, spots[2], Aim.Beside);
         var pink = Burst(PinkColour);
@@ -70,7 +69,6 @@ public class LookFamiliesProbe : SpellLookFxProbe
         if (Filming) yield return EndFilm();
     }
 
-    // The colour set on the spell, or on its element if one is named.
     IEnumerator Family(string family, string spell, Vector2Int at, Aim aim, bool green, Func<bool> seen, string element = null)
     {
         var def = World.Rules.Spell(spell);
@@ -111,11 +109,9 @@ public class LookFamiliesProbe : SpellLookFxProbe
         yield return Wait(Hold);
     }
 
-    // Close on where the show plays, so a small one can be seen.
     void Near(SpellDef def, Vector2Int at, Aim aim)
     {
         var me = grid.CellAt(wizard.transform.position);
-        // Where a line's show is to be seen: its end, or near the hand for one that runs from there.
         int along = def.Id switch
         {
             SpellIds.GustOfWind => def.Length,

@@ -14,7 +14,6 @@ namespace Chem
         {
             HashSet<string> knownComponents;
 
-            // components.json's names plus the engine's own.
             HashSet<string> KnownComponents => knownComponents ??= new HashSet<string>(
                 Keys(r["components"]).Concat(new[] { Flammable, Creature }));
 
@@ -25,7 +24,6 @@ namespace Chem
                 if (KnownComponents.Count > MaxComponents) Errors.Add($"components: at most {MaxComponents}, not {KnownComponents.Count}");
             }
 
-            /// <summary>A thing's "components" list: component names, each known.</summary>
             void ComponentList(string what, JToken list)
             {
                 if (list == null) return;
@@ -37,7 +35,6 @@ namespace Chem
                 foreach (var n in a.Where(n => !KnownComponents.Contains((string)n))) Errors.Add($"{what}: unknown component {Show(n)}");
             }
 
-            /// <summary>An entity rule's "has" or "lacks": a component name or a list of them, each known.</summary>
             void ComponentCond(string id, JObject cond, string key)
             {
                 var t = cond?[key];

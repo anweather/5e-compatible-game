@@ -65,7 +65,6 @@ namespace Chem.Tests
                 Assert.That(h.At(x, y + ht), Is.EqualTo(at));
                 Assert.That(h.At(x - 3 * w, y - 2 * ht), Is.EqualTo(at));
             }
-            // Over each seam the land steps no more than it does anywhere else on the map: the seam is nowhere to be seen.
             int worst = 0;
             for (int y = 0; y < ht; y += 7)
                 for (int x = 0; x < w; x += 7) worst = Math.Max(worst, Math.Max(Math.Abs(h.At(x + 1, y) - h.At(x, y)), Math.Abs(h.At(x, y + 1) - h.At(x, y))));
@@ -92,7 +91,6 @@ namespace Chem.Tests
                 Assert.That(Math.Abs(east.Land[j * s + s - 1] - west.Land[j * s]), Is.LessThanOrEqualTo(2), $"row {j} over the east seam");
             for (int i = 0; i < s; i++)
                 Assert.That(Math.Abs(east.Land[(s - 1) * s + i] - south.Land[i]), Is.LessThanOrEqualTo(2), $"column {i} over the south seam");
-            // A known chunk's last samples are the next chunk's first, over the seams too.
             var k = gen.Know(107, 89);
             var kWest = gen.Know(0, 89);
             var kSouth = gen.Know(107, 0);
@@ -114,13 +112,11 @@ namespace Chem.Tests
                 Assert.That(c.Land.Min(), Is.GreaterThanOrEqualTo(map.Hills.Base));
                 Assert.That(c.Land.Max(), Is.LessThanOrEqualTo(map.Hills.Highest));
             }
-            // Over every known chunk: all dry land, and the map's expects as the known ring reads them.
             int lowest = int.MaxValue, highest = int.MinValue, wetChunks = 0;
             for (int cy = 0; cy < gen.ChunksH; cy++)
                 for (int cx = 0; cx < gen.ChunksW; cx++)
                 {
                     var k = gen.Know(cx, cy);
-                    // Water only where the rivers and their lakes are (HillsRiversTests checks the samples cell by cell).
                     if (k.Water.Any(x => x != KnownChunk.Dry)) wetChunks++;
                     lowest = Math.Min(lowest, k.Heights.Min());
                     highest = Math.Max(highest, k.Heights.Max());
@@ -139,7 +135,6 @@ namespace Chem.Tests
                 Assert.That(again.Gen.Make(cx, cy).Hash, Is.EqualTo(map.Gen.Make(cx, cy).Hash));
             var other = GeneratedMap.Load(HillsDir, "hills-2");
             Assert.That(other.Gen.Make(54, 45).Hash, Is.Not.EqualTo(map.Gen.Make(54, 45).Hash), "another seed, other hills");
-            // Chunk (54, 45) is the middle of the massif's meadow (it was 4ceac909 before the massif).
             Assert.That(map.Gen.Make(54, 45).Hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("8e975151"), "the hills' golden: a change to the land is a new generator version");
         }
 
@@ -160,7 +155,6 @@ namespace Chem.Tests
             w.KeepStart();
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));
 
-            // A walk east over the seam: the chunks ahead made on the worker, none read packed.
             var planner = new ChunkPlanner();
             var me = new (int x, int y)[] { start };
             ChunkStreaming.Apply(w, planner.Plan(w, me));

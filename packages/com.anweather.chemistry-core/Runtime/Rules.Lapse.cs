@@ -10,7 +10,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A material row's lapse: what a cell of it turns into (null: none, or "dirt" for a terrain) and the ticks from its switch (0: while its mod is on).</summary>
     public readonly struct MaterialLapse
     {
         public MaterialLapse(string into, int after)
@@ -25,16 +24,12 @@ namespace Chem
 
     public sealed partial class Rules
     {
-        /// <summary>A material row's key for its lapse.</summary>
         public const string LapseKey = "lapse";
 
-        /// <summary>What a lapse takes: into and after.</summary>
         public static readonly IReadOnlyList<string> LapseFields = new[] { "into", "after" };
 
-        /// <summary>The material tables a temporary material may be in, in the order they're swept.</summary>
         public static readonly IReadOnlyList<string> MaterialTables = new[] { "terrain", "covers", "gases", LiquidsKey };
 
-        /// <summary>The lapse of a terrain, cover or gas row (table as in MaterialTables); none when the row gives none or isn't there.</summary>
         public MaterialLapse LapseOf(string table, string id)
         {
             var o = doc[table]?[id]?[LapseKey] as JObject;
@@ -42,7 +37,6 @@ namespace Chem
             return new MaterialLapse(o["into"]?.Type == JTokenType.String ? (string)o["into"] : null, o["after"]?.Type == JTokenType.Integer ? (int)o["after"] : 0);
         }
 
-        /// <summary>Whether this table holds a row by this id.</summary>
         public bool HasMaterial(string table, string id) => table switch
         {
             "terrain" => terrain.ContainsKey(id),
@@ -54,7 +48,6 @@ namespace Chem
 
         sealed partial class Checker
         {
-            /// <summary>Each lapse: an object of into and after, after a whole number from 1, into a row of the same table but itself.</summary>
             public void Lapses()
             {
                 foreach (var (table, rows) in new[] { ("terrain", terrain), ("covers", covers), ("gases", gases) })

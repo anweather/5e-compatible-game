@@ -30,7 +30,6 @@ public abstract class ShowcaseScript : MonoBehaviour
     protected static FlythroughCamera.Waypoint W(Vector3 position, Vector3 lookAt, float seconds) =>
         FlythroughCamera.Waypoint.At(position, lookAt, seconds);
 
-    /// <summary>The chapters, played once from Start.</summary>
     protected abstract IEnumerator Play();
 
     protected virtual void OnDestroy() => EventLog.HudVisible = true;
@@ -47,7 +46,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         Done = true;
     }
 
-    /// <summary>Finds the grid, the wizard and the camera again: at the start, and after the scene has loaded again (a map switch).</summary>
     protected void Rebind()
     {
         grid = ChemGrid.Current?.Grid;
@@ -66,13 +64,11 @@ public abstract class ShowcaseScript : MonoBehaviour
 
     protected Vector3 Yard(int x, int y) => grid.YardCellCenter(x, y);
 
-    // Puts out every fire in the world, between chapters, while the camera is elsewhere.
     protected void PutOutFires()
     {
         foreach (var cell in grid.World.AllCells()) cell.Fire = 0;
     }
 
-    // Moves the wizard to a yard cell at once (off camera).
     protected void Place(int x, int y)
     {
         var body = wizard.GetComponent<CharacterController>();
@@ -82,7 +78,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         body.enabled = true;
     }
 
-    // Puts the camera somewhere at once, taking it from Cinemachine.
     protected void Cut(Vector3 position, Vector3 lookAt)
     {
         if (brain != null) brain.enabled = false;
@@ -91,7 +86,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         lookingAt = lookAt;
     }
 
-    // Glides on from the current shot; the camera stays where the flight ends.
     protected FlythroughCamera Fly(params FlythroughCamera.Waypoint[] waypoints)
     {
         var flight = FlythroughCamera.FromHere(lookingAt, waypoints);
@@ -100,7 +94,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         return flight;
     }
 
-    // Game time, as the recorder runs it (30 frames a second of it, however slowly the Editor renders).
     protected static IEnumerator Wait(float seconds)
     {
         for (float t = 0f; t < seconds; t += Time.deltaTime) yield return null;
@@ -113,7 +106,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         return s;
     }
 
-    /// <summary>The valley terrains' height under a point (0 off them).</summary>
     protected static float TerrainGround(Vector3 p)
     {
         foreach (var t in Terrain.activeTerrains)
@@ -125,7 +117,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         return 0f;
     }
 
-    /// <summary>Puts the wizard at a point at once (its CharacterController off for the move).</summary>
     protected void Teleport(Vector3 at)
     {
         var body = wizard.GetComponent<CharacterController>();
@@ -134,24 +125,20 @@ public abstract class ShowcaseScript : MonoBehaviour
         body.enabled = true;
     }
 
-    /// <summary>Puts the wizard on the ground of a world cell at once.</summary>
     protected void PlaceCell(int x, int y)
     {
         var at = grid.CellCenter(x, y);
         Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.05f, at.z));
     }
 
-    // The clock's start hour that puts the next tick at this hour of day 1 or later.
     protected string At(float hour)
     {
         var p = World.Rules.Sim;
-        // The clock's tick, not the world's: Hasten Time runs it ahead (World.ClockTick).
         double elapsed = (double)(World.ClockTick + 1) * Sky.MinutesPerDay / Sky.Ticks(p, p.Day.LengthMinutes) / 60.0;
         double start = ((hour - elapsed) % 24 + 24) % 24;
         return "'day': { 'startHour': " + start.ToString("0.###", CultureInfo.InvariantCulture) + " }";
     }
 
-    // A rule switch to a mod over sim.json (replacing the last one), in force at the next tick.
     protected IEnumerator Switch(string sim)
     {
         var mod = new ActiveMod("showcase-sky", "{ 'patch': { 'sim': { " + sim + " } } }");
@@ -159,7 +146,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         yield return Wait(0.5f);
     }
 
-    /// <summary>The ground point in the middle of a w by h patch of world cells from <paramref name="o"/>.</summary>
     protected Vector3 Mid(Vector2Int o, int w, int h)
     {
         var a = grid.CellCenter(o.x, o.y);
@@ -169,7 +155,6 @@ public abstract class ShowcaseScript : MonoBehaviour
         return mid;
     }
 
-    /// <summary>Paints a w by h patch of world cells bare <paramref name="terrain"/>.</summary>
     protected void Patch(Vector2Int o, int w, int h, string terrain)
     {
         for (int y = 0; y < h; y++)

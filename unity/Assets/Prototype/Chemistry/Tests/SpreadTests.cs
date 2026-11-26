@@ -1,13 +1,11 @@
+// Covers that spread (World.Spread.cs, docs/design/primitives.md §3 P2 and §5): a cover with spread lays
+// itself on its neighbours on the soak pass, from the world's RNG, only where its onto and notOnto let it,
+// the same on every peer; and a world with no spreading cover is the world it was.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Covers that spread (World.Spread.cs, docs/design/primitives.md §3 P2 and §5): a cover with spread lays
-    /// itself on its neighbours on the soak pass, from the world's RNG, only where its onto and notOnto let it,
-    /// the same on every peer; and a world with no spreading cover is the world it was.
-    /// </summary>
     [Category("Simulation")]
     public class SpreadTests
     {
@@ -17,17 +15,12 @@ namespace Chem.Tests
 
         const int Lapse = 1800;
 
-        // §5's "glowing moss that creeps over the river stones", as Claude would write it: a temporary cover that
-        // spreads only onto stone (the stone wall and raised rock), never onto water or sand, laid on two stones.
-        // Its glow is P4's and the view's: a bare cover look takes only a colour (looks.json), so none yet.
         static string Moss(int every = 30, double chance = 0.5) => @"{ ""title"": ""River moss"", ""idea"": ""Glowing moss that creeps over the river stones."", ""patch"": {
             ""covers"": { ""river-moss"": { ""name"": ""Glowing moss"", ""tags"": [], ""look"": { ""color"": [0.3, 0.85, 0.55] },
                 ""spread"": { ""every"": " + every + @", ""chance"": " + chance.ToString(System.Globalization.CultureInfo.InvariantCulture) + @", ""onto"": [""stone"", ""rock""], ""notOnto"": [""sandy""] },
                 ""lapse"": { ""after"": " + Lapse + @" } } },
             ""world"": { ""lay"": [ { ""cover"": ""river-moss"", ""cells"": [[31, 12], [32, 50]], ""seed"": 3 } ] } } }";
 
-        // A river (x 26 to 37) down a grass world; in it a bed of raised rock (x 30 to 33), stone walls at its
-        // head, a sand bar on each side and a stretch of drowned rock (y 30 to 33), a step down, under the water.
         static World River()
         {
             var w = new World(R, 64, 64, 7, "grass");
@@ -54,7 +47,6 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState}";
 
-        // Where moss is: only on stone or rock, never on sand or open water.
         static void MossOnlyOnStones(World w, string when)
         {
             var mossy = w.AllCells().Where(c => c.Cover == "river-moss").ToList();
@@ -100,7 +92,6 @@ namespace Chem.Tests
         [Test]
         public void TheMossGoldenHolds()
         {
-            // Pins the spread: a change to the turn, the roll, the order or the landing moves it.
             var w = River();
             w.ApplyRoom(RoomCommand.Apply("Bo", "river-moss", Moss()));
             for (int t = 0; t < 600; t++) w.Step();
@@ -112,7 +103,6 @@ namespace Chem.Tests
         [Test]
         public void AWorldWithNoSpreadingCoverDrawsNothingForIt()
         {
-            // The same river with the moss laid but its spread taken off: nothing creeps and the RNG is where it was.
             var plain = River();
             var still = River();
             plain.ApplyRoom(RoomCommand.Apply("Bo", "river-moss", Moss().Replace(@"""spread"": { ""every"": 30, ""chance"": 0.5, ""onto"": [""stone"", ""rock""], ""notOnto"": [""sandy""] },", "")));
@@ -131,7 +121,6 @@ namespace Chem.Tests
         [Test]
         public void NotOntoStopsItWhereOntoWouldLetIt()
         {
-            // Moss onto any ground but sand, on a grass world with a sand strip: it never crosses the strip.
             var w = new World(R, 64, 64, 7, "grass");
             w.OpenRoom(ChangeMode.Open, "Ana", R, Budgets);
             for (int y = 0; y < 64; y++) w.At(20, y).T = "sand";
@@ -152,14 +141,12 @@ namespace Chem.Tests
                 ""world"": { ""lay"": [ { ""cover"": ""m"", ""cells"": [[32, 32]], ""seed"": 1 } ] } }";
             Assert.That(w.ApplyRoom(RoomCommand.Apply("Bo", "m", mod)).Done, Is.True);
             for (int t = 0; t < 1200; t++) w.Step();
-            // Three cells from where it was laid, counting that one: a diamond of radius 2, 13 cells.
             Assert.That(w.AllCells().Count(c => c.Cover == "m"), Is.EqualTo(13));
         }
 
         [Test]
         public void ATickLaysNoMoreThanTheBudget()
         {
-            // A whole chunk of moss on bare ground, every cell's neighbours bare: the spread stops at the cap each tick.
             var w = new World(R, 64, 64, 7, "grass");
             w.OpenRoom(ChangeMode.Open, "Ana", R, Budgets);
             const string mod = @"{ ""covers"": { ""m"": { ""name"": ""M"", ""tags"": [], ""spread"": { ""every"": 30, ""chance"": 0.5 } } } }";
@@ -174,8 +161,6 @@ namespace Chem.Tests
                 Assert.That(w.AllCells().Count(c => c.Cover == "m") - was, Is.LessThanOrEqualTo(max), $"tick {t}");
             }
         }
-
-        // ---------- the checks ----------
 
         static string[] Problems(string json) => ModValidator.Validate(R, Budgets, json).Select(p => p.Message).ToArray();
 

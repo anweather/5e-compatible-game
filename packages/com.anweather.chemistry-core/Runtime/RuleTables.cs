@@ -16,64 +16,28 @@ namespace Chem
     {
         public string Id, Name;
         public IReadOnlyList<string> Tags;
-        /// <summary>In steps (pit = -1). World.ElevationUnits converts to water units.</summary>
         public int Elevation;
-        /// <summary>Water a spring keeps the square filled to each tick (units; a river, a spring), or 0.</summary>
         public int Spring;
         public double Flammability;
-        /// <summary>How hot it burns (materials.json "heat", 1 when absent): a burning cell of it is this many times as likely to light its neighbours (thatch flares, so it lights the log walls beside it).</summary>
         public double Heat = 1;
-        /// <summary>How its fire looks (materials.json "fireLook": flare, wood or oil; null the plain fire). The view's only.</summary>
         public string FireLook;
-        /// <summary>How the view draws it: its look family and parameters (materials.json "look"), or null. The view's only.</summary>
         public LookDef Look;
-        /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
-        /// <summary>What earth shaping leaves of it (a tree topples into deadfall) before shaping the ground, or null; and the log line.</summary>
         public string UprootsTo, UprootLog;
-        /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
         public string DugTo;
-        /// <summary>How hard it is to dig (materials.json dig.hardness, 1 when absent): a dig needs at least this strength; 0 never digs (metal, bedrock).</summary>
         public int Hardness = 1;
-        /// <summary>
-        /// What it grows into once its Cell.Life runs out (green shoots into grass, a sapling into a
-        /// tree), or null; and the line logged when it does.
-        /// </summary>
         public string GrowsTo, GrowLog;
-        /// <summary>
-        /// Thin water on it soaks in and dries up a unit every this many ticks (World.Soak), on dry
-        /// ground and on damp ground (wet from rain or water that soaked in); 0 never.
-        /// </summary>
         public int SoakEvery, SoakEveryWet;
-        /// <summary>
-        /// How much of its catch (Flammability) it loses while damp (materials.json soak.dampens, 0 to
-        /// 1, 0 when absent): a damp cell of it (raining, or Cell.DampUntil) or a wet thing of it
-        /// catches with Flammability * (1 - Dampens).
-        /// </summary>
         public double Dampens;
-        /// <summary>Wet (water on it, raining, or damp) this many ticks in all, it rusts through into RustsTo (materials.json rust.every, rust.leaves; World.Rust); 0 never.</summary>
         public int RustEvery;
         public string RustsTo;
-        /// <summary>What a cell of it leaves when it shatters (shatter.leaves: a window pane to an open gap, World.Shatter); null it doesn't.</summary>
         public string ShattersTo;
-        /// <summary>It goes intact, cracked, shattered (shatter.cracks): the first hit only cracks it (Cell.Cracked, World.Shatter).</summary>
         public bool Cracks;
-        /// <summary>Fire reaching it leaves it hot this many ticks (materials.json hot.for; World.Cool), and each unit of water it boils off takes hot.quench of them; 0 never hot.</summary>
         public int HotFor, HotQuench;
-        /// <summary>
-        /// What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once
-        /// it is dry again (mud to dirt: soak.dries, World.DryOut); null neither.
-        /// </summary>
         public string SoaksTo, DriesTo;
-        /// <summary>
-        /// The ticks of burning, frozen and wet a creature of it takes (materials.json burn.status, freeze.status,
-        /// soak.status: the entity rules' statusOf); 0 when its material has none (bone doesn't burn).
-        /// </summary>
         public int BurnStatus, FreezeStatus, SoakStatus;
-        /// <summary>A wet creature of it is shocked by charged water next to it, not only under it (conduct.chainsWet; World.Hazards).</summary>
         public bool ChainsWet;
-        /// <summary>A verb's status ticks: burn, freeze or soak (0 for any other).</summary>
         public int StatusTicks(string verb) => verb switch
         {
             "burn" => BurnStatus,
@@ -81,7 +45,6 @@ namespace Chem
             "soak" => SoakStatus,
             _ => 0,
         };
-        /// <summary>The status a verb gives a creature: burn burning, freeze frozen, soak wet; null for any other.</summary>
         public static string StatusOfVerb(string verb) => verb switch
         {
             "burn" => "burning",
@@ -89,43 +52,24 @@ namespace Chem
             "soak" => "wet",
             _ => null,
         };
-        /// <summary>How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, World.Thorns); 1 unhindered.</summary>
         public double Speed = 1;
-        /// <summary>
-        /// How fast a creature walks across it while it's wet (materials.json soak.slows: grass churned soft, 0.7), the
-        /// slower of this and Speed: water on it, raining, or damp from water soaked in (World.IsDamp); 1 unhindered.
-        /// </summary>
         public double WetSpeed = 1;
-        /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
         public string DissolvedBy, DissolvesTo;
-        /// <summary>What a sand blast turns it into (materials.json scour.leaves: rusted metal back to metal, a log wall worn thin), or null; and whether raised ground of it wears down a step (scour.wears).</summary>
         public string ScoursTo;
         public bool ScourWears;
-        /// <summary>A hot liquid terrain (lava) runs to its lowest lower neighbour every this many ticks, leaving its GrowsTo (run.every; World.Run); 0 never.</summary>
         public int RunsEvery;
-        /// <summary>Water on it while hot sets it at once into this (quench.into: lava to rock), with this line (quench.log); null never.</summary>
         public string QuenchesTo, QuenchLog;
-        /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
         public string BakesTo;
-        /// <summary>What a hand on it turns it into (materials.json swing.into): a gate's other way, or null (World.Swing).</summary>
         public string SwingsTo;
-        /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
-        /// <summary>WaterTo as what it does: water on it freezes, or boils off as sim water.boils.</summary>
         public bool FreezesWater, BoilsWater;
-        /// <summary>The cover it leaves burnt out and the gas it gives off burning (burn.ash, burn.smoke); null, sim.json fire's.</summary>
         public string BurnAsh, BurnSmoke;
-        /// <summary>The terrain cold crusts it into, for CrustFor ticks (crust.into, crust.for: lava to a crust that grows back into lava), or null.</summary>
         public string CrustsTo;
         public int CrustFor;
-        /// <summary>The terrain heat thaws it into, giving ThawWater units of meltwater (thaw.into, thaw.water: an ice wall), or null.</summary>
         public string ThawsTo;
         public int ThawWater;
-        /// <summary>Steps an updraft over it lifts what stands there (lift.by; World.LiftAt); 0 none.</summary>
         public int Lift;
 
-        // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1),
-        // and the two the water and gas passes ask of every cell are read from it once.
         HashSet<string> tagSet;
         bool blocking, vessel;
         HashSet<string> TagSet
@@ -140,15 +84,9 @@ namespace Chem
             }
         }
         public bool Has(string tag) => TagSet.Contains(tag);
-        /// <summary>Tagged blocking: a wall (Has("blocking"), without the lookup).</summary>
         public bool Blocking => TagSet != null && blocking;
-        /// <summary>Tagged vessel: a wall that holds water (Has("vessel"), without the lookup).</summary>
         public bool Vessel => TagSet != null && vessel;
 
-        /// <summary>
-        /// Its verbs (docs/MATERIALS.md): it burns, breaks, conducts. What code asks instead of the
-        /// tags, read from them once (a burn group gives the flammable tag, MaterialGroups).
-        /// </summary>
         public bool Burns => Has("flammable");
         public bool Breaks => Has("breakable");
         public bool Conducts => Has("conductive");
@@ -161,41 +99,24 @@ namespace Chem
         public double Flammability;
         public int? Fuel;
         public int? BurnIntensity;
-        /// <summary>The cover it leaves burnt out and the gas it gives off burning (burn.ash, burn.smoke); null, sim.json fire's.</summary>
         public string BurnAsh, BurnSmoke;
-        /// <summary>How its fire looks (materials.json "fireLook"); the view's only.</summary>
         public string FireLook;
-        /// <summary>How the view draws it (materials.json "look": a colour, and a family once one is drawn), or null. The view's only.</summary>
         public LookDef Look;
-        /// <summary>Heat turns it into this cover (materials.json melt.into; null, none) and this much water (melt.water; 0 doesn't melt).</summary>
         public string MeltsTo;
         public int MeltWater;
-        /// <summary>Ticks it lasts once laid (Cell.Life) before it withers away (thorns), or 0 for good; and the line logged then.</summary>
         public int Lasts;
         public string WitherLog;
-        /// <summary>What it does to a creature walking through it: [dice, sides] damage a square (empty for none), and its speed (1 unhindered).</summary>
         public int[] Damage;
         public double Speed = 1;
-        /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the cover it leaves (null, none).</summary>
         public string DissolvedBy, DissolvesTo;
-        /// <summary>On open water it spreads to the open water next to it every this many ticks (materials.json float.every; World.Float); 0 sinks or stays.</summary>
         public int FloatEvery;
-        /// <summary>How many cells a slick of it reaches from where it was laid (float.reach; Cell.Slick); 0 without end.</summary>
         public int FloatReach;
-        /// <summary>When it withers (Lasts), its roots break the terrain under it into its BreaksTo (materials.json rot.breaks: vines crack a stone wall).</summary>
         public bool RotBreaks;
-        /// <summary>
-        /// It lays itself on a neighbour (materials.json spread, World.Spread.cs) on its turn every this many ticks
-        /// (spread.every; 0 never), each with this chance (spread.chance), onto a terrain whose id or a tag is in
-        /// SpreadOnto (empty: any) and none in SpreadNotOnto, as far as SpreadReach cells from where it was laid (0: no end).
-        /// </summary>
         public int SpreadEvery, SpreadReach;
         public double SpreadChance = 1;
         public IReadOnlyList<string> SpreadOnto, SpreadNotOnto;
-        /// <summary>Its mix group: laid on a cover of the same, they derive a mix (Rules.Mix.cs); null, it doesn't mix.</summary>
         public string Mix;
         public bool Has(string tag) => Tags.Contains(tag);
-        /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
     }
 
@@ -203,219 +124,124 @@ namespace Chem
     {
         public string Id, Name;
         public int Scald;
-        /// <summary>Its own chance per tick a unit decays (fog lingers), or null for sim.gas.decayChance.</summary>
         public double? Decay;
-        /// <summary>From how many units a square of it hides what's behind (World.LineOfSight), or 0 if it never does.</summary>
         public int BlocksSightAt;
-        /// <summary>A line of sight through this many squares of it, however thin, is hidden too (fog weather's veil; World.LineOfSight), or 0 if thin never hides.</summary>
         public int HidesAfter;
-        /// <summary>Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); 0 never.</summary>
         public int CondenseEvery;
-        /// <summary>It condenses only this many cells or more from heat: none within it burning or hot (Cell.Heat), so steam doesn't rain straight back onto a fire (World.NearHeat).</summary>
         public int CondenseAway;
-        /// <summary>A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); 0 never.</summary>
         public int RainEvery;
-        /// <summary>It adds this to the rust of metal under it each tick (steam rusts metal faster; World.RustUnder); 0 none.</summary>
         public int Rusts;
-        /// <summary>A gas that goes up all at once when fire meets it (burn.flash: dust, World.FlashGas), or null.</summary>
         public FlashDef Flash;
-        /// <summary>An element a cell of it lets fall on its cell every ShedEvery ticks, at ShedChance (sheds: a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; World.ShedFrom), or null.</summary>
         public string Sheds;
         public int ShedEvery;
         public double ShedChance = 1;
-        /// <summary>How the view draws it (materials.json "look": a colour, and a family once one is drawn), or null. The view's only.</summary>
         public LookDef Look;
     }
 
-    /// <summary>A machine (machines.json): what powers it, how much pressure it builds and holds (steam), the mass that presses it (a plate), and how long a hit holds it (flow, charge, wind).</summary>
     public sealed class MachineDef
     {
         public string Id, Name, Needs;
         public int Build = 4, Max = 10, DecayEvery = 8, Mass = 3, Hold = 10;
     }
 
-    /// <summary>A gas's burn.flash: the fire each of its cells goes up with, how hard that shoves what's there, and the line it logs.</summary>
     public sealed class FlashDef
     {
         public int Fire, Push;
         public string Log;
     }
 
-    /// <summary>
-    /// What a travelling whirlwind can take on (spells.json "carries"): when its eye crosses a cell matching If, it
-    /// carries this from then on, shedding the element Sheds around its eye and dropping more where it dies out.
-    /// </summary>
     public sealed class CarryDef
     {
         public string Id, Name, Sheds, Log;
         public CellCond If;
     }
 
-    /// <summary>
-    /// A spell. Level/Power/Length/Size/Radius hold the value the sim actually uses,
-    /// i.e. the TS defaults are applied (Power 1, Length 5, Size 2, Radius 1).
-    /// </summary>
     public sealed class SpellDef
     {
         public string Id, Name, Shape, Origin, Element, Blurb;
-        /// <summary>How the view shows a cast: its effect family and colour (spells.json "look"), or null. The view's only.</summary>
         public LookDef Look;
-        /// <summary>The spell radial's element it sits under (groups.json), or null.</summary>
         public string Group;
-        /// <summary>False keeps a spell off the Unity game's spell radial (it stays in the rules for mods, tests and the sandbox).</summary>
         public bool Radial = true;
         public int Level, Power, Length, Size, Radius;
-        /// <summary>Squares a burst's radius grows by for each level of charge past a tap (Plant Growth), 0 for none.</summary>
         public int RadiusPerCharge;
-        // Extras: the cell sim uses Wind and (below) the terraform fields; Push and Duration drive the Unity props (SpellForces).
         public string Effect;
         public int Push, Wind, Range, Duration, MaxMass;
-        /// <summary>Effect "haste": how many times as fast the day clock runs (World.Time.cs).</summary>
         public int Rate;
-        /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
-        /// <summary>
-        /// Effect "terraform": steps to raise or dig (one is 0), or a Height to raise the cells
-        /// to (null unless set; then Raise and Dig are 0), the terrain the cells become (null:
-        /// keep it, or its DugTo when digging), and whether the steps taper off with distance
-        /// from the target over Radius (a hill or a crater).
-        /// </summary>
         public int Raise, Dig;
-        /// <summary>A digging spell's strength (spells.json "strength", 1 when absent): it digs terrain no harder than this.</summary>
         public int Strength = 1;
         public int? Height;
         public string Terrain;
         public bool Taper;
-        /// <summary>A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward.</summary>
         public bool Inward;
-        /// <summary>
-        /// An inward burst that keeps whirling for Duration ticks (Whirlwind): every PullEvery ticks it draws gas
-        /// and creatures of MaxMass or less a cell in toward its middle and runs fire round its rings
-        /// (World.TickWhirlwinds); 0 lands once and is gone.
-        /// </summary>
         public int PullEvery;
-        /// <summary>Ticks between the cast and its landing, with a target mark on the cells (Falling Star; World.AimStar); 0 lands at once.</summary>
         public int Delay;
-        /// <summary>Burning rock thrown round where it lands (spells.json scatter), or null.</summary>
         public ScatterDef Scatter;
-        /// <summary>An element that lands on its middle cell last of all (Falling Star's lava), or null.</summary>
         public string Core;
-        /// <summary>
-        /// A second element that lands on each of the spell's cells right after its own, at the same power (spells.json then):
-        /// Thunder Strike's thunder after its lightning, Iceberg's cold freezing the water it lays. Null for none.
-        /// </summary>
         public string Then;
-        /// <summary>A line whose odd cells step this many cells off it, to one side and then the other (Earth Spires' zigzag); 0 straight.</summary>
         public int Jagged;
-        /// <summary>A whirling spell moves a cell every this many ticks (World.Travel), 0 never; it drops what it carries at DropPower.</summary>
         public int TravelEvery, DropPower = 1;
-        /// <summary>How far from a whirling spell's eye it takes things on, sheds what it carries and lifts creatures, in cells (spells.json eye).</summary>
         public int Eye = 1;
-        /// <summary>
-        /// A whirling spell's lift (spells.json lift): a creature in its eye is held up for LiftTicks, then flung LiftFling cells
-        /// the way it was cast and hurt FallDamage times LiftHurt (World.LiftInTheEye).
-        /// </summary>
         public int LiftTicks = 12, LiftFling = 6, LiftHurt = 2;
-        /// <summary>A spell that acts on what's already there (Geyser on water): it lands only on the cells matching this, and with none fizzles (Fizzle logged); null lands everywhere.</summary>
         public CellCond Needs;
-        /// <summary>The line logged when a spell with Needs finds no cell to act on, or null for "{Name} fizzles".</summary>
         public string Fizzle;
-        /// <summary>A travelling wave's or rolling boulder's element where it stops (Wave's mud, the boulder's earth; World.Waves, World.Boulders), or null.</summary>
         public string Leaves;
-        /// <summary>A line with TravelEvery that rolls rather than washes (Rolling Boulder; World.Boulders): one cell that follows the ground downhill.</summary>
         public bool Rolls;
-        /// <summary>The gas a rolling boulder leaves behind it (dust), or null.</summary>
         public string Trail;
-        /// <summary>A spell's force on the creature in each cell it reaches (spells.json force: Geyser and Rolling Boulder throw, Wave knocks back; World.Force): ticks thrown off its feet, and cells pushed along the cast's way (MaxMass or lighter).</summary>
         public int ForceThrow, ForcePush;
-        /// <summary>A spell that seeks (Lightning): it strikes the nearest cell within SeekRange of where it's aimed that matches SeekIf (metal or water) instead of its shape, and its shape when there is none.</summary>
         public int SeekRange;
         public CellCond SeekIf;
-        /// <summary>Earth shaping to a Height: cells holding open water rise only this high (Wall of Stone's stepping stones); 0 as high as the rest.</summary>
         public int Stepping;
-        /// <summary>Earth shaping to a Height along a line: a step higher each cell from the first, up to the height (Stone Ramp).</summary>
         public bool Ramp;
-        /// <summary>What a whirling spell can take on, strongest first: one replaces any after it (CarryDef); empty for none.</summary>
         public IReadOnlyList<CarryDef> Carries = Array.Empty<CarryDef>();
-        /// <summary>The light the Light effect sheds, in feet (spells.json light { bright, dim }), for the view to draw; 0 none.</summary>
         public int LightBright, LightDim;
-        /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
         public CraterDef Crater;
-        /// <summary>What the spell places where it lands (spells.json place: a thing, an animal, a terrain or a cover; World.Place.cs), or null.</summary>
         public PlaceDef Place;
     }
 
-    /// <summary>
-    /// A spell's place (docs/design/events-and-placing.md 2a): exactly one of Thing (an entities or items row),
-    /// Animal (a fauna.json species, view only), Terrain or Cover, on Count cells picked by Placement.Pick, among
-    /// the spell's cells, or within Within of the aim when it's given (0 is the aim cell), Spacing cells apart,
-    /// onto ground with one of the Onto tags (any open ground when empty). A thing lapses after Lasts ticks (0 stays).
-    /// </summary>
     public sealed class PlaceDef
     {
         public string Thing, Animal, Terrain, Cover;
         public int Count = 1, Spacing, Lasts;
-        /// <summary>Cells round the aim to pick from, or -1 for the spell's own cells.</summary>
         public int Within = -1;
         public IReadOnlyList<string> Onto = Array.Empty<string>();
     }
 
-    /// <summary>
-    /// Ground a blast digs out ("crater" on a spell or an entity's "explodes"): Depth steps in the
-    /// middle, tapering to none past Radius squares.
-    /// </summary>
     public sealed class CraterDef
     {
         public int Radius, Depth;
-        /// <summary>How hard a ground the blast can dig (1 when absent), against a terrain's hardness.</summary>
         public int Strength = 1;
-        /// <summary>What its middle cell becomes once dug (Molten Boulder's lava); null stays.</summary>
         public string Leaves;
     }
 
-    /// <summary>A spell's scatter: Count tries at a cell within Reach of the middle; each lays Cover, burning, on open dry ground.</summary>
     public sealed class ScatterDef
     {
         public string Cover;
         public int Count, Reach;
     }
 
-    /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
     public sealed class ExplosionDef
     {
         public string Cover;
         public int Radius, Fire, Push;
-        /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
-        /// <summary>The ground it blows out, or null.</summary>
         public CraterDef Crater;
     }
 
-    /// <summary>A thing on the board (entities.json): a wizard, a crate, a barrel, a boulder.</summary>
     public sealed class EntityDef
     {
         public string Id, Name;
         public int Hp, Mass;
 
-        /// <summary>A copy to change, for a raider with an adjective.</summary>
         internal EntityDef Copy() => (EntityDef)MemberwiseClone();
-        /// <summary>A score or AC an entity row leaves out: 10, an average Strength, and an unarmoured AC.</summary>
         public const int DefaultScore = 10;
-        /// <summary>Its Strength score (entities.json "str") and Armor Class ("ac"), for the unarmed strike (World.Strike.cs).</summary>
         public int Str = DefaultScore, Ac = DefaultScore;
-        /// <summary>Flammable and Creature mirror those components (Components.cs), for the code that reads them.</summary>
         public bool Flammable, Creature, Player;
-        /// <summary>What it's made of: a terrain id in materials.json (a crate is wood), or null.</summary>
         public string Material;
-        /// <summary>That material's definition, or null (set once the rules are read).</summary>
         public TerrainDef MaterialDef;
-        /// <summary>What it is made of or does (entities.json "components").</summary>
         public ComponentSet Components;
-        /// <summary>Null unless it blows up when destroyed.</summary>
         public ExplosionDef Explodes;
-        /// <summary>Null unless it raids the defense field (Defense.cs).</summary>
         public RaiderDef Raider;
-        /// <summary>What dresses it when it has no baked prefab (family creature; Rules.Things.cs); null for one that has.</summary>
         public LookDef Look;
     }
 
@@ -423,19 +249,8 @@ namespace Chem
     {
         public double SpreadChance = 0.5, HeatChance = 0.04, BoilChance = 0.35, SlickBoilChance = 0.35, DownwindBonus = 0.35, SmokeChance = 0.25;
 
-        /// <summary>
-        /// What fire leaves when a material's burn group doesn't say (sim.json fire.ash, fire.smoke): the cover
-        /// a burnt-out cell is left with and the gas a burning cell gives off. Null leaves none.
-        /// </summary>
         public string Ash, Smoke;
 
-        /// <summary>
-        /// When above 0, fire weakens as it spreads: a cell this many spreads from where the fire
-        /// started can no longer pass it on. The chance stays near full for most of the way and
-        /// falls off toward the end (1 - (generation / FadeCells)^3). 0 (the
-        /// default, and the web sandbox's behaviour) means fire spreads as far as there is fuel.
-        /// sim.json's fire.fadeCells (the sandbox ignores it), so a live mod can set it.
-        /// </summary>
         public int FadeCells;
     }
 
@@ -445,103 +260,54 @@ namespace Chem
         public int MaxAmount = 6;
     }
 
-    /// <summary>The range of Cell.Height, in steps, and the height from which a cell is a wall.</summary>
     public sealed class HeightParams
     {
         public int Min = -3, Max = 4, BlockAt = 3;
     }
 
-    /// <summary>sim.json's day: how long a day lasts in real minutes, and the hour the world starts at.</summary>
     public sealed class DayParams
     {
         public double LengthMinutes = 24, StartHour = 9;
-        /// <summary>The hours of dawn and dusk: dim light from the first to the second, bright between them, dark between dusk and dawn (Sky.Daylight).</summary>
         public double DawnFrom = 5, DawnTo = 7, DuskFrom = 18, DuskTo = 20;
-        /// <summary>How many times as fast snow freezes standing water at night.</summary>
         public double NightFreeze = 2;
-        /// <summary>The light a burning cell sheds, in feet as items.json lights are: bright out to FireBright, dim for FireDim beyond.</summary>
         public double FireBright = 20, FireDim = 20;
     }
 
-    /// <summary>
-    /// sim.json's streaming (ChunkStreaming, docs/WORLD_STREAMING.md): a character's reach, the
-    /// chunks within Reach of the one it stands in, is kept active; a chunk deactivates once no
-    /// character is within Keep. C# only: the sandbox has no chunks.
-    /// </summary>
     public sealed class StreamingParams
     {
         public int Reach = 2, Keep = 3;
-        /// <summary>A chunk is generated within this of a character, and known (a coarse far chunk, KnownRing) out to know.</summary>
         public int Sight = 4, Know = 7;
-        /// <summary>A chunk is settled once nothing in it has been live for this many ticks.</summary>
         public int SettleTicks = 12;
-        /// <summary>At most this many chunks out of every reach stay active while live (linger).</summary>
         public int LingerChunks = 16;
-        /// <summary>A chunk lingers at most this many ticks before it deactivates, live or not.</summary>
         public int LingerTicks = 1800;
-        /// <summary>A chunk let go while live runs at most this many of the ticks it missed when it next activates.</summary>
         public int CatchUpTicks = 720;
-        /// <summary>
-        /// The sparse World (World.Pack.cs): a chunk packs once it has been inactive, not beside an active chunk and not
-        /// drawn for this many ticks, at most PacksPerTick a tick (0: never). Memory only: nothing shared follows them.
-        /// </summary>
         public int PackTicks = 300, PacksPerTick = 2;
     }
 
-    /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
     public sealed class WeatherParams
     {
-        /// <summary>Real minutes per stretch of one weather, and of its ramp in and out.</summary>
         public double PeriodMinutes = 4, RampMinutes = 0.5;
-        /// <summary>Stretches of clear sky the world starts with.</summary>
         public int CalmPeriods = 2;
-        /// <summary>How often each WeatherKind comes up, in WeatherKind's order (sim.json's weights by name).</summary>
         public double[] Weights = { 4, 2, 1.5, 1, 2, 1, 1 };
-        /// <summary>At full rain: the chance per tick a fire burns down a step, and how much less fire spreads.</summary>
         public double DouseChance = 0.05, Dampen = 0.6;
-        /// <summary>Every fillEvery ticks of rain, each square's chance of a unit of water; every dryEvery ticks of no rain, a shallow square's chance to dry a unit.</summary>
         public int FillEvery = 12, DryEvery = 30;
         public double FillChance = 0.015, DryChance = 0.1;
-        /// <summary>Every strikeEvery ticks of storm, the chance (at full strength) lightning strikes a square.</summary>
         public int StrikeEvery = 18;
         public double StrikeChance = 0.5;
-        /// <summary>
-        /// The chance a clear stretch is a meteor shower; in one, every MeteorEvery ticks the chance
-        /// (at full strength) a meteor appears, which lands as the Meteor spell MeteorFallTicks later.
-        /// </summary>
         public double ShowerChance = 0.15, MeteorChance = 0.6;
         public int MeteorEvery = 18, MeteorFallTicks = 11;
-        /// <summary>The spell a meteor lands as, its crater and its fire (sim.json weather.meteors.spell); null, no meteors.</summary>
         public string MeteorSpell;
-        /// <summary>
-        /// Every FreezeEvery ticks of snow, a shallow square's chance (at full strength) its water freezes;
-        /// every dryEvery ticks of neither rain nor snow, a shallow frozen square's chance to thaw.
-        /// </summary>
         public int FreezeEvery = 24;
         public double FreezeChance = 0.05, ThawChance = 0.05;
-        /// <summary>
-        /// On the same beat, at full strength: open dry ground's chance of a cover of snow, and a snowy
-        /// square's chance to drift into a bank where something blocking shelters it (upwind of it, in a wind).
-        /// </summary>
         public double CoverChance = 0.08, BankChance = 0.05;
-        /// <summary>On the same beat, at full strength: a snowy square's chance to build up into a bank in the open, unsheltered (snow builds slowly).</summary>
         public double DeepenChance = 0.004;
-        /// <summary>The covers snow lays and drifts into (sim.json weather.snow.cover, bank); null, snow lays none.</summary>
         public string SnowCover, BankCover;
-        /// <summary>
-        /// Every FogEvery ticks of fog weather, an open square's chance (at full strength) of a unit of FogGas
-        /// (materials.json gases) inside a patch, where it has no gas yet; it thins away by the gas's own decay
-        /// once the stretch ends.
-        /// </summary>
         public int FogEvery = 6;
         public double FogChance = 0.3;
         public string FogGas = "fog";
-        /// <summary>Each block of FogRegionChunks by FogRegionChunks chunks has FogPatches patches a stretch, of radius FogRadiusMin..FogRadiusMax cells.</summary>
         public int FogRegionChunks = 2, FogPatches = 4, FogRadiusMin = 10, FogRadiusMax = 15;
-        /// <summary>A patch stands on the best of FogTries dry, open cells of its block: FogLow a water unit of lower ground, FogWet for each water FogWetReach cells off (N, E, S, W).</summary>
         public int FogTries = 8, FogWetReach = 8;
         public double FogLow = 0.02, FogWet = 2;
-        /// <summary>A patch moves a cell down the stretch's breeze every FogDriftTicks ticks.</summary>
         public int FogDriftTicks = 90;
     }
 
@@ -555,129 +321,66 @@ namespace Chem
         public GasParams Gas = new GasParams();
         public HeightParams Height = new HeightParams();
         public int WaterMaxLevel = 16, WaterUnitsPerStep = 4;
-        /// <summary>
-        /// Water's products (sim.json water.boils, water.freezes): the gas it boils off as (hot ground, fire,
-        /// a boil effect, rain on a fire; a condense effect thins it back to water, and it scalds) and the
-        /// terrain frozen water is (it borrows that terrain's shatter). Null: no gas, frozen water never cracks.
-        /// </summary>
         public string WaterBoils, WaterFreezes;
-        /// <summary>
-        /// Soaking (World.Soak): water this deep or less is thin (it and its four neighbours, so a
-        /// lake's shore isn't), the pass runs every SoakPass ticks, and soaked-in water leaves the
-        /// ground damp for DampTicks. SoakPass 0: no soaking.
-        /// </summary>
         public int ThinWater = 2, SoakPass = 8, DampTicks = 600;
-        /// <summary>
-        /// In dry weather, water deeper than ThinWater on ground that soaks seeps away Seep times slower than a puddle dries
-        /// (World.Dry: a hollow the rain ran into drains; a lake on its bed doesn't).
-        /// </summary>
         public int Seep = 2;
         public int ConductLimit = 80;
-        // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
-        /// <summary>
-        /// A creature thrown along the ground (World.Hurl) goes over the edge at a drop of CliffSteps height steps or more in one
-        /// cell, hurt FallDamage for every FallStepsPerHurt steps it fell (sim.json fall).
-        /// </summary>
         public int CliffSteps = 4, FallStepsPerHurt = 2;
-        /// <summary>
-        /// A cast's shove (World.CastShove): a creature shoved this many times braces against the next, and staggers
-        /// ShoveStaggerTicks after each (sim.json shove most, staggerTicks).
-        /// </summary>
         public int MostShoves = 2, ShoveStaggerTicks = 6;
-        /// <summary>A burning entity takes 1 damage on every tick divisible by this (sim.json status).</summary>
         public int BurnDamageEvery = 3;
-        /// <summary>A creature in thick steam is scalded on every tick divisible by this (sim.json status).</summary>
         public int ScaldEvery = 6;
-        /// <summary>
-        /// A thing with status ShatterWhen (frozen) shatters when it takes damage of any element but
-        /// ShatterNotBy (cold only chills it): frozen things shatter, docs/MATERIALS.md (sim.json
-        /// status.shatter when, notBy); null never.
-        /// </summary>
         public string ShatterWhen, ShatterNotBy;
-        /// <summary>The defense field's waves (sim.json defense).</summary>
         public DefenseParams Defense = new DefenseParams();
-        /// <summary>hold.json: the Hold's run.</summary>
         public HoldParams Hold = new HoldParams();
-        /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
         public GolfParams Golf = new GolfParams();
-        /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
         public BreathParams Breath = new BreathParams();
-        /// <summary>How long a wizard at 0 health stays down (sim.json downed, Downed.cs).</summary>
         public DownedParams Downed = new DownedParams();
-        /// <summary>The dragon's flight, the changed-cell budget and the shelter rule (sim.json dragon, World.Dragon.cs).</summary>
         public DragonParams Dragon = new DragonParams();
-        /// <summary>The unarmed strike's reach, knock-back, cooldown and proficiency (sim.json strike, World.Strike.cs).</summary>
         public StrikeParams Strike = new StrikeParams();
-        /// <summary>Each player's speed, size, jump and jumps, for the view (sim.json player, PlayerStats.cs).</summary>
         public PlayerParams Player = new PlayerParams();
     }
 
-    /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
     public sealed class CellCond
     {
         public IReadOnlyList<string> Cover;
-        /// <summary>fire: true / false.</summary>
         public bool? FireFlag;
-        /// <summary>fire: a number (minimum intensity).</summary>
         public double? FireMin;
         public double? FireBelow;
         public bool? Water, Frozen, Conductive;
-        /// <summary>melts: whether the cell's cover melts (its material has melt.water: snow, a snow bank, frost).</summary>
         public bool? Melts;
-        /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
         public bool? Hot;
-        /// <summary>freezes: whether the cell holds a liquid that freezes (its row gives freezes, Rules.Liquids.cs).</summary>
         public bool? Freezes;
         public string Gas, TerrainTag, NotTerrainTag;
-        /// <summary>liquid: the cell holds (unfrozen) this liquid, by id or tag (Rules.Liquids.cs); "water" is liquid 0, as the water condition.</summary>
         public string Liquid;
-        /// <summary>The least power the element must arrive with (a charged cast's).</summary>
         public int? Power;
-        /// <summary>The chance the rule applies, rolled last, once everything else holds.</summary>
         public double? Chance;
     }
 
-    /// <summary>One effect object; the first verb present (in TS runEffect order) wins.</summary>
     public sealed class Effect
     {
         public bool HasIgnite, IgniteCover; public int IgniteN;
         public int? Boil;
         public bool Melt, Freeze, Extinguish, Condense;
         public bool HasAddWater, AddWaterPower; public int AddWaterN;
-        /// <summary>liquid: the liquid addWater pours (Rules.Liquids.cs); null, water.</summary>
         public string Liquid;
         public bool HasSetCover; public string SetCover;
         public int? SpreadCover;
         public bool Break;
-        /// <summary>heat: a terrain that gets hot (hot.for) is left hot for that long (World.Cool).</summary>
         public bool Heat;
-        /// <summary>bake: the terrain becomes its bakesTo, if it has one.</summary>
         public bool Bake;
-        /// <summary>meltCover: the cover becomes its meltsTo and gives its meltWater, if it melts.</summary>
         public bool MeltCover;
-        /// <summary>crust: the terrain becomes its crustsTo for its crustFor ticks, if it crusts.</summary>
         public bool Crust;
-        /// <summary>thaw: the terrain becomes its thawsTo and gives its thawWater, if it thaws.</summary>
         public bool Thaw;
-        /// <summary>shatter: a hit on the cell's ice or terrain, as a blast's (World.Shatter): it cracks, or if cracked shatters.</summary>
         public bool Shatter;
-        /// <summary>dissolve: "cover" or "terrain", eaten away into its dissolvesTo when the rule's element is its dissolvedBy.</summary>
         public string Dissolve;
         public string SetTerrain, Raise;
         public int? Conduct;
         public bool Fan, PushGas, ClearGas;
-        /// <summary>scour: a blast of sand strips a cover that scours (scourable), or turns the terrain to its scoursTo, or wears raised ground of it (scour.wears) down a step.</summary>
         public bool Scour;
-        /// <summary>pushCover: a cover that floats (float) is pushed a cell along the element's way onto open water with no cover (a gust drives oil across a pond).</summary>
         public bool PushCover;
         public string Mark;
         public string Gas; public int? N;
-        /// <summary>
-        /// grow: the terrain the cell becomes, with a Cell.Life of TicksMin..TicksMax (a roll of
-        /// the world's generator between them) plus Wave ticks for each square from where the
-        /// spell landed, so it ripens outward from the middle.
-        /// </summary>
         public string Grow; public int TicksMin = 1, TicksMax = 1, Wave;
     }
 
@@ -691,7 +394,6 @@ namespace Chem
 
     public sealed partial class Rules
     {
-        /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
         static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
@@ -704,64 +406,42 @@ namespace Chem
         readonly Dictionary<string, MachineDef> machines = new Dictionary<string, MachineDef>();
         readonly Dictionary<string, LookDef> elementLooks = new Dictionary<string, LookDef>();
 
-        /// <summary>
-        /// The rule document's table of element entries (elements.json, and a mod's "elements" given by
-        /// id): each holds only a "look", so the whole table stays out of the fingerprint.
-        /// </summary>
         internal const string ElementLooksKey = "elementLooks";
         static readonly IReadOnlyList<CellRule> NoRules = Array.Empty<CellRule>();
 
         public IReadOnlyDictionary<string, TerrainDef> Terrain => terrain;
         public IReadOnlyDictionary<string, CoverDef> Covers => covers;
-        /// <summary>Some cover spreads (spread.every): without one, the soak pass never looks (World.Spread.cs).</summary>
         public bool AnySpreads { get; private set; }
         public IReadOnlyDictionary<string, GasDef> Gases => gases;
-        /// <summary>machines.json by terrain id: what powers each machine (World.TickMachines).</summary>
         public IReadOnlyDictionary<string, MachineDef> Machines => machines;
         public IReadOnlyList<SpellDef> Spells => spells;
         public IReadOnlyDictionary<string, EntityDef> Entities => entities;
-        /// <summary>reactions.json "cell", in file order.</summary>
         public IReadOnlyList<CellRule> CellRules => cellRules;
         public SimParams Sim { get; private set; } = new SimParams();
 
-        /// <summary>
-        /// Every table as JSON, in the shape of the sandbox's `Rules` object (elements, terrain,
-        /// covers, gases, cellRules, entityRules, spells, critters, entities, items, machines, sim, groups, combos).
-        /// Mods patch this, never the typed tables, so merging works exactly like composeRules.
-        /// </summary>
         readonly JObject doc;
-        // The document before its materials were ungrouped: what mods compose over. Null reads doc.
         JObject written;
 
         Rules(JObject doc) { this.doc = doc; }
 
         public SpellDef Spell(string id) => spells.FirstOrDefault(s => s.Id == id);
 
-        /// <summary>rules/fauna.json and rules/parts.json with the mods' rows. The view's only.</summary>
         public FaunaTables Fauna => fauna ??= new FaunaTables(doc);
         FaunaTables fauna;
 
-        /// <summary>
-        /// An element's look (elements.json "look": the colour of what it makes in the world, whichever
-        /// spell or reaction made it), or null when it has none. The view's only.
-        /// </summary>
         public LookDef ElementLook(string element) => element != null && elementLooks.TryGetValue(element, out var look) ? look : null;
 
-        /// <summary>Every element's look by element id (LookScopes compiles them). The view's only.</summary>
         public IReadOnlyDictionary<string, LookDef> ElementLooks => elementLooks;
 
-        /// <summary>The entity with this id, or null.</summary>
         public EntityDef Entity(string id)
         {
             if (id == null) return null;
             return entities.TryGetValue(id, out var e) ? e : HoldVariant(id);
         }
 
-        /// <summary>Cell rules for one element, top to bottom.</summary>
         public IReadOnlyList<CellRule> CellRulesFor(string element) =>
             element != null && byElement.TryGetValue(element, out var list) ? list : NoRules;
 
-        /// <summary>Reads every *.json in the folder (see <see cref="FromJson"/>). Subfolders such as mods/ are skipped.</summary>
         public static Rules Load(string rulesDir)
         {
             var files = new Dictionary<string, string>();
@@ -770,10 +450,6 @@ namespace Chem
             return FromJson(files);
         }
 
-        /// <summary>
-        /// Builds the rules from the files' text by name. materials.json and reactions.json are
-        /// required; the rest are optional.
-        /// </summary>
         public static Rules FromJson(IDictionary<string, string> filesByName)
         {
             JToken Get(string name, bool required)
@@ -785,7 +461,6 @@ namespace Chem
 
             var doc = Doc(Get);
             var asWritten = (JObject)doc.DeepClone();
-            // A material spelled as verb groups reads as the flat keys (MaterialGroups).
             var grouping = MaterialGroups.Ungroup(doc);
             if (grouping.Count > 0) throw new ArgumentException("Rules: " + string.Join("; ", grouping));
             var rules = FromDoc(doc);
@@ -793,7 +468,6 @@ namespace Chem
             return rules;
         }
 
-        // The rule document from the files (get: a file's JSON, or null for an optional one that's missing).
         internal static JObject Doc(Func<string, bool, JToken> get)
         {
             var materials = (JObject)get("materials.json", true);
@@ -825,7 +499,6 @@ namespace Chem
             };
         }
 
-        /// <summary>The typed tables for a rule document (see <see cref="doc"/>), which the result keeps.</summary>
         static void ParseMachines(Rules r, JObject machines)
         {
             foreach (var p in machines.Properties())
@@ -901,14 +574,11 @@ namespace Chem
             return r;
         }
 
-        // ---------- parsing helpers ----------
-
         static string Str(JToken t) => t == null || t.Type == JTokenType.Null ? null : (string)t;
         static int? Int(JToken t) => t == null || t.Type == JTokenType.Null ? (int?)null : (int)Math.Floor((double)t);
         static double? Num(JToken t) => t == null || t.Type == JTokenType.Null ? (double?)null : (double)t;
         static bool? Bool(JToken t) => t == null || t.Type == JTokenType.Null ? (bool?)null : Truthy(t);
 
-        /// <summary>JavaScript truthiness, since the TS tests effects with `if (eff.melt)`.</summary>
         static bool Truthy(JToken t)
         {
             if (t == null) return false;
@@ -924,7 +594,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The strings in a list (anything else in it is skipped), or none.</summary>
         static IReadOnlyList<string> Strings(JToken t) =>
             t is JArray a ? a.Where(x => x.Type == JTokenType.String).Select(x => (string)x).ToList() : new List<string>();
 
@@ -1020,7 +689,6 @@ namespace Chem
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
 
-        // Each thing's material, from its id (read once the terrain is).
         void ResolveMaterials()
         {
             foreach (var e in entities.Values)
@@ -1242,7 +910,6 @@ namespace Chem
                 else e.AddWaterN = Int(aw) ?? 0;
             }
             e.Liquid = Str(o["liquid"]);
-            // setCover: null is meaningful (clear the cover), so presence is what counts.
             if (o.TryGetValue("setCover", out var sc))
             {
                 e.HasSetCover = true;
@@ -1278,7 +945,6 @@ namespace Chem
             return e;
         }
 
-        /// <summary>sim.json status: burning and scalding rates, and what shatters.</summary>
         static void ParseStatus(SimParams s, JObject st)
         {
             s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
@@ -1297,7 +963,6 @@ namespace Chem
                 s.Fire.SpreadChance = Num(f["spreadChance"]) ?? s.Fire.SpreadChance;
                 s.Fire.HeatChance = Num(f["heatChance"]) ?? s.Fire.HeatChance;
                 s.Fire.BoilChance = Num(f["boilChance"]) ?? s.Fire.BoilChance;
-                // Bare water beside a burning slick boils at its own chance (sim.fire.slickBoilChance), else as other water does.
                 s.Fire.SlickBoilChance = Num(f["slickBoilChance"]) ?? s.Fire.BoilChance;
                 s.Fire.DownwindBonus = Num(f["downwindBonus"]) ?? s.Fire.DownwindBonus;
                 s.Fire.SmokeChance = Num(f["smokeChance"]) ?? s.Fire.SmokeChance;

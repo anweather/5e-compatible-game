@@ -27,7 +27,6 @@ public class ExploreProbe : ProbeScenario
         }
         Check("far_meadow_found", true, $"cell {far}, {Vector2Int.Distance(far, home) * grid.cellSize:0} m from the yard");
 
-        // Go there (a few cells short, so the bolt flies over grass) and let the chunks follow.
         Place(far.x - 3 - yard.x, far.y - yard.y);
         var at = grid.CellCenter(far.x, far.y);
         at.y = grid.GroundAt(at);
@@ -35,7 +34,6 @@ public class ExploreProbe : ProbeScenario
         yield return Wait(1f);
         int farChunk = Chunks.ChunkOf(far.x), farRow = Chunks.ChunkOf(far.y);
         Metric("active_chunks", World.ActiveChunks.Count);
-        // Besides chunks lingering, at most the square the keep distance spans round the player stays active (7×7 at keep 3).
         int keep = World.Rules.Sim.Streaming.Keep, most = (2 * keep + 1) * (2 * keep + 1);
         int held = World.ActiveChunks.Count - grid.ChunkPlanner.Lingering.Count;
         Check("chunks_activate_around_player", World.IsActive(farChunk, farRow) && held <= most,
@@ -51,8 +49,6 @@ public class ExploreProbe : ProbeScenario
             $"{burning} burning squares within 12 of the bolt");
         Shot("far-fire");
 
-        // By now the yard has settled (it may linger a moment after the wizard leaves, if something
-        // there was live) and deactivated; inactive, it stays exactly as it is.
         Check("yard_inactive", !World.IsActive(homeChunk, homeRow),
             $"the yard's chunk ({homeChunk}, {homeRow}), last live {World.Tick - World.LastLive(homeChunk, homeRow)} ticks ago");
         string yardBefore = World.ChunkHash(homeChunk, homeRow);
@@ -62,7 +58,6 @@ public class ExploreProbe : ProbeScenario
         yield return Wait(1f);
         Check("yard_activates_on_return", World.IsActive(homeChunk, homeRow));
 
-        // The fire left behind lingers: its chunk stays active, out of reach, and burns on.
         bool lingers = grid.ChunkPlanner.Lingering.Contains((farChunk, farRow));
         Metric("lingering_chunks", grid.ChunkPlanner.Lingering.Count);
         Check("far_fire_lingers", World.IsActive(farChunk, farRow) && lingers,
@@ -81,9 +76,6 @@ public class ExploreProbe : ProbeScenario
         return n;
     }
 
-    // Grass 200 to 420 cells from the yard and more than the keep ring of chunks away (so the yard
-    // sleeps), with grass around it to burn: the first found going round from the north-west, so
-    // the run is the same every time.
     bool FindMeadow(Vector2Int home, out Vector2Int found)
     {
         for (int d = 200; d <= 420; d += 10)
@@ -91,7 +83,6 @@ public class ExploreProbe : ProbeScenario
             foreach (var dir in new[] { new Vector2Int(-1, -1), new Vector2Int(1, -1), new Vector2Int(-1, 1), new Vector2Int(1, 1), new Vector2Int(-1, 0), new Vector2Int(1, 0) })
             {
                 var c = home + dir * (int)(d / Mathf.Sqrt(dir.sqrMagnitude));
-                // Where the wizard will stand (3 cells short of it, see Run) is beyond keep from the yard.
                 var stand = c - new Vector2Int(3, 0);
                 bool beyondKeep = Mathf.Max(Mathf.Abs(Chunks.ChunkOf(stand.x) - Chunks.ChunkOf(home.x)), Mathf.Abs(Chunks.ChunkOf(stand.y) - Chunks.ChunkOf(home.y))) > World.Rules.Sim.Streaming.Keep;
                 if (beyondKeep && GrassAround(c, 4)) { found = c; return true; }

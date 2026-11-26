@@ -14,16 +14,11 @@ using UnityEngine;
 // part of the wall nearest the camera, as the wall is far longer than a light's reach.
 public class DragonBreath : MonoBehaviour
 {
-    // The wall: columns across the strip, and rows behind the lead, each row lower as it dies down.
     const int Columns = 56, Rows = 4, Embers = 28, Drops = 240;
-    // The stream's drops come last, so a draw can leave them out.
     const int FirstDrop = Columns * Rows + Embers, Count = FirstDrop + Drops;
     const float EmberRise = 34f;
-    // Seconds a drop flies, at the longest; the wall's fade is shorter.
     const float LongestDrop = 0.85f, ShortestDrop = 0.6f, FadeSeconds = LongestDrop + 0.05f;
-    // A drop's width where it lands, in metres; how far it strays off the line by then; how high on the wall it lands.
     const float DropWide = 12f, DropStray = 14f, LandsUp = 8f;
-    // Prototype/Flame's mark for a drop.
     const float DropSheet = 3f;
 
     static readonly float[] RowBehind = { 0f, 4f, 9f, 16f }, RowTall = { 34f, 30f, 20f, 10f };
@@ -33,7 +28,6 @@ public class DragonBreath : MonoBehaviour
     static readonly Unity.Profiling.ProfilerMarker PlaceMarker = new("DragonBreath.Place");
 
     readonly FlameBank.Flame[] flames = new FlameBank.Flame[Count];
-    // The wall's flame each drop lands on.
     readonly int[] landsOn = new int[Drops];
     GraphicsBuffer buffer;
     Material material;
@@ -45,19 +39,14 @@ public class DragonBreath : MonoBehaviour
     bool burning;
     Vector3 mouthAt, bendAt, landsAt;
 
-    /// <summary>Whether the wall is out now, for the probe.</summary>
     public bool Burning => burning;
 
-    /// <summary>Whether drops are in the air: a moment longer than the wall burns.</summary>
     public bool StreamDrawn => burning || (goneAt >= 0f && Time.time - goneAt <= FadeSeconds);
 
-    /// <summary>Leaves the stream out of the draw, for the probe to see what it adds.</summary>
     public bool StreamHidden { get; set; }
 
-    /// <summary>The stream's line this frame, for the probe: <paramref name="s"/> is 0 at the mouth and 1 at the wall.</summary>
     public Vector3 StreamAt(float s) => Vector3.Lerp(Vector3.Lerp(mouthAt, bendAt, s), Vector3.Lerp(bendAt, landsAt, s), s);
 
-    /// <summary>A breath on a new child of <paramref name="view"/>, or null with no flames to draw with.</summary>
     public static DragonBreath On(Transform view, ChemGrid grid)
     {
         var shader = grid.flameShader != null ? grid.flameShader : Shader.Find("Prototype/Flame");
@@ -94,7 +83,6 @@ public class DragonBreath : MonoBehaviour
         roar = GameSounds.Loop(SoundIds.FireLoop, glow.transform, GameVolume.Effects);
     }
 
-    // What doesn't change as the wall moves: each flame's own time, look and sheet.
     void Seed(int i)
     {
         ref var f = ref flames[i];
@@ -108,16 +96,10 @@ public class DragonBreath : MonoBehaviour
         f.sheet = DropSheet;
         f.wide = DropWide * Mathf.Lerp(0.7f, 1.2f, ValueNoise.Hash(i, 7, 89));
         f.wander = DropStray;
-        // Most of it falls near the middle of the strip; the sum of two makes that so, and it still reaches the ends.
         float across = (ValueNoise.Hash(i, 7, 90) + ValueNoise.Hash(i, 7, 91)) / 2f;
         landsOn[i - FirstDrop] = Mathf.Clamp((int)(across * Columns), 0, Columns - 1);
     }
 
-    /// <summary>
-    /// The breath this frame: the wall on the line from <paramref name="end0"/> to <paramref name="end1"/> (world points,
-    /// its height ignored), its rows trailing back along <paramref name="behind"/> (a unit), and the stream from the mouth,
-    /// as wide there as a dragon of <paramref name="scale"/>'s.
-    /// </summary>
     public void Burn(Vector3 end0, Vector3 end1, Vector3 behind, Vector3 mouth, float scale)
     {
         using var marked = PlaceMarker.Auto();
@@ -136,7 +118,6 @@ public class DragonBreath : MonoBehaviour
             e.tall = EmberRise;
             e.wide = 0.25f;
         }
-        // Out of the mouth along its height, then down onto the wall.
         mouthAt = mouth;
         landsAt = OnGround((end0 + end1) / 2f) + Vector3.up * LandsUp;
         bendAt = Vector3.Lerp(mouth, landsAt, 0.5f);
@@ -183,7 +164,6 @@ public class DragonBreath : MonoBehaviour
         if (roar.clip != null) roar.Play();
     }
 
-    /// <summary>The breath stops: what's drawn dies away.</summary>
     public void Stop()
     {
         if (!burning) return;

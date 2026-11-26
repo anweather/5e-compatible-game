@@ -82,8 +82,6 @@ public class PadLogTests
         }
     }
 
-    // Counted from the log itself: once a play session has run, PadLog's device hook stays on
-    // in the Editor, so adding a pad here may or may not log its own line.
     [Test]
     public void ThePadInUseMovingIsLoggedOnce()
     {

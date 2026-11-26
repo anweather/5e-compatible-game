@@ -15,9 +15,7 @@ using UnityEngine;
 public partial class ChemGrid
 {
     const float WaveTall = 1.15f, WaveDeep = 1.4f, BoulderSize = 1.5f;
-    // Eases a bit faster than a cell a step, so it never falls behind its front.
     const float MoverCatchUp = 1.25f;
-    // What a wave's push is, in impulses, against the push of a cast (Forces.ImpulsePerPush).
     const float WaveShove = 1.5f;
     const float WaveFoamRate = 90f;
 
@@ -48,14 +46,10 @@ public partial class ChemGrid
     Material crestMaterial;
     readonly Dictionary<LookTint, Material> crestLooks = new();
 
-    /// <summary>Whether a boulder came to rest on this cell (its pillar is drawn as the boulder).</summary>
     public bool BoulderRestsAt(int x, int y) => boulderRests.Contains(World.Idx(x, y));
 
-    /// <summary>How many waves and boulders are drawn now, for the probe.</summary>
     public int MoversShown => waveShows.Count + boulderShows.Count;
 
-    // The way a wave rolls, along its aim (which may be off the grid's four ways), and how far one of its
-    // steps goes against a cell (a step along a slant is longer).
     Vector3 WaveStep(World.Wave wave) => (CellCenter(wave.AX, wave.AY) - CellCenter(0, 0)).normalized;
 
     static float WaveStride(World.Wave wave) =>
@@ -115,14 +109,12 @@ public partial class ChemGrid
         ShoveOnFront(wave);
     }
 
-    // A wider wave stands taller (Iceberg's 2 cells each side to Wave's 1): two thirds again for each cell more.
     static (float tall, float deep) WaveSize(World.Wave wave)
     {
         float tall = WaveTall * (1f + Mathf.Max(0, wave.Width - 1) / 3f * 2f);
         return (tall, WaveDeep * tall / WaveTall);
     }
 
-    // A spare show may have been another look's.
     void WaveLook(WaveShow show, World.Wave wave)
     {
         var look = LookTint.Between(WaveCrest.Own, SpellLookColor(wave.Spell) ?? Color.white, 1f);
@@ -149,13 +141,11 @@ public partial class ChemGrid
 
     bool Light(PhysicsProp prop, int most) => World.Rules.Entities.TryGetValue(prop.kind, out var def) && def.Mass <= most;
 
-    // Where it stops it breaks: one splash the width of its front.
     void BreakWave(World.Wave wave)
     {
         var show = waveShows[wave];
         waveShows.Remove(wave);
         BurstFx.Play(BurstFx.Kind.Splash, MoverGround(wave.X, wave.Y), 0.7f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
-        // One with a second element on its front (spells.json then: Iceberg's cold) breaks in chips of it too.
         if (World.Rules.Spell(wave.Spell)?.Then != null)
             BurstFx.Play(BurstFx.Kind.Chips, MoverGround(wave.X, wave.Y), 0.8f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
         GameSounds.Play(SoundIds.Splash, show.root.transform.position);
@@ -236,7 +226,6 @@ public partial class ChemGrid
         }
         var was = show.root.position;
         show.root.position = Vector3.MoveTowards(was, to, MoverSpeed(boulder.Every) * Time.deltaTime);
-        // It turns as far as it rolled, about the axis across its way.
         var moved = show.root.position - was;
         moved.y = 0f;
         if (moved.sqrMagnitude > 1e-6f) show.spin.Rotate(Vector3.Cross(Vector3.up, moved.normalized), moved.magnitude / reach * Mathf.Rad2Deg, Space.World);
@@ -244,7 +233,6 @@ public partial class ChemGrid
         show.y = boulder.Y;
     }
 
-    // Gone from the core: where its earth stands it stays, as a boulder on that cell; in water it sinks with a splash.
     void RestBoulder(World.Boulder boulder)
     {
         var show = boulderShows[boulder];

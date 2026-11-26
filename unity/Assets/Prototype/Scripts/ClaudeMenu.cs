@@ -6,9 +6,8 @@ using UnityEngine;
 // doesn't serve (a virtual player) has neither.
 public class ClaudeMenu : MonoBehaviour
 {
-    /// <summary>The page's id in the Esc menu.</summary>
     public const string PageId = "claude";
-    const int SectionOrder = 492, TerminalOrder = 493; // the Claude sub menu; a new home for the terminal is one line in OnEnable
+    const int SectionOrder = 492, TerminalOrder = 493;
     const int Width = 640;
     const float MostHeight = 620f;
 
@@ -46,7 +45,6 @@ public class ClaudeMenu : MonoBehaviour
         if (PauseMenu.Button("Play with Claude", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(PageId);
     }
 
-    // Closes the menu too: the game keeps running behind the terminal, so the player can watch it change.
     void DrawTerminal()
     {
         if (!PauseMenu.Button("Open a Claude terminal (F9)", PauseMenu.ButtonStyle)) return;

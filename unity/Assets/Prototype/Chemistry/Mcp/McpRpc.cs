@@ -39,11 +39,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>
-        /// One whose tools are made at the first tool call, not before: initialize, ping and tools/list need only their
-        /// names, so a game starts up without loading the rules for the chat until Claude asks for something (#153).
-        /// A make that throws is tried again at the next call.
-        /// </summary>
         public static McpRpc Deferred(Func<RulesTools> make, string name, string version) => new McpRpc(make, name, version);
 
         RulesTools Tools
@@ -54,7 +49,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>The answer to one message, as JSON; null for a notification, which has none.</summary>
         public string Handle(string body)
         {
             JObject message;
@@ -120,7 +114,6 @@ namespace Chem.Mcp
             return new JObject { ["type"] = "string" };
         }
 
-        /// <summary>After each tool call: its name, ms running, the answer's size in chars, and whether it went through.</summary>
         public Action<string, long, int, bool> Called { get; set; }
 
         string Call(JToken id, JObject given)
@@ -144,7 +137,6 @@ namespace Chem.Mcp
             }
             catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException || e is JsonException || e is ModException)
             {
-                // The rules couldn't be read just now: an error for this call, and the next one tries again.
                 return Result(id, ToolResult($"The game's tools couldn't start: {e.Message}", true));
             }
             try
@@ -164,12 +156,10 @@ namespace Chem.Mcp
             }
             catch (TargetInvocationException e) when (e.InnerException != null)
             {
-                // Anything else a tool throws is an error too, so the answer goes back and the server goes on.
                 return Result(id, ToolResult($"The tool {tool} failed: {e.InnerException.Message}", true));
             }
         }
 
-        // A value that's missing takes the parameter's default; a required one is a sentence, like any refusal.
         static object ValueOf(ParameterInfo p, JObject arguments)
         {
             var value = arguments[p.Name];

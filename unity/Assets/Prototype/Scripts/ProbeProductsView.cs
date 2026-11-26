@@ -24,10 +24,8 @@ using UnityEngine;
 public class ProductsViewProbe : RoomProbe
 {
     const string Soot = "blue-soot", Ice = "black-ice", Glaze = "glaze", SootTitle = "Blue soot", IceTitle = "Black ice";
-    /// <summary>The soot's look, and how close the film drawn on it must come (a colour channel).</summary>
     static readonly float[] SootColour = { 0.18f, 0.32f, 0.95f };
     const float SameColour = 0.02f;
-    /// <summary>The black ice's lapse: 120 ticks (20 s) for filming, where §5's first test has 3600 (ten minutes).</summary>
     const int LapseTicks = 120;
     const int LotNear = 45, LotFar = 75, LotSide = 3;
     const float BurnOut = 50f, Settle = 1.5f, SweepWait = 20f;
@@ -40,7 +38,6 @@ public class ProductsViewProbe : RoomProbe
     protected override ChangeMode Mode => ChangeMode.Open;
     protected override bool StartsWithAMod => false;
 
-    /// <summary>For each cover the probe watches: "id:cells in the world/cells drawn wearing its film".</summary>
     public static string Films(ChemGrid grid) =>
         string.Join(" ", new[] { Soot, Ice, CoverIds.Ash }.Select(id => $"{id}:{grid.World.AllCells().Count(c => c.Cover == id)}/{grid.FilmCells(id)}"));
 
@@ -70,14 +67,12 @@ public class ProductsViewProbe : RoomProbe
         Metric("lot_base_x", a.x);
         Metric("lot_mod_x", b.x);
 
-        // The base: a fire on lot A leaves the base ash.
         yield return Burn(a);
         int baseAsh = World.AllCells().Count(c => c.Cover == CoverIds.Ash);
         Metric("base_ash_cells", baseAsh);
         Check("base_fire_leaves_ash", baseAsh > 20, $"{baseAsh} ash cells");
         BaseAshDrawn("base_ash_drawn_as_before");
 
-        // The mod, built through the MCP: a cover of its own, and grass leaving it.
         yield return Tool("add_material", new JObject { ["kind"] = "cover", ["id"] = Soot, ["name"] = SootTitle, ["verbs"] = new JObject { ["look"] = new JObject { ["color"] = new JArray(SootColour[0], SootColour[1], SootColour[2]) } }.ToString() });
         string draft = Regex.Match(answer ?? "", @"[Dd]raft:? ""?(\w[\w-]*)").Groups[1].Value;
         Check("add_material_drafts", draft.Length > 0, answer);
@@ -97,14 +92,12 @@ public class ProductsViewProbe : RoomProbe
         Check("client_draws_the_soot_alike", Theirs.films == Mine.films, $"{Theirs.films}, here {Mine.films}");
         CompareHashes("soot_in_step");
 
-        // Black ice: cast, walked on, lapsed.
         yield return Tool("revert", new JObject { ["mod"] = World.Room.Mods.FirstOrDefault(m => m.Title == SootTitle)?.Id ?? draft });
         yield return Agree("soot_off", $"Player 1 switched off {SootTitle}");
         Check("the_soot_is_swept_with_its_mod", World.AllCells().All(c => c.Cover != Soot), Films(grid));
         yield return BlackIce(from);
     }
 
-    // Base covers wear a film as they did (oil, grease, frost) and nothing else does; the colours are today's.
     void BaseDrawsAsBefore()
     {
         string[] films = { CoverIds.Oil, CoverIds.Grease, CoverIds.Frost }, none = { CoverIds.Ash, CoverIds.Snow, CoverIds.Snowbank, CoverIds.Vines, CoverIds.Thorns, CoverIds.Embers };
@@ -114,7 +107,6 @@ public class ProductsViewProbe : RoomProbe
         Check("base_snow_reads_the_rules", World.Rules.Sim.Weather.SnowCover == World.SnowCover && World.Rules.Sim.Weather.BankCover == World.BankCover && World.Rules.Sim.Fire.Ash == CoverIds.Ash);
     }
 
-    // The base ash: charred paint, no film, its own colour.
     void BaseAshDrawn(string name)
     {
         var cells = Enumerable.Range(0, World.W * World.H).Where(i => World.CellAt(i).Cover == CoverIds.Ash).ToList();
@@ -149,7 +141,6 @@ public class ProductsViewProbe : RoomProbe
 
     static bool Near(Color c, float r, float g, float b) => Mathf.Abs(c.r - r) <= SameColour && Mathf.Abs(c.g - g) <= SameColour && Mathf.Abs(c.b - b) <= SameColour;
 
-    // A square of grass LotSide cells round its middle, between LotNear and LotFar cells to one side, in an active chunk.
     bool FindLot(Vector2Int from, int side, out Vector2Int lot)
     {
         for (int d = LotNear; d <= LotFar; d++)
@@ -173,7 +164,6 @@ public class ProductsViewProbe : RoomProbe
         return true;
     }
 
-    // A Fire Bolt from the host at a lot, and the fire waited out (or BurnOut seconds).
     IEnumerator Burn(Vector2Int lot)
     {
         Host.GetComponent<SpellCaster>().Cast(SpellIds.FireBolt, lot.x, lot.y, 0);
@@ -200,7 +190,6 @@ public class ProductsViewProbe : RoomProbe
         int skids = feet != null ? feet.Skids : 0;
         yield return Skid(from);
         Check("and_skids", feet != null && feet.Skids > skids, $"{(feet != null ? feet.Skids - skids : -1)} skids");
-        // Up to the lapse, and a little after.
         yield return lens.Roll(40f, () => World.Tick >= lapses);
         yield return lens.Roll(2.5f, null);
         Metric("ice_frames", lens.Close());
@@ -220,7 +209,6 @@ public class ProductsViewProbe : RoomProbe
         Check("the_panel_says_time_left", (grid.GetComponent<RuleSwitcher>().LapseNote(iceMod?.Id ?? "") ?? "").StartsWith("lapses in", System.StringComparison.Ordinal));
     }
 
-    // Three Glazes in a line north of the host, a slick to cross; drawn as a film in its own colour.
     IEnumerator Glazes(Vector2Int from)
     {
         var caster = Host.GetComponent<SpellCaster>();
@@ -238,7 +226,6 @@ public class ProductsViewProbe : RoomProbe
         Check("in_its_own_colour", drawn.HasValue && Near(drawn.Value, 0.08f, 0.12f, 0.35f), $"{drawn}");
     }
 
-    // The wizard runs from the dry grass onto the slick and across it.
     IEnumerator Skid(Vector2Int from)
     {
         var puppet = new WizardPuppet(Host);
@@ -255,7 +242,6 @@ public class ProductsViewProbe : RoomProbe
         Check("the_wizard_crosses_the_ice", onIce);
     }
 
-    // The lapse: no ice in any chunk on either side, the view's rules and the mods list without it.
     IEnumerator AfterLapse()
     {
         Check("the_ice_lapsed", World.Tick >= lapses && World.Room.Mods.All(m => m.Title != IceTitle), $"tick {World.Tick}, {World.RoomText()}");
@@ -278,8 +264,6 @@ public class ProductsViewProbe : RoomProbe
         Check("client_view_follows_the_lapse", Theirs.viewMods == Mine.viewMods, $"{Theirs.viewMods}, here {Mine.viewMods}");
     }
 
-    // A fixed camera at 720p, rendered off screen (the brain off): the black ice's film a frame at a time on a 30 fps
-    // clock, or one still. With no folder it films nothing. glowmoss films with it too.
     internal sealed class Lens
     {
         readonly Camera cam;
@@ -319,7 +303,6 @@ public class ProductsViewProbe : RoomProbe
             File.WriteAllBytes(Path.Combine(folder, (name ?? $"frame_{frame++:00000}") + ".jpg"), page.EncodeToJPG(Quality));
         }
 
-        /// <summary>Films for <paramref name="seconds"/> of game time, or until <paramref name="done"/>.</summary>
         public IEnumerator Roll(float seconds, System.Func<bool> done)
         {
             for (float t = 0f; t < seconds && (done == null || !done()); t += Time.deltaTime)
@@ -349,7 +332,6 @@ public class ProductsViewProbe : RoomProbe
         " \"spells\": [ { \"id\": \"" + Glaze + "\", \"group\": \"water\", \"name\": \"Glaze\", \"look\": { \"family\": \"motes\", \"color\": [0.08, 0.12, 0.35] }," +
         " \"level\": 2, \"shape\": \"burst\", \"radius\": 2, \"element\": \"cold\", \"power\": 5, \"blurb\": \"Level 2. A slick of black ice.\" } ] } }";
 
-    // A still of a lot at 720p, off screen: the camera south of it, looking down.
     IEnumerator Still(string name, Vector2Int lot)
     {
         if (!Filming) yield break;
@@ -360,14 +342,12 @@ public class ProductsViewProbe : RoomProbe
         Metric("stills", ++stills);
     }
 
-    // The MCP over HTTP, as a client outside calls it, off the main thread so the server can answer.
     IEnumerator Tool(string name, JObject arguments)
     {
         yield return Call(name, arguments, said => answer = said);
         Metric($"mcp_{name}_chars", answer?.Length ?? 0);
     }
 
-    /// <summary>One tool of the game's own rules MCP over HTTP, its answer (or the error) handed to <paramref name="said"/>.</summary>
     internal static IEnumerator Call(string name, JObject arguments, System.Action<string> said)
     {
         string url = RulesMcpServer.Url;

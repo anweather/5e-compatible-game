@@ -21,14 +21,12 @@ public class WaterShowcase : ShowcaseScript
         yield return Ice();
     }
 
-    // The deepest lake square, and the dry square north of it on the shore.
     bool FindLake()
     {
         float best = 0f;
         for (int y = 0; y < World.H; y++)
             for (int x = 0; x < World.W; x++)
             {
-                // Deep enough to swim, and the shore north of it near: a beach, not the far cliff.
                 if (!IsLake(x, y)) continue;
                 int n = WaterNorth(x, y);
                 if (n < 6 || n > 12) continue;
@@ -47,7 +45,6 @@ public class WaterShowcase : ShowcaseScript
         return c.Water > 0 && c.T == TerrainIds.Pit && grid.valley != null && grid.valley.IsLake(c, x, y);
     }
 
-    // Wet squares straight north of (x, y), up to 16.
     int WaterNorth(int x, int y)
     {
         int n = 0;
@@ -63,7 +60,6 @@ public class WaterShowcase : ShowcaseScript
         water.y = grid.WaterSurfaceY(deep.x, deep.y);
         puppet.Face(water);
         var me = wizard.transform.position;
-        // From the shore to one side, low over the water.
         Cut(me + V(7f, 3f, 2f), (me + water) / 2f);
         yield return Wait(0.8f);
         var walk = puppet.WalkTo(water);

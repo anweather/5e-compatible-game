@@ -14,7 +14,6 @@ namespace Chem.Mcp
     {
         const string PlayersTable = "players";
 
-        /// <summary>set_player(): one stat of the player asking, a slot's, or everyone's, within the bounds; "normal" takes it back.</summary>
         public string SetPlayer(string draftId, string stat, string value, string who)
         {
             stat = Required(stat, "stat").Trim().ToLowerInvariant();
@@ -26,7 +25,6 @@ namespace Chem.Mcp
             var draft = DraftOf(draftId);
             if (string.Equals(value?.Trim(), "normal", StringComparison.OrdinalIgnoreCase))
             {
-                // A slot's goes back to everyone's by a null, which the merge keeps, so it undoes a mod under this one too.
                 if (slot == null) SetPath(Section(draft, "sim"), path, Normal(stat));
                 else SlotRow(draft, slot)[stat] = JValue.CreateNull();
                 draft.Changed.Add($"sim {path}");
@@ -44,7 +42,6 @@ namespace Chem.Mcp
             return draft.Show() + $"\n{whose}: {StatWords(stat, v)}, once it's applied.{cut}";
         }
 
-        // who: the slot it's for, or null for everyone. "me" (or nothing) is the player asking's.
         string PlayerSlot(string who)
         {
             string w = string.IsNullOrWhiteSpace(who) ? "me" : who.Trim().ToLowerInvariant();
@@ -66,7 +63,6 @@ namespace Chem.Mcp
         int MyPlayerSlot() =>
             Here?.Asking()?.Slot ?? throw new RulesToolException("No player is in the game to change, so give who: a player's slot, or everyone.");
 
-        // A stat's bounds from budgets.json sim, as (most, least).
         (double most, double least) PlayerBound(string stat)
         {
             var b = Budgets.SimBounds.Where(x => x.path == "player." + stat).Select(x => ((double, double)?)(x.max, x.min)).FirstOrDefault();
@@ -91,7 +87,6 @@ namespace Chem.Mcp
             _ => $"has {Num(v)} jump{(Math.Abs(v - 1) < 1e-9 ? "" : "s")} before landing",
         };
 
-        // list players: everyone's stats and each slot's own, in force.
         string PlayerLines()
         {
             var p = InForce.Sim.Player;

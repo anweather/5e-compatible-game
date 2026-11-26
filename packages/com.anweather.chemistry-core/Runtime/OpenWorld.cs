@@ -23,7 +23,6 @@ namespace Chem
 {
     public sealed partial class World
     {
-        // An open world: its chunks are filled as players reach them (World.OpenWorld).
         World(Rules rules, uint seed)
         {
             ownerThread = Environment.CurrentManagedThreadId;
@@ -36,13 +35,8 @@ namespace Chem
             Source = filled = new FilledGround();
         }
 
-        /// <summary>
-        /// An open world (D20): no bounds and no chunks until they're filled (FillChunk), every layer a run of rows
-        /// (ChunkKey.Row). W and H are 0.
-        /// </summary>
         public static World OpenWorld(Rules rules, uint seed = 1) => new World(rules, seed);
 
-        /// <summary>Whether this is an open world (World.OpenWorld): chunks made by fills, no bounds.</summary>
         public bool IsOpen { get; }
 
         readonly FilledGround filled;
@@ -50,22 +44,16 @@ namespace Chem
         static InvalidOperationException NoIndex() =>
             new InvalidOperationException("An open world has no cell index (it has no width): a cell is its x and its row, a set of cells is by CellKey");
 
-        // Throws NoIndex, out of line: a method that throws isn't inlined, and Idx is read in the tick's passes.
         static int NoIndexAt() => throw NoIndex();
 
         static InvalidOperationException NotOpen(string what) => new InvalidOperationException($"Only an open world (World.OpenWorld) {what}");
 
-        /// <summary>
-        /// Fills a chunk of an open world from the ground the host game sampled: made inactive and packed against its
-        /// ground, linked to the filled chunks round it. A chunk filled already keeps what it has (false). A command
-        /// (TickBatch.Fills): between ticks, the same on every peer.
-        /// </summary>
         public bool FillChunk(Chem.ChunkKey key, ChunkGround ground)
         {
             if (!IsOpen) throw NotOpen("is filled");
             if (ground == null) throw new ArgumentNullException(nameof(ground));
             if (!key.Fits) throw new ArgumentOutOfRangeException(nameof(key), $"chunk {key} isn't one an open world holds (layers {Chem.ChunkKey.MinLayer} to {Chem.ChunkKey.MaxLayer}, at most {Chem.ChunkKey.MostChunks} chunks from 0)");
-            FinishTick(); // a fill lands between whole ticks
+            FinishTick();
             var (cx, cy) = key.Chunk;
             if (FindChunk(cx, cy) != null) return false;
             filled.Add(cx, cy, ground);
@@ -76,28 +64,24 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Whether an open world's chunk is filled.</summary>
         public bool IsFilled(Chem.ChunkKey key)
         {
             var (cx, cy) = key.Chunk;
             return IsOpen && FindChunk(cx, cy) != null;
         }
 
-        /// <summary>Whether an open world's chunk is filled and active.</summary>
         public bool IsActive(Chem.ChunkKey key)
         {
             var (cx, cy) = key.Chunk;
             return IsOpen && FindChunk(cx, cy) is Chunk ch && ch.Active;
         }
 
-        /// <summary>The ground an open world's chunk was filled from, or null for one not filled.</summary>
         public ChunkGround GroundOf(Chem.ChunkKey key)
         {
             var (cx, cy) = key.Chunk;
             return IsOpen ? filled.Of(cx, cy) : null;
         }
 
-        /// <summary>An open world's filled chunks, in key order (layer, row, column).</summary>
         public IReadOnlyList<Chem.ChunkKey> Filled
         {
             get
@@ -108,7 +92,6 @@ namespace Chem
             }
         }
 
-        /// <summary>An open world's active chunks, in key order.</summary>
         public IReadOnlyList<Chem.ChunkKey> ActiveKeys
         {
             get
@@ -119,8 +102,6 @@ namespace Chem
             }
         }
 
-        // A cell for the weather to strike or drop a meteor on, from two draws of the world's generator: anywhere on a
-        // bounded world, in a filled chunk of an open one (none filled: a cell on no chunk, which nothing happens to).
         (int x, int y) AnyCell()
         {
             double a = Rand(), b = Rand();
@@ -134,9 +115,6 @@ namespace Chem
             return ((ch.X << Chunks.Shift) + lx, (ch.Y << Chunks.Shift) + ly);
         }
 
-        // ---------- saves ----------
-
-        // Every filled chunk's ground, in key order: [x, y, its bytes in base64], by its coordinates in the sheet.
         JArray SaveFills()
         {
             var fills = new JArray();
@@ -144,8 +122,6 @@ namespace Chem
             return fills;
         }
 
-        // A save's fills, before its chunks' records: each chunk made from its ground, active as a bounded world's chunk
-        // starts (a saved record says when it isn't).
         void LoadFills(JArray fills)
         {
             foreach (var f in fills)
@@ -164,11 +140,6 @@ namespace Chem
                 FindChunk((int)f[0], (int)f[1]).Active = true;
             }
         }
-
-        // ---------- the open world's hash ----------
-        // Over the filled chunks in key order, each its coordinates and ground's fingerprint, then the cells that differ
-        // from its ground by local index: what every peer that filled the same chunks with the same grounds and played the
-        // same ticks holds, and nothing a chunk not filled could add.
 
         interface IOpenSink
         {
@@ -215,9 +186,6 @@ namespace Chem
                 World.AppendCell(Text.Append('@').Append(i.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(':'), c, liquids);
         }
 
-        // The filled chunks [from, to) of the key order into a sink, never unpacking one: a packed chunk's changes are laid
-        // on a reset cell where they lie (as the changes hash's ChangedRun does), an unpacked chunk's cells are compared
-        // with its ground.
         void WalkOpen<T>(ref T sink, int from, int to) where T : struct, IOpenSink
         {
             var all = ChunksInOrder;
@@ -262,7 +230,6 @@ namespace Chem
             return sink.Text.Append(FitText()).ToString();
         }
 
-        // One of slices slices of the filled chunks, by their key order.
         void OpenHashSlice(ref Fnv1aSum sum, int slice, int slices)
         {
             int n = ChunksInOrder.Length;
@@ -271,7 +238,6 @@ namespace Chem
             sum = sink.Sum;
         }
 
-        // Every filled chunk's cells, chunk by chunk in key order (AllCells on an open world, which has no rows to walk).
         IEnumerable<Cell> OpenCells()
         {
             foreach (var ch in ChunksInOrder)

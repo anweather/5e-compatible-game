@@ -1,3 +1,4 @@
+// The MCP protocol as the game serves it (McpRpc): what a client sends, and what comes back.
 using System.Collections.Generic;
 using System.Linq;
 using Chem.Mcp;
@@ -6,7 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The MCP protocol as the game serves it (McpRpc): what a client sends, and what comes back.</summary>
     [Category("Simulation")]
     public class McpRpcTests
     {
@@ -23,7 +23,6 @@ namespace Chem.Tests
             }
         }
 
-        // A game whose room fails once with something no tool expects.
         sealed class FailingDesk : IRoomDesk
         {
             int calls;
@@ -46,7 +45,6 @@ namespace Chem.Tests
             Assert.That((string)next["content"][0]["text"], Is.EqualTo("the game's room"));
         }
 
-        // #153: the game makes its tools when Claude first calls one, so start-up doesn't load the rules for them.
         [Test]
         public void DeferredToolsAreMadeAtTheFirstCallOnly()
         {

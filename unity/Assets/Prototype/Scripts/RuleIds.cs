@@ -3,7 +3,6 @@
 // in the JSON; these are only the names, so a typo is a compile error rather
 // than a spell that silently does nothing.
 
-/// <summary>Spell ids, as in rules/spells.json.</summary>
 public static class SpellIds
 {
     public const string FireBolt = "fire-bolt";
@@ -49,14 +48,12 @@ public static class SpellIds
     public const string StoneRamp = "stone-ramp";
     public const string LightningBolt = "lightning-bolt";
     public const string ScaldingSteam = "scalding-steam";
-    // The four big spells (casting-pace-options.md, "A Meteor for every element").
     public const string Tornado = "tornado";
     public const string ThunderStrike = "thunder-strike";
     public const string EarthSpires = "earth-spires";
     public const string Iceberg = "iceberg";
 }
 
-/// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
 public static class SpellShapes
 {
     public const string Line = "line";
@@ -72,7 +69,6 @@ public static class SpellShapes
     public const string ShapeshiftEffect = "shapeshift";
 }
 
-/// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>
 public static class ElementIds
 {
     public const string Fire = "fire";
@@ -82,7 +78,6 @@ public static class ElementIds
     public const string Lava = "lava";
 }
 
-/// <summary>Entity ids, as in rules/entities.json.</summary>
 public static class EntityIds
 {
     public const string Wizard = "wizard";
@@ -91,7 +86,6 @@ public static class EntityIds
     public const string Boulder = "boulder";
 }
 
-/// <summary>Item ids, as in rules/items.json (the yard's set pieces; ItemBuilder).</summary>
 public static class ItemIds
 {
     public const string GlowBallAmber = "glow-ball-amber";
@@ -105,7 +99,6 @@ public static class ItemIds
     public const string Pick = "pick";
 }
 
-/// <summary>Terrain ids (a cell's <c>T</c>), as in rules/materials.json.</summary>
 public static class TerrainIds
 {
     public const string Grass = "grass";
@@ -117,17 +110,13 @@ public static class TerrainIds
     public const string Dirt = "dirt";
     public const string Pit = "pit";
     public const string River = "river";
-    // Roof materials (world/villages.json "materials"): not cells, a building's roof.
     public const string Thatch = "thatch", Shingle = "shingle", Slate = "slate";
     public const string Metal = "metal";
-    // Metal left wet long enough (materials.json rust).
     public const string RustedMetal = "rusted-metal";
     public const string Mud = "mud";
     public const string Sand = "sand";
-    // Sand a lightning strike fused (lightning-fuse in reactions.json).
     public const string Glass = "glass";
     public const string LogWall = "logwall";
-    // A log wall a sand blast has worn thin (materials.json scour).
     public const string WornLogWall = "worn-logwall";
     public const string Gate = "gate", GateOpen = "gate_open", Coil = "coil";
     public const string Pane = "pane";
@@ -141,7 +130,6 @@ public static class TerrainIds
     public const string Sapling = "sapling";
 }
 
-/// <summary>Cover ids (a film on a cell), as in rules/materials.json.</summary>
 public static class CoverIds
 {
     public const string Oil = "oil";
@@ -155,7 +143,6 @@ public static class CoverIds
     public const string Vines = "vines";
 }
 
-/// <summary>Gas ids, as in rules/materials.json.</summary>
 public static class GasIds
 {
     public const string Steam = "steam";
@@ -167,7 +154,6 @@ public static class GasIds
     public const string SnowCloud = "snowcloud";
 }
 
-/// <summary>The defense field's raiders (entities with a "raider" row), as in rules/entities.json.</summary>
 public static class RaiderIds
 {
     public const string BoneHound = "bone-hound";

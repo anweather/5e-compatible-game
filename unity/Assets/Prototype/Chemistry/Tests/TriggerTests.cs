@@ -1,14 +1,12 @@
+// Triggers (docs/design/events-and-placing.md 2c, J-067): a step fires a trigger's cast or place, whose steps
+// count, the floor between firings, the cap a tick, chance, TriggerText in the checksum, the save, the checks and
+// the budgets, and StepTriggerGolden.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Triggers (docs/design/events-and-placing.md 2c, J-067): a step fires a trigger's cast or place, whose steps
-    /// count, the floor between firings, the cap a tick, chance, TriggerText in the checksum, the save, the checks and
-    /// the budgets, and StepTriggerGolden.
-    /// </summary>
     [Category("Simulation")]
     public class TriggerTests
     {
@@ -25,7 +23,6 @@ namespace Chem.Tests
 
         static World Meadow(Rules rules) => new World(rules, 64, 64, 5, "grass");
 
-        // A walk: a first stand at tick 1, then a step every other tick (a run), east 20 cells, south 10, west 10.
         static List<(int tick, StrikeCommand command)> Walk(string player = "Ann", int steps = 40)
         {
             var walk = new List<(int, StrikeCommand)> { (1, StrikeCommand.Stand(player, 12, 20, 12)) };
@@ -53,7 +50,6 @@ namespace Chem.Tests
             return w;
         }
 
-        /// <summary>StepTriggerGolden (design section 6): a meteor-steps mod and a 40-step walk as Stand commands; CellHash and CastHash after 300 ticks pinned, and a Timeline replay matches cell for cell.</summary>
         [Test]
         public void StepTriggerGolden()
         {
@@ -62,7 +58,6 @@ namespace Chem.Tests
             var walk = Walk();
             var live = Live(mod, walk, ticks);
 
-            // What a late joiner gets: the switch and the stands, each with its tick.
             var timeline = TickBatch.Timeline(null, new[] { new RuleChange(1, new[] { new ActiveMod("meteor-steps", mod) }) }, ticks);
             TickBatch.AddStrikes(timeline, walk);
             var joiner = Meadow(R);
@@ -209,7 +204,6 @@ namespace Chem.Tests
             var source = new Grass();
             var b = World.Load(a.Save(source), With(mod), source);
             Assert.That(b.TriggerText(), Is.EqualTo(a.TriggerText()).And.Not.Empty);
-            // Stands aren't in the save: each view sends its own again, in place, which is no step.
             var (x, y) = (a.Stands["Ann"].X, a.Stands["Ann"].Y);
             foreach (var w in new[] { a, b }) w.ApplyStrike(StrikeCommand.Stand("Ann", x, y, 12));
             Assert.That(b.CastHash(), Is.EqualTo(a.CastHash()));

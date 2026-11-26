@@ -12,15 +12,10 @@ using UnityEngine;
 // a dirt path along it and rock walls, the trees are off the faces and the floor, and the Hold's pad and road are as they were.
 public class CastleCliffProbe : ProbeScenario
 {
-    // The canyon's floor west from its mouth, round a dog-leg.
     protected static readonly Vector2Int[] CanyonPath = { new(186, 274), new(160, 274), new(146, 264), new(128, 276) };
 
-    // The cliff's east face runs north along x 151 to 153 from y 349 to 302, its lip the cell west of it; the stable stands
-    // west of the walk. The land is one height from the gate to the lip (MapStampTests); the drawn ground keeps within its
-    // grain of it, a few centimetres either way.
     protected const int LipX = 149, FaceTop = 302, FaceFoot = 349;
 
-    /// <summary>The castle's walk: out of its gate, north along its east wall onto the pad beyond, and east to the cliff's lip.</summary>
     protected static IEnumerable<Vector2Int> Walk()
     {
         for (int x = 142; x <= 145; x++) yield return new Vector2Int(x, 366);
@@ -40,7 +35,6 @@ public class CastleCliffProbe : ProbeScenario
         Metric("crag_cells", crag);
         Check("the_pad_drops_off_as_a_crag", crag > 150, $"{crag} crag cells");
 
-        // From the gate to the lip: one height, by the ground and by the wizard walking it.
         var cells = Walk().ToList();
         var heights = cells.Select(c => grid.GroundAt(grid.CellCenter(c.x, c.y))).ToList();
         float span = heights.Max() - heights.Min();
@@ -73,8 +67,6 @@ public class CastleCliffProbe : ProbeScenario
         yield return Wait(3f);
         Shot("from-the-town");
         yield return Wait(1f);
-        // What the land's rocks cost a frame (LandRocks, up to 1400): from the town, then on the castle's north wall, each
-        // with them shown and hidden.
         yield return RockCost("town");
         var wall = grid.CellCenter(134, 356);
         var cliff = grid.CellCenter(LipX + 6, 322);
@@ -88,7 +80,6 @@ public class CastleCliffProbe : ProbeScenario
         yield return Wait(3f);
         Shot("above");
 
-        // The walk, with the wizard: out of the gate, north to the pad, east to the lip.
         var walk = Walk().ToList();
         PlaceCell(walk[0].x, walk[0].y);
         yield return Wait(1.5f);
@@ -107,7 +98,6 @@ public class CastleCliffProbe : ProbeScenario
         }
         Metric("walk_wizard_span_m", high - low);
         Check("the_wizard_walks_it_level", high - low < 0.4f, $"{high - low:0.00} m up or down on the walk");
-        // At eye height along the pad to the lip, the town beyond; then over the lip, down the face.
         var east = (grid.CellCenter(LipX + 1, 330) - grid.CellCenter(LipX, 330)).normalized;
         var south = (grid.CellCenter(LipX, 331) - grid.CellCenter(LipX, 330)).normalized;
         var stand = wizard.transform.position;
@@ -123,7 +113,6 @@ public class CastleCliffProbe : ProbeScenario
         yield return Hold(overFrom, overTo, 1.5f);
         yield return Wait(1f);
 
-        // At the foot, walked into the face: it doesn't take the wizard up.
         PlaceCell(162, 326);
         yield return Wait(1f);
         float start = wizard.transform.position.y;
@@ -141,7 +130,6 @@ public class CastleCliffProbe : ProbeScenario
         Shot("cliff-foot");
         yield return Wait(1f);
 
-        // On the floor, looking up the canyon to its bend, and up at the cliff.
         var floor = CanyonPath[1];
         PlaceCell(floor.x + 8, floor.y);
         yield return Wait(2f);
@@ -160,14 +148,12 @@ public class CastleCliffProbe : ProbeScenario
         Shot("canyon-floor-up");
         yield return Hold(floorFrom, floorTo, 1.5f);
         yield return Wait(1f);
-        // From above, north up: the trail round the dog-leg.
         var mid = grid.CellCenter(CanyonPath[1].x, CanyonPath[1].y + 2);
         Cut(mid + Vector3.up * 90f, mid + (grid.CellCenter(CanyonPath[1].x, CanyonPath[1].y + 1) - grid.CellCenter(CanyonPath[1].x, CanyonPath[1].y + 2)).normalized * 0.05f);
         yield return Wait(3f);
         Shot("canyon-above");
     }
 
-    // Mean frame time over three seconds with the land's rocks shown, then hidden, as metrics.
     IEnumerator RockCost(string where)
     {
         var rocks = grid.transform.Find("Land rocks");
@@ -188,7 +174,6 @@ public class CastleCliffProbe : ProbeScenario
         if (rocks != null) rocks.gameObject.SetActive(true);
     }
 
-    // The camera held at a shot for so long, whatever else would move it.
     protected IEnumerator Hold(Vector3 position, Vector3 lookAt, float seconds)
     {
         for (float t = 0f; t < seconds; t += Time.deltaTime)
@@ -199,7 +184,6 @@ public class CastleCliffProbe : ProbeScenario
         Cut(position, lookAt);
     }
 
-    // Walks the wizard's body this way for so many metres, as its controller would.
     protected IEnumerator Push(Vector3 way, float metres)
     {
         var body = wizard.GetComponent<CharacterController>();
@@ -216,7 +200,6 @@ public class CastleCliffProbe : ProbeScenario
     protected static IEnumerable<Vector2Int> Cells(int x0, int y0, int x1, int y1) =>
         Enumerable.Range(y0, y1 - y0 + 1).SelectMany(y => Enumerable.Range(x0, x1 - x0 + 1).Select(x => new Vector2Int(x, y)));
 
-    // The canyon's floor: cut a crag deep along its path.
     IEnumerable<Vector2Int> CanyonFloor() =>
         Cells(120, 250, 192, 295).Where(c => grid.World.LandStampedAt(c.x, c.y) <= -World.LandCrag);
 }

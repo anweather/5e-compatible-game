@@ -62,7 +62,6 @@ public class DownedProbe : SpellLooksProbe
         yield return Wait(0.5f);
     }
 
-    // Struck by a stand-in that only the core knows: a hit on open ground, against a wall and into water.
     IEnumerator Struck()
     {
         const string Other = "stand-in";
@@ -79,7 +78,6 @@ public class DownedProbe : SpellLooksProbe
         Check("struck_moves_one_cell", now == new Vector2Int(stand.x + 1, stand.y), $"from {stand} to {now}");
         Check("struck_core_agrees", World.Stands[caster.CastPlayer].X == now.x && World.Stands[caster.CastPlayer].Y == now.y && World.Stands[caster.CastPlayer].Hp == Mathf.CeilToInt(vitals.Health), World.StrikeText());
 
-        // Blocking ground just behind: it stays put, and takes the hit.
         World.At(stand.x + 1, stand.y).T = TerrainIds.Stone;
         PlaceCell(stand.x, stand.y);
         yield return Wait(0.3f);
@@ -87,7 +85,6 @@ public class DownedProbe : SpellLooksProbe
         now = grid.CellAt(wizard.transform.position);
         Check("struck_against_a_wall_stays", strike.HitsTaken == 2 && now == stand, $"{strike.HitsTaken} hits, from {stand} to {now}");
 
-        // Water behind: it goes in, and whatever the water does then is what happens.
         World.At(stand.x + 1, stand.y).T = TerrainIds.Dirt;
         World.At(stand.x + 1, stand.y).Water = 2;
         yield return Wait(0.3f);
@@ -98,7 +95,6 @@ public class DownedProbe : SpellLooksProbe
         Check("struck_into_water_goes_in", strike.HitsTaken == 3 && now == new Vector2Int(stand.x + 1, stand.y), $"{strike.HitsTaken} hits, from {stand} to {now}");
         World.At(stand.x + 1, stand.y).Water = 0;
 
-        // The wizard's own strike, north: the aim's rows run against the world's z.
         PlaceCell(stand.x, stand.y);
         yield return Wait(0.3f);
         World.ApplyStrike(StrikeCommand.Stand(Other, stand.x, stand.y - 1, 12));
@@ -116,7 +112,6 @@ public class DownedProbe : SpellLooksProbe
         yield return Wait(0.3f);
     }
 
-    // Strikes east at the wizard from the next cell west until one lands, a roll at a time.
     IEnumerator HitBy(string other, Vector2Int stand)
     {
         var strike = wizard.GetComponent<WizardStrike>();

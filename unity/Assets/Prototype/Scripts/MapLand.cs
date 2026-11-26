@@ -10,25 +10,16 @@ public sealed class MapLand
 {
     public readonly MapFile Map;
     public readonly TerrainGrid Layout;
-    /// <summary>The land, row by row, in land units; all at the sea level when the map has no land.json.</summary>
     public readonly LandChunks Land;
-    /// <summary>Whether Land is the map's land.json (not the sea level all over for want of one).</summary>
     public readonly bool FromFile;
-    /// <summary>
-    /// Whether the map is played from a folder of its rows alone (a map too big to bake whole, the Wide World): Land is its
-    /// source's, made a chunk at a time as it's read, and Sea is from its known chunks (SeaMask.OfKnown), never its land.
-    /// </summary>
     public readonly bool Generated;
     public readonly SeaMask Sea;
-    /// <summary>The height the sea and the lakes are drawn at (m).</summary>
     public readonly float WaterLevel;
-    /// <summary>Where the swell comes in from: a point on the coast, and the way out to sea (level, unit length).</summary>
     public readonly Vector2 Shore, Seaward;
 
     static MapLand current;
     static string currentDir;
 
-    /// <summary>The map the game is on (ChemGrid.Folders.World); null if its folder can't be read.</summary>
     public static MapLand Current
     {
         get
@@ -60,14 +51,11 @@ public sealed class MapLand
         Generated = !FromFile && GeneratedMap.IsRowsOnly(dir);
         if (Generated)
         {
-            // Nothing read for the map's size (J-086): the land comes from the chunks the world makes, the sea from what the
-            // generator knows of every chunk (81 samples each, side by side), and the way out to sea from map.json.
             var timer = System.Diagnostics.Stopwatch.StartNew();
             Land = LandChunks.FromSource(ChemGrid.PlayedSource);
             Sea = SeaMask.OfKnown(LoadedMaps.Get(ChemGrid.MapSource).Gen);
             Debug.Log($"MAP LAND {Map.Id}: made as it's read; its sea known from its chunks in {timer.Elapsed.TotalMilliseconds:0} ms ({Sea.SeaCells} sea cells, {Sea.Bytes / 1024} KB)");
         }
-        // The land and its sea in one pass over the file (sea-land-speed); the sea level all over without one.
         else Land = FromFile ? LandChunks.Read(File.ReadAllText(path), Map.W, Map.H, Map.SeaLevel, out Sea) : null;
         if (Land == null)
         {
@@ -76,12 +64,10 @@ public sealed class MapLand
         }
         WaterLevel = (float)Map.WaterMetres;
         if (Map.Seaward is { } s) Seaward = new Vector2((float)s.x, (float)s.z).normalized;
-        // A generated map's without its own: south, not a pass over its every cell.
         else Seaward = Generated ? Vector2.down : LowWay();
         Shore = Map.SeaShore is { } o ? new Vector2((float)o.x, (float)o.z) : Middle;
     }
 
-    /// <summary>The map's land.json was written again (Bake Valley Land): the next Current reads it afresh.</summary>
     public static void Forget()
     {
         current?.Release();
@@ -89,13 +75,10 @@ public sealed class MapLand
         currentDir = null;
     }
 
-    // The chunks LandAt decoded last, kept for the next reads: a scan along rows (the shore map, the ambient life) comes
-    // back to each chunk for every row through it, and LandChunks.At keeps only one, so it decoded each chunk 64 times.
     const int KeptChunks = 256;
     readonly System.Collections.Generic.Dictionary<int, int[]> keptChunks = new();
     readonly System.Collections.Generic.Stack<int[]> spareChunks = new();
 
-    /// <summary>The land at a cell, in land units, with the chunks read lately kept decoded. The main thread only.</summary>
     public int LandAt(int x, int y)
     {
         int cx = x >> Chunks.Shift, cy = y >> Chunks.Shift, key = cy * ((Map.W + Chunks.Size - 1) >> Chunks.Shift) + cx;
@@ -113,7 +96,6 @@ public sealed class MapLand
         return cells[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
     }
 
-    /// <summary>The map's middle, in world metres (x, z).</summary>
     public Vector2 Middle
     {
         get
@@ -123,10 +105,8 @@ public sealed class MapLand
         }
     }
 
-    /// <summary>How far the map's corners are from its middle (m).</summary>
     public float Reach => Layout.ChunkSize * Mathf.Max(Layout.ChunksX, Layout.ChunksZ) * 0.7072f;
 
-    // The way from the middle toward the sea's cells, or south when there's none.
     Vector2 LowWay()
     {
         double sx = 0, sy = 0;
@@ -137,46 +117,36 @@ public sealed class MapLand
                     sx += x - Map.W / 2;
                     sy += y - Map.H / 2;
                 }
-        // Cells run south as y grows.
         var way = new Vector2((float)sx, (float)-sy);
         return way.sqrMagnitude > 0f ? way.normalized : Vector2.down;
     }
 
-    /// <summary>The cell a world point (x, z) is on (it may be off the map).</summary>
     public Vector2Int CellOf(Vector2 xz)
     {
         var (x, y) = Layout.CellAt(xz.x, xz.y);
         return new Vector2Int(x, y);
     }
 
-    /// <summary>Whether a world point is out at sea: on a sea cell, or off the map when the map's edge reaches the sea.</summary>
     public bool IsSea(Vector2 xz)
     {
         var c = CellOf(xz);
         return Sea.IsSea(c.x, c.y);
     }
 
-    /// <summary>Whether a world point is land, for the shore map: off the map, the nearest edge cell says.</summary>
     public bool IsLand(Vector2 xz)
     {
         var c = CellOf(xz);
         int x = Mathf.Clamp(c.x, 0, Map.W - 1), y = Mathf.Clamp(c.y, 0, Map.H - 1);
-        // A generated map's from its sea mask: reading its land would make every chunk the shore map spans.
         if (Generated) return !Sea.IsSea(x, y) && !Sea.IsBasin(x, y);
         return LandAt(x, y) >= Map.SeaLevel;
     }
 
     ShoreMap shoreMap;
 
-    /// <summary>The way to the nearest land over the sea, worked out from the land the first time it's asked for.</summary>
     public ShoreMap ShoreMap => shoreMap != null ? shoreMap : shoreMap = ShoreMap.FromLand(IsLand, ShoreMapMiddle);
 
-    // Where the shore map is centred: out to sea from the map's middle, or on a generated map (far bigger than the map's
-    // 3 km square) on its shore.
     Vector2 ShoreMapMiddle => Generated ? Shore : Middle + Seaward * (ShoreMap.Side / 2f - Reach);
 
-    // The shore map is DontSave, so nothing frees it but this: left when the map changed or the scripts reloaded (which
-    // forgets `current`), every one stayed in the Editor, 4 MB each (#145). Whoever drew with it builds again from Current.
     void Release()
     {
         keptChunks.Clear();

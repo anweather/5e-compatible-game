@@ -1,3 +1,8 @@
+// What building the Scale Island's World allocates, phase by phase, on the path a player takes (ChemGrid.StartWorld,
+// then the valley's land): cells.txt read whole, its BakedSource, MakeFrom, the lays, KeepStart, land.json read and
+// set. Each phase's bytes allocated (garbage too: a player's Mono heap keeps what it grew to) and what's live after
+// it. The island's bake is SparseWorldBench's, made once (~20 s). Not a check and not in CI (Explicit):
+// dotnet test core -c Release --filter "FullyQualifiedName~WorldBuildBench" --logger "console;verbosity=detailed"
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,13 +11,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What building the Scale Island's World allocates, phase by phase, on the path a player takes (ChemGrid.StartWorld,
-    /// then the valley's land): cells.txt read whole, its BakedSource, MakeFrom, the lays, KeepStart, land.json read and
-    /// set. Each phase's bytes allocated (garbage too: a player's Mono heap keeps what it grew to) and what's live after
-    /// it. The island's bake is SparseWorldBench's, made once (~20 s). Not a check and not in CI (Explicit):
-    /// <code>dotnet test core -c Release --filter "FullyQualifiedName~WorldBuildBench" --logger "console;verbosity=detailed"</code>
-    /// </summary>
     [Explicit("a benchmark: run it by name")]
     [Category("Simulation")]
     public class WorldBuildBench
@@ -34,14 +32,11 @@ namespace Chem.Tests
                 watch.Restart();
             }
 
-            // Bytes allocated so far. Unity's .NET profile has no GC.GetTotalAllocatedBytes (dotnet has), so it's found by
-            // reflection, and is 0 in the Editor, where only the live column means anything.
             static readonly System.Reflection.MethodInfo TotalAllocated =
                 typeof(GC).GetMethod("GetTotalAllocatedBytes", new[] { typeof(bool) });
 
             static long Allocated() => TotalAllocated == null ? 0 : (long)TotalAllocated.Invoke(null, new object[] { true });
 
-            // What's live on the heap, collected first: a measuring test's only use of the collector (as ScaleIslandTests).
 #pragma warning disable S1215
             static long Live() => GC.GetTotalMemory(true);
 #pragma warning restore S1215
@@ -54,7 +49,6 @@ namespace Chem.Tests
 
         static double Mb(long bytes) => bytes / 1024.0 / 1024.0;
 
-        // ChemGrid.CellMap and MapWorld: cells.txt read whole, then its source.
         static BakedSource FromWholeText(string dir, Phases at)
         {
             string text = MapFile.ReadCells(dir);
@@ -62,7 +56,6 @@ namespace Chem.Tests
             return BakedSource.FromText(text, R);
         }
 
-        // ValleyChemistry.SetLand: land.json read whole and set (the view keeps its array, landFromFile).
         static void SetViewsLand(World w, string dir, MapFile map, Phases at)
         {
             var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), map.W, map.H);

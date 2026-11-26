@@ -12,19 +12,15 @@ using UnityEngine;
 [RequireComponent(typeof(Animator))]
 public class RollPose : MonoBehaviour
 {
-    // One turn; the tuck takes this long at each end (s); the ball's radius (m).
     const float Turn = 360f, TuckSeconds = 0.09f, Radius = 0.5f;
-    // How far the spine, chest and neck each bend forward when tucked (degrees).
     const float Bend = 30f;
 
     Transform hips, spine, chest, neck, head;
     LimbIK.Limb leftArm, rightArm, leftLeg, rightLeg;
     float started = -10f, duration = 0.45f;
 
-    /// <summary>True while the tumble plays.</summary>
     public bool Playing => Time.time - started < duration;
 
-    /// <summary>How far round the body has turned this roll (degrees, 0 to 360).</summary>
     public float Angle { get; private set; }
 
     void Awake()
@@ -41,7 +37,6 @@ public class RollPose : MonoBehaviour
         rightLeg = LimbIK.Limb.Of(animator, HumanBodyBones.RightUpperLeg, HumanBodyBones.RightLowerLeg, HumanBodyBones.RightFoot);
     }
 
-    /// <summary>Plays the tumble over <paramref name="seconds"/>.</summary>
     public void Play(float seconds)
     {
         duration = Mathf.Max(0.1f, seconds);
@@ -58,7 +53,6 @@ public class RollPose : MonoBehaviour
         }
         float u = t / duration;
         float tuck = Mathf.SmoothStep(0f, 1f, Mathf.Min(t, duration - t) / TuckSeconds);
-        // Slow in, quick through the middle, slow out: a whole turn by the end.
         Angle = Turn * (u - Mathf.Sin(2f * Mathf.PI * u) / (2f * Mathf.PI));
         Curl(tuck);
         Tumble(tuck);
@@ -81,7 +75,6 @@ public class RollPose : MonoBehaviour
         if (bone != null) bone.rotation = Quaternion.AngleAxis(Bend * tuck, side) * bone.rotation;
     }
 
-    // Knees drawn up toward the chest.
     void Leg(LimbIK.Limb leg, float tuck)
     {
         if (!leg.Valid) return;
@@ -91,7 +84,6 @@ public class RollPose : MonoBehaviour
         LimbIK.Solve(leg, target, knee, tuck);
     }
 
-    // Hands to the shins, elbows out. side is -1 left, 1 right.
     void Arm(LimbIK.Limb arm, float side, float tuck)
     {
         if (!arm.Valid) return;
@@ -101,7 +93,6 @@ public class RollPose : MonoBehaviour
         LimbIK.Solve(arm, target, elbow, tuck * 0.9f);
     }
 
-    // The tucked body, lowered to sit on the ground as a ball and turned about its middle.
     void Tumble(float tuck)
     {
         var up = transform.up;

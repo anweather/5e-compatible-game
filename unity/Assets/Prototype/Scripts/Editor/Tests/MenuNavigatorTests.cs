@@ -5,7 +5,6 @@ using NUnit.Framework;
 // hold-to-repeat timing; and the join code picker (CodePicker).
 public class MenuNavigatorTests
 {
-    // A layout pass that draws this many focusable items.
     static void Layout(MenuNavigator nav, int items)
     {
         nav.BeginPass();
@@ -87,7 +86,7 @@ public class MenuNavigatorTests
         var nav = new MenuNavigator();
         Layout(nav, 8);
         nav.Move(7);
-        Layout(nav, 5); // e.g. the Play together section went online and lost buttons
+        Layout(nav, 5);
         Assert.That(nav.Focus, Is.EqualTo(4));
     }
 

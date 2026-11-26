@@ -14,21 +14,17 @@ namespace Chem
 {
     public sealed partial class World
     {
-        // While a chunk catches up the log is left alone: what happened there is in the past.
         bool catchingUp;
 
-        /// <summary>The ticks a loaded chunk ran to catch up when it last activated (0 if it had none to).</summary>
         public int CaughtUp(int cx, int cy) => ChunkOrThrow(cx, cy).CaughtUp;
 
-        /// <summary>A chunk deactivating: it remembers the tick if something in it is still live.</summary>
         void Stop(Chunk ch) => ch.StoppedAt = Tick - ch.LastLive < Rules.Sim.Streaming.SettleTicks ? Tick : NeverLive;
 
-        /// <summary>A chunk activating: it runs the ticks it missed while live, then counts as live now.</summary>
         void Resume(Chunk ch)
         {
             int stopped = ch.StoppedAt;
             ch.StoppedAt = NeverLive;
-            ch.SnapValid = false; // its water is checked afresh (World.StillWater)
+            ch.SnapValid = false;
             ch.CaughtUp = stopped == NeverLive ? 0 : Math.Max(0, Math.Min(Tick - stopped, Rules.Sim.Streaming.CatchUpTicks));
             if (ch.CaughtUp > 0) CatchUp(ch, stopped, ch.CaughtUp);
             ch.LastLive = Tick;
@@ -70,7 +66,6 @@ namespace Chem
                 Weather = weather;
                 foreach (var n in walls) n.Active = true;
             }
-            // An edge still live when the catch-up ended is live now.
             for (int d = 0; d < 4; d++) if (ch.EdgeLive[d] == stopped + ticks) ch.EdgeLive[d] = Tick;
         }
     }

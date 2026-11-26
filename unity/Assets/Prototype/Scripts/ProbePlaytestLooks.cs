@@ -39,7 +39,6 @@ public class PlaytestLooksProbe : ProbeScenario
         Butterflies();
     }
 
-    // Puts the wizard under the eye (the rings and tiles follow it), cuts to the view, waits for it to settle, shoots.
     IEnumerator View(string label, Vector3 eye, Vector3 at, float settle = Settle)
     {
         Teleport(new Vector3(eye.x, grid.GroundAt(eye) + 0.05f, eye.z));
@@ -55,8 +54,6 @@ public class PlaytestLooksProbe : ProbeScenario
 
     Vector3 OnGround(Vector3 p, float up) => new(p.x, grid.GroundAt(p) + up, p.z);
 
-    // A sparse wood: of points round the spawn, the one with the fewest trees within 150 m but some past 60 m, and none
-    // within 12 m; looked at toward those trees.
     IEnumerator Trees(Vector3 spawn)
     {
         Vector3 best = Vector3.zero, toward = Vector3.zero;
@@ -80,8 +77,6 @@ public class PlaytestLooksProbe : ProbeScenario
         yield return View("trees-left", eye, eye + Quaternion.Euler(0f, -50f, 0f) * (at - eye), 3f);
     }
 
-    // The tree cells round a dry cell, sampled every third: those within 12 m, those 60-150 m off and their middle
-    // (near is 1 for a cell off the map or wet, so it's never picked).
     (int near, int ring, Vector3 middle) Wood(Vector2Int cell)
     {
         var world = World;
@@ -104,8 +99,6 @@ public class PlaytestLooksProbe : ProbeScenario
         return (near, ring, ring > 0 ? sum / ring : Vector3.zero);
     }
 
-    // The coast's dock from the mountain by the falls: the eye on the line from the dock to the falls, at the Default
-    // layer's cut, 15 m either side of it, and on the mountain itself, 120 m over the ground so the trees don't hide it.
     IEnumerator Dock()
     {
         var dock = GameObject.Find("Dock");
@@ -127,7 +120,6 @@ public class PlaytestLooksProbe : ProbeScenario
         yield return DockSeen(dock, away);
     }
 
-    // How far off along that line the dock still draws (the eye 120 m over the ground, looking at it): 440 to 900 m.
     IEnumerator DockSeen(GameObject dock, Vector3 away)
     {
         var shown = dock.GetComponentInChildren<Renderer>();
@@ -144,7 +136,6 @@ public class PlaytestLooksProbe : ProbeScenario
         Metric("dock_drawn_to_m", last);
     }
 
-    // The lake and the sea from over the falls, panned across.
     IEnumerator Water()
     {
         var falls = GameObject.Find("Falls water");
@@ -156,7 +147,6 @@ public class PlaytestLooksProbe : ProbeScenario
             yield return View($"water-{i}", eye, eye + Quaternion.Euler(0f, -35f + 35f * i, 0f) * ahead, i == 0 ? Settle : 1.5f);
     }
 
-    // The mountain by the falls: the highest ground within 300 m of the falls, 3 m over it (a follow camera's eye).
     Vector3 Mountain(GameObject falls)
     {
         var f = falls.transform.position;
@@ -172,7 +162,6 @@ public class PlaytestLooksProbe : ProbeScenario
         return top + Vector3.up * 3f;
     }
 
-    // Far off: the four quarters from the mountain by the falls, a little down; then the nine's edge from 250 m up.
     IEnumerator FarView()
     {
         var falls = GameObject.Find("Falls water");
@@ -190,8 +179,6 @@ public class PlaytestLooksProbe : ProbeScenario
         yield return View("far-edge-high", high, high + new Vector3(-1000f, -300f, -1000f), 3f);
     }
 
-    // The valley's edge where the biome ground starts: the first cell east of the spawn whose biome isn't the pinned
-    // square's, from 30 m up and 60 m back; then a brush patch there at eye height. And the brush dressing off its ground.
     IEnumerator Edge()
     {
         var biomes = BiomeGround.Last;
@@ -212,7 +199,6 @@ public class PlaytestLooksProbe : ProbeScenario
         Floating();
     }
 
-    // The first cell of a biome other than the valley's temperate going east of a cell, else north, west, south.
     Vector2Int FirstBiomeCell(BiomeGround biomes, Vector2Int from)
     {
         foreach (var step in new[] { new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(-1, 0), new Vector2Int(0, 1) })
@@ -238,8 +224,6 @@ public class PlaytestLooksProbe : ProbeScenario
         return new Vector2Int(-1, -1);
     }
 
-    // Each brush clump (its foot, an empty at the ground: CellDressing.DressBrush) against the drawn terrain under it: how
-    // many float 0.25 m or more over it, and the worst.
     void Floating()
     {
         int all = 0, floating = 0;
@@ -264,7 +248,6 @@ public class PlaytestLooksProbe : ProbeScenario
         Metric("bushes_worst_float_m", worst);
     }
 
-    // The butterflies' homes in the tiles drawn round the last view.
     void Butterflies()
     {
         var critters = FindAnyObjectByType<AmbientCritters>();

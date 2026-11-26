@@ -14,9 +14,7 @@ using UnityEngine.Rendering;
 // and the poses piled up, carrying the hips 50 m up: the cause), and the shins the length they were and under the hips.
 public class PantsProbe : ProbeScenario
 {
-    // How far the shins may grow or shrink, and how far the feet may be from under the hips (m).
     const float ShinGive = 0.05f, FeetReach = 0.8f;
-    // The most the hips may be over the wizard's feet (they're about 1 m up standing; swimming, the feet hang lower).
     const float HipsMost = 2f;
 
     Animator animator;
@@ -41,7 +39,6 @@ public class PantsProbe : ProbeScenario
         yield return WalkFor(18, 10, 2f);
         yield return Legs("walked");
 
-        // Casting with the camera behind a wall of nothing: the wizard out of view while the cast pose works the legs.
         Place(10, 10);
         Cut(Yard(10, 10) + V(0f, 30f, 0f) + V(40f, 0f, 0f), Yard(10, 10) + V(80f, 30f, 0f));
         for (int i = 0; i < 3; i++) yield return CastFromBar(SpellIds.FireBolt, 18, 10, 1, 1.2f);
@@ -77,7 +74,6 @@ public class PantsProbe : ProbeScenario
         yield return Wait(1.5f);
     }
 
-    // Into a deer in the meadow (as the shapeshift probe does), a walk and a swim as one, the camera away, then back.
     IEnumerator Shifted()
     {
         var fauna = FindAnyObjectByType<ValleyFauna>();
@@ -123,7 +119,6 @@ public class PantsProbe : ProbeScenario
         Check("changed_back", !shape.Shifted && !shape.ModelHidden, shape.FormName ?? "the wizard");
     }
 
-    // The camera 4 m in front of the wizard, looking at its knees; a few frames for the culling to see it, then the checks.
     IEnumerator Legs(string at)
     {
         var w = wizard.transform;
@@ -150,7 +145,6 @@ public class PantsProbe : ProbeScenario
 
     static float Flat(Vector3 v) => new Vector2(v.x, v.z).magnitude;
 
-    // On, not hidden (Shapeshift's forceRenderingOff, the camera's shadows only), seen, and its bounds round the hips.
     bool Drawn(Renderer r, out string why)
     {
         if (r == null)

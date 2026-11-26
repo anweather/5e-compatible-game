@@ -17,8 +17,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-// Work that ends in no commit (a playtest session, a review) records its cost instead:
-//   commit-cost.mjs --record <label> <costs.jsonl>   appends {time, label, lines}, the lines a commit would get
 const record = process.argv[2] === '--record' ? { label: process.argv[3], out: process.argv[4] } : null;
 if (record && !(record.label && record.out)) { console.error('commit-cost.mjs --record <label> <costs.jsonl>'); process.exit(2); }
 const msgFile = record ? null : process.argv[2];
@@ -26,9 +24,8 @@ const home = os.homedir();
 const role = process.env.COMMIT_COST_ROLE || 'Worker';
 const config = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
 const stateFile = path.join(config, `.${role.toLowerCase()}-last-commit.txt`);
-// A rebase or amend replays a message that already carries its cost: leave it as it is.
 if (msgFile && new RegExp(`^${role}-Tokens: `, 'm').test(fs.readFileSync(msgFile, 'utf8'))) process.exit(0);
-let since = Number(process.env.COMMIT_COST_SINCE) || Date.now() - os.uptime() * 1000; // the override is for testing
+let since = Number(process.env.COMMIT_COST_SINCE) || Date.now() - os.uptime() * 1000;
 try { since = Math.max(since, Number(fs.readFileSync(stateFile, 'utf8'))); } catch { }
 
 function* transcripts(dir) {
@@ -41,18 +38,14 @@ function* transcripts(dir) {
   }
 }
 
-// What the test commands look like, by the name they're counted under.
 const tests = [
   ['dotnet test', /\bdotnet test\b/], ['npm test', /\bnpm (run )?test\b/], ['Unity tests', /-runTests\b/],
   ['probe', /\bprobe\.sh\b/], ['jscpd', /\bjscpd\b/],
 ];
-// One reply can span several lines with the same message id and usage: count each id once.
 const replies = new Map();
-const tools = new Map(); // tool_use id -> its command (Bash/PowerShell), else ''
+const tools = new Map();
 const failed = new Set();
 let compactions = 0, apiErrors = 0;
-// On the host many sessions share one account: COMMIT_COST_PROJECT keeps only the transcript
-// folder with exactly that name (Claude Code names it after the folder the session started in).
 const only = process.env.COMMIT_COST_PROJECT;
 const projectDirs = (() => {
   const root = path.join(config, 'projects');
@@ -89,10 +82,8 @@ for (const { t, model, u } of replies.values()) {
 }
 const runs = tests.map(([name, re]) => [name, [...tools.values()].filter((cmd) => re.test(cmd)).length]).filter(([, k]) => k);
 
-// The account: its plan and org from `claude auth status` (local, no tokens).
 let account = '?';
 try {
-  // Linux workers run Claude from ~/.local/bin, which a systemd service's PATH lacks.
   const local = path.join(home, '.local', 'bin', 'claude');
   const claude = fs.existsSync(local) ? `"${local}"` : 'claude';
   const s = JSON.parse(execSync(`${claude} auth status`, { encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'] }));
@@ -100,13 +91,11 @@ try {
 } catch { }
 
 const n = (x) => x.toLocaleString('en-US');
-// Cache reads are the context re-read on every reply: cheap per token but huge, so they're kept apart.
 const fresh = sum.input + sum.write + sum.output;
 let name = os.hostname();
-for (const f of ['C:/ProgramData/worker/name.txt', '/var/lib/worker/name.txt']) { // start.cmd writes it (Windows, Linux)
+for (const f of ['C:/ProgramData/worker/name.txt', '/var/lib/worker/name.txt']) {
   try { name = fs.readFileSync(f, 'utf8').trim().split(' ')[0] || name; break; } catch { }
 }
-// COMMIT_COST_NAME names who did it, for any role: the Mac's hook sets it to mac, as its hostname is a person's machine.
 name = process.env.COMMIT_COST_NAME || name;
 const plural = (k, word) => `${k} ${word}${k > 1 ? 's' : ''}`;
 const trouble = [compactions && plural(compactions, 'compaction'), apiErrors && plural(apiErrors, 'API error')].filter(Boolean);
@@ -126,7 +115,6 @@ if (record) {
   console.log(lines.join('\n'));
 } else {
   const msg = fs.readFileSync(msgFile, 'utf8').replace(/\s+$/, '');
-  // Trailers go in the last paragraph, beside Co-Authored-By if it's there.
   const lastPara = msg.split(/\n\s*\n/).pop();
   const sep = /^[\w-]+: /m.test(lastPara) && msg.includes('\n\n') ? '\n' : '\n\n';
   fs.writeFileSync(msgFile, msg + sep + lines.join('\n') + '\n');

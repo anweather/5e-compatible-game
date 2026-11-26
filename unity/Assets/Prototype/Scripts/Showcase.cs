@@ -23,8 +23,6 @@ public class Showcase : MonoBehaviour
         var yard = grid.YardCellCenter(13, 7);
         var behindWizard = wizard.position + V(0.9f, 2.3f, -4.2f);
 
-        // High over the lake with the mountains ahead, down across the water,
-        // past the cabin, and into the yard behind the wizard.
         var flight = new GameObject("Flythrough").AddComponent<FlythroughCamera>();
         flight.waypoints = new[]
         {
@@ -36,7 +34,6 @@ public class Showcase : MonoBehaviour
         };
         yield return new WaitUntil(() => flight.Done);
 
-        // Hand over to the gameplay camera, then play the spell demo.
         if (Camera.main.TryGetComponent<Unity.Cinemachine.CinemachineBrain>(out var brain)) brain.enabled = true;
         Destroy(flight.gameObject);
         var demo = new GameObject("DemoDirector").AddComponent<DemoDirector>();

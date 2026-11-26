@@ -17,13 +17,10 @@ namespace Chem
 {
     public sealed partial class World
     {
-        // What stood under each cell a mod laid (terrain and cover), by index.
         readonly SortedDictionary<int, (string terrain, string cover)> underLaid = new SortedDictionary<int, (string, string)>();
 
-        /// <summary>How many cells the mods on have laid (those that had no room aren't counted).</summary>
         public int LaidCount => underLaid.Count;
 
-        // The cells a rule set lays, by index (a later row wins), as terrain or "cover:" + cover; off the world left out.
         SortedDictionary<int, string> LaidBy(Rules rules)
         {
             var cells = new SortedDictionary<int, string>();
@@ -86,7 +83,6 @@ namespace Chem
             return rules.Terrain.TryGetValue(laid, out var t) ? t.Name.ToLowerInvariant() : laid;
         }
 
-        /// <summary>The cells the mods laid and what stood under each, for CastHash: "" with none, so worlds without hash as they did.</summary>
         public string LaidText()
         {
             if (underLaid.Count == 0) return "";

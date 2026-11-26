@@ -12,13 +12,10 @@ using UnityEngine;
 // world of another size there are no chunk terrains to tell.
 public partial class ChemGrid
 {
-    /// <summary>How far the terrains draw details, in metres (ValleyGround sets it from them; MapTerrains makes them at DetailMetres).</summary>
     public float DetailDistance { get; set; } = MapTerrains.DetailMetres;
 
-    /// <summary>The chunk terrains, as TerrainGrid (i, j), that should draw details now.</summary>
     public IReadOnlyCollection<(int i, int j)> DetailChunks => detailChunks;
 
-    /// <summary>Raised when DetailChunks changes, with the new set (ValleyGround's DrawDetails).</summary>
     public event Action<IReadOnlyCollection<(int i, int j)>> DetailChunksChanged;
 
     readonly HashSet<(int i, int j)> detailChunks = new();
@@ -36,7 +33,6 @@ public partial class ChemGrid
         detailWorld = World;
         detailLayout ??= MapLand.Current?.Layout ?? TerrainGrid.Valley();
         if (World.W != detailLayout.GridW || World.H != detailLayout.GridH) return;
-        // From the camera's cell, so a cell's width more: no terrain with grass in sight is left out.
         var near = ChunksWithin(detailLayout, cell.x, cell.y, DetailDistance / cellSize + 1);
         if (near.Count == detailChunks.Count && near.TrueForAll(detailChunks.Contains)) return;
         detailChunks.Clear();
@@ -46,14 +42,11 @@ public partial class ChemGrid
 
     readonly List<(int cx, int cy)> detailBox = new();
 
-    // TerrainGrid.ChunksWithin over only the box of chunks the radius can reach: it listed every chunk of the map each
-    // cell the camera crossed (9,720 on the 12 x 10, a sixth of the flyover's garbage). The same chunks come out.
     List<(int i, int j)> ChunksWithin(TerrainGrid layout, int x, int y, double radius)
     {
         double px = x + layout.U0 + 0.5, py = layout.V0 - y + 0.5;
         int i0 = (int)Math.Floor((px - radius) / TerrainGrid.ChunkCells), i1 = (int)Math.Floor((px + radius) / TerrainGrid.ChunkCells);
         int j0 = (int)Math.Floor((py - radius) / TerrainGrid.ChunkCells), j1 = (int)Math.Floor((py + radius) / TerrainGrid.ChunkCells);
-        // Over a seam of a world that wraps the box runs on, and the chunks it finds are the ones they fold to (ViewWrap).
         if (!ViewWrap.EastWest)
         {
             i0 = Mathf.Max(0, i0);

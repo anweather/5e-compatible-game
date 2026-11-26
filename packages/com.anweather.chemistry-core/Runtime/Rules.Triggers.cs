@@ -14,83 +14,50 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>What a trigger reacts to; each is a place in the core that already runs the same on every peer.</summary>
     public enum TriggerEvent
     {
-        /// <summary>A player's stand moves to another cell (not a first stand, not while downed).</summary>
         Step,
-        /// <summary>A golf ball goes in the cup (World.Golf.cs): the player who hit it, at the cup.</summary>
         Holed,
-        /// <summary>A player calls it by name (call_act): a named act, each action an act's ask, at the place they name.</summary>
         Called,
-        /// <summary>Time passing: every Every ticks (at least TriggerDef.MinTickEvery), round each player it's for, as each tick begins. A shower.</summary>
         Tick,
     }
 
-    /// <summary>Where an action lands, from the player whose event it was.</summary>
     public enum TriggerAt
     {
-        /// <summary>The player's cell.</summary>
         Here,
-        /// <summary>By cells on along the way the player moved.</summary>
         Ahead,
-        /// <summary>By cells back along it.</summary>
         Behind,
-        /// <summary>A cell within Within of the player, picked by Placement.Pick.</summary>
         Around,
     }
 
-    /// <summary>One action of a trigger: a cast of a spell, or a place (as a spell's), at a cell worked out from the player.</summary>
     public sealed class TriggerAction
     {
-        /// <summary>The spell cast, or null for a place.</summary>
         public string Cast;
-        /// <summary>What's placed, or null for a cast.</summary>
         public PlaceDef Place;
         public TriggerAt At;
-        /// <summary>Cells ahead or behind; Within: the cells round the player an "around" picks from.</summary>
         public int By, Within;
-        /// <summary>Ticks before a cast lands, a target mark glowing until then (as Falling Star); 0 as the spell has it.</summary>
         public int Delay;
-        /// <summary>A called trigger's action: the row as written, what act would be asked; null for a cast or a place.</summary>
         public JObject Act;
     }
 
-    /// <summary>A row of triggers.json: on an event, by whom, how often and how likely, and what it does.</summary>
     public sealed class TriggerDef
     {
-        /// <summary>The fewest ticks between two firings of one trigger for one player (J-067): a meteor at every step of a run is already two a second.</summary>
         public const int MinEvery = 3;
-        /// <summary>The fewest ticks between two firings of a tick trigger for one player: one every 2 seconds, so "constant meteors" is a shower, not a wall.</summary>
         public const int MinTickEvery = 12;
-        /// <summary>A trigger's who for every player's events.</summary>
         public const string Each = "each";
 
         public string Id;
         public TriggerEvent On;
-        /// <summary>The player whose events fire it (the name casts use), or Each.</summary>
         public string Who;
-        /// <summary>Ticks between firings, per player; never under MinEvery.</summary>
         public int Every = MinEvery;
-        /// <summary>The chance it fires on an event, 0 to 1, from WorldHash (no draw from the world's generator).</summary>
         public double Chance = 1;
         public IReadOnlyList<TriggerAction> Do = Array.Empty<TriggerAction>();
 
-        /// <summary>A solo game's player, as its stands name it (SpellCaster.SoloPlayer).</summary>
         public const string SoloPlayer = "solo";
 
-        /// <summary>
-        /// Whether a stand's player's events fire it: Each, the stand's own name, or the name the rules MCP knows them by,
-        /// <paramref name="peer"/> (PeerOf). add_trigger fills in the asker's, "Player 1", whose steps come in as "solo"
-        /// alone or "p0" online.
-        /// </summary>
         public bool IsFor(string player, string peer) =>
             Who == Each || string.Equals(Who, player, StringComparison.Ordinal) || string.Equals(Who, peer, StringComparison.Ordinal);
 
-        /// <summary>
-        /// The peer name (NetChem.PeerName, "Player 1" for client 0) of a stand's player (NetChem.PlayerName, "p0"; or
-        /// SoloPlayer, the one player alone): a pure function of the name, so every peer matches the same. Any other name is itself.
-        /// </summary>
         public static string PeerOf(string player)
         {
             if (player == SoloPlayer) return "Player 1";
@@ -103,22 +70,18 @@ namespace Chem
 
     public sealed partial class Rules
     {
-        /// <summary>Where the rule document keeps the triggers (rules/triggers.json), rows by id.</summary>
         public const string TriggersKey = "triggers";
 
         internal static readonly string[] TriggerEvents = { "step", "holed", "called", "tick" };
         internal static readonly string[] TriggerAts = { "here", "ahead", "behind", "around" };
         static readonly string[] TriggerFields = { "on", "who", "every", "chance", "do" };
         static readonly string[] ActionFields = { "cast", "place", "at", "by", "within", "delay" };
-        // What act takes, but for where: a called trigger is told where when it's called.
         static readonly string[] ActFields = { "act", "count", "within", "spacing", "seed", "onto", "lasts", "profile", "radius", "rise", "rough", "along" };
 
         IReadOnlyList<TriggerDef>[] triggersOn = Array.Empty<IReadOnlyList<TriggerDef>>();
 
-        /// <summary>Every trigger, in the order the table holds them.</summary>
         public IReadOnlyList<TriggerDef> Triggers { get; private set; } = Array.Empty<TriggerDef>();
 
-        /// <summary>The triggers on an event, in table order; empty (one array read) with none.</summary>
         public IReadOnlyList<TriggerDef> TriggersOn(TriggerEvent on) =>
             (int)on < triggersOn.Length ? triggersOn[(int)on] : Array.Empty<TriggerDef>();
 
@@ -151,7 +114,6 @@ namespace Chem
             Act = a["act"] != null ? a : null,
         };
 
-        // A mod's rows over the table: a row changes only the fields it names, a null takes it out.
         static void ApplyTriggers(JObject r, JObject p)
         {
             if (!(p[TriggersKey] is JObject given)) return;
@@ -204,7 +166,6 @@ namespace Chem
                 }
             }
 
-            // What it names is looked up when it's called, as act does: a mod can bring its own.
             void CalledAction(string who, JToken a)
             {
                 if (!(a is JObject o))

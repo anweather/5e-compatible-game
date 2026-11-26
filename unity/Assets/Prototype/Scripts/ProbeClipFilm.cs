@@ -26,12 +26,9 @@ public sealed class ClipFilm
     Camera lens;
     bool filming;
 
-    /// <summary>The frames filmed, and saved so far.</summary>
     public int Frames { get; private set; }
     public int Saved { get; private set; }
-    /// <summary>Whether frames and sound are kept; while false the game runs on, for a cut, and they're dropped.</summary>
     public bool Keeping { get; set; } = true;
-    /// <summary>The loudest sample in the sound.</summary>
     public float Peak { get; private set; }
     public float Seconds => Frames / (float)Fps;
     public float SoundSeconds => sound.Count / (2f * AudioSettings.outputSampleRate);
@@ -44,7 +41,6 @@ public sealed class ClipFilm
         Directory.CreateDirectory(folder);
     }
 
-    /// <summary>Starts filming through the main camera. False if the sound can't render.</summary>
     public bool Roll()
     {
         lens = Camera.main;
@@ -59,7 +55,6 @@ public sealed class ClipFilm
         return heard;
     }
 
-    /// <summary>Stops, saves the sound, and waits for the frames to be written.</summary>
     public IEnumerator Stop()
     {
         filming = false;
@@ -115,7 +110,6 @@ public sealed class ClipFilm
         });
     }
 
-    // The screen comes back upside down where textures start at the top.
     static void Flip(byte[] pixels, int rowBytes)
     {
         var row = new byte[rowBytes];
@@ -153,12 +147,10 @@ public sealed class ClipFilm
     }
 }
 
-// A probe that is a film from start to end (dragonclip): ClipFilm, and the checks any film has.
 public abstract class ClipProbe : ProbeScenario
 {
     ClipFilm film;
 
-    /// <summary>Whether frames and sound are kept (ClipFilm.Keeping).</summary>
     protected bool Keeping
     {
         get => film.Keeping;

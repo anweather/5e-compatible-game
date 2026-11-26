@@ -1,15 +1,13 @@
+// Nature: Plant Growth regrows burnt ground (green shoots, then grass, out from the middle;
+// saplings from old stumps that grow into trees) and Spike Growth lays thorns that burn and
+// wither. Ported from sandbox/test/nature.test.ts; the golden numbers come from running the same
+// casts there. The core has no creatures, so what thorns do to a walker is the sandbox's
+// test and the view's (SurfaceEffects); here only the numbers it reads.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Nature: Plant Growth regrows burnt ground (green shoots, then grass, out from the middle;
-    /// saplings from old stumps that grow into trees) and Spike Growth lays thorns that burn and
-    /// wither. Ported from sandbox/test/nature.test.ts; the golden numbers come from running the same
-    /// casts there. The core has no creatures, so what thorns do to a walker is the sandbox's
-    /// test and the view's (SurfaceEffects); here only the numbers it reads.
-    /// </summary>
     [Category("Unit")]
     public class NatureTests
     {
@@ -23,7 +21,6 @@ namespace Chem.Tests
 
         static int Count(World w, string t) => w.AllCells().Count(c => c.T == t);
 
-        /// <summary>Ground fire has been over: dirt under ash inside the room, with old stumps where trees stood.</summary>
         static void Burnt(World w, params (int x, int y)[] stumps)
         {
             for (int x = 1; x < w.W - 1; x++)
@@ -126,7 +123,6 @@ namespace Chem.Tests
             Assert.That(saplings, Is.GreaterThan(2));
             Assert.That(Count(w, "tree"), Is.EqualTo(saplings), "every sapling is a tree by now");
             Assert.That(Count(w, "sapling"), Is.EqualTo(0));
-            // Golden, first taken from sandbox/test/nature.test.ts (frozen 2026-10-31).
             Assert.That(early, Is.EqualTo("e22869f7 1489130935"), "40 ticks on: grass, saplings still growing");
             Assert.That($"{w.CellHash()} {w.RngState} {saplings}", Is.EqualTo("527e32aa 1489130935 24"));
         }

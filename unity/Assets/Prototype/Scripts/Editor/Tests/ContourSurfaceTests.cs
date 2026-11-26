@@ -25,7 +25,6 @@ public class ContourSurfaceTests
         int compared = 0;
         for (int k = 0; k < 20000; k++)
         {
-            // Lattice points (quarters), edge points between them and the box's corners.
             float gx = x0 + 0.5f + (float)(rng.NextDouble() * (width - 1)), gy = y0 + 0.5f + (float)(rng.NextDouble() * (height - 1));
             if (k % 3 == 0)
             {

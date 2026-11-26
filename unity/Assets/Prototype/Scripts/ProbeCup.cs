@@ -31,7 +31,6 @@ public class CupProbe : ProbeScenario
         yield return Say("act", $"{{\"what\":\"cup\",\"near\":\"[{me.x}, {me.y}]\",\"within\":10}}");
         yield return Wait(Settle);
         var g = World.Golf;
-        // On the cup's row, as a player lines up a shot: the first open cell back from it.
         for (int i = 0; i < Tries && g != null && !said.Contains("golf-ball (act"); i++)
         {
             yield return Say("act", $"{{\"what\":\"golf-ball\",\"near\":\"[{g.HoleX - Apart - i}, {g.HoleY}]\",\"within\":0}}");
@@ -57,7 +56,6 @@ public class CupProbe : ProbeScenario
         Check("a_bolt_moved_it", g.Strokes > 0, $"{g.Strokes} strokes, from {from} to {g.X}");
         Check("holed", g.Holed, $"{g.Strokes} strokes, ball at {g.X}, {g.Y}");
         Check("fireworks_go_off", FindAnyObjectByType<TowerFireworks>() != null, "fireworks over the cup");
-        // From high up, clear of the rocks: they burst six metres and more over the cup.
         var over = grid.CellCenter(g.HoleX, g.HoleY) + Vector3.up * 8f;
         Cut(over + V(-12f, 22f, -12f), over);
         yield return Wait(1.2f);

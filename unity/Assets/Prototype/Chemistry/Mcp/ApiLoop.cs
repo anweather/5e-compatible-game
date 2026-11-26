@@ -14,7 +14,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>How the Messages API answered: 200 with every event given, or why not.</summary>
     public struct WireAnswer
     {
         public int Status;
@@ -22,13 +21,10 @@ namespace Chem.Mcp
         public string Failure;
     }
 
-    /// <summary>The loop's two ways out, which the view owns: the game's local MCP server and the API.</summary>
     public interface IChatWire
     {
-        /// <summary>One JSON-RPC message to the MCP server; its answer's body.</summary>
         string Mcp(string url, string body, CancellationToken token);
 
-        /// <summary>One streaming request. Each server-sent event's data goes to data as it arrives.</summary>
         WireAnswer Messages(string body, Action<string> data, CancellationToken token);
     }
 
@@ -37,15 +33,12 @@ namespace Chem.Mcp
         public const int MostTurns = 16, MostOutput = 16000, MostTries = 4, MostNoteChars = 300;
         const double MostRetryWait = 30;
 
-        /// <summary>The tool that stands for writing notes.md: nothing else here touches a file, and it can't name one.</summary>
         public const string NoteTool = "add_note";
 
-        /// <summary>In the record: these dollars are the API's own prices, spent, not a list price a plan doesn't pay.</summary>
         public const string RealMoney = "api-real";
 
         const string Protocol = "2025-06-18";
 
-        /// <summary>The only game tools the loop runs or offers, by name. A tool the server adds later stays out until it's read and named here.</summary>
         public static readonly IReadOnlyCollection<string> Allowed = new HashSet<string>(StringComparer.Ordinal)
         {
             "add_building", "add_building_part", "add_entity", "add_item", "add_material", "add_reaction", "add_species", "add_spell", "add_thing", "add_trigger", "add_wing", "apply",
@@ -54,7 +47,6 @@ namespace Chem.Mcp
             "set_player", "simulate", "time", "tune", "validate", "weather", "whats_on",
         };
 
-        /// <summary>The system prompt: ClaudeRun.ChatPrompt's job with no shell, no files and notes that come with the message. No game knowledge.</summary>
         public const string Prompt = "You are the chat inside a running game, Spell Chemistry Valley, answering one message from the player while they play. " +
             "Use only the tools you are given. You have no shell and no files, and this chat is for the game alone: if a message is about anything else, " +
             "say so in a line and offer what the tools can do. Each message starts fresh and remembers nothing. Notes from earlier messages, if any, come just before the message, " +
@@ -89,13 +81,10 @@ namespace Chem.Mcp
         int turns, rpcId;
         bool wordSeen;
 
-        /// <summary>The first wait before a retry, in ms, doubling after; a Retry-After wins.</summary>
         public int RetryBaseMs { get; set; } = 1000;
 
-        /// <summary>How long the prefix stays cached: tools, system prompt and Instructions. 1h or 5m.</summary>
         public string PrefixTtl { get; set; } = "1h";
 
-        /// <summary>One message's loop. Say is told each stream-json line as it happens.</summary>
         public ApiLoop(IChatWire wire, ApiBudget budget, string model, Action<string> say, Func<long> clock)
         {
             this.wire = wire;
@@ -106,7 +95,6 @@ namespace Chem.Mcp
             price = ApiPrice.Of(model);
         }
 
-        /// <summary>The whole of one message: returns once it's done, failed or stopped. A stop ends it with no result line.</summary>
         public void Run(string message, string folder, string url, CancellationToken stop)
         {
             this.folder = folder;
@@ -132,7 +120,6 @@ namespace Chem.Mcp
 #pragma warning disable S108
             catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
-                // Cancel and the timeout: the caller says which, and no result line follows.
             }
 #pragma warning restore S108
             catch (OperationCanceledException)
@@ -152,7 +139,6 @@ namespace Chem.Mcp
             tools = Offered(Rpc("tools/list", new JObject(), stop)["tools"] as JArray ?? new JArray());
         }
 
-        /// <summary>The server's tools as the Messages API takes them, unchanged but for the name of the schema's key; only those in Allowed, and add_note; in name order so the bytes never move.</summary>
         public static JArray Offered(JArray server)
         {
             var offered = server.OfType<JObject>().Where(t => Allowed.Contains((string)t["name"]))
@@ -178,8 +164,6 @@ namespace Chem.Mcp
             return answer["result"] as JObject ?? new JObject();
         }
 
-        // What came before, then the message, built as Claude Code's is and in one block: two text blocks side by side reach the
-        // model as one run of text, so a note cut short ran into the player's words. Notes change, so they sit after the cached prefix.
         JObject FirstMessage(string message)
         {
             var text = new JObject { ["type"] = "text", ["text"] = ClaudeRun.Message(ClaudeRun.Notes(folder), message) };
@@ -211,7 +195,7 @@ namespace Chem.Mcp
                         RunTools(content, stop);
                         break;
                     case "pause_turn":
-                        break; // the same request again, and it carries on
+                        break;
                     case "end_turn":
                     case "stop_sequence":
                         Finish(null, "completed", TextOf(content));
@@ -232,7 +216,6 @@ namespace Chem.Mcp
         static string TextOf(JArray content) =>
             string.Join("\n", content.OfType<JObject>().Where(b => (string)b["type"] == "text").Select(b => (string)b["text"]));
 
-        // The stream's own view of a reply: game tools under the name Claude Code gives them, and no thinking.
         static JArray Shown(JArray content)
         {
             var shown = new JArray();
@@ -268,7 +251,6 @@ namespace Chem.Mcp
 
         double? lastRetryAfter;
 
-        // Rate limits, overload, the service's own errors and a cut connection are worth another go; anything else would only fail the same way.
         static bool Retries(int status, Streamed streamed) =>
             streamed.Failure != null ? streamed.FailureRetries : status == 0 || status == 200 || status == 408 || status == 429 || status >= 500;
 
@@ -288,7 +270,6 @@ namespace Chem.Mcp
             foreach (var key in total.Properties().Select(p => p.Name).ToList()) total[key] = (long)total[key] + ((long?)usage[key] ?? 0);
         }
 
-        /// <summary>The request as bytes: the system prompt ends the cached prefix, and the last block of the last message marks the tail for the next turn.</summary>
         public string RequestBody()
         {
             var sent = new JArray(messages.Select(m => m.DeepClone()));
@@ -366,7 +347,6 @@ namespace Chem.Mcp
             return ("Noted.", false);
         }
 
-        // A note too long, cut at a word where there is one and marked as cut, so it can't read as a word it isn't.
         static string Cut(string line)
         {
             int space = line.LastIndexOf(' ', MostNoteChars);
@@ -406,7 +386,6 @@ namespace Chem.Mcp
 
         void Say(JObject line) => say(line.ToString(Formatting.None));
 
-        // One reply as the events build it. Blocks go back to the API as they came, thinking and its signature included.
         sealed class Streamed
         {
             readonly SortedDictionary<int, JObject> blocks = new SortedDictionary<int, JObject>();
@@ -497,7 +476,6 @@ namespace Chem.Mcp
                 return content;
             }
 
-            // Bad JSON here reaches the server as no arguments, and the tool's own refusal says what it needs.
             static JObject Input(string json)
             {
                 if (string.IsNullOrEmpty(json)) return new JObject();
@@ -513,7 +491,6 @@ namespace Chem.Mcp
         }
     }
 
-    /// <summary>A way out failed: the sentence is what the player reads, so it never holds a key.</summary>
     public sealed class ChatWireException : Exception
     {
         public ChatWireException(string message) : base(message)

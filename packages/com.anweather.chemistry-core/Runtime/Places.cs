@@ -22,10 +22,8 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One named landmark: its id, name, kind and cells (grid cells, y growing south).</summary>
     public sealed class Place
     {
-        // Row y = Bounds.Y + i holds spans[i] as pairs x0, x1 (inclusive), west to east.
         readonly int[][] spans;
 
         Place(JObject json, CellRect bounds, int[][] spans)
@@ -45,18 +43,12 @@ namespace Chem
 
         public string Id { get; }
         public string Name { get; }
-        /// <summary>village, lake, sea, river, course, puzzle... (a word, not a type: anything the file says).</summary>
         public string Kind { get; }
-        /// <summary>Where it came from: the world file it was generated from, or what a hand-written one was copied from.</summary>
         public string From { get; }
-        /// <summary>Made by WorldPlaces.Generate, so regenerating rewrites it.</summary>
         public bool Generated { get; }
-        /// <summary>The smallest block holding every cell.</summary>
         public CellRect Bounds { get; }
         public int Count { get; }
-        /// <summary>The place's own cell nearest the middle of its cells.</summary>
         public (int x, int y) Middle { get; }
-        /// <summary>The entry as the file has it.</summary>
         internal JObject Json { get; }
 
         public bool Contains(int x, int y)
@@ -69,7 +61,6 @@ namespace Chem
             return false;
         }
 
-        /// <summary>Every cell, row by row, west to east.</summary>
         public IEnumerable<(int x, int y)> Cells()
         {
             for (int i = 0; i < spans.Length; i++)
@@ -77,11 +68,9 @@ namespace Chem
                     for (int x = spans[i][k]; x <= spans[i][k + 1]; x++) yield return (x, Bounds.Y + i);
         }
 
-        /// <summary>The cells at the place's edge: those with a side on a cell outside it.</summary>
         public IEnumerable<(int x, int y)> EdgeCells() =>
             Cells().Where(c => !Contains(c.x + 1, c.y) || !Contains(c.x - 1, c.y) || !Contains(c.x, c.y + 1) || !Contains(c.x, c.y - 1));
 
-        /// <summary>How far a cell is from the place, in cells between centres: 0 inside it.</summary>
         public double DistanceTo(int x, int y)
         {
             if (Contains(x, y)) return 0;
@@ -112,12 +101,9 @@ namespace Chem
             return Cells().OrderBy(c => (long)(c.x - mx) * (c.x - mx) + (long)(c.y - my) * (c.y - my)).ThenBy(c => c.y).ThenBy(c => c.x).First();
         }
 
-        /// <summary>A place from its entry in places.json. Throws <see cref="FormatException"/> if it can't be read.</summary>
         internal static Place Parse(JObject o)
         {
             string id = Str(o["id"]) ?? throw Bad("a place needs an id");
-            // Rows alone (the water bodies places.json generates: the island's sea is millions of cells) straight to spans,
-            // never a cell at a time.
             if (o["rows"] != null && o["area"] == null && o["line"] == null && o["circle"] == null) return FromRows(o["rows"], o, id);
             var cells = new SortedSet<(int y, int x)>();
             if (o["area"] != null) AddArea(cells, o["area"], id);
@@ -128,10 +114,6 @@ namespace Chem
             return FromCells(cells, o);
         }
 
-        /// <summary>
-        /// A place of rows of spans (pairs x0, x1, west to east) from row <paramref name="top"/>, none empty at either end,
-        /// its id, name, kind and source from <paramref name="json"/>.
-        /// </summary>
         internal static Place FromSpans(int top, int[][] spans, JObject json)
         {
             int left = int.MaxValue, right = int.MinValue;
@@ -144,7 +126,6 @@ namespace Chem
             return new Place(json, new CellRect(left, top, right - left + 1, spans.Length), spans);
         }
 
-        /// <summary>A place of these cells, its id, name, kind and source from <paramref name="json"/>.</summary>
         internal static Place FromCells(SortedSet<(int y, int x)> cells, JObject json)
         {
             int top = cells.Min.y, bottom = cells.Max.y, left = cells.Min(c => c.x), right = cells.Max(c => c.x);
@@ -170,7 +151,6 @@ namespace Chem
             return new Place(json, new CellRect(left, top, right - left + 1, bottom - top + 1), spans);
         }
 
-        /// <summary>The cells as places.json's rows: [y, x0, x1, ...] per row that has any.</summary>
         internal JArray Rows()
         {
             var rows = new JArray();
@@ -187,7 +167,6 @@ namespace Chem
                 for (int x = Math.Min(x0, x1); x <= Math.Max(x0, x1); x++) cells.Add((y, x));
         }
 
-        // Every cell whose centre is within half the width of the line through the points.
         static void AddLine(SortedSet<(int y, int x)> cells, JToken t, double width, string id)
         {
             if (!(t is JArray points) || points.Count < 2 || points.Any(p => !(p is JArray xy) || xy.Count != 2))
@@ -228,7 +207,6 @@ namespace Chem
                 for (int x = x0; x <= x1; x++) cells.Add((y, x));
         }
 
-        // places.json's rows, [y, x0, x1, ...] each, as their spans.
         static IEnumerable<(int y, int x0, int x1)> RowSpans(JToken t, string id)
         {
             if (!(t is JArray rows)) throw Bad($"place {id}: rows needs a list of [y, x0, x1, ...]");
@@ -240,8 +218,6 @@ namespace Chem
             }
         }
 
-        // A place of rows alone, as FromCells would make it from their cells: each row's spans sorted, and joined where
-        // they overlap or touch.
         static Place FromRows(JToken t, JObject o, string id)
         {
             var byRow = new SortedDictionary<int, List<(int x0, int x1)>>();
@@ -283,7 +259,6 @@ namespace Chem
         static double? Num(JToken t) => t != null && (t.Type == JTokenType.Integer || t.Type == JTokenType.Float) ? (double)t : (double?)null;
     }
 
-    /// <summary>The world's places (world/places.json), in file order.</summary>
     public sealed class WorldPlaces
     {
         public const string FileName = "places.json";
@@ -302,7 +277,6 @@ namespace Chem
         public int Count => places.Count;
         internal JObject Doc { get; }
 
-        /// <summary>A place by its id, or by its name in any case (with or without a leading "the"); null if none.</summary>
         public Place Find(string idOrName)
         {
             if (string.IsNullOrWhiteSpace(idOrName)) return null;
@@ -319,17 +293,14 @@ namespace Chem
             return s.StartsWith("the ", StringComparison.OrdinalIgnoreCase) ? s.Substring(4) : s;
         }
 
-        /// <summary>The ids, for a refusal's list.</summary>
         public string Ids => places.Count == 0 ? "none (world/places.json has none)" : string.Join(", ", places.Select(p => p.Id));
 
-        /// <summary>Reads world/places.json from <paramref name="worldDir"/>; no file means no places.</summary>
         public static WorldPlaces Load(string worldDir)
         {
             var path = worldDir == null ? null : Path.Combine(worldDir, FileName);
             return path != null && File.Exists(path) ? FromJson(File.ReadAllText(path)) : Empty;
         }
 
-        /// <summary>The places in a places.json text. Throws <see cref="FormatException"/> for one that can't be read.</summary>
         public static WorldPlaces FromJson(string json)
         {
             JObject doc;
@@ -346,19 +317,8 @@ namespace Chem
             return new WorldPlaces(list, doc);
         }
 
-        // ---------- generating them from the world data ----------
-
-        /// <summary>
-        /// places.json as it should be: its about and generate sections, the places generated from
-        /// the world files in <paramref name="worldDir"/> (villages, courses, puzzles, water bodies),
-        /// then the hand-written ones the file has now, in its order.
-        /// </summary>
         public static string Generate(string worldDir) => Generate(worldDir, null);
 
-        /// <summary>
-        /// As <see cref="Generate(string)"/>, the water bodies those <paramref name="water"/> found as the land was
-        /// written (a bake's, which never reads its land back whole), else land.json's.
-        /// </summary>
         internal static string Generate(string worldDir, WaterRuns water)
         {
             var current = Load(worldDir);
@@ -400,7 +360,6 @@ namespace Chem
             string.Join("-", new string(name.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : ' ').ToArray())
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-        // The file with one place a block and each row of cells on a line of its own, so a diff shows what moved.
         static string Write(JObject doc, List<Place> places)
         {
             var sb = new StringBuilder("{\n");
@@ -424,21 +383,12 @@ namespace Chem
             return sb.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
         }
 
-        /// <summary>A cell in words for here(): "(x, y)".</summary>
         public static string CellWords(int x, int y) => string.Format(CultureInfo.InvariantCulture, "({0}, {1})", x, y);
     }
 
-    /// <summary>
-    /// The water bodies of a world's land (places.json's "generate" "water"), read a row at a time, north to south: its
-    /// connected cells below the water level, each body of at least "least" cells, one touching the world's edge a sea,
-    /// one closed in a lake, ids by kind, largest first. A row's runs of water are joined to the runs of the row above
-    /// that share a column with them, so it holds the runs, never the land or a cell at a time (a bake's, bake-lean): the
-    /// sea of the scale island is millions of cells and a few thousand runs.
-    /// </summary>
     internal sealed class WaterRuns
     {
         readonly int w, h, below, least;
-        // Every run in the order the rows gave them: its row, its first and last x, and the run it's joined to.
         readonly List<int> runY = new List<int>(), runX0 = new List<int>(), runX1 = new List<int>(), parent = new List<int>();
         int above, aboveEnd, y;
 
@@ -450,16 +400,13 @@ namespace Chem
             least = (int?)settings["least"] ?? 1;
         }
 
-        /// <summary>The finder for a w × h world whose places.json (in <paramref name="worldDir"/>) asks for water bodies; null if it asks none.</summary>
         internal static WaterRuns For(string worldDir, int w, int h)
         {
-            // Its settings alone: the places themselves are read (and checked) when places.json is generated.
             var path = Path.Combine(worldDir, WorldPlaces.FileName);
             if (!File.Exists(path)) return null;
             return JObject.Parse(File.ReadAllText(path))["generate"]?["water"] is JObject settings ? new WaterRuns(w, h, settings) : null;
         }
 
-        /// <summary>land.json's water bodies, as the places.json <paramref name="doc"/> asks for them; null if it asks none or there's no land.</summary>
         internal static WaterRuns Read(string worldDir, JObject doc)
         {
             var path = Path.Combine(worldDir, "land.json");
@@ -473,7 +420,6 @@ namespace Chem
             return runs;
         }
 
-        /// <summary>The next row's <c>w</c> cells of land.</summary>
         internal void Row(ReadOnlySpan<int> land)
         {
             int start = runY.Count, p = above, x = 0;
@@ -491,7 +437,6 @@ namespace Chem
                 runX0.Add(x0);
                 runX1.Add(x1);
                 parent.Add(k);
-                // The runs above, west to east: one ending west of this run ends west of every run after it in the row.
                 while (p < aboveEnd && runX1[p] < x0) p++;
                 for (int q = p; q < aboveEnd && runX0[q] <= x1; q++) Join(q, k);
             }
@@ -523,7 +468,6 @@ namespace Chem
             public bool Edge;
         }
 
-        /// <summary>The bodies as places: the largest first, then by their north-west-most cell.</summary>
         internal IEnumerable<Place> Bodies()
         {
             var of = new Dictionary<int, Body>();
@@ -541,7 +485,6 @@ namespace Chem
                 b.Edge |= runY[k] == 0 || runY[k] == h - 1 || runX0[k] == 0 || runX1[k] == w - 1;
             }
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            // A body's first run is its north-west-most cell: the rows came north to south, each west to east.
             foreach (var b in bodies.Where(b => b.Cells >= least).OrderByDescending(b => b.Cells).ThenBy(b => (runY[b.Runs[0]], runX0[b.Runs[0]])))
             {
                 string kind = b.Edge ? "sea" : "lake";
@@ -554,7 +497,6 @@ namespace Chem
             }
         }
 
-        // A body's runs as rows of pairs x0, x1 from its first row to its last, a row without any empty.
         int[][] Spans(Body b)
         {
             int top = runY[b.Runs[0]], bottom = runY[b.Runs[b.Runs.Count - 1]];

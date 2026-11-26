@@ -35,7 +35,6 @@ public class CastFeel : ScriptableObject
         public AnimationCurve curve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
     }
 
-    /// <summary>A pulse on the pad: each motor's strength (0 to 1) and how long it takes to die away.</summary>
     [Serializable]
     public struct Thump
     {
@@ -227,7 +226,6 @@ public class CastFeel : ScriptableObject
     [Range(0f, 1f), Tooltip("The share of a release's or landing's rumble that a spell of size 0 gets.")]
     public float smallRumble = 0.45f;
 
-    /// <summary>The pose a beat moves to (Neutral: as Recovery's, nothing is held).</summary>
     public BeatPose Of(Beat beat) => beat switch
     {
         Beat.First => first,
@@ -240,7 +238,6 @@ public class CastFeel : ScriptableObject
         _ => recovery,
     };
 
-    /// <summary>The pose a beat moves to in a tap's cast or any other.</summary>
     public BeatPose Of(Beat beat, bool tap) => !tap ? Of(beat) : beat switch
     {
         Beat.Slam => tapSlam,
@@ -248,9 +245,7 @@ public class CastFeel : ScriptableObject
         _ => Of(beat),
     };
 
-    /// <summary>How long a thrust starts ahead of the spell leaving the hands (s).</summary>
     public float LeadOf(bool tap) => tap ? tapThrustLead : thrustLead;
 
-    /// <summary>How long a thrust is held at its end (s).</summary>
     public float HoldOf(bool tap) => tap ? tapThrustHold : thrustHold;
 }

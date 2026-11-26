@@ -1,13 +1,11 @@
+// items.json: parsing, the checks (the same wording as validateRules in
+// sandbox/src/rules.ts; the expected list is the one in sandbox/test/items.test.ts),
+// when a lantern breaks, and what it spills (World.Spill).
 using System.IO;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// items.json: parsing, the checks (the same wording as validateRules in
-    /// sandbox/src/rules.ts; the expected list is the one in sandbox/test/items.test.ts),
-    /// when a lantern breaks, and what it spills (World.Spill).
-    /// </summary>
     [Category("Unit")]
     public class ItemTests
     {

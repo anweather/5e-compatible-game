@@ -17,7 +17,6 @@ using UnityEngine;
 [RequireComponent(typeof(Vitals), typeof(SpellCaster), typeof(ItemHolder))]
 public class WizardStrike : MonoBehaviour
 {
-    // Grid steps a level unit vector is scaled by, for a whole aim.
     const int AimScale = 100;
 
     SpellCaster caster;
@@ -28,12 +27,9 @@ public class WizardStrike : MonoBehaviour
     World told;
     Vector2Int cell;
     int health = -1;
-    // When to tell the core again however little seems to have changed (-1: no need).
     float tellAt = -1f;
 
-    /// <summary>A strike's result has reached this machine, whoever was in it.</summary>
     public event System.Action<StrikeHit> Struck;
-    /// <summary>The hits this wizard has taken, and the health they cost it (a shape's soaking none), for the probe.</summary>
     public int HitsTaken { get; private set; }
     public float DamageTaken { get; private set; }
 
@@ -55,16 +51,13 @@ public class WizardStrike : MonoBehaviour
     }
 
     ItemHolder hands;
-    // The last punch that got there: where the fist is when the core says it hit someone.
     ItemHolder.PunchLanding fist;
 
-    /// <summary>Strikes from the wizard's cell along this level way.</summary>
     public void Strike(Vector3 way)
     {
         var grid = caster.grid;
         if (!Mine || grid == null || grid.World == null) return;
         var at = grid.CellAt(transform.position);
-        // Cell rows run the other way from the world's z (ChemGrid.CellAt).
         Send(grid, StrikeCommand.Strike(caster.CastPlayer, at.x, at.y, Mathf.RoundToInt(way.x * AimScale), -Mathf.RoundToInt(way.z * AimScale)));
     }
 
@@ -91,7 +84,6 @@ public class WizardStrike : MonoBehaviour
         foreach (var hit in world.TakeStrikeHits())
         {
             if (hit.Hit && hit.TargetPlayer == caster.CastPlayer) Take(hit, grid);
-            // This wizard's own punch hit a wizard or a raider: the puncher feels it too (a thing it knocked was felt already).
             else if (hit.Hit && hit.Attacker == caster.CastPlayer && !fist.Hit) hands.FistLanded(Fist(), fist.Way.sqrMagnitude > 0f ? fist.Way : transform.forward);
             Struck?.Invoke(hit);
         }
@@ -117,15 +109,11 @@ public class WizardStrike : MonoBehaviour
         tellAt += feel.punchKnockSeconds;
     }
 
-    // Where the fist met them: the last landing's point, or just ahead at chest height before any.
     Vector3 Fist() => fist.Puncher != null ? fist.Point : transform.position + transform.forward * 0.9f + Vector3.up;
 
     int heldFrames;
     const int MostHeldFrames = 10;
 
-    // Solo, a command lands between whole ticks: sent while a tick is part done (ChemGrid steps one over frames within
-    // a budget), it finished the tick there and then, a few ms each cell a flying wizard crossed. It waits for the
-    // tick's end instead (a frame or two, MostHeldFrames at most); online the host stamps it into a tick batch anyway.
     bool Held(World world, ChemGrid grid)
     {
         if (world.TickInProgress && !Online(grid) && heldFrames++ < MostHeldFrames) return true;

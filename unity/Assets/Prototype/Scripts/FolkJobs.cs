@@ -17,10 +17,8 @@ public sealed class FolkJobs
     const float LandUnit = 0.125f, RoadPace = 1.15f, HillDrag = 5f;
     const int Smoothing = 2;
 
-    /// <summary>How fast a person goes for ground this steep (rise over run), against their walking pace.</summary>
     public static float Pace(float steepness, bool road) => road ? RoadPace : 1f / (1f + HillDrag * math.abs(steepness));
 
-    /// <summary>The ground a walk crosses: what a step costs, read from the world as it was made.</summary>
     public sealed class Land
     {
         readonly World world;
@@ -44,7 +42,6 @@ public sealed class FolkJobs
             return c != null && c.Water == 0 && !world.IsBlocking(c) && c.T != TerrainIds.Tree;
         }
 
-        /// <summary>The seconds, at a walking pace of one metre a second, from a cell to one beside it.</summary>
         public float Step(int x, int y, int u, int v)
         {
             float run = cellMetres * math.sqrt((x - u) * (x - u) + (y - v) * (y - v));
@@ -57,12 +54,8 @@ public sealed class FolkJobs
         public float CellMetres => cellMetres;
     }
 
-    /// <summary>The quickest way on foot between two cells, cell by cell; empty if there's none.</summary>
     public static List<(int x, int y)> Way(Land land, (int x, int y) from, (int x, int y) to)
     {
-        // The cells reached so far, by index: their cost from the start, the cell they were reached from, and where they
-        // are. Only those the search reaches, never an array a cell of the map (8 bytes a cell, 318 MB a walk on the
-        // 12 x 10; J-086).
         var open = new SortedSet<(float rank, int key, int x, int y)>();
         int start = land.Index(from.x, from.y), goal = land.Index(to.x, to.y);
         open.Add((0f, start, from.x, from.y));
@@ -90,7 +83,6 @@ public sealed class FolkJobs
         return new List<(int x, int y)>();
     }
 
-    // The least the rest of the way could take.
     static float Left(Land land, int x, int y, (int x, int y) to) =>
         land.CellMetres * math.sqrt((x - to.x) * (x - to.x) + (y - to.y) * (y - to.y)) / RoadPace;
 
@@ -102,7 +94,6 @@ public sealed class FolkJobs
         return way;
     }
 
-    /// <summary>The seconds a way takes at a walking pace of one metre a second.</summary>
     public static float Seconds(Land land, List<(int x, int y)> way)
     {
         float sum = 0f;
@@ -110,7 +101,6 @@ public sealed class FolkJobs
         return sum;
     }
 
-    /// <summary>Where a worker is at a moment.</summary>
     public struct Now
     {
         public float2 At;
@@ -122,7 +112,6 @@ public sealed class FolkJobs
     internal sealed class Leg
     {
         public float Seconds;
-        // A stop: where it stands. A walk: its points, and when it reaches each, from the leg's start.
         public float2[] Points;
         public float[] Times;
         public float Yaw;
@@ -130,7 +119,6 @@ public sealed class FolkJobs
         public bool Deck, Walk;
     }
 
-    /// <summary>One person with a job: the same round, and the same person, on every peer.</summary>
     public sealed class Worker
     {
         public string Job;
@@ -138,17 +126,13 @@ public sealed class FolkJobs
         public bool NightShift;
         internal readonly List<Leg> legs = new();
         internal float period, start;
-        // The stop it keeps to while a Hold run is on (a job's "inARun"), as a leg of its round, and the cell its walk there ends on.
         internal int homeLeg = -1;
         internal (int x, int y) homeCell;
 
-        /// <summary>Whether it has a stop to keep to while a Hold run is on (a job's "inARun").</summary>
         public bool HasHome => homeLeg >= 0;
 
-        /// <summary>Standing at that stop, at its work.</summary>
         public Now Home => Stand(legs[homeLeg]);
 
-        /// <summary>Whether its round has it at that stop now: where it rejoins the round after a run.</summary>
         public bool AtHome(double seconds) => homeLeg >= 0 && LegAt(seconds) == homeLeg;
 
         int LegAt(double seconds)
@@ -198,7 +182,6 @@ public sealed class FolkJobs
         }
     }
 
-    /// <summary>A walk off the round: to a worker's stop for a Hold run, from wherever it was.</summary>
     public sealed class Trip
     {
         internal Leg leg;
@@ -206,7 +189,6 @@ public sealed class FolkJobs
 
         public float Seconds => leg.Seconds;
 
-        /// <summary>Where it is this long after setting off; at the stop once there.</summary>
         public Now At(float seconds) => seconds >= leg.Seconds || leg.Points.Length < 2 ? end : Worker.Walking(leg, seconds);
     }
 
@@ -215,19 +197,17 @@ public sealed class FolkJobs
     Func<int, int, float2> centre;
     float walkSpeed;
 
-    /// <summary>The walk from a cell to a worker's stop for a Hold run, over the land; null if it has none or there's no way.</summary>
     public Trip HomeFrom(Worker worker, (int x, int y) from)
     {
         if (!worker.HasHome || land == null) return null;
         var way = Way(land, OnLand(from), worker.homeCell);
         if (way.Count == 0) return null;
         var points = Smoothed(way, centre).ToList();
-        if (way[0] != from) points.Insert(0, centre(from.x, from.y)); // off the dock first
+        if (way[0] != from) points.Insert(0, centre(from.x, from.y));
         points.Add(worker.Home.At);
         return new Trip { leg = Timed(points, way, land, walkSpeed), end = worker.Home };
     }
 
-    /// <summary>The jobs of a map's folder, walked over its land; none without a jobs.json.</summary>
     public static FolkJobs Load(string worldDir, Land land, Func<int, int, float2> centre, float walkSpeed)
     {
         var jobs = new FolkJobs { land = land, centre = centre, walkSpeed = walkSpeed };
@@ -287,14 +267,12 @@ public sealed class FolkJobs
         }
     }
 
-    // A spot out over the water is reached from the shore: "out" is the land its walk ends at.
     static (int x, int y) Foot(JObject spot)
     {
         var at = (JArray)(spot["out"] ?? spot["at"]);
         return ((int)at[0], (int)at[1]);
     }
 
-    // The nearest cell a walk can start on: off a dock it's the shore.
     (int x, int y) OnLand((int x, int y) at)
     {
         const int Most = 24;
@@ -317,7 +295,6 @@ public sealed class FolkJobs
         return Timed(points, way, land, walkSpeed);
     }
 
-    // When a walk reaches each of its points, at the walker's pace over the land under it.
     static Leg Timed(List<float2> points, List<(int x, int y)> way, Land land, float walkSpeed)
     {
         var times = new float[points.Count];
@@ -330,7 +307,6 @@ public sealed class FolkJobs
         return new Leg { Walk = true, Points = points.ToArray(), Times = times, Seconds = times[^1] };
     }
 
-    // The cells' corners rounded off, so a walk bends and doesn't zigzag.
     static IEnumerable<float2> Smoothed(List<(int x, int y)> way, Func<int, int, float2> centre)
     {
         var points = way.Select(c => centre(c.x, c.y)).ToList();

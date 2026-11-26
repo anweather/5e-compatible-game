@@ -14,19 +14,16 @@ namespace Playtest.Runner
 {
     public static class Crashes
     {
-        /// <summary>A line naming the faulting module, or null (and always null off Windows).</summary>
         public static string Find(string exe, DateTime since, int processId)
         {
             if (!OperatingSystem.IsWindows()) return null;
             return FromEvents(Path.GetFileName(exe), since, processId) ?? FromUnityFolder(since);
         }
 
-        /// <summary>Whether an application-error message is about this process: its name, and "Faulting process id: 0x…" for its id.</summary>
         public static bool IsAbout(string message, string exeName, int processId) =>
             message != null && message.Contains(exeName, StringComparison.OrdinalIgnoreCase)
             && Regex.IsMatch(message, $@"Faulting process id: 0x{processId.ToString("X", CultureInfo.InvariantCulture)}\b", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
 
-        /// <summary>The faulting module named in an application-error message.</summary>
         public static string Module(string message)
         {
             var m = Regex.Match(message ?? "", @"Faulting module name: ([^,\r\n]+)", RegexOptions.None, TimeSpan.FromSeconds(1));

@@ -60,7 +60,6 @@ public class CastClipProbe : ProbeScenario
 
     IEnumerator Casts()
     {
-        // By the hands (D16): air alone, water and air merged, air held to its full charge.
         Note("load single");
         yield return caster.CastByHands(SpellIds.GustOfWind);
         yield return Neutral(1f);

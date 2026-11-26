@@ -7,17 +7,12 @@ namespace Playtest.Runner
 {
     public static class Report
     {
-        /// <summary>The bot's run.json, or an empty report saying it never wrote one.</summary>
         public static RunReport Load(string file, string id)
         {
             if (File.Exists(file)) return RunReport.FromJson(File.ReadAllText(file));
             return new RunReport { RunId = id, Ended = "no report" };
         }
 
-        /// <summary>
-        /// A hang, a crash (quit or running), or the player exiting before it finished; null for a
-        /// clean finish. "quit" when the bot had finished and the player failed on the way out.
-        /// </summary>
         public static Candidate Ending(RunReport run, bool hung, string crash, int exitCode, int seconds)
         {
             bool finished = run.Ended == "done" || run.Ended == "until-frame";

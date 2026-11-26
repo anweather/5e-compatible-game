@@ -10,7 +10,6 @@ namespace Chem.Tests
     {
         const int Size = 120;
 
-        // Land falling to the east, a unit a cell in every eight, with a road across the slope and a climb at its end.
         static int Land(int x, int y) => (Size - x) * 8;
 
         static BuildingRoad Road()

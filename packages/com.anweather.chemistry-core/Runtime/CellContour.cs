@@ -17,11 +17,9 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A contour mesh: points (grid cell units), the field value at each, and triangles.</summary>
     public sealed class ContourMesh
     {
         public List<(float x, float y)> Points { get; } = new List<(float x, float y)>();
-        /// <summary>The blended value at each point: the iso value on the edge, more inside.</summary>
         public List<float> Values { get; } = new List<float>();
         public List<int> Triangles { get; } = new List<int>();
 
@@ -33,7 +31,6 @@ namespace Chem
         }
     }
 
-    /// <summary>Which cells to outline, how finely and how wobbly.</summary>
     public readonly struct ContourSpec
     {
         public ContourSpec(int lattice, float iso, float wobble, int seed)
@@ -45,11 +42,8 @@ namespace Chem
             Seed = seed;
         }
 
-        /// <summary>Lattice points per cell side.</summary>
         public int Lattice { get; }
-        /// <summary>The value the edge runs along.</summary>
         public float Iso { get; }
-        /// <summary>How far noise pushes the blended value up or down (half of it each way).</summary>
         public float Wobble { get; }
         public int Seed { get; }
     }
@@ -66,27 +60,12 @@ namespace Chem
 
         public CellContour(ContourSpec spec) => this.spec = spec;
 
-        /// <summary>
-        /// Draws only from the centre of the box's first cell to the centre of the cell past its
-        /// last (in x and in y), so boxes built side by side (the next from the cell past this one's
-        /// last) meet exactly, with neither a gap nor an overlap: a big surface drawn in tiles.
-        /// </summary>
         public bool Tiled { get; set; }
 
-        /// <summary>Works out every lattice point, skipping none (Sample): tests compare the two.</summary>
         public bool EveryPoint { get; set; }
 
-        /// <summary>The lattice points the last Build worked the noise out for, not kept from before (for a performance pass).</summary>
         public int NoisePoints { get; private set; }
 
-        /// <summary>
-        /// Outlines the cells x0..x1, y0..y1 (inclusive) into <paramref name="mesh"/> (cleared first).
-        /// <paramref name="value"/>(x, y) is a cell's value; it is also read one cell outside the
-        /// box, so the edge can close there (give 0 to keep the patch inside the box).
-        /// <paramref name="wobble"/>(x, y), if given, scales the wobble around a cell (0 holds the
-        /// edge where the values put it, 1 is the spec's full wobble), blended like the values.
-        /// When Tiled, it draws only from the centre of cell x0 to the centre of cell x1 + 1.
-        /// </summary>
         public void Build(int x0, int y0, int x1, int y1, Func<int, int, float> value, ContourMesh mesh,
             Func<int, int, float> wobble = null)
         {
@@ -98,7 +77,6 @@ namespace Chem
             Sample();
             edgePoints.Clear();
             Array.Clear(latticePoint, 0, lw * lh);
-            // The lattice runs from the centre of cell x0 - 1 to that of cell x1 + 1; a tile starts one cell in.
             int edge = Tiled ? spec.Lattice : 0;
             for (int j = edge; j < lh - 1; j++)
             {
@@ -112,14 +90,11 @@ namespace Chem
             }
         }
 
-        // Working arrays are kept between builds and only ever grow: a water tile redraws at the
-        // same size every time, and the film's box is big enough that each new array was megabytes.
         static void Fit<T>(ref T[] array, int size)
         {
             if (array == null || array.Length < size) array = new T[size];
         }
 
-        // The cells' values, one ring wider than the box (the centres the lattice spans).
         void ReadCells(int x0, int y0, int x1, int y1, Func<int, int, float> value, Func<int, int, float> wobble)
         {
             cx0 = x0 - 1;
@@ -138,7 +113,6 @@ namespace Chem
             }
         }
 
-        // The lattice runs from the centre of the ring's first cell to the centre of its last.
         void Sample()
         {
             int n = spec.Lattice;
@@ -164,9 +138,6 @@ namespace Chem
             }
         }
 
-        // A tile's box never moves, so the noise at its lattice points is the same every time it's
-        // redrawn: kept, worked out the first time a point is inside (NaN until then), and dropped
-        // only if the box does move. Most of a redrawn tile's outline was this noise.
         float[] noiseKept;
         int keptX0 = int.MinValue, keptY0, keptW, keptH;
 
@@ -189,22 +160,13 @@ namespace Chem
             NoisePoints++;
             int n = spec.Lattice;
             float x = lx0 + i / (float)n, y = ly0 + j / (float)n;
-            // A broad bend (a few cells across) so a long straight run of cells
-            // doesn't give a straight shore, and a finer wobble on top; blending
-            // octaves narrows the spread, so it's stretched back out to ±0.5.
             float noise = 0.55f * ValueNoise.Twice(x * 0.35f, y * 0.35f, spec.Seed + 7) +
                           0.45f * ValueNoise.Twice(x * 1.1f, y * 1.1f, spec.Seed) - 0.5f;
             return Math.Max(-0.5f, Math.Min(0.5f, noise * 2.5f));
         }
 
-        // Which square of four cell centres a lattice index falls in, as Blend reads it.
         int QuadOf(int i, int cells) => Math.Min(i / spec.Lattice, cells - 2);
 
-        // The squares of four cell centres too far from anything to matter: no value near enough to
-        // reach the iso value, even at the most the noise can add. Neither a square's points nor those
-        // of the squares beside it are inside, so no triangle touches its points and no edge is cut
-        // towards them: what those points hold, beyond being outside, is never read. On a film over a
-        // wide box that's nearly every point, and noise is most of an outline's cost.
         void FindOutside()
         {
             int quads = (cw - 1) * (ch - 1);
@@ -214,7 +176,6 @@ namespace Chem
                     outside[b * (cw - 1) + a] = !EveryPoint && QuietAround(a, b);
         }
 
-        // Whether the cells round square (a, b), one more ring out (the squares beside it), stay under the iso value.
         bool QuietAround(int a, int b)
         {
             float value = float.NegativeInfinity, wobble = 0f;
@@ -229,7 +190,6 @@ namespace Chem
             return value + Math.Abs(spec.Wobble) * wobble * 0.5f < spec.Iso;
         }
 
-        // Per-cell numbers (values or wobbles) blended between the cells' centres at lattice point (i, j).
         float Blend(float[] cells, int i, int j)
         {
             int n = spec.Lattice;
@@ -243,7 +203,6 @@ namespace Chem
             return top + (bottom - top) * fy;
         }
 
-        // The part of triangle (p, q, r) at or above the iso value.
         void Cut(ContourMesh mesh, int p, int q, int r)
         {
             float iso = spec.Iso;
@@ -255,7 +214,6 @@ namespace Chem
                 Emit(mesh, Lattice(mesh, p), Lattice(mesh, q), Lattice(mesh, r));
                 return;
             }
-            // Rotate so the odd one out (the lone inside or lone outside point) comes first.
             bool lone = inside == 1;
             if (iq == lone) (p, q, r) = (q, r, p);
             else if (ir == lone) (p, q, r) = (r, p, q);
@@ -269,7 +227,6 @@ namespace Chem
             Emit(mesh, pq, Lattice(mesh, r), pr);
         }
 
-        // A lattice point as a mesh point, made once.
         int Lattice(ContourMesh mesh, int k)
         {
             if (latticePoint[k] > 0) return latticePoint[k] - 1;
@@ -280,7 +237,6 @@ namespace Chem
             return mesh.Points.Count - 1;
         }
 
-        // Where the field crosses the iso value between lattice points a and b, made once.
         int Edge(ContourMesh mesh, int a, int b)
         {
             long key = a < b ? (long)a * int.MaxValue + b : (long)b * int.MaxValue + a;
@@ -295,7 +251,6 @@ namespace Chem
             return mesh.Points.Count - 1;
         }
 
-        // A triangle, wound clockwise seen from above (positive cross product with y growing south).
         static void Emit(ContourMesh mesh, int a, int b, int c)
         {
             var (ax, ay) = mesh.Points[a];

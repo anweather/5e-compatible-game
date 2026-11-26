@@ -10,41 +10,31 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A row of rules/hold.json "adjectives".</summary>
     public sealed class AdjectiveDef
     {
         public string Id, Name, Keeps;
-        /// <summary>Its raider's health, in percent.</summary>
         public int Hp = 100;
-        /// <summary>Its raider's blows, in percent.</summary>
         public int Damage = 100;
         public bool Lights;
-        /// <summary>It's a boss's: never on a raider by chance.</summary>
         public bool Boss;
         public IReadOnlyList<string> Weak = Array.Empty<string>(), Resist = Array.Empty<string>();
-        /// <summary>Statuses it can't have: a molten raider doesn't catch fire.</summary>
         public IReadOnlyList<string> Never = Array.Empty<string>();
         public double[] Color = Array.Empty<double>();
     }
 
-    /// <summary>A row of rules/hold.json "themes": what a wave leans on.</summary>
     public sealed class WaveThemeDef
     {
         public string Id, Name;
         public IReadOnlyList<string> Adjectives = Array.Empty<string>();
     }
 
-    /// <summary>A row of rules/hold.json "moments": a canned setup to jump to.</summary>
     public sealed class MomentDef
     {
         public string Id, Name, Theme;
-        /// <summary>What each hand holds, by hand; null for nothing.</summary>
         public readonly string[] Holds = new string[HandsDef.Count];
-        /// <summary>The wave, the keep's health (0: full), and the percent of the castle's breakable cells broken.</summary>
         public int Wave = 1, Health, Broken;
     }
 
-    /// <summary>What a wave of a run is, from the rules alone.</summary>
     public readonly struct WavePlan
     {
         public WavePlan(int wave, int count, string theme, bool boss, int kinds)
@@ -58,53 +48,33 @@ namespace Chem
 
         public int Wave { get; }
         public int Count { get; }
-        /// <summary>The wave theme's id, or null.</summary>
         public string Theme { get; }
         public bool Boss { get; }
-        /// <summary>How many of a spawner's kinds are in.</summary>
         public int Kinds { get; }
     }
 
-    /// <summary>rules/hold.json: a run's numbers.</summary>
     public sealed class HoldParams
     {
         public int Health = 100, PlateTicks = 6, First = 4, Growth = 2, HpPerWave = 2, Warmup = 60, SpawnEvery = 9, BetweenWaves = 90;
-        /// <summary>
-        /// Ticks from one wave's start (its first raider) to the next's, whoever is still standing; 0 for the old way, the next
-        /// wave once the last is beaten. The last BetweenWaves of them are the next wave's warning. And the last wave, whose
-        /// beating wins the run; 0 for endless waves.
-        /// </summary>
         public int WaveTicks, Waves;
-        /// <summary>How far from a tower's middle, in cells, a wizard stands at it to attune (WorldHold.Towers).</summary>
         public int TowerReach = 3;
         public int BatterTicks = 12, BatterCost = 12, Margin = 14, AdjectiveFrom = 2, AdjectivePercent = 34;
         public int DamagePerWave, KindEvery = 1, AdjectivePerWave, AdjectiveMost = 100, ThemeFrom = 1, ThemePercent, BossEvery, BossHpPerWave, TargetMinutes = 20;
-        /// <summary>The adjective a boss wears, or null for no bosses.</summary>
         public string BossAdjective;
-        /// <summary>What a cell off the road costs a road raider; and the ticks between working out the ways.</summary>
         public int OffRoadCost = 1, RouteEvery = 1;
-        /// <summary>Statuses that bring a flyer down.</summary>
         public IReadOnlyList<string> FlyerLands = Array.Empty<string>();
-        /// <summary>From this wave: the first barricades, one more every BarricadePerWaves, up to BarricadeMost; each the road's cells within BarricadeRadius.</summary>
         public string BarricadeTerrain;
-        /// <summary>What a battered terrain with no break of its own leaves.</summary>
         public string Rubble = "rubble";
         public int BarricadeFrom, BarricadeFirst, BarricadePerWaves = 1, BarricadeMost, BarricadeRadius;
-        /// <summary>A wave's size in percent, by the wizards at the run's start: the first is one wizard's.</summary>
         public IReadOnlyList<int> PeerPercent = new[] { 100 };
-        /// <summary>A boss's health in percent, by the same count: there's one of it, so numbers can't scale it.</summary>
         public IReadOnlyList<int> BossPeerHealth = new[] { 100 };
         public IReadOnlyList<WaveThemeDef> Themes = Array.Empty<WaveThemeDef>();
         public IReadOnlyList<MomentDef> Moments = Array.Empty<MomentDef>();
         public IReadOnlyList<UpgradeDef> Upgrades = Array.Empty<UpgradeDef>();
         public IReadOnlyList<UnlockDef> Unlocks = Array.Empty<UnlockDef>();
-        /// <summary>How many upgrades a wizard is offered, and what a wave survived earns.</summary>
         public int Offer, PointsPerWave = 1;
-        /// <summary>How many blows a blocking terrain takes; one left out can't be battered.</summary>
         public IReadOnlyDictionary<string, int> Strength = new Dictionary<string, int>();
-        /// <summary>The adjectives, in the rules' order.</summary>
         public IReadOnlyList<AdjectiveDef> Adjectives = Array.Empty<AdjectiveDef>();
-        /// <summary>The hands' table and numbers.</summary>
         public HandsDef Hands = new HandsDef();
 
         static UpgradeDef ParseUpgrade(JProperty p) => new UpgradeDef
@@ -132,7 +102,6 @@ namespace Chem
             Kit = (string)o["kit"],
         };
 
-        /// <summary>The upgrade with this id, or null.</summary>
         public UpgradeDef Upgrade(string id) => Upgrades.FirstOrDefault(u => u.Id == id);
 
         static MomentDef ParseMoment(JProperty p)
@@ -151,13 +120,10 @@ namespace Chem
             return m;
         }
 
-        /// <summary>The moment with this id, or null.</summary>
         public MomentDef Moment(string id) => Moments.FirstOrDefault(m => m.Id == id);
 
-        /// <summary>The wave theme with this id, or null.</summary>
         public WaveThemeDef Theme(string id) => Themes.FirstOrDefault(t => t.Id == id);
 
-        /// <summary>The adjectives a raider can wear by chance: all but a boss's.</summary>
         public IEnumerable<AdjectiveDef> CommonAdjectives => Adjectives.Where(a => !a.Boss);
 
         internal static HoldParams Parse(JToken t)
@@ -233,11 +199,9 @@ namespace Chem
             return h;
         }
 
-        /// <summary>An adjective by id, or null.</summary>
         public AdjectiveDef Adjective(string id) => Adjectives.FirstOrDefault(a => a.Id == id);
     }
 
-    /// <summary>One spawner of a map's hold.json: the cells of its place, and the kinds it sends, round and round.</summary>
     public sealed class HoldSpawner
     {
         public string Id;
@@ -245,8 +209,6 @@ namespace Chem
         public IReadOnlyList<string> Kinds = Array.Empty<string>();
     }
 
-    /// <summary>A map's hold.json, read with the row it names: what's fought over, in world cells.</summary>
-    /// <summary>A tower of the castle where a wizard attunes a hand to its one element: its join and its middle cell.</summary>
     public sealed class HoldTower
     {
         public string At, Element;
@@ -261,17 +223,12 @@ namespace Chem
         public (int x, int y) Heart { get; private set; }
         public (int x, int y) Plate { get; private set; }
         public (int x, int y) Rise { get; private set; }
-        /// <summary>The towers a wizard attunes at, each to one element (hold-batch); none if the map has none.</summary>
         public IReadOnlyList<HoldTower> Towers { get; private set; } = Array.Empty<HoldTower>();
-        /// <summary>The road raiders take: the terrain of the row's road the map names, or null for none.</summary>
         public string RoadTerrain { get; private set; }
-        /// <summary>Where barricades can stand, as cells.</summary>
         public IReadOnlyList<(int x, int y)> Barricades { get; private set; } = Array.Empty<(int, int)>();
         public IReadOnlyList<HoldSpawner> Spawners { get; private set; } = Array.Empty<HoldSpawner>();
-        /// <summary>The castle's row as the map has it.</summary>
         public JObject Row { get; private set; }
 
-        /// <summary>The map's Hold, or null if it has none.</summary>
         public static WorldHold Load(string worldDir)
         {
             string path = Path.Combine(worldDir ?? "", FileName);
@@ -307,18 +264,15 @@ namespace Chem
             return new HoldTower { At = (string)t["at"], X = x, Y = y, Element = (string)t["element"] };
         }
 
-        /// <summary>The tower whose cells, within <paramref name="reach"/> of its middle, take in this one; null if none does.</summary>
         public HoldTower TowerAt(int x, int y, int reach) =>
             Towers.FirstOrDefault(t => Math.Max(Math.Abs(x - t.X), Math.Abs(y - t.Y)) <= reach);
 
-        // A join of the row as a world cell: the cell whose north-west corner it is, or whose middle.
         static (int x, int y) Mark(JObject row, string join)
         {
             var at = row["joins"]?[join ?? ""] as JArray ?? throw new FormatException($"{FileName}: the row has no join {join}");
             return ((int)row["at"][0] + (int)at[0] / 2, (int)row["at"][1] + (int)at[1] / 2);
         }
 
-        /// <summary>What's wrong with it under these rules: a kind that isn't a raider.</summary>
         public IEnumerable<string> Check(Rules rules) =>
             Spawners.SelectMany(s => s.Kinds).Distinct().Where(k => rules.Entity(k)?.Raider == null).Select(k => $"{FileName}: {k} isn't a raider")
                 .Concat(Towers.Where(t => !rules.Combos.Elements.Contains(t.Element)).Select(t => $"{FileName}: the tower at {t.At} gives {t.Element ?? "nothing"}, which isn't an element"));
@@ -330,7 +284,6 @@ namespace Chem
         {
             static readonly HashSet<string> Routes = new HashSet<string> { "climb", "fly" };
 
-            // What a row of hold.json names is there. A moment's id goes over the network in a fixed string, so it stays short.
             public void HoldRows()
             {
                 const int mostMoment = 29;
@@ -364,15 +317,11 @@ namespace Chem
             }
         }
 
-        /// <summary>What joins a raider's kind and its adjective in a raider's Kind.</summary>
         public const char AdjectiveMark = '~';
 
         readonly Dictionary<string, EntityDef> holdVariants = new Dictionary<string, EntityDef>(StringComparer.Ordinal);
-        // Raider kinds only the Hold has (rules/hold.json "raiders"), kept out of the entity table the sandbox's rules match.
         readonly Dictionary<string, EntityDef> holdKinds = new Dictionary<string, EntityDef>(StringComparer.Ordinal);
 
-        // "kind~adjective" as an entity, made the first time it's asked for; null for any other id. Locked: one Rules serves
-        // every world made from it, and the core tests run side by side.
         EntityDef HoldVariant(string id)
         {
             if (holdKinds.TryGetValue(id, out var kind)) return kind;
@@ -402,14 +351,12 @@ namespace Chem
             return holdVariants[id] = def;
         }
 
-        /// <summary>The kind a raider's Kind is made from, without its adjective.</summary>
         public static string PlainKind(string kind)
         {
             int mark = kind?.IndexOf(AdjectiveMark) ?? -1;
             return mark > 0 ? kind.Substring(0, mark) : kind;
         }
 
-        /// <summary>A raider Kind's adjective, or null.</summary>
         public AdjectiveDef AdjectiveOf(string kind)
         {
             int mark = kind?.IndexOf(AdjectiveMark) ?? -1;

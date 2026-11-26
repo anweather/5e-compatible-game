@@ -69,7 +69,6 @@ public class AmbientLife : MonoBehaviour
         crabFrames = new[] { CreatureMesher.Crab(0), CreatureMesher.Crab(1) };
         var silver = new Color(0.45f, 0.55f, 0.62f, 0f);
         fishFrames = new[] { CreatureMesher.Fish(-1f, silver), CreatureMesher.Fish(1f, silver) };
-        // Not on a generated map played from its rows (the Wide World): a pass over its cells would make its every chunk.
         if (MapLand.Current is { Generated: true })
         {
             gullAnchors = System.Array.Empty<Vector3>();
@@ -80,8 +79,6 @@ public class AmbientLife : MonoBehaviour
         Spawn();
     }
 
-    // Where the map's own land meets its water: gulls over the shore, crabs on the dry cells beside the sea, shoals where
-    // the sea or a basin is 1.4 to 12 m deep. Cells looked at on a coarse grid, from a seed, so every machine has the same.
     void FromLand(MapLand map)
     {
         var pick = new System.Random(91);
@@ -148,8 +145,6 @@ public class AmbientLife : MonoBehaviour
 
     void Update()
     {
-        // Looked up by name (a walk of every object in the scene: ~10 ms once a map's chunks are drawn) only while it's not
-        // found; a wizard that goes is looked for again.
         if (wizard == null && Time.unscaledTime >= nextLookup)
         {
             var go = GameObject.Find(WizardRig.Name);
@@ -168,8 +163,6 @@ public class AmbientLife : MonoBehaviour
         Draw(fishFrames, fishBatch);
     }
 
-    // Round and round their anchor, banking into the turn, gliding with bursts of flapping; a wizard
-    // under them sends them climbing.
     void UpdateGulls(float dt)
     {
         for (int i = 0; i < gulls.Length; i++)
@@ -181,7 +174,6 @@ public class AmbientLife : MonoBehaviour
             g.scare = Mathf.MoveTowards(g.scare, near ? 1f : 0f, dt * (near ? 0.8f : 0.1f));
             at.y = g.anchor.y + g.height + g.scare * 14f + Mathf.Sin(g.angle * 3f + i) * 0.8f;
             var forward = new Vector3(-Mathf.Sin(g.angle), 0f, Mathf.Cos(g.angle)) * g.dir;
-            // Flap for a while, then glide (wings level), each gull to its own beat; scared gulls flap hard.
             g.flapPhase += dt * (g.scare > 0.1f ? 14f : 9f);
             bool flapping = Mathf.Sin(g.flapPhase * 0.13f + i) > 0.3f || g.scare > 0.1f;
             int frame = flapping ? WingFrame(g.flapPhase) : 1;
@@ -190,7 +182,6 @@ public class AmbientLife : MonoBehaviour
         }
     }
 
-    // Wings down, level or up through a flap.
     static int WingFrame(float phase)
     {
         float s = Mathf.Sin(phase);
@@ -198,8 +189,6 @@ public class AmbientLife : MonoBehaviour
         return s < -0.3f ? 0 : 1;
     }
 
-    // Sideways along the waterline between pauses; from a wizard close by, a dash away and then down
-    // into the sand for a while.
     void UpdateCrabs(float dt)
     {
         for (int i = 0; i < crabs.Length; i++)
@@ -210,7 +199,6 @@ public class AmbientLife : MonoBehaviour
             }
     }
 
-    // One crab's frame; false while it's down in the sand.
     bool StepCrab(ref Crab c, float dt)
     {
         if (c.buried > 0f)
@@ -239,14 +227,12 @@ public class AmbientLife : MonoBehaviour
             var step = to.normalized * Mathf.Min(speed * dt, to.magnitude);
             c.pos += step;
             c.walked += step.magnitude;
-            // Crabs go sideways: face across the way they're going.
             c.yaw = Mathf.MoveTowardsAngle(c.yaw, Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg + 90f, 400f * dt);
         }
         c.pos.y = Ground(c.pos, c.home.y);
         return true;
     }
 
-    // Stopped: wait a while, then pick somewhere near home to go next.
     void Pause(ref Crab c, float dt)
     {
         c.wait -= dt;
@@ -255,8 +241,6 @@ public class AmbientLife : MonoBehaviour
         c.wait = R(1f, 5f);
     }
 
-    // Each shoal circles its spot under the surface, slipping away from a swimmer; one fish now and
-    // then leaps clear of the water in an arc.
     void UpdateFish(float dt)
     {
         float t = Time.time;
@@ -318,8 +302,6 @@ public class AmbientLife : MonoBehaviour
 
     static Vector3 Flat(Vector3 v) => new(v.x, 0f, v.z);
 
-    // The ground under a point (the terrain there), or a fallback height. The terrains are found by tile, once they're
-    // there: asking each of a big map's (729 on the nine) for every crab was 7 ms a frame.
     float Ground(Vector3 p, float fallback)
     {
         if (tiles == null || !tiles.Any) tiles = new TerrainTiles();

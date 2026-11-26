@@ -1,3 +1,6 @@
+// The clock and the weather (Sky.cs) and what the weather does to cells (World.Weather.cs).
+// Ported from sandbox/test/weather.test.ts; the golden numbers came from running the same worlds there, until the
+// rain was turned down (2026-11-23: less and rarer rain, none on deep water, hollows seeping dry; the sandbox is frozen).
 using System;
 using System.IO;
 using System.Linq;
@@ -5,17 +8,11 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The clock and the weather (Sky.cs) and what the weather does to cells (World.Weather.cs).
-    /// Ported from sandbox/test/weather.test.ts; the golden numbers came from running the same worlds there, until the
-    /// rain was turned down (2026-11-23: less and rarer rain, none on deep water, hollows seeping dry; the sandbox is frozen).
-    /// </summary>
     [Category("Simulation")]
     public class WeatherTests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>Short, quick weather for the goldens: stretches of 0.2 min (72 ticks), no calm start.</summary>
         const string Quick = "'periodMinutes': 0.2, 'rampMinutes': 0.05, 'calmPeriods': 0, " +
             "'rain': { 'fillEvery': 4, 'fillChance': 0.2, 'douseChance': 0.3 }, 'storm': { 'strikeEvery': 6, 'strikeChance': 1 }";
 
@@ -27,7 +24,6 @@ namespace Chem.Tests
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
-        /// <summary>A walled field of grass with a pond, a fire lit on it.</summary>
         static World Field(Rules rules, uint seed)
         {
             var w = new World(rules, 24, 12, seed);
@@ -100,9 +96,8 @@ namespace Chem.Tests
         [Test]
         public void NothingChangesDuringTheCalmStart()
         {
-            // The base rules start with calm stretches, so every other golden in the suite is untouched.
             var w = new World(R, 8, 8, 1);
-            w.At(3, 3).T = "pit"; // a puddle in a hollow: it doesn't soak in (World.Soak)
+            w.At(3, 3).T = "pit";
             w.At(3, 3).Water = 1;
             Run(w, 2 * 4 * 60 * R.Sim.TicksPerSecond - 1);
             Assert.That(w.Weather.Kind, Is.EqualTo(WeatherKind.Clear));
@@ -133,7 +128,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenMeteorShowerMatchesTs()
         {
-            // The same as "a meteor shower brings meteors down..." in weather.test.ts.
             var rules = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, " +
                 "'meteors': { 'showerChance': 1, 'every': 6, 'chance': 1, 'fallTicks': 11 }");
             var w = Field(rules, 6);
@@ -155,7 +149,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenSnowFreezesLiesAndBanksThenADrySpellThawsAndMeltsItMatchesTs()
         {
-            // The same as "snow freezes shallow water..." in weather.test.ts.
             var snowy = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 1 }, " +
                 "'snow': { 'freezeEvery': 4, 'freezeChance': 0.5 }");
             var clear = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, " +
@@ -182,11 +175,9 @@ namespace Chem.Tests
             Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("6ce8640a 1063028723 0 0"));
         }
 
-        /// <summary>Fog and only fog for an hour, with these keys in weather.fog.</summary>
         static Rules Foggy(string fog = "") => With("'periodMinutes': 60, 'rampMinutes': 0.02, 'calmPeriods': 0, 'fog': { 'gas': 'fog'" + fog + " }, " +
             "'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 1, 'rain': 0, 'storm': 0, 'snow': 0 }, 'meteors': { 'showerChance': 0 }");
 
-        /// <summary>Open grass with a pond in its north-west block.</summary>
         static World Moor(Rules rules, uint seed)
         {
             var w = new World(rules, 256, 256, seed, "grass");
@@ -204,7 +195,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenFogLiesInPatchesNotABlanketMatchesTs()
         {
-            // The same as "fog lies in patches..." in weather.test.ts.
             var w = Moor(Foggy(), 7);
             Run(w, 400);
             int fog = FogCells(w);
@@ -218,7 +208,6 @@ namespace Chem.Tests
         [Test]
         public void FogPatchesFavourLowGroundAndWater()
         {
-            // Fog beside a river down the world, against the same seed with no river.
             int Near(World w) => w.AllCells().Select((c, i) => c.Gas == "fog" && Math.Abs(i % 256 - 65) < 20 ? 1 : 0).Sum();
             var wet = new World(Foggy(", 'tries': 64"), 256, 256, 3, "grass");
             for (int y = 0; y < 256; y++)
@@ -278,7 +267,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenFogVeilsTheFieldAndLiftsMatchesTs()
         {
-            // The same as "fog weather veils the field..." in weather.test.ts.
             var foggy = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 1, 'rain': 0, 'storm': 0, 'snow': 0 }");
             var clear = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, 'meteors': { 'showerChance': 0 }");
             var w = Field(foggy, 4);
@@ -301,7 +289,6 @@ namespace Chem.Tests
         [Test]
         public void SnowSlowsWalkersFrostGlazesItAndItsMeltFreezesToIce()
         {
-            // The same as "snow slows walkers..." in weather.test.ts.
             Assert.That(R.Covers[World.SnowCover].Speed, Is.LessThan(1));
             Assert.That(R.Covers[World.BankCover].Speed, Is.LessThan(R.Covers[World.SnowCover].Speed), "a bank slows more");
             var w = Field(R, 9);
@@ -336,7 +323,6 @@ namespace Chem.Tests
         [Test]
         public void SnowSlowsWalkersAndFrostGlazesItSlippery()
         {
-            // World.WalkSpeed: what raiders are snagged by and the wizard slowed by (SurfaceEffects), cover and ground together.
             var w = new World(R, 8, 3, 1, "grass");
             Assert.That(w.WalkSpeed(w.At(0, 0)), Is.EqualTo(1));
             w.At(1, 0).Cover = "snow";
@@ -346,7 +332,6 @@ namespace Chem.Tests
             Assert.That(w.WalkSpeed(w.At(1, 0)), Is.EqualTo(0.85));
             Assert.That(w.WalkSpeed(w.At(2, 0)), Is.EqualTo(0.7));
             Assert.That(w.WalkSpeed(w.At(3, 0)), Is.EqualTo(0.5), "the slower of the snow and the mud under it");
-            // Frost glazes the snow: slippery, and no longer slow, so a runner keeps its speed and slides.
             w.At(1, 1).Cover = "snow";
             w.Apply(1, 1, "cold", power: 4);
             Assert.That(w.At(1, 1).Cover, Is.EqualTo("frost"));
@@ -354,7 +339,6 @@ namespace Chem.Tests
             Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(1));
         }
 
-        // The valley as the game has it, the 3 x 3 chunks round the spawn active, and what each cell's water was at the start.
         static World RainyValley(out int[] start)
         {
             string dir = Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "valley");
@@ -369,8 +353,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // The active cells' water against the start: cells wet that were dry, how many of those deeper than thin water (2
-        // units), the units on them, how much the water that was there rose (the lake, the river), and the cells of mud.
         static (int wet, int deep, int units, int rise, int mud) Flood(World w, int[] start)
         {
             int wet = 0, deep = 0, units = 0, rise = 0, mud = 0;
@@ -395,9 +377,6 @@ namespace Chem.Tests
         [Test]
         public void TwoHoursOfRainDoNotFloodTheValley()
         {
-            // Alpha 0.1.13: it rained a lot and flooded the world. Two game hours of rain (Control Weather from clear skies,
-            // 720 ticks, the base rules' rain), then four dry ones: what's left must be a few puddles, not standing water across the
-            // valley, the lake no higher, and the paths not churned to mud (the cells of mud the map has: none).
             var w = RainyValley(out var start);
             int mudAtStart = Flood(w, start).mud;
             w.Cast("control-weather", 292, 328, 0);
@@ -416,8 +395,6 @@ namespace Chem.Tests
         [Test]
         public void WetGrassSlowsWalkersButAPathNeverDoes()
         {
-            // A path is dirt (the map legend's '.': roads and the valley's paths). Wet grass (soak.slows) slows a walker
-            // while water stands on it and while it's damp after; dry grass doesn't, and a path, wet or dry, never does.
             Assert.That(R.Terrain["grass"].WetSpeed, Is.LessThan(1));
             Assert.That(R.Terrain["dirt"].WetSpeed, Is.EqualTo(1));
             double wet = R.Terrain["grass"].WetSpeed;
@@ -431,8 +408,6 @@ namespace Chem.Tests
             Run(w, R.Sim.DampTicks);
             Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(1), "dry again");
 
-            // Two hours of rain (Control Weather) over grass with a path across it and a patch of the Mud spell's mud:
-            // the grass is slow all through and after, the path never is and isn't churned to mud; mud slows anywhere.
             var rain = new World(R, 24, 9, 1, "grass");
             for (int x = 0; x < 24; x++) rain.At(x, 4).T = "dirt";
             rain.At(20, 1).T = "mud";
@@ -453,8 +428,6 @@ namespace Chem.Tests
         [Test]
         public void WaterPouredOnAPathStillChurnsItToMud()
         {
-            // Rain doesn't churn a path (it leaves the cells it wets damp, and damp ground doesn't churn), but water poured
-            // on dry dirt does, as before (WaterSoaksDirtToMudWhichDriesBack, the Hold's pool).
             var w = new World(R, 8, 3, 1, "grass");
             w.At(4, 1).T = "dirt";
             w.At(4, 1).Water = 1;

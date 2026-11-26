@@ -12,21 +12,16 @@ using UnityEngine;
 // shows a lock on its icon (CastHud).
 public partial class SpellCaster
 {
-    /// <summary>Where the last hand spell was aimed (the probe).</summary>
     public Vector2Int LastHandAim { get; private set; }
 
-    // The hands whose HandDown went out while their buttons are still down: each sends its HandUp as they let go.
     readonly bool[] handHeld = new bool[HandsDef.Count];
     readonly float[] lockedAt = { float.NegativeInfinity, float.NegativeInfinity };
     static readonly CastFeel.Thump LockedBuzz = new(0f, 0.6f, 0.12f);
 
-    /// <summary>When a press of this hand was last refused as locked, by the unscaled clock (CastHud's lock).</summary>
     public float LockedAt(int hand) => lockedAt[hand];
 
     void Hands(string player, bool off)
     {
-        // Read from the buttons, not their release this frame: whatever turns the controls off lets go too, or a hand would
-        // charge for ever. Before the presses, so a tap inside one frame lets go on the next.
         for (int hand = 0; hand < HandsDef.Count; hand++)
             if (handHeld[hand] && (off || !HandButtonDown(hand)))
             {
@@ -42,8 +37,6 @@ public partial class SpellCaster
         Press(player, HandsDef.Left, thrustLeft, controls.ThrowLeft.WasPressedThisFrame());
     }
 
-    // A hand's buttons pressed this frame: the thrust, the throw, or the throw with the thrust down, its sweep (the throw that makes
-    // one isn't a locked throw). The core makes a sweep of either order inside the window.
     void Press(string player, int hand, bool thrust, bool thrown)
     {
         var thrustButton = hand == HandsDef.Left ? controls.ThrustLeft : controls.ThrustRight;
@@ -56,13 +49,8 @@ public partial class SpellCaster
         ? controls.ThrustLeft.IsPressed() || controls.ThrowLeft.IsPressed()
         : controls.ThrustRight.IsPressed() || controls.ThrowRight.IsPressed();
 
-    // A cancel drops what the hands hold: the buttons still down send nothing.
     void DropHeld() => System.Array.Clear(handHeld, 0, handHeld.Length);
 
-    /// <summary>
-    /// The charge the hands' held gestures have built: the most of either hand held, or merged, the lower of the two, which is
-    /// what a merge goes off at. 1 with none held (CastBeats' levels, the marker).
-    /// </summary>
     public static int HeldHandCharge(World world, string player)
     {
         var h = world.HandsOf(player);
@@ -77,10 +65,8 @@ public partial class SpellCaster
     const float LockedEvery = 2f;
     float lockedSaidAt = float.NegativeInfinity;
 
-    /// <summary>What the player last heard about something locked (the probe).</summary>
     public string LockedLine { get; private set; }
 
-    // Whether this hand and gesture are the wizard's; if not it hears why with a buzz, and the press goes nowhere as it would in the core.
     bool Open(string player, int hand, int gesture)
     {
         var world = grid.World;
@@ -108,19 +94,12 @@ public partial class SpellCaster
         return $"{what} is locked: {away} more {(away == 1 ? "point" : "points")}";
     }
 
-    /// <summary>Picks an upgrade from this wizard's offer (ProgressKeeper).</summary>
     public bool PickUpgrade(string id) => grid != null && grid.World != null && Send(ComboCommand.Pick(CastPlayer, id));
 
-    /// <summary>Tells every peer this wizard's points (ProgressKeeper).</summary>
     public bool BringPoints(int points) => grid != null && grid.World != null && Send(ComboCommand.Bring(CastPlayer, points));
 
-    /// <summary>Goes into a moment, for every peer (HoldMoments).</summary>
     public bool Moment(string id) => ComboCommand.Moment(CastPlayer, id).TakenBy(HoldMoments.Offered) && grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
 
-    /// <summary>
-    /// Attunes a hand to an element (null: nothing, so the other hand's element is on both), from the spell list. It takes a short
-    /// moment; in a Hold run only at a tower, to its element (hold-batch). Null if it went to the core; else why it can't, which the player hears too.
-    /// </summary>
     public string AttuneTo(int hand, string element)
     {
         if (grid == null || grid.World == null) return "No wizard here yet";
@@ -139,20 +118,16 @@ public partial class SpellCaster
             EventLog.Add(why);
             return why;
         }
-        return null; // the hand shows it: no line for it
+        return null;
     }
 
-    // At a tower, a hand's trigger on a hand that holds something else attunes it to the tower's element, which takes its moment
-    // (AttuneTo says why not, a locked one too); on a hand that already holds it, the trigger casts as anywhere. True if it attuned.
     bool AttuneAtTower(string player, HoldTower tower, int hand, bool pressed)
     {
         if (!pressed || tower == null || grid.World.HandsOf(player).Holds[hand] == tower.Element) return false;
-        // A locked hand buzzes and says so, as any press of it does.
         if (Open(player, hand, HandsDef.Thrust)) AttuneTo(hand, tower.Element);
         return true;
     }
 
-    // A hand's fired spell or act, for this wizard.
     void FromHand(ComboFired fired)
     {
         if (fired.Spell == null) hands?.HandAct(fired.Act);

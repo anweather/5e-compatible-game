@@ -44,7 +44,6 @@ public partial class PerfStage
         Debug.Log($"PERF SEAMWALK done legs={walked} at_s={Time.realtimeSinceStartup:0}");
     }
 
-    // Each frame's time and the wizard's folded cell; a crossing where the folded cell jumps by more than half the map.
     IEnumerator WatchSeams()
     {
         Vector2Int last = default;
@@ -62,7 +61,6 @@ public partial class PerfStage
         }
     }
 
-    /// <summary>The "PERF SEAM" lines: per crossing, the frames round it (logged as the run ends).</summary>
     public void LogSeams()
     {
         if (Scenario is not ("seamwalk" or "roadwalk")) return;

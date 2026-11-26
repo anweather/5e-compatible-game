@@ -11,7 +11,6 @@ using UnityEngine;
 public class LiquidsViewProbe : SpellLooksProbe
 {
     const string Mod = "liquids-view";
-    // Honey heaps where it lands; paint and water run, so they get one pour in ThinEvery or flood the stage.
     const int Wide = 30, High = 12, Side = 4, Pours = 14, ThinEvery = 5;
     const float PourEvery = 0.35f, Near = 0.02f;
     static readonly Color Honey = new(0.85f, 0.6f, 0.1f), Paint = new(0.8f, 0.1f, 0.1f), Blue = new(0.1f, 0.2f, 0.9f);
@@ -90,7 +89,6 @@ public class LiquidsViewProbe : SpellLooksProbe
         Check(name, near, $"{drawn}, wanted {want}");
     }
 
-    // Two units of it on each of a Side by Side patch.
     void Pour(Vector2Int from, string liquid)
     {
         for (int y = 0; y < Side; y++)

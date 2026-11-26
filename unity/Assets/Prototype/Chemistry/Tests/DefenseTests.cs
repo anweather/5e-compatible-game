@@ -1,13 +1,11 @@
+// The defense field (World.Defense.cs, World.Raiders.cs). Ported from sandbox/test/defense.test.ts;
+// the golden numbers come from running the same script there.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The defense field (World.Defense.cs, World.Raiders.cs). Ported from sandbox/test/defense.test.ts;
-    /// the golden numbers come from running the same script there.
-    /// </summary>
     [Category("Simulation")]
     public class DefenseTests
     {
@@ -23,7 +21,6 @@ namespace Chem.Tests
 
         static readonly DefenseCommand Field = Start(2, 7, 36, 7);
 
-        /// <summary>The same script as the sandbox's goldenWave: raiders walk, one is burnt, a wall reroutes them, a pool is shocked.</summary>
         static World GoldenWave(uint seed)
         {
             var w = Room(40, 15, seed);
@@ -32,17 +29,16 @@ namespace Chem.Tests
             var first = w.Raiders[0];
             w.Cast("fire-bolt", first.X, first.Y, 1);
             Run(w, 20);
-            w.Cast("wall-of-stone", 20, 4, 2); // across the way, x 20, y 4..9
+            w.Cast("wall-of-stone", 20, 4, 2);
             Run(w, 30);
             var lead = w.Raiders[0];
             w.Cast("create-water", lead.X, lead.Y, 1);
             Run(w, 2);
-            w.Cast("shocking-grasp", lead.X, lead.Y, 1); // where it has waded to
+            w.Cast("shocking-grasp", lead.X, lead.Y, 1);
             Run(w, 300);
             return w;
         }
 
-        // Every square any raider stood on over some ticks.
         static HashSet<(int, int)> Watch(World w, int ticks)
         {
             var seen = new HashSet<(int, int)>();

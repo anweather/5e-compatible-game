@@ -50,7 +50,6 @@ public class PadGlyphsTests
         Assert.That(PadGlyphs.FamilyOf("Gamepad", "Wireless Controller", "Sony Interactive Entertainment", false), Is.EqualTo(PadFamily.PlayStation4));
         Assert.That(PadGlyphs.FamilyOf("Gamepad", "DualSense Wireless Controller", "Sony Interactive Entertainment", false), Is.EqualTo(PadFamily.PlayStation5));
         Assert.That(PadGlyphs.FamilyOf("XInputControllerWindows", null, null, true), Is.EqualTo(PadFamily.Xbox));
-        // SDL's own name for these pads on Linux, spelled with the hyphen.
         Assert.That(PadGlyphs.FamilyOf("Gamepad", "Microsoft X-Box One pad", null, false), Is.EqualTo(PadFamily.Xbox));
         Assert.That(PadGlyphs.FamilyOf("Gamepad", "Generic X-Box pad", null, false), Is.EqualTo(PadFamily.Xbox));
         Assert.That(PadGlyphs.FamilyOf("Gamepad", "Some Pad", "Someone", false), Is.EqualTo(PadFamily.Generic));
@@ -63,7 +62,6 @@ public class PadGlyphsTests
         Assert.That(PadGlyphs.Label(PadFamily.PlayStation5, PadButton.South), Is.EqualTo("✕"));
         Assert.That(PadGlyphs.Label(PadFamily.PlayStation5, PadButton.Select), Is.EqualTo("Create"));
         Assert.That(PadGlyphs.Label(PadFamily.PlayStation4, PadButton.Select), Is.EqualTo("Share"));
-        // A Switch pad's bottom button is B: the Input System names buttons by place, Nintendo swaps the letters.
         Assert.That(PadGlyphs.Label(PadFamily.Switch, PadButton.South), Is.EqualTo("B"));
         Assert.That(PadGlyphs.Label(PadFamily.Switch, PadButton.East), Is.EqualTo("A"));
         Assert.That(PadGlyphs.Label(PadFamily.Steam, PadButton.LB), Is.EqualTo("L1"));

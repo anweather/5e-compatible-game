@@ -9,40 +9,28 @@ using Chem.Lockstep;
 
 namespace Chem
 {
-    /// <summary>
-    /// One chunk's ground as the host game sampled it: a terrain id, the water on it (units) and a height step for each
-    /// of its Chunks.Area cells, by local index (ly * Chunks.Size + lx). Packed small for the wire (Bytes): the terrains
-    /// once, then runs of cells alike.
-    /// </summary>
     public sealed class ChunkGround
     {
-        // The terrains the cells name, in the order first set; a cell holds its terrain's place in them.
         readonly List<string> terrains = new List<string>();
         readonly byte[] kinds = new byte[Chunks.Area];
-        // Null while every cell has none.
         ushort[] water;
         sbyte[] height;
 
-        /// <summary>A chunk of one terrain, no water and no height step, to set cells on.</summary>
         public ChunkGround(string fill = "dirt")
         {
             terrains.Add(fill ?? throw new ArgumentNullException(nameof(fill)));
         }
 
-        /// <summary>The most water a cell's ground may hold, in units.</summary>
         public const int MostWater = ushort.MaxValue;
 
-        /// <summary>The terrains a chunk's ground may name, at most.</summary>
         public const int MostTerrains = 255;
 
-        /// <summary>Sets a cell's ground by its place in the chunk (0 to Chunks.Size - 1 each way).</summary>
         public ChunkGround Set(int lx, int ly, string terrain, int waterUnits = 0, int heightStep = 0)
         {
             if ((uint)lx >= Chunks.Size || (uint)ly >= Chunks.Size) throw new ArgumentOutOfRangeException(nameof(lx), $"({lx}, {ly}) isn't in a chunk");
             return SetAt((ly << Chunks.Shift) | lx, terrain, waterUnits, heightStep);
         }
 
-        /// <summary>Sets a cell's ground by its local index.</summary>
         public ChunkGround SetAt(int i, string terrain, int waterUnits = 0, int heightStep = 0)
         {
             if ((uint)i >= Chunks.Area) throw new ArgumentOutOfRangeException(nameof(i));
@@ -65,16 +53,12 @@ namespace Chem
             return (byte)(terrains.Count - 1);
         }
 
-        /// <summary>A cell's terrain, by local index.</summary>
         public string TerrainAt(int i) => terrains[kinds[i]];
 
-        /// <summary>A cell's water in units, by local index.</summary>
         public int WaterAt(int i) => water?[i] ?? 0;
 
-        /// <summary>A cell's height step, by local index.</summary>
         public int HeightAt(int i) => height?[i] ?? 0;
 
-        /// <summary>Makes a cell (freshly reset) as its ground: what an open world's source does (IChunkSource.Make).</summary>
         internal void Make(int i, Cell cell)
         {
             cell.T = terrains[kinds[i]];
@@ -84,10 +68,6 @@ namespace Chem
 
         byte[] bytes;
 
-        /// <summary>
-        /// As it goes on the wire and in a snapshot: a version byte, the terrains, then runs of cells alike (a run's
-        /// length, its terrain's place, its water and its height step). A chunk of one ground is a few bytes.
-        /// </summary>
         public byte[] Bytes()
         {
             if (bytes != null) return bytes;
@@ -112,7 +92,6 @@ namespace Chem
 
         const byte Version = 1;
 
-        /// <summary>A chunk's ground back from its Bytes; LockstepWireException if they aren't a ground's.</summary>
         public static ChunkGround FromBytes(byte[] bytes)
         {
             if (bytes == null) throw new ArgumentNullException(nameof(bytes));
@@ -142,7 +121,6 @@ namespace Chem
             return g;
         }
 
-        /// <summary>A fingerprint of the ground (FNV-1a 64 of its Bytes), for the cells' hash.</summary>
         public ulong Hash => hash ??= HashOf(Bytes());
 
         static ulong HashOf(byte[] b)
@@ -158,7 +136,6 @@ namespace Chem
         ulong? hash;
     }
 
-    /// <summary>An open world's chunk filled from the ground the host game sampled, in a tick batch (TickBatch.Fills).</summary>
     public readonly struct ChunkFill
     {
         public ChunkFill(ChunkKey key, ChunkGround ground)
@@ -173,10 +150,6 @@ namespace Chem
         public override string ToString() => "fill " + Key;
     }
 
-    /// <summary>
-    /// An open world's source (World.Source): each filled chunk's cells as its ground makes them. Its chunks come only
-    /// through fills (World.FillChunk), so a world is never made from it (MakeFrom); a save carries the grounds.
-    /// </summary>
     internal sealed class FilledGround : IChunkSource
     {
         readonly Dictionary<long, ChunkGround> grounds = new Dictionary<long, ChunkGround>();
@@ -203,7 +176,7 @@ namespace Chem
                 if (!grounds.TryGetValue(key, out last))
                 {
                     lastKey = long.MinValue;
-                    return; // no chunk there: what a cell there would be isn't asked
+                    return;
                 }
                 lastKey = key;
             }

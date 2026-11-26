@@ -7,23 +7,14 @@ using System.Collections.Generic;
 // generated: only how far out each way of drawing it goes changes. Pure, for the tests.
 public static class TreeBudget
 {
-    /// <summary>The most trees that stand as their prefab: the nine's densest views stand ~530.</summary>
     public const int MostNear = 1000;
 
-    /// <summary>Nearer than this (m) a tree is always its prefab: in a dense wood the trees in front hide the swap.</summary>
     public const float NearFloor = 60f;
 
-    /// <summary>The most trees drawn round the camera, every way (prefabs and impostors, in sight or not).</summary>
     public const int MostAround = 40000;
 
-    /// <summary>Out to this (m) the impostors always draw: the drawn tier and some.</summary>
     public const float FarFloor = 400f;
 
-    /// <summary>
-    /// How near the prefabs draw (m): <paramref name="near"/>, or nearer where more than <paramref name="most"/> trees stand
-    /// within it (the distance of the most-th nearest), not under <paramref name="floor"/>. <paramref name="d2"/> is the
-    /// squared distance of each tree within <paramref name="near"/> and some; it's reordered.
-    /// </summary>
     public static float Near(List<float> d2, float near, int most = MostNear, float floor = NearFloor)
     {
         if (d2 == null || d2.Count <= most || most < 1) return near;
@@ -31,11 +22,6 @@ public static class TreeBudget
         return System.Math.Min(near, System.Math.Max(floor, at));
     }
 
-    /// <summary>
-    /// How far the impostors draw (m): <paramref name="far"/>, or nearer where more than <paramref name="most"/> trees stand
-    /// within it, counted a chunk at a time from the nearest (<paramref name="chunks"/>: each chunk's squared distance to its
-    /// nearest point and its trees; reordered), not under <paramref name="floor"/> (nor past <paramref name="far"/>).
-    /// </summary>
     public static float Far(List<(float d2, int trees)> chunks, float far, int most = MostAround, float floor = FarFloor)
     {
         if (chunks == null || chunks.Count == 0) return far;
@@ -52,7 +38,6 @@ public static class TreeBudget
         return far;
     }
 
-    // The k-th smallest (from 0), by quickselect: the list is reordered.
     static float Nth(List<float> a, int k)
     {
         int lo = 0, hi = a.Count - 1;
@@ -66,7 +51,6 @@ public static class TreeBudget
         return a[k];
     }
 
-    // Hoare's partition of a[lo..hi] round its middle value: a[lo..j] are no more than it, a[i..hi] no less.
     static (int i, int j) Partition(List<float> a, int lo, int hi)
     {
         float pivot = a[(lo + hi) >> 1];

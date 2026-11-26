@@ -14,22 +14,17 @@ using UnityEngine;
 // feeds it; it lives on a child of the grid, made when the first gas comes.
 public class FogBank : MonoBehaviour
 {
-    // Puffs over each square, and how high they stack, in squares.
     const int PuffsPerSquare = 3;
-    // Drops a second from each square of rain cloud, and how fast they fall (m/s).
     const float RainRate = 12f, RainSpeed = 11f;
     const float SnowSpeed = 1.6f;
-    /// <summary>How high a cloud hangs over its ground, in squares.</summary>
     public const float CloudHeight = 2.6f;
 
-    /// <summary>How a gas looks: its colour, how far up it starts and how high it stacks (squares), a puff's size across (squares), its opacity over the thickest of it, and what falls from it.</summary>
     readonly struct Style
     {
         public readonly Color Tint;
         public readonly float Lift, Rise, Size, Opacity;
         public readonly bool Rains, Snows;
 
-        /// <summary>The same in another colour.</summary>
         public Style In(Color tint) => new(new Color(tint.r, tint.g, tint.b, Tint.a), Lift, Rise, Size, Opacity, Rains, Snows);
 
         public Style(Color tint, float lift, float rise, float size, float opacity, bool rains = false, bool snows = false)
@@ -50,23 +45,18 @@ public class FogBank : MonoBehaviour
     static readonly Style StormStyle = new(new Color(0.13f, 0.14f, 0.2f, 1f), CloudHeight, 0.3f, 3.5f, 0.92f, rains: true);
     static readonly Style SnowCloudStyle = new(new Color(0.9f, 0.93f, 0.98f, 1f), CloudHeight, 0.25f, 3.2f, 0.8f, snows: true);
 
-    /// <summary>Whether it's the thin veil fog weather lays, too thin to draw on its own cell (a single unit).</summary>
     public static bool IsVeil(string gas, int amount) => gas == GasIds.Fog && amount == 1;
 
-    /// <summary>Whether a gas is drawn here rather than as a particle effect.</summary>
     public static bool Draws(string gas) => gas == GasIds.Fog || gas == GasIds.Dust || gas == GasIds.Cloud || gas == GasIds.Storm || gas == GasIds.SnowCloud;
 
-    // The gas's style in the colour the rules in force give it (ChemGrid.WorldLook.cs).
     Style StyleOf(string gas, int index)
     {
         var style = ArtOf(gas);
         return style.In(grid.GasColorAt(gas, index, style.Tint));
     }
 
-    /// <summary>The colour a square of gas is drawn in, for a probe; null with none there.</summary>
     public Color? ColorAt(int index) => squares.TryGetValue(index, out var s) ? s.style.Tint : null;
 
-    /// <summary>The rules switched: every square takes its gas's colour now.</summary>
     public void Recolour()
     {
         foreach (var (index, s) in squares)
@@ -82,7 +72,6 @@ public class FogBank : MonoBehaviour
         _ => FogStyle,
     };
 
-    // How fast a square's fog fades in or out (opacity a second), and how far a puff wanders (in squares).
     const float FadeRate = 0.8f, Wander = 0.35f;
 
     sealed class Square
@@ -105,7 +94,6 @@ public class FogBank : MonoBehaviour
     ParticleSystem rain, snow;
     float rainOwed;
 
-    /// <summary>A fog bank on a new child of <paramref name="grid"/>.</summary>
     public static FogBank On(ChemGrid grid)
     {
         var go = new GameObject("Fog");
@@ -116,14 +104,8 @@ public class FogBank : MonoBehaviour
         return bank;
     }
 
-    /// <summary>How many squares of fog are drawn (fading ones too), for the probe.</summary>
     public int SquaresShown => squares.Count;
 
-    /// <summary>
-    /// The gas over square <paramref name="index"/> standing on <paramref name="ground"/> at
-    /// <paramref name="center"/>: <paramref name="amount"/> units out of <paramref name="max"/> of
-    /// <paramref name="gas"/>; 0 fades it out.
-    /// </summary>
     public void Set(int index, Vector3 center, float ground, int amount, int max, string gas)
     {
         float target = max > 0 ? Mathf.Sqrt(Mathf.Clamp01(amount / (float)max)) : 0f;
@@ -142,7 +124,6 @@ public class FogBank : MonoBehaviour
         s.style = StyleOf(gas, index);
     }
 
-    /// <summary>The gas over a square is gone at once: burnt in a flash, not fading.</summary>
     public void Vanish(int index)
     {
         if (!squares.TryGetValue(index, out var s)) return;
@@ -187,7 +168,6 @@ public class FogBank : MonoBehaviour
         }
     }
 
-    // A square's puffs, stacked and drifting about its centre, faced to the camera.
     void Place(Square s, Quaternion turn, float t)
     {
         var style = s.style;
@@ -205,7 +185,6 @@ public class FogBank : MonoBehaviour
         }
     }
 
-    // Drops from under a square of rain cloud, gone when they reach its ground.
     void Rain(Square s, int drops)
     {
         if (drops <= 0 || s.target <= 0f) return;
@@ -219,7 +198,6 @@ public class FogBank : MonoBehaviour
         }
     }
 
-    // Flakes drifting down from under a square of snow cloud.
     void Snow(Square s, int flakes)
     {
         if (flakes <= 0 || s.target <= 0f) return;
@@ -306,7 +284,6 @@ public class FogBank : MonoBehaviour
         material = UrpMaterials.NewLit("Fog", Color.white, 0f);
         UrpMaterials.MakeTransparent(material);
         material.SetTexture("_BaseMap", texture);
-        // Both faces, so a puff the camera ends up behind still shows.
         material.SetFloat("_Cull", 0f);
     }
 

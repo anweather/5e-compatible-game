@@ -28,7 +28,6 @@ public class BlinkProbe : ProbeScenario
         Check("spell_found", spell != null, SpellIds.MistyStep);
         if (spell == null) yield break;
         var start = wizard.transform.position;
-        // From the yard, and out in the meadow by the trees.
         foreach (var home in new[] { start, new Vector3(27f, grid.GroundAt(new Vector3(27f, 0f, 26f)) + 0.05f, 26f) })
         {
             Teleport(home);
@@ -52,9 +51,6 @@ public class BlinkProbe : ProbeScenario
         Teleport(start);
     }
 
-    // Misty Step cast through the caster again and again, each two frames after the last, so the mist
-    // of the one before is still there: out, then back onto the spot it just left (its mist), turning
-    // a quarter each pair. The fourth comes straight after a Thunderwave.
     IEnumerator CastInARow()
     {
         Check("bar_has_misty_step", caster.Select(SpellIds.MistyStep));
@@ -92,7 +88,6 @@ public class BlinkProbe : ProbeScenario
         Check("spam_casts_arrive", casts >= SpamCasts - 1 && arrived == casts, $"{arrived}/{casts} cast in a row arrived. " + string.Join("; ", log));
     }
 
-    // The same aim, past a tap's range, at a tap and held to full charge: the held one lands further, and arrives.
     IEnumerator CastCharged()
     {
         var from = wizard.transform.position;
@@ -117,7 +112,6 @@ public class BlinkProbe : ProbeScenario
         Check("held_blink_reaches_further", false, $"no aim {far:0} m out landed further held than tapped");
     }
 
-    // A cast as SpellCaster.Update makes it on release: the spot found from the crosshair, then the cast in its square.
     void CastBlink(Vector3 landing, int charge)
     {
         caster.BlinkPoint = landing;
@@ -125,7 +119,6 @@ public class BlinkProbe : ProbeScenario
         caster.Cast(new CastCommand(SpellIds.MistyStep, cell.x, cell.y, 1, charge));
     }
 
-    // Where an aim at the ground <paramref name="distance"/> metres off along <paramref name="dir"/> would land, at a charge.
     bool Spot(Vector3 home, Vector3 dir, float distance, int charge, out Vector3 landing)
     {
         landing = default;
@@ -138,9 +131,6 @@ public class BlinkProbe : ProbeScenario
 
     static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
 
-    // Every direction, from a few metres out to twice the range, as a player aiming across the open
-    // valley does (those land short). The camera stands behind the wizard looking at the spot, as a
-    // player turns to aim.
     void AimAllRound(Vector3 home)
     {
         var cam = Camera.main.transform;
@@ -171,7 +161,6 @@ public class BlinkProbe : ProbeScenario
         if (said == null) good.Add((landing, grid.CellAt(landing), home));
     }
 
-    // A few of the good spots, the cast's own way: BlinkPoint, then Blink checking again.
     IEnumerator BlinkForReal()
     {
         var caster = wizard.GetComponent<SpellCaster>();

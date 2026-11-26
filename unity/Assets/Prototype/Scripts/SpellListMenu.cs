@@ -17,7 +17,6 @@ using UnityEngine.InputSystem;
 public class SpellListMenu : MonoBehaviour
 {
     public const string PageId = "spells";
-    /// <summary>The hands' tab's name.</summary>
     public const string HandsName = "Your hands";
     const int Width = 980;
     const float TabsWidth = 220f, RowHeight = 66f, HandLabel = 110f, ElementWidth = 118f, TableColumn = 150f;
@@ -34,12 +33,10 @@ public class SpellListMenu : MonoBehaviour
     int openedFrame = -1;
     bool openedInPlay;
     string said;
-    const int SectionOrder = 40; // the Game sub menu, before the Grimoire
+    const int SectionOrder = 40;
 
-    /// <summary>The tabs showing, for the probe.</summary>
     public static IReadOnlyList<SpellTab> Tabs => instance != null ? instance.tabs : new List<SpellTab>();
 
-    /// <summary>The tab showing, for the probe.</summary>
     public static int Tab => instance != null ? instance.tab : 0;
 
     public static bool Open => PauseMenu.Instance != null && PauseMenu.Instance.Open && PauseMenu.Instance.CurrentPage == PageId;
@@ -53,10 +50,6 @@ public class SpellListMenu : MonoBehaviour
         instance = go.AddComponent<SpellListMenu>();
     }
 
-    /// <summary>
-    /// Opens the menu on the spell list: with the hands on their tab, else on the tab and row of this wizard's spell.
-    /// From the pad (<paramref name="byPad"/>) the highlight shows at the first press, so the d-pad that opened it doesn't move it.
-    /// </summary>
     public static void Show(SpellCaster caster, bool byPad = false)
     {
         var menu = PauseMenu.Instance;
@@ -87,7 +80,6 @@ public class SpellListMenu : MonoBehaviour
         PauseMenu.RemovePage(PageId);
     }
 
-    // The Esc menu's way in, the pad's now the d-pad's down is the hands menu.
     void DrawEntry()
     {
         if (EventLog.TrackedCaster == null || !PauseMenu.Button("Spells", PauseMenu.ButtonStyle)) return;
@@ -100,10 +92,9 @@ public class SpellListMenu : MonoBehaviour
     }
     void OnDestroy() { if (instance == this) instance = null; }
 
-    // Up, down and Enter are the menu's own (MenuControls); the tabs turn here.
     void Update()
     {
-        if (!Open || openedFrame == Time.frameCount) return; // the Tab that opened it isn't one that closes it
+        if (!Open || openedFrame == Time.frameCount) return;
         var keys = Keyboard.current;
         var pad = Gamepad.current;
         if (keys != null && keys.tabKey.wasPressedThisFrame) PauseMenu.Instance.SetOpen(false);
@@ -111,7 +102,6 @@ public class SpellListMenu : MonoBehaviour
         else if ((keys != null && (keys.rightArrowKey.wasPressedThisFrame || keys.dKey.wasPressedThisFrame)) || (pad != null && pad.dpad.right.wasPressedThisFrame)) Turn(1);
     }
 
-    // Back from the page goes to play if it was opened from there; else to the menu it came from.
     bool BackToPlay()
     {
         if (!openedInPlay) return false;
@@ -133,7 +123,6 @@ public class SpellListMenu : MonoBehaviour
 
     World World => caster != null && caster.grid != null ? caster.grid.World : null;
 
-    // The hands' tab, while the hands are what cast (not the debug layout).
     bool HandsShown => caster != null && caster.controls != null && caster.controls.HandPad && World != null && World.HandsOn(caster.CastPlayer);
 
     void Fill()
@@ -195,8 +184,6 @@ public class SpellListMenu : MonoBehaviour
         return shown.Name == HandsName ? "Enter attunes" : "Enter picks for Cast in the F2 layout";
     }
 
-    // ---------- the hands' tab ----------
-
     void DrawHands()
     {
         var world = World;
@@ -244,7 +231,6 @@ public class SpellListMenu : MonoBehaviour
         GUILayout.EndHorizontal();
     }
 
-    // What the hands cast as they hold: each hand's own row and, where the table has one, the two together, gesture by gesture.
     void Table(World world, string player)
     {
         var table = world.Rules.Sim.Hold.Hands;
@@ -305,8 +291,6 @@ public class SpellListMenu : MonoBehaviour
 
     static string Capital(string word) => string.IsNullOrEmpty(word) ? word : char.ToUpperInvariant(word[0]) + word.Substring(1);
 
-    // ---------- every spell ----------
-
     void Row(string spellId)
     {
         var def = listedFor?.Spell(spellId);
@@ -319,7 +303,6 @@ public class SpellListMenu : MonoBehaviour
         PauseMenu.Instance.SetOpen(false);
     }
 
-    // Blurbs can open with "Cantrip." or "Level 3.", which the row already says.
     static string WithoutLevel(string blurb)
     {
         int stop = blurb.IndexOf(". ", System.StringComparison.Ordinal);
