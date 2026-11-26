@@ -124,7 +124,10 @@ conflict, a merge touching files the branch doesn't own, a failed gate), plus:
 a dirty checkout, being on `dev` or `main`, and a branch that leaves its queue
 claim on dev. `--compiled` is accepted only where
 `node tools/workers/queue.mjs caps` says `unity`: Unity C# from a machine
-without Unity stops, and goes to the mailbox for the PC to compile. Once
+without Unity stops, and goes to the mailbox for the PC to compile. The C#
+directly in `unity/Assets/Prototype/Chemistry/Tests/` and `Chemistry/Mcp/`
+doesn't count: the gates' `dotnet build core` compiles it, so it lands from
+any machine (`engine_free` in `land.sh`). Once
 landed, the checkout is switched to `dev` and the branch deleted, here and on
 origin. Deleting your own `queue/taken/` claim needs no `--deletes`.
 

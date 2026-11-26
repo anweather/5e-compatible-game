@@ -72,7 +72,9 @@ performance runs stay on the host).
 3. Land: `bash tools/workers/land.sh here < message` (a line or two: what
    landed). Add `--compiled` only if this machine has Unity and you compiled
    the Unity C# in it; without Unity, a Unity C# branch stops and goes to the
-   PC through the mailbox. `--deletes` only for deletions you meant and read.
+   PC through the mailbox. C# only in `Chemistry/Tests/` and `Chemistry/Mcp/`
+   (and the core package) needs no `--compiled`: the gates' dotnet build
+   compiles it. `--deletes` only for deletions you meant and read.
 4. Report what `land.sh` said. `STOP: ...` is a refusal, not a success: say
    so first in your report, with the reason (`land.sh` has already sent it to
    the PM). Don't work around a refusal (no `--deletes` you didn't read, no

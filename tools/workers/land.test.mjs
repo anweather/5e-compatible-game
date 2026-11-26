@@ -104,6 +104,64 @@ test("Unity C# lands with --compiled where there's Unity", () => {
   } finally { s.done(); }
 });
 
+test("engine-free C# under unity/ lands without --compiled: the gates' dotnet build compiles it", () => {
+  const s = scratch();
+  try {
+    s.commit({ "unity/Assets/Prototype/Chemistry/Tests/ATests.cs": "class ATests {}\n", "unity/Assets/Prototype/Chemistry/Mcp/B.cs": "class B {}\n" });
+    const { code, out } = s.land();
+    assert.equal(code, 0, out);
+    assert.ok(s.devHas("unity/Assets/Prototype/Chemistry/Tests/ATests.cs"));
+    assert.ok(s.devHas("unity/Assets/Prototype/Chemistry/Mcp/B.cs"));
+    assert.deepEqual(s.outbox(), []);
+  } finally { s.done(); }
+});
+
+test("Scripts/ C#, or a subfolder dotnet doesn't link, still needs a Unity compile", () => {
+  for (const f of ["unity/Assets/Prototype/Scripts/A.cs", "unity/Assets/Prototype/Chemistry/Tests/Deeper/A.cs"]) {
+    const s = scratch();
+    try {
+      s.commit({ [f]: "class A {}\n" });
+      const { code, out } = s.land();
+      refused(s, out, code, "the PC");
+      assert.match(out, new RegExp(f));
+      assert.ok(!s.devHas(f));
+    } finally { s.done(); }
+  }
+});
+
+test("a change mixing engine-free C# with Scripts/ C# is refused, naming only the Scripts/ file", () => {
+  const s = scratch();
+  try {
+    s.commit({ "unity/Assets/Prototype/Chemistry/Tests/ATests.cs": "class ATests {}\n", "unity/Assets/Prototype/Scripts/A.cs": "class A {}\n" });
+    const { code, out } = s.land();
+    refused(s, out, code, "the PC");
+    assert.match(out, /Scripts\/A\.cs/);
+    assert.doesNotMatch(out, /ATests\.cs/);
+    assert.ok(!s.devHas("unity/Assets/Prototype/Chemistry/Tests/ATests.cs"));
+  } finally { s.done(); }
+});
+
+test("the coordinator's auto landing draws the same line", () => {
+  const s = scratch();
+  try {
+    s.commit({ "unity/Assets/Prototype/Chemistry/Tests/ATests.cs": "class ATests {}\n", "unity/Assets/Prototype/Scripts/A.cs": "class A {}\n" });
+    s.g(s.repo, "push", "-q", "origin", "HEAD:feat");
+    s.g(s.repo, "switch", "-q", "-C", "coordinator", "origin/dev");
+    const auto = () => spawnSync("bash", ["tools/workers/land.sh", "auto", "feat"], { cwd: s.repo, env: { ...process.env, ...ident, HOME: join(s.dir, "home") }, encoding: "utf8", input: "Merge feat\n" });
+    let r = auto();
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /STOP: the branch changes Unity C#[^]*Scripts\/A\.cs/);
+    assert.doesNotMatch(r.stdout, /ATests\.cs/);
+    s.g(s.repo, "switch", "-q", "feat");
+    s.commit({}, ["unity/Assets/Prototype/Scripts/A.cs"]);
+    s.g(s.repo, "push", "-q", "origin", "HEAD:feat");
+    s.g(s.repo, "switch", "-q", "-C", "coordinator", "origin/dev");
+    r = auto();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /Landed feat on dev/);
+  } finally { s.done(); }
+});
+
 test("a failing gate is refused and dev is untouched", () => {
   const s = scratch();
   try {

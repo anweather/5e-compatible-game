@@ -11,7 +11,8 @@
 #   land.sh auto <branch> [--compiled] [--deletes] [--dry] < message
 #                                      the whole landing, printing only what matters: refuses on
 #                                      deletions, heavy removals, C# nobody compiled in Unity
-#                                      (--compiled says DesktopUnity or the Mac did), a conflict, or
+#                                      (--compiled says DesktopUnity or the Mac did; engine_free's
+#                                      folders need none, the gates' dotnet build compiles them), a conflict, or
 #                                      a merge touching files the branch doesn't own; runs every
 #                                      gate; pushes, and merges again if dev moved. --deletes
 #                                      accepts deletions and heavy removals you've read. --dry
@@ -28,10 +29,12 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 cmd="${1:-}"; branch="${2:-}"
-usage() { sed -n 2,27p "$0"; exit 2; }
+usage() { sed -n 2,28p "$0"; exit 2; }
 [[ -n "$cmd" && ( -n "$branch" || "$cmd" == here ) ]] || usage
 git fetch -q origin
 taken=docs/handoffs/briefs/queue/taken
+engine_free='^unity/Assets/Prototype/Chemistry/(Tests|Mcp)/[^/]*\.cs$'
+unity_cs() { grep -E '^unity/.*\.cs$' | grep -vE "$engine_free" || true; }
 case "$cmd" in
   here)
     name="$(cut -d' ' -f1 /var/lib/worker/name.txt C:/ProgramData/worker/name.txt 2>/dev/null | head -1 || true)"
@@ -65,8 +68,8 @@ case "$cmd" in
       node "$here/queue.mjs" caps | grep -qx unity \
         || refuse "--compiled, but this machine has no Unity (queue.mjs caps): the branch goes to the mailbox for the PC to compile."
       flags+=(--compiled)
-    elif git diff --name-only origin/dev...HEAD | grep -qE '^unity/.*\.cs$'; then
-      refuse "the branch changes Unity C#, and nobody has compiled it in Unity: it goes to the mailbox for the PC (or a machine with Unity) to compile, then land with --compiled."
+    elif cs="$(git diff --name-only origin/dev...HEAD | unity_cs)"; [[ -n "$cs" ]]; then
+      refuse "the branch changes Unity C#, and nobody has compiled it in Unity: it goes to the mailbox for the PC (or a machine with Unity) to compile, then land with --compiled."$'\n'"$cs"
     fi
     git push -q origin "HEAD:refs/heads/$branch" 2>"$out" || refuse "pushing $branch failed: $(cat "$out")"
     main="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
@@ -122,8 +125,9 @@ case "$cmd" in
     for claim in $(git grep -lE "^Branch:[[:space:]]*[\`]?$branch[\`]?[[:space:]]*$" origin/dev -- "$taken" 2>/dev/null | sed 's/^origin\/dev://'); do
       grep -qxF "$claim" <<< "$own" || stop "the branch leaves its claim $claim on dev: git rm it on the branch."
     done
-    if [[ $compiled == 0 ]] && grep -qE '^unity/.*\.cs$' <<< "$own"; then
-      stop "the branch changes Unity C#; pass --compiled once a machine with Unity has compiled it."
+    cs="$(unity_cs <<< "$own")"
+    if [[ $compiled == 0 && -n "$cs" ]]; then
+      stop "the branch changes Unity C#; pass --compiled once a machine with Unity has compiled it:"$'\n'"$cs"
     fi
     message="$(cat)"
     log="$(git rev-parse --absolute-git-dir)/land-gates.log"

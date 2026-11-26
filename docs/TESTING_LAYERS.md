@@ -40,6 +40,12 @@ The holes, on purpose:
 - **A probe a change "couldn't reach" but did:** the sweep runs every probe on dev.
 - **Two branches that pass alone and break together:** the sweep, and the next Unity check that merges dev.
 - **u2's core-only landings have no Unity check:** the next Unity check or sweep compiles them.
+- **Engine-free C# under `unity/` lands without a Unity compile.** `land.sh` asks for `--compiled` (a machine with
+  Unity compiled it) for any `.cs` under `unity/` except the files directly in `Chemistry/Tests/` and `Chemistry/Mcp/`
+  (its `engine_free` line): `dotnet build core` compiles those the way Unity does (netstandard2.1, C# 9), so the
+  landing gates prove them. The package `packages/com.anweather.chemistry-core/` never needed it. A branch that mixes
+  them with other Unity C# still needs `--compiled`. What only Unity sees (code behind `#if UNITY_5_3_OR_NEWER`, the
+  asmdefs' references) waits for the next Unity check or sweep.
 
 A failure in the sweep goes to whoever landed the change that broke it, found by bisecting the day's landings.
 
