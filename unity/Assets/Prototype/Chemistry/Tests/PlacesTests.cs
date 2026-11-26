@@ -18,7 +18,7 @@ namespace Chem.Tests
             foreach (string map in Directory.GetDirectories(ChemistryTests.Folders.Maps).Where(m => !GeneratedMap.IsGenerated(m)))
             {
                 string path = Path.Combine(map, WorldPlaces.FileName);
-                string made = WorldPlaces.Generate(map);
+                string made = GeneratedPlaces.Generate(map);
                 if (write) File.WriteAllText(path, made);
                 Assert.That(File.ReadAllText(path).Replace("\r\n", "\n"), Is.EqualTo(made),
                     $"{path} is behind the map's data; regenerate it: PLACES_OUT=1 dotnet test core --filter PlacesFileIsUpToDate");

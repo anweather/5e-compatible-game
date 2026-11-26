@@ -676,13 +676,13 @@ namespace Chem.Tests
                 Assert.That(hold, Is.Not.Null);
                 // A build's bake is kept while it's of these inputs and this format; an older one (it has no "format",
                 // and its map.json none of the pinned map's full detail) is made again.
-                Assert.That(GeneratedMap.EnsureBakedInto(NineDir, dir), Is.False, "a bake of these inputs in this format is kept");
+                Assert.That(MapBake.EnsureBakedInto(NineDir, dir), Is.False, "a bake of these inputs in this format is kept");
                 File.Copy(Path.Combine(NineDir, MapFile.FileName), Path.Combine(dir, MapFile.FileName), true);
                 var note = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, GeneratedMap.BakeName)));
                 note.Remove("format");
                 File.WriteAllText(Path.Combine(dir, GeneratedMap.BakeName), note.ToString());
                 Assert.That(MapFile.Load(dir).FullDetail, Is.EqualTo((0, 0, -1, -1)), "the old bake, as a build before #183's fix left it");
-                Assert.That(GeneratedMap.EnsureBakedInto(NineDir, dir), Is.True, "a bake of an older format is made again");
+                Assert.That(MapBake.EnsureBakedInto(NineDir, dir), Is.True, "a bake of an older format is made again");
                 Assert.That(MapFile.Load(dir).FullDetail, Is.EqualTo(own.FullDetail));
                 Assert.That(MapCheck.Errors(dir), Is.Empty);
             }

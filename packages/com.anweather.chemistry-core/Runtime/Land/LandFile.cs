@@ -237,12 +237,12 @@ namespace Chem
         readonly byte[][] chunks;
         readonly int[] cached = new int[Chunks.Area];
         int cachedChunk = -1;
-        // A generated map's source, whose chunks' land this is (FromSource); null for land held as bytes.
-        readonly IGeneratedSource source;
+        // A generated map's source's LandInto, whose chunks' land this is (FromSource); null for land held as bytes.
+        readonly Action<int, int, int[]> source;
 
-        LandChunks(IGeneratedSource source) : this(source.W, source.H)
+        LandChunks(int w, int h, Action<int, int, int[]> landInto) : this(w, h)
         {
-            this.source = source;
+            source = landInto;
             chunks = null;
         }
 
@@ -262,8 +262,10 @@ namespace Chem
         /// A generated map's land (a map too big to bake whole, IGeneratedSource), read a chunk at a time from its source,
         /// which makes the chunk if it doesn't hold it and keeps it held for the World's reads too: nothing is read or held
         /// here for the map's size (J-086). Safe from any thread with a reader each (NewReader, ChunkInto), as the source is.
+        /// Given as the source's size and its LandInto (FromSource(source.W, source.H, source.LandInto)): the land (Chem.Land)
+        /// knows no chunk source.
         /// </summary>
-        public static LandChunks FromSource(IGeneratedSource source) => new LandChunks(source ?? throw new ArgumentNullException(nameof(source)));
+        public static LandChunks FromSource(int w, int h, Action<int, int, int[]> landInto) => new LandChunks(w, h, landInto ?? throw new ArgumentNullException(nameof(landInto)));
 
         /// <summary>Whether its land is a generated map's source's (FromSource), made as it's read.</summary>
         public bool IsFromSource => source != null;
@@ -271,7 +273,7 @@ namespace Chem
         // A chunk's land into a buffer: decoded from its bytes, or the source's.
         void Fill(int c, int[] into)
         {
-            if (source != null) source.LandInto(c % chunksW, c / chunksW, into);
+            if (source != null) source(c % chunksW, c / chunksW, into);
             else LandCodec.Decode(chunks[c], into);
         }
 

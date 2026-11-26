@@ -69,7 +69,7 @@ namespace Chem.Tests
             Assert.That(m.Plan.Problems, Is.Empty);
             // It's never baked whole: too big.
             Assert.That(GeneratedMap.IsBaked(Dir), Is.False);
-            Assert.That(() => GeneratedMap.EnsureBaked(Dir), Throws.InvalidOperationException.With.Message.Contains("too big to bake"));
+            Assert.That(() => MapBake.EnsureBaked(Dir), Throws.InvalidOperationException.With.Message.Contains("too big to bake"));
             Assert.That(() => m.Bake(Path.Combine(Path.GetTempPath(), "never")), Throws.InvalidOperationException);
         }
 

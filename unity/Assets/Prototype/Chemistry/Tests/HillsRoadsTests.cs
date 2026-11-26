@@ -291,7 +291,7 @@ namespace Chem.Tests
         public void PeersAndLateJoinersAgreeOnARoad()
         {
             string dir = Path.Combine(root, "hills-12x10");
-            GeneratedMap.EnsureRows(HillsDir, dir);
+            MapBake.EnsureRows(HillsDir, dir);
             GeneratedSource Source() => new GeneratedSource(GeneratedMap.Load(HillsDir), R);
             World Peer(GeneratedSource source)
             {

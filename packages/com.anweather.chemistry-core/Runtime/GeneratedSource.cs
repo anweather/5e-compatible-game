@@ -386,7 +386,7 @@ namespace Chem
         /// <summary>
         /// A world to play in on a generated map, as ChemGrid.MapWorld builds one from a baked map: made from the source
         /// (no chunk's cells are made until something reads it), its land the source's, then the map's puzzles, stamps,
-        /// rows, golf and Hold from <paramref name="rowsDir"/> (GeneratedMap.EnsureRows), which make only the chunks they
+        /// rows, golf and Hold from <paramref name="rowsDir"/> (MapBake.EnsureRows), which make only the chunks they
         /// lay on, every core at once. Its starting state isn't kept: KeepStart, as ChemGrid.StartWorld does.
         /// </summary>
         public static World MapWorld(GeneratedSource source, string rowsDir, Rules rules, uint seed, out (int x, int y) start)

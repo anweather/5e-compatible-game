@@ -145,22 +145,7 @@ namespace Chem
         /// cells down (World.H) the short way round the south seam too.
         /// </summary>
         public static List<(int cx, int cy)> Within(IReadOnlyList<(int cx, int cy)> chunks, double x, double y, double radius, int wrapCells = 0, int wrapCellsY = 0)
-        {
-            if (chunks == null) throw new ArgumentNullException(nameof(chunks));
-            var near = new List<(int cx, int cy)>();
-            foreach (var (cx, cy) in chunks)
-            {
-                double x0 = cx * Chunks.Size, y0 = cy * Chunks.Size;
-                // The copy of the chunk nearest x: its middle within half a world of it.
-                if (wrapCells > 0) x0 += wrapCells * Math.Round((x - (x0 + Chunks.Size / 2.0)) / wrapCells);
-                if (wrapCellsY > 0) y0 += wrapCellsY * Math.Round((y - (y0 + Chunks.Size / 2.0)) / wrapCellsY);
-                double dx = Math.Max(0, Math.Max(x0 - x, x - (x0 + Chunks.Size)));
-                double dy = Math.Max(0, Math.Max(y0 - y, y - (y0 + Chunks.Size)));
-                if (dx * dx + dy * dy <= radius * radius) near.Add((cx, cy));
-            }
-            near.Sort((a, b) => a.cy != b.cy ? a.cy.CompareTo(b.cy) : a.cx.CompareTo(b.cx));
-            return near;
-        }
+            => Chunks.Within(chunks, x, y, radius, wrapCells, wrapCellsY);
 
         // How many chunks the nearest character is from a chunk (for ChunkPlanner).
         internal static int Distance(IReadOnlyList<(int x, int y)> characters, int cx, int cy, int wrapChunks, int wrapChunksY) => Nearest(characters, cx, cy, wrapChunks, wrapChunksY);

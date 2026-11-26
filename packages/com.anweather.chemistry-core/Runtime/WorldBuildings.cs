@@ -18,7 +18,7 @@ namespace Chem
     /// <summary>world/buildings.json and world/villages.json: all a world needs to name the buildings it was made with.</summary>
     public sealed class WorldBuildings
     {
-        public const string FileName = "buildings.json";
+        public const string FileName = MapFile.BuildingsName;
 
         public static readonly WorldBuildings Empty = new WorldBuildings(new List<JObject>(), new List<VillageSpec>());
 

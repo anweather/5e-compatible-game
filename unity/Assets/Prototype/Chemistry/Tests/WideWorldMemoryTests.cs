@@ -38,7 +38,7 @@ namespace Chem.Tests
         string RowsOf(string id)
         {
             string dir = Path.Combine(root, id);
-            GeneratedMap.EnsureRows(MapDir(id), dir);
+            MapBake.EnsureRows(MapDir(id), dir);
             return dir;
         }
 

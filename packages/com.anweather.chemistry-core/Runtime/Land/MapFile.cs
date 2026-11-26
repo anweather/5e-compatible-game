@@ -1,6 +1,7 @@
 // A map's folder, world/maps/<id> (docs/design/maps-as-data.md): map.json says what the map is and what its land should
 // look like, and cells.txt is its cell map, one legend character a cell, rows top to bottom.
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -11,6 +12,11 @@ namespace Chem
     public sealed class MapFile
     {
         public const string FileName = "map.json", CellsName = "cells.txt", LandName = "land.json";
+        /// <summary>
+        /// The names of the rows a map folder holds that are read above the land (WorldBuildings, CourseLayout,
+        /// WorldPuzzles), here so the land's GeneratedMap can name what a bake writes.
+        /// </summary>
+        public const string BuildingsName = "buildings.json", CourseName = "gauntlet.json", PuzzlesName = "puzzles.json";
 
         /// <summary>The id, which is its folder's name.</summary>
         public string Id { get; private set; }
@@ -30,7 +36,7 @@ namespace Chem
         public int Highest { get; private set; }
         public int Lowest { get; private set; }
         /// <summary>How low and high land can be stamped, in land units; left out, the valley's.</summary>
-        public (int low, int high) LandRange { get; private set; } = (World.LandLowest, World.LandHighest);
+        public (int low, int high) LandRange { get; private set; } = (LandLowest, LandHighest);
         /// <summary>
         /// The places that stay code which the map wants built (docs/design/maps-as-data.md, section 4: the court, the
         /// bridge, the falls...), by name; left out, none. The scene builds every place it knows into a root of its own,
@@ -75,6 +81,31 @@ namespace Chem
         /// <summary>The chunks drawn in full detail (map.json's fullDetail: i0, j0, i1, j1, inclusive); left out, none.</summary>
         public (int i0, int j0, int i1, int j1) FullDetail { get; private set; }
 
+        /// <summary>
+        /// The maps a world file pins, without solving its plan: each one's folder (world/maps/id) and the map cell its
+        /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY), each followed
+        /// by the maps a pinned block pins in turn, where they lie in this one. Empty for a map that isn't generated.
+        /// </summary>
+        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir)
+        {
+            var found = new List<(string dir, int x, int y)>();
+            string path = Path.Combine(mapDir, FileName);
+            if (!File.Exists(path) || !(JObject.Parse(File.ReadAllText(path))["generated"] is JObject o) || !(o["pinned"] is JArray pins)) return found;
+            string worldDir = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
+            foreach (var pin in pins.OfType<JObject>())
+            {
+                string dir = Path.Combine(worldDir, "maps", (string)pin["map"]);
+                int x = (int)pin["square"][0] * WorldPlan.SquareCells, y = (int)pin["square"][1] * WorldPlan.SquareCells;
+                found.Add((dir, x, y));
+                // A pinned block's own pinned maps, where they lie in this one (the valley in the nine in the scale map).
+                foreach (var (inner, ix, iy) in PinnedSquares(dir)) found.Add((inner, x + ix, y + iy));
+            }
+            return found;
+        }
+
+        /// <summary>The valley's drawable range: how low and high land can be stamped, in land units, inside what a chunk's terrain can draw with room for a cell's own height (World.LandLowest, LandHighest).</summary>
+        public const int LandLowest = -136, LandHighest = 2176;
+
         /// <summary>A cell's side in metres, on every map.</summary>
         public const float CellMetres = 1.5f;
 
@@ -104,7 +135,7 @@ namespace Chem
         static (int i0, int j0, int i1, int j1) FullDetailOf(string mapDir, JObject o, int h)
         {
             if (o["fullDetail"] is JArray full) return ((int)full[0], (int)full[1], (int)full[2], (int)full[3]);
-            foreach (var (dir, x, y) in GeneratedMap.PinnedSquares(mapDir))
+            foreach (var (dir, x, y) in PinnedSquares(mapDir))
             {
                 if (!File.Exists(Path.Combine(dir, FileName))) continue;
                 var pinned = Load(dir);
@@ -125,7 +156,7 @@ namespace Chem
             var sea = o["sea"] as JObject;
             return new MapFile
             {
-                LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
+                LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (LandLowest, LandHighest),
                 OwnLandRange = drawable != null,
                 Yard = o["yard"] is JArray yard ? ((int)yard[0], (int)yard[1], (int)yard[2], (int)yard[3]) : ((int)o["size"][0] / 2, (int)o["size"][1] / 2, 1, 1),
                 FullDetail = FullDetailOf(worldDir, o, (int)o["size"][1]),

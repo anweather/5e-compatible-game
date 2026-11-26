@@ -3,6 +3,7 @@
     "rootNamespace": "Chem.Mcp",
     "references": [
         "Chemistry",
+        "Chem.Land",
         "Prototype.Analyzers"
     ],
     "includePlatforms": [],

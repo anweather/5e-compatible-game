@@ -10,10 +10,20 @@ The engine-free rules engine: cells in 64×64 chunks, one deterministic tick
 at a time, with behaviour read from `rules/*.json`. `docs/ARCHITECTURE.md`
 section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
+## Two assemblies
+
+- **`Runtime/Land/` is `Chem.Land`** (its own asmdef; `core/Chem.Land` in dotnet): hills, ChunkGen, world
+  plans, themes, biomes, noise, the map files, `GeneratedMap`, `Places` (reading). It never uses `World`,
+  `Cell`, `Rules` or anything else in `Runtime/` (a use there is a compile error).
+- **The rest of `Runtime/` is `Chemistry`** (`core/Game.Core`), which references `Chem.Land` and sees its
+  internals. The land's adapters onto a world stay here: `World.Land`, `GeneratedSource`, `BakedSource`,
+  `MapBake` (a generated map's bake: it writes Play's rows), `GeneratedPlaces`, `MapCheck`,
+  `MapStampsLaying`, `CellHeightfield`, `OpenWorld*`. `docs/design/chem-land-split.md` says why.
+
 ## Hard constraints
 
-- **No Unity.** `Runtime/Chemistry.asmdef` sets `noEngineReferences`; only .NET and
-  Newtonsoft.Json. `core/Game.Core` compiles these same files as
+- **No Unity.** `Runtime/Chemistry.asmdef` and `Runtime/Land/Chem.Land.asmdef` set `noEngineReferences`; only .NET and
+  Newtonsoft.Json. `core/Game.Core` and `core/Chem.Land` compile these same files as
   netstandard2.1 with **C# 9** (Unity's limit), so no newer syntax.
 - **Deterministic everywhere** (lockstep, D3/D4): integer state, all
   randomness from the world's seeded generator, no mutable statics, no

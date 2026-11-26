@@ -235,7 +235,7 @@ namespace Chem.Tests
                 Directory.CreateDirectory(dir);
                 File.WriteAllText(Path.Combine(dir, MapFile.LandName), LandFile.Write(land, w, h, 0.125));
                 File.WriteAllText(Path.Combine(dir, WorldPlaces.FileName), "{\"generate\": {\"water\": {\"below\": 0, \"least\": 3}}, \"places\": []}");
-                File.WriteAllText(Path.Combine(dir, WorldPlaces.FileName), WorldPlaces.Generate(dir));
+                File.WriteAllText(Path.Combine(dir, WorldPlaces.FileName), GeneratedPlaces.Generate(dir));
                 var found = BakeTests.WaterPlaces(dir);
                 var filled = BakeTests.FloodFilled(land, w, h, 0, 3);
                 Assert.That(found.Count, Is.GreaterThan(5), "bodies to compare");

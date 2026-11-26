@@ -3,7 +3,23 @@
 Step 5 of `docs/design/architecture-review.md` (section 6): the land out of the core into its own assembly,
 `Chem.Land`, so a hills change builds and tests alone. Done 2026-11-26 by a cloud builder on `origin/dev` at
 82bd453f, branch `claude/arch-5-chem-land`. **Outcome: stopped after the dependency map, as the brief says to when
-the cycles need more than ~15 files changed beyond moves. Nothing is split on the branch; this file is the result.**
+the cycles need more than ~15 files changed beyond moves.** A second cloud run did section 6's plan; what it did is
+the next section, and the rest of this file is the map as it was drawn.
+
+## Done
+
+- **5a (runtime split, 2026-11-26).** The prototype patch applied as it was (section 2's moves and forwarders), plus
+  way 1 of section 3: `GeneratedMap.cs`, `Places.cs` and `MapIdentity.cs` moved to `Runtime/Land/`; the bake out of
+  `GeneratedMap` into `MapBake.cs` (Sim; the old `GeneratedMap.Bake.cs` renamed, its GUID kept): `MapBake.EnsureRows`,
+  `EnsureBaked`, `EnsureBakedInto`, and `Bake`, `WriteRowsOnly`, `SpawnPlaces` as extensions on `GeneratedMap`
+  (`map.Bake(dir)` reads as before). `WorldPlaces.Generate` became `GeneratedPlaces.Generate` (Sim, with `WaterRuns`):
+  it reads Play's files. The file names a bake writes moved down as consts (`MapFile.BuildingsName`, `CourseName`,
+  `PuzzlesName`; `WorldBuildings.FileName` and the others are those). `core/Chem.Land` (netstandard2.1) compiles
+  `Runtime/Land/*.cs`, and Game.Core references it. Callers changed: `Scripts/ChemGrid.cs` (the three bake calls),
+  `Scripts/MapLand.cs` (`LandChunks.FromSource`), a comment in `Editor/Tests/WideWorldTests.cs`, and 10 test files.
+  The sweep is the same 2263 results, by name, before and after; every land and hash golden passed unchanged.
+  Unity's side: `Runtime/Land/Chem.Land.asmdef`, `Chem.Land` in the references of `Chemistry.asmdef`,
+  `Chemistry.Mcp.asmdef` and `Chemistry.Tests.asmdef`. **Not yet compiled in Unity.**
 
 Short version: the runtime half splits cleanly once one decision is made (where `GeneratedMap` goes). The tests
 don't split: only 6 of the 36 Land test files (about 50 of 498 tests) compile against the land alone. Almost every
@@ -20,9 +36,7 @@ compiler listing every missing type. That's how "uses" is measured here, not gre
 
 These 45 files, plus 8 small types moved down (section 2), compiled as their own assembly with no `World`, no
 `Rules` and nothing above them. Game.Core then built against them with `-warnaserror` and no warnings beyond S3776.
-That's the prototype in `docs/design/chem-land-split.prototype.patch` (it applies to 82bd453f; it doesn't contain
-`core/Chem.Land/Chem.Land.csproj`, a 15-line netstandard2.1 project compiling `Runtime/Land/*.cs` with
-Newtonsoft, referenced by Game.Core):
+That was the prototype in `chem-land-split.prototype.patch` (applied in 5a and deleted; it's in git at 8c103303):
 
 - Hills: `HillsForest`, `HillsMassif`, `HillsRivers`, `HillsRoads`
 - ChunkGen: `ChunkGen`, `.Hills`, `.Known`, `.Land`, `.Rivers`, `.Spawns`

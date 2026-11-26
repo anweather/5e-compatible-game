@@ -147,9 +147,9 @@ namespace Chem.Tests
         public void ItPlaysFromItsRowsAlone()
         {
             string dir = Path.Combine(root, "hills-12x10");
-            Assert.That(GeneratedMap.EnsureRows(HillsDir, dir), Is.True);
+            Assert.That(MapBake.EnsureRows(HillsDir, dir), Is.True);
             Assert.That(GeneratedMap.IsRowsOnly(dir), Is.True);
-            Assert.That(GeneratedMap.EnsureRows(HillsDir, dir), Is.False, "written once for these inputs");
+            Assert.That(MapBake.EnsureRows(HillsDir, dir), Is.False, "written once for these inputs");
             Assert.That(MapCheck.Errors(dir), Is.Empty);
             var source = new GeneratedSource(GeneratedMap.Load(HillsDir), R);
             var w = GeneratedSource.MapWorld(source, dir, R, 7, out var start);

@@ -54,7 +54,7 @@ namespace Chem
     /// <summary>world/gauntlet.json: the course's area, its gate, its booths in order and its bell.</summary>
     public sealed class CourseLayout
     {
-        public const string FileName = "gauntlet.json";
+        public const string FileName = MapFile.CourseName;
 
         public string Name;
         /// <summary>Downed inside this, a wizard on a run gets up at its last checkpoint.</summary>

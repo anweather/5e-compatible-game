@@ -5,41 +5,6 @@ using System.Runtime.CompilerServices;
 
 namespace Chem
 {
-    /// <summary>Chunk size and the maths from world-wide cell coordinates to chunks.</summary>
-    public static class Chunks
-    {
-        /// <summary>log2 of Size: the one place the chunk size is set.</summary>
-        public const int Shift = 6;
-        /// <summary>Cells along a chunk's side (64).</summary>
-        public const int Size = 1 << Shift;
-        public const int Mask = Size - 1;
-        /// <summary>Cells in one chunk.</summary>
-        public const int Area = Size * Size;
-
-        /// <summary>The chunk a cell coordinate falls in: floor(cell / Size), negatives included.</summary>
-        public static int ChunkOf(int cell) => cell >> Shift;
-
-        /// <summary>The cell's coordinate inside its chunk: cell mod Size, always 0..Size-1.</summary>
-        public static int LocalOf(int cell) => cell & Mask;
-
-        /// <summary>One number per chunk coordinate, for the chunk store's dictionary.</summary>
-        public static long Key(int cx, int cy) => ((long)cy << 32) | (uint)cx;
-
-        /// <summary>
-        /// The chunk edges a local cell index lies on, as bits 1 &lt;&lt; d for d = 0 to 3 (N, E, S, W,
-        /// the order of Chunk.Next): 0 inside, two bits in a corner.
-        /// </summary>
-        public static int EdgesOf(int i)
-        {
-            int lx = i & Mask, edges = 0;
-            if (i < Size) edges |= 1;
-            if (lx == Mask) edges |= 2;
-            if (i >= Area - Size) edges |= 4;
-            if (lx == 0) edges |= 8;
-            return edges;
-        }
-    }
-
     /// <summary>
     /// An unpacked chunk's cells and the per-cell state that only matters while it's unpacked (the sparse World,
     /// docs/design/sparse-world.md): its Cell objects, fire generations, per-tick marks and still-water snapshot. Taken from

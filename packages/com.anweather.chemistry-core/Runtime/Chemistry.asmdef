@@ -2,6 +2,7 @@
     "name": "Chemistry",
     "rootNamespace": "Chem",
     "references": [
+        "Chem.Land",
         "Prototype.Analyzers"
     ],
     "includePlatforms": [],

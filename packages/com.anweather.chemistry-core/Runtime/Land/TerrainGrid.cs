@@ -186,7 +186,7 @@ namespace Chem
             var all = new List<(int cx, int cy)>(ChunksX * ChunksZ);
             for (int j = 0; j < ChunksZ; j++)
                 for (int i = 0; i < ChunksX; i++) all.Add((i, j));
-            return ChunkStreaming.Within(all, x + U0 + 0.5, V0 - y + 0.5, radius);
+            return Chunks.Within(all, x + U0 + 0.5, V0 - y + 0.5, radius);
         }
 
         public (float x, float z) CellCenter(int x, int y) =>
