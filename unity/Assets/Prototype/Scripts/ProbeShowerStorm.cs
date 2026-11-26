@@ -10,7 +10,7 @@ using Chem;
 // performance pass (docs/perf/2026-11-03-water.md).
 public class ShowerStormProbe : WaterLookProbe
 {
-    public const string Storm = "{ \"title\": \"Storm\", \"patch\": { \"sim\": { \"weather\": { \"calmPeriods\": 0, \"rampMinutes\": 0.02, \"weights\": { \"clear\": 0, \"cloudy\": 0, \"windy\": 0, \"fog\": 0, \"rain\": 0, \"storm\": 1, \"snow\": 0 } } } } }";
+    public const string Storm = WeatherMods.Storm;
     static readonly float[] StormStretchesAt = { 30f, 90f, 150f };
     // Noise points worked out per tile cell drawn: about 8 when every redraw works it all out again.
     const long MostNoisePerCell = 2;

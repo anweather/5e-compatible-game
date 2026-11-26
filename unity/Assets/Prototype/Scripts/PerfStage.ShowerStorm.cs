@@ -15,12 +15,12 @@ public partial class PerfStage
     {
         Hollowmere();
         var switcher = grid.GetComponent<RuleSwitcher>();
-        switcher.Ask(RoomCommand.Apply(switcher.Me, "meteors", WaterLookProbe.Meteors, "Constant meteor showers"));
+        switcher.Ask(RoomCommand.Apply(switcher.Me, "meteors", WeatherMods.Meteors, "Constant meteor showers"));
         Debug.Log("PERF SHOWERSTORM shower on");
         yield return new WaitForSecondsRealtime(ShowerSeconds);
         switcher.Ask(RoomCommand.Revert(switcher.Me, "meteors"));
         yield return new WaitForSecondsRealtime(AfterShowerSeconds);
-        if (!Asked("-perf-no-rain")) switcher.Ask(RoomCommand.Apply(switcher.Me, "storm", ShowerStormProbe.Storm, "Storm"));
+        if (!Asked("-perf-no-rain")) switcher.Ask(RoomCommand.Apply(switcher.Me, "storm", WeatherMods.Storm, "Storm"));
         Debug.Log($"PERF SHOWERSTORM shower off, storm={!Asked("-perf-no-rain")} active_chunks={World.ActiveChunks.Count}");
     }
 }

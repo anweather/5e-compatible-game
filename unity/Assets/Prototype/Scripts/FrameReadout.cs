@@ -33,7 +33,7 @@ public sealed class FrameReadout : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
     {
-        if (ProbeLink.InVirtualPlayer || Instance != null) return;
+        if (VirtualPlayer.Active || Instance != null) return;
         var go = new GameObject("Frame readout");
         DontDestroyOnLoad(go);
         go.AddComponent<FrameReadout>();

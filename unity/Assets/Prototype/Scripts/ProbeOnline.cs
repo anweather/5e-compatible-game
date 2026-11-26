@@ -29,18 +29,10 @@ public static class ProbeLink
     /// <summary>The host names a tick it has run; the virtual player answers once it has run it too (OnlineProbe.ClientInStep).</summary>
     public const string InStepAsk = "in-step-ask", InStep = "in-step";
 
-    /// <summary>True in a Multiplayer Play Mode virtual player (its project is a copy under Library/VP/).</summary>
-    public static bool InVirtualPlayer => Application.isEditor && VirtualRoot() != null;
+    /// <summary>True in a Multiplayer Play Mode virtual player (VirtualPlayer, in the game).</summary>
+    public static bool InVirtualPlayer => VirtualPlayer.Active;
 
-    // The main project's folder: the virtual player's project is <main>/Library/VP/<id>/.
-    static string VirtualRoot()
-    {
-        string data = Application.dataPath.Replace('\\', '/');
-        int at = data.IndexOf("/Library/VP/", StringComparison.Ordinal);
-        return at < 0 ? null : data.Substring(0, at);
-    }
-
-    static string Dir => Path.Combine(VirtualRoot() ?? Directory.GetCurrentDirectory(), "Temp", "Probe", "online");
+    static string Dir => Path.Combine(VirtualPlayer.MainProject() ?? Directory.GetCurrentDirectory(), "Temp", "Probe", "online");
 
     public static string HostFile => Path.Combine(Dir, "host.json");
     public static string ClientFile => Path.Combine(Dir, "client.json");

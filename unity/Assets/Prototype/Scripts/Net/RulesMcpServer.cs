@@ -60,7 +60,7 @@ public class RulesMcpServer : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
     {
-        if (ProbeLink.InVirtualPlayer || FindAnyObjectByType<RulesMcpServer>() != null) return;
+        if (VirtualPlayer.Active || FindAnyObjectByType<RulesMcpServer>() != null) return;
         var go = new GameObject("Rules MCP");
         DontDestroyOnLoad(go);
         go.AddComponent<RulesMcpServer>();

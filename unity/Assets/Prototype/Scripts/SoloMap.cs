@@ -21,7 +21,7 @@ public sealed class SoloMap : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
     {
-        if (ProbeLink.InVirtualPlayer || FindAnyObjectByType<SoloMap>() != null) return;
+        if (VirtualPlayer.Active || FindAnyObjectByType<SoloMap>() != null) return;
         var go = new GameObject("Solo map");
         DontDestroyOnLoad(go);
         go.AddComponent<SoloMap>();

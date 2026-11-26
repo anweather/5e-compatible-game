@@ -68,7 +68,7 @@ public class PlayLog : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
     {
-        if (ProbeLink.InVirtualPlayer || Instance != null) return;
+        if (VirtualPlayer.Active || Instance != null) return;
         var go = new GameObject("Play log");
         DontDestroyOnLoad(go);
         go.AddComponent<PlayLog>();

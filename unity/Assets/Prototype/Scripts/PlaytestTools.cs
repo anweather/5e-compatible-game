@@ -45,7 +45,7 @@ public sealed class PlaytestTools : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
     {
-        if (ProbeLink.InVirtualPlayer || Instance != null) return;
+        if (VirtualPlayer.Active || Instance != null) return;
         var go = new GameObject("Playtest tools");
         DontDestroyOnLoad(go);
         go.AddComponent<PlaytestTools>();
