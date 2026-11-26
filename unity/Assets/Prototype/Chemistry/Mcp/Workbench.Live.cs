@@ -85,10 +85,12 @@ namespace Chem.Mcp
             {
                 PutLayers(mods);
             }
+#pragma warning disable S108
             catch (ModException)
             {
                 // The room composed them over its own base; ours differs (rules/ edited on disk). The last that fit stands.
             }
+#pragma warning restore S108
         }
 
         void PutLayers(IReadOnlyList<RoomMod> mods)

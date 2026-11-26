@@ -129,10 +129,12 @@ namespace Chem.Mcp
                 messages.Add(FirstMessage(message));
                 Loop(stop);
             }
+#pragma warning disable S108
             catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
                 // Cancel and the timeout: the caller says which, and no result line follows.
             }
+#pragma warning restore S108
             catch (OperationCanceledException)
             {
                 Finish("The request was dropped before it answered.", "wire");
