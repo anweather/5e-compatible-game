@@ -30,9 +30,10 @@ Sonar's licence (source-available, free to use) is next to its DLL.
 **Scope.** Unity runs an analyzer that sits next to an `.asmdef` only on that
 assembly and on the assemblies that reference it. `Prototype.Analyzers.asmdef`
 (made real by the comment-only `AnalyzerScope.cs`) is referenced by
-`Chemistry`, `Chemistry.Tests` and `Prototype.AssetPacks.Editor`, and
-automatically by `Assembly-CSharp` and `Assembly-CSharp-Editor` (which hold
-`Scripts/` and `Scripts/Editor/`). Packs with their own `.asmdef` and Unity
+`Chemistry`, `Chemistry.Tests`, `Prototype.AssetPacks.Editor` and the game's
+`Prototype.Game`, `Prototype.Game.Editor` and `Prototype.Game.Tests` (which
+hold `Scripts/`, `Scripts/Editor/` and the Unity-only tests), and
+automatically by `Assembly-CSharp` and `Assembly-CSharp-Editor`. Packs with their own `.asmdef` and Unity
 packages don't reference it, so they aren't analyzed. The exception is
 two Starter Assets tutorial files that have no `.asmdef`
 (`TutorialInfo/Scripts/Readme.cs` and `Editor/ReadmeEditor.cs`). They compile
@@ -195,8 +196,7 @@ build) on the Mac, both built at c11083e, over Unity Relay.
 
 ## Recommendations
 
-- Give `Scripts/` its own `.asmdef` (e.g. `Prototype`, referencing
-  `Chemistry`, `Prototype.Analyzers`, Unity.InputSystem and Cinemachine).
-  `Prototype.Analyzers` could then stop being auto-referenced, so
-  `Assembly-CSharp` (and the two pack tutorial files) would no longer be
-  analyzed, and the Scripts would compile separately from the packs.
+- `Scripts/` has its own asmdefs now (`Prototype.Game` and its Editor and
+  test assemblies), so `Prototype.Analyzers` could stop being
+  auto-referenced: then `Assembly-CSharp` (now only the two pack tutorial
+  files) would no longer be analyzed.

@@ -36,8 +36,15 @@ things go" table is the recipe for adding a spell, material, prop or item.
   use `PadGlyphs` (`Text("{South} choose")`, `Label(PadButton.East)`),
   which names it as printed on the pad used last (Xbox, PlayStation,
   Switch, Steam).
-- This folder has no `.asmdef`: it compiles into `Assembly-CSharp`, so CI
-  can't build it. Its checks are the Unity console's analyzer warnings
+- Assemblies: this folder and `ThirdParty/Punchy` compile into
+  `Prototype.Game`; `Editor/`, `Perf/Editor/` and `Punchy/Terrain/Editor/`
+  into the Editor-only `Prototype.Game.Editor` (`Editor/AssetPacks/` keeps
+  `Prototype.AssetPacks.Editor`); `Editor/Tests/` and `Playtest/Editor/`
+  (with `PlaytestBuild`) into the test assembly `Prototype.Game.Tests`. A
+  new folder named `Editor` here joins an Editor-only assembly with an
+  `.asmref`, or its code goes into player builds. A new package the code
+  uses goes into the asmdef's references. CI still can't build these
+  (only the Editor does). Its checks are the Unity console's analyzer warnings
   (don't add any; the current count is the baseline in `docs/QUALITY.md`)
   and the probe.
 - There are two wizards: the solo one in the yard and the `NetWizard`

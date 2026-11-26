@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # editmode.sh: run the Editor's EditMode tests in the open Unity Editor, by group (docs/TESTING_LAYERS.md).
 #   tools/editmode.sh [unity|chem|all|sweep] [extra args for `unity command test run`]
-#     unity   (default) the Unity-only tests: Assembly-CSharp-Editor (Scripts/Editor/Tests, Scripts/Playtest/Editor), ~440 tests.
+#     unity   (default) the Unity-only tests: Prototype.Game.Tests (Scripts/Editor/Tests, Scripts/Playtest/Editor), ~440 tests.
 #             About 4 min on the Mac. Run it for any change to Scripts/ or Net/.
 #     chem    the Chemistry tests under Mono (Chemistry.Tests, ~1570 tests): the same tests `dotnet test core` runs under .NET,
 #             so only for a change to Chemistry/ (Mono can round differently) or the daily sweep. About 40 min on the Mac
@@ -16,7 +16,7 @@ group="${1:-unity}"; [[ $# -gt 0 ]] && shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
 export UNITY_PROJECT_PATH="${UNITY_PROJECT_PATH:-$here/unity}"
 case "$group" in
-  unity) filter=(--filter Assembly-CSharp-Editor --filter_type assembly); secs=900 ;;
+  unity) filter=(--filter Prototype.Game.Tests --filter_type assembly); secs=900 ;;
   chem)  filter=(--filter Chemistry.Tests --filter_type assembly); secs=3600 ;;
   all)   filter=(); secs=3600 ;;
   sweep) filter=(--include_explicit true); secs=3600 ;;

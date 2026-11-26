@@ -305,9 +305,10 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `Chemistry/` (the package's `Runtime/` but `Land/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
 | `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
 | `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
-| `Scripts/` (the view) | `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
+| `Scripts/` (the view, with `Net/`, `Playtest/`, `Perf/` and `ThirdParty/Punchy`: asmdef `Prototype.Game`) | `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
 | `Scripts/Net/` | `Scripts/`, `Chemistry/` | the view uses it only as the door of rule 3 |
-| `Scripts/Editor/` | everything | nothing references it |
+| `Scripts/Editor/` (with `Perf/Editor/` and `Punchy/Terrain/Editor/`: asmdef `Prototype.Game.Editor`, Editor only) | everything | nothing references it but its tests |
+| `Scripts/Editor/Tests/`, `Scripts/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything, NUnit | nothing references it |
 | `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chem.Land`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
 | `core/Chem.Land` | links `Runtime/Land/*.cs` (netstandard2.1) | any other `core/` project |
 | `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
@@ -357,9 +358,9 @@ What this clean-up left alone, roughly in order of value.
   with the sandbox frozen they can be split on their own, with the goldens
   as the safety net. Then drop `S3776` from `WarningsNotAsErrors` in
   `core/Directory.Build.props`.
-- **No `.asmdef` for `Scripts/`.** The view compiles into
-  `Assembly-CSharp` with the Starter Assets tutorial scripts. An asmdef
-  would enforce rules 2 to 4 above (see `QUALITY.md`, Recommendations).
+- **One assembly for the whole view.** `Scripts/` has an asmdef
+  (`Prototype.Game`) but `Net/` and the view share it, so rules 2 to 4
+  above are still kept by review, not by the compiler.
 - **The two demo directors** (`DemoDirector`, `NetDemoDirector`) script
   similar tours in two formats (a coroutine and a step table).
 - **The valley builders keep their layout in static fields**
