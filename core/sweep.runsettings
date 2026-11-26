@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Everything, the Sweep category too (docs/TESTING_LAYERS.md): CI's quality workflow, the landing gates (which skip
+     Sweep with their own filter) and the sweep, `dotnet test core -s core/sweep.runsettings`. -->
+<RunSettings>
+  <NUnit>
+  </NUnit>
+</RunSettings>

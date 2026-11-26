@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Chemistry tests of the rule tables, mods, components, looks and the spell list (Chem.Tests.props). -->
+  <Import Project="../Chem.Tests.props" />
+
+  <ItemGroup>
+    <Compile Include="@(ChemTestsRules)" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Chem.Shared.Tests/Chem.Shared.Tests.csproj" />
+  </ItemGroup>
+</Project>

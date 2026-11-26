@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Chemistry tests' shared fixture (ChemistryTests: the rules, folders and rooms every other test uses) and EveryFixtureHasAKind. Chem.Tests.props says which project holds which tests. -->
+  <Import Project="../Chem.Tests.props" />
+
+  <ItemGroup>
+    <Compile Include="@(ChemTestsShared)" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+</Project>

@@ -26,6 +26,9 @@
          methods ported line by line from the (now frozen) TS sandbox. Remove this line once
          they are split up. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);S3776</WarningsNotAsErrors>
+
+    <!-- Plain `dotnet test core` skips the Sweep category; `-s core/sweep.runsettings` runs everything. -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)default.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>

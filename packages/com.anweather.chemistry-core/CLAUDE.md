@@ -42,7 +42,7 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 ## Tests
 
 `unity/Assets/Prototype/Chemistry/Tests/` holds NUnit 3 tests that run both in Unity's EditMode runner and
-under `dotnet test core` (via `core/Game.Core.Tests`). Run one with
+under `dotnet test core` (via the `core/Chem.<Module>.Tests` projects, `core/Chem.Tests.props`). Run one with
 `dotnet test core --filter "FullyQualifiedName~<Name>"`. Tests read the real
 `rules/` folder through `ChemistryTests.RulesDir()`, and some read docs
 (`docs/MODDING.md` examples must pass the checks). Every fixture is

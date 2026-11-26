@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What plain `dotnet test core` runs (Directory.Build.props points every project here): everything but the Sweep
+     category, the whole runs peer by peer that layer 4 runs (docs/TESTING_LAYERS.md). CI, the landing gates and the
+     sweep pass `-s core/sweep.runsettings` instead. -->
+<RunSettings>
+  <NUnit>
+    <Where>cat != Sweep</Where>
+  </NUnit>
+</RunSettings>

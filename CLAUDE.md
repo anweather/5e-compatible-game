@@ -94,7 +94,9 @@ The andrew-claude-kit skills read their project settings from `docs/KIT_SETTINGS
 ```sh
 # C# core (what CI's "quality" workflow runs); the Editor isn't needed
 dotnet build core -c Release -warnaserror   # on a many-core Mac add -m:1: a parallel build can turn Rules.Mcp's S3776 into an error
-dotnet test core
+dotnet test core                                # all but the Sweep category (core/default.runsettings)
+dotnet test core -s core/sweep.runsettings      # everything, as CI does
+dotnet test core/Chem.Land.Tests                # one module's tests: Chem.{Shared,Rules,Land,Sim,Play,Lockstep,Playtest}.Tests (docs/TESTING_LAYERS.md)
 dotnet test core --filter "FullyQualifiedName~EveryExampleModPassesTheChecks"   # one test
 dotnet test core --filter TestCategory=Unit    # the quick fixtures, in seconds (docs/TESTING_LAYERS.md)
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
