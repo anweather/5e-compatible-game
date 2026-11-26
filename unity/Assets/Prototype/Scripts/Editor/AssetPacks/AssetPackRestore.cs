@@ -6,7 +6,8 @@ using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 
-[assembly: InternalsVisibleTo("Assembly-CSharp-Editor")]
+[assembly: InternalsVisibleTo("Prototype.Game.Editor")]
+[assembly: InternalsVisibleTo("Prototype.Game.Tests")]
 
 // Asset Store packs are dependencies, like Packages/manifest.json: the
 // repo lists them in AssetPacks.json and ignores their folders, and this
