@@ -1,0 +1,30 @@
+{
+    "name": "Prototype.Probes.Editor",
+    "rootNamespace": "",
+    "references": [
+        "Prototype.Probes",
+        "Prototype.Game",
+        "Prototype.Game.Editor",
+        "Chemistry",
+        "Chem.Land",
+        "Chemistry.Mcp",
+        "Prototype.Analyzers",
+        "Unity.InputSystem",
+        "Unity.Pipeline",
+        "Unity.Pipeline.Attributes",
+        "Unity.Pipeline.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
