@@ -1,0 +1,1905 @@
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Chemistry.asmdef b/packages/com.anweather.chemistry-core/Runtime/Chemistry.asmdef
+index 1ffe93cb..04f184d1 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/Chemistry.asmdef
++++ b/packages/com.anweather.chemistry-core/Runtime/Chemistry.asmdef
+@@ -2,6 +2,7 @@
+     "name": "Chemistry",
+     "rootNamespace": "Chem",
+     "references": [
++        "Chem.Land",
+         "Prototype.Analyzers"
+     ],
+     "includePlatforms": [],
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Chunk.cs b/packages/com.anweather.chemistry-core/Runtime/Chunk.cs
+index 857495df..0ce615a6 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/Chunk.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/Chunk.cs
+@@ -5,41 +5,6 @@ using System.Runtime.CompilerServices;
+ 
+ namespace Chem
+ {
+-    /// <summary>Chunk size and the maths from world-wide cell coordinates to chunks.</summary>
+-    public static class Chunks
+-    {
+-        /// <summary>log2 of Size: the one place the chunk size is set.</summary>
+-        public const int Shift = 6;
+-        /// <summary>Cells along a chunk's side (64).</summary>
+-        public const int Size = 1 << Shift;
+-        public const int Mask = Size - 1;
+-        /// <summary>Cells in one chunk.</summary>
+-        public const int Area = Size * Size;
+-
+-        /// <summary>The chunk a cell coordinate falls in: floor(cell / Size), negatives included.</summary>
+-        public static int ChunkOf(int cell) => cell >> Shift;
+-
+-        /// <summary>The cell's coordinate inside its chunk: cell mod Size, always 0..Size-1.</summary>
+-        public static int LocalOf(int cell) => cell & Mask;
+-
+-        /// <summary>One number per chunk coordinate, for the chunk store's dictionary.</summary>
+-        public static long Key(int cx, int cy) => ((long)cy << 32) | (uint)cx;
+-
+-        /// <summary>
+-        /// The chunk edges a local cell index lies on, as bits 1 &lt;&lt; d for d = 0 to 3 (N, E, S, W,
+-        /// the order of Chunk.Next): 0 inside, two bits in a corner.
+-        /// </summary>
+-        public static int EdgesOf(int i)
+-        {
+-            int lx = i & Mask, edges = 0;
+-            if (i < Size) edges |= 1;
+-            if (lx == Mask) edges |= 2;
+-            if (i >= Area - Size) edges |= 4;
+-            if (lx == 0) edges |= 8;
+-            return edges;
+-        }
+-    }
+-
+     /// <summary>
+     /// An unpacked chunk's cells and the per-cell state that only matters while it's unpacked (the sparse World,
+     /// docs/design/sparse-world.md): its Cell objects, fire generations, per-tick marks and still-water snapshot. Taken from
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkCells.cs b/packages/com.anweather.chemistry-core/Runtime/ChunkCells.cs
+index 0e1d92b1..198662ad 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/ChunkCells.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/ChunkCells.cs
+@@ -89,92 +89,4 @@ namespace Chem
+         }
+     }
+ 
+-    /// <summary>
+-    /// A chunk's land (World.SetLand: an int a cell, World.NoLand on water) in a few bytes, for a packed chunk: each cell
+-    /// as its difference from what the cells before it predict (left + up − up-left, the left alone on the top row, the up
+-    /// alone down the left side), zigzagged into a varint, and a run of cells the prediction gets exactly as one varint.
+-    /// Smooth land is a byte or so a cell; a chunk of sea or of flat land, a few bytes. Exact for any ints.
+-    /// </summary>
+-    internal static class LandCodec
+-    {
+-        /// <summary>The most a chunk's land encodes to: five bytes a cell.</summary>
+-        public const int MostBytes = Chunks.Area * 5;
+-
+-        static int Predict(int[] v, int i)
+-        {
+-            if (i == 0) return 0;
+-            if (i < Chunks.Size) return v[i - 1];
+-            if ((i & Chunks.Mask) == 0) return v[i - Chunks.Size];
+-            return unchecked(v[i - 1] + v[i - Chunks.Size] - v[i - Chunks.Size - 1]);
+-        }
+-
+-        /// <summary>A chunk's land, Area ints, as its bytes; <paramref name="scratch"/> (MostBytes) is written through.</summary>
+-        public static byte[] Encode(int[] v, byte[] scratch)
+-        {
+-            int n = 0;
+-            for (int i = 0; i < Chunks.Area;)
+-            {
+-                int d = unchecked(v[i] - Predict(v, i));
+-                if (d == 0)
+-                {
+-                    int run = 1;
+-                    while (i + run < Chunks.Area && v[i + run] == Predict(v, i + run)) run++;
+-                    n = Put(scratch, n, ((ulong)run << 1) | 1);
+-                    i += run;
+-                    continue;
+-                }
+-                uint zz = unchecked((uint)((d << 1) ^ (d >> 31)));
+-                n = Put(scratch, n, (ulong)zz << 1);
+-                i++;
+-            }
+-            var bytes = new byte[n];
+-            Buffer.BlockCopy(scratch, 0, bytes, 0, n);
+-            return bytes;
+-        }
+-
+-        /// <summary>A chunk's land back from its bytes into <paramref name="v"/> (Area ints).</summary>
+-        public static void Decode(byte[] bytes, int[] v)
+-        {
+-            int at = 0;
+-            for (int i = 0; i < Chunks.Area;)
+-            {
+-                ulong t = Get(bytes, ref at);
+-                if ((t & 1) != 0)
+-                {
+-                    for (int end = i + (int)(t >> 1); i < end; i++) v[i] = Predict(v, i);
+-                    continue;
+-                }
+-                uint zz = (uint)(t >> 1);
+-                int d = (int)(zz >> 1) ^ -(int)(zz & 1);
+-                v[i] = unchecked(Predict(v, i) + d);
+-                i++;
+-            }
+-        }
+-
+-        static int Put(byte[] b, int n, ulong t)
+-        {
+-            while (t >= 0x80)
+-            {
+-                b[n++] = (byte)(t | 0x80);
+-                t >>= 7;
+-            }
+-            b[n++] = (byte)t;
+-            return n;
+-        }
+-
+-        static ulong Get(byte[] b, ref int at)
+-        {
+-            ulong t = 0;
+-            int shift = 0;
+-            byte x;
+-            do
+-            {
+-                x = b[at++];
+-                t |= (ulong)(x & 0x7f) << shift;
+-                shift += 7;
+-            }
+-            while (x >= 0x80);
+-            return t;
+-        }
+-    }
+ }
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkStreaming.cs b/packages/com.anweather.chemistry-core/Runtime/ChunkStreaming.cs
+index ab1b94f0..a020d2ed 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/ChunkStreaming.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/ChunkStreaming.cs
+@@ -145,22 +145,7 @@ namespace Chem
+         /// cells down (World.H) the short way round the south seam too.
+         /// </summary>
+         public static List<(int cx, int cy)> Within(IReadOnlyList<(int cx, int cy)> chunks, double x, double y, double radius, int wrapCells = 0, int wrapCellsY = 0)
+-        {
+-            if (chunks == null) throw new ArgumentNullException(nameof(chunks));
+-            var near = new List<(int cx, int cy)>();
+-            foreach (var (cx, cy) in chunks)
+-            {
+-                double x0 = cx * Chunks.Size, y0 = cy * Chunks.Size;
+-                // The copy of the chunk nearest x: its middle within half a world of it.
+-                if (wrapCells > 0) x0 += wrapCells * Math.Round((x - (x0 + Chunks.Size / 2.0)) / wrapCells);
+-                if (wrapCellsY > 0) y0 += wrapCellsY * Math.Round((y - (y0 + Chunks.Size / 2.0)) / wrapCellsY);
+-                double dx = Math.Max(0, Math.Max(x0 - x, x - (x0 + Chunks.Size)));
+-                double dy = Math.Max(0, Math.Max(y0 - y, y - (y0 + Chunks.Size)));
+-                if (dx * dx + dy * dy <= radius * radius) near.Add((cx, cy));
+-            }
+-            near.Sort((a, b) => a.cy != b.cy ? a.cy.CompareTo(b.cy) : a.cx.CompareTo(b.cx));
+-            return near;
+-        }
++            => Chunks.Within(chunks, x, y, radius, wrapCells, wrapCellsY);
+ 
+         // How many chunks the nearest character is from a chunk (for ChunkPlanner).
+         internal static int Distance(IReadOnlyList<(int x, int y)> characters, int cx, int cy, int wrapChunks, int wrapChunksY) => Nearest(characters, cx, cy, wrapChunks, wrapChunksY);
+diff --git a/packages/com.anweather.chemistry-core/Runtime/GeneratedMap.cs b/packages/com.anweather.chemistry-core/Runtime/GeneratedMap.cs
+index ce2af4ea..dcd9f348 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/GeneratedMap.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/GeneratedMap.cs
+@@ -80,22 +80,7 @@ namespace Chem
+         /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY), each followed
+         /// by the maps a pinned block pins in turn, where they lie in this one. Empty for a map that isn't generated.
+         /// </summary>
+-        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir)
+-        {
+-            var found = new List<(string dir, int x, int y)>();
+-            string path = Path.Combine(mapDir, MapFile.FileName);
+-            if (!File.Exists(path) || !(JObject.Parse(File.ReadAllText(path))[Key] is JObject o) || !(o["pinned"] is JArray pins)) return found;
+-            string worldDir = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
+-            foreach (var pin in pins.OfType<JObject>())
+-            {
+-                string dir = Path.Combine(worldDir, "maps", (string)pin["map"]);
+-                int x = (int)pin["square"][0] * WorldPlan.SquareCells, y = (int)pin["square"][1] * WorldPlan.SquareCells;
+-                found.Add((dir, x, y));
+-                // A pinned block's own pinned maps, where they lie in this one (the valley in the nine in the scale map).
+-                foreach (var (inner, ix, iy) in PinnedSquares(dir)) found.Add((inner, x + ix, y + iy));
+-            }
+-            return found;
+-        }
++        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir) => MapFile.PinnedSquares(mapDir);
+ 
+         /// <summary>Whether the map in this folder is made from a world file.</summary>
+         public static bool IsGenerated(string mapDir)
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land.meta b/packages/com.anweather.chemistry-core/Runtime/Land.meta
+new file mode 100644
+index 00000000..69cc32bd
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land.meta
+@@ -0,0 +1,8 @@
++fileFormatVersion: 2
++guid: d3e1859ac97c4ab78acc67126ba827f6
++folderAsset: yes
++DefaultImporter:
++  externalObjects: {}
++  userData: 
++  assetBundleName: 
++  assetBundleVariant: 
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/AssemblyInfo.cs b/packages/com.anweather.chemistry-core/Runtime/Land/AssemblyInfo.cs
+new file mode 100644
+index 00000000..f882e8a9
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/AssemblyInfo.cs
+@@ -0,0 +1,8 @@
++using System.Runtime.CompilerServices;
++
++// The land was part of the core's one assembly until it became its own (docs/design/architecture-review.md step 5), and
++// the core above it still uses its internals (LandCodec, BuildingTables.Tables, BuildingRow.Resolved...): the core is
++// Chemistry in Unity and Game.Core in dotnet; the rules MCP and chat tools (Chemistry.Mcp in Unity) used them too.
++[assembly: InternalsVisibleTo("Chemistry")]
++[assembly: InternalsVisibleTo("Game.Core")]
++[assembly: InternalsVisibleTo("Chemistry.Mcp")]
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/AssemblyInfo.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/AssemblyInfo.cs.meta
+new file mode 100644
+index 00000000..28d342e1
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/AssemblyInfo.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: d8ec5791fab34c6c86f527e700899e74
+\ No newline at end of file
+diff --git a/packages/com.anweather.chemistry-core/Runtime/BiomeField.cs b/packages/com.anweather.chemistry-core/Runtime/Land/BiomeField.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/BiomeField.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/BiomeField.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/BiomeField.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/BiomeField.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/BiomeField.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/BiomeField.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/BiomeMath.cs b/packages/com.anweather.chemistry-core/Runtime/Land/BiomeMath.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/BiomeMath.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/BiomeMath.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/BiomeMath.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/BiomeMath.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/BiomeMath.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/BiomeMath.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Buildings.cs b/packages/com.anweather.chemistry-core/Runtime/Land/Buildings.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/Buildings.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/Buildings.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Buildings.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/Buildings.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/Buildings.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/Buildings.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/CellContour.cs b/packages/com.anweather.chemistry-core/Runtime/Land/CellContour.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/CellContour.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/CellContour.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/CellContour.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/CellContour.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/CellContour.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/CellContour.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/Chem.Land.asmdef b/packages/com.anweather.chemistry-core/Runtime/Land/Chem.Land.asmdef
+new file mode 100644
+index 00000000..2063ce68
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/Chem.Land.asmdef
+@@ -0,0 +1,18 @@
++{
++    "name": "Chem.Land",
++    "rootNamespace": "Chem",
++    "references": [
++        "Prototype.Analyzers"
++    ],
++    "includePlatforms": [],
++    "excludePlatforms": [],
++    "allowUnsafeCode": false,
++    "overrideReferences": true,
++    "precompiledReferences": [
++        "Newtonsoft.Json.dll"
++    ],
++    "autoReferenced": true,
++    "defineConstraints": [],
++    "versionDefines": [],
++    "noEngineReferences": true
++}
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/Chem.Land.asmdef.meta b/packages/com.anweather.chemistry-core/Runtime/Land/Chem.Land.asmdef.meta
+new file mode 100644
+index 00000000..7bb3740d
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/Chem.Land.asmdef.meta
+@@ -0,0 +1,7 @@
++fileFormatVersion: 2
++guid: f2e908abb3644c0fb9a3876f2013944d
++AssemblyDefinitionImporter:
++  externalObjects: {}
++  userData: 
++  assetBundleName: 
++  assetBundleVariant: 
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Hills.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Hills.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Hills.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Hills.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Hills.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Hills.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Hills.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Hills.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Known.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Known.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Known.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Known.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Known.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Known.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Known.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Known.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Land.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Land.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Land.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Land.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Land.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Land.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Land.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Land.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Rivers.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Rivers.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Rivers.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Rivers.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Rivers.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Rivers.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Rivers.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Rivers.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Spawns.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Spawns.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Spawns.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Spawns.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.Spawns.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Spawns.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.Spawns.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.Spawns.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ChunkGen.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ChunkGen.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ChunkGen.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/Chunks.cs b/packages/com.anweather.chemistry-core/Runtime/Land/Chunks.cs
+new file mode 100644
+index 00000000..50e88dbc
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/Chunks.cs
+@@ -0,0 +1,68 @@
++// Chunk size and the maths from cell coordinates to chunks (docs/WORLD_STREAMING.md), moved out of Chunk.cs so the
++// land (Chem.Land) can use them below the World.
++using System;
++using System.Collections.Generic;
++
++namespace Chem
++{
++    /// <summary>Chunk size and the maths from world-wide cell coordinates to chunks.</summary>
++    public static class Chunks
++    {
++        /// <summary>log2 of Size: the one place the chunk size is set.</summary>
++        public const int Shift = 6;
++        /// <summary>Cells along a chunk's side (64).</summary>
++        public const int Size = 1 << Shift;
++        public const int Mask = Size - 1;
++        /// <summary>Cells in one chunk.</summary>
++        public const int Area = Size * Size;
++
++        /// <summary>The chunk a cell coordinate falls in: floor(cell / Size), negatives included.</summary>
++        public static int ChunkOf(int cell) => cell >> Shift;
++
++        /// <summary>The cell's coordinate inside its chunk: cell mod Size, always 0..Size-1.</summary>
++        public static int LocalOf(int cell) => cell & Mask;
++
++        /// <summary>One number per chunk coordinate, for the chunk store's dictionary.</summary>
++        public static long Key(int cx, int cy) => ((long)cy << 32) | (uint)cx;
++
++        /// <summary>
++        /// The chunk edges a local cell index lies on, as bits 1 &lt;&lt; d for d = 0 to 3 (N, E, S, W,
++        /// the order of Chunk.Next): 0 inside, two bits in a corner.
++        /// </summary>
++        public static int EdgesOf(int i)
++        {
++            int lx = i & Mask, edges = 0;
++            if (i < Size) edges |= 1;
++            if (lx == Mask) edges |= 2;
++            if (i >= Area - Size) edges |= 4;
++            if (lx == 0) edges |= 8;
++            return edges;
++        }
++
++        /// <summary>
++        /// The chunks any part of which lies within <paramref name="radius"/> cells of (x, y), a point
++        /// in cell units (cell (0, 0) spans 0 to 1), by row then column. For what a view draws by
++        /// distance from its camera, such as the terrains' grass (ChemGrid.DetailChunks, ChunkStreaming.Within): a chunk
++        /// left out has no part near enough to draw any. On a world <paramref name="wrapCells"/> cells round (World.W
++        /// when it wraps; 0 for none) a chunk is measured the short way round the seam; on a torus <paramref name="wrapCellsY"/>
++        /// cells down (World.H) the short way round the south seam too.
++        /// </summary>
++        public static List<(int cx, int cy)> Within(IReadOnlyList<(int cx, int cy)> chunks, double x, double y, double radius, int wrapCells = 0, int wrapCellsY = 0)
++        {
++            if (chunks == null) throw new ArgumentNullException(nameof(chunks));
++            var near = new List<(int cx, int cy)>();
++            foreach (var (cx, cy) in chunks)
++            {
++                double x0 = cx * Size, y0 = cy * Size;
++                // The copy of the chunk nearest x: its middle within half a world of it.
++                if (wrapCells > 0) x0 += wrapCells * Math.Round((x - (x0 + Size / 2.0)) / wrapCells);
++                if (wrapCellsY > 0) y0 += wrapCellsY * Math.Round((y - (y0 + Size / 2.0)) / wrapCellsY);
++                double dx = Math.Max(0, Math.Max(x0 - x, x - (x0 + Size)));
++                double dy = Math.Max(0, Math.Max(y0 - y, y - (y0 + Size)));
++                if (dx * dx + dy * dy <= radius * radius) near.Add((cx, cy));
++            }
++            near.Sort((a, b) => a.cy != b.cy ? a.cy.CompareTo(b.cy) : a.cx.CompareTo(b.cx));
++            return near;
++        }
++    }
++}
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/Chunks.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/Chunks.cs.meta
+new file mode 100644
+index 00000000..444a169d
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/Chunks.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: c704977ab55d42c5a1739fe617552e69
+\ No newline at end of file
+diff --git a/packages/com.anweather.chemistry-core/Runtime/FarLandmarks.cs b/packages/com.anweather.chemistry-core/Runtime/Land/FarLandmarks.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/FarLandmarks.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/FarLandmarks.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/FarLandmarks.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/FarLandmarks.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/FarLandmarks.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/FarLandmarks.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/GameFolders.cs b/packages/com.anweather.chemistry-core/Runtime/Land/GameFolders.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/GameFolders.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/GameFolders.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/GameFolders.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/GameFolders.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/GameFolders.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/GameFolders.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/GroundPack.cs b/packages/com.anweather.chemistry-core/Runtime/Land/GroundPack.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/GroundPack.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/GroundPack.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/GroundPack.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/GroundPack.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/GroundPack.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/GroundPack.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsForest.cs b/packages/com.anweather.chemistry-core/Runtime/Land/HillsForest.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsForest.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsForest.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsForest.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/HillsForest.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsForest.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsForest.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsMassif.cs b/packages/com.anweather.chemistry-core/Runtime/Land/HillsMassif.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsMassif.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsMassif.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsMassif.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/HillsMassif.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsMassif.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsMassif.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsRivers.cs b/packages/com.anweather.chemistry-core/Runtime/Land/HillsRivers.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsRivers.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsRivers.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsRivers.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/HillsRivers.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsRivers.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsRivers.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsRoads.cs b/packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsRoads.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/HillsRoads.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/HillsRoads.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/KnownRing.cs b/packages/com.anweather.chemistry-core/Runtime/Land/KnownRing.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/KnownRing.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/KnownRing.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/KnownRing.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/KnownRing.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/KnownRing.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/KnownRing.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/LandCodec.cs b/packages/com.anweather.chemistry-core/Runtime/Land/LandCodec.cs
+new file mode 100644
+index 00000000..b1b33124
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/LandCodec.cs
+@@ -0,0 +1,95 @@
++// A chunk's land as bytes (LandChunks, the World's packed chunks); moved out of ChunkCells.cs so the land (Chem.Land)
++// can use it below the World.
++using System;
++
++namespace Chem
++{
++    /// <summary>
++    /// A chunk's land (World.SetLand: an int a cell, World.NoLand on water) in a few bytes, for a packed chunk: each cell
++    /// as its difference from what the cells before it predict (left + up − up-left, the left alone on the top row, the up
++    /// alone down the left side), zigzagged into a varint, and a run of cells the prediction gets exactly as one varint.
++    /// Smooth land is a byte or so a cell; a chunk of sea or of flat land, a few bytes. Exact for any ints.
++    /// </summary>
++    internal static class LandCodec
++    {
++        /// <summary>The most a chunk's land encodes to: five bytes a cell.</summary>
++        public const int MostBytes = Chunks.Area * 5;
++
++        static int Predict(int[] v, int i)
++        {
++            if (i == 0) return 0;
++            if (i < Chunks.Size) return v[i - 1];
++            if ((i & Chunks.Mask) == 0) return v[i - Chunks.Size];
++            return unchecked(v[i - 1] + v[i - Chunks.Size] - v[i - Chunks.Size - 1]);
++        }
++
++        /// <summary>A chunk's land, Area ints, as its bytes; <paramref name="scratch"/> (MostBytes) is written through.</summary>
++        public static byte[] Encode(int[] v, byte[] scratch)
++        {
++            int n = 0;
++            for (int i = 0; i < Chunks.Area;)
++            {
++                int d = unchecked(v[i] - Predict(v, i));
++                if (d == 0)
++                {
++                    int run = 1;
++                    while (i + run < Chunks.Area && v[i + run] == Predict(v, i + run)) run++;
++                    n = Put(scratch, n, ((ulong)run << 1) | 1);
++                    i += run;
++                    continue;
++                }
++                uint zz = unchecked((uint)((d << 1) ^ (d >> 31)));
++                n = Put(scratch, n, (ulong)zz << 1);
++                i++;
++            }
++            var bytes = new byte[n];
++            Buffer.BlockCopy(scratch, 0, bytes, 0, n);
++            return bytes;
++        }
++
++        /// <summary>A chunk's land back from its bytes into <paramref name="v"/> (Area ints).</summary>
++        public static void Decode(byte[] bytes, int[] v)
++        {
++            int at = 0;
++            for (int i = 0; i < Chunks.Area;)
++            {
++                ulong t = Get(bytes, ref at);
++                if ((t & 1) != 0)
++                {
++                    for (int end = i + (int)(t >> 1); i < end; i++) v[i] = Predict(v, i);
++                    continue;
++                }
++                uint zz = (uint)(t >> 1);
++                int d = (int)(zz >> 1) ^ -(int)(zz & 1);
++                v[i] = unchecked(Predict(v, i) + d);
++                i++;
++            }
++        }
++
++        static int Put(byte[] b, int n, ulong t)
++        {
++            while (t >= 0x80)
++            {
++                b[n++] = (byte)(t | 0x80);
++                t >>= 7;
++            }
++            b[n++] = (byte)t;
++            return n;
++        }
++
++        static ulong Get(byte[] b, ref int at)
++        {
++            ulong t = 0;
++            int shift = 0;
++            byte x;
++            do
++            {
++                x = b[at++];
++                t |= (ulong)(x & 0x7f) << shift;
++                shift += 7;
++            }
++            while (x >= 0x80);
++            return t;
++        }
++    }
++}
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/LandCodec.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/LandCodec.cs.meta
+new file mode 100644
+index 00000000..35f2de1a
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/LandCodec.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: 26fc6a17057f4d81941e098581fef9bf
+\ No newline at end of file
+diff --git a/packages/com.anweather.chemistry-core/Runtime/LandFile.cs b/packages/com.anweather.chemistry-core/Runtime/Land/LandFile.cs
+similarity index 96%
+rename from packages/com.anweather.chemistry-core/Runtime/LandFile.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/LandFile.cs
+index 44c526ac..3268fb6c 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/LandFile.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/LandFile.cs
+@@ -237,12 +237,12 @@ namespace Chem
+         readonly byte[][] chunks;
+         readonly int[] cached = new int[Chunks.Area];
+         int cachedChunk = -1;
+-        // A generated map's source, whose chunks' land this is (FromSource); null for land held as bytes.
+-        readonly IGeneratedSource source;
++        // A generated map's source's LandInto, whose chunks' land this is (FromSource); null for land held as bytes.
++        readonly Action<int, int, int[]> source;
+ 
+-        LandChunks(IGeneratedSource source) : this(source.W, source.H)
++        LandChunks(int w, int h, Action<int, int, int[]> landInto) : this(w, h)
+         {
+-            this.source = source;
++            source = landInto;
+             chunks = null;
+         }
+ 
+@@ -262,8 +262,10 @@ namespace Chem
+         /// A generated map's land (a map too big to bake whole, IGeneratedSource), read a chunk at a time from its source,
+         /// which makes the chunk if it doesn't hold it and keeps it held for the World's reads too: nothing is read or held
+         /// here for the map's size (J-086). Safe from any thread with a reader each (NewReader, ChunkInto), as the source is.
++        /// Given as the source's size and its LandInto (FromSource(source.W, source.H, source.LandInto)): the land (Chem.Land)
++        /// knows no chunk source.
+         /// </summary>
+-        public static LandChunks FromSource(IGeneratedSource source) => new LandChunks(source ?? throw new ArgumentNullException(nameof(source)));
++        public static LandChunks FromSource(int w, int h, Action<int, int, int[]> landInto) => new LandChunks(w, h, landInto ?? throw new ArgumentNullException(nameof(landInto)));
+ 
+         /// <summary>Whether its land is a generated map's source's (FromSource), made as it's read.</summary>
+         public bool IsFromSource => source != null;
+@@ -271,7 +273,7 @@ namespace Chem
+         // A chunk's land into a buffer: decoded from its bytes, or the source's.
+         void Fill(int c, int[] into)
+         {
+-            if (source != null) source.LandInto(c % chunksW, c / chunksW, into);
++            if (source != null) source(c % chunksW, c / chunksW, into);
+             else LandCodec.Decode(chunks[c], into);
+         }
+ 
+diff --git a/packages/com.anweather.chemistry-core/Runtime/LandFile.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/LandFile.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/LandFile.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/LandFile.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/LandStamp.cs b/packages/com.anweather.chemistry-core/Runtime/Land/LandStamp.cs
+new file mode 100644
+index 00000000..f652b86b
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/LandStamp.cs
+@@ -0,0 +1,319 @@
++// Land stamps (docs/design/maps-as-data.md, section 3): one change to the land, a shape applied to height. Moved out of
++// World.Land.cs (which lays them on a World) so the land (Chem.Land, ChunkGen's stamps) can use them below the World.
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using Newtonsoft.Json.Linq;
++
++namespace Chem
++{
++    /// <summary>One change to the land: a shape applied to height, in land units.</summary>
++    public sealed class LandStamp
++    {
++        public const string Flat = "flat", Dome = "dome", Cone = "cone", Ridge = "ridge", Canyon = "canyon", Cliff = "cliff";
++        const int Fixed = 256, RoughSalt = 7331, LatticeShift = 4096;
++        // Fixed point: One is 1.0.
++        const long One = 1024;
++        // How deep a canyon cuts at most, in land units, to stay inside what can be drawn; its rim takes the rest of the wall.
++        const long CanyonDeepest = 112;
++        // A face is a cell wide for this many land units of wall.
++        const long FaceSlope = 48;
++
++        public int X { get; private set; }
++        public int Y { get; private set; }
++        public int Radius { get; private set; }
++        /// <summary>At the middle, in land units; below 0 it's a hollow. A canyon's or cliff's wall, however it's signed; below 0 a cliff's high side is the other way.</summary>
++        public int Rise { get; private set; }
++        public string Profile { get; private set; }
++        /// <summary>A ridge's, canyon's or cliff's line, as a step across the grid; 0, 0 for any other profile.</summary>
++        public int AlongX { get; private set; }
++        public int AlongY { get; private set; }
++        /// <summary>How uneven, 0 to 100 percent of the height at a cell.</summary>
++        public int Rough { get; private set; }
++        public int Seed { get; private set; }
++
++        /// <summary>
++        /// A canyon's or cliff's line as a path of points from its middle, in cells, in place of one straight line: empty for a
++        /// straight one. Its face follows the path round its bends, Radius either side of it, and its ends taper over
++        /// three tenths of Radius past the first and last points.
++        /// </summary>
++        public IReadOnlyList<(int x, int y)> Path { get; private set; } = Array.Empty<(int x, int y)>();
++
++#pragma warning disable S107 // a stamp's row is its nine fields
++        public static LandStamp Make(int x, int y, int radius, int rise, string profile, int alongX, int alongY, int rough, int seed) =>
++            new LandStamp { X = x, Y = y, Radius = radius, Rise = rise, Profile = profile, AlongX = alongX, AlongY = alongY, Rough = rough, Seed = seed };
++#pragma warning restore S107
++
++        /// <summary>The same stamp along a path of points from its middle (Path).</summary>
++        public LandStamp Along(IEnumerable<(int x, int y)> path)
++        {
++            var copy = (LandStamp)MemberwiseClone();
++            copy.Path = path.ToArray();
++            return copy;
++        }
++
++        /// <summary>A stamp in a command or a save, or null if it isn't one: nine fields, and a path as a tenth.</summary>
++        public static LandStamp Read(JToken row)
++        {
++            if (!(row is JArray a) || (a.Count != 9 && a.Count != 10)) return null;
++            var stamp = Make((int)a[0], (int)a[1], (int)a[2], (int)a[3], (string)a[4], (int)a[5], (int)a[6], (int)a[7], (int)a[8]);
++            if (a.Count == 9) return stamp;
++            if (!(a[9] is JArray points) || points.Any(p => !(p is JArray xy) || xy.Count != 2)) return null;
++            return stamp.Along(points.Select(p => ((int)p[0], (int)p[1])));
++        }
++
++        /// <summary>The row, for a command or a save.</summary>
++        public JArray Row
++        {
++            get
++            {
++                var row = new JArray(X, Y, Radius, Rise, Profile, AlongX, AlongY, Rough, Seed);
++                if (Path.Count > 0) row.Add(new JArray(Path.Select(p => (object)new JArray(p.x, p.y)).ToArray()));
++                return row;
++            }
++        }
++
++        /// <summary>The row as text, for the checksum.</summary>
++        public string Text => Row.ToString(Newtonsoft.Json.Formatting.None);
++
++        public bool Known =>
++            Radius > 0 && Rough >= 0 && Rough <= 100
++            && (Path.Count == 0 ? Profile == Flat || Profile == Dome || Profile == Cone || (NeedsLine(Profile) && (AlongX != 0 || AlongY != 0)) : PathKnown);
++
++        // A path is a canyon's or a cliff's, two points or more, each a step from the last.
++        bool PathKnown => (Profile == Canyon || Profile == Cliff) && Path.Count >= 2 && Enumerable.Range(1, Path.Count - 1).All(k => Path[k] != Path[k - 1]);
++
++        /// <summary>Whether a profile runs along a line.</summary>
++        public static bool NeedsLine(string profile) => profile == Ridge || profile == Canyon || profile == Cliff;
++
++        /// <summary>How far from its middle, in cells, it can reach: Radius, or for a path its furthest point and Radius past it.</summary>
++        public int Bound => Path.Count == 0 ? Radius : (int)Root(Path.Max(p => (long)p.x * p.x + (long)p.y * p.y)) + 1 + Radius;
++
++        /// <summary>What it adds at a cell this far from its middle, in land units.</summary>
++        public int At(int dx, int dy)
++        {
++            if (Path.Count > 0) return (int)FormedOnPath(dx, dy);
++            long r2 = (long)Radius * Radius, d2 = (long)dx * dx + (long)dy * dy;
++            if (d2 > r2) return 0;
++            if (Profile == Canyon || Profile == Cliff) return (int)Formed(dx, dy, d2);
++            long height = Shape(dx, dy, r2, d2);
++            return (int)(height + height * Fractal(X + dx, Y + dy, 1) * Rough * 2 / (100L * One));
++        }
++
++        long Shape(int dx, int dy, long r2, long d2)
++        {
++            switch (Profile)
++            {
++                case Flat: return Rise;
++                case Dome: return Rise * (r2 - d2) / r2;
++                case Cone: return Rise * Fall(Root(d2 * Fixed * Fixed)) / (Radius * (long)Fixed);
++                default:
++                    // Highest on its line, and down to nothing at the line's two ends.
++                    long length2 = (long)AlongX * AlongX + (long)AlongY * AlongY;
++                    long off = Root(Square((long)dx * AlongY - (long)dy * AlongX) * Fixed * Fixed / length2);
++                    long along = Root(Square((long)dx * AlongX + (long)dy * AlongY) * Fixed * Fixed / length2);
++                    return Rise * Fall(off) / (Radius * (long)Fixed) * Fall(along) / (Radius * (long)Fixed);
++            }
++        }
++
++        long Fall(long fixedDistance) => Math.Max(0, Radius * (long)Fixed - fixedDistance);
++
++        static long Square(long v) => v * v;
++
++        // The whole square root, the same on every machine.
++        static long Root(long v)
++        {
++            if (v <= 0) return 0;
++            long r = v, next = (v + 1) / 2;
++            while (next < r)
++            {
++                r = next;
++                next = (r + v / r) / 2;
++            }
++            return r;
++        }
++
++        // Smoothed value noise on a lattice this many cells wide: -One to One.
++        long Lattice(int x, int y, int cells, int salt)
++        {
++            x += LatticeShift;
++            y += LatticeShift;
++            int u = x / cells, v = y / cells;
++            long fu = Smooth(x % cells * One / cells), fv = Smooth(y % cells * One / cells);
++            long Corner(int a, int b) => WorldHash.Hash4(Seed, RoughSalt + salt * 64 + cells, a, b) % (2u * (uint)One + 1u) - One;
++            long near = Corner(u, v) * (One - fu) + Corner(u + 1, v) * fu;
++            long far = Corner(u, v + 1) * (One - fu) + Corner(u + 1, v + 1) * fu;
++            return (near / One * (One - fv) + far / One * fv) / One;
++        }
++
++        // Four octaves, 16 cells down to 2: -One to One, mostly within half of that.
++        long Fractal(int x, int y, int salt) =>
++            (8 * Lattice(x, y, 16, salt) + 4 * Lattice(x, y, 8, salt) + 2 * Lattice(x, y, 4, salt) + Lattice(x, y, 2, salt)) / 15;
++
++        static long Smooth(long t)
++        {
++            t = Math.Max(0, Math.Min(One, t));
++            return t * t / One * (3 * One - 2 * t) / One;
++        }
++
++        // Bands of rock: a climb of 0 to One held on ledges, with a short steep riser between them.
++        static long Strata(long t, int bands)
++        {
++            t = Math.Max(0, Math.Min(One, t));
++            long band = t * bands / One, inside = t * bands % One;
++            return Math.Min(One, (band * One + Smooth(inside * 2 - One / 2)) / bands);
++        }
++
++        // A canyon or a cliff at a cell: a face that wanders, with broken ground beside it, in land units.
++        long Formed(int dx, int dy, long d2)
++        {
++            long length = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
++            long across = ((long)dx * AlongY - (long)dy * AlongX) * One * One / length;
++            long along = Math.Abs((long)dx * AlongX + (long)dy * AlongY) * One * One / length;
++            long reach = Radius * One;
++            // A canyon's floor climbs to the land at both ends, gently enough to walk out.
++            long ramp = Math.Min(One, (reach - along) * One / (reach * 3 / 4));
++            // Nothing at the rim of the stamp, so it meets the land round it.
++            return FormedAt(X + dx, Y + dy, across, ramp, Smooth((reach - Root(d2 * One * One)) * One / (reach * 3 / 10)));
++        }
++
++        // A face across a line at a cell this far across it (fixed point, signed), its floor this far down its ramp, tapered.
++        long FormedAt(int x, int y, long across, long ramp, long taper)
++        {
++            long reach = Radius * One, wall = Math.Abs((long)Rise);
++            long off = across + Lattice(x, y, 24, 2) * Radius / 5 + Fractal(x, y, 3) * 3;
++            long face = Math.Max(3, wall / FaceSlope) * One;
++            long side = Rise < 0 ? -off : off;
++            long height = Profile == Canyon ? CanyonAt(Math.Abs(off), reach, face, wall, ramp, x, y) : CliffAt(side, reach, face, wall, x, y);
++            height += wall * Fractal(x, y, 4) * Rough / (100 * One * 3);
++            // A canyon's floor is as deep as it's asked, on any seed: noise past it folds back up, so the floor keeps its grain.
++            long deepest = CanyonDepth(wall);
++            if (Profile == Canyon && height < -deepest) height = -2 * deepest - height;
++            return height * taper / One;
++        }
++
++        // Along a path: across is from the nearest point on it, signed as a straight line's (the high side of a cliff on
++        // the same hand all the way), and the ends are where the floor climbs out and the stamp tapers away.
++        long FormedOnPath(int dx, int dy)
++        {
++            long reach = Radius * One, cap = reach * 3 / 10;
++            var (across, at, length) = NearestOnPath(dx, dy);
++            long inward = Math.Min(at, length - at);
++            if (Math.Abs(across) > reach || inward < -cap) return 0;
++            long ramp = Math.Max(0, Math.Min(One, (inward + cap) * One / (reach * 3 / 4)));
++            long taper = Smooth((reach - Math.Abs(across)) * One / (reach * 3 / 10)) * Smooth((inward + cap) * One / cap) / One;
++            return FormedAt(X + dx, Y + dy, across, ramp, taper);
++        }
++
++        /// <summary>
++        /// The middle of a canyon's floor, cell by cell from the first point of its line or path to the last, two cells
++        /// wide: where it wanders off the line, this follows it, for a trail along the bottom. Empty for any other profile.
++        /// </summary>
++        public IEnumerable<(int x, int y)> Trail()
++        {
++            if (Profile != Canyon) yield break;
++            var points = Path.Count > 0 ? Path : StraightEnds();
++            var seen = new HashSet<(int x, int y)>();
++            for (int k = 0; k + 1 < points.Count; k++)
++            {
++                long ax = points[k].Item1, ay = points[k].Item2, vx = points[k + 1].Item1 - ax, vy = points[k + 1].Item2 - ay;
++                long length = Root((vx * vx + vy * vy) * One * One), steps = 2 * Math.Max(Math.Abs(vx), Math.Abs(vy));
++                for (long n = 0; n <= steps; n++)
++                {
++                    long px = ax * One + vx * One * n / steps, py = ay * One + vy * One * n / steps;
++                    int cx = X + (int)Div(px, One), cy = Y + (int)Div(py, One);
++                    // Where CanyonAt's off is 0: the line, less how far the floor wanders from it here.
++                    long wander = Lattice(cx, cy, 24, 2) * Radius / 5;
++                    foreach (long side in new[] { -One / 2, One / 2 })
++                    {
++                        long across = side - wander;
++                        var cell = (X + (int)Div(px + vy * One * across / length, One), Y + (int)Div(py - vx * One * across / length, One));
++                        if (seen.Add(cell)) yield return cell;
++                    }
++                }
++            }
++        }
++
++        // A straight canyon's line as a path: its radius either way of the middle.
++        (int x, int y)[] StraightEnds()
++        {
++            long l = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
++            int ex = (int)(AlongX * Radius * One / l), ey = (int)(AlongY * Radius * One / l);
++            return new[] { (-ex, -ey), (ex, ey) };
++        }
++
++        // Rounded to the nearest whole, halves up, the same way for either sign.
++        static long Div(long v, long by)
++        {
++            long t = v + by / 2;
++            return t >= 0 ? t / by : -((-t + by - 1) / by);
++        }
++
++        // The nearest point of the path to a cell: how far across (fixed point, signed), how far along from its start (past
++        // either end the first and last steps run on), and the path's whole length.
++        (long across, long at, long length) NearestOnPath(int dx, int dy)
++        {
++            long best = long.MaxValue, across = 0, at = 0, walked = 0;
++            int last = Path.Count - 2;
++            for (int k = 0; k <= last; k++)
++            {
++                long ax = Path[k].x, ay = Path[k].y, vx = Path[k + 1].x - ax, vy = Path[k + 1].y - ay;
++                long len2 = vx * vx + vy * vy, step = Root(len2 * One * One);
++                long t = ((dx - ax) * vx + (dy - ay) * vy) * One / len2;
++                if (k > 0) t = Math.Max(0, t);
++                if (k < last) t = Math.Min(One, t);
++                long ex = (dx - ax) * One - vx * t, ey = (dy - ay) * One - vy * t;
++                long d2 = ex * ex + ey * ey;
++                if (d2 < best)
++                {
++                    best = d2;
++                    long cross = ex * vy - ey * vx;
++                    across = cross == 0 ? 0 : Math.Sign(cross) * Root(d2);
++                    at = walked + step * t / One;
++                }
++                walked += step;
++            }
++            return (across, at, walked);
++        }
++
++        static long CanyonDepth(long wall) => Math.Min(wall * 2 / 5, CanyonDeepest);
++
++        /// <summary>The least and the most it can add anywhere, whatever its seed: what decides if the land can take it.</summary>
++        public (int low, int high) Extent
++        {
++            get
++            {
++                long wall = Math.Abs((long)Rise), noise = wall * Rough / 300;
++                if (Profile == Canyon) return ((int)-CanyonDepth(wall), (int)(wall + noise));
++                if (Profile == Cliff) return ((int)-noise, (int)(wall + noise));
++                long a = Rise * (50L + Rough) / 50, b = Rise * (50L - Rough) / 50;
++                return ((int)Math.Min(0, Math.Min(a, b)), (int)Math.Max(0, Math.Max(a, b)));
++            }
++        }
++
++        // Cut down to a floor, the rest of the wall raised as a rim that falls back to nothing.
++#pragma warning disable S107 // the place across it, and the five sizes it's cut to
++        long CanyonAt(long off, long reach, long face, long wall, long ramp, int x, int y)
++#pragma warning restore S107
++        {
++            long deepest = CanyonDepth(wall), cut = deepest * Math.Max(0, ramp) / One, rim = wall - deepest;
++            long half = reach / 5 + Lattice(x, y, 16, 5) * Radius / 16;
++            if (off <= half) return wall * Math.Abs(Fractal(x, y, 6)) / (16 * One) - cut;
++            if (off <= half + face) return (rim + cut) * Strata((off - half) * One / face + Lattice(x, y, 6, 7) / 8, 3) / One - cut;
++            return rim * (One - Smooth((off - half - face) * One / Math.Max(1, reach - half - face))) / One;
++        }
++
++        // The high side above the face, sloping back to nothing; a skirt of broken rock at the foot.
++        long CliffAt(long off, long reach, long face, long wall, int x, int y)
++        {
++            long foot = wall / 8;
++            if (off < 0)
++            {
++                long skirt = Math.Max(0, One + off / 8);
++                return (foot + wall * Math.Abs(Fractal(x, y, 8)) / (6 * One)) * skirt / One * skirt / One;
++            }
++            if (off <= face) return foot + (wall - foot) * Strata(off * One / face + Lattice(x, y, 6, 7) / 8, 4) / One;
++            return wall * (One - Smooth((off - face) * One / Math.Max(1, reach - face))) / One;
++        }
++    }
++}
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/LandStamp.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/LandStamp.cs.meta
+new file mode 100644
+index 00000000..b2781507
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/LandStamp.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: 3dc26ea4c87d4e03b3e1babe8e5dbb9d
+\ No newline at end of file
+diff --git a/packages/com.anweather.chemistry-core/Runtime/LandmarkIntent.cs b/packages/com.anweather.chemistry-core/Runtime/Land/LandmarkIntent.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/LandmarkIntent.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/LandmarkIntent.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/LandmarkIntent.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/LandmarkIntent.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/LandmarkIntent.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/LandmarkIntent.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/MapFile.cs b/packages/com.anweather.chemistry-core/Runtime/Land/MapFile.cs
+similarity index 82%
+rename from packages/com.anweather.chemistry-core/Runtime/MapFile.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/MapFile.cs
+index 32490f4e..eb8181c7 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/MapFile.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/MapFile.cs
+@@ -1,6 +1,7 @@
+ // A map's folder, world/maps/<id> (docs/design/maps-as-data.md): map.json says what the map is and what its land should
+ // look like, and cells.txt is its cell map, one legend character a cell, rows top to bottom.
+ using System;
++using System.Collections.Generic;
+ using System.IO;
+ using System.Linq;
+ using Newtonsoft.Json.Linq;
+@@ -30,7 +31,7 @@ namespace Chem
+         public int Highest { get; private set; }
+         public int Lowest { get; private set; }
+         /// <summary>How low and high land can be stamped, in land units; left out, the valley's.</summary>
+-        public (int low, int high) LandRange { get; private set; } = (World.LandLowest, World.LandHighest);
++        public (int low, int high) LandRange { get; private set; } = (LandLowest, LandHighest);
+         /// <summary>
+         /// The places that stay code which the map wants built (docs/design/maps-as-data.md, section 4: the court, the
+         /// bridge, the falls...), by name; left out, none. The scene builds every place it knows into a root of its own,
+@@ -75,6 +76,31 @@ namespace Chem
+         /// <summary>The chunks drawn in full detail (map.json's fullDetail: i0, j0, i1, j1, inclusive); left out, none.</summary>
+         public (int i0, int j0, int i1, int j1) FullDetail { get; private set; }
+ 
++        /// <summary>
++        /// The maps a world file pins, without solving its plan: each one's folder (world/maps/id) and the map cell its
++        /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY), each followed
++        /// by the maps a pinned block pins in turn, where they lie in this one. Empty for a map that isn't generated.
++        /// </summary>
++        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir)
++        {
++            var found = new List<(string dir, int x, int y)>();
++            string path = Path.Combine(mapDir, FileName);
++            if (!File.Exists(path) || !(JObject.Parse(File.ReadAllText(path))["generated"] is JObject o) || !(o["pinned"] is JArray pins)) return found;
++            string worldDir = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
++            foreach (var pin in pins.OfType<JObject>())
++            {
++                string dir = Path.Combine(worldDir, "maps", (string)pin["map"]);
++                int x = (int)pin["square"][0] * WorldPlan.SquareCells, y = (int)pin["square"][1] * WorldPlan.SquareCells;
++                found.Add((dir, x, y));
++                // A pinned block's own pinned maps, where they lie in this one (the valley in the nine in the scale map).
++                foreach (var (inner, ix, iy) in PinnedSquares(dir)) found.Add((inner, x + ix, y + iy));
++            }
++            return found;
++        }
++
++        /// <summary>The valley's drawable range: how low and high land can be stamped, in land units, inside what a chunk's terrain can draw with room for a cell's own height (World.LandLowest, LandHighest).</summary>
++        public const int LandLowest = -136, LandHighest = 2176;
++
+         /// <summary>A cell's side in metres, on every map.</summary>
+         public const float CellMetres = 1.5f;
+ 
+@@ -104,7 +130,7 @@ namespace Chem
+         static (int i0, int j0, int i1, int j1) FullDetailOf(string mapDir, JObject o, int h)
+         {
+             if (o["fullDetail"] is JArray full) return ((int)full[0], (int)full[1], (int)full[2], (int)full[3]);
+-            foreach (var (dir, x, y) in GeneratedMap.PinnedSquares(mapDir))
++            foreach (var (dir, x, y) in PinnedSquares(mapDir))
+             {
+                 if (!File.Exists(Path.Combine(dir, FileName))) continue;
+                 var pinned = Load(dir);
+@@ -125,7 +151,7 @@ namespace Chem
+             var sea = o["sea"] as JObject;
+             return new MapFile
+             {
+-                LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (World.LandLowest, World.LandHighest),
++                LandRange = drawable != null ? ((int)drawable[0], (int)drawable[1]) : (LandLowest, LandHighest),
+                 OwnLandRange = drawable != null,
+                 Yard = o["yard"] is JArray yard ? ((int)yard[0], (int)yard[1], (int)yard[2], (int)yard[3]) : ((int)o["size"][0] / 2, (int)o["size"][1] / 2, 1, 1),
+                 FullDetail = FullDetailOf(worldDir, o, (int)o["size"][1]),
+diff --git a/packages/com.anweather.chemistry-core/Runtime/MapFile.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/MapFile.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/MapFile.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/MapFile.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/MapStamps.cs b/packages/com.anweather.chemistry-core/Runtime/Land/MapStamps.cs
+similarity index 68%
+rename from packages/com.anweather.chemistry-core/Runtime/MapStamps.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/MapStamps.cs
+index 075a43fa..1e43ebf2 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/MapStamps.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/MapStamps.cs
+@@ -90,45 +90,5 @@ namespace Chem
+             if (trail != null && stamp.Profile != LandStamp.Canyon) throw new FormatException($"{FileName}: {id} has a trail, and only a canyon's floor takes one");
+             return new MapStamp(id, (string)o["name"] ?? id, stamp, trail, (string)o["bare"]);
+         }
+-
+-        /// <summary>
+-        /// Lays them on a world as it's made, a canyon's trail on its floor's dry cells and a bare stamp's terrain where it
+-        /// moved the land; why any was refused, by id, and a trail or bare terrain the rules haven't got.
+-        /// </summary>
+-        public List<string> LayInto(World world)
+-        {
+-            var refused = new List<string>();
+-            foreach (var s in All)
+-            {
+-                var why = world.LayMapStamps(new[] { s.Stamp });
+-                refused.AddRange(why.Select(w => $"{FileName}: {s.Id} isn't laid, {w}"));
+-                if (why.Count > 0) continue;
+-                foreach (var terrain in new[] { s.Trail, s.Bare }.Where(t => t != null && !world.Rules.Terrain.ContainsKey(t)))
+-                    refused.Add($"{FileName}: {s.Id} lays {terrain}, which isn't a terrain");
+-                if (s.Trail != null && world.Rules.Terrain.ContainsKey(s.Trail))
+-                    foreach (var (x, y) in s.Stamp.Trail())
+-                        if (world.InBounds(x, y) && world.At(x, y).Water == 0) world.Paint(x, y, s.Trail);
+-                if (s.Bare != null && world.Rules.Terrain.ContainsKey(s.Bare)) Bare(world, s);
+-            }
+-            return refused;
+-        }
+-
+-        // Every dry cell of open ground or standing tree the stamp moved, row by row, painted its bare terrain.
+-        static void Bare(World world, MapStamp s)
+-        {
+-            var stamp = s.Stamp;
+-            int reach = stamp.Bound;
+-            var (xFrom, xTo) = world.XSpan(stamp.X - reach, stamp.X + reach); // round the seam on a world that wraps
+-            var (yFrom, yTo) = world.YSpan(stamp.Y - reach, stamp.Y + reach);
+-            for (int y = yFrom; y <= yTo; y++)
+-                for (int x = xFrom; x <= xTo; x++)
+-                {
+-                    var c = world.At(x, y);
+-                    if (stamp.At(x - stamp.X, y - stamp.Y) == 0 || c.Water != 0) continue;
+-                    if (c.T != "tree" && (!world.HasTag(c, "ground") || world.IsBlocking(c))) continue;
+-                    world.Paint(x, y, s.Bare);
+-                    world.MarkBare(x, y);
+-                }
+-        }
+     }
+ }
+diff --git a/packages/com.anweather.chemistry-core/Runtime/MapStamps.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/MapStamps.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/MapStamps.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/MapStamps.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/RoadGrade.cs b/packages/com.anweather.chemistry-core/Runtime/Land/RoadGrade.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/RoadGrade.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/RoadGrade.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/RoadGrade.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/RoadGrade.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/RoadGrade.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/RoadGrade.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/RowPad.cs b/packages/com.anweather.chemistry-core/Runtime/Land/RowPad.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/RowPad.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/RowPad.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/RowPad.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/RowPad.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/RowPad.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/RowPad.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/SeaMask.cs b/packages/com.anweather.chemistry-core/Runtime/Land/SeaMask.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/SeaMask.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/SeaMask.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/SeaMask.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/SeaMask.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/SeaMask.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/SeaMask.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/StreamingParams.cs b/packages/com.anweather.chemistry-core/Runtime/Land/StreamingParams.cs
+new file mode 100644
+index 00000000..c2c1f40a
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/StreamingParams.cs
+@@ -0,0 +1,30 @@
++// sim.json's streaming, read with the rest of sim.json (RuleTables.cs); here so the land (Chem.Land: KnownRing) can use it
++// below the rules.
++
++namespace Chem
++{
++    /// <summary>
++    /// sim.json's streaming (ChunkStreaming, docs/WORLD_STREAMING.md): a character's reach, the
++    /// chunks within Reach of the one it stands in, is kept active; a chunk deactivates once no
++    /// character is within Keep. C# only: the sandbox has no chunks.
++    /// </summary>
++    public sealed class StreamingParams
++    {
++        public int Reach = 2, Keep = 3;
++        /// <summary>A chunk is generated within this of a character, and known (a coarse far chunk, KnownRing) out to know.</summary>
++        public int Sight = 4, Know = 7;
++        /// <summary>A chunk is settled once nothing in it has been live for this many ticks.</summary>
++        public int SettleTicks = 12;
++        /// <summary>At most this many chunks out of every reach stay active while live (linger).</summary>
++        public int LingerChunks = 16;
++        /// <summary>A chunk lingers at most this many ticks before it deactivates, live or not.</summary>
++        public int LingerTicks = 1800;
++        /// <summary>A chunk let go while live runs at most this many of the ticks it missed when it next activates.</summary>
++        public int CatchUpTicks = 720;
++        /// <summary>
++        /// The sparse World (World.Pack.cs): a chunk packs once it has been inactive, not beside an active chunk and not
++        /// drawn for this many ticks, at most PacksPerTick a tick (0: never). Memory only: nothing shared follows them.
++        /// </summary>
++        public int PackTicks = 300, PacksPerTick = 2;
++    }
++}
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Land/StreamingParams.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/StreamingParams.cs.meta
+new file mode 100644
+index 00000000..5a755be0
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/StreamingParams.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: babdf4c344b94934bf763e1e1bf4c4e9
+\ No newline at end of file
+diff --git a/packages/com.anweather.chemistry-core/Runtime/TerrainGrid.cs b/packages/com.anweather.chemistry-core/Runtime/Land/TerrainGrid.cs
+similarity index 99%
+rename from packages/com.anweather.chemistry-core/Runtime/TerrainGrid.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/TerrainGrid.cs
+index c69cb1eb..66c5c9e1 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/TerrainGrid.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/Land/TerrainGrid.cs
+@@ -186,7 +186,7 @@ namespace Chem
+             var all = new List<(int cx, int cy)>(ChunksX * ChunksZ);
+             for (int j = 0; j < ChunksZ; j++)
+                 for (int i = 0; i < ChunksX; i++) all.Add((i, j));
+-            return ChunkStreaming.Within(all, x + U0 + 0.5, V0 - y + 0.5, radius);
++            return Chunks.Within(all, x + U0 + 0.5, V0 - y + 0.5, radius);
+         }
+ 
+         public (float x, float z) CellCenter(int x, int y) =>
+diff --git a/packages/com.anweather.chemistry-core/Runtime/TerrainGrid.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/TerrainGrid.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/TerrainGrid.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/TerrainGrid.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeBlueprint.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeBlueprint.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeBlueprint.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeBlueprint.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeBlueprint.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeBlueprint.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeBlueprint.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeBlueprint.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeField.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeField.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeField.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeField.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeField.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeField.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeField.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeField.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeGeometry.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeGeometry.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeGeometry.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeGeometry.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeGeometry.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeGeometry.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeGeometry.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeGeometry.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeRegistry.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeRegistry.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeRegistry.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeRegistry.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeRegistry.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeRegistry.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeRegistry.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeRegistry.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeSchema.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeSchema.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeSchema.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeSchema.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ThemeSchema.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ThemeSchema.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ThemeSchema.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ThemeSchema.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ValueNoise.cs b/packages/com.anweather.chemistry-core/Runtime/Land/ValueNoise.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ValueNoise.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ValueNoise.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/ValueNoise.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/ValueNoise.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/ValueNoise.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/ValueNoise.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Village.cs b/packages/com.anweather.chemistry-core/Runtime/Land/Village.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/Village.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/Village.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/Village.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/Village.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/Village.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/Village.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldBiomes.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldBiomes.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldBiomes.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldBiomes.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldBiomes.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldBiomes.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldBiomes.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldBiomes.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldHash.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldHash.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldHash.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldHash.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldHash.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldHash.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldHash.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldHash.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldNoise.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldNoise.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldNoise.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldNoise.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldNoise.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldNoise.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldNoise.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldNoise.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Finish.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Finish.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Finish.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Finish.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Finish.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Finish.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Finish.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Finish.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Grid.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Grid.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Grid.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Grid.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Grid.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Grid.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Grid.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Grid.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Library.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Library.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Library.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Library.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Library.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Library.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Library.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Library.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Roads.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Roads.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Roads.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Roads.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Roads.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Roads.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Roads.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Roads.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Sketch.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Sketch.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Sketch.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Sketch.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Sketch.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Sketch.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Sketch.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Sketch.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Solver.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Solver.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Solver.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Solver.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Solver.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Solver.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Solver.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Solver.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Spawns.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Spawns.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Spawns.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Spawns.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.Spawns.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Spawns.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.Spawns.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.Spawns.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldPlan.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldPlan.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldPlan.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldSketch.cs b/packages/com.anweather.chemistry-core/Runtime/Land/WorldSketch.cs
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldSketch.cs
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldSketch.cs
+diff --git a/packages/com.anweather.chemistry-core/Runtime/WorldSketch.cs.meta b/packages/com.anweather.chemistry-core/Runtime/Land/WorldSketch.cs.meta
+similarity index 100%
+rename from packages/com.anweather.chemistry-core/Runtime/WorldSketch.cs.meta
+rename to packages/com.anweather.chemistry-core/Runtime/Land/WorldSketch.cs.meta
+diff --git a/packages/com.anweather.chemistry-core/Runtime/MapStampsLaying.cs b/packages/com.anweather.chemistry-core/Runtime/MapStampsLaying.cs
+new file mode 100644
+index 00000000..160b980b
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/MapStampsLaying.cs
+@@ -0,0 +1,50 @@
++// A map's own land stamps laid on a World as it's made (World.LayMapStamps). The stamps themselves are read in the land
++// (MapStamps.cs, Chem.Land), which knows no World; laying them is the World's, so it's here, called as stamps.LayInto(world).
++using System.Collections.Generic;
++using System.Linq;
++
++namespace Chem
++{
++    public static class MapStampsLaying
++    {
++        /// <summary>
++        /// Lays them on a world as it's made, a canyon's trail on its floor's dry cells and a bare stamp's terrain where it
++        /// moved the land; why any was refused, by id, and a trail or bare terrain the rules haven't got.
++        /// </summary>
++        public static List<string> LayInto(this MapStamps stamps, World world)
++        {
++            var refused = new List<string>();
++            foreach (var s in stamps.All)
++            {
++                var why = world.LayMapStamps(new[] { s.Stamp });
++                refused.AddRange(why.Select(w => $"{MapStamps.FileName}: {s.Id} isn't laid, {w}"));
++                if (why.Count > 0) continue;
++                foreach (var terrain in new[] { s.Trail, s.Bare }.Where(t => t != null && !world.Rules.Terrain.ContainsKey(t)))
++                    refused.Add($"{MapStamps.FileName}: {s.Id} lays {terrain}, which isn't a terrain");
++                if (s.Trail != null && world.Rules.Terrain.ContainsKey(s.Trail))
++                    foreach (var (x, y) in s.Stamp.Trail())
++                        if (world.InBounds(x, y) && world.At(x, y).Water == 0) world.Paint(x, y, s.Trail);
++                if (s.Bare != null && world.Rules.Terrain.ContainsKey(s.Bare)) Bare(world, s);
++            }
++            return refused;
++        }
++
++        // Every dry cell of open ground or standing tree the stamp moved, row by row, painted its bare terrain.
++        static void Bare(World world, MapStamp s)
++        {
++            var stamp = s.Stamp;
++            int reach = stamp.Bound;
++            var (xFrom, xTo) = world.XSpan(stamp.X - reach, stamp.X + reach); // round the seam on a world that wraps
++            var (yFrom, yTo) = world.YSpan(stamp.Y - reach, stamp.Y + reach);
++            for (int y = yFrom; y <= yTo; y++)
++                for (int x = xFrom; x <= xTo; x++)
++                {
++                    var c = world.At(x, y);
++                    if (stamp.At(x - stamp.X, y - stamp.Y) == 0 || c.Water != 0) continue;
++                    if (c.T != "tree" && (!world.HasTag(c, "ground") || world.IsBlocking(c))) continue;
++                    world.Paint(x, y, s.Bare);
++                    world.MarkBare(x, y);
++                }
++        }
++    }
++}
+diff --git a/packages/com.anweather.chemistry-core/Runtime/MapStampsLaying.cs.meta b/packages/com.anweather.chemistry-core/Runtime/MapStampsLaying.cs.meta
+new file mode 100644
+index 00000000..a9ed667e
+--- /dev/null
++++ b/packages/com.anweather.chemistry-core/Runtime/MapStampsLaying.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: 54b7db5513f140d0a57cc86c4f4602ba
+\ No newline at end of file
+diff --git a/packages/com.anweather.chemistry-core/Runtime/RuleTables.cs b/packages/com.anweather.chemistry-core/Runtime/RuleTables.cs
+index 0556a0d1..200af10d 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/RuleTables.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/RuleTables.cs
+@@ -463,31 +463,6 @@ namespace Chem
+         public double FireBright = 20, FireDim = 20;
+     }
+ 
+-    /// <summary>
+-    /// sim.json's streaming (ChunkStreaming, docs/WORLD_STREAMING.md): a character's reach, the
+-    /// chunks within Reach of the one it stands in, is kept active; a chunk deactivates once no
+-    /// character is within Keep. C# only: the sandbox has no chunks.
+-    /// </summary>
+-    public sealed class StreamingParams
+-    {
+-        public int Reach = 2, Keep = 3;
+-        /// <summary>A chunk is generated within this of a character, and known (a coarse far chunk, KnownRing) out to know.</summary>
+-        public int Sight = 4, Know = 7;
+-        /// <summary>A chunk is settled once nothing in it has been live for this many ticks.</summary>
+-        public int SettleTicks = 12;
+-        /// <summary>At most this many chunks out of every reach stay active while live (linger).</summary>
+-        public int LingerChunks = 16;
+-        /// <summary>A chunk lingers at most this many ticks before it deactivates, live or not.</summary>
+-        public int LingerTicks = 1800;
+-        /// <summary>A chunk let go while live runs at most this many of the ticks it missed when it next activates.</summary>
+-        public int CatchUpTicks = 720;
+-        /// <summary>
+-        /// The sparse World (World.Pack.cs): a chunk packs once it has been inactive, not beside an active chunk and not
+-        /// drawn for this many ticks, at most PacksPerTick a tick (0: never). Memory only: nothing shared follows them.
+-        /// </summary>
+-        public int PackTicks = 300, PacksPerTick = 2;
+-    }
+-
+     /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
+     public sealed class WeatherParams
+     {
+diff --git a/packages/com.anweather.chemistry-core/Runtime/World.Land.cs b/packages/com.anweather.chemistry-core/Runtime/World.Land.cs
+index 5d2bffed..8a21e406 100644
+--- a/packages/com.anweather.chemistry-core/Runtime/World.Land.cs
++++ b/packages/com.anweather.chemistry-core/Runtime/World.Land.cs
+@@ -13,316 +13,6 @@ using Newtonsoft.Json.Linq;
+ 
+ namespace Chem
+ {
+-    /// <summary>One change to the land: a shape applied to height, in land units.</summary>
+-    public sealed class LandStamp
+-    {
+-        public const string Flat = "flat", Dome = "dome", Cone = "cone", Ridge = "ridge", Canyon = "canyon", Cliff = "cliff";
+-        const int Fixed = 256, RoughSalt = 7331, LatticeShift = 4096;
+-        // Fixed point: One is 1.0.
+-        const long One = 1024;
+-        // How deep a canyon cuts at most, in land units, to stay inside what can be drawn; its rim takes the rest of the wall.
+-        const long CanyonDeepest = 112;
+-        // A face is a cell wide for this many land units of wall.
+-        const long FaceSlope = 48;
+-
+-        public int X { get; private set; }
+-        public int Y { get; private set; }
+-        public int Radius { get; private set; }
+-        /// <summary>At the middle, in land units; below 0 it's a hollow. A canyon's or cliff's wall, however it's signed; below 0 a cliff's high side is the other way.</summary>
+-        public int Rise { get; private set; }
+-        public string Profile { get; private set; }
+-        /// <summary>A ridge's, canyon's or cliff's line, as a step across the grid; 0, 0 for any other profile.</summary>
+-        public int AlongX { get; private set; }
+-        public int AlongY { get; private set; }
+-        /// <summary>How uneven, 0 to 100 percent of the height at a cell.</summary>
+-        public int Rough { get; private set; }
+-        public int Seed { get; private set; }
+-
+-        /// <summary>
+-        /// A canyon's or cliff's line as a path of points from its middle, in cells, in place of one straight line: empty for a
+-        /// straight one. Its face follows the path round its bends, Radius either side of it, and its ends taper over
+-        /// three tenths of Radius past the first and last points.
+-        /// </summary>
+-        public IReadOnlyList<(int x, int y)> Path { get; private set; } = Array.Empty<(int x, int y)>();
+-
+-#pragma warning disable S107 // a stamp's row is its nine fields
+-        public static LandStamp Make(int x, int y, int radius, int rise, string profile, int alongX, int alongY, int rough, int seed) =>
+-            new LandStamp { X = x, Y = y, Radius = radius, Rise = rise, Profile = profile, AlongX = alongX, AlongY = alongY, Rough = rough, Seed = seed };
+-#pragma warning restore S107
+-
+-        /// <summary>The same stamp along a path of points from its middle (Path).</summary>
+-        public LandStamp Along(IEnumerable<(int x, int y)> path)
+-        {
+-            var copy = (LandStamp)MemberwiseClone();
+-            copy.Path = path.ToArray();
+-            return copy;
+-        }
+-
+-        /// <summary>A stamp in a command or a save, or null if it isn't one: nine fields, and a path as a tenth.</summary>
+-        public static LandStamp Read(JToken row)
+-        {
+-            if (!(row is JArray a) || (a.Count != 9 && a.Count != 10)) return null;
+-            var stamp = Make((int)a[0], (int)a[1], (int)a[2], (int)a[3], (string)a[4], (int)a[5], (int)a[6], (int)a[7], (int)a[8]);
+-            if (a.Count == 9) return stamp;
+-            if (!(a[9] is JArray points) || points.Any(p => !(p is JArray xy) || xy.Count != 2)) return null;
+-            return stamp.Along(points.Select(p => ((int)p[0], (int)p[1])));
+-        }
+-
+-        /// <summary>The row, for a command or a save.</summary>
+-        public JArray Row
+-        {
+-            get
+-            {
+-                var row = new JArray(X, Y, Radius, Rise, Profile, AlongX, AlongY, Rough, Seed);
+-                if (Path.Count > 0) row.Add(new JArray(Path.Select(p => (object)new JArray(p.x, p.y)).ToArray()));
+-                return row;
+-            }
+-        }
+-
+-        /// <summary>The row as text, for the checksum.</summary>
+-        public string Text => Row.ToString(Newtonsoft.Json.Formatting.None);
+-
+-        public bool Known =>
+-            Radius > 0 && Rough >= 0 && Rough <= 100
+-            && (Path.Count == 0 ? Profile == Flat || Profile == Dome || Profile == Cone || (NeedsLine(Profile) && (AlongX != 0 || AlongY != 0)) : PathKnown);
+-
+-        // A path is a canyon's or a cliff's, two points or more, each a step from the last.
+-        bool PathKnown => (Profile == Canyon || Profile == Cliff) && Path.Count >= 2 && Enumerable.Range(1, Path.Count - 1).All(k => Path[k] != Path[k - 1]);
+-
+-        /// <summary>Whether a profile runs along a line.</summary>
+-        public static bool NeedsLine(string profile) => profile == Ridge || profile == Canyon || profile == Cliff;
+-
+-        /// <summary>How far from its middle, in cells, it can reach: Radius, or for a path its furthest point and Radius past it.</summary>
+-        public int Bound => Path.Count == 0 ? Radius : (int)Root(Path.Max(p => (long)p.x * p.x + (long)p.y * p.y)) + 1 + Radius;
+-
+-        /// <summary>What it adds at a cell this far from its middle, in land units.</summary>
+-        public int At(int dx, int dy)
+-        {
+-            if (Path.Count > 0) return (int)FormedOnPath(dx, dy);
+-            long r2 = (long)Radius * Radius, d2 = (long)dx * dx + (long)dy * dy;
+-            if (d2 > r2) return 0;
+-            if (Profile == Canyon || Profile == Cliff) return (int)Formed(dx, dy, d2);
+-            long height = Shape(dx, dy, r2, d2);
+-            return (int)(height + height * Fractal(X + dx, Y + dy, 1) * Rough * 2 / (100L * One));
+-        }
+-
+-        long Shape(int dx, int dy, long r2, long d2)
+-        {
+-            switch (Profile)
+-            {
+-                case Flat: return Rise;
+-                case Dome: return Rise * (r2 - d2) / r2;
+-                case Cone: return Rise * Fall(Root(d2 * Fixed * Fixed)) / (Radius * (long)Fixed);
+-                default:
+-                    // Highest on its line, and down to nothing at the line's two ends.
+-                    long length2 = (long)AlongX * AlongX + (long)AlongY * AlongY;
+-                    long off = Root(Square((long)dx * AlongY - (long)dy * AlongX) * Fixed * Fixed / length2);
+-                    long along = Root(Square((long)dx * AlongX + (long)dy * AlongY) * Fixed * Fixed / length2);
+-                    return Rise * Fall(off) / (Radius * (long)Fixed) * Fall(along) / (Radius * (long)Fixed);
+-            }
+-        }
+-
+-        long Fall(long fixedDistance) => Math.Max(0, Radius * (long)Fixed - fixedDistance);
+-
+-        static long Square(long v) => v * v;
+-
+-        // The whole square root, the same on every machine.
+-        static long Root(long v)
+-        {
+-            if (v <= 0) return 0;
+-            long r = v, next = (v + 1) / 2;
+-            while (next < r)
+-            {
+-                r = next;
+-                next = (r + v / r) / 2;
+-            }
+-            return r;
+-        }
+-
+-        // Smoothed value noise on a lattice this many cells wide: -One to One.
+-        long Lattice(int x, int y, int cells, int salt)
+-        {
+-            x += LatticeShift;
+-            y += LatticeShift;
+-            int u = x / cells, v = y / cells;
+-            long fu = Smooth(x % cells * One / cells), fv = Smooth(y % cells * One / cells);
+-            long Corner(int a, int b) => WorldHash.Hash4(Seed, RoughSalt + salt * 64 + cells, a, b) % (2u * (uint)One + 1u) - One;
+-            long near = Corner(u, v) * (One - fu) + Corner(u + 1, v) * fu;
+-            long far = Corner(u, v + 1) * (One - fu) + Corner(u + 1, v + 1) * fu;
+-            return (near / One * (One - fv) + far / One * fv) / One;
+-        }
+-
+-        // Four octaves, 16 cells down to 2: -One to One, mostly within half of that.
+-        long Fractal(int x, int y, int salt) =>
+-            (8 * Lattice(x, y, 16, salt) + 4 * Lattice(x, y, 8, salt) + 2 * Lattice(x, y, 4, salt) + Lattice(x, y, 2, salt)) / 15;
+-
+-        static long Smooth(long t)
+-        {
+-            t = Math.Max(0, Math.Min(One, t));
+-            return t * t / One * (3 * One - 2 * t) / One;
+-        }
+-
+-        // Bands of rock: a climb of 0 to One held on ledges, with a short steep riser between them.
+-        static long Strata(long t, int bands)
+-        {
+-            t = Math.Max(0, Math.Min(One, t));
+-            long band = t * bands / One, inside = t * bands % One;
+-            return Math.Min(One, (band * One + Smooth(inside * 2 - One / 2)) / bands);
+-        }
+-
+-        // A canyon or a cliff at a cell: a face that wanders, with broken ground beside it, in land units.
+-        long Formed(int dx, int dy, long d2)
+-        {
+-            long length = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
+-            long across = ((long)dx * AlongY - (long)dy * AlongX) * One * One / length;
+-            long along = Math.Abs((long)dx * AlongX + (long)dy * AlongY) * One * One / length;
+-            long reach = Radius * One;
+-            // A canyon's floor climbs to the land at both ends, gently enough to walk out.
+-            long ramp = Math.Min(One, (reach - along) * One / (reach * 3 / 4));
+-            // Nothing at the rim of the stamp, so it meets the land round it.
+-            return FormedAt(X + dx, Y + dy, across, ramp, Smooth((reach - Root(d2 * One * One)) * One / (reach * 3 / 10)));
+-        }
+-
+-        // A face across a line at a cell this far across it (fixed point, signed), its floor this far down its ramp, tapered.
+-        long FormedAt(int x, int y, long across, long ramp, long taper)
+-        {
+-            long reach = Radius * One, wall = Math.Abs((long)Rise);
+-            long off = across + Lattice(x, y, 24, 2) * Radius / 5 + Fractal(x, y, 3) * 3;
+-            long face = Math.Max(3, wall / FaceSlope) * One;
+-            long side = Rise < 0 ? -off : off;
+-            long height = Profile == Canyon ? CanyonAt(Math.Abs(off), reach, face, wall, ramp, x, y) : CliffAt(side, reach, face, wall, x, y);
+-            height += wall * Fractal(x, y, 4) * Rough / (100 * One * 3);
+-            // A canyon's floor is as deep as it's asked, on any seed: noise past it folds back up, so the floor keeps its grain.
+-            long deepest = CanyonDepth(wall);
+-            if (Profile == Canyon && height < -deepest) height = -2 * deepest - height;
+-            return height * taper / One;
+-        }
+-
+-        // Along a path: across is from the nearest point on it, signed as a straight line's (the high side of a cliff on
+-        // the same hand all the way), and the ends are where the floor climbs out and the stamp tapers away.
+-        long FormedOnPath(int dx, int dy)
+-        {
+-            long reach = Radius * One, cap = reach * 3 / 10;
+-            var (across, at, length) = NearestOnPath(dx, dy);
+-            long inward = Math.Min(at, length - at);
+-            if (Math.Abs(across) > reach || inward < -cap) return 0;
+-            long ramp = Math.Max(0, Math.Min(One, (inward + cap) * One / (reach * 3 / 4)));
+-            long taper = Smooth((reach - Math.Abs(across)) * One / (reach * 3 / 10)) * Smooth((inward + cap) * One / cap) / One;
+-            return FormedAt(X + dx, Y + dy, across, ramp, taper);
+-        }
+-
+-        /// <summary>
+-        /// The middle of a canyon's floor, cell by cell from the first point of its line or path to the last, two cells
+-        /// wide: where it wanders off the line, this follows it, for a trail along the bottom. Empty for any other profile.
+-        /// </summary>
+-        public IEnumerable<(int x, int y)> Trail()
+-        {
+-            if (Profile != Canyon) yield break;
+-            var points = Path.Count > 0 ? Path : StraightEnds();
+-            var seen = new HashSet<(int x, int y)>();
+-            for (int k = 0; k + 1 < points.Count; k++)
+-            {
+-                long ax = points[k].Item1, ay = points[k].Item2, vx = points[k + 1].Item1 - ax, vy = points[k + 1].Item2 - ay;
+-                long length = Root((vx * vx + vy * vy) * One * One), steps = 2 * Math.Max(Math.Abs(vx), Math.Abs(vy));
+-                for (long n = 0; n <= steps; n++)
+-                {
+-                    long px = ax * One + vx * One * n / steps, py = ay * One + vy * One * n / steps;
+-                    int cx = X + (int)Div(px, One), cy = Y + (int)Div(py, One);
+-                    // Where CanyonAt's off is 0: the line, less how far the floor wanders from it here.
+-                    long wander = Lattice(cx, cy, 24, 2) * Radius / 5;
+-                    foreach (long side in new[] { -One / 2, One / 2 })
+-                    {
+-                        long across = side - wander;
+-                        var cell = (X + (int)Div(px + vy * One * across / length, One), Y + (int)Div(py - vx * One * across / length, One));
+-                        if (seen.Add(cell)) yield return cell;
+-                    }
+-                }
+-            }
+-        }
+-
+-        // A straight canyon's line as a path: its radius either way of the middle.
+-        (int x, int y)[] StraightEnds()
+-        {
+-            long l = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
+-            int ex = (int)(AlongX * Radius * One / l), ey = (int)(AlongY * Radius * One / l);
+-            return new[] { (-ex, -ey), (ex, ey) };
+-        }
+-
+-        // Rounded to the nearest whole, halves up, the same way for either sign.
+-        static long Div(long v, long by)
+-        {
+-            long t = v + by / 2;
+-            return t >= 0 ? t / by : -((-t + by - 1) / by);
+-        }
+-
+-        // The nearest point of the path to a cell: how far across (fixed point, signed), how far along from its start (past
+-        // either end the first and last steps run on), and the path's whole length.
+-        (long across, long at, long length) NearestOnPath(int dx, int dy)
+-        {
+-            long best = long.MaxValue, across = 0, at = 0, walked = 0;
+-            int last = Path.Count - 2;
+-            for (int k = 0; k <= last; k++)
+-            {
+-                long ax = Path[k].x, ay = Path[k].y, vx = Path[k + 1].x - ax, vy = Path[k + 1].y - ay;
+-                long len2 = vx * vx + vy * vy, step = Root(len2 * One * One);
+-                long t = ((dx - ax) * vx + (dy - ay) * vy) * One / len2;
+-                if (k > 0) t = Math.Max(0, t);
+-                if (k < last) t = Math.Min(One, t);
+-                long ex = (dx - ax) * One - vx * t, ey = (dy - ay) * One - vy * t;
+-                long d2 = ex * ex + ey * ey;
+-                if (d2 < best)
+-                {
+-                    best = d2;
+-                    long cross = ex * vy - ey * vx;
+-                    across = cross == 0 ? 0 : Math.Sign(cross) * Root(d2);
+-                    at = walked + step * t / One;
+-                }
+-                walked += step;
+-            }
+-            return (across, at, walked);
+-        }
+-
+-        static long CanyonDepth(long wall) => Math.Min(wall * 2 / 5, CanyonDeepest);
+-
+-        /// <summary>The least and the most it can add anywhere, whatever its seed: what decides if the land can take it.</summary>
+-        public (int low, int high) Extent
+-        {
+-            get
+-            {
+-                long wall = Math.Abs((long)Rise), noise = wall * Rough / 300;
+-                if (Profile == Canyon) return ((int)-CanyonDepth(wall), (int)(wall + noise));
+-                if (Profile == Cliff) return ((int)-noise, (int)(wall + noise));
+-                long a = Rise * (50L + Rough) / 50, b = Rise * (50L - Rough) / 50;
+-                return ((int)Math.Min(0, Math.Min(a, b)), (int)Math.Max(0, Math.Max(a, b)));
+-            }
+-        }
+-
+-        // Cut down to a floor, the rest of the wall raised as a rim that falls back to nothing.
+-#pragma warning disable S107 // the place across it, and the five sizes it's cut to
+-        long CanyonAt(long off, long reach, long face, long wall, long ramp, int x, int y)
+-#pragma warning restore S107
+-        {
+-            long deepest = CanyonDepth(wall), cut = deepest * Math.Max(0, ramp) / One, rim = wall - deepest;
+-            long half = reach / 5 + Lattice(x, y, 16, 5) * Radius / 16;
+-            if (off <= half) return wall * Math.Abs(Fractal(x, y, 6)) / (16 * One) - cut;
+-            if (off <= half + face) return (rim + cut) * Strata((off - half) * One / face + Lattice(x, y, 6, 7) / 8, 3) / One - cut;
+-            return rim * (One - Smooth((off - half - face) * One / Math.Max(1, reach - half - face))) / One;
+-        }
+-
+-        // The high side above the face, sloping back to nothing; a skirt of broken rock at the foot.
+-        long CliffAt(long off, long reach, long face, long wall, int x, int y)
+-        {
+-            long foot = wall / 8;
+-            if (off < 0)
+-            {
+-                long skirt = Math.Max(0, One + off / 8);
+-                return (foot + wall * Math.Abs(Fractal(x, y, 8)) / (6 * One)) * skirt / One * skirt / One;
+-            }
+-            if (off <= face) return foot + (wall - foot) * Strata(off * One / face + Lattice(x, y, 6, 7) / 8, 4) / One;
+-            return wall * (One - Smooth((off - face) * One / Math.Max(1, reach - face))) / One;
+-        }
+-    }
+-
+     public sealed partial class World
+     {
+         /// <summary>A stamp as an act: its kind and its what.</summary>
+@@ -338,7 +28,7 @@ namespace Chem
+         public const int LandFaceReach = 3;
+ 
+         /// <summary>The valley's drawable range: how low and high land can be stamped, in land units, inside what a chunk's terrain can draw with room for a cell's own height.</summary>
+-        public const int LandLowest = -136, LandHighest = 2176;
++        public const int LandLowest = MapFile.LandLowest, LandHighest = MapFile.LandHighest;
+ 
+         /// <summary>This world's drawable range: its map's (map.json), every peer's the same.</summary>
+         public (int low, int high) LandRange { get; private set; } = (LandLowest, LandHighest);
+diff --git a/core/Game.Core.sln b/core/Game.Core.sln
+index 66036b83..26435c27 100644
+--- a/core/Game.Core.sln
++++ b/core/Game.Core.sln
+@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chem.Lockstep.Tests", "Chem
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chem.Playtest.Tests", "Chem.Playtest.Tests\Chem.Playtest.Tests.csproj", "{B3BB75D8-5BD8-4F2D-A50C-4D8AE53D60DA}"
+ EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chem.Land", "Chem.Land\Chem.Land.csproj", "{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -243,6 +245,18 @@ Global
+ 		{B3BB75D8-5BD8-4F2D-A50C-4D8AE53D60DA}.Release|x64.Build.0 = Release|Any CPU
+ 		{B3BB75D8-5BD8-4F2D-A50C-4D8AE53D60DA}.Release|x86.ActiveCfg = Release|Any CPU
+ 		{B3BB75D8-5BD8-4F2D-A50C-4D8AE53D60DA}.Release|x86.Build.0 = Release|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Debug|x64.ActiveCfg = Debug|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Debug|x64.Build.0 = Debug|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Debug|x86.ActiveCfg = Debug|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Debug|x86.Build.0 = Debug|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|Any CPU.Build.0 = Release|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x64.ActiveCfg = Release|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x64.Build.0 = Release|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x86.ActiveCfg = Release|Any CPU
++		{96FB7DEE-8DAA-4429-8EF0-5D5BBCF04F46}.Release|x86.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ 	GlobalSection(SolutionProperties) = preSolution
+ 		HideSolutionNode = FALSE
+diff --git a/core/Game.Core/Game.Core.csproj b/core/Game.Core/Game.Core.csproj
+index 0990f190..cc20cc7f 100644
+--- a/core/Game.Core/Game.Core.csproj
++++ b/core/Game.Core/Game.Core.csproj
+@@ -1,7 +1,8 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+   <!-- docs/DECISIONS.md D3: the engine-free core. Compiles the Unity Chemistry
+        assembly's sources (not its tests) from where Unity keeps them: the
+-       com.anweather.chemistry-core package, plus the game's Chemistry.Mcp. -->
++       com.anweather.chemistry-core package (Runtime/, not Runtime/Land: that's
++       Chem.Land), plus the game's Chemistry.Mcp. -->
+   <PropertyGroup>
+     <TargetFramework>netstandard2.1</TargetFramework>
+     <AssemblyName>Game.Core</AssemblyName>
+@@ -15,6 +16,11 @@
+     <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Logic/*.cs" Link="Playtest/%(Filename)%(Extension)" />
+   </ItemGroup>
+ 
++  <ItemGroup>
++    <!-- The land, its own assembly below this one (Chem.Land, Runtime/Land). -->
++    <ProjectReference Include="../Chem.Land/Chem.Land.csproj" />
++  </ItemGroup>
++
+   <ItemGroup>
+     <!-- Unity gets the same library from com.unity.nuget.newtonsoft-json. -->
+     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+diff --git a/unity/Assets/Prototype/Chemistry/Tests/GeneratedSourceTests.cs b/unity/Assets/Prototype/Chemistry/Tests/GeneratedSourceTests.cs
+index 01901969..6ff32ba3 100644
+--- a/unity/Assets/Prototype/Chemistry/Tests/GeneratedSourceTests.cs
++++ b/unity/Assets/Prototype/Chemistry/Tests/GeneratedSourceTests.cs
+@@ -131,7 +131,7 @@ namespace Chem.Tests
+         public void ItsLandFromTheSourceIsTheBakesFromAnyThread()
+         {
+             var source = Source();
+-            var land = LandChunks.FromSource(source);
++            var land = LandChunks.FromSource(source.W, source.H, source.LandInto);
+             var bake = LandChunks.Read(File.ReadAllText(Path.Combine(baked, MapFile.LandName)), source.W, source.H);
+             Assert.That(land.IsFromSource, Is.True);
+             Assert.That((land.W, land.H), Is.EqualTo((bake.W, bake.H)));
+diff --git a/unity/Assets/Prototype/Scripts/MapLand.cs b/unity/Assets/Prototype/Scripts/MapLand.cs
+index 94b1023b..373c3236 100644
+--- a/unity/Assets/Prototype/Scripts/MapLand.cs
++++ b/unity/Assets/Prototype/Scripts/MapLand.cs
+@@ -63,7 +63,8 @@ public sealed class MapLand
+             // Nothing read for the map's size (J-086): the land comes from the chunks the world makes, the sea from what the
+             // generator knows of every chunk (81 samples each, side by side), and the way out to sea from map.json.
+             var timer = System.Diagnostics.Stopwatch.StartNew();
+-            Land = LandChunks.FromSource(ChemGrid.PlayedSource);
++            var source = ChemGrid.PlayedSource;
++            Land = LandChunks.FromSource(source.W, source.H, source.LandInto);
+             Sea = SeaMask.OfKnown(LoadedMaps.Get(ChemGrid.MapSource).Gen);
+             Debug.Log($"MAP LAND {Map.Id}: made as it's read; its sea known from its chunks in {timer.Elapsed.TotalMilliseconds:0} ms ({Sea.SeaCells} sea cells, {Sea.Bytes / 1024} KB)");
+         }
