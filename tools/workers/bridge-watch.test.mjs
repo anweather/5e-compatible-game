@@ -41,7 +41,8 @@ exit 255
 `);
   stub(join(work, "linux.sh"), `#!/usr/bin/env bash
 echo "$*" >> "${dir}/said"
-[[ "$1" == "$STUB_HANG" ]] && sleep 30
+[[ "$1" == "$STUB_FAIL" ]] && { echo "stand-in: $1 refused" >&2; exit 1; }
+[[ "$1" == "$STUB_HANG" ]] && exec sleep 30
 case "$1" in
   attention) ;;
   outbox) for f in "${guest}"/*.md; do [ -f "$f" ] || continue; echo "=== $(basename "$f")"; cat "$f"; done ;;
@@ -51,7 +52,7 @@ esac
   const env = extra => ({
     ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}`, BRIDGE: bridge, BRIDGE_WATCH_DRY: "1", BRIDGE_WATCH_ONCE: "1",
     BRIDGE_WATCH_POWERSHELL: posix(join(bin, "powershell")), BRIDGE_WATCH_LINUX: posix(join(work, "linux.sh")),
-    BRIDGE_WATCH_HOMES: `pro=${join(dir, "pro")} max=${join(dir, "max")}`, STUB_VMS: "u2", STUB_IP: "172.26.223.16", STUB_HANG: "", ...extra,
+    BRIDGE_WATCH_HOMES: `pro=${join(dir, "pro")} max=${join(dir, "max")}`, STUB_VMS: "u2", STUB_IP: "172.26.223.16", STUB_HANG: "", STUB_FAIL: "", ...extra,
   });
   const pass = (extra = {}) => {
     const r = spawnSync("bash", [join(work, "bridge-watch.sh")], { encoding: "utf8", env: env(extra) });
@@ -114,13 +115,14 @@ test("a removal that fails is logged once, not every pass", { skip: !bash4 }, ()
   const s = scratch();
   try {
     s.report("20261106-120000-a", "text");
-    s.pass({ STUB_HANG: "outbox-done", BRIDGE_WATCH_GUEST_SECS: "1" });
-    s.pass({ STUB_HANG: "outbox-done", BRIDGE_WATCH_GUEST_SECS: "1" });
-    assert.equal(s.log().match(/can't remove u2's mailed reports: linux.sh outbox-done/g)?.length, 1, s.log());
+    s.pass({ STUB_FAIL: "outbox-done" });
+    s.pass({ STUB_FAIL: "outbox-done" });
+    assert.equal(s.log().match(/can't remove u2's mailed reports: linux.sh outbox-done at 172\.26\.223\.16 exited 1: stand-in: outbox-done refused/g)?.length, 1, s.log());
     assert.doesNotMatch(s.log(), /reading u2 again/);
     s.pass();
     assert.match(s.log(), /removing u2's mailed reports again/);
     assert.deepEqual(s.left(), []);
+    assert.equal(readFileSync(join(s.dir, "said"), "utf8").match(/^outbox-done u2 172\.26\.223\.16 /gm)?.length, 3);
   } finally { s.done(); }
 });
 
@@ -145,7 +147,7 @@ test("a guest that hangs is cut off and logged, and the pass goes on to the repo
   try {
     s.report("20261106-120000-a", "text");
     const started = Date.now();
-    const { code, out } = s.pass({ STUB_HANG: "attention", BRIDGE_WATCH_GUEST_SECS: "1" });
+    const { code, out } = s.pass({ STUB_HANG: "attention", BRIDGE_WATCH_GUEST_SECS: "3" });
     assert.equal(code, 0, out);
     assert.ok(Date.now() - started < 15000, "cut off, not waited out");
     assert.match(s.log(), /can't read u2's attention: linux.sh attention at 172\.26\.223\.16 exited 124 \(cut off\)/);
