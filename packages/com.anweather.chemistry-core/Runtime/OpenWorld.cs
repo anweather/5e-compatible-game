@@ -180,6 +180,7 @@ namespace Chem
         {
             public World World;
             public Fnv1aSum Sum;
+            public int Cells;
 
             public void Chunk(Chunk ch, ulong ground)
             {
@@ -194,6 +195,7 @@ namespace Chem
 
             public void Cell(int i, Cell c, string[] liquids)
             {
+                Cells++;
                 Sum.Add('@');
                 Sum.Add(i);
                 Sum.Add(':');
@@ -225,25 +227,31 @@ namespace Chem
             {
                 var ch = all[k];
                 sink.Chunk(ch, filled.Of(ch.X, ch.Y).Hash);
-                if (ch.Held is ChunkBlock b)
+                WalkChanges(ref sink, ch);
+            }
+        }
+
+        void WalkChanges<T>(ref T sink, Chunk ch) where T : struct, IOpenSink
+        {
+            if (ch.Held is ChunkBlock b)
+            {
+                for (int i = 0; i < Chunks.Area; i++)
                 {
-                    for (int i = 0; i < Chunks.Area; i++)
-                    {
-                        var c = b.Cells[i];
-                        hashMade.Reset();
-                        filled.Make(CellX(ch, i), CellY(ch, i), hashMade);
-                        if (SameCell(c, hashMade) && c.Liquid == hashMade.Liquid && c.Sets == hashMade.Sets) continue;
-                        sink.Cell(i, c, LiquidsIn(ch, c));
-                    }
-                    continue;
+                    var c = b.Cells[i];
+                    if (c == null) continue;
+                    hashMade.Reset();
+                    Source.Make(CellX(ch, i), CellY(ch, i), hashMade);
+                    if (SameCell(c, hashMade) && c.Liquid == hashMade.Liquid && c.Sets == hashMade.Sets) continue;
+                    sink.Cell(i, c, LiquidsIn(ch, c));
                 }
-                var p = ch.Packed;
-                for (int j = 0; j < p.At.Length; j++)
-                {
-                    walkScratch.Reset();
-                    LayPacked(p, j, walkScratch);
-                    sink.Cell(p.At[j], walkScratch, LiquidsIn(ch, walkScratch));
-                }
+                return;
+            }
+            var p = ch.Packed;
+            for (int j = 0; j < p.At.Length; j++)
+            {
+                walkScratch.Reset();
+                LayPacked(p, j, walkScratch);
+                sink.Cell(p.At[j], walkScratch, LiquidsIn(ch, walkScratch));
             }
         }
 

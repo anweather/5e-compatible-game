@@ -108,7 +108,7 @@ namespace Chem.Lockstep
             synced = true;
             knownUpTo = at;
             ExtendKnown();
-            rolling = new RollingHash();
+            HashBaseline();
             hostHashes.Clear();
             ownHashes.Clear();
             DesyncSeen = false;
@@ -127,8 +127,9 @@ namespace Chem.Lockstep
             int tick = r.Number();
             var parts = new ulong[r.Count()];
             for (int i = 0; i < parts.Length; i++) parts[i] = r.Hash();
+            var chunks = ReadChunks(r);
             if (!synced) return;
-            hostHashes[tick] = parts;
+            hostHashes[tick] = new HashWindow { Parts = parts, Chunks = chunks };
             CheckHash(tick);
         }
     }

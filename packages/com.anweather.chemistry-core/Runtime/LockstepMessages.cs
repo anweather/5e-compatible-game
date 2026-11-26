@@ -6,7 +6,8 @@
 // - Join / Resync (peer to host): send me a snapshot (Join: I've just come; Resync: I've desynced).
 // - Intent (peer to host): a command asked for, on a channel, with its input delay.
 // - Batch (host to all): a tick's batch, every channel's commands in it, in the channels' order.
-// - Hash (host to all): a hash window's parts (JoinSnapshot.PartNames), each FNV-1a 64 of its string.
+// - Hash (host to all): a hash window's parts (JoinSnapshot.PartNames), each FNV-1a 64 of its string, then the chunks
+//   whose hash changed in the window (World.RefreshChunkHashes): x, y and the hash with bit 32 set, or 0 for none.
 // - Snapshot (host to a joiner): the net tick it was taken at, the host's tick then, the last reset's tick and the
 //   snapshot's text (JoinSnapshot.Text); the batches after it follow.
 // - ResetComing (host to all): an online reset is stamped for this tick (a countdown).
@@ -76,14 +77,23 @@ namespace Chem.Lockstep
     public sealed class LockstepDesync
     {
         public LockstepDesync(int tick, IReadOnlyList<string> parts)
+            : this(tick, parts, System.Array.Empty<(int cx, int cy)>())
+        {
+        }
+
+        public LockstepDesync(int tick, IReadOnlyList<string> parts, IReadOnlyList<(int cx, int cy)> chunks)
         {
             Tick = tick;
             Parts = parts;
+            Chunks = chunks ?? System.Array.Empty<(int cx, int cy)>();
         }
 
         public int Tick { get; }
         /// <summary>The checksum's parts that differ, by JoinSnapshot.PartNames.</summary>
         public IReadOnlyList<string> Parts { get; }
+        public IReadOnlyList<(int cx, int cy)> Chunks { get; }
+
+        string Where => Chunks.Count == 0 ? "" : " in chunk " + string.Join(", ", Chunks.Select(c => $"({c.cx}, {c.cy})"));
 
         /// <summary>What it means, for the log: other files, other rules, or a world gone its own way.</summary>
         public string Text
@@ -92,7 +102,7 @@ namespace Chem.Lockstep
             {
                 if (Parts.Contains("things")) return $"Desync at tick {Tick}: this peer's world/things.json differs from the host's, so props have different ids. Same files?";
                 if (Parts.Contains("rules")) return $"Desync at tick {Tick}: this peer runs different rules from the host's. Same mods, same files?";
-                return $"Desync at tick {Tick}: this world no longer matches the host's ({string.Join(", ", Parts)})";
+                return $"Desync at tick {Tick}: this world no longer matches the host's ({string.Join(", ", Parts)}){Where}";
             }
         }
     }

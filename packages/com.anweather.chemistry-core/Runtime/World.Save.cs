@@ -441,6 +441,7 @@ namespace Chem
             ch.Changed = (int?)o["changed"] ?? 0;
             if (o["fit"] != null)
             {
+                StaleHash(ch);
                 ch.Fit = (int)o["fit"];
                 unfitChunks++;
             }

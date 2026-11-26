@@ -9,11 +9,9 @@
 // longer, so a tick still hashes about two valleys' worth of cells (map-size: a 3 x 3's whole sum was
 // 6 ms a tick under Mono at 30 ticks); the valley's stays Every.
 //
-// After (chunk-hash, 2026-11-08): a hash cached per chunk and recomputed only for chunks that changed would cost almost
-// nothing a tick and keep a big world's window at 5 s. It needs every cell write to mark its chunk, and cells are written
-// in place all over the core, so it waits for D9's accessors (cells behind World.At and arrays) rather than a partial
-// dirty flag that could miss a change (a missed desync) or invent one. A window a peer saw
-// only part of (it joined midway) gives no fingerprint, rather than one that can't match.
+// The online check no longer uses it (#168): LockstepSession compares the chunk digest (World.ChunkHash.cs), a hash cached
+// per chunk and made again only for chunks whose cells changed. It stays for the tests and tools that hash a whole world
+// in slices. A window a peer saw only part of (it joined midway) gives no fingerprint, rather than one that can't match.
 using System;
 using System.Globalization;
 
@@ -94,6 +92,8 @@ namespace Chem
             if (n >= 10) AddDigits(n / 10);
             Add((char)('0' + (int)(n % 10)));
         }
+
+        public uint Value => hash;
 
         public override string ToString() => hash.ToString("x", CultureInfo.InvariantCulture);
     }

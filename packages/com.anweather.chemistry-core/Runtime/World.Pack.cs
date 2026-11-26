@@ -310,6 +310,7 @@ namespace Chem
             {
                 ch.Packed = PackedChunk.Empty(ch.X, ch.Y);
                 ch.SnapValid = false;
+                StaleHash(ch);
             }
         }
 
@@ -330,7 +331,7 @@ namespace Chem
                     b.Cells[i] = null;
                     continue;
                 }
-                var c = b.Cells[i] ?? new Cell();
+                var c = b.Cells[i] ?? new Cell { Home = b };
                 c.Reset();
                 Source.Make(x, y, c);
                 if (k < p.At.Length && p.At[k] == i) LayPacked(p, k++, c);
