@@ -38,6 +38,28 @@ the next section, and the rest of this file is the map as it was drawn.
   (Explicit; it bakes the nine) is LandWorld's. Counts: Land 290 passed (was 497 + 1 skipped), LandWorld 208 + 1
   skipped, the rest unchanged; the one new test is LandWorld's fixture-kinds check. A Land test file now runs Land and
   LandWorld (and the smoke), not Sim, Lockstep and Rules.Mcp.Tests.
+- **5c (the `stop` rule, 2026-11-26; Andrew said yes the same day).** `runtime-land` is `"projects": ["Chem.Land"],
+  "stop": ["Game.Core"]`, its `after` gone: a `Runtime/Land/` change runs Chem.Land.Tests and Chem.LandWorld.Tests
+  (both reach Chem.Land without Game.Core), and the rest get the Unit smoke. `modules.mjs`'s `withDependents` takes a
+  stop list (reached, not followed), `choose` passes the module's, and `check` asks of a file only what its module's
+  cut runs (a test project compiling the file itself is always asked). gates.test.mjs: the Land runtime change, a Land
+  file with a Sim file (everything), and the cut and the check on a made-up map. Gates, 4-core VM: 3 m 48 s for
+  `Runtime/Land/HillsRoads.cs`, 3 m 45 s for `ChunkGenTests.cs` (step 3 measured 7 m 20 s and 6 m 07 s).
+  **Left for a Unity machine:** the compile below.
+
+**What a Unity compile must check** (nothing here has been through the Editor):
+
+- `Runtime/Land/Chem.Land.asmdef` (and the `Runtime/Land.meta` folder) imports as its own assembly, `Chem.Land`, with
+  `noEngineReferences`, Newtonsoft and `Prototype.Analyzers`, and `Chemistry` no longer compiles those files.
+- `Chem.Land` in the references of `Chemistry.asmdef`, `Chemistry.Mcp.asmdef` and `Chemistry.Tests.asmdef`; the
+  `InternalsVisibleTo` in `Runtime/Land/AssemblyInfo.cs` names `Chemistry` and `Chemistry.Mcp` (`LandCodec`,
+  `BuildingTables`, `WorldPlaces.Doc`/`Write`...).
+- The view (Assembly-CSharp, by `autoReferenced`): `Scripts/MapLand.cs` (`LandChunks.FromSource(w, h, landInto)`),
+  `Scripts/ChemGrid.cs` (`MapBake.EnsureRows`/`EnsureBaked`/`EnsureBakedInto`), `Scripts/Editor/PrototypeBuild.cs`
+  (`GeneratedMap.Baked`, unchanged but now in Chem.Land), `Editor/Tests/WideWorldTests.cs` (a comment).
+- Chemistry.Tests: the 18 new `*WorldTests.cs`, `LandFolders.cs` and `BuiltWorlds.cs` (each with a new `.meta`) compile
+  in the one Editor assembly beside the files they split from; `BakeTests` is now a static helper class.
+  `tools/editmode.sh chem` once, for the Mono run of the moved tests.
 
 Short version: the runtime half splits cleanly once one decision is made (where `GeneratedMap` goes). The tests
 don't split: only 6 of the 36 Land test files (about 50 of 498 tests) compile against the land alone. Almost every

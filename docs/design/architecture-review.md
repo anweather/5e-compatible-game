@@ -187,6 +187,12 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    and its bake in Sim (`MapBake`); the sweep's 2263 results unchanged by name. Awaits a Unity compile.*
    *5b done 2026-11-26 (cloud): `Chem.Land.Tests` builds on `Chem.Land` alone (290 tests); the land fixtures' World
    halves and the land-on-world files are `Chem.LandWorld.Tests` (209); Sim no longer references Land.*
+   *5c done 2026-11-26 (cloud). **Andrew's ruling (2026-11-26): yes to the `stop` rule.** A Land change runs
+   `Chem.Land.Tests` (and the land-on-world tests, `Chem.LandWorld.Tests`) plus the Unit smoke for everything above
+   `Game.Core`; the full suite still runs in CI after every push to dev. modules.json's `runtime-land` is
+   `"projects": ["Chem.Land"], "stop": ["Game.Core"]`; `modules.mjs check` takes the same cut. The gates for a Land
+   runtime file went from 7 m 20 s to 3 m 48 s, for a Land test file from 6 m 07 s to 3 m 45 s
+   (`docs/TESTING_LAYERS.md`). Step 5 is done but for its Unity compile.*
 6. **View plans in plain C#.** A `core/UnityMath` shim (Vector2/3, Mathf, Color: only what the plans use) and a
    `Prototype.Plans` assembly: first the 20 Unity-free `Scripts/` files and the subjects of the 31 plain
    `Editor/Tests` files, with those tests moved to a dotnet project; then the plan halves of `RowMesher`,

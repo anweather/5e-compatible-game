@@ -5,15 +5,16 @@
     "'projects' are code: those core projects run, and every project that references them (ProjectReferences, followed transitively; Chem.Tests.props's count for each project that imports it). A library (Game.Core, Rules.Mcp) runs its dependents.",
     "'reads' are data: those test projects read the files, and run alone (who references them doesn't matter).",
     "A module with neither runs no dotnet tests (docs, tools). A path in no module runs everything: the fail-safe.",
-    "Every Chem.* project links the Runtime through Game.Core, and Game.Core references Chem.Land (Runtime/Land, step 5a), so each Runtime area, the land's too, still runs everything; 'after' says which project it narrows to (the land's once 5c's stop rule cuts it at Game.Core). Chemistry/Mcp and Playtest/Logic compile into Game.Core too, so they run everything as well.",
+    "Every Chem.* project but Chem.Land.Tests links the Runtime through Game.Core, so each Runtime area above the land runs everything but the land's own tests; 'after' says which project it narrows to once it's an assembly of its own. Chemistry/Mcp and Playtest/Logic compile into Game.Core too, so they run the same.",
+    "'stop' (step 5c): projects whose dependents aren't followed for that module's changes; what's past them gets the smoke. runtime-land stops at Game.Core (Andrew, 2026-11-26). check takes the same cut.",
     "core/ files in no module (Chem.Tests.props, Directory.Build.props, the solution, the runsettings, TestParallel.cs, TestFriends.cs) run everything, as any unmapped path does.",
     "modules.mjs check (run by gates.test.mjs) proves the map agrees with the csproj files: every file a project compiles must select that project."
   ],
   "smoke": "TestCategory=Unit",
   "modules": [
-    { "name": "runtime-land", "after": ["Chem.Land.Tests"], "projects": ["Chem.Land"], "paths": [
+    { "name": "runtime-land", "projects": ["Chem.Land"], "stop": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Land/**"
-    ], "_": "Chem.Land's own assembly (step 5a). Its adapters onto a world (World.Land, GeneratedSource, BakedSource, MapBake, MapCheck, GeneratedPlaces, CellHeightfield, OpenWorld*) are Sim's: runtime-sim." },
+    ], "_": "Chem.Land's own assembly (step 5a). Andrew's ruling (2026-11-26, step 5c): a Land change runs Chem.Land.Tests and Chem.LandWorld.Tests (they reference Chem.Land), and not what reaches it only through Game.Core: those get the Unit smoke, and CI's full run after every push to dev catches the rest. Its adapters onto a world (World.Land, GeneratedSource, BakedSource, MapBake, MapCheck, GeneratedPlaces, CellHeightfield, OpenWorld*) are Sim's: runtime-sim, everything." },
     { "name": "runtime-rules", "after": ["Chem.Rules.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Rule*",
       "packages/com.anweather.chemistry-core/Runtime/Mod*",

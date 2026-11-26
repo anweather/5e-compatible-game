@@ -3,11 +3,12 @@
 // PATH that fails when told to (node passes modules.mjs to the real one), so this runs in a moment and needs none of them.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { check, choose, globRe, withDependents } from "./modules.mjs";
 
 const script = join(dirname(fileURLToPath(import.meta.url)), "gates.sh");
 
@@ -114,8 +115,48 @@ test("an unknown path runs everything", () => {
   assert.match(out, /somewhere\/new\.txt is in no module/);
 });
 
-test("a Land runtime change runs everything: Game.Core references Chem.Land, and every test project Game.Core", () => {
-  assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs"]).ran, /dotnet test core -c Release/);
+test("a Land runtime change runs the land's tests, not past Game.Core (the stop rule); the rest get the smoke", () => {
+  const { code, out, ran } = run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs"]);
+  assert.equal(code, 0, out);
+  const tested = projectsIn(ran, "TestCategory!=Sweep");
+  assert.deepEqual(tested, ["Chem.Land.Tests", "Chem.LandWorld.Tests"], "they reference Chem.Land; the rest reach it only through Game.Core");
+  assert.deepEqual(projectsIn(ran, "TestCategory=Unit"), ALL.filter(p => !tested.includes(p)), "the smoke is every other project's Unit fixtures");
+  assert.match(out, /runtime-land \[.*HillsRoads\.cs\]: .*not past Game\.Core/, "it says why");
+});
+
+test("the stop cuts only its own module's changes: a Land file with a Sim file runs everything", () => {
+  assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]).ran, /dotnet test core -c Release/);
+});
+
+// A made-up map in the shape load() returns: Lib compiled from lib/, Mid on Lib, A.Tests on Lib, B.Tests on Mid.
+function madeUp(stop, alsoCompiledBy = []) {
+  const root = mkdtempSync(join(tmpdir(), "modules-"));
+  mkdirSync(join(root, "lib"));
+  writeFileSync(join(root, "lib", "x.cs"), "");
+  const projects = {
+    Lib: { compiles: ["lib/*.cs"], refs: [], test: false },
+    Mid: { compiles: [], refs: ["Lib"], test: false },
+    "A.Tests": { compiles: alsoCompiledBy.includes("A.Tests") ? ["lib/*.cs"] : [], refs: ["Lib"], test: true },
+    "B.Tests": { compiles: [], refs: ["Mid"], test: true },
+  };
+  const modules = [{ name: "lib", projects: ["Lib"], stop, paths: ["lib/**"] }].map(x => ({ ...x, res: x.paths.map(globRe) }));
+  return { root, modules, projects, items: {}, inItem: () => false, compiledBy: () => [], problems: [], smoke: "TestCategory=Unit" };
+}
+
+test("withDependents reaches a stop project but doesn't follow it", () => {
+  const m = madeUp(["Mid"]);
+  assert.deepEqual([...withDependents(m, ["Lib"], ["Mid"])].sort(), ["A.Tests", "Lib", "Mid"]);
+  assert.deepEqual([...withDependents(m, ["Lib"])].sort(), ["A.Tests", "B.Tests", "Lib", "Mid"]);
+  rmSync(m.root, { recursive: true, force: true });
+});
+
+test("check takes the module's cut, and never excuses a test project that compiles the file itself", () => {
+  const cut = madeUp(["Mid"]);
+  assert.deepEqual(choose(cut, ["lib/x.cs"], { derive: false }).run, ["A.Tests"], "B.Tests is past Mid: the smoke");
+  assert.deepEqual(check(cut), [], "B.Tests isn't needed past the cut");
+  const own = madeUp(["Lib"], ["A.Tests"]);
+  assert.match(check(own).join("\n"), /lib\/x\.cs: A\.Tests compiles it, but the map runs nothing, not A\.Tests/);
+  for (const m of [cut, own]) rmSync(m.root, { recursive: true, force: true });
 });
 
 test("a Runtime change above the land runs every project but the land's own tests, which build on Chem.Land alone", () => {

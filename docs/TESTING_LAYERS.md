@@ -167,12 +167,21 @@ is `tools/workers/modules.json`; `tools/workers/modules.mjs` reads it with `core
 - `node tools/workers/modules.mjs check` (a workers test, so every landing runs it) fails when a file a project compiles
   wouldn't run that project by the map; `node tools/workers/modules.mjs choose <path>...` says what a change would run.
 
-**The Runtime is one assembly today.** Every `Chem.*` project links all of
-`packages/com.anweather.chemistry-core/Runtime` through `Game.Core`, so a Runtime change runs every project; the map's
-Runtime areas (`runtime-land`, `runtime-rules`...) say in `after` which project each narrows to once step 5 splits
-`Chem.Land` out. And a Land test change runs Land, Sim (it references Land), Lockstep and `Rules.Mcp.Tests` (they
-reference Sim), which are most of the suite's wall time: the module gates pay off for docs, tools, rules-only
-`Chem.Rules.Tests` work, Play, the tools' own projects, and the view's C#.
+**The land is its own assembly; the rest of the Runtime is one** (step 5, `docs/design/chem-land-split.md`).
+`Runtime/Land/` is `Chem.Land`; every other `Chem.*` project links the rest of `Runtime/` through `Game.Core`, which
+references `Chem.Land`. So a Runtime change above the land runs every project but `Chem.Land.Tests` (which builds on
+`Chem.Land` alone); the map's other Runtime areas (`runtime-rules`, `runtime-play`...) say in `after` which project
+each would narrow to as an assembly of its own.
+
+**The `stop` rule (Andrew, 2026-11-26).** A Land change (`runtime-land`: `Runtime/Land/**`) runs `Chem.Land.Tests` and
+`Chem.LandWorld.Tests` (the land on a World), and everything above `Game.Core` gets only the `Unit` smoke: the module's
+`"stop": ["Game.Core"]` reaches `Game.Core` but doesn't follow its dependents. Sim, Play, Lockstep and the MCP do use
+the land, so this is a judgment, not a proof: the land goldens (`NineGolden`, the hills', `WorldTwelve`'s) are in the
+land's own tests, `TerraformTests`' `CellHash` goldens are `Unit` (in the smoke), and **the full suite still runs in
+CI after every push to dev**, which catches what the cut lets by. `modules.mjs check` takes the same cut (a project
+past a stop isn't required of a file in that module, but a test project that compiles the file always is), and
+`gates.test.mjs` tests it. A Land test file runs Land and LandWorld (LandWorld references Land), not Sim. The adapters
+onto a world (`World.Land`, `GeneratedSource`, `MapBake`, `MapCheck`...) are Sim's and run everything.
 
 When dev moves during the gates, `land.sh` merges again and reruns the gates only if dev's new commits reach what this
 landing tested (`modules.mjs overlap`: a test project both run, a tested module both touch, or either running
@@ -185,4 +194,6 @@ Measured 2026-11-26 on the 4-core cloud VM (build and format included, warm buil
 | docs only | none | 1 m 00 s |
 | a Land test file (`ChunkGenTests.cs`, `HillsRoadTests.cs`) | Land, Sim, Lockstep, `Rules.Mcp.Tests` + the smoke | 6 m 07 s |
 | a Runtime file (`HillsRoads.cs`) | all | 7 m 20 s |
+| after step 5 (5c, the same VM): a Land runtime file (`Runtime/Land/HillsRoads.cs`) | Land, LandWorld + the smoke | 3 m 48 s |
+| after step 5: a Land test file (`ChunkGenTests.cs`) | Land, LandWorld + the smoke | 3 m 45 s |
 | before this step (every change: all, plus jscpd) | all | 7 m 21 s |

@@ -109,14 +109,17 @@ export function load(root = join(here, "..", "..")) {
   return { root, map, modules, projects, items, inItem, compiledBy, problems, smoke: map.smoke ?? "TestCategory=Unit" };
 }
 
-/** Every project that references p, directly or through others, and p. */
-function withDependents(m, start) {
+/**
+ * Every project that references p, directly or through others, and p. A project in stop (a module's "stop") is reached
+ * but not followed: what references it only through it isn't added (those get the smoke).
+ */
+export function withDependents(m, start, stop = []) {
   const out = new Set(start);
   let grew = true;
   while (grew) {
     grew = false;
     for (const [name, p] of Object.entries(m.projects)) {
-      if (!out.has(name) && p.refs.some(r => out.has(r))) { out.add(name); grew = true; }
+      if (!out.has(name) && p.refs.some(r => out.has(r) && !stop.includes(r))) { out.add(name); grew = true; }
     }
   }
   return out;
@@ -137,18 +140,19 @@ export function choose(m, files, { derive = true } = {}) {
   for (const file of files) {
     const mod = moduleOf(m, file);
     if (!mod) return everything(`everything: ${file} is in no module (the fail-safe)`);
-    const code = withDependents(m, mod.projects ?? []);
+    const stop = mod.stop ?? [];
+    const code = withDependents(m, mod.projects ?? [], stop);
     const compiled = derive ? m.compiledBy(file) : [];
-    for (const p of withDependents(m, compiled)) code.add(p);
+    for (const p of withDependents(m, compiled, stop)) code.add(p);
     const picks = [...code, ...(mod.reads ?? [])].filter(p => m.projects[p]?.test);
     for (const p of picks) run.add(p);
-    const s = seen.get(mod.name) ?? { files: [], picks: new Set(), lib: (mod.projects ?? []).filter(p => !m.projects[p]?.test) };
+    const s = seen.get(mod.name) ?? { files: [], picks: new Set(), lib: (mod.projects ?? []).filter(p => !m.projects[p]?.test), stop };
     s.files.push(file); for (const p of picks) s.picks.add(p);
     seen.set(mod.name, s);
   }
   for (const [name, s] of seen) {
     const what = s.picks.size === tests.length ? "every test project" : s.picks.size ? [...s.picks].sort().join(", ") : "no dotnet tests";
-    const via = s.lib.length ? ` (through ${s.lib.join(", ")} and what references it)` : "";
+    const via = s.lib.length ? ` (through ${s.lib.join(", ")} and what references it${s.stop.length ? `, not past ${s.stop.join(", ")}: what's beyond gets the smoke` : ""})` : "";
     const eg = s.files.slice(0, 2).join(", ") + (s.files.length > 2 ? `, +${s.files.length - 2}` : "");
     why.push(`${name} [${eg}]: ${what}${via}`);
   }
@@ -171,16 +175,20 @@ export function overlap(m, ours, theirs) {
   return { rerun: false, why: `dev's new commits (${b.modules.join(", ") || "nothing"}) share no tested module with this landing (${a.modules.join(", ")})` };
 }
 
-/** Problems with the map: each file a project compiles must, by the map alone, run that project (or its test dependents). */
+/**
+ * Problems with the map: each file a project compiles must, by the map alone, run that project (or its test dependents,
+ * cut where the file's module stops: its "stop" projects' dependents get the smoke, by the map's choice).
+ */
 export function check(m) {
   const problems = [...m.problems];
   if (problems.length) return problems;
   const tests = Object.keys(m.projects).filter(p => m.projects[p].test);
   for (const [name, p] of Object.entries(m.projects)) {
-    const need = p.test ? [name] : [...withDependents(m, [name])].filter(x => m.projects[x].test);
+    const needFor = stop => p.test ? [name] : [...withDependents(m, [name], stop)].filter(x => m.projects[x].test);
     for (const c of p.compiles) {
       const files = c.startsWith("@(") ? filesFor(m.root, "unity/Assets/Prototype/Chemistry/Tests/*.cs").filter(f => m.inItem(c.slice(2, -1), f)) : filesFor(m.root, c);
       for (const f of files) {
+        const need = needFor(moduleOf(m, f)?.stop ?? []);
         const sel = choose(m, [f], { derive: false });
         const missing = need.filter(t => !sel.run.includes(t));
         if (missing.length) problems.push(`${f}: ${name} compiles it, but the map runs ${sel.run.join(", ") || "nothing"}, not ${missing.join(", ")}`);
