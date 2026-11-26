@@ -32,7 +32,9 @@ assembly and on the assemblies that reference it. `Prototype.Analyzers.asmdef`
 (made real by the comment-only `AnalyzerScope.cs`) is referenced by
 `Chemistry`, `Chemistry.Tests`, `Prototype.AssetPacks.Editor` and the game's
 `Prototype.Game`, `Prototype.Game.Editor` and `Prototype.Game.Tests` (which
-hold `Scripts/`, `Scripts/Editor/` and the Unity-only tests), and
+hold `Scripts/`, `Scripts/Editor/` and the Unity-only tests), the probes'
+`Prototype.Probes`, `Prototype.Probes.Editor` and `Prototype.Probes.Tests`
+(`Scripts/Probes/`), and
 automatically by `Assembly-CSharp` and `Assembly-CSharp-Editor`. Packs with their own `.asmdef` and Unity
 packages don't reference it, so they aren't analyzed. The exception is
 two Starter Assets tutorial files that have no `.asmdef`

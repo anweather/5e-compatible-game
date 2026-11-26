@@ -168,7 +168,7 @@ in `Chemistry/Tests/` pin its results; they move only on purpose. CI builds and 
 | The show of a spell | `SpellVisuals.cs` (one show per effect family, built from `rules/looks.json`; the spell's `look` picks it from the rules in force), `SpellProjectile.cs` |
 | HUD | `EventLog.cs` (help, the spell chip, "what happened" log), `PauseMenu.cs` (Esc / Start: Resume, Play together, Mods, Credits, Quit; other code adds sections with `PauseMenu.AddSection` and sub-pages with `AddPage`; buttons drawn with `PauseMenu.Button` get controller focus through `MenuNavigator`, `MenuControls` and `MenuActivator`), `ModsPanel.cs` (the menu's Mods page; M opens it), `CodePicker.cs` (join code by controller) |
 | Live rules | `RuleSwitcher.cs` (decides what to switch to and sends it: queued solo, stamped by the host online, asked of the host by a client), `RulesWatcher.cs` (Editor and dev builds: reloads saved `rules/` files, debounced, on the main thread). `ChemGrid` adds both at runtime, so scenes need no rebuild |
-| Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
+| Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` (the player build's `-fps-probe`); the Play-mode probe scenarios are in `Probes/` (`Prototype.Probes`, `docs/FAST_LOOP.md`) |
 | Sound | `GameSounds.cs` (which clip a spell makes when cast and where it lands, a break or a blast; one-shot and looping 3D sources), `ProceduralSounds.cs` (the clips, made in code: no recordings yet). Fires crackle from the `FireLightPool` lights |
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
 
@@ -307,8 +307,10 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
 | `Scripts/` (the view, with `Net/`, `Playtest/`, `Perf/` and `ThirdParty/Punchy`: asmdef `Prototype.Game`) | `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
 | `Scripts/Net/` | `Scripts/`, `Chemistry/` | the view uses it only as the door of rule 3 |
-| `Scripts/Editor/` (with `Perf/Editor/` and `Punchy/Terrain/Editor/`: asmdef `Prototype.Game.Editor`, Editor only) | everything | nothing references it but its tests |
-| `Scripts/Editor/Tests/`, `Scripts/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything, NUnit | nothing references it |
+| `Scripts/Editor/` (with `Perf/Editor/` and `Punchy/Terrain/Editor/`: asmdef `Prototype.Game.Editor`, Editor only) | everything but the probes | nothing references it but its tests and the probes' CLI |
+| `Scripts/Editor/Tests/`, `Scripts/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything but the probes, NUnit | nothing references it |
+| `Scripts/Probes/` (the Play-mode probe scenarios: asmdef `Prototype.Probes`, in player builds too) | `Scripts/`, `Chemistry/`, Unity | the game never references it back |
+| `Scripts/Probes/Editor/` (the probe CLI: asmdef `Prototype.Probes.Editor`, Editor only; sees `Prototype.Game.Editor`'s internals) and `Probes/Editor/Tests/` (`Prototype.Probes.Tests`) | everything | nothing references them |
 | `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chem.Land`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
 | `core/Chem.Land` | links `Runtime/Land/*.cs` (netstandard2.1) | any other `core/` project |
 | `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |

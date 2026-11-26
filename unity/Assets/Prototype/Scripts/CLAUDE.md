@@ -39,8 +39,12 @@ things go" table is the recipe for adding a spell, material, prop or item.
 - Assemblies: this folder and `ThirdParty/Punchy` compile into
   `Prototype.Game`; `Editor/`, `Perf/Editor/` and `Punchy/Terrain/Editor/`
   into the Editor-only `Prototype.Game.Editor` (`Editor/AssetPacks/` keeps
-  `Prototype.AssetPacks.Editor`); `Editor/Tests/` and `Playtest/Editor/`
-  (with `PlaytestBuild`) into the test assembly `Prototype.Game.Tests`. A
+  `Prototype.AssetPacks.Editor`; `Editor/Playtest/` holds `PlaytestBuild`);
+  `Editor/Tests/` and `Playtest/Editor/` into the test assembly
+  `Prototype.Game.Tests`. The probes are apart: `Probes/` is
+  `Prototype.Probes` (it references the game; the game never references it),
+  `Probes/Editor/` the Editor-only `Prototype.Probes.Editor` (the CLI),
+  `Probes/Editor/Tests/` `Prototype.Probes.Tests`. A
   new folder named `Editor` here joins an Editor-only assembly with an
   `.asmref`, or its code goes into player builds. A new package the code
   uses goes into the asmdef's references. CI still can't build these

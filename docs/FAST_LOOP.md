@@ -43,7 +43,7 @@ method of its class (`ResetStatics` and the like), and a cached Unity object is 
 run was aborted, 2 when the run couldn't start (unknown name, already playing,
 compiling, wrong scene).
 
-It wraps three project CLI commands (`unity/Assets/Prototype/Scripts/Editor/ProbeCommands.cs`),
+It wraps three project CLI commands (`unity/Assets/Prototype/Scripts/Probes/Editor/ProbeCommands.cs`),
 which you can also call directly:
 
 ```sh
@@ -233,12 +233,20 @@ and `SpellCaster.Cast` (the spell must be in the rules).
 
 ## Adding a scenario
 
-Subclass `ProbeScenario` (`unity/Assets/Prototype/Scripts/ProbeScenario.cs`), which is a
+Subclass `ProbeScenario` (`unity/Assets/Prototype/Scripts/Probes/ProbeScenario.cs`), which is a
 `ShowcaseScript`, so `Place`, `Cut`, `Fly`, `Wait` and `Yard` work as in the
 showcases. Put the steps in `Run()`, and record with `Check(name, pass,
 detail)`, `Metric(name, value)` and `Shot(label)`. Then add an entry to
 `ProbeScenarios.All` (`ProbeScenarios.cs`) with its name, a description of
 what it checks, and its `max_seconds`. Recompile; `probe list` shows it.
+
+The probes are assemblies of their own, so changing one recompiles only them, not the game:
+`Scripts/Probes/` is `Prototype.Probes` (the scenarios and their helpers; it references `Prototype.Game`, and
+nothing in the game references it), `Probes/Editor/` is the Editor-only `Prototype.Probes.Editor` (the CLI) and
+`Probes/Editor/Tests/` is `Prototype.Probes.Tests`. Put a new scenario in `Scripts/Probes/`. A probe that needs
+something of the game's makes it public there; the game never reads a probe (`VirtualPlayer` and `WeatherMods` are
+the game's own, used by the probes). `Prototype.Probes` goes into player builds, as the probes always have, and
+does nothing there unless a scenario is started.
 
 ## Not covered yet
 
