@@ -250,6 +250,7 @@ namespace Chem.Tests
         [Test]
         public void AReadOnlyInstallCopiesOnceAndDoesntFail()
         {
+            Assume.That(Environment.UserName, Is.Not.EqualTo("root"), "root writes through a read-only folder");
             BuildListed("wild");
             Shipped("mine");
             SetReadOnly(install, true);
