@@ -143,6 +143,8 @@ namespace Chem
         /// <summary>Chunks unpacked now: each holds a block of Cell objects (~356 KB).</summary>
         public int UnpackedCount => unpackedChunks.Count;
 
+        public long HeldCellCount => (long)(unpackedChunks.Count + blockPool.Count) * Chunks.Area;
+
         /// <summary>Chunks packed since the world was made (by PackDue, Pack, MakeFrom or a load).</summary>
         public int Packs { get; private set; }
 

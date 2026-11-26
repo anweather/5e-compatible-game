@@ -62,7 +62,7 @@ namespace Chem.Tests
         }
 
         /// <summary>Every field of a cell, the ones the hash leaves out (a dry cell's Liquid, DampUntil) too.</summary>
-        static string Fields(Cell c) =>
+        internal static string Fields(Cell c) =>
             $"{c.T},{c.Water},{c.Liquid},{c.Frozen},{c.Fire},{c.Height},{c.Cover},{c.Gas},{c.Sets},{c.Fuel},{c.GasAmt},{c.Charge},{c.Life},"
             + $"{c.DampUntil},{c.Rust},{c.Heat},{c.Lit},{c.Slick},{c.Star},{c.Cracked}";
 
