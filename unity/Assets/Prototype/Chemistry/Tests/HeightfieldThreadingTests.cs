@@ -156,7 +156,7 @@ namespace Chem.Tests
         public void OneSamplesGroundIsItsChunksWithoutWorkingTheChunkOut()
         {
             string dir = ChemistryTests.WorldDir();
-            var w = SparseWorldBench.Build(dir, ChemistryTests.R, out _);
+            var w = BuiltWorlds.Build(dir, ChemistryTests.R, out _);
             var grid = TerrainGrid.Valley();
             var asked = new CellHeightfield(grid);
             asked.ResetLazily(w);

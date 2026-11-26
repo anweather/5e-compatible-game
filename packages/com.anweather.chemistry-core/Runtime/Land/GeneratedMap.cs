@@ -2,9 +2,9 @@
 // the seed, the size in world squares, the generator's version and the squares pinned to a map folder (the valley), and
 // the rest is solved (WorldPlan) and made a chunk at a time (ChunkGen). Its identity is a hash of its inputs, never its
 // output: the world file, every committed file the plan and the chunks read, each pinned map's folder hash and the
-// versions. Bake (GeneratedMap.Bake.cs) writes the whole map as a map folder the game already loads (cells.txt, land.json, things.json and the
-// rows), with the pinned valley's own rows moved to where it lies in the map, and a "spawn" place for each square's
-// spawn point (SpawnPlaces).
+// versions. The bake (MapBake, in the core above the land: it writes Play's rows too) writes the whole map as a map
+// folder the game already loads (cells.txt, land.json, things.json and the rows), with the pinned valley's own rows
+// moved to where it lies in the map, and a "spawn" place for each square's spawn point (MapBake.SpawnPlaces).
 //
 // Coordinates: the map's cells start at the north-west corner of its squares, so none is negative; the valley at the
 // south-west of the nine is chunks (0..8, 18..26) and its rows move 1152 cells south.
@@ -15,12 +15,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    public sealed partial class GeneratedMap
+    public sealed class GeneratedMap
     {
         /// <summary>map.json's key for a map made from a world file.</summary>
         public const string Key = "generated";
@@ -35,7 +34,7 @@ namespace Chem
         public static readonly string[] Baked =
         {
             MapFile.CellsName, MapFile.LandName, "things.json", WorldPlaces.FileName, MapStamps.FileName, VillageLayout.FileName,
-            WorldBuildings.FileName, "golf.json", CourseLayout.FileName, WorldPuzzles.FileName, "jobs.json", "rocks.json",
+            MapFile.BuildingsName, "golf.json", MapFile.CourseName, MapFile.PuzzlesName, "jobs.json", "rocks.json",
             "hold.json", "looks.json", BakeName,
         };
 
@@ -48,7 +47,7 @@ namespace Chem
         public PlanWrap Wrap { get; private set; }
         /// <summary>
         /// Whether the map may be baked whole: map.json's "bake", true when absent. A world too big to hold every cell of
-        /// (the 12 × 10, about 9-10 GB) says false: its rows are written alone (EnsureRows) and its cells made as play reads them (GeneratedSource).
+        /// (the 12 × 10, about 9-10 GB) says false: its rows are written alone (MapBake.EnsureRows) and its cells made as play reads them (GeneratedSource).
         /// </summary>
         public bool Bakes { get; private set; }
         /// <summary>The pinned map's id and its square in the map (squares from the north-west).</summary>
@@ -80,22 +79,7 @@ namespace Chem
         /// north-west cell lands on (its square times WorldPlan.SquareCells, as ChunkGen.PinnedX and PinnedY), each followed
         /// by the maps a pinned block pins in turn, where they lie in this one. Empty for a map that isn't generated.
         /// </summary>
-        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir)
-        {
-            var found = new List<(string dir, int x, int y)>();
-            string path = Path.Combine(mapDir, MapFile.FileName);
-            if (!File.Exists(path) || !(JObject.Parse(File.ReadAllText(path))[Key] is JObject o) || !(o["pinned"] is JArray pins)) return found;
-            string worldDir = Path.GetFullPath(Path.Combine(mapDir, "..", ".."));
-            foreach (var pin in pins.OfType<JObject>())
-            {
-                string dir = Path.Combine(worldDir, "maps", (string)pin["map"]);
-                int x = (int)pin["square"][0] * WorldPlan.SquareCells, y = (int)pin["square"][1] * WorldPlan.SquareCells;
-                found.Add((dir, x, y));
-                // A pinned block's own pinned maps, where they lie in this one (the valley in the nine in the scale map).
-                foreach (var (inner, ix, iy) in PinnedSquares(dir)) found.Add((inner, x + ix, y + iy));
-            }
-            return found;
-        }
+        public static List<(string dir, int x, int y)> PinnedSquares(string mapDir) => MapFile.PinnedSquares(mapDir);
 
         /// <summary>Whether the map in this folder is made from a world file.</summary>
         public static bool IsGenerated(string mapDir)
@@ -292,7 +276,7 @@ namespace Chem
             return all;
         }
 
-        /// <summary>Whether the folder holds a bake of these inputs (its cells too, not only its rows: EnsureRows).</summary>
+        /// <summary>Whether the folder holds a bake of these inputs (its cells too, not only its rows: MapBake.EnsureRows).</summary>
         public static bool IsBaked(string mapDir)
         {
             string path = Path.Combine(mapDir, BakeName);
@@ -301,302 +285,17 @@ namespace Chem
             return (string)note["inputs"] == InputHash(mapDir) && (string)note["cells"] != CellsGenerated;
         }
 
-        /// <summary>bake.json's "cells" in a folder of a map's rows alone (EnsureRows): its cells are made as they're read (GeneratedSource).</summary>
+        /// <summary>bake.json's "cells" in a folder of a map's rows alone (MapBake.EnsureRows): its cells are made as they're read (GeneratedSource).</summary>
         public const string CellsGenerated = "generated";
 
-        /// <summary>The files a folder of a map's rows alone holds (EnsureRows): a bake's but its cells, land and things, which come from GeneratedSource.</summary>
+        /// <summary>The files a folder of a map's rows alone holds (MapBake.EnsureRows): a bake's but its cells, land and things, which come from GeneratedSource.</summary>
         public static IReadOnlyList<string> RowsBaked { get; } = Baked.Where(n => n != MapFile.CellsName && n != MapFile.LandName && n != "things.json").ToArray();
 
-        /// <summary>Whether a map folder holds a map's rows alone (EnsureRows): play makes its cells from its world file (GeneratedSource).</summary>
+        /// <summary>Whether a map folder holds a map's rows alone (MapBake.EnsureRows): play makes its cells from its world file (GeneratedSource).</summary>
         public static bool IsRowsOnly(string dir)
         {
             string path = Path.Combine(dir, BakeName);
             return File.Exists(path) && (string)JObject.Parse(File.ReadAllText(path))["cells"] == CellsGenerated;
         }
-
-        /// <summary>
-        /// Writes a map's rows into <paramref name="outDir"/> unless it holds this map's already: everything a bake writes
-        /// but its cells, land and things (cells.txt, land.json, things.json), which play makes a chunk at a time from the
-        /// world file (GeneratedSource), so a map too big to bake whole ("bake": false) can be played. Its map.json too,
-        /// unless it's the map's own folder; places.json without the water bodies, which only the whole map's land finds.
-        /// Whether it wrote them.
-        /// </summary>
-        public static bool EnsureRows(string mapDir, string outDir)
-        {
-            string path = Path.Combine(outDir, BakeName);
-            if (File.Exists(path))
-            {
-                var note = JObject.Parse(File.ReadAllText(path));
-                if ((string)note["inputs"] == InputHash(mapDir) && (int?)note["format"] == BakeFormat && (string)note["cells"] == CellsGenerated) return false;
-            }
-            Load(mapDir).WriteRowsOnly(outDir);
-            return true;
-        }
-
-        /// <summary>EnsureRows's writing, made already: a pinned block's own map is baked first, as Bake does.</summary>
-        public void WriteRowsOnly(string outDir)
-        {
-            if (Inner != null && !IsBaked(PinnedDir)) Inner.Bake(PinnedDir);
-            Directory.CreateDirectory(outDir);
-            foreach (string name in new[] { MapFile.CellsName, MapFile.LandName, "things.json" })
-                if (File.Exists(Path.Combine(outDir, name))) File.Delete(Path.Combine(outDir, name));
-            WriteRows(outDir);
-            if (Path.GetFullPath(outDir).TrimEnd('/', '\\') != Path.GetFullPath(MapDir).TrimEnd('/', '\\'))
-                Write(outDir, MapFile.FileName, OwnMapFile());
-            Write(outDir, WorldPlaces.FileName, WorldPlaces.Generate(outDir, null));
-            Write(outDir, BakeName, Json(new JObject
-            {
-                ["inputs"] = InputHash(MapDir),
-                ["plan"] = (Plan?.Hash ?? 0u).ToString("x8", CultureInfo.InvariantCulture),
-                ["generator"] = ChunkGen.Version,
-                ["format"] = BakeFormat,
-                ["cells"] = CellsGenerated,
-            }));
-        }
-
-        /// <summary>Bakes the map into its own folder unless it already holds a bake of the same inputs; whether it baked.</summary>
-        public static bool EnsureBaked(string mapDir)
-        {
-            if (IsBaked(mapDir)) return false;
-            var m = Load(mapDir);
-            if (!m.Bakes) throw new InvalidOperationException(m.NoBake);
-            m.Bake(mapDir);
-            return true;
-        }
-
-        /// <summary>
-        /// Bakes the map into <paramref name="outDir"/>, a folder away from the map's own (a build bakes into the player's
-        /// data), unless it already holds a bake of the same inputs in this format; whether it baked.
-        /// </summary>
-        public static bool EnsureBakedInto(string mapDir, string outDir)
-        {
-            string path = Path.Combine(outDir, BakeName);
-            if (File.Exists(path))
-            {
-                var note = JObject.Parse(File.ReadAllText(path));
-                if ((string)note["inputs"] == InputHash(mapDir) && (int?)note["format"] == BakeFormat) return false;
-            }
-            Load(mapDir).Bake(outDir);
-            return true;
-        }
-
-        // The map's map.json for a bake away from its folder. The pinned maps are found from the map's own folder
-        // (PinnedSquares: ../../maps/<id>) and can't be from there, so what map.json takes from them is written in: the
-        // chunks drawn in full detail (MapFile.FullDetailOf). Without it the bake's layout had none, the pinned ground laid
-        // into it (PinnedGround) kept its own 257 samples a chunk, and a build's world was never made (#183).
-        string OwnMapFile()
-        {
-            var o = JObject.Parse(File.ReadAllText(Path.Combine(MapDir, MapFile.FileName)));
-            var (i0, j0, i1, j1) = MapFile.Load(MapDir).FullDetail;
-            if (o["fullDetail"] == null && i1 >= i0) o["fullDetail"] = new JArray(i0, j0, i1, j1);
-            return Json(o);
-        }
-
-        string NoBake => $"{Id} is {SquaresW} x {SquaresH} world squares, too big to bake whole (its map.json says \"bake\": false): its rows are laid out (EnsureRows) and its cells made as they're read (GeneratedSource)";
-
-        static void Write(string dir, string name, string text) => File.WriteAllText(Path.Combine(dir, name), text);
-
-        static string Json(JToken o) => o.ToString(Formatting.Indented) + "\n";
-
-        // The pinned map's file, or a new one holding an empty list under <paramref name="list"/>.
-        JObject ReadPinned(string name, string list) => TryReadPinned(name, out var o) ? o : new JObject { [list] = new JArray() };
-
-        bool TryReadPinned(string name, out JObject o)
-        {
-            string path = PinnedDir == null ? null : Path.Combine(PinnedDir, name);
-            o = path != null && File.Exists(path) ? JObject.Parse(File.ReadAllText(path)) : new JObject();
-            return path != null && File.Exists(path);
-        }
-
-        /// <summary>
-        /// The map's spawn places, one per square in the plan's order: kind "spawn", a circle of the spawn's clearing round
-        /// its cell, the map square it's in ("square", from the north-west) and what it stands near. Each is named for its
-        /// square: the pinned map's name for the valley (whose is the map's own spawn, "start"), the village's name where
-        /// one was made, else the square's template (a filler's biome), with a compass word where two names would meet.
-        /// </summary>
-        public List<JObject> SpawnPlaces()
-        {
-            var list = new List<JObject>();
-            if (Hills != null) return new List<JObject> { HillsSpawn() };
-            var names = new HashSet<string>(StringComparer.Ordinal);
-            // A pinned block's spawn places come with its own rows (WriteRows), named already: none here takes their names.
-            if (Inner != null && TryReadPinned(WorldPlaces.FileName, out var own))
-                foreach (var p in ((JArray)own["places"]).OfType<JObject>().Where(p => (string)p["kind"] == "spawn")) names.Add((string)p["name"]);
-            foreach (var s in Gen.Spawns)
-            {
-                if (s.Held) continue;
-                int sx = s.X / ChunkGen.Square, sy = s.Y / ChunkGen.Square;
-                string name = s.Pinned ? PinnedName : VillageIn(s.Square) ?? Gen.SquareTitle(s.Square);
-                if (!names.Add(name))
-                {
-                    string first = name + " (" + Compass(sx, sy) + ")";
-                    name = first;
-                    int k = 1;
-                    while (!names.Add(name)) name = first + " " + ++k;
-                }
-                var o = new JObject
-                {
-                    ["id"] = "spawn-" + WorldPlaces.Slug(name),
-                    ["name"] = name,
-                    ["kind"] = "spawn",
-                    ["from"] = MapFile.FileName,
-                    ["square"] = new JArray(sx, sy),
-                    ["near"] = s.Near,
-                    ["circle"] = new JObject { ["at"] = new JArray(s.X, s.Y), ["radius"] = ChunkGen.ClearCells },
-                };
-                if (s.Pinned) o["start"] = true;
-                list.Add(o);
-            }
-            return list;
-        }
-
-        // A hills map's one spawn place: its map.json's spawn, named for the map.
-        JObject HillsSpawn()
-        {
-            var spawn = MapFile.Load(MapDir).Spawn;
-            return new JObject
-            {
-                ["id"] = "spawn-" + WorldPlaces.Slug(PinnedName),
-                ["name"] = PinnedName,
-                ["kind"] = "spawn",
-                ["from"] = MapFile.FileName,
-                ["square"] = new JArray(spawn.x / ChunkGen.Square, spawn.y / ChunkGen.Square),
-                ["near"] = "hills",
-                ["circle"] = new JObject { ["at"] = new JArray(spawn.x, spawn.y), ["radius"] = ChunkGen.ClearCells },
-                ["start"] = true,
-            };
-        }
-
-        string VillageIn(int square)
-        {
-            for (int k = 0; k < Gen.LandmarkRows.Count; k++)
-                if (Gen.LandmarkRows[k]?.VillageName is string v && Plan.Landmarks[k].Square == square) return v;
-            return null;
-        }
-
-        // Where a map square lies in the map, as a compass word ("north-west", "middle", "east").
-        string Compass(int sx, int sy)
-        {
-            string ns = (sy * 3 / SquaresH) switch { 0 => "north", 2 => "south", _ => "" };
-            string ew = (sx * 3 / SquaresW) switch { 0 => "west", 2 => "east", _ => "" };
-            if (ns.Length > 0 && ew.Length > 0) return ns + "-" + ew;
-            return ns.Length + ew.Length > 0 ? ns + ew : "middle";
-        }
-
-        // The valley's rows moved to its place in the map, and the landmarks' rows after them.
-        void WriteRows(string outDir)
-        {
-            int dx = Gen.PinnedX, dy = Gen.PinnedY;
-            var made = Gen.LandmarkRows.Where(r => r != null).ToList();
-            void Pair(JToken t)
-            {
-                if (t is JArray a && a.Count >= 2)
-                {
-                    a[0] = (int)a[0] + dx;
-                    a[1] = (int)a[1] + dy;
-                }
-            }
-            void Box(JToken t)
-            {
-                if (t is JArray a && a.Count == 4)
-                {
-                    a[0] = (int)a[0] + dx;
-                    a[1] = (int)a[1] + dy;
-                    a[2] = (int)a[2] + dx;
-                    a[3] = (int)a[3] + dy;
-                }
-            }
-            void Each(JToken list, Action<JObject> f)
-            {
-                if (list is JArray a) foreach (var o in a.OfType<JObject>()) f(o);
-            }
-
-            var stamps = ReadPinned(MapStamps.FileName, "stamps");
-            Each(stamps["stamps"], s => Pair(s["at"]));
-            Write(outDir, MapStamps.FileName, Json(stamps));
-
-            var villages = ReadPinned(VillageLayout.FileName, "villages");
-            Each(villages["villages"], v => Pair(v["at"]));
-            foreach (var r in made.Where(r => r.Village != null)) ((JArray)villages["villages"]).Add(r.Village.DeepClone());
-            Write(outDir, VillageLayout.FileName, Json(villages));
-
-            var buildings = ReadPinned(WorldBuildings.FileName, "buildings");
-            Each(buildings["buildings"], b => Pair(b["at"]));
-            foreach (var r in made) foreach (var b in r.Buildings) ((JArray)buildings["buildings"]).Add(b.DeepClone());
-            Write(outDir, WorldBuildings.FileName, Json(buildings));
-
-            if (TryReadPinned("golf.json", out var golf))
-            {
-                Pair(golf["tee"]);
-                Pair(golf["hole"]);
-                Write(outDir, "golf.json", Json(golf));
-            }
-            if (TryReadPinned(CourseLayout.FileName, out var course))
-            {
-                foreach (string k in new[] { "area", "bell", "gate" }) Box(course[k]);
-                Each(course["booths"], b =>
-                {
-                    Box(b["area"]);
-                    Pair(b["checkpoint"]);
-                });
-                Write(outDir, CourseLayout.FileName, Json(course));
-            }
-            if (TryReadPinned(WorldPuzzles.FileName, out var puzzles))
-            {
-                Each(puzzles["puzzles"], p => Pair(p["at"]));
-                Write(outDir, WorldPuzzles.FileName, Json(puzzles));
-            }
-            if (TryReadPinned("jobs.json", out var jobs))
-            {
-                if (jobs["spots"] is JObject spots)
-                    foreach (var s in spots.Properties().Select(p => p.Value).OfType<JObject>())
-                    {
-                        Pair(s["at"]);
-                        Pair(s["out"]);
-                    }
-                Write(outDir, "jobs.json", Json(jobs));
-            }
-            if (TryReadPinned("rocks.json", out var rocks))
-            {
-                if (rocks["rocks"] is JArray list) foreach (var r in list) Pair(r);
-                Write(outDir, "rocks.json", Json(rocks));
-            }
-            foreach (string same in new[] { "hold.json", "looks.json" })
-                if (TryReadPinned(same, out var o)) Write(outDir, same, Json(o));
-
-            // The hand-written places moved; the generated ones are made again from the folder (WorldPlaces.Generate).
-            var places = ReadPinned(WorldPlaces.FileName, "places");
-            var kept = new JArray();
-            foreach (var p in ((JArray)places["places"]).OfType<JObject>())
-            {
-                if ((bool?)p["generated"] == true) continue;
-                Box(p["area"]);
-                if (p["circle"] is JObject circle) Pair(circle["at"]);
-                if (p["line"] is JArray line) foreach (var pt in line) Pair(pt);
-                if (p["rows"] is JArray spans)
-                    foreach (var span in spans.OfType<JArray>())
-                    {
-                        span[0] = (int)span[0] + dy;
-                        for (int k = 1; k < span.Count; k++) span[k] = (int)span[k] + dx;
-                    }
-                kept.Add(p);
-            }
-            foreach (var r in made)
-            {
-                if (r.Place != null) kept.Add(r.Place.DeepClone());
-                if (r.VillagePlace != null) kept.Add(r.VillagePlace.DeepClone());
-            }
-            foreach (var s in SpawnPlaces()) kept.Add(s);
-            places["places"] = kept;
-            Write(outDir, WorldPlaces.FileName, Json(places));
-        }
-    }
-
-    /// <summary>What a bake took, and the size of the map it wrote.</summary>
-    public sealed class BakeReport
-    {
-        /// <summary>The time making its chunks (written as the next row is made) and the whole bake's.</summary>
-        public double MakeMs, TotalMs;
-        public int W, H;
     }
 }

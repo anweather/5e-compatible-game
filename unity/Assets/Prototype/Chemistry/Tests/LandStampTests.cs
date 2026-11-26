@@ -11,7 +11,7 @@ namespace Chem.Tests
     public class LandStampTests
     {
         const int Size = 128;
-        static readonly ModBudgets Budgets = ModBudgets.Load(ChemistryTests.RulesDir());
+        static readonly ModBudgets Budgets = ModBudgets.Load(LandFolders.RulesDir());
 
         sealed class AllGrass : IChunkSource
         {

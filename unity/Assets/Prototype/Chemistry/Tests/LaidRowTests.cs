@@ -14,7 +14,7 @@ namespace Chem.Tests
         const int Size = 192, Footprint = 32, HoldX = 120, HoldY = 352;
 
         static Rules Rules => ChemistryTests.R;
-        static WorldBuildings Valley => WorldBuildings.Load(ChemistryTests.WorldDir());
+        static WorldBuildings Valley => WorldBuildings.Load(LandFolders.WorldDir());
         static JObject Row => Valley.FileRows.Single(r => (string)r["id"] == Hold);
 
         // The valley's corner the hold stands in, as grass, with the rows laid.
@@ -87,11 +87,11 @@ namespace Chem.Tests
             var w = new World(rules, 576, 576, 7);
             w.Paint(HoldX + 4, HoldY + 15, "tree");
             w.Paint(HoldX + 12, HoldY + 6, "tree");
-            int thingsWere = WorldThings.Load(ChemistryTests.WorldDir()).All.Count;
+            int thingsWere = WorldThings.Load(LandFolders.WorldDir()).All.Count;
             Valley.LayInto(w);
             Assert.That(w.At(HoldX + 4, HoldY + 15).T, Is.Not.EqualTo("tree"));
             Assert.That(w.At(HoldX + 12, HoldY + 6).T, Is.Not.EqualTo("tree"));
-            Assert.That(WorldThings.Load(ChemistryTests.WorldDir()).All.Count, Is.EqualTo(thingsWere));
+            Assert.That(WorldThings.Load(LandFolders.WorldDir()).All.Count, Is.EqualTo(thingsWere));
         }
 
         [Test]
@@ -216,7 +216,7 @@ namespace Chem.Tests
             for (int y = 0; y < Size; y++)
                 for (int x = 0; x < Size; x++) w.Paint(x, y, "grass");
             w.KeepStart();
-            w.OpenRoom(ChangeMode.Open, "host", rules, ModBudgets.Load(ChemistryTests.RulesDir()));
+            w.OpenRoom(ChangeMode.Open, "host", rules, ModBudgets.Load(LandFolders.RulesDir()));
             return w;
         }
 

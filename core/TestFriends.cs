@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Chem.Rules.Tests")]
 [assembly: InternalsVisibleTo("Chem.Land.Tests")]
+[assembly: InternalsVisibleTo("Chem.LandWorld.Tests")]
 [assembly: InternalsVisibleTo("Chem.Sim.Tests")]
 [assembly: InternalsVisibleTo("Chem.Play.Tests")]
 [assembly: InternalsVisibleTo("Chem.Lockstep.Tests")]

@@ -3,6 +3,7 @@
     "rootNamespace": "Chem.Tests",
     "references": [
         "Chemistry",
+        "Chem.Land",
         "Chemistry.Mcp",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",

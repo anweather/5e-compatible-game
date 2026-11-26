@@ -106,16 +106,19 @@ of CPU; on a 6-core host that's about half of the 3-5 minutes it was. What made 
 ## The core's test projects, by module
 
 The Chemistry tests (`unity/Assets/Prototype/Chemistry/Tests/`, one assembly in Unity) are split for dotnet into a
-project per module (`docs/design/architecture-review.md` step 2): no file moved, only which project compiles it.
+project per module (`docs/design/architecture-review.md` step 2): which project compiles which file. The land's
+fixtures are split in two since step 5b (`docs/design/chem-land-split.md`): `HillsTests.cs` builds on the land alone,
+`HillsWorldTests.cs` holds its tests that run a World.
 `core/Chem.Tests.props` holds the lists; Sim takes every file not listed elsewhere, so a new file runs exactly once
 (in Sim) until it is listed. Run the touched module's project while working (layer 1):
 
 | Project | Holds | Tests | Wall alone |
 |---|---|---|---|
-| `Chem.Shared.Tests` | `ChemistryTests` (the rules, folders and rooms every other test uses), the kinds check's base | 87 | 5 s |
+| `Chem.Shared.Tests` | `ChemistryTests` (the rules, folders and rooms every other test uses), `BuiltWorlds` (a map made into a World), the kinds check's base | 87 | 5 s |
 | `Chem.Rules.Tests` | rule tables, mods' fields, components, items, looks, fauna, the spell list and radial, player mods and stats | 191 | 8 s |
-| `Chem.Land.Tests` | `Hills*`, `ChunkGen`, `WorldPlan*`, biomes, landmarks, themes, maps and `MapCheck`, stamps, the bake, terrain | 498 | 144 s |
-| `Chem.Sim.Tests` | cells, chunks, ticks, spells and combos, things, saves, weather, the `CellHash`/`ChunkHash` goldens | 622 | 49 s |
+| `Chem.Land.Tests` | the land alone, on `Chem.Land` (no `Game.Core`): `Hills*`, `ChunkGen`, `WorldPlan*`, biomes, landmarks, themes, map files, the land goldens (`NineGolden`, the hills', `WorldTwelve`'s) | 290 | 76 s |
+| `Chem.LandWorld.Tests` | the land on a World: each land fixture's `*WorldTests.cs` half (peers on the hills, bakes, `MapCheck`), `GeneratedSource`, stamps laid, terrain, places, the land benches | 209 (208 without Sweep) | 94 s |
+| `Chem.Sim.Tests` | cells, chunks, ticks, spells and combos, things, saves, weather, the `CellHash`/`ChunkHash` goldens | 626 | 49 s |
 | `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, golf, the Gauntlet, puzzles, defense, the dragon | 245 (243 without Sweep) | 47 s |
 | `Chem.Lockstep.Tests` | the lockstep session and wire, late joins, rooms, resets, the open world over the loopback | 80 | 110 s |
 | `Chem.Playtest.Tests` | the playtest bot (`Scripts/Playtest/Editor/*Tests.cs`) | 41 | 2 s |
@@ -123,6 +126,7 @@ project per module (`docs/design/architecture-review.md` step 2): no file moved,
 Measured 2026-11-26 on a 4-core cloud VM, Release, 6 workers, `-s core/sweep.runsettings`. The whole of `dotnet test
 core` (the eleven projects side by side, the tools' four included) was 380 s there, against 334 s for the one
 `Game.Core.Tests` it replaces: more test hosts share the cores. A module alone is the saving, not the whole run.
+(The two land rows were measured after step 5b the same way; the whole run, twelve projects, was 393 s.)
 
 ```sh
 dotnet test core/Chem.Sim.Tests                              # one module
@@ -130,10 +134,13 @@ dotnet test core/Chem.Land.Tests --filter TestCategory=Unit  # its quick fixture
 dotnet test core -s core/sweep.runsettings                   # everything, Sweep too (CI, the sweep)
 ```
 
-The test projects reference each other only for helpers, and each reference is a coupling: every one references
-Shared (`ChemistryTests.R`, `Folders`, `Room`); Sim references Rules (`SpellBalanceTests`) and Land
-(`LandmarkIntentTests`, `SparseWorldBench`: saves and the mod-switch bench build generated maps); Lockstep references
-Sim (`ComboTests.Blank`). Where a file sits away from its subject, that is why: `HeightfieldThreadingTests` is in Sim
+The test projects reference each other only for helpers, and each reference is a coupling: every one but Land
+references Shared (`ChemistryTests.R`, `Folders`, `Room`), which references `Game.Core`; Land references `Chem.Land`
+alone, with its own `LandFolders` (the repo's folders without `ChemistryTests`), so a land test can't use a World or
+the rules; LandWorld references Land (`LandmarkIntentTests.Village`, `ChunkGenTests.Nine`, `ScaleIslandTests.CopyInputs`,
+`HillsTests.HillsDir`...) and Shared; Sim references Rules (`SpellBalanceTests`), and no longer Land (5b: what it used,
+`SparseWorldBench.Build` and `GameWorldDir`, is `BuiltWorlds.Build` and `ChemistryTests.GameWorldDir` in Shared, and the
+mod-switch bench, which bakes the nine, is LandWorld's); Lockstep references Sim (`ComboTests.Blank`). Where a file sits away from its subject, that is why: `HeightfieldThreadingTests` is in Sim
 (it uses `FogTickBench`), `HoldLockstepTests` in Play (it uses `HoldTests`), `AirTests` in Play (`HoldTests.Field`).
 `Rules.Mcp.Tests` references Sim (`ComboTests.Blank`, `BuildingTests`); the other tools' tests only Shared.
 There is no Chemistry Mcp project: no file in `Chemistry/Tests/` is chiefly the rules MCP's (`PlayerModsTests` drives a
@@ -160,12 +167,21 @@ is `tools/workers/modules.json`; `tools/workers/modules.mjs` reads it with `core
 - `node tools/workers/modules.mjs check` (a workers test, so every landing runs it) fails when a file a project compiles
   wouldn't run that project by the map; `node tools/workers/modules.mjs choose <path>...` says what a change would run.
 
-**The Runtime is one assembly today.** Every `Chem.*` project links all of
-`packages/com.anweather.chemistry-core/Runtime` through `Game.Core`, so a Runtime change runs every project; the map's
-Runtime areas (`runtime-land`, `runtime-rules`...) say in `after` which project each narrows to once step 5 splits
-`Chem.Land` out. And a Land test change runs Land, Sim (it references Land), Lockstep and `Rules.Mcp.Tests` (they
-reference Sim), which are most of the suite's wall time: the module gates pay off for docs, tools, rules-only
-`Chem.Rules.Tests` work, Play, the tools' own projects, and the view's C#.
+**The land is its own assembly; the rest of the Runtime is one** (step 5, `docs/design/chem-land-split.md`).
+`Runtime/Land/` is `Chem.Land`; every other `Chem.*` project links the rest of `Runtime/` through `Game.Core`, which
+references `Chem.Land`. So a Runtime change above the land runs every project but `Chem.Land.Tests` (which builds on
+`Chem.Land` alone); the map's other Runtime areas (`runtime-rules`, `runtime-play`...) say in `after` which project
+each would narrow to as an assembly of its own.
+
+**The `stop` rule (Andrew, 2026-11-26).** A Land change (`runtime-land`: `Runtime/Land/**`) runs `Chem.Land.Tests` and
+`Chem.LandWorld.Tests` (the land on a World), and everything above `Game.Core` gets only the `Unit` smoke: the module's
+`"stop": ["Game.Core"]` reaches `Game.Core` but doesn't follow its dependents. Sim, Play, Lockstep and the MCP do use
+the land, so this is a judgment, not a proof: the land goldens (`NineGolden`, the hills', `WorldTwelve`'s) are in the
+land's own tests, `TerraformTests`' `CellHash` goldens are `Unit` (in the smoke), and **the full suite still runs in
+CI after every push to dev**, which catches what the cut lets by. `modules.mjs check` takes the same cut (a project
+past a stop isn't required of a file in that module, but a test project that compiles the file always is), and
+`gates.test.mjs` tests it. A Land test file runs Land and LandWorld (LandWorld references Land), not Sim. The adapters
+onto a world (`World.Land`, `GeneratedSource`, `MapBake`, `MapCheck`...) are Sim's and run everything.
 
 When dev moves during the gates, `land.sh` merges again and reruns the gates only if dev's new commits reach what this
 landing tested (`modules.mjs overlap`: a test project both run, a tested module both touch, or either running
@@ -178,4 +194,6 @@ Measured 2026-11-26 on the 4-core cloud VM (build and format included, warm buil
 | docs only | none | 1 m 00 s |
 | a Land test file (`ChunkGenTests.cs`, `HillsRoadTests.cs`) | Land, Sim, Lockstep, `Rules.Mcp.Tests` + the smoke | 6 m 07 s |
 | a Runtime file (`HillsRoads.cs`) | all | 7 m 20 s |
+| after step 5 (5c, the same VM): a Land runtime file (`Runtime/Land/HillsRoads.cs`) | Land, LandWorld + the smoke | 3 m 48 s |
+| after step 5: a Land test file (`ChunkGenTests.cs`) | Land, LandWorld + the smoke | 3 m 45 s |
 | before this step (every change: all, plus jscpd) | all | 7 m 21 s |

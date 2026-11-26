@@ -63,7 +63,8 @@ public sealed class MapLand
             // Nothing read for the map's size (J-086): the land comes from the chunks the world makes, the sea from what the
             // generator knows of every chunk (81 samples each, side by side), and the way out to sea from map.json.
             var timer = System.Diagnostics.Stopwatch.StartNew();
-            Land = LandChunks.FromSource(ChemGrid.PlayedSource);
+            var source = ChemGrid.PlayedSource;
+            Land = LandChunks.FromSource(source.W, source.H, source.LandInto);
             Sea = SeaMask.OfKnown(LoadedMaps.Get(ChemGrid.MapSource).Gen);
             Debug.Log($"MAP LAND {Map.Id}: made as it's read; its sea known from its chunks in {timer.Elapsed.TotalMilliseconds:0} ms ({Sea.SeaCells} sea cells, {Sea.Bytes / 1024} KB)");
         }

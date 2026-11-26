@@ -4,7 +4,7 @@ using Chem;
 using NUnit.Framework;
 
 // The Wide World (world-12x10, "bake": false) is a map to play (docs/design/world-12x8-scope.md): it's offered with the
-// others, and played from a folder of its rows alone (GeneratedMap.EnsureRows), its cells, land and things made as they're
+// others, and played from a folder of its rows alone (MapBake.EnsureRows), its cells, land and things made as they're
 // read (GeneratedSource), never a bake of the whole map. The nine stays the map a player starts on (SoloMapTests).
 public class WideWorldTests
 {

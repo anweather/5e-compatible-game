@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Chemistry tests of the land on a World: a map's chunks made into one, its stamps laid, its terrain, the land
+       benches, and the land fixtures' tests that run peers (the *WorldTests.cs halves; Chem.Tests.props). Apart from
+       Chem.Sim.Tests so a land change runs these and not the whole simulation (docs/design/chem-land-split.md, 5b). -->
+  <Import Project="../Chem.Tests.props" />
+
+  <ItemGroup>
+    <Compile Include="@(ChemTestsLandWorld)" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The land fixtures' helpers (LandmarkIntentTests.Village, ChunkGenTests.NineGolden, ...); Game.Core and ChemistryTests through Shared. -->
+    <ProjectReference Include="../Chem.Land.Tests/Chem.Land.Tests.csproj" />
+    <ProjectReference Include="../Chem.Shared.Tests/Chem.Shared.Tests.csproj" />
+  </ItemGroup>
+</Project>

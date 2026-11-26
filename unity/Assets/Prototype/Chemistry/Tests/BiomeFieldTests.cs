@@ -14,7 +14,7 @@ namespace Chem.Tests
     {
         const long One = BiomeMath.One;
 
-        static string TablePath => Path.Combine(ChemistryTests.Folders.Repo, "world", BiomeTable.FileName);
+        static string TablePath => Path.Combine(LandFolders.Folders.Repo, "world", BiomeTable.FileName);
         static BiomeTable table;
         static BiomeTable Table => table ??= BiomeTable.Load(TablePath);
 

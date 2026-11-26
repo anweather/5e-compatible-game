@@ -35,11 +35,11 @@ namespace Chem.Tests
             }
         }
 
-        static WorldPlan Nine(string seed) => WorldPlan.Solve(PlanInputs.For(seed, 3, PlanWrap.None, Valley), Lib);
+        internal static WorldPlan Nine(string seed) => WorldPlan.Solve(PlanInputs.For(seed, 3, PlanWrap.None, Valley), Lib);
 
-        static WorldPlan Big(string seed, PlanWrap wrap) => WorldPlan.Solve(PlanInputs.For(seed, 12, wrap, Valley), Lib);
+        internal static WorldPlan Big(string seed, PlanWrap wrap) => WorldPlan.Solve(PlanInputs.For(seed, 12, wrap, Valley), Lib);
 
-        static IEnumerable<string> Seeds(int count) => Enumerable.Range(1, count).Select(k => "seed-" + k);
+        internal static IEnumerable<string> Seeds(int count) => Enumerable.Range(1, count).Select(k => "seed-" + k);
 
         static IEnumerable<WorldPlan> ManyPlans()
         {
@@ -398,27 +398,6 @@ namespace Chem.Tests
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
-        }
-#pragma warning restore S1215
-
-        [Test]
-        public void TenSeedsAsPictures()
-        {
-            var plans = Seeds(9).Select(Nine).Select(p => (p, 96)).Append((Big("seed-1", PlanWrap.EastWest), 48)).ToList();
-            string folder = Environment.GetEnvironmentVariable("WORLD_PLAN_PNG_OUT");
-            foreach (var (p, px) in plans)
-            {
-                var cv = WorldPlanPicture.Draw(p, px);
-                Assert.That(cv.Rgb.Length, Is.EqualTo(p.Grid.W * px * p.Grid.H * px * 3));
-                if (string.IsNullOrEmpty(folder)) continue;
-                Directory.CreateDirectory(folder);
-                string path = Path.Combine(folder, $"plan-{p.Inputs.Seed}-{p.Inputs.Size}.png");
-                File.WriteAllBytes(path, LandmarkPicture.Png(cv.Rgb, cv.W, cv.H));
-                string templates = string.Join(" ", Enumerable.Range(0, p.Count).Where(i => p.Wall[i] == 0 && p.Band[i] > 0)
-                    .Select(i => $"{p.Options[i].Template.Id}/{p.Options[i].Turn}"));
-                TestContext.Out.WriteLine($"PLAN PICTURE {path} 0x{p.Hash:x8}: {p.Landmarks.Count} landmarks, {p.Roads.Count} roads " +
-                    $"({p.Roads.Count(r => r.IsMain)} main), {p.Crossings.Count} crossings, {p.Fillers.Count} fillers; {templates}");
-            }
         }
     }
 }

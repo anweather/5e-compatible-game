@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The land (docs/design/chem-land-split.md, architecture-review.md step 5): hills, ChunkGen, world plans, themes,
+       biomes and the map files, below the rest of the core. Compiles Runtime/Land, which Unity builds as the
+       Chem.Land assembly; Game.Core (Chemistry in Unity) references it. Nothing here may use World, Cell or Rules. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Chem.Land</AssemblyName>
+    <RootNamespace>Chem</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../packages/com.anweather.chemistry-core/Runtime/Land/*.cs" Link="Land/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Unity gets the same library from com.unity.nuget.newtonsoft-json. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

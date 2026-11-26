@@ -90,45 +90,5 @@ namespace Chem
             if (trail != null && stamp.Profile != LandStamp.Canyon) throw new FormatException($"{FileName}: {id} has a trail, and only a canyon's floor takes one");
             return new MapStamp(id, (string)o["name"] ?? id, stamp, trail, (string)o["bare"]);
         }
-
-        /// <summary>
-        /// Lays them on a world as it's made, a canyon's trail on its floor's dry cells and a bare stamp's terrain where it
-        /// moved the land; why any was refused, by id, and a trail or bare terrain the rules haven't got.
-        /// </summary>
-        public List<string> LayInto(World world)
-        {
-            var refused = new List<string>();
-            foreach (var s in All)
-            {
-                var why = world.LayMapStamps(new[] { s.Stamp });
-                refused.AddRange(why.Select(w => $"{FileName}: {s.Id} isn't laid, {w}"));
-                if (why.Count > 0) continue;
-                foreach (var terrain in new[] { s.Trail, s.Bare }.Where(t => t != null && !world.Rules.Terrain.ContainsKey(t)))
-                    refused.Add($"{FileName}: {s.Id} lays {terrain}, which isn't a terrain");
-                if (s.Trail != null && world.Rules.Terrain.ContainsKey(s.Trail))
-                    foreach (var (x, y) in s.Stamp.Trail())
-                        if (world.InBounds(x, y) && world.At(x, y).Water == 0) world.Paint(x, y, s.Trail);
-                if (s.Bare != null && world.Rules.Terrain.ContainsKey(s.Bare)) Bare(world, s);
-            }
-            return refused;
-        }
-
-        // Every dry cell of open ground or standing tree the stamp moved, row by row, painted its bare terrain.
-        static void Bare(World world, MapStamp s)
-        {
-            var stamp = s.Stamp;
-            int reach = stamp.Bound;
-            var (xFrom, xTo) = world.XSpan(stamp.X - reach, stamp.X + reach); // round the seam on a world that wraps
-            var (yFrom, yTo) = world.YSpan(stamp.Y - reach, stamp.Y + reach);
-            for (int y = yFrom; y <= yTo; y++)
-                for (int x = xFrom; x <= xTo; x++)
-                {
-                    var c = world.At(x, y);
-                    if (stamp.At(x - stamp.X, y - stamp.Y) == 0 || c.Water != 0) continue;
-                    if (c.T != "tree" && (!world.HasTag(c, "ground") || world.IsBlocking(c))) continue;
-                    world.Paint(x, y, s.Bare);
-                    world.MarkBare(x, y);
-                }
-        }
     }
 }

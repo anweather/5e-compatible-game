@@ -16,9 +16,8 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class HillsForestTests
     {
-        static Rules R => ChemistryTests.R;
 
-        static string HillsDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "hills-12x10");
+        internal static string HillsDir => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", "hills-12x10");
 
         string root;
         GeneratedMap map;
@@ -313,72 +312,6 @@ namespace Chem.Tests
             string Hex((int cx, int cy) c) => map.Gen.Make(c.cx, c.cy).Hash.ToString("x8", CultureInfo.InvariantCulture);
             TestContext.Out.WriteLine($"FOREST golden: the densest wood's chunk {heart} {Hex(heart)}");
             Assert.That((heart, Hex(heart)), Is.EqualTo(((27, 6), "436ef221")), "a change to the woods is a change to the map");
-        }
-
-        [Test]
-        public void PeersAndLateJoinersAgreeInABurningWood()
-        {
-            string dir = Path.Combine(root, "hills-12x10");
-            GeneratedMap.EnsureRows(HillsDir, dir);
-            GeneratedSource Source() => new GeneratedSource(GeneratedMap.Load(HillsDir), R);
-            World Peer(GeneratedSource source)
-            {
-                var w = GeneratedSource.MapWorld(source, dir, R, 7, out var start);
-                w.KeepStart();
-                ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));
-                return w;
-            }
-            var host = Peer(Source());
-            var other = Peer(Source());
-            // Through the densest wood from west to east, a character on it, a fire bolt now and then into a tree ahead.
-            int s = ChunkGen.Size, y0 = heart.cy * s + s / 2, x0 = (heart.cx - 2) * s;
-            var path = Enumerable.Range(0, 5 * s).Select(k => (x: PlanGrid.Mod(x0 + k, host.W), y: y0)).ToList();
-            var planner = new ChunkPlanner();
-            var history = new List<(List<ChunkSwitch> plan, (int x, int y)? cast)>();
-            var peers = new List<(World world, string name)> { (host, "the host"), (other, "the other peer") };
-            const int ticks = 320, joinAt = 200;
-            void Step(World w, List<ChunkSwitch> plan, (int x, int y)? cast)
-            {
-                ChunkStreaming.Apply(w, plan);
-                if (cast is { } c) w.Cast("fire-bolt", c.x, c.y, 1);
-                w.Step();
-            }
-            int atTrees = 0;
-            for (int t = 0; t < ticks; t++)
-            {
-                var me = new[] { path[Math.Min(path.Count - 1, t)] };
-                var plan = planner.Plan(host, me);
-                (int x, int y)? cast = null;
-                if (t % 40 == 20)
-                {
-                    // The nearest tree ahead within a few cells of the path.
-                    var (px, py) = path[Math.Min(path.Count - 1, t + 8)];
-                    for (int d = 0; d < 12 && cast == null; d++)
-                        foreach (var (dx, dy) in new[] { (0, d), (0, -d), (d, 0), (-d, 0) })
-                            if (cast == null && host.At(PlanGrid.Mod(px + dx, host.W), py + dy).T == "tree") cast = (PlanGrid.Mod(px + dx, host.W), py + dy);
-                    if (cast != null) atTrees++;
-                    else cast = (px, py);
-                }
-                history.Add((plan, cast));
-                if (t == joinAt)
-                {
-                    var replayed = Peer(Source());
-                    foreach (var (p, c) in history.Take(t)) Step(replayed, p, c);
-                    var loaded = World.Load(host.Save(host.Source), R, Source());
-                    loaded.LandFromSource();
-                    Assert.That(replayed.CellHash(), Is.EqualTo(host.CellHash()), "the joiner replaying the history");
-                    Assert.That(loaded.CellHash(), Is.EqualTo(host.CellHash()), "the joiner loading the save");
-                    peers.Add((replayed, "the joiner replaying"));
-                    peers.Add((loaded, "the joiner loading"));
-                }
-                foreach (var (w, _) in peers) Step(w, plan, cast);
-            }
-            Assert.That(atTrees, Is.GreaterThanOrEqualTo(4), "the bolts go into the wood's trees");
-            foreach (var (w, name) in peers)
-            {
-                Assert.That(w.CellHash(), Is.EqualTo(host.CellHash()), name);
-                foreach (var (cx, cy) in host.ActiveChunks) Assert.That(w.ChunkHash(cx, cy), Is.EqualTo(host.ChunkHash(cx, cy)), $"{name}: chunk ({cx}, {cy})");
-            }
         }
     }
 }

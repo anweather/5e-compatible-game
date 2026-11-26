@@ -351,7 +351,7 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     /// <summary>
-    /// A new world on a map too big to bake whole, played from a folder of its rows alone (GeneratedMap.EnsureRows): made from
+    /// A new world on a map too big to bake whole, played from a folder of its rows alone (MapBake.EnsureRows): made from
     /// the map's generator as its source (PlayedSource), its land the source's, then the map's lays from the rows as MapWorld
     /// lays them. Only the chunks the lays reach are made.
     /// </summary>
@@ -697,7 +697,7 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // The folder to play a map from: its own, or a generated map's bake (made now if there's none of its inputs yet). A map
-    // too big to bake whole ("bake": false, the Wide World) gets its rows alone (GeneratedMap.EnsureRows): its cells, land and
+    // too big to bake whole ("bake": false, the Wide World) gets its rows alone (MapBake.EnsureRows): its cells, land and
     // things are made as they're read (GeneratedSource), never written.
     static string Baked(string dir, string id, GameFolders game)
     {
@@ -708,8 +708,8 @@ public partial class ChemGrid : MonoBehaviour
         // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
         if (!Application.isEditor && game.PlayerData != null) into = Path.Combine(game.PlayerData, "worlds", GeneratedMap.InputHash(dir), id);
         bool baked;
-        if (rowsOnly) baked = GeneratedMap.EnsureRows(dir, into);
-        else baked = into == dir ? GeneratedMap.EnsureBaked(dir) : GeneratedMap.EnsureBakedInto(dir, into);
+        if (rowsOnly) baked = MapBake.EnsureRows(dir, into);
+        else baked = into == dir ? MapBake.EnsureBaked(dir) : MapBake.EnsureBakedInto(dir, into);
         StartupTimeline.Mark("map baked or found");
         Debug.Log($"MAP: {id} {(rowsOnly ? "its rows " : "")}{(baked ? "baked" : "already baked")} in {into} ({timer.Elapsed.TotalMilliseconds:0} ms)");
         return into;

@@ -56,7 +56,7 @@ namespace Chem
 
     public sealed class WorldPuzzles
     {
-        public const string FileName = "puzzles.json";
+        public const string FileName = MapFile.PuzzlesName;
 
         public static readonly WorldPuzzles Empty = new WorldPuzzles(new List<Puzzle>());
 

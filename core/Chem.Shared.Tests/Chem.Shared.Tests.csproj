@@ -6,4 +6,9 @@
     <Compile Include="@(ChemTestsShared)" Link="Tests/%(Filename)%(Extension)" />
     <Compile Include="*.cs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The core: every Chemistry test project but the land's reaches it through this one (Chem.Tests.props). -->
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+  </ItemGroup>
 </Project>

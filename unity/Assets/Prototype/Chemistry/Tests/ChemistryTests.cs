@@ -38,6 +38,9 @@ namespace Chem.Tests
         /// <summary>The repo's world/ folder.</summary>
         internal static string WorldDir() => Folders.World;
 
+        /// <summary>The game's world/ folder (bands, biomes, square templates, landmarks, maps), as LandFolders.GameWorldDir.</summary>
+        internal static string GameWorldDir() => System.IO.Path.Combine(System.IO.Directory.GetParent(RulesDir()).FullName, "world");
+
         /// <summary>A small dirt room with bedrock walls, like room() in sim.test.ts (seed 7).</summary>
         internal static World Room(int w = 12, int h = 8, uint seed = 7, Rules rules = null)
         {

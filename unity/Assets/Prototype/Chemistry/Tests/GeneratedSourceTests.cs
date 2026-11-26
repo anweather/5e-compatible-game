@@ -32,7 +32,7 @@ namespace Chem.Tests
             baked = Path.Combine(root, "baked");
             made.Bake(baked);
             rows = Path.Combine(root, "rows", "two-squares"); // a map's folder is named for it (MapCheck)
-            Assert.That(GeneratedMap.EnsureRows(map, rows), Is.True);
+            Assert.That(MapBake.EnsureRows(map, rows), Is.True);
         }
 
         [OneTimeTearDown]
@@ -67,7 +67,7 @@ namespace Chem.Tests
             Assert.That(GeneratedMap.IsRowsOnly(rows), Is.True);
             Assert.That(GeneratedMap.IsRowsOnly(baked), Is.False);
             Assert.That(MapCheck.Errors(rows), Is.Empty);
-            Assert.That(GeneratedMap.EnsureRows(map, rows), Is.False, "written once for its inputs");
+            Assert.That(MapBake.EnsureRows(map, rows), Is.False, "written once for its inputs");
         }
 
         [Test]
@@ -131,7 +131,7 @@ namespace Chem.Tests
         public void ItsLandFromTheSourceIsTheBakesFromAnyThread()
         {
             var source = Source();
-            var land = LandChunks.FromSource(source);
+            var land = LandChunks.FromSource(source.W, source.H, source.LandInto);
             var bake = LandChunks.Read(File.ReadAllText(Path.Combine(baked, MapFile.LandName)), source.W, source.H);
             Assert.That(land.IsFromSource, Is.True);
             Assert.That((land.W, land.H), Is.EqualTo((bake.W, bake.H)));

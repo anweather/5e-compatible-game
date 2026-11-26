@@ -33,12 +33,12 @@ namespace Chem.Tests
         static long Heap() => GC.GetTotalMemory(true);
 #pragma warning restore S1215
 
-        static string MapDir(string id) => Path.Combine(LandmarkIntentTests.GameWorldDir(), "maps", id);
+        static string MapDir(string id) => Path.Combine(ChemistryTests.GameWorldDir(), "maps", id);
 
         string RowsOf(string id)
         {
             string dir = Path.Combine(root, id);
-            GeneratedMap.EnsureRows(MapDir(id), dir);
+            MapBake.EnsureRows(MapDir(id), dir);
             return dir;
         }
 

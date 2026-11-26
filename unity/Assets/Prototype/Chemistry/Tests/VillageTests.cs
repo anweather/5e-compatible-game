@@ -14,7 +14,7 @@ namespace Chem.Tests
     {
         static VillageSpec Spec(int seed) => new VillageSpec { Name = "Test", X = 200, Y = 200, Seed = seed, Houses = 12 };
 
-        static bool Anywhere(int x, int y) => true;
+        internal static bool Anywhere(int x, int y) => true;
 
         [Test]
         public void TheSameSeedLaysTheSameVillage()
@@ -127,7 +127,7 @@ namespace Chem.Tests
         [Test]
         public void TheValleysVillagesRead()
         {
-            var specs = VillageLayout.Load(ChemistryTests.WorldDir());
+            var specs = VillageLayout.Load(LandFolders.WorldDir());
             Assert.That(specs, Is.Not.Empty);
             Assert.Throws<System.FormatException>(() => VillageLayout.FromJson("{\"villages\": [{\"name\": \"x\"}]}"));
         }
@@ -137,26 +137,6 @@ namespace Chem.Tests
         public void TheLayoutIsPinned()
         {
             Assert.That(VillageLayout.Lay(Spec(7), Anywhere).Digest().ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("7b2c5f14"));
-        }
-
-        [Test]
-        public void BuildingsAreMadeOfTheMaterialsInVillagesJson()
-        {
-            // world/villages.json "materials": walls and roofs by kind, terrain ids in materials.json.
-            var specs = VillageLayout.Load(ChemistryTests.WorldDir());
-            var m = specs[0].Materials;
-            foreach (var material in m.Walls.Values.Concat(m.Roofs.Values))
-                Assert.That(ChemistryTests.R.Terrain.ContainsKey(material), $"{material} is a terrain");
-            var plan = VillageLayout.Lay(specs[0], Anywhere);
-            foreach (var b in plan.Buildings)
-            {
-                Assert.That(b.WallMaterial, Is.EqualTo(m.WallOf(b.Walls)));
-                Assert.That(b.RoofMaterial, Is.EqualTo(m.RoofOf(b.Cover)));
-                Assert.That(b.WallCell, Is.EqualTo(b.Walls == WallKind.Stone ? '#' : 'L'), "stone stands, timber and log burn");
-            }
-            Assert.That(plan.Buildings.Any(b => b.Walls == WallKind.Stone) && plan.Buildings.Any(b => b.Walls != WallKind.Stone));
-            Assert.Throws<System.FormatException>(() => VillageLayout.FromJson("{ 'materials': { 'walls': { 'timber': 'thatch' } }, 'villages': [] }"),
-                "a wall material must stand on a map");
         }
     }
 }

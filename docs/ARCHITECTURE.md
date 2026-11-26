@@ -32,7 +32,8 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 
 ### 2. Chem core (`Chemistry/`)
 The core is the Unity package `com.anweather.chemistry-core` (`packages/` at the repo root), which the game uses by
-local path from `unity/Packages/manifest.json`; its sources are in `Runtime/`. `unity/Assets/Prototype/Chemistry/`
+local path from `unity/Packages/manifest.json`; its sources are in `Runtime/`, the land's (hills, ChunkGen, world
+plans, themes, map files) in `Runtime/Land/`, its own assembly `Chem.Land` below the rest. `unity/Assets/Prototype/Chemistry/`
 keeps what stays in the game: `Mcp/` (the Chemistry.Mcp assembly) and `Tests/`.
 - `RuleTables.cs` reads the JSON into typed tables.
 - **Where the game's folders are** is `GameFolders.cs`, and nowhere else:
@@ -300,17 +301,21 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 
 | Project or folder | May reference | Never |
 |---|---|---|
-| `Chemistry/` (the package's `Runtime/`, asmdef `Chemistry`, `noEngineReferences`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
-| `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's internals) | `Chemistry/`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
+| `Chem.Land` (the package's `Runtime/Land/`, asmdef `Chem.Land`, `noEngineReferences`; hills, ChunkGen, world plans, themes, biomes, map files, `GeneratedMap`; `docs/design/chem-land-split.md`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chemistry/` (no `World`, `Cell` or `Rules`), `UnityEngine`, `Scripts/`, anything under `core/` |
+| `Chemistry/` (the package's `Runtime/` but `Land/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
+| `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
 | `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
 | `Scripts/` (the view) | `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
 | `Scripts/Net/` | `Scripts/`, `Chemistry/` | the view uses it only as the door of rule 3 |
 | `Scripts/Editor/` | everything | nothing references it |
-| `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
-| `core/Game.Core` | links `Chemistry/*.cs`, `Chemistry/Mcp/`, `Scripts/Playtest/Logic/` | any other `core/` project |
+| `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chem.Land`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
+| `core/Chem.Land` | links `Runtime/Land/*.cs` (netstandard2.1) | any other `core/` project |
+| `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
 | `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
 | `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |
-| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core`, the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
+| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core` (through `Chem.Shared.Tests`), the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
+| `core/Chem.Land.Tests` (the land's own tests) | `Chem.Land` alone | `Game.Core`, `Chem.Shared.Tests`, any other test project |
+| `core/Chem.LandWorld.Tests` (the land on a World: the `*WorldTests.cs` halves) | `Chem.Land.Tests`, `Chem.Shared.Tests` | the tools |
 | `core/<Tool>.Tests` (`Rules.Mcp.Tests`, `Playtest.Runner.Tests`, `Chat.Bench.Tests`, `Hold.Runner.Tests`) | its tool, `Chem.Shared.Tests` or `Chem.Sim.Tests` for the Chemistry tests' internal helpers (`core/TestFriends.cs`) | the other tools |
 
 ## Conventions
