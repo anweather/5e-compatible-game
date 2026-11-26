@@ -13,8 +13,8 @@ reach them.
 |---|---|---|---|
 | 1. **Author** | the worker writing the change (u2, the Mac, a PC job) | New or changed tests for what it changed; `dotnet build core -c Release -warnaserror` and the tests nearest the change while working | The whole suite on every edit |
 | 2. **Unity check** | a `unity-task` on the PC, or the Mac | Compile with 0 errors; the Unity-side tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`) and the touched fixtures; `smoke` and the probes the change can reach; a clip only when asked. **`tools/editmode.sh chem` (the Chemistry tests under Mono) only when `Chemistry/` code changed** | Core tests under Mono for view-only changes; unrelated probes |
-| 3. **Landing gates** | `land.sh` | Core build, format, duplicate code, **the core suite once** (.NET) but the `Sweep` category (`gates.sh`: `--filter "TestCategory!=Sweep"`), the workers and chat tests | Unity, probes, the `Sweep` category |
-| 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | `tools/editmode.sh sweep`: all of EditMode, the Chemistry tests under Mono and the `Timing` tests (`--include_explicit true`), the core's `Sweep` category (`dotnet test core -s core/sweep.runsettings --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
+| 3. **Landing gates** | `land.sh` | Core build, format, **the touched modules' core tests** (.NET, by `tools/workers/modules.json`: their projects, the projects that reference them, every other project's `Unit` fixtures) but the `Sweep` category, the workers and chat tests | Unity, probes, the `Sweep` category, duplicate code (CI and the sweep), the core tests a change can't reach |
+| 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | `tools/editmode.sh sweep`: all of EditMode, duplicate code (jscpd), the Chemistry tests under Mono and the `Timing` tests (`--include_explicit true`), the core's `Sweep` category (`dotnet test core -s core/sweep.runsettings --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
 | 5. **Release** | the release steps (`docs/RELEASING.md`) | `smoke`, `online`, the release's own probes, install from the draft, the PC joining a Mac host | Anything a sweep already covered on that commit |
 
 The holes, on purpose:
@@ -39,6 +39,9 @@ The holes, on purpose:
   the sweep runs it for everything.
 - **A probe a change "couldn't reach" but did:** the sweep runs every probe on dev.
 - **Two branches that pass alone and break together:** the sweep, and the next Unity check that merges dev.
+- **A core test the module map says a change can't reach** (layer 3 runs by module): CI's quality workflow runs the
+  whole suite on every push to dev, and the sweep runs it again. A path in no module runs everything at the landing.
+- **Duplicate code** (jscpd): CI's duplicates workflow on every push, and `tools/editmode.sh sweep`; the landing skips it.
 - **u2's core-only landings have no Unity check:** the next Unity check or sweep compiles them.
 - **Engine-free C# under `unity/` lands without a Unity compile.** `land.sh` asks for `--compiled` (a machine with
   Unity compiled it) for any `.cs` under `unity/` except the files directly in `Chemistry/Tests/` and `Chemistry/Mcp/`
@@ -65,8 +68,8 @@ about 4 minutes. So the Editor's default is the Unity-only group, and the Mono p
 | `tools/editmode.sh sweep` | all, plus the Explicit `Timing` tests | ~45 min | the sweep, on an idle Editor |
 
 What the Editor no longer re-proves by default is only that Mono gives the same answer as .NET (the 2026-11-08 rounding
-case); `chem` and the sweep keep that. The landing gates (`gates.sh`: `dotnet test core`, all but `Sweep`) and CI's
-quality workflow still run every Chemistry test under .NET, unchanged.
+case); `chem` and the sweep keep that. CI's quality workflow still runs every Chemistry test under .NET on every push; the landing gates run the touched
+modules' (below).
 
 ## The core's categories
 
@@ -82,8 +85,9 @@ neither:
 A fixture's kind was set from what it builds and its tests' mean time in a full run (under 40 ms: Unit). A new fixture
 picks one; when a Unit fixture grows a whole-world test, that test (or the fixture) becomes Simulation.
 
-What the gates run doesn't change: layer 3 still runs Unit and Simulation, all but `Sweep`, because Unit is 6 s of a
-3-minute run and the faults that reach dev are Simulation's (two branches' worlds meeting). `Unit` is the author's
+Layer 3 runs Unit and Simulation, all but `Sweep`, in the projects a change reaches, and the `Unit` fixtures alone in
+the rest (the smoke: every project's, about 10 s), because the faults that reach dev are Simulation's (two branches'
+worlds meeting) and Unit is cheap. `Unit` is the author's
 loop (layer 1): run it on every edit, and the nearest Simulation fixture by name.
 
 ## Keeping the core suite fast
@@ -134,3 +138,44 @@ Sim (`ComboTests.Blank`). Where a file sits away from its subject, that is why: 
 `Rules.Mcp.Tests` references Sim (`ComboTests.Blank`, `BuildingTests`); the other tools' tests only Shared.
 There is no Chemistry Mcp project: no file in `Chemistry/Tests/` is chiefly the rules MCP's (`PlayerModsTests` drives a
 `Workbench` for player mods, and sits in Rules), so the Mcp module's tests are `core/Rules.Mcp.Tests`.
+
+## The landing gates, by module
+
+`gates.sh` runs the core tests a change can reach, not all of them (`docs/design/architecture-review.md` step 3). The map
+is `tools/workers/modules.json`; `tools/workers/modules.mjs` reads it with `core/Chem.Tests.props` and the
+`core/*/*.csproj` files:
+
+- A changed path (`git diff origin/dev...HEAD`, plus what isn't committed) belongs to the first module whose globs match
+  it; the Chemistry test files go by the props' lists (`ChemTestsLand` is the `tests-land` module), read from the props,
+  never copied.
+- A module's `projects` are code: they run, and so does every project that references them, transitively. A library
+  runs its dependents, so `Game.Core` (the whole Runtime, `Chemistry/Mcp`, `Playtest/Logic`) runs everything. A
+  module's `reads` are data: `rules/` and `world/` run every project that loads the rules (not `Playtest.Runner.Tests`),
+  `docs/GLOSSARY.md` and `docs/MODDING.md` the two that read them, any `.cs` under `unity/Assets/Prototype` runs
+  `Rules.Mcp.Tests` (`HiddenThingTests` reads them all).
+- The rest's `Unit` fixtures run as the smoke (about 10 s for all eleven projects on the 4-core VM).
+- Docs and tools alone run no dotnet tests (the build and format still run, and the node tests always do).
+- **A path in no module runs everything**, as do a map that doesn't load, no changes found, and `GATES_ALL=1`. So do
+  core's shared files (`Chem.Tests.props`, `Directory.Build.props`, the runsettings), which are in no module on purpose.
+- `node tools/workers/modules.mjs check` (a workers test, so every landing runs it) fails when a file a project compiles
+  wouldn't run that project by the map; `node tools/workers/modules.mjs choose <path>...` says what a change would run.
+
+**The Runtime is one assembly today.** Every `Chem.*` project links all of
+`packages/com.anweather.chemistry-core/Runtime` through `Game.Core`, so a Runtime change runs every project; the map's
+Runtime areas (`runtime-land`, `runtime-rules`...) say in `after` which project each narrows to once step 5 splits
+`Chem.Land` out. And a Land test change runs Land, Sim (it references Land), Lockstep and `Rules.Mcp.Tests` (they
+reference Sim), which are most of the suite's wall time: the module gates pay off for docs, tools, rules-only
+`Chem.Rules.Tests` work, Play, the tools' own projects, and the view's C#.
+
+When dev moves during the gates, `land.sh` merges again and reruns the gates only if dev's new commits reach what this
+landing tested (`modules.mjs overlap`: a test project both run, a tested module both touch, or either running
+everything); otherwise it pushes.
+
+Measured 2026-11-26 on the 4-core cloud VM (build and format included, warm build cache):
+
+| Change | Core tests run | `gates.sh` wall |
+|---|---|---|
+| docs only | none | 1 m 00 s |
+| a Land test file (`ChunkGenTests.cs`, `HillsRoadTests.cs`) | Land, Sim, Lockstep, `Rules.Mcp.Tests` + the smoke | 6 m 07 s |
+| a Runtime file (`HillsRoads.cs`) | all | 7 m 20 s |
+| before this step (every change: all, plus jscpd) | all | 7 m 21 s |

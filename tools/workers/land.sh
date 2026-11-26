@@ -14,7 +14,8 @@
 #                                      (--compiled says DesktopUnity or the Mac did; engine_free's
 #                                      folders need none, the gates' dotnet build compiles them), a conflict, or
 #                                      a merge touching files the branch doesn't own; runs every
-#                                      gate; pushes, and merges again if dev moved. --deletes
+#                                      gate; pushes, and merges again if dev moved (rerunning the gates
+#                                      only if dev's new commits reach a module it tested). --deletes
 #                                      accepts deletions and heavy removals you've read. --dry
 #                                      stops short of pushing and leaves the worktree on dev.
 #   land.sh merge <branch> < message   fetch, reset this worktree's branch to origin/dev, merge
@@ -29,7 +30,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 cmd="${1:-}"; branch="${2:-}"
-usage() { sed -n 2,28p "$0"; exit 2; }
+usage() { sed -n 2,29p "$0"; exit 2; }
 [[ -n "$cmd" && ( -n "$branch" || "$cmd" == here ) ]] || usage
 git fetch -q origin
 taken=docs/handoffs/briefs/queue/taken
@@ -135,6 +136,15 @@ case "$cmd" in
     # The sandbox is frozen with its own rules (J-042): its gates run only when it changed, as sandbox.yml does.
     sandbox=0
     grep -qE '^(sandbox/|\.github/workflows/sandbox\.yml$)' <<< "$own" && sandbox=1
+    tested=""   # the dev the gates last passed on
+    reaches() { # do dev's commits since $1 reach what this landing tested? Anything unclear says yes.
+      printf '%s\n' "$own" > "$log.ours"
+      git diff --name-only "$1" origin/dev > "$log.theirs" || { echo "can't diff dev" > "$log.why"; return 0; }
+      local code=0
+      node "$here/modules.mjs" overlap "$log.ours" "$log.theirs" > "$log.why" 2>&1 || code=$?
+      rm -f "$log.ours" "$log.theirs"
+      [[ $code != 3 ]]
+    }
     for try in 1 2 3; do
       if ! printf '%s\n' "$message" | bash "$0" merge "$branch" > /dev/null 2>&1; then
         clash="$(git status --short | grep -E '^(UU|AA|DD|AU|UA|DU|UD)' || true)"
@@ -147,9 +157,17 @@ case "$cmd" in
         undo
         stop "the merge changes files outside the branch's own diff:"$'\n'"$foreign"
       fi
-      if ! SANDBOX_GATES=$sandbox bash "$here/gates.sh" "$log"; then
-        undo
-        stop "a gate failed; the full log is $log; the worktree is back on dev."
+      # When dev moved during the gates, they run again only if its new commits reach a module this landing tested
+      # (a shared test project or tested module, or either side running everything: modules.mjs overlap).
+      if [[ -n "$tested" ]] && ! reaches "$tested"; then
+        echo "  (no gates rerun: $(cat "$log.why"))"
+      else
+        [[ -n "$tested" ]] && echo "  (gates again: $(cat "$log.why"))"
+        if ! SANDBOX_GATES=$sandbox bash "$here/gates.sh" "$log"; then
+          undo
+          stop "a gate failed; the full log is $log; the worktree is back on dev."
+        fi
+        tested="$(git rev-parse origin/dev)"
       fi
       if [[ $dry == 1 ]]; then undo; echo "Dry run: $branch would land. Nothing pushed."; exit 0; fi
       git fetch -q origin

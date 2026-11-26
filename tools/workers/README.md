@@ -110,7 +110,12 @@ reads stay small).
 
 Once its gates pass (`bash tools/workers/gates.sh <log>`), a worker lands the
 branch it's on, from its own checkout, on any machine (Linux or Windows VM,
-the PC, the Mac):
+the PC, the Mac). The gates run the core tests of the modules the branch
+touches, the projects that reference them and every other project's `Unit`
+fixtures (`modules.json`, read by `modules.mjs`; `GATES_ALL=1` runs them all,
+as does any path in no module); docs and tools alone run none. Duplicate code
+(jscpd) isn't a landing gate: CI's duplicates workflow and the sweep run it.
+`docs/TESTING_LAYERS.md` has the map's rules and times.
 
 ```
 bash tools/workers/land.sh here [--compiled] [--deletes] [--dry] < message
@@ -120,7 +125,10 @@ It pushes the branch, then runs `land.sh auto` in a landing worktree beside
 the checkout (`<checkout>-land`, or `$LAND_WORKTREE`; kept, so its build
 cache is warm next time) with **dev's** `land.sh`, so a branch can't change
 its own landing. Every refusal of `auto` stands (deletions, heavy removals, a
-conflict, a merge touching files the branch doesn't own, a failed gate), plus:
+conflict, a merge touching files the branch doesn't own, a failed gate). If
+dev moves during the gates, `auto` merges again and reruns them only when
+dev's new commits reach a module this landing tested (`modules.mjs overlap`);
+otherwise it pushes. `here` adds:
 a dirty checkout, being on `dev` or `main`, and a branch that leaves its queue
 claim on dev. `--compiled` is accepted only where
 `node tools/workers/queue.mjs caps` says `unity`: Unity C# from a machine

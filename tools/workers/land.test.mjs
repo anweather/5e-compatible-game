@@ -23,8 +23,18 @@ function scratch(devFiles = {}) {
   g(dir, "clone", "-q", "origin.git", "repo");
   const repo = join(dir, "repo");
   const put = (f, text) => { mkdirSync(join(repo, f, ".."), { recursive: true }); writeFileSync(join(repo, f), text); };
-  for (const f of ["land.sh", "queue.mjs", "bridge.sh"]) { mkdirSync(join(repo, "tools/workers"), { recursive: true }); copyFileSync(join(tools, f), join(repo, "tools/workers", f)); }
-  put("tools/workers/gates.sh", '#!/usr/bin/env bash\n[[ -z "${LAND_TEST_FAIL:-}" ]] || { echo "  FAILED  core tests"; exit 1; }\necho "  ok  core tests"\n');
+  for (const f of ["land.sh", "queue.mjs", "bridge.sh", "modules.mjs"]) { mkdirSync(join(repo, "tools/workers"), { recursive: true }); copyFileSync(join(tools, f), join(repo, "tools/workers", f)); }
+  // The gates' stand-in: fails when told to, counts its runs, and (LAND_TEST_DEV_MOVES) pushes that file to dev
+  // from another clone during its first run, as another landing would.
+  put("tools/workers/gates.sh", `#!/usr/bin/env bash
+[[ -z "\${LAND_TEST_RUNS:-}" ]] || echo run >> "$LAND_TEST_RUNS"
+if [[ -n "\${LAND_TEST_DEV_MOVES:-}" && ! -e "$LAND_TEST_RUNS.moved" ]]; then
+  touch "$LAND_TEST_RUNS.moved"
+  ( c="$(mktemp -d)/c"; git clone -q -b dev "${join(dir, "origin.git")}" "$c" && cd "$c" && mkdir -p "$(dirname "$LAND_TEST_DEV_MOVES")" && echo moved > "$LAND_TEST_DEV_MOVES" && git add -A && git commit -qm "dev moved" && git push -q origin HEAD:dev ) >&2
+fi
+[[ -z "\${LAND_TEST_FAIL:-}" ]] || { echo "  FAILED  core tests"; exit 1; }
+echo "  ok  core tests"
+`);
   put("tools/workers/commit-cost.mjs", "");
   put("README.md", "x\n");
   for (const [f, text] of Object.entries(devFiles)) put(f, text);
@@ -198,4 +208,50 @@ test("uncommitted changes, or being on dev, are refused before anything is pushe
     assert.equal(code, 1);
     assert.match(out, /STOP: the checkout is on dev/);
   } finally { s.done(); }
+});
+
+// The retry when dev moves during the gates: a small map of its own (two test projects, a props list, docs).
+const MAP = {
+  "core/Chem.Tests.props": '<Project><PropertyGroup><ChemTests>$(MSBuildThisFileDirectory)../t/</ChemTests></PropertyGroup><ItemGroup><ChemTestsA Include="$(ChemTests)A*.cs" /></ItemGroup></Project>\n',
+  "core/A.Tests/A.Tests.csproj": '<Project><ItemGroup><Compile Include="*.cs" /></ItemGroup></Project>\n',
+  "core/B.Tests/B.Tests.csproj": '<Project><ItemGroup><Compile Include="*.cs" /></ItemGroup></Project>\n',
+  "tools/workers/modules.json": JSON.stringify({ modules: [
+    { name: "a", paths: ["a/**"], projects: ["A.Tests"] },
+    { name: "b", paths: ["b/**"], projects: ["B.Tests"] },
+    { name: "a-tests", props: "ChemTestsA", projects: ["A.Tests"] },
+    { name: "docs", paths: ["docs/**"] },
+  ] }) + "\n",
+};
+
+function movingDev(ours, theirs) {
+  const s = scratch(MAP);
+  try {
+    s.commit({ [ours]: "ours\n" });
+    const runs = join(s.dir, "runs");
+    const { code, out } = s.land([], { LAND_TEST_RUNS: runs, LAND_TEST_DEV_MOVES: theirs });
+    assert.equal(code, 0, out);
+    assert.match(out, /Landed feat on dev/);
+    s.g(s.repo, "fetch", "-q");
+    assert.ok(s.devHas(ours) && s.devHas(theirs), "dev has both");
+    return { out, runs: readFileSync(runs, "utf8").trim().split("\n").length };
+  } finally { s.done(); }
+}
+
+test("dev moving during the gates, apart from this landing's modules, pushes without running them again", () => {
+  const { out, runs } = movingDev("a/x.txt", "b/y.txt");
+  assert.equal(runs, 1, out);
+  assert.match(out, /no gates rerun: .*share no tested module/);
+});
+
+test("two docs changes don't rerun the gates for each other", () => assert.equal(movingDev("docs/a.md", "docs/b.md").runs, 1));
+
+test("dev moving into a module this landing tested runs the gates again", () => {
+  const { out, runs } = movingDev("a/x.txt", "t/AThingTests.cs");
+  assert.equal(runs, 2, out);
+  assert.match(out, /gates again: .*A\.Tests/);
+});
+
+test("dev moving with a path in no module, or under a landing that ran everything, runs the gates again", () => {
+  assert.equal(movingDev("a/x.txt", "elsewhere/q.txt").runs, 2);
+  assert.equal(movingDev("elsewhere/q.txt", "b/y.txt").runs, 2);
 });
