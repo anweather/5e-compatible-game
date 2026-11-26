@@ -146,10 +146,12 @@ namespace Chem
                 var t = ModPatch.Parse(c.Json).Title;
                 if (!string.IsNullOrWhiteSpace(t)) return t.Trim();
             }
+#pragma warning disable S108
             catch (ModException)
             {
                 // the checks say what is wrong with it
             }
+#pragma warning restore S108
             return c.Mod;
         }
 

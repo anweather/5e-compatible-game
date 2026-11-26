@@ -73,10 +73,12 @@ namespace Chem
             {
                 if (File.Exists(record) && File.ReadAllText(record).Trim() == key) return new List<string>();
             }
+#pragma warning disable S108
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
                 // No record to read: check it all.
             }
+#pragma warning restore S108
             var errors = Errors(worldDir);
             if (errors.Count > 0) return errors;
             try
@@ -85,10 +87,12 @@ namespace Chem
                 if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
                 File.WriteAllText(record, key);
             }
+#pragma warning disable S108
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
                 // Not recorded: the next start checks it all again.
             }
+#pragma warning restore S108
             return errors;
         }
 
