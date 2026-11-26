@@ -40,6 +40,22 @@ test('C#: line and block comments, the top comment ending at the first type, str
   assert.match(s.blanked.split('\n')[5], /string a = " +";/);
 });
 
+test('C#: an interpolated string holding another string, its quotes and a URL inside the hole', () => {
+  const text = [
+    '// The file.',
+    'class A',
+    '{',
+    '    string a = $"add {Url ?? $"http://127.0.0.1:{Port}/mcp"} now"; // a comment',
+    '    string b = $@"{(x ? "a" : "b")} // still a string";',
+    '    string c = $"{{not a hole}} {d:0.0} \\" {e}";',
+    "    char f = '{';",
+    '}',
+  ].join('\n');
+  const s = scan(text, 'csharp');
+  assert.deepEqual(lines(s.comments), [1, 4]);
+  assert.deepEqual(s.spans.map((p) => text.slice(p.from, p.to)), ['// The file.', '// a comment']);
+});
+
 test('shader: C-like comments, a shader name in quotes', () => {
   const s = scan('// The sea.\nShader "Game/Sea // x"\n{\n    float a; /* b */\n}\n', 'shader');
   assert.deepEqual(lines(s.comments), [1, 4]);
