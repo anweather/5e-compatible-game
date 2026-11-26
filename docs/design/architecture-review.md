@@ -2,7 +2,7 @@
 
 Approved by Andrew 2026-11-26 (steps 1-3 started as cloud jobs). Written 2026-11-25. Read from `origin/dev` at 6f86730c with `git show` and `git ls-tree`; nothing built, run or
 changed. Counts come from `git grep` and `wc -l`, so treat them as rough sizes. Pattern followed: the boat game's
-architecture review (in the boatgame repo, branch u1-sailing-test, under docs/design/studies) and the steps that came out of it.
+architecture review (in the boatgame repo, branch u1-sailing-test) and the steps that came out of it.
 
 Goal (Andrew, 2026-11-26): every piece built and tested on its own with little coupling, so a feature lands as
 fast as it did at the start, without the test and verification load we carry now.
