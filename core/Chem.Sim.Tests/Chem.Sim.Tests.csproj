@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Chemistry tests of the simulation: cells, chunks, ticks, spells, things, saves, the CellHash and ChunkHash goldens (Chem.Tests.props). -->
+  <Import Project="../Chem.Tests.props" />
+
+  <ItemGroup>
+    <Compile Include="@(ChemTestsSim)" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Chem.Rules.Tests/Chem.Rules.Tests.csproj" />
+    <ProjectReference Include="../Chem.Land.Tests/Chem.Land.Tests.csproj" />
+  </ItemGroup>
+</Project>

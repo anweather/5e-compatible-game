@@ -1,0 +1,58 @@
+<Project>
+  <!--
+    The Chemistry tests (unity/Assets/Prototype/Chemistry/Tests, which Unity compiles as one assembly) split by module
+    for dotnet (docs/design/architecture-review.md step 2, docs/TESTING_LAYERS.md). Each core/Chem.<Module>.Tests
+    project imports this and compiles its own list below. Sim is what's left, so a new test file runs in Sim until it
+    is listed elsewhere, and no file can run twice or not at all. A file that needs another's helpers (ChemistryTests.R,
+    ComboTests.Blank, LandmarkIntentTests.Village...) sits in that file's project or one that references it. Every
+    project references Shared; Sim references Rules and Land; Lockstep references Sim (ComboTests.Blank). Play, Land,
+    Rules and Playtest need nothing else. A reference that isn't in that list is a coupling: say why where it's added.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Fixtures run side by side, and they make whole worlds: on the workstation collector they wait on it, and run slower than one at a time (#162). -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ChemTests>$(MSBuildThisFileDirectory)../unity/Assets/Prototype/Chemistry/Tests/</ChemTests>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The fixture whose statics every other one uses (R, Folders, Room), and the attribute Unity needs. -->
+    <ChemTestsShared Include="$(ChemTests)ChemistryTests.cs;$(ChemTests)NonParallelizable.cs" />
+
+    <!-- The rule tables, mods, components, looks, the spell list and radial, a player's mods and stats. -->
+    <ChemTestsRules Include="$(ChemTests)ComponentTests.cs;$(ChemTests)DownedTests.cs;$(ChemTests)FaunaTests.cs;$(ChemTests)GameFoldersTests.cs;$(ChemTests)ItemTests.cs;$(ChemTests)LookTests.cs;$(ChemTests)ModFieldTests.cs;$(ChemTests)PlayerModsTests.cs;$(ChemTests)PlayerStatsTests.cs;$(ChemTests)RadialTests.cs;$(ChemTests)RuleSwitchTests.cs;$(ChemTests)SpellBalanceTests.cs;$(ChemTests)SpellListTests.cs" />
+
+    <!-- The land: hills, chunk generation, world plans, themes, map files and MapCheck, stamps, the bake. -->
+    <ChemTestsLand Include="$(ChemTests)Hills*.cs;$(ChemTests)Map*.cs;$(ChemTests)WorldPlan*.cs;$(ChemTests)Landmark*.cs;$(ChemTests)Biome*.cs" />
+    <ChemTestsLand Include="$(ChemTests)BakeTests.cs;$(ChemTests)ChunkGenTests.cs;$(ChemTests)ContourTests.cs;$(ChemTests)DrownedChainTests.cs;$(ChemTests)FarRingTests.cs;$(ChemTests)GeneratedSourceTests.cs;$(ChemTests)GroundPackTests.cs;$(ChemTests)LaidRowTests.cs;$(ChemTests)LandStampTests.cs;$(ChemTests)PlacesTests.cs;$(ChemTests)RoadGradeTests.cs;$(ChemTests)RowPadTests.cs;$(ChemTests)ScaleIslandTests.cs;$(ChemTests)SeaMaskTests.cs;$(ChemTests)SparseWorldBench.cs;$(ChemTests)TerrainTests.cs;$(ChemTests)ThemeTests.cs;$(ChemTests)VillageTests.cs;$(ChemTests)WorldBuildBench.cs;$(ChemTests)WorldGenTests.cs;$(ChemTests)WorldTwelveTests.cs" />
+
+    <!-- The game modes on World: the Hold (its partial classes stay together), golf, the Gauntlet, puzzles, defense, the dragon. -->
+    <ChemTestsPlay Include="$(ChemTests)Hold*.cs;$(ChemTests)AirTests.cs;$(ChemTests)CourseTests.cs;$(ChemTests)DefenseTests.cs;$(ChemTests)DragonTests.cs;$(ChemTests)GolfTests.cs;$(ChemTests)HandsTests.cs;$(ChemTests)PuzzleTests.cs" />
+
+    <!-- Peers: the lockstep session and wire, late joins, rooms, resets, the open world over the loopback. -->
+    <ChemTestsLockstep Include="$(ChemTests)LateJoinTests.cs;$(ChemTests)LockstepTests.cs;$(ChemTests)LockstepWireTests.cs;$(ChemTests)OnlineValleyTests.cs;$(ChemTests)OpenWorldTests.cs;$(ChemTests)ResetTests.cs;$(ChemTests)RoomSkyTests.cs;$(ChemTests)RoomTests.cs;$(ChemTests)StandKeeperTests.cs" />
+
+    <!-- The rest: cells, chunks, ticks, spells, things, saves, hashes. -->
+    <ChemTestsSim Include="$(ChemTests)*.cs" />
+    <ChemTestsSim Remove="@(ChemTestsShared);@(ChemTestsRules);@(ChemTestsLand);@(ChemTestsPlay);@(ChemTestsLockstep)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Every core test project's: fixtures side by side (#162), and who may use this one's internal helpers. -->
+    <Compile Include="$(MSBuildThisFileDirectory)TestParallel.cs" Link="TestParallel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestFriends.cs" Link="TestFriends.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Game.Core/Game.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NUnit 3, like Unity's Test Framework (NUnit 4 moved CollectionAssert). -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

@@ -4,25 +4,25 @@
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Its workbenches make whole worlds side by side, as Game.Core.Tests' fixtures do (#162). -->
+    <!-- Its workbenches make whole worlds side by side, as the Chem.*.Tests fixtures do (#162). -->
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="*.cs" />
-    <!-- Fixtures side by side, as in Game.Core.Tests (#162). -->
+    <!-- Fixtures side by side, as in the Chem.*.Tests (#162). -->
     <Compile Include="../TestParallel.cs" Link="TestParallel.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- The Chemistry tests' shared helpers (ChemistryTests.Folders, ComboTests.Blank...), which Unity compiles with
-         them: NUnit runs only this assembly's own tests, so none of Game.Core.Tests' run twice. -->
-    <ProjectReference Include="../Game.Core.Tests/Game.Core.Tests.csproj" />
+         them: NUnit runs only this assembly's own tests, so none of theirs run twice. -->
+    <ProjectReference Include="../Chem.Sim.Tests/Chem.Sim.Tests.csproj" />
     <ProjectReference Include="../Rules.Mcp/Rules.Mcp.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- As Game.Core.Tests: NUnit 3, like Unity's Test Framework. -->
+    <!-- As the Chem.*.Tests: NUnit 3, like Unity's Test Framework. -->
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="NUnit" Version="3.14.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
