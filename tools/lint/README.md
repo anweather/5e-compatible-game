@@ -19,10 +19,11 @@ ones. The rules, their languages and how to add one: the kit's `plugins/project-
 
 ## In this project
 
-- The comments rule runs at `"level": "warning"`: every comment past a file's top one is a warning, on new and
-  touched lines too, so the lint never fails on a comment for now. The old comments go in one purge change
-  (issue #226); then `level` comes off the config and a new comment is an error again. `level` is a local change
-  to the pack (`rules/comments.mjs`, `lint.mjs`, with a test), to bring to the kit.
+- The comments rule runs at `"level": "error"` since the purge of the old comments (issue #226, made by
+  `tools/purge-comments.mjs`, which can be run again): a comment past a file's top one on a new or changed line
+  fails the lint. `level` (`"warning"` makes every one a warning) is a local change to the pack
+  (`rules/comments.mjs`, `lint.mjs`, with a test), to bring to the kit. URP's TerrainLit, copied in as
+  `TerrainRock.shader` and `TerrainRockPasses.hlsl`, is left out of the rule: its comments are Unity's.
 - The commit hook is not installed (no `install.mjs`, no `core.hooksPath`): `.git/hooks` holds the Git LFS hooks
   and the cost hook, which a `core.hooksPath` would switch off (D21). Run the lint by hand or read it in CI's
   quality workflow, where it prints and never fails the job.

@@ -100,7 +100,7 @@ dotnet test core --filter TestCategory=Unit    # the quick fixtures, in seconds 
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
 tools/jscpd/run.sh unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%); jscpd pinned in its lockfile
 node --test tools/chat-report.test.mjs        # the chat report, on real records
-node tools/lint/lint.mjs                      # the kit's lint: dead tools/ and docs/ paths fail; comments only warn until #226
+node tools/lint/lint.mjs                      # the kit's lint: dead tools/ and docs/ paths and new comments fail
 
 # Sandbox (CI's "sandbox" workflow)
 cd sandbox && npm ci && npm run typecheck && npm test && npm run build
