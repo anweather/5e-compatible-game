@@ -310,8 +310,8 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `core/Game.Core` | links `Chemistry/*.cs`, `Chemistry/Mcp/`, `Scripts/Playtest/Logic/` | any other `core/` project |
 | `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
 | `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |
-| `core/Game.Core.Tests` (links `Chemistry/Tests/`, `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core` | the tools |
-| `core/<Tool>.Tests` (`Rules.Mcp.Tests`, `Playtest.Runner.Tests`, `Chat.Bench.Tests`, `Hold.Runner.Tests`) | its tool, `Game.Core.Tests` for the Chemistry tests' internal helpers (`Friends.cs`) | the other tools |
+| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core`, the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
+| `core/<Tool>.Tests` (`Rules.Mcp.Tests`, `Playtest.Runner.Tests`, `Chat.Bench.Tests`, `Hold.Runner.Tests`) | its tool, `Chem.Shared.Tests` or `Chem.Sim.Tests` for the Chemistry tests' internal helpers (`core/TestFriends.cs`) | the other tools |
 
 ## Conventions
 
