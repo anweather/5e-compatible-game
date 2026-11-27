@@ -34,6 +34,12 @@ namespace Chem
         /// <summary>A Hold raider's way in (entities.json raider.route): up the walls, or over everything.</summary>
         public const string ClimbRoute = HoldSystem.ClimbRoute, FlyRoute = HoldSystem.FlyRoute;
 
+        /// <summary>How many raiders a Hold wave sends (HoldSystem.WaveSize); the probes set a wave's size with it.</summary>
+        public static int HoldWaveSize(HoldParams p, int wave, int peers = 1) => HoldSystem.WaveSize(p, wave, peers);
+
+        /// <summary>How many barricades a Hold wave puts up (HoldSystem.BarricadesOf); the moments probe counts them.</summary>
+        public static int BarricadesOf(HoldParams p, int wave) => HoldSystem.BarricadesOf(p, wave);
+
         // The raiders' cost field's scratch (Play/WayField.cs), shared by the defense field's march and the Hold's ways.
         internal readonly WayField Ways = new WayField();
 
