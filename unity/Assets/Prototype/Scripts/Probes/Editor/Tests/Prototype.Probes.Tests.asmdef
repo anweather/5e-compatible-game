@@ -9,6 +9,7 @@
         "Prototype.Game.Editor",
         "Prototype.AssetPacks.Editor",
         "Prototype.Punchy",
+        "Prototype.Kit",
         "Chemistry",
         "Chem.Land",
         "Chemistry.Mcp",

@@ -8,6 +8,7 @@
         "Chemistry.Mcp",
         "Prototype.Plans",
         "Prototype.Punchy",
+        "Prototype.Kit",
         "Prototype.Analyzers",
         "Unity.InputSystem",
         "Unity.Mathematics",
