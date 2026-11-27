@@ -6,6 +6,7 @@
         "Prototype.Game",
         "Prototype.Net",
         "Prototype.Game.Editor",
+        "Prototype.Punchy",
         "Chemistry",
         "Chem.Land",
         "Chemistry.Mcp",
