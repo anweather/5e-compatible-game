@@ -204,6 +204,31 @@ public class RegistryTests
     }
 
     [Test]
+    public void ManyJoinAndLeaveInLinearTime()
+    {
+        // Thousands of props join in Awake and leave in OnDestroy as chunks load and unload: each of Join, Place,
+        // Unplace and Leave must be O(1), or loading n of them costs O(n^2) (with lists, 20,000 took seconds).
+        const int n = 20000;
+        var registry = new Registry<BoxCollider>();
+        var members = new BoxCollider[n];
+        for (int i = 0; i < n; i++)
+        {
+            var go = new GameObject("many");
+            made.Add(go);
+            members[i] = go.AddComponent<BoxCollider>();
+        }
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < n; i++) registry.Join(members[i]);
+        for (int i = 0; i < n; i++) registry.Place(members[i], new Vector2Int(i % 7, 0));
+        for (int i = 0; i < n; i += 2) registry.Unplace(members[i]);
+        for (int i = 0; i < n; i++) registry.Leave(members[i]);
+        clock.Stop();
+        Assert.That(registry.All(), Is.Empty);
+        Assert.That(registry.Near(new Vector2Int(3, 0), new Vector2Int(3, 0)), Is.Empty);
+        Assert.That(clock.ElapsedMilliseconds, Is.LessThan(500), $"{n} joined, placed and left");
+    }
+
+    [Test]
     public void APropNotPlacedYetIsNearEverywhere()
     {
         var prop = (PhysicsProp)New(Types().First(k => k.Name == nameof(PhysicsProp)));
