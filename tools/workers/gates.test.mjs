@@ -73,7 +73,7 @@ const projectsIn = (ran, filter) => {
   const hit = runs.find(r => r[2] === filter);
   return hit ? JSON.parse(hit[3]).solution.projects.map(p => p.split("/")[0]).sort() : null;
 };
-const ALL = ["Chat.Bench.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Playtest.Tests", "Chem.Rules.Tests", "Chem.Shared.Tests", "Chem.Sim.Tests", "Hold.Runner.Tests", "Playtest.Runner.Tests", "Rules.Mcp.Tests"];
+const ALL = ["Chat.Bench.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Playtest.Tests", "Chem.Rules.Tests", "Chem.Shared.Tests", "Chem.Sim.Tests", "Hold.Runner.Tests", "Playtest.Runner.Tests", "Prototype.Plans.Tests", "Rules.Mcp.Tests"];
 
 test("the map agrees with core/'s csproj files and Chem.Tests.props", () => {
   const r = spawnSync(process.execPath, [join(dirname(script), "modules.mjs"), "check"], { encoding: "utf8" });
@@ -166,7 +166,7 @@ test("a Runtime change above the land runs every project but the land's own test
 
 test("a rules/ change runs every project that reads the rules", () => {
   const tested = projectsIn(run(NOTHING, "0", ["rules/spells.json"]).ran, "TestCategory!=Sweep");
-  assert.deepEqual(tested, ALL.filter(p => p !== "Playtest.Runner.Tests"));
+  assert.deepEqual(tested, ALL.filter(p => p !== "Playtest.Runner.Tests" && p !== "Prototype.Plans.Tests"));
 });
 
 test("a shared core file (the props, Directory.Build.props) runs everything", () => {

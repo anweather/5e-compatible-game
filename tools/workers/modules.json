@@ -105,10 +105,10 @@
 
     { "name": "rules", "paths": ["rules/**"],
       "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests"],
-      "_": "Every test that loads ChemistryTests.R, Rules.Mcp's tools, the Hold curve; not Playtest.Runner.Tests (no rules)." },
+      "_": "Every test that loads ChemistryTests.R, Rules.Mcp's tools, the Hold curve; not Playtest.Runner.Tests or Prototype.Plans.Tests (no rules)." },
     { "name": "world", "paths": ["world/**"],
-      "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests"],
-      "_": "The maps, biomes, golf, landmarks: the same readers as rules/ (the valley is every test world's default)." },
+      "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests", "Prototype.Plans.Tests"],
+      "_": "The maps, biomes, golf, landmarks: the same readers as rules/ (the valley is every test world's default), and the plans' FarMeshesTests (world/horizon.json)." },
 
     { "name": "docs-read-by-tests", "paths": ["docs/GLOSSARY.md", "docs/MODDING.md"], "reads": ["Chem.Rules.Tests", "Chem.Sim.Tests"],
       "_": "GameFoldersTests checks GLOSSARY.md is there; LiveRulesTests reads MODDING.md." },
