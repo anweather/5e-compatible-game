@@ -9,6 +9,7 @@ using UnityEngine;
 // squares) a stone far from the start stands on the land its chunk is known to have (ChunkGen.Know) until a wizard comes
 // near, then on the ground drawn there: reading the drawn ground far off made every spawn's chunk at the start.
 [RequireComponent(typeof(ChemGrid))]
+[GridAddOn(GridStage.Grid, 50)]
 public sealed class Waystones : MonoBehaviour
 {
     static readonly Vector2Int Beside = new(2, -2);

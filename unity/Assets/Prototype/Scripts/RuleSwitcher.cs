@@ -51,9 +51,7 @@ public class RuleSwitcher : MonoBehaviour
     {
         grid = GetComponent<ChemGrid>();
         Catalog = new ModCatalog(ChemGrid.Folders.ShippedMods, ChemGrid.Folders.Mods);
-        if (!TryGetComponent<ModsPanel>(out _)) gameObject.AddComponent<ModsPanel>();
-        if (!TryGetComponent<RowHouses>(out _)) gameObject.AddComponent<RowHouses>();
-        if ((Application.isEditor || Debug.isDebugBuild) && !TryGetComponent<RulesWatcher>(out _)) gameObject.AddComponent<RulesWatcher>();
+        GridAddOns.Add(gameObject, GridStage.Rules);
         grid.RoomDecided += Decided;
     }
 

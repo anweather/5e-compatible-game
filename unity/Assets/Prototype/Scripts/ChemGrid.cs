@@ -105,11 +105,7 @@ public partial class ChemGrid : MonoBehaviour
         LoadThings();
         StartupTimeline.Mark("things loaded");
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
-        if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
-        if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
-        if (!TryGetComponent<HoldBarricades>(out _)) gameObject.AddComponent<HoldBarricades>();
-        if (!TryGetComponent<HoldMoments>(out _)) gameObject.AddComponent<HoldMoments>();
-        if (!TryGetComponent<Waystones>(out _)) gameObject.AddComponent<Waystones>();
+        GridAddOns.Add(gameObject, GridStage.Grid);
         StartupTimeline.Mark("grid's parts added (rule switcher, mods, row houses, holds, waystones)");
     }
 
