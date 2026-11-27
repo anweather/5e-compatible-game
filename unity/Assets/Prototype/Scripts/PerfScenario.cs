@@ -182,14 +182,9 @@ public class PerfScenario : MonoBehaviour
     {
         if (!Has("-host-online")) yield break;
         double gaveUpAt = Time.realtimeSinceStartupAsDouble + HostWaitSeconds;
-        var net = FindAnyObjectByType<NetChem>();
-        while ((net == null || !net.Online) && Time.realtimeSinceStartupAsDouble < gaveUpAt)
-        {
-            net = FindAnyObjectByType<NetChem>();
-            yield return null;
-        }
+        while (!Peers.InPlay.Online() && Time.realtimeSinceStartupAsDouble < gaveUpAt) yield return null;
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
-        Debug.Log($"PERF HOSTED online={net != null && net.Online}");
+        Debug.Log($"PERF HOSTED online={Peers.InPlay.Online()}");
     }
 
     // URP takes the camera's formats from its target, so this matches URP's HDR colour and depth.

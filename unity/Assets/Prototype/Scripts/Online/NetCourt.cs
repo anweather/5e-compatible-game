@@ -21,14 +21,12 @@ public class NetCourt : NetworkBehaviour
     public int East => east.Value;
 
     ChemGrid grid;
-    NetChem net;
 
     public override void OnNetworkSpawn()
     {
         Live = this;
         if (!IsServer) return;
         grid = ChemGrid.Current?.Grid;
-        net = grid != null ? grid.GetComponent<NetChem>() : null;
         if (grid != null) grid.WorldReset += Nil;
     }
 
@@ -41,7 +39,7 @@ public class NetCourt : NetworkBehaviour
     // Host, at an online reset (OnlineReset): 0-0 for everyone. The ball is a thing, back on its spot.
     void Nil()
     {
-        if (!OnlineReset.Happened(net)) return;
+        if (!OnlineReset.Happened(Peers.Of(grid))) return;
         west.Value = 0;
         east.Value = 0;
     }

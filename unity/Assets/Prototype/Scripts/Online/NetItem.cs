@@ -119,7 +119,7 @@ public class NetItem : NetworkBehaviour
         if ((wizard.transform.position - transform.position).sqrMagnitude > allowed * allowed) return;
         holder.Value = wizard.NetworkObjectId;
         Follow(holder.Value);
-        if (item.Prop.FromMod) item.Grid.GetComponent<NetChem>().StampFound(NetChem.PeerName(rpc.Receive.SenderClientId), item.Prop.Thing);
+        if (item.Prop.FromMod) Peers.Of(item.Grid).StampFound(Peers.NameOf(checked((int)rpc.Receive.SenderClientId)), item.Prop.Thing);
     }
 
     /// <summary>Asks the host to let go of this item at <paramref name="from"/>, moving at <paramref name="velocity"/>.</summary>

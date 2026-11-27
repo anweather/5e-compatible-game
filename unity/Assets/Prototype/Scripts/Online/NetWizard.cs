@@ -65,7 +65,6 @@ public class NetWizard : NetworkBehaviour
         }
         Local = this;
         startGrid = grid;
-        chem = grid != null ? grid.GetComponent<NetChem>() : null;
         if (grid != null) grid.WorldReset += BackToStart;
     }
 
@@ -83,13 +82,12 @@ public class NetWizard : NetworkBehaviour
     }
 
     /// <summary>This wizard's player in the core's casts, on every machine (CastBeats reads their cast).</summary>
-    public string CastPlayer => NetChem.PlayerName(OwnerClientId);
+    public string CastPlayer => Peers.PlayerOf(checked((int)OwnerClientId));
 
     /// <summary>This machine's own wizard while online; null solo.</summary>
     public static NetWizard Local { get; private set; }
 
     ChemGrid startGrid;
-    NetChem chem;
 
     // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
     public override void OnNetworkDespawn()
@@ -174,7 +172,7 @@ public class NetWizard : NetworkBehaviour
     // (ThingSpawner), so the hand just lets go.
     void BackToStart()
     {
-        if (!OnlineReset.Happened(chem)) return;
+        if (!OnlineReset.Happened(Peers.Of(startGrid))) return;
         if (TryGetComponent<Sitter>(out var sitter)) sitter.Stand();
         if (TryGetComponent<Shapeshift>(out var shape)) shape.ChangeBack("You're yourself again", force: true);
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();

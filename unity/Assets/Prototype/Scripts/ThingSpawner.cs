@@ -97,13 +97,10 @@ public class ThingSpawner : MonoBehaviour
             network.OnClientStarted += DropSoloCopies;
         }
         SpawnActive();
-        chem = grid.GetComponent<NetChem>();
         grid.WorldReset += Respawn;
         grid.ChunkFreshened += BringBack;
         grid.RulesChanged += ThingsChanged;
     }
-
-    NetChem chem;
 
     void SpawnActive()
     {
@@ -119,7 +116,7 @@ public class ThingSpawner : MonoBehaviour
     // reset is a new world, which may hold other things by its seed's chances.
     void Respawn()
     {
-        if (!Hosting || !OnlineReset.Happened(chem))
+        if (!Hosting || !OnlineReset.Happened(Peers.Of(grid)))
         {
             ThingsChanged();
             return;

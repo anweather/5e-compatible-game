@@ -17,4 +17,8 @@ public partial class NetChem : IPeers
     string IPeers.Player => Online ? LocalPlayer : SpellCaster.SoloPlayer;
 
     bool IPeers.CaughtUp => !Online || CaughtUp;
+
+    bool IPeers.Resetting => Online && Resetting;
+
+    void IPeers.StampReset() => StampReset(ResetCountdownTicks);
 }

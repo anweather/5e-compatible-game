@@ -14,6 +14,8 @@ public sealed class SoloPeers : IPeers
 
     public bool CaughtUp => true;
 
+    public bool Resetting => false;
+
     public void RequestCast(CastCommand command, int delayTicks, Vector3 from)
     {
         // Solo sends nothing: the caller runs it on its own world.
@@ -50,6 +52,21 @@ public sealed class SoloPeers : IPeers
     }
 
     public void RequestStrikeCommand(StrikeCommand command)
+    {
+        // Solo sends nothing: the caller runs it on its own world.
+    }
+
+    public void StampFound(string peer, ThingId thing)
+    {
+        // Solo sends nothing: the caller runs it on its own world.
+    }
+
+    public void SummonDragon()
+    {
+        // Solo sends nothing: the caller runs it on its own world.
+    }
+
+    public void StampReset()
     {
         // Solo sends nothing: the caller runs it on its own world.
     }

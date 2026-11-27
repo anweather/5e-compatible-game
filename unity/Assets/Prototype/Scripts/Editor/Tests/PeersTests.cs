@@ -37,6 +37,7 @@ public class PeersTests
         Assert.AreEqual("Player 1", solo.Me);
         Assert.AreEqual(NetChem.PeerName(0), solo.Me);
         Assert.AreEqual(SpellCaster.SoloPlayer, solo.Player);
+        Assert.IsFalse(solo.Resetting);
     }
 
     [Test]
@@ -50,6 +51,9 @@ public class PeersTests
             solo.RequestStrike(new Vector2Int(1, 2));
             solo.RequestSwing(new Vector2Int(1, 2));
             solo.StampEffect(new EffectCommand(EffectKind.Shatter, 1, 2, "", ThingId.None));
+            solo.StampFound(solo.Me, ThingId.None);
+            solo.SummonDragon();
+            solo.StampReset();
         });
     }
 
@@ -76,6 +80,8 @@ public class PeersTests
         Assert.IsTrue(peers.CaughtUp);
         Assert.AreEqual(Peers.Solo.Me, peers.Me);
         Assert.AreEqual(Peers.Solo.Player, peers.Player);
+        Assert.IsFalse(peers.Resetting);
+        Assert.IsFalse(OnlineReset.Happened(peers));
     }
 
     [Test]
@@ -83,6 +89,21 @@ public class PeersTests
     {
         for (int slot = 0; slot < 8; slot++) Assert.AreEqual(NetChem.PeerName((ulong)slot), Peers.NameOf(slot));
         Assert.AreEqual("Player 3", Peers.NameOf(2));
+    }
+
+    [Test]
+    public void APlayersNameBySlotIsNetChemsByClientId()
+    {
+        for (int slot = 0; slot < 8; slot++) Assert.AreEqual(NetChem.PlayerName((ulong)slot), Peers.PlayerOf(slot));
+        Assert.AreEqual("p2", Peers.PlayerOf(2));
+    }
+
+    [Test]
+    public void OutOfPlayTheResetDoorsAreSoloAndSendNothing()
+    {
+        Assert.AreSame(Peers.Solo, Peers.InPlay);
+        Assert.IsFalse(OnlineReset.Summon());
+        Assert.IsFalse(OnlineReset.Ask());
     }
 
     [Test]
@@ -102,6 +123,10 @@ public class PeersTests
         public string Me => "";
         public string Player => "";
         public bool CaughtUp => true;
+        public bool Resetting => false;
+        public void StampFound(string peer, ThingId thing) => Assert.Fail("not sent here");
+        public void SummonDragon() => Assert.Fail("not sent here");
+        public void StampReset() => Assert.Fail("not sent here");
         public void RequestCombo(ComboCommand command) => Assert.Fail("not sent here");
         public void RequestCast(CastCommand command, int delayTicks, Vector3 from) => Assert.Fail("not sent here");
         public void RequestRoom(RoomCommand command) => Assert.Fail("not sent here");
