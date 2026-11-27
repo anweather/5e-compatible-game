@@ -283,6 +283,30 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    Proved on two seeds, summoned and by budget (6 flights, raiders downed): 480 sampled lines the same. Forwarders:
    Dragon, DragonFlights, ApplyDragon, PassLine, BreathBox, CaughtByBreath, ShelteredFromBreath.*
 
+10. **Prototype.Game into feature assemblies (2026-11-27, the Mac with the Editor).** After steps 4-9 the game itself is
+   the monolith: 367 files, 61k lines, and one type-level cycle of 185 files (38k lines) through `ChemGrid`, so a
+   change anywhere recompiles all of it plus Probes, Net, Editor and the tests. The split, bottom up (each arrow
+   points down): Punchy (own asmdef) ← **Kit** (materials, meshes, sounds, HUD drawing, input, the menu frame,
+   `Registry`, perf counters, the log half of `EventLog`, leaf fx) ← **World** (`ChemGrid.*`, cells, dressing,
+   effects, peers, props, things) ← **Land** (terrain, far ring, ocean, water, sky, weather) ← **Village** (valley
+   chemistry, houses, rows, trees) and **Player** (wizard, casting, spells, items; one assembly, they lean on each
+   other) ← **Fauna** ← **Modes** (Hold, Defense, Dragon, Golf, courts, progress) ← **Chat** ← **Shell** (menus,
+   perf stages, playtest, showcases, updates). 56 back-references cut, the big ones by four seams:
+   - **Grid add-ons:** `ChemGrid` no longer `AddComponent`s Hold, progress, waystones, row houses or the mods panel;
+     a feature adds itself to the grid from its own assembly (`GridAddOns.Register` at load).
+   - **A caster face in World** (`ICaster` + its registry) for what the grid, weather and peers ask of a
+     `SpellCaster`; the local player's slot through `IPeers`.
+   - **Ground and water faces in World** that `MapTerrains` and `Ocean` register with.
+   - **`EventLog` split:** the log stays in Kit, the HUD host (vitals, cast HUD, radial) moves to Player.
+   Seams first, inside the one assembly, each landed alone; then the asmdefs, bottom up. Proof each time: a Unity
+   compile, EditMode, the player-script compiles, the probes (`smoke`, `online`, `roomopen`, `roomruin`, the mode
+   probes). The measure: a one-file change's compile-and-reload time in a leaf, before and after.
+
+   **The pattern this sets for new work:** a feature is a folder with its own asmdef that references what it needs
+   below it and nothing references it. It joins the game through the seams (grid add-ons, registries, `IPeers`,
+   the menu's sections, `[ProbeScenario]`), never by editing `ChemGrid`, `PauseMenu` or another hub; its plain logic
+   goes in Plans or the core with dotnet tests; its probe goes in Probes.
+
 Later, as work passes through: split the 485-file `Scripts/` root into folders by module before the asmdefs land
 (moves only, with their `.meta` files); a dotnet twin of `probe smoke` on `Hold.Runner` (boat's T16) so the
 smoke itself runs in the cloud.
