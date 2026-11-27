@@ -81,13 +81,13 @@ namespace Chem
                 ["weather"] = WeatherSet.HasValue ? new JArray((int)WeatherSet.Value.kind, WeatherSet.Value.from, WeatherSet.Value.until) : null,
                 ["wind"] = Wind.HasValue ? new JArray(Wind.Value.dir, Wind.Value.ticks) : null,
                 ["meteors"] = new JArray(falling.Select(m => new JArray(m.x, m.y, m.lands))),
-                ["nextEntityId"] = NextEntityId,
-                ["defense"] = SaveDefense(),
-                ["raiders"] = new JArray(raiders.Select(SaveRaider)),
+                ["nextEntityId"] = RaiderSystem.NextEntityId,
+                ["defense"] = DefenseSystem.Save(),
+                ["raiders"] = new JArray(RaiderSystem.List.Select(SaveRaider)),
             };
             if (WrapX) save["wrap"] = WrapY ? "torus" : "ew"; // only a world that wraps says so: other saves are as they were
             if (IsOpen) save["open"] = SaveFills(); // an open world's grounds, the chunks' sources
-            if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
+            if (Hold != null || HoldSystem.Plate != 0) save["hold"] = HoldSystem.Save();
             if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
@@ -96,9 +96,9 @@ namespace Chem
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
             if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass, wv.OX, wv.OY, wv.AX, wv.AY, wv.Step)));
             SaveMachines(save);
-            SaveGolf(save);
+            GolfSystem.Save(save);
             SaveDragon(save);
-            SaveCourse(save);
+            CourseSystem.Save(save);
             SaveRoom(save);
             SavePlaced(save);
             SaveActs(save);
@@ -173,14 +173,6 @@ namespace Chem
         }
 
         // ---------- the world's state between ticks ----------
-
-        JToken SaveDefense() => Defense == null ? JValue.CreateNull() : new JObject
-        {
-            ["phase"] = (int)Defense.Phase,
-            ["at"] = new JArray(Defense.Wave, Defense.Lives, Defense.ToSpawn, Defense.NextSpawn, Defense.Spawned),
-            ["gate"] = new JArray(Defense.GateX, Defense.GateY, Defense.FlagX, Defense.FlagY),
-            ["field"] = new JArray(Defense.X0, Defense.Y0, Defense.X1, Defense.Y1),
-        };
 
         static JObject SaveRaider(Raider r)
         {
@@ -283,48 +275,26 @@ namespace Chem
             foreach (var wv in s["waves"] ?? new JArray())
                 waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
-            LoadGolf(s);
-            LoadCourse(s);
+            GolfSystem.Load(s);
+            CourseSystem.Load(s);
             LoadPlaced(s);
             LoadActs(s);
             LoadLand(s);
             LoadLaid(s);
             LoadTriggers(s);
             LoadStands(s);
-            NextEntityId = (int)s["nextEntityId"];
-            LoadHold(s["hold"]);
+            RaiderSystem.NextEntityId = (int)s["nextEntityId"];
+            HoldSystem.Load(s["hold"]);
             LoadHands(s["hands"]);
             LoadProgress(s["progress"]);
-            if (s["defense"] is JObject d)
-            {
-                var at = d["at"];
-                var gate = d["gate"];
-                var field = d["field"];
-                Defense = new DefenseState
-                {
-                    Phase = (DefensePhase)(int)d["phase"],
-                    Wave = (int)at[0],
-                    Lives = (int)at[1],
-                    ToSpawn = (int)at[2],
-                    NextSpawn = (int)at[3],
-                    Spawned = (int)at[4],
-                    GateX = (int)gate[0],
-                    GateY = (int)gate[1],
-                    FlagX = (int)gate[2],
-                    FlagY = (int)gate[3],
-                    X0 = (int)field[0],
-                    Y0 = (int)field[1],
-                    X1 = (int)field[2],
-                    Y1 = (int)field[3],
-                };
-            }
+            if (s["defense"] is JObject d) DefenseSystem.Load(d);
             foreach (var a in s["casts"] ?? new JArray()) LoadCast(a);
             foreach (var o in s["raiders"] ?? new JArray())
             {
                 var at = o["at"];
                 var r = new Raider { Id = (int)o["id"], Kind = (string)o["kind"], X = (int)at[0], Y = (int)at[1], Hp = (int)at[2], MaxHp = (int)at[3], Wait = (int)at[4], Alive = (bool)o["alive"] };
                 foreach (var p in ((JObject)o["status"]).Properties()) r.Status[p.Name] = (int)p.Value;
-                raiders.Add(r);
+                RaiderSystem.List.Add(r);
             }
         }
 

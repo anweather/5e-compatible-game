@@ -65,7 +65,7 @@ namespace Chem
 
         // Lookups come in runs inside one chunk, so the last chunk found is checked first.
         // A chunk x past the seam folds round (FoldChunkX), so the links, the planner and every lookup cross it.
-        Chunk FindChunk(int cx, int cy)
+        internal Chunk FindChunk(int cx, int cy)
         {
             cx = FoldChunkX(cx);
             cy = FoldChunkY(cy);
@@ -103,7 +103,7 @@ namespace Chem
         public bool IsActiveAt(int x, int y) => LocateActive(x, y, out _, out _) != null;
 
         /// <summary>Neighbours in N, E, S, W order that the simulation may change.</summary>
-        IEnumerable<(int x, int y, int dir)> ActiveNeighbours(int x, int y)
+        internal IEnumerable<(int x, int y, int dir)> ActiveNeighbours(int x, int y)
         {
             foreach (var n in Neighbours(x, y))
                 if (IsActiveAt(n.x, n.y)) yield return n;

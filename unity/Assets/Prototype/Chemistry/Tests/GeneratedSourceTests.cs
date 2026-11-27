@@ -221,7 +221,7 @@ namespace Chem.Tests
                     if (w.LandUnitsAt(x, y) != bakedWorld.LandUnitsAt(x, y)) Assert.Fail($"cell ({x}, {y}): land {w.LandUnitsAt(x, y)}, the bake's world {bakedWorld.LandUnitsAt(x, y)}");
                 }
             }
-            Assert.That(w.FitText() + w.DragonText(), Is.EqualTo(bakedWorld.FitText() + bakedWorld.DragonText()));
+            Assert.That(w.FitText() + w.DragonSystem.Text(), Is.EqualTo(bakedWorld.FitText() + bakedWorld.DragonSystem.Text()));
         }
 
         [Test]

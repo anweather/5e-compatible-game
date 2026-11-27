@@ -5,7 +5,7 @@
 // the same cells that aren't open. A room's change mode decides an act as it does a mod, and what each did is kept, so
 // RoomChange.Undo can take back the last ones: ground it laid goes back to what stood under, unless something has
 // changed it since, and things it placed go. Animals live in each peer's view (J-056) and casts are over, so those stay.
-// A golf ball or a cup is an act too (World.Golf.cs), and starts a round. ActText joins CastHash and the save, "" until an act,
+// A golf ball or a cup is an act too (Play/GolfSystem.cs), and starts a round. ActText joins CastHash and the save, "" until an act,
 // so worlds without hash as they did.
 using System.Collections.Generic;
 using System.Globalization;
@@ -139,7 +139,7 @@ namespace Chem
         int DoneOf(ActDone act, List<(int x, int y)> cells, JObject ask)
         {
             if (act.Kind == ActCast) return CastAct(act, cells);
-            return act.Kind == ActGolf ? PlaceGolf(act.What, cells) : PlaceAct(act, cells, ask);
+            return act.Kind == ActGolf ? GolfSystem.Place(act.What, cells) : PlaceAct(act, cells, ask);
         }
 
         static JObject ReadAct(string json)

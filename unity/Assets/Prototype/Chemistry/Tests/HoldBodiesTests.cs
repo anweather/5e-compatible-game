@@ -20,7 +20,7 @@ namespace Chem.Tests
             w.Hold.Health = int.MaxValue / 2;
             w.Hold.Wave = wave;
             w.Hold.InWave = 0;
-            w.Hold.ToSpawn = World.HoldWaveSize(R.Sim.Hold, wave);
+            w.Hold.ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, wave);
             var seen = new HashSet<int>();
             var kinds = new List<string>();
             for (int i = 0; i < MostTicks && w.Hold.ToSpawn > 0; i++)
@@ -103,7 +103,7 @@ namespace Chem.Tests
             w.Hold.Health = int.MaxValue / 2;
             w.Hold.Wave = 8;
             w.Hold.InWave = 0;
-            w.Hold.ToSpawn = World.HoldWaveSize(R.Sim.Hold, 8);
+            w.Hold.ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, 8);
             Ticks(w, 600);
             Assert.That(w.Raiders.Select(r => Rules.PlainKind(r.Kind)).Distinct().Count(), Is.GreaterThanOrEqualTo(6), "a mixed wave is out");
             Assert.That(w.CastHash(), Is.EqualTo("36029f4d"));

@@ -414,6 +414,11 @@ touch them.
 **Height step**
 : One unit of a cell's `Height`: 0.5 m raised or dug.
 
+**System** (in the core)
+: A pass over the world's data with a fixed place in the tick (D9). A game mode's is a class in the core's
+  `Runtime/Play/` named for the mode (`CourseSystem`, ...), owned by the world (`World.CourseSystem`) and run where
+  the mode always ran (`docs/design/architecture-review.md` step 9). *Not* a machine, an act or a Unity system.
+
 **Carrying**
 : What a whirlwind has taken on and sheds as it travels (`carries` in
   `spells.json`): a fire tornado, a waterspout, a sandstorm, a smoke column
@@ -431,7 +436,7 @@ touch them.
 
 **Shove**
 : A charged cast's knock-back of a creature (`force.push` cells for each
-  charge level and one more; `World.CastShove`). The second goes half as
+  charge level and one more; `RaiderSystem.CastShove`). The second goes half as
   far; after `sim.json` `shove.most` the creature **braces** and doesn't
   move. Each staggers it `shove.staggerTicks`. Thrown along the ground, it
   goes over a drop of `fall.cliffSteps` height steps and takes
@@ -668,7 +673,7 @@ that long, and doesn't march.
   Spike Growth) or a **lock** (brackets round one target).
 
 **Spell golf**
-: One hole played with spells (`World.Golf.cs`, `golf.ts`, BACKLOG §24).
+: One hole played with spells (`Play/GolfSystem.cs`, `golf.ts`, BACKLOG §24).
   The **ball** (core state, not a thing) starts on the **tee**; a cast
   whose force moves it is a **stroke**; it drops in on the **hole** cell.
   Lost in water or out of the course's bounds, it goes back on the tee for
@@ -677,7 +682,7 @@ that long, and doesn't march.
 **Spell zone**
 : A block of cells that allows only some elements (a spell is allowed when a
   combo of only those elements casts it) or some spells by id
-  (`SpellZone`, `World.Course.cs`, `course.ts`). A cast landing in it with
+  (`SpellZone`, `Play/CourseSystem.cs`, `course.ts`). A cast landing in it with
   anything else **fizzles**: "The lava pit's charm smothers your Fireball".
   World data, the same on every peer, and in the checksum.
 

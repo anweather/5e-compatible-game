@@ -32,7 +32,7 @@ namespace Chem.Tests
         /// <summary>A world's checksum at a tick, part by part (NetChem.Checksum's order), the stands apart from the rest of the casts.</summary>
         static string[] Parts(World w) => new[]
         {
-            w.CellHash(), w.Rules.Fingerprint, w.ThingsNow.Fingerprint, w.SkyHash(), w.DefenseHash(), w.CastText(""), w.DragonHash(), w.LandHash(),
+            w.CellHash(), w.Rules.Fingerprint, w.ThingsNow.Fingerprint, w.SkyHash(), w.DefenseSystem.Hash(), w.CastText(""), w.DragonSystem.Hash(), w.LandHash(),
             w.StrikeText(),
         };
 

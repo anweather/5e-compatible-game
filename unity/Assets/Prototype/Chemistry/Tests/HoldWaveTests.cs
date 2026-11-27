@@ -26,19 +26,19 @@ namespace Chem.Tests
         [Test]
         public void TheFormulaGrowsWithTheWave()
         {
-            Assert.That(World.HoldWaveSize(P, 1), Is.EqualTo(P.First));
-            Assert.That(World.HoldWaveSize(P, 6), Is.EqualTo(P.First + 5 * P.Growth));
+            Assert.That(HoldSystem.WaveSize(P, 1), Is.EqualTo(P.First));
+            Assert.That(HoldSystem.WaveSize(P, 6), Is.EqualTo(P.First + 5 * P.Growth));
             var w = Field();
-            Assert.That(w.HoldPlan(1, 1, null).Kinds, Is.EqualTo(1));
-            Assert.That(w.HoldPlan(1 + P.KindEvery, 1, null).Kinds, Is.EqualTo(2));
-            Assert.That(w.HoldPlan(P.BossEvery, 1, null).Boss);
-            Assert.That(w.HoldPlan(P.BossEvery + 1, 1, null).Boss, Is.False);
+            Assert.That(w.HoldSystem.Plan(1, 1, null).Kinds, Is.EqualTo(1));
+            Assert.That(w.HoldSystem.Plan(1 + P.KindEvery, 1, null).Kinds, Is.EqualTo(2));
+            Assert.That(w.HoldSystem.Plan(P.BossEvery, 1, null).Boss);
+            Assert.That(w.HoldSystem.Plan(P.BossEvery + 1, 1, null).Boss, Is.False);
         }
 
         [Test]
         public void PeersAtTheStartScaleTheWaves()
         {
-            int one = World.HoldWaveSize(P, 4), two = World.HoldWaveSize(P, 4, 2), lots = World.HoldWaveSize(P, 4, 40);
+            int one = HoldSystem.WaveSize(P, 4), two = HoldSystem.WaveSize(P, 4, 2), lots = HoldSystem.WaveSize(P, 4, 40);
             Assert.That(two, Is.EqualTo(one * P.PeerPercent[1] / 100));
             Assert.That(lots, Is.EqualTo(one * P.PeerPercent[P.PeerPercent.Count - 1] / 100), "the last row for more");
             var w = Field();
@@ -46,7 +46,7 @@ namespace Chem.Tests
             Stand(w, "Bo", (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
             Ticks(w, P.PlateTicks + 1);
             Assert.That(w.Hold.Peers, Is.EqualTo(2));
-            Assert.That(w.Hold.ToSpawn, Is.EqualTo(World.HoldWaveSize(P, 1, 2)));
+            Assert.That(w.Hold.ToSpawn, Is.EqualTo(HoldSystem.WaveSize(P, 1, 2)));
         }
 
         [Test]
@@ -58,12 +58,12 @@ namespace Chem.Tests
                 string last = null;
                 for (int wave = P.ThemeFrom; wave < P.ThemeFrom + 40; wave++)
                 {
-                    string theme = w.ThemeOfWave(wave);
+                    string theme = w.HoldSystem.ThemeOfWave(wave);
                     Assert.That(theme, Is.Not.Null.And.Not.EqualTo(last), $"seed {seed} wave {wave}");
                     last = theme;
                 }
             }
-            Assert.That(new World(R, 8, 8, 1).ThemeOfWave(P.ThemeFrom - 1), Is.Null);
+            Assert.That(new World(R, 8, 8, 1).HoldSystem.ThemeOfWave(P.ThemeFrom - 1), Is.Null);
         }
 
         [Test]
@@ -141,7 +141,7 @@ namespace Chem.Tests
             Until(w, () => w.HoldWarning != null, "the wave is beaten");
             var (plan, ticks) = w.HoldWarning.Value;
             Assert.That(plan.Wave, Is.EqualTo(2));
-            Assert.That(plan.Count, Is.EqualTo(World.HoldWaveSize(P, 2)));
+            Assert.That(plan.Count, Is.EqualTo(HoldSystem.WaveSize(P, 2)));
             Assert.That(plan.Theme, Is.EqualTo(w.Hold.Theme));
             Assert.That(ticks, Is.EqualTo(P.BetweenWaves).Within(1));
             Ticks(w, ticks - 1);
@@ -159,7 +159,7 @@ namespace Chem.Tests
             var played = Field();
             Away(played);
             int wave = moment.Hold.Wave;
-            Assert.That(moment.Hold.Theme, Is.EqualTo(played.ThemeOfWave(wave)));
+            Assert.That(moment.Hold.Theme, Is.EqualTo(played.HoldSystem.ThemeOfWave(wave)));
             Stand(played, Me, played.HoldSite.Plate);
             Ticks(played, P.PlateTicks + 1);
             Away(played);
@@ -248,7 +248,7 @@ namespace Chem.Tests
             var other = InMoment("first-adjectives", 11);
             Hurry(one, 5);
             Hurry(other, 5);
-            Assert.That(other.HoldText(), Is.EqualTo(one.HoldText()));
+            Assert.That(other.HoldSystem.Text(), Is.EqualTo(one.HoldSystem.Text()));
             Assert.That(other.CastHash(), Is.EqualTo(one.CastHash()));
         }
 
@@ -418,8 +418,8 @@ namespace Chem.Tests
             Assert.That(Barricades(w), Is.Empty);
             Until(w, () => w.Hold.InWave > 0, "the wave starts");
             Assert.That(Barricades(w), Is.Not.Empty);
-            Assert.That(World.BarricadesOf(P, 1), Is.Zero);
-            Assert.That(World.BarricadesOf(P, 200), Is.EqualTo(P.BarricadeMost));
+            Assert.That(HoldSystem.BarricadesOf(P, 1), Is.Zero);
+            Assert.That(HoldSystem.BarricadesOf(P, 200), Is.EqualTo(P.BarricadeMost));
             Assert.That(Field().HoldSite.Barricades, Is.Not.Empty);
         }
 
@@ -429,7 +429,7 @@ namespace Chem.Tests
             var w = Barricaded();
             int was = Barricades(w).Count;
             Until(w, () => Barricades(w).Count < was, "they break through");
-            Assert.That(w.BlowsOn(0, 0), Is.Zero);
+            Assert.That(w.HoldSystem.BlowsOn(0, 0), Is.Zero);
         }
 
         [Test]

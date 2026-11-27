@@ -94,7 +94,7 @@ namespace Chem
                 case ComboCommandKind.Hand: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, false);
                 case ComboCommandKind.HandDown: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, true);
                 case ComboCommandKind.HandUp: return ReleaseHand(c, command.Step);
-                case ComboCommandKind.Moment: return StartMoment(command.Element);
+                case ComboCommandKind.Moment: return HoldSystem.StartMoment(command.Element);
                 case ComboCommandKind.Pick: return PickUpgrade(command.Player, command.Element);
                 case ComboCommandKind.Bring: return BringPoints(command.Player, command.Step);
                 case ComboCommandKind.Attune: return Attune(c, command.Step, command.Element);
@@ -235,7 +235,7 @@ namespace Chem
 
         /// <summary>What CastHash hashes, with <paramref name="stands"/> in the stands' place (StrikeText): a late joiner's test compares the stands apart.</summary>
         public string CastText(string stands) =>
-            CastState() + WhirlState() + WaveState() + BoulderState() + GolfText() + ZoneText() + CourseText() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
+            CastState() + WhirlState() + WaveState() + BoulderState() + GolfSystem.Text() + CourseSystem.ZoneText() + CourseSystem.Text() + RoomText() + stands + HoldSystem.Text() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
 
         /// <summary>The whirlwinds as text, "" when there are none (so worlds without any hash as they did): where, its age, and what it carries.</summary>
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));
@@ -250,6 +250,6 @@ namespace Chem
 
         static string ChargeState(PlayerCast c) => (c.Holding ? ":hold" : "") + (c.Holding || c.Charge > 1 ? ":c" + Whole(c.Charge) : "");
 
-        static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
+        internal static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
     }
 }

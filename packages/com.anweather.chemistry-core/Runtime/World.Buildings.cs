@@ -181,7 +181,7 @@ namespace Chem
             return cells;
         }
 
-        (int y, int x) ChunkKey(int index) => (Chunks.ChunkOf(index / W), Chunks.ChunkOf(index % W));
+        internal (int y, int x) ChunkKey(int index) => (Chunks.ChunkOf(index / W), Chunks.ChunkOf(index % W));
 
         void LayBuildingCell(int index, string terrain, HashSet<int> baseCells)
         {
@@ -217,7 +217,7 @@ namespace Chem
         }
 
         // A chunk's cells were laid over: its water is checked afresh, the audit counts again, and the view redraws it.
-        void FreshenBuilt(int cx, int cy)
+        internal void FreshenBuilt(int cx, int cy)
         {
             var ch = FindChunk(cx, cy);
             if (ch == null) return;
@@ -229,7 +229,7 @@ namespace Chem
         // Raiders on a cell just built on, in id order, each to the nearest free cell.
         void PushRaiders(BuildingsChange change)
         {
-            foreach (var r in raiders.Where(r => r.Alive && change.Covers(r.X, r.Y)).OrderBy(r => r.Id))
+            foreach (var r in RaiderSystem.List.Where(r => r.Alive && change.Covers(r.X, r.Y)).OrderBy(r => r.Id))
             {
                 var to = NearestFree(r.X, r.Y);
                 if (to == null) continue;

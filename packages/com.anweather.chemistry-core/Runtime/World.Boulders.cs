@@ -69,7 +69,7 @@ namespace Chem
             return !InWater(At(b.X, b.Y));
         }
 
-        static bool InWater(Cell c) => c.Water > 0 && !c.Frozen;
+        internal static bool InWater(Cell c) => c.Water > 0 && !c.Frozen;
 
         // RollTo's answers besides a grid way to turn onto.
         const int RollAhead = 4, NoRoll = -1;
@@ -104,8 +104,8 @@ namespace Chem
             Shatter(b.X, b.Y);
             if (s.Trail != null) AddGas(At(b.X, b.Y), s.Trail, 2);
             var r = RaiderAt(b.X, b.Y);
-            if (r != null && r.Alive && s.Damage.Length == 2) DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
-            Force(s, b.X, b.Y, b.Dir);
+            if (r != null && r.Alive && s.Damage.Length == 2) RaiderSystem.DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
+            RaiderSystem.Force(s, b.X, b.Y, b.Dir);
         }
 
         // Where it stops it comes to rest, and its Leaves (earth) lands there: in a stream it fills the bed (a dam), on

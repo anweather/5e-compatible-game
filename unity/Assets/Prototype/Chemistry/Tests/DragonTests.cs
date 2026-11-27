@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>
-    /// The Dragon's rules (World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
+    /// The Dragon's rules (Play/DragonSystem.cs, World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
     /// sandbox/test/dragon.test.ts (frozen 2026-10-31); the save, the inactive chunks and the timing are C# only.
     /// </summary>
     [Category("Simulation")]
@@ -81,7 +81,7 @@ namespace Chem.Tests
             "382 a30c8004 3654312600 1:6:0",
         };
 
-        static string Line(World w) => $"{w.Tick} {w.CellHash()} {w.RngState} {w.DragonText()}";
+        static string Line(World w) => $"{w.Tick} {w.CellHash()} {w.RngState} {w.DragonSystem.Text()}";
 
         // How big it's drawn is the view's alone: a flight runs the same at any scale, tick by tick, its reach too.
         [Test]
@@ -161,7 +161,7 @@ namespace Chem.Tests
             Assert.That(kept.CellHash(), Is.EqualTo(plain.CellHash()));
             Assert.That(kept.RngState, Is.EqualTo(plain.RngState));
             Assert.That(kept.DragonFlights, Is.EqualTo(0));
-            Assert.That(plain.DragonText(), Is.EqualTo(""));
+            Assert.That(plain.DragonSystem.Text(), Is.EqualTo(""));
         }
 
         [TestCase(64, 64)]
@@ -263,7 +263,7 @@ namespace Chem.Tests
             for (int i = 0; i < 40 && raider.StatusOf(World.DownedStatus) == 0; i++) w.Step();
             int ticks = (int)Math.Floor(R.Sim.Downed.Seconds * R.Sim.TicksPerSecond);
             Assert.That(raider.StatusOf(World.DownedStatus), Is.EqualTo(ticks));
-            Assert.That(w.DefenseText(), Does.Contain($",d{ticks};"));
+            Assert.That(w.DefenseSystem.Text(), Does.Contain($",d{ticks};"));
             int x = raider.X, y = raider.Y;
             Run(w, ticks - 1);
             Assert.That((raider.X, raider.Y), Is.EqualTo((x, y)), "it stays down");
@@ -349,7 +349,7 @@ namespace Chem.Tests
             Assert.That(a.At(110, 10).Height, Is.EqualTo(0));
             Assert.That(a.At(100, 10).Fire, Is.EqualTo(0));
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()), "peers agree");
-            Assert.That(a.DragonText(), Is.EqualTo(b.DragonText()));
+            Assert.That(a.DragonSystem.Text(), Is.EqualTo(b.DragonSystem.Text()));
             a.SetActive(1, 0, true);
             Assert.That(a.CaughtUp(1, 0), Is.EqualTo(0));
             Assert.That(a.ChangedCount, Is.EqualTo(0));
@@ -438,7 +438,7 @@ namespace Chem.Tests
             var timeline = TickBatch.Timeline(null, null, 1);
             TickBatch.AddDragon(timeline, new[] { 1 });
             timeline[1].RunOn(replay, ruleSet, out _);
-            Assert.That(replay.DragonText(), Is.EqualTo(live.DragonText()));
+            Assert.That(replay.DragonSystem.Text(), Is.EqualTo(live.DragonSystem.Text()));
             Assert.That(live.Dragon?.Phase, Is.EqualTo(DragonPhase.Warning));
         }
 
@@ -476,12 +476,12 @@ namespace Chem.Tests
             Run(w, R.Sim.Dragon.WarningTicks + 30);
             string save = w.Save(source);
             var back = World.Load(save, R, source);
-            Assert.That(back.DragonText(), Is.EqualTo(w.DragonText()));
+            Assert.That(back.DragonSystem.Text(), Is.EqualTo(w.DragonSystem.Text()));
             Assert.That(back.Save(source), Is.EqualTo(save));
             FlyOut(w);
             FlyOut(back);
             Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));
-            Assert.That(back.DragonText(), Is.EqualTo(w.DragonText()));
+            Assert.That(back.DragonSystem.Text(), Is.EqualTo(w.DragonSystem.Text()));
             Assert.That(back.Golf.Strokes, Is.EqualTo(0), "the ball as built came through the save");
         }
 
@@ -590,16 +590,16 @@ namespace Chem.Tests
             // Ported from sandbox/test/dragon.test.ts.
             var w = new World(R, 60, 12, 3, "dirt");
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava";
-            w.SetCourse(CourseLayout.FromJson(@"{
+            w.CourseSystem.Set(CourseLayout.FromJson(@"{
                 ""name"": ""The little gauntlet"", ""area"": [18, 0, 54, 11], ""gate"": [50, 2, 52, 8], ""bell"": [20, 2, 22, 8],
                 ""booths"": [{ ""id"": ""lava-pit"", ""name"": ""lava pit"", ""area"": [40, 0, 49, 11], ""checkpoint"": [48, 5], ""allow"": { ""elements"": [""water"", ""air""] } }] }"));
             w.KeepStart();
-            w.ApplyCourse(new CourseCommand("ann", 51, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 51, 5));
             Run(w, 30);
-            w.ApplyCourse(new CourseCommand("ann", 21, 5));
-            w.ApplyCourse(new CourseCommand("bob", 51, 5));
-            w.ApplyCourse(new CourseCommand("bob", 45, 5));
-            int best = w.CourseRuns["ann"].Best;
+            w.CourseSystem.Apply(new CourseCommand("ann", 21, 5));
+            w.CourseSystem.Apply(new CourseCommand("bob", 51, 5));
+            w.CourseSystem.Apply(new CourseCommand("bob", 45, 5));
+            int best = w.CourseSystem.Runs["ann"].Best;
             Assert.That(best, Is.GreaterThan(0));
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava-crust";
 
@@ -607,9 +607,9 @@ namespace Chem.Tests
             FlyOut(w);
 
             Assert.That(Enumerable.Range(42, 5).All(x => w.At(x, 5).T == "lava"), "the booth's lava is back");
-            Assert.That(w.Zones.Select(z => z.Id), Is.EqualTo(new[] { "lava-pit" }), "zones are world data");
-            Assert.That(w.CourseRuns["ann"].Best, Is.EqualTo(best), "a best time is progress");
-            Assert.That(w.CourseRuns["bob"].Running && w.CourseRuns["bob"].Checkpoint == 0, "a run goes on");
+            Assert.That(w.CourseSystem.Zones.Select(z => z.Id), Is.EqualTo(new[] { "lava-pit" }), "zones are world data");
+            Assert.That(w.CourseSystem.Runs["ann"].Best, Is.EqualTo(best), "a best time is progress");
+            Assert.That(w.CourseSystem.Runs["bob"].Running && w.CourseSystem.Runs["bob"].Checkpoint == 0, "a run goes on");
             Assert.That(w.CourseRespawn("bob", 45, 5), Is.EqualTo((48, 5)));
         }
     }

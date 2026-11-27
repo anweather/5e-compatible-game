@@ -17,7 +17,7 @@ namespace Chem
     {
         readonly SortedDictionary<string, PlayerHands> hands = new SortedDictionary<string, PlayerHands>(System.StringComparer.Ordinal);
 
-        HandsDef HandRules => Rules.Sim.Hold.Hands;
+        internal HandsDef HandRules => Rules.Sim.Hold.Hands;
 
         /// <summary>A wizard's hands; as they start if nothing has changed them.</summary>
         public PlayerHands HandsOf(string player)
@@ -100,7 +100,7 @@ namespace Chem
             return coming;
         }
 
-        PlayerHands OwnHands(string player)
+        internal PlayerHands OwnHands(string player)
         {
             var h = HandsOf(player);
             hands[player] = h;
@@ -267,7 +267,7 @@ namespace Chem
             h.Charge[hand] = 1;
         }
 
-        static void DropHands(PlayerHands h)
+        internal static void DropHands(PlayerHands h)
         {
             DropHand(h, HandsDef.Left);
             DropHand(h, HandsDef.Right);

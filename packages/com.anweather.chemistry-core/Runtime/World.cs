@@ -41,6 +41,7 @@ namespace Chem
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
+            MakeSystems();
             BuildChunks(fill);
         }
 
@@ -116,7 +117,7 @@ namespace Chem
             // now and every other chunk's when it activates (World.Fit.cs, #190).
             rulesStamp++;
             if (Unfits(before, rules)) Refit(before);
-            SanitizeRaiders();
+            RaiderSystem.Sanitize();
             LayBuildings(before, rules);
             LayCells(before, rules);
         }
@@ -733,6 +734,15 @@ namespace Chem
 
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + HeightOf(c)) * Rules.Sim.WaterUnitsPerStep;
+
+        /// <summary>The ground's level at (x, y) in water units: the cell's elevation and the land's hills under it.</summary>
+        internal int GroundUnits(int x, int y)
+        {
+            int units = ElevationUnits(At(x, y));
+            int land = LandAtCell(x, y);
+            if (land != NoLand) units += land;
+            return units;
+        }
         /// <summary>Whether the cell's cover burns (oil, grease, thorns).</summary>
         public bool CoverBurns(Cell c) => CoverOf(c)?.Burns == true;
 
@@ -784,6 +794,14 @@ namespace Chem
         // ---------- randomness ----------
 
         /// <summary>mulberry32, bit-for-bit the same as `rand` in world.ts.</summary>
+        /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
+        internal int Roll(int[] dice)
+        {
+            int total = 0;
+            for (int i = 0; i < dice[0]; i++) total += 1 + (int)Math.Floor(Rand() * dice[1]);
+            return total;
+        }
+
         public double Rand()
         {
             unchecked

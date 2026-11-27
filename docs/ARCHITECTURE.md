@@ -83,6 +83,15 @@ keeps what stays in the game: `Mcp/` (the Chemistry.Mcp assembly) and `Tests/`.
   explode or spill, a cell and an entity or item id), applied by
   `world.ApplyEffect`: what a physics prop hands the chemistry, solo at once
   and online stamped into a tick batch like a cast.
+- **The game modes are systems** in `Runtime/Play/` (D9, `docs/design/architecture-review.md` step 9), each a class
+  over the world's data that the world owns (`World.Play.cs`) and ticks where its mode always ran: `RaiderSystem`
+  (the raiders, their elements, hurts, shoves and upkeep), `DefenseSystem` (the defense field's waves, on the cost
+  field in `WayField`, which the Hold's ways share), `HoldSystem` (the Hold's runs; a run's data in `HoldRun.cs`),
+  `GolfSystem` (spell golf; `Golf.cs`), `CourseSystem` (the Gauntlet's zones and runs; `Course.cs`) and
+  `DragonSystem` (the dragon's flight). What a dragon's pass puts back, the starting state, the audit and a chunk's
+  reset, stays in `World.Dragon.cs`. The members code outside the core calls on the world (`world.Hold`,
+  `world.ApplyDefense`, `world.CaughtByBreath`...) are thin forwarders in `World.Play.cs`; core code and the tests
+  call the system (`world.HoldSystem.Text()`).
 - `Items.cs` reads `rules/items.json`, things to carry (glowing balls, a
   bullseye lantern, a spyglass, sending stones, a Dancing Lights mote): their
   light in SRD feet, their use, and when one breaks (`ItemDef.BreaksAt`).
@@ -364,7 +373,7 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | A **chemistry behaviour** that data can't express | Change `Chemistry/`, with a C# golden test (the TS sandbox is frozen: don't port it) |
 | A **physics prop** | Its numbers in `rules/entities.json`, a shape in `PropBuilder` (Editor), which builds its prefab and makes it networked (`NetProp`), and where it stands in `world/things.json` (append to a chunk's list so ids don't shift). Anything it does to cells goes through `ChemEffects.Request` as an `EffectCommand`, never straight to the world: solo it applies at once; online the host stamps it into the next `NetChem` tick batch (D4 in `DECISIONS.md`) and every machine applies it at that tick. A new kind of effect goes in `Chem.EffectKind` and `World.ApplyEffect`. Then rebuild the yard (Prototype > Build Chemistry Yard) so its prefab is built and registered |
 | A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape in `ItemBuilder` (Editor), and a spot in `world/things.json` (a pair shares a `link`). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. If what it does should show on other screens, give `NetItem` the state or message (as for the light, the mote and sending stones); a use only its holder sees (the spyglass) needs nothing |
-| A **defense-field raider** | Its row in `rules/entities.json` with a `raider` object (pace, `weak`, `resist`; checked in `Rules.Check.cs`) and its id in `sim.json`'s `defense.kinds`. Raiders are core entities (`World.Raiders.cs`, `World.Defense.cs`), so nothing about them is networked but the start command. Its id in `RaiderIds`, and the Punchy species it's drawn as in `DefenseFieldBuilder` (`kinds`, `species`, `sizes`) |
+| A **defense-field raider** | Its row in `rules/entities.json` with a `raider` object (pace, `weak`, `resist`; checked in `Rules.Check.cs`) and its id in `sim.json`'s `defense.kinds`. Raiders are core entities (`Play/RaiderSystem.cs`, `Play/DefenseSystem.cs`), so nothing about them is networked but the start command. Its id in `RaiderIds`, and the Punchy species it's drawn as in `DefenseFieldBuilder` (`kinds`, `species`, `sizes`) |
 | **Scenery** | In a builder (`ValleyBuilder`), never placed by hand |
 
 ## Known debt

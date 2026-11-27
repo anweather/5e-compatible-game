@@ -4,7 +4,7 @@ namespace Chem.Tests
 {
     /// <summary>
     /// The air spells on raiders (D16, docs/design/unified-casting.md; the 2026-11-06 playtest: Gust "should push raiders back,
-    /// and could knock them off the cliff, with diminishing returns", and Whirlwind must do something): World.CastShove and
+    /// and could knock them off the cliff, with diminishing returns", and Whirlwind must do something): RaiderSystem.CastShove and
     /// World.LiftInTheEye, in the core, so every peer moves the raider alike.
     /// </summary>
     [Category("Simulation")]

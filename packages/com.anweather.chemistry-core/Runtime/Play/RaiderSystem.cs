@@ -6,29 +6,47 @@
 // raiders through Land and Apply, as the sandbox's landSpell and applyElement
 // reach its entities. Raiders are planted: a spell's shove doesn't move them
 // (push in entities.ts leaves them be too).
+//
+// The raiders' system (docs/design/architecture-review.md step 9, D9). The world owns one (World.RaiderSystem), ticks it
+// first of the modes (TickStage.Rest, before the defense field and the Hold, which spawn, step and clear its raiders),
+// and calls it where a spell, a reaction, a boulder, a flash, a wave or a strike reaches a raider. It holds the raiders
+// and the next entity id; it reads the cells and the rules, writes the raiders, the cells a burning one lights, the log,
+// and draws from the world's generator (a material catching, a hit's dice) in the order it always did.
+
 using System;
 using System.Collections.Generic;
 
 namespace Chem
 {
-    public sealed partial class World
+    /// <summary>The raiders on the board (World.RaiderSystem).</summary>
+    public sealed class RaiderSystem
     {
+        readonly World world;
         readonly List<Raider> raiders = new List<Raider>();
-        // Reused by TickRaiders so a tick allocates little.
+        // Reused by Tick so a tick allocates little.
         readonly List<Raider> raiderScratch = new List<Raider>();
         readonly List<string> statusScratch = new List<string>();
+
+        internal RaiderSystem(World world)
+        {
+            this.world = world;
+        }
+
+        // The raiders and the scratch, for the world and the other modes' systems, which spawn, step and clear them.
+        internal List<Raider> List => raiders;
+        internal List<Raider> Scratch => raiderScratch;
 
         /// <summary>The raiders on the board, oldest first (the sandbox's entities, for the defense field).</summary>
         public IReadOnlyList<Raider> Raiders => raiders;
 
         /// <summary>The next entity id (the sandbox's nextId).</summary>
-        public int NextEntityId { get; private set; } = 1;
+        public int NextEntityId { get; internal set; } = 1;
 
         /// <summary>The raider standing on a square, or null (entityAt in the TS).</summary>
         public Raider RaiderAt(int x, int y)
         {
-            x = FoldX(x);
-            y = FoldY(y);
+            x = world.FoldX(x);
+            y = world.FoldY(y);
             foreach (var r in raiders) if (r.X == x && r.Y == y) return r;
             return null;
         }
@@ -40,8 +58,8 @@ namespace Chem
         /// </summary>
         public Raider SpawnRaider(string kind, int x, int y, int hp)
         {
-            if (!InBounds(x, y) || RaiderAt(x, y) != null || Rules.Entity(kind) == null) return null;
-            var r = new Raider { Id = NextEntityId++, Kind = kind, X = FoldX(x), Y = y, Hp = hp, MaxHp = hp };
+            if (!world.InBounds(x, y) || RaiderAt(x, y) != null || world.Rules.Entity(kind) == null) return null;
+            var r = new Raider { Id = NextEntityId++, Kind = kind, X = world.FoldX(x), Y = y, Hp = hp, MaxHp = hp };
             raiders.Add(r);
             return r;
         }
@@ -50,17 +68,17 @@ namespace Chem
         /// An element arriving at a raider (applyEntityElement in the TS). Returns the damage
         /// multiplier its state adds (wet + lightning = 2).
         /// </summary>
-        int ApplyRaiderElement(Raider r, string element, bool direct)
+        internal int ApplyRaiderElement(Raider r, string element, bool direct)
         {
-            var def = Rules.Entity(r.Kind);
+            var def = world.Rules.Entity(r.Kind);
             int mul = 1;
-            foreach (var rule in Rules.EntityRulesFor(element))
+            foreach (var rule in world.Rules.EntityRulesFor(element))
             {
                 if (!Holds(rule.If, r, def)) continue;
                 foreach (var eff in rule.Do) mul *= RunEntityEffect(r, def, eff);
                 if (rule.Log != null && (direct || rule.Notable))
-                    LogOnce(rule.Id + "#" + r.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        ReplaceFirst(rule.Log, "{name}", def.Name), rule.Notable ? LogKind.Notable : LogKind.Info);
+                    world.LogOnce(rule.Id + "#" + r.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        World.ReplaceFirst(rule.Log, "{name}", def.Name), rule.Notable ? LogKind.Notable : LogKind.Info);
                 if (rule.Stop) break;
             }
             return mul;
@@ -76,8 +94,8 @@ namespace Chem
             var m = def.MaterialDef;
             if (status != "burning" || m == null || !m.Burns) return ticks;
             double dryness = r.StatusOf("wet") > 0 ? 1 - m.Dampens : 1;
-            if (Rand() >= m.Flammability * dryness) return 0;
-            return DampFuel(m.Fuel ?? ticks, dryness);
+            if (world.Rand() >= m.Flammability * dryness) return 0;
+            return World.DampFuel(m.Fuel ?? ticks, dryness);
         }
 
         /// <summary>
@@ -118,14 +136,14 @@ namespace Chem
         /// sim's status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it; if the
         /// material ice cracks, only the second: the first leaves it cracked for as long as it stays frozen.
         /// </summary>
-        void DamageRaider(Raider r, int amount, string cause, string element)
+        internal void DamageRaider(Raider r, int amount, string cause, string element)
         {
-            amount = amount * castPower / 100;
+            amount = amount * world.CastPower / 100;
             if (amount <= 0 || !r.Alive) return;
-            var def = Rules.Entity(r.Kind);
+            var def = world.Rules.Entity(r.Kind);
             if (def.Hp >= 999) return;
             amount = Scaled(def, element, amount);
-            var sim = Rules.Sim;
+            var sim = world.Rules.Sim;
             if (sim.ShatterWhen != null && r.StatusOf(sim.ShatterWhen) > 0 && (sim.ShatterNotBy == null || element != sim.ShatterNotBy))
             {
                 if (CracksFirst(r, sim.ShatterWhen)) return;
@@ -135,16 +153,16 @@ namespace Chem
             }
             r.Hp -= amount;
             if (def.Creature)
-                LogOnce($"hurt#{r.Id}#{cause}", $"{def.Name} takes {amount} {cause} damage ({Math.Max(0, r.Hp)}/{def.Hp} HP)", LogKind.Hurt);
+                world.LogOnce($"hurt#{r.Id}#{cause}", $"{def.Name} takes {amount} {cause} damage ({Math.Max(0, r.Hp)}/{def.Hp} HP)", LogKind.Hurt);
             if (r.Hp <= 0) DefeatRaider(r);
         }
 
         // The first hit on a frozen raider of cracking ice: it cracks, and takes no harm yet.
         bool CracksFirst(Raider r, string frozen)
         {
-            if (r.StatusOf(CrackedStatus) > 0 || !(FrozenWater() is TerrainDef ice) || !ice.Cracks) return false;
-            r.Status[CrackedStatus] = r.StatusOf(frozen);
-            LogOnce($"cracked#{r.Id}", $"{Rules.Entity(r.Kind).Name} cracks", LogKind.Notable);
+            if (r.StatusOf(World.CrackedStatus) > 0 || !(world.FrozenWater() is TerrainDef ice) || !ice.Cracks) return false;
+            r.Status[World.CrackedStatus] = r.StatusOf(frozen);
+            world.LogOnce($"cracked#{r.Id}", $"{world.Rules.Entity(r.Kind).Name} cracks", LogKind.Notable);
             return true;
         }
 
@@ -153,8 +171,8 @@ namespace Chem
         {
             var raider = def.Raider;
             if (raider == null || element == null) return amount;
-            if (Contains(raider.Weak, element)) return amount * 2;
-            if (Contains(raider.Resist, element)) return amount - amount / 2;
+            if (World.Contains(raider.Weak, element)) return amount * 2;
+            if (World.Contains(raider.Resist, element)) return amount - amount / 2;
             return amount;
         }
 
@@ -162,11 +180,11 @@ namespace Chem
         {
             if (!raiders.Remove(r)) return;
             r.Alive = false;
-            AddLog($"{Rules.Entity(r.Kind).Name} {how}", LogKind.Hurt);
+            world.AddLog($"{world.Rules.Entity(r.Kind).Name} {how}", LogKind.Hurt);
         }
 
         /// <summary>Takes every raider off the board (a lost defense, a restart), without a word.</summary>
-        void ClearRaiders()
+        internal void ClearRaiders()
         {
             foreach (var r in raiders) r.Alive = false;
             raiders.Clear();
@@ -177,7 +195,7 @@ namespace Chem
         /// squares first, furthest first (they stand their ground); the rest hurt the creature in
         /// each square after their element lands there (see LandOnRaider).
         /// </summary>
-        void BlastRaiders(SpellDef s, List<(int x, int y)> cells, int x, int y)
+        internal void BlastRaiders(SpellDef s, List<(int x, int y)> cells, int x, int y)
         {
             if (s.Push <= 0 || raiders.Count == 0) return;
             var hit = new List<Raider>();
@@ -188,34 +206,34 @@ namespace Chem
             }
             hit.Sort((a, b) =>
             {
-                int ax = DeltaX(x, a.X), bx = DeltaX(x, b.X), ay = DeltaY(y, a.Y), by = DeltaY(y, b.Y);
+                int ax = world.DeltaX(x, a.X), bx = world.DeltaX(x, b.X), ay = world.DeltaY(y, a.Y), by = world.DeltaY(y, b.Y);
                 int da = ax * ax + ay * ay, db = bx * bx + by * by;
                 return db != da ? db.CompareTo(da) : a.Id.CompareTo(b.Id);
             });
             foreach (var r in hit)
-                if (s.Damage.Length == 2) DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
+                if (s.Damage.Length == 2) DamageRaider(r, world.Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
         }
 
         /// <summary>A non-shoving damage spell's hit on the creature in one square, after its element landed there.</summary>
-        void LandOnRaider(SpellDef s, int cx, int cy)
+        internal void LandOnRaider(SpellDef s, int cx, int cy)
         {
             if (s.Push > 0 || s.Damage.Length != 2) return;
             var r = RaiderAt(cx, cy);
             if (r == null) return;
-            var def = Rules.Entity(r.Kind);
+            var def = world.Rules.Entity(r.Kind);
             if (def.Creature)
             {
                 int mul = s.Element == "lightning" ? ApplyRaiderElement(r, "lightning", false) : 1;
-                DamageRaider(r, Roll(s.Damage) * mul, s.Name.ToLowerInvariant(), s.Element);
+                DamageRaider(r, world.Roll(s.Damage) * mul, s.Name.ToLowerInvariant(), s.Element);
             }
             else if (s.Element == "fire" && def.Flammable)
             {
-                DamageRaider(r, Roll(s.Damage), "fire", "fire");
+                DamageRaider(r, world.Roll(s.Damage), "fire", "fire");
             }
         }
 
         /// <summary>The way from a blast's middle out through (dx, dy) off it, along the longer axis, east or west on a tie; north at the middle (awayDir in the TS).</summary>
-        static int AwayDir(int dx, int dy)
+        internal static int AwayDir(int dx, int dy)
         {
             if (dx == 0 && dy == 0) return 0;
             if (Math.Abs(dx) >= Math.Abs(dy)) return dx > 0 ? 1 : 3;
@@ -226,15 +244,15 @@ namespace Chem
         /// A blast's shove on a raider (shoveRaider in the TS: a dust flash): force less its mass, plus 1, cells along dir,
         /// stopping at a wall, an inactive chunk or another raider.
         /// </summary>
-        void ShoveRaider(Raider r, int dir, int force)
+        internal void ShoveRaider(Raider r, int dir, int force)
         {
-            int dist = force - Rules.Entity(r.Kind).Mass + 1;
+            int dist = force - world.Rules.Entity(r.Kind).Mass + 1;
             for (int k = 0; k < dist; k++)
             {
-                int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
-                if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
-                r.X = FoldX(nx);
-                r.Y = FoldY(ny);
+                int nx = r.X + World.DirX(dir), ny = r.Y + World.DirY(dir);
+                if (!world.IsActiveAt(nx, ny) || world.IsBlocking(world.At(nx, ny)) || RaiderAt(nx, ny) != null) return;
+                r.X = world.FoldX(nx);
+                r.Y = world.FoldY(ny);
             }
         }
 
@@ -244,99 +262,94 @@ namespace Chem
         /// ticks (a geyser's jet, a boulder), so it can't walk. A cast forces each raider once (<paramref name="once"/>
         /// holds those it has), so one pushed along a gust's line isn't pushed again on the cells it lands on.
         /// </summary>
-        void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null, int charge = 0)
+        internal void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null, int charge = 0)
         {
             if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
-            HitBall(s, x, y, dir);
+            world.GolfSystem.HitBall(s, x, y, dir);
             var r = RaiderAt(x, y);
             if (r == null || !r.Alive || (once != null && !once.Add(r.Id))) return;
-            var def = Rules.Entity(r.Kind);
+            var def = world.Rules.Entity(r.Kind);
             string by = s.Name.ToLowerInvariant();
             if (charge > 0 && s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass) CastShove(s, r, def, dir, charge, by);
             else if (s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass)
             {
                 for (int k = 0; k < s.ForcePush; k++)
                 {
-                    int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
-                    if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) break;
-                    r.X = FoldX(nx);
-                    r.Y = FoldY(ny);
+                    int nx = r.X + World.DirX(dir), ny = r.Y + World.DirY(dir);
+                    if (!world.IsActiveAt(nx, ny) || world.IsBlocking(world.At(nx, ny)) || RaiderAt(nx, ny) != null) break;
+                    r.X = world.FoldX(nx);
+                    r.Y = world.FoldY(ny);
                 }
-                LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
+                world.LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
             }
             if (s.ForceThrow <= 0) return;
             r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), s.ForceThrow);
-            LogOnce($"thrown#{r.Id}", $"The {by} throws {def.Name} off its feet", LogKind.Notable);
+            world.LogOnce($"thrown#{r.Id}", $"The {by} throws {def.Name} off its feet", LogKind.Notable);
         }
 
         /// <summary>The status counting the casts that have knocked a raider back (CastShove); it never counts down.</summary>
         public const string ShovedStatus = "shoved";
+
+        /// <summary>The status of a raider thrown off its feet (a spell's force.throw: a Geyser's jet, a Rolling Boulder): it can't walk until it lands.</summary>
+        public const string ThrownStatus = "thrown";
         // A cast's shove: force.push cells for each charge level and one more (a tapped Gust 4, held to the most 8); a raider
         // that's been shoved goes half as far the second time and braces once it's had sim shove.most (diminishing returns,
         // D16). It staggers shove.staggerTicks before it walks on. A drop of fall.cliffSteps or more in one cell takes it over
         // the edge: it falls, hurt FallDamage for every fall.stepsPerHurt steps it drops, and the shove ends there.
 
-        void CastShove(SpellDef s, Raider r, EntityDef def, int dir, int charge, string by)
+        internal void CastShove(SpellDef s, Raider r, EntityDef def, int dir, int charge, string by)
         {
             int shoved = r.StatusOf(ShovedStatus);
-            if (shoved >= Rules.Sim.MostShoves)
+            if (shoved >= world.Rules.Sim.MostShoves)
             {
-                LogOnce($"braced#{r.Id}", $"The {def.Name.ToLowerInvariant()} braces against the {by}", LogKind.Notable);
+                world.LogOnce($"braced#{r.Id}", $"The {def.Name.ToLowerInvariant()} braces against the {by}", LogKind.Notable);
                 return;
             }
             r.Status[ShovedStatus] = shoved + 1;
-            int cells = s.ForcePush * (ClampCharge(charge) + 1);
+            int cells = s.ForcePush * (World.ClampCharge(charge) + 1);
             if (shoved > 0) cells = (cells + 1) / 2;
             Hurl(r, def, dir, cells, by);
-            if (r.Alive) r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.ShoveStaggerTicks);
-            LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
+            if (r.Alive) r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), world.Rules.Sim.ShoveStaggerTicks);
+            world.LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
         }
 
         // Moves a raider up to `cells` along dir, stopping short of a wall, an inactive chunk or another raider; over a drop of
         // fall.cliffSteps or more in one cell it goes over the edge, falls (FallDamage for every fall.stepsPerHurt steps down from
         // where it started) and stops there.
-        void Hurl(Raider r, EntityDef def, int dir, int cells, string by)
+        internal void Hurl(Raider r, EntityDef def, int dir, int cells, string by)
         {
-            int from = GroundUnits(r.X, r.Y), step = Rules.Sim.WaterUnitsPerStep;
+            int from = world.GroundUnits(r.X, r.Y), step = world.Rules.Sim.WaterUnitsPerStep;
             for (int k = 0; k < cells; k++)
             {
-                int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
-                if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
-                bool over = GroundUnits(r.X, r.Y) - GroundUnits(nx, ny) >= Rules.Sim.CliffSteps * step;
-                r.X = FoldX(nx);
-                r.Y = FoldY(ny);
+                int nx = r.X + World.DirX(dir), ny = r.Y + World.DirY(dir);
+                if (!world.IsActiveAt(nx, ny) || world.IsBlocking(world.At(nx, ny)) || RaiderAt(nx, ny) != null) return;
+                bool over = world.GroundUnits(r.X, r.Y) - world.GroundUnits(nx, ny) >= world.Rules.Sim.CliffSteps * step;
+                r.X = world.FoldX(nx);
+                r.Y = world.FoldY(ny);
                 if (!over) continue;
-                int dropped = (from - GroundUnits(nx, ny)) / step;
-                AddLog($"The {by} throws {def.Name} over the edge", LogKind.Notable);
-                DamageRaider(r, Rules.Sim.FallDamage * Math.Max(1, dropped / Rules.Sim.FallStepsPerHurt), "the fall", null);
+                int dropped = (from - world.GroundUnits(nx, ny)) / step;
+                world.AddLog($"The {by} throws {def.Name} over the edge", LogKind.Notable);
+                DamageRaider(r, world.Rules.Sim.FallDamage * Math.Max(1, dropped / world.Rules.Sim.FallStepsPerHurt), "the fall", null);
                 return;
             }
-        }
-
-        /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
-        int Roll(int[] dice)
-        {
-            int total = 0;
-            for (int i = 0; i < dice[0]; i++) total += 1 + (int)Math.Floor(Rand() * dice[1]);
-            return total;
         }
 
         /// <summary>
         /// A creature stepping onto a cover that hurts (thorns) takes its damage, and one that slows (or
         /// ground that does: mud) is snagged for the rest of the step's time (thorns in the TS).
         /// </summary>
-        void Thorns(Raider r, Cell c)
+        internal void Thorns(Raider r, Cell c)
         {
-            if (!Rules.Entity(r.Kind).Creature) return;
-            var cv = CoverOf(c);
-            if (cv != null && cv.Damage.Length == 2) DamageRaider(r, Roll(cv.Damage), cv.Name.ToLowerInvariant(), null);
-            double speed = WalkSpeed(c);
+            if (!world.Rules.Entity(r.Kind).Creature) return;
+            var cv = world.CoverOf(c);
+            if (cv != null && cv.Damage.Length == 2) DamageRaider(r, world.Roll(cv.Damage), cv.Name.ToLowerInvariant(), null);
+            double speed = world.WalkSpeed(c);
             if (speed > 0 && speed < 1 && r.Alive)
-                r.Status["snagged"] = Math.Max(r.StatusOf("snagged"), (int)Math.Floor(Rules.Sim.TicksPerSecond * (1 / speed - 1) + 0.5));
+                r.Status["snagged"] = Math.Max(r.StatusOf("snagged"), (int)Math.Floor(world.Rules.Sim.TicksPerSecond * (1 / speed - 1) + 0.5));
         }
 
         /// <summary>Per-tick raider upkeep (tickEntities in the TS): statuses, burning, wading, zaps, falls.</summary>
-        void TickRaiders()
+        internal void Tick()
         {
             if (raiders.Count == 0) return;
             raiderScratch.Clear();
@@ -344,8 +357,8 @@ namespace Chem
             foreach (var r in raiderScratch)
             {
                 if (!r.Alive) continue;
-                var def = Rules.Entity(r.Kind);
-                var c = At(r.X, r.Y);
+                var def = world.Rules.Entity(r.Kind);
+                var c = world.At(r.X, r.Y);
                 Hazards(r, c, def);
                 if (!r.Alive) continue;
                 Fall(r, c, def);
@@ -356,24 +369,24 @@ namespace Chem
         // The heat that hurts a raider this tick: burning, a hot cell, thick steam (the TS's heatHazards).
         void HeatHazards(Raider r, Cell c, EntityDef def)
         {
-            var s = Rules.Sim;
-            if (r.StatusOf("burning") > 0 && Tick % s.BurnDamageEvery == 0)
+            var s = world.Rules.Sim;
+            if (r.StatusOf("burning") > 0 && world.Tick % s.BurnDamageEvery == 0)
             {
                 DamageRaider(r, 1, "fire", "fire");
-                if (def.Flammable && r.Alive) Apply(r.X, r.Y, "fire", 1, -1, false);
+                if (def.Flammable && r.Alive) world.Apply(r.X, r.Y, "fire", 1, -1, false);
             }
-            if (c.Heat > 0 && def.Creature && Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
+            if (c.Heat > 0 && def.Creature && world.Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
             // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
-            if (c.Gas != null && c.Gas == Rules.Sim.WaterBoils && c.GasAmt >= 2 && def.MaterialDef?.Has("scalds") == true && Tick % s.ScaldEvery == 0)
-                DamageRaider(r, Rules.Gases.TryGetValue(c.Gas, out var steam) ? steam.Scald : 1, "scalding", "fire");
+            if (c.Gas != null && c.Gas == world.Rules.Sim.WaterBoils && c.GasAmt >= 2 && def.MaterialDef?.Has("scalds") == true && world.Tick % s.ScaldEvery == 0)
+                DamageRaider(r, world.Rules.Gases.TryGetValue(c.Gas, out var steam) ? steam.Scald : 1, "scalding", "fire");
         }
 
         // What the raider's square does to it this tick: fire and water reach it, burning and steam hurt, a shock zaps.
         void Hazards(Raider r, Cell c, EntityDef def)
         {
-            var s = Rules.Sim;
+            var s = world.Rules.Sim;
             if (c.Fire > 0) ApplyRaiderElement(r, "fire", false);
-            if (IsOpenWater(c)) ApplyRaiderElement(r, "water", false);
+            if (World.IsOpenWater(c)) ApplyRaiderElement(r, "water", false);
             HeatHazards(r, c, def);
             if (Shocked(r, c, def) && r.Alive)
             {
@@ -390,10 +403,10 @@ namespace Chem
         bool ShockedFromBeside(Raider r, EntityDef def)
         {
             if (r.StatusOf("wet") == 0 || def.MaterialDef == null || !def.MaterialDef.ChainsWet) return false;
-            foreach (var (nx, ny, _) in ActiveNeighbours(r.X, r.Y))
+            foreach (var (nx, ny, _) in world.ActiveNeighbours(r.X, r.Y))
             {
-                var n = At(nx, ny);
-                if (n.Charge == 3 && IsOpenWater(n)) return true;
+                var n = world.At(nx, ny);
+                if (n.Charge == 3 && World.IsOpenWater(n)) return true;
             }
             return false;
         }
@@ -401,12 +414,12 @@ namespace Chem
         // Into a dry pit: hurt once, until it's out again.
         void Fall(Raider r, Cell c, EntityDef def)
         {
-            bool inPit = HasTag(c, "low") && !(c.Frozen && c.Water > 0);
+            bool inPit = world.HasTag(c, "low") && !(c.Frozen && c.Water > 0);
             if (inPit && c.Water == 0 && r.StatusOf("fallen") == 0)
             {
                 r.Status["fallen"] = int.MaxValue;
-                AddLog($"{def.Name} falls into the pit", LogKind.Notable);
-                DamageRaider(r, Rules.Sim.FallDamage, "falling", null);
+                world.AddLog($"{def.Name} falls into the pit", LogKind.Notable);
+                DamageRaider(r, world.Rules.Sim.FallDamage, "falling", null);
             }
             else if (!inPit && r.StatusOf("fallen") != 0)
             {
@@ -430,11 +443,11 @@ namespace Chem
         }
 
         /// <summary>After a rule switch: raiders whose kind the rules no longer define go (sanitizeWorld in the TS).</summary>
-        void SanitizeRaiders()
+        internal void Sanitize()
         {
             for (int i = raiders.Count - 1; i >= 0; i--)
             {
-                if (Rules.Entity(raiders[i].Kind) != null) continue;
+                if (world.Rules.Entity(raiders[i].Kind) != null) continue;
                 raiders[i].Alive = false;
                 raiders.RemoveAt(i);
             }

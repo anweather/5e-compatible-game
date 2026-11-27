@@ -556,7 +556,7 @@ namespace Chem
         /// </summary>
         public int CliffSteps = 4, FallStepsPerHurt = 2;
         /// <summary>
-        /// A cast's shove (World.CastShove): a creature shoved this many times braces against the next, and staggers
+        /// A cast's shove (RaiderSystem.CastShove): a creature shoved this many times braces against the next, and staggers
         /// ShoveStaggerTicks after each (sim.json shove most, staggerTicks).
         /// </summary>
         public int MostShoves = 2, ShoveStaggerTicks = 6;
@@ -574,7 +574,7 @@ namespace Chem
         public DefenseParams Defense = new DefenseParams();
         /// <summary>hold.json: the Hold's run.</summary>
         public HoldParams Hold = new HoldParams();
-        /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
+        /// <summary>Spell golf's ball (sim.json golf, Play/GolfSystem.cs).</summary>
         public GolfParams Golf = new GolfParams();
         /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
         public BreathParams Breath = new BreathParams();

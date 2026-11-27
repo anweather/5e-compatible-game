@@ -157,7 +157,7 @@ namespace Chem
         /// </summary>
         void OverheadFlyers(SpellDef s, List<(int x, int y)> cells, CastCommand c)
         {
-            if (s.Shape != "line" || !raiders.Exists(Flying)) return;
+            if (s.Shape != "line" || !RaiderSystem.List.Exists(Flying)) return;
             overhead = true;
             var whole = ShapeCells(s, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             overhead = false;
@@ -171,8 +171,8 @@ namespace Chem
                         int cx = lx + dx, cy = ly + dy;
                         var r = !IsActiveAt(cx, cy) || !reached.Add((FoldX(cx), FoldY(cy))) ? null : RaiderAt(cx, cy);
                         if (r == null || !r.Alive || !Flying(r)) continue;
-                        if (s.Element != "lightning") ApplyRaiderElement(r, s.Element, true);
-                        LandOnRaider(s, cx, cy);
+                        if (s.Element != "lightning") RaiderSystem.ApplyRaiderElement(r, s.Element, true);
+                        RaiderSystem.LandOnRaider(s, cx, cy);
                     }
         }
 
@@ -275,7 +275,7 @@ namespace Chem
         /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the
         /// element pushes along. A spell with a crater (Fireball) blows it out of the
         /// ground before its element lands. Cast into a spell zone that doesn't allow it
-        /// (World.Course.cs), it fizzles.
+        /// (Play/CourseSystem.cs), it fizzles.
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
         {
@@ -295,11 +295,16 @@ namespace Chem
             castPower = 100;
         }
 
-        // The player of the cast going off now, when the batch names one: golf's turns (World.Golf.cs).
+        // The player of the cast going off now, when the batch names one: golf's turns (Play/GolfSystem.cs).
         string castBy;
+
+        // Who cast the spell going off now, null for a delayed one (a star, a wave): for the golf ball's turns.
+        internal string CastBy => castBy;
 
         // The percent of its damage the cast going off now does: a wizard's upgrades (World.Progress.cs).
         int castPower = 100;
+        // The cast's power in percent, for the raiders' damage (RaiderSystem).
+        internal int CastPower => castPower;
 
         // A cast once its spell is known: smothered by a spell zone against it, else it goes off, after delay
         // ticks under a target mark when there is one. A trigger's casts come in here too (World.Triggers.cs).
@@ -308,7 +313,7 @@ namespace Chem
         {
             var (x, y) = (FoldX(at.x), FoldY(at.y)); // a cast past the seam lands where it folds to
             var (aimX, aimY) = aim;
-            var zone = ZoneAgainst(s, x, y);
+            var zone = CourseSystem.ZoneAgainst(s, x, y);
             if (zone != null)
             {
                 AddLog($"The {zone.Name}'s charm smothers your {s.Name}", LogKind.Notable);
@@ -444,7 +449,7 @@ namespace Chem
             if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny))) return;
             // What it holds up round its eye goes with it, the furthest along the way first.
             int dx = nx - ww.X, dy = ny - ww.Y;
-            var held = raiders.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(DeltaX(ww.X, r.X)), System.Math.Abs(DeltaY(ww.Y, r.Y))) <= EyeOf(ww))
+            var held = RaiderSystem.List.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(DeltaX(ww.X, r.X)), System.Math.Abs(DeltaY(ww.Y, r.Y))) <= EyeOf(ww))
                 .OrderByDescending(r => DeltaX(ww.X, r.X) * dx + DeltaY(ww.Y, r.Y) * dy).ThenBy(r => r.Id).ToList();
             foreach (var r in held)
             {
@@ -543,12 +548,12 @@ namespace Chem
         void WhirlCreatures(Whirl ww)
         {
             int Ring(Raider r) => System.Math.Max(System.Math.Abs(DeltaX(ww.X, r.X)), System.Math.Abs(DeltaY(ww.Y, r.Y)));
-            var pulled = raiders.Where(r =>
+            var pulled = RaiderSystem.List.Where(r =>
             {
                 var def = Rules.Entity(r.Kind);
                 return r.Alive && Ring(r) > 0 && Ring(r) <= ww.Radius && def.Creature && def.Mass <= ww.MaxMass;
             }).OrderBy(Ring).ThenBy(r => r.Id).ToList();
-            foreach (var r in raiders.Where(r => r.Alive && Ring(r) <= EyeOf(ww)).ToList()) LiftInTheEye(ww, r);
+            foreach (var r in RaiderSystem.List.Where(r => r.Alive && Ring(r) <= EyeOf(ww)).ToList()) LiftInTheEye(ww, r);
             foreach (var r in pulled)
             {
                 int dir = InwardDir(DeltaX(ww.X, r.X), DeltaY(ww.Y, r.Y));
@@ -579,9 +584,9 @@ namespace Chem
             }
             if (left > ww.Every) return;
             r.Status.Remove(LiftedStatus);
-            Hurl(r, def, ww.Dir >= 0 ? ww.Dir : 0, s.LiftFling, "whirlwind");
+            RaiderSystem.Hurl(r, def, ww.Dir >= 0 ? ww.Dir : 0, s.LiftFling, "whirlwind");
             if (!r.Alive) return;
-            DamageRaider(r, Rules.Sim.FallDamage * s.LiftHurt, "the whirlwind", "air");
+            RaiderSystem.DamageRaider(r, Rules.Sim.FallDamage * s.LiftHurt, "the whirlwind", "air");
             if (r.Alive) r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), Rules.Sim.TicksPerSecond);
             LogOnce($"flung#{r.Id}", $"The whirlwind flings the {name} away", LogKind.Notable);
         }
@@ -635,13 +640,13 @@ namespace Chem
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
-            BlastRaiders(s, cells, x, y);
-            SpellOnBall(s, cells, (x, y), dir, charge);
+            RaiderSystem.BlastRaiders(s, cells, x, y);
+            GolfSystem.SpellOnBall(s, cells, (x, y), dir, charge);
             var forced = new HashSet<int>();
             if (s.Element == null)
             {
                 // A spell with force and no element (Raise Earth) still throws what it lands under: the golf ball.
-                foreach (var (cx, cy) in cells) Force(s, cx, cy, dir, forced);
+                foreach (var (cx, cy) in cells) RaiderSystem.Force(s, cx, cy, dir, forced);
                 Place(s, cells, x, y);
                 return;
             }
@@ -651,8 +656,8 @@ namespace Chem
                 int way = s.Inward ? InwardDir(cx - x, cy - y) : dir;
                 Apply(cx, cy, s.Element, s.Power * charge, way, true);
                 if (s.Then != null) Apply(cx, cy, s.Then, s.Power * charge, way, true);
-                Force(s, cx, cy, dir, forced, charge);
-                LandOnRaider(s, cx, cy);
+                RaiderSystem.Force(s, cx, cy, dir, forced, charge);
+                RaiderSystem.LandOnRaider(s, cx, cy);
             }
             waveFrom = null;
             OverheadFlyers(s, cells, new CastCommand(s.Id, x, y, dir, charge, aimX, aimY));

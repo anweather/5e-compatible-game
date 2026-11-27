@@ -33,6 +33,7 @@ namespace Chem
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
+            MakeSystems();
             Source = filled = new FilledGround();
         }
 

@@ -320,7 +320,7 @@ namespace Chem
         }
 
         // The dragon's reset: the land as the map has it. Acts that stamped it have nothing left to take back.
-        void ForgetLandStamps()
+        internal void ForgetLandStamps()
         {
             for (int k = landStamps.Count - 1; k >= 0; k--) TakeStamp(landStamps[k]);
             acts.RemoveAll(a => a.Land != null);

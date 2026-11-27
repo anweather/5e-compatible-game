@@ -116,6 +116,8 @@ namespace Chem
 
         readonly SortedDictionary<string, WizardStand> stands = new SortedDictionary<string, WizardStand>(StringComparer.Ordinal);
         readonly List<StrikeHit> strikeHits = new List<StrikeHit>();
+        // The blows struck this tick, for the modes' systems (Play/): a Hold raider's.
+        internal List<StrikeHit> StrikeHits => strikeHits;
 
         /// <summary>The wizards the core knows of, by player.</summary>
         public IReadOnlyDictionary<string, WizardStand> Stands => stands;
@@ -132,7 +134,7 @@ namespace Chem
         public bool TriggersReadStands => Rules.TriggersOn(TriggerEvent.Step).Count > 0 || Rules.TriggersOn(TriggerEvent.Tick).Count > 0;
 
         // A rule reads the stands now (StandReads).
-        void ReadStands() => standReads++;
+        internal void ReadStands() => standReads++;
 
         /// <summary>The strikes since the view last took them, oldest first; taking them empties the list.</summary>
         public IReadOnlyList<StrikeHit> TakeStrikeHits()
@@ -206,7 +208,7 @@ namespace Chem
             {
                 (raider.X, raider.Y) = KnockBack(raider.X, raider.Y, dx, dy, p.KnockBack);
                 (result.ToX, result.ToY) = (raider.X, raider.Y);
-                DamageRaider(raider, damage, "bludgeoning", null);
+                RaiderSystem.DamageRaider(raider, damage, "bludgeoning", null);
                 return;
             }
             (foe.X, foe.Y) = KnockBack(foe.X, foe.Y, dx, dy, p.KnockBack);
@@ -232,7 +234,7 @@ namespace Chem
                 best = key;
                 foe = s;
             }
-            foreach (var r in raiders)
+            foreach (var r in RaiderSystem.List)
             {
                 if (!r.Alive) continue;
                 long key = TargetKey(DeltaX(me.X, r.X), DeltaY(me.Y, r.Y), aimX, aimY, reach);

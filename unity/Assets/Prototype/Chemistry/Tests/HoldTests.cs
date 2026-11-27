@@ -134,11 +134,11 @@ namespace Chem.Tests
             var w = new World(R, 64, 64, 7);
             string hash = w.CastHash();
             Ticks(w, 30);
-            Assert.That(w.HoldText(), Is.Empty);
+            Assert.That(w.HoldSystem.Text(), Is.Empty);
             Assert.That(w.CastHash(), Is.EqualTo(hash));
             var f = Field();
             Ticks(f, 30);
-            Assert.That(f.HoldText(), Is.Empty, "a Hold no one has started says nothing");
+            Assert.That(f.HoldSystem.Text(), Is.Empty, "a Hold no one has started says nothing");
         }
 
         [Test]
@@ -177,7 +177,7 @@ namespace Chem.Tests
             var first = w.Raiders[0];
             Assert.That(Site.Spawners.SelectMany(s => s.Cells).Any(c => System.Math.Abs(c.x - first.X) + System.Math.Abs(c.y - first.Y) <= 2));
             Until(w, () => w.Hold.ToSpawn == 0, "the wave's all out");
-            Assert.That(w.Hold.Spawned, Is.EqualTo(World.HoldWaveSize(R.Sim.Hold, 1)));
+            Assert.That(w.Hold.Spawned, Is.EqualTo(HoldSystem.WaveSize(R.Sim.Hold, 1)));
         }
 
         [Test]
@@ -247,13 +247,13 @@ namespace Chem.Tests
             var south = gate.First(c => Math.Abs(c.X - gate[0].X) + Math.Abs(c.Y - gate[0].Y) > 4);
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, gate[0].X, gate[0].Y, null));
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, south.X, south.Y, null));
-            Until(w, () => gate.Any(c => w.BlowsOn(c.X, c.Y) > 0), "they batter it");
+            Until(w, () => gate.Any(c => w.HoldSystem.BlowsOn(c.X, c.Y) > 0), "they batter it");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate"));
             Until(w, () => gate.Any(c => w.At(c.X, c.Y).T == "rubble"), "it gives way");
             w.Hold.Health = ShortKeep;
             Until(w, () => !w.HoldRunning, "the keep falls");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate-open"), "mended, as the map has it");
-            Assert.That(gate.All(c => w.BlowsOn(c.X, c.Y) == 0));
+            Assert.That(gate.All(c => w.HoldSystem.BlowsOn(c.X, c.Y) == 0));
         }
 
         [Test]
@@ -476,7 +476,7 @@ namespace Chem.Tests
             }
             while (joined.Tick < w.Tick) joined.Step();
             Assert.That(joined.HoldRunning);
-            Assert.That(joined.HoldText(), Is.EqualTo(w.HoldText()));
+            Assert.That(joined.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
             Assert.That(joined.CastHash(), Is.EqualTo(w.CastHash()));
         }
 
@@ -533,10 +533,10 @@ namespace Chem.Tests
             var back = World.Load(w.Save(source), R, source);
             Assert.That(back.ActiveChunks, Is.EqualTo(w.ActiveChunks), "the save keeps which chunks are active");
             back.SetHold(Site);
-            Assert.That(back.HoldText(), Is.EqualTo(w.HoldText()));
+            Assert.That(back.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
             Ticks(w, 100);
             Ticks(back, 100);
-            Assert.That(back.HoldText(), Is.EqualTo(w.HoldText()));
+            Assert.That(back.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
         }
     }
 }

@@ -33,14 +33,14 @@ namespace Chem
                 }
                 if (rule.Stop) break;
             }
-            // Then whatever stands there (a raider: World.Raiders.cs).
+            // Then whatever stands there (a raider: Play/RaiderSystem.cs).
             ReachRaider(x, y, element, direct);
         }
 
         void ReachRaider(int x, int y, string element, bool direct)
         {
-            var raider = raiders.Count > 0 ? RaiderAt(x, y) : null;
-            if (raider != null) ApplyRaiderElement(raider, element, direct);
+            var raider = RaiderSystem.List.Count > 0 ? RaiderAt(x, y) : null;
+            if (raider != null) RaiderSystem.ApplyRaiderElement(raider, element, direct);
         }
 
         /// <summary>A raise effect (a pillar): the cell becomes that terrain, unless a raider stands there.</summary>
@@ -171,7 +171,7 @@ namespace Chem
         string CoverName(Cell c) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) ? cv.Name.ToLowerInvariant() : "";
 
-        static string ReplaceFirst(string s, string find, string with)
+        internal static string ReplaceFirst(string s, string find, string with)
         {
             int i = s.IndexOf(find, StringComparison.Ordinal);
             return i < 0 ? s : s.Substring(0, i) + with + s.Substring(i + find.Length);
@@ -245,7 +245,7 @@ namespace Chem
             return Math.Max(1, n);
         }
 
-        static bool Contains(IReadOnlyList<string> list, string s)
+        internal static bool Contains(IReadOnlyList<string> list, string s)
         {
             for (int i = 0; i < list.Count; i++) if (list[i] == s) return true;
             return false;
@@ -276,7 +276,7 @@ namespace Chem
         }
 
         /// <summary>Fuel caught damp (soaked burns poorly, docs/MATERIALS.md): scaled by the dryness, rounded down, at least 1.</summary>
-        static int DampFuel(int fuel, double dryness) => dryness >= 1 ? fuel : Math.Max(1, (int)Math.Floor(fuel * dryness));
+        internal static int DampFuel(int fuel, double dryness) => dryness >= 1 ? fuel : Math.Max(1, (int)Math.Floor(fuel * dryness));
 
         /// <summary>Moves water out of a cell that just became solid.</summary>
         public void DisplaceWater(int x, int y)
@@ -529,7 +529,7 @@ namespace Chem
         }
 
         /// <summary>A break effect: the terrain becomes its breaksTo.</summary>
-        bool BreakWall(int x, int y, Cell c)
+        internal bool BreakWall(int x, int y, Cell c)
         {
             var to = TerrainOf(c).BreaksTo;
             if (to == null) return false;
@@ -539,7 +539,7 @@ namespace Chem
         }
 
         /// <summary>A setTerrain effect: the cell becomes that terrain, its water pushed out.</summary>
-        bool SetTerrainTo(int x, int y, Cell c, string terrain)
+        internal bool SetTerrainTo(int x, int y, Cell c, string terrain)
         {
             if (c.T == terrain) return false;
             DisplaceWater(x, y);

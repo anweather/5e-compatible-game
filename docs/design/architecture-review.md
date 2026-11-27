@@ -261,6 +261,27 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
 9. **Game modes out of `World`.** Hold, Golf, Course, Raiders, Defense, Dragon from `World.*.cs` partials into
    systems over `World` data in `Chem.Play` (D9), one mode per step, each with its goldens unchanged and the Mono
    pass in that night's sweep. Largest step; do it as each mode is next worked on. **Cloud.**
+   *Done 2026-11-27 (cloud), one commit a mode on `cloud/play-modes-9`; awaits a Unity compile and that night's Mono
+   pass. Chem.Play is a folder, `Runtime/Play/`, in the Chemistry assembly, not its own asmdef yet: World owns and ticks
+   the systems, so a Play assembly over Sim would be a cycle until the tick calls them through a seam. Each system is
+   made in both World constructors (World.cs, OpenWorld.cs) and runs at its old place in TickStage.Rest or the dragon
+   stage; World keeps thin forwarders (`World.Play.cs`) only for what Scripts, the probes, Mcp and Hold.Runner call.
+   The 2241 dotnet results (Sweep included) unchanged, every golden unchanged, no file under Scripts/ touched.*
+   *Course: `CourseSystem`; data in `Play/Course.cs`. Forwarder: CourseRespawn (WizardDown).*
+   *Defense: `DefenseSystem`; the path scratch it shared with the Hold is `WayField` (World.Ways), so PathCostAt still
+   reads what either last worked out. Forwarders: Defense, DefenseLeft, ApplyDefense (DefenseField), PathCostAt.*
+   *Golf: `GolfSystem`; data in `Play/Golf.cs`; GroundUnits stays on World (raiders and weather use it). Forwarders:
+   Golf, ApplyGolf, GolfWaiting (GolfCourse, ChemGrid), the GolfBall/GolfCup consts (Mcp).*
+   *Hold: `HoldSystem`; a run's data in `Play/HoldRun.cs`. Proved bit-equal beyond the goldens: 24 seeded Hold runs
+   on dev and on the commit, CellHash/CastHash/RngState/DragonHash every 20 s up to wave 10, 588 lines the same.
+   Forwarders: HoldSite, Hold, HoldRunning, HoldLeft, SetHold, HoldWarning, HoldRespawn, HoldNextWaveIn, Flying,
+   HoldNext, ClimbRoute/FlyRoute (the Hold's view, lock-on, WizardDown, probes, Hold.Runner).*
+   *Raiders: `RaiderSystem`; Roll stays on World (strikes, boulders, progress roll too). The same 588 lines.
+   Forwarders: Raiders, RaiderAt, SpawnRaider, ShovedStatus/ThrownStatus (SpellCaster, Desk, the view, probes).*
+   *Dragon: `DragonSystem` holds the flight; the starting state, the audit, Freshen and the save stay in
+   World.Dragon.cs (buildings, saves and the view use them with no flight, and they reach into the chunk store).
+   Proved on two seeds, summoned and by budget (6 flights, raiders downed): 480 sampled lines the same. Forwarders:
+   Dragon, DragonFlights, ApplyDragon, PassLine, BreathBox, CaughtByBreath, ShelteredFromBreath.*
 
 Later, as work passes through: split the 485-file `Scripts/` root into folders by module before the asmdefs land
 (moves only, with their `.meta` files); a dotnet twin of `probe smoke` on `Hold.Runner` (boat's T16) so the

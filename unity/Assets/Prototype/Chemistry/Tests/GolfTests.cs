@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>Spell golf (docs/BACKLOG.md 24; World.Golf.cs): the ball, the strokes and the course in world/golf.json.</summary>
+    /// <summary>Spell golf (docs/BACKLOG.md 24; Play/GolfSystem.cs): the ball, the strokes and the course in world/golf.json.</summary>
     [Category("Unit")]
     public class GolfTests
     {
@@ -50,7 +50,7 @@ namespace Chem.Tests
             Assert.That(Stroke(w, "mold-earth-heap", 14, 5), Is.EqualTo((22, 5)), "Raise Earth throws it over the pond");
             Assert.That(Stroke(w, "gust-of-wind", 20, 5), Is.EqualTo((30, 5)));
             Assert.That(w.Golf.Holed && w.Log.Any(l => l.Text == "Holed in 6!"));
-            Assert.That($"{w.GolfText()} {w.GolfHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"), "the golden");
+            Assert.That($"{w.GolfSystem.Text()} {w.GolfSystem.Hash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"), "the golden");
         }
 
         [Test]
@@ -63,11 +63,11 @@ namespace Chem.Tests
             Assert.That(w.Golf.Moving, "still rolling");
             Assert.That(w.CastHash(), Is.Not.EqualTo(before), "the ball is hashed");
             var back = World.Load(w.Save(new Blank()), R, new Blank());
-            Assert.That(back.GolfText(), Is.EqualTo(w.GolfText()));
+            Assert.That(back.GolfSystem.Text(), Is.EqualTo(w.GolfSystem.Text()));
             Run(w, 20);
             Run(back, 20);
-            Assert.That(back.GolfText(), Is.EqualTo(w.GolfText()), "and rolls on the same");
-            Assert.That(new World(R, 8, 8, 1, "dirt").GolfText(), Is.Empty, "a world without golf hashes as it did");
+            Assert.That(back.GolfSystem.Text(), Is.EqualTo(w.GolfSystem.Text()), "and rolls on the same");
+            Assert.That(new World(R, 8, 8, 1, "dirt").GolfSystem.Text(), Is.Empty, "a world without golf hashes as it did");
         }
 
         [Test]
@@ -117,7 +117,7 @@ namespace Chem.Tests
             var hound = w.SpawnRaider("bone-hound", 5, 3, 6);
             var crab = w.SpawnRaider("ash-crab", 10, 6, 9);
             w.Cast("gust-of-wind", 2, 3, 1);
-            Assert.That((hound.X, hound.Y), Is.EqualTo((9, 3)), "a tapped cast: force.push 2 a charge level and one more (World.CastShove), once: not again on the cells it's knocked onto");
+            Assert.That((hound.X, hound.Y), Is.EqualTo((9, 3)), "a tapped cast: force.push 2 a charge level and one more (RaiderSystem.CastShove), once: not again on the cells it's knocked onto");
             w.Cast("mold-earth-heap", 10, 6, 0);
             Assert.That((crab.X, crab.Y, crab.StatusOf(World.ThrownStatus)), Is.EqualTo((10, 6, 2)), "force.throw 2");
             Assert.That(w.At(10, 6).Height, Is.EqualTo(1));

@@ -97,13 +97,13 @@ namespace Chem
         void Wash(Wave wv, SpellDef s)
         {
             var front = WaveFront(wv);
-            foreach (var (cx, cy) in front) LandOnRaider(s, cx, cy);
+            foreach (var (cx, cy) in front) RaiderSystem.LandOnRaider(s, cx, cy);
             foreach (var (cx, cy) in front)
             {
                 Apply(cx, cy, s.Element, wv.Power, wv.Dir, true);
                 if (s.Then != null) Apply(cx, cy, s.Then, wv.Power, wv.Dir, true);
             }
-            foreach (var (cx, cy) in front) Force(s, cx, cy, wv.Dir);
+            foreach (var (cx, cy) in front) RaiderSystem.Force(s, cx, cy, wv.Dir);
         }
 
         // Where it stops it breaks, and its Leaves (mud) lands over the front.
