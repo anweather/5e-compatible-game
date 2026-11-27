@@ -59,9 +59,9 @@ A failure in the sweep goes to whoever landed the change that broke it, found by
 Measured on the Mac 2026-11-10: a full EditMode run was 1987 tests in 42.6 minutes, and 98% of that (1555 tests, 2476 s)
 was `Chemistry.Tests`, the same tests `dotnet test core` runs under .NET (the `core/Chem.*.Tests` projects compile that folder).
 Every Chemistry test method the Editor ran also exists in the `dotnet test core` list, so none is Unity-only. The
-Unity-only tests (`Prototype.Game.Tests`: `Scripts/Editor/Tests`, `Scripts/Playtest/Editor`; and `Prototype.Probes.Tests`: `Scripts/Probes/Editor/Tests`) are 414 tests;
+Unity-only tests (`Prototype.Game.Tests`: `Scripts/Editor/Tests`, `Scripts/Playtest/Editor`; and `Prototype.Probes.Tests`: `Scripts/Probes/Editor/Tests`) are 421 tests;
 with the view plans' 56 (`Prototype.Plans.Tests`: `Scripts/Plans/Tests`, which `core/Prototype.Plans.Tests` also runs under
-.NET, so the Editor's run is their Mono pass) the default group is 470 tests in about 4 minutes. So the Editor's default is
+.NET, so the Editor's run is their Mono pass) the default group is 477 tests in about 4 minutes. So the Editor's default is
 that group, and the Mono pass over the Chemistry tests is asked for:
 
 | Command | Runs | Time (Mac) | When |

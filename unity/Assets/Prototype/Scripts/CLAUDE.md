@@ -10,8 +10,12 @@ things go" table is the recipe for adding a spell, material, prop or item.
   to cells goes through `ChemEffects.Request` as an `EffectCommand` (applied
   at once solo, stamped into the host's next `NetChem` tick batch online).
 - Networking may use the view; the view reaches networking only through its
-  doors (`NetChem`, `NetProp`, `NetItem`, `NetWizard`, `NetCourt`), and solo none of
-  them are used.
+  doors, and solo none of them are used. The grid's peers (solo, host or client;
+  this peer's names; caught up; the intents to send) are the `IPeers` port:
+  ask `Peers.Of(grid)`, never `NetChem` (its adapters are `SoloPeers` and
+  `NetChem`; `PeersTests`). A thing's own network half is still a door by name
+  (`NetProp`, `NetItem`, `NetWizard`, `NetCourt`). Keep a send where it was and
+  in the same order when routing it: the port changes who you ask, not when.
 - Editor code may use everything; nothing may use editor code.
 - Asset Store packs are optional at runtime: Starter Assets parts are
   reached by name and reflection (`WizardRig`, `WizardPuppet`,

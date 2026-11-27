@@ -283,10 +283,15 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
    log.
 3. **Networking may use the view** (`NetChem` drives `ChemGrid`,
    `NetWizard` switches on `SpellCaster`). The view knows networking only
-   as a door it hands a request to when online: `SpellCaster` and
-   `ChemEffects` to `NetChem`, `PhysicsProp` and `Carryable` (and the item
-   behaviours) to their `NetProp` / `NetItem`, `Knockback` to `NetWizard`.
-   Solo none of them is used.
+   as a door it hands a request to when online. The grid's peers are one
+   port, `IPeers` (`Peers.Of(grid)`: solo, host or client, this peer's
+   names, caught up, the intents to send), whose adapters are `SoloPeers`
+   and `NetChem`: `SpellCaster`, `RuleSwitcher`, `ItemHolder`,
+   `ChemEffects`, `DefenseField`, `WizardStrike` and the `ChemGrid` partials
+   ask it, never `NetChem`. Each thing's own network half is still named
+   directly: `PhysicsProp` and `Carryable` (and the item behaviours) hand
+   theirs to `NetProp` / `NetItem`, `Knockback` and the wizard's parts to
+   `NetWizard`. Solo none of them is used.
 4. **Editor code may use everything; nothing may use editor code.**
 5. **Asset Store packs are optional.** Runtime code reaches them by name
    or through prefab references set by a builder, and every missing
@@ -366,7 +371,10 @@ What this clean-up left alone, roughly in order of value.
   `core/Directory.Build.props`.
 - **One assembly for the whole view.** `Scripts/` has an asmdef
   (`Prototype.Game`) but `Net/` and the view share it, so rules 2 to 4
-  above are still kept by review, not by the compiler.
+  above are still kept by review, not by the compiler. The grid's peers go
+  through `IPeers` now; 26 view files still name a `Net/` type (mostly
+  `NetWizard`, `NetProp`, and the chat files that live in `Net/`), which
+  keeps `Net/` from being its own assembly (`docs/design/architecture-review.md` step 7).
 - **The two demo directors** (`DemoDirector`, `NetDemoDirector`) script
   similar tours in two formats (a coroutine and a step table).
 - **The valley builders keep their layout in static fields**
