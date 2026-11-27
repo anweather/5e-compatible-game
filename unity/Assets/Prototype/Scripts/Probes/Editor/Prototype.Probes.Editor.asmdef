@@ -4,6 +4,7 @@
     "references": [
         "Prototype.Probes",
         "Prototype.Game",
+        "Prototype.Net",
         "Prototype.Game.Editor",
         "Chemistry",
         "Chem.Land",

@@ -106,6 +106,18 @@ public class PeersTests
         Assert.IsFalse(OnlineReset.Ask());
     }
 
+    // The point of Prototype.Net: the game never names networking, so it can't (step 7 of the architecture review).
+    [Test]
+    public void TheGameDoesNotReferenceNet()
+    {
+        var game = typeof(ChemGrid).Assembly;
+        var net = typeof(NetChem).Assembly;
+        Assert.AreEqual("Prototype.Game", game.GetName().Name);
+        Assert.AreEqual("Prototype.Net", net.GetName().Name);
+        CollectionAssert.DoesNotContain(System.Array.ConvertAll(game.GetReferencedAssemblies(), a => a.Name), "Prototype.Net");
+        CollectionAssert.Contains(System.Array.ConvertAll(net.GetReferencedAssemblies(), a => a.Name), "Prototype.Game");
+    }
+
     [Test]
     public void OnlineAndClientFollowTheRole()
     {

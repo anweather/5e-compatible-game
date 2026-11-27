@@ -5,6 +5,7 @@
         "Prototype.Probes",
         "Prototype.Probes.Editor",
         "Prototype.Game",
+        "Prototype.Net",
         "Prototype.Game.Editor",
         "Prototype.AssetPacks.Editor",
         "Chemistry",
