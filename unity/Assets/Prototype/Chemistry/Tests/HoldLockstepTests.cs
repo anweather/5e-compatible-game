@@ -29,7 +29,7 @@ namespace Chem.Tests
         }
 
         // What the net checks (NetChem.Checksum): everything but the cells each tick, and the cells a slice a tick (RollingHash).
-        static string Others(World w) => w.SkyHash() + "/" + w.DefenseHash() + "/" + w.CastHash() + "/" + w.DragonHash() + "/" + w.LandHash();
+        static string Others(World w) => w.SkyHash() + "/" + w.DefenseSystem.Hash() + "/" + w.CastHash() + "/" + w.DragonHash() + "/" + w.LandHash();
 
         static string Checksum(World w) => w.CellHash() + "/" + Others(w);
 

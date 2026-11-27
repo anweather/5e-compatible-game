@@ -263,7 +263,7 @@ namespace Chem.Tests
             for (int i = 0; i < 40 && raider.StatusOf(World.DownedStatus) == 0; i++) w.Step();
             int ticks = (int)Math.Floor(R.Sim.Downed.Seconds * R.Sim.TicksPerSecond);
             Assert.That(raider.StatusOf(World.DownedStatus), Is.EqualTo(ticks));
-            Assert.That(w.DefenseText(), Does.Contain($",d{ticks};"));
+            Assert.That(w.DefenseSystem.Text(), Does.Contain($",d{ticks};"));
             int x = raider.X, y = raider.Y;
             Run(w, ticks - 1);
             Assert.That((raider.X, raider.Y), Is.EqualTo((x, y)), "it stays down");

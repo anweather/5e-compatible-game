@@ -78,7 +78,7 @@ namespace Chem
         public List<ChunkSwitch> Chunks { get; }
         /// <summary>An open world's chunks filled from the host game's ground (World.FillChunk, D20), applied before everything, in order.</summary>
         public List<ChunkFill> Fills { get; } = new List<ChunkFill>();
-        /// <summary>Defense commands (the start pedestal: World.Defense.cs), applied after the effects, in order.</summary>
+        /// <summary>Defense commands (the start pedestal: Play/DefenseSystem.cs), applied after the effects, in order.</summary>
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
         /// <summary>Players' combo input (World.Combos.cs), applied after the defense, in order.</summary>
         public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
@@ -144,7 +144,7 @@ namespace Chem
             if (Room.Count > 0) rules = world.RoomRules;
             foreach (var c in Casts) world.Cast(c);
             foreach (var e in Effects) world.ApplyEffect(e);
-            foreach (var d in Defense) world.ApplyDefense(d);
+            foreach (var d in Defense) world.DefenseSystem.Apply(d);
             foreach (var c in Combos) world.ApplyCombo(c);
             foreach (var d in Dragon) world.ApplyDragon(d);
             foreach (var c in Course) world.CourseSystem.Apply(c);

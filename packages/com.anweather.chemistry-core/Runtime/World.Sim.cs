@@ -2,7 +2,7 @@
 // machine systems left out, and of its entities only the defense field's
 // raiders. The order of what remains is the TS order: fire -> water -> gas ->
 // weather -> raiders (World.Raiders.cs) -> the defense's waves
-// (World.Defense.cs) -> charge decay -> wind decay, then the day clock
+// (Play/DefenseSystem.cs) -> charge decay -> wind decay, then the day clock
 // (Hasten Time, World.Time.cs).
 using System;
 using System.Collections.Generic;
@@ -118,7 +118,7 @@ namespace Chem
                 case TickStage.Rest:
                     TickWeather(tickRows);
                     TickRaiders();
-                    TickDefense();
+                    DefenseSystem.Tick();
                     TickHold();
                     TickCombos();
                     TickWhirlwinds();

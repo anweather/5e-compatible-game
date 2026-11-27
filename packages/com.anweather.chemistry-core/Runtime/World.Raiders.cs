@@ -16,6 +16,9 @@ namespace Chem
         readonly List<Raider> raiders = new List<Raider>();
         // Reused by TickRaiders so a tick allocates little.
         readonly List<Raider> raiderScratch = new List<Raider>();
+        // The raiders and the scratch, for the modes' systems (Play/), which spawn, step and clear them.
+        internal List<Raider> RaiderList => raiders;
+        internal List<Raider> RaiderScratch => raiderScratch;
         readonly List<string> statusScratch = new List<string>();
 
         /// <summary>The raiders on the board, oldest first (the sandbox's entities, for the defense field).</summary>
@@ -166,7 +169,7 @@ namespace Chem
         }
 
         /// <summary>Takes every raider off the board (a lost defense, a restart), without a word.</summary>
-        void ClearRaiders()
+        internal void ClearRaiders()
         {
             foreach (var r in raiders) r.Alive = false;
             raiders.Clear();
@@ -271,6 +274,9 @@ namespace Chem
 
         /// <summary>The status counting the casts that have knocked a raider back (CastShove); it never counts down.</summary>
         public const string ShovedStatus = "shoved";
+
+        /// <summary>The status of a raider thrown off its feet (a spell's force.throw: a Geyser's jet, a Rolling Boulder): it can't walk until it lands.</summary>
+        public const string ThrownStatus = "thrown";
         // A cast's shove: force.push cells for each charge level and one more (a tapped Gust 4, held to the most 8); a raider
         // that's been shoved goes half as far the second time and braces once it's had sim shove.most (diminishing returns,
         // D16). It staggers shove.staggerTicks before it walks on. A drop of fall.cliffSteps or more in one cell takes it over
@@ -325,7 +331,7 @@ namespace Chem
         /// A creature stepping onto a cover that hurts (thorns) takes its damage, and one that slows (or
         /// ground that does: mud) is snagged for the rest of the step's time (thorns in the TS).
         /// </summary>
-        void Thorns(Raider r, Cell c)
+        internal void Thorns(Raider r, Cell c)
         {
             if (!Rules.Entity(r.Kind).Creature) return;
             var cv = CoverOf(c);

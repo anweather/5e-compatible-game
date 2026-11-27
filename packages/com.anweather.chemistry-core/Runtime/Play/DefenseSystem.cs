@@ -1,0 +1,339 @@
+// The defense field's waves (docs/BACKLOG.md 17), the defense field's system (docs/design/architecture-review.md
+// step 9, D9). Port of sandbox/src/defense.ts, line for line. A DefenseCommand starts them; each tick (after the
+// raiders' upkeep, World.Raiders.cs) the next raider of the wave comes through the gate on its schedule, every raider
+// takes a step toward the flag along the cheapest way there, and a raider reaching the flag costs a life. The way is
+// a cost field over the squares round the field (a Dijkstra search from the flag in the world's WayField, worked out
+// afresh each tick, so a wall or a trench reroutes them at once): open ground costs 1, rough going (deep water, a
+// climb or drop of more than a step) more and slower, a raised wall a lot (they batter it down a step at a time if
+// there is no better way), and blocking terrain can't be crossed. Ties go N, E, S, W. All whole numbers, so every
+// machine agrees. The world owns one (World.DefenseSystem) and ticks it after the raiders. It reads the cells and the
+// rules; it writes its DefenseState, the world's raiders (spawned, stepped, cleared), a raised wall it batters, and
+// the log.
+using System;
+using System.Globalization;
+using System.Text;
+using Newtonsoft.Json.Linq;
+
+namespace Chem
+{
+    /// <summary>The defense field's waves (World.DefenseSystem).</summary>
+    public sealed class DefenseSystem
+    {
+        const int Unreached = WayField.Unreached;
+
+        readonly World world;
+        // The cost field's scratch, the world's (shared with the Hold's ways).
+        readonly WayField ways;
+
+        internal DefenseSystem(World world)
+        {
+            this.world = world;
+            ways = world.Ways;
+        }
+
+        /// <summary>The defense field's waves, or null before anyone started them.</summary>
+        public DefenseState State { get; private set; }
+
+        /// <summary>Raiders still to beat in the wave under way: on the board and still to come.</summary>
+        public int Left => State == null ? 0 : world.RaiderList.Count + State.ToSpawn;
+
+        /// <summary>How many raiders a wave brings: First, and Growth more for each wave after.</summary>
+        public static int WaveSize(DefenseParams p, int wave) => p.First + p.Growth * (wave - 1);
+
+        /// <summary>
+        /// Runs a defense command (startDefense in the TS): Start begins wave 1 with full lives (again,
+        /// after a win or a loss), unless waves are already coming. Between ticks, like a cast.
+        /// </summary>
+        public void Apply(DefenseCommand command)
+        {
+            world.FinishTick(); // commands land between whole ticks (StepSome)
+            if (command.Kind != DefenseKind.Start) return;
+            if (State != null && State.Phase == DefensePhase.Running)
+            {
+                world.AddLog("The raiders are already coming");
+                return;
+            }
+            if (!world.InBounds(command.GateX, command.GateY) || !world.InBounds(command.FlagX, command.FlagY)) return;
+            var p = world.Rules.Sim.Defense;
+            int m = Math.Max(0, p.Margin);
+            world.ClearRaiders();
+            State = new DefenseState
+            {
+                Phase = DefensePhase.Running,
+                Wave = 1,
+                Lives = p.Lives,
+                ToSpawn = WaveSize(p, 1),
+                NextSpawn = world.Tick + p.Warmup,
+                GateX = command.GateX,
+                GateY = command.GateY,
+                FlagX = command.FlagX,
+                FlagY = command.FlagY,
+                X0 = Math.Max(0, Math.Min(command.GateX, command.FlagX) - m),
+                X1 = Math.Min(world.W - 1, Math.Max(command.GateX, command.FlagX) + m),
+                Y0 = Math.Max(0, Math.Min(command.GateY, command.FlagY) - m),
+                Y1 = Math.Min(world.H - 1, Math.Max(command.GateY, command.FlagY) + m),
+            };
+            world.AddLog($"Wave 1 of {p.Waves} is coming! Hold the flag", LogKind.Notable);
+        }
+
+        /// <summary>One tick of the waves: the next raider through the gate, every raider's step, the next wave.</summary>
+        internal void Tick()
+        {
+            var d = State;
+            if (d == null || d.Phase != DefensePhase.Running) return;
+            var p = world.Rules.Sim.Defense;
+            SpawnNext(d, p);
+            March(d, p);
+            if (d.Phase == DefensePhase.Running) NextWave(d, p);
+        }
+
+        void SpawnNext(DefenseState d, DefenseParams p)
+        {
+            if (d.ToSpawn <= 0 || world.Tick < d.NextSpawn) return;
+            string kind = p.Kinds.Count > 0 ? p.Kinds[d.Spawned % p.Kinds.Count] : null;
+            var def = world.Rules.Entity(kind);
+            if (def == null)
+            {
+                d.ToSpawn = 0;
+                return;
+            }
+            var r = world.SpawnRaider(kind, d.GateX, d.GateY, def.Hp + p.HpPerWave * (d.Wave - 1));
+            if (r == null) return; // the gate is crowded: next tick
+            r.Wait = PaceOf(def) - 1;
+            d.ToSpawn--;
+            d.Spawned++;
+            d.NextSpawn = world.Tick + p.SpawnEvery;
+        }
+
+        internal static int PaceOf(EntityDef def) => def.Raider != null ? def.Raider.TicksPerSquare : 4;
+
+        void March(DefenseState d, DefenseParams p)
+        {
+            if (world.RaiderList.Count == 0) return;
+            CostField(d, p);
+            world.RaiderScratch.Clear();
+            world.RaiderScratch.AddRange(world.RaiderList);
+            foreach (var r in world.RaiderScratch)
+            {
+                if (!r.Alive) continue;
+                if (r.Wait > 0)
+                {
+                    r.Wait--;
+                    continue;
+                }
+                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0 || r.StatusOf(World.ThrownStatus) > 0 || r.StatusOf(World.DownedStatus) > 0) continue;
+                Advance(d, p, r);
+                if (d.Phase != DefensePhase.Running) return;
+            }
+        }
+
+        // One raider's step: to the neighbour with the cheapest way on (battering it if it's a wall).
+        void Advance(DefenseState d, DefenseParams p, Raider r)
+        {
+            int dir = BestStep(d, p, r.X, r.Y);
+            if (dir < 0) return;
+            int nx = r.X + World.DirX(dir), ny = r.Y + World.DirY(dir);
+            var to = world.At(nx, ny);
+            var def = world.Rules.Entity(r.Kind);
+            if (world.IsRaisedWall(to))
+            {
+                world.Reshape(nx, ny, -1);
+                world.LogOnce("batter#" + r.Id.ToString(CultureInfo.InvariantCulture), $"The {def.Name.ToLowerInvariant()} batters at the wall");
+                r.Wait = p.BatterTicks;
+                return;
+            }
+            if (world.RaiderAt(nx, ny) != null) return; // wait for the one ahead
+            bool rough = Rough(p, world.At(r.X, r.Y), to);
+            r.X = world.FoldX(nx);
+            r.Y = world.FoldY(ny);
+            r.Wait = PaceOf(def) - 1 + (rough ? p.RoughTicks : 0);
+            world.Thorns(r, to);
+            if (r.Alive && r.X == d.FlagX && r.Y == d.FlagY) ReachFlag(d, r, def);
+        }
+
+        void ReachFlag(DefenseState d, Raider r, EntityDef def)
+        {
+            world.RaiderList.Remove(r);
+            r.Alive = false;
+            d.Lives--;
+            world.AddLog($"A {def.Name.ToLowerInvariant()} reaches the flag! {Math.Max(0, d.Lives)} lives left", LogKind.Hurt);
+            if (d.Lives > 0) return;
+            d.Phase = DefensePhase.Lost;
+            d.ToSpawn = 0;
+            world.ClearRaiders();
+            world.AddLog("The flag falls: the raiders win this time", LogKind.Notable);
+        }
+
+        void NextWave(DefenseState d, DefenseParams p)
+        {
+            if (d.ToSpawn > 0 || world.RaiderList.Count > 0) return;
+            if (d.Wave >= p.Waves)
+            {
+                d.Phase = DefensePhase.Won;
+                world.AddLog($"All {p.Waves} waves beaten: the flag stands!", LogKind.Notable);
+                return;
+            }
+            d.Wave++;
+            d.ToSpawn = WaveSize(p, d.Wave);
+            d.NextSpawn = world.Tick + p.BetweenWaves;
+            world.AddLog($"Wave {d.Wave} of {p.Waves} is coming!", LogKind.Notable);
+        }
+
+        // ---------- the way to the flag ----------
+
+        /// <summary>
+        /// The cost of stepping from one square onto a neighbour: -1 if it can't be done (blocking
+        /// terrain), WallCost onto a raised wall (to batter), RoughCost into deep water or up or down
+        /// more than a step, else 1.
+        /// </summary>
+        int StepCost(DefenseParams p, Cell from, Cell to)
+        {
+            if (to == null) return -1;
+            if (world.HasTag(to, "blocking")) return -1;
+            if (world.IsRaisedWall(to)) return p.WallCost;
+            return Rough(p, from, to) ? p.RoughCost : 1;
+        }
+
+        internal bool Rough(DefenseParams p, Cell from, Cell to) =>
+            world.DrownDepth(to) >= p.DeepWater || Math.Abs(world.ElevationUnits(to) - world.ElevationUnits(from)) > world.Rules.Sim.WaterUnitsPerStep;
+
+        /// <summary>The cheapest way to the flag from every square of the field (Unreached where there is none).</summary>
+        void CostField(DefenseState d, DefenseParams p)
+        {
+            int w = d.X1 - d.X0 + 1, n = w * (d.Y1 - d.Y0 + 1);
+            if (ways.Cost.Length != n) ways.Cost = new int[n];
+            for (int i = 0; i < n; i++) ways.Cost[i] = Unreached;
+            ways.Heap.Clear();
+            int start = WayField.Index(d, d.FlagX, d.FlagY);
+            ways.Cost[start] = 0;
+            ways.Push(start, n);
+            while (ways.Heap.Count > 0)
+            {
+                long top = ways.Pop();
+                int i = (int)(top % n), cost = (int)(top / n);
+                if (cost <= ways.Cost[i]) Relax(d, p, d.X0 + i % w, d.Y0 + i / w, cost, n);
+            }
+        }
+
+        // Every neighbour of a settled square gets the cheaper of its cost so far and the way through here.
+        void Relax(DefenseState d, DefenseParams p, int x, int y, int cost, int n)
+        {
+            var here = world.At(x, y);
+            for (int dir = 0; dir < 4; dir++)
+            {
+                int nx = x + World.DirX(dir), ny = y + World.DirY(dir);
+                if (!WayField.InField(d, nx, ny)) continue;
+                // What it costs to step from the neighbour onto this square.
+                int step = StepCost(p, world.At(nx, ny), here);
+                if (step < 0) continue;
+                int ni = WayField.Index(d, nx, ny), total = cost + step;
+                if (total >= ways.Cost[ni]) continue;
+                ways.Cost[ni] = total;
+                ways.Push(ni, n);
+            }
+        }
+
+        /// <summary>The way (0..3) a raider at (x, y) steps toward the flag, or -1 to stay (no way, or it's there).</summary>
+        int BestStep(DefenseState d, DefenseParams p, int x, int y)
+        {
+            if (!WayField.InField(d, x, y) || ways.Cost[WayField.Index(d, x, y)] == Unreached) return -1;
+            var here = world.At(x, y);
+            int best = -1;
+            long bestCost = long.MaxValue;
+            for (int dir = 0; dir < 4; dir++)
+            {
+                int nx = x + World.DirX(dir), ny = y + World.DirY(dir);
+                if (!WayField.InField(d, nx, ny)) continue;
+                int on = ways.Cost[WayField.Index(d, nx, ny)];
+                if (on == Unreached) continue;
+                int step = StepCost(p, here, world.At(nx, ny));
+                if (step < 0 || (long)on + step >= bestCost) continue;
+                bestCost = (long)on + step;
+                best = dir;
+            }
+            return best;
+        }
+
+        /// <summary>The cheapest way's cost from a square to the flag, as last worked out, or -1 off the field or with no way.</summary>
+        public int PathCostAt(int x, int y)
+        {
+            var d = State;
+            if (d == null || !WayField.InField(d, x, y) || ways.Cost.Length != (d.X1 - d.X0 + 1) * (d.Y1 - d.Y0 + 1)) return -1;
+            int c = ways.Cost[WayField.Index(d, x, y)];
+            return c == Unreached ? -1 : c;
+        }
+
+        // ---------- hashes ----------
+
+        /// <summary>
+        /// A fingerprint (FNV-1a) of the defense: the waves' state and every raider. Shared with the
+        /// sandbox's golden (defenseText in sandbox/src/defense.ts) and part of the netcode checksum.
+        /// </summary>
+        public string Hash() => Fnv1a.Hash(Text());
+
+        /// <summary>
+        /// The defense as text: "phase/wave/lives/toSpawn/nextSpawn/spawned|" and then each raider as
+        /// "id,kind,x,y,hp,wait,burning,wet,frozen,snagged;", or "-" before any.
+        /// </summary>
+        public string Text()
+        {
+            var d = State;
+            if (d == null) return "-";
+            var inv = CultureInfo.InvariantCulture;
+            var sb = new StringBuilder();
+            sb.Append(((int)d.Phase).ToString(inv)).Append('/').Append(d.Wave.ToString(inv)).Append('/').Append(d.Lives.ToString(inv)).Append('/')
+              .Append(d.ToSpawn.ToString(inv)).Append('/').Append(d.NextSpawn.ToString(inv)).Append('/').Append(d.Spawned.ToString(inv)).Append('|');
+            foreach (var r in world.RaiderList)
+            {
+                sb.Append(r.Id.ToString(inv)).Append(',').Append(r.Kind).Append(',').Append(r.X.ToString(inv)).Append(',').Append(r.Y.ToString(inv)).Append(',')
+                  .Append(r.Hp.ToString(inv)).Append(',').Append(r.Wait.ToString(inv));
+                foreach (var s in HashedStatuses) sb.Append(',').Append(r.StatusOf(s).ToString(inv));
+                // Thrown (a Geyser's jet) joins only while it lasts, so older defenses hash as they did.
+                if (r.StatusOf(World.ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(World.ThrownStatus).ToString(inv));
+                // Downed by the dragon's breath, the same.
+                if (r.StatusOf(World.DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(World.DownedStatus).ToString(inv));
+                // Shoved by casts (World.CastShove), the same.
+                if (r.StatusOf(World.ShovedStatus) > 0) sb.Append(",s").Append(r.StatusOf(World.ShovedStatus).ToString(inv));
+                sb.Append(';');
+            }
+            return sb.ToString();
+        }
+
+        static readonly string[] HashedStatuses = { "burning", "wet", "frozen", "snagged" };
+
+        // ---------- the save ----------
+
+        // The waves into a save ("defense"), null before anyone started them; the raiders are the world's.
+        internal JToken Save() => State == null ? JValue.CreateNull() : new JObject
+        {
+            ["phase"] = (int)State.Phase,
+            ["at"] = new JArray(State.Wave, State.Lives, State.ToSpawn, State.NextSpawn, State.Spawned),
+            ["gate"] = new JArray(State.GateX, State.GateY, State.FlagX, State.FlagY),
+            ["field"] = new JArray(State.X0, State.Y0, State.X1, State.Y1),
+        };
+
+        internal void Load(JObject d)
+        {
+            var at = d["at"];
+            var gate = d["gate"];
+            var field = d["field"];
+            State = new DefenseState
+            {
+                Phase = (DefensePhase)(int)d["phase"],
+                Wave = (int)at[0],
+                Lives = (int)at[1],
+                ToSpawn = (int)at[2],
+                NextSpawn = (int)at[3],
+                Spawned = (int)at[4],
+                GateX = (int)gate[0],
+                GateY = (int)gate[1],
+                FlagX = (int)gate[2],
+                FlagY = (int)gate[3],
+                X0 = (int)field[0],
+                Y0 = (int)field[1],
+                X1 = (int)field[2],
+                Y1 = (int)field[3],
+            };
+        }
+    }
+}

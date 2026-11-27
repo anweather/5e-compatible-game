@@ -82,7 +82,7 @@ namespace Chem
                 ["wind"] = Wind.HasValue ? new JArray(Wind.Value.dir, Wind.Value.ticks) : null,
                 ["meteors"] = new JArray(falling.Select(m => new JArray(m.x, m.y, m.lands))),
                 ["nextEntityId"] = NextEntityId,
-                ["defense"] = SaveDefense(),
+                ["defense"] = DefenseSystem.Save(),
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
             if (WrapX) save["wrap"] = WrapY ? "torus" : "ew"; // only a world that wraps says so: other saves are as they were
@@ -173,14 +173,6 @@ namespace Chem
         }
 
         // ---------- the world's state between ticks ----------
-
-        JToken SaveDefense() => Defense == null ? JValue.CreateNull() : new JObject
-        {
-            ["phase"] = (int)Defense.Phase,
-            ["at"] = new JArray(Defense.Wave, Defense.Lives, Defense.ToSpawn, Defense.NextSpawn, Defense.Spawned),
-            ["gate"] = new JArray(Defense.GateX, Defense.GateY, Defense.FlagX, Defense.FlagY),
-            ["field"] = new JArray(Defense.X0, Defense.Y0, Defense.X1, Defense.Y1),
-        };
 
         static JObject SaveRaider(Raider r)
         {
@@ -295,29 +287,7 @@ namespace Chem
             LoadHold(s["hold"]);
             LoadHands(s["hands"]);
             LoadProgress(s["progress"]);
-            if (s["defense"] is JObject d)
-            {
-                var at = d["at"];
-                var gate = d["gate"];
-                var field = d["field"];
-                Defense = new DefenseState
-                {
-                    Phase = (DefensePhase)(int)d["phase"],
-                    Wave = (int)at[0],
-                    Lives = (int)at[1],
-                    ToSpawn = (int)at[2],
-                    NextSpawn = (int)at[3],
-                    Spawned = (int)at[4],
-                    GateX = (int)gate[0],
-                    GateY = (int)gate[1],
-                    FlagX = (int)gate[2],
-                    FlagY = (int)gate[3],
-                    X0 = (int)field[0],
-                    Y0 = (int)field[1],
-                    X1 = (int)field[2],
-                    Y1 = (int)field[3],
-                };
-            }
+            if (s["defense"] is JObject d) DefenseSystem.Load(d);
             foreach (var a in s["casts"] ?? new JArray()) LoadCast(a);
             foreach (var o in s["raiders"] ?? new JArray())
             {

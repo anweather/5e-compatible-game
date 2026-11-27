@@ -2,7 +2,7 @@
 // heart, batter what's in their way and hurt wizards in reach; the run ends when the keep falls, and the score is the wave
 // reached. A wizard standing on the plate starts a run; every peer sees that stand at the same tick (a Stand command).
 // Raiders are the defense field's, so spells reach them as they do there; their way is worked out here, not in
-// World.Defense.cs, since a castle's walls can be battered and a field's can't. A wizard on a blocking cell is on the walls:
+// Play/DefenseSystem.cs, since a castle's walls can be battered and a field's can't. A wizard on a blocking cell is on the walls:
 // no raider reaches it. All whole numbers and the seeded generator, and "" in the checksum until there's been a run.
 using System;
 using System.Collections.Generic;
@@ -135,7 +135,7 @@ namespace Chem
             var p = Rules.Sim.Hold;
             bool on = stands.Values.Any(s => !s.Down && s.X == HoldSite.Plate.x && s.Y == HoldSite.Plate.y);
             holdPlate = on ? holdPlate + 1 : 0;
-            if (holdPlate < p.PlateTicks || (Defense != null && Defense.Phase == DefensePhase.Running)) return;
+            if (holdPlate < p.PlateTicks || (DefenseSystem.State != null && DefenseSystem.State.Phase == DefensePhase.Running)) return;
             holdPlate = 0;
             ClearRaiders();
             ReadStands();
@@ -226,7 +226,7 @@ namespace Chem
             int hp = def.Hp + (p.HpPerWave + (boss ? p.BossHpPerWave : 0)) * (h.Wave - 1);
             var r = SpawnRaider(kind, x, y, boss ? hp * ByPeers(p.BossPeerHealth, h.Peers) / 100 : hp);
             if (r == null) return; // someone stands there: next tick
-            r.Wait = PaceOf(def) - 1;
+            r.Wait = DefenseSystem.PaceOf(def) - 1;
             h.ToSpawn--;
             h.Spawned++;
             h.InWave++;
@@ -362,7 +362,7 @@ namespace Chem
         {
             r.X = FoldX(r.X + Math.Sign(DeltaX(r.X, HoldSite.Heart.x)));
             r.Y = FoldY(r.Y + Math.Sign(DeltaY(r.Y, HoldSite.Heart.y)));
-            r.Wait = PaceOf(def) - 1;
+            r.Wait = DefenseSystem.PaceOf(def) - 1;
         }
 
         // What an adjective keeps up: a status it never loses. And a flyer that a landing status has reached is down for good.
@@ -438,10 +438,10 @@ namespace Chem
             }
             var ahead = RaiderAt(nx, ny);
             if (ahead != null && !Flying(ahead) && !Swap(p, r, ahead)) return; // wait for the one ahead
-            bool rough = Rough(Rules.Sim.Defense, At(r.X, r.Y), to);
+            bool rough = DefenseSystem.Rough(Rules.Sim.Defense, At(r.X, r.Y), to);
             r.X = FoldX(nx);
             r.Y = FoldY(ny);
-            r.Wait = PaceOf(def) - 1 + (rough ? Rules.Sim.Defense.RoughTicks : 0);
+            r.Wait = DefenseSystem.PaceOf(def) - 1 + (rough ? Rules.Sim.Defense.RoughTicks : 0);
             Thorns(r, to);
             if (r.Alive && Rules.AdjectiveOf(r.Kind)?.Lights == true) Apply(r.X, r.Y, "fire", 1, -1, false);
         }
@@ -528,7 +528,7 @@ namespace Chem
             if (HasTag(to, "blocking")) return -1;
             var d = Rules.Sim.Defense;
             if (IsRaisedWall(to)) return d.WallCost;
-            int cost = Rough(d, from, to) ? d.RoughCost : 1;
+            int cost = DefenseSystem.Rough(d, from, to) ? d.RoughCost : 1;
             return road && !holdRoad.Contains(toIdx) ? cost * p.OffRoadCost : cost;
         }
 
@@ -542,38 +542,38 @@ namespace Chem
         void WorkOutWays(HoldParams p)
         {
             HoldCostField(p, true);
-            roadWay = (int[])pathCost.Clone();
+            roadWay = (int[])Ways.Cost.Clone();
             HoldCostField(p, false);
-            straightWay = (int[])pathCost.Clone();
+            straightWay = (int[])Ways.Cost.Clone();
         }
 
         void HoldCostField(HoldParams p, bool road)
         {
             var d = holdField;
             int w = d.X1 - d.X0 + 1, n = w * (d.Y1 - d.Y0 + 1);
-            if (pathCost.Length != n) pathCost = new int[n];
-            for (int i = 0; i < n; i++) pathCost[i] = Unreached;
-            pathHeap.Clear();
-            int start = FieldIndex(d, d.FlagX, d.FlagY);
-            pathCost[start] = 0;
-            HeapPush(start, n);
-            while (pathHeap.Count > 0)
+            if (Ways.Cost.Length != n) Ways.Cost = new int[n];
+            for (int i = 0; i < n; i++) Ways.Cost[i] = WayField.Unreached;
+            Ways.Heap.Clear();
+            int start = WayField.Index(d, d.FlagX, d.FlagY);
+            Ways.Cost[start] = 0;
+            Ways.Push(start, n);
+            while (Ways.Heap.Count > 0)
             {
-                long top = HeapPop();
+                long top = Ways.Pop();
                 int i = (int)(top % n), cost = (int)(top / n);
-                if (cost > pathCost[i]) continue;
+                if (cost > Ways.Cost[i]) continue;
                 int x = d.X0 + i % w, y = d.Y0 + i / w;
                 var here = At(x, y);
                 for (int dir = 0; dir < 4; dir++)
                 {
                     int nx = x + DirX(dir), ny = y + DirY(dir);
-                    if (!InField(d, nx, ny)) continue;
+                    if (!WayField.InField(d, nx, ny)) continue;
                     int step = HoldStepCost(p, At(nx, ny), here, Idx(x, y), road);
                     if (step < 0) continue;
-                    int ni = FieldIndex(d, nx, ny), total = cost + step;
-                    if (total >= pathCost[ni]) continue;
-                    pathCost[ni] = total;
-                    HeapPush(ni, n);
+                    int ni = WayField.Index(d, nx, ny), total = cost + step;
+                    if (total >= Ways.Cost[ni]) continue;
+                    Ways.Cost[ni] = total;
+                    Ways.Push(ni, n);
                 }
             }
         }
@@ -581,16 +581,16 @@ namespace Chem
         int HoldStep(HoldParams p, int x, int y, bool road)
         {
             var d = holdField;
-            if (!InField(d, x, y)) return -1;
+            if (!WayField.InField(d, x, y)) return -1;
             var here = At(x, y);
             int best = -1;
             long bestCost = long.MaxValue;
             for (int dir = 0; dir < 4; dir++)
             {
                 int nx = x + DirX(dir), ny = y + DirY(dir);
-                if (!InField(d, nx, ny)) continue;
-                int on = (road ? roadWay : straightWay)[FieldIndex(d, nx, ny)];
-                if (on == Unreached) continue;
+                if (!WayField.InField(d, nx, ny)) continue;
+                int on = (road ? roadWay : straightWay)[WayField.Index(d, nx, ny)];
+                if (on == WayField.Unreached) continue;
                 int step = HoldStepCost(p, here, At(nx, ny), Idx(nx, ny), road);
                 if (step < 0 || (long)on + step >= bestCost) continue;
                 bestCost = (long)on + step;
