@@ -139,7 +139,7 @@ public partial class ChemGrid
         var way = WaveStep(wave);
         foreach (var rider in Forces.OnCells(this, frontCells, null, p => p is PhysicsProp prop && hosting && Light(prop, wave.MaxMass)))
             ((PhysicsProp)rider).Ride(way * (MoverSpeed(wave.Every) * WaveStride(wave)));
-        Forces.Along(this, frontCells, way, spell.ForcePush * Forces.ImpulsePerPush * WaveShove, null, p => p is Knockback k && k.gameObject == wizard);
+        Forces.Along(this, frontCells, way, spell.ForcePush * Forces.ImpulsePerPush * WaveShove, null, p => p is WizardBody k && k.gameObject == wizard);
     }
 
     bool Light(PhysicsProp prop, int most) => World.Rules.Entities.TryGetValue(prop.kind, out var def) && def.Mass <= most;

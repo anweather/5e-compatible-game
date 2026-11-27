@@ -17,7 +17,7 @@ using UnityEngine;
 // a client's copy is a puppet that rides in whichever hand holds it and
 // otherwise follows the host's.
 [RequireComponent(typeof(PhysicsProp), typeof(Rigidbody))]
-public class Carryable : MonoBehaviour
+public class Carryable : ItemFace
 {
     static readonly Registry<Carryable> registry = new();
 
@@ -124,7 +124,9 @@ public class Carryable : MonoBehaviour
         body.angularVelocity = Random.insideUnitSphere * 2f;
     }
 
-    public void Lost()
+    public override void PairWith(ItemFace other) => partner = (Carryable)other;
+
+    public override void Lost()
     {
         if (Holder == null) return;
         Holder.Forget(this);

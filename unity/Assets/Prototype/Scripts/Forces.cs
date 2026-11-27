@@ -40,10 +40,7 @@ public static class Forces
         var targets = Around(center, reach, except, only);
         foreach (var target in targets)
         {
-            if (target is Knockback wizard)
-            {
-                if (wizard.TryGetComponent<SurfaceEffects>(out var feet)) feet.Toss(wizardSpeed);
-            }
+            if (target is WizardBody wizard) wizard.Toss(wizardSpeed);
             else target.Push(Vector3.up * impulse);
         }
         return targets.Count;
@@ -52,7 +49,7 @@ public static class Forces
     static List<IPushable> Around(Vector3 center, float reach, Transform except, System.Predicate<IPushable> only)
     {
         var targets = InSphere<IPushable>(center, reach, except);
-        foreach (var wizard in Knockback.All)
+        foreach (var wizard in WizardBody.All)
         {
             if (targets.Contains(wizard) || (except != null && wizard.transform.IsChildOf(except))) continue;
             if ((wizard.transform.position - center).sqrMagnitude <= reach * reach) targets.Add(wizard);
