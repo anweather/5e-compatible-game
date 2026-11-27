@@ -16,6 +16,7 @@
         "Prototype.Player",
         "Prototype.Fauna",
         "Prototype.Modes",
+        "Prototype.Chat",
         "Chemistry",
         "Chem.Land",
         "Chemistry.Mcp",

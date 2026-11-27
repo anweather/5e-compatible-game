@@ -15,6 +15,7 @@
         "Prototype.Player",
         "Prototype.Fauna",
         "Prototype.Modes",
+        "Prototype.Chat",
         "Prototype.Analyzers",
         "Unity.InputSystem",
         "Unity.Mathematics",
