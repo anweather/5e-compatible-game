@@ -37,13 +37,8 @@
       "packages/com.anweather.chemistry-core/Runtime/Defense*",
       "packages/com.anweather.chemistry-core/Runtime/Hands*",
       "packages/com.anweather.chemistry-core/Runtime/WorldPuzzles*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Hold*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Golf*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Course*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Defense*",
       "packages/com.anweather.chemistry-core/Runtime/World.Dragon*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Hands*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Raiders*"
+      "packages/com.anweather.chemistry-core/Runtime/World.Hands*"
     ] },
     { "name": "runtime-lockstep", "after": ["Chem.Lockstep.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Lockstep*",

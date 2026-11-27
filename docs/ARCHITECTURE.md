@@ -83,6 +83,15 @@ keeps what stays in the game: `Mcp/` (the Chemistry.Mcp assembly) and `Tests/`.
   explode or spill, a cell and an entity or item id), applied by
   `world.ApplyEffect`: what a physics prop hands the chemistry, solo at once
   and online stamped into a tick batch like a cast.
+- **The game modes are systems** in `Runtime/Play/` (D9, `docs/design/architecture-review.md` step 9), each a class
+  over the world's data that the world owns (`World.Play.cs`) and ticks where its mode always ran: `RaiderSystem`
+  (the raiders, their elements, hurts, shoves and upkeep), `DefenseSystem` (the defense field's waves, on the cost
+  field in `WayField`, which the Hold's ways share), `HoldSystem` (the Hold's runs; a run's data in `HoldRun.cs`),
+  `GolfSystem` (spell golf; `Golf.cs`), `CourseSystem` (the Gauntlet's zones and runs; `Course.cs`) and
+  `DragonSystem` (the dragon's flight). What a dragon's pass puts back, the starting state, the audit and a chunk's
+  reset, stays in `World.Dragon.cs`. The members code outside the core calls on the world (`world.Hold`,
+  `world.ApplyDefense`, `world.CaughtByBreath`...) are thin forwarders in `World.Play.cs`; core code and the tests
+  call the system (`world.HoldSystem.Text()`).
 - `Items.cs` reads `rules/items.json`, things to carry (glowing balls, a
   bullseye lantern, a spyglass, sending stones, a Dancing Lights mote): their
   light in SRD feet, their use, and when one breaks (`ItemDef.BreaksAt`).
