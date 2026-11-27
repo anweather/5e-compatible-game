@@ -13,6 +13,7 @@
         "Prototype.World",
         "Prototype.Land",
         "Prototype.Village",
+        "Prototype.Player",
         "Chemistry",
         "Chem.Land",
         "Chemistry.Mcp",
