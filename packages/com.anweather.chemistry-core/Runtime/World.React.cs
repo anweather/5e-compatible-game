@@ -529,7 +529,7 @@ namespace Chem
         }
 
         /// <summary>A break effect: the terrain becomes its breaksTo.</summary>
-        bool BreakWall(int x, int y, Cell c)
+        internal bool BreakWall(int x, int y, Cell c)
         {
             var to = TerrainOf(c).BreaksTo;
             if (to == null) return false;
@@ -539,7 +539,7 @@ namespace Chem
         }
 
         /// <summary>A setTerrain effect: the cell becomes that terrain, its water pushed out.</summary>
-        bool SetTerrainTo(int x, int y, Cell c, string terrain)
+        internal bool SetTerrainTo(int x, int y, Cell c, string terrain)
         {
             if (c.T == terrain) return false;
             DisplaceWater(x, y);

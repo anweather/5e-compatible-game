@@ -100,7 +100,7 @@ namespace Chem
             return coming;
         }
 
-        PlayerHands OwnHands(string player)
+        internal PlayerHands OwnHands(string player)
         {
             var h = HandsOf(player);
             hands[player] = h;
@@ -267,7 +267,7 @@ namespace Chem
             h.Charge[hand] = 1;
         }
 
-        static void DropHands(PlayerHands h)
+        internal static void DropHands(PlayerHands h)
         {
             DropHand(h, HandsDef.Left);
             DropHand(h, HandsDef.Right);

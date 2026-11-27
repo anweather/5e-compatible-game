@@ -87,7 +87,7 @@ namespace Chem
             };
             if (WrapX) save["wrap"] = WrapY ? "torus" : "ew"; // only a world that wraps says so: other saves are as they were
             if (IsOpen) save["open"] = SaveFills(); // an open world's grounds, the chunks' sources
-            if (Hold != null || holdPlate != 0) save["hold"] = SaveHold();
+            if (Hold != null || HoldSystem.Plate != 0) save["hold"] = HoldSystem.Save();
             if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
@@ -284,7 +284,7 @@ namespace Chem
             LoadTriggers(s);
             LoadStands(s);
             NextEntityId = (int)s["nextEntityId"];
-            LoadHold(s["hold"]);
+            HoldSystem.Load(s["hold"]);
             LoadHands(s["hands"]);
             LoadProgress(s["progress"]);
             if (s["defense"] is JObject d) DefenseSystem.Load(d);

@@ -119,7 +119,7 @@ namespace Chem
                     TickWeather(tickRows);
                     TickRaiders();
                     DefenseSystem.Tick();
-                    TickHold();
+                    HoldSystem.Tick();
                     TickCombos();
                     TickWhirlwinds();
                     TickWaves();

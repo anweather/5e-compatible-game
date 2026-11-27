@@ -83,7 +83,7 @@ namespace Chem.Tests
             w.Hold.Health = int.MaxValue / 2;
             w.Hold.Wave = 2;
             w.Hold.InWave = 0;
-            w.Hold.ToSpawn = World.HoldWaveSize(R.Sim.Hold, 2);
+            w.Hold.ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, 2);
             var seen = new HashSet<int>();
             var from = new List<(int x, int y)>();
             for (int i = 0; i < MostTicks && w.Hold.ToSpawn > 0; i++)

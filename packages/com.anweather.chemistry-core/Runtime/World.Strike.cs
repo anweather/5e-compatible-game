@@ -116,6 +116,8 @@ namespace Chem
 
         readonly SortedDictionary<string, WizardStand> stands = new SortedDictionary<string, WizardStand>(StringComparer.Ordinal);
         readonly List<StrikeHit> strikeHits = new List<StrikeHit>();
+        // The blows struck this tick, for the modes' systems (Play/): a Hold raider's.
+        internal List<StrikeHit> StrikeHits => strikeHits;
 
         /// <summary>The wizards the core knows of, by player.</summary>
         public IReadOnlyDictionary<string, WizardStand> Stands => stands;

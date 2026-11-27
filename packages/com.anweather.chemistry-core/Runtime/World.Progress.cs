@@ -80,7 +80,7 @@ namespace Chem
 
         // As a run starts, each hand that holds what its wizard hasn't unlocked lets go of it, as when points are brought:
         // outside the run it could hold anything.
-        void LetGoLockedAll()
+        internal void LetGoLockedAll()
         {
             foreach (var player in progress.Keys.ToList()) LetGoLocked(player);
         }
@@ -97,7 +97,7 @@ namespace Chem
 
         // The run's end: each wizard keeps what it earned, but a moment earns nothing.
         // Points for the waves survived: those before the one the keep fell in, or every wave of a run won.
-        void EarnPoints(HoldParams p, int survived)
+        internal void EarnPoints(HoldParams p, int survived)
         {
             if (Hold.Moment != null) return;
             foreach (var player in progress.Keys.ToList())
@@ -130,14 +130,14 @@ namespace Chem
         }
 
         // Each wizard's offer for the wave coming, by the seed, the wave and its name: only rows that suit it, so it may be fewer.
-        void OfferUpgrades(HoldParams p)
+        internal void OfferUpgrades(HoldParams p)
         {
             const uint offer = 7;
             foreach (var player in stands.Keys)
             {
                 if (!Hold.Wizards.TryGetValue(player, out var w)) Hold.Wizards[player] = w = new RunWizard { Player = player };
                 w.Offer.Clear();
-                var rows = p.Upgrades.Select((u, i) => (u, roll: WaveRoll(Hold.Wave, i, offer) ^ NameRoll(player)))
+                var rows = p.Upgrades.Select((u, i) => (u, roll: HoldSystem.WaveRoll(Hold.Wave, i, offer) ^ NameRoll(player)))
                     .Where(x => Suits(x.u, player)).OrderBy(x => x.roll).ThenBy(x => x.u.Id, StringComparer.Ordinal);
                 w.Offer.AddRange(rows.Take(p.Offer).Select(x => x.u.Id));
             }
@@ -153,11 +153,11 @@ namespace Chem
         }
 
         // The wave's here: an offer still open is picked for the wizard, by the seed.
-        void PickForTheLate()
+        internal void PickForTheLate()
         {
             const uint late = 8;
             foreach (var w in Hold.Wizards.Values)
-                if (w.Offer.Count > 0) PickUpgrade(w.Player, w.Offer[(int)((WaveRoll(Hold.Wave, 0, late) ^ NameRoll(w.Player)) % (uint)w.Offer.Count)]);
+                if (w.Offer.Count > 0) PickUpgrade(w.Player, w.Offer[(int)((HoldSystem.WaveRoll(Hold.Wave, 0, late) ^ NameRoll(w.Player)) % (uint)w.Offer.Count)]);
         }
 
         IEnumerable<UpgradeDef> UpgradesOf(string player)
@@ -203,9 +203,9 @@ namespace Chem
         static string RunText(HoldState h) =>
             h == null ? "" : string.Concat(h.Wizards.Values.Select(w => $"|W{w.Player}:{string.Join(",", w.Offer)}:{string.Join(",", w.Picks)}"));
 
-        static JArray SaveWizards(HoldState h) => new JArray(h.Wizards.Values.Select(w => new JArray(w.Player, new JArray(w.Offer), new JArray(w.Picks))));
+        internal static JArray SaveWizards(HoldState h) => new JArray(h.Wizards.Values.Select(w => new JArray(w.Player, new JArray(w.Offer), new JArray(w.Picks))));
 
-        static void LoadWizards(HoldState h, JToken saved)
+        internal static void LoadWizards(HoldState h, JToken saved)
         {
             foreach (var a in saved ?? new JArray())
             {

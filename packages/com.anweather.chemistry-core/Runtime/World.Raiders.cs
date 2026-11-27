@@ -320,7 +320,7 @@ namespace Chem
         }
 
         /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
-        int Roll(int[] dice)
+        internal int Roll(int[] dice)
         {
             int total = 0;
             for (int i = 0; i < dice[0]; i++) total += 1 + (int)Math.Floor(Rand() * dice[1]);
