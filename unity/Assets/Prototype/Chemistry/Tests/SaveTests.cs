@@ -242,7 +242,7 @@ namespace Chem.Tests
             string save = straight.Save(source);
             Assert.That(save, Does.Contain("\"chunks\":[{\"x\""), "the save keeps the laid start");
             var loaded = World.Load(save, R, source, land: land);
-            Assert.That(loaded.DragonText(), Is.EqualTo(straight.DragonText()));
+            Assert.That(loaded.DragonSystem.Text(), Is.EqualTo(straight.DragonSystem.Text()));
             foreach (var w in new[] { straight, loaded }) w.ApplyDragon(new DragonCommand());
             bool came = false;
             for (int t = 0; t < 6000 && (!came || straight.Dragon != null); t++)
@@ -250,7 +250,7 @@ namespace Chem.Tests
                 straight.Step();
                 loaded.Step();
                 came |= straight.Dragon != null;
-                if (t % 200 == 0) Assert.That(loaded.DragonText(), Is.EqualTo(straight.DragonText()), $"tick {straight.Tick}");
+                if (t % 200 == 0) Assert.That(loaded.DragonSystem.Text(), Is.EqualTo(straight.DragonSystem.Text()), $"tick {straight.Tick}");
             }
             Assert.That(came && straight.Dragon == null, Is.True, "the dragon came and went");
             Assert.That(State(loaded), Is.EqualTo(State(straight)));

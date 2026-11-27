@@ -44,7 +44,7 @@ namespace Chem
             return new[]
             {
                 world.CellHash(), world.Rules.Fingerprint, world.ThingsNow.Fingerprint, world.SkyHash(), world.DefenseSystem.Hash(),
-                world.CastHash(), world.DragonHash(), world.LandHash(),
+                world.CastHash(), world.DragonSystem.Hash(), world.LandHash(),
             };
         }
 

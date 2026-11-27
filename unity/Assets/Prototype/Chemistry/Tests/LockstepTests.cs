@@ -242,7 +242,7 @@ namespace Chem.Tests
             var desync = client.Desyncs[0];
             // The first window to hash that cell after it changed: the one it's in, or the next if its slice had gone by.
             Assert.That(desync.Tick, Is.InRange(corrupted + 1, corrupted + 2 * window));
-            // The dragon's part counts the cells changed since the start (World.DragonHash), so it differs too.
+            // The dragon's part counts the cells changed since the start (DragonSystem.Hash), so it differs too.
             Assert.That(desync.Parts, Is.EqualTo(new[] { "cells", "dragon" }));
             StringAssert.Contains("no longer matches the host's", desync.Text);
             Assert.That(client.Joins.Count, Is.EqualTo(2), "the snapshot it joined with, and the one that put it right");

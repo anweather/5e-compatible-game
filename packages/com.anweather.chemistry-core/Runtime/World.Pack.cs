@@ -506,7 +506,7 @@ namespace Chem
         /// makes its chunks as they're read (IGeneratedSource) an untouched chunk is left as it is: its cells are the map's
         /// as made, which hold no fire and none of a mod's materials, so the write would change none of them.
         /// </summary>
-        void WriteEveryCell(Action<Cell> write)
+        internal void WriteEveryCell(Action<Cell> write)
         {
             bool skipUntouched = Source is IGeneratedSource;
             foreach (var ch in SortedChunks(false))

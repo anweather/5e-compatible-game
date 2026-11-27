@@ -2,7 +2,7 @@
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
 // stamped like casts, defense commands (the defense field's start,
-// Defense.cs), players' combo input (Combos.cs), the dragon's summons (World.Dragon.cs), room commands (World.Room.cs) and unarmed strikes (World.Strike.cs). Solo play runs one per tick; online the host
+// Defense.cs), players' combo input (Combos.cs), the dragon's summons (Play/DragonSystem.cs), room commands (World.Room.cs) and unarmed strikes (World.Strike.cs). Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -82,7 +82,7 @@ namespace Chem
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
         /// <summary>Players' combo input (World.Combos.cs), applied after the defense, in order.</summary>
         public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
-        /// <summary>The dragon's summons (World.Dragon.cs), applied after the combos.</summary>
+        /// <summary>The dragon's summons (Play/DragonSystem.cs), applied after the combos.</summary>
         public List<DragonCommand> Dragon { get; } = new List<DragonCommand>();
         /// <summary>Where players stand on the course (Play/CourseSystem.cs), applied after the dragon, in order.</summary>
         public List<CourseCommand> Course { get; } = new List<CourseCommand>();
@@ -146,7 +146,7 @@ namespace Chem
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.DefenseSystem.Apply(d);
             foreach (var c in Combos) world.ApplyCombo(c);
-            foreach (var d in Dragon) world.ApplyDragon(d);
+            foreach (var d in Dragon) world.DragonSystem.Apply(d);
             foreach (var c in Course) world.CourseSystem.Apply(c);
             foreach (var s in Strikes) world.ApplyStrike(s);
             return rules;

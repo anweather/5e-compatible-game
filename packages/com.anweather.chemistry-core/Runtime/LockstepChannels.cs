@@ -170,7 +170,7 @@ namespace Chem.Lockstep
             Refuses = (c, from, session) => c.TakenBy(devBuild) ? null : "a moment is only for a dev build or the Editor",
         };
 
-        /// <summary>The dragon's summons (World.Dragon.cs): the host's, once a tick.</summary>
+        /// <summary>The dragon's summons (Play/DragonSystem.cs): the host's, once a tick.</summary>
         public static LockstepChannel<DragonCommand> Dragon() => new LockstepChannel<DragonCommand>("dragon", (w, d) => { }, r => new DragonCommand(),
             (b, d) => b.Dragon.Add(d))
         { HostOnly = true, OnePerTick = true };

@@ -13,6 +13,9 @@ namespace Chem
         /// <summary>The status counting the casts that have knocked a raider back, and a raider thrown off its feet (RaiderSystem).</summary>
         public const string ShovedStatus = RaiderSystem.ShovedStatus, ThrownStatus = RaiderSystem.ThrownStatus;
 
+        /// <summary>The dragon's flight (Play/DragonSystem.cs); the starting state it puts back is the world's (World.Dragon.cs).</summary>
+        public DragonSystem DragonSystem { get; private set; }
+
         /// <summary>The spell zones and the course's runs (Play/CourseSystem.cs).</summary>
         public CourseSystem CourseSystem { get; private set; }
 
@@ -42,6 +45,7 @@ namespace Chem
             DefenseSystem = new DefenseSystem(this);
             GolfSystem = new GolfSystem(this);
             HoldSystem = new HoldSystem(this);
+            DragonSystem = new DragonSystem(this);
         }
 
         /// <summary>The raiders on the board, oldest first (RaiderSystem.Raiders); for the view, the probes and the tests.</summary>
@@ -103,6 +107,27 @@ namespace Chem
 
         /// <summary>The cell a Hold raider here steps to next (HoldSystem.Next); for lock-on and ProbeHold.</summary>
         public (int x, int y)? HoldNext(int x, int y, bool road) => HoldSystem.Next(x, y, road);
+
+        /// <summary>The flight under way, or null (DragonSystem.State); for the dragon's view, the probes and the HUD.</summary>
+        public DragonState Dragon => DragonSystem.State;
+
+        /// <summary>Flights begun in this world (DragonSystem.Flights); for the dragon's view and the probes.</summary>
+        public int DragonFlights => DragonSystem.Flights;
+
+        /// <summary>The dragon's summons (DragonSystem.Apply); for ChemGrid.</summary>
+        public void ApplyDragon(DragonCommand command) => DragonSystem.Apply(command);
+
+        /// <summary>A pass's line, for the view to fly (DragonSystem.PassLine); for DragonFlight and the probes.</summary>
+        public (int middle, bool back) PassLine(DragonState flight, int pass) => DragonSystem.PassLine(flight, pass);
+
+        /// <summary>The cells under the breath this tick (DragonSystem.BreathBox); for DragonView and the probes.</summary>
+        public bool BreathBox(out int x0, out int y0, out int x1, out int y1) => DragonSystem.BreathBox(out x0, out y0, out x1, out y1);
+
+        /// <summary>Whether the breath catches what stands at (x, y) this tick (DragonSystem.CaughtByBreath); for WizardDown.</summary>
+        public bool CaughtByBreath(int x, int y) => DragonSystem.CaughtByBreath(x, y);
+
+        /// <summary>The breath's shelter rule (DragonSystem.ShelteredFromBreath); for ProbeDragon.</summary>
+        public bool ShelteredFromBreath(int x, int y) => DragonSystem.ShelteredFromBreath(x, y);
 
         /// <summary>The cheapest way's cost from a square to the flag (DefenseSystem.PathCostAt); for ProbeDefense.</summary>
         public int PathCostAt(int x, int y) => DefenseSystem.PathCostAt(x, y);

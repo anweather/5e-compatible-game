@@ -18,11 +18,13 @@
 // each tick one active chunk is compared with the starting state (the next in
 // row-major order), and the world's total is the sum of what each chunk last
 // counted. A chunk that isn't active can't change, so its count stands.
+//
+// The flight itself (the summons, the passes and their breath, who it knocks down, its text) is DragonSystem
+// (Play/DragonSystem.cs, architecture-review.md step 9); this file keeps what the world is put back to and how: the
+// starting state, the audit, a chunk's reset (Freshen), the tick's dragon stage that runs them, and the save.
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Text;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
@@ -106,8 +108,6 @@ namespace Chem
         /// <summary>What the breath's status on a creature is called: it stays down this many ticks (sim.json downed).</summary>
         public const string DownedStatus = "downed";
 
-        const uint PathSalt = 17;
-
         // The starting state: what each chunk's cells are against (each chunk's Start holds its changes), null when none
         // is kept, and the ball as built. The scratch cells its reads make a start cell in.
         IChunkSource startSource;
@@ -117,11 +117,8 @@ namespace Chem
         Chunk[] auditChunks;
         int auditAt;
 
-        /// <summary>The flight under way, or null.</summary>
-        public DragonState Dragon { get; private set; }
-
-        /// <summary>Flights begun in this world (the next one's path comes from it).</summary>
-        public int DragonFlights { get; private set; }
+        // The audit's place, for the dragon's text (DragonSystem.Text).
+        internal int AuditAt => auditAt;
 
         /// <summary>Cells that differed from the starting state when their chunks were last audited.</summary>
         public int ChangedCount { get; private set; }
@@ -199,116 +196,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The dragon's summons (a Reset): the warning starts now, unless one is flying or the world keeps no starting state.</summary>
-        public void ApplyDragon(DragonCommand command)
-        {
-            FinishTick(); // commands land between whole ticks (StepSome)
-            if (startSource == null)
-            {
-                AddLog("Nothing answers: this world keeps no starting state");
-                return;
-            }
-            if (Dragon != null)
-            {
-                AddLog("The dragon is already coming");
-                return;
-            }
-            Summon();
-        }
-
-        void Summon()
-        {
-            var p = Rules.Sim.Dragon;
-            uint h = Sky.Hash(Seed, DragonFlights, PathSalt);
-            DragonFlights++;
-            var d = new DragonState { Phase = DragonPhase.Warning, Until = Tick + p.WarningTicks, AlongX = (h >> 31) == 1, FromFar = ((h >> 30) & 1) == 1, Back = ((h >> 29) & 1) == 1 };
-            Dragon = d;
-            int rows = RowsOf(d), width = Math.Min(p.BreathChunks, rows), step = Math.Max(1, width - p.OverlapChunks);
-            d.Passes = 1 + (rows - width + step - 1) / step;
-            AddLog("The sky darkens: a shadow crosses the valley", LogKind.Notable);
-        }
-
-        // ---------- the flight's shape: pure sums on the world's size and the state ----------
-
-        // Cells along a pass, and chunks along and across it.
-        int AlongOf(DragonState d) => d.AlongX ? W : H;
-        int AcrossOf(DragonState d) => d.AlongX ? H : W;
-        int ColsOf(DragonState d) => Chunks.ChunkOf(AlongOf(d) - 1) + 1;
-        int RowsOf(DragonState d) => Chunks.ChunkOf(AcrossOf(d) - 1) + 1;
-        int WidthOf(DragonState d) => Math.Min(Rules.Sim.Dragon.BreathChunks, RowsOf(d));
-
-        // The first chunk row of a pass's strip.
-        int StripOf(DragonState d)
-        {
-            int rows = RowsOf(d), width = WidthOf(d), step = Math.Max(1, width - Rules.Sim.Dragon.OverlapChunks);
-            int at = Math.Min(d.Pass * step, rows - width);
-            return d.FromFar ? rows - width - at : at;
-        }
-
-        // This pass runs toward 0: passes go there and back.
-        static bool Backward(DragonState d) => d.Back ^ (d.Pass % 2 == 1);
-
-        /// <summary>
-        /// A pass's line, for the view to fly: the middle of its strip, in cells across the passes, and whether it runs
-        /// toward 0. A sum on the world's size and the flight's first flags, changing nothing.
-        /// </summary>
-        public (int middle, bool back) PassLine(DragonState flight, int pass)
-        {
-            var d = new DragonState { AlongX = flight.AlongX, FromFar = flight.FromFar, Back = flight.Back, Pass = pass };
-            return ((StripOf(d) * 2 + WidthOf(d)) * Chunks.Size / 2, Backward(d));
-        }
-
-        // Whether the breath is out: on a pass, not wheeling round, and started.
-        static bool Breathing(DragonState d) => d != null && d.Phase == DragonPhase.Passes && d.Until == 0 && d.Travelled > 0;
-
-        /// <summary>
-        /// The cells under the breath this tick, [x0, x1) × [y0, y1), clipped to the world (false when it isn't out):
-        /// a strip of chunks across, Depth cells along, up to its lead (the view draws it).
-        /// </summary>
-        public bool BreathBox(out int x0, out int y0, out int x1, out int y1)
-        {
-            x0 = y0 = x1 = y1 = 0;
-            var d = Dragon;
-            if (!Breathing(d)) return false;
-            int p = Rules.Sim.Dragon.Depth, along = AlongOf(d), across = AcrossOf(d);
-            int from = Math.Max(0, d.Travelled - p), to = Math.Min(along, d.Travelled);
-            if (from >= to) return false;
-            int a0 = Backward(d) ? along - to : from, a1 = Backward(d) ? along - from : to;
-            int b0 = StripOf(d) * Chunks.Size, b1 = Math.Min(across, b0 + WidthOf(d) * Chunks.Size);
-            (x0, x1, y0, y1) = d.AlongX ? (a0, a1, b0, b1) : (b0, b1, a0, a1);
-            return true;
-        }
-
-        /// <summary>
-        /// Whether the breath catches what stands at (x, y) this tick: it's in the breath's cells and not sheltered.
-        /// The core's raiders take it from here; the view asks for its wizards, whose health is their own (WizardDown).
-        /// </summary>
-        public bool CaughtByBreath(int x, int y) => CaughtInBox(FoldX(x), FoldY(y));
-
-        bool CaughtInBox(int x, int y) =>
-            BreathBox(out int x0, out int y0, out int x1, out int y1) && x >= x0 && x < x1 && y >= y0 && y < y1 && !ShelteredFromBreath(x, y);
-
-        /// <summary>
-        /// The shelter rule: water at least ShelterWater deep (not frozen) on the cell, or a wall on the breath's side:
-        /// a blocking cell of WallTerrains within WallReach cells straight toward where the dragon flies from.
-        /// </summary>
-        public bool ShelteredFromBreath(int x, int y)
-        {
-            var p = Rules.Sim.Dragon;
-            var c = At(x, y);
-            if (c == null) return false;
-            if (DrownDepth(c) >= p.ShelterWater) return true;
-            var d = Dragon;
-            if (d == null) return false;
-            int back = Backward(d) ? 1 : -1;
-            for (int k = 1; k <= p.WallReach; k++)
-            {
-                var n = d.AlongX ? At(x + back * k, y) : At(x, y + back * k);
-                if (n != null && IsBlocking(n) && p.WallTerrains.Contains(n.T)) return true;
-            }
-            return false;
-        }
-
         // ---------- the tick's dragon stage ----------
 
         // One slice of the stage: the flight first, then a chunk a slice, then the audit. True when it's done.
@@ -318,127 +205,26 @@ namespace Chem
             {
                 LandFloating();
                 if (startSource == null) return true;
-                FlyDragon();
+                DragonSystem.Fly();
                 stagePos = 1;
                 return false;
             }
-            if (stagePos <= Rules.Sim.Dragon.ChunksPerTick && FreshenNext())
+            if (stagePos <= Rules.Sim.Dragon.ChunksPerTick && DragonSystem.FreshenNext())
             {
                 stagePos++;
                 return false;
             }
-            EndPass();
+            DragonSystem.EndPass();
             AuditNext();
             int budget = Rules.Sim.Dragon.Budget;
-            if (Dragon == null && budget > 0 && ChangedCount > budget) Summon();
+            if (DragonSystem.State == null && budget > 0 && ChangedCount > budget) DragonSystem.Summon();
             return true;
-        }
-
-        void FlyDragon()
-        {
-            var d = Dragon;
-            if (d == null) return;
-            var p = Rules.Sim.Dragon;
-            switch (d.Phase)
-            {
-                case DragonPhase.Warning:
-                    if (Tick < d.Until) return;
-                    d.Phase = DragonPhase.Passes;
-                    d.Until = 0;
-                    AddLog("The dragon dives out of the clouds, breathing fire", LogKind.Notable);
-                    SnuffFires();
-                    break;
-                case DragonPhase.Passes:
-                    if (d.Until > 0)
-                    {
-                        if (Tick >= d.Until) d.Until = 0;
-                        return;
-                    }
-                    d.Travelled = Math.Min(d.Travelled + p.Speed, AlongOf(d) + p.Depth);
-                    KnockDown();
-                    break;
-                default:
-                    if (Tick < d.Until) return;
-                    Dragon = null;
-                    ForgetLandStamps();
-                    AddLog("The dragon wheels away: the valley is fresh", LogKind.Notable);
-                    break;
-            }
-        }
-
-        // As it dives every fire dies, on all the chunks at once: a wildfire left burning would walk back over the
-        // chunks already reset (a burning valley of grass ended a third burnt without this). One tick, cheaply: it's a test on each cell.
-        void SnuffFires()
-        {
-            WriteEveryCell(c =>
-            {
-                if (c.Fire == 0) return;
-                c.Fire = 0;
-                c.Fuel = 0;
-            });
-        }
-
-        // Everyone the breath catches goes down (sim.json downed), unless they already are.
-        void KnockDown()
-        {
-            int ticks = DownedTicks(Rules.Sim);
-            foreach (var r in RaiderSystem.List)
-            {
-                if (r.StatusOf(DownedStatus) > 0 || !CaughtByBreath(r.X, r.Y)) continue;
-                r.Status[DownedStatus] = ticks;
-                LogOnce("dragon-downed", "The dragon's breath knocks them down", LogKind.Hurt);
-            }
-        }
-
-        static int DownedTicks(SimParams s) => (int)Math.Floor(s.Downed.Seconds * s.TicksPerSecond);
-
-        // The next chunk the breath has reached on this pass, reset; false if there's none yet.
-        bool FreshenNext()
-        {
-            var d = Dragon;
-            if (d == null || d.Phase != DragonPhase.Passes || d.Until != 0 || d.Done >= ChunksReached(d)) return false;
-            int width = WidthOf(d), col = d.Done / width, row = StripOf(d) + d.Done % width;
-            if (Backward(d)) col = ColsOf(d) - 1 - col;
-            var ch = FindChunk(d.AlongX ? col : row, d.AlongX ? row : col);
-            d.Done++;
-            Freshen(ch);
-            return true;
-        }
-
-        // The chunks of this pass the breath's lead has reached, column by column along the pass.
-        int ChunksReached(DragonState d)
-        {
-            int along = AlongOf(d), lead = Math.Min(d.Travelled, along);
-            if (lead <= 0) return 0;
-            int cols = Backward(d) ? ColsOf(d) - Chunks.ChunkOf(along - lead) : Chunks.ChunkOf(lead - 1) + 1;
-            return cols * WidthOf(d);
-        }
-
-        // A pass ends when its breath is off the far edge and all its chunks are done: the next, or leaving.
-        void EndPass()
-        {
-            var d = Dragon;
-            if (d == null || d.Phase != DragonPhase.Passes || d.Until != 0) return;
-            var p = Rules.Sim.Dragon;
-            if (d.Travelled < AlongOf(d) + p.Depth || d.Done < ColsOf(d) * WidthOf(d)) return;
-            if (d.Pass + 1 < d.Passes)
-            {
-                d.Pass++;
-                d.Travelled = 0;
-                d.Done = 0;
-                d.Until = Tick + Math.Max(1, p.TurnTicks);
-                return;
-            }
-            d.Phase = DragonPhase.Leaving;
-            d.Until = Tick + Math.Max(1, p.LeavingTicks);
-            d.Travelled = 0;
-            AddLog("The dragon lands on the mountain and roars", LogKind.Notable);
         }
 
         // A chunk back as it started: its cells, active or not (like map building), what's kept beside
         // them, its machines and gates, its cracked things, and the ball if its tee is here. An
         // inactive chunk forgets the ticks it missed, so it doesn't catch up on what the breath wiped.
-        void Freshen(Chunk ch)
+        internal void Freshen(Chunk ch)
         {
             if (ch.Packed != null) UnpackChunk(ch); // a write, not a read: it packs again once its hold is up (World.Pack.cs)
             var start = StartOf(ch, startScratch);
@@ -524,22 +310,6 @@ namespace Chem
 
         // ---------- checksum and save ----------
 
-        /// <summary>The dragon's state as text ("" for a world with no starting state), the same text as dragonState in the TS.</summary>
-        public string DragonText()
-        {
-            if (startSource == null) return "";
-            var inv = CultureInfo.InvariantCulture;
-            var sb = new StringBuilder();
-            sb.Append(DragonFlights.ToString(inv)).Append(':').Append(auditAt.ToString(inv)).Append(':').Append(ChangedCount.ToString(inv));
-            var d = Dragon;
-            if (d != null)
-                sb.Append('|').Append(string.Join(":", new[] { (int)d.Phase, d.Until, d.AlongX ? 1 : 0, d.FromFar ? 1 : 0, d.Back ? 1 : 0, d.Pass, d.Passes, d.Travelled, d.Done }.Select(n => n.ToString(inv))));
-            return sb.ToString();
-        }
-
-        /// <summary>A short fingerprint of DragonText, for the netcode checksum.</summary>
-        public string DragonHash() => Fnv1a.Hash(DragonText());
-
         // Only for a world that keeps a starting state, so other saves read as they did.
         void SaveDragon(JObject save)
         {
@@ -548,8 +318,8 @@ namespace Chem
             if (startGolf != null) start["golf"] = GolfSystem.Row(startGolf);
             save["start"] = start;
             SaveStarts(start);
-            save["audit"] = new JArray(DragonFlights, auditAt);
-            var d = Dragon;
+            save["audit"] = new JArray(DragonSystem.Flights, auditAt);
+            var d = DragonSystem.State;
             if (d != null) save["dragon"] = new JArray((int)d.Phase, d.Until, d.AlongX, d.FromFar, d.Back, d.Pass, d.Passes, d.Travelled, d.Done);
         }
 
@@ -626,10 +396,10 @@ namespace Chem
             if (!(s["start"] is JObject start)) return;
             KeepStart();
             startGolf = start["golf"] is JArray g ? GolfSystem.Read(g) : null;
-            DragonFlights = (int)s["audit"][0];
+            DragonSystem.Flights = (int)s["audit"][0];
             auditAt = (int)s["audit"][1];
             if (!(s["dragon"] is JArray a)) return;
-            Dragon = new DragonState { Phase = (DragonPhase)(int)a[0], Until = (int)a[1], AlongX = (bool)a[2], FromFar = (bool)a[3], Back = (bool)a[4], Pass = (int)a[5], Passes = (int)a[6], Travelled = (int)a[7], Done = (int)a[8] };
+            DragonSystem.State = new DragonState { Phase = (DragonPhase)(int)a[0], Until = (int)a[1], AlongX = (bool)a[2], FromFar = (bool)a[3], Back = (bool)a[4], Pass = (int)a[5], Passes = (int)a[6], Travelled = (int)a[7], Done = (int)a[8] };
         }
 
         // Once the chunks have their saved counts.
