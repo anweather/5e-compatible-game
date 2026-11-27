@@ -70,7 +70,7 @@ public class CourtGate : MonoBehaviour
         at = default;
         float best = reach * reach;
         bool found = false;
-        foreach (var wizard in FindObjectsByType<SpellCaster>(FindObjectsSortMode.None))
+        foreach (var wizard in SpellCaster.All)
         {
             var to = wizard.transform.position - middle;
             to.y = 0f;

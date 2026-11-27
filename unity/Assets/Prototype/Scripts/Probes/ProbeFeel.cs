@@ -317,7 +317,7 @@ public class FeelProbe : SpellLooksProbe
 
     IEnumerator PunchPane()
     {
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
         var house = village != null ? village.GetComponentsInChildren<VillageHouse>().FirstOrDefault(h => h.walls == WallKind.Stone) : null;
         var panes = house != null ? house.GetComponent<WindowPanes>() : null;
         Check("pane_found", panes != null && panes.panes.Length > 0, "a stone house's window");

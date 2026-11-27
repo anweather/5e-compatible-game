@@ -14,6 +14,13 @@ using UnityEngine;
 // the field.
 public partial class DefenseField : MonoBehaviour
 {
+    static readonly Registry<DefenseField> registry = new();
+
+    /// <summary>The first DefenseField in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static DefenseField InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
     public ChemGrid grid;
     [Tooltip("The gate's middle, where raiders come in, and the flag's foot, which they march on.")]
     public Transform gate, flag;

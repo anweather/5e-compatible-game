@@ -57,6 +57,7 @@ public partial class DefenseField : ICreatureGround
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (grid != null) grid.RulesChanged -= ReadRows;
         drawer?.Dispose();
     }

@@ -266,9 +266,9 @@ public class TriggerShowCount : MonoBehaviour
 
     void Update()
     {
-        foreach (var p in FindObjectsByType<SpellProjectile>(FindObjectsSortMode.None))
+        foreach (var p in SpellProjectile.All)
             if (seen.Add(p.GetInstanceID())) Projectiles++;
-        var now = FindObjectsByType<MeteorFall>(FindObjectsSortMode.None);
+        var now = MeteorFall.All;
         foreach (var m in now)
             if (m.Size >= 1f && seen.Add(m.GetInstanceID()))
             {

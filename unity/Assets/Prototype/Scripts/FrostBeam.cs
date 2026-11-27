@@ -13,6 +13,18 @@ using UnityEngine;
 // online) it doesn't land, like a SpellProjectile.
 public class FrostBeam : MonoBehaviour
 {
+    static readonly Registry<FrostBeam> registry = new();
+
+    /// <summary>Every FrostBeam in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static FrostBeam[] All => registry.All();
+
+    /// <summary>The first FrostBeam in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static FrostBeam InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
+    void OnDestroy() => registry.Leave(this);
+
     /// <summary>How long the beam takes to reach the end of its line: when the spell lands.</summary>
     public const float ReachSeconds = 0.12f;
     const float HoldSeconds = 0.4f, FadeSeconds = 0.45f, CoreWidth = 0.1f, HaloWidth = 0.42f, Wobble = 0.035f;
@@ -129,7 +141,7 @@ public class FrostBeam : MonoBehaviour
     // The weather's snowflakes when there are any (soft round flakes), else plain glowing dots.
     static Material MoteMaterial()
     {
-        var weather = FindAnyObjectByType<WeatherFx>();
+        var weather = WeatherFx.InPlay;
         if (weather != null && weather.snowMaterial != null) return weather.snowMaterial;
         if (moteMaterial == null) moteMaterial = UrpMaterials.NewUnlitParticles("Frost motes", Color.white, additive: true);
         return moteMaterial;

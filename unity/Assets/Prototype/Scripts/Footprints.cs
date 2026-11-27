@@ -106,7 +106,7 @@ public class Footprints : MonoBehaviour
         {
             nextLook = Time.time + 2f;
             wizardBodies.Clear();
-            foreach (var w in FindObjectsByType<SpellCaster>(FindObjectsSortMode.None)) wizardBodies.Add(w.transform);
+            foreach (var w in SpellCaster.All) wizardBodies.Add(w.transform);
         }
         foreach (var body in wizardBodies)
             if (body != null) Walk(world, wizards, body.GetInstanceID(), body.position, body.forward, 1f);

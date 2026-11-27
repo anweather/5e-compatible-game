@@ -11,6 +11,15 @@ using UnityEngine;
 [ExecuteAlways]
 public class Village : MonoBehaviour
 {
+    static readonly Registry<Village> registry = new();
+
+    /// <summary>Every Village in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static Village[] All => registry.All();
+
+    void Awake() => registry.Join(this);
+
+    void OnDestroy() => registry.Leave(this);
+
     [Tooltip("The village's name in world/villages.json.")]
     public string villageName;
     [Tooltip("What its buildings are drawn with (VillageLit).")]
@@ -46,6 +55,7 @@ public class Village : MonoBehaviour
     {
         if (sky == null && Time.unscaledTime >= nextSkyLookup)
         {
+            // A search, not SkyLight.InPlay: this runs in the Editor too (ExecuteAlways), where no SkyLight woke.
             sky = FindAnyObjectByType<SkyLight>();
             grid = ChemGrid.Current?.Grid;
             nextSkyLookup = Time.unscaledTime + 2f;

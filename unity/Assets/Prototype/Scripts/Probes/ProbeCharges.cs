@@ -74,7 +74,7 @@ public class ChargesProbe : ProbeScenario
             caster.Select(SpellIds.RayOfFrost);
             caster.Cast(new CastCommand(SpellIds.RayOfFrost, me.x + World.DirX(dir), me.y + World.DirY(dir), dir, i == 0 ? 1 : Held));
             yield return Wait(0.25f);
-            var beam = FindObjectsByType<FrostBeam>(FindObjectsSortMode.None).FirstOrDefault(b => b.enabled);
+            var beam = FrostBeam.All.FirstOrDefault(b => b.enabled);
             lengths[i] = beam != null ? Vector3.Distance(beam.From, beam.To) : 0f;
             yield return Wait(1.2f);
         }

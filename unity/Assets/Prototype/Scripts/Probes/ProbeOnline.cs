@@ -135,7 +135,7 @@ public class OnlineObservation
 public static class OnlineSchedule
 {
     /// <summary>The glow balls still in the world, on this side.</summary>
-    public static List<Carryable> GlowBalls() => UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID)
+    public static List<Carryable> GlowBalls() => Carryable.AllByInstanceId
         .Where(c => c.Holder == null && c.TryGetComponent<PhysicsProp>(out var p) && p.kind.StartsWith("glow-ball", StringComparison.Ordinal)).ToList();
 
     public readonly struct Step
@@ -310,7 +310,7 @@ public sealed class OnlineProbeRecorder
         Seen.propFound = prop != null;
         Seen.propId = id.ToString();
         if (after) Seen.things = OnlineSchedule.Things();
-        var host = UnityEngine.Object.FindObjectsByType<NetWizard>(FindObjectsSortMode.None).FirstOrDefault(w => w.OwnerClientId == NetworkManager.ServerClientId);
+        var host = NetWizard.All.FirstOrDefault(w => w.OwnerClientId == NetworkManager.ServerClientId);
         if (host != null && after) Seen.hostWizardAfter = host.transform.position;
         else if (host != null) Seen.hostWizardBefore = host.transform.position;
         if (prop == null) return;
@@ -407,7 +407,7 @@ public class OnlineProbeClient : MonoBehaviour
     {
         errorCount = 0;
         errors.Clear();
-        var session = FindAnyObjectByType<NetSession>();
+        var session = NetSession.InPlay;
         session.Join("127.0.0.1");
         var joined = new Joined();
         yield return joined.Wait();
@@ -455,7 +455,7 @@ public class OnlineProbeClient : MonoBehaviour
     static void WatchDragon(OnlineObservation seen)
     {
         var world = ChemGrid.Current.World;
-        var sky = FindAnyObjectByType<SkyLight>();
+        var sky = SkyLight.InPlay;
         seen.dragonFlights = world.DragonFlights;
         seen.sawDragonWarning |= world.Dragon?.Phase == DragonPhase.Warning;
         if (sky != null) seen.mostMenace = Mathf.Max(seen.mostMenace, sky.Menace);
@@ -477,7 +477,7 @@ public class OnlineProbeClient : MonoBehaviour
     static CastBeats OtherBeats()
     {
         var mine = NetworkManager.Singleton != null ? NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject() : null;
-        return FindObjectsByType<NetWizard>(FindObjectsSortMode.None).Where(w => mine == null || w.gameObject != mine.gameObject)
+        return NetWizard.All.Where(w => mine == null || w.gameObject != mine.gameObject)
             .Select(w => w.GetComponent<CastBeats>()).FirstOrDefault();
     }
 
@@ -587,7 +587,7 @@ public class OnlineProbe : ProbeScenario
         string id = Guid.NewGuid().ToString("N").Substring(0, 8);
         thingsAtStart = new HashSet<ThingId>(ThingSpawner.InPlay.Live.Select(t => t.id));
         ProbeLink.Clear();
-        var session = FindAnyObjectByType<NetSession>();
+        var session = NetSession.InPlay;
         session.Host();
         yield return null;
         wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;

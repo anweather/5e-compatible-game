@@ -19,6 +19,14 @@ using UnityEngine;
 [RequireComponent(typeof(PhysicsProp), typeof(Rigidbody))]
 public class Carryable : MonoBehaviour
 {
+    static readonly Registry<Carryable> registry = new();
+
+    /// <summary>Every Carryable in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static Carryable[] All => registry.All();
+
+    /// <summary>Every Carryable in play by instance id, lowest first (FindObjectsSortMode.InstanceID): see Registry.</summary>
+    public static Carryable[] AllByInstanceId => registry.AllByInstanceId();
+
     [Tooltip("Sending stones: the other stone of the pair.")]
     public Carryable partner;
 
@@ -48,6 +56,7 @@ public class Carryable : MonoBehaviour
 
     void Awake()
     {
+        registry.Join(this);
         prop = GetComponent<PhysicsProp>();
         body = GetComponent<Rigidbody>();
         shapes = GetComponents<Collider>();
@@ -72,6 +81,7 @@ public class Carryable : MonoBehaviour
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (prop != null && prop.grid != null) prop.grid.RulesChanged -= ReadRules;
     }
 

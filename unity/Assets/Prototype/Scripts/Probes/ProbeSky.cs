@@ -17,8 +17,8 @@ public class SkyProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        sky = FindAnyObjectByType<SkyLight>();
-        fx = FindAnyObjectByType<WeatherFx>();
+        sky = SkyLight.InPlay;
+        fx = WeatherFx.InPlay;
         Check("sky_built", sky != null && fx != null && sky.moon != null, "Sky object with SkyLight, WeatherFx and a moon");
         if (sky == null || fx == null) yield break;
         Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));

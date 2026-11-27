@@ -15,7 +15,7 @@ public class TreeSeatProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         // The ground eases into any stamp laid at the start: measured once it's still.
         for (float t = 0f; t < 20f && (valley == null || valley.GroundMoving); t += Time.deltaTime) yield return null;
         yield return Wait(2f);

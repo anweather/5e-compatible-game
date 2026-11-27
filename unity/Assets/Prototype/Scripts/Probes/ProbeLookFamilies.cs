@@ -50,7 +50,7 @@ public class LookFamiliesProbe : SpellLookFxProbe
         yield return Next("sparks", SpellIds.ShockingGrasp, Aim.Target, Impact);
         yield return Next("swirl", SpellIds.GustOfWind, Aim.Beside, Impact);
         yield return Next("shockwave", SpellIds.Thunderwave, Aim.Self, Impact);
-        yield return Next("beam", SpellIds.RayOfFrost, Aim.Beside, () => Line(FindAnyObjectByType<FrostBeam>(), PinkColour));
+        yield return Next("beam", SpellIds.RayOfFrost, Aim.Beside, () => Line(FrostBeam.InPlay, PinkColour));
         yield return Next("storm", SpellIds.SleetStorm, Aim.Target, () => FindAnyObjectByType<SleetStorm>() is { } s && Hue(s.Sleet.main.startColor.color, PinkColour));
         yield return Next("hand_forge", "forge", Aim.Target, () => pink("Forge"));
         yield return Next("hand_acid", "acid-splash", Aim.Target, () => pink("AcidSplash"));
@@ -58,11 +58,11 @@ public class LookFamiliesProbe : SpellLookFxProbe
         yield return Next("hand_lightning", "lightning-bolt", Aim.Beside, () => GameObject.Find("Arcs") is { } arcs && arcs.GetComponentsInChildren<LineRenderer>().Any(l => Hue(l.endColor, PinkColour)));
         yield return Next("hand_wave", "wave", Aim.Beside, () => GameObject.Find("Foam") is { } foam && Hue(foam.GetComponent<ParticleSystem>().main.startColor.colorMax, PinkColour));
         yield return Next("hand_whirl", "whirlwind", Aim.Target, () => GameObject.Find("Whirlwind") is { } w && Hue(w.GetComponent<ParticleSystem>().main.startColor.colorMin, PinkColour));
-        yield return Next("bolt", SpellIds.FireBolt, Aim.Target, () => FindAnyObjectByType<SpellProjectile>() is { } b && Shader(b.gameObject) > 0, true);
+        yield return Next("bolt", SpellIds.FireBolt, Aim.Target, () => SpellProjectile.InPlay is { } b && Shader(b.gameObject) > 0, true);
         yield return Next("cone", "burning-hands", Aim.Beside, Impact, true);
         yield return Next("blast", SpellIds.Fireball, Aim.Target, () => SpellVisuals.LastImpact != null && Shader(SpellVisuals.LastImpact) > 0, true);
-        yield return Next("meteor", SpellIds.Meteor, Aim.Target, () => FindAnyObjectByType<MeteorFall>() is { } m && m.GetComponentInChildren<Light>() is { } glow && Hue(glow.color, GreenColour), true);
-        yield return Next("element_beam", SpellIds.RayOfFrost, Aim.Beside, () => Line(FindAnyObjectByType<FrostBeam>(), PinkColour), element: "cold");
+        yield return Next("meteor", SpellIds.Meteor, Aim.Target, () => MeteorFall.InPlay is { } m && m.GetComponentInChildren<Light>() is { } glow && Hue(glow.color, GreenColour), true);
+        yield return Next("element_beam", SpellIds.RayOfFrost, Aim.Beside, () => Line(FrostBeam.InPlay, PinkColour), element: "cold");
         yield return Next("element_splash", SpellIds.CreateWater, Aim.Target, Impact, element: "water");
         yield return Next("element_acid", "acid-splash", Aim.Target, () => pink("AcidSplash"), element: "acid");
         yield return Next("element_lightning", "lightning-bolt", Aim.Beside, () => GameObject.Find("Arcs") is { } arcs && arcs.GetComponentsInChildren<LineRenderer>().Any(l => Hue(l.endColor, PinkColour)), element: "lightning");

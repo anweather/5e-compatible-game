@@ -165,7 +165,7 @@ public class OvernightShowcase : ShowcaseScript
 
     static Carryable Item(string id)
     {
-        foreach (var item in FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID))
+        foreach (var item in Carryable.AllByInstanceId)
             if (item.GetComponent<PhysicsProp>().kind == id && item.Holder == null) return item;
         return null;
     }
@@ -250,7 +250,7 @@ public class OvernightShowcase : ShowcaseScript
                 fog = RenderSettings.fogColor,
                 sky = sky,
                 exposure = sky != null && sky.HasProperty("_Exposure") ? sky.GetFloat("_Exposure") : 1f,
-                skyLight = FindAnyObjectByType<SkyLight>(),
+                skyLight = SkyLight.InPlay,
             };
         }
 

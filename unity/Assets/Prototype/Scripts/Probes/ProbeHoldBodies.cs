@@ -76,8 +76,8 @@ public class HoldBodiesProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
-        var field = FindAnyObjectByType<DefenseField>();
+        var fauna = ValleyFauna.InPlay;
+        var field = DefenseField.InPlay;
         var site = Core.HoldSite;
         Check("found", fauna != null && fauna.Jobs != null && field != null && site != null);
         if (fauna == null || fauna.Jobs == null || field == null || site == null) yield break;

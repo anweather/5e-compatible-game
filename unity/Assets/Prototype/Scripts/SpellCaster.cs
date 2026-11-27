@@ -20,6 +20,17 @@ using UnityEngine;
 // tick, with where the caster stood (the centre of a burst's shove).
 public partial class SpellCaster : MonoBehaviour
 {
+    static readonly Registry<SpellCaster> registry = new();
+
+    /// <summary>Every SpellCaster in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static SpellCaster[] All => registry.All();
+
+    /// <summary>Every SpellCaster in play by instance id, lowest first (FindObjectsSortMode.InstanceID): see Registry.</summary>
+    public static SpellCaster[] AllByInstanceId => registry.AllByInstanceId();
+
+    /// <summary>The first SpellCaster in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static SpellCaster InPlay => registry.First;
+
     public ChemGrid grid;
     public PlayerControls controls;
     [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
@@ -58,6 +69,7 @@ public partial class SpellCaster : MonoBehaviour
 
     void Awake()
     {
+        registry.Join(this);
         TryGetComponent(out pose);
         TryGetComponent(out beats);
         TryGetComponent(out hands);
@@ -69,6 +81,7 @@ public partial class SpellCaster : MonoBehaviour
 
     void OnDestroy()
     {
+        registry.Leave(this);
         marker?.Destroy();
     }
 

@@ -186,7 +186,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
             return;
         }
         grid = ChemGrid.Current?.Grid;
-        sky = FindAnyObjectByType<SkyLight>();
+        sky = SkyLight.InPlay;
         drawer = new CreatureDrawer(material);
         if (grid != null) grid.RulesChanged += ReadRows;
         ReadRows();
@@ -356,7 +356,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     {
         nextLook = Time.time + 0.5f;
         wizards.Clear();
-        foreach (var w in FindObjectsByType<SpellCaster>(FindObjectsSortMode.None))
+        foreach (var w in SpellCaster.All)
         {
             int form = w.TryGetComponent<Shapeshift>(out var shape) && shape.Shifted ? shape.Species : -1;
             wizards.Add((new Vector2(w.transform.position.x, w.transform.position.z), form));
@@ -468,7 +468,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     void FindVillages()
     {
-        foreach (var v in FindObjectsByType<Village>(FindObjectsSortMode.None))
+        foreach (var v in Village.All)
         {
             int i = bodies.IndexOf(v.residents);
             if (i < 0 || v.residentCount <= 0) continue;

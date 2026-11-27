@@ -13,8 +13,8 @@ public class VillagersProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
+        var fauna = ValleyFauna.InPlay;
         Check("village_found", village != null && fauna != null, village != null ? "Hollowmere" : "no Hollowmere (or no ValleyFauna)");
         if (village == null || fauna == null) yield break;
         yield return Switch(At(15f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Clear + " }");

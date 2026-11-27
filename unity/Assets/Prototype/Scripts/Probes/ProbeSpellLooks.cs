@@ -259,7 +259,7 @@ public partial class SpellLooksProbe : ProbeScenario
         var spawn = grid.Things.All.First(t => t.Kind == ItemIds.Pick);
         PlaceCell(spawn.CellX, spawn.CellY + 2);
         yield return Wait(1.5f);
-        var item = FindObjectsByType<Carryable>(FindObjectsSortMode.None).FirstOrDefault(c => c.Def != null && c.Def.Id == ItemIds.Pick);
+        var item = Carryable.All.FirstOrDefault(c => c.Def != null && c.Def.Id == ItemIds.Pick);
         Check("pick_found", item != null, "the pick by the start");
         if (item == null) yield break;
         var o = new Vector2Int(spawn.CellX + 2, spawn.CellY);

@@ -19,7 +19,7 @@ public class TimeWeatherProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        fx = FindAnyObjectByType<WeatherFx>();
+        fx = WeatherFx.InPlay;
         Check("weather_fx", fx != null, "the Sky's WeatherFx");
         Place(MeX, MeY);
         Cut(Yard(MeX, MeY) + V(-6f, 6f, -12f), Yard(FogX, FogY) + V(0f, 3f, 0f));

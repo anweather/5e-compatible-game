@@ -17,6 +17,15 @@ using UnityEngine.Rendering;
 // up to 120 ms, so it's never done after the start.
 public class SkyLight : MonoBehaviour
 {
+    static readonly Registry<SkyLight> registry = new();
+
+    /// <summary>The first SkyLight in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static SkyLight InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
+    void OnDestroy() => registry.Leave(this);
+
     public Light sun;
     public Light moon;
     /// <summary>The sun's compass bearing (degrees about up), as the yard was lit before the clock.</summary>

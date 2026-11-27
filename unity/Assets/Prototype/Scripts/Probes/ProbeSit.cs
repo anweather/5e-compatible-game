@@ -17,7 +17,7 @@ public class SitProbe : ProbeScenario
         Check("parts", sitter != null && pose != null, "Sitter and SitPose on the wizard");
         if (sitter == null || pose == null) yield break;
 
-        int seats = FindObjectsByType<Seat>(FindObjectsSortMode.None).Length;
+        int seats = Seat.All.Count;
         Metric("seats", seats);
         Check("seats_in_the_world", seats >= 10, $"{seats} seats (village benches, beach benches, loungers)");
 
@@ -57,7 +57,7 @@ public class SitProbe : ProbeScenario
     static Seat Pick(bool lounge)
     {
         Seat best = null;
-        foreach (var seat in FindObjectsByType<Seat>(FindObjectsSortMode.None))
+        foreach (var seat in Seat.All)
             if (seat.lounge == lounge && (best == null || seat.Foot.sqrMagnitude < best.Foot.sqrMagnitude)) best = seat;
         return best;
     }

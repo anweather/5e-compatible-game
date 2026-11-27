@@ -94,7 +94,7 @@ public class UxClipProbe : ProbeScenario
     // Into a house from out in the open, and held against its wall, as a player walks.
     IEnumerator House()
     {
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).First(v => v.villageName == "Hollowmere");
+        var village = Village.All.First(v => v.villageName == "Hollowmere");
         var house = village.GetComponentsInChildren<VillageHouse>()[0];
         var root = wizard.transform.Find(WizardRig.CameraRoot);
         var centre = house.transform.position;

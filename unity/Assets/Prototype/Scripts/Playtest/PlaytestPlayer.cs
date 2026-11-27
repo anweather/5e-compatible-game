@@ -97,8 +97,8 @@ public sealed class PlaytestPlayer
 
     // Seats and items in the scene (found once per question; there are few of them).
     static IEnumerable<Component> SeatsAndItems() =>
-        UnityEngine.Object.FindObjectsByType<Seat>(FindObjectsSortMode.None).Cast<Component>()
-            .Concat(UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.None));
+        Seat.All.Cast<Component>()
+            .Concat(Carryable.All);
 
     /// <summary>Carries a goal out, for at most its seconds of game time.</summary>
     public IEnumerator Do(Goal goal)
@@ -461,7 +461,7 @@ public sealed class PlaytestPlayer
     // Walks to the nearest item, picks it up and throws it.
     IEnumerator Throw(float seconds)
     {
-        var item = UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.None)
+        var item = Carryable.All
             .OrderBy(c => (c.transform.position - wizard.transform.position).sqrMagnitude).ThenBy(c => c.name, StringComparer.Ordinal)
             .FirstOrDefault();
         if (item == null || hands == null) yield break;

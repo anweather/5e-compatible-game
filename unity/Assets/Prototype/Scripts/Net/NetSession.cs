@@ -30,6 +30,13 @@ using UnityEngine.SceneManagement;
 // either way the joiner goes back to solo with a message saying why.
 public class NetSession : MonoBehaviour
 {
+    static readonly Registry<NetSession> registry = new();
+
+    /// <summary>The first NetSession in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static NetSession InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
     public const int MaxPlayers = 4;
     public const ushort Port = 7777;
 
@@ -148,6 +155,7 @@ public class NetSession : MonoBehaviour
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (manager == null) return;
         manager.OnClientConnectedCallback -= Connected;
         manager.OnClientDisconnectCallback -= Disconnected;

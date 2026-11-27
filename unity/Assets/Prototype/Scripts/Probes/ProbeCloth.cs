@@ -117,6 +117,6 @@ public class ClothProbe : ProbeScenario
     }
 
     static Seat Nearest(bool lounge) =>
-        FindObjectsByType<Seat>(FindObjectsSortMode.None).Where(s => s.lounge == lounge)
+        Seat.All.Where(s => s.lounge == lounge)
             .OrderBy(s => s.transform.position.sqrMagnitude).FirstOrDefault();
 }

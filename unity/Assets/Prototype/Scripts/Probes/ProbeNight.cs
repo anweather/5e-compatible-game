@@ -20,7 +20,7 @@ public class NightProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
         Check("village_found", village != null, village != null ? "Hollowmere" : "no Hollowmere");
         if (village == null) yield break;
         var square = village.transform.position + village.wellAt;

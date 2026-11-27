@@ -15,6 +15,18 @@ using UnityEngine;
 // All of it takes its look (LookTint): the flames, the trail, the rock's heat and the light.
 public class MeteorFall : MonoBehaviour
 {
+    static readonly Registry<MeteorFall> registry = new();
+
+    /// <summary>Every MeteorFall in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static MeteorFall[] All => registry.All();
+
+    /// <summary>The first MeteorFall in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static MeteorFall InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
+    void OnDestroy() => registry.Leave(this);
+
     /// <summary>How long a meteor takes to fall (the spell lands this long after the cast).</summary>
     public const float Seconds = 1.8f;
     const float Height = 110f, Reach = 75f, RockSize = 1.6f;
@@ -177,7 +189,7 @@ public class MeteorFall : MonoBehaviour
         CastImpact.Felt(to, Mathf.Clamp01(size)); // shake and rumble, hardest near the blast
         var cam = Camera.main;
         float distance = cam != null ? Vector3.Distance(cam.transform.position, to) : 50f;
-        var sky = FindAnyObjectByType<SkyLight>();
+        var sky = SkyLight.InPlay;
         if (sky != null) sky.Flash(Mathf.Lerp(0.8f, 0.2f, distance / 400f) * size);
 
         glow.transform.SetParent(null, true);

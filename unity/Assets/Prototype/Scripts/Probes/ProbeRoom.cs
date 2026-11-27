@@ -328,7 +328,7 @@ public class RoomProbeClient : MonoBehaviour
             case "rejoin":
                 record.Dispose();
                 record = null;
-                var leaving = FindAnyObjectByType<NetSession>().Leave();
+                var leaving = NetSession.InPlay.Leave();
                 while (!leaving.IsCompleted) yield return null;
                 yield return null;
                 yield return Join();
@@ -339,7 +339,7 @@ public class RoomProbeClient : MonoBehaviour
     // The start plate's command from this peer: online it goes through the host (DefenseField.Request).
     static IEnumerator StartWaves(ChemGrid grid)
     {
-        var field = FindAnyObjectByType<DefenseField>();
+        var field = DefenseField.InPlay;
         DefenseField.Request(grid, field.StartCommand);
         for (float t = 0f; t < 3f && !field.Running; t += Time.unscaledDeltaTime) yield return null;
     }
@@ -362,7 +362,7 @@ public class RoomProbeClient : MonoBehaviour
     // Stands by the first thing of a kind and asks the host for it.
     static IEnumerator Grab(ChemGrid grid, string kind)
     {
-        var item = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>().Live.Where(t => t.prop.kind == kind).Select(t => t.prop.GetComponent<Carryable>()).FirstOrDefault();
+        var item = ThingSpawner.InPlay.Live.Where(t => t.prop.kind == kind).Select(t => t.prop.GetComponent<Carryable>()).FirstOrDefault();
         if (item == null) yield break;
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
         var walker = wizard.GetComponent<CharacterController>();
@@ -387,7 +387,7 @@ public class RoomProbeClient : MonoBehaviour
 
     IEnumerator Join()
     {
-        var session = FindAnyObjectByType<NetSession>();
+        var session = NetSession.InPlay;
         session.Join("127.0.0.1");
         var grid = ChemGrid.Current?.Grid;
         var net = grid.GetComponent<NetChem>();
@@ -445,7 +445,7 @@ public abstract class RoomProbe : ProbeScenario
         yield return Wait(0.5f);
         bool onSolo = !StartsWithAMod || World.Room.Mods.Any(m => m.Id == Wildfire);
         Check("solo_opens_an_open_room", World.Room.Mode == ChangeMode.Open && onSolo, $"{RoomPolicy.Words(World.Room.Mode)}, {World.Room.Mods.Count} mods on");
-        FindAnyObjectByType<NetSession>().Host();
+        NetSession.InPlay.Host();
         yield return null;
         Net = grid.GetComponent<NetChem>();
         Record = new RoomProbeRecord(grid, Net);

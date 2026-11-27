@@ -71,7 +71,7 @@ public class FrostProbe : ProbeScenario
     // ice sphere (the old IceLance impact) or projectile ball anywhere.
     void CheckBeam((int x, int y) end)
     {
-        var beam = FindAnyObjectByType<FrostBeam>();
+        var beam = FrostBeam.InPlay;
         var endAt = grid.CellCenter(end.x, end.y);
         if (beam != null)
         {
@@ -89,7 +89,7 @@ public class FrostProbe : ProbeScenario
         }
         else Check("frost_beam_along_line", false, "no FrostBeam while the cast plays");
         bool lance = FindObjectsByType<Transform>(FindObjectsSortMode.None).Any(t => t.name.StartsWith("IceLance", System.StringComparison.Ordinal));
-        int flying = FindObjectsByType<SpellProjectile>(FindObjectsSortMode.None).Length;
+        int flying = SpellProjectile.All.Length;
         Check("no_ice_sphere_or_projectile", !lance && flying == 0, $"IceLance {(lance ? "shown" : "none")}, {flying} projectile(s)");
     }
 }

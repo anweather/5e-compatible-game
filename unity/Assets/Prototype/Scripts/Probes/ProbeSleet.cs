@@ -84,7 +84,7 @@ public class SleetProbe : ProbeScenario
     }
 
     static int Flying() =>
-        FindObjectsByType<SpellProjectile>(FindObjectsSortMode.None).Length + FindObjectsByType<MeteorFall>(FindObjectsSortMode.None).Length;
+        SpellProjectile.All.Length + MeteorFall.All.Length;
 
     int Burning() => squares.Count(s => World.At(s.x, s.y).Fire > 0);
 

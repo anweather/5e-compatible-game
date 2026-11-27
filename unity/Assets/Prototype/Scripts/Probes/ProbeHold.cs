@@ -105,7 +105,7 @@ public class HoldProbe : ProbeScenario
         var world = grid.World;
         var site = world.HoldSite;
         var show = grid.GetComponent<HoldShow>();
-        var defense = FindAnyObjectByType<DefenseField>();
+        var defense = DefenseField.InPlay;
         Check("the_plate_is_there", site != null && show != null && GameObject.Find("Hold plate") != null);
         if (site == null) yield break;
         var plate = grid.CellCenter(site.Plate.x, site.Plate.y);

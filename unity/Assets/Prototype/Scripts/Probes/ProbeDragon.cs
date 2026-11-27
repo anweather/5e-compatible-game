@@ -60,7 +60,7 @@ public class DragonProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         view = FindAnyObjectByType<DragonView>();
-        sky = FindAnyObjectByType<SkyLight>();
+        sky = SkyLight.InPlay;
         vitals = wizard.GetComponent<Vitals>();
         spawner = ThingSpawner.InPlay;
         Check("view_in_scene", view != null, "the yard has a DragonView (rebuild the yard if not)");

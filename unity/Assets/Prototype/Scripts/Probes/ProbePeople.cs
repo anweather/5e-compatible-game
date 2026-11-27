@@ -14,8 +14,8 @@ public class PeopleProbe : ClipProbe
 
     protected override IEnumerator Run()
     {
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
+        var fauna = ValleyFauna.InPlay;
         Check("village_found", village != null && fauna != null, "Hollowmere");
         if (village == null || fauna == null || string.IsNullOrEmpty(ScreenshotDir))
         {

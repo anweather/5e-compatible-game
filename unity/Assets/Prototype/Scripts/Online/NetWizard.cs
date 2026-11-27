@@ -22,6 +22,19 @@ using UnityEngine;
 [RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
+    static readonly Registry<NetWizard> registry = new();
+
+    /// <summary>Every NetWizard in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static NetWizard[] All => registry.All();
+
+    void Awake() => registry.Join(this);
+
+    public override void OnDestroy()
+    {
+        registry.Leave(this);
+        base.OnDestroy();
+    }
+
     readonly NetworkVariable<int> form = new(Shapeshift.None, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     const int NoLook = int.MinValue;
     readonly NetworkVariable<int> look = new(NoLook, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);

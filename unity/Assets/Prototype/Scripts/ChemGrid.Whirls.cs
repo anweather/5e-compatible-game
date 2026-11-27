@@ -138,7 +138,7 @@ public partial class ChemGrid
     {
         get
         {
-            if (showman == null) showman = FindAnyObjectByType<SpellCaster>();
+            if (showman == null) showman = SpellCaster.InPlay;
             return showman;
         }
     }

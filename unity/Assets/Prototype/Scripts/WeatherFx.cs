@@ -12,6 +12,15 @@ using UnityEngine;
 [RequireComponent(typeof(SkyLight), typeof(CloudSky))]
 public class WeatherFx : MonoBehaviour
 {
+    static readonly Registry<WeatherFx> registry = new();
+
+    /// <summary>The first WeatherFx in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static WeatherFx InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
+    void OnDestroy() => registry.Leave(this);
+
     /// <summary>The rain streaks' material (ChemYardBuilder makes it); no rain is drawn without one.</summary>
     public Material rainMaterial;
     /// <summary>The snowflakes' material; no snow is drawn without one.</summary>
@@ -34,7 +43,7 @@ public class WeatherFx : MonoBehaviour
     // The Meteor spell's look in the rules in force (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
     static SpellVisuals.Entry MeteorLook()
     {
-        var caster = FindAnyObjectByType<SpellCaster>();
+        var caster = SpellCaster.InPlay;
         var look = caster != null ? caster.LookOf(SpellIds.Meteor) : null;
         return look ?? new SpellVisuals.Entry { fromSky = true };
     }

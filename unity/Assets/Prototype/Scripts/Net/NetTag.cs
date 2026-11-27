@@ -109,7 +109,7 @@ public class NetTag : NetworkBehaviour
     // Whoever is it glows red; everyone else looks as usual.
     void Show(ulong who)
     {
-        foreach (var wizard in FindObjectsByType<NetWizard>(FindObjectsSortMode.None))
+        foreach (var wizard in NetWizard.All)
         {
             bool red = who != TagRules.Nobody && wizard.OwnerClientId == who;
             foreach (var r in wizard.GetComponentsInChildren<Renderer>())

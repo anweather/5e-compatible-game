@@ -9,6 +9,18 @@ using UnityEngine;
 // after the game went online would change the world outside lockstep.
 public class SpellProjectile : MonoBehaviour
 {
+    static readonly Registry<SpellProjectile> registry = new();
+
+    /// <summary>Every SpellProjectile in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static SpellProjectile[] All => registry.All();
+
+    /// <summary>The first SpellProjectile in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static SpellProjectile InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
+    void OnDestroy() => registry.Leave(this);
+
     public const float DefaultSpeed = 22f;
 
     public float speed = DefaultSpeed;

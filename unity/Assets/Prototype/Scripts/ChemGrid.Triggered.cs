@@ -60,7 +60,7 @@ public partial class ChemGrid
     SpellCaster CasterOf(string player)
     {
         casters.Clear();
-        casters.AddRange(FindObjectsByType<SpellCaster>(FindObjectsSortMode.None));
+        casters.AddRange(SpellCaster.All);
         foreach (var c in casters)
             if (c.isActiveAndEnabled && c.StandPlayer == player) return c;
         return null;

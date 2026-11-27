@@ -138,7 +138,7 @@ public class DownedProbe : SpellLooksProbe
     IEnumerator Downed()
     {
         var pose = wizard.GetComponent<DownedPose>();
-        var item = FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID).FirstOrDefault(c => c.Holder == null);
+        var item = Carryable.AllByInstanceId.FirstOrDefault(c => c.Holder == null);
         if (item != null) hands.Grant(item);
         Check("carrying", hands.Held != null, $"holding {hands.Held}");
         var fellAt = wizard.transform.position;

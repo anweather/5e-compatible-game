@@ -80,7 +80,7 @@ public class ComboProbe : ProbeScenario
     // B drops the cast and leaves what's in the hand there: nothing is thrown and nothing casts.
     IEnumerator Cancel()
     {
-        var item = FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID).FirstOrDefault(c => c.Holder == null);
+        var item = Carryable.AllByInstanceId.FirstOrDefault(c => c.Holder == null);
         if (item != null) hands.Grant(item);
         yield return null;
         yield return Press(GamepadButton.DpadUp);

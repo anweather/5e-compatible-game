@@ -33,7 +33,7 @@ public class MomentsProbe : ProbeScenario
             for (float t = 0f; t < MostWait && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
             Check(m.Id + "_raiders_come", world.Raiders.Count > 0);
             yield return Wait(0.5f);
-            var drawn = FindAnyObjectByType<DefenseField>();
+            var drawn = DefenseField.InPlay;
             Check(m.Id + "_raiders_drawn", drawn.DrawnRaiders > 0, $"{drawn.DrawnRaiders} of {world.Raiders.Count}");
             int barricades = World.BarricadesOf(world.Rules.Sim.Hold, m.Wave);
             var stakes = grid.GetComponent<HoldBarricades>();

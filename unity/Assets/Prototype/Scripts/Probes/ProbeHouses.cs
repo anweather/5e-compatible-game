@@ -15,7 +15,7 @@ public class HousesProbe : ProbeScenario
     {
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
             "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
         if (village == null)
         {
             Check("village_found", false, "no Hollowmere");

@@ -121,7 +121,7 @@ public class LooksModProbe : ClipProbe
         for (float t = 0f; t < Landed; t += Time.deltaTime)
         {
             if (SpellVisuals.LastImpact != null) m.BlastMetres = Mathf.Max(m.BlastMetres, Reach(SpellVisuals.LastImpact, point));
-            var bead = FindAnyObjectByType<SpellProjectile>();
+            var bead = SpellProjectile.InPlay;
             if (bead != null) m.BeadScale = Mathf.Max(m.BeadScale, bead.transform.localScale.x);
             if (t > 1.2f) Burning(at, m);
             yield return null;

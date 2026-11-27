@@ -814,7 +814,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         if (ChoreClock >= nextWizardLookup)
         {
-            wizards = FindObjectsByType<SpellCaster>(FindObjectsSortMode.InstanceID);
+            wizards = SpellCaster.AllByInstanceId;
             nextWizardLookup = ChoreClock + 1f;
         }
         playerCells.Clear();

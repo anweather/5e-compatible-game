@@ -34,7 +34,7 @@ public class EventLog : MonoBehaviour
     void Awake() => instance = this;
     void Start()
     {
-        if (caster == null) caster = FindAnyObjectByType<SpellCaster>();
+        if (caster == null) caster = SpellCaster.InPlay;
     }
 
     /// <summary>Shows this caster's spells and controls; the local player's caster calls it when enabled.</summary>

@@ -85,7 +85,7 @@ public class PeerVanishProbe : RoomProbe
     {
         var nm = NetworkManager.Singleton;
         if (nm == null || !nm.IsListening) return "";
-        return string.Join("; ", UnityEngine.Object.FindObjectsByType<NetWizard>(FindObjectsSortMode.None)
+        return string.Join("; ", NetWizard.All
             .Where(w => w.IsSpawned && !w.IsOwner)
             .OrderBy(w => w.OwnerClientId)
             .Select(w =>
@@ -146,7 +146,7 @@ public class PeerVanishProbe : RoomProbe
     {
         if (string.IsNullOrEmpty(self)) return float.MaxValue;
         var a = self.Split(',').Select(s => float.Parse(s, CultureInfo.InvariantCulture)).ToArray();
-        var them = UnityEngine.Object.FindObjectsByType<NetWizard>(FindObjectsSortMode.None).FirstOrDefault(w => w.IsSpawned && !w.IsOwner);
+        var them = NetWizard.All.FirstOrDefault(w => w.IsSpawned && !w.IsOwner);
         return them == null ? float.MaxValue : Vector3.Distance(them.transform.position, new Vector3(a[0], a[1], a[2]));
     }
 
@@ -313,7 +313,7 @@ public class PeerVanishProbe : RoomProbe
     {
         while (true)
         {
-            var them = FindObjectsByType<NetWizard>(FindObjectsSortMode.None).FirstOrDefault(w => w.IsSpawned && !w.IsOwner);
+            var them = NetWizard.All.FirstOrDefault(w => w.IsSpawned && !w.IsOwner);
             var anim = them != null ? them.GetComponent<Animator>() : null;
             var hips = anim != null ? anim.GetBoneTransform(HumanBodyBones.Hips) : null;
             var body = them != null ? Body(them.gameObject) : null;

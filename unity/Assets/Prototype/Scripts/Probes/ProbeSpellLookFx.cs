@@ -243,7 +243,7 @@ public class SpellLookFxProbe : LooksModProbe
         SpellProjectile bead = null;
         for (float t = 0f; bead == null && t < 3f; t += Time.deltaTime)
         {
-            bead = FindAnyObjectByType<SpellProjectile>();
+            bead = SpellProjectile.InPlay;
             yield return null;
         }
         Check($"{name}_bead_flew", bead != null);

@@ -59,7 +59,7 @@ public class LooksProbe : ProbeScenario
         var at = Mid(o, 4, 4);
         PlaceCell(o.x - 7, o.y);
         Cut(at + V(-3.4f, 2.2f, -3.4f), at + Vector3.up * 0.5f);
-        var balls = FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID)
+        var balls = Carryable.AllByInstanceId
             .Where(c => c.Holder == null && c.GetComponent<Fragile>() != null && Glow(c.GetComponent<PhysicsProp>().kind)).ToList();
         Check("two_glow_balls", balls.Count >= 2, $"{balls.Count} glow balls");
         if (balls.Count < 2) yield break;
@@ -84,7 +84,7 @@ public class LooksProbe : ProbeScenario
         Shot("glow-ball");
         yield return null;
         yield return Wait(2.5f);
-        int things = FindObjectsByType<Carryable>(FindObjectsSortMode.None).Count(c => (c.transform.position - at).sqrMagnitude < 16f);
+        int things = Carryable.All.Count(c => (c.transform.position - at).sqrMagnitude < 16f);
         var lamps = FindObjectsByType<Light>(FindObjectsSortMode.None).Where(l => l.name == "Light" && l.transform.parent == null || l.GetComponentInParent<Carryable>() != null)
             .Where(l => (l.transform.position - at).sqrMagnitude < 25f).ToList();
         var others = FindObjectsByType<Light>(FindObjectsSortMode.None).Where(l => l.type == LightType.Point && (l.transform.position - at).sqrMagnitude < 25f).Select(l => $"{l.transform.root.name}/{l.name}");
@@ -238,7 +238,7 @@ public class LooksProbe : ProbeScenario
     // A house's window: glass, a crate thrown hard at it, then the gap. A crate tossed softly leaves the glass whole.
     IEnumerator Window()
     {
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
         var house = village != null ? village.GetComponentsInChildren<VillageHouse>().FirstOrDefault(h => h.walls == WallKind.Stone) : null;
         var panes = house != null ? house.GetComponent<WindowPanes>() : null;
         Check("house_with_panes", panes != null && panes.panes.Length > 0, panes != null ? $"{panes.panes.Length} panes" : "no stone house");

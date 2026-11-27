@@ -62,7 +62,7 @@ public sealed class AirInPlay : MonoBehaviour
 
     void LateUpdate()
     {
-        if (skyLight == null) skyLight = FindAnyObjectByType<SkyLight>();
+        if (skyLight == null) skyLight = SkyLight.InPlay;
         if (cloudSky == null) cloudSky = FindAnyObjectByType<CloudSky>();
         Write(Make());
     }

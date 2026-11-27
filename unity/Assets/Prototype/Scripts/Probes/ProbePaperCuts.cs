@@ -16,8 +16,8 @@ public class PaperCutsProbe : ProbeScenario
     {
         yield return Switch(At(15f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Clear + " }");
         yield return Signs();
-        var village = FindObjectsByType<Village>(FindObjectsSortMode.None).FirstOrDefault(v => v.villageName == "Hollowmere");
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var village = Village.All.FirstOrDefault(v => v.villageName == "Hollowmere");
+        var fauna = ValleyFauna.InPlay;
         if (village != null && fauna != null)
         {
             yield return Folk(village, fauna);

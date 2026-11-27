@@ -28,7 +28,7 @@ public class DragonClipProbe : ClipProbe
     protected override IEnumerator Run()
     {
         view = FindAnyObjectByType<DragonView>();
-        sky = FindAnyObjectByType<SkyLight>();
+        sky = SkyLight.InPlay;
         Check("view_in_scene", view != null, "the yard has a DragonView (rebuild the yard if not)");
         if (view == null || string.IsNullOrEmpty(ScreenshotDir))
         {

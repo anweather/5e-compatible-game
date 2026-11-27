@@ -17,7 +17,7 @@ public class DefenseProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        defense = FindAnyObjectByType<DefenseField>();
+        defense = DefenseField.InPlay;
         Check("field_built", defense != null && defense.gate != null && defense.flag != null && defense.banner != null, "a Defense field with its gate, flag and banner");
         if (defense == null || defense.gate == null || defense.flag == null) yield break;
         var gate = defense.GateCell;

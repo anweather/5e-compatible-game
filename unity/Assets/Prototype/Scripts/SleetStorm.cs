@@ -80,7 +80,7 @@ public class SleetStorm : MonoBehaviour
 
     void Build()
     {
-        var weather = FindAnyObjectByType<WeatherFx>();
+        var weather = WeatherFx.InPlay;
         var rain = weather != null && weather.rainMaterial != null ? weather.rainMaterial : Fallback();
         var snow = weather != null && weather.snowMaterial != null ? weather.snowMaterial : Fallback();
         float width = HalfWidth * 2f;

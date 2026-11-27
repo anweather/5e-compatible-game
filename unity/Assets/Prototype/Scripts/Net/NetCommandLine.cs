@@ -72,7 +72,7 @@ public class NetCommandLine : MonoBehaviour
     System.Collections.IEnumerator Local(bool host, string address)
     {
         yield return null;
-        session = FindAnyObjectByType<NetSession>();
+        session = NetSession.InPlay;
         if (session == null)
         {
             Debug.LogError("NET: no NetSession in this scene; can't go online.");
@@ -131,7 +131,7 @@ public class NetCommandLine : MonoBehaviour
 
     void Begin(bool host, string code)
     {
-        session = FindAnyObjectByType<NetSession>();
+        session = NetSession.InPlay;
         if (session == null)
         {
             Debug.LogError("NET: no NetSession in this scene; can't go online.");
@@ -157,7 +157,7 @@ public class NetCommandLine : MonoBehaviour
 
     void Update()
     {
-        if (session == null) session = FindAnyObjectByType<NetSession>();
+        if (session == null) session = NetSession.InPlay;
         if (session != null && !codeLogged && session.SessionCode != null)
         {
             codeLogged = true;
@@ -177,7 +177,7 @@ public class NetCommandLine : MonoBehaviour
     {
         var world = ChemGrid.Current?.World;
         var chem = FindAnyObjectByType<NetChem>();
-        int players = FindObjectsByType<NetWizard>(FindObjectsSortMode.None).Length;
+        int players = NetWizard.All.Length;
         string tick = world != null ? world.Tick.ToString(CultureInfo.InvariantCulture) : "-";
         bool desync = chem != null && chem.DesyncSeen;
         frames.Sort();
