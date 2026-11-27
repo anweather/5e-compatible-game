@@ -66,7 +66,7 @@ public partial class Shapeshift : MonoBehaviour
     {
         get
         {
-            if (fauna == null) fauna = FindAnyObjectByType<ValleyFauna>();
+            if (fauna == null) fauna = ValleyFauna.InPlay;
             return fauna;
         }
     }

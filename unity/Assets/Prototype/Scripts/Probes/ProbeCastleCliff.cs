@@ -30,7 +30,7 @@ public class CastleCliffProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         var world = grid.World;
         yield return Switch(At(11f));
         Check("the_canyon_laid", world.MapStampsLaid.Count == 1, $"{world.MapStampsLaid.Count} of the map's stamps laid");

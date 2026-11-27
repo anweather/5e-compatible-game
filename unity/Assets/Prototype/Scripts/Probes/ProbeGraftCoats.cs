@@ -176,7 +176,7 @@ public class GraftCoatsProbe : RoomProbe
 
     protected override IEnumerator Steps()
     {
-        fauna = FindAnyObjectByType<ValleyFauna>();
+        fauna = ValleyFauna.InPlay;
         Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
         if (fauna == null || RulesMcpServer.Url == null) yield break;
 

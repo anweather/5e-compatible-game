@@ -54,8 +54,8 @@ public class PlaceViewProbe : RoomProbe
 
     protected override IEnumerator Steps()
     {
-        spawner = FindAnyObjectByType<ThingSpawner>();
-        fauna = FindAnyObjectByType<ValleyFauna>();
+        spawner = ThingSpawner.InPlay;
+        fauna = ValleyFauna.InPlay;
         var caster = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<SpellCaster>();
         var site = Site(grid.CellAt(caster.transform.position));
         Metric("site_x", site.x);
@@ -278,7 +278,7 @@ public class PlaceViewProbe : RoomProbe
     /// <summary>The animals spells brought out that are out on this side (n:species, sorted).</summary>
     public static string SummonsOn(ChemGrid grid)
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         if (fauna == null || grid.World == null) return "";
         var all = new List<string>();
         foreach (var s in grid.World.SummonedAfter(-1))

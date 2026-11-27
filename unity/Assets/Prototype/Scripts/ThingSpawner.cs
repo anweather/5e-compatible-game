@@ -86,7 +86,16 @@ public class ThingSpawner : MonoBehaviour
 
     public bool IsLoaded(int cx, int cy) => loaded.Contains((cx, cy));
 
-    void Awake() => bodies = gameObject.AddComponent<ThingBodies>();
+    static readonly Registry<ThingSpawner> registry = new();
+
+    /// <summary>The spawner in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static ThingSpawner InPlay => registry.First;
+
+    void Awake()
+    {
+        registry.Join(this);
+        bodies = gameObject.AddComponent<ThingBodies>();
+    }
 
     void Start()
     {
@@ -131,6 +140,7 @@ public class ThingSpawner : MonoBehaviour
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (grid != null)
         {
             grid.WorldReset -= Respawn;

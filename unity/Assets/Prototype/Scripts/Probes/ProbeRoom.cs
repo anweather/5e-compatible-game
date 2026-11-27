@@ -130,14 +130,14 @@ public sealed class RoomProbeRecord : IDisposable
         seen.hands = HandLooksProbe.Shown();
         seen.others = PeerVanishProbe.Others();
         seen.self = PeerVanishProbe.Self();
-        var fauna = UnityEngine.Object.FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         if (fauna != null)
         {
             seen.deer = FaunaResizeProbe.Scales(fauna);
             (seen.deerOut, seen.deerGap) = FaunaResizeProbe.Out(fauna);
             seen.coats = GraftCoatsProbe.Fingerprint(GraftCoatsProbe.Coats(fauna, grid.CurrentRules.Effective.Fauna));
         }
-        var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         seen.things = string.Join(" ", spawner.Live.Where(t => t.prop.FromMod).Select(t => $"{t.id}:{t.prop.kind}").OrderBy(t => t, StringComparer.Ordinal));
         seen.dressed = spawner.GetComponent<ThingBodies>().Count;
         (seen.placed, seen.placedGap) = PlaceViewProbe.PlacedOn(grid, spawner);
@@ -293,10 +293,10 @@ public class RoomProbeClient : MonoBehaviour
                 yield return TriggerViewProbe.Walk(grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject, walk[0], walk[1], walk[2]);
                 break;
             case "deer":
-                FaunaResizeProbe.PlaceDeer(FindAnyObjectByType<ValleyFauna>(), grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position);
+                FaunaResizeProbe.PlaceDeer(ValleyFauna.InPlay, grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position);
                 break;
             case "grafts":
-                GraftCoatsProbe.PlaceGrafts(FindAnyObjectByType<ValleyFauna>(), grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position, 0f);
+                GraftCoatsProbe.PlaceGrafts(ValleyFauna.InPlay, grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position, 0f);
                 break;
             case "dressed":
                 // The cells named (x,y;x,y...) that stand dressed on this side.

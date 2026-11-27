@@ -29,7 +29,7 @@ public class ActProbe : ProbeScenario
         var server = RulesMcpServer.Instance;
         if (!server.Serving) server.Serving = true;
         yield return Wait(Settle);
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         int mods = grid.World.Room.Mods.Count, trees = TreeCells;
 
         yield return Say("act", $"{{\"what\":\"tree\",\"count\":{Trees},\"spacing\":2}}");

@@ -227,7 +227,7 @@ public class HoldProbe : ProbeScenario
         Metric("walk_top_m", walkTop);
         var cells = world.BuildingCellsOf(row);
         Check("its_cells_are_laid", cells.All(c => world.At(c.X, c.Y).T == c.Terrain));
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         Check("no_tree_stands_on_it", cells.All(c => !valley.TreeStands(c.X, c.Y)), $"{cells.Count(c => valley.TreeStands(c.X, c.Y))} of {cells.Count}");
         var unseen = cells.Where(c => !Enumerable.Range(-1, 3).Any(dy => Enumerable.Range(-1, 3).Any(dx => valley.TreeStands(c.X + dx, c.Y + dy))) && TreeColliderAt(grid.CellCenter(c.X, c.Y))).ToList();
         Check("no_trunk_stands_unseen_on_it", unseen.Count == 0, string.Join(" ", unseen.Take(8).Select(c => $"[{c.X}, {c.Y}]")));

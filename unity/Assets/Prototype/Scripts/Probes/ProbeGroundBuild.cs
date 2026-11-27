@@ -9,7 +9,7 @@ public class GroundBuildProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         yield return Wait(1f);
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         string mode = GroundSwitch.Mode;
         var terrains = Terrain.activeTerrains;
         int built = terrains.Count(t => t.terrainData.name.StartsWith("Built chunk", System.StringComparison.Ordinal));

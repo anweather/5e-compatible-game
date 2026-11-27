@@ -60,7 +60,7 @@ public class Footprints : MonoBehaviour
     void Start()
     {
         grid = ChemGrid.Current?.Grid;
-        fauna = FindAnyObjectByType<ValleyFauna>();
+        fauna = ValleyFauna.InPlay;
         for (int i = 0; i < Max; i++) prints[i].born = float.NegativeInfinity;
         mesh = new Mesh { name = "Footprints" };
         mesh.MarkDynamic();

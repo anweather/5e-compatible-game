@@ -119,7 +119,7 @@ public class MapSwitchProbe : ProbeScenario
         Check($"{name}_starts_at_the_spawn", off < 3f && above > -0.5f && above < 1.5f, $"{off:0.0} m off the spawn, {above:0.00} m over the ground");
 
         var fromFile = WorldThings.Load(folder);
-        var spawner = FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         int live = spawner != null ? spawner.Live.Count() : 0;
         Metric($"{name}_things", live);
         Check($"{name}_things_are_the_maps", World.ThingsNow.Count == fromFile.Count && live == World.ThingsNow.Count, $"{live} spawned, {World.ThingsNow.Count} in the world, {fromFile.Count} in its things.json");

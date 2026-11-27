@@ -53,7 +53,7 @@ public class ModThingProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         switcher = grid.GetComponent<RuleSwitcher>();
-        spawner = FindAnyObjectByType<ThingSpawner>();
+        spawner = ThingSpawner.InPlay;
         bodies = spawner.GetComponent<ThingBodies>();
         hands = wizard.GetComponent<ItemHolder>();
         int things = World.ThingsNow.Count;

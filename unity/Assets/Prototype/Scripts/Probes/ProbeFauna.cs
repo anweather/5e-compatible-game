@@ -14,7 +14,7 @@ public class FaunaProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         Check("fauna_built", fauna != null && fauna.material != null && fauna.SpeciesCount >= 10,
             $"ValleyFauna with {(fauna != null ? fauna.SpeciesCount : 0)} species");
         if (fauna == null) yield break;

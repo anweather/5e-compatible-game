@@ -52,7 +52,7 @@ public class HouseCameraProbe : ProbeScenario
     IEnumerator SmallForm(VillageHouse[] houses, CinemachineThirdPersonFollow follow, Transform root)
     {
         var shape = wizard.GetComponent<Shapeshift>();
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         var spell = World.Rules.Spell(SpellIds.Shapeshift);
         int small = -1;
         float least = float.MaxValue;

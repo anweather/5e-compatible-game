@@ -97,7 +97,7 @@ public class StampLooksProbe : LandShapesProbe
     {
         var server = RulesMcpServer.Instance;
         if (!server.Serving) server.Serving = true;
-        valley = FindAnyObjectByType<ValleyChemistry>();
+        valley = ValleyChemistry.InPlay;
         var world = grid.World;
         PlaceCell(X - 28, Y - 28);
         yield return Wait(1f);

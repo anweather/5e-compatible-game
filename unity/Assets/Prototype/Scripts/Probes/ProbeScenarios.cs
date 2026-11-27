@@ -735,7 +735,7 @@ public class SmokeProbe : ProbeScenario
     // The yard cell (layout coordinates) of the prop nearest the wizard, within Nearby of it.
     Vector2Int? NearestProp()
     {
-        var spawner = FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         if (spawner == null) return null;
         var me = grid.CellAt(wizard.transform.position);
         var origin = grid.YardCell(0, 0);
@@ -763,7 +763,7 @@ public class SmokeProbe : ProbeScenario
     // own cell, with its own id.
     void CheckThingsSpawned()
     {
-        var spawner = FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         var live = spawner != null ? spawner.Live.ToList() : new List<(Chem.ThingId id, PhysicsProp prop)>();
         int placed = live.Count(t =>
         {

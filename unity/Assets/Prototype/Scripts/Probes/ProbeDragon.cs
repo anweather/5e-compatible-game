@@ -62,7 +62,7 @@ public class DragonProbe : ProbeScenario
         view = FindAnyObjectByType<DragonView>();
         sky = FindAnyObjectByType<SkyLight>();
         vitals = wizard.GetComponent<Vitals>();
-        spawner = FindAnyObjectByType<ThingSpawner>();
+        spawner = ThingSpawner.InPlay;
         Check("view_in_scene", view != null, "the yard has a DragonView (rebuild the yard if not)");
         if (view == null) yield break;
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");

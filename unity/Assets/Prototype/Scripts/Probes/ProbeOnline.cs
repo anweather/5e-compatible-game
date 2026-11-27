@@ -242,14 +242,14 @@ public static class OnlineSchedule
     /// <summary>This side's copy of a thing, by its stable id.</summary>
     public static PhysicsProp FindProp(Chem.ThingId id)
     {
-        var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         return spawner != null ? spawner.Find(id) : null;
     }
 
     /// <summary>Every thing this side has, as "id kind", sorted by id.</summary>
     public static List<string> Things()
     {
-        var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         if (spawner == null) return new List<string>();
         return spawner.Live.OrderBy(t => t.id.Value).Select(t => $"{t.id} {t.prop.kind}").ToList();
     }
@@ -585,7 +585,7 @@ public class OnlineProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         string id = Guid.NewGuid().ToString("N").Substring(0, 8);
-        thingsAtStart = new HashSet<ThingId>(FindAnyObjectByType<ThingSpawner>().Live.Select(t => t.id));
+        thingsAtStart = new HashSet<ThingId>(ThingSpawner.InPlay.Live.Select(t => t.id));
         ProbeLink.Clear();
         var session = FindAnyObjectByType<NetSession>();
         session.Host();
@@ -782,7 +782,7 @@ public class OnlineProbe : ProbeScenario
     IEnumerator TryShape()
     {
         var shape = wizard.GetComponent<Shapeshift>();
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         int deer = fauna != null ? fauna.SpeciesIndex("deer") : -1;
         var at = wizard.transform.position + Vector3.right * 3f;
         if (deer < 0 || shape == null)
@@ -932,7 +932,7 @@ public class OnlineProbe : ProbeScenario
         var net = grid.GetComponent<NetChem>();
         resetNet = net;
         net.TickApplied += CollectAfterReset;
-        var spawner = FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         var before = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
         if (!ballId.IsNone) before.Add(ballId); // the ball broken earlier comes back too
         before.UnionWith(thingsAtStart); // and whatever else broke along the way

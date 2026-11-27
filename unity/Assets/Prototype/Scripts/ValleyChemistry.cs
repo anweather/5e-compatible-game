@@ -25,6 +25,13 @@ public partial class ValleyChemistry : MonoBehaviour
     [Tooltip("Height of the lake's surface, the map's water level (MapLand); lake cells' effects sit on it.")]
     public float lakeLevel = -0.6f;
 
+    static readonly Registry<ValleyChemistry> registry = new();
+
+    /// <summary>The valley's chemistry view in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static ValleyChemistry InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
     TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
     WetGround wet;
@@ -979,6 +986,7 @@ public partial class ValleyChemistry : MonoBehaviour
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (grid != null && ground != null) grid.DetailChunksChanged -= ground.DrawDetails;
         if (grid != null) grid.ChunkFreshened -= BuildingsBack;
         if (grid != null) grid.ChunkDrawn -= QueueGrass;

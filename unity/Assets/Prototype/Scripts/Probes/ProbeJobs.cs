@@ -20,7 +20,7 @@ public class JobsProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         Check("fauna_found", fauna != null);
         if (fauna == null) yield break;
         yield return Switch(At(11f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Clear + " }");

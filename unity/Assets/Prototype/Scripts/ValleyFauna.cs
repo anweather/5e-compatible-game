@@ -170,6 +170,13 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return best;
     }
 
+    static readonly Registry<ValleyFauna> registry = new();
+
+    /// <summary>The valley's animals in play (what FindAnyObjectByType found), or null: see Registry.</summary>
+    public static ValleyFauna InPlay => registry.First;
+
+    void Awake() => registry.Join(this);
+
     void Start()
     {
         // A map with no animals (map.json's "off": "fauna", the hills) runs none.
@@ -208,6 +215,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (grid != null) grid.RulesChanged -= ReadRows;
         drawer?.Dispose();
     }

@@ -65,7 +65,7 @@ public class CloseupProbe : ProbeScenario
     // a deer stands across the view with its back just short of the lens.
     IEnumerator Follow()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         if (fauna == null) yield break;
         var from = V(27f, 0f, 20f);
         Teleport(V(from.x, grid.GroundAt(from), from.z));
@@ -114,7 +114,7 @@ public class CloseupProbe : ProbeScenario
 
     IEnumerator Deer()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         Check("fauna_built", fauna != null);
         if (fauna == null) yield break;
         var p = V(27f, 0f, 26f);

@@ -17,7 +17,7 @@ public class ThatchProbe : ProbeScenario
     {
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
             "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         var house = FindObjectsByType<VillageHouse>(FindObjectsSortMode.None).FirstOrDefault(h => h.walls == WallKind.Timber && h.cover == RoofCover.Thatch);
         Check("house_found", house != null && valley != null, house != null ? house.name : "no thatch-roofed timber house");
         if (house == null || valley == null) yield break;

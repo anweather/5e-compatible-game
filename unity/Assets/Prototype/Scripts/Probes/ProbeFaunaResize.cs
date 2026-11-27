@@ -71,7 +71,7 @@ public class FaunaResizeProbe : RoomProbe
 
     protected override IEnumerator Steps()
     {
-        fauna = FindAnyObjectByType<ValleyFauna>();
+        fauna = ValleyFauna.InPlay;
         Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
         if (fauna == null || RulesMcpServer.Url == null) yield break;
         Metric("pace_at_3", CreatureBrain.Pace(Times));

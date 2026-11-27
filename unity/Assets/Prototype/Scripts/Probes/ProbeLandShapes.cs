@@ -43,7 +43,7 @@ public class LandShapesProbe : ProbeScenario
     {
         var server = RulesMcpServer.Instance;
         if (!server.Serving) server.Serving = true;
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         var world = grid.World;
         yield return Wait(1f);
         Check("terrain_draws_rock_from_the_sides", Terrain.activeTerrains[0].materialTemplate.shader.name == "Prototype/TerrainRock", Terrain.activeTerrains[0].materialTemplate.shader.name);

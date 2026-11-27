@@ -17,7 +17,7 @@ public class SleepProbe : ProbeScenario
         var yard = grid.yardCells;
         var home = new Vector2Int(yard.x + yard.width / 2, yard.y + yard.height / 2);
         var homeChunk = new Vector2Int(Chunks.ChunkOf(home.x), Chunks.ChunkOf(home.y));
-        var spawner = FindAnyObjectByType<ThingSpawner>();
+        var spawner = ThingSpawner.InPlay;
         var props = spawner == null ? new List<PhysicsProp>() : spawner.Live
             .Select(t => t.prop)
             .Where(p => p != null && p.State != null && grid.ChunkAt(p.transform.position) == homeChunk)

@@ -80,7 +80,7 @@ public class PantsProbe : ProbeScenario
     // Into a deer in the meadow (as the shapeshift probe does), a walk and a swim as one, the camera away, then back.
     IEnumerator Shifted()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         var shape = wizard.GetComponent<Shapeshift>();
         int deer = fauna != null ? fauna.SpeciesIndex("deer") : -1;
         bool ready = fauna != null && shape != null && deer >= 0;

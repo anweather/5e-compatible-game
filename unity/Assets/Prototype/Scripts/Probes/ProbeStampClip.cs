@@ -21,7 +21,7 @@ public class StampClipProbe : LandShapesProbe
         }
         var server = RulesMcpServer.Instance;
         if (!server.Serving) server.Serving = true;
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         PlaceCell(X - 28, Y - 28);
         yield return Wait(1f);
 

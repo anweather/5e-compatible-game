@@ -258,7 +258,7 @@ public class RowHouses : MonoBehaviour
         var panes = root.AddComponent<WindowPanes>();
         panes.hollow = true;
         panes.Show(made.panes, glass);
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         if (valley != null) valley.BindPanes(panes);
         var laid = world.BuildingCellsOf(row);
         var cells = new HashSet<Vector2Int>(laid.Where(c => c.Part != BuildingPart.Fill).Select(c => new Vector2Int(c.X - row.X, c.Y - row.Y)));
@@ -295,7 +295,7 @@ public class RowHouses : MonoBehaviour
     void GreatTrees(GameObject root, BuildingRow row, Vector3 corner)
     {
         if (!(row.Json["parts"] is JArray parts) || !(row.Json["joins"] is JObject joins)) return;
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         foreach (var part in parts.OfType<JObject>().Where(p => (string)p["kind"] == GreatTree))
         {
             if (valley == null || !(joins[(string)part["join"] ?? ""] is JArray j)) continue;
@@ -439,7 +439,7 @@ public class RowHouses : MonoBehaviour
     static Transform SceneHouse(World world, BuildingRow row, Vector3 corner)
     {
         if (row.Json["built"] != null || !world.IsBaseBuilding(row.Id)) return null;
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         if (valley == null || valley.cabins == null) return null;
         var near = Middle(corner, row);
         near.y = 0f;
@@ -463,7 +463,7 @@ public class RowHouses : MonoBehaviour
         if (!closing)
             foreach (var c in d.walls) grid.BuiltWall(c.x, c.y, 0f);
         if (d.hidden != null) d.hidden.gameObject.SetActive(true);
-        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var valley = ValleyChemistry.InPlay;
         if (valley != null && d.panes != null) valley.UnbindPanes(d.panes);
         if (d.root == null) return;
         // Only the meshes made for it: a landmark's model (a great tree on the nine) shares its asset's, which stays.

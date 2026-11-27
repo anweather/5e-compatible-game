@@ -13,7 +13,7 @@ public class SpawnersProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var fauna = ValleyFauna.InPlay;
         Check("fauna_built", fauna != null, "ValleyFauna");
         if (fauna == null) yield break;
         fauna.maxCreatures = 400;
