@@ -11,6 +11,7 @@
         "Prototype.Kit",
         "Prototype.World",
         "Prototype.Land",
+        "Prototype.Village",
         "Prototype.Analyzers",
         "Unity.InputSystem",
         "Unity.Mathematics",

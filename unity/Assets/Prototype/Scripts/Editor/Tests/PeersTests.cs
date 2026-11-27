@@ -108,7 +108,7 @@ public class PeersTests
 
     static readonly string[] GameAssemblies =
     {
-        "Prototype.Punchy", "Prototype.Kit", "Prototype.World", "Prototype.Land", "Prototype.Game",
+        "Prototype.Punchy", "Prototype.Kit", "Prototype.World", "Prototype.Land", "Prototype.Village", "Prototype.Game",
     };
 
     [Test]
