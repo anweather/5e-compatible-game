@@ -34,6 +34,16 @@ things go" table is the recipe for adding a spell, material, prop or item.
   `Request`, or `.Grid` to draw on it), never by searching the scene for a
   `ChemGrid`. It is null outside Play mode, so Editor code and EditMode
   tests that open a scene still find the grid in it.
+- Don't search the scene (`FindAnyObjectByType`, `FindObjectsByType`) for a type that has a registry: ask
+  it (`Registry.cs`, `RegistryTests`). A type searched for in more than a one-off startup call gets one. A type joins with a static
+  `Registry<T>` field, `registry.Join(this)` first in `Awake` and `registry.Leave(this)` first in `OnDestroy`
+  (a `NetworkBehaviour` overrides `OnDestroy` and calls the base), and hands out `InPlay` (one) or `All` (a new
+  array; `AllByInstanceId` for a caller that sorted by instance id): only those on active GameObjects, a disabled
+  one included, as Find* does. A caller that asks what's near a place asks by chunk: the type keeps its chunk with
+  `registry.Place` every physics step and callers ask `Near(chunk, chunk)` and test positions themselves
+  (`PhysicsProp`, J-086). Registries empty as Play starts (`Registries.ForgetAll`; domain reload is off, J-023),
+  so nothing needs clearing by hand; add the type's case to `RegistryTests.Types`. Edit mode runs no Awake: code
+  that also runs in the Editor (`[ExecuteAlways]`, builders, `LandBaker`) keeps its search (`Village`'s sky).
 - Rule ids are referenced only through `Plans/RuleIds.cs` (`SpellIds`, `ItemIds`).
 - Runtime singletons that every scene needs can start themselves with
   `[RuntimeInitializeOnLoadMethod]` (`FpsProbe`, `PauseMenu`) so no builder

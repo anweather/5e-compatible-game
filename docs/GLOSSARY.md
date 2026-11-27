@@ -1311,6 +1311,13 @@ that long, and doesn't march.
 : One with nothing cached to read, so it writes all of Claude's starting
   context. A **warm** one reads most of it.
 
+## The view's wiring
+
+**Registry**
+: A type's own list of its live instances in play (`Registry<T>`, `Registry.cs`), asked in place of a
+  scene search: `ValleyFauna.InPlay`, `PhysicsProp.All`, `PhysicsProp.Near` (by chunk). An instance
+  **joins** in Awake and **leaves** in OnDestroy. *Avoid:* "manager" or "service" for it.
+
 ## Ambiguities settled
 
 | Word | Means | Not |

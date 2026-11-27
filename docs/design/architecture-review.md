@@ -241,6 +241,23 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    lists joined on enable (chunk-keyed, J-086), in place of the 244 `Find*` calls; the menu's sections as data;
    readers of `ChemGrid` that only need world, rules and effects take `CurrentGrid`. Done file by file as work
    passes through. Risk: low each. **Unity.**
+   *Done 2026-11-26 (the Mac: Unity batch compiles, EditMode tests 559 (557 passed, 2 skipped; 480 before, the 79 new
+   are `RegistryTests`), Win64 and Linux64 player-script compiles; the probes not run, they need an open Editor). The
+   registries: `Registry<T>` (`Registry.cs`), joined in Awake and left in OnDestroy, handing out what Find* did (active
+   GameObjects only, a disabled component included, never a destroyed one), all emptied as Play starts
+   (`Registries.ForgetAll`, J-023). `ValleyFauna`, `ValleyChemistry`, `ThingSpawner`, `SkyLight`, `WeatherFx`,
+   `DefenseField`, `NetSession` (`InPlay`); `PhysicsProp`, `SpellCaster`, `Carryable`, `Village`, `NetWizard`,
+   `SpellProjectile`, `FrostBeam`, `MeteorFall` (`All`, and `AllByInstanceId` where a caller sorted by instance id);
+   `Seat` already kept its own list. `PhysicsProp` is also keyed by chunk (placed every physics step; `Near` reads
+   only the chunks asked for, a ring around them and the props in no chunk), and BallCourt's ball and the playtest
+   bot's nearest prop ask by chunk (J-086). Non-Editor `Find*` calls went from 233 in 128 files (today's dev; 244 when
+   this was written) to 108 in 74; what's left is one or two per type (`Light` 8, `VillageHouse` 5, which searches
+   inactive objects too, `MapTerrains` 5, ...) and the searches that also run in the Editor (`Village`'s sky,
+   `LandBaker`). The narrower `ChemGrid`: `CloudSky`, `SkyLight` and `Village` keep `ChemGrid.Current`'s face, not the
+   grid, and two reads (`MapTerrains`, the map-switch probe) skip `.Grid`; the other readers draw on the grid (cell
+   positions, heights, events) or take it by `GetComponent`, and the serialized `ChemGrid grid` fields are set by the
+   builders, so they stay. The menu's sections as data is not done: `PauseMenu.AddSection` takes IMGUI draw
+   callbacks (21 of them), so making them data means rewriting each section's drawing, not a mechanical move.*
 9. **Game modes out of `World`.** Hold, Golf, Course, Raiders, Defense, Dragon from `World.*.cs` partials into
    systems over `World` data in `Chem.Play` (D9), one mode per step, each with its goldens unchanged and the Mono
    pass in that night's sweep. Largest step; do it as each mode is next worked on. **Cloud.**
