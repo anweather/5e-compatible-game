@@ -326,7 +326,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5dd226257a50345f8a4803109498ccfe, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::PlayerControls
+  m_EditorClassIdentifier: Prototype.Kit::PlayerControls
 --- !u!114 &6162257116778718615
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -338,7 +338,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c9950825984ae4040bd1c3cebef3a791, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::SpellCaster
+  m_EditorClassIdentifier: Prototype.Player::SpellCaster
   grid: {fileID: 0}
   controls: {fileID: 0}
   visuals: {fileID: 11400000, guid: b7c97d945ab8447c4953811216a3d01b, type: 2}
@@ -353,7 +353,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8bf54b2e81c3e4fb480d5557e0fb5fda, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::CastPose
+  m_EditorClassIdentifier: Prototype.Player::CastPose
 --- !u!114 &9163129423396004689
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -365,7 +365,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4f4144474582c064ba394f61b12df101, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::CastBeats
+  m_EditorClassIdentifier: Prototype.Player::CastBeats
   feel: {fileID: 11400000, guid: 49359ac486989984ca7dc42e002ed964, type: 2}
 --- !u!114 &1346358280460853545
 MonoBehaviour:
@@ -378,7 +378,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4a4724e9b55ed42e9adefd12b09b4336, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::SurfaceEffects
+  m_EditorClassIdentifier: Prototype.Player::SurfaceEffects
   grid: {fileID: 0}
   slipperyGrip: 1.2
   shallowWadingSpeed: 0.92
@@ -403,7 +403,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dbbbb185783d44fcbb6678287d6aefd0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::Knockback
+  m_EditorClassIdentifier: Prototype.Player::Knockback
   grid: {fileID: 0}
   decay: 2.5
 --- !u!114 &3470894612682429423
@@ -417,7 +417,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d721a9ec3e99a4ff59b763acc55e33eb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::ItemHolder
+  m_EditorClassIdentifier: Prototype.Player::ItemHolder
   controls: {fileID: 0}
   view: {fileID: 0}
   reach: 2
@@ -435,7 +435,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 522e5d1e700d57149b370bad521c6320, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::SwimPose
+  m_EditorClassIdentifier: Prototype.Player::SwimPose
 --- !u!114 &6539644969304241909
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -447,7 +447,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 174d52cd2039bb146aad9a23924694b4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::ThrowPose
+  m_EditorClassIdentifier: Prototype.Player::ThrowPose
 --- !u!114 &2199421614680021155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -459,7 +459,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 446e36138c6419b4eab8a85d67074e2f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::PunchPose
+  m_EditorClassIdentifier: Prototype.Player::PunchPose
 --- !u!114 &2301549113246676946
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -471,7 +471,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c53d445ac5ab01a489243f0a2b092430, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::HandPose
+  m_EditorClassIdentifier: Prototype.Player::HandPose
 --- !u!114 &323441529872921048
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -483,7 +483,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 782683733c464f0badc34b344957582b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::SitPose
+  m_EditorClassIdentifier: Prototype.Player::SitPose
 --- !u!114 &6268433591274011385
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -495,7 +495,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 12c1459a0a9d49f48253ace465f3ec64, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::Sitter
+  m_EditorClassIdentifier: Prototype.Player::Sitter
 --- !u!114 &7812786501428955037
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -507,7 +507,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 50845fc65ccf4b02b7b37f482767b268, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::CurrentRider
+  m_EditorClassIdentifier: Prototype.Player::CurrentRider
 --- !u!114 &2300893671110082725
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -519,7 +519,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc090d532c4111546a22a088d7d49925, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::Vitals
+  m_EditorClassIdentifier: Prototype.Player::Vitals
   infinite: 1
 --- !u!114 &989228039631756897
 MonoBehaviour:
@@ -532,7 +532,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8a82789dfdd47ce4c892e76abc149767, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::WizardStrike
+  m_EditorClassIdentifier: Prototype.Player::WizardStrike
 --- !u!114 &3819872475760753761
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -544,7 +544,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 18330e0fb7e54542a7acfd7e1941fa3f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::WizardDown
+  m_EditorClassIdentifier: Prototype.Player::WizardDown
 --- !u!114 &3012899181838150966
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -556,7 +556,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 88f17c4a466e4de593e50aa16d370d7c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::DownedPose
+  m_EditorClassIdentifier: Prototype.Player::DownedPose
 --- !u!114 &588046562923644721
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -568,7 +568,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b64cbbdbf38a8c24787495c79790956b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::Kicker
+  m_EditorClassIdentifier: Prototype.Player::Kicker
 --- !u!114 &8468277508970147663
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -580,7 +580,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: be93a05fae330eb4bb124cef397dfa46, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::SprintToggle
+  m_EditorClassIdentifier: Prototype.Player::SprintToggle
 --- !u!114 &2820677389166082708
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -592,7 +592,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5775ada086756d95d8377fb01427ab75, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::DoubleJump
+  m_EditorClassIdentifier: Prototype.Player::DoubleJump
   height: 1.2
   after: 0.08
 --- !u!114 &6629991422641019483
@@ -606,7 +606,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ad764ea6ac12c2b4eb8ae8e04986155f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::WizardStats
+  m_EditorClassIdentifier: Prototype.Player::WizardStats
 --- !u!114 &6970996195446869681
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -618,7 +618,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0125766545336a14ca9cd32c54e254f6, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::SpellRadialHud
+  m_EditorClassIdentifier: Prototype.Player::SpellRadialHud
 --- !u!114 &5373735500069560794
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -630,7 +630,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0f086aa7b72d4bdba17628462527e5eb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::DodgeRoll
+  m_EditorClassIdentifier: Prototype.Player::DodgeRoll
 --- !u!114 &315429435482139014
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -642,7 +642,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 24fa661bd0a44ed0baa1e3222ae80bd0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::RollPose
+  m_EditorClassIdentifier: Prototype.Player::RollPose
 --- !u!114 &3270076419434578666
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -654,7 +654,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 82c3f74f01854511867842730a997347, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::OccluderFade
+  m_EditorClassIdentifier: Prototype.Player::OccluderFade
   ditherLit: {fileID: 4800000, guid: e1e5669f31424bd28c5d5728af1ed979, type: 3}
   silhouette: {fileID: 4800000, guid: 4b7b35fb6dba49acaef080217450f9c7, type: 3}
 --- !u!114 &286404658758417964
@@ -668,7 +668,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 36b308039d3c4f3bbcf12bd8d85c82b3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::Shapeshift
+  m_EditorClassIdentifier: Prototype.Player::Shapeshift
 --- !u!114 &8044595264787904889
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -680,7 +680,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 58db702017967664695146063f304bbb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::WizardOutfit
+  m_EditorClassIdentifier: Prototype.Player::WizardOutfit
   material: {fileID: 2100000, guid: 1c2f7c809517e4946a98211dcf83ad02, type: 2}
   faceShader: {fileID: 4800000, guid: d352c809965ea08448db937a3a82493a, type: 3}
   carriesStaff: 0
@@ -695,7 +695,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98669e760034842deb62ffb23e6027ec, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Prototype.Game::NetWizard
+  m_EditorClassIdentifier: Prototype.Player::NetWizard
   ShowTopMostFoldoutHeaderGroup: 1
 --- !u!95 &8208239333428215968 stripped
 Animator:

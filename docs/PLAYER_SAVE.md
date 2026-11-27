@@ -123,8 +123,8 @@ the first run with player saves:
   `Chemistry/World.Save.cs` (keeping `Known` for the transition).
 - `Scripts/Net/NetChem.cs` (a stable player id in place of `p{clientId}`,
   the join hand-off, stamping the command), `Scripts/Net/NetWizard.cs`.
-- `Scripts/PauseMenu.cs`, `Scripts/QuickExit.cs` (save on quit),
-  `Scripts/ItemHolder.cs` and the inventory, once it exists.
+- `Scripts/Kit/PauseMenu.cs`, `Scripts/Kit/QuickExit.cs` (save on quit),
+  `Scripts/Player/ItemHolder.cs` and the inventory, once it exists.
 - `sandbox/src/combos.ts` (the join command), with a shared golden.
 - `docs/GLOSSARY.md`: add **player save** (and **world save**) before
   building.

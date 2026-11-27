@@ -17,7 +17,7 @@ For Andrew. Controller first. Read against dev at `78e97241`. Nothing here is bu
   - So a tapped Fire Bolt comes out about once every 3 s per hand.
   - A full Meteor costs 4 s of charging, then 5 s of both hands locked.
   - The upgrades only trim this (`quick-hands` -15%, `calm-hands` -25%, `earth-focus` -30%).
-- **The mana pool** is a view-only bar: `Vitals.Magic` (`Scripts/Vitals.cs`), a float out of 100.
+- **The mana pool** is a view-only bar: `Vitals.Magic` (`Scripts/Player/Vitals.cs`), a float out of 100.
   - Nothing spends it ("magic doesn't drain yet").
   - There's no mana in `rules/` or the core.
 - **Merges** are in `rules/hold.json` `hands.spells`. Two pair slots are free since the cut:

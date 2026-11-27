@@ -70,7 +70,7 @@ add elements.
 - Selection still goes through `SpellCaster.Select(id)`, so online play and
   the probe are unchanged.
 - Built (2026-10-26): the model `Chemistry/SpellRadial.cs`, `RadialLayout.cs`
-  and `SpellGroups.cs` with `RadialTests`; the view `Scripts/SpellRadialHud.cs`
+  and `SpellGroups.cs` with `RadialTests`; the view `Scripts/Player/SpellRadialHud.cs`
   (input, look pause, drawing; on every wizard through
   `ChemYardBuilder.AddWizardParts`); the bindings in `PlayerControls` (Tab / LB
   hold, B cancel, E / RB and Q, 1–8, d-pad left / right); the HUD chip in

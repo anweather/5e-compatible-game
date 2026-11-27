@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # editmode.sh: run the Editor's EditMode tests in the open Unity Editor, by group (docs/TESTING_LAYERS.md).
 #   tools/editmode.sh [unity|chem|all|sweep] [extra args for `unity command test run`]
-#     unity   (default) the Unity-only tests: Prototype.Game.Tests (Scripts/Editor/Tests, Scripts/Playtest/Editor) and
+#     unity   (default) the Unity-only tests: Prototype.Game.Tests (Scripts/Editor/Tests, Scripts/Shell/Playtest/Editor) and
 #             Prototype.Probes.Tests (Scripts/Probes/Editor/Tests), with the view plans' Prototype.Plans.Tests
 #             (Scripts/Plans/Tests, which dotnet runs too: this is their Mono pass), ~470 tests.
 #             About 4 min on the Mac. Run it for any change to Scripts/ or Net/.

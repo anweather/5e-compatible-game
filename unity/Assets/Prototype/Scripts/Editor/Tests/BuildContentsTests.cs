@@ -4,8 +4,8 @@ using NUnit.Framework;
 // BuildContents: a headless Windows build only counts with its PSO collection and shaders inside.
 public class BuildContentsTests
 {
-    const string Pso = "Assets/Prototype/Scripts/Perf/Resources/PsoDirect3D12.graphicsstate";
-    const string OtherPso = "Assets/Prototype/Scripts/Perf/Resources/PsoMetal.graphicsstate";
+    const string Pso = "Assets/Prototype/Scripts/Shell/Perf/Resources/PsoDirect3D12.graphicsstate";
+    const string OtherPso = "Assets/Prototype/Scripts/Shell/Perf/Resources/PsoMetal.graphicsstate";
 
     [Test]
     public void CompleteWithTheCollectionAndShaders()

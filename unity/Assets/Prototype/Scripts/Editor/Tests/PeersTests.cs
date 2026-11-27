@@ -106,15 +106,29 @@ public class PeersTests
         Assert.IsFalse(OnlineReset.Ask());
     }
 
+    static readonly string[] GameAssemblies =
+    {
+        "Prototype.Punchy", "Prototype.Kit", "Prototype.World", "Prototype.Land", "Prototype.Village", "Prototype.Player", "Prototype.Fauna", "Prototype.Modes", "Prototype.Chat", "Prototype.Shell",
+    };
+
     [Test]
     public void TheGameDoesNotReferenceNet()
     {
-        var game = typeof(ChemGrid).Assembly;
         var net = typeof(NetChem).Assembly;
-        Assert.AreEqual("Prototype.Game", game.GetName().Name);
+        Assert.AreEqual("Prototype.World", typeof(ChemGrid).Assembly.GetName().Name);
         Assert.AreEqual("Prototype.Net", net.GetName().Name);
-        CollectionAssert.DoesNotContain(System.Array.ConvertAll(game.GetReferencedAssemblies(), a => a.Name), "Prototype.Net");
-        CollectionAssert.Contains(System.Array.ConvertAll(net.GetReferencedAssemblies(), a => a.Name), "Prototype.Game");
+        CollectionAssert.Contains(System.Array.ConvertAll(net.GetReferencedAssemblies(), a => a.Name), "Prototype.World");
+        var loaded = System.AppDomain.CurrentDomain.GetAssemblies();
+        var compiled = UnityEditor.Compilation.CompilationPipeline.GetAssemblies(UnityEditor.Compilation.AssembliesType.PlayerWithoutTestAssemblies);
+        foreach (var name in GameAssemblies)
+        {
+            var game = System.Array.Find(loaded, a => a.GetName().Name == name);
+            Assert.IsNotNull(game, name);
+            CollectionAssert.DoesNotContain(System.Array.ConvertAll(game.GetReferencedAssemblies(), a => a.Name), "Prototype.Net", name);
+            var built = System.Array.Find(compiled, a => a.name == name);
+            Assert.IsNotNull(built, name);
+            CollectionAssert.DoesNotContain(System.Array.ConvertAll(built.assemblyReferences, a => a.name), "Prototype.Net", name);
+        }
     }
 
     [Test]

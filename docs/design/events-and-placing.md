@@ -11,7 +11,7 @@ ends as one mod a player's Claude makes.
 
 | Ask | What Claude did | What stops it |
 |---|---|---|
-| #76 meteor per step | Offered thicker meteor showers | No rule can react to anything but an element on a cell. Yet the step **already reaches the core**: `WizardStrike` sends `StrikeCommand.Stand` whenever its wizard steps onto a new cell (`Scripts/WizardStrike.cs:72-80`), stamped like a cast and run in batch order (`TickBatch.cs:144`, `World.Strike.cs:135-150`), and stands are in `CastHash` (`World.Combos.cs:219`) |
+| #76 meteor per step | Offered thicker meteor showers | No rule can react to anything but an element on a cell. Yet the step **already reaches the core**: `WizardStrike` sends `StrikeCommand.Stand` whenever its wizard steps onto a new cell (`Scripts/Player/WizardStrike.cs:72-80`), stamped like a cast and run in batch order (`TickBatch.cs:144`, `World.Strike.cs:135-150`), and stands are in `CastHash` (`World.Combos.cs:219`) |
 | #74 child from a spell | "Can't add creatures from a spell" | A spell does cells only (`World.Spells.cs:213-231`, `Land` at `:477`). Its one placing field, `scatter`, lays a cover, from the world's RNG (`ScatterDef`, `RuleTables.cs:323`; `World.Spells.cs:275-289`). Things come only from files and mods: `ThingsNow` is a pure function of rules and seed (`World.Things.cs:16-27`). A `human-child` species exists (`rules/fauna.json:295`) |
 | #75 50 trees | Three solid "buildings" of `tree`, read as roofless huts | A mod can lay cells only as a building. And a `tree` cell the land didn't bake isn't drawn as a tree: the view dresses only trees that grew (`CellDressing.Growth.cs:16-17`, `materials.json:11` `baked`) |
 

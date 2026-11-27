@@ -254,7 +254,7 @@ public class ChatTelemetry : MonoBehaviour
 
     void Note(string what)
     {
-        if (PlayLog.Instance != null) PlayLog.Instance.Note($"chat {currentId} {what}");
+        PlayNotes.Note($"chat {currentId} {what}");
     }
 
     void DrawList()

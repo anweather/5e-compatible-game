@@ -145,7 +145,7 @@ Favor compatibility over ambitious redesign in the first extraction. Split into 
 - Punchy terrain and cave rendering.
 - Game-specific networking implementations.
 
-Important wrinkle: `Game.Core.csproj` currently links `Chemistry/Mcp/*.cs` and `Scripts/Playtest/Logic/*.cs` in addition to the main Chemistry sources. Do not lose these tools. Decide whether they become separate projects/packages and preserve their build/test coverage.
+Important wrinkle: `Game.Core.csproj` currently links `Chemistry/Mcp/*.cs` and `Scripts/Shell/Playtest/Logic/*.cs` in addition to the main Chemistry sources. Do not lose these tools. Decide whether they become separate projects/packages and preserve their build/test coverage.
 
 ## Rules and content
 

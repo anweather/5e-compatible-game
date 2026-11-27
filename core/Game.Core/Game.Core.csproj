@@ -14,8 +14,8 @@
     <!-- The game modes' systems (Runtime/Play, architecture-review.md step 9): in the same assembly, as in Unity. -->
     <Compile Include="../../packages/com.anweather.chemistry-core/Runtime/Play/*.cs" Link="Play/%(Filename)%(Extension)" />
     <Compile Include="../../unity/Assets/Prototype/Chemistry/Mcp/*.cs" Link="Mcp/%(Filename)%(Extension)" />
-    <!-- The playtest bot's Unity-free logic (unity/Assets/Prototype/Scripts/Playtest/Logic, playtest/DESIGN.md). -->
-    <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Logic/*.cs" Link="Playtest/%(Filename)%(Extension)" />
+    <!-- The playtest bot's Unity-free logic (unity/Assets/Prototype/Scripts/Shell/Playtest/Logic, playtest/DESIGN.md). -->
+    <Compile Include="../../unity/Assets/Prototype/Scripts/Shell/Playtest/Logic/*.cs" Link="Playtest/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

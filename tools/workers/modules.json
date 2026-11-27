@@ -62,8 +62,8 @@
     { "name": "tests-sim", "props": "ChemTestsSim", "projects": ["Chem.Sim.Tests"] },
 
     { "name": "mcp", "projects": ["Game.Core"], "paths": ["unity/Assets/Prototype/Chemistry/Mcp/*.cs"] },
-    { "name": "playtest-logic", "projects": ["Game.Core"], "paths": ["unity/Assets/Prototype/Scripts/Playtest/Logic/*.cs"] },
-    { "name": "playtest-tests", "projects": ["Chem.Playtest.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs"] },
+    { "name": "playtest-logic", "projects": ["Game.Core"], "paths": ["unity/Assets/Prototype/Scripts/Shell/Playtest/Logic/*.cs"] },
+    { "name": "playtest-tests", "projects": ["Chem.Playtest.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Shell/Playtest/Editor/*Tests.cs"] },
     { "name": "plans-tests", "projects": ["Prototype.Plans.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Plans/Tests/*.cs"],
       "_": "The view plans' tests (step 6): Unity's Prototype.Plans.Tests, and core/Prototype.Plans.Tests on Prototype.Plans alone." },
     { "name": "plans", "projects": ["Prototype.Plans"], "reads": ["Rules.Mcp.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Plans/*.cs"],

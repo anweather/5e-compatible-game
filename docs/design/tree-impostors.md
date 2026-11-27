@@ -86,7 +86,7 @@ terrain's ~256 m.
   three. The pixel's depth moves onto the tree's surface, so the trunk meets the ground. It is lit by the main light
   (with a wrap and some light through the leaves) and the ambient, takes its shadows at 0.7, and is fogged. It casts
   its shadow from the light's own three views.
-- **The renderer** (`Scripts/TreeImpostors.cs`, on with `-tree-impostors [near]`, `-tree-impostors-far`,
+- **The renderer** (`Scripts/Village/TreeImpostors.cs`, on with `-tree-impostors [near]`, `-tree-impostors-far`,
   `-tree-impostors-no-shadows`, or `TreeImpostors.On`). When it is on, the terrains draw no trees. Within `Near` (60 m)
   it draws each tree's full mesh, instanced: LOD0 within 25 m and LOD1 past that. From 60 to 500 m it draws impostors,
   one instanced call per chunk and species. The trees come from the view. Where a terrain is made, they are the

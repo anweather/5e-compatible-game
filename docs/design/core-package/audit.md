@@ -36,7 +36,7 @@ ways to move it with what each costs, and whether now is the time. Read-only: no
 | Tools and tests | `net8.0` (Rules.Mcp, Playtest.Runner, Playtest.Text, Hold.Runner, Chat.Bench, and the five test projects) |
 | NuGet (core) | Newtonsoft.Json 13.0.3 (used by ~100 files; rules are held as `JObject`, so it can't be dropped) |
 | Analyzers | SonarAnalyzer.CSharp 10.35.0.4138, NetAnalyzers 10.0.402, `unity/Assets/Default.globalconfig`; warnings are errors (S3776 excepted) |
-| How sources are linked | `Game.Core.csproj` globs `unity/Assets/Prototype/Chemistry/*.cs`, `Chemistry/Mcp/*.cs`, `Scripts/Playtest/Logic/*.cs`; `Game.Core.Tests` globs `Chemistry/Tests/*.cs` and `Scripts/Playtest/Editor/*Tests.cs` |
+| How sources are linked | `Game.Core.csproj` globs `unity/Assets/Prototype/Chemistry/*.cs`, `Chemistry/Mcp/*.cs`, `Scripts/Shell/Playtest/Logic/*.cs`; `Game.Core.Tests` globs `Chemistry/Tests/*.cs` and `Scripts/Shell/Playtest/Editor/*Tests.cs` |
 | Unity assembly | `Chemistry.asmdef`: `noEngineReferences`, `autoReferenced` (Assembly-CSharp sees it), precompiled `Newtonsoft.Json.dll`, references `Prototype.Analyzers`. Covers `Mcp/` too. `Chemistry.Tests.asmdef` is Editor-only (NUnit) |
 | Unity packages | ours: Unity 6000.3.27f1, `com.unity.nuget.newtonsoft-json` 3.2.2, test-framework 1.6.0. Punchy: Unity **6000.5.8f1**, Entities 6.5, URP 17.5, Newtonsoft 3.2.2 (only as a dependency of another package) |
 | Build | `dotnet build core -c Release -warnaserror`: 0 errors, 155 S3776 warnings, 43 s |
@@ -110,7 +110,7 @@ tested only indirectly.
 | Mcp/McpRpc, RuleFields, RulesTools, Simulator, Workbench (18 partials) | Tool | Game, as a `Chemistry.Mcp` assembly | Workbench uses GameFolders and the game modes (Dragon, Fauna, Buildings, Places) |
 | Mcp/ApiBudget, ApiLoop, ApiModels, ChatHarness, ChatProfile, ChatRecord, ClaudeRun | Tool (chat) | Game | used by Scripts (ApiChat, ApiWire, ChatBar, ChatSetup...) |
 | Mcp/StandInValley, BodyShape | Game | Game | |
-| Scripts/Playtest/Logic/* (6 files) | Game (bot logic) | Game | in Assembly-CSharp in Unity; only Game.Core links it |
+| Scripts/Shell/Playtest/Logic/* (6 files) | Game (bot logic) | Game | in Assembly-CSharp in Unity; only Game.Core links it |
 
 ## 4. Dependency clusters
 
@@ -222,7 +222,7 @@ with every core job.
 ## 9. Not moving in the first pass
 
 - `Chemistry/Tests/` (all of them; they need our rules and maps), `core/Game.Core.Tests` and its helpers
-- `Chemistry/Mcp/` (gets its own assembly, stays in the game), `Scripts/Playtest/Logic/`
+- `Chemistry/Mcp/` (gets its own assembly, stays in the game), `Scripts/Shell/Playtest/Logic/`
 - `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner`, `Chat.Bench` (they stay consumers)
 - `rules/`, `world/` and every content file
 - Everything under `Scripts/` (view, input, net, editor builders)
