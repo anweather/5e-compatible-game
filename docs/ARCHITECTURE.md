@@ -12,8 +12,8 @@ Five layers. Each one only knows about the layers above it in this list.
 |---|---|---|---|---|
 | 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. (The frozen web sandbox has its own copy, `sandbox/rules-frozen/`.) Next to it, `world/things.json`: where the props and items stand, per chunk | No (it's data) |
 | 2 | **Chem core** | `packages/com.anweather.chemistry-core/Runtime/` (namespace `Chem`; called `Chemistry/` below) | Loads the rules and runs the world: a grid of cells, one tick at a time. Same results on every machine | **No**, the compiler forbids it |
-| 3 | **View** (presentation) | `Scripts/` | Draws the world, reads input, plays the show (gestures, projectiles, particles), moves the wizard | Yes |
-| 4 | **Networking** | `Scripts/Net/` (asmdef `Prototype.Net`), with each thing's network half in `Scripts/Online/` | Lets friends share one world: sends cast intents, not cells | Yes |
+| 3 | **View** (presentation) | `Scripts/`: nine assemblies by layer, `Kit/` up to `Shell/` (see the table below) | Draws the world, reads input, plays the show (gestures, projectiles, particles), moves the wizard | Yes |
+| 4 | **Networking** | `Scripts/Net/` (asmdef `Prototype.Net`), with each thing's network half in its layer's `Online/` (`Scripts/World/Online/`, `Scripts/Player/Online/`, `Scripts/Modes/Online/`) | Lets friends share one world: sends cast intents, not cells | Yes |
 | 5 | **Editor tooling** | `Scripts/Editor/` | Builds the scenes, records demos, makes player builds, restores Asset Store packs. Never runs in the game | Yes (Editor only) |
 
 ```
@@ -198,7 +198,7 @@ the lake level for lake cells) are the one height function. Height is cell
 state, hashed in `CellHash`, so online it arrives through lockstep like
 everything else.
 
-### 4. Networking (`Scripts/Net/`, the `Prototype.Net` assembly, and `Scripts/Online/`)
+### 4. Networking (`Scripts/Net/`, the `Prototype.Net` assembly, and the layers' `Online/` folders)
 `NetChem.cs` is **lockstep**: the host owns the clock and broadcasts, every
 tick, the casts due on that tick (with the caster's position), the effects
 its physics props had on cells (`EffectIntent`: a barrel's blast, a
@@ -300,7 +300,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
    `ChemEffects`, `DefenseField`, `WizardStrike` and the `ChemGrid` partials
    ask it, never `NetChem`, and so do `OnlineReset`'s doors (the dragon and
    the reset) and the things' network halves. Those halves are the game's,
-   in `Scripts/Online/` (the network part of their prefabs): `PhysicsProp`
+   in their layers' `Online/` folders (the network part of their prefabs): `PhysicsProp`
    and `Carryable` (and the item behaviours) hand theirs to `NetProp` /
    `NetItem`, `Knockback` and the wizard's parts to `NetWizard`, `BallCourt`
    to `NetCourt`. Solo none of them is used. The session itself (`NetChem`,
@@ -325,21 +325,22 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `Chem.Land` (the package's `Runtime/Land/`, asmdef `Chem.Land`, `noEngineReferences`; hills, ChunkGen, world plans, themes, biomes, map files, `GeneratedMap`; `docs/design/chem-land-split.md`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chemistry/` (no `World`, `Cell` or `Rules`), `UnityEngine`, `Scripts/`, anything under `core/` |
 | `Chemistry/` (the package's `Runtime/` but `Land/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
 | `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
-| `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
+| `Scripts/Shell/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
 | `Scripts/Plans/` (the view's plans: budgets, tables, menu logic, mesh arrays with no `Mesh`; asmdef `Prototype.Plans`, in player builds; `docs/design/architecture-review.md` step 6) | `Chemistry/`, `Chem.Land`, `UnityEngine`'s maths only (`Vector2`/`3`, `Mathf`, `Color`, `Debug.Log`: what `core/UnityMath` stands in for) | `Scripts/` (no game type), MonoBehaviours, scenes and assets |
 | `Scripts/Plans/Tests/` (asmdef `Prototype.Plans.Tests`, Editor only) | `Scripts/Plans/`, `Chemistry/`, `Chem.Land`, NUnit | `Scripts/`, anything under `core/` (`core/Prototype.Plans.Tests` compiles it too) |
-| `Scripts/` (the view, with `Chat/` (Claude, the rules MCP, speech), `Online/` (the things' network halves), `Playtest/`, `Perf/` and `ThirdParty/Punchy`: asmdef `Prototype.Game`) | `Scripts/Plans/`, `Chemistry/`, Unity, Netcode, the packs by name (rule 5) | `Scripts/Net/` (the peers only through `IPeers`), editor code; the core never references it back |
-| `Scripts/Net/` (the session: asmdef `Prototype.Net`, in player builds) | `Scripts/`, `Scripts/Plans/`, `Chemistry/`, Netcode, the transport and services | nothing in the game references it; the Editor tools, the probes and the tests may |
-| `Scripts/Editor/` (with `Perf/Editor/` and `Punchy/Terrain/Editor/`: asmdef `Prototype.Game.Editor`, Editor only) | everything but the probes | nothing references it but its tests and the probes' CLI |
-| `Scripts/Editor/Tests/`, `Scripts/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything but the probes, NUnit | nothing references it |
-| `Scripts/Probes/` (the Play-mode probe scenarios: asmdef `Prototype.Probes`, in player builds too) | `Scripts/`, `Chemistry/`, Unity | the game never references it back |
+| `ThirdParty/Punchy` (asmdef `Prototype.Punchy`) | `Scripts/Plans/`, `Chemistry/`, Unity | any game layer |
+| `Scripts/<Layer>/` (the view, one asmdef per layer, bottom up; `docs/design/architecture-review.md` step 10): `Kit/` (`Prototype.Kit`: materials, meshes, sounds, HUD drawing, input, the menu frame, `Registry`, the event log, leaf fx), `World/` (`ChemGrid`, cells, dressing, effects, peers, props, things, the faces the layers above fill in), `Land/` (terrain, far ring, ocean, water, sky, weather), `Village/` (valley chemistry, houses, rows, trees), `Player/` (the wizard, casting, spells, items, the HUD host), `Fauna/` (the animals and folk), `Modes/` (the Hold, defense, dragon, golf, courts, progress), `Chat/` (Claude, the rules MCP, speech), `Shell/` (menus, perf stages with `Perf/`, the playtest bot with `Playtest/`, showcases, updates). A thing's network half is in its layer's `Online/` | the layers below it (`Player` not `Village`), Punchy, `Scripts/Plans/`, `Chemistry/`, Unity, Netcode, the packs by name (rule 5) | a layer above it, `Scripts/Net/` (the peers only through `IPeers`), editor code; the core never references it back |
+| `Scripts/Net/` (the session: asmdef `Prototype.Net`, in player builds) | the game's layers, `Scripts/Plans/`, `Chemistry/`, Netcode, the transport and services | nothing in the game references it; the Editor tools, the probes and the tests may |
+| `Scripts/Editor/` (with `Shell/Perf/Editor/` and `Punchy/Terrain/Editor/`: asmdef `Prototype.Game.Editor`, Editor only) | everything but the probes | nothing references it but its tests and the probes' CLI |
+| `Scripts/Editor/Tests/`, `Scripts/Shell/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything but the probes, NUnit | nothing references it |
+| `Scripts/Probes/` (the Play-mode probe scenarios: asmdef `Prototype.Probes`, in player builds too) | the game's layers, `Scripts/Net/`, `Chemistry/`, Unity | the game never references it back |
 | `Scripts/Probes/Editor/` (the probe CLI: asmdef `Prototype.Probes.Editor`, Editor only; sees `Prototype.Game.Editor`'s internals) and `Probes/Editor/Tests/` (`Prototype.Probes.Tests`) | everything | nothing references them |
 | `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chem.Land`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
 | `core/Chem.Land` | links `Runtime/Land/*.cs` (netstandard2.1) | any other `core/` project |
-| `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
+| `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Shell/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
 | `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
 | `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |
-| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Playtest/Editor/*Tests.cs`) | `Game.Core` (through `Chem.Shared.Tests`), the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
+| `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Shell/Playtest/Editor/*Tests.cs`) | `Game.Core` (through `Chem.Shared.Tests`), the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
 | `core/Chem.Land.Tests` (the land's own tests) | `Chem.Land` alone | `Game.Core`, `Chem.Shared.Tests`, any other test project |
 | `core/Prototype.Plans` | links `Scripts/Plans/*.cs` and `core/UnityMath/` (a dotnet-only stand-in for the few `UnityEngine` types the plans use); references `Game.Core` | any other `core/` project |
 | `core/Prototype.Plans.Tests` (links `Scripts/Plans/Tests/*.cs`) | `Prototype.Plans` alone | `Chem.Shared.Tests`, any other test project |
@@ -385,7 +386,7 @@ What this clean-up left alone, roughly in order of value.
   with the sandbox frozen they can be split on their own, with the goldens
   as the safety net. Then drop `S3776` from `WarningsNotAsErrors` in
   `core/Directory.Build.props`.
-- **Rules 2 and 4 are still kept by review.** The view (`Prototype.Game`)
+- **Rules 2 and 4 are still kept by review.** The view (its layer assemblies, `Prototype.Kit` to `Prototype.Shell`)
   and the session (`Prototype.Net`) are apart, so rule 3's direction is the
   compiler's; the view and the core's commands, and editor code, share no
   such wall yet.

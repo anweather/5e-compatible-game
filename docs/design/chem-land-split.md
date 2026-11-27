@@ -15,8 +15,8 @@ the next section, and the rest of this file is the map as it was drawn.
   (`map.Bake(dir)` reads as before). `WorldPlaces.Generate` became `GeneratedPlaces.Generate` (Sim, with `WaterRuns`):
   it reads Play's files. The file names a bake writes moved down as consts (`MapFile.BuildingsName`, `CourseName`,
   `PuzzlesName`; `WorldBuildings.FileName` and the others are those). `core/Chem.Land` (netstandard2.1) compiles
-  `Runtime/Land/*.cs`, and Game.Core references it. Callers changed: `Scripts/ChemGrid.cs` (the three bake calls),
-  `Scripts/MapLand.cs` (`LandChunks.FromSource`), a comment in `Editor/Tests/WideWorldTests.cs`, and 10 test files.
+  `Runtime/Land/*.cs`, and Game.Core references it. Callers changed: `Scripts/World/ChemGrid.cs` (the three bake calls),
+  `Scripts/World/MapLand.cs` (`LandChunks.FromSource`), a comment in `Editor/Tests/WideWorldTests.cs`, and 10 test files.
   The sweep is the same 2263 results, by name, before and after; every land and hash golden passed unchanged.
   Unity's side: `Runtime/Land/Chem.Land.asmdef`, `Chem.Land` in the references of `Chemistry.asmdef`,
   `Chemistry.Mcp.asmdef` and `Chemistry.Tests.asmdef`. **Not yet compiled in Unity.**
@@ -54,8 +54,8 @@ the next section, and the rest of this file is the map as it was drawn.
 - `Chem.Land` in the references of `Chemistry.asmdef`, `Chemistry.Mcp.asmdef` and `Chemistry.Tests.asmdef`; the
   `InternalsVisibleTo` in `Runtime/Land/AssemblyInfo.cs` names `Chemistry` and `Chemistry.Mcp` (`LandCodec`,
   `BuildingTables`, `WorldPlaces.Doc`/`Write`...).
-- The view (Assembly-CSharp, by `autoReferenced`): `Scripts/MapLand.cs` (`LandChunks.FromSource(w, h, landInto)`),
-  `Scripts/ChemGrid.cs` (`MapBake.EnsureRows`/`EnsureBaked`/`EnsureBakedInto`), `Scripts/Editor/PrototypeBuild.cs`
+- The view (Assembly-CSharp, by `autoReferenced`): `Scripts/World/MapLand.cs` (`LandChunks.FromSource(w, h, landInto)`),
+  `Scripts/World/ChemGrid.cs` (`MapBake.EnsureRows`/`EnsureBaked`/`EnsureBakedInto`), `Scripts/Editor/PrototypeBuild.cs`
   (`GeneratedMap.Baked`, unchanged but now in Chem.Land), `Editor/Tests/WideWorldTests.cs` (a comment).
 - Chemistry.Tests: the 18 new `*WorldTests.cs`, `LandFolders.cs` and `BuiltWorlds.cs` (each with a new `.meta`) compile
   in the one Editor assembly beside the files they split from; `BakeTests` is now a static helper class.
@@ -120,7 +120,7 @@ They're the land's adapters onto a world, not the land itself:
 | `TerrainGrid` | `ChunkStreaming.Within` | `ChunkStreaming.cs` (Sim) | the body to `Chunks.Within`; `ChunkStreaming.Within` forwards (its callers unchanged) | forwarder |
 | `MapFile` | `World.LandLowest`, `LandHighest` | `World.Land.cs` (Sim) | the consts to `MapFile`; World's become `= MapFile.LandLowest` (same values, compiled in) | const |
 | `MapFile` | `GeneratedMap.PinnedSquares` | `GeneratedMap.cs` | the body to `MapFile.PinnedSquares`; GeneratedMap's forwards | forwarder |
-| `LandFile` (`LandChunks.FromSource`) | `IGeneratedSource` | `GeneratedSource.cs` (Sim) | `FromSource(w, h, landInto)`, a delegate in place of the interface; 2 callers change (`Scripts/MapLand.cs`, `GeneratedSourceTests.cs`) | plain data |
+| `LandFile` (`LandChunks.FromSource`) | `IGeneratedSource` | `GeneratedSource.cs` (Sim) | `FromSource(w, h, landInto)`, a delegate in place of the interface; 2 callers change (`Scripts/World/MapLand.cs`, `GeneratedSourceTests.cs`) | plain data |
 | `MapStamps.LayInto(World)` | `World`, `Rules` | — | `LayInto` and `Bare` to a Sim extension class (`MapStampsLaying`): `stamps.LayInto(world)` reads the same, 0 callers change | extension |
 | `ChunkGen` | `MapStamps.FromJson` | `MapStamps.cs` | the file to Land once `LayInto` is out (above) | move |
 | `MapFile` | `GeneratedMap`, `TerrainGrid` | — | TerrainGrid to Land (above); GeneratedMap: section 3 | — |
@@ -161,7 +161,7 @@ Ways through, smallest first:
    reading. The file names move down as consts (`WorldPlaces.FileName = MapFile.PlacesName`, ...). The pinned
    place ids need `Place`/`WorldPlaces.Load` in Land: `Places.cs` minus `Generate`'s mode part, which goes to Sim.
    Cost: GeneratedMap.cs, GeneratedMap.Bake.cs, Places.cs, WorldBuildings.cs, WorldPuzzles.cs, World.Course.cs,
-   World.Golf.cs, and the callers of the bake statics: 17 files (`Scripts/ChemGrid.cs`, `Editor/Tests/WideWorldTests.cs`,
+   World.Golf.cs, and the callers of the bake statics: 17 files (`Scripts/World/ChemGrid.cs`, `Editor/Tests/WideWorldTests.cs`,
    `MapCheck.cs`, `GeneratedSource.cs`, and 13 Chemistry test files). It changes a public API that the view and the
    tests call.
 2. **Play's map files down into Land** (`CourseLayout`, `GolfCommand`, `WorldPuzzles` readers, with their `World`

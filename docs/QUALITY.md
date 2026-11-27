@@ -50,7 +50,7 @@ core/ build reads the same file, so Unity and CI agree.
 **Reading a warning:**
 
 ```
-Assets/Prototype/Scripts/EventLog.cs(68,28): warning UNT0008: Unity objects should not use null propagation.
+Assets/Prototype/Scripts/Kit/EventLog.cs(68,28): warning UNT0008: Unity objects should not use null propagation.
           file                         line,column      rule        what is wrong
 ```
 
@@ -198,7 +198,7 @@ build) on the Mac, both built at c11083e, over Unity Relay.
 
 ## Recommendations
 
-- `Scripts/` has its own asmdefs now (`Prototype.Game` and its Editor and
-  test assemblies), so `Prototype.Analyzers` could stop being
+- `Scripts/` has its own asmdefs now (a layer each, `Prototype.Kit` to
+  `Prototype.Shell`, and the Editor and test assemblies), so `Prototype.Analyzers` could stop being
   auto-referenced: then `Assembly-CSharp` (now only the two pack tutorial
   files) would no longer be analyzed.

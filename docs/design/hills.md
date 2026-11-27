@@ -168,7 +168,7 @@ heap (`mono_used_mb`, `mono_heap_mb`).
 
 ## The view across the seams
 
-`ViewWrap` (Scripts/ViewWrap.cs): the core folds every cell, and the view draws each thing at the copy of its place
+`ViewWrap` (Scripts/Kit/ViewWrap.cs): the core folds every cell, and the view draws each thing at the copy of its place
 nearest the camera. The wizard and the camera walk on in the view's own unfolded coordinates; data stays keyed by folded
 cells and chunks, and only positions are moved by whole periods (W x 1.5 m, H x 1.5 m):
 

@@ -17,7 +17,7 @@ things go" table is the recipe for adding a spell, material, prop or item.
   and the game can't reference it: a game file that names `NetChem`,
   `NetSession` or `NgoLockstepTransport` doesn't compile. Needing one means a
   member on `IPeers` (with `SoloPeers`' answer). A thing's own network half is
-  the game's, a door by name in `Online/` (`NetProp`, `NetItem`, `NetWizard`,
+  the game's, a door by name in its layer's `Online/` (`NetProp`, `NetItem`, `NetWizard`,
   `NetCourt`); it reaches the session through `IPeers` too. Keep a send where it
   was and in the same order when routing it: the port changes who you ask, not when.
 - Editor code may use everything; nothing may use editor code.
@@ -54,26 +54,41 @@ things go" table is the recipe for adding a spell, material, prop or item.
   use `PadGlyphs` (`Text("{South} choose")`, `Label(PadButton.East)`),
   which names it as printed on the pad used last (Xbox, PlayStation,
   Switch, Steam).
-- Assemblies: this folder (with `Chat/`, the Claude, rules MCP and speech
-  files, and `Online/`) and `ThirdParty/Punchy` compile into
-  `Prototype.Game`; `Net/` into `Prototype.Net` (it references the game; the
-  game never references it; the Editor tools, probes and tests do); `Editor/`, `Perf/Editor/` and `Punchy/Terrain/Editor/`
-  into the Editor-only `Prototype.Game.Editor` (`Editor/AssetPacks/` keeps
-  `Prototype.AssetPacks.Editor`; `Editor/Playtest/` holds `PlaytestBuild`);
-  `Editor/Tests/` and `Playtest/Editor/` into the test assembly
-  `Prototype.Game.Tests`. The probes are apart: `Probes/` is
-  `Prototype.Probes` (it references the game; the game never references it),
-  `Probes/Editor/` the Editor-only `Prototype.Probes.Editor` (the CLI),
-  `Probes/Editor/Tests/` `Prototype.Probes.Tests`. The view's plans are apart too: `Plans/` is
-  `Prototype.Plans` (plain C# a MonoBehaviour draws from: budgets, tables, menu logic, mesh arrays; it references
-  only `Chemistry`, `Chem.Land` and UnityEngine's maths, and the game references it), `Plans/Tests/`
+- Assemblies (`docs/design/architecture-review.md` step 10): the game is a folder per layer, one asmdef each, and each
+  references only the layers below it, bottom up: `Kit/` (`Prototype.Kit`: materials, meshes, sounds, HUD drawing,
+  input, the menu frame, `Registry`, perf counters, the event log, leaf fx) <- `World/` (`Prototype.World`: `ChemGrid.*`,
+  cells, dressing, effects, peers, props, things, and the faces the layers above fill in: `Caster`, `ValleyFace`,
+  `LandFaces`, `ItemFace`, `FaunaFace`, `WizardBody`) <- `Land/` (terrain, far ring, ocean, water, sky, weather) <-
+  `Village/` (valley chemistry, houses, rows, trees) and `Player/` (the wizard, casting, spells, items, the HUD host;
+  it doesn't see `Village`) <- `Fauna/` <- `Modes/` (the Hold, defense, dragon, golf, courts, progress) <- `Chat/`
+  (Claude, the rules MCP, speech) <- `Shell/` (menus, perf stages with `Perf/`, the playtest bot with `Playtest/`,
+  showcases, updates). `ThirdParty/Punchy` is `Prototype.Punchy`, under all of them. A thing's network half is in its
+  layer's `Online/` (`World/Online/NetProp`, `Player/Online/NetWizard` and `NetItem`, `Modes/Online/NetCourt`). A
+  file goes in the lowest layer whose types it needs; needing one from above means a seam, never a reference up: a
+  face or base class in the lower layer that the higher one fills in (`Caster`, `FaunaFace`), a hook it sets as it
+  loads (`Caster.MeteorShow`, `ChemGrid.GolfShow`, `PlayNotes.To`), a grid add-on (`[GridAddOn]`, found in every
+  `Prototype.*` assembly), a registry, `IPeers`, a menu section, or a constant moved down (`Raiders.FlyHeight`).
+  A member used from another layer is `public` (no `InternalsVisibleTo`).
+  **A new feature** is a folder with its own asmdef (its references copied from a layer's, `Prototype.Analyzers`
+  and `Unity.Netcode.Runtime` included) that references what it needs below it, and nothing references it. It joins
+  the game through those seams, never by editing `ChemGrid`, `PauseMenu` or another hub; its plain logic goes in
+  `Plans/` or the core with dotnet tests, its probe in `Probes/`. A new game assembly joins
+  `PeersTests.GameAssemblies`, and the Editor tools, tests and probes that use it reference it.
+  The rest: `Net/` is `Prototype.Net` (it references the layers; no layer references it); `Editor/`,
+  `Shell/Perf/Editor/` and `Punchy/Terrain/Editor/` are the Editor-only `Prototype.Game.Editor` (`Editor/AssetPacks/`
+  keeps `Prototype.AssetPacks.Editor`; `Editor/Playtest/` holds `PlaytestBuild`); `Editor/Tests/` and
+  `Shell/Playtest/Editor/` are the test assembly `Prototype.Game.Tests`. The probes are apart: `Probes/` is
+  `Prototype.Probes` (it references the layers; no layer references it), `Probes/Editor/` the Editor-only
+  `Prototype.Probes.Editor` (the CLI), `Probes/Editor/Tests/` `Prototype.Probes.Tests`. The view's plans are apart
+  too: `Plans/` is `Prototype.Plans` (plain C# a MonoBehaviour draws from: budgets, tables, menu logic, mesh arrays;
+  it references only `Chemistry`, `Chem.Land` and UnityEngine's maths, and the layers reference it), `Plans/Tests/`
   `Prototype.Plans.Tests`, which `core/Prototype.Plans.Tests` also runs under dotnet with the `core/UnityMath` shim
   (`docs/design/architecture-review.md` step 6). A file goes in `Plans/` only if it names no game type and no engine
   API past `Vector2`/`Vector3`, `Mathf`, `Color`/`Color32` and `Debug.Log` (grow the shim for one more, never for a
   `Mesh` or a MonoBehaviour): keep the `Mesh` call in the game, as `FarMeshesMesh.ToMesh` does for `FarMeshes`. A
   new folder named `Editor` here joins an Editor-only assembly with an
   `.asmref`, or its code goes into player builds. A new package the code
-  uses goes into the asmdef's references. CI still can't build these
+  uses goes into the asmdefs' references. CI still can't build these
   (only the Editor does). Its checks are the Unity console's analyzer warnings
   (don't add any; the current count is the baseline in `docs/QUALITY.md`)
   and the probe.

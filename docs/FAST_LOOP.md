@@ -241,7 +241,7 @@ detail)`, `Metric(name, value)` and `Shot(label)`. Then add an entry to
 what it checks, and its `max_seconds`. Recompile; `probe list` shows it.
 
 The probes are assemblies of their own, so changing one recompiles only them, not the game:
-`Scripts/Probes/` is `Prototype.Probes` (the scenarios and their helpers; it references `Prototype.Game`, and
+`Scripts/Probes/` is `Prototype.Probes` (the scenarios and their helpers; it references the game's layer assemblies, and
 nothing in the game references it), `Probes/Editor/` is the Editor-only `Prototype.Probes.Editor` (the CLI) and
 `Probes/Editor/Tests/` is `Prototype.Probes.Tests`. Put a new scenario in `Scripts/Probes/`. A probe that needs
 something of the game's makes it public there; the game never reads a probe (`VirtualPlayer` and `WeatherMods` are

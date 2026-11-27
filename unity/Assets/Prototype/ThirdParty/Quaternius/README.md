@@ -1,7 +1,7 @@
 # Quaternius
 
 `Dragon.fbx` is the dragon of **Animated Monsters** by Quaternius, used as published and unchanged: the
-game's Dragon (`Scripts/DragonView.cs`, tinted red there; `docs/BACKLOG.md` 26).
+game's Dragon (`Scripts/Modes/DragonView.cs`, tinted red there; `docs/BACKLOG.md` 26).
 
 - Licence: CC0 1.0 Universal, public domain (<https://creativecommons.org/publicdomain/zero/1.0/>). The
   pack's own licence text is `License.txt` here, also unchanged. Attribution isn't required; the game

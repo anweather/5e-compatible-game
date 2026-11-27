@@ -157,7 +157,7 @@ $U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
 A player makes each graphics pipeline state the first time something is drawn
 with it, and that can stall a frame for seconds (a first Hasten Time took
 2.6 s on the Mac, F-0002). `PsoWarmUp` makes the known states before the first
-frame from `Scripts/Perf/Resources/Pso<API>.graphicsstate` (`PsoMetal` from
+frame from `Scripts/Shell/Perf/Resources/Pso<API>.graphicsstate` (`PsoMetal` from
 the Mac, `PsoDirect3D12` from the PC), about 0.1 s for 200 states.
 
 **Record them again** when shaders, materials or effects change (new spells,
