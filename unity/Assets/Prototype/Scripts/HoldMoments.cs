@@ -6,6 +6,7 @@ using UnityEngine.InputSystem;
 // the Esc menu's Developer page lists them, F8 opens the menu, and a click goes in. Going in is a command, so every peer goes with
 // you; each wizard then gets up at the castle.
 [RequireComponent(typeof(ChemGrid))]
+[GridAddOn(GridStage.Grid, 40)]
 public class HoldMoments : MonoBehaviour
 {
     const int MenuOrder = 50;

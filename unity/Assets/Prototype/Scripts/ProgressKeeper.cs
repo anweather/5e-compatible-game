@@ -8,6 +8,7 @@ using UnityEngine.InputSystem;
 // says. What the player sees of it is in the other parts: the offer between waves and the run's picks (ProgressKeeper.Offer.cs), and
 // the Esc menu's page and a run's end (ProgressKeeper.Page.cs).
 [RequireComponent(typeof(ChemGrid))]
+[GridAddOn(GridStage.Grid, 20)]
 public partial class ProgressKeeper : MonoBehaviour
 {
     const float AskEvery = 1f;

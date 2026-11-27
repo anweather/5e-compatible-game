@@ -7,6 +7,7 @@ using UnityEngine;
 // them. A wizard walks into them as into a built wall. Fire on them is the cells' own. The meshes are made again only when a cell
 // changes. Only the show: the core raises and breaks them.
 [RequireComponent(typeof(ChemGrid))]
+[GridAddOn(GridStage.Grid, 30)]
 public class HoldBarricades : MonoBehaviour
 {
     const float Tall = 1.7f, Thick = 0.17f, Lean = 24f, Spread = 0.26f;

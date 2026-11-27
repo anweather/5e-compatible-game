@@ -18,6 +18,7 @@ using UnityEngine.InputSystem;
 // While the menu is open the wizard's own controls (spells, items, reset) are
 // off, so the number keys don't also pick spells.
 [RequireComponent(typeof(RuleSwitcher))]
+[GridAddOn(GridStage.Rules, 10)]
 public class ModsPanel : MonoBehaviour
 {
     public const string PageId = "mods";

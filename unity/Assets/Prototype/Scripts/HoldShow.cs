@@ -4,6 +4,7 @@ using UnityEngine;
 // What a run shows (docs/design/the-hold.md, phase 2; World.Hold.cs): the plate that starts one, the keep's health over the
 // keep, and a HUD line while one goes on or just after. Only the show: the core decides everything, from the stands.
 [RequireComponent(typeof(ChemGrid))]
+[GridAddOn(GridStage.Grid, 10)]
 public class HoldShow : MonoBehaviour
 {
     const float PlateHeight = 0.08f, BannerRise = 26f, BannerSize = 0.25f, HudRange = 160f, ShowLoss = 30f;

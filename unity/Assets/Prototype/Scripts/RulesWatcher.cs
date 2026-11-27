@@ -14,6 +14,7 @@ using UnityEngine;
 // the time here; Update, on the main thread, passes a path on once it has been
 // quiet for DebounceSeconds.
 [RequireComponent(typeof(RuleSwitcher))]
+[GridAddOn(GridStage.Rules, 30, DevOnly = true)]
 public class RulesWatcher : MonoBehaviour
 {
     const float DebounceSeconds = 0.3f;

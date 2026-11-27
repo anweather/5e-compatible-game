@@ -34,8 +34,6 @@ public class RoomProgressProbe : RoomProbe
         if (Theirs == null) yield break;
         string joiner = world.Stands.Keys.FirstOrDefault(p => p != host);
         Check("the_joiner_has_everything", joiner != null && world.PointsOf(joiner) == World.AllPoints, $"{joiner}: {(joiner != null ? world.PointsOf(joiner) : null)}");
-        Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left),
-            $"host left {world.HandOpen(host, HandsDef.Left)}, joiner left {world.HandOpen(joiner ?? "", HandsDef.Left)}");
 
         var plate = world.HoldSite.Plate;
         var at = grid.CellCenter(plate.x, plate.y);
@@ -47,6 +45,8 @@ public class RoomProgressProbe : RoomProbe
         for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.unscaledDeltaTime) yield return null;
         Check("a_run_starts", world.HoldRunning);
         if (!world.HoldRunning) yield break;
+        Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left),
+            $"host left {world.HandOpen(host, HandsDef.Left)}, joiner left {world.HandOpen(joiner ?? "", HandsDef.Left)}");
         HashesFrom = Net.NetTick;
         yield return Wait(1f);
         yield return Reach("attuned", Net.NetTick);

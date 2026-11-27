@@ -15,6 +15,7 @@ using UnityEngine;
 // be, so a burning street spreads over frames, and a house's chimney smokes while it stands. Its
 // windows glow at night from their rows' lamps (WindowPanes), and go dark as their walls burn or fall.
 [RequireComponent(typeof(ChemGrid))]
+[GridAddOn(GridStage.Rules, 20)]
 public class RowHouses : MonoBehaviour
 {
     const int FarthestNudge = 40;
