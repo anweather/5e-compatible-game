@@ -88,3 +88,43 @@ first time after a compile) to a running grid 30 frames in, 1.1 s to leave. **Ed
 
 (The cloud's 4 cores took 7 m 21 s for the same "before"; the Mac is about twice as fast.) The 75 s floor is the build,
 format and the workers' tests, which every change runs.
+
+## After step 10's assemblies (2026-11-27), fresh Editors
+
+The first "after" run was taken in the same Editor as the "before", hours and dozens of reloads later, and its domain
+reload had crept from 3.5 s to 7.4 s; so both were taken again, each in a freshly started Editor on the same Mac:
+`7dc22b48` (before the split) and `5aa3d7e0` (after). Mean seconds from save to a ready Editor, 4 samples each
+(`tools/telemetry/unity-loop.sh`, ROUNDS=2):
+
+| File (kind of feature) | Body edit before → after | API edit before → after | An API edit rebuilds, after |
+|---|---|---|---|
+| `ChemGrid.cs` (World, the base) | 12.1 → 10.3 | 13.1 → 13.6 | every layer above World, Net, the probes, the Editor tools and tests |
+| `HoldShow.cs` (Modes) | 11.8 → **7.6** | 13.6 → **11.0** | Modes, Chat, Shell, Net, the probes, tools, tests |
+| `SpellCaster.cs` (Player) | 12.3 → 9.4 | 13.6 → 12.4 | Player, Fauna, Modes, Chat, Shell, ... |
+| `ValleyFauna.cs` (Fauna) | 11.8 → 8.9 | 13.2 → 11.2 | Fauna, Modes, Chat, Shell, ... |
+| `ControlsMenu.cs` (Shell, a menu) | 12.5 → **8.9** | 14.3 → **10.5** | Shell, Net, the probes, tools, tests |
+| `Chat/GameChat.cs` (Chat) | 12.8 → **8.8** | 14.5 → **10.4** | Chat, Shell, ... |
+| `Probes/ProbeRoomProgress.cs` | 9.9 → 10.0 | 10.2 → 9.6 | the probes' three (unchanged) |
+| `Plans/TreeBudget.cs` | 9.4 → 10.2 | 14.9 → 14.9 | (unchanged) |
+
+What it says: an edit in a feature layer is **25-35% faster** (about 12 s → 8-9 s for a body edit, 14 s → 10-11 s for
+an API edit); an edit in the base (`ChemGrid`) gains little, because everything is above it. The floor is the domain
+reload (about 3 s in a fresh Editor, the same before and after) plus Unity's refresh, which no assembly split moves:
+probes and plans were already their own assemblies and didn't change. Domain reload grows with how long the Editor has
+been open, so **restarting the Editor after a long session** is worth as much as the split (an hours-old Editor took
+13-17 s for the same edits).
+
+Unchanged by the split: Play mode 4.7-4.8 s to enter (6.6-6.7 s the first time), 1.1 s to leave; EditMode 62 s (572
+tests after, 567 before). One EditMode test, `TreeImpostorTests.ImpostorsAreOnUnlessTurnedOff`, fails in both when the
+suite runs right after Play mode (the run leaves `MapTerrains.TreeDistance` changed and domain reload is off), not on
+its own: a test-isolation bug older than the split.
+
+**Gates after** (`5aa3d7e0`): docs 83 s, Land runtime 82 s, a Play file 162 s, a Sim file 161 s, a view file 65 s, all
+within noise of before: the split is view code, and the gates are the core's. The core's Play and Sim changes are now the
+slow landings (they run nearly every test project); Play out of the Sim assembly (step 9's leftover) is the next lever
+there.
+
+**The structural change, which the timings don't show:** a feature layer can't reach up or across any more (the compiler
+refuses), so a new feature is a new folder and asmdef on top that touches no hub (`Scripts/CLAUDE.md`, "Assemblies").
+The per-feature agent cost (`feature-costs.mjs`, the first section) is the measure of that, once a week or two of feature
+work has landed on this layout.
