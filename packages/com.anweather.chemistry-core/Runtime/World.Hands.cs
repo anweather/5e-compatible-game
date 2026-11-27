@@ -17,7 +17,7 @@ namespace Chem
     {
         readonly SortedDictionary<string, PlayerHands> hands = new SortedDictionary<string, PlayerHands>(System.StringComparer.Ordinal);
 
-        HandsDef HandRules => Rules.Sim.Hold.Hands;
+        internal HandsDef HandRules => Rules.Sim.Hold.Hands;
 
         /// <summary>A wizard's hands; as they start if nothing has changed them.</summary>
         public PlayerHands HandsOf(string player)

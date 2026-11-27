@@ -41,6 +41,7 @@ namespace Chem
             RngState = seed;
             Seed = seed;
             Weather = Sky.Weather(rules.Sim, seed, 0);
+            MakeSystems();
             BuildChunks(fill);
         }
 

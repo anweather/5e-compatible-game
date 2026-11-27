@@ -98,7 +98,7 @@ namespace Chem
             SaveMachines(save);
             SaveGolf(save);
             SaveDragon(save);
-            SaveCourse(save);
+            CourseSystem.Save(save);
             SaveRoom(save);
             SavePlaced(save);
             SaveActs(save);
@@ -284,7 +284,7 @@ namespace Chem
                 waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
             LoadGolf(s);
-            LoadCourse(s);
+            CourseSystem.Load(s);
             LoadPlaced(s);
             LoadActs(s);
             LoadLand(s);

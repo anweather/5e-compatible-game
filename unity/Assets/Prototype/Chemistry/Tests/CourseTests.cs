@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The Gauntlet's rules (docs/BACKLOG.md 25; World.Course.cs): spell zones, checkpoints, the clock, and the booths' material verbs.</summary>
+    /// <summary>The Gauntlet's rules (docs/BACKLOG.md 25; Play/CourseSystem.cs): spell zones, checkpoints, the clock, and the booths' material verbs.</summary>
     [Category("Simulation")]
     public class CourseTests
     {
@@ -27,7 +27,7 @@ namespace Chem.Tests
         {
             var w = new World(R, 60, 12, 3, "dirt");
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava";
-            w.SetCourse(CourseLayout.FromJson(Little));
+            w.CourseSystem.Set(CourseLayout.FromJson(Little));
             return w;
         }
 
@@ -83,30 +83,30 @@ namespace Chem.Tests
             Assert.That(Last(w), Does.Not.Contain("smothers"), "no zone between the booths and the bell");
 
             Assert.That(w.CourseRespawn("ann", 45, 5), Is.Null, "not on a run yet");
-            w.ApplyCourse(new CourseCommand("ann", 51, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 51, 5));
             Assert.That(Last(w), Is.EqualTo("ann is through the gate: the clock is running"));
             Assert.That(w.CourseRespawn("ann", 51, 5), Is.EqualTo((51, 5)), "downed before the first booth: the gate");
             Run(w, 40);
-            w.ApplyCourse(new CourseCommand("ann", 45, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 45, 5));
             Assert.That(Last(w), Is.EqualTo("ann reaches the checkpoint at the lava pit"));
             Assert.That(w.CourseRespawn("ann", 45, 5), Is.EqualTo((48, 5)));
-            w.ApplyCourse(new CourseCommand("bob", 45, 5));
+            w.CourseSystem.Apply(new CourseCommand("bob", 45, 5));
             Assert.That(w.CourseRespawn("bob", 45, 5), Is.Null, "bob never went through the gate");
             Run(w, 50);
-            w.ApplyCourse(new CourseCommand("ann", 35, 5));
-            w.ApplyCourse(new CourseCommand("ann", 45, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 35, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 45, 5));
             Assert.That(w.CourseRespawn("ann", 25, 5), Is.EqualTo((38, 5)), "back is no checkpoint");
             Assert.That(w.CourseRespawn("ann", 10, 5), Is.Null, "outside the course: the yard");
             Run(w, 30);
-            w.ApplyCourse(new CourseCommand("ann", 21, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 21, 5));
             Assert.That(Last(w), Is.EqualTo("ann rings the bell in 20.0 s: a new best!"));
             Assert.That(w.CourseRespawn("ann", 45, 5), Is.Null, "the run is over");
 
-            w.ApplyCourse(new CourseCommand("ann", 50, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 50, 5));
             Run(w, 150);
-            w.ApplyCourse(new CourseCommand("ann", 20, 3));
+            w.CourseSystem.Apply(new CourseCommand("ann", 20, 3));
             Assert.That(Last(w), Is.EqualTo("ann rings the bell in 25.0 s (best 20.0 s)"));
-            Assert.That($"{w.CourseText()}{w.ZoneText()} {w.CourseHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|rann:-1:-1:120:150|rbob:-1:-1:0:0|zlava-pit:40:0:49:11:water,air:|zmisty:30:0:39:11::misty-step e965d3a4 c036fca2 3"), "the golden");
+            Assert.That($"{w.CourseSystem.Text()}{w.CourseSystem.ZoneText()} {w.CourseSystem.Hash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|rann:-1:-1:120:150|rbob:-1:-1:0:0|zlava-pit:40:0:49:11:water,air:|zmisty:30:0:39:11::misty-step e965d3a4 c036fca2 3"), "the golden");
         }
 
         [Test]
@@ -115,12 +115,12 @@ namespace Chem.Tests
             var w = LittleCourse();
             string before = w.CastHash();
             new TickBatch(1) { Course = { new CourseCommand("ann", 51, 5) } }.RunOn(w, RuleSet.Plain(R), out _);
-            Assert.That(w.CourseRuns["ann"].Running, "the batch's step started the clock");
+            Assert.That(w.CourseSystem.Runs["ann"].Running, "the batch's step started the clock");
             Assert.That(w.CastHash(), Is.Not.EqualTo(before), "the run is hashed");
             Assert.That(new World(R, 60, 12, 3, "dirt").CastHash(), Is.Not.EqualTo(LittleCourse().CastHash()), "and so are the zones");
-            w.ApplyCourse(new CourseCommand("ann", 45, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 45, 5));
             var back = World.Load(w.Save(new Blank()), R, new Blank());
-            Assert.That(back.CourseText(), Is.EqualTo(w.CourseText()));
+            Assert.That(back.CourseSystem.Text(), Is.EqualTo(w.CourseSystem.Text()));
         }
 
         [Test]
@@ -156,7 +156,7 @@ namespace Chem.Tests
             var w = new World(R, valley.GridW, valley.GridH, 1, "grass");
             WorldPuzzles.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetLand(LandFile.Read(File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), "land.json")), valley.GridW, valley.GridH));
-            w.SetCourse(CourseLayout.Load(ChemistryTests.WorldDir()));
+            w.CourseSystem.Set(CourseLayout.Load(ChemistryTests.WorldDir()));
             w.Cast("frost", 307, 433, 3);
             Assert.That(Enumerable.Range(300, 7).All(x => w.At(x, 433).T == "lava-crust"), "a crust across the pit");
             w.Cast("fireball", 280, 433, 3);

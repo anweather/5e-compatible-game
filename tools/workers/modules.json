@@ -31,6 +31,8 @@
       "packages/com.anweather.chemistry-core/Runtime/Downed*"
     ] },
     { "name": "runtime-play", "after": ["Chem.Play.Tests"], "projects": ["Game.Core"], "paths": [
+      "packages/com.anweather.chemistry-core/Runtime/Play/**",
+      "packages/com.anweather.chemistry-core/Runtime/World.Play*",
       "packages/com.anweather.chemistry-core/Runtime/Hold*",
       "packages/com.anweather.chemistry-core/Runtime/Defense*",
       "packages/com.anweather.chemistry-core/Runtime/Hands*",

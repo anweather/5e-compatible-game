@@ -414,6 +414,11 @@ touch them.
 **Height step**
 : One unit of a cell's `Height`: 0.5 m raised or dug.
 
+**System** (in the core)
+: A pass over the world's data with a fixed place in the tick (D9). A game mode's is a class in the core's
+  `Runtime/Play/` named for the mode (`CourseSystem`, ...), owned by the world (`World.CourseSystem`) and run where
+  the mode always ran (`docs/design/architecture-review.md` step 9). *Not* a machine, an act or a Unity system.
+
 **Carrying**
 : What a whirlwind has taken on and sheds as it travels (`carries` in
   `spells.json`): a fire tornado, a waterspout, a sandstorm, a smoke column
@@ -677,7 +682,7 @@ that long, and doesn't march.
 **Spell zone**
 : A block of cells that allows only some elements (a spell is allowed when a
   combo of only those elements casts it) or some spells by id
-  (`SpellZone`, `World.Course.cs`, `course.ts`). A cast landing in it with
+  (`SpellZone`, `Play/CourseSystem.cs`, `course.ts`). A cast landing in it with
   anything else **fizzles**: "The lava pit's charm smothers your Fireball".
   World data, the same on every peer, and in the checksum.
 

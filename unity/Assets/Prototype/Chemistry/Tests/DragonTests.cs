@@ -590,16 +590,16 @@ namespace Chem.Tests
             // Ported from sandbox/test/dragon.test.ts.
             var w = new World(R, 60, 12, 3, "dirt");
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava";
-            w.SetCourse(CourseLayout.FromJson(@"{
+            w.CourseSystem.Set(CourseLayout.FromJson(@"{
                 ""name"": ""The little gauntlet"", ""area"": [18, 0, 54, 11], ""gate"": [50, 2, 52, 8], ""bell"": [20, 2, 22, 8],
                 ""booths"": [{ ""id"": ""lava-pit"", ""name"": ""lava pit"", ""area"": [40, 0, 49, 11], ""checkpoint"": [48, 5], ""allow"": { ""elements"": [""water"", ""air""] } }] }"));
             w.KeepStart();
-            w.ApplyCourse(new CourseCommand("ann", 51, 5));
+            w.CourseSystem.Apply(new CourseCommand("ann", 51, 5));
             Run(w, 30);
-            w.ApplyCourse(new CourseCommand("ann", 21, 5));
-            w.ApplyCourse(new CourseCommand("bob", 51, 5));
-            w.ApplyCourse(new CourseCommand("bob", 45, 5));
-            int best = w.CourseRuns["ann"].Best;
+            w.CourseSystem.Apply(new CourseCommand("ann", 21, 5));
+            w.CourseSystem.Apply(new CourseCommand("bob", 51, 5));
+            w.CourseSystem.Apply(new CourseCommand("bob", 45, 5));
+            int best = w.CourseSystem.Runs["ann"].Best;
             Assert.That(best, Is.GreaterThan(0));
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava-crust";
 
@@ -607,9 +607,9 @@ namespace Chem.Tests
             FlyOut(w);
 
             Assert.That(Enumerable.Range(42, 5).All(x => w.At(x, 5).T == "lava"), "the booth's lava is back");
-            Assert.That(w.Zones.Select(z => z.Id), Is.EqualTo(new[] { "lava-pit" }), "zones are world data");
-            Assert.That(w.CourseRuns["ann"].Best, Is.EqualTo(best), "a best time is progress");
-            Assert.That(w.CourseRuns["bob"].Running && w.CourseRuns["bob"].Checkpoint == 0, "a run goes on");
+            Assert.That(w.CourseSystem.Zones.Select(z => z.Id), Is.EqualTo(new[] { "lava-pit" }), "zones are world data");
+            Assert.That(w.CourseSystem.Runs["ann"].Best, Is.EqualTo(best), "a best time is progress");
+            Assert.That(w.CourseSystem.Runs["bob"].Running && w.CourseSystem.Runs["bob"].Checkpoint == 0, "a run goes on");
             Assert.That(w.CourseRespawn("bob", 45, 5), Is.EqualTo((48, 5)));
         }
     }

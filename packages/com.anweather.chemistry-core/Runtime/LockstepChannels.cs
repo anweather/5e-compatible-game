@@ -175,7 +175,7 @@ namespace Chem.Lockstep
             (b, d) => b.Dragon.Add(d))
         { HostOnly = true, OnePerTick = true };
 
-        /// <summary>Where players stand on the course (World.Course.cs).</summary>
+        /// <summary>Where players stand on the course (Play/CourseSystem.cs).</summary>
         public static LockstepChannel<CourseCommand> Course(Func<PeerId, string> player) => new LockstepChannel<CourseCommand>("course", (w, c) =>
             {
                 w.Text(c.Player);

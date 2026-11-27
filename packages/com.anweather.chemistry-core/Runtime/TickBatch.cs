@@ -84,7 +84,7 @@ namespace Chem
         public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
         /// <summary>The dragon's summons (World.Dragon.cs), applied after the combos.</summary>
         public List<DragonCommand> Dragon { get; } = new List<DragonCommand>();
-        /// <summary>Where players stand on the course (World.Course.cs), applied after the dragon, in order.</summary>
+        /// <summary>Where players stand on the course (Play/CourseSystem.cs), applied after the dragon, in order.</summary>
         public List<CourseCommand> Course { get; } = new List<CourseCommand>();
         /// <summary>Wizards standing, striking and leaving (World.Strike.cs), applied after the course, in order.</summary>
         public List<StrikeCommand> Strikes { get; } = new List<StrikeCommand>();
@@ -147,7 +147,7 @@ namespace Chem
             foreach (var d in Defense) world.ApplyDefense(d);
             foreach (var c in Combos) world.ApplyCombo(c);
             foreach (var d in Dragon) world.ApplyDragon(d);
-            foreach (var c in Course) world.ApplyCourse(c);
+            foreach (var c in Course) world.CourseSystem.Apply(c);
             foreach (var s in Strikes) world.ApplyStrike(s);
             return rules;
         }

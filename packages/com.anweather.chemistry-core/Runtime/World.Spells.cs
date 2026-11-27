@@ -275,7 +275,7 @@ namespace Chem
         /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the
         /// element pushes along. A spell with a crater (Fireball) blows it out of the
         /// ground before its element lands. Cast into a spell zone that doesn't allow it
-        /// (World.Course.cs), it fizzles.
+        /// (Play/CourseSystem.cs), it fizzles.
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
         {
@@ -308,7 +308,7 @@ namespace Chem
         {
             var (x, y) = (FoldX(at.x), FoldY(at.y)); // a cast past the seam lands where it folds to
             var (aimX, aimY) = aim;
-            var zone = ZoneAgainst(s, x, y);
+            var zone = CourseSystem.ZoneAgainst(s, x, y);
             if (zone != null)
             {
                 AddLog($"The {zone.Name}'s charm smothers your {s.Name}", LogKind.Notable);
